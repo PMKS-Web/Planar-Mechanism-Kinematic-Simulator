@@ -1,3 +1,4 @@
+import { Injector } from '@angular/core';
 import { Joint } from './model/joint';
 import { Link } from './model/link';
 import { Force } from './model/force';
@@ -7,6 +8,10 @@ import { MechanismService } from './services/mechanism.service';
 import { GridUtilsService } from './services/grid-utils.service';
 import { ActiveObjService } from './services/active-obj.service';
 import { SettingsService } from './services/settings.service';
+import { NumberUnitParserService } from './services/number-unit-parser.service';
+import { SvgGridService } from './services/svg-grid.service';
+import { SynthesisBuilderService } from './services/synthesis/synthesis-builder.service';
+import { ColorService } from './services/color.service';
 import { ToolbarComponent } from './component/toolbar/toolbar.component';
 import { KinematicsSolver} from "./model/mechanism/kinematic-solver";
 import { ForceSolver } from './model/mechanism/force-solver';
@@ -20,10 +25,22 @@ describe('SixbarService', () => {
   const forces: Force[] = [];
   const ics: InstantCenter[] = [];
   const mechanisms: Mechanism[] = [];
-  const gridUtilService: GridUtilsService = new GridUtilsService();
-  const activeObjService: ActiveObjService = new ActiveObjService();
+  // ColorService registers itself as a static singleton that createRealLink depends on.
+  new ColorService();
   const settingsService: SettingsService = new SettingsService();
-  const mechanismSrv: MechanismService = new MechanismService(gridUtilService, activeObjService, settingsService);
+  const nup: NumberUnitParserService = new NumberUnitParserService();
+  const svgGridService: SvgGridService = new SvgGridService(settingsService);
+  const synthesisBuilder: SynthesisBuilderService = new SynthesisBuilderService(nup, settingsService);
+  const gridUtilService: GridUtilsService = new GridUtilsService(synthesisBuilder, svgGridService);
+  const activeObjService: ActiveObjService = new ActiveObjService();
+  // The injector is only consulted when saving undo history, which these solver tests never do.
+  const mechanismSrv: MechanismService = new MechanismService(
+    gridUtilService,
+    activeObjService,
+    Injector.create({ providers: [] }),
+    settingsService,
+    nup
+  );
 
   // Link AB
   const JointA = mechanismSrv.createRevJoint("-3.74", "-2.41");
