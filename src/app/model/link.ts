@@ -28,7 +28,6 @@ import hull from 'hull.js/dist/hull.js';
 import { SettingsService } from '../services/settings.service';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
 import { Arc, Line } from './line';
-import { get, set } from '@angular/fire/database';
 import { first, last } from 'rxjs';
 import { ColorService } from '../services/color.service';
 

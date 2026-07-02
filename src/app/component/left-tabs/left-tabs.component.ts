@@ -4,7 +4,7 @@ import { RealJoint } from 'src/app/model/joint';
 import { RealLink } from 'src/app/model/link';
 import { Force } from 'src/app/model/force';
 import { animate, state, style, transition, trigger } from '@angular/animations';
-import { Analytics, logEvent } from '@angular/fire/analytics';
+import { AnalyticsService } from '../../services/analytics.service';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 import { MatDialog } from '@angular/material/dialog';
 import { SynthesisWarningComponent } from '../MODALS/synthesis-warning/synthesis-warning.component';
@@ -75,7 +75,7 @@ import { MechanismService } from 'src/app/services/mechanism.service';
   ],
 })
 export class LeftTabsComponent {
-  private analytics: Analytics = inject(Analytics);
+  private analytics: AnalyticsService = inject(AnalyticsService);
 
 
   constructor(
@@ -115,13 +115,13 @@ export class LeftTabsComponent {
     if (this.tabs.isTabVisible()) {
       switch (this.tabs.getCurrentTab()) {
         case TabID.SYNTHESIZE:
-          logEvent(this.analytics, 'open_synthesis_tab');
+          this.analytics.logEvent('open_synthesis_tab');
           break;
         case TabID.EDIT:
-          logEvent(this.analytics, 'open_edit_tab');
+          this.analytics.logEvent('open_edit_tab');
           break;
         case TabID.ANALYZE:
-          logEvent(this.analytics, 'open_analysis_tab');
+          this.analytics.logEvent('open_analysis_tab');
           break;
       }
     }

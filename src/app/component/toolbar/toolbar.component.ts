@@ -34,7 +34,7 @@ import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { MechanismService } from '../../services/mechanism.service';
 import { NewGridComponent } from '../new-grid/new-grid.component';
-import { Analytics, logEvent } from '@angular/fire/analytics';
+import { AnalyticsService } from '../../services/analytics.service';
 import { UrlProcessorService } from '../../services/url-processor.service';
 import { MatDialog } from '@angular/material/dialog';
 import { TemplatesComponent } from '../MODALS/templates/templates.component';
@@ -65,7 +65,7 @@ const parseCSV = require('papaparse');
   styleUrls: ['./toolbar.component.scss'],
 })
 export class ToolbarComponent implements OnInit, AfterViewInit {
-  private analytics: Analytics = inject(Analytics);
+  private analytics: AnalyticsService = inject(AnalyticsService);
 
   openRightPanelEquations() {
     RightPanelComponent.tabClicked(2);
@@ -168,12 +168,12 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
 
   // popUpTemplates() {
   //   TemplatesPopupComponent.showTemplates();
-  //   logEvent(this.analytics, 'open_templates');
+  //   this.analytics.logEvent('open_templates');
   // }
 
   upload($event: any) {
     console.log("upload");
-    logEvent(this.analytics, 'upload_file');
+    this.analytics.logEvent('upload_file');
     const input = $event.target;
     if (input.files.length !== 1) {
       console.log('No file selected', input.files.length);
@@ -202,7 +202,7 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
    *  Copy the URL of the current mechanism to the clipboard
    */
   copyURL() {
-    logEvent(this.analytics, 'copyURL');
+    this.analytics.logEvent('copyURL');
 
     let url = this.urlGenerationService.generateFullUrl();
 
@@ -227,7 +227,7 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
   }
 
   downloadLinkage() {
-    logEvent(this.analytics, 'download_linkage');
+    this.analytics.logEvent('download_linkage');
     // TODO: Believe this should be this.unit.selectedUnit
     const content = this.urlGenerationService.generateUrlQuery();
 
