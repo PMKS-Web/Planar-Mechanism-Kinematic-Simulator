@@ -3,11 +3,11 @@
 
 @mixin css($theme) {
   // Get the color config from the theme.
-  $color-config: mat.get-color-config($theme);
+  $color-config: mat.m2-get-color-config($theme);
   // Get the primary color palette from the color-config.
   $primary-palette: map.get($color-config, 'primary');
   $accent-palette: map.get($color-config, 'accent');
-  $typography-config: mat.get-typography-config($theme);
+  $typography-config: mat.m2-get-typography-config($theme);
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
@@ -24,18 +24,18 @@
       //Hide left and right borders
       //border-left: 0;
       //border-right: 0;
-      background-color: mat.get-color-from-palette($primary-palette, 50);
+      background-color: mat.m2-get-color-from-palette($primary-palette, 50);
       //border-width: 1px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      @include mat.typography-level($typography-config, 'subtitle-2');
-      color: mat.get-color-from-palette($primary-palette, 500);
+      @include mat.m2-typography-level($typography-config, 'subtitle-2');
+      color: mat.m2-get-color-from-palette($primary-palette, 500);
       cursor: pointer;
 
       //On hover, change background color
       &:hover {
-        background-color: mat.get-color-from-palette($primary-palette, 100);
+        background-color: mat.m2-get-color-from-palette($primary-palette, 100);
       }
 
       mat-icon {

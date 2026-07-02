@@ -3,10 +3,10 @@
 
 @mixin css($theme) {
   // Get the color config from the theme.
-  $color-config: mat.get-color-config($theme);
+  $color-config: mat.m2-get-color-config($theme);
   // Get the primary color palette from the color-config.
   $primary-palette: map.get($color-config, 'primary');
-  $typography-config: mat.get-typography-config($theme);
+  $typography-config: mat.m2-get-typography-config($theme);
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
@@ -19,7 +19,7 @@
     @include mat.elevation(2);
     //Check here for 2nd parameter options: node_modules/@angular/material/core/theming/_palette.scss: Line 674
     // background-color: mat.get-color-from-palette($background,'raised-button');
-    background-color: mat.get-color-from-palette($primary-palette, 50);
+    background-color: mat.m2-get-color-from-palette($primary-palette, 50);
 
     position: absolute;
     display: flex;
@@ -50,7 +50,7 @@
     }
 
     button {
-      @include mat.typography-level($typography-config, 'body-2');
+      @include mat.m2-typography-level($typography-config, 'body-2');
       height: 100% !important;
     }
 

@@ -143,11 +143,10 @@ export class PositionSolver {
         }
       });
       if (connectedToSlider) {
-        const sliderJoint = cur_joint.connectedJoints.find((j) => j.constructor === PrisJoint);
+        const sliderJoint = cur_joint.connectedJoints.find(
+          (j): j is PrisJoint => j.constructor === PrisJoint
+        );
         if (sliderJoint === undefined) {
-          return;
-        }
-        if (!(sliderJoint instanceof PrisJoint)) {
           return;
         }
         const sliderJointIndex = joints.findIndex((j) => j.id === sliderJoint.id);
