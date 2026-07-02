@@ -1,9 +1,10 @@
 import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 
 @Component({
-  selector: 'title-block',
-  templateUrl: './title.component.html',
-  styleUrls: ['./title.component.scss'],
+    selector: 'title-block',
+    templateUrl: './title.component.html',
+    styleUrls: ['./title.component.scss'],
+    standalone: false
 })
 export class TitleBlock implements OnInit {
   @Input() icon: string | undefined;

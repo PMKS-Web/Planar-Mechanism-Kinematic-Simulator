@@ -4,9 +4,10 @@ import { SettingsService } from '../../../services/settings.service';
 import { NewGridComponent } from '../../new-grid/new-grid.component';
 
 @Component({
-  selector: 'app-enable-welded',
-  templateUrl: './enable-welded.component.html',
-  styleUrls: ['./enable-welded.component.scss'],
+    selector: 'app-enable-welded',
+    templateUrl: './enable-welded.component.html',
+    styleUrls: ['./enable-welded.component.scss'],
+    standalone: false
 })
 export class EnableWeldedComponent {
   constructor(

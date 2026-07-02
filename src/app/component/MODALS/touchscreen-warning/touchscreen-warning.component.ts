@@ -2,9 +2,10 @@ import { Component, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 @Component({
-  selector: 'app-touchscreen-warning',
-  templateUrl: './touchscreen-warning.component.html',
-  styleUrls: ['./touchscreen-warning.component.scss'],
+    selector: 'app-touchscreen-warning',
+    templateUrl: './touchscreen-warning.component.html',
+    styleUrls: ['./touchscreen-warning.component.scss'],
+    standalone: false
 })
 export class TouchscreenWarningComponent {
   constructor(public dialogRef: MatDialogRef<TouchscreenWarningComponent>) {}

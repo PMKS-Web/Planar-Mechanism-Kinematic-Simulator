@@ -60,9 +60,10 @@ import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 const parseCSV = require('papaparse');
 
 @Component({
-  selector: 'app-toolbar',
-  templateUrl: './toolbar.component.html',
-  styleUrls: ['./toolbar.component.scss'],
+    selector: 'app-toolbar',
+    templateUrl: './toolbar.component.html',
+    styleUrls: ['./toolbar.component.scss'],
+    standalone: false
 })
 export class ToolbarComponent implements OnInit, AfterViewInit {
   private analytics: AnalyticsService = inject(AnalyticsService);

@@ -11,9 +11,10 @@ import { RealJoint, RevJoint } from '../../model/joint';
 import { connect } from 'rxjs';
 
 @Component({
-  selector: 'app-animation-bar',
-  templateUrl: './animation-bar.component.html',
-  styleUrls: ['./animation-bar.component.scss'],
+    selector: 'app-animation-bar',
+    templateUrl: './animation-bar.component.html',
+    styleUrls: ['./animation-bar.component.scss'],
+    standalone: false
 })
 export class AnimationBarComponent implements OnInit, AfterViewInit {
   userIsDragging: boolean = false;

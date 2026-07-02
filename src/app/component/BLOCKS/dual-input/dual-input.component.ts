@@ -2,9 +2,10 @@ import { Component, Input, OnInit, OnChanges, Output, EventEmitter } from '@angu
 import { FormGroup } from '@angular/forms';
 
 @Component({
-  selector: 'dual-input-block',
-  templateUrl: './dual-input.component.html',
-  styleUrls: ['./dual-input.component.scss'],
+    selector: 'dual-input-block',
+    templateUrl: './dual-input.component.html',
+    styleUrls: ['./dual-input.component.scss'],
+    standalone: false
 })
 export class DualInputComponent {
   @Input() tooltip!: string;

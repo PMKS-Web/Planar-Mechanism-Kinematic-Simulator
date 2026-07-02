@@ -11,9 +11,10 @@ import { MechanismService } from '../../services/mechanism.service';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 
 @Component({
-  selector: 'app-linkage-table',
-  templateUrl: './linkage-table.component.html',
-  styleUrls: ['./linkage-table.component.scss'],
+    selector: 'app-linkage-table',
+    templateUrl: './linkage-table.component.html',
+    styleUrls: ['./linkage-table.component.scss'],
+    standalone: false
 })
 export class LinkageTableComponent implements OnInit {
   private static linkageTable: SVGElement;

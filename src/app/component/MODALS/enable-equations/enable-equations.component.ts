@@ -5,9 +5,10 @@ import { NewGridComponent } from '../../new-grid/new-grid.component';
 import { EnableForcesComponent } from '../enable-forces/enable-forces.component';
 
 @Component({
-  selector: 'app-enable-equations',
-  templateUrl: './enable-equations.component.html',
-  styleUrls: ['./enable-equations.component.scss'],
+    selector: 'app-enable-equations',
+    templateUrl: './enable-equations.component.html',
+    styleUrls: ['./enable-equations.component.scss'],
+    standalone: false
 })
 export class EnableEquationsComponent {
   constructor(

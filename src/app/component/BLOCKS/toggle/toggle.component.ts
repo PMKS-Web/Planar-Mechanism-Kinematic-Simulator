@@ -2,9 +2,10 @@ import { Component, ElementRef, Input, OnChanges, SimpleChanges, ViewChild } fro
 import { FormGroup } from '@angular/forms';
 
 @Component({
-  selector: 'toggle-block',
-  templateUrl: './toggle.component.html',
-  styleUrls: ['./toggle.component.scss'],
+    selector: 'toggle-block',
+    templateUrl: './toggle.component.html',
+    styleUrls: ['./toggle.component.scss'],
+    standalone: false
 })
 export class ToggleComponent {
   @Input() tooltip: string | undefined;

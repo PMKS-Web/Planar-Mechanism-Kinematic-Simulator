@@ -1,9 +1,10 @@
 import { Component, Input } from '@angular/core';
 
 @Component({
-  selector: 'dual-button',
-  templateUrl: './dual-button.component.html',
-  styleUrls: ['./dual-button.component.scss'],
+    selector: 'dual-button',
+    templateUrl: './dual-button.component.html',
+    styleUrls: ['./dual-button.component.scss'],
+    standalone: false
 })
 export class DualButtonComponent {
   @Input() but1Text: string | undefined;

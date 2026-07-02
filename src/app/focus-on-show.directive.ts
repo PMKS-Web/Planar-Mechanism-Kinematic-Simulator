@@ -1,7 +1,8 @@
 import { Directive, ElementRef, OnInit } from '@angular/core';
 
 @Directive({
-  selector: '[appPrefixFocusAndSelect]',
+    selector: '[appPrefixFocusAndSelect]',
+    standalone: false
 })
 export class FocusOnShowDirective implements OnInit {
   constructor(private el: ElementRef) {

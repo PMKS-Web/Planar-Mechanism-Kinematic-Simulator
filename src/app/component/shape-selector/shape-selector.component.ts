@@ -4,9 +4,10 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 // import { Coord } from '../../model/coord';
 //
 @Component({
-  selector: 'app-shape-selector',
-  templateUrl: './shape-selector.component.html',
-  styleUrls: ['./shape-selector.component.scss'],
+    selector: 'app-shape-selector',
+    templateUrl: './shape-selector.component.html',
+    styleUrls: ['./shape-selector.component.scss'],
+    standalone: false
 })
 export class ShapeSelectorComponent {}
 

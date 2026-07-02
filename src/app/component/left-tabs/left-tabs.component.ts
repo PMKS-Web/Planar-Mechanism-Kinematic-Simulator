@@ -11,68 +11,45 @@ import { SynthesisWarningComponent } from '../MODALS/synthesis-warning/synthesis
 import { MechanismService } from 'src/app/services/mechanism.service';
 
 @Component({
-  selector: 'app-left-tabs',
-  templateUrl: './left-tabs.component.html',
-  styleUrls: ['./left-tabs.component.scss'],
-  animations: [
-    trigger('activeTab', [
-      state(
-        '0',
-        style({
-          visibility: 'hidden',
-        })
-      ),
-      state(
-        '1',
-        style({
-          top: '0px',
-        })
-      ),
-      state(
-        '2',
-        style({
-          top: '53px', //Be careful, there are multiple places to change this value
-        })
-      ),
-      state(
-        '3',
-        style({
-          top: '106px', //Be careful, there are multiple places to change this value
-        })
-      ),
-
-      transition('* => 0', [animate('0s')]),
-      transition('0 => *', [animate('0s')]),
-      transition('* => *', [animate('0.1s ease-in-out')]),
-    ]),
-
-    trigger('openClose', [
-      // ...
-      state(
-        'open',
-        style({
-          transform: 'translateX(0)',
-          width: '270px', //Be careful, there are multiple places to change this value
-        })
-      ),
-      state(
-        'closed',
-        style({
-          transform: 'translateX(calc(-100% - 70px))',
-        })
-      ),
-      state(
-        'openWide',
-        style({
-          width: '420px', //Be careful, there are multiple places to change this value
-        })
-      ),
-
-      transition('open => openWide', [animate('0.1s ease-in-out')]),
-      transition('openWide => open', [animate('0.1s ease-in-out')]),
-      transition('* => *', [animate('0.3s ease-in-out')]),
-    ]),
-  ],
+    selector: 'app-left-tabs',
+    templateUrl: './left-tabs.component.html',
+    styleUrls: ['./left-tabs.component.scss'],
+    animations: [
+        trigger('activeTab', [
+            state('0', style({
+                visibility: 'hidden',
+            })),
+            state('1', style({
+                top: '0px',
+            })),
+            state('2', style({
+                top: '53px', //Be careful, there are multiple places to change this value
+            })),
+            state('3', style({
+                top: '106px', //Be careful, there are multiple places to change this value
+            })),
+            transition('* => 0', [animate('0s')]),
+            transition('0 => *', [animate('0s')]),
+            transition('* => *', [animate('0.1s ease-in-out')]),
+        ]),
+        trigger('openClose', [
+            // ...
+            state('open', style({
+                transform: 'translateX(0)',
+                width: '270px', //Be careful, there are multiple places to change this value
+            })),
+            state('closed', style({
+                transform: 'translateX(calc(-100% - 70px))',
+            })),
+            state('openWide', style({
+                width: '420px', //Be careful, there are multiple places to change this value
+            })),
+            transition('open => openWide', [animate('0.1s ease-in-out')]),
+            transition('openWide => open', [animate('0.1s ease-in-out')]),
+            transition('* => *', [animate('0.3s ease-in-out')]),
+        ]),
+    ],
+    standalone: false
 })
 export class LeftTabsComponent {
   private analytics: AnalyticsService = inject(AnalyticsService);

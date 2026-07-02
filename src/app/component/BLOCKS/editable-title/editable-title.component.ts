@@ -4,9 +4,10 @@ import { NewGridComponent } from '../../new-grid/new-grid.component';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 
 @Component({
-  selector: 'editable-title-block',
-  templateUrl: './editable-title.component.html',
-  styleUrls: ['./editable-title.component.scss'],
+    selector: 'editable-title-block',
+    templateUrl: './editable-title.component.html',
+    styleUrls: ['./editable-title.component.scss'],
+    standalone: false
 })
 export class EditableTitleComponent {
   @Input() showActionButtons: boolean = false;

@@ -44,9 +44,10 @@ export type ChartOptions = {
 };
 
 @Component({
-  selector: 'app-analysis-panel',
-  templateUrl: './analysis-panel.component.html',
-  styleUrls: ['./analysis-panel.component.scss'],
+    selector: 'app-analysis-panel',
+    templateUrl: './analysis-panel.component.html',
+    styleUrls: ['./analysis-panel.component.scss'],
+    standalone: false
 })
 export class AnalysisPanelComponent {
   //A dictionary for wether each graph is expanded or not

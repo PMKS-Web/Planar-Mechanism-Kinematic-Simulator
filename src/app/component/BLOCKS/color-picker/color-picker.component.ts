@@ -6,9 +6,10 @@ import { RealJoint } from '../../../model/joint';
 import { Force } from '../../../model/force';
 
 @Component({
-  selector: 'color-picker',
-  templateUrl: './color-picker.component.html',
-  styleUrls: ['./color-picker.component.scss'],
+    selector: 'color-picker',
+    templateUrl: './color-picker.component.html',
+    styleUrls: ['./color-picker.component.scss'],
+    standalone: false
 })
 export class ColorPickerComponent implements OnInit, OnChanges {
   @Input() link: RealLink | undefined;

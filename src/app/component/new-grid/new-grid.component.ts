@@ -51,9 +51,10 @@ import { EditPanelComponent } from '../edit-panel/edit-panel.component';
 import introJs from 'intro.js';
 
 @Component({
-  selector: 'app-new-grid',
-  templateUrl: './new-grid.component.html',
-  styleUrls: ['./new-grid.component.scss'],
+    selector: 'app-new-grid',
+    templateUrl: './new-grid.component.html',
+    styleUrls: ['./new-grid.component.scss'],
+    standalone: false
 })
 export class NewGridComponent {
   public static debugValue: any;

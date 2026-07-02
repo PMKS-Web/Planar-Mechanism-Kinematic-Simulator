@@ -52,27 +52,22 @@ export type ChartOptions = {
 };
 
 @Component({
-  selector: 'app-analysis-graph',
-  templateUrl: './analysis-graph.component.html',
-  styleUrls: ['./analysis-graph.component.scss'],
-  animations: [
-    trigger('showHide', [
-      // ...
-      state(
-        'graphShown',
-        style({
-          opacity: 0,
-        }),
-      ),
-      state(
-        'graphHidden',
-        style({
-          opacity: 1,
-        }),
-      ),
-      transition('* => *', [animate('0.1s ease-in-out')]),
-    ]),
-  ],
+    selector: 'app-analysis-graph',
+    templateUrl: './analysis-graph.component.html',
+    styleUrls: ['./analysis-graph.component.scss'],
+    animations: [
+        trigger('showHide', [
+            // ...
+            state('graphShown', style({
+                opacity: 0,
+            })),
+            state('graphHidden', style({
+                opacity: 1,
+            })),
+            transition('* => *', [animate('0.1s ease-in-out')]),
+        ]),
+    ],
+    standalone: false
 })
 export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
   public chartOptions: Partial<ChartOptions> = {
@@ -348,7 +343,8 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     this.settingsService.angleUnit.subscribe((t) => {
       //Force update the Y axis text with the new label
       setTimeout(() => {
-        if (this.chart.chart) {
+        // ng-apexcharts >=1.14 exposes chart as an input signal, so read it via call
+        if (this.chart.chart()) {
           this.chart.updateOptions(
             {
               yaxis: this.chartOptions.yaxis,
@@ -363,7 +359,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     this.settingsService.lengthUnit.subscribe((t) => {
       //Force update the Y axis text with the new label
       setTimeout(() => {
-        if (this.chart.chart) {
+        if (this.chart.chart()) {
           this.chart.updateOptions(
             {
               yaxis: this.chartOptions.yaxis,

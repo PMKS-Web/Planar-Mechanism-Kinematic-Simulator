@@ -4,9 +4,10 @@ import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 import { MechanismService } from 'src/app/services/mechanism.service';
 
 @Component({
-  selector: 'app-synthesis-warning',
-  templateUrl: './synthesis-warning.component.html',
-  styleUrls: ['./synthesis-warning.component.scss']
+    selector: 'app-synthesis-warning',
+    templateUrl: './synthesis-warning.component.html',
+    styleUrls: ['./synthesis-warning.component.scss'],
+    standalone: false
 })
 export class SynthesisWarningComponent {
   constructor(

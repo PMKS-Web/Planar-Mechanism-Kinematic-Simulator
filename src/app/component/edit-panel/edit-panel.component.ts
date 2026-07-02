@@ -19,10 +19,10 @@ import { RealLink } from '../../model/link';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 
 @Component({
-  selector: 'app-edit-panel',
-  templateUrl: './edit-panel.component.html',
-  styleUrls: ['./edit-panel.component.scss'],
-  // styles: [':host {max-width: 100%; overflow-x: hidden; }'],
+    selector: 'app-edit-panel',
+    templateUrl: './edit-panel.component.html',
+    styleUrls: ['./edit-panel.component.scss'],
+    standalone: false
 })
 export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   listOfOtherJoints: RealJoint[] = [];

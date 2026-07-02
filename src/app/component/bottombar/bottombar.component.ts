@@ -5,9 +5,10 @@ import { MechanismService } from '../../services/mechanism.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
-  selector: 'app-bottombar',
-  templateUrl: './bottombar.component.html',
-  styleUrls: ['./bottombar.component.scss'],
+    selector: 'app-bottombar',
+    templateUrl: './bottombar.component.html',
+    styleUrls: ['./bottombar.component.scss'],
+    standalone: false
 })
 export class BottombarComponent {
   constructor(public settings: SettingsService, public mechanismSrv: MechanismService) {}

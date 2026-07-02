@@ -397,8 +397,8 @@ export class RealLink extends Link {
     let timeoutCounter = 1000;
 
     while (externalLinesSet.size > 1) {
-      //Pick the first line from the set
-      let currentLine: Line = externalLinesSet.values().next().value;
+      //Pick the first line from the set (size > 1 guarantees one exists)
+      let currentLine: Line = externalLinesSet.values().next().value!;
 
       let veryFirstPoint = currentLine.endPosition.clone();
       while (!currentLine.endPosition.equals(veryFirstPoint) || isNewShape(pathString)) {

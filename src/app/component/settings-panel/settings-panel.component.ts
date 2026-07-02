@@ -16,9 +16,10 @@ import { EnableWeldedComponent } from '../MODALS/enable-welded/enable-welded.com
 import { EnableEquationsComponent } from '../MODALS/enable-equations/enable-equations.component';
 
 @Component({
-  selector: 'app-settings-panel',
-  templateUrl: './settings-panel.component.html',
-  styleUrls: ['./settings-panel.component.scss'],
+    selector: 'app-settings-panel',
+    templateUrl: './settings-panel.component.html',
+    styleUrls: ['./settings-panel.component.scss'],
+    standalone: false
 })
 export class SettingsPanelComponent {
   constructor(

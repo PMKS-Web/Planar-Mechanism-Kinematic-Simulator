@@ -3,9 +3,10 @@ import { FormGroup } from '@angular/forms';
 import { RealJoint } from '../../../model/joint';
 
 @Component({
-  selector: 'tri-button',
-  templateUrl: './tri-button.component.html',
-  styleUrls: ['./tri-button.component.scss'],
+    selector: 'tri-button',
+    templateUrl: './tri-button.component.html',
+    styleUrls: ['./tri-button.component.scss'],
+    standalone: false
 })
 export class TriButtonComponent {
   @Input() joint!: RealJoint;

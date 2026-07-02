@@ -4,9 +4,10 @@ import { SettingsService } from '../../../services/settings.service';
 import { NewGridComponent } from '../../new-grid/new-grid.component';
 
 @Component({
-  selector: 'app-enable-forces',
-  templateUrl: './enable-forces.component.html',
-  styleUrls: ['./enable-forces.component.scss'],
+    selector: 'app-enable-forces',
+    templateUrl: './enable-forces.component.html',
+    styleUrls: ['./enable-forces.component.scss'],
+    standalone: false
 })
 export class EnableForcesComponent {
   constructor(
