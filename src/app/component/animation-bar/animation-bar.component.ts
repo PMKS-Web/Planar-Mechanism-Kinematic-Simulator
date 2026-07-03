@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { AfterViewInit, Component, EventEmitter, Input, OnInit, Output, ChangeDetectionStrategy } from '@angular/core';
 import { NgForm } from '@angular/forms';
 // import {switchMapTo} from "rxjs";
 import { Mechanism } from '../../model/mechanism/mechanism';
@@ -14,6 +14,7 @@ import { connect } from 'rxjs';
     selector: 'app-animation-bar',
     templateUrl: './animation-bar.component.html',
     styleUrls: ['./animation-bar.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class AnimationBarComponent implements OnInit, AfterViewInit {

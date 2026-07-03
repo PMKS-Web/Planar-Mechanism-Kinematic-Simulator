@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { SettingsService } from 'src/app/services/settings.service';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
 import { FormBuilder, Validators } from '@angular/forms';
@@ -19,6 +19,7 @@ import { EnableEquationsComponent } from '../MODALS/enable-equations/enable-equa
     selector: 'app-settings-panel',
     templateUrl: './settings-panel.component.html',
     styleUrls: ['./settings-panel.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class SettingsPanelComponent {

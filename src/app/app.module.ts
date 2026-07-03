@@ -1,7 +1,6 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import { HammerModule } from '@angular/platform-browser';
+import { provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/common/http';
 
 import { AppComponent } from './app.component';
 import { LinkageTableComponent } from './component/linkage-table/linkage-table.component';
@@ -101,6 +100,5 @@ import { BottombarComponent } from './component/bottombar/bottombar.component';
         BrowserAnimationsModule,
         MaterialModule,
         ReactiveFormsModule,
-        CdkMenuModule,
-        HammerModule], providers: [provideHttpClient(withInterceptorsFromDi())] })
+        CdkMenuModule], providers: [provideHttpClient(withXhr(), withInterceptorsFromDi())] })
 export class AppModule {}

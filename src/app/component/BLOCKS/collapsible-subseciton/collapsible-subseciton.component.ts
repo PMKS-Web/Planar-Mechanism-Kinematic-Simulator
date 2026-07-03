@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, EventEmitter, Input, Output } from '@angular/core';
+import { AfterViewInit, Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { animate, AUTO_STYLE, state, style, transition, trigger } from '@angular/animations';
 
 @Component({
@@ -22,6 +22,7 @@ import { animate, AUTO_STYLE, state, style, transition, trigger } from '@angular
     ],
     templateUrl: './collapsible-subseciton.component.html',
     styleUrls: ['./collapsible-subseciton.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class CollapsibleSubsecitonComponent {

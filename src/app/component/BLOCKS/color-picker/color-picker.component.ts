@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, OnInit } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { ColorService } from '../../../services/color.service';
 import { RealLink } from '../../../model/link';
 import { link } from 'fs';
@@ -9,6 +9,7 @@ import { Force } from '../../../model/force';
     selector: 'color-picker',
     templateUrl: './color-picker.component.html',
     styleUrls: ['./color-picker.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class ColorPickerComponent implements OnInit, OnChanges {

@@ -1,5 +1,5 @@
 import { SvgGridService } from '../../services/svg-grid.service';
-import { AfterViewInit, Component, HostListener, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, HostListener, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { fromEvent } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { MechanismService } from '../../services/mechanism.service';
@@ -54,6 +54,7 @@ import introJs from 'intro.js';
     selector: 'app-new-grid',
     templateUrl: './new-grid.component.html',
     styleUrls: ['./new-grid.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class NewGridComponent {

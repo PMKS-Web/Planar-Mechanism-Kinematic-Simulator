@@ -1,4 +1,4 @@
-import { AfterContentInit, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { AfterContentInit, ChangeDetectorRef, Component, OnDestroy, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { PrisJoint, RealJoint, RevJoint } from 'src/app/model/joint';
 import { FormArray, FormBuilder } from '@angular/forms';
@@ -22,6 +22,7 @@ import { NewGridComponent } from '../new-grid/new-grid.component';
     selector: 'app-edit-panel',
     templateUrl: './edit-panel.component.html',
     styleUrls: ['./edit-panel.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {

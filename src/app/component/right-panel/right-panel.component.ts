@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 import {
@@ -53,6 +53,7 @@ import { UrlGenerationService } from 'src/app/services/url-generation.service';
             transition('* => *', [animate('0.3s ease-in-out')]),
         ]),
     ],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class RightPanelComponent {

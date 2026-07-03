@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder } from '@angular/forms';
 import { NewGridComponent } from '../../new-grid/new-grid.component';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
@@ -7,6 +7,7 @@ import { ActiveObjService } from 'src/app/services/active-obj.service';
     selector: 'editable-title-block',
     templateUrl: './editable-title.component.html',
     styleUrls: ['./editable-title.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class EditableTitleComponent {

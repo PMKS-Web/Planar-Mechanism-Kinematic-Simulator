@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 import { RealJoint } from '../../../model/joint';
 
@@ -6,6 +6,7 @@ import { RealJoint } from '../../../model/joint';
     selector: 'tri-button',
     templateUrl: './tri-button.component.html',
     styleUrls: ['./tri-button.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class TriButtonComponent {

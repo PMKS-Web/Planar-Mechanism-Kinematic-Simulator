@@ -1,4 +1,4 @@
-import { Component, inject, Inject, OnInit } from '@angular/core';
+import { Component, inject, Inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { RealJoint } from 'src/app/model/joint';
 import { RealLink } from 'src/app/model/link';
@@ -49,6 +49,7 @@ import { MechanismService } from 'src/app/services/mechanism.service';
             transition('* => *', [animate('0.3s ease-in-out')]),
         ]),
     ],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class LeftTabsComponent {

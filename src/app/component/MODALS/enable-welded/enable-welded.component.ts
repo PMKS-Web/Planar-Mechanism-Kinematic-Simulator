@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { SettingsService } from '../../../services/settings.service';
 import { NewGridComponent } from '../../new-grid/new-grid.component';
@@ -7,6 +7,7 @@ import { NewGridComponent } from '../../new-grid/new-grid.component';
     selector: 'app-enable-welded',
     templateUrl: './enable-welded.component.html',
     styleUrls: ['./enable-welded.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class EnableWeldedComponent {

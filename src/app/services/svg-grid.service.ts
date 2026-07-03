@@ -1,10 +1,12 @@
 import { Injectable } from '@angular/core';
-import * as svgPanZoom from 'svg-pan-zoom';
+// TS 6 no longer allows calling/constructing `import * as` namespaces of
+// CommonJS (export =) modules - use default imports for these two.
+import svgPanZoom from 'svg-pan-zoom';
 import { Coord } from '../model/coord';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
 import { forceStates, jointStates } from '../model/utils';
 import { SettingsService } from './settings.service';
-import * as Hammer from 'hammerjs';
+import Hammer from 'hammerjs';
 
 @Injectable({
   providedIn: 'root',

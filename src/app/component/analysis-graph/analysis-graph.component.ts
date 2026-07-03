@@ -7,6 +7,7 @@ import {
   OnInit,
   SimpleChanges,
   ViewChild,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import {
   ApexAnnotations,
@@ -67,6 +68,7 @@ export type ChartOptions = {
             transition('* => *', [animate('0.1s ease-in-out')]),
         ]),
     ],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {

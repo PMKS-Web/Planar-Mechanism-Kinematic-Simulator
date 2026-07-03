@@ -8,6 +8,7 @@ import {
   isDevMode,
   OnInit,
   Output,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Bound, Link, Piston, RealLink } from '../../model/link';
@@ -63,6 +64,7 @@ const parseCSV = require('papaparse');
     selector: 'app-toolbar',
     templateUrl: './toolbar.component.html',
     styleUrls: ['./toolbar.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class ToolbarComponent implements OnInit, AfterViewInit {
