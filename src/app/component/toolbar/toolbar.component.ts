@@ -58,8 +58,6 @@ import { UrlGenerationService } from 'src/app/services/url-generation.service';
 import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 
-const parseCSV = require('papaparse');
-
 @Component({
     selector: 'app-toolbar',
     templateUrl: './toolbar.component.html',
