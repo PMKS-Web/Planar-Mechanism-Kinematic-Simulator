@@ -4,17 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-PMKS+ (Planar Mechanism Kinematic Simulator Plus) — an educational Angular 15 web app for creating, editing, and analyzing 2D planar linkages (kinematic + force analysis). Single-page app rendered as an interactive SVG grid; no routing.
+PMKS+ (Planar Mechanism Kinematic Simulator Plus) — an educational Angular 22 web app for creating, editing, and analyzing 2D planar linkages (kinematic + force analysis). Single-page app rendered as an interactive SVG grid; no routing.
+
+Requires Node ≥22.22 (or 24.x). The esbuild `application` builder is used; `outputPath.browser` is pinned to `""` so output stays flat at `dist/pmksweb` for the Netlify publish dir. Runtime `require()` calls are not supported by the bundler — use ES imports.
 
 ## Commands
 
 - `npm start` — dev server at http://localhost:4200 (live reload)
 - `npm run build` — production build to `dist/pmksweb`
-- `npm test` — Karma/Jasmine tests in Chrome (watch mode)
-- `npx ng test --include='**/app.component.spec.ts'` — run a single spec file
-- `npx ng test --browsers=ChromeHeadless --watch=false` — single headless test run
+- `npm test -- --watch=false` — Vitest suite (jsdom) via `@angular/build:unit-test`; drop the flag for watch mode
 
 There is no lint target (`tslint.json` is vestigial). Formatting follows `.prettierrc`: 100-char width, single quotes, 2-space indent.
+
+Tests are Vitest but written in Jasmine style (globals via `vitest/globals`). `tsconfig.spec.json` deliberately includes `src/app/app.module.ts` — without it, NgModule-declared components lose their template scope under the per-file test compile and fail with NG8001. Vitest errors on spec files containing no tests.
 
 ## Deployment / branch rules
 
