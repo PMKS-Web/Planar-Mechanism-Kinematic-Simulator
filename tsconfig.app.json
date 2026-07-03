@@ -9,7 +9,6 @@
   },
   "files": [
     "src/main.ts",
-    "src/polyfills.ts",
     "node_modules/apexcharts/types/apexcharts.d.ts"
   ],
   "include": [

@@ -12,9 +12,7 @@ import { NumberUnitParserService } from './services/number-unit-parser.service';
 import { SvgGridService } from './services/svg-grid.service';
 import { SynthesisBuilderService } from './services/synthesis/synthesis-builder.service';
 import { ColorService } from './services/color.service';
-import { ToolbarComponent } from './component/toolbar/toolbar.component';
 import { KinematicsSolver} from "./model/mechanism/kinematic-solver";
-import { ForceSolver } from './model/mechanism/force-solver';
 import { euclideanDistance } from './model/utils';
 
 describe('SixbarService', () => {
