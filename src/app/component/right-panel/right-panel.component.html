@@ -2,85 +2,97 @@
   <div
     [@openClose]="getIsOpen() ? (getOpenTab() === 1 || getOpenTab() == 3 ? 'open' : 'openWide') : 'closed'"
     id='rightPanel'
-  >
-    <div *ngIf='getOpenTab() === 1' class='page1'>
-      <app-settings-panel></app-settings-panel>
-    </div>
-    <div *ngIf='getOpenTab() === 2' class='page2'>
-      <app-equation-panel></app-equation-panel>
-    </div>
-    <div *ngIf='getOpenTab() === 3' class='page3'>
-      <div id='helpWrapper'>
-        <panel-section>
-          <title-block>Help</title-block>
-          <div style='padding: 10px 0 10px 10px; width: calc(100% - 20px);'>
-            <button-block icon='help_center' [click]='gotoHelpSite'>Tutorial Videos</button-block>
-            <!--           <button-block icon='info' [click]='sendNotReady'>Restart Tutorial</button-block> -->
-            <subtitle-block> PMKS+ is open source! Do you want to help us develop it?</subtitle-block>
-            <button-block customIcon='github' [click]='gotoGithub'>Github Repo</button-block>
-          </div>
-        </panel-section>
-        <panel-section>
-          <title-block
-            description='Do you want to attach a file? Send us an email at gr-pmksplus@wpi.edu'>
-            Send Feedback
-          </title-block>
-          <form [formGroup]='commentForm'>
-            <mat-form-field class='max-width'>
-              <mat-label>Leave a message</mat-label>
-              <textarea type='text' matInput formControlName='comment'></textarea>
-              <mat-error *ngIf="commentForm.controls['comment'].hasError('required')">
-                Message is required
-              </mat-error>
-            </mat-form-field>
-            <mat-checkbox color='primary' formControlName='response'>I would like a response</mat-checkbox>
-            <mat-form-field *ngIf='commentForm.value.response' class='max-width'>
-              <mat-label>Email</mat-label>
-              <input type='email' matInput formControlName='email' [errorStateMatcher]='matcher'
-                     placeholder='Ex. pat@example.com'>
-              <mat-error
-                *ngIf="commentForm.controls['email'].hasError('email') && !commentForm.controls['email'].hasError('required')">
-                Invalid email address
-              </mat-error>
-            </mat-form-field>
-            <mat-checkbox color='primary' checked formControlName='diagnostics'>Send browser and version data
-            </mat-checkbox>
-            <mat-checkbox color='primary' checked formControlName='project'>Send a copy of the open project
-            </mat-checkbox>
+    >
+    @if (getOpenTab() === 1) {
+      <div class='page1'>
+        <app-settings-panel></app-settings-panel>
+      </div>
+    }
+    @if (getOpenTab() === 2) {
+      <div class='page2'>
+        <app-equation-panel></app-equation-panel>
+      </div>
+    }
+    @if (getOpenTab() === 3) {
+      <div class='page3'>
+        <div id='helpWrapper'>
+          <panel-section>
+            <title-block>Help</title-block>
             <div style='padding: 10px 0 10px 10px; width: calc(100% - 20px);'>
-              <button-block [disabled]='sendingEmail' icon='send' [click]='sendCommentEmail.bind(this)'>Send Message
-              </button-block>
+              <button-block icon='help_center' [click]='gotoHelpSite'>Tutorial Videos</button-block>
+              <!--           <button-block icon='info' [click]='sendNotReady'>Restart Tutorial</button-block> -->
+              <subtitle-block> PMKS+ is open source! Do you want to help us develop it?</subtitle-block>
+              <button-block customIcon='github' [click]='gotoGithub'>Github Repo</button-block>
             </div>
-          </form>
-        </panel-section>
+          </panel-section>
+          <panel-section>
+            <title-block
+              description='Do you want to attach a file? Send us an email at gr-pmksplus@wpi.edu'>
+              Send Feedback
+            </title-block>
+            <form [formGroup]='commentForm'>
+              <mat-form-field class='max-width'>
+                <mat-label>Leave a message</mat-label>
+                <textarea type='text' matInput formControlName='comment'></textarea>
+                @if (commentForm.controls['comment'].hasError('required')) {
+                  <mat-error>
+                    Message is required
+                  </mat-error>
+                }
+              </mat-form-field>
+              <mat-checkbox color='primary' formControlName='response'>I would like a response</mat-checkbox>
+              @if (commentForm.value.response) {
+                <mat-form-field class='max-width'>
+                  <mat-label>Email</mat-label>
+                  <input type='email' matInput formControlName='email' [errorStateMatcher]='matcher'
+                    placeholder='Ex. pat@example.com'>
+                  @if (commentForm.controls['email'].hasError('email') && !commentForm.controls['email'].hasError('required')) {
+                    <mat-error
+                      >
+                      Invalid email address
+                    </mat-error>
+                  }
+                </mat-form-field>
+              }
+              <mat-checkbox color='primary' checked formControlName='diagnostics'>Send browser and version data
+              </mat-checkbox>
+              <mat-checkbox color='primary' checked formControlName='project'>Send a copy of the open project
+              </mat-checkbox>
+              <div style='padding: 10px 0 10px 10px; width: calc(100% - 20px);'>
+                <button-block [disabled]='sendingEmail' icon='send' [click]='sendCommentEmail.bind(this)'>Send Message
+                </button-block>
+              </div>
+            </form>
+          </panel-section>
+        </div>
       </div>
-    </div>
-    <div *ngIf='getOpenTab() === 4' class='page4'>
-      <div id='debugWrapper'>
-        <panel-section>
-          <button-block icon='terminal' [click]='printActiveObject.bind(this)'>Console Log Active Object</button-block>
-          <button-block icon='terminal' [click]='printMechanism.bind(this)'>Console Log Mechanism</button-block>
-          <button-block icon='draw' [click]='redrawAllLinks.bind(this)'>Redraw</button-block>
-          <button-block icon='quiz' [click]='runGeometryUnitTests.bind(this)'>Run Intersection Unit Tests
-          </button-block>
-          <button-block icon='report' [click]='turnOnDebugger.bind(this)'>Turn on Grid Debug Info</button-block>
-
-          <app-linkage-table></app-linkage-table>
-
-          <li>GridState: {{debugGetGridState()}}</li>
-          <li>LinkState: {{debugGetLinkState()}}</li>
-          <li>JointState: {{debugGetJointState()}}</li>
-          <li>ForceState: {{debugGetForceState()}}</li>
-          <li>AOS.objType: <b>{{activeObjService.objType}}</b></li>
-          <li>AOS.selectedJoint.id: <b>{{activeObjService.selectedJoint?.id}}</b></li>
-          <li>AOS.selectedLink.id: <b>{{activeObjService.selectedLink?.id}}</b></li>
-          <li>AOS.selectedForce.id: <b>{{activeObjService.selectedForce?.id}}</b></li>
-          <li>AOS.prevSelectedJoint.id: <b>{{activeObjService.prevSelectedJoint?.id}}</b></li>
-          <li>AOS.selectedForce.isStartSelected:  {{activeObjService.selectedForce?.isStartSelected}}</li>
-          <li>AOS.selectedForce.isEndSelected:  {{activeObjService.selectedForce?.isEndSelected}}</li>
-          <div style='height: 50px'></div>
-        </panel-section>
+    }
+    @if (getOpenTab() === 4) {
+      <div class='page4'>
+        <div id='debugWrapper'>
+          <panel-section>
+            <button-block icon='terminal' [click]='printActiveObject.bind(this)'>Console Log Active Object</button-block>
+            <button-block icon='terminal' [click]='printMechanism.bind(this)'>Console Log Mechanism</button-block>
+            <button-block icon='draw' [click]='redrawAllLinks.bind(this)'>Redraw</button-block>
+            <button-block icon='quiz' [click]='runGeometryUnitTests.bind(this)'>Run Intersection Unit Tests
+            </button-block>
+            <button-block icon='report' [click]='turnOnDebugger.bind(this)'>Turn on Grid Debug Info</button-block>
+            <app-linkage-table></app-linkage-table>
+            <li>GridState: {{debugGetGridState()}}</li>
+            <li>LinkState: {{debugGetLinkState()}}</li>
+            <li>JointState: {{debugGetJointState()}}</li>
+            <li>ForceState: {{debugGetForceState()}}</li>
+            <li>AOS.objType: <b>{{activeObjService.objType}}</b></li>
+            <li>AOS.selectedJoint.id: <b>{{activeObjService.selectedJoint?.id}}</b></li>
+            <li>AOS.selectedLink.id: <b>{{activeObjService.selectedLink?.id}}</b></li>
+            <li>AOS.selectedForce.id: <b>{{activeObjService.selectedForce?.id}}</b></li>
+            <li>AOS.prevSelectedJoint.id: <b>{{activeObjService.prevSelectedJoint?.id}}</b></li>
+            <li>AOS.selectedForce.isStartSelected:  {{activeObjService.selectedForce?.isStartSelected}}</li>
+            <li>AOS.selectedForce.isEndSelected:  {{activeObjService.selectedForce?.isEndSelected}}</li>
+            <div style='height: 50px'></div>
+          </panel-section>
+        </div>
       </div>
-    </div>
+    }
   </div>
 </div>

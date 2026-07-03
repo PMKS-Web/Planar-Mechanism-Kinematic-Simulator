@@ -2,39 +2,41 @@
 <div id='barContainer'>
   <div id='animationBar'>
     <button id='speedButton'
-            [disabled]='invalidMechanism()'
-            mat-mini-fab
-            color='white'
-            (click)='handleSpeedChange()'
-            matTooltip='Change Animation Speed'
-            matTooltipShowDelay='1000'
-    >
+      [disabled]='invalidMechanism()'
+      mat-mini-fab
+      color='white'
+      (click)='handleSpeedChange()'
+      matTooltip='Change Animation Speed'
+      matTooltipShowDelay='1000'
+      >
       {{this.mechanismService.mechanismAnimationIncrement === 4 ? 3 :
       this.mechanismService.mechanismAnimationIncrement}}x
     </button>
 
-    <button
-      [disabled]='invalidMechanism()'
-      *ngIf='!this.getStaticAnimating()'
-      mat-mini-fab
-      color='primary'
-      (click)="startAnimation('play')"
-      matTooltip='Play Animation'
-      matTooltipShowDelay='1000'
-    >
-      <mat-icon>play_arrow</mat-icon>
-    </button>
-    <button
-      [disabled]='invalidMechanism()'
-      *ngIf='this.getStaticAnimating()'
-      mat-mini-fab
-      color='primary'
-      (click)="startAnimation('pause')"
-      matTooltip='Pause Animation'
-      matTooltipShowDelay='1000'
-    >
-      <mat-icon>pause</mat-icon>
-    </button>
+    @if (!this.getStaticAnimating()) {
+      <button
+        [disabled]='invalidMechanism()'
+        mat-mini-fab
+        color='primary'
+        (click)="startAnimation('play')"
+        matTooltip='Play Animation'
+        matTooltipShowDelay='1000'
+        >
+        <mat-icon>play_arrow</mat-icon>
+      </button>
+    }
+    @if (this.getStaticAnimating()) {
+      <button
+        [disabled]='invalidMechanism()'
+        mat-mini-fab
+        color='primary'
+        (click)="startAnimation('pause')"
+        matTooltip='Pause Animation'
+        matTooltipShowDelay='1000'
+        >
+        <mat-icon>pause</mat-icon>
+      </button>
+    }
     <button
       mat-mini-fab
       color='warn'
@@ -42,7 +44,7 @@
       (click)="startAnimation('stop')"
       matTooltip='Reset to start'
       matTooltipShowDelay='1000'
-    >
+      >
       <mat-icon>stop</mat-icon>
     </button>
   </div>
@@ -50,7 +52,7 @@
     <div id='timeInputWrapper'>
       <div id='tLabel'>T:</div>
       <form #simpleForm='ngForm' (ngSubmit)='onNewTimeSubmit(simpleForm)'
-            (click)='invalidMechanism() ? null :field.select()'>
+        (click)='invalidMechanism() ? null :field.select()'>
         <input
           [disabled]='invalidMechanism()'
           id='animationBar-input'
@@ -58,7 +60,7 @@
           type='number'
           [(ngModel)]='timestepDisplay'
           #field
-        />
+          />
       </form>
       <span id='secLabel'>sec</span>
     </div>
@@ -70,23 +72,24 @@
       (mousedown)='sliderDown()'
       (mousemove)='sliderChange()'
       (mouseup)='sliderUp()'
-    >
+      >
       <input id='slider' matSliderThumb value='{{this.mechanismService.mechanismTimeStep}}' />
     </mat-slider>
   </div>
   <div id='viewButtons'>
-    <button
-      *ngIf='settingsService.isForces.value'
-      disabled='{{ noLinkExsits() }}'
-      matTooltip='Show Center of Mass'
-      matTooltipPosition='above'
-      [matTooltipShowDelay]='1000'
-      mat-icon-button
-      color='primary'
-      (click)='showCenterOfMass()'
-    >
-      <mat-icon svgIcon='{{ comIconName() }}'></mat-icon>
-    </button>
+    @if (settingsService.isForces.value) {
+      <button
+        disabled='{{ noLinkExsits() }}'
+        matTooltip='Show Center of Mass'
+        matTooltipPosition='above'
+        [matTooltipShowDelay]='1000'
+        mat-icon-button
+        color='primary'
+        (click)='showCenterOfMass()'
+        >
+        <mat-icon svgIcon='{{ comIconName() }}'></mat-icon>
+      </button>
+    }
     <button
       disabled='{{ noJointExsits() }}'
       matTooltip='Show ID Labels'
@@ -95,7 +98,7 @@
       mat-icon-button
       color='primary'
       (click)='onShowIDPressed()'
-    >
+      >
       <mat-icon svgIcon='{{ idLabelIconName() }}'></mat-icon>
     </button>
     <button
@@ -105,7 +108,7 @@
       mat-icon-button
       color='primary'
       (click)='onZoomInPressed()'
-    >
+      >
       <mat-icon>zoom_in</mat-icon>
     </button>
     <button
@@ -115,7 +118,7 @@
       mat-icon-button
       color='primary'
       (click)='onZoomOutPressed()'
-    >
+      >
       <mat-icon>zoom_out</mat-icon>
     </button>
     <button
@@ -125,7 +128,7 @@
       mat-icon-button
       color='primary'
       (click)='this.svgGrid.scaleToFitLinkage()'
-    >
+      >
       <mat-icon>crop_free</mat-icon>
     </button>
   </div>

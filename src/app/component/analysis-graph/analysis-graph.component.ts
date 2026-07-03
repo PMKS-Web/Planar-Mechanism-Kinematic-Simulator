@@ -112,7 +112,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       x: {
         // show: false,
         formatter: function(val) {
-          return 'T = ' + ((val - 1) / 62.5).toFixed(2) + 's';
+          return 'T = ' + ((Number(val) - 1) / 62.5).toFixed(2) + 's';
         },
       },
       marker: {

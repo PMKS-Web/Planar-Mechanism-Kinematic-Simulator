@@ -1,64 +1,68 @@
 <div id='editWrapper'>
-  <panel-section-collapsible
-    [warning]='true'
-    [expanded]='false'
-    id='placeholderContainer'
-    *ngIf="hideEditPanel() && this.activeSrv.objType !== 'Grid'"
-  >
-    <title-block
-      alwaysShown
-      icon='expand_more'
-      description='Stop animation or reset the time slider to 0 to edit.'
-    >Edit Help
-    </title-block>
-    <img src='assets/gifs/Stop.gif' />
-  </panel-section-collapsible>
+  @if (hideEditPanel() && this.activeSrv.objType !== 'Grid') {
+    <panel-section-collapsible
+      [warning]='true'
+      [expanded]='false'
+      id='placeholderContainer'
+      >
+      <title-block
+        alwaysShown
+        icon='expand_more'
+        description='Stop animation or reset the time slider to 0 to edit.'
+        >Edit Help
+      </title-block>
+      <img src='assets/gifs/Stop.gif' />
+    </panel-section-collapsible>
+  }
 
-  <panel-section-collapsible
-    [warning]='true'
-    [expanded]='false'
-    id='placeholderContainer'
-    *ngIf="
-      (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') &&
-      mechanismService.joints.length == 0 &&
-      !hideEditPanel()
-    "
-  >
-    <title-block
-      alwaysShown
-      icon='expand_more'
-      description='Right click on the grid to create a link.'
-    >Edit Help
-    </title-block>
-    <img src='assets/gifs/Create.gif' />
-  </panel-section-collapsible>
+  @if (
+    (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') &&
+    mechanismService.joints.length == 0 &&
+    !hideEditPanel()
+    ) {
+    <panel-section-collapsible
+      [warning]='true'
+      [expanded]='false'
+      id='placeholderContainer'
+      >
+      <title-block
+        alwaysShown
+        icon='expand_more'
+        description='Right click on the grid to create a link.'
+        >Edit Help
+      </title-block>
+      <img src='assets/gifs/Create.gif' />
+    </panel-section-collapsible>
+  }
 
-  <panel-section-collapsible
-    [warning]='true'
-    [expanded]='false'
-    id='placeholderContainer'
-    *ngIf="
-      this.activeSrv.objType == 'Grid' && mechanismService.joints.length != 0 && !hideEditPanel()
-    "
-  >
-    <title-block
-      alwaysShown
-      icon='expand_more'
-      description='Select a joint or link to edit properties.'
-    >Edit Help
-    </title-block>
-    <img src='assets/gifs/Click.gif' />
-  </panel-section-collapsible>
+  @if (
+    this.activeSrv.objType == 'Grid' && mechanismService.joints.length != 0 && !hideEditPanel()
+    ) {
+    <panel-section-collapsible
+      [warning]='true'
+      [expanded]='false'
+      id='placeholderContainer'
+      >
+      <title-block
+        alwaysShown
+        icon='expand_more'
+        description='Select a joint or link to edit properties.'
+        >Edit Help
+      </title-block>
+      <img src='assets/gifs/Click.gif' />
+    </panel-section-collapsible>
+  }
 
   <!--  JOINT PANEL-->
-  <panel-section *ngIf="this.activeSrv.objType == 'Joint' && !hideEditPanel()">
-    <editable-title-block [deleteAction]='deleteJoint.bind(this)'>
-      Edit Joint
-    </editable-title-block>
-    <collapsible-subseciton titleLabel='Basic Settings'
-                            [expanded]="sectionExpanded['JBasic']"
-                            (opened)="sectionExpanded['JBasic'] = true"
-                            (closed)="sectionExpanded['JBasic'] = false">
+  @if (this.activeSrv.objType == 'Joint' && !hideEditPanel()) {
+    <panel-section>
+      <editable-title-block [deleteAction]='deleteJoint.bind(this)'>
+        Edit Joint
+      </editable-title-block>
+      <collapsible-subseciton titleLabel='Basic Settings'
+        [expanded]="sectionExpanded['JBasic']"
+        (opened)="sectionExpanded['JBasic'] = true"
+        (closed)="sectionExpanded['JBasic'] = false">
       <dual-input-block
         label1='X'
         label2='Y'
@@ -72,14 +76,14 @@
             ? 'centimeters'
             : 'meters'
         }}."
-      >
+        >
         Joint Position
       </dual-input-block>
       <toggle-block
         [formGroup]='jointForm'
         _formControl='ground'
         tooltip='Ground this joint, making it non-moving.'
-      >
+        >
         Ground
       </toggle-block>
       <toggle-block
@@ -89,7 +93,7 @@
         _formControl='slider'
         _formControlForInput='prisAngle'
         tooltip='Make this joint a prismatic joint. Only one joint can be a slider at a time.'
-      >
+        >
         Slider
       </toggle-block>
       <tri-button
@@ -102,132 +106,141 @@
         [btn3Action]='mechanismService.adjustInput.bind(mechanismService)'
         [btn3Icon]='gridUtils.isVisuallyInput(activeSrv.selectedJoint) ? "remove_input" : "add_input"'
         [btn3Text]='gridUtils.isVisuallyInput(activeSrv.selectedJoint) ? "Remove Input" : "Make Input"'
-      >
+        >
       </tri-button>
     </collapsible-subseciton>
     <collapsible-subseciton titleLabel='Visual Settings' [expanded]="sectionExpanded['JVisual']"
-                            (opened)="sectionExpanded['JVisual'] = true"
-                            (closed)="sectionExpanded['JVisual'] = false">
-      <toggle-block
-        [formGroup]='jointForm'
-        _formControl='curve'
-        tooltip='Show / hide the path the joint takes.'
+      (opened)="sectionExpanded['JVisual'] = true"
+      (closed)="sectionExpanded['JVisual'] = false">
+    <toggle-block
+      [formGroup]='jointForm'
+      _formControl='curve'
+      tooltip='Show / hide the path the joint takes.'
       >Show Joint Path
-      </toggle-block>
-      <color-picker type='joint'> Joint Color</color-picker>
-    </collapsible-subseciton>
-    <collapsible-subseciton titleLabel='Distance To Joints' [expanded]="sectionExpanded['JDistToJ']"
-                            (opened)="sectionExpanded['JDistToJ'] = true"
-                            (closed)="sectionExpanded['JDistToJ'] = false">
-      <div *ngFor='let joint of listOfOtherJoints; let i=index'>
-        <!-- The repeated alias template -->
-        <dual-input-block label1='D' label2='⊾' tooltip='TODO' [formGroup]='jointForm' formSubGroup='otherJoints'
-                          [formControl1]='(i*2).toString()' [formControl2]='(i*2+1).toString()'
-                          (field1Entry)='setShowLinkLengthOverlay($event)'
-                          (field2Entry)='setShowLinkAngleOverlay($event)'
-                          [emitterOutputID]='i'>
-          Joint {{joint!.name}}</dual-input-block>
-      </div>
-    </collapsible-subseciton>
-  </panel-section>
-
-  <!--  LINK PANEL-->
-  <panel-section *ngIf="this.activeSrv.objType == 'Link' && !hideEditPanel()">
-    <editable-title-block [deleteAction]='deleteLink.bind(this)'> Edit Link</editable-title-block>
-    <collapsible-subseciton [expanded]='true' titleLabel='Basic Settings' [expanded]="sectionExpanded['LBasic']"
-                            (opened)="sectionExpanded['LBasic'] = true"
-                            (closed)="sectionExpanded['LBasic'] = false">
-      <dual-input-block
-        label1='L'
-        label2='⊾'
-        formControl1='length'
-        formControl2='angle'
-        [formGroup]='linkForm'
-        tooltip='The length and angle of this link. A counter-clockwise rotation is a positive angle (Right hand rule).'
+    </toggle-block>
+    <color-picker type='joint'> Joint Color</color-picker>
+  </collapsible-subseciton>
+  <collapsible-subseciton titleLabel='Distance To Joints' [expanded]="sectionExpanded['JDistToJ']"
+    (opened)="sectionExpanded['JDistToJ'] = true"
+    (closed)="sectionExpanded['JDistToJ'] = false">
+  @for (joint of listOfOtherJoints; track joint; let i = $index) {
+    <div>
+      <!-- The repeated alias template -->
+      <dual-input-block label1='D' label2='⊾' tooltip='TODO' [formGroup]='jointForm' formSubGroup='otherJoints'
+        [formControl1]='(i*2).toString()' [formControl2]='(i*2+1).toString()'
         (field1Entry)='setShowLinkLengthOverlay($event)'
         (field2Entry)='setShowLinkAngleOverlay($event)'
-        [disabled]='activeSrv.selectedLink.joints.length > 2'
-        [emitterOutputID]='-1'
-      >
-        Link Length and Angle
-      </dual-input-block>
-      <dual-button
-        but1Text='Add Tracer'
-        but1Icon='add_tracer'
-        but2Text='Add Force'
-        but2Icon='add_force'
-        [but1Action]='mechanismService.addJointAtCOM.bind(mechanismService)'
-        [but2Action]='mechanismService.createForceAtCOM.bind(mechanismService)'
-        [btn2Disabled]='!settingsService.isForces.value'
-      >
-      </dual-button>
-    </collapsible-subseciton>
-    <collapsible-subseciton titleLabel='Visual Settings' [expanded]="sectionExpanded['LVisual']"
-                            (opened)="sectionExpanded['LVisual'] = true"
-                            (closed)="sectionExpanded['LVisual'] = false">
-      <color-picker type='link' [link]='activeSrv.selectedLink'>Link Color</color-picker>
-    </collapsible-subseciton>
-    <collapsible-subseciton *ngIf='settingsService.isForces.value' titleLabel='Mass Settings'
-                            [expanded]="sectionExpanded['LMass']"
-                            (opened)="sectionExpanded['LMass'] = true"
-                            (closed)="sectionExpanded['LMass'] = false">
-      <input-block> Link Mass</input-block>
-      <dual-input-block> Center of Mass Position</dual-input-block>
-    </collapsible-subseciton>
+        [emitterOutputID]='i'>
+      Joint {{joint!.name}}</dual-input-block>
+    </div>
+  }
+</collapsible-subseciton>
+</panel-section>
+}
 
-    <collapsible-subseciton
-      *ngIf='activeSrv.selectedLink.isCompound'
-      [expanded]="sectionExpanded['LCompound']"
-      (opened)="sectionExpanded['LCompound'] = true"
-      (closed)="sectionExpanded['LCompound'] = false"
-      titleLabel='Compound Link Settings'
+<!--  LINK PANEL-->
+@if (this.activeSrv.objType == 'Link' && !hideEditPanel()) {
+  <panel-section>
+    <editable-title-block [deleteAction]='deleteLink.bind(this)'> Edit Link</editable-title-block>
+    <collapsible-subseciton [expanded]='true' titleLabel='Basic Settings' [expanded]="sectionExpanded['LBasic']"
+      (opened)="sectionExpanded['LBasic'] = true"
+      (closed)="sectionExpanded['LBasic'] = false">
+    <dual-input-block
+      label1='L'
+      label2='⊾'
+      formControl1='length'
+      formControl2='angle'
+      [formGroup]='linkForm'
+      tooltip='The length and angle of this link. A counter-clockwise rotation is a positive angle (Right hand rule).'
+      (field1Entry)='setShowLinkLengthOverlay($event)'
+      (field2Entry)='setShowLinkAngleOverlay($event)'
+      [disabled]='activeSrv.selectedLink.joints.length > 2'
+      [emitterOutputID]='-1'
+      >
+      Link Length and Angle
+    </dual-input-block>
+    <dual-button
+      but1Text='Add Tracer'
+      but1Icon='add_tracer'
+      but2Text='Add Force'
+      but2Icon='add_force'
+      [but1Action]='mechanismService.addJointAtCOM.bind(mechanismService)'
+      [but2Action]='mechanismService.createForceAtCOM.bind(mechanismService)'
+      [btn2Disabled]='!settingsService.isForces.value'
+      >
+    </dual-button>
+  </collapsible-subseciton>
+  <collapsible-subseciton titleLabel='Visual Settings' [expanded]="sectionExpanded['LVisual']"
+    (opened)="sectionExpanded['LVisual'] = true"
+    (closed)="sectionExpanded['LVisual'] = false">
+  <color-picker type='link' [link]='activeSrv.selectedLink'>Link Color</color-picker>
+</collapsible-subseciton>
+@if (settingsService.isForces.value) {
+  <collapsible-subseciton titleLabel='Mass Settings'
+    [expanded]="sectionExpanded['LMass']"
+    (opened)="sectionExpanded['LMass'] = true"
+    (closed)="sectionExpanded['LMass'] = false">
+  <input-block> Link Mass</input-block>
+  <dual-input-block> Center of Mass Position</dual-input-block>
+</collapsible-subseciton>
+}
+@if (activeSrv.selectedLink.isCompound) {
+  <collapsible-subseciton
+    [expanded]="sectionExpanded['LCompound']"
+    (opened)="sectionExpanded['LCompound'] = true"
+    (closed)="sectionExpanded['LCompound'] = false"
+    titleLabel='Compound Link Settings'
     >
-      <dual-button but1Text='Un-weld All' but1Icon='unweld_joint'
-                   [but1Action]='mechanismService.unweldAll.bind(mechanismService)'></dual-button>
-    </collapsible-subseciton>
-  </panel-section>
+  <dual-button but1Text='Un-weld All' but1Icon='unweld_joint'
+  [but1Action]='mechanismService.unweldAll.bind(mechanismService)'></dual-button>
+</collapsible-subseciton>
+}
+</panel-section>
+}
 
-  <!--  FORCE PANEL-->
+<!--  FORCE PANEL-->
 
-  <panel-section *ngIf="this.activeSrv.objType == 'Force' && !hideEditPanel()">
+@if (this.activeSrv.objType == 'Force' && !hideEditPanel()) {
+  <panel-section>
     <editable-title-block [deleteAction]='deleteForce.bind(this)'>Edit Force</editable-title-block>
     <collapsible-subseciton titleLabel='Basic Settings' [expanded]="sectionExpanded['FBasic']"
-                            (opened)="sectionExpanded['FBasic'] = true"
-                            (closed)="sectionExpanded['FBasic'] = false">
-      <dual-input-block
-        label1='M'
-        label2='⊾'
-        formControl1='magnitude'
-        formControl2='angle'
-        [formGroup]='forceForm'
-        tooltip='The magnitude and angle of this force. A counter-clockwise rotation is a positive angle (Right hand rule).'
+      (opened)="sectionExpanded['FBasic'] = true"
+      (closed)="sectionExpanded['FBasic'] = false">
+    <dual-input-block
+      label1='M'
+      label2='⊾'
+      formControl1='magnitude'
+      formControl2='angle'
+      [formGroup]='forceForm'
+      tooltip='The magnitude and angle of this force. A counter-clockwise rotation is a positive angle (Right hand rule).'
       >
-        Magnitude and Angle
-      </dual-input-block>
-      <dual-input-block
-        label1='X'
-        label2='Y'
-        formControl1='xComp'
-        formControl2='yComp'
-        [formGroup]='forceForm'
-        tooltip='The x and y components of the force in Newtons | lbf.'
+      Magnitude and Angle
+    </dual-input-block>
+    <dual-input-block
+      label1='X'
+      label2='Y'
+      formControl1='xComp'
+      formControl2='yComp'
+      [formGroup]='forceForm'
+      tooltip='The x and y components of the force in Newtons | lbf.'
       >
-        Force Components
-      </dual-input-block>
-      <radio-block
-        [formGroup]='forceForm'
-        _formControl='isGlobal'
-        tooltip='The frame of reference for the force.'
-        option1='Local (Link {{ this.activeSrv.selectedForce.link.name }})'
-        option2='Global'
+      Force Components
+    </dual-input-block>
+    <radio-block
+      [formGroup]='forceForm'
+      _formControl='isGlobal'
+      tooltip='The frame of reference for the force.'
+      option1='Local (Link {{ this.activeSrv.selectedForce.link.name }})'
+      option2='Global'
       >
-        Force Base Frame
-      </radio-block>
-    </collapsible-subseciton>
-    <collapsible-subseciton titleLabel='Visual Settings' [expanded]="sectionExpanded['FVisual']"
-                            (opened)="sectionExpanded['FVisual'] = true"
-                            (closed)="sectionExpanded['FVisual'] = false">
-      <color-picker type='force' [force]='activeSrv.selectedForce'>Force Color</color-picker>
-    </collapsible-subseciton>
-  </panel-section>
+      Force Base Frame
+    </radio-block>
+  </collapsible-subseciton>
+  <collapsible-subseciton titleLabel='Visual Settings' [expanded]="sectionExpanded['FVisual']"
+    (opened)="sectionExpanded['FVisual'] = true"
+    (closed)="sectionExpanded['FVisual'] = false">
+  <color-picker type='force' [force]='activeSrv.selectedForce'>Force Color</color-picker>
+</collapsible-subseciton>
+</panel-section>
+}
 </div>
