@@ -10,7 +10,7 @@
       }
       <div class='spacer'></div>
       @if (addInput) {
-        <span class='label {{disableInput ? "disabled":""}}' style='font-size: 25px; padding-bottom: 5px;'>⊾</span>
+        <span class='label angle-label {{disableInput ? "disabled":""}}'>⊾</span>
       }
       @if (addInput) {
         <mat-form-field class='customInputForm' (click)='disableInput ? null :field.select()'>

@@ -42,16 +42,27 @@
       //color: mat.get-color-from-palette($foreground, 'icon');
     }
 
-    .mat-button-wrapper {
+    .mdc-button__label {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
+      white-space: nowrap;
     }
 
     button {
       @include mat.m2-typography-level($typography-config, 'body-2');
       height: 100% !important;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    p {
+      line-height: 30px;
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     img {

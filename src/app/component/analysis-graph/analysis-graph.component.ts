@@ -131,6 +131,10 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     grid: {
       position: 'back',
       show: true,
+      padding: {
+        top: 8,
+        bottom: 12,
+      },
       xaxis: {
         lines: {
           show: true,
@@ -144,14 +148,15 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     },
     xaxis: {
       type: 'numeric',
-      position: 'bottom',
-      offsetY: -190,
+      position: 'top',
+      offsetY: 0,
       // floating: true,
       // categories: categories,
       labels: {
         rotate: 0,
         rotateAlways: true,
         trim: true,
+        offsetY: 18,
         formatter: function(val) {
           return String((Number(val) - 1) / 62.5);
         },
@@ -159,8 +164,8 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       tickAmount: 1,
       title: {
         text: 'Time (seconds)',
-        offsetY: 55,
-        offsetX: -10,
+        offsetY: -12,
+        offsetX: 0,
       },
       tooltip: {
         enabled: false,

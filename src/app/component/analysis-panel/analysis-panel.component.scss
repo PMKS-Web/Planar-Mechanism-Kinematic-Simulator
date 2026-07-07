@@ -26,6 +26,12 @@
     .mat-expansion-panel-header-title {
       flex-grow: 0;
       flex-basis: auto;
+      align-items: center;
+      line-height: 20px;
+    }
+
+    .mat-expansion-panel-header-description {
+      align-items: center;
     }
 
     .mat-expansion-panel-body {
@@ -35,8 +41,11 @@
     }
 
     #graph-help {
-      transform: scale(0.75);
       color: mat.m2-get-color-from-palette($foreground, 'icon');
+      font-size: 18px;
+      height: 18px;
+      width: 18px;
+      line-height: 18px;
     }
 
     // .mat-expansion-panel-header-description {

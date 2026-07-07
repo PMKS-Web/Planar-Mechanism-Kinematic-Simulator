@@ -78,25 +78,30 @@
         display: flex;
         font-size: 20px;
         font-weight: 400;
-        align-items: baseline;
+        align-items: center;
         // @include mat.typography-level($typography-config, 'headline-6');
+
         #tLabel {
           margin-right: 10px;
+          line-height: 30px;
         }
 
         #secLabel {
+          line-height: 30px;
         }
       }
 
       #animationBar-input {
         font-size: 20px;
         font-weight: 400;
+        height: 30px;
+        line-height: 30px;
         width: 40px;
         border: 0;
         outline: none;
         background-color: mat.m2-get-color-from-palette($primary-palette, 50);
         border-radius: var(--border-radius);
-        padding: 5px;
+        padding: 0 5px;
         //When the input is focused
         &:focus {
           margin-bottom: 0;

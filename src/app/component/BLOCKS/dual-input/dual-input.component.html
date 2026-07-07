@@ -23,7 +23,7 @@
       </mat-form-field>
       <div class='spacer'></div>
       <span class='label {{disabled ? "disabled" : ""}}'
-      style='{{label2 === "⊾" ? "font-size: 25px; padding-bottom: 5px" : ""}}'>{{label2}}</span>
+        [class.angle-label]='label2 === "⊾"'>{{label2}}</span>
       <mat-form-field class='customInputForm'
         formGroupName='{{formSubGroup}}'
         (click)='field2.select()'
@@ -50,7 +50,7 @@
       </mat-form-field>
       <div class='spacer'></div>
       <span class='label {{disabled ? "disabled" : ""}}'
-      style='{{label2 === "⊾" ? "font-size: 25px; padding-bottom: 5px" : ""}}'>{{label2}}</span>
+        [class.angle-label]='label2 === "⊾"'>{{label2}}</span>
       <mat-form-field class='customInputForm' (click)='field2.select()'
         (mouseenter)='isField2MouseOver = true; updateOverlay()'
         (mouseleave)='isField2MouseOver = false; updateOverlay()'

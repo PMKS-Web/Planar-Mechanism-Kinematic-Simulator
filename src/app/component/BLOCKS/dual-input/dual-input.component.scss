@@ -17,6 +17,15 @@
       opacity: 0.5;
     }
 
+    .angle-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      font-size: 25px;
+      line-height: 30px;
+    }
+
     .customInputForm {
       .customInput {
         @include mat.m2-typography-level($typography-config, 'body-2');
