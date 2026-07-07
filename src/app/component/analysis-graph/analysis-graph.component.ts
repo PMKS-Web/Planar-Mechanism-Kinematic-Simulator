@@ -7,7 +7,7 @@ import {
   OnInit,
   SimpleChanges,
   ViewChild,
-  ChangeDetectionStrategy
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import {
   ApexAnnotations,
@@ -53,23 +53,29 @@ export type ChartOptions = {
 };
 
 @Component({
-    selector: 'app-analysis-graph',
-    templateUrl: './analysis-graph.component.html',
-    styleUrls: ['./analysis-graph.component.scss'],
-    animations: [
-        trigger('showHide', [
-            // ...
-            state('graphShown', style({
-                opacity: 0,
-            })),
-            state('graphHidden', style({
-                opacity: 1,
-            })),
-            transition('* => *', [animate('0.1s ease-in-out')]),
-        ]),
-    ],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'app-analysis-graph',
+  templateUrl: './analysis-graph.component.html',
+  styleUrls: ['./analysis-graph.component.scss'],
+  animations: [
+    trigger('showHide', [
+      // ...
+      state(
+        'graphShown',
+        style({
+          opacity: 0,
+        })
+      ),
+      state(
+        'graphHidden',
+        style({
+          opacity: 1,
+        })
+      ),
+      transition('* => *', [animate('0.1s ease-in-out')]),
+    ]),
+  ],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
   public chartOptions: Partial<ChartOptions> = {
@@ -113,7 +119,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       // theme: 'dark',
       x: {
         // show: false,
-        formatter: function(val) {
+        formatter: function (val) {
           return 'T = ' + ((Number(val) - 1) / 62.5).toFixed(2) + 's';
         },
       },
@@ -132,7 +138,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       position: 'back',
       show: true,
       padding: {
-        top: 8,
+        top: 0,
         bottom: 12,
       },
       xaxis: {
@@ -149,22 +155,23 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     xaxis: {
       type: 'numeric',
       position: 'top',
-      offsetY: 0,
+      offsetY: 15,
       // floating: true,
       // categories: categories,
       labels: {
         rotate: 0,
         rotateAlways: true,
         trim: true,
-        offsetY: 18,
-        formatter: function(val) {
+        offsetY: 0,
+        formatter: function (val) {
           return String((Number(val) - 1) / 62.5);
         },
       },
       tickAmount: 1,
       title: {
         text: 'Time (seconds)',
-        offsetY: -12,
+        // small nudge to sit on the same baseline as the tick labels
+        offsetY: 6,
         offsetX: 0,
       },
       tooltip: {
@@ -174,10 +181,10 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     yaxis: {
       showForNullSeries: false,
       forceNiceScale: true,
-      min: function(min) {
+      min: function (min) {
         return Math.floor(min);
       },
-      max: function(max) {
+      max: function (max) {
         return Math.ceil(max);
       },
       title: {
@@ -223,9 +230,8 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     private mechanismService: MechanismService,
     public settingsService: SettingsService,
     private nup: NumberUnitParserService,
-    private activeSrv: ActiveObjService,
-  ) {
-  }
+    private activeSrv: ActiveObjService
+  ) {}
 
   seriesCheckboxForm = this.fb.group(
     {
@@ -233,7 +239,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       y: [false],
       z: [false],
     },
-    { updateOn: 'change' },
+    { updateOn: 'change' }
   );
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -275,7 +281,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           y: this.seriesCheckboxForm.value.y,
           z: this.seriesCheckboxForm.value.z,
         },
-        { emitEvent: true },
+        { emitEvent: true }
       );
     }, 1);
   }
@@ -357,7 +363,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
               yaxis: this.chartOptions.yaxis,
             },
             false,
-            true,
+            true
           );
         }
       }, 1);
@@ -372,7 +378,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
               yaxis: this.chartOptions.yaxis,
             },
             false,
-            true,
+            true
           );
         }
       }, 1);
@@ -422,7 +428,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             offsetY: -20,
           },
         },
-        false,
+        false
       );
     }
 
@@ -431,64 +437,64 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     const zSeries = this.chartOptions.series?.find((s) => s.name === 'Z');
 
     this.seriesCheckboxForm.value.x &&
-    xSeries &&
-    this.chart.addPointAnnotation(
-      {
-        x: timeIndex,
-        y: xSeries.data[timeIndex],
-        marker: {
-          strokeColor: '#313aa7',
-          shape: 'square',
+      xSeries &&
+      this.chart.addPointAnnotation(
+        {
+          x: timeIndex,
+          y: xSeries.data[timeIndex],
+          marker: {
+            strokeColor: '#313aa7',
+            shape: 'square',
+          },
+          label: {
+            borderColor: '#313aa7',
+            fillColor: '#000000',
+            orientation: 'horizontal',
+            text: String(xSeries.data[timeIndex]),
+          },
         },
-        label: {
-          borderColor: '#313aa7',
-          fillColor: '#000000',
-          orientation: 'horizontal',
-          text: String(xSeries.data[timeIndex]),
-        },
-      },
-      false,
-    );
+        false
+      );
 
     this.seriesCheckboxForm.value.y &&
-    ySeries &&
-    this.chart.addPointAnnotation(
-      {
-        x: timeIndex,
-        y: ySeries.data[timeIndex],
-        marker: {
-          strokeColor: '#f42a2a',
-          shape: 'square',
+      ySeries &&
+      this.chart.addPointAnnotation(
+        {
+          x: timeIndex,
+          y: ySeries.data[timeIndex],
+          marker: {
+            strokeColor: '#f42a2a',
+            shape: 'square',
+          },
+          label: {
+            borderColor: '#f42a2a',
+            fillColor: '#000000',
+            orientation: 'horizontal',
+            text: String(ySeries.data[timeIndex]),
+          },
         },
-        label: {
-          borderColor: '#f42a2a',
-          fillColor: '#000000',
-          orientation: 'horizontal',
-          text: String(ySeries.data[timeIndex]),
-        },
-      },
-      false,
-    );
+        false
+      );
 
     this.seriesCheckboxForm.value.z &&
-    zSeries &&
-    this.chart.addPointAnnotation(
-      {
-        x: timeIndex,
-        y: zSeries.data[timeIndex],
-        marker: {
-          strokeColor: this.numberOfSeries !== 3 ? '#313aa7' : '#fdb50e',
-          shape: 'square',
+      zSeries &&
+      this.chart.addPointAnnotation(
+        {
+          x: timeIndex,
+          y: zSeries.data[timeIndex],
+          marker: {
+            strokeColor: this.numberOfSeries !== 3 ? '#313aa7' : '#fdb50e',
+            shape: 'square',
+          },
+          label: {
+            borderColor: this.numberOfSeries !== 3 ? '#313aa7' : '#fdb50e',
+            fillColor: '#000000',
+            orientation: 'horizontal',
+            text: String(zSeries.data[timeIndex]),
+          },
         },
-        label: {
-          borderColor: this.numberOfSeries !== 3 ? '#313aa7' : '#fdb50e',
-          fillColor: '#000000',
-          orientation: 'horizontal',
-          text: String(zSeries.data[timeIndex]),
-        },
-      },
-      false,
-    );
+        false
+      );
   }
 
   ngOnDestroy(): void {
@@ -563,7 +569,17 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       csvContent += 'Time (seconds),Time (steps),' + fileName + ', X-comp,Y-comp\n';
       for (let i = 0; i < timeSteps!; i++) {
         const timeInSecs = i / 62.5;
-        csvContent += timeInSecs + ',' + i + ',' + zSeries?.data[i] + ',' + xSeries?.data[i] + ',' + ySeries?.data[i] + '\n';
+        csvContent +=
+          timeInSecs +
+          ',' +
+          i +
+          ',' +
+          zSeries?.data[i] +
+          ',' +
+          xSeries?.data[i] +
+          ',' +
+          ySeries?.data[i] +
+          '\n';
       }
     }
 
@@ -609,7 +625,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
               analysis,
               analysisType,
               mechProp,
-              mechPart,
+              mechPart
             );
             seriesData.push({ name: 'Z', type: 'line', data: datum[0] });
             this.numberOfSeries = 1;
@@ -620,7 +636,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
               analysis,
               analysisType,
               mechProp,
-              mechPart,
+              mechPart
             );
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
@@ -639,7 +655,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
               analysis,
               analysisType,
               mechProp,
-              mechPart,
+              mechPart
             );
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
@@ -651,7 +667,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
               analysis,
               analysisType,
               mechProp,
-              mechPart,
+              mechPart
             );
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
@@ -664,45 +680,45 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
               analysis,
               analysisType,
               mechProp,
-              mechPart,
+              mechPart
             );
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
             seriesData.push({ name: 'Z', type: 'line', data: datum[2] });
             this.numberOfSeries = 3;
             break;
-          case 'Linear Link\'s CoM Pos':
+          case "Linear Link's CoM Pos":
             yAxisTitle = 'Position (CoM) ' + posLinUnit;
             [datum, categories] = this.determineAnalysis(
               analysis,
               analysisType,
               mechProp,
-              mechPart,
+              mechPart
             );
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
             this.numberOfSeries = 2;
             break;
-          case 'Linear Link\'s CoM Vel':
+          case "Linear Link's CoM Vel":
             yAxisTitle = 'Velocity ' + velLinUnit;
             [datum, categories] = this.determineAnalysis(
               analysis,
               analysisType,
               mechProp,
-              mechPart,
+              mechPart
             );
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
             seriesData.push({ name: 'Z', type: 'line', data: datum[2] });
             this.numberOfSeries = 3;
             break;
-          case 'Linear Link\'s CoM Acc':
+          case "Linear Link's CoM Acc":
             yAxisTitle = 'Acceleration ' + accLinUnit;
             [datum, categories] = this.determineAnalysis(
               analysis,
               analysisType,
               mechProp,
-              mechPart,
+              mechPart
             );
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
@@ -715,13 +731,13 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
               analysis,
               analysisType,
               mechProp,
-              mechPart,
+              mechPart
             );
             var series: number[] = datum[0];
             if (this.settingsService.angleUnit.getValue() == AngleUnit.RADIAN) {
               for (let i = 0; i < series.length; i++) {
                 series[i] = Number(
-                  this.nup.convertAngle(series[i], AngleUnit.DEGREE, AngleUnit.RADIAN).toFixed(4),
+                  this.nup.convertAngle(series[i], AngleUnit.DEGREE, AngleUnit.RADIAN).toFixed(4)
                 );
               }
             }
@@ -734,13 +750,13 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
               analysis,
               analysisType,
               mechProp,
-              mechPart,
+              mechPart
             );
             var series: number[] = datum[0];
             if (this.settingsService.angleUnit.getValue() == AngleUnit.RADIAN) {
               for (let i = 0; i < series.length; i++) {
                 series[i] = Number(
-                  this.nup.convertAngle(series[i], AngleUnit.DEGREE, AngleUnit.RADIAN).toFixed(4),
+                  this.nup.convertAngle(series[i], AngleUnit.DEGREE, AngleUnit.RADIAN).toFixed(4)
                 );
               }
             }
@@ -753,13 +769,13 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
               analysis,
               analysisType,
               mechProp,
-              mechPart,
+              mechPart
             );
             var series: number[] = datum[0];
             if (this.settingsService.angleUnit.getValue() == AngleUnit.RADIAN) {
               for (let i = 0; i < series.length; i++) {
                 series[i] = Number(
-                  this.nup.convertAngle(series[i], AngleUnit.DEGREE, AngleUnit.RADIAN).toFixed(4),
+                  this.nup.convertAngle(series[i], AngleUnit.DEGREE, AngleUnit.RADIAN).toFixed(4)
                 );
               }
             }
@@ -782,7 +798,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     analysis: string,
     analysisType: string,
     mechProp: string,
-    mechPart: string,
+    mechPart: string
   ): [[number[], number[], number[]], string[]] {
     const datum_X: number[] = [];
     const datum_Y: number[] = [];
@@ -815,7 +831,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             KinematicsSolver.determineKinematics(
               this.mechanismService.mechanisms[0].joints[index],
               this.mechanismService.mechanisms[0].links[index],
-              this.mechanismService.mechanisms[0].inputAngularVelocities[index],
+              this.mechanismService.mechanisms[0].inputAngularVelocities[index]
             );
           }
           ForceSolver.determineForceAnalysis(
@@ -823,7 +839,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             this.mechanismService.mechanisms[0].links[index],
             analysisType,
             this.settingsService.isForces.value,
-            unitStr,
+            unitStr
           );
           datum_X.push(roundNumber(ForceSolver.unknownVariableTorque, 3));
           break;
@@ -833,7 +849,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             KinematicsSolver.determineKinematics(
               this.mechanismService.mechanisms[0].joints[index],
               this.mechanismService.mechanisms[0].links[index],
-              this.mechanismService.mechanisms[0].inputAngularVelocities[index],
+              this.mechanismService.mechanisms[0].inputAngularVelocities[index]
             );
           }
           ForceSolver.determineForceAnalysis(
@@ -841,7 +857,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             this.mechanismService.mechanisms[0].links[index],
             analysisType,
             this.settingsService.isForces.value,
-            unitStr,
+            unitStr
           );
           x = ForceSolver.unknownVariableForcesMap.get(mechPart)![0];
           y = ForceSolver.unknownVariableForcesMap.get(mechPart)![1];
@@ -852,7 +868,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           break;
         case 'Linear Joint Pos':
           const jt = this.mechanismService.mechanisms[0].joints[index].find(
-            (j) => j.id === mechPart,
+            (j) => j.id === mechPart
           )!;
           x = jt.x;
           y = jt.y;
@@ -863,7 +879,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           KinematicsSolver.determineKinematics(
             this.mechanismService.mechanisms[0].joints[index],
             this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index],
+            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
           x = KinematicsSolver.jointVelMap.get(mechPart)![0];
           y = KinematicsSolver.jointVelMap.get(mechPart)![1];
@@ -876,7 +892,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           KinematicsSolver.determineKinematics(
             this.mechanismService.mechanisms[0].joints[index],
             this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index],
+            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
           x = KinematicsSolver.jointAccMap.get(mechPart)![0];
           y = KinematicsSolver.jointAccMap.get(mechPart)![1];
@@ -885,22 +901,22 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           datum_Y.push(roundNumber(y, 3));
           datum_Z.push(roundNumber(z, 3));
           break;
-        case 'Linear Link\'s CoM Pos':
+        case "Linear Link's CoM Pos":
           KinematicsSolver.determineKinematics(
             this.mechanismService.mechanisms[0].joints[index],
             this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index],
+            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
           x = KinematicsSolver.linkCoMMap.get(mechPart)![0];
           y = KinematicsSolver.linkCoMMap.get(mechPart)![1];
           datum_X.push(roundNumber(x, 3));
           datum_Y.push(roundNumber(y, 3));
           break;
-        case 'Linear Link\'s CoM Vel':
+        case "Linear Link's CoM Vel":
           KinematicsSolver.determineKinematics(
             this.mechanismService.mechanisms[0].joints[index],
             this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index],
+            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
           x = KinematicsSolver.linkVelMap.get(mechPart)![0];
           y = KinematicsSolver.linkVelMap.get(mechPart)![1];
@@ -909,11 +925,11 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           datum_Y.push(roundNumber(y, 3));
           datum_Z.push(roundNumber(z, 3));
           break;
-        case 'Linear Link\'s CoM Acc':
+        case "Linear Link's CoM Acc":
           KinematicsSolver.determineKinematics(
             this.mechanismService.mechanisms[0].joints[index],
             this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index],
+            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
           x = KinematicsSolver.linkAccMap.get(mechPart)![0];
           y = KinematicsSolver.linkAccMap.get(mechPart)![1];
@@ -926,7 +942,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           KinematicsSolver.determineKinematics(
             this.mechanismService.mechanisms[0].joints[index],
             this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index],
+            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
           x = KinematicsSolver.linkAngPosMap.get(mechPart)!;
           datum_X.push(roundNumber(x, 3));
@@ -935,7 +951,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           KinematicsSolver.determineKinematics(
             this.mechanismService.mechanisms[0].joints[index],
             this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index],
+            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
           x = KinematicsSolver.linkAngVelMap.get(mechPart)!;
           datum_X.push(roundNumber(x, 3));
@@ -944,7 +960,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           KinematicsSolver.determineKinematics(
             this.mechanismService.mechanisms[0].joints[index],
             this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index],
+            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
           x = KinematicsSolver.linkAngAccMap.get(mechPart)!;
           datum_X.push(roundNumber(x, 3));
