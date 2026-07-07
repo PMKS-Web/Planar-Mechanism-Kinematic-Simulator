@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { SettingsService } from '../../../services/settings.service';
 import { NewGridComponent } from '../../new-grid/new-grid.component';
@@ -7,6 +7,8 @@ import { NewGridComponent } from '../../new-grid/new-grid.component';
   selector: 'app-enable-forces',
   templateUrl: './enable-forces.component.html',
   styleUrls: ['./enable-forces.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class EnableForcesComponent {
   constructor(

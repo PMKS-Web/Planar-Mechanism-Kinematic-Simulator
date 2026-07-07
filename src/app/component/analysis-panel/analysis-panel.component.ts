@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import {
   ChartComponent,
   ApexAxisChartSeries,
@@ -47,6 +47,8 @@ export type ChartOptions = {
   selector: 'app-analysis-panel',
   templateUrl: './analysis-panel.component.html',
   styleUrls: ['./analysis-panel.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class AnalysisPanelComponent {
   //A dictionary for wether each graph is expanded or not

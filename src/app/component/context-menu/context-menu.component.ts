@@ -1,4 +1,4 @@
-import { Component, Inject, Input } from '@angular/core';
+import { Component, Inject, Input, ChangeDetectionStrategy } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { MechanismService } from '../../services/mechanism.service';
 import { NewGridComponent } from '../new-grid/new-grid.component';
@@ -51,6 +51,8 @@ export class cMenuItem {
   ],
   templateUrl: './context-menu.component.html',
   styleUrls: ['./context-menu.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class ContextMenuComponent {
   @Input() menuItems: cMenuItem[] = [];

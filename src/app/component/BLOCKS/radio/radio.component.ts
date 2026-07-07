@@ -1,10 +1,12 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 
 @Component({
   selector: 'radio-block',
   templateUrl: './radio.component.html',
   styleUrls: ['./radio.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class RadioComponent {
   @Input() tooltip: string | undefined;

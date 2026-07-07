@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { SettingsService } from 'src/app/services/settings.service';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
 import { FormBuilder, Validators } from '@angular/forms';
@@ -19,6 +19,8 @@ import { EnableEquationsComponent } from '../MODALS/enable-equations/enable-equa
   selector: 'app-settings-panel',
   templateUrl: './settings-panel.component.html',
   styleUrls: ['./settings-panel.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class SettingsPanelComponent {
   constructor(
@@ -47,7 +49,7 @@ export class SettingsPanelComponent {
     this.currentSpeedSetting = this.settingsService.inputSpeed.value;
     this.currentObjectScaleSetting = SettingsService.objectScale;
 
-    console.log("start length", this.currentLengthUnit);
+    console.log('start length', this.currentLengthUnit);
 
     this.settingsForm.patchValue({
       speed: this.currentSpeedSetting.toString(),
@@ -162,12 +164,12 @@ export class SettingsPanelComponent {
     });
     this.settingsForm.controls['lengthunit'].valueChanges.subscribe((val) => {
       let length: LengthUnit;
-      if (val === "0") length = LengthUnit.INCH;
-      else if (val === "1") length = LengthUnit.CM;
+      if (val === '0') length = LengthUnit.INCH;
+      else if (val === '1') length = LengthUnit.CM;
       else length = LengthUnit.METER;
       console.log(length);
       this.settingsService.lengthUnit.next(length);
-      this.mechanismSrv.updateMechanism()
+      this.mechanismSrv.updateMechanism();
     });
     this.settingsForm.controls['showMajorGrid'].valueChanges.subscribe((val) => {
       this.settingsService.isShowMajorGrid.next(Boolean(val));

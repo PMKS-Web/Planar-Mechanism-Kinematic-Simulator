@@ -1,10 +1,11 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../joint';
 import { Link } from '../link';
 import {
-  circleCircleIntersection, circleLineIntersection,
+  circleCircleIntersection,
+  circleLineIntersection,
   determineUnknownJointUsingTriangulation,
   euclideanDistance,
-  roundNumber
+  roundNumber,
 } from '../utils';
 import { Force } from '../force';
 import { Coord } from '../coord';
@@ -143,11 +144,10 @@ export class PositionSolver {
         }
       });
       if (connectedToSlider) {
-        const sliderJoint = cur_joint.connectedJoints.find((j) => j.constructor === PrisJoint);
+        const sliderJoint = cur_joint.connectedJoints.find(
+          (j): j is PrisJoint => j.constructor === PrisJoint
+        );
         if (sliderJoint === undefined) {
-          return;
-        }
-        if (!(sliderJoint instanceof PrisJoint)) {
           return;
         }
         const sliderJointIndex = joints.findIndex((j) => j.id === sliderJoint.id);
@@ -301,9 +301,9 @@ export class PositionSolver {
           break;
         case 'determineTracerJoint':
           this.twoCircleIntersectionPoints(
-              joints[connected_joint_indices[0]],
-              joints[connected_joint_indices[1]],
-              joint
+            joints[connected_joint_indices[0]],
+            joints[connected_joint_indices[1]],
+            joint
           );
           // this.determineTracerJoint(
           //   joints[connected_joint_indices[0]],
@@ -390,7 +390,7 @@ export class PositionSolver {
     const y = sols[desiredIndex][1];
     this.jointMapPositions.set(unknownJoint.id, [roundNumber(x, 4), roundNumber(y, 4)]);
     return true;
-    }
+  }
 
   private static determineDesiredIndexTwoCircleIntersection(
     tempJ1: Joint,
@@ -416,8 +416,6 @@ export class PositionSolver {
     );
     return intersection1Diff < intersection2Diff ? 0 : 1;
   }
-
-
 
   private static TwoCircleIntersectionMethod(j1: Joint, j2: Joint, unknownJoint: Joint) {
     if (!this.jointMapPositions.has(j1.id)) {

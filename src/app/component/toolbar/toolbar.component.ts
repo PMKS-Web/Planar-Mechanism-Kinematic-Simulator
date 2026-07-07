@@ -8,6 +8,7 @@ import {
   isDevMode,
   OnInit,
   Output,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Bound, Link, Piston, RealLink } from '../../model/link';
@@ -34,7 +35,7 @@ import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { MechanismService } from '../../services/mechanism.service';
 import { NewGridComponent } from '../new-grid/new-grid.component';
-import { Analytics, logEvent } from '@angular/fire/analytics';
+import { AnalyticsService } from '../../services/analytics.service';
 import { UrlProcessorService } from '../../services/url-processor.service';
 import { MatDialog } from '@angular/material/dialog';
 import { TemplatesComponent } from '../MODALS/templates/templates.component';
@@ -57,15 +58,15 @@ import { UrlGenerationService } from 'src/app/services/url-generation.service';
 import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 
-const parseCSV = require('papaparse');
-
 @Component({
   selector: 'app-toolbar',
   templateUrl: './toolbar.component.html',
   styleUrls: ['./toolbar.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class ToolbarComponent implements OnInit, AfterViewInit {
-  private analytics: Analytics = inject(Analytics);
+  private analytics: AnalyticsService = inject(AnalyticsService);
 
   openRightPanelEquations() {
     RightPanelComponent.tabClicked(2);
@@ -168,12 +169,12 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
 
   // popUpTemplates() {
   //   TemplatesPopupComponent.showTemplates();
-  //   logEvent(this.analytics, 'open_templates');
+  //   this.analytics.logEvent('open_templates');
   // }
 
   upload($event: any) {
-    console.log("upload");
-    logEvent(this.analytics, 'upload_file');
+    console.log('upload');
+    this.analytics.logEvent('upload_file');
     const input = $event.target;
     if (input.files.length !== 1) {
       console.log('No file selected', input.files.length);
@@ -184,7 +185,7 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
 
     reader.onload = () => {
       const data = reader.result as string;
-      console.log("open", data);
+      console.log('open', data);
       NewGridComponent.sendNotification('Loaded Mechanism from File');
 
       this.urlProcessorService.updateFromURL(data);
@@ -193,7 +194,7 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
 
       //Reset the input so that the same file can be uploaded again
       input.value = '';
-    }
+    };
 
     // actually read the file to call the onload callback above
     reader.readAsText(input.files[0]);
@@ -202,7 +203,7 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
    *  Copy the URL of the current mechanism to the clipboard
    */
   copyURL() {
-    logEvent(this.analytics, 'copyURL');
+    this.analytics.logEvent('copyURL');
 
     let url = this.urlGenerationService.generateFullUrl();
 
@@ -218,7 +219,6 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
     NewGridComponent.sendNotification(
       'Mechanism URL copied. If you make additional changes, copy the URL again.'
     );
-    
   }
 
   alertNotAvailable() {
@@ -227,7 +227,7 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
   }
 
   downloadLinkage() {
-    logEvent(this.analytics, 'download_linkage');
+    this.analytics.logEvent('download_linkage');
     // TODO: Believe this should be this.unit.selectedUnit
     const content = this.urlGenerationService.generateUrlQuery();
 
@@ -262,7 +262,6 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
     document.body.removeChild(toolman);
   }
 
-
   isDevMode() {
     //Used to change the color of the topbar when not running prod
     return isDevMode();
@@ -270,11 +269,10 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
 
   handleUndo() {
     NewGridComponent.sendNotification('Undo Called!', 0);
-    this.saveHistoryService.undo()
+    this.saveHistoryService.undo();
   }
 
   canUndo(): boolean {
-
     // disable undo if animating
     if (this.mechanismService.isAnimating()) return false;
 
@@ -286,11 +284,10 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
 
   handleRedo() {
     NewGridComponent.sendNotification('Redo Called!', 0);
-    this.saveHistoryService.redo()
+    this.saveHistoryService.redo();
   }
 
   canRedo(): boolean {
-
     // disable redo if animating
     if (this.mechanismService.isAnimating()) return false;
 

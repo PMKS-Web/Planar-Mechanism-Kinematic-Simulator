@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { GlobalUnit } from '../../model/utils';
 import { SettingsService } from '../../services/settings.service';
 import { MechanismService } from '../../services/mechanism.service';
@@ -8,9 +8,14 @@ import { environment } from '../../../environments/environment';
   selector: 'app-bottombar',
   templateUrl: './bottombar.component.html',
   styleUrls: ['./bottombar.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class BottombarComponent {
-  constructor(public settings: SettingsService, public mechanismSrv: MechanismService) {}
+  constructor(
+    public settings: SettingsService,
+    public mechanismSrv: MechanismService
+  ) {}
 
   humanReadableString(value: GlobalUnit) {
     switch (value) {

@@ -3,49 +3,64 @@
 
 @mixin css($theme) {
   // Get the color config from the theme.
-  $color-config: mat.get-color-config($theme);
+  $color-config: mat.m2-get-color-config($theme);
   // Get the primary color palette from the color-config.
   $primary-palette: map.get($color-config, 'primary');
   $accent-palette: map.get($color-config, 'accent');
-  $typography-config: mat.get-typography-config($theme);
+  $typography-config: mat.m2-get-typography-config($theme);
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
-
   #tri-button {
-
     path {
-      fill: mat.get-color-from-palette($primary-palette, 500);
+      fill: mat.m2-get-color-from-palette($primary-palette, 500);
       //fill: red;
     }
 
-
     button {
-
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: space-around;
-      @include mat.typography-level($typography-config, 'body-2');
+      @include mat.m2-typography-level($typography-config, 'body-2');
       padding: 0 10px;
       margin: 0;
       height: 50px !important;
+      overflow: hidden;
       //flex-grow: 1;
 
       .mat-mdc-button-touch-target {
         height: 50px !important;
       }
 
+      .mdc-button__label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        line-height: 16px;
+        white-space: nowrap;
+      }
+
       .mat-icon {
+        flex: 0 0 24px;
         margin: 0;
         //background-color: red;
         width: 24px;
         height: 24px;
+        min-height: 24px;
+        max-height: 24px;
+        line-height: 24px;
+        overflow: hidden;
       }
 
-      border-color: mat.get-color-from-palette($primary-palette, 500) !important;
+      .mat-icon ::ng-deep svg {
+        width: 24px;
+        height: 24px;
+      }
 
-
+      border-color: mat.m2-get-color-from-palette($primary-palette, 500) !important;
     }
 
     .groupedButtons {
@@ -76,7 +91,6 @@
           border-left-color: transparent !important;
         }
       }
-
     }
 
     .button3 {
@@ -93,8 +107,5 @@
 
       border-color: #bbbbbb !important;
     }
-
   }
-
-
 }

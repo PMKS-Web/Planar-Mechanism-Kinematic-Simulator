@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 import { MechanismService } from 'src/app/services/mechanism.service';
@@ -6,7 +6,9 @@ import { MechanismService } from 'src/app/services/mechanism.service';
 @Component({
   selector: 'app-synthesis-warning',
   templateUrl: './synthesis-warning.component.html',
-  styleUrls: ['./synthesis-warning.component.scss']
+  styleUrls: ['./synthesis-warning.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class SynthesisWarningComponent {
   constructor(
@@ -24,5 +26,4 @@ export class SynthesisWarningComponent {
     this.mechanism.resetMechanism();
     this.selectedTab.setTab(TabID.SYNTHESIZE);
   }
-
 }

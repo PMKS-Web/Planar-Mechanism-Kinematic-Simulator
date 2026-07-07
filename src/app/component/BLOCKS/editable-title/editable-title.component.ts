@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder } from '@angular/forms';
 import { NewGridComponent } from '../../new-grid/new-grid.component';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
@@ -7,6 +7,8 @@ import { ActiveObjService } from 'src/app/services/active-obj.service';
   selector: 'editable-title-block',
   templateUrl: './editable-title.component.html',
   styleUrls: ['./editable-title.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class EditableTitleComponent {
   @Input() showActionButtons: boolean = false;
@@ -14,7 +16,10 @@ export class EditableTitleComponent {
 
   editMode = false;
 
-  constructor(private fb: FormBuilder, public activeObjService: ActiveObjService) {}
+  constructor(
+    private fb: FormBuilder,
+    public activeObjService: ActiveObjService
+  ) {}
 
   newIDForm = this.fb.group({ newID: [''] });
 

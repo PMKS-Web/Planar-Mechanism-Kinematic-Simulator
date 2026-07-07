@@ -1,10 +1,20 @@
-import { Component, Input, OnInit, OnChanges, Output, EventEmitter } from '@angular/core';
+import {
+  Component,
+  Input,
+  OnInit,
+  OnChanges,
+  Output,
+  EventEmitter,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { FormGroup } from '@angular/forms';
 
 @Component({
   selector: 'dual-input-block',
   templateUrl: './dual-input.component.html',
   styleUrls: ['./dual-input.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class DualInputComponent {
   @Input() tooltip!: string;

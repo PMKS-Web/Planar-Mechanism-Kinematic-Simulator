@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 import {
@@ -18,7 +18,7 @@ import {
 import { ActiveObjService } from '../../services/active-obj.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { Link, RealLink } from '../../model/link';
-import { Analytics, logEvent } from '@angular/fire/analytics';
+import { AnalyticsService } from '../../services/analytics.service';
 import { FormBuilder, FormControl, FormGroupDirective, NgForm, Validators } from '@angular/forms';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { environment } from '../../../environments/environment';
@@ -57,15 +57,16 @@ import { UrlGenerationService } from 'src/app/services/url-generation.service';
           width: '500px', //Be careful, there are multiple places to change this value
         })
       ),
-
       transition('open => openWide', [animate('0.1s ease-in-out')]),
       transition('openWide => open', [animate('0.1s ease-in-out')]),
       transition('* => *', [animate('0.3s ease-in-out')]),
     ]),
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class RightPanelComponent {
-  private analytics: Analytics = inject(Analytics);
+  private analytics: AnalyticsService = inject(AnalyticsService);
 
   public sendingEmail: boolean = false;
 
@@ -158,7 +159,7 @@ export class RightPanelComponent {
   }
 
   printMechanism() {
-    logEvent(this.analytics, 'debug_print_mechanism');
+    this.analytics.logEvent('debug_print_mechanism');
     console.log(this.mechanismService.mechanisms[0]);
     console.log(this.mechanismService.links);
     console.log(this.mechanismService.joints);
@@ -172,7 +173,7 @@ export class RightPanelComponent {
   }
 
   printActiveObject() {
-    logEvent(this.analytics, 'debug_print_active_object');
+    this.analytics.logEvent('debug_print_active_object');
     switch (this.activeObjService.objType) {
       case 'Joint':
         console.log(this.activeObjService.selectedJoint);
@@ -268,19 +269,19 @@ export class RightPanelComponent {
   gotoHelpSite() {
     //Open a new tab to this site: https://pmks.mech.website/pmks-web-how-to-videos/
     window.open('https://pmks.mech.website/pmks-web-how-to-videos/', '_blank');
-    logEvent(this.analytics, 'goto_help_site');
+    this.analytics.logEvent('goto_help_site');
   }
 
   gotoGithub() {
     //Open a new tab to this site: https://pmks.mech.website/pmks-web-how-to-videos/
     window.open('https://github.com/PMKS-Web/PMKSWeb', '_blank');
-    logEvent(this.analytics, 'goto_github');
+    this.analytics.logEvent('goto_github');
   }
 
   sendNotReady() {
     introJs().start();
     // NewGridComponent.sendNotification('Sorry, the tutorial is not ready yet.');
-    // logEvent(this.analytics, 'tutorial_not_ready');
+    // this.analytics.logEvent('tutorial_not_ready');
   }
 
   getBrowserName() {

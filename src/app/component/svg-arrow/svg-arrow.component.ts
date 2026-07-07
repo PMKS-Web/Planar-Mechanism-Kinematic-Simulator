@@ -1,9 +1,11 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: '[app-svg-arrow]',
   templateUrl: './svg-arrow.component.html',
   styleUrls: ['./svg-arrow.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class SvgArrowComponent {
   @Input() x: number = 0;

@@ -28,7 +28,6 @@ import hull from 'hull.js/dist/hull.js';
 import { SettingsService } from '../services/settings.service';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
 import { Arc, Line } from './line';
-import { get, set } from '@angular/fire/database';
 import { first, last } from 'rxjs';
 import { ColorService } from '../services/color.service';
 
@@ -155,7 +154,7 @@ export class RealLink extends Link {
   public externalLines: Line[] = [];
 
   public initialExternalLines: Line[] = [];
-  
+
   //For debugging:
   public unqiqueRandomID: string =
     Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -398,8 +397,8 @@ export class RealLink extends Link {
     let timeoutCounter = 1000;
 
     while (externalLinesSet.size > 1) {
-      //Pick the first line from the set
-      let currentLine: Line = externalLinesSet.values().next().value;
+      //Pick the first line from the set (size > 1 guarantees one exists)
+      let currentLine: Line = externalLinesSet.values().next().value!;
 
       let veryFirstPoint = currentLine.endPosition.clone();
       while (!currentLine.endPosition.equals(veryFirstPoint) || isNewShape(pathString)) {

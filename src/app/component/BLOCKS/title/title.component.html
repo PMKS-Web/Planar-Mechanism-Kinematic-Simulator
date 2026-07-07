@@ -1,24 +1,21 @@
-<div id='title-block'>
-  <div class='row'>
+<div id="title-block">
+  <div class="row">
     <ng-content></ng-content>
-    <button
-      id='title-button'
-      mat-flat-button
-      (click)='toggleExpand()'
-      color='primary'
-      *ngIf='buttonLabel && icon'
-    >
-      <mat-icon *ngIf='icon'>{{ icon }}</mat-icon>
-      {{ buttonLabel }}
-    </button>
-    <button
-      id='title-icon-button'
-      (click)='toggleExpand()'
-      *ngIf='!buttonLabel && icon'
-      mat-icon-button
-    >
-      <mat-icon>{{ this.shownIcon }}</mat-icon>
-    </button>
+    @if (buttonLabel && icon) {
+      <button id="title-button" mat-flat-button (click)="toggleExpand()" color="primary">
+        @if (icon) {
+          <mat-icon>{{ icon }}</mat-icon>
+        }
+        {{ buttonLabel }}
+      </button>
+    }
+    @if (!buttonLabel && icon) {
+      <button id="title-icon-button" (click)="toggleExpand()" mat-icon-button>
+        <mat-icon>{{ this.shownIcon }}</mat-icon>
+      </button>
+    }
   </div>
-  <p id='title-description' *ngIf='description'>{{ description }}</p>
+  @if (description) {
+    <p id="title-description">{{ description }}</p>
+  }
 </div>

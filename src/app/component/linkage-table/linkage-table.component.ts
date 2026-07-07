@@ -1,4 +1,11 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { Force } from '../../model/force';
 import { Piston, Link, RealLink, Shape } from '../../model/link';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
@@ -14,6 +21,8 @@ import { NewGridComponent } from '../new-grid/new-grid.component';
   selector: 'app-linkage-table',
   templateUrl: './linkage-table.component.html',
   styleUrls: ['./linkage-table.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class LinkageTableComponent implements OnInit {
   private static linkageTable: SVGElement;
