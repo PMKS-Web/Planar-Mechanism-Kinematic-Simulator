@@ -1,13 +1,8 @@
-<div id='title-block'>
-  <div class='row'>
+<div id="title-block">
+  <div class="row">
     <ng-content></ng-content>
     @if (buttonLabel && icon) {
-      <button
-        id='title-button'
-        mat-flat-button
-        (click)='toggleExpand()'
-        color='primary'
-        >
+      <button id="title-button" mat-flat-button (click)="toggleExpand()" color="primary">
         @if (icon) {
           <mat-icon>{{ icon }}</mat-icon>
         }
@@ -15,16 +10,12 @@
       </button>
     }
     @if (!buttonLabel && icon) {
-      <button
-        id='title-icon-button'
-        (click)='toggleExpand()'
-        mat-icon-button
-        >
+      <button id="title-icon-button" (click)="toggleExpand()" mat-icon-button>
         <mat-icon>{{ this.shownIcon }}</mat-icon>
       </button>
     }
   </div>
   @if (description) {
-    <p id='title-description'>{{ description }}</p>
+    <p id="title-description">{{ description }}</p>
   }
 </div>

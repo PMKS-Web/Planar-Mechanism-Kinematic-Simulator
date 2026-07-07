@@ -8,10 +8,10 @@
 <!--</button>-->
 <!--<body id="linkageTable" class="linkageTable" style="visibility: visible">-->
 
-<div class='linkageTabs' id='linkageTable' style='visibility: visible'>
-  <input type='radio' id='tabJoint' name='linkageTabs' checked='checked' />
-  <label for='tabJoint'>Joints</label>
-  <table class='tab'>
+<div class="linkageTabs" id="linkageTable" style="visibility: visible">
+  <input type="radio" id="tabJoint" name="linkageTabs" checked="checked" />
+  <label for="tabJoint">Joints</label>
+  <table class="tab">
     <thead>
       <tr>
         <th>ID</th>
@@ -21,211 +21,265 @@
         <!--          <th>Dist From Joint (cm)</th>-->
         <!--          <th>x (cm)</th>-->
         <!--          <th>y (cm)</th>-->
-      <!--        </div>-->
-      <!--        <div *ngIf="getUnit() === 'm'">-->
-      <!--          <th>Dist From Joint (m)</th>-->
-      <!--          <th>x (m)</th>-->
-      <!--          <th>y (m)</th>-->
-    <!--        </div>-->
-    @if (getUnit() === 'cm') {
-      <th>Dist From Joint (cm)</th>
-    }
-    @if (getUnit() === 'm') {
-      <th>Dist From Joint (m)</th>
-    }
-    @if (getUnit() === 'cm') {
-      <th>x (cm)</th>
-    }
-    @if (getUnit() === 'm') {
-      <th>x (m)</th>
-    }
-    @if (getUnit() === 'cm') {
-      <th>y (cm)</th>
-    }
-    @if (getUnit() === 'm') {
-      <th>y (m)</th>
-    }
-    <th>angle (deg)</th>
-  </tr>
-</thead>
-<tbody>
-  @for (joint of getJoints(); track joint) {
-    <tr>
-      <td>
-        <input type='text' width='18' value='{{ joint.id }}' (change)="changeJointProp($event, joint, 'id')" />
-      </td>
-      <!--                <td class="joint-table-item">{{row[0]}}</td> &lt;!&ndash; joint id&ndash;&gt;-->
-      <!-- <td>{{row[1]}}</td>  -->
-      <!-- joint type -->
-      <!--          <td>-->
-      <!--            {{joint.type}}-->
-    <!--          </td>-->
-    <td>
-      @for (conJoints of connectedJoints(joint); track conJoints) {
-        <table>
-          <div>
-            {{ conJoints.id }}
-          </div>
-        </table>
+        <!--        </div>-->
+        <!--        <div *ngIf="getUnit() === 'm'">-->
+        <!--          <th>Dist From Joint (m)</th>-->
+        <!--          <th>x (m)</th>-->
+        <!--          <th>y (m)</th>-->
+        <!--        </div>-->
+        @if (getUnit() === 'cm') {
+          <th>Dist From Joint (cm)</th>
+        }
+        @if (getUnit() === 'm') {
+          <th>Dist From Joint (m)</th>
+        }
+        @if (getUnit() === 'cm') {
+          <th>x (cm)</th>
+        }
+        @if (getUnit() === 'm') {
+          <th>x (m)</th>
+        }
+        @if (getUnit() === 'cm') {
+          <th>y (cm)</th>
+        }
+        @if (getUnit() === 'm') {
+          <th>y (m)</th>
+        }
+        <th>angle (deg)</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (joint of getJoints(); track joint) {
+        <tr>
+          <td>
+            <input
+              type="text"
+              width="18"
+              value="{{ joint.id }}"
+              (change)="changeJointProp($event, joint, 'id')"
+            />
+          </td>
+          <!--                <td class="joint-table-item">{{row[0]}}</td> &lt;!&ndash; joint id&ndash;&gt;-->
+          <!-- <td>{{row[1]}}</td>  -->
+          <!-- joint type -->
+          <!--          <td>-->
+          <!--            {{joint.type}}-->
+          <!--          </td>-->
+          <td>
+            @for (conJoints of connectedJoints(joint); track conJoints) {
+              <table>
+                <div>
+                  {{ conJoints.id }}
+                </div>
+              </table>
+            }
+          </td>
+          <td>
+            @for (conJoint of connectedJoints(joint); track conJoint) {
+              <table>
+                <div>
+                  {{ distFromJoint(conJoint, joint) }}
+                </div>
+              </table>
+            }
+          </td>
+          <td>
+            <input
+              type="text"
+              width="37px"
+              value="{{ joint.x }}"
+              (change)="changeJointProp($event, joint, 'x')"
+            />
+          </td>
+          <td>
+            <input
+              type="text"
+              width="37px"
+              value="{{ joint.y }}"
+              (change)="changeJointProp($event, joint, 'y')"
+            />
+          </td>
+          @if (typeOfJoint(joint) === 'P') {
+            <td>
+              <input
+                type="text"
+                value="{{ getJointAngle(joint) }}"
+                (change)="changeJointProp($event, joint, 'angle')"
+              />
+            </td>
+          }
+          @if (typeOfJoint(joint) === 'R') {
+            <td></td>
+          }
+        </tr>
       }
-    </td>
-    <td>
-      @for (conJoint of connectedJoints(joint); track conJoint) {
-        <table>
-          <div>
-            {{ distFromJoint(conJoint, joint) }}
-          </div>
-        </table>
-      }
-    </td>
-    <td>
-      <input type='text' width='37px' value='{{ joint.x }}' (change)="changeJointProp($event, joint, 'x')" />
-    </td>
-    <td>
-      <input type='text' width='37px' value='{{ joint.y }}' (change)="changeJointProp($event, joint, 'y')" />
-    </td>
-    @if (typeOfJoint(joint) === 'P') {
-      <td>
-        <input type='text' value='{{ getJointAngle(joint) }}' (change)="changeJointProp($event, joint, 'angle')" />
-      </td>
-    }
-    @if (typeOfJoint(joint) === 'R') {
-      <td></td>
-    }
-  </tr>
-}
-</tbody>
-</table>
+    </tbody>
+  </table>
 
-<input type='radio' id='tabLink' name='linkageTabs' />
-<label for='tabLink'>Links</label>
-<table class='tab'>
-  <thead>
-    <tr>
-      <th>ID</th>
-      @if (getUnit() === 'cm') {
-        <th>Mass (g)</th>
-      }
-      @if (getUnit() === 'm') {
-        <th>Mass (kg)</th>
-      }
-      @if (getUnit() === 'cm') {
-        <th>MoI (kg * cm^2)</th>
-      }
-      @if (getUnit() === 'm') {
-        <th>MoI (kg * m^2)</th>
-      }
-      @if (getUnit() === 'cm') {
-        <th>X CoM (cm)</th>
-      }
-      @if (getUnit() === 'm') {
-        <th>X CoM (m)</th>
-      }
-      @if (getUnit() === 'cm') {
-        <th>Y CoM (cm)</th>
-      }
-      @if (getUnit() === 'm') {
-        <th>Y CoM (m)</th>
-      }
-    </tr>
-  </thead>
-  <tbody>
-    @for (link of getLinks(); track link) {
+  <input type="radio" id="tabLink" name="linkageTabs" />
+  <label for="tabLink">Links</label>
+  <table class="tab">
+    <thead>
       <tr>
-        <!-- ID -->
-        <td>
-          {{ link.id }}
-        </td>
-        <!-- mass -->
-        @if (typeofLink(link) !== 'P') {
-          <td>
-            <input type='text' value="{{ getLinkProp(link, 'mass') }}" (change)="changeLinkProp($event, link, 'mass')" />
-          </td>
+        <th>ID</th>
+        @if (getUnit() === 'cm') {
+          <th>Mass (g)</th>
         }
-        @if (typeofLink(link) === 'P') {
-          <td></td>
+        @if (getUnit() === 'm') {
+          <th>Mass (kg)</th>
         }
-        <!-- massMoI -->
-        @if (typeofLink(link) !== 'P') {
-          <td>
-            <input type='text' value="{{ getLinkProp(link, 'massMoI') }}"
-              (change)="changeLinkProp($event, link, 'massMoI')" />
-          </td>
+        @if (getUnit() === 'cm') {
+          <th>MoI (kg * cm^2)</th>
         }
-        @if (typeofLink(link) === 'P') {
-          <td></td>
+        @if (getUnit() === 'm') {
+          <th>MoI (kg * m^2)</th>
         }
-        <!-- CoM_x -->
-        @if (typeofLink(link) !== 'P') {
-          <td>
-            <input type='text' value="{{ getLinkProp(link, 'CoMX') }}" (change)="changeLinkProp($event, link, 'CoMX')" />
-          </td>
+        @if (getUnit() === 'cm') {
+          <th>X CoM (cm)</th>
         }
-        @if (typeofLink(link) === 'P') {
-          <td></td>
+        @if (getUnit() === 'm') {
+          <th>X CoM (m)</th>
         }
-        <!-- CoM_y -->
-        @if (typeofLink(link) !== 'P') {
-          <td>
-            <input type='text' value="{{ getLinkProp(link, 'CoMY') }}" (change)="changeLinkProp($event, link, 'CoMY')" />
-          </td>
+        @if (getUnit() === 'cm') {
+          <th>Y CoM (cm)</th>
         }
-        @if (typeofLink(link) === 'P') {
-          <td></td>
+        @if (getUnit() === 'm') {
+          <th>Y CoM (m)</th>
         }
       </tr>
-    }
-  </tbody>
-  <tfoot></tfoot>
-</table>
+    </thead>
+    <tbody>
+      @for (link of getLinks(); track link) {
+        <tr>
+          <!-- ID -->
+          <td>
+            {{ link.id }}
+          </td>
+          <!-- mass -->
+          @if (typeofLink(link) !== 'P') {
+            <td>
+              <input
+                type="text"
+                value="{{ getLinkProp(link, 'mass') }}"
+                (change)="changeLinkProp($event, link, 'mass')"
+              />
+            </td>
+          }
+          @if (typeofLink(link) === 'P') {
+            <td></td>
+          }
+          <!-- massMoI -->
+          @if (typeofLink(link) !== 'P') {
+            <td>
+              <input
+                type="text"
+                value="{{ getLinkProp(link, 'massMoI') }}"
+                (change)="changeLinkProp($event, link, 'massMoI')"
+              />
+            </td>
+          }
+          @if (typeofLink(link) === 'P') {
+            <td></td>
+          }
+          <!-- CoM_x -->
+          @if (typeofLink(link) !== 'P') {
+            <td>
+              <input
+                type="text"
+                value="{{ getLinkProp(link, 'CoMX') }}"
+                (change)="changeLinkProp($event, link, 'CoMX')"
+              />
+            </td>
+          }
+          @if (typeofLink(link) === 'P') {
+            <td></td>
+          }
+          <!-- CoM_y -->
+          @if (typeofLink(link) !== 'P') {
+            <td>
+              <input
+                type="text"
+                value="{{ getLinkProp(link, 'CoMY') }}"
+                (change)="changeLinkProp($event, link, 'CoMY')"
+              />
+            </td>
+          }
+          @if (typeofLink(link) === 'P') {
+            <td></td>
+          }
+        </tr>
+      }
+    </tbody>
+    <tfoot></tfoot>
+  </table>
 
-<input type='radio' id='tabForce' name='linkageTabs' />
-<label for='tabForce'>Forces </label>
-<table class='tab'>
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>On Link</th>
-      <th>Angle (deg)</th>
-      <th>Mag (N)</th>
-      @if (getUnit() === 'cm') {
-        <th>X Pos (cm)</th>
-      }
-      @if (getUnit() === 'm') {
-        <th>X Pos (m)</th>
-      }
-      @if (getUnit() === 'cm') {
-        <th>Y Pos (cm)</th>
-      }
-      @if (getUnit() === 'm') {
-        <th>Y Pos (m)</th>
-      }
-    </tr>
-  </thead>
-  <tbody>
-    @for (force of getForces(); track force) {
+  <input type="radio" id="tabForce" name="linkageTabs" />
+  <label for="tabForce">Forces </label>
+  <table class="tab">
+    <thead>
       <tr>
-        <td>
-          <input type='text' value='{{ force.id }}' (change)="changeForceProp($event, force, 'id')" />
-        </td>
-        <td>
-          {{ force.link.id }}
-        </td>
-        <td>
-          <input type='text' value='{{ showForceAngle(force) }}' (change)="changeForceProp($event, force, 'angle')" />
-        </td>
-        <td>
-          <input type='text' value='{{ force.mag }}' (change)="changeForceProp($event, force, 'mag')" />
-        </td>
-        <td>
-          <input type='text' value='{{ force.startCoord.x }}' (change)="changeForceProp($event, force, 'xPos')" />
-        </td>
-        <td>
-          <input type='text' value='{{ force.startCoord.y }}' (change)="changeForceProp($event, force, 'yPos')" />
-        </td>
+        <th>ID</th>
+        <th>On Link</th>
+        <th>Angle (deg)</th>
+        <th>Mag (N)</th>
+        @if (getUnit() === 'cm') {
+          <th>X Pos (cm)</th>
+        }
+        @if (getUnit() === 'm') {
+          <th>X Pos (m)</th>
+        }
+        @if (getUnit() === 'cm') {
+          <th>Y Pos (cm)</th>
+        }
+        @if (getUnit() === 'm') {
+          <th>Y Pos (m)</th>
+        }
       </tr>
-    }
-  </tbody>
-  <tfoot></tfoot>
-</table>
+    </thead>
+    <tbody>
+      @for (force of getForces(); track force) {
+        <tr>
+          <td>
+            <input
+              type="text"
+              value="{{ force.id }}"
+              (change)="changeForceProp($event, force, 'id')"
+            />
+          </td>
+          <td>
+            {{ force.link.id }}
+          </td>
+          <td>
+            <input
+              type="text"
+              value="{{ showForceAngle(force) }}"
+              (change)="changeForceProp($event, force, 'angle')"
+            />
+          </td>
+          <td>
+            <input
+              type="text"
+              value="{{ force.mag }}"
+              (change)="changeForceProp($event, force, 'mag')"
+            />
+          </td>
+          <td>
+            <input
+              type="text"
+              value="{{ force.startCoord.x }}"
+              (change)="changeForceProp($event, force, 'xPos')"
+            />
+          </td>
+          <td>
+            <input
+              type="text"
+              value="{{ force.startCoord.y }}"
+              (change)="changeForceProp($event, force, 'yPos')"
+            />
+          </td>
+        </tr>
+      }
+    </tbody>
+    <tfoot></tfoot>
+  </table>
 </div>

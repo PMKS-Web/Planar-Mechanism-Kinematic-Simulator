@@ -12,7 +12,6 @@
   $foreground: map.get($theme, foreground);
 
   #templates {
-
     .mat-mdc-dialog-content {
       max-height: none !important;
     }
@@ -23,7 +22,6 @@
     }
 
     panel-section {
-
       //Make the pointer cursor
       cursor: pointer;
 
@@ -33,7 +31,6 @@
         //Animate the change to opacity
         transition: opacity 0.3s ease-in-out;
       }
-
 
       .static {
         position: absolute;
@@ -73,7 +70,6 @@
       transition: all 0.1s ease-in-out;
     }
 
-
     .linkage-grid {
       display: grid;
       //Make sure items always fill the entire space, make it responsive
@@ -84,8 +80,6 @@
       padding-top: 0px;
 
       //Set all the cards to the same height
-
-
     }
 
     #remove_top_padding {
@@ -106,9 +100,6 @@
         margin: 0;
         @include mat.m2-typography-level($typography-config, 'headline-6');
       }
-
     }
-
   }
-
 }

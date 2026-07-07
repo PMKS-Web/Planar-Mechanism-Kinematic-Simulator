@@ -1,13 +1,11 @@
-<div class='collapsibleSubsection'>
+<div class="collapsibleSubsection">
   @if (!hideHeader) {
-    <button class='panel-header' (click)='toggleExpand()'>
-      {{titleLabel}}
-      <mat-icon class='{{expanded ? "rotate180" : ""}}'>
-        expand_more
-      </mat-icon>
+    <button class="panel-header" (click)="toggleExpand()">
+      {{ titleLabel }}
+      <mat-icon class="{{ expanded ? 'rotate180' : '' }}"> expand_more </mat-icon>
     </button>
   }
-  <div [@openClose]="expanded ? 'open' : 'closed'" class='panel-content'>
+  <div [@openClose]="expanded ? 'open' : 'closed'" class="panel-content">
     <ng-content></ng-content>
   </div>
 </div>

@@ -12,7 +12,7 @@ import { NumberUnitParserService } from './services/number-unit-parser.service';
 import { SvgGridService } from './services/svg-grid.service';
 import { SynthesisBuilderService } from './services/synthesis/synthesis-builder.service';
 import { ColorService } from './services/color.service';
-import { KinematicsSolver} from "./model/mechanism/kinematic-solver";
+import { KinematicsSolver } from './model/mechanism/kinematic-solver';
 import { euclideanDistance } from './model/utils';
 
 describe('SixbarService', () => {
@@ -28,7 +28,10 @@ describe('SixbarService', () => {
   const settingsService: SettingsService = new SettingsService();
   const nup: NumberUnitParserService = new NumberUnitParserService();
   const svgGridService: SvgGridService = new SvgGridService(settingsService);
-  const synthesisBuilder: SynthesisBuilderService = new SynthesisBuilderService(nup, settingsService);
+  const synthesisBuilder: SynthesisBuilderService = new SynthesisBuilderService(
+    nup,
+    settingsService
+  );
   const gridUtilService: GridUtilsService = new GridUtilsService(synthesisBuilder, svgGridService);
   const activeObjService: ActiveObjService = new ActiveObjService();
   // The injector is only consulted when saving undo history, which these solver tests never do.
@@ -41,24 +44,24 @@ describe('SixbarService', () => {
   );
 
   // Link AB
-  const JointA = mechanismSrv.createRevJoint("-3.74", "-2.41");
+  const JointA = mechanismSrv.createRevJoint('-3.74', '-2.41');
   JointA.ground = true;
   JointA.input = true;
-  const JointB = mechanismSrv.createRevJoint("-2.72", "0.91", JointA.id);
+  const JointB = mechanismSrv.createRevJoint('-2.72', '0.91', JointA.id);
   JointA.connectedJoints.push(JointB);
   JointB.connectedJoints.push(JointA);
   const linkAB = gridUtilService.createRealLink(JointA.id + JointB.id, [JointA, JointB]);
   JointA.links.push(linkAB);
   JointB.links.push(linkAB);
   // Link BC
-  const JointC = mechanismSrv.createRevJoint("1.58", "0.43", JointB.id);
+  const JointC = mechanismSrv.createRevJoint('1.58', '0.43', JointB.id);
   JointB.connectedJoints.push(JointC);
   JointC.connectedJoints.push(JointB);
   const linkBC = gridUtilService.createRealLink(JointB.id + JointC.id, [JointB, JointC]);
   JointC.links.push(linkBC);
   JointB.links.push(linkBC);
   // attach D to BC
-  const JointD = mechanismSrv.createRevJoint("-0.24", "4.01", JointC.id);
+  const JointD = mechanismSrv.createRevJoint('-0.24', '4.01', JointC.id);
   JointB.connectedJoints.push(JointD);
   JointC.connectedJoints.push(JointD);
   JointD.connectedJoints.push(JointB);
@@ -67,14 +70,14 @@ describe('SixbarService', () => {
   linkBC.joints.push(JointD);
   linkBC.id += JointD.id;
   // DE
-  const JointE = mechanismSrv.createRevJoint("5.08", "5.31", JointD.id);
+  const JointE = mechanismSrv.createRevJoint('5.08', '5.31', JointD.id);
   JointD.connectedJoints.push(JointE);
   JointE.connectedJoints.push(JointD);
   const linkDE = gridUtilService.createRealLink(JointD.id + JointE.id, [JointD, JointE]);
   JointD.links.push(linkDE);
   JointE.links.push(linkDE);
   // EF
-  const JointF = mechanismSrv.createRevJoint("8.14", "3.35", JointE.id);
+  const JointF = mechanismSrv.createRevJoint('8.14', '3.35', JointE.id);
   JointE.connectedJoints.push(JointF);
   JointF.connectedJoints.push(JointE);
   const linkEF = gridUtilService.createRealLink(JointE.id + JointF.id, [JointE, JointF]);
@@ -87,7 +90,7 @@ describe('SixbarService', () => {
   JointC.links.push(linkCF);
   JointF.links.push(linkCF);
   // Attach G to CF
-  const JointG = mechanismSrv.createRevJoint("7.32", "-3.51", JointF.id);
+  const JointG = mechanismSrv.createRevJoint('7.32', '-3.51', JointF.id);
   JointG.ground = true;
   JointC.connectedJoints.push(JointG);
   JointF.connectedJoints.push(JointG);
@@ -97,24 +100,14 @@ describe('SixbarService', () => {
   linkCF.joints.push(JointG);
   linkCF.id += JointG.id;
 
-  joints = [JointA, JointB, JointC, JointD, JointE, JointF, JointG]
-  links = [linkAB, linkBC, linkDE, linkEF, linkCF]
+  joints = [JointA, JointB, JointC, JointD, JointE, JointF, JointG];
+  links = [linkAB, linkBC, linkDE, linkEF, linkCF];
 
   const gravity = false;
   const unit = 'cm';
   const tolerance = 0.01;
 
-  mechanisms.push(
-    new Mechanism(
-      joints,
-      links,
-      forces,
-      ics,
-      gravity,
-      unit,
-      10
-    )
-  )
+  mechanisms.push(new Mechanism(joints, links, forces, ics, gravity, unit, 10));
 
   // ForceSolver.determineDesiredLoopLettersForce(mechanisms[0].requiredLoops)
   // ForceSolver.determineForceAnalysis(
@@ -126,31 +119,96 @@ describe('SixbarService', () => {
   // );
 
   KinematicsSolver.requiredLoops = mechanisms[0].requiredLoops;
-  KinematicsSolver.determineKinematics(
-    mechanisms[0].joints[0],
-    mechanisms[0].links[0],
-    10
-  );
+  KinematicsSolver.determineKinematics(mechanisms[0].joints[0], mechanisms[0].links[0], 10);
 
-  describe('.LinearJointPosition', () => { //Passes all tests
+  describe('.LinearJointPosition', () => {
+    //Passes all tests
     describe(' - With Valid Form Data', () => {
       it('should show the calculated position of the Joints DO match the expected', () => {
         const expectedPositions = {
-          JointA: [[-3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74],
-            [-2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41]],
-          JointB: [[-2.72, -2.77809734, -2.836487685, -2.895153249, -2.954076162, -3.013238474, -2.954076162, -2.895153249, -2.836487685, -2.77809734, -2.72, -2.662213362, -2.604755027, -2.5476425, -2.490893176, -2.434524342, -2.490893176, -2.5476425, -2.604755027, -2.662213362, -2.72],
-            [0.91, 0.927295802, 0.943575032, 0.958832731, 0.97306425, 0.986265255, 0.97306425, 0.958832731, 0.943575032, 0.927295802, 0.91, 0.891692893, 0.872380059, 0.85206738, 0.830761044, 0.80846754, 0.830761044, 0.85206738, 0.872380059, 0.891692893, 0.91]],
-          JointC: [[1.58, 1.50571068, 1.424734868, 1.333967325, 1.226229881, 1.072453296, 1.226229881, 1.333967325, 1.424734868, 1.50571068, 1.58, 1.649271316, 1.714536666, 1.776459599, 1.835499254, 1.891985979, 1.835499254, 1.776459599, 1.714536666, 1.649271316, 1.58],
-            [0.43, 0.319522125, 0.19365347, 0.045082673, -0.142929206, -0.437645825, -0.142929206, 0.045082673, 0.19365347, 0.319522125, 0.43, 0.529063777, 0.619162242, 0.701930653, 0.77852557, 0.849800888, 0.77852557, 0.701930653, 0.619162242, 0.529063777, 0.43]],
-          JointD: [[-0.24, -0.20692689, -0.166131325, -0.113459123, -0.039439742, 0.093856787, -0.039439742, -0.113459123, -0.166131325, -0.20692689, -0.24, -0.267622262, -0.291201653, -0.311685672, -0.329750417, -0.345900063, -0.329750417, -0.311685672, -0.291201653, -0.267622262, -0.24],
-            [4.01, 3.952106956, 3.881192589, 3.79124827, 3.668485283, 3.457370077, 3.668485283, 3.79124827, 3.881192589, 3.952106956, 4.01, 4.058131502, 4.098503241, 4.132448008, 4.160905481, 4.184567157, 4.160905481, 4.132448008, 4.098503241, 4.058131502, 4.01]],
-          JointE: [[5.08, 5.052715348, 5.019306468, 4.977710481, 4.922823802, 4.833273855, 4.922823802, 4.977710481, 5.019306468, 5.052715348, 5.08, 5.102088403, 5.11926972, 5.131240111, 5.136668195, 5.130591284, 5.136668195, 5.131240111, 5.11926972, 5.102088403, 5.08],
-            [5.31, 5.478070103, 5.642906214, 5.809265135, 5.98545324, 6.201513998, 5.98545324, 5.809265135, 5.642906214, 5.478070103, 5.31, 5.134517759, 4.946559555, 4.738219353, 4.493572821, 4.163530929, 4.493572821, 4.738219353, 4.946559555, 5.134517759, 5.31]],
-          JointF: [[8.14, 8.008676464, 7.860744895, 7.688348453, 7.473467619, 7.143589478, 7.473467619, 7.688348453, 7.860744895, 8.008676464, 8.14, 8.258979451, 8.368233407, 8.469504867, 8.56402191, 8.652687258, 8.56402191, 8.469504867, 8.368233407, 8.258979451, 8.14],
-            [3.35, 3.364425411, 3.37764074, 3.389008582, 3.397130207, 3.396582319, 3.397130207, 3.389008582, 3.37764074, 3.364425411, 3.35, 3.334729183, 3.318851055, 3.302535399, 3.285911233, 3.269081403, 3.285911233, 3.302535399, 3.318851055, 3.334729183, 3.35]],
-          JointG: [[7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32],
-            [-3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51]],
-        }
+          JointA: [
+            [
+              -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74,
+              -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74, -3.74,
+            ],
+            [
+              -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41,
+              -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41, -2.41,
+            ],
+          ],
+          JointB: [
+            [
+              -2.72, -2.77809734, -2.836487685, -2.895153249, -2.954076162, -3.013238474,
+              -2.954076162, -2.895153249, -2.836487685, -2.77809734, -2.72, -2.662213362,
+              -2.604755027, -2.5476425, -2.490893176, -2.434524342, -2.490893176, -2.5476425,
+              -2.604755027, -2.662213362, -2.72,
+            ],
+            [
+              0.91, 0.927295802, 0.943575032, 0.958832731, 0.97306425, 0.986265255, 0.97306425,
+              0.958832731, 0.943575032, 0.927295802, 0.91, 0.891692893, 0.872380059, 0.85206738,
+              0.830761044, 0.80846754, 0.830761044, 0.85206738, 0.872380059, 0.891692893, 0.91,
+            ],
+          ],
+          JointC: [
+            [
+              1.58, 1.50571068, 1.424734868, 1.333967325, 1.226229881, 1.072453296, 1.226229881,
+              1.333967325, 1.424734868, 1.50571068, 1.58, 1.649271316, 1.714536666, 1.776459599,
+              1.835499254, 1.891985979, 1.835499254, 1.776459599, 1.714536666, 1.649271316, 1.58,
+            ],
+            [
+              0.43, 0.319522125, 0.19365347, 0.045082673, -0.142929206, -0.437645825, -0.142929206,
+              0.045082673, 0.19365347, 0.319522125, 0.43, 0.529063777, 0.619162242, 0.701930653,
+              0.77852557, 0.849800888, 0.77852557, 0.701930653, 0.619162242, 0.529063777, 0.43,
+            ],
+          ],
+          JointD: [
+            [
+              -0.24, -0.20692689, -0.166131325, -0.113459123, -0.039439742, 0.093856787,
+              -0.039439742, -0.113459123, -0.166131325, -0.20692689, -0.24, -0.267622262,
+              -0.291201653, -0.311685672, -0.329750417, -0.345900063, -0.329750417, -0.311685672,
+              -0.291201653, -0.267622262, -0.24,
+            ],
+            [
+              4.01, 3.952106956, 3.881192589, 3.79124827, 3.668485283, 3.457370077, 3.668485283,
+              3.79124827, 3.881192589, 3.952106956, 4.01, 4.058131502, 4.098503241, 4.132448008,
+              4.160905481, 4.184567157, 4.160905481, 4.132448008, 4.098503241, 4.058131502, 4.01,
+            ],
+          ],
+          JointE: [
+            [
+              5.08, 5.052715348, 5.019306468, 4.977710481, 4.922823802, 4.833273855, 4.922823802,
+              4.977710481, 5.019306468, 5.052715348, 5.08, 5.102088403, 5.11926972, 5.131240111,
+              5.136668195, 5.130591284, 5.136668195, 5.131240111, 5.11926972, 5.102088403, 5.08,
+            ],
+            [
+              5.31, 5.478070103, 5.642906214, 5.809265135, 5.98545324, 6.201513998, 5.98545324,
+              5.809265135, 5.642906214, 5.478070103, 5.31, 5.134517759, 4.946559555, 4.738219353,
+              4.493572821, 4.163530929, 4.493572821, 4.738219353, 4.946559555, 5.134517759, 5.31,
+            ],
+          ],
+          JointF: [
+            [
+              8.14, 8.008676464, 7.860744895, 7.688348453, 7.473467619, 7.143589478, 7.473467619,
+              7.688348453, 7.860744895, 8.008676464, 8.14, 8.258979451, 8.368233407, 8.469504867,
+              8.56402191, 8.652687258, 8.56402191, 8.469504867, 8.368233407, 8.258979451, 8.14,
+            ],
+            [
+              3.35, 3.364425411, 3.37764074, 3.389008582, 3.397130207, 3.396582319, 3.397130207,
+              3.389008582, 3.37764074, 3.364425411, 3.35, 3.334729183, 3.318851055, 3.302535399,
+              3.285911233, 3.269081403, 3.285911233, 3.302535399, 3.318851055, 3.334729183, 3.35,
+            ],
+          ],
+          JointG: [
+            [
+              7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32,
+              7.32, 7.32, 7.32, 7.32, 7.32, 7.32, 7.32,
+            ],
+            [
+              -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51,
+              -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51, -3.51,
+            ],
+          ],
+        };
 
         let resultMatch = true;
         resultMatch = mechanisms[0].joints.every((j, index) => {
@@ -165,7 +223,8 @@ describe('SixbarService', () => {
           const Match = mechanisms[0].joints[index].every((joint) => {
             let expectedPositionx = 0;
             let expectedPositiony = 0;
-            const calculatedPosition = mechanisms[0].joints[index][KinematicsSolver.jointIndexMap.get(joint.id)!];
+            const calculatedPosition =
+              mechanisms[0].joints[index][KinematicsSolver.jointIndexMap.get(joint.id)!];
 
             if (jcount == 0) {
               expectedPositionx = expectedPositions['JointA'][0][index];
@@ -190,9 +249,14 @@ describe('SixbarService', () => {
               expectedPositiony = expectedPositions['JointG'][1][index];
             }
 
-            const distance = euclideanDistance(calculatedPosition.x, calculatedPosition.y, expectedPositionx, expectedPositiony);
+            const distance = euclideanDistance(
+              calculatedPosition.x,
+              calculatedPosition.y,
+              expectedPositionx,
+              expectedPositiony
+            );
 
-            jcount = jcount + 1
+            jcount = jcount + 1;
             return distance < tolerance;
           });
           return Match;
@@ -203,76 +267,146 @@ describe('SixbarService', () => {
   });
 
   describe('.LinearJointVelocity', () => {
-    describe(' - With Valid Form Data', () => { // Passes up until index:1 Joint:3
+    describe(' - With Valid Form Data', () => {
+      // Passes up until index:1 Joint:3
       it('should determine the velocity of the Joints DO match', () => {
         const expectedJV = {
-          JointA: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
-          JointB: [[-33.2, -33.37295802, -33.53575032, -33.68832731, -33.8306425, -33.96265255, 33.8306425, 33.68832731, 33.53575032, 33.37295802, 33.2, 33.01692893, 32.82380059, 32.6206738, 32.40761044, 32.1846754, -32.40761044, -32.6206738, -32.82380059, -33.01692893, -33.2],
-            [10.2, 9.619026597, 9.035123145, 8.448467507, 7.859238384, 7.267615261, -7.859238384, -8.448467507, -9.035123145, -9.619026597, -10.2, -10.77786638, -11.35244973, -11.923575, -12.49106824, -13.05475658, 12.49106824, 11.923575, 11.35244973, 10.77786638, 10.2]],
-          JointC: [[-41.00746046, -44.27488778, -48.79445031, -55.82191815, -69.51571725, -125.2800691, 69.51571725, 55.82191815, 48.79445031, 44.27488778, 41.00746046, 38.4656376, 36.38504015, 34.61657883, 33.06903467, 31.68310979, -33.06903467, -34.61657883, -36.38504015, -38.4656376, -41.00746046],
-            [-59.74183325, -67.22170514, -77.66823326, -93.99270192, -125.8104823, -254.7535336, 125.8104823, 93.99270192, 77.66823326, 67.22170514, 59.74183325, 54.0046423, 49.39379867, 45.56067493, 42.29125894, 39.44592163, -42.29125894, -45.56067493, -49.39379867, -54.0046423, -59.74183325]],
-          JointD: [[17.22318211, 20.88453934, 26.2361341, 34.92072629, 52.35830468, 124.5127687, -52.35830468, -34.92072629, -26.2361341, -20.88453934, -17.22318211, -14.56061152, -12.54819419, -10.9884306, -9.759868612, -8.783103813, 9.759868612, 10.9884306, 12.54819419, 14.56061152, 17.22318211],
-            [-30.13854569, -36.50129857, -45.29878135, -58.93197112, -85.33935335, -191.9947657, 85.33935335, 58.93197112, 45.29878135, 36.50129857, 30.13854569, 25.2022264, 21.18522031, 17.80104716, 14.87409376, 12.28996308, -14.87409376, -17.80104716, -21.18522031, -25.2022264, -30.13854569]],
-          JointE: [[-14.09031526, -17.26027427, -21.20710171, -26.88596125, -37.38189038, -79.08230644, 37.38189038, 26.88596125, 21.20710171, 17.26027427, 14.09031526, 11.24830171, 8.414122354, 5.190386704, 0.664951931, -9.760290972, -0.664951931, -5.190386704, -8.414122354, -11.24830171, -14.09031526],
-            [98.00592049, 94.9750567, 94.34590579, 96.99751308, 106.8577364, 159.6347413, -106.8577364, -96.99751308, -94.34590579, -94.9750567, -98.00592049, -103.5493215, -112.5511975, -127.5675026, -156.4274623, -242.1072173, 156.4274623, 127.5675026, 112.5511975, 103.5493215, 98.00592049]],
-          JointF: [[-71.39877633, -79.47843194, -90.7424646, -108.3282522, -142.6029151, -281.6267464, 142.6029151, 108.3282522, 90.7424646, 79.47843194, 71.39877633, 65.18512377, 60.17395424, 55.99015941, 52.40361064, 49.26426364, -52.40361064, -55.99015941, -60.17395424, -65.18512377, -71.39877633],
-            [8.534547608, 7.962109148, 7.124141097, 5.783808445, 3.168454789, -7.193416236, -3.168454789, -5.783808445, -7.124141097, -7.962109148, -8.534547608, -8.942280997, -9.236744009, -9.447431386, -9.592715027, -9.684771803, 9.592715027, 9.447431386, 9.236744009, 8.942280997, 8.534547608]],
-          JointG: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
-        }
+          JointA: [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          ],
+          JointB: [
+            [
+              -33.2, -33.37295802, -33.53575032, -33.68832731, -33.8306425, -33.96265255,
+              33.8306425, 33.68832731, 33.53575032, 33.37295802, 33.2, 33.01692893, 32.82380059,
+              32.6206738, 32.40761044, 32.1846754, -32.40761044, -32.6206738, -32.82380059,
+              -33.01692893, -33.2,
+            ],
+            [
+              10.2, 9.619026597, 9.035123145, 8.448467507, 7.859238384, 7.267615261, -7.859238384,
+              -8.448467507, -9.035123145, -9.619026597, -10.2, -10.77786638, -11.35244973,
+              -11.923575, -12.49106824, -13.05475658, 12.49106824, 11.923575, 11.35244973,
+              10.77786638, 10.2,
+            ],
+          ],
+          JointC: [
+            [
+              -41.00746046, -44.27488778, -48.79445031, -55.82191815, -69.51571725, -125.2800691,
+              69.51571725, 55.82191815, 48.79445031, 44.27488778, 41.00746046, 38.4656376,
+              36.38504015, 34.61657883, 33.06903467, 31.68310979, -33.06903467, -34.61657883,
+              -36.38504015, -38.4656376, -41.00746046,
+            ],
+            [
+              -59.74183325, -67.22170514, -77.66823326, -93.99270192, -125.8104823, -254.7535336,
+              125.8104823, 93.99270192, 77.66823326, 67.22170514, 59.74183325, 54.0046423,
+              49.39379867, 45.56067493, 42.29125894, 39.44592163, -42.29125894, -45.56067493,
+              -49.39379867, -54.0046423, -59.74183325,
+            ],
+          ],
+          JointD: [
+            [
+              17.22318211, 20.88453934, 26.2361341, 34.92072629, 52.35830468, 124.5127687,
+              -52.35830468, -34.92072629, -26.2361341, -20.88453934, -17.22318211, -14.56061152,
+              -12.54819419, -10.9884306, -9.759868612, -8.783103813, 9.759868612, 10.9884306,
+              12.54819419, 14.56061152, 17.22318211,
+            ],
+            [
+              -30.13854569, -36.50129857, -45.29878135, -58.93197112, -85.33935335, -191.9947657,
+              85.33935335, 58.93197112, 45.29878135, 36.50129857, 30.13854569, 25.2022264,
+              21.18522031, 17.80104716, 14.87409376, 12.28996308, -14.87409376, -17.80104716,
+              -21.18522031, -25.2022264, -30.13854569,
+            ],
+          ],
+          JointE: [
+            [
+              -14.09031526, -17.26027427, -21.20710171, -26.88596125, -37.38189038, -79.08230644,
+              37.38189038, 26.88596125, 21.20710171, 17.26027427, 14.09031526, 11.24830171,
+              8.414122354, 5.190386704, 0.664951931, -9.760290972, -0.664951931, -5.190386704,
+              -8.414122354, -11.24830171, -14.09031526,
+            ],
+            [
+              98.00592049, 94.9750567, 94.34590579, 96.99751308, 106.8577364, 159.6347413,
+              -106.8577364, -96.99751308, -94.34590579, -94.9750567, -98.00592049, -103.5493215,
+              -112.5511975, -127.5675026, -156.4274623, -242.1072173, 156.4274623, 127.5675026,
+              112.5511975, 103.5493215, 98.00592049,
+            ],
+          ],
+          JointF: [
+            [
+              -71.39877633, -79.47843194, -90.7424646, -108.3282522, -142.6029151, -281.6267464,
+              142.6029151, 108.3282522, 90.7424646, 79.47843194, 71.39877633, 65.18512377,
+              60.17395424, 55.99015941, 52.40361064, 49.26426364, -52.40361064, -55.99015941,
+              -60.17395424, -65.18512377, -71.39877633,
+            ],
+            [
+              8.534547608, 7.962109148, 7.124141097, 5.783808445, 3.168454789, -7.193416236,
+              -3.168454789, -5.783808445, -7.124141097, -7.962109148, -8.534547608, -8.942280997,
+              -9.236744009, -9.447431386, -9.592715027, -9.684771803, 9.592715027, 9.447431386,
+              9.236744009, 8.942280997, 8.534547608,
+            ],
+          ],
+          JointG: [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          ],
+        };
 
         let resultMatch = true;
-          resultMatch = mechanisms[0].joints.every((j, index) => {
+        resultMatch = mechanisms[0].joints.every((j, index) => {
           let jcount = 0;
 
-            KinematicsSolver.determineKinematics(
-              mechanisms[0].joints[index],
-              mechanisms[0].links[index],
-              mechanisms[0].inputAngularVelocities[index]
-            );
+          KinematicsSolver.determineKinematics(
+            mechanisms[0].joints[index],
+            mechanisms[0].links[index],
+            mechanisms[0].inputAngularVelocities[index]
+          );
 
-              const Match = mechanisms[0].joints[index].every((joint) => {
-                if (index < 4) {
-                  let expectedJVx = 0;
-                  let expectedJVy = 0;
-                  const calculatedJVx = KinematicsSolver.jointVelMap.get(joint.id)![0];
-                  const calculatedJVy = KinematicsSolver.jointVelMap.get(joint.id)![1];
+          const Match = mechanisms[0].joints[index].every((joint) => {
+            if (index < 4) {
+              let expectedJVx = 0;
+              let expectedJVy = 0;
+              const calculatedJVx = KinematicsSolver.jointVelMap.get(joint.id)![0];
+              const calculatedJVy = KinematicsSolver.jointVelMap.get(joint.id)![1];
 
-                  if (jcount == 0) {
-                    expectedJVx = expectedJV['JointA'][0][index];
-                    expectedJVy = expectedJV['JointA'][1][index];
-                  } else if (jcount == 1) {
-                    expectedJVx = expectedJV['JointB'][0][index];
-                    expectedJVy = expectedJV['JointB'][1][index];
-                  } else if (jcount == 2) {
-                    expectedJVx = expectedJV['JointC'][0][index];
-                    expectedJVy = expectedJV['JointC'][1][index];
-                  } else if (jcount == 3) {
-                    expectedJVx = expectedJV['JointD'][0][index];
-                    expectedJVy = expectedJV['JointD'][1][index];
-                  } else if (jcount == 4) {
-                    expectedJVx = expectedJV['JointE'][0][index];
-                    expectedJVy = expectedJV['JointE'][1][index];
-                  } else if (jcount == 5) {
-                    expectedJVx = expectedJV['JointF'][0][index];
-                    expectedJVy = expectedJV['JointF'][1][index];
-                  } else if (jcount == 6) {
-                    expectedJVx = expectedJV['JointG'][0][index];
-                    expectedJVy = expectedJV['JointG'][1][index];
-                  }
+              if (jcount == 0) {
+                expectedJVx = expectedJV['JointA'][0][index];
+                expectedJVy = expectedJV['JointA'][1][index];
+              } else if (jcount == 1) {
+                expectedJVx = expectedJV['JointB'][0][index];
+                expectedJVy = expectedJV['JointB'][1][index];
+              } else if (jcount == 2) {
+                expectedJVx = expectedJV['JointC'][0][index];
+                expectedJVy = expectedJV['JointC'][1][index];
+              } else if (jcount == 3) {
+                expectedJVx = expectedJV['JointD'][0][index];
+                expectedJVy = expectedJV['JointD'][1][index];
+              } else if (jcount == 4) {
+                expectedJVx = expectedJV['JointE'][0][index];
+                expectedJVy = expectedJV['JointE'][1][index];
+              } else if (jcount == 5) {
+                expectedJVx = expectedJV['JointF'][0][index];
+                expectedJVy = expectedJV['JointF'][1][index];
+              } else if (jcount == 6) {
+                expectedJVx = expectedJV['JointG'][0][index];
+                expectedJVy = expectedJV['JointG'][1][index];
+              }
 
-                  const distance = euclideanDistance(calculatedJVx, calculatedJVy, expectedJVx, expectedJVy);
+              const distance = euclideanDistance(
+                calculatedJVx,
+                calculatedJVy,
+                expectedJVx,
+                expectedJVy
+              );
 
-                  jcount = jcount + 1
-                  return distance < tolerance;
-                } else {
-                  return true
-                }
-              });
+              jcount = jcount + 1;
+              return distance < tolerance;
+            } else {
+              return true;
+            }
+          });
           return Match;
         });
-      expect(resultMatch).toBe(true);
+        expect(resultMatch).toBe(true);
       });
     });
   });
@@ -541,12 +675,35 @@ describe('SixbarService', () => {
     describe(' - With Valid Form Data', () => {
       it('should show the calculated Angular Position DO match the expected', () => {
         const expectedALV = {
-          LinkAB: [10, 10, 10, 10, 10, 10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, 10, 10, 10, 10, 10],
-          LinkBCD: [-16.26554262, -17.93748258, -20.34706128, -24.22280652, -31.97606093, -64.13140386, 31.97606093, 24.22280652, 20.34706128, 17.93748258, 16.26554262, 15.02556858, 14.06393749, 13.29391597, 12.6623574, 12.13464763, -12.6623574, -13.29391597, -14.06393749, -15.02556858, -16.26554262],
-          LinkDE: [24.08730567, 24.997205, 26.93016342, 30.62743855, 38.73173765, 74.19256461, -38.73173765, -30.62743855, -26.93016342, -24.997205, -24.08730567, -23.97737158, -24.71807142, -26.70779569, -31.33707245, -46.45258511, 31.33707245, 26.70779569, 24.71807142, 23.97737158, 24.08730567],
-          LinkEF: [-29.23901075, -29.43643172, -30.69634164, -33.65027184, -40.65219965, -72.2101153, 40.65219965, 33.65027184, 30.69634164, 29.43643172, 29.23901075, 29.96842117, 31.79920229, 35.3836738, 42.84201734, 65.98981041, -42.84201734, -35.3836738, -31.79920229, -29.96842117, -29.23901075],
-          LinkCFG: [10.40798489, 11.56146546, 13.17468028, 15.70200282, 20.64575458, 40.7765713, -20.64575458, -15.70200282, -13.17468028, -11.56146546, -10.40798489, -9.523404364, -8.811724515, -8.21869629, -7.711049901, -7.267100173, 7.711049901, 8.21869629, 8.811724515, 9.523404364, 10.40798489],
-        }
+          LinkAB: [
+            10, 10, 10, 10, 10, 10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, 10, 10, 10,
+            10, 10,
+          ],
+          LinkBCD: [
+            -16.26554262, -17.93748258, -20.34706128, -24.22280652, -31.97606093, -64.13140386,
+            31.97606093, 24.22280652, 20.34706128, 17.93748258, 16.26554262, 15.02556858,
+            14.06393749, 13.29391597, 12.6623574, 12.13464763, -12.6623574, -13.29391597,
+            -14.06393749, -15.02556858, -16.26554262,
+          ],
+          LinkDE: [
+            24.08730567, 24.997205, 26.93016342, 30.62743855, 38.73173765, 74.19256461,
+            -38.73173765, -30.62743855, -26.93016342, -24.997205, -24.08730567, -23.97737158,
+            -24.71807142, -26.70779569, -31.33707245, -46.45258511, 31.33707245, 26.70779569,
+            24.71807142, 23.97737158, 24.08730567,
+          ],
+          LinkEF: [
+            -29.23901075, -29.43643172, -30.69634164, -33.65027184, -40.65219965, -72.2101153,
+            40.65219965, 33.65027184, 30.69634164, 29.43643172, 29.23901075, 29.96842117,
+            31.79920229, 35.3836738, 42.84201734, 65.98981041, -42.84201734, -35.3836738,
+            -31.79920229, -29.96842117, -29.23901075,
+          ],
+          LinkCFG: [
+            10.40798489, 11.56146546, 13.17468028, 15.70200282, 20.64575458, 40.7765713,
+            -20.64575458, -15.70200282, -13.17468028, -11.56146546, -10.40798489, -9.523404364,
+            -8.811724515, -8.21869629, -7.711049901, -7.267100173, 7.711049901, 8.21869629,
+            8.811724515, 9.523404364, 10.40798489,
+          ],
+        };
 
         let resultMatch = true;
         resultMatch = mechanisms[0].links.every((link, index) => {
@@ -558,7 +715,7 @@ describe('SixbarService', () => {
             mechanisms[0].inputAngularVelocities[index]
           );
 
-          const Match = mechanisms[0].links[index].every((link) =>{
+          const Match = mechanisms[0].links[index].every((link) => {
             if (index < 5) {
               const calculatedALV = KinematicsSolver.linkAngVelMap.get(link.id)!;
               let expectedALVz = 0;
@@ -576,10 +733,10 @@ describe('SixbarService', () => {
               }
               const distance = Math.abs(calculatedALV - expectedALVz);
 
-              acount = acount + 1
+              acount = acount + 1;
               return distance < tolerance;
             } else {
-              return true
+              return true;
             }
           });
           return Match;

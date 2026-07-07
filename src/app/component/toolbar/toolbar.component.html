@@ -1,74 +1,130 @@
-<nav class='navBar' id='{{isDevMode() ? "devModeColor" : ""}}'>
+<nav class="navBar" id="{{ isDevMode() ? 'devModeColor' : '' }}">
   <img
-    class='pmksImage'
-    alt='PMKS+'
-    src='assets/PMKS_logo.png'
-    onClick='window.location.reload()'
-    />
-  <button mat-button onclick="window.open(window.location.origin, '_blank'); logEvent(this.analytics, 'new_file');"
-    matTooltip='Open a new tab with a blank project' matTooltipShowDelay='1000'>
+    class="pmksImage"
+    alt="PMKS+"
+    src="assets/PMKS_logo.png"
+    onClick="window.location.reload()"
+  />
+  <button
+    mat-button
+    onclick="
+      window.open(window.location.origin, '_blank');
+      logEvent(this.analytics, 'new_file');
+    "
+    matTooltip="Open a new tab with a blank project"
+    matTooltipShowDelay="1000"
+  >
     <mat-icon>note_add</mat-icon>
     New
   </button>
-  <input #csvInput style='display: none' type='file' accept='text' (change)='upload($event)' />
-  <button mat-button (click)='csvInput.click()' matTooltip='Open a linkage from a file on your device'
-    matTooltipShowDelay='1000'>
+  <input #csvInput style="display: none" type="file" accept="text" (change)="upload($event)" />
+  <button
+    mat-button
+    (click)="csvInput.click()"
+    matTooltip="Open a linkage from a file on your device"
+    matTooltipShowDelay="1000"
+  >
     <mat-icon>file_open</mat-icon>
     Open
   </button>
-  <button mat-button (click)='openTemplates()' matTooltip='Show the library of available linkages'
-    matTooltipShowDelay='1000' id='templatesButton'>
+  <button
+    mat-button
+    (click)="openTemplates()"
+    matTooltip="Show the library of available linkages"
+    matTooltipShowDelay="1000"
+    id="templatesButton"
+  >
     <mat-icon>apps</mat-icon>
     Templates
   </button>
-  <button mat-button (click)='downloadLinkage()' matTooltip='Save this linkage to your device'
-    matTooltipShowDelay='1000'>
+  <button
+    mat-button
+    (click)="downloadLinkage()"
+    matTooltip="Save this linkage to your device"
+    matTooltipShowDelay="1000"
+  >
     <mat-icon>save</mat-icon>
     Save
   </button>
-  <button mat-button (click)='copyURL()' matTooltip='Copy a URL to clipboard that contains your linakge'
-    matTooltipShowDelay='1000'>
+  <button
+    mat-button
+    (click)="copyURL()"
+    matTooltip="Copy a URL to clipboard that contains your linakge"
+    matTooltipShowDelay="1000"
+  >
     <mat-icon>link</mat-icon>
     Share Project
   </button>
-  <div class='spacer'></div>
+  <div class="spacer"></div>
   @if (isDevMode()) {
-    <ng-container matTooltip='This message and the debug panel will disappear'
-      matTooltipShowDelay='1000'>
-      <p style='font-size: 10px; pointer-events: none; max-height: 50px; max-width: 270px;'>
-      You are in Development Mode. The color will return to normal when you build with the production flag. </p>
+    <ng-container
+      matTooltip="This message and the debug panel will disappear"
+      matTooltipShowDelay="1000"
+    >
+      <p style="font-size: 10px; pointer-events: none; max-height: 50px; max-width: 270px">
+        You are in Development Mode. The color will return to normal when you build with the
+        production flag.
+      </p>
     </ng-container>
   }
   @if (isDevMode()) {
-    <button mat-button (click)='openRightPanelDebug()'
-      matTooltip='This button will not show up in prod'
-      matTooltipShowDelay='1000'>
+    <button
+      mat-button
+      (click)="openRightPanelDebug()"
+      matTooltip="This button will not show up in prod"
+      matTooltipShowDelay="1000"
+    >
       <mat-icon>bug_report</mat-icon>
       Debug
     </button>
   }
-  <button mat-button (click)='handleUndo()' matTooltip='Undo' [disabled]='!canUndo()' matTooltipShowDelay='1000'>
+  <button
+    mat-button
+    (click)="handleUndo()"
+    matTooltip="Undo"
+    [disabled]="!canUndo()"
+    matTooltipShowDelay="1000"
+  >
     <mat-icon>undo</mat-icon>
     Undo
   </button>
-  <button mat-button (click)='handleRedo()' matTooltip='Redo' [disabled]='!canRedo()' matTooltipShowDelay='1000'>
+  <button
+    mat-button
+    (click)="handleRedo()"
+    matTooltip="Redo"
+    [disabled]="!canRedo()"
+    matTooltipShowDelay="1000"
+  >
     <mat-icon>redo</mat-icon>
     Redo
   </button>
-  <button mat-button (click)='openRightPanelSettings()' matTooltip='Change Linkage Settings' matTooltipShowDelay='1000'>
+  <button
+    mat-button
+    (click)="openRightPanelSettings()"
+    matTooltip="Change Linkage Settings"
+    matTooltipShowDelay="1000"
+  >
     <mat-icon>settings</mat-icon>
     Settings
   </button>
   @if (settingsService.isEquationsEnabled.value) {
-    <button mat-button (click)='openRightPanelEquations()'
-      matTooltip='View Equations of Equilibrium'
-      matTooltipShowDelay='1000'>
+    <button
+      mat-button
+      (click)="openRightPanelEquations()"
+      matTooltip="View Equations of Equilibrium"
+      matTooltipShowDelay="1000"
+    >
       <mat-icon>format_list_numbered</mat-icon>
       Equations
     </button>
   }
-  <button mat-button (click)='openRightPanelHelp()' matTooltip='Get Support from our team' matTooltipShowDelay='1000'
-    id='helpButton'>
+  <button
+    mat-button
+    (click)="openRightPanelHelp()"
+    matTooltip="Get Support from our team"
+    matTooltipShowDelay="1000"
+    id="helpButton"
+  >
     <mat-icon>help</mat-icon>
     Help / Feedback
   </button>

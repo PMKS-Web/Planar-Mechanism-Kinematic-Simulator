@@ -28,25 +28,31 @@ export class cMenuItem {
 }
 
 @Component({
-    selector: 'app-context-menu',
-    animations: [
-        trigger('openClose', [
-            state('open', style({
-                opacity: 1,
-                transform: 'scale(1)',
-            })),
-            state('closed', style({
-                opacity: 0,
-                transform: 'scale(0.5)',
-            })),
-            transition('closed => open', [animate('0.2s ease-out')]),
-            transition('open => closed', [animate('0.2s ease-in')]),
-        ]),
-    ],
-    templateUrl: './context-menu.component.html',
-    styleUrls: ['./context-menu.component.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'app-context-menu',
+  animations: [
+    trigger('openClose', [
+      state(
+        'open',
+        style({
+          opacity: 1,
+          transform: 'scale(1)',
+        })
+      ),
+      state(
+        'closed',
+        style({
+          opacity: 0,
+          transform: 'scale(0.5)',
+        })
+      ),
+      transition('closed => open', [animate('0.2s ease-out')]),
+      transition('open => closed', [animate('0.2s ease-in')]),
+    ]),
+  ],
+  templateUrl: './context-menu.component.html',
+  styleUrls: ['./context-menu.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class ContextMenuComponent {
   @Input() menuItems: cMenuItem[] = [];

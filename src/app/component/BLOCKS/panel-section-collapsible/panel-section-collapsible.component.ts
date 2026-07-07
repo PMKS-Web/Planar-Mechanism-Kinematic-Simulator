@@ -6,31 +6,37 @@ import {
   Input,
   Output,
   QueryList,
-  ChangeDetectionStrategy
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { TitleBlock } from '../title/title.component';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 
 @Component({
-    selector: 'panel-section-collapsible',
-    animations: [
-        trigger('openClose', [
-            state('open', style({
-                height: '*',
-                opacity: 1,
-            })),
-            state('closed', style({
-                height: '0px',
-                opacity: 0,
-            })),
-            transition(':enter', []),
-            transition('* => *', [animate('0.2s ease-in-out')]),
-        ]),
-    ],
-    templateUrl: './panel-section-collapsible.component.html',
-    styleUrls: ['./panel-section-collapsible.component.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'panel-section-collapsible',
+  animations: [
+    trigger('openClose', [
+      state(
+        'open',
+        style({
+          height: '*',
+          opacity: 1,
+        })
+      ),
+      state(
+        'closed',
+        style({
+          height: '0px',
+          opacity: 0,
+        })
+      ),
+      transition(':enter', []),
+      transition('* => *', [animate('0.2s ease-in-out')]),
+    ]),
+  ],
+  templateUrl: './panel-section-collapsible.component.html',
+  styleUrls: ['./panel-section-collapsible.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class PanelSectionCollapsibleComponent implements AfterContentInit {
   @Input() expanded: boolean = true;

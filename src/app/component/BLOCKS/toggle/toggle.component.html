@@ -1,24 +1,29 @@
-<div id='toggle-block'>
-  <div [formGroup]='this.formGroup' class='row'>
+<div id="toggle-block">
+  <div [formGroup]="this.formGroup" class="row">
     <!-- <input type="checkbox" id="vehicle1" name="vehicle1" value="Bike" [formControlName]="this._formControl" /> -->
-    <span class='label'><ng-content></ng-content></span>
+    <span class="label"><ng-content></ng-content></span>
     @if (!addInput) {
-      <mat-icon matTooltip='{{ this.tooltip }}' [matTooltipShowDelay]='1000' class='label-help'
+      <mat-icon matTooltip="{{ this.tooltip }}" [matTooltipShowDelay]="1000" class="label-help"
         >help_outline
-        </mat-icon
-        >
-      }
-      <div class='spacer'></div>
-      @if (addInput) {
-        <span class='label angle-label {{disableInput ? "disabled":""}}'>⊾</span>
-      }
-      @if (addInput) {
-        <mat-form-field class='customInputForm' (click)='disableInput ? null :field.select()'>
-          <input class='customInput' matInput type='text' #field (keyup.enter)='field.blur()'
-            [formControlName]='this._formControlForInput'>
-        </mat-form-field>
-      }
-      <div class='spacer'></div>
-      <mat-slide-toggle color='primary' [formControlName]='this._formControl'></mat-slide-toggle>
-    </div>
+      </mat-icon>
+    }
+    <div class="spacer"></div>
+    @if (addInput) {
+      <span class="label angle-label {{ disableInput ? 'disabled' : '' }}">⊾</span>
+    }
+    @if (addInput) {
+      <mat-form-field class="customInputForm" (click)="disableInput ? null : field.select()">
+        <input
+          class="customInput"
+          matInput
+          type="text"
+          #field
+          (keyup.enter)="field.blur()"
+          [formControlName]="this._formControlForInput"
+        />
+      </mat-form-field>
+    }
+    <div class="spacer"></div>
+    <mat-slide-toggle color="primary" [formControlName]="this._formControl"></mat-slide-toggle>
   </div>
+</div>

@@ -8,7 +8,7 @@ import {
   isDevMode,
   OnInit,
   Output,
-  ChangeDetectionStrategy
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Bound, Link, Piston, RealLink } from '../../model/link';
@@ -59,11 +59,11 @@ import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 
 @Component({
-    selector: 'app-toolbar',
-    templateUrl: './toolbar.component.html',
-    styleUrls: ['./toolbar.component.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'app-toolbar',
+  templateUrl: './toolbar.component.html',
+  styleUrls: ['./toolbar.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class ToolbarComponent implements OnInit, AfterViewInit {
   private analytics: AnalyticsService = inject(AnalyticsService);
@@ -173,7 +173,7 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
   // }
 
   upload($event: any) {
-    console.log("upload");
+    console.log('upload');
     this.analytics.logEvent('upload_file');
     const input = $event.target;
     if (input.files.length !== 1) {
@@ -185,7 +185,7 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
 
     reader.onload = () => {
       const data = reader.result as string;
-      console.log("open", data);
+      console.log('open', data);
       NewGridComponent.sendNotification('Loaded Mechanism from File');
 
       this.urlProcessorService.updateFromURL(data);
@@ -194,7 +194,7 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
 
       //Reset the input so that the same file can be uploaded again
       input.value = '';
-    }
+    };
 
     // actually read the file to call the onload callback above
     reader.readAsText(input.files[0]);
@@ -219,7 +219,6 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
     NewGridComponent.sendNotification(
       'Mechanism URL copied. If you make additional changes, copy the URL again.'
     );
-    
   }
 
   alertNotAvailable() {
@@ -263,7 +262,6 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
     document.body.removeChild(toolman);
   }
 
-
   isDevMode() {
     //Used to change the color of the topbar when not running prod
     return isDevMode();
@@ -271,11 +269,10 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
 
   handleUndo() {
     NewGridComponent.sendNotification('Undo Called!', 0);
-    this.saveHistoryService.undo()
+    this.saveHistoryService.undo();
   }
 
   canUndo(): boolean {
-
     // disable undo if animating
     if (this.mechanismService.isAnimating()) return false;
 
@@ -287,11 +284,10 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
 
   handleRedo() {
     NewGridComponent.sendNotification('Redo Called!', 0);
-    this.saveHistoryService.redo()
+    this.saveHistoryService.redo();
   }
 
   canRedo(): boolean {
-
     // disable redo if animating
     if (this.mechanismService.isAnimating()) return false;
 

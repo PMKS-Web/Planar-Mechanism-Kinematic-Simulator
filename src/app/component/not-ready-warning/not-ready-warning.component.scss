@@ -13,7 +13,7 @@
 
   #outerBox {
     display: flex;
-    background-color: #FFEBEE;
+    background-color: #ffebee;
     //border-radius: var(--border-radius);
     align-items: center;
     justify-content: center;
@@ -23,12 +23,9 @@
     @include mat.m2-typography-level($typography-config, 'caption');
     color: rgba(0, 0, 0, 0.6);
 
-
     img {
       width: 30px;
       height: 30px;
     }
   }
-
-
 }

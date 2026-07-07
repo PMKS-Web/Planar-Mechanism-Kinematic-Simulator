@@ -4,11 +4,11 @@ import { NewGridComponent } from '../../new-grid/new-grid.component';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 
 @Component({
-    selector: 'editable-title-block',
-    templateUrl: './editable-title.component.html',
-    styleUrls: ['./editable-title.component.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'editable-title-block',
+  templateUrl: './editable-title.component.html',
+  styleUrls: ['./editable-title.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class EditableTitleComponent {
   @Input() showActionButtons: boolean = false;
@@ -16,7 +16,10 @@ export class EditableTitleComponent {
 
   editMode = false;
 
-  constructor(private fb: FormBuilder, public activeObjService: ActiveObjService) {}
+  constructor(
+    private fb: FormBuilder,
+    public activeObjService: ActiveObjService
+  ) {}
 
   newIDForm = this.fb.group({ newID: [''] });
 

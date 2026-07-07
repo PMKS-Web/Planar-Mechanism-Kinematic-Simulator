@@ -154,7 +154,7 @@ export class RealLink extends Link {
   public externalLines: Line[] = [];
 
   public initialExternalLines: Line[] = [];
-  
+
   //For debugging:
   public unqiqueRandomID: string =
     Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);

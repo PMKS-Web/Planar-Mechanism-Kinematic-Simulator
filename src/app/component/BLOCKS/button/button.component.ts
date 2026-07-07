@@ -2,11 +2,11 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 
 @Component({
-    selector: 'button-block',
-    templateUrl: './button.component.html',
-    styleUrls: ['./button.component.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'button-block',
+  templateUrl: './button.component.html',
+  styleUrls: ['./button.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class ButtonComponent {
   constructor(public activeSrv: ActiveObjService) {}

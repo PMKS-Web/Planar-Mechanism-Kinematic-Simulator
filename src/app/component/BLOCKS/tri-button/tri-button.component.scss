@@ -11,17 +11,13 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
-
   #tri-button {
-
     path {
       fill: mat.m2-get-color-from-palette($primary-palette, 500);
       //fill: red;
     }
 
-
     button {
-
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -65,8 +61,6 @@
       }
 
       border-color: mat.m2-get-color-from-palette($primary-palette, 500) !important;
-
-
     }
 
     .groupedButtons {
@@ -97,7 +91,6 @@
           border-left-color: transparent !important;
         }
       }
-
     }
 
     .button3 {
@@ -114,8 +107,5 @@
 
       border-color: #bbbbbb !important;
     }
-
   }
-
-
 }

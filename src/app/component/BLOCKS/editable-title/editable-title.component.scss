@@ -12,7 +12,6 @@
   $foreground: map.get($theme, foreground);
 
   #editable-title-block {
-
     padding: 10px 15px;
 
     @include mat.m2-typography-level($typography-config, 'headline-6');
@@ -28,7 +27,6 @@
       gap: 10px;
 
       .customInputForm {
-
         margin-top: -5px;
 
         .customInput {

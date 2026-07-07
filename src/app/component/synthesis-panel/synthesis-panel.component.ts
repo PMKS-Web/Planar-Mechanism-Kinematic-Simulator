@@ -17,11 +17,11 @@ import { SvgGridService } from '../../services/svg-grid.service';
 import { ColorService } from '../../services/color.service';
 
 @Component({
-    selector: 'app-synthesis-panel',
-    templateUrl: './synthesis-panel.component.html',
-    styleUrls: ['./synthesis-panel.component.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'app-synthesis-panel',
+  templateUrl: './synthesis-panel.component.html',
+  styleUrls: ['./synthesis-panel.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class SynthesisPanelComponent implements OnInit {
   PoseID: any;

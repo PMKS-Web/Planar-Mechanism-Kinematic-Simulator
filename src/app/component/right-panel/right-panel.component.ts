@@ -32,29 +32,38 @@ import introJs from 'intro.js';
 import { UrlGenerationService } from 'src/app/services/url-generation.service';
 
 @Component({
-    selector: 'app-right-panel',
-    templateUrl: './right-panel.component.html',
-    styleUrls: ['./right-panel.component.scss'],
-    animations: [
-        trigger('openClose', [
-            // ...
-            state('open', style({
-                transform: 'translateX(0)',
-                width: '300px',
-            })),
-            state('closed', style({
-                transform: 'translateX(calc(100% + 10px))',
-            })),
-            state('openWide', style({
-                width: '500px', //Be careful, there are multiple places to change this value
-            })),
-            transition('open => openWide', [animate('0.1s ease-in-out')]),
-            transition('openWide => open', [animate('0.1s ease-in-out')]),
-            transition('* => *', [animate('0.3s ease-in-out')]),
-        ]),
-    ],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'app-right-panel',
+  templateUrl: './right-panel.component.html',
+  styleUrls: ['./right-panel.component.scss'],
+  animations: [
+    trigger('openClose', [
+      // ...
+      state(
+        'open',
+        style({
+          transform: 'translateX(0)',
+          width: '300px',
+        })
+      ),
+      state(
+        'closed',
+        style({
+          transform: 'translateX(calc(100% + 10px))',
+        })
+      ),
+      state(
+        'openWide',
+        style({
+          width: '500px', //Be careful, there are multiple places to change this value
+        })
+      ),
+      transition('open => openWide', [animate('0.1s ease-in-out')]),
+      transition('openWide => open', [animate('0.1s ease-in-out')]),
+      transition('* => *', [animate('0.3s ease-in-out')]),
+    ]),
+  ],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class RightPanelComponent {
   private analytics: AnalyticsService = inject(AnalyticsService);

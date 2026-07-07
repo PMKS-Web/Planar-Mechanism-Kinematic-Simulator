@@ -1,5 +1,11 @@
 import { SvgGridService } from '../../services/svg-grid.service';
-import { AfterViewInit, Component, HostListener, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  HostListener,
+  ViewChild,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { fromEvent } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { MechanismService } from '../../services/mechanism.service';
@@ -51,11 +57,11 @@ import { EditPanelComponent } from '../edit-panel/edit-panel.component';
 import introJs from 'intro.js';
 
 @Component({
-    selector: 'app-new-grid',
-    templateUrl: './new-grid.component.html',
-    styleUrls: ['./new-grid.component.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'app-new-grid',
+  templateUrl: './new-grid.component.html',
+  styleUrls: ['./new-grid.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class NewGridComponent {
   public static debugValue: any;

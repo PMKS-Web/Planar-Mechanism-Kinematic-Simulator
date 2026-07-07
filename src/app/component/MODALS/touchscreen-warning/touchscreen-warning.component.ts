@@ -2,11 +2,11 @@ import { Component, Inject, ChangeDetectionStrategy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 @Component({
-    selector: 'app-touchscreen-warning',
-    templateUrl: './touchscreen-warning.component.html',
-    styleUrls: ['./touchscreen-warning.component.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'app-touchscreen-warning',
+  templateUrl: './touchscreen-warning.component.html',
+  styleUrls: ['./touchscreen-warning.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class TouchscreenWarningComponent {
   constructor(public dialogRef: MatDialogRef<TouchscreenWarningComponent>) {}
@@ -16,8 +16,7 @@ export class TouchscreenWarningComponent {
   }
 
   onDismissClick(): void {
-    localStorage.setItem("dismiss", "true");
+    localStorage.setItem('dismiss', 'true');
     this.onNoClick();
   }
-
 }

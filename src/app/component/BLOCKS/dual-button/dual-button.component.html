@@ -1,13 +1,18 @@
-<div class='row dual-button'>
-  <button mat-stroked-button color='primary' (click)='but1Action()'>
-    <mat-icon svgIcon='{{but1Icon}}'></mat-icon>
-    {{but1Text}}
+<div class="row dual-button">
+  <button mat-stroked-button color="primary" (click)="but1Action()">
+    <mat-icon svgIcon="{{ but1Icon }}"></mat-icon>
+    {{ but1Text }}
   </button>
   @if (but2Text) {
-    <button mat-stroked-button color='primary' (click)='but2Action()' [disabled]='btn2Disabled'
-      class='{{btn2Disabled? "buttonDisabled" :""}}'>
-      <mat-icon svgIcon='{{but2Icon}}'></mat-icon>
-      {{but2Text}}
+    <button
+      mat-stroked-button
+      color="primary"
+      (click)="but2Action()"
+      [disabled]="btn2Disabled"
+      class="{{ btn2Disabled ? 'buttonDisabled' : '' }}"
+    >
+      <mat-icon svgIcon="{{ but2Icon }}"></mat-icon>
+      {{ but2Text }}
     </button>
   }
 </div>

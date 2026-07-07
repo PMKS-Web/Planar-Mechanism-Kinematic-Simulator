@@ -1,10 +1,15 @@
-<div id='contextMenu' class='fade-in-out' cdkMenu>
+<div id="contextMenu" class="fade-in-out" cdkMenu>
   @for (menuItem of menuItems; track menuItem) {
     <div>
-      <div id='menu-item' cdkMenuItem (cdkMenuItemTriggered)='menuItem.actionWrapper()'
-        class='{{menuItem.disabled ? "disabledItem" : ""}}' [cdkMenuItemDisabled]='menuItem.disabled'>
-        <mat-icon svgIcon='{{menuItem.icon}}'></mat-icon>
-        <button>{{menuItem.label}}</button>
+      <div
+        id="menu-item"
+        cdkMenuItem
+        (cdkMenuItemTriggered)="menuItem.actionWrapper()"
+        class="{{ menuItem.disabled ? 'disabledItem' : '' }}"
+        [cdkMenuItemDisabled]="menuItem.disabled"
+      >
+        <mat-icon svgIcon="{{ menuItem.icon }}"></mat-icon>
+        <button>{{ menuItem.label }}</button>
       </div>
     </div>
   }

@@ -7,15 +7,16 @@
 @use 'app/component/BLOCKS/button/button.component.scss' as button-block;
 @use 'app/component/BLOCKS/input/input.component.scss' as input-block;
 @use 'app/component/BLOCKS/panel-section/panel-section.component.scss' as panel-section;
-@use 'app/component/BLOCKS/panel-section-collapsible/panel-section-collapsible.component.scss'
-  as panel-section-collapsible;
+@use 'app/component/BLOCKS/panel-section-collapsible/panel-section-collapsible.component.scss' as
+  panel-section-collapsible;
 @use 'app/component/BLOCKS/dual-input/dual-input.component.scss' as dual-input-block;
 @use 'app/component/BLOCKS/radio/radio.component.scss' as radio-block;
 @use 'app/component/BLOCKS/subtitle/subtitle.component.scss' as subtitle-block;
 @use 'app/component/BLOCKS/toggle/toggle.component.scss' as toggle-block;
 @use 'app/component/BLOCKS/blocks.common.scss' as blocks-common;
 @use 'app/component/BLOCKS/editable-title/editable-title.component.scss' as editable-title-block;
-@use 'app/component/BLOCKS/collapsible-subseciton/collapsible-subseciton.component.scss' as collapsible-subseciton;
+@use 'app/component/BLOCKS/collapsible-subseciton/collapsible-subseciton.component.scss' as
+  collapsible-subseciton;
 @use 'app/component/BLOCKS/dual-button/dual-button.component.scss' as dual-button;
 @use 'app/component/BLOCKS/color-picker/color-picker.component.scss' as color-picker;
 @use 'app/component/BLOCKS/tri-button/tri-button.component.scss' as tri-button;
@@ -40,39 +41,39 @@ $my-primary: mat.m2-define-palette(mat.$m2-indigo-palette);
 $my-accent: mat.m2-define-palette(mat.$m2-amber-palette);
 
 $my-caption: mat.m2-define-typography-level(
-        $font-family: Roboto,
-          //$font-weight: 400,
-        $font-size: 12px, //$line-height: 1.5, //$letter-spacing: 0.01px,
+  $font-family: Roboto,
+  //$font-weight: 400,
+  $font-size: 12px, //$line-height: 1.5, //$letter-spacing: 0.01px,
 );
 
 $my-body: mat.m2-define-typography-level(
-        $font-family: Roboto,
-        $font-weight: 400,
-        $font-size: 14px,
-        $line-height: 18px,
-        $letter-spacing: 0.25px,
+  $font-family: Roboto,
+  $font-weight: 400,
+  $font-size: 14px,
+  $line-height: 18px,
+  $letter-spacing: 0.25px,
 );
 
 $my-input: mat.m2-define-typography-level(
-        $font-family: Roboto,
-        $font-weight: 300,
-        $font-size: 14px,
-        $line-height: 18px,
-        $letter-spacing: 0.25px,
+  $font-family: Roboto,
+  $font-weight: 300,
+  $font-size: 14px,
+  $line-height: 18px,
+  $letter-spacing: 0.25px,
 );
 
 $my-theme: mat.m2-define-light-theme(
-                (
-                        color: (
-                                primary: $my-primary,
-                                accent: $my-accent,
-                        ),
-                        typography: mat.m2-define-typography-config(
-                                $caption: $my-caption,
-                                $body-2: $my-body,
-                                $body-1: $my-input,
-                        ),
-                )
+  (
+    color: (
+      primary: $my-primary,
+      accent: $my-accent,
+    ),
+    typography: mat.m2-define-typography-config(
+        $caption: $my-caption,
+        $body-2: $my-body,
+        $body-1: $my-input,
+      ),
+  )
 );
 
 @include mat.all-component-themes($my-theme);

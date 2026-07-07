@@ -1,11 +1,11 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
-    selector: 'subtitle-block',
-    templateUrl: './subtitle.component.html',
-    styleUrls: ['./subtitle.component.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'subtitle-block',
+  templateUrl: './subtitle.component.html',
+  styleUrls: ['./subtitle.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class SubtitleComponent {
   @Input() icon: string | undefined;

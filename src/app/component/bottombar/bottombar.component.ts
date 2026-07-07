@@ -5,14 +5,17 @@ import { MechanismService } from '../../services/mechanism.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
-    selector: 'app-bottombar',
-    templateUrl: './bottombar.component.html',
-    styleUrls: ['./bottombar.component.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'app-bottombar',
+  templateUrl: './bottombar.component.html',
+  styleUrls: ['./bottombar.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class BottombarComponent {
-  constructor(public settings: SettingsService, public mechanismSrv: MechanismService) {}
+  constructor(
+    public settings: SettingsService,
+    public mechanismSrv: MechanismService
+  ) {}
 
   humanReadableString(value: GlobalUnit) {
     switch (value) {

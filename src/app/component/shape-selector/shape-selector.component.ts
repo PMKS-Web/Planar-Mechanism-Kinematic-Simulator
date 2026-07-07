@@ -1,14 +1,21 @@
-import { Component, EventEmitter, Input, OnInit, Output, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 // import { GridComponent } from '../grid/grid.component';
 // import { RealLink, Shape } from '../../model/link';
 // import { Coord } from '../../model/coord';
 //
 @Component({
-    selector: 'app-shape-selector',
-    templateUrl: './shape-selector.component.html',
-    styleUrls: ['./shape-selector.component.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'app-shape-selector',
+  templateUrl: './shape-selector.component.html',
+  styleUrls: ['./shape-selector.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class ShapeSelectorComponent {}
 

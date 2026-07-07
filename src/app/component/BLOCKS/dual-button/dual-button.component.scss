@@ -11,9 +11,7 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
-
   .dual-button {
-
     .buttonDisabled {
       path {
         fill: #969696 !important;
@@ -75,6 +73,5 @@
         fill: mat.m2-get-color-from-palette($primary-palette, 500) !important;
       }
     }
-
   }
 }

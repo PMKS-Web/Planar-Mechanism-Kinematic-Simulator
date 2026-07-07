@@ -12,9 +12,7 @@
   $foreground: map.get($theme, foreground);
 
   .collapsibleSubsection {
-
     .panel-header {
-
       padding: 0 15px;
       border-style: none;
       height: 30px;
@@ -59,7 +57,5 @@
         height: 0;
       }
     }
-
   }
-
 }

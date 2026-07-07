@@ -1,11 +1,18 @@
-import { Component, OnInit, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  Input,
+  Output,
+  EventEmitter,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 
 @Component({
-    selector: 'title-block',
-    templateUrl: './title.component.html',
-    styleUrls: ['./title.component.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
-    standalone: false
+  selector: 'title-block',
+  templateUrl: './title.component.html',
+  styleUrls: ['./title.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 export class TitleBlock implements OnInit {
   @Input() icon: string | undefined;

@@ -12,7 +12,6 @@
   $foreground: map.get($theme, foreground);
 
   #input-block {
-
     .customInputForm {
       .customInput {
         @include mat.m2-typography-level($typography-config, 'body-2');
@@ -37,6 +36,5 @@
         padding: 0 6px;
       }
     }
-
   }
 }

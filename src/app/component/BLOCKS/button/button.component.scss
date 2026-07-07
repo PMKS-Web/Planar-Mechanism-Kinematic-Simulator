@@ -25,15 +25,13 @@
       flex: 10 0 auto;
     }
 
-
     //If not disabled
     &:not([disabled]) {
-
       &.warn > mat-icon > svg > path {
-        fill: #F44336;
+        fill: #f44336;
       }
 
-      border-color: #F44336;
+      border-color: #f44336;
 
       &:not(.warn) {
         border-color: mat.m2-get-color-from-palette($primary-palette, 500) !important;
@@ -41,12 +39,8 @@
         mat-icon > svg > path {
           fill: mat.m2-get-color-from-palette($primary-palette, 500);
         }
-
       }
-
-
     }
-
 
     &:disabled {
       //background-color: grey;
@@ -63,7 +57,5 @@
         }
       }
     }
-
-
   }
 }
