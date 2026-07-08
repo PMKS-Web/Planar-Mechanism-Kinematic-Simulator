@@ -16,6 +16,22 @@ Requires Node ≥22.22 (or 24.x). The esbuild `application` builder is used; `ou
 
 There is no lint target (`tslint.json` is vestigial). Formatting follows `.prettierrc`: 100-char width, single quotes, 2-space indent.
 
+## UI validation / computer use → GPT-5.5 via Codex CLI
+
+**Route ALL computer-use tasks (UI validation, browser automation, screenshots, visual
+verification, end-to-end interaction testing) to GPT-5.5 through the Codex CLI.** Do not use
+claude-in-chrome (`mcp__claude-in-chrome__*`) tools in this repo, and do not drive a browser
+yourself. Delegate via the `ui-validate` skill (`.claude/skills/ui-validate/SKILL.md`):
+
+```bash
+codex exec -m gpt-5.5 --sandbox workspace-write \
+  -c sandbox_workspace_write.network_access=true "<task prompt>"
+```
+
+GPT-5.5 runs Playwright with disposable Chrome profiles under `/tmp`, inspects its own
+screenshots, and reports back a compact PASS/FAIL summary — keeping heavy browser output out of
+the primary context. See `SKILLS.md` for the routing policy and prompt template.
+
 Tests are Vitest but written in Jasmine style (globals via `vitest/globals`). `tsconfig.spec.json` deliberately includes `src/app/app.module.ts` — without it, NgModule-declared components lose their template scope under the per-file test compile and fail with NG8001. Vitest errors on spec files containing no tests.
 
 ## Deployment / branch rules
