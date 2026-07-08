@@ -53,10 +53,12 @@ Launch Chrome/Chromium headless with a DISPOSABLE profile under /tmp
 
 TASK: <what to validate — pages, interactions, expected behavior>
 
-Reuse or extend the existing scripts in artifacts/*.mjs if present; otherwise
-write a repeatable script there. Save screenshots to artifacts/screenshots/
-and JSON reports to artifacts/screenshots/<name>-report.json. Capture console
-errors, page crashes, and element counts at each checkpoint.
+Reuse or extend the tracked scripts in e2e/*.mjs (see e2e/README.md for env
+vars); add new repeatable scripts there. Screenshots and JSON reports go to
+artifacts/screenshots/ (gitignored). Capture console errors, page crashes,
+and element counts at each checkpoint. The app places joints from tracked
+mousemove, not click coords — hover to the target before the finalizing
+click, and prefer the Edit panel's HTML controls over the SVG context menu.
 
 Then LOOK at the screenshots yourself and describe what is visible.
 Report back ONLY a compact summary: PASS/FAIL per case, console error count,
@@ -66,15 +68,16 @@ Do not paste raw logs or DOM dumps.
 
 ## Existing test scripts (reuse before writing new ones)
 
-Kept untracked in `artifacts/` of the user's checkout:
+Tracked in `e2e/` — see `e2e/README.md` for env overrides (`PMKS_URL`,
+`RUN_PREFIX`, `PMKS_PLAYWRIGHT_DIR`, `PMKS_CHROME`, `PMKS_HEADED`):
 
-- `artifacts/pmks-playwright-test.mjs` — broad page/panel coverage
-- `artifacts/pmks-deep-interaction-test.mjs` — deep grid interactions (drag joints, right-click links, templates)
-- `artifacts/pmks-focused-interactions.mjs` — focused workflows; run as
-  `PMKS_URL=http://127.0.0.1:4200/ RUN_PREFIX=focused node artifacts/pmks-focused-interactions.mjs`
+- `e2e/full-tour.mjs` — broad tour: panels, templates, settings, share URL, mobile viewport
+- `e2e/deep-interactions.mjs` — deep grid interactions (drag joints, right-click links, templates)
+- `e2e/focused-interactions.mjs` — focused workflows; run as
+  `RUN_PREFIX=focused node e2e/focused-interactions.mjs`
 
-Outputs land in `artifacts/screenshots/` (PNGs + `*-report.json`). If the scripts
-are absent (fresh clone), tell GPT-5.5 to generate them from the template above.
+Scripts run headless by default with disposable `/tmp` Chrome profiles. Outputs
+land in `artifacts/screenshots/` (PNGs + `*-report.json`), which is gitignored.
 
 ## Interpreting results
 

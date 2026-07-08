@@ -24,8 +24,17 @@ Rationale:
   touching the user's real browser session.
 - It inspects its own screenshots and DOM dumps, so the heavy tokens stay in the
   subagent; only a short PASS/FAIL summary returns to the primary context.
-- Test scripts and outputs accumulate in `artifacts/` (untracked), making runs
-  repeatable.
+- Repeatable test scripts are tracked in `e2e/` (see `e2e/README.md`); their
+  screenshots and JSON reports go to `artifacts/` (gitignored, output-only).
+
+## Test layout
+
+- **Unit / solver tests** — Vitest, co-located in `src/**/*.spec.ts`
+  (`npm test -- --watch=false`); `src/app/app.component.spec.ts` is the
+  MATLAB-verified solver regression suite.
+- **E2E / UI tests** — Playwright scripts in `e2e/*.mjs`, run headless via plain
+  Node by the GPT-5.5 subagent (Playwright lives in `/tmp/pmks-playwright`, not
+  in devDependencies). Details in `e2e/README.md`.
 
 ## Skills
 

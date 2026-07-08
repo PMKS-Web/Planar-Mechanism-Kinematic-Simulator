@@ -34,6 +34,8 @@ the primary context. See `SKILLS.md` for the routing policy and prompt template.
 
 Tests are Vitest but written in Jasmine style (globals via `vitest/globals`). `tsconfig.spec.json` deliberately includes `src/app/app.module.ts` — without it, NgModule-declared components lose their template scope under the per-file test compile and fail with NG8001. Vitest errors on spec files containing no tests.
 
+Unit specs stay co-located in `src/**/*.spec.ts`; browser-driven E2E tests are Playwright scripts in `e2e/*.mjs` (run by the GPT-5.5 subagent — see below), with outputs in gitignored `artifacts/`. Details in `e2e/README.md`.
+
 ## Deployment / branch rules
 
 **Never push directly to `main`** — commits to `main` auto-deploy to production (app.pmksplus.com) and a GitHub Action bumps the package version on every push to `main`. Work in branches/forks and open PRs. Every non-main branch auto-publishes to `https://[BRANCHNAME]--pmks.netlify.app`.
