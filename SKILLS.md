@@ -27,6 +27,20 @@ Rationale:
 - Repeatable test scripts are tracked in `e2e/` (see `e2e/README.md`); their
   screenshots and JSON reports go to `artifacts/` (gitignored, output-only).
 
+## Delegation policy: save primary-model tokens
+
+Beyond computer use, prefer delegating scouting and mechanical work to cheaper
+subagents and keep the primary (most expensive) model for judgment —
+architecture, tricky debugging, review, and synthesizing reports:
+
+- **Codebase scouting / broad search** — Claude Code `Agent` tool with
+  `subagent_type: Explore` and `model: opus` (Opus 4.8).
+- **Mechanical multi-step tasks** (bulk edits, test-suite runs, log trawls) —
+  `Agent` tool `general-purpose` with `model: opus`, or GPT-5.5 via
+  `codex exec -m gpt-5.5 --sandbox workspace-write -c sandbox_workspace_write.network_access=true "<task>"`.
+- Subagents must report back **compact summaries** (findings, file:line refs,
+  PASS/FAIL), never raw grep/log/DOM output.
+
 ## Test layout
 
 - **Unit / solver tests** — Vitest, co-located in `src/**/*.spec.ts`
