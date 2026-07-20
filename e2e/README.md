@@ -23,8 +23,8 @@ Prerequisites: dev server on http://127.0.0.1:4200/ (`npm start`) and a
 Playwright install at `/tmp/pmks-playwright`
 (`mkdir -p /tmp/pmks-playwright && cd /tmp/pmks-playwright && npm i playwright`).
 Playwright is deliberately **not** a devDependency — it would bloat Netlify
-deploy installs, and these scripts are normally run by a GPT-5.5 subagent
-(see `SKILLS.md` and `.claude/skills/ui-validate/SKILL.md`), not CI.
+deploy installs. Run these scripts directly for local validation; they are not
+part of CI (see `SKILLS.md` and `.claude/skills/ui-validate/SKILL.md`).
 
 ```bash
 node e2e/focused-interactions.mjs
