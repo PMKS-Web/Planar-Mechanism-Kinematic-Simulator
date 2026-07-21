@@ -32,10 +32,13 @@ export class KinematicsSolver {
   private static groundJointIndexMap = new Map<string, number>();
   static realJointIndexMap = new Map<string, number>();
   static desiredAngleMap = new Map<string, number>();
-  private static inputJointIndex: number;
+  private static inputJointIndex: number | undefined;
   static inputLinkIndex: number;
 
   static resetVariables() {
+    // Also forget the cached input joint so the next call re-derives it (and
+    // inputLinkIndex) for the new mechanism instead of reusing stale indices.
+    this.inputJointIndex = undefined;
     this.jointIndexMap = new Map<string, number>();
     this.jointVelMap = new Map<string, [number, number]>();
     this.jointAccMap = new Map<string, [number, number]>();
@@ -53,6 +56,8 @@ export class KinematicsSolver {
     this.unknownLinkIndexMap = new Map<string, number>();
     this.groundJointIndexMap = new Map<string, number>();
     this.realJointIndexMap = new Map<string, number>();
+    this.desiredAngleMap = new Map<string, number>();
+    this.inputLinkIndex = -1;
 
     this.A_matrix_AngVel = [];
     this.B_matrix_AngVel = [];
@@ -140,8 +145,15 @@ export class KinematicsSolver {
           if (realJoint === undefined) {
             return;
           }
-          this.realJointIndexMap.set(links[this.inputLinkIndex].id, joints.indexOf(realJoint));
-          const prisJoint = links[this.inputLinkIndex].joints.find(jt => jt instanceof PrisJoint) as PrisJoint;
+          // Match by id: the per-timestep joint arrays hold copies, so an
+          // identity indexOf against the link's original joints finds nothing.
+          this.realJointIndexMap.set(
+            links[this.inputLinkIndex].id,
+            joints.findIndex((j) => j.id === realJoint.id)
+          );
+          const prisJoint = links[this.inputLinkIndex].joints.find(
+            (jt) => jt instanceof PrisJoint
+          ) as PrisJoint;
           this.desiredAngleMap.set(links[this.inputLinkIndex].id, prisJoint.angle_rad);
         }
         const inputLink = links[this.inputLinkIndex].id;
@@ -215,8 +227,14 @@ export class KinematicsSolver {
             case Piston:
               if (!this.realJointIndexMap.has(link.id)) {
                 const connectedJoint = link.joints.find((j) => j instanceof RealJoint)!;
-                this.realJointIndexMap.set(link.id, joints.indexOf(connectedJoint));
-                const prisJoint = link.joints.find(jt => jt instanceof PrisJoint) as PrisJoint;
+                // Match by id: the per-timestep joint arrays hold copies, so
+                // an identity indexOf against the link's original joints
+                // finds nothing and the index comes back -1.
+                this.realJointIndexMap.set(
+                  link.id,
+                  joints.findIndex((j) => j.id === connectedJoint.id)
+                );
+                const prisJoint = link.joints.find((jt) => jt instanceof PrisJoint) as PrisJoint;
                 this.desiredAngleMap.set(connectedJoint.id, prisJoint.angle_rad);
               }
 
@@ -281,24 +299,20 @@ export class KinematicsSolver {
         const desiredAngle = this.desiredAngleMap.get(linkOrJoint.id)!;
         switch (analysisType) {
           case 'Velocity':
-            this.jointVelMap.set(linkOrJoint.id,
-                [
-                  X[i][0] * Math.cos(desiredAngle),
-                  X[i][0] * Math.sin(desiredAngle),
+            this.jointVelMap.set(linkOrJoint.id, [
+              X[i][0] * Math.cos(desiredAngle),
+              X[i][0] * Math.sin(desiredAngle),
               // X[i][0] * Math.cos(linkOrJoint.angle),
               // X[i][0] * Math.sin(linkOrJoint.angle),
-            ]
-            );
+            ]);
             break;
           case 'Acceleration':
-            this.jointAccMap.set(linkOrJoint.id,
-                [
-                  X[i][0] * Math.cos(desiredAngle),
-                  X[i][0] * Math.sin(desiredAngle),
+            this.jointAccMap.set(linkOrJoint.id, [
+              X[i][0] * Math.cos(desiredAngle),
+              X[i][0] * Math.sin(desiredAngle),
               // X[i][0] * Math.cos(linkOrJoint.angle),
               // X[i][0] * Math.sin(linkOrJoint.angle),
-            ]
-            );
+            ]);
             break;
         }
       }

@@ -27,6 +27,7 @@ export class ForceSolver {
     this.loopLettersToLinkIndexMap = new Map<string, number>();
     this.containsInputIndexMap = new Map<string, number>();
     this.jointPositiveForceXLinkMap = new Map<string, string>();
+    this.linkToFixedPositionMap = new Map<string, string>();
     this.jointPositiveForceYLinkMap = new Map<string, string>();
     this.jointIDToTracerBooleanMap = new Map<string, boolean>();
     this.jointIDToUsedBooleanMap = new Map<string, boolean>();
@@ -34,10 +35,13 @@ export class ForceSolver {
     this.jointIdToJointIndexMap = new Map<string, number>();
     this.unknownVariableForcesMap = new Map<string, [number, number]>();
     this.jointIDToUnknownArrayIndexMap = new Map<string, number>();
+    this.linkIDToUnknownArrayIndexMap = new Map<string, number>();
     this.A_matrix = [];
     this.B_matrix = [];
     this.desiredLoopLetters = Array<Array<string>>();
     this.unknownVariableNum = undefined;
+    this.unknownVariableTorque = 0;
+    this.inputLinkIndex = -1;
   }
 
   static determineForceAnalysis(
@@ -258,20 +262,14 @@ export class ForceSolver {
             const calc_mass = link.mass * mass_conversion;
             const acc_x = KinematicsSolver.linkAccMap.get(link.id)![0] * distance_conversion;
             const acc_y = KinematicsSolver.linkAccMap.get(link.id)![1] * distance_conversion;
-            // const calc_mmoi = link.massMomentOfInertia * Math.pow(distance_conversion, 2);
-            const desired_joint_index = this.jointIdToJointIndexMap.get(letters[0].charAt(0))!;
-            const desired_joint = simJoints[desired_joint_index];
-            const link_com = KinematicsSolver.linkCoMMap.get(link.id)!;
-            const dist =
-              Math.sqrt(
-                Math.pow(link_com[0] - desired_joint.x, 2) +
-                  Math.pow(link_com[1] - desired_joint.y, 2)
-              ) * distance_conversion;
             const angular_acc = KinematicsSolver.linkAngAccMap.get(link.id)!;
-            const J = link.massMoI * Math.pow(distance_conversion, 2); // calc_mmoi
-            const m_d_2 = calc_mass * Math.pow(dist, 2);
-            const J_m_d_2 = J + m_d_2;
-            const total_mmoi = J_m_d_2 * angular_acc;
+            // The moment equation is taken about the link's center of mass
+            // (see linkToFixedPositionMap above), so the inertial term is
+            // J_com * alpha with no parallel-axis correction. The previous
+            // J + m*d^2 (d from the CoM to the loop's first joint) mixed the
+            // moment center conventions and skewed every dynamic force result.
+            const J = link.massMoI * Math.pow(distance_conversion, 2);
+            const total_mmoi = J * angular_acc;
             this.B_matrix[3 * realLinkCount + imagLinkCount][0] += calc_mass * acc_x;
             this.B_matrix[3 * realLinkCount + imagLinkCount + 1][0] += calc_mass * acc_y;
             this.B_matrix[3 * realLinkCount + imagLinkCount + 2][0] += total_mmoi;
