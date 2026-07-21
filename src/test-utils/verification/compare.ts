@@ -8,44 +8,77 @@ import { KinematicsTrace } from './solve';
  * position, but they detect toggle points of non-full-rotation linkages a
  * step or two apart, so indices cannot be compared directly.
  */
-export function alignRows(actualAngles: number[], expectedAngles: number[]): [number, number][] {
+export interface AlignmentReport {
+  pairs: [number, number][];
+  eligibleExpectedRows: number[];
+  ignoredExpectedRows: number[];
+  ignoredActualTimesteps: number[];
+  unmatchedExpectedRows: number[];
+  unmatchedActualTimesteps: number[];
+}
+
+export function alignRows(
+  actualAngles: number[],
+  expectedAngles: number[],
+  excludedExpectedRows: number[] = [],
+  excludedActualTimesteps: number[] = [],
+  expectedDirections?: number[]
+): AlignmentReport {
   const signedDeltas = (angles: number[]) =>
     angles.map((angle, i) => {
       let delta = i + 1 < angles.length ? angles[i + 1] - angle : angle - angles[i - 1];
       delta = ((delta + 540) % 360) - 180;
       return delta >= 0 ? 1 : -1;
     });
-  // Rows next to a direction reversal are dropped: the two solvers detect
-  // toggle points a step or two apart, so the boundary rows pair up with the
-  // opposite sweep direction and their velocities differ by a sign.
-  const nearToggle = (dirs: number[]) =>
-    dirs
-      .map((dir, i) => dirs[i - 1] !== undefined && dirs[i - 1] !== dir)
-      .map((flip, i, flips) => flip || flips[i + 1] === true);
   const keys = (angles: number[], dirs: number[]) => {
     const wrap = (a: number) => ((a % 360) + 360) % 360;
     return angles.map(
       (angle, i) => `${Math.round(wrap(angle - angles[0])) % 360}|${dirs[i] > 0 ? '+' : '-'}`
     );
   };
-  const expectedDirs = signedDeltas(expectedAngles);
+  const expectedDirs = expectedDirections ?? signedDeltas(expectedAngles);
+  if (expectedDirs.length !== expectedAngles.length) {
+    throw new Error('Expected angle and direction series must have the same length');
+  }
   const actualDirs = signedDeltas(actualAngles);
-  const expectedNearToggle = nearToggle(expectedDirs);
-  const actualNearToggle = nearToggle(actualDirs);
-  const expectedByKey = new Map<string, number>();
+  const expectedByKey = new Map<string, number[]>();
+  const eligibleExpectedRows: number[] = [];
+  const ignoredExpectedRows: number[] = [];
   keys(expectedAngles, expectedDirs).forEach((key, row) => {
-    if (!expectedByKey.has(key) && !expectedNearToggle[row]) {
-      expectedByKey.set(key, row);
+    if (excludedExpectedRows.includes(row)) {
+      ignoredExpectedRows.push(row);
+      return;
     }
+    eligibleExpectedRows.push(row);
+    const rows = expectedByKey.get(key) ?? [];
+    rows.push(row);
+    expectedByKey.set(key, rows);
   });
   const pairs: [number, number][] = [];
+  const ignoredActualTimesteps: number[] = [];
+  const unmatchedActualTimesteps: number[] = [];
   keys(actualAngles, actualDirs).forEach((key, t) => {
-    const row = expectedByKey.get(key);
-    if (row !== undefined && !actualNearToggle[t]) {
-      pairs.push([t, row]);
+    if (excludedActualTimesteps.includes(t)) {
+      ignoredActualTimesteps.push(t);
+      return;
     }
+    const rows = expectedByKey.get(key);
+    const row = rows?.shift();
+    if (row === undefined) {
+      unmatchedActualTimesteps.push(t);
+      return;
+    }
+    pairs.push([t, row]);
   });
-  return pairs;
+  const unmatchedExpectedRows = [...expectedByKey.values()].flat().sort((a, b) => a - b);
+  return {
+    pairs,
+    eligibleExpectedRows,
+    ignoredExpectedRows,
+    ignoredActualTimesteps,
+    unmatchedExpectedRows,
+    unmatchedActualTimesteps,
+  };
 }
 
 /** Input-crank angle (deg) per timestep/row, from two tracked points on the crank. */
@@ -118,11 +151,11 @@ export function compareSeries(
   };
 }
 
-export function expectSeriesToMatch(report: SeriesReport, minRows = 1) {
+export function expectSeriesToMatch(report: SeriesReport, expectedRows: number) {
   expect(
     report.comparedRows,
     `${report.label}: only ${report.comparedRows} rows could be compared`
-  ).toBeGreaterThanOrEqual(minRows);
+  ).toBe(expectedRows);
   expect(
     report.maxErr,
     `${report.label}: max error ${report.maxErr.toPrecision(4)} over ${
@@ -139,19 +172,20 @@ export function alignToDataset(
   trace: KinematicsTrace,
   dataset: VerificationDataset,
   inputJointId: string,
-  crankTipId: string
-): [number, number][] {
+  crankTipId: string,
+  excludedExpectedRows: number[] = [],
+  excludedActualTimesteps: number[] = []
+): AlignmentReport {
   const actualAngles = crankAngleSeries(
     trace.jointPos.map((pos) => ({ a: pos[inputJointId], b: pos[crankTipId] }))
   );
-  const expectedAngles = crankAngleSeries(
-    dataset.jointPos[inputJointId].map((a, row) => ({
-      a: [a[0], a[1]] as [number, number],
-      b: [dataset.jointPos[crankTipId][row][0], dataset.jointPos[crankTipId][row][1]] as [
-        number,
-        number,
-      ],
-    }))
+  const expectedAngles = dataset.samples.map((sample) => (sample.inputAngleRad * 180) / Math.PI);
+  const expectedDirections = dataset.samples.map((sample) => sample.inputDirection);
+  return alignRows(
+    actualAngles,
+    expectedAngles,
+    excludedExpectedRows,
+    excludedActualTimesteps,
+    expectedDirections
   );
-  return alignRows(actualAngles, expectedAngles);
 }

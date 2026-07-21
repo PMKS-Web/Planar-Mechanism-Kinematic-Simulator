@@ -10,26 +10,12 @@ import { registerKinematicsSuite } from '../../test-utils/verification/suites';
 // MATLAB solvers in PMKS-Web/PMKS_Verification (Slider_Crank_Tracer_Point,
 // 10 RPM). Kinematics only: the MATLAB run never exported force data for
 // this mechanism.
-//
-// The MATLAB slider velocity/acceleration series are excluded: its
-// VelAccSolver.m loop-closure equation is v_B + omega x r + V_c == 0, which
-// defines V_c as the negative of C's true velocity (PMKS+'s value matches
-// v_B + omega x (C - B) by hand at every probed timestep).
+// The earlier MATLAB slider/tracer sign defects were corrected before this v1
+// data was cross-checked against the pinned PMKS fork.
 describe('Slider-crank with tracer point @ 10 RPM vs MATLAB', () => {
   describe('kinematics', () => {
-    registerKinematicsSuite(
-      sliderCrankTracer10Rpm,
-      () => buildMechanism(sliderCrankTracerFixture()),
-      {
-        excludeSeries: [
-          { quantity: 'jointVel', key: 'C', reason: 'MATLAB exports the negated slider velocity' },
-          {
-            quantity: 'jointAcc',
-            key: 'C',
-            reason: 'MATLAB exports the negated slider acceleration',
-          },
-        ],
-      }
+    registerKinematicsSuite(sliderCrankTracer10Rpm, () =>
+      buildMechanism(sliderCrankTracerFixture())
     );
   });
 });

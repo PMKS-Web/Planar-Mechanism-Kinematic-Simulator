@@ -27,6 +27,7 @@ export class ForceSolver {
     this.loopLettersToLinkIndexMap = new Map<string, number>();
     this.containsInputIndexMap = new Map<string, number>();
     this.jointPositiveForceXLinkMap = new Map<string, string>();
+    this.linkToFixedPositionMap = new Map<string, string>();
     this.jointPositiveForceYLinkMap = new Map<string, string>();
     this.jointIDToTracerBooleanMap = new Map<string, boolean>();
     this.jointIDToUsedBooleanMap = new Map<string, boolean>();
@@ -34,10 +35,13 @@ export class ForceSolver {
     this.jointIdToJointIndexMap = new Map<string, number>();
     this.unknownVariableForcesMap = new Map<string, [number, number]>();
     this.jointIDToUnknownArrayIndexMap = new Map<string, number>();
+    this.linkIDToUnknownArrayIndexMap = new Map<string, number>();
     this.A_matrix = [];
     this.B_matrix = [];
     this.desiredLoopLetters = Array<Array<string>>();
     this.unknownVariableNum = undefined;
+    this.unknownVariableTorque = 0;
+    this.inputLinkIndex = -1;
   }
 
   static determineForceAnalysis(

@@ -14,8 +14,30 @@
  * which equal PMKS+ link IDs when the fixture uses the same joint sets).
  */
 export interface VerificationDataset {
+  source: {
+    repository: string;
+    commit: string;
+    caseId: string;
+    casePath: string;
+    sourceContentSha256: string;
+    comparisonStatus: 'pass';
+    pmks: {
+      repository: string;
+      commit: string;
+      upstreamRepository: string;
+      upstreamCommit: string;
+      sourceContentSha256: string;
+      patchSha256: string;
+    };
+  };
+  trust: VerificationTrust;
+  capabilities: VerificationCapabilities;
+  tolerances: Record<KinematicsQuantity, VerificationTolerance>;
+  exclusions: VerificationExclusion[];
   name: string;
   rpm: number;
+  inputSpeedRadS: number;
+  samples: VerificationSample[];
   /** [x, y] per row, per joint (includes tracer points). */
   jointPos: Record<string, number[][]>;
   jointVel: Record<string, number[][]>;
@@ -33,6 +55,64 @@ export interface VerificationDataset {
     grav: DynamicsData;
     noGrav?: DynamicsData;
   };
+}
+
+export type VerificationTrustLevel =
+  | 'matlab-pmks-fork'
+  | 'matlab-pmks-fork-motiongen'
+  | 'newton-euler-consistency'
+  | 'diagnostic-only'
+  | 'not-applicable';
+
+export interface VerificationTrust {
+  kinematics: VerificationTrustLevel;
+  com: VerificationTrustLevel;
+  dynamics: VerificationTrustLevel;
+  motiongen: VerificationTrustLevel;
+}
+
+export interface VerificationCapabilities {
+  joints: boolean;
+  points: boolean;
+  com: boolean;
+  links: boolean;
+  prismatic: boolean;
+  dynamics: boolean;
+  motiongen: boolean;
+}
+
+export type KinematicsQuantity =
+  | 'jointPos'
+  | 'jointVel'
+  | 'jointAcc'
+  | 'linkCoMPos'
+  | 'linkCoMVel'
+  | 'linkCoMAcc'
+  | 'linkAngVel'
+  | 'linkAngAcc';
+
+export interface VerificationTolerance {
+  abs: number;
+  rel: number;
+}
+
+export interface VerificationExclusion {
+  source: string;
+  series: string;
+  sampleId: string;
+  inputAngleRad: number;
+  reason: string;
+}
+
+export interface VerificationSample {
+  sampleId: string;
+  sweepId: string;
+  sweepIndex: number;
+  inputAngleRad: number;
+  inputDirection: 1 | -1;
+  timeS: number;
+  jacobianCondition: number;
+  eligibility: 'eligible' | 'singular';
 }
 
 export interface DynamicsData {

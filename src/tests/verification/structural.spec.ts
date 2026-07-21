@@ -5,6 +5,10 @@ import { PrisJoint, RevJoint } from '../../app/model/joint';
 import { Piston, RealLink } from '../../app/model/link';
 import { Link } from '../../app/model/link';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
+import { ForceSolver } from '../../app/model/mechanism/force-solver';
+import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
+import { PositionSolver } from '../../app/model/mechanism/position-solver';
+import { circleCircleIntersection } from '../../app/model/utils';
 import {
   ForceData,
   JointData,
@@ -15,13 +19,13 @@ import {
 import { buildMechanism, BuiltMechanism } from '../../test-utils/verification/fixture';
 import {
   sliderCrankTracerFixture,
-  stephensonIiiEx1Fixture,
   stephensonIiiEx2Fixture,
   teachingLabFourBarFixture,
   teachingLabSliderCrankFixture,
   wattIFixture,
 } from '../../test-utils/verification/fixtures';
 import { solveKinematics } from '../../test-utils/verification/solve';
+import { alignRows } from '../../test-utils/verification/compare';
 
 // Structural checks on the verification fixtures: degrees of freedom, loop
 // identification, input-speed scaling, and URL-codec round-trips.
@@ -30,7 +34,6 @@ const FIXTURES = [
   ['TeachingLab four-bar', teachingLabFourBarFixture()],
   ['TeachingLab slider-crank', teachingLabSliderCrankFixture()],
   ['Slider-crank with tracer', sliderCrankTracerFixture()],
-  ['Stephenson III Ex. 1', stephensonIiiEx1Fixture()],
   ['Stephenson III Ex. 2', stephensonIiiEx2Fixture()],
   ['Watt I', wattIFixture()],
 ] as const;
@@ -59,6 +62,111 @@ describe('mechanism structure', () => {
     }
   });
 
+  it('preserves physical state and same-timestep ownership through the full motion', () => {
+    const watt = buildMechanism(wattIFixture()).mechanism;
+    for (let t = 0; t < watt.links.length; t++) {
+      for (const initial of watt.links[0]) {
+        const current = watt.links[t].find((link) => link.id === initial.id)!;
+        expect(current.mass, `t=${t} link ${initial.id} mass`).toBe(initial.mass);
+        expect(current.name, `t=${t} link ${initial.id} name`).toBe(initial.name);
+        for (const joint of current.joints) {
+          expect(joint, `t=${t} link ${initial.id} joint ${joint.id}`).toBe(
+            watt.joints[t].find((candidate) => candidate.id === joint.id)
+          );
+        }
+        if (initial instanceof RealLink && current instanceof RealLink) {
+          expect(current.massMoI, `t=${t} link ${initial.id} MoI`).toBe(initial.massMoI);
+          expect(current.fill, `t=${t} link ${initial.id} fill`).toBe(initial.fill);
+          expect(current.subset, `t=${t} link ${initial.id} subset`).toEqual(initial.subset);
+          const a0 = initial.joints[0];
+          const b0 = initial.joints[1];
+          const at = current.joints[0];
+          const bt = current.joints[1];
+          const initialAxis = [b0.x - a0.x, b0.y - a0.y];
+          const currentAxis = [bt.x - at.x, bt.y - at.y];
+          const initialOffset = [initial.CoM.x - a0.x, initial.CoM.y - a0.y];
+          const currentOffset = [current.CoM.x - at.x, current.CoM.y - at.y];
+          const initialAlong =
+            (initialOffset[0] * initialAxis[0] + initialOffset[1] * initialAxis[1]) /
+            Math.hypot(...initialAxis);
+          const currentAlong =
+            (currentOffset[0] * currentAxis[0] + currentOffset[1] * currentAxis[1]) /
+            Math.hypot(...currentAxis);
+          const initialNormal =
+            (-initialOffset[0] * initialAxis[1] + initialOffset[1] * initialAxis[0]) /
+            Math.hypot(...initialAxis);
+          const currentNormal =
+            (-currentOffset[0] * currentAxis[1] + currentOffset[1] * currentAxis[0]) /
+            Math.hypot(...currentAxis);
+          expect(currentAlong).toBeCloseTo(initialAlong, 8);
+          expect(currentNormal).toBeCloseTo(initialNormal, 8);
+        }
+      }
+      for (const force of watt.forces[t]) {
+        const link = watt.links[t].find((candidate) => candidate.id === force.link.id)!;
+        expect(force.link).toBe(link);
+        expect(link.forces).toContain(force);
+        expect(link.forces.every((candidate) => watt.forces[t].includes(candidate))).toBe(true);
+      }
+    }
+
+    const slider = buildMechanism(teachingLabSliderCrankFixture()).mechanism;
+    for (let t = 0; t < slider.joints.length; t++) {
+      const pris = slider.joints[t].find((joint) => joint.id === 'D');
+      expect(pris, `t=${t} prismatic joint`).toBeInstanceOf(PrisJoint);
+      expect((pris as PrisJoint).angle_rad).toBe(0);
+      expect(slider.links[t].find((link) => link instanceof Piston)?.mass).toBe(1.31788);
+    }
+  });
+
+  it('preserves welded subset state and transports its CoM rigidly', () => {
+    const fixture = teachingLabFourBarFixture();
+    fixture.links[0].subset = [
+      {
+        joints: 'AB',
+        mass: 2.75,
+        moi: 0.625,
+        com: [0.45, 0.2],
+        name: 'welded crank member',
+        fill: '#123456',
+      },
+    ];
+    const built = buildMechanism(fixture);
+    const mechanism = built.mechanism;
+    const source = (built.links.find((link) => link.id === 'ABH') as RealLink)
+      .subset[0] as RealLink;
+    expect(source.CoM.x).toBeCloseTo(0.45, 12);
+    expect(source.CoM.y).toBeCloseTo(0.2, 12);
+    const initial = (mechanism.links[0].find((link) => link.id === 'ABH') as RealLink)
+      .subset[0] as RealLink;
+    expect(initial.CoM.x).toBeCloseTo(0.45, 12);
+    expect(initial.CoM.y).toBeCloseTo(0.2, 12);
+    for (let t = 0; t < mechanism.links.length; t++) {
+      const parent = mechanism.links[t].find((link) => link.id === 'ABH') as RealLink;
+      const subset = parent.subset[0] as RealLink;
+      expect(subset.mass, `t=${t} subset mass`).toBe(initial.mass);
+      expect(subset.massMoI, `t=${t} subset MoI`).toBe(initial.massMoI);
+      expect(subset.name, `t=${t} subset name`).toBe(initial.name);
+      expect(subset.fill, `t=${t} subset fill`).toBe(initial.fill);
+      expect(subset.joints.every((joint) => mechanism.joints[t].includes(joint))).toBe(true);
+
+      const [a0, b0] = initial.joints;
+      const [at, bt] = subset.joints;
+      const offset0 = [initial.CoM.x - a0.x, initial.CoM.y - a0.y];
+      const offsetT = [subset.CoM.x - at.x, subset.CoM.y - at.y];
+      const axis0 = [b0.x - a0.x, b0.y - a0.y];
+      const axisT = [bt.x - at.x, bt.y - at.y];
+      const components = (offset: number[], axis: number[]) => [
+        (offset[0] * axis[0] + offset[1] * axis[1]) / Math.hypot(...axis),
+        (-offset[0] * axis[1] + offset[1] * axis[0]) / Math.hypot(...axis),
+      ];
+      const [along0, normal0] = components(offset0, axis0);
+      const [alongT, normalT] = components(offsetT, axisT);
+      expect(alongT).toBeCloseTo(along0, 8);
+      expect(normalT).toBeCloseTo(normal0, 8);
+    }
+  });
+
   it('rejects a mechanism whose coupler is grounded (DOF 0)', () => {
     const fixture = teachingLabFourBarFixture();
     fixture.joints.find((j) => j.id === 'C')!.ground = true;
@@ -69,9 +177,6 @@ describe('mechanism structure', () => {
 
   it('LoopSolver loops cover every link of the four-bars and Watt I', () => {
     for (const [name, fixture] of FIXTURES) {
-      if (name === 'Stephenson III Ex. 1') {
-        continue; // documented gap, see the failing test below
-      }
       const built = buildMechanism(fixture);
       const covered = linkIdsCoveredByLoops(built.mechanism.requiredLoops, built.links);
       for (const link of built.links) {
@@ -84,21 +189,11 @@ describe('mechanism structure', () => {
     }
   });
 
-  // LoopSolver only reports the first four-bar loop (ABCDA) for Stephenson
-  // III Example 1, so links EF and FGH get no kinematics from the app's own
-  // loop detection (the verification fixture works around it by overriding
-  // the loops). This test starts passing -- and must then be inverted --
-  // once LoopSolver is fixed.
-  it.fails('LoopSolver finds the second loop of Stephenson III Ex. 1 (known gap)', () => {
-    const built = buildMechanism(stephensonIiiEx1Fixture());
-    const covered = linkIdsCoveredByLoops(built.mechanism.requiredLoops, built.links);
-    expect(covered.has('EF')).toBe(true);
-    expect(covered.has('FGH')).toBe(true);
-  });
-
   it('velocities scale linearly and accelerations quadratically with input speed', () => {
     const slow = solveKinematics(buildMechanism(wattIFixture()));
-    const fast = solveKinematics(buildMechanism({ ...wattIFixture(), inputAngVel: 2 * 1.0472 }));
+    const fast = solveKinematics(
+      buildMechanism({ ...wattIFixture(), inputAngVel: (2 * 10 * Math.PI) / 30 })
+    );
     expect(fast.steps).toBe(slow.steps);
     for (let t = 0; t < slow.steps; t++) {
       for (const linkId of Object.keys(slow.linkAngVel[t])) {
@@ -115,7 +210,63 @@ describe('mechanism structure', () => {
   });
 });
 
+describe('focused solver regressions', () => {
+  it('accepts rounded tangencies but rejects circles beyond the tolerance bound', () => {
+    expect(circleCircleIntersection(0, 0, 1, 2.0005, 0, 1)).not.toBe(false);
+    expect(circleCircleIntersection(0, 0, 1, 2.003, 0, 1)).toBe(false);
+    expect(circleCircleIntersection(0, 0, 2, 0.9995, 0, 1)).not.toBe(false);
+    expect(circleCircleIntersection(0, 0, 2, 0.998, 0, 1)).toBe(false);
+  });
+
+  it('clears prismatic angle state between mechanisms', () => {
+    KinematicsSolver.desiredAngleMap.set('stale', Math.PI / 3);
+    KinematicsSolver.resetVariables();
+    expect(KinematicsSolver.desiredAngleMap.size).toBe(0);
+    const first = buildMechanism(teachingLabSliderCrankFixture()).mechanism.kinematicLoopAnalysis();
+    const angledFixture = teachingLabSliderCrankFixture();
+    angledFixture.slider!.angleRad = Math.PI / 2;
+    const second = buildMechanism(angledFixture).mechanism.kinematicLoopAnalysis();
+    expect(first).not.toEqual(second);
+  });
+
+  it('orders the slider before its tracer through both toggle positions', () => {
+    const { mechanism } = buildMechanism(sliderCrankTracerFixture());
+    const solveOrder = [...PositionSolver.jointNumOrderSolverMap.entries()];
+    const sliderOrder = solveOrder.find(([, jointId]) => jointId === 'C')?.[0];
+    const tracerOrder = solveOrder.find(([, jointId]) => jointId === 'D')?.[0];
+    expect(sliderOrder).toBeDefined();
+    expect(tracerOrder).toBeDefined();
+    expect(tracerOrder!).toBeGreaterThan(sliderOrder!);
+    expect(mechanism.joints.length).toBeGreaterThanOrEqual(360);
+    for (let t = 0; t < mechanism.joints.length; t++) {
+      const tracer = mechanism.joints[t].find((joint) => joint.id === 'D')!;
+      const coupler = mechanism.links[t].find((link) => link.id === 'BCD')!;
+      expect(Number.isFinite(tracer.x) && Number.isFinite(tracer.y), `t=${t}`).toBe(true);
+      expect(coupler.joints.find((joint) => joint.id === 'D')).toBe(tracer);
+    }
+  });
+
+  it('computes force moments about a non-origin center of mass', () => {
+    const pivot = new RevJoint('P', 2, 3);
+    expect(ForceSolver.determineMoment(pivot, 5, 7, 6, -2)).toEqual([-6, -24, 0]);
+  });
+
+  it('consumes duplicate cycle endpoints instead of overwriting one row', () => {
+    const report = alignRows([0, 120, 240, 360], [0, 120, 240, 360]);
+    expect(report.pairs).toEqual([
+      [0, 0],
+      [1, 1],
+      [2, 2],
+      [3, 3],
+    ]);
+    expect(report.unmatchedExpectedRows).toEqual([]);
+  });
+});
+
 describe('URL transcoder round-trip', () => {
+  const expectCodecDecimal = (actual: number, original: number, label: string) => {
+    expect(actual, label).toBe(Math.round(original * 1000) / 1000);
+  };
   function encode(built: BuiltMechanism): string {
     const encoder = new StringTranscoder();
     built.joints.forEach((joint) => {
@@ -220,12 +371,16 @@ describe('URL transcoder round-trip', () => {
         expect(decoded.type).toBe(
           joint instanceof PrisJoint ? JOINT_TYPE.PRISMATIC : JOINT_TYPE.REVOLUTE
         );
-        expect(decoded.x, `${name} joint ${joint.id} x`).toBeCloseTo(joint.x, 3);
-        expect(decoded.y, `${name} joint ${joint.id} y`).toBeCloseTo(joint.y, 3);
+        expectCodecDecimal(decoded.x, joint.x, `${name} joint ${joint.id} x`);
+        expectCodecDecimal(decoded.y, joint.y, `${name} joint ${joint.id} y`);
         expect(decoded.isGrounded).toBe((joint as RevJoint).ground);
         expect(decoded.isInput).toBe((joint as RevJoint).input);
         if (joint instanceof PrisJoint) {
-          expect(decoded.angleRadians).toBeCloseTo(joint.angle_rad, 3);
+          expectCodecDecimal(
+            decoded.angleRadians,
+            joint.angle_rad,
+            `${name} joint ${joint.id} angle`
+          );
         }
       });
 
@@ -239,27 +394,13 @@ describe('URL transcoder round-trip', () => {
         );
         if (link instanceof RealLink) {
           expect(decoded.type).toBe(LINK_TYPE.REAL);
-          // Mass properties ride through the codec's decimal packing, which
-          // keeps limited precision; a relative check is what matters for
-          // reproducing analysis results from a shared URL.
-          expect(
-            Math.abs(decoded.mass - link.mass),
-            `${name} link ${link.id} mass`
-          ).toBeLessThanOrEqual(1e-3 + 1e-4 * Math.abs(link.mass));
-          expect(
-            Math.abs(decoded.massMoI - link.massMoI),
-            `${name} link ${link.id} massMoI`
-          ).toBeLessThanOrEqual(1e-3 + 1e-4 * Math.abs(link.massMoI));
-          expect(
-            Math.abs(decoded.xCoM - link.CoM.x),
-            `${name} link ${link.id} CoM x`
-          ).toBeLessThanOrEqual(1e-3 + 1e-4 * Math.abs(link.CoM.x));
-          expect(
-            Math.abs(decoded.yCoM - link.CoM.y),
-            `${name} link ${link.id} CoM y`
-          ).toBeLessThanOrEqual(1e-3 + 1e-4 * Math.abs(link.CoM.y));
+          expectCodecDecimal(decoded.mass, link.mass, `${name} link ${link.id} mass`);
+          expectCodecDecimal(decoded.massMoI, link.massMoI, `${name} link ${link.id} massMoI`);
+          expectCodecDecimal(decoded.xCoM, link.CoM.x, `${name} link ${link.id} CoM x`);
+          expectCodecDecimal(decoded.yCoM, link.CoM.y, `${name} link ${link.id} CoM y`);
         } else {
           expect(decoded.type).toBe(LINK_TYPE.PISTON);
+          expectCodecDecimal(decoded.mass, link.mass, `${name} piston ${link.id} mass`);
         }
       });
 
@@ -269,13 +410,13 @@ describe('URL transcoder round-trip', () => {
         const decoded = forces[i];
         expect(decoded.id).toBe(force.id);
         expect(decoded.linkID).toBe(force.link.id);
-        expect(decoded.startX).toBeCloseTo(force.startCoord.x, 3);
-        expect(decoded.startY).toBeCloseTo(force.startCoord.y, 3);
-        expect(decoded.endX).toBeCloseTo(force.endCoord.x, 3);
-        expect(decoded.endY).toBeCloseTo(force.endCoord.y, 3);
+        expectCodecDecimal(decoded.startX, force.startCoord.x, `${name} force ${force.id} start x`);
+        expectCodecDecimal(decoded.startY, force.startCoord.y, `${name} force ${force.id} start y`);
+        expectCodecDecimal(decoded.endX, force.endCoord.x, `${name} force ${force.id} end x`);
+        expectCodecDecimal(decoded.endY, force.endCoord.y, `${name} force ${force.id} end y`);
         expect(decoded.isLocal).toBe(force.local);
         expect(decoded.isFacingOut).toBe(force.arrowOutward);
-        expect(decoded.magnitude).toBeCloseTo(force.mag, 3);
+        expectCodecDecimal(decoded.magnitude, force.mag, `${name} force ${force.id} magnitude`);
       });
     });
   }

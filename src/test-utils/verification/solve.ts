@@ -1,10 +1,8 @@
 // joint.ts first: see the import-cycle note in fixture.ts.
 import '../../app/model/joint';
-import { Coord } from '../../app/model/coord';
-import { RealLink } from '../../app/model/link';
 import { ForceSolver } from '../../app/model/mechanism/force-solver';
 import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
-import { BuiltMechanism, trackRigidPoint } from './fixture';
+import { BuiltMechanism } from './fixture';
 
 type XY = [number, number];
 
@@ -26,36 +24,6 @@ export interface DynamicsTrace {
   torque: number[];
 }
 
-/**
- * The Mechanism constructor rebuilds every timestep's links as bare RealLinks:
- * custom mass, moment of inertia, and center of mass are lost, and the links
- * keep pointing at the timestep-0 force objects instead of the recomputed
- * ones. Restore all of them so the solvers see the fixture's mass properties
- * (the CoM is transported rigidly with the link, which is what the MATLAB
- * reference does with its LinkCoM points).
- */
-function restoreLinkProperties(built: BuiltMechanism, t: number) {
-  const { mechanism, fixture } = built;
-  fixture.links.forEach((spec, i) => {
-    const link0 = built.links[i] as RealLink;
-    const linkT = mechanism.links[t].find((l) => l.id === spec.joints) as RealLink;
-    if (linkT === undefined || !(linkT instanceof RealLink)) {
-      throw new Error(`link ${spec.joints} missing at timestep ${t}`);
-    }
-    linkT.mass = spec.mass ?? 1;
-    linkT.massMoI = spec.moi ?? 1;
-    const a0 = link0.joints[0];
-    const b0 = link0.joints[1];
-    const a1 = linkT.joints[0];
-    const b1 = linkT.joints[1];
-    const com = trackRigidPoint(link0.CoM, { x: a0.x, y: a0.y }, { x: b0.x, y: b0.y }, a1, b1);
-    linkT.CoM = new Coord(com.x, com.y);
-    if (fixture.load && fixture.load.onLink === spec.joints) {
-      linkT.forces = [...mechanism.forces[t]];
-    }
-  });
-}
-
 function snapshotXY(map: Map<string, [number, number]>): Record<string, XY> {
   const out: Record<string, XY> = {};
   for (const [id, val] of map.entries()) {
@@ -74,7 +42,6 @@ function snapshotZ(map: Map<string, number>): Record<string, number> {
 
 export function solveKinematics(built: BuiltMechanism): KinematicsTrace {
   const { mechanism } = built;
-  const requiredLoops = built.fixture.requiredLoopsOverride ?? mechanism.requiredLoops;
   const trace: KinematicsTrace = {
     steps: mechanism.joints.length,
     jointPos: [],
@@ -87,9 +54,8 @@ export function solveKinematics(built: BuiltMechanism): KinematicsTrace {
     linkAngAcc: [],
   };
   KinematicsSolver.resetVariables();
-  KinematicsSolver.requiredLoops = requiredLoops;
+  KinematicsSolver.requiredLoops = mechanism.requiredLoops;
   for (let t = 0; t < mechanism.joints.length; t++) {
-    restoreLinkProperties(built, t);
     KinematicsSolver.determineKinematics(
       mechanism.joints[t],
       mechanism.links[t],
@@ -117,14 +83,12 @@ export function solveKinematics(built: BuiltMechanism): KinematicsTrace {
  */
 export function solveDynamics(built: BuiltMechanism): DynamicsTrace {
   const { mechanism } = built;
-  const requiredLoops = built.fixture.requiredLoopsOverride ?? mechanism.requiredLoops;
   const trace: DynamicsTrace = { steps: mechanism.joints.length, jointForce: [], torque: [] };
   KinematicsSolver.resetVariables();
-  KinematicsSolver.requiredLoops = requiredLoops;
+  KinematicsSolver.requiredLoops = mechanism.requiredLoops;
   ForceSolver.resetVariables();
-  ForceSolver.determineDesiredLoopLettersForce(requiredLoops);
+  ForceSolver.determineDesiredLoopLettersForce(mechanism.requiredLoops);
   for (let t = 0; t < mechanism.joints.length; t++) {
-    restoreLinkProperties(built, t);
     KinematicsSolver.determineKinematics(
       mechanism.joints[t],
       mechanism.links[t],

@@ -1,48 +1,35 @@
-import { DynamicsData, VerificationDataset } from '../../test-data/verification/types';
-import { alignToDataset, compareSeries, expectSeriesToMatch, Tolerance } from './compare';
+import {
+  DynamicsData,
+  KinematicsQuantity,
+  VerificationDataset,
+} from '../../test-data/verification/types';
+import {
+  AlignmentReport,
+  alignToDataset,
+  compareSeries,
+  expectSeriesToMatch,
+  Tolerance,
+} from './compare';
 import { BuiltMechanism } from './fixture';
 import { DynamicsTrace, KinematicsTrace, solveDynamics, solveKinematics } from './solve';
 
 export interface KinematicsSuiteOptions {
   inputJointId?: string;
   crankTipId?: string;
+  /** Maps dataset point keys to PMKS+ joint ids (e.g. coincident sensor E -> B). */
+  jointIdOf?: Record<string, string>;
   /** Maps dataset link keys to PMKS+ link ids when they differ (e.g. BCE -> BC). */
   linkIdOf?: Record<string, string>;
   tolerances?: Partial<Record<KinematicsQuantity, Tolerance>>;
-  /** Minimum fraction of MATLAB rows that must be matched to a timestep. */
-  minCoverage?: number;
   /** MATLAB rows known to be bad for one series (documented per fixture). */
   excludeRows?: { quantity: KinematicsQuantity; key: string; rows: number[] }[];
   /** Whole MATLAB series known to be bad (documented per fixture). */
   excludeSeries?: { quantity: KinematicsQuantity; key: string; reason: string }[];
   /** Looser tolerances for individual series (documented per fixture). */
   seriesTolerances?: { quantity: KinematicsQuantity; key: string; tol: Tolerance }[];
+  /** MATLAB rows explicitly omitted because the solvers reverse at different toggle samples. */
+  toggleExclusions?: { rows: number[]; actualTimesteps: number[]; reason: string }[];
 }
-
-export type KinematicsQuantity =
-  | 'jointPos'
-  | 'jointVel'
-  | 'jointAcc'
-  | 'linkCoMPos'
-  | 'linkCoMVel'
-  | 'linkCoMAcc'
-  | 'linkAngVel'
-  | 'linkAngAcc';
-
-const DEFAULT_TOLERANCES: Record<KinematicsQuantity, Tolerance> = {
-  // Positions: the position solver rounds joint coordinates to 1e-4 every
-  // 1-degree step, so a few thousandths of drift over a revolution is
-  // numerical noise, not a solver disagreement.
-  jointPos: { abs: 5e-3, rel: 1e-3 },
-  linkCoMPos: { abs: 5e-3, rel: 1e-3 },
-  // Velocities/accelerations are algebraic in the (rounded) positions.
-  jointVel: { abs: 1e-4, rel: 5e-3 },
-  linkCoMVel: { abs: 1e-4, rel: 5e-3 },
-  linkAngVel: { abs: 1e-4, rel: 5e-3 },
-  jointAcc: { abs: 1e-4, rel: 1e-2 },
-  linkCoMAcc: { abs: 1e-4, rel: 1e-2 },
-  linkAngAcc: { abs: 1e-4, rel: 1e-2 },
-};
 
 /**
  * Registers one `it` per kinematic quantity, comparing every joint/link
@@ -55,12 +42,14 @@ export function registerKinematicsSuite(
 ) {
   const inputJointId = options.inputJointId ?? 'A';
   const crankTipId = options.crankTipId ?? 'B';
-  const minCoverage = options.minCoverage ?? 0.8;
-  const tolerances = { ...DEFAULT_TOLERANCES, ...options.tolerances };
+  const tolerances = { ...dataset.tolerances, ...options.tolerances };
+  const jointIdOf = (key: string) => options.jointIdOf?.[key] ?? key;
   const linkIdOf = (key: string) => options.linkIdOf?.[key] ?? key;
   const pairsFor = (quantity: KinematicsQuantity, key: string) => {
     const excluded = options.excludeRows?.find((e) => e.quantity === quantity && e.key === key);
-    return excluded ? pairs.filter(([, row]) => !excluded.rows.includes(row)) : pairs;
+    return excluded
+      ? alignment.pairs.filter(([, row]) => !excluded.rows.includes(row))
+      : alignment.pairs;
   };
   const isExcluded = (quantity: KinematicsQuantity, key: string) =>
     options.excludeSeries?.some((e) => e.quantity === quantity && e.key === key) ?? false;
@@ -69,19 +58,77 @@ export function registerKinematicsSuite(
     tolerances[quantity];
 
   let trace: KinematicsTrace;
-  let pairs: [number, number][];
+  let alignment: AlignmentReport;
+  let fixtureInputSpeed: number;
   beforeAll(() => {
-    trace = solveKinematics(build());
-    pairs = alignToDataset(trace, dataset, inputJointId, crankTipId);
+    const built = build();
+    fixtureInputSpeed = built.fixture.inputAngVel;
+    trace = solveKinematics(built);
+    alignment = alignToDataset(
+      trace,
+      dataset,
+      inputJointId,
+      crankTipId,
+      options.toggleExclusions?.flatMap((exclusion) => exclusion.rows) ?? [],
+      options.toggleExclusions?.flatMap((exclusion) => exclusion.actualTimesteps) ?? []
+    );
   });
 
-  it('reaches the full MATLAB motion range', () => {
-    const rows = dataset.jointPos[inputJointId].length;
-    expect(
-      pairs.length,
-      `matched ${pairs.length} of ${trace.steps} timesteps against ${rows} MATLAB rows`
-    ).toBeGreaterThanOrEqual(Math.floor(minCoverage * Math.min(trace.steps, rows)));
+  it('uses the pinned, cross-verified v1 source', () => {
+    expect(dataset.source.repository).toBe('https://github.com/PMKS-Web/PMKS_Verification');
+    expect(dataset.source.commit).toBe('932951a5316b16bfa41b937b04592c974143c4bb');
+    expect(dataset.source.casePath).toBe(`reference-data/v1/cases/${dataset.source.caseId}`);
+    expect(dataset.source.comparisonStatus).toBe('pass');
+    expect(dataset.source.sourceContentSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(dataset.source.pmks).toMatchObject({
+      repository: 'https://github.com/PMKS-Web/PMKS',
+      commit: '644b26c75b07182ce04dc6466cfec74ee4130c93',
+      upstreamRepository: 'https://github.com/DesignEngrLab/PMKS',
+      upstreamCommit: '2a0a6fca957dd19844567702af663f607dc15dfe',
+    });
+    expect(['matlab-pmks-fork', 'matlab-pmks-fork-motiongen']).toContain(
+      dataset.trust.kinematics
+    );
+    expect(dataset.trust.kinematics).not.toBe('matlab-pmks');
+    expect(dataset.trust.kinematics).not.toBe('matlab-pmks-motiongen');
+    expect(dataset.samples.every((sample) => sample.eligibility === 'eligible')).toBe(true);
+    expect(fixtureInputSpeed).toBe(dataset.inputSpeedRadS);
+    expect(dataset.exclusions).toEqual([]);
+    if (Object.keys(dataset.linkCoMPos).length > 0) {
+      expect(['matlab-pmks-fork', 'matlab-pmks-fork-motiongen']).toContain(dataset.trust.com);
+    } else {
+      expect(['diagnostic-only', 'not-applicable']).toContain(dataset.trust.com);
+    }
+    if (dataset.dynamics) {
+      expect(dataset.trust.dynamics).toBe('newton-euler-consistency');
+    } else {
+      expect(dataset.trust.dynamics).toBe('not-applicable');
+    }
   });
+
+  it('matches every eligible MATLAB motion row', () => {
+    expect(
+      alignment.unmatchedExpectedRows,
+      `unmatched MATLAB rows after ignoring toggle boundaries [${alignment.ignoredExpectedRows}]`
+    ).toEqual([]);
+    expect(alignment.pairs.length).toBe(alignment.eligibleExpectedRows.length);
+    expect(alignment.unmatchedActualTimesteps).toEqual([]);
+  });
+
+  for (const exclusion of options.excludeSeries ?? []) {
+    it(`documents excluded ${exclusion.quantity} ${exclusion.key}`, () => {
+      expect(exclusion.reason.trim().length).toBeGreaterThan(0);
+    });
+  }
+  for (const exclusion of options.toggleExclusions ?? []) {
+    it(`documents excluded toggle-boundary rows ${exclusion.rows.join(', ')}`, () => {
+      expect(exclusion.reason.trim().length).toBeGreaterThan(0);
+      expect(alignment.ignoredExpectedRows).toEqual(expect.arrayContaining(exclusion.rows));
+      expect(alignment.ignoredActualTimesteps).toEqual(
+        expect.arrayContaining(exclusion.actualTimesteps)
+      );
+    });
+  }
 
   const jointQuantities: [KinematicsQuantity, string][] = [
     ['jointPos', 'position'],
@@ -94,14 +141,15 @@ export function registerKinematicsSuite(
         if (isExcluded(quantity, jointId)) {
           continue;
         }
+        const pmksId = jointIdOf(jointId);
         const report = compareSeries(
           `${dataset.name} joint ${jointId} ${label}`,
           pairsFor(quantity, jointId),
-          (t) => (trace[quantity][t] as Record<string, number[]>)[jointId],
+          (t) => (trace[quantity][t] as Record<string, number[]>)[pmksId],
           (row) => (dataset[quantity][jointId] as number[][])[row],
           toleranceFor(quantity, jointId)
         );
-        expectSeriesToMatch(report);
+        expectSeriesToMatch(report, pairsFor(quantity, jointId).length);
       }
     });
   }
@@ -113,7 +161,17 @@ export function registerKinematicsSuite(
     ['linkAngVel', 'angular velocity', false],
     ['linkAngAcc', 'angular acceleration', false],
   ];
+  if (Object.keys(dataset.linkCoMPos).length === 0) {
+    it('does not promote diagnostic-only link CoM data', () => {
+      expect(dataset.trust.com).toBe('diagnostic-only');
+      expect(dataset.linkCoMVel).toEqual({});
+      expect(dataset.linkCoMAcc).toEqual({});
+    });
+  }
   for (const [quantity, label, isXY] of linkQuantities) {
+    if (Object.keys(dataset[quantity]).length === 0) {
+      continue;
+    }
     it(`link ${label.replace('center-of-mass', 'CoM')}s match MATLAB`, () => {
       for (const linkKey of Object.keys(dataset[quantity])) {
         if (isExcluded(quantity, linkKey)) {
@@ -134,7 +192,7 @@ export function registerKinematicsSuite(
             : (row) => [dataset[quantity][linkKey][row] as number],
           toleranceFor(quantity, linkKey)
         );
-        expectSeriesToMatch(report);
+        expectSeriesToMatch(report, pairsFor(quantity, linkKey).length);
       }
     });
   }
@@ -146,6 +204,7 @@ export interface DynamicsSuiteOptions {
   tolerances?: { jointForce?: Tolerance; torque?: Tolerance };
   /** PMKS+ id of the prismatic joint whose reaction is the slider normal force. */
   normalForceJointId?: string;
+  toggleExclusions?: { rows: number[]; actualTimesteps: number[]; reason: string }[];
 }
 
 /**
@@ -166,48 +225,74 @@ export function registerDynamicsSuite(
 
   let trace: DynamicsTrace;
   let kinematics: KinematicsTrace;
-  let pairs: [number, number][];
+  let alignment: AlignmentReport;
   beforeAll(() => {
     const built = build();
     kinematics = solveKinematics(built);
-    pairs = alignToDataset(kinematics, jointPosForAlignment, inputJointId, crankTipId);
+    alignment = alignToDataset(
+      kinematics,
+      jointPosForAlignment,
+      inputJointId,
+      crankTipId,
+      options.toggleExclusions?.flatMap((exclusion) => exclusion.rows) ?? [],
+      options.toggleExclusions?.flatMap((exclusion) => exclusion.actualTimesteps) ?? []
+    );
     trace = solveDynamics(built);
   });
+
+  it('matches every eligible MATLAB motion row', () => {
+    expect(
+      alignment.unmatchedExpectedRows,
+      `unmatched MATLAB rows after ignoring toggle boundaries [${alignment.ignoredExpectedRows}]`
+    ).toEqual([]);
+    expect(alignment.pairs.length).toBe(alignment.eligibleExpectedRows.length);
+    expect(alignment.unmatchedActualTimesteps).toEqual([]);
+  });
+
+  for (const exclusion of options.toggleExclusions ?? []) {
+    it(`documents excluded toggle-boundary rows ${exclusion.rows.join(', ')}`, () => {
+      expect(exclusion.reason.trim().length).toBeGreaterThan(0);
+      expect(alignment.ignoredExpectedRows).toEqual(expect.arrayContaining(exclusion.rows));
+      expect(alignment.ignoredActualTimesteps).toEqual(
+        expect.arrayContaining(exclusion.actualTimesteps)
+      );
+    });
+  }
 
   it('joint reaction forces match MATLAB', () => {
     for (const jointId of Object.keys(expected.jointForce)) {
       const report = compareSeries(
         `${name} joint ${jointId} reaction force`,
-        pairs,
+        alignment.pairs,
         (t) => trace.jointForce[t][jointId],
         (row) => expected.jointForce[jointId][row],
         forceTol
       );
-      expectSeriesToMatch(report);
+      expectSeriesToMatch(report, alignment.pairs.length);
     }
   });
 
   it('input torque matches MATLAB', () => {
     const report = compareSeries(
       `${name} input torque`,
-      pairs,
+      alignment.pairs,
       (t) => [trace.torque[t]],
       (row) => [expected.torque[row]],
       torqueTol
     );
-    expectSeriesToMatch(report);
+    expectSeriesToMatch(report, alignment.pairs.length);
   });
 
   if (expected.normalForce && options.normalForceJointId) {
     it('slider normal force matches MATLAB', () => {
       const report = compareSeries(
         `${name} slider normal force`,
-        pairs,
+        alignment.pairs,
         (t) => trace.jointForce[t][options.normalForceJointId!],
         (row) => expected.normalForce![row],
         forceTol
       );
-      expectSeriesToMatch(report);
+      expectSeriesToMatch(report, alignment.pairs.length);
     });
   }
 }

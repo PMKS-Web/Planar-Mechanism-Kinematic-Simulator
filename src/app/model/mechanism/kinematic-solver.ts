@@ -56,6 +56,8 @@ export class KinematicsSolver {
     this.unknownLinkIndexMap = new Map<string, number>();
     this.groundJointIndexMap = new Map<string, number>();
     this.realJointIndexMap = new Map<string, number>();
+    this.desiredAngleMap = new Map<string, number>();
+    this.inputLinkIndex = -1;
 
     this.A_matrix_AngVel = [];
     this.B_matrix_AngVel = [];
@@ -149,7 +151,9 @@ export class KinematicsSolver {
             links[this.inputLinkIndex].id,
             joints.findIndex((j) => j.id === realJoint.id)
           );
-          const prisJoint = links[this.inputLinkIndex].joints.find(jt => jt instanceof PrisJoint) as PrisJoint;
+          const prisJoint = links[this.inputLinkIndex].joints.find(
+            (jt) => jt instanceof PrisJoint
+          ) as PrisJoint;
           this.desiredAngleMap.set(links[this.inputLinkIndex].id, prisJoint.angle_rad);
         }
         const inputLink = links[this.inputLinkIndex].id;
@@ -230,7 +234,7 @@ export class KinematicsSolver {
                   link.id,
                   joints.findIndex((j) => j.id === connectedJoint.id)
                 );
-                const prisJoint = link.joints.find(jt => jt instanceof PrisJoint) as PrisJoint;
+                const prisJoint = link.joints.find((jt) => jt instanceof PrisJoint) as PrisJoint;
                 this.desiredAngleMap.set(connectedJoint.id, prisJoint.angle_rad);
               }
 
@@ -295,24 +299,20 @@ export class KinematicsSolver {
         const desiredAngle = this.desiredAngleMap.get(linkOrJoint.id)!;
         switch (analysisType) {
           case 'Velocity':
-            this.jointVelMap.set(linkOrJoint.id,
-                [
-                  X[i][0] * Math.cos(desiredAngle),
-                  X[i][0] * Math.sin(desiredAngle),
+            this.jointVelMap.set(linkOrJoint.id, [
+              X[i][0] * Math.cos(desiredAngle),
+              X[i][0] * Math.sin(desiredAngle),
               // X[i][0] * Math.cos(linkOrJoint.angle),
               // X[i][0] * Math.sin(linkOrJoint.angle),
-            ]
-            );
+            ]);
             break;
           case 'Acceleration':
-            this.jointAccMap.set(linkOrJoint.id,
-                [
-                  X[i][0] * Math.cos(desiredAngle),
-                  X[i][0] * Math.sin(desiredAngle),
+            this.jointAccMap.set(linkOrJoint.id, [
+              X[i][0] * Math.cos(desiredAngle),
+              X[i][0] * Math.sin(desiredAngle),
               // X[i][0] * Math.cos(linkOrJoint.angle),
               // X[i][0] * Math.sin(linkOrJoint.angle),
-            ]
-            );
+            ]);
             break;
         }
       }

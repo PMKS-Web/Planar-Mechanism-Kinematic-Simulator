@@ -9,6 +9,14 @@ import {
   registerKinematicsSuite,
 } from '../../test-utils/verification/suites';
 
+const TOGGLE_EXCLUSIONS = [
+  {
+    rows: [4, 5, 6, 15, 16, 17],
+    actualTimesteps: [4, 5, 14, 15],
+    reason: 'PMKS+ and MATLAB reverse the rocking input at adjacent one-degree samples',
+  },
+];
+
 // Watt I six-bar whose input can only rock through a few degrees (the MATLAB
 // export covers 23 rows sweeping forward and back), with a constant
 // [50, 25] N load applied at the geometric center of output link CFG.
@@ -20,18 +28,28 @@ import {
 // crank angle and sweep direction, not index).
 describe('Watt I @ 10 RPM vs MATLAB', () => {
   describe('kinematics', () => {
-    registerKinematicsSuite(wattI10Rpm, () => buildMechanism(wattIFixture()));
+    registerKinematicsSuite(wattI10Rpm, () => buildMechanism(wattIFixture()), {
+      toggleExclusions: TOGGLE_EXCLUSIONS,
+    });
   });
 
   describe('dynamic force analysis (gravity on)', () => {
-    registerDynamicsSuite('Watt_I Newton/Grav', wattI10Rpm.dynamics!.grav, wattI10Rpm, () =>
-      buildMechanism(wattIFixture(true))
+    registerDynamicsSuite(
+      'Watt_I Newton/Grav',
+      wattI10Rpm.dynamics!.grav,
+      wattI10Rpm,
+      () => buildMechanism(wattIFixture(true)),
+      { toggleExclusions: TOGGLE_EXCLUSIONS }
     );
   });
 
   describe('dynamic force analysis (gravity off)', () => {
-    registerDynamicsSuite('Watt_I Newton/NoGrav', wattI10Rpm.dynamics!.noGrav!, wattI10Rpm, () =>
-      buildMechanism(wattIFixture(false))
+    registerDynamicsSuite(
+      'Watt_I Newton/NoGrav',
+      wattI10Rpm.dynamics!.noGrav!,
+      wattI10Rpm,
+      () => buildMechanism(wattIFixture(false)),
+      { toggleExclusions: TOGGLE_EXCLUSIONS }
     );
   });
 });
