@@ -1130,10 +1130,11 @@ export function circleCircleIntersection(
   const d = Math.sqrt(dx * dx + dy * dy);
   // Tangent circles arise whenever the solved-for joint is collinear with the
   // two joints it is solved from (e.g. a tracer point on a straight link).
-  // Joint positions are rounded every timestep, which can push such circles
-  // just out of contact, so only reject configurations separated by more than
-  // rounding noise.
-  const tangentTolerance = 0.001 * Math.max(1, d);
+  // Joint positions are rounded to a fixed number of decimal places every
+  // timestep, so the resulting error is absolute rather than mechanism-scale
+  // relative. Keep this bound fixed so large mechanisms cannot bridge a real
+  // geometric gap at a toggle.
+  const tangentTolerance = 0.001;
   // Circles too far apart
   if (d > r0 + r1 + tangentTolerance) {
     return false;

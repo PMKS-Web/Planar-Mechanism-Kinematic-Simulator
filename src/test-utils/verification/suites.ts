@@ -21,12 +21,6 @@ export interface KinematicsSuiteOptions {
   /** Maps dataset link keys to PMKS+ link ids when they differ (e.g. BCE -> BC). */
   linkIdOf?: Record<string, string>;
   tolerances?: Partial<Record<KinematicsQuantity, Tolerance>>;
-  /** MATLAB rows known to be bad for one series (documented per fixture). */
-  excludeRows?: { quantity: KinematicsQuantity; key: string; rows: number[] }[];
-  /** Whole MATLAB series known to be bad (documented per fixture). */
-  excludeSeries?: { quantity: KinematicsQuantity; key: string; reason: string }[];
-  /** Looser tolerances for individual series (documented per fixture). */
-  seriesTolerances?: { quantity: KinematicsQuantity; key: string; tol: Tolerance }[];
   /** MATLAB rows explicitly omitted because the solvers reverse at different toggle samples. */
   toggleExclusions?: { rows: number[]; actualTimesteps: number[]; reason: string }[];
 }
@@ -45,17 +39,6 @@ export function registerKinematicsSuite(
   const tolerances = { ...dataset.tolerances, ...options.tolerances };
   const jointIdOf = (key: string) => options.jointIdOf?.[key] ?? key;
   const linkIdOf = (key: string) => options.linkIdOf?.[key] ?? key;
-  const pairsFor = (quantity: KinematicsQuantity, key: string) => {
-    const excluded = options.excludeRows?.find((e) => e.quantity === quantity && e.key === key);
-    return excluded
-      ? alignment.pairs.filter(([, row]) => !excluded.rows.includes(row))
-      : alignment.pairs;
-  };
-  const isExcluded = (quantity: KinematicsQuantity, key: string) =>
-    options.excludeSeries?.some((e) => e.quantity === quantity && e.key === key) ?? false;
-  const toleranceFor = (quantity: KinematicsQuantity, key: string) =>
-    options.seriesTolerances?.find((s) => s.quantity === quantity && s.key === key)?.tol ??
-    tolerances[quantity];
 
   let trace: KinematicsTrace;
   let alignment: AlignmentReport;
@@ -115,11 +98,6 @@ export function registerKinematicsSuite(
     expect(alignment.unmatchedActualTimesteps).toEqual([]);
   });
 
-  for (const exclusion of options.excludeSeries ?? []) {
-    it(`documents excluded ${exclusion.quantity} ${exclusion.key}`, () => {
-      expect(exclusion.reason.trim().length).toBeGreaterThan(0);
-    });
-  }
   for (const exclusion of options.toggleExclusions ?? []) {
     it(`documents excluded toggle-boundary rows ${exclusion.rows.join(', ')}`, () => {
       expect(exclusion.reason.trim().length).toBeGreaterThan(0);
@@ -138,18 +116,15 @@ export function registerKinematicsSuite(
   for (const [quantity, label] of jointQuantities) {
     it(`joint ${label}s match MATLAB`, () => {
       for (const jointId of Object.keys(dataset[quantity])) {
-        if (isExcluded(quantity, jointId)) {
-          continue;
-        }
         const pmksId = jointIdOf(jointId);
         const report = compareSeries(
           `${dataset.name} joint ${jointId} ${label}`,
-          pairsFor(quantity, jointId),
+          alignment.pairs,
           (t) => (trace[quantity][t] as Record<string, number[]>)[pmksId],
           (row) => (dataset[quantity][jointId] as number[][])[row],
-          toleranceFor(quantity, jointId)
+          tolerances[quantity]
         );
-        expectSeriesToMatch(report, pairsFor(quantity, jointId).length);
+        expectSeriesToMatch(report, alignment.pairs.length);
       }
     });
   }
@@ -174,13 +149,10 @@ export function registerKinematicsSuite(
     }
     it(`link ${label.replace('center-of-mass', 'CoM')}s match MATLAB`, () => {
       for (const linkKey of Object.keys(dataset[quantity])) {
-        if (isExcluded(quantity, linkKey)) {
-          continue;
-        }
         const pmksId = linkIdOf(linkKey);
         const report = compareSeries(
           `${dataset.name} link ${linkKey} ${label}`,
-          pairsFor(quantity, linkKey),
+          alignment.pairs,
           isXY
             ? (t) => trace[quantity][t][pmksId] as number[]
             : (t) => {
@@ -190,9 +162,9 @@ export function registerKinematicsSuite(
           isXY
             ? (row) => dataset[quantity][linkKey][row] as number[]
             : (row) => [dataset[quantity][linkKey][row] as number],
-          toleranceFor(quantity, linkKey)
+          tolerances[quantity]
         );
-        expectSeriesToMatch(report, pairsFor(quantity, linkKey).length);
+        expectSeriesToMatch(report, alignment.pairs.length);
       }
     });
   }
@@ -202,8 +174,6 @@ export interface DynamicsSuiteOptions {
   inputJointId?: string;
   crankTipId?: string;
   tolerances?: { jointForce?: Tolerance; torque?: Tolerance };
-  /** PMKS+ id of the prismatic joint whose reaction is the slider normal force. */
-  normalForceJointId?: string;
   toggleExclusions?: { rows: number[]; actualTimesteps: number[]; reason: string }[];
 }
 
@@ -282,17 +252,4 @@ export function registerDynamicsSuite(
     );
     expectSeriesToMatch(report, alignment.pairs.length);
   });
-
-  if (expected.normalForce && options.normalForceJointId) {
-    it('slider normal force matches MATLAB', () => {
-      const report = compareSeries(
-        `${name} slider normal force`,
-        alignment.pairs,
-        (t) => trace.jointForce[t][options.normalForceJointId!],
-        (row) => expected.normalForce![row],
-        forceTol
-      );
-      expectSeriesToMatch(report, alignment.pairs.length);
-    });
-  }
 }

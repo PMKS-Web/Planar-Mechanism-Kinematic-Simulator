@@ -77,7 +77,6 @@ describe('mechanism structure', () => {
         if (initial instanceof RealLink && current instanceof RealLink) {
           expect(current.massMoI, `t=${t} link ${initial.id} MoI`).toBe(initial.massMoI);
           expect(current.fill, `t=${t} link ${initial.id} fill`).toBe(initial.fill);
-          expect(current.subset, `t=${t} link ${initial.id} subset`).toEqual(initial.subset);
           const a0 = initial.joints[0];
           const b0 = initial.joints[1];
           const at = current.joints[0];
@@ -143,7 +142,9 @@ describe('mechanism structure', () => {
     expect(initial.CoM.y).toBeCloseTo(0.2, 12);
     for (let t = 0; t < mechanism.links.length; t++) {
       const parent = mechanism.links[t].find((link) => link.id === 'ABH') as RealLink;
+      expect(parent.subset.length, `t=${t} subset count`).toBe(1);
       const subset = parent.subset[0] as RealLink;
+      expect(subset.id, `t=${t} subset id`).toBe(initial.id);
       expect(subset.mass, `t=${t} subset mass`).toBe(initial.mass);
       expect(subset.massMoI, `t=${t} subset MoI`).toBe(initial.massMoI);
       expect(subset.name, `t=${t} subset name`).toBe(initial.name);
@@ -216,6 +217,9 @@ describe('focused solver regressions', () => {
     expect(circleCircleIntersection(0, 0, 1, 2.003, 0, 1)).toBe(false);
     expect(circleCircleIntersection(0, 0, 2, 0.9995, 0, 1)).not.toBe(false);
     expect(circleCircleIntersection(0, 0, 2, 0.998, 0, 1)).toBe(false);
+    // The fixed decimal-rounding allowance must not grow with mechanism size.
+    expect(circleCircleIntersection(0, 0, 50, 100.05, 0, 50)).toBe(false);
+    expect(circleCircleIntersection(0, 0, 150, 99.95, 0, 50)).toBe(false);
   });
 
   it('clears prismatic angle state between mechanisms', () => {

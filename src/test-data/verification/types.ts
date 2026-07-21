@@ -124,6 +124,4 @@ export interface DynamicsData {
   jointForce: Record<string, number[][]>;
   /** Input torque per row (z component, N*m). */
   torque: number[];
-  /** [Fx, Fy] per row of the slider normal force, when the mechanism has one. */
-  normalForce?: number[][];
 }
