@@ -41,6 +41,7 @@
         : 'closed'
     "
     class="panel"
+    [class.analysis-panel-open]="this.tabs.getCurrentTab() === TabID.ANALYZE"
   >
     @if (this.tabs.getCurrentTab() === TabID.SYNTHESIZE) {
       <div class="page1">

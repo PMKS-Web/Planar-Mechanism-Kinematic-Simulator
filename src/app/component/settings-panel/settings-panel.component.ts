@@ -1,19 +1,13 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { SettingsService } from 'src/app/services/settings.service';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
 import { FormBuilder, Validators } from '@angular/forms';
-import { NewGridComponent } from '../new-grid/new-grid.component';
 import { MechanismService } from '../../services/mechanism.service';
 import { Link, RealLink } from '../../model/link';
 import { SvgGridService } from '../../services/svg-grid.service';
-import { AnimationBarComponent } from '../animation-bar/animation-bar.component';
-import { ToolbarComponent } from '../toolbar/toolbar.component';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { Coord } from '../../model/coord';
-import { MatDialog } from '@angular/material/dialog';
-import { EnableForcesComponent } from '../MODALS/enable-forces/enable-forces.component';
-import { EnableWeldedComponent } from '../MODALS/enable-welded/enable-welded.component';
-import { EnableEquationsComponent } from '../MODALS/enable-equations/enable-equations.component';
+import { combineLatest, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-settings-panel',
@@ -22,14 +16,13 @@ import { EnableEquationsComponent } from '../MODALS/enable-equations/enable-equa
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false,
 })
-export class SettingsPanelComponent {
+export class SettingsPanelComponent implements OnDestroy {
   constructor(
     public settingsService: SettingsService,
     private fb: FormBuilder,
     public mechanismSrv: MechanismService,
     private svgGrid: SvgGridService,
-    private nup: NumberUnitParserService,
-    public dialog: MatDialog
+    private nup: NumberUnitParserService
   ) {}
 
   currentLengthUnit!: LengthUnit;
@@ -40,16 +33,16 @@ export class SettingsPanelComponent {
   rotateDirection!: boolean;
   currentSpeedSetting!: number;
   currentObjectScaleSetting!: number;
+  private readonly settingsSubscriptions = new Subscription();
 
   ngOnInit(): void {
     this.currentLengthUnit = this.settingsService.lengthUnit.value;
+    this.currentForceUnit = this.settingsService.forceUnit.value;
     this.currentAngleUnit = this.settingsService.angleUnit.value;
     this.currentGlobalUnit = this.settingsService.globalUnit.value;
     this.rotateDirection = this.settingsService.isInputCW.value;
     this.currentSpeedSetting = this.settingsService.inputSpeed.value;
     this.currentObjectScaleSetting = SettingsService.objectScale;
-
-    console.log('start length', this.currentLengthUnit);
 
     this.settingsForm.patchValue({
       speed: this.currentSpeedSetting.toString(),
@@ -63,22 +56,66 @@ export class SettingsPanelComponent {
       showMinorGrid: this.settingsService.isShowMinorGrid.value,
     });
 
-    SettingsService._objectScale.subscribe((val) => {
-      this.currentObjectScaleSetting = val;
-      this.settingsForm.patchValue(
-        { objectScale: this.currentObjectScaleSetting.toString() },
-        { emitEvent: false }
-      );
+    this.settingsSubscriptions.add(
+      SettingsService._objectScale.subscribe((val) => {
+        this.currentObjectScaleSetting = val;
+        this.settingsForm.patchValue(
+          { objectScale: this.currentObjectScaleSetting.toString() },
+          { emitEvent: false }
+        );
 
-      //Werid place to put this but
-      this.mechanismSrv.links.forEach((link: Link) => {
-        (link as RealLink).reComputeDPath();
-      });
+        //Werid place to put this but
+        this.mechanismSrv.links.forEach((link: Link) => {
+          (link as RealLink).reComputeDPath();
+        });
 
-      this.mechanismSrv.updateMechanism();
-    });
+        this.mechanismSrv.updateMechanism();
+      })
+    );
 
     this.onChanges();
+    this.bindSerializedSettings();
+  }
+
+  /** Keep an already-open settings panel synchronized after URL restore/undo. */
+  private bindSerializedSettings(): void {
+    this.settingsSubscriptions.add(
+      combineLatest([
+        this.settingsService.lengthUnit,
+        this.settingsService.angleUnit,
+        this.settingsService.forceUnit,
+        this.settingsService.globalUnit,
+        this.settingsService.isInputCW,
+        this.settingsService.inputSpeed,
+        this.settingsService.isShowMajorGrid,
+        this.settingsService.isShowMinorGrid,
+      ]).subscribe(
+        ([length, angle, force, global, clockwise, speed, showMajorGrid, showMinorGrid]) => {
+          this.currentLengthUnit = length;
+          this.currentAngleUnit = angle;
+          this.currentForceUnit = force;
+          this.currentGlobalUnit = global;
+          this.rotateDirection = clockwise;
+          this.currentSpeedSetting = speed;
+          this.settingsForm.patchValue(
+            {
+              speed: speed.toString(),
+              rotation: clockwise ? '0' : '1',
+              lengthunit: length.toString(),
+              angleunit: (angle - 10).toString(),
+              globalunit: (global - 30).toString(),
+              showMajorGrid,
+              showMinorGrid,
+            },
+            { emitEvent: false }
+          );
+        }
+      )
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.settingsSubscriptions.unsubscribe();
   }
 
   onChanges(): void {
@@ -124,20 +161,15 @@ export class SettingsPanelComponent {
 
       let prevLengthUnit = this.settingsService.lengthUnit.value;
       this.currentLengthUnit = ParseLengthUnit(val);
+      this.settingsService.lengthUnit.next(this.currentLengthUnit);
 
       //Scale the grid to the new length unit
-      this.settingsForm.controls['lengthunit'].patchValue(String(this.currentLengthUnit));
+      this.settingsForm.controls['lengthunit'].patchValue(String(this.currentLengthUnit), {
+        emitEvent: false,
+      });
 
-      let fromUnit = prevLengthUnit;
-      let toUnit = this.currentLengthUnit;
-
-      //If either unit is in meters, convert that one to cm
-      if (fromUnit === LengthUnit.METER) {
-        fromUnit = LengthUnit.CM;
-      }
-      if (toUnit === LengthUnit.METER) {
-        toUnit = LengthUnit.CM;
-      }
+      const fromUnit = prevLengthUnit;
+      const toUnit = this.currentLengthUnit;
 
       this.mechanismSrv.updateLinkageUnits(fromUnit, toUnit);
 
@@ -147,7 +179,8 @@ export class SettingsPanelComponent {
         y: tempOriginInScreen.y,
       });
 
-      //Scale the object to the new length unit
+      // Scale visual affordances with the mechanism so their apparent size
+      // remains stable after the compensating viewport zoom.
       SettingsService._objectScale.next(
         this.nup.convertLength(SettingsService.objectScale, fromUnit, toUnit)
       );
@@ -167,7 +200,6 @@ export class SettingsPanelComponent {
       if (val === '0') length = LengthUnit.INCH;
       else if (val === '1') length = LengthUnit.CM;
       else length = LengthUnit.METER;
-      console.log(length);
       this.settingsService.lengthUnit.next(length);
       this.mechanismSrv.updateMechanism();
     });
@@ -182,24 +214,6 @@ export class SettingsPanelComponent {
     // this.settingsForm.controls['torqueunit'].valueChanges.subscribe(() => {
     //   this.settingsService.inputTorque.next(this.currentTorqueUnit);
     // });
-  }
-
-  openEnableForceDialog(): void {
-    this.dialog.open(EnableForcesComponent, {
-      autoFocus: false,
-    });
-  }
-
-  openEnableWeldedDialog(): void {
-    this.dialog.open(EnableWeldedComponent, {
-      autoFocus: false,
-    });
-  }
-
-  openEnablEquationsDialog(): void {
-    this.dialog.open(EnableEquationsComponent, {
-      autoFocus: false,
-    });
   }
 
   getUnitStr(unit: LengthUnit): string {
@@ -230,10 +244,6 @@ export class SettingsPanelComponent {
     },
     { updateOn: 'blur' }
   );
-
-  sendComingSoon(): void {
-    NewGridComponent.sendNotification('This feature is coming soon!');
-  }
 
   updateObjectScale() {
     this.svgGrid.updateObjectScale();

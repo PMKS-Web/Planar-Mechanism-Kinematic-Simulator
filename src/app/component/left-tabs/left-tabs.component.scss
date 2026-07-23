@@ -64,6 +64,11 @@
 
     animation-duration: 4s;
 
+    // Leave room for the fixed animation controls so the last graph can be clicked.
+    &.analysis-panel-open {
+      max-height: calc(100% - 150px);
+    }
+
     //@include mat.elevation(4);
     //Check here for 2nd parameter options: node_modules/@angular/material/core/theming/_palette.scss: Line 674
     // background-color: mat.get-color-from-palette($background, 'background');

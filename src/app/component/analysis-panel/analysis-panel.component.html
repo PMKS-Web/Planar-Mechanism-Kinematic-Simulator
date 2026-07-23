@@ -87,7 +87,7 @@
           settingsService.inputSpeed.value.toFixed(2)
         }} RPM in
       the {{
-          settingsService.isInputCW ? 'clockwise' : 'counter-clockwise'
+          settingsService.isInputCW.value ? 'clockwise' : 'counter-clockwise'
         }} direction. This can be changed in the
     settings panel."
       >
@@ -103,7 +103,7 @@
         <mat-expansion-panel
           [expanded]="graphExpanded['JPos']"
           (opened)="graphExpanded['JPos'] = true"
-          (closed)="graphExpanded['Jpos'] = false"
+          (closed)="graphExpanded['JPos'] = false"
         >
           <mat-expansion-panel-header>
             <mat-panel-title>
@@ -182,8 +182,7 @@
           }
         </mat-expansion-panel>
       </collapsible-subseciton>
-      @if (settingsService.isForces.value) {
-        <collapsible-subseciton
+      <collapsible-subseciton
           titleLabel="Force Analysis"
           [expanded]="graphExpanded['JForceAna']"
           (opened)="graphExpanded['JForceAna'] = true"
@@ -197,6 +196,25 @@
             _formControl="speed"
             >Force Analysis Type
           </radio-block>
+          @if (selectedJointReactionLinks().length > 1) {
+            <mat-form-field appearance="outline" class="reaction-link-selector">
+              <mat-label>Reaction acting on</mat-label>
+              <mat-select
+                [value]="reactionLinkId()"
+                (selectionChange)="selectReactionLink($event.value)"
+              >
+                @for (link of selectedJointReactionLinks(); track link.id) {
+                  <mat-option [value]="link.id">Link {{ link.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
+          @if (!selectedJointHasIndependentReaction()) {
+            <div class="analysis-message" role="status">
+              Joint {{ this.activeSrv.selectedJoint.name }} is internal to one welded body and has
+              no independent pin reaction. Select an external or grounded joint to graph a reaction.
+            </div>
+          } @else {
           <mat-expansion-panel
             [expanded]="graphExpanded['JForce']"
             (opened)="graphExpanded['JForce'] = true"
@@ -218,14 +236,14 @@
             @if (graphExpanded['JForce']) {
               <app-analysis-graph
                 analysis="force"
-                analysisType="{{
-                  this.inputSpeedFormGroup.value.speed === 'One' ? 'dynamic' : 'static'
-                }}"
+                [analysisType]="forceAnalysisMode()"
                 mechProp="Joint Forces"
                 mechPart="{{ this.activeSrv.selectedJoint.id }}"
+                [reactionLinkId]="reactionLinkId()"
               ></app-analysis-graph>
             }
           </mat-expansion-panel>
+          }
           @if (this.activeSrv.selectedJoint.input) {
             <mat-expansion-panel
               [expanded]="graphExpanded['JInputForce']"
@@ -234,11 +252,11 @@
             >
               <mat-expansion-panel-header>
                 <mat-panel-title>
-                  Input Torque at Joint {{ this.activeSrv.selectedJoint.name }}
+                  Input {{ inputEffortLabel() }} at Joint {{ this.activeSrv.selectedJoint.name }}
                 </mat-panel-title>
                 <mat-panel-description>
                   <mat-icon
-                    matTooltip="The toque applied to the mechanism by the input joint graphed over time. Only available if the selected joint is grounded and is an input."
+                    matTooltip="The torque or axial force applied by the selected input joint, graphed over time."
                     [matTooltipShowDelay]="1000"
                     id="graph-help"
                     >help_outline
@@ -248,17 +266,14 @@
               @if (graphExpanded['JInputForce']) {
                 <app-analysis-graph
                   analysis="force"
-                  analysisType="{{
-                    this.inputSpeedFormGroup.value.speed === 'One' ? 'dynamic' : 'static'
-                  }}"
-                  mechProp="Input Torque"
+                  [analysisType]="forceAnalysisMode()"
+                  mechProp="Input Effort"
                   mechPart="{{ this.activeSrv.selectedJoint.id }}"
                 ></app-analysis-graph>
               }
             </mat-expansion-panel>
           }
-        </collapsible-subseciton>
-      }
+      </collapsible-subseciton>
     </panel-section>
   }
 
@@ -270,7 +285,7 @@
           settingsService.inputSpeed.value.toFixed(2)
         }} RPM in
       the {{
-          settingsService.isInputCW ? 'clockwise' : 'counter-clockwise'
+          settingsService.isInputCW.value ? 'clockwise' : 'counter-clockwise'
         }} direction. This can be changed in the
     settings panel."
       >
@@ -327,9 +342,7 @@
         >
           <mat-expansion-panel-header>
             <mat-panel-title>
-              <mat-panel-title>
-                Angular Velocity of Link {{ this.activeSrv.selectedLink.name }}
-              </mat-panel-title>
+              Angular Velocity of Link {{ this.activeSrv.selectedLink.name }}
             </mat-panel-title>
             <mat-panel-description>
               <mat-icon
@@ -356,9 +369,7 @@
         >
           <mat-expansion-panel-header>
             <mat-panel-title>
-              <mat-panel-title>
-                Angular Acceleration of Link {{ this.activeSrv.selectedLink.name }}
-              </mat-panel-title>
+              Angular Acceleration of Link {{ this.activeSrv.selectedLink.name }}
             </mat-panel-title>
             <mat-panel-description>
               <mat-icon
@@ -388,9 +399,7 @@
         >
           <mat-expansion-panel-header>
             <mat-panel-title>
-              <mat-panel-title>
-                Position of Link {{ this.activeSrv.selectedLink.name }}'s COM
-              </mat-panel-title>
+              Position of Link {{ this.activeSrv.selectedLink.name }}'s COM
             </mat-panel-title>
             <mat-panel-description>
               <mat-icon
@@ -417,9 +426,7 @@
         >
           <mat-expansion-panel-header>
             <mat-panel-title>
-              <mat-panel-title>
-                Velocity of Link {{ this.activeSrv.selectedLink.name }}'s COM
-              </mat-panel-title>
+              Velocity of Link {{ this.activeSrv.selectedLink.name }}'s COM
             </mat-panel-title>
             <mat-panel-description>
               <mat-icon
@@ -446,9 +453,7 @@
         >
           <mat-expansion-panel-header>
             <mat-panel-title>
-              <mat-panel-title>
-                Acceleration of Link {{ this.activeSrv.selectedLink.name }}'s COM
-              </mat-panel-title>
+              Acceleration of Link {{ this.activeSrv.selectedLink.name }}'s COM
             </mat-panel-title>
             <mat-panel-description>
               <mat-icon
@@ -469,76 +474,6 @@
           }
         </mat-expansion-panel>
       </collapsible-subseciton>
-      <!-- Link Forces-->
-      @if (settingsService.isForces.value) {
-        <collapsible-subseciton
-          titleLabel="Force Analysis"
-          [expanded]="graphExpanded['LForceAna']"
-          (opened)="graphExpanded['LForceAna'] = true"
-          (closed)="graphExpanded['LForceAna'] = false"
-        >
-          <radio-block
-            tooltip="Determines whether the force analysis is done at static equilibrium or under dynamics conditions. The input speed for the dynamic analysis is set in the settings panel."
-            option1="Static (Equilibrium)"
-            option2="In-motion (Dynamic)"
-            [formGroup]="this.inputSpeedFormGroup"
-            _formControl="speed"
-            >Force Analysis Type
-          </radio-block>
-          <mat-expansion-panel
-            [expanded]="graphExpanded['LForce']"
-            (opened)="graphExpanded['LForce'] = true"
-            (closed)="graphExpanded['LForce'] = false"
-          >
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                Axial Force on Link {{ this.activeSrv.selectedLink.name }}
-              </mat-panel-title>
-              <mat-panel-description>
-                <mat-icon
-                  matTooltip="The axial force applied at the selected link's cross section graphed over time"
-                  [matTooltipShowDelay]="1000"
-                  id="graph-help"
-                  >help_outline
-                </mat-icon>
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-            This feature is not available yet
-            <!-- <app-analysis-graph
-                                  analysis="force"
-                                  analysisType="{{ this.inputSpeedFormGroup.value.speed === 'One' ? 'dynamic' : 'static' }}"
-                                  mechProp="Joint Forces"
-                                  mechPart="{{ this.activeSrv.Joint.id }}"
-                                ></app-analysis-graph> -->
-          </mat-expansion-panel>
-          <mat-expansion-panel
-            [expanded]="graphExpanded['LStress']"
-            (opened)="graphExpanded['LStress'] = true"
-            (closed)="graphExpanded['LStress'] = false"
-          >
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                Axial Stress on Link {{ this.activeSrv.selectedLink.name }}
-              </mat-panel-title>
-              <mat-panel-description>
-                <mat-icon
-                  matTooltip="The axial stress applied at the selected link's minimum cross section graphed over time"
-                  [matTooltipShowDelay]="1000"
-                  id="graph-help"
-                  >help_outline
-                </mat-icon>
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-            This feature is not available yet
-            <!-- <app-analysis-graph
-                                  analysis="force"
-                                  analysisType="{{ this.inputSpeedFormGroup.value.speed === 'One' ? 'dynamic' : 'static' }}"
-                                  mechProp="Input Torque"
-                                  mechPart="{{ this.activeSrv.Joint.id }}"
-                                ></app-analysis-graph> -->
-          </mat-expansion-panel>
-        </collapsible-subseciton>
-      }
     </panel-section>
   }
 

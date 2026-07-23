@@ -84,19 +84,17 @@
     </mat-slider>
   </div>
   <div id="viewButtons">
-    @if (settingsService.isForces.value) {
-      <button
-        disabled="{{ noLinkExsits() }}"
-        matTooltip="Show Center of Mass"
-        matTooltipPosition="above"
-        [matTooltipShowDelay]="1000"
-        mat-icon-button
-        color="primary"
-        (click)="showCenterOfMass()"
-      >
-        <mat-icon svgIcon="{{ comIconName() }}"></mat-icon>
-      </button>
-    }
+    <button
+      disabled="{{ noLinkExsits() }}"
+      matTooltip="Show Center of Mass"
+      matTooltipPosition="above"
+      [matTooltipShowDelay]="1000"
+      mat-icon-button
+      color="primary"
+      (click)="showCenterOfMass()"
+    >
+      <mat-icon svgIcon="{{ comIconName() }}"></mat-icon>
+    </button>
     <button
       disabled="{{ noJointExsits() }}"
       matTooltip="Show ID Labels"

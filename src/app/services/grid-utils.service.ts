@@ -10,6 +10,7 @@ import {
   moveModes,
   roundNumber,
   getDistance,
+  point_on_line_segment_closest_to_point,
 } from '../model/utils';
 import { Link, Piston, RealLink } from '../model/link';
 import { MechanismService } from './mechanism.service';
@@ -221,53 +222,25 @@ export class GridUtilsService {
   }
 
   dragForce(selectedForce: Force, trueCoord: Coord, isStartSelected: boolean) {
-    // TODO: Determine how to optimize this so screen is more fluid
     if (isStartSelected) {
       if (selectedForce.link.joints.length !== 2) {
-        selectedForce.startCoord.x = trueCoord.x;
-        selectedForce.startCoord.y = trueCoord.y;
+        selectedForce.moveAnchor(trueCoord);
       } else {
         const joint1 = selectedForce.link.joints[0];
         const joint2 = selectedForce.link.joints[1];
-        const leftMostX =
-          selectedForce.link.joints[0].x < selectedForce.link.joints[1].x
-            ? selectedForce.link.joints[0].x
-            : selectedForce.link.joints[1].x;
-        const rightMostX =
-          selectedForce.link.joints[0].x > selectedForce.link.joints[1].x
-            ? selectedForce.link.joints[0].x
-            : selectedForce.link.joints[1].x;
-        const m = (joint1.y - joint2.y) / (joint1.x - joint2.x);
-        const b = joint1.y - m * joint1.x;
-        if (trueCoord.x < leftMostX) {
-          selectedForce.startCoord.x = leftMostX;
-        } else if (trueCoord.x > rightMostX) {
-          selectedForce.startCoord.x = rightMostX;
-        } else {
-          selectedForce.startCoord.x = trueCoord.x;
-        }
-        selectedForce.startCoord.y = m * selectedForce.startCoord.x + b;
+        const [x, y] = point_on_line_segment_closest_to_point(
+          trueCoord.x,
+          trueCoord.y,
+          joint1.x,
+          joint1.y,
+          joint2.x,
+          joint2.y
+        );
+        selectedForce.moveAnchor(new Coord(x, y));
       }
     } else {
-      selectedForce.endCoord.x = trueCoord.x;
-      selectedForce.endCoord.y = trueCoord.y;
+      selectedForce.moveDirectionHandle(trueCoord);
     }
-    selectedForce.forceLine = selectedForce.createForceLine(
-      selectedForce.startCoord,
-      selectedForce.endCoord
-    );
-    if (selectedForce.arrowOutward) {
-      selectedForce.forceArrow = selectedForce.createForceArrow(
-        selectedForce.startCoord,
-        selectedForce.endCoord
-      );
-    } else {
-      selectedForce.forceArrow = selectedForce.createForceArrow(
-        selectedForce.endCoord,
-        selectedForce.startCoord
-      );
-    }
-    selectedForce.updateInternalValues();
     return selectedForce;
   }
 
@@ -316,9 +289,9 @@ export class GridUtilsService {
     console.log(this.getSliderJoint(lastRightClick as RealJoint)! as PrisJoint);
   }
 
-  getLinkSubset(link: Link) {
+  getLinkSubset(link: Link): Link[] {
     if (!(link instanceof RealLink)) {
-      return;
+      return [];
     }
     return link.subset;
   }
@@ -329,14 +302,6 @@ export class GridUtilsService {
 
   getWelded(joint: Joint) {
     return (joint as RealJoint).isWelded;
-  }
-
-  getAngleFromJoint(joint: Joint) {
-    //This joint must be a welded joint, get the angle of one of the sublinks
-    //console.log("gaf1", (joint as RealJoint));
-    //console.log("gaf2", (joint as RealJoint).links);
-    //console.log("gaf3", (joint as RealJoint).links[0] as RealLink);
-    return ((joint as RealJoint).links[0] as RealLink).angleRad;
   }
 
   updateLastSelectedSublink(mouseEvent: MouseEvent, clickedObj: RealLink) {

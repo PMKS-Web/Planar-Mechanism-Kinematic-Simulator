@@ -1,6 +1,6 @@
 import { Injectable, EventEmitter } from '@angular/core';
 import { Force } from '../model/force';
-import { RealJoint, RevJoint } from '../model/joint';
+import { RealJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { Coord } from '../model/coord';
 import { SynthesisPose } from './synthesis/synthesis-util';
@@ -50,44 +50,29 @@ export class ActiveObjService {
     this.prevSelectedJoint = this.selectedJoint;
     if (newActiveObj === undefined || newActiveObj === null) {
       this.objType = 'Grid';
-    } else {
-      switch (newActiveObj.constructor) {
-        case RevJoint: {
-          this.objType = 'Joint';
-          this.selectedJoint = newActiveObj;
-          break;
-        }
-        case RealLink: {
-          this.objType = 'Link';
-          this.selectedLink = newActiveObj;
-          break;
-        }
-        case Force: {
-          console.log('Force selected');
-          this.objType = 'Force';
-          this.selectedForce = newActiveObj;
-          this.selectedForce.isStartSelected = false;
-          this.selectedForce.isEndSelected = false;
-          break;
-        }
-        case SynthesisPose:
-          this.objType = 'SynthesisPose';
-          this.selectedPose = newActiveObj;
-          break;
-        case Coord: {
-          console.log('Force endpoint selected');
-          this.objType = 'Force';
-          this.selectedForce = forceParent!;
-          this.selectedForce.isStartSelected = false;
-          this.selectedForce.isEndSelected = false;
-          //This is only for when a force endpoint is slected
-          if (this.selectedForce.startCoord === newActiveObj) {
-            this.selectedForce.isStartSelected = true;
-          } else if (this.selectedForce.endCoord === newActiveObj) {
-            this.selectedForce.isEndSelected = true;
-          }
-          break;
-        }
+    } else if (newActiveObj instanceof RealJoint) {
+      this.objType = 'Joint';
+      this.selectedJoint = newActiveObj;
+    } else if (newActiveObj instanceof RealLink) {
+      this.objType = 'Link';
+      this.selectedLink = newActiveObj;
+    } else if (newActiveObj instanceof Force) {
+      this.objType = 'Force';
+      this.selectedForce = newActiveObj;
+      this.selectedForce.isStartSelected = false;
+      this.selectedForce.isEndSelected = false;
+    } else if (newActiveObj instanceof SynthesisPose) {
+      this.objType = 'SynthesisPose';
+      this.selectedPose = newActiveObj;
+    } else if (newActiveObj instanceof Coord) {
+      this.objType = 'Force';
+      this.selectedForce = forceParent!;
+      this.selectedForce.isStartSelected = false;
+      this.selectedForce.isEndSelected = false;
+      if (this.selectedForce.startCoord === newActiveObj) {
+        this.selectedForce.isStartSelected = true;
+      } else if (this.selectedForce.endCoord === newActiveObj) {
+        this.selectedForce.isEndSelected = true;
       }
     }
     this.onActiveObjChange.emit(this.objType);

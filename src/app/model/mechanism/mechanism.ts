@@ -8,7 +8,11 @@ import { InstantCenter } from '../instant-center';
 import { LoopSolver } from './loop-solver';
 import { Coord } from '../coord';
 import { KinematicsSolver } from './kinematic-solver';
-import { ForceSolver } from './force-solver';
+import {
+  ForceAnalysisMode,
+  ForceAnalysisSeries,
+  ForceSolver,
+} from './force-solver';
 import { roundNumber } from '../utils';
 
 export class Mechanism {
@@ -18,6 +22,7 @@ export class Mechanism {
   private _ics: InstantCenter[][] = [[]];
   private _timeNum: number[] = [];
   private _internalTriangleSimLinkMap = new Map<string, number[]>();
+  private forceAnalysisCache = new Map<ForceAnalysisMode, ForceAnalysisSeries>();
 
   private _gravity: boolean;
   private _unit: string;
@@ -52,7 +57,8 @@ export class Mechanism {
             l.mass,
             l.massMoI,
             new Coord(l.CoM.x, l.CoM.y),
-            this.cloneLinkSubset(l.subset, this._joints[0])
+            this.cloneLinkSubset(l.subset, this._joints[0], true),
+            l
           );
           realLink.name = l.name;
           realLink.fill = l.fill;
@@ -79,6 +85,7 @@ export class Mechanism {
       force.name = f.name;
       this._forces[0].push(force);
     });
+    Force.normalizeVisualWidths(this._forces[0]);
     this.attachForcesToLinks(0);
     // joints.forEach(j => { this._joints[0].push(j); });
     // links.forEach(l => { this._links[0].push(l); });
@@ -153,7 +160,11 @@ export class Mechanism {
   }
 
   /** Copy welded constituent links onto the current timestep's joint graph. */
-  private cloneLinkSubset(sources: Link[], targetJoints: Joint[]): Link[] {
+  private cloneLinkSubset(
+    sources: Link[],
+    targetJoints: Joint[],
+    copyVisualGeometry = false
+  ): Link[] {
     return sources.flatMap((source) => {
       const joints = source.joints
         .map((joint) => targetJoints.find((candidate) => candidate.id === joint.id))
@@ -168,7 +179,8 @@ export class Mechanism {
           source.mass,
           source.massMoI,
           this.transportPoint(source.CoM, source.joints, joints),
-          this.cloneLinkSubset(source.subset, targetJoints)
+          this.cloneLinkSubset(source.subset, targetJoints, copyVisualGeometry),
+          copyVisualGeometry ? source : undefined
         );
         link.name = source.name;
         link.fill = source.fill;
@@ -302,7 +314,12 @@ export class Mechanism {
     let max_counter = 0;
     let curTimeNum = 0;
     // TODO: Make sure to also account for m/s for slider and for other units, such as degree per second
-    let timeNumIncrement = Math.PI / 180 / inputAngVel;
+    const angularSpeed = Math.abs(inputAngVel);
+    // Time always moves forward, including across a rocking mechanism's
+    // direction reversal. At zero speed retain finite sample coordinates so
+    // static-equivalent dynamic results can still be plotted and exported.
+    let timeNumIncrement =
+      angularSpeed > Number.EPSILON ? Math.PI / 180 / angularSpeed : Math.PI / 180;
     this.joints[0].forEach((j) => {
       if (!(j instanceof RealJoint)) {
         return;
@@ -388,7 +405,8 @@ export class Mechanism {
                 l.mass,
                 l.massMoI,
                 this.transportPoint(l.CoM, l.joints, connectedJoints),
-                this.cloneLinkSubset(l.subset, this._joints[currentTimeStamp + 1])
+                this.cloneLinkSubset(l.subset, this._joints[currentTimeStamp + 1], true),
+                l
               );
               pushLink.name = l.name;
               pushLink.fill = l.fill;
@@ -444,19 +462,26 @@ export class Mechanism {
           if (link === undefined || !(link instanceof RealLink)) {
             return;
           }
-          // TODO: Don't have forceMagnitudeMap within Position Solver
+          const start = this.transportPoint(f.startCoord, f.link.joints, link.joints);
+          const end = f.local
+            ? this.transportPoint(f.endCoord, f.link.joints, link.joints)
+            : new Coord(
+                start.x + (f.endCoord.x - f.startCoord.x),
+                start.y + (f.endCoord.y - f.startCoord.y)
+              );
           const force = new Force(
             f.id,
             link,
-            PositionSolver.forcePositionMap.get(f.id + 'start')!,
-            PositionSolver.forcePositionMap.get(f.id + 'end')!,
+            start,
+            end,
             f.local,
             f.arrowOutward,
-            PositionSolver.forceMagnitudeMap.get(f.id + 'x')
+            f.mag
           );
           force.name = f.name;
           this._forces[currentTimeStamp + 1].push(force);
         });
+        Force.normalizeVisualWidths(this._forces[currentTimeStamp + 1]);
         this.attachForcesToLinks(currentTimeStamp + 1);
         // this.links[0].forEach(l => {
         //   if (l instanceof RealLink) {
@@ -510,7 +535,6 @@ export class Mechanism {
         return;
       }
     }
-    const hello = 'hi';
   }
 
   private setMechanismInvalid() {
@@ -649,6 +673,13 @@ export class Mechanism {
         forceUnit = 'N';
         torqueUnit = 'N*m';
         break;
+      case 'in':
+        posUnit = 'in';
+        velUnit = 'in/s';
+        accUnit = 'in/s^2';
+        forceUnit = 'lbf';
+        torqueUnit = 'lbf*in';
+        break;
       default:
         return;
       // case 'km':
@@ -749,6 +780,16 @@ export class Mechanism {
     return forceTitleRow;
   }
 
+  /** One immutable force-analysis result is shared by every graph/export. */
+  getForceAnalysis(mode: ForceAnalysisMode): ForceAnalysisSeries {
+    let result = this.forceAnalysisCache.get(mode);
+    if (!result) {
+      result = ForceSolver.analyzeMechanism(this, mode);
+      this.forceAnalysisCache.set(mode, result);
+    }
+    return result;
+  }
+
   kinematicLoopTitleRow() {
     const kinematicTitleRow = new Array<string>();
     kinematicTitleRow.push('Current Time');
@@ -768,6 +809,11 @@ export class Mechanism {
         posUnit = 'm';
         velUnit = 'm/s';
         accUnit = 'm/s^2';
+        break;
+      case 'in':
+        posUnit = 'in';
+        velUnit = 'in/s';
+        accUnit = 'in/s^2';
         break;
       // case 'km':
       //   posUnit = 'km';
@@ -859,6 +905,13 @@ export class Mechanism {
         posUnitConversion = 1;
         velUnitConversion = 1;
         accUnitConversion = 1; // cm/s^2
+        break;
+      case 'in':
+        forceUnitConversion = 0.22480894387096;
+        torqueUnitConversion = 8.8507457913272;
+        posUnitConversion = 1;
+        velUnitConversion = 1;
+        accUnitConversion = 1;
         break;
       // case 'km':
       //   forceUnitConversion = 1; // convert from newtons -> newton

@@ -12,14 +12,10 @@ export class SettingsService {
   // inputTorque = new BehaviorSubject(TorqueUnit.CM_N);
   globalUnit = new BehaviorSubject(GlobalUnit.METRIC);
   isInputCW = new BehaviorSubject(true);
-  isForces = new BehaviorSubject(false);
   inputSpeed = new BehaviorSubject(20);
   animating = new BehaviorSubject(false);
   isShowMajorGrid = new BehaviorSubject(true);
   isShowMinorGrid = new BehaviorSubject(true);
-
-  isWeldedJointsEnabled = new BehaviorSubject(false);
-  isEquationsEnabled = new BehaviorSubject(false);
 
   isShowID = new BehaviorSubject(false);
   isShowCOM = new BehaviorSubject(false);

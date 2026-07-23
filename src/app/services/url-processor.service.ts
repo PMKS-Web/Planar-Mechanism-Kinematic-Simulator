@@ -10,6 +10,7 @@ import { SettingsService } from './settings.service';
 import { MechanismBuilder } from './transcoding/mechanism-builder';
 import { SvgGridService } from './svg-grid.service';
 import { ActiveObjService } from './active-obj.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Injectable({
   providedIn: 'root',
@@ -19,7 +20,8 @@ export class UrlProcessorService {
     private injector: Injector,
     private settingsSrv: SettingsService,
     private svgGrid: SvgGridService,
-    private activeObj: ActiveObjService
+    private activeObj: ActiveObjService,
+    private snackBar: MatSnackBar
   ) {
 
     // the content part of the url (the part after the ?)
@@ -54,13 +56,29 @@ export class UrlProcessorService {
     
     // if the url exists, decode it and build the mechanism. Otherwise, skip to updating mechanism directly
     if (url !== null) {
-      console.log('decoded url: ' + url);
-      decoder.decodeURL(url as string);
-      const builder = new MechanismBuilder(mechanismSrv, decoder, this.settingsSrv, this.activeObj);
-      builder.build(updateSettings);
-
-      //Now set the URL back to the original URL without the query string.
-      window.history.replaceState({}, document.title, window.location.pathname);
+      try {
+        console.log('decoded url: ' + url);
+        decoder.decodeURL(url);
+        const builder = new MechanismBuilder(
+          mechanismSrv,
+          decoder,
+          this.settingsSrv,
+          this.activeObj
+        );
+        builder.build(updateSettings);
+      } catch (error) {
+        console.error('Unable to load mechanism URL', error);
+        setTimeout(() => {
+          this.snackBar.open('Unable to load the shared mechanism URL.', '', {
+            duration: 4000,
+            horizontalPosition: 'center',
+            verticalPosition: 'top',
+          });
+        });
+      } finally {
+        // Invalid data must not remain in the address bar or be retried on refresh.
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     }
 
     mechanismSrv.updateMechanism(save);

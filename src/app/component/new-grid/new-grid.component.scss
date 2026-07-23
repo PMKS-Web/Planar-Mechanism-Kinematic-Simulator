@@ -47,10 +47,6 @@
     // transform: translateY(40px) !important;
     // pointer-events: none !important;
   }
-  .cdk-overlay-pane {
-    pointer-events: none !important;
-  }
-
   #pathsHolder {
     stroke: mat.m2-get-color-from-palette($primary-palette, 900);
   }

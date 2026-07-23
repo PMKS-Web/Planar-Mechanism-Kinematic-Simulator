@@ -50,7 +50,7 @@ export class AnimationBarComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
     //Subscribte to the emitter inside mechanismStateService
     this.mechanismService.onMechPositionChange.subscribe((v) => {
-      this.timestepDisplay = Number((v / 62.5).toFixed(2));
+      this.timestepDisplay = Number(this.timeAtStep(v).toFixed(3));
     });
   }
 
@@ -65,16 +65,13 @@ export class AnimationBarComponent implements OnInit, AfterViewInit {
   }
 
   onNewTimeSubmit(simpleForm: any) {
-    console.log(simpleForm.value.timestep);
-    if (simpleForm.value.timestep * 62.5 > this.maxTimeSteps()) {
-      simpleForm.value.timestep = this.maxTimeSteps() / 62.5;
-    } else if (simpleForm.value.timestep < 0) {
-      simpleForm.value.timestep = 0;
-    }
-    this.mechanismService.animate(
-      Number(simpleForm.value.timestep * 62.5),
-      AnimationBarComponent.animate
+    const requested = Number(simpleForm.value.timestep);
+    const clamped = Math.min(
+      Math.max(Number.isFinite(requested) ? requested : 0, 0),
+      this.maxTime()
     );
+    simpleForm.value.timestep = clamped;
+    this.mechanismService.animate(this.nearestTimeStep(clamped), AnimationBarComponent.animate);
 
     if (this.mechanismService.mechanismTimeStep !== 0) {
       this.settingsService.animating.next(true);
@@ -89,6 +86,27 @@ export class AnimationBarComponent implements OnInit, AfterViewInit {
     } else {
       return this.mechanismService.mechanisms[0].joints.length - 1;
     }
+  }
+
+  maxTime(): number {
+    const times = this.mechanismService.mechanisms[0]?.timeNum ?? [];
+    return times[times.length - 1] ?? 0;
+  }
+
+  timeAtStep(index: number): number {
+    return this.mechanismService.mechanisms[0]?.timeNum[index] ?? 0;
+  }
+
+  nearestTimeStep(timeSeconds: number): number {
+    const times = this.mechanismService.mechanisms[0]?.timeNum ?? [];
+    if (times.length === 0) return 0;
+    let nearest = 0;
+    for (let index = 1; index < times.length; index++) {
+      if (Math.abs(times[index] - timeSeconds) < Math.abs(times[nearest] - timeSeconds)) {
+        nearest = index;
+      }
+    }
+    return nearest;
   }
 
   // onDirectionChange() {

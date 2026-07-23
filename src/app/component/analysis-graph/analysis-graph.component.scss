@@ -43,6 +43,36 @@
     .mdc-label {
       line-height: 20px;
     }
+
+    .series-x {
+      --mat-checkbox-selected-focus-icon-color: #313aa7;
+      --mat-checkbox-selected-hover-icon-color: #313aa7;
+      --mat-checkbox-selected-icon-color: #313aa7;
+      --mat-checkbox-selected-pressed-icon-color: #313aa7;
+      --mat-checkbox-selected-focus-state-layer-color: #313aa7;
+      --mat-checkbox-selected-hover-state-layer-color: #313aa7;
+      --mat-checkbox-selected-pressed-state-layer-color: #313aa7;
+    }
+
+    .series-y {
+      --mat-checkbox-selected-focus-icon-color: #ea2b29;
+      --mat-checkbox-selected-hover-icon-color: #ea2b29;
+      --mat-checkbox-selected-icon-color: #ea2b29;
+      --mat-checkbox-selected-pressed-icon-color: #ea2b29;
+      --mat-checkbox-selected-focus-state-layer-color: #ea2b29;
+      --mat-checkbox-selected-hover-state-layer-color: #ea2b29;
+      --mat-checkbox-selected-pressed-state-layer-color: #ea2b29;
+    }
+
+    .series-z {
+      --mat-checkbox-selected-focus-icon-color: #fdb50e;
+      --mat-checkbox-selected-hover-icon-color: #fdb50e;
+      --mat-checkbox-selected-icon-color: #fdb50e;
+      --mat-checkbox-selected-pressed-icon-color: #fdb50e;
+      --mat-checkbox-selected-focus-state-layer-color: #fdb50e;
+      --mat-checkbox-selected-hover-state-layer-color: #fdb50e;
+      --mat-checkbox-selected-pressed-state-layer-color: #fdb50e;
+    }
   }
 
   #shift-up {
@@ -65,11 +95,30 @@
     border-radius: var(--border-radius);
     pointer-events: none;
     padding-top: 80px;
+
+    &.compact-single-series {
+      top: 60px;
+    }
   }
 
-  apx-chart > div {
+  app-analysis-apex-chart.compact-single-series {
+    display: block;
+    margin-top: -40px;
+  }
+
+  app-analysis-apex-chart > div:not(.chart-render-error) {
     min-height: 0 !important;
     height: 225px !important;
+  }
+
+  .chart-render-error {
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    text-align: center;
+    color: mat.m2-get-color-from-palette($primary-palette, 900);
   }
 
   #csvDownload {
@@ -94,5 +143,15 @@
       font-size: 20px;
       line-height: 20px;
     }
+  }
+
+  .analysis-diagnostic {
+    margin: 16px 4px 12px;
+    padding: 16px;
+    border: 1px solid mat.m2-get-color-from-palette($primary-palette, 200);
+    border-radius: var(--border-radius);
+    background: mat.m2-get-color-from-palette($primary-palette, 50);
+    color: mat.m2-get-color-from-palette($primary-palette, 900);
+    line-height: 1.4;
   }
 }

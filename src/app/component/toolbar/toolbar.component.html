@@ -107,17 +107,6 @@
     <mat-icon>settings</mat-icon>
     Settings
   </button>
-  @if (settingsService.isEquationsEnabled.value) {
-    <button
-      mat-button
-      (click)="openRightPanelEquations()"
-      matTooltip="View Equations of Equilibrium"
-      matTooltipShowDelay="1000"
-    >
-      <mat-icon>format_list_numbered</mat-icon>
-      Equations
-    </button>
-  }
   <button
     mat-button
     (click)="openRightPanelHelp()"

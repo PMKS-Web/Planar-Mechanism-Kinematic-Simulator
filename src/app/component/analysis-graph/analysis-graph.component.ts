@@ -21,18 +21,18 @@ import {
   ApexTooltip,
   ApexXAxis,
   ApexYAxis,
-  ChartComponent,
-} from 'ng-apexcharts';
+} from 'apexcharts';
 import { KinematicsSolver } from 'src/app/model/mechanism/kinematic-solver';
-import { ForceSolver } from 'src/app/model/mechanism/force-solver';
-import { AngleUnit, GlobalUnit, LengthUnit, roundNumber } from '../../model/utils';
-import { ToolbarComponent } from '../toolbar/toolbar.component';
+import { ForceAnalysisMode } from 'src/app/model/mechanism/force-solver';
+import { AngleUnit, ForceUnit, LengthUnit, roundNumber } from '../../model/utils';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { FormBuilder } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { ActiveObjService } from '../../services/active-obj.service';
+import { skip, Subscription } from 'rxjs';
+import { AnalysisApexChartComponent } from './analysis-apex-chart.component';
 
 export type ChartOptions = {
   annotations: ApexAnnotations;
@@ -51,6 +51,12 @@ export type ChartOptions = {
   toolbar: any;
   legend: ApexLegend;
 };
+
+export const ANALYSIS_SERIES_COLORS = {
+  X: '#313aa7',
+  Y: '#ea2b29',
+  Z: '#fdb50e',
+} as const;
 
 @Component({
   selector: 'app-analysis-graph',
@@ -79,6 +85,10 @@ export type ChartOptions = {
 })
 export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
   public chartOptions: Partial<ChartOptions> = {
+    annotations: {
+      xaxis: [],
+      points: [],
+    },
     chart: {
       objectScale: '100%', //380
       height: '250px', //300
@@ -93,17 +103,6 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
         show: false, //Change this
         // offsetX: -30,
         // offsetY: -3,
-        // export: {
-        //   csv: {
-        //     filename: 'Mechanism Analysis',
-        //     columnDelimiter: ',',
-        //     headerCategory: 'Time (seconds)',
-        //     headerValue: 'Value',
-        //     dateFormatter(timestamp: number) {
-        //       return 'T = ' + ((timestamp - 1) / 62.5).toFixed(2) + 's';
-        //     },
-        //   },
-        // },
       },
     },
     dataLabels: {
@@ -113,14 +112,17 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       curve: 'straight',
       width: 2,
     },
-    colors: ['#313aa7', '#ea2b29', '#fdb50e'],
+    colors: [
+      ANALYSIS_SERIES_COLORS.X,
+      ANALYSIS_SERIES_COLORS.Y,
+      ANALYSIS_SERIES_COLORS.Z,
+    ],
     tooltip: {
       // followCursor: false,
       // theme: 'dark',
       x: {
-        // show: false,
         formatter: function (val) {
-          return 'T = ' + ((Number(val) - 1) / 62.5).toFixed(2) + 's';
+          return 'T = ' + Number(val).toFixed(3) + 's';
         },
       },
       marker: {
@@ -164,7 +166,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
         trim: true,
         offsetY: 0,
         formatter: function (val) {
-          return String((Number(val) - 1) / 62.5);
+          return Number(val).toFixed(3);
         },
       },
       tickAmount: 1,
@@ -211,19 +213,27 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   @Input() analysisType: string = '';
   @Input() mechProp: string = '';
   @Input() mechPart: string = '';
+  @Input() reactionLinkId: string = '';
 
   //Get the child element in the template with "#chart"
-  @ViewChild('chart', { static: true }) chart!: ChartComponent;
+  @ViewChild('chart', { static: false }) chart!: AnalysisApexChartComponent;
 
   animationTimestep: number = 0;
   numberOfSeries: number = 0;
+  displayedSeries: ApexAxisChartSeries = [];
+  displayedColors: string[] = [];
+
+  get compactSingleSeries(): boolean {
+    return this.numberOfSeries === 1;
+  }
 
   noDataSelected: boolean = false;
-
-  mechPositionSub: any;
-  mechStateSub: any;
+  analysisDiagnostic: string | null = null;
 
   loading: boolean = false;
+  private subscriptions = new Subscription();
+  private chartSyncTimer?: ReturnType<typeof setTimeout>;
+  private destroyed = false;
 
   constructor(
     private fb: FormBuilder,
@@ -243,75 +253,18 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   );
 
   ngOnChanges(changes: SimpleChanges): void {
-    //We don't want to resubscribe to things when the component is first initialized
-    //Since onInit and ngAfterView will be called on initialization, double calling leads to too many subscriptions
-    // if (changes['mechPart'].isFirstChange()) {
-    //   return;
-    // }
-    // this.ngOnDestroy();
-    // this.ngOnInit();
-    // this.ngAfterViewInit();
-    // ForceSolver.resetVariables();
-    // KinematicsSolver.resetVariables();
-    // ForceSolver.determineDesiredLoopLettersForce(this.mechanismService.mechanisms[0].requiredLoops);
-    // ForceSolver.determineForceAnalysis(
-    //     this.mechanismService.joints,
-    //     this.mechanismService.links,
-    //     'static',
-    //     this.settingsService.isGravity.value,
-    //     unitStr
-    // );
-    //
-    // KinematicsSolver.requiredLoops = this.mechanismService.mechanisms[0].requiredLoops;
-    // KinematicsSolver.determineKinematics(
-    //     this.mechanismService.joints,
-    //     this.mechanismService.links,
-    //     ToolbarComponent.inputAngularVelocity
-    // );
+    if (!changes || !this.analysis || !this.mechProp || !this.mechPart) return;
     this.updateChartData();
   }
 
   updateChartData() {
+    if (!this.analysis || !this.mechProp || !this.mechPart) return;
     this.determineChart(this.analysis, this.analysisType, this.mechProp, this.mechPart);
-    // this.ngAfterViewInit();
-    setTimeout(() => {
-      this.seriesCheckboxForm.patchValue(
-        {
-          x: this.seriesCheckboxForm.value.x,
-          y: this.seriesCheckboxForm.value.y,
-          z: this.seriesCheckboxForm.value.z,
-        },
-        { emitEvent: true }
-      );
-    }, 1);
+    this.scheduleChartSync(false);
   }
 
   ngAfterViewInit(): void {
-    //Delay this call by 1ms to make sure the chart is initialized
-    setTimeout(() => {
-      // this.chart.clearAnnotations();
-      if (this.numberOfSeries === 3) {
-        this.seriesCheckboxForm.patchValue({
-          x: false,
-          y: false,
-          z: true,
-        });
-      }
-      if (this.numberOfSeries === 2) {
-        this.seriesCheckboxForm.patchValue({
-          x: true,
-          y: true,
-          z: false,
-        });
-      }
-      if (this.numberOfSeries === 1) {
-        this.seriesCheckboxForm.patchValue({
-          x: false,
-          y: false,
-          z: true,
-        });
-      }
-    }, 1);
+    this.scheduleChartSync(true);
   }
 
   ngOnInit(): void {
@@ -329,89 +282,85 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     // console.log(this.analysis, this.analysisType, this.mechProp, this.mechPart);
     this.determineChart(this.analysis, this.analysisType, this.mechProp, this.mechPart);
 
-    this.seriesCheckboxForm.valueChanges.subscribe((data) => {
-      if (this.chart === null) return;
-
-      switch (this.numberOfSeries) {
-        case 3:
-          data.x ? this.chart.showSeries('X') : this.chart.hideSeries('X');
-          data.y ? this.chart.showSeries('Y') : this.chart.hideSeries('Y');
-          data.z ? this.chart.showSeries('Z') : this.chart.hideSeries('Z');
-          this.noDataSelected = !data.x && !data.y && !data.z;
-          break;
-        case 2:
-          data.x ? this.chart.showSeries('X') : this.chart.hideSeries('X');
-          data.y ? this.chart.showSeries('Y') : this.chart.hideSeries('Y');
-          this.noDataSelected = !data.x && !data.y;
-          break;
-        case 1:
-          data.z ? this.chart.showSeries('Z') : this.chart.hideSeries('Z');
-          this.noDataSelected = !data.z;
-          break;
-      }
-
-      this.showAnnotations(this.mechanismService.mechanismTimeStep);
-    });
-
-    this.settingsService.angleUnit.subscribe((t) => {
-      //Force update the Y axis text with the new label
-      setTimeout(() => {
-        // ng-apexcharts >=1.14 exposes chart as an input signal, so read it via call
-        if (this.chart.chart()) {
-          this.chart.updateOptions(
-            {
-              yaxis: this.chartOptions.yaxis,
-            },
-            false,
-            true
-          );
-        }
-      }, 1);
-    });
-
-    this.settingsService.lengthUnit.subscribe((t) => {
-      //Force update the Y axis text with the new label
-      setTimeout(() => {
-        if (this.chart.chart()) {
-          this.chart.updateOptions(
-            {
-              yaxis: this.chartOptions.yaxis,
-            },
-            false,
-            true
-          );
-        }
-      }, 1);
-    });
-
-    this.mechStateSub = this.mechanismService.onMechUpdateState.subscribe((data) => {
-      switch (data) {
-        case 0:
-          this.loading = false;
-          break;
-        case 1:
-          //Apply css class to the chart to make it look like it's loading
+    this.subscriptions.add(
+      this.seriesCheckboxForm.valueChanges.subscribe(() => this.applySeriesVisibility())
+    );
+    this.subscriptions.add(
+      this.settingsService.angleUnit.pipe(skip(1)).subscribe(() => this.updateChartData())
+    );
+    this.subscriptions.add(
+      this.settingsService.lengthUnit.pipe(skip(1)).subscribe(() => this.updateChartData())
+    );
+    this.subscriptions.add(
+      this.settingsService.forceUnit.pipe(skip(1)).subscribe(() => this.updateChartData())
+    );
+    this.subscriptions.add(
+      this.mechanismService.onMechUpdateState.subscribe((data) => {
+        if (data === 1) {
           this.loading = true;
-          break;
-        case 2:
-          if (this.mechanismService.oneValidMechanismExists()) {
-            this.updateChartData();
-            this.mechanismService.onMechUpdateState.next(0);
-          }
-          break;
-      }
-    });
+        } else if (data === 0) {
+          this.loading = false;
+        } else if (data === 2 && this.mechanismService.oneValidMechanismExists()) {
+          this.loading = false;
+          this.updateChartData();
+        }
+      })
+    );
+    this.subscriptions.add(
+      this.mechanismService.onMechPositionChange.subscribe((timeIndex) => {
+        this.showAnnotations(timeIndex);
+      })
+    );
+  }
 
-    this.mechPositionSub = this.mechanismService.onMechPositionChange.subscribe((timeIndex) => {
-      this.showAnnotations(timeIndex);
-    });
+  private scheduleChartSync(resetSelection: boolean): void {
+    if (this.chartSyncTimer) clearTimeout(this.chartSyncTimer);
+    this.chartSyncTimer = setTimeout(() => {
+      if (this.destroyed) return;
+      if (resetSelection) {
+        const selection =
+          this.numberOfSeries === 2
+            ? { x: true, y: true, z: false }
+            : { x: false, y: false, z: true };
+        this.seriesCheckboxForm.patchValue(selection, { emitEvent: false });
+      }
+      this.applySeriesVisibility();
+      this.updateYAxis();
+    }, 1);
+  }
+
+  applySeriesVisibility(): void {
+    const data = this.seriesCheckboxForm.getRawValue();
+    const selectedNames = new Set<string>();
+    if (data.x) selectedNames.add('X');
+    if (data.y) selectedNames.add('Y');
+    if (data.z) selectedNames.add('Z');
+
+    this.displayedSeries = (this.chartOptions.series ?? []).filter((series) =>
+      selectedNames.has(series.name ?? '')
+    );
+    this.displayedColors = this.displayedSeries.map((series) =>
+      this.colorForSeries(series.name)
+    );
+    this.noDataSelected = this.displayedSeries.length === 0;
+    if (this.chart) this.showAnnotations(this.mechanismService.mechanismTimeStep);
+  }
+
+  private updateYAxis(): void {
+    if (!this.chart) return;
+    const chartInput = (this.chart as unknown as { chart?: () => unknown }).chart;
+    if (typeof chartInput === 'function' && !chartInput()) return;
+    this.chart.updateOptions({ yaxis: this.chartOptions.yaxis }, false, true);
   }
 
   private showAnnotations(timeIndex: number) {
+    if (!this.chart) return;
     if (timeIndex === 0) {
       this.chart.clearAnnotations();
       return;
     }
+    const timeSeconds =
+      this.mechanismService.mechanisms[0]?.timeNum[timeIndex] ?? timeIndex;
     if (
       this.seriesCheckboxForm.value.x ||
       this.seriesCheckboxForm.value.y ||
@@ -420,10 +369,10 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       this.chart.clearAnnotations();
       this.chart.addXaxisAnnotation(
         {
-          x: timeIndex,
+          x: timeSeconds,
           borderColor: '#000000',
           label: {
-            text: 'T= ' + String((timeIndex / 62.5).toFixed(2)),
+            text: 'T= ' + timeSeconds.toFixed(3),
             orientation: 'horizontal',
             offsetY: -20,
           },
@@ -436,74 +385,61 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     const ySeries = this.chartOptions.series?.find((s) => s.name === 'Y');
     const zSeries = this.chartOptions.series?.find((s) => s.name === 'Z');
 
-    this.seriesCheckboxForm.value.x &&
-      xSeries &&
-      this.chart.addPointAnnotation(
-        {
-          x: timeIndex,
-          y: xSeries.data[timeIndex],
-          marker: {
-            strokeColor: '#313aa7',
-            shape: 'square',
-          },
-          label: {
-            borderColor: '#313aa7',
-            fillColor: '#000000',
-            orientation: 'horizontal',
-            text: String(xSeries.data[timeIndex]),
-          },
-        },
-        false
+    if (this.seriesCheckboxForm.value.x && xSeries) {
+      this.addPointAnnotation(
+        xSeries,
+        timeIndex,
+        timeSeconds,
+        ANALYSIS_SERIES_COLORS.X
       );
+    }
+    if (this.seriesCheckboxForm.value.y && ySeries) {
+      this.addPointAnnotation(
+        ySeries,
+        timeIndex,
+        timeSeconds,
+        ANALYSIS_SERIES_COLORS.Y
+      );
+    }
+    if (this.seriesCheckboxForm.value.z && zSeries) {
+      this.addPointAnnotation(zSeries, timeIndex, timeSeconds, this.colorForSeries('Z'));
+    }
+  }
 
-    this.seriesCheckboxForm.value.y &&
-      ySeries &&
-      this.chart.addPointAnnotation(
-        {
-          x: timeIndex,
-          y: ySeries.data[timeIndex],
-          marker: {
-            strokeColor: '#f42a2a',
-            shape: 'square',
-          },
-          label: {
-            borderColor: '#f42a2a',
-            fillColor: '#000000',
-            orientation: 'horizontal',
-            text: String(ySeries.data[timeIndex]),
-          },
-        },
-        false
-      );
+  private colorForSeries(name: string | undefined): string {
+    if (name === 'Y') return ANALYSIS_SERIES_COLORS.Y;
+    if (name === 'Z' && this.numberOfSeries === 3) return ANALYSIS_SERIES_COLORS.Z;
+    return ANALYSIS_SERIES_COLORS.X;
+  }
 
-    this.seriesCheckboxForm.value.z &&
-      zSeries &&
-      this.chart.addPointAnnotation(
-        {
-          x: timeIndex,
-          y: zSeries.data[timeIndex],
-          marker: {
-            strokeColor: this.numberOfSeries !== 3 ? '#313aa7' : '#fdb50e',
-            shape: 'square',
-          },
-          label: {
-            borderColor: this.numberOfSeries !== 3 ? '#313aa7' : '#fdb50e',
-            fillColor: '#000000',
-            orientation: 'horizontal',
-            text: String(zSeries.data[timeIndex]),
-          },
+  private addPointAnnotation(
+    series: ApexAxisChartSeries[number],
+    timeIndex: number,
+    timeSeconds: number,
+    color: string
+  ): void {
+    const value = this.pointValue(series.data[timeIndex]);
+    if (value === null) return;
+    this.chart.addPointAnnotation(
+      {
+        x: timeSeconds,
+        y: value,
+        marker: { strokeColor: color, shape: 'square' },
+        label: {
+          borderColor: color,
+          fillColor: '#000000',
+          orientation: 'horizontal',
+          text: String(value),
         },
-        false
-      );
+      },
+      false
+    );
   }
 
   ngOnDestroy(): void {
-    if (this.mechPositionSub) {
-      this.mechPositionSub.unsubscribe();
-    }
-    if (this.mechStateSub) {
-      this.mechStateSub.unsubscribe();
-    }
+    this.destroyed = true;
+    if (this.chartSyncTimer) clearTimeout(this.chartSyncTimer);
+    this.subscriptions.unsubscribe();
   }
 
   getUnitStr(unit: LengthUnit | AngleUnit): string {
@@ -527,71 +463,84 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     }
   }
 
-  downloadCSV() {
-    //Create the new csv file
-    let csvContent = 'data:text/csv;charset=utf-8,';
-    //Get the data from the chart
+  private pointValue(point: unknown): number | null {
+    if (typeof point === 'number') return Number.isFinite(point) ? point : null;
+    if (point && typeof point === 'object' && 'y' in point) {
+      const value = (point as { y: unknown }).y;
+      return typeof value === 'number' && Number.isFinite(value) ? value : null;
+    }
+    return null;
+  }
+
+  private pointTime(point: unknown, index: number): number {
+    if (point && typeof point === 'object' && 'x' in point) {
+      const value = (point as { x: unknown }).x;
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+    }
+    return this.mechanismService.mechanisms[0]?.timeNum[index] ?? index;
+  }
+
+  buildCSVContent(): string {
     const xSeries = this.chartOptions.series?.find((s) => s.name === 'X');
     const ySeries = this.chartOptions.series?.find((s) => s.name === 'Y');
     const zSeries = this.chartOptions.series?.find((s) => s.name === 'Z');
-    //Get the time step, at least one of the series should have data so get the length of that
-    const timeSteps = xSeries?.data.length || ySeries?.data.length || zSeries?.data.length;
+    const source = xSeries ?? ySeries ?? zSeries;
+    const timeSteps = source?.data.length ?? 0;
     const fileName = this.chartOptions.yaxis?.title?.text || 'Z';
-    //Get the unit of the y axis, take the last split of the title
-    let YAxisUnit = fileName.split(' ').pop();
-
-    //Acceleration (cm/s²) get's displayed as Acceleration (cm/sÂ²) in the csv file
-    //This is a hacky fix
-    if (YAxisUnit === 'sÂ²') {
-      YAxisUnit = 's²';
-    }
-    // This is a quick fix to remove the A
-    if (YAxisUnit?.includes('Â')) {
-      YAxisUnit = YAxisUnit?.replace('Â', '');
-    }
-
-    //There are three options, x and y, x, y, and z, or just z
-    //If there is no x or y, then there is only z
+    const yAxisUnit = fileName.split(' ').pop()?.replace('Â', '') ?? '';
+    let csvContent = '';
     if (!xSeries && !ySeries) {
       csvContent += 'Time (seconds),Time (steps),' + fileName + '\n';
-      for (let i = 0; i < timeSteps!; i++) {
-        const timeInSecs = i / 62.5;
-        csvContent += timeInSecs + ',' + i + ',' + zSeries?.data[i] + '\n';
-      }
-      //If there is no z, then there is only x and y
-    } else if (!zSeries) {
-      csvContent += 'Time (seconds),Time (steps),X ' + YAxisUnit + ',Y ' + YAxisUnit + '\n';
-      for (let i = 0; i < timeSteps!; i++) {
-        const timeInSecs = i / 62.5;
-        csvContent += timeInSecs + ',' + i + ',' + xSeries?.data[i] + ',' + ySeries?.data[i] + '\n';
-      }
-    } else {
-      csvContent += 'Time (seconds),Time (steps),' + fileName + ', X-comp,Y-comp\n';
-      for (let i = 0; i < timeSteps!; i++) {
-        const timeInSecs = i / 62.5;
+      for (let i = 0; i < timeSteps; i++) {
         csvContent +=
-          timeInSecs +
+          this.pointTime(zSeries?.data[i], i) +
           ',' +
           i +
           ',' +
-          zSeries?.data[i] +
+          (this.pointValue(zSeries?.data[i]) ?? '') +
+          '\n';
+      }
+    } else if (!zSeries) {
+      csvContent += 'Time (seconds),Time (steps),X ' + yAxisUnit + ',Y ' + yAxisUnit + '\n';
+      for (let i = 0; i < timeSteps; i++) {
+        csvContent +=
+          this.pointTime(xSeries?.data[i], i) +
           ',' +
-          xSeries?.data[i] +
+          i +
           ',' +
-          ySeries?.data[i] +
+          (this.pointValue(xSeries?.data[i]) ?? '') +
+          ',' +
+          (this.pointValue(ySeries?.data[i]) ?? '') +
+          '\n';
+      }
+    } else {
+      csvContent += 'Time (seconds),Time (steps),' + fileName + ', X-comp,Y-comp\n';
+      for (let i = 0; i < timeSteps; i++) {
+        csvContent +=
+          this.pointTime(zSeries.data[i], i) +
+          ',' +
+          i +
+          ',' +
+          (this.pointValue(zSeries.data[i]) ?? '') +
+          ',' +
+          (this.pointValue(xSeries?.data[i]) ?? '') +
+          ',' +
+          (this.pointValue(ySeries?.data[i]) ?? '') +
           '\n';
       }
     }
+    return csvContent;
+  }
 
-    //Create the download link
-    const encodedUri = encodeURI(csvContent);
+  downloadCSV() {
+    const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + this.buildCSVContent());
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    //Also get the link or joint name
-    const linkName = this.mechPart;
-    link.setAttribute('download', linkName + '_' + fileName + '.csv');
-    document.body.appendChild(link); // Required for FF
+    const fileName = this.chartOptions.yaxis?.title?.text || 'Analysis';
+    link.setAttribute('download', this.mechPart + '_' + fileName + '.csv');
+    document.body.appendChild(link);
     link.click();
+    link.remove();
   }
 
   determineChart(analysis: string, analysisType: string, mechProp: string, mechPart: string) {
@@ -611,6 +560,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     // const posAngUnit = '(rad)';
     const velAngUnit = '(' + this.getUnitStr(this.settingsService.angleUnit.value) + '/s)';
     const accAngUnit = '(' + this.getUnitStr(this.settingsService.angleUnit.value) + '/s²)';
+    this.analysisDiagnostic = null;
     // if (this.settingsService.globalUnit.value === GlobalUnit.METRIC) {
     //   posLinUnit = '(m)';
     //   velLinUnit = '(m/s)';
@@ -620,7 +570,21 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       case 'force':
         switch (mechProp) {
           case 'Input Torque':
-            yAxisTitle = 'Torque (Nm)';
+          case 'Input Effort': {
+            const mode: ForceAnalysisMode =
+              analysisType === 'dynamic' ? 'dynamic' : 'static';
+            const effortKind = this.mechanismService.mechanisms[0]
+              .getForceAnalysis(mode)
+              .frames.find((frame) => frame.status === 'ok' && frame.inputEffort)?.inputEffort
+              ?.kind;
+            yAxisTitle =
+              effortKind === 'force'
+                ? this.settingsService.forceUnit.value === ForceUnit.LBF
+                  ? 'Force (lbf)'
+                  : 'Force (N)'
+                : this.settingsService.forceUnit.value === ForceUnit.LBF
+                  ? 'Torque (lbf·in)'
+                  : 'Torque (N·m)';
             [datum, categories] = this.determineAnalysis(
               analysis,
               analysisType,
@@ -630,8 +594,12 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             seriesData.push({ name: 'Z', type: 'line', data: datum[0] });
             this.numberOfSeries = 1;
             break;
+          }
           case 'Joint Forces':
-            yAxisTitle = 'Force (N)';
+            yAxisTitle =
+              this.settingsService.forceUnit.value === ForceUnit.LBF
+                ? 'Force (lbf)'
+                : 'Force (N)';
             [datum, categories] = this.determineAnalysis(
               analysis,
               analysisType,
@@ -753,10 +721,10 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
               mechPart
             );
             var series: number[] = datum[0];
-            if (this.settingsService.angleUnit.getValue() == AngleUnit.RADIAN) {
+            if (this.settingsService.angleUnit.getValue() == AngleUnit.DEGREE) {
               for (let i = 0; i < series.length; i++) {
                 series[i] = Number(
-                  this.nup.convertAngle(series[i], AngleUnit.DEGREE, AngleUnit.RADIAN).toFixed(4)
+                  this.nup.convertAngle(series[i], AngleUnit.RADIAN, AngleUnit.DEGREE).toFixed(4)
                 );
               }
             }
@@ -772,10 +740,10 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
               mechPart
             );
             var series: number[] = datum[0];
-            if (this.settingsService.angleUnit.getValue() == AngleUnit.RADIAN) {
+            if (this.settingsService.angleUnit.getValue() == AngleUnit.DEGREE) {
               for (let i = 0; i < series.length; i++) {
                 series[i] = Number(
-                  this.nup.convertAngle(series[i], AngleUnit.DEGREE, AngleUnit.RADIAN).toFixed(4)
+                  this.nup.convertAngle(series[i], AngleUnit.RADIAN, AngleUnit.DEGREE).toFixed(4)
                 );
               }
             }
@@ -788,10 +756,28 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
         return;
     }
 
-    this.chartOptions = { ...this.chartOptions, series: seriesData };
-    // this.chart.updateOptions({ ...this.chartOptions, series: seriesData });
-    // this.chart.updateOptions({ ...this.chartOptions.yaxis!.title, text: yAxisTitle });
-    this.chartOptions.yaxis!.title = { ...this.chartOptions.yaxis!.title, text: yAxisTitle };
+    // ApexCharts/Safari can fail the entire chart when one exact toggle pose
+    // contributes NaN or Infinity. A null point creates an intentional gap at
+    // that singular timestep while preserving the rest of the series.
+    const times = this.mechanismService.mechanisms[0]?.timeNum ?? [];
+    const chartSeries = seriesData.map((series) => ({
+      ...series,
+      data: series.data.map((value, index) => ({
+        x: times[index] ?? index,
+        y: Number.isFinite(value) ? value : null,
+      })),
+    })) as ApexAxisChartSeries;
+    const yaxis = this.chartOptions.yaxis!;
+    this.chartOptions = {
+      ...this.chartOptions,
+      series: chartSeries,
+      yaxis: {
+        ...yaxis,
+        title: { ...yaxis.title, text: yAxisTitle },
+      },
+    };
+    this.displayedSeries = chartSeries;
+    this.displayedColors = chartSeries.map((series) => this.colorForSeries(series.name));
   }
 
   determineAnalysis(
@@ -807,71 +793,83 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     let y = 0;
     let z = 0;
     const categories: string[] = [];
-    let unitStr = 'cm';
-    switch (this.settingsService.globalUnit.value) {
-      case GlobalUnit.ENGLISH:
-        unitStr = 'cm';
-        break;
-      case GlobalUnit.METRIC:
-        unitStr = 'cm';
-        break;
-      case GlobalUnit.NULL:
-        unitStr = 'cm';
-        break;
-      case GlobalUnit.SI:
-        unitStr = 'cm';
-        break;
+    const mechanism = this.mechanismService.mechanisms[0];
+    if (analysis === 'force') {
+      const mode: ForceAnalysisMode =
+        analysisType === 'dynamic' ? 'dynamic' : 'static';
+      const result = mechanism.getForceAnalysis(mode);
+      const forceConversion =
+        this.settingsService.forceUnit.value === ForceUnit.LBF ? 0.22480894387096 : 1;
+      const torqueConversion =
+        this.settingsService.forceUnit.value === ForceUnit.LBF ? 8.8507457913272 : 1;
+
+      for (const frame of result.frames) {
+        categories.push(frame.timeSeconds.toString());
+        if (frame.status !== 'ok') {
+          datum_X.push(Number.NaN);
+          if (mechProp === 'Joint Forces') {
+            datum_Y.push(Number.NaN);
+            datum_Z.push(Number.NaN);
+          }
+          continue;
+        }
+
+        if (mechProp === 'Input Torque' || mechProp === 'Input Effort') {
+          datum_X.push(
+            frame.inputEffort
+              ? roundNumber(
+                  frame.inputEffort.valueSI *
+                    (frame.inputEffort.kind === 'force' ? forceConversion : torqueConversion),
+                  3
+                )
+              : Number.NaN
+          );
+          continue;
+        }
+
+        const byLink = frame.jointReactionsByLink.get(mechPart);
+        const reaction = this.reactionLinkId
+          ? byLink?.get(this.reactionLinkId)
+          : frame.jointReactions.get(mechPart);
+        if (!reaction) {
+          datum_X.push(Number.NaN);
+          datum_Y.push(Number.NaN);
+          datum_Z.push(Number.NaN);
+          continue;
+        }
+        x = reaction[0] * forceConversion;
+        y = reaction[1] * forceConversion;
+        z = Math.hypot(x, y);
+        datum_X.push(roundNumber(x, 3));
+        datum_Y.push(roundNumber(y, 3));
+        datum_Z.push(roundNumber(z, 3));
+      }
+
+      const hasFiniteData = [datum_X, datum_Y, datum_Z].some((series) =>
+        series.some(Number.isFinite)
+      );
+      this.analysisDiagnostic = hasFiniteData
+        ? null
+        : result.diagnostic ??
+          (mechProp === 'Joint Forces'
+            ? 'This point is internal to one welded body and has no independent joint reaction.'
+            : 'Input effort is unavailable for this mechanism.');
+      return [[datum_X, datum_Y, datum_Z], categories];
     }
-    this.mechanismService.mechanisms[0].joints.forEach((_, index) => {
+
+    KinematicsSolver.resetVariables();
+    KinematicsSolver.requiredLoops = mechanism.requiredLoops;
+    mechanism.joints.forEach((_, index) => {
+      categories.push(mechanism.timeNum[index]?.toString() ?? index.toString());
+      const vector = (value: [number, number] | undefined): [number, number] =>
+        value ?? [Number.NaN, Number.NaN];
       switch (mechProp) {
-        case 'Input Torque':
-          if (analysisType === 'dynamics') {
-            // TODO: Be sure to have each step within mechanism know its input angular velocity
-            KinematicsSolver.requiredLoops = this.mechanismService.mechanisms[0].requiredLoops;
-            KinematicsSolver.determineKinematics(
-              this.mechanismService.mechanisms[0].joints[index],
-              this.mechanismService.mechanisms[0].links[index],
-              this.mechanismService.mechanisms[0].inputAngularVelocities[index]
-            );
-          }
-          ForceSolver.determineForceAnalysis(
-            this.mechanismService.mechanisms[0].joints[index],
-            this.mechanismService.mechanisms[0].links[index],
-            analysisType,
-            this.settingsService.isForces.value,
-            unitStr
-          );
-          datum_X.push(roundNumber(ForceSolver.unknownVariableTorque, 3));
-          break;
-        case 'Joint Forces':
-          if (analysisType === 'dynamics') {
-            KinematicsSolver.requiredLoops = this.mechanismService.mechanisms[0].requiredLoops;
-            KinematicsSolver.determineKinematics(
-              this.mechanismService.mechanisms[0].joints[index],
-              this.mechanismService.mechanisms[0].links[index],
-              this.mechanismService.mechanisms[0].inputAngularVelocities[index]
-            );
-          }
-          ForceSolver.determineForceAnalysis(
-            this.mechanismService.mechanisms[0].joints[index],
-            this.mechanismService.mechanisms[0].links[index],
-            analysisType,
-            this.settingsService.isForces.value,
-            unitStr
-          );
-          x = ForceSolver.unknownVariableForcesMap.get(mechPart)![0];
-          y = ForceSolver.unknownVariableForcesMap.get(mechPart)![1];
-          z = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
-          datum_X.push(roundNumber(x, 3));
-          datum_Y.push(roundNumber(y, 3));
-          datum_Z.push(roundNumber(z, 3));
-          break;
         case 'Linear Joint Pos':
           const jt = this.mechanismService.mechanisms[0].joints[index].find(
             (j) => j.id === mechPart
-          )!;
-          x = jt.x;
-          y = jt.y;
+          );
+          x = jt?.x ?? Number.NaN;
+          y = jt?.y ?? Number.NaN;
           datum_X.push(roundNumber(x, 3));
           datum_Y.push(roundNumber(y, 3));
           break;
@@ -881,8 +879,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             this.mechanismService.mechanisms[0].links[index],
             this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
-          x = KinematicsSolver.jointVelMap.get(mechPart)![0];
-          y = KinematicsSolver.jointVelMap.get(mechPart)![1];
+          [x, y] = vector(KinematicsSolver.jointVelMap.get(mechPart));
           z = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
           datum_X.push(roundNumber(x, 3));
           datum_Y.push(roundNumber(y, 3));
@@ -894,8 +891,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             this.mechanismService.mechanisms[0].links[index],
             this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
-          x = KinematicsSolver.jointAccMap.get(mechPart)![0];
-          y = KinematicsSolver.jointAccMap.get(mechPart)![1];
+          [x, y] = vector(KinematicsSolver.jointAccMap.get(mechPart));
           z = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
           datum_X.push(roundNumber(x, 3));
           datum_Y.push(roundNumber(y, 3));
@@ -907,8 +903,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             this.mechanismService.mechanisms[0].links[index],
             this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
-          x = KinematicsSolver.linkCoMMap.get(mechPart)![0];
-          y = KinematicsSolver.linkCoMMap.get(mechPart)![1];
+          [x, y] = vector(KinematicsSolver.linkCoMMap.get(mechPart));
           datum_X.push(roundNumber(x, 3));
           datum_Y.push(roundNumber(y, 3));
           break;
@@ -918,8 +913,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             this.mechanismService.mechanisms[0].links[index],
             this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
-          x = KinematicsSolver.linkVelMap.get(mechPart)![0];
-          y = KinematicsSolver.linkVelMap.get(mechPart)![1];
+          [x, y] = vector(KinematicsSolver.linkVelMap.get(mechPart));
           z = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
           datum_X.push(roundNumber(x, 3));
           datum_Y.push(roundNumber(y, 3));
@@ -931,8 +925,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             this.mechanismService.mechanisms[0].links[index],
             this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
-          x = KinematicsSolver.linkAccMap.get(mechPart)![0];
-          y = KinematicsSolver.linkAccMap.get(mechPart)![1];
+          [x, y] = vector(KinematicsSolver.linkAccMap.get(mechPart));
           z = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
           datum_X.push(roundNumber(x, 3));
           datum_Y.push(roundNumber(y, 3));
@@ -944,7 +937,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             this.mechanismService.mechanisms[0].links[index],
             this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
-          x = KinematicsSolver.linkAngPosMap.get(mechPart)!;
+          x = KinematicsSolver.linkAngPosMap.get(mechPart) ?? Number.NaN;
           datum_X.push(roundNumber(x, 3));
           break;
         case 'Angular Link Vel':
@@ -953,7 +946,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             this.mechanismService.mechanisms[0].links[index],
             this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
-          x = KinematicsSolver.linkAngVelMap.get(mechPart)!;
+          x = KinematicsSolver.linkAngVelMap.get(mechPart) ?? Number.NaN;
           datum_X.push(roundNumber(x, 3));
           break;
         case 'Angular Link Acc':
@@ -962,7 +955,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             this.mechanismService.mechanisms[0].links[index],
             this.mechanismService.mechanisms[0].inputAngularVelocities[index]
           );
-          x = KinematicsSolver.linkAngAccMap.get(mechPart)!;
+          x = KinematicsSolver.linkAngAccMap.get(mechPart) ?? Number.NaN;
           datum_X.push(roundNumber(x, 3));
           break;
         case 'ic':

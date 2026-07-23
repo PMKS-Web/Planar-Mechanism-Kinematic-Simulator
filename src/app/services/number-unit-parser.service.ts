@@ -185,7 +185,7 @@ export class NumberUnitParserService {
           case LengthUnit.CM:
             return value * 100;
           case LengthUnit.INCH:
-            return value * 39.3701;
+            return value / 0.0254;
         }
         break;
       case LengthUnit.INCH:
@@ -193,7 +193,7 @@ export class NumberUnitParserService {
           case LengthUnit.CM:
             return value * 2.54;
           case LengthUnit.METER:
-            return value / 39.3701;
+            return value * 0.0254;
         }
         break;
     }

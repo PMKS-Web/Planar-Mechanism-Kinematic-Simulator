@@ -1,346 +1,788 @@
-import { Joint, PrisJoint, RealJoint, RevJoint } from '../joint';
-import { Piston, Link, RealLink } from '../link';
-import { matLinearSystem } from '../utils';
+import { Joint, PrisJoint, RealJoint } from '../joint';
+import { Link, Piston, RealLink } from '../link';
 import { KinematicsSolver } from './kinematic-solver';
 
-export class ForceSolver {
-  private static loopLettersToLinkIndexMap = new Map<string, number>();
-  private static containsInputIndexMap = new Map<string, number>();
-  static jointPositiveForceXLinkMap = new Map<string, string>();
-  static linkToFixedPositionMap = new Map<string, string>();
-  static jointPositiveForceYLinkMap = new Map<string, string>();
-  private static jointIDToTracerBooleanMap = new Map<string, boolean>();
-  private static unknownVariableNum: number | undefined;
-  private static jointIDToUsedBooleanMap = new Map<string, boolean>();
+export type ForceAnalysisMode = 'static' | 'dynamic';
 
+export type ForceAnalysisStatus =
+  | 'ok'
+  | 'singular'
+  | 'unsupported-topology'
+  | 'missing-kinematics'
+  | 'invalid-properties';
+
+export type ForceVector = [number, number];
+
+export interface ForceAnalysisEffort {
+  jointId: string;
+  kind: 'torque' | 'force';
+  /** N*m for torque and N for force. */
+  valueSI: number;
+}
+
+export interface ForceAnalysisFrame {
+  mode: ForceAnalysisMode;
+  status: ForceAnalysisStatus;
+  timeSeconds: number;
+  /** Resultant acting on each root body at a joint, in newtons. */
+  jointReactionsByLink: Map<string, Map<string, ForceVector>>;
+  /** Compatibility/default view: the resultant on the joint's first root body. */
+  jointReactions: Map<string, ForceVector>;
+  inputEffort?: ForceAnalysisEffort;
+  rank: number;
+  residual: number;
+  message?: string;
+}
+
+export interface ForceAnalysisSeries {
+  mode: ForceAnalysisMode;
+  frames: ForceAnalysisFrame[];
+  successfulFrames: number;
+  diagnostic?: string;
+}
+
+interface FrameKinematics {
+  linkAccelerations: Map<string, ForceVector>;
+  linkAngularAccelerations: Map<string, number>;
+  pistonAccelerations: Map<string, ForceVector>;
+}
+
+interface MechanismFrames {
+  joints: Joint[][];
+  links: Link[][];
+  timeNum: number[];
+  inputAngularVelocities: number[];
+  requiredLoops: string[];
+  gravity: boolean;
+  unit: string;
+}
+
+interface UnitFactors {
+  distanceToM: number;
+  massToKg: number;
+  inertiaToKgM2: number;
+  forceToN: number;
+}
+
+interface BodyRows {
+  link: Link;
+  start: number;
+  count: 2 | 3;
+}
+
+interface ReactionUnknown {
+  joint: RealJoint;
+  positiveBody: Link;
+  negativeBody?: Link;
+  direction: ForceVector;
+  column: number;
+}
+
+interface LinearSolution {
+  values: number[];
+  rank: number;
+  residual: number;
+}
+
+const GRAVITY = 9.80665;
+const MAX_NORMALIZED_RESIDUAL = 1e-8;
+
+/**
+ * Free-body force analysis for the current root topology.
+ *
+ * The legacy public fields remain as adapters for the equation-panel and old
+ * verification callers. New code should consume analyzeFrame/analyzeMechanism.
+ */
+export class ForceSolver {
+  static unknownVariableForcesMap = new Map<string, ForceVector>();
+  static unknownVariableTorque = 0;
+  static A_matrix: number[][] = [];
+  static B_matrix: number[][] = [];
+  static lastResult?: ForceAnalysisFrame;
+
+  // Retained compatibility fields used by dormant equation/debug code.
+  static jointPositiveForceXLinkMap = new Map<string, string>();
+  static jointPositiveForceYLinkMap = new Map<string, string>();
+  static linkToFixedPositionMap = new Map<string, string>();
   static jointIdToJointIndexMap = new Map<string, number>();
-  static unknownVariableForcesMap = new Map<string, [number, number]>();
   static jointIDToUnknownArrayIndexMap = new Map<string, number>();
   static linkIDToUnknownArrayIndexMap = new Map<string, number>();
-  static unknownVariableTorque: number;
-  static A_matrix: Array<Array<number>> = [];
-  static B_matrix: Array<Array<number>> = [];
-  static desiredLoopLetters: Array<Array<string>>;
-  static inputLinkIndex: number;
+  static desiredLoopLetters: string[][] = [];
+  static inputLinkIndex = -1;
 
-  static resetVariables() {
-    this.loopLettersToLinkIndexMap = new Map<string, number>();
-    this.containsInputIndexMap = new Map<string, number>();
-    this.jointPositiveForceXLinkMap = new Map<string, string>();
-    this.linkToFixedPositionMap = new Map<string, string>();
-    this.jointPositiveForceYLinkMap = new Map<string, string>();
-    this.jointIDToTracerBooleanMap = new Map<string, boolean>();
-    this.jointIDToUsedBooleanMap = new Map<string, boolean>();
-
-    this.jointIdToJointIndexMap = new Map<string, number>();
-    this.unknownVariableForcesMap = new Map<string, [number, number]>();
-    this.jointIDToUnknownArrayIndexMap = new Map<string, number>();
-    this.linkIDToUnknownArrayIndexMap = new Map<string, number>();
+  static resetVariables(): void {
+    this.unknownVariableForcesMap = new Map<string, ForceVector>();
+    this.unknownVariableTorque = 0;
     this.A_matrix = [];
     this.B_matrix = [];
-    this.desiredLoopLetters = Array<Array<string>>();
-    this.unknownVariableNum = undefined;
-    this.unknownVariableTorque = 0;
+    this.lastResult = undefined;
+    this.jointPositiveForceXLinkMap = new Map<string, string>();
+    this.jointPositiveForceYLinkMap = new Map<string, string>();
+    this.linkToFixedPositionMap = new Map<string, string>();
+    this.jointIdToJointIndexMap = new Map<string, number>();
+    this.jointIDToUnknownArrayIndexMap = new Map<string, number>();
+    this.linkIDToUnknownArrayIndexMap = new Map<string, number>();
+    this.desiredLoopLetters = [];
     this.inputLinkIndex = -1;
   }
 
+  /** Convert old plural string values without leaking them into new callers. */
+  static normalizeMode(mode: string): ForceAnalysisMode {
+    return mode === 'dynamic' || mode === 'dynamics' ? 'dynamic' : 'static';
+  }
+
+  /** Legacy single-frame adapter. */
   static determineForceAnalysis(
     joints: Joint[],
     links: Link[],
     analysisType: string,
     gravity: boolean,
     unit: string
-  ) {
-    // const desiredLoopLetters = this.determineDesiredLoopLettersForce(requiredLoops);
-    // const [knownArray, unknownArray] = this.determineArraysForce(simJoints, simLinks, this.desiredLoopLetters, analysisType, gravity);
-    this.determineArraysForce(joints, links, analysisType, gravity, unit);
-    // I hope this solves problems...
-    // maybe also put this within utils
-    // https://mathjs.org/docs/datatypes/matrices.html
-    const sol = matLinearSystem(this.A_matrix, this.B_matrix);
-    joints.forEach((j) => {
-      this.unknownVariableForcesMap.set(j.id, [0, 0]);
-    });
-    // for (let i = 0; i < this.JointIDToUnknownArrayIndex.size; i++) {
-    // for (const entry of this.JointIDToUnknownArrayIndex.entries()) {
-    // this should not be jointIDtoUnknownArray... choose another map
-    for (const [jointID, jointIndex] of this.jointIDToUnknownArrayIndexMap.entries()) {
-      // const jointIndex = this.jointIDToNotUtilizedYetBooleanMap.get(key);
-      this.unknownVariableForcesMap.set(jointID, [sol[jointIndex][0], sol[jointIndex + 1][0]]);
-      // this.unknownVariableForces.set(jointID, [sol[2 * jointIndex], sol[2 * jointIndex + 1]]);
-    }
-    // const joint = simJoints[i]
-    // this.unknownVariableForces.set()
-    // this.unknownVariableForces[i] = [sol[2 * i], sol[2 * i + 1]];
-    // }
-    this.unknownVariableTorque = sol[2 * this.jointIDToUnknownArrayIndexMap.size][0];
+  ): ForceAnalysisFrame {
+    const mode = this.normalizeMode(analysisType);
+    const kinematics = mode === 'dynamic' ? this.captureCurrentKinematics(links) : undefined;
+    const result = this.analyzeFrame(joints, links, mode, gravity, unit, 0, kinematics);
+
+    this.lastResult = result;
+    this.unknownVariableForcesMap = new Map(
+      joints.map((joint) => [joint.id, result.jointReactions.get(joint.id) ?? [0, 0]])
+    );
+    this.unknownVariableTorque = result.inputEffort?.valueSI ?? 0;
+    return result;
   }
 
-  private static determineArraysForce(
-    simJoints: Joint[],
-    simLinks: Link[],
-    analysisType: string,
+  /** Loop-derived setup is no longer required; keep this as a harmless adapter. */
+  static determineDesiredLoopLettersForce(_requiredLoops: string[]): void {
+    this.desiredLoopLetters = [];
+  }
+
+  static analyzeMechanism(
+    mechanism: MechanismFrames,
+    mode: ForceAnalysisMode
+  ): ForceAnalysisSeries {
+    const frameCount = Math.min(mechanism.joints.length, mechanism.links.length);
+    const fallback =
+      mode === 'dynamic' ? this.finiteDifferenceKinematics(mechanism, frameCount) : [];
+    const frames: ForceAnalysisFrame[] = [];
+
+    if (mode === 'dynamic') {
+      KinematicsSolver.resetVariables();
+      KinematicsSolver.requiredLoops = mechanism.requiredLoops;
+    }
+
+    for (let index = 0; index < frameCount; index++) {
+      let kinematics: FrameKinematics | undefined;
+      if (mode === 'dynamic') {
+        try {
+          KinematicsSolver.determineKinematics(
+            mechanism.joints[index],
+            mechanism.links[index],
+            mechanism.inputAngularVelocities[index] ?? 0
+          );
+        } catch {
+          // The position sequence is still a valid source for a complete,
+          // topology-independent finite-difference fallback.
+        }
+        kinematics = this.captureCurrentKinematics(mechanism.links[index], fallback[index]);
+      }
+      frames.push(
+        this.analyzeFrame(
+          mechanism.joints[index],
+          mechanism.links[index],
+          mode,
+          mechanism.gravity,
+          mechanism.unit,
+          mechanism.timeNum[index] ?? index,
+          kinematics
+        )
+      );
+    }
+
+    const successfulFrames = frames.filter((frame) => frame.status === 'ok').length;
+    return {
+      mode,
+      frames,
+      successfulFrames,
+      diagnostic:
+        successfulFrames === 0
+          ? this.statusMessage(frames[0]?.status ?? 'unsupported-topology')
+          : undefined,
+    };
+  }
+
+  static analyzeFrame(
+    joints: Joint[],
+    links: Link[],
+    mode: ForceAnalysisMode,
     gravity: boolean,
-    unit: string
-  ) {
-    // This should be initialization code done outside of this class, somewhat to have logic be cleaner and easier to follow
-    if (this.unknownVariableNum === undefined) {
-      let realLinkCount = 0;
-      let imagLinkCount = 0;
-      let realJointCount = 0;
-      simJoints.forEach((j) => {
-        if (!(j instanceof RealJoint)) {
-          return;
-        }
-        // if (!(j instanceof RevJoint)) {return}
-        const tracerJointBoolean = j.links.length === 1 && !j.ground;
-        this.jointIDToTracerBooleanMap.set(j.id, tracerJointBoolean);
-        if (!this.jointIDToTracerBooleanMap.get(j.id)) {
-          this.jointIDToUsedBooleanMap.set(j.id, true);
-          realJointCount++;
-        } else {
-          this.jointIDToUsedBooleanMap.set(j.id, false);
-        }
-      });
-      this.unknownVariableNum = realJointCount * 2 + 1;
+    unit: string,
+    timeSeconds = 0,
+    kinematics?: FrameKinematics
+  ): ForceAnalysisFrame {
+    const bodies = links.filter(
+      (link): link is RealLink | Piston => link instanceof RealLink || link instanceof Piston
+    );
+    const units = this.unitFactors(unit);
+    const empty = (
+      status: ForceAnalysisStatus,
+      message = this.statusMessage(status),
+      rank = 0,
+      residual = Number.POSITIVE_INFINITY
+    ): ForceAnalysisFrame => ({
+      mode,
+      status,
+      timeSeconds,
+      jointReactionsByLink: new Map(),
+      jointReactions: new Map(),
+      rank,
+      residual,
+      message,
+    });
 
-      simJoints.forEach((j) => {
-        if (!(j instanceof RealJoint)) {
-          return;
-        }
-        if (j.links.length < 2 && !j.ground) {
-          return;
-        }
-        this.jointPositiveForceXLinkMap.set(j.id, j.links[0].id);
-        this.jointPositiveForceYLinkMap.set(j.id, j.links[0].id);
-      });
-
-      let unknown_variable_index = 0;
-      simJoints.forEach((joint, joint_index) => {
-        const joint_id = simJoints[joint_index].id;
-        this.jointIdToJointIndexMap.set(joint_id, joint_index);
-        if (this.jointIDToUsedBooleanMap.get(joint_id)) {
-          this.jointIDToUnknownArrayIndexMap.set(joint_id, 2 * unknown_variable_index);
-          unknown_variable_index++;
-        }
-      });
-      this.desiredLoopLetters.forEach((letters) => {
-        const joint1 = simJoints[this.jointIdToJointIndexMap.get(letters[0].charAt(0))!];
-        const joint2 = simJoints[this.jointIdToJointIndexMap.get(letters[0].charAt(1))!];
-        this.loopLettersToLinkIndexMap.set(
-          letters[0].charAt(0) + letters[0].charAt(1),
-          simLinks.findIndex(
-            (l) => l.id.includes(letters[0].charAt(0)) && l.id.includes(letters[0].charAt(1))
-          )
-        );
-        const link =
-          simLinks[
-            this.loopLettersToLinkIndexMap.get(letters[0].charAt(0) + letters[0].charAt(1))!
-          ];
-        this.linkToFixedPositionMap.set(link.id, link.id);
-        // commented out this part. Possibly this can be solved by utilizing initializing maps refresh
-        // if (!this.linkIDToUnknownArrayIndexMap.has(link.id)) {
-        this.linkIDToUnknownArrayIndexMap.set(link.id, 3 * realLinkCount + imagLinkCount);
-        if (!(joint1 instanceof RealJoint) || !(joint2 instanceof RealJoint)) {
-          return;
-        }
-        if (joint1.input || joint2.input) {
-          this.inputLinkIndex = 3 * realLinkCount + imagLinkCount + 2;
-        }
-        if (link instanceof Piston) {
-          imagLinkCount++;
-        } else {
-          realLinkCount++;
-        }
-      });
+    if (bodies.length === 0) return empty('unsupported-topology');
+    if (!this.propertiesAreValid(bodies, units)) return empty('invalid-properties');
+    if (mode === 'dynamic' && !this.kinematicsAreComplete(bodies, kinematics)) {
+      return empty('missing-kinematics');
     }
 
-    // const knownArray = [];
-    // const unknownArray = [];
-    // set up the A and B matrices
-    this.A_matrix = [];
-    this.B_matrix = [];
-    for (let i = 0; i < this.unknownVariableNum; i++) {
-      const arr = [];
-      for (let j = 0; j < this.unknownVariableNum; j++) {
-        arr.push(0);
-      }
-      // unknownArray.push(arr);
-      // knownArray.push(0);
-      this.A_matrix.push(arr);
-      this.B_matrix.push([0]);
+    const bodyRows = new Map<string, BodyRows>();
+    let rowCount = 0;
+    for (const body of bodies) {
+      const count = body instanceof RealLink ? 3 : 2;
+      bodyRows.set(body.id, { link: body, start: rowCount, count });
+      rowCount += count;
     }
 
-    let realLinkCount = 0;
-    let imagLinkCount = 0;
-    let distance_conversion = 1; // kg
-    let mass_conversion = 1;
+    const reactions: ReactionUnknown[] = [];
+    const incidentByJoint = new Map<string, Link[]>();
+    for (const candidate of joints) {
+      if (!(candidate instanceof RealJoint)) continue;
+      const incident = this.incidentBodies(candidate, bodies);
+      incidentByJoint.set(candidate.id, incident);
+      if (incident.length === 0) continue;
 
-    if (unit === 'cm') {
-      distance_conversion = 1 / 100;
-      mass_conversion = 1 / 1000;
-    }
-
-    this.desiredLoopLetters.forEach((letters) => {
-      // TODO: Determine where to insert logic for jointIdToJointIndexMap and loopLettersToLinkIndexMap
-      const joint1 = simJoints[this.jointIdToJointIndexMap.get(letters[0].charAt(0))!];
-      const joint2 = simJoints[this.jointIdToJointIndexMap.get(letters[0].charAt(1))!];
-      const link =
-        simLinks[this.loopLettersToLinkIndexMap.get(letters[0].charAt(0) + letters[0].charAt(1))!];
-      let fixedJoint: any;
-      if (this.linkToFixedPositionMap.get(link.id)!.length > 1) {
-        const linkID = this.linkToFixedPositionMap.get(link.id);
-        const li = simLinks.find((l) => l.id === linkID);
-        if (!(li instanceof RealLink)) {
-          return;
-        }
-        fixedJoint = { x: li.CoM.x, y: li.CoM.y };
-      } else {
-        const jointID = this.linkToFixedPositionMap.get(link.id);
-        fixedJoint = simJoints.find((j) => j.id === jointID);
-      }
-      link.joints.forEach((j) => {
-        if (this.jointIDToTracerBooleanMap.get(j.id)) {
-          return;
-        }
-        let xForce: number;
-        let yForce: number;
-        const xIndex = this.jointIDToUnknownArrayIndexMap.get(j.id)!;
-        const yIndex = xIndex + 1;
-        xForce = this.jointPositiveForceXLinkMap.get(j.id) === link.id ? 1 : -1;
-        yForce = this.jointPositiveForceYLinkMap.get(j.id) === link.id ? 1 : -1;
-        switch (link.constructor) {
-          case RealLink:
-            const torqueVal = this.determineMoment(fixedJoint, j.x, j.y, xForce, yForce);
-            this.A_matrix[3 * realLinkCount + imagLinkCount][xIndex] += xForce;
-            this.A_matrix[3 * realLinkCount + imagLinkCount + 1][yIndex] += yForce;
-            this.A_matrix[3 * realLinkCount + imagLinkCount + 2][xIndex] +=
-              torqueVal[1] * distance_conversion;
-            this.A_matrix[3 * realLinkCount + imagLinkCount + 2][yIndex] +=
-              torqueVal[0] * distance_conversion;
-            break;
-          case Piston:
-            const mu = 0.1;
-            const desiredJoint = joint1;
-            if (!(desiredJoint instanceof PrisJoint)) {
-              return;
-            }
-            const constant =
-              xForce / (-mu * Math.cos(desiredJoint.angle_rad) + Math.sin(desiredJoint.angle_rad));
-            this.B_matrix[3 * realLinkCount + imagLinkCount][xIndex] =
-              -mu * constant * Math.sin(desiredJoint.angle_rad) +
-              constant * Math.cos(desiredJoint.angle_rad);
-            this.B_matrix[3 * realLinkCount + imagLinkCount][yIndex] = yForce;
-            break;
-        }
-      });
-      switch (link.constructor) {
-        case RealLink:
-          if (!(link instanceof RealLink)) {
-            return;
-          }
-          if (gravity) {
-            // const gravity = 9.80665
-            const gravity_val = -9.81;
-            const calc_mass = link.mass * mass_conversion;
-            // const gravity_val = 980.665; // cm/s^2
-            const torque_from_gravity = this.determineMoment(
-              fixedJoint,
-              link.CoM.x,
-              link.CoM.y,
-              0,
-              gravity_val * calc_mass
-            );
-            this.B_matrix[3 * realLinkCount + imagLinkCount + 1][0] += gravity_val * calc_mass * -1;
-            this.B_matrix[3 * realLinkCount + imagLinkCount + 2][0] +=
-              torque_from_gravity[0] * distance_conversion * -1;
-          }
-          // if (analysisType === 'dynamic' && consideredLink.findIndex(l => l === link.id) === -1) {
-          if (analysisType === 'dynamics') {
-            // kg * m / s ^ 2 => kg * cm/s^2
-            // TODO: Uncomment when KinSolver is done
-            const calc_mass = link.mass * mass_conversion;
-            const acc_x = KinematicsSolver.linkAccMap.get(link.id)![0] * distance_conversion;
-            const acc_y = KinematicsSolver.linkAccMap.get(link.id)![1] * distance_conversion;
-            const angular_acc = KinematicsSolver.linkAngAccMap.get(link.id)!;
-            // The moment equation is taken about the link's center of mass
-            // (see linkToFixedPositionMap above), so the inertial term is
-            // J_com * alpha with no parallel-axis correction. The previous
-            // J + m*d^2 (d from the CoM to the loop's first joint) mixed the
-            // moment center conventions and skewed every dynamic force result.
-            const J = link.massMoI * Math.pow(distance_conversion, 2);
-            const total_mmoi = J * angular_acc;
-            this.B_matrix[3 * realLinkCount + imagLinkCount][0] += calc_mass * acc_x;
-            this.B_matrix[3 * realLinkCount + imagLinkCount + 1][0] += calc_mass * acc_y;
-            this.B_matrix[3 * realLinkCount + imagLinkCount + 2][0] += total_mmoi;
-
-            // kg * m / s ^ 2 * cm = kg * cm ^2 * (rot)/s^2
-          }
-          if (link.forces.length === 0) {
-            realLinkCount++;
-            break;
-          }
-          // TODO: Be sure force is updated within link
-          link.forces.forEach((f) => {
-            const torqueNum = this.determineMoment(
-              fixedJoint,
-              f.startCoord.x,
-              f.startCoord.y,
-              f.mag * Math.cos(f.angleRad),
-              f.mag * Math.sin(f.angleRad)
-            );
-            this.B_matrix[3 * realLinkCount + imagLinkCount][0] +=
-              f.mag * Math.cos(f.angleRad) * -1;
-            this.B_matrix[3 * realLinkCount + imagLinkCount + 1][0] +=
-              f.mag * Math.sin(f.angleRad) * -1;
-            this.B_matrix[3 * realLinkCount + imagLinkCount + 2][0] +=
-              torqueNum[1] * -1 * distance_conversion;
-            this.B_matrix[3 * realLinkCount + imagLinkCount + 2][0] +=
-              torqueNum[0] * -1 * distance_conversion;
+      if (candidate instanceof PrisJoint && candidate.ground) {
+        const piston = incident.find((body) => body instanceof Piston);
+        if (piston) {
+          reactions.push({
+            joint: candidate,
+            positiveBody: piston,
+            direction: [-Math.sin(candidate.angle_rad), Math.cos(candidate.angle_rad)],
+            column: reactions.length,
           });
-          realLinkCount++;
-          break;
-        case Piston:
-          imagLinkCount++;
-          break;
-      }
-    });
-    this.A_matrix[this.inputLinkIndex][this.unknownVariableNum - 1] += 1;
-  }
-
-  // TODO: Put this within Utils
-  static determineMoment(
-    joint1: Joint,
-    joint2X: number,
-    joint2Y: number,
-    xMag: number,
-    yMag: number
-  ): number[] {
-    const xDist = joint2X - joint1.x;
-    const yDist = joint2Y - joint1.y;
-    if (xDist === 0 && yDist === 0) {
-      return [0, 0, 0];
-    }
-    const arr1 = xDist * yMag;
-    const arr2 = -1 * yDist * xMag;
-    return [arr1, arr2, 0];
-  }
-
-  static determineDesiredLoopLettersForce(requiredLoops: string[]) {
-    const desiredForceLoops: Array<Array<string>> = [];
-    const utilizedFirstJointMap = new Map<string, number>();
-    const utilizedSecondJointMap = new Map<string, number>();
-    requiredLoops.forEach((loop) => {
-      for (let i = 1; i < loop.length - 1; i++) {
-        if (utilizedFirstJointMap.has(loop[i - 1]) || utilizedSecondJointMap.has(loop[i])) {
-          continue;
         }
-        utilizedFirstJointMap.set(loop[i - 1], 1);
-        utilizedSecondJointMap.set(loop[i], 1);
-        desiredForceLoops.push([loop[i - 1] + loop[i]]);
+        continue;
       }
+
+      if (candidate.ground) {
+        for (const body of incident) {
+          reactions.push({
+            joint: candidate,
+            positiveBody: body,
+            direction: [1, 0],
+            column: reactions.length,
+          });
+          reactions.push({
+            joint: candidate,
+            positiveBody: body,
+            direction: [0, 1],
+            column: reactions.length,
+          });
+        }
+      } else if (incident.length >= 2) {
+        const reference = incident[0];
+        for (const other of incident.slice(1)) {
+          reactions.push({
+            joint: candidate,
+            positiveBody: reference,
+            negativeBody: other,
+            direction: [1, 0],
+            column: reactions.length,
+          });
+          reactions.push({
+            joint: candidate,
+            positiveBody: reference,
+            negativeBody: other,
+            direction: [0, 1],
+            column: reactions.length,
+          });
+        }
+      }
+    }
+
+    const inputJoint = joints.find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
+    let inputBody: Link | undefined;
+    let inputKind: 'torque' | 'force' | undefined;
+    let inputDirection: ForceVector = [0, 0];
+    if (inputJoint) {
+      const incident = incidentByJoint.get(inputJoint.id) ?? [];
+      if (inputJoint instanceof PrisJoint) {
+        inputBody = incident.find((body) => body instanceof Piston);
+        inputKind = inputBody ? 'force' : undefined;
+        inputDirection = [Math.cos(inputJoint.angle_rad), Math.sin(inputJoint.angle_rad)];
+      } else {
+        inputBody = incident.find((body) => body instanceof RealLink);
+        inputKind = inputBody ? 'torque' : undefined;
+      }
+    }
+
+    const unknownCount = reactions.length + (inputBody && inputKind ? 1 : 0);
+    if (unknownCount !== rowCount) {
+      return empty(
+        'unsupported-topology',
+        `Force equilibrium has ${rowCount} equations and ${unknownCount} unknowns.`
+      );
+    }
+
+    const A = Array.from({ length: rowCount }, () => Array(unknownCount).fill(0));
+    const b = Array(rowCount).fill(0);
+
+    const addForceCoefficient = (
+      body: Link,
+      joint: Joint,
+      direction: ForceVector,
+      column: number,
+      sign: number
+    ): void => {
+      const rows = bodyRows.get(body.id)!;
+      A[rows.start][column] += sign * direction[0];
+      A[rows.start + 1][column] += sign * direction[1];
+      if (body instanceof RealLink) {
+        const rx = (joint.x - body.CoM.x) * units.distanceToM;
+        const ry = (joint.y - body.CoM.y) * units.distanceToM;
+        A[rows.start + 2][column] += sign * (rx * direction[1] - ry * direction[0]);
+      }
+    };
+
+    for (const reaction of reactions) {
+      addForceCoefficient(
+        reaction.positiveBody,
+        reaction.joint,
+        reaction.direction,
+        reaction.column,
+        1
+      );
+      if (reaction.negativeBody) {
+        addForceCoefficient(
+          reaction.negativeBody,
+          reaction.joint,
+          reaction.direction,
+          reaction.column,
+          -1
+        );
+      }
+    }
+
+    const inputColumn = reactions.length;
+    if (inputBody && inputKind) {
+      const rows = bodyRows.get(inputBody.id)!;
+      if (inputKind === 'torque' && inputBody instanceof RealLink) {
+        A[rows.start + 2][inputColumn] = 1;
+      } else if (inputKind === 'force') {
+        A[rows.start][inputColumn] = inputDirection[0];
+        A[rows.start + 1][inputColumn] = inputDirection[1];
+      }
+    }
+
+    for (const body of bodies) {
+      const rows = bodyRows.get(body.id)!;
+      const massKg = body.mass * units.massToKg;
+      const acceleration =
+        mode === 'dynamic'
+          ? body instanceof RealLink
+            ? kinematics!.linkAccelerations.get(body.id)!
+            : kinematics!.pistonAccelerations.get(body.id)!
+          : ([0, 0] as ForceVector);
+      b[rows.start] = massKg * acceleration[0] * units.distanceToM;
+      b[rows.start + 1] = massKg * acceleration[1] * units.distanceToM;
+
+      if (gravity) b[rows.start + 1] += massKg * GRAVITY;
+
+      if (body instanceof RealLink) {
+        const angularAcceleration =
+          mode === 'dynamic' ? kinematics!.linkAngularAccelerations.get(body.id)! : 0;
+        b[rows.start + 2] = body.massMoI * units.inertiaToKgM2 * angularAcceleration;
+
+        for (const force of body.forces) {
+          const fx = force.mag * Math.cos(force.angleRad) * units.forceToN;
+          const fy = force.mag * Math.sin(force.angleRad) * units.forceToN;
+          const rx = (force.startCoord.x - body.CoM.x) * units.distanceToM;
+          const ry = (force.startCoord.y - body.CoM.y) * units.distanceToM;
+          b[rows.start] -= fx;
+          b[rows.start + 1] -= fy;
+          b[rows.start + 2] -= rx * fy - ry * fx;
+        }
+      }
+    }
+
+    const solution = this.solveLinearSystem(A, b);
+    if (!solution) return empty('singular');
+    if (solution.residual > MAX_NORMALIZED_RESIDUAL) {
+      return empty(
+        'singular',
+        `Force equilibrium residual ${solution.residual.toExponential(2)} exceeds tolerance.`,
+        solution.rank,
+        solution.residual
+      );
+    }
+
+    const jointReactionsByLink = new Map<string, Map<string, ForceVector>>();
+    const addReaction = (jointId: string, bodyId: string, fx: number, fy: number): void => {
+      let byLink = jointReactionsByLink.get(jointId);
+      if (!byLink) {
+        byLink = new Map<string, ForceVector>();
+        jointReactionsByLink.set(jointId, byLink);
+      }
+      const current = byLink.get(bodyId) ?? [0, 0];
+      byLink.set(bodyId, [current[0] + fx, current[1] + fy]);
+    };
+
+    for (const reaction of reactions) {
+      const value = solution.values[reaction.column];
+      const fx = reaction.direction[0] * value;
+      const fy = reaction.direction[1] * value;
+      addReaction(reaction.joint.id, reaction.positiveBody.id, fx, fy);
+      if (reaction.negativeBody) {
+        addReaction(reaction.joint.id, reaction.negativeBody.id, -fx, -fy);
+      }
+    }
+
+    const jointReactions = new Map<string, ForceVector>();
+    for (const [jointId, byLink] of jointReactionsByLink) {
+      const firstBody = incidentByJoint.get(jointId)?.[0];
+      const value = (firstBody && byLink.get(firstBody.id)) ?? byLink.values().next().value;
+      if (value) jointReactions.set(jointId, value);
+    }
+
+    const inputEffort =
+      inputJoint && inputKind
+        ? {
+            jointId: inputJoint.id,
+            kind: inputKind,
+            valueSI: solution.values[inputColumn],
+          }
+        : undefined;
+
+    return {
+      mode,
+      status: 'ok',
+      timeSeconds,
+      jointReactionsByLink,
+      jointReactions,
+      inputEffort,
+      rank: solution.rank,
+      residual: solution.residual,
+    };
+  }
+
+  static statusMessage(status: ForceAnalysisStatus): string {
+    switch (status) {
+      case 'singular':
+        return 'Force equilibrium is singular at this position.';
+      case 'unsupported-topology':
+        return 'This topology does not have a determinate force-equilibrium model.';
+      case 'missing-kinematics':
+        return 'Dynamic analysis is missing motion data for one or more bodies.';
+      case 'invalid-properties':
+        return 'Mass, moment of inertia, or force properties are invalid.';
+      default:
+        return '';
+    }
+  }
+
+  static determineMoment(
+    origin: { x: number; y: number },
+    pointX: number,
+    pointY: number,
+    forceX: number,
+    forceY: number
+  ): number[] {
+    const xDist = pointX - origin.x;
+    const yDist = pointY - origin.y;
+    return [xDist * forceY, -yDist * forceX, 0];
+  }
+
+  private static incidentBodies(joint: RealJoint, bodies: Link[]): Link[] {
+    const ordered: Link[] = [];
+    const add = (body: Link | undefined): void => {
+      if (body && !ordered.some((candidate) => candidate.id === body.id)) ordered.push(body);
+    };
+    joint.links.forEach((link) => add(bodies.find((body) => body.id === link.id)));
+    bodies.forEach((body) => {
+      if (body.joints.some((candidate) => candidate.id === joint.id)) add(body);
     });
-    this.desiredLoopLetters = desiredForceLoops;
-    // return desiredForceLoops;
+    return ordered;
+  }
+
+  private static propertiesAreValid(bodies: Link[], units: UnitFactors): boolean {
+    if (!Object.values(units).every(Number.isFinite)) return false;
+    return bodies.every((body) => {
+      if (!Number.isFinite(body.mass) || body.mass < 0) return false;
+      if (body instanceof RealLink) {
+        if (!Number.isFinite(body.massMoI) || body.massMoI < 0) return false;
+        return body.forces.every(
+          (force) =>
+            Number.isFinite(force.mag) &&
+            Number.isFinite(force.angleRad) &&
+            Number.isFinite(force.startCoord.x) &&
+            Number.isFinite(force.startCoord.y)
+        );
+      }
+      return true;
+    });
+  }
+
+  private static kinematicsAreComplete(
+    bodies: Link[],
+    kinematics?: FrameKinematics
+  ): kinematics is FrameKinematics {
+    if (!kinematics) return false;
+    const vectorFinite = (value?: ForceVector): boolean =>
+      !!value && value.every(Number.isFinite);
+    return bodies.every((body) => {
+      if (body instanceof RealLink) {
+        return (
+          vectorFinite(kinematics.linkAccelerations.get(body.id)) &&
+          Number.isFinite(kinematics.linkAngularAccelerations.get(body.id))
+        );
+      }
+      return vectorFinite(kinematics.pistonAccelerations.get(body.id));
+    });
+  }
+
+  private static captureCurrentKinematics(
+    links: Link[],
+    fallback?: FrameKinematics
+  ): FrameKinematics {
+    const captured: FrameKinematics = {
+      linkAccelerations: new Map(),
+      linkAngularAccelerations: new Map(),
+      pistonAccelerations: new Map(),
+    };
+    const finiteVector = (value?: ForceVector): value is ForceVector =>
+      !!value && value.every(Number.isFinite);
+
+    for (const link of links) {
+      if (link instanceof RealLink) {
+        const acceleration = KinematicsSolver.linkAccMap.get(link.id);
+        const angular = KinematicsSolver.linkAngAccMap.get(link.id);
+        captured.linkAccelerations.set(
+          link.id,
+          finiteVector(acceleration) ? acceleration : fallback?.linkAccelerations.get(link.id)!
+        );
+        captured.linkAngularAccelerations.set(
+          link.id,
+          Number.isFinite(angular) ? angular! : fallback?.linkAngularAccelerations.get(link.id)!
+        );
+      } else if (link instanceof Piston) {
+        const movingJoint = link.joints.find((joint) => !(joint instanceof PrisJoint));
+        const acceleration = movingJoint
+          ? KinematicsSolver.jointAccMap.get(movingJoint.id)
+          : undefined;
+        captured.pistonAccelerations.set(
+          link.id,
+          finiteVector(acceleration) ? acceleration : fallback?.pistonAccelerations.get(link.id)!
+        );
+      }
+    }
+    return captured;
+  }
+
+  private static finiteDifferenceKinematics(
+    mechanism: MechanismFrames,
+    frameCount: number
+  ): FrameKinematics[] {
+    const frames = Array.from({ length: frameCount }, (): FrameKinematics => ({
+      linkAccelerations: new Map(),
+      linkAngularAccelerations: new Map(),
+      pistonAccelerations: new Map(),
+    }));
+    if (frameCount === 0) return frames;
+
+    const rawTimes = Array.from(
+      { length: frameCount },
+      (_, index) => mechanism.timeNum[index] ?? index
+    );
+    const times: number[] = [];
+    rawTimes.forEach((time, index) => {
+      const previous = times[index - 1] ?? -1;
+      times.push(Number.isFinite(time) && time > previous ? time : previous + 1);
+    });
+    const ids = new Set(mechanism.links.flatMap((links) => links.map((link) => link.id)));
+
+    for (const id of ids) {
+      const bodyAt = (index: number): Link | undefined =>
+        mechanism.links[index]?.find((link) => link.id === id);
+      const positions = Array.from({ length: frameCount }, (_, index): ForceVector => {
+        const body = bodyAt(index);
+        if (body instanceof RealLink) return [body.CoM.x, body.CoM.y];
+        if (body instanceof Piston) {
+          const moving = body.joints.find((joint) => !(joint instanceof PrisJoint));
+          return [moving?.x ?? 0, moving?.y ?? 0];
+        }
+        return [0, 0];
+      });
+      const angles = this.unwrapAngles(
+        Array.from({ length: frameCount }, (_, index) => {
+          const body = bodyAt(index);
+          if (!(body instanceof RealLink) || body.joints.length < 2) return 0;
+          return Math.atan2(
+            body.joints[1].y - body.joints[0].y,
+            body.joints[1].x - body.joints[0].x
+          );
+        })
+      );
+
+      for (let index = 0; index < frameCount; index++) {
+        const body = bodyAt(index);
+        const ax = this.secondDerivative(
+          positions.map((position) => position[0]),
+          times,
+          index
+        );
+        const ay = this.secondDerivative(
+          positions.map((position) => position[1]),
+          times,
+          index
+        );
+        if (body instanceof RealLink) {
+          frames[index].linkAccelerations.set(id, [ax, ay]);
+          frames[index].linkAngularAccelerations.set(
+            id,
+            this.secondDerivative(angles, times, index)
+          );
+        } else if (body instanceof Piston) {
+          frames[index].pistonAccelerations.set(id, [ax, ay]);
+        }
+      }
+    }
+    return frames;
+  }
+
+  private static secondDerivative(values: number[], times: number[], index: number): number {
+    if (values.length < 3) return 0;
+    const center = Math.min(Math.max(index, 1), values.length - 2);
+    const t0 = times[center - 1];
+    const t1 = times[center];
+    const t2 = times[center + 1];
+    const d01 = t0 - t1;
+    const d02 = t0 - t2;
+    const d10 = t1 - t0;
+    const d12 = t1 - t2;
+    const d20 = t2 - t0;
+    const d21 = t2 - t1;
+    if ([d01, d02, d10, d12, d20, d21].some((value) => Math.abs(value) < 1e-15)) {
+      return Number.NaN;
+    }
+    return (
+      (2 * values[center - 1]) / (d01 * d02) +
+      (2 * values[center]) / (d10 * d12) +
+      (2 * values[center + 1]) / (d20 * d21)
+    );
+  }
+
+  private static unwrapAngles(values: number[]): number[] {
+    if (values.length === 0) return values;
+    const result = [values[0]];
+    for (let index = 1; index < values.length; index++) {
+      let delta = values[index] - values[index - 1];
+      while (delta > Math.PI) delta -= 2 * Math.PI;
+      while (delta < -Math.PI) delta += 2 * Math.PI;
+      result.push(result[index - 1] + delta);
+    }
+    return result;
+  }
+
+  private static unitFactors(unit: string): UnitFactors {
+    switch (unit) {
+      case 'in':
+        return {
+          distanceToM: 0.0254,
+          massToKg: 0.45359237,
+          inertiaToKgM2: 0.45359237 * 0.0254 * 0.0254,
+          forceToN: 4.4482216152605,
+        };
+      case 'm':
+        return { distanceToM: 1, massToKg: 1, inertiaToKgM2: 1, forceToN: 1 };
+      case 'cm':
+      default:
+        return {
+          distanceToM: 0.01,
+          massToKg: 0.001,
+          inertiaToKgM2: 0.0001,
+          forceToN: 1,
+        };
+    }
+  }
+
+  private static solveLinearSystem(A: number[][], b: number[]): LinearSolution | undefined {
+    const n = A.length;
+    if (n === 0 || b.length !== n || A.some((row) => row.length !== n)) return undefined;
+    const matrix = A.map((row, index) => [...row, b[index]]);
+    const scales = A.map((row) => Math.max(...row.map(Math.abs), 0));
+    let rank = 0;
+
+    for (let column = 0; column < n; column++) {
+      let pivotRow = -1;
+      let pivotScore = -1;
+      for (let row = column; row < n; row++) {
+        const score = scales[row] === 0 ? 0 : Math.abs(matrix[row][column]) / scales[row];
+        if (score > pivotScore) {
+          pivotScore = score;
+          pivotRow = row;
+        }
+      }
+      // Near-toggle frames legitimately have extremely small pivots and very
+      // large reactions. Solve them, then let the normalized residual decide
+      // whether the result is usable; reject only an exact/non-finite pivot.
+      if (
+        pivotRow < 0 ||
+        !Number.isFinite(matrix[pivotRow][column]) ||
+        matrix[pivotRow][column] === 0
+      ) {
+        return undefined;
+      }
+      if (pivotRow !== column) {
+        [matrix[column], matrix[pivotRow]] = [matrix[pivotRow], matrix[column]];
+        [scales[column], scales[pivotRow]] = [scales[pivotRow], scales[column]];
+      }
+      rank++;
+      for (let row = column + 1; row < n; row++) {
+        const factor = matrix[row][column] / matrix[column][column];
+        matrix[row][column] = 0;
+        for (let next = column + 1; next <= n; next++) {
+          matrix[row][next] -= factor * matrix[column][next];
+        }
+      }
+    }
+
+    const values = Array(n).fill(0);
+    for (let row = n - 1; row >= 0; row--) {
+      let value = matrix[row][n];
+      for (let column = row + 1; column < n; column++) {
+        value -= matrix[row][column] * values[column];
+      }
+      values[row] = value / matrix[row][row];
+    }
+    if (!values.every(Number.isFinite)) return undefined;
+
+    let residualNorm = 0;
+    let matrixNorm = 0;
+    let rhsNorm = 0;
+    let solutionNorm = 0;
+    for (let row = 0; row < n; row++) {
+      const calculated = A[row].reduce(
+        (sum, coefficient, column) => sum + coefficient * values[column],
+        0
+      );
+      residualNorm = Math.max(residualNorm, Math.abs(calculated - b[row]));
+      matrixNorm = Math.max(matrixNorm, A[row].reduce((sum, value) => sum + Math.abs(value), 0));
+      rhsNorm = Math.max(rhsNorm, Math.abs(b[row]));
+      solutionNorm = Math.max(solutionNorm, Math.abs(values[row]));
+    }
+    const residual = residualNorm / Math.max(1, matrixNorm * solutionNorm + rhsNorm);
+    return { values, rank, residual };
   }
 }

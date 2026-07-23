@@ -1,47 +1,11 @@
-import { Component, ViewChild, ChangeDetectionStrategy } from '@angular/core';
-import {
-  ChartComponent,
-  ApexAxisChartSeries,
-  ApexChart,
-  ApexXAxis,
-  ApexYAxis,
-  ApexDataLabels,
-  ApexGrid,
-  ApexStroke,
-  ApexTitleSubtitle,
-  ApexMarkers,
-  ApexFill,
-  ApexTooltip,
-  ApexAnnotations,
-  ApexLegend,
-} from 'ng-apexcharts';
-import { KinematicsSolver } from 'src/app/model/mechanism/kinematic-solver';
-import { ForceSolver } from 'src/app/model/mechanism/force-solver';
-import { crossProduct, GlobalUnit, roundNumber } from '../../model/utils';
-import { ToolbarComponent } from '../toolbar/toolbar.component';
-import { AnimationBarComponent } from '../animation-bar/animation-bar.component';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ForceAnalysisMode } from 'src/app/model/mechanism/force-solver';
+import { PrisJoint } from 'src/app/model/joint';
+import { Link } from 'src/app/model/link';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { FormBuilder } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
-
-export type ChartOptions = {
-  annotations: ApexAnnotations;
-  series: ApexAxisChartSeries;
-  chart: any; //ApexChart;
-  dataLabels: ApexDataLabels;
-  markers: ApexMarkers;
-  title: ApexTitleSubtitle;
-  fill: ApexFill;
-  yaxis: ApexYAxis;
-  xaxis: ApexXAxis;
-  tooltip: ApexTooltip;
-  stroke: ApexStroke;
-  grid: any; //ApexGrid;
-  colors: any;
-  toolbar: any;
-  legend: ApexLegend;
-};
 
 @Component({
   selector: 'app-analysis-panel',
@@ -73,6 +37,7 @@ export class AnalysisPanelComponent {
   };
 
   mechStateSub: any;
+  selectedReactionLinkId = '';
 
   constructor(
     public activeSrv: ActiveObjService,
@@ -80,10 +45,6 @@ export class AnalysisPanelComponent {
     public mechanismService: MechanismService,
     public settingsService: SettingsService
   ) {
-    if (this.mechanismService.oneValidMechanismExists()) {
-      this.resetVariablesAndSolve();
-    }
-
     this.inputSpeedFormGroup.patchValue({ speed: '0' });
   }
 
@@ -92,7 +53,6 @@ export class AnalysisPanelComponent {
       switch (data) {
         case 3:
           if (this.mechanismService.oneValidMechanismExists()) {
-            this.resetVariablesAndSolve();
             this.mechanismService.onMechUpdateState.next(2);
           }
           break;
@@ -101,46 +61,48 @@ export class AnalysisPanelComponent {
   }
 
   ngOnDestroy() {
-    this.mechStateSub.unsubscribe();
+    this.mechStateSub?.unsubscribe();
   }
 
-  resetVariablesAndSolve() {
-    ForceSolver.resetVariables();
-    KinematicsSolver.resetVariables();
-    ForceSolver.determineDesiredLoopLettersForce(this.mechanismService.mechanisms[0].requiredLoops);
-    let unitStr = 'cm';
-    switch (this.settingsService.globalUnit.value) {
-      case GlobalUnit.ENGLISH:
-        unitStr = 'in';
-        break;
-      case GlobalUnit.METRIC:
-        unitStr = 'cm';
-        break;
-      case GlobalUnit.NULL:
-        unitStr = 'cm';
-        break;
-      case GlobalUnit.SI:
-        unitStr = 'm';
-        break;
+  forceAnalysisMode(): ForceAnalysisMode {
+    return this.inputSpeedFormGroup.value.speed === '1' ? 'dynamic' : 'static';
+  }
+
+  selectedJointReactionLinks(): Link[] {
+    const joint = this.activeSrv.selectedJoint;
+    if (!joint) return [];
+    const result: Link[] = [];
+    for (const linked of joint.links) {
+      const root = this.mechanismService.links.find((candidate) => candidate.id === linked.id);
+      if (root && !result.some((candidate) => candidate.id === root.id)) result.push(root);
     }
-    ForceSolver.determineForceAnalysis(
-      this.mechanismService.joints,
-      this.mechanismService.links,
-      'static',
-      this.settingsService.isForces.value,
-      unitStr
-    );
-
-    KinematicsSolver.requiredLoops = this.mechanismService.mechanisms[0].requiredLoops;
-    KinematicsSolver.determineKinematics(
-      this.mechanismService.joints,
-      this.mechanismService.links,
-      this.settingsService.inputSpeed.value
-    );
+    return result;
   }
 
-  handleDebugButton() {
-    this.resetVariablesAndSolve();
+  selectedJointHasIndependentReaction(): boolean {
+    const joint = this.activeSrv.selectedJoint;
+    return !!joint && (joint.ground || this.selectedJointReactionLinks().length >= 2);
+  }
+
+  reactionLinkId(): string {
+    const links = this.selectedJointReactionLinks();
+    return links.some((link) => link.id === this.selectedReactionLinkId)
+      ? this.selectedReactionLinkId
+      : links[0]?.id ?? '';
+  }
+
+  selectReactionLink(linkId: string): void {
+    this.selectedReactionLinkId = linkId;
+  }
+
+  inputEffortLabel(): string {
+    const joint = this.activeSrv.selectedJoint;
+    return joint instanceof PrisJoint ||
+      joint?.connectedJoints.some(
+        (candidate) => candidate instanceof PrisJoint && candidate.input
+      )
+      ? 'Force'
+      : 'Torque';
   }
 
   validMechanisms() {

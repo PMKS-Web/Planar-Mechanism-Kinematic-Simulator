@@ -30,7 +30,6 @@
 @use 'src/app/component/equation-panel/equation-panel.component.scss' as equation-panel;
 @use 'src/app/component/MODALS/templates/templates.component.scss' as templates;
 @use 'src/app/component/not-ready-warning/not-ready-warning.component.scss' as not-ready-warning;
-@use 'src/app/component/MODALS/enable-equations/enable-equations.component.scss' as enable-equations;
 @use 'src/app/component/bottombar/bottombar.component.scss' as bottombar;
 
 @include mat.elevation-classes();
@@ -91,7 +90,6 @@ $my-theme: mat.m2-define-light-theme(
 @include context-menu.css($my-theme);
 @include equation-panel.css($my-theme);
 @include not-ready-warning.css($my-theme);
-@include enable-equations.css($my-theme);
 @include bottombar.css($my-theme);
 
 @include blocks-common.css($my-theme);

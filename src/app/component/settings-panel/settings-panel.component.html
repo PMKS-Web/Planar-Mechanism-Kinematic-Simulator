@@ -33,45 +33,15 @@
       </radio-block>
 
       <input-block
-        unit="deg/sec"
+        unit="RPM"
         type="number"
         [formGroup]="this.settingsForm"
         _formControl="speed"
-        tooltip="The speed that the animation will run at. (rpm - I think)"
+        tooltip="The constant input speed used for animation and dynamic force analysis, in revolutions per minute."
         >Input Speed
       </input-block>
     </collapsible-subseciton>
 
-    <collapsible-subseciton titleLabel="Experimental Features">
-      <!--      <toggle-block-->
-      <!--        [formGroup]='this.settingsForm'-->
-      <!--        _formControl='gravity'-->
-      <!--        tooltip='Allows users to assign weights to links and enables analysis options for torque and forces.'-->
-      <!--      >Enable Forces-->
-      <!--      </toggle-block>-->
-      @if (!settingsService.isForces.value) {
-        <button-block customIcon="com" [click]="openEnableForceDialog.bind(this)">
-          Enable Masses / Forces
-        </button-block>
-      }
-
-      @if (!settingsService.isWeldedJointsEnabled.value) {
-        <button-block customIcon="weld_joint" [click]="openEnableWeldedDialog.bind(this)">
-          Enable Welded Joints
-        </button-block>
-      }
-
-      @if (!settingsService.isEquationsEnabled.value) {
-        <button-block icon="format_list_numbered" [click]="openEnablEquationsDialog.bind(this)">
-          Enable Loop Equations
-        </button-block>
-      }
-
-      @if (settingsService.isForces.value) {
-        <button-block icon="edit" [click]="sendComingSoon">Edit Force Directions</button-block>
-        <button-block icon="edit" [click]="sendComingSoon">Edit Moment Centers</button-block>
-      }
-    </collapsible-subseciton>
     <collapsible-subseciton titleLabel="Visual Settings" [expanded]="true">
       <toggle-block
         [formGroup]="this.settingsForm"
