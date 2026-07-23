@@ -4,6 +4,7 @@ import { BehaviorSubject } from 'rxjs';
 import { MechanismService } from './services/mechanism.service';
 import { SynthesisBuilderService } from './services/synthesis/synthesis-builder.service';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
+import { SettingsService } from './services/settings.service';
 
 export enum TabID {
   SYNTHESIZE,
@@ -22,7 +23,8 @@ export class SelectedTabService {
   constructor(
     private synthesis: SynthesisBuilderService,
     private mechanism: MechanismService,
-    private activeObjService: ActiveObjService
+    private activeObjService: ActiveObjService,
+    private settings: SettingsService
   ) {
     this._tabNum = new BehaviorSubject<TabID>(TabID.EDIT);
     this._tabVisible = new BehaviorSubject<boolean>(true);
@@ -62,6 +64,13 @@ export class SelectedTabService {
   }
 
   private onNewTab(previousTab: TabID) {
+
+    // Replaces the old stop button: leaving Analyze is what rewinds the
+    // mechanism, so the other modes always act on the pose at time 0.
+    if (previousTab === TabID.ANALYZE) {
+      this.mechanism.animate(0, false);
+      this.settings.animating.next(false);
+    }
 
     if (this.getCurrentTab() === TabID.SYNTHESIZE) {
 

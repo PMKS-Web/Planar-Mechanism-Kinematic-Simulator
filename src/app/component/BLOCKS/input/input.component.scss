@@ -44,6 +44,10 @@
         padding: 0 6px;
       }
 
+      &.wide .mat-mdc-text-field-wrapper {
+        width: 104px;
+      }
+
       .input-unit {
         margin-left: 4px;
         color: map.get($foreground, 'secondary-text');

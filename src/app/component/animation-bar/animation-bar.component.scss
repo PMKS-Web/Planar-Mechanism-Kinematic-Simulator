@@ -2,122 +2,125 @@
 @use '@angular/material' as mat;
 
 @mixin css($theme) {
-  // Get the color config from the theme.
   $color-config: mat.m2-get-color-config($theme);
-  // Get the primary color palette from the color-config.
   $primary-palette: map.get($color-config, 'primary');
-  $accent-palette: map.get($color-config, 'accent');
   $typography-config: mat.m2-get-typography-config($theme);
-  $background: map.get($theme, background);
-  $foreground: map.get($theme, foreground);
 
-  #speedButton {
-    font-weight: bold;
-    font-size: 20px;
-  }
-
-  #barContainer {
-    //Fix to the bottom left, make the it cover the entire width of the screen but give it a height of 50px. Use flex to center animation bar in the middle botttom.
-    position: absolute;
-    bottom: 20px;
-    left: 0;
-    width: 100%;
-    gap: 10px;
-    margin-right: 10px;
+  .playbackControls {
     display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    pointer-events: none;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+    // No side padding: the parent .tabTools already provides the 8px gutter, so
+    // the play/speed/slider/time controls share the buttons' left and right edge.
+    padding: 4px 0 0;
 
-    #viewButtons {
-      pointer-events: auto;
-      margin: 10px 0;
-      margin-right: 10px;
-      padding: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: row;
-      // width: 400px;
-      border-radius: var(--border-radius);
-      //Set the elevation of the animation bar to 2.
-      @include mat.elevation(2);
-      //Set the background color of the animation bar to the background color of the raised button.
-      background-color: white;
+    .playButton,
+    .speedButton {
+      min-width: 0;
+      height: 34px;
+      padding: 0;
+      line-height: 34px;
     }
 
-    #animationBar {
-      height: 48px;
-      pointer-events: auto;
-      margin: 10px 0;
-      padding: 10px 20px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: center;
-      // width: 400px;
-      border-radius: var(--border-radius);
-      //Set the elevation of the animation bar to 2.
-      @include mat.elevation(2);
-      //Set the background color of the animation bar to the background color of the raised button.
+    // Material fills this at primary 500; the selected segmented-control toggles
+    // use primary 400, so match them and keep one blue across the UI.
+    .playButton.mat-mdc-unelevated-button {
+      background-color: mat.m2-get-color-from-palette($primary-palette, 400);
+    }
+
+    .playButton .mat-icon {
+      margin: 0;
+      height: 22px;
+      width: 22px;
+      font-size: 22px;
+      line-height: 22px;
+    }
+
+    .speedButton {
       background-color: white;
+      border-color: mat.m2-get-color-from-palette($primary-palette, 100) !important;
+      font-weight: bold;
+      font-size: 16px;
+    }
 
-      /* Chrome, Safari, Edge, Opera */
-      input::-webkit-outer-spin-button,
-      input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-
-      /* Firefox */
-      input[type='number'] {
-        -moz-appearance: textfield;
-      }
-
-      #timeInputWrapper {
-        display: flex;
-        font-size: 20px;
-        font-weight: 400;
-        align-items: center;
-        // @include mat.typography-level($typography-config, 'headline-6');
-
-        #tLabel {
-          margin-right: 10px;
-          line-height: 30px;
-        }
-
-        #secLabel {
-          line-height: 30px;
-        }
-      }
-
-      #animationBar-input {
-        font-size: 20px;
-        font-weight: 400;
-        height: 30px;
-        line-height: 30px;
-        width: 40px;
-        border: 0;
-        outline: none;
-        background-color: mat.m2-get-color-from-palette($primary-palette, 50);
-        border-radius: var(--border-radius);
-        padding: 0 5px;
-        //When the input is focused
-        &:focus {
-          margin-bottom: 0;
-          background-color: mat.m2-get-color-from-palette($primary-palette, 100);
-          //add a bottom border
-          border-bottom: 2px solid mat.m2-get-color-from-palette($primary-palette, 500);
-          //no more roudned corners in for the bottom
-          border-radius: var(--border-radius) var(--border-radius) 0 0;
-          margin-bottom: -2px;
-        }
-      }
+    // Material has no vertical slider, so the horizontal one is rotated inside a
+    // narrow wrapper. Absolute positioning keeps the pre-rotation width from
+    // dictating the column width. Extra vertical padding keeps the thumb's hover
+    // halo from overlapping the speed button above or the time field below.
+    .verticalSlider {
+      position: relative;
+      width: 100%;
+      // The rotated thumb's hover halo (~24px radius) overhangs each end of the
+      // track, so the box is padded top and bottom to keep it clear of the speed
+      // button above and the time field below.
+      height: 176px;
+      margin: 18px 0 16px;
 
       mat-slider {
-        margin-left: 15px;
-        width: 30vw;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 176px;
+        margin: 0;
+        transform: translate(-50%, -50%) rotate(90deg);
       }
+
+      // The rail needs ~728px to show the analyze controls plus the view
+      // controls; below that the tall scrubber is dropped first so play/speed,
+      // the time field, and the view controls stay visible. The pill re-measures
+      // on resize (see the component).
+      @media (max-height: 735px) {
+        display: none;
+      }
+    }
+
+    #timeInputWrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Chrome, Safari, Edge, Opera */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    // The time field mirrors the standard input-block: light fill, unit suffix
+    // tucked inside, accent underline on focus. border-box keeps the field inside
+    // the rail's gutter (the padding no longer widens it past the buttons).
+    #animationBar-input {
+      @include mat.m2-typography-level($typography-config, 'body-2');
+      box-sizing: border-box;
+      height: 30px;
+      line-height: 30px;
+      width: 68px;
+      border: 0;
+      outline: none;
+      text-align: left;
+      background-color: #f0f1f5;
+      border-radius: var(--border-radius);
+      padding: 0 20px 0 8px;
+
+      // The focus underline is an inset shadow, not a border, so it adds no box
+      // height — the number stays put instead of nudging up, matching the
+      // Material fields whose underline is drawn separately from the text box.
+      // Square the bottom corners on focus so the line reads as a flat underline
+      // rather than curving in at the ends. Radius is visual only, so no shift.
+      &:focus {
+        box-shadow: inset 0 -2px 0 0 mat.m2-get-color-from-palette($primary-palette, 500);
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+      }
+    }
+
+    #secLabel {
+      @include mat.m2-typography-level($typography-config, 'body-2');
+      margin-left: -16px;
+      color: rgba(0, 0, 0, 0.6);
+      pointer-events: none;
     }
   }
 }

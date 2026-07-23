@@ -2,6 +2,7 @@
 @use 'src/app/component/toolbar/toolbar.component.scss' as toolbar;
 @use 'src/app/component/left-tabs/left-tabs.component.scss' as left-tabs;
 @use 'src/app/component/animation-bar/animation-bar.component.scss' as animation-bar;
+@use 'src/app/component/view-controls/view-controls.component.scss' as view-controls;
 @use 'app/component/BLOCKS/title/title.component.scss' as title-block;
 @use 'src/app/component/edit-panel/edit-panel.component.scss' as edit-panel;
 @use 'app/component/BLOCKS/button/button.component.scss' as button-block;
@@ -80,6 +81,7 @@ $my-theme: mat.m2-define-light-theme(
 @include toolbar.css($my-theme);
 @include left-tabs.css($my-theme);
 @include animation-bar.css($my-theme);
+@include view-controls.css($my-theme);
 @include edit-panel.css($my-theme);
 @include analysis-panel.css($my-theme);
 @include analysis-graph.css($my-theme);

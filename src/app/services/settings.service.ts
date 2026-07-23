@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { LengthUnit, AngleUnit, GlobalUnit, ForceUnit } from '../model/unit-enums';
+import type { ForceAnalysisMode } from '../model/mechanism/force-solver';
 
 @Injectable({
   providedIn: 'root',
@@ -13,6 +14,8 @@ export class SettingsService {
   globalUnit = new BehaviorSubject(GlobalUnit.METRIC);
   isInputCW = new BehaviorSubject(true);
   inputSpeed = new BehaviorSubject(20);
+  // One mechanism-wide choice, shown by every force-analysis panel.
+  forceAnalysisMode = new BehaviorSubject<ForceAnalysisMode>('static');
   animating = new BehaviorSubject(false);
   isShowMajorGrid = new BehaviorSubject(true);
   isShowMinorGrid = new BehaviorSubject(true);

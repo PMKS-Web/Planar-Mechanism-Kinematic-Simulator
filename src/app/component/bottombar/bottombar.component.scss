@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use 'src/app/component/left-tabs/left-tabs.vars' as nav;
 
 @mixin css($theme) {
   // Get the color config from the theme.
@@ -17,7 +18,7 @@
     bottom: 0;
     right: 0;
     width: 100vw;
-    height: 20px;
+    height: nav.$bottom-bar-height;
     background-color: white;
     //z-index: 100;
 
@@ -37,7 +38,8 @@
       list-style-type: none;
       margin: 0;
       padding: 0;
-      padding-left: 70px;
+      // Clear the nav rail, which sits above this bar on the left.
+      padding-left: calc(#{nav.$rail-width} + 10px);
       padding-right: 10px;
     }
   }

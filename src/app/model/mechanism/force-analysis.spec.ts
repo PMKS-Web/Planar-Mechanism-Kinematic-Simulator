@@ -314,3 +314,44 @@ describe('ForceSolver physical model', () => {
     ).not.toBeCloseTo(baseResult.frames[comparableIndex].inputEffort!.valueSI, 6);
   });
 });
+
+describe('ForceSolver reaction index', () => {
+  it('mirrors joint->link and link->joint views of the same reaction set', () => {
+    const { mechanism } = buildMechanism(teachingLabSliderCrankFixture(true));
+    const { reactionIndex, frames } = mechanism.getForceAnalysis('static');
+
+    for (const [jointId, linkIds] of reactionIndex.linksByJoint) {
+      for (const linkId of linkIds) {
+        expect(reactionIndex.jointsByLink.get(linkId)).toContain(jointId);
+      }
+    }
+    for (const [linkId, jointIds] of reactionIndex.jointsByLink) {
+      for (const jointId of jointIds) {
+        expect(reactionIndex.linksByJoint.get(jointId)).toContain(linkId);
+      }
+    }
+
+    // Every indexed pair is actually solved for, so a row always has a series.
+    const frame = frames.find((candidate) => candidate.status === 'ok')!;
+    for (const [jointId, linkIds] of reactionIndex.linksByJoint) {
+      for (const linkId of linkIds) {
+        expect(frame.jointReactionsByLink.get(jointId)?.has(linkId)).toBe(true);
+      }
+    }
+  });
+
+  it('lists one entry per body at a compound joint shared by three links', () => {
+    initializeModels();
+    const shared = new RevJoint('B', 2, 0);
+    const ends = ['A', 'C', 'D'].map((id, index) => new RevJoint(id, index, index, true, false));
+    const links = ends.map((end) => new RealLink(end.id + 'B', [end, shared], 1, 0.1));
+    ends.forEach((end, index) => (end.links = [links[index]]));
+    shared.links = links;
+
+    const index = ForceSolver.buildReactionIndex([shared, ...ends], links);
+    expect(index.linksByJoint.get('B')).toEqual(links.map((link) => link.id));
+    for (const link of links) {
+      expect(index.jointsByLink.get(link.id)).toContain('B');
+    }
+  });
+});

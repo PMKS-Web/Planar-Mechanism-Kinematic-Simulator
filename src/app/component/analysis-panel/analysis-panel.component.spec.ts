@@ -2,10 +2,7 @@ import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSelectHarness } from '@angular/material/select/testing';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
@@ -25,7 +22,7 @@ async function createPanel(payload: string, selectedId: string) {
 
   await TestBed.configureTestingModule({
     declarations: [AnalysisPanelComponent],
-    imports: [ReactiveFormsModule, MatFormFieldModule, MatSelectModule, NoopAnimationsModule],
+    imports: [ReactiveFormsModule, MatFormFieldModule, NoopAnimationsModule],
     providers: [
       { provide: ActiveObjService, useValue: fixtureData.active },
       { provide: MechanismService, useValue: fixtureData.service },
@@ -48,57 +45,101 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
 
   it('renders analysis controls for a valid loopless welded link instead of blanking', async () => {
     const { fixture } = await createPanel(LOOPLESS_WELDED_MECHANISM, 'A');
-    fixture.componentInstance.graphExpanded['JPos'] = true;
-    fixture.componentInstance.graphExpanded['JForce'] = true;
-    fixture.componentInstance.graphExpanded['JInputForce'] = true;
-
     expect(() => fixture.detectChanges()).not.toThrow();
+
+    const rows = fixture.componentInstance.jointForceRows();
+    expect(rows.length).toBeGreaterThan(0);
+    Object.assign(fixture.componentInstance.graphExpanded, {
+      JPos: true,
+      JInputForce: true,
+    });
+    for (const row of rows) {
+      fixture.componentInstance.graphExpanded['JForce_' + row.linkId] = true;
+    }
+    fixture.detectChanges();
+
     expect(fixture.nativeElement.textContent).toContain('Analysis for Joint A');
     expect(fixture.nativeElement.textContent).toContain('Force Analysis');
-    expect(fixture.nativeElement.querySelectorAll('app-analysis-graph').length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('app-analysis-graph').length).toBe(
+      rows.length + 2
+    );
 
     fixture.destroy();
   });
 
-  it('maps the 0/1 radio values directly to static and dynamic modes', async () => {
-    const { fixture } = await createPanel(LOOPLESS_WELDED_MECHANISM, 'A');
+  it('maps the 0/1 radio values onto the mechanism-wide force analysis mode', async () => {
+    const { fixture, fixtureData } = await createPanel(LOOPLESS_WELDED_MECHANISM, 'A');
+    fixture.detectChanges();
+
     expect(fixture.componentInstance.forceAnalysisMode()).toBe('static');
-    fixture.componentInstance.inputSpeedFormGroup.patchValue({ speed: '1' });
+    fixture.componentInstance.forceAnalysisFormGroup.patchValue({ mode: '1' });
+    expect(fixtureData.settings.forceAnalysisMode.value).toBe('dynamic');
     expect(fixture.componentInstance.forceAnalysisMode()).toBe('dynamic');
-    fixture.componentInstance.inputSpeedFormGroup.patchValue({ speed: '0' });
-    expect(fixture.componentInstance.forceAnalysisMode()).toBe('static');
+
+    // The setting is the source of truth, so an external change flows back in.
+    fixtureData.settings.forceAnalysisMode.next('static');
+    expect(fixture.componentInstance.forceAnalysisFormGroup.value.mode).toBe('0');
     fixture.destroy();
   });
 
   it('explains that an internal welded joint has no independent pin reaction', async () => {
     const { fixture } = await createPanel(LOOPLESS_WELDED_MECHANISM, 'B');
-    fixture.componentInstance.graphExpanded['JForce'] = true;
     fixture.detectChanges();
 
+    expect(fixture.componentInstance.jointForceRows()).toHaveLength(0);
     expect(fixture.nativeElement.textContent).toContain('internal to one welded body');
     expect(fixture.nativeElement.textContent).toContain('no independent pin reaction');
-    expect(fixture.nativeElement.querySelectorAll('app-analysis-graph').length).toBe(0);
     fixture.destroy();
   });
 
-  it('selects and persists the root-link side at an external multi-link pin', async () => {
+  it('lists one force row per link reacting at an external multi-link pin', async () => {
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'B');
     fixture.detectChanges();
 
-    const links = fixture.componentInstance.selectedJointReactionLinks();
-    expect(links).toHaveLength(2);
-    expect(fixture.nativeElement.querySelector('.reaction-link-selector')).not.toBeNull();
-    const loader = TestbedHarnessEnvironment.loader(fixture);
-    const selector = await loader.getHarness(MatSelectHarness);
-    expect(await selector.getValueText()).toBe(`Link ${links[0].name}`);
-    await selector.open();
-    const options = await selector.getOptions();
-    expect(await Promise.all(options.map((option) => option.getText()))).toEqual(
-      links.map((link) => `Link ${link.name}`)
+    const rows = fixture.componentInstance.jointForceRows();
+    expect(rows).toHaveLength(2);
+    expect(rows.every((row) => row.jointId === 'B')).toBe(true);
+    expect(fixture.nativeElement.querySelector('.reaction-link-selector')).toBeNull();
+
+    const titles = [...fixture.nativeElement.querySelectorAll('mat-panel-title')].map(
+      (title: Element) => title.textContent!.trim()
     );
-    await options[1].click();
-    expect(fixture.componentInstance.reactionLinkId()).toBe(links[1].id);
-    expect(await selector.getValueText()).toBe(`Link ${links[1].name}`);
+    for (const row of rows) {
+      expect(titles).toContain(`Force on Link ${row.linkName}`);
+    }
+    fixture.destroy();
+  });
+
+  it('lists one force row per external joint on a link, sharing the joint-side dataset', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'BC');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Analysis for Link BC');
+    expect(fixture.nativeElement.textContent).not.toContain('Kinematic Analysis for Link');
+
+    const rows = fixture.componentInstance.linkForceRows();
+    expect(rows.map((row) => row.jointId)).toEqual(['B', 'C']);
+    expect(rows.every((row) => row.linkId === 'BC')).toBe(true);
+
+    const titles = [...fixture.nativeElement.querySelectorAll('mat-panel-title')].map(
+      (title: Element) => title.textContent!.trim()
+    );
+    expect(titles).toContain('Force at Joint B');
+    expect(titles).toContain('Force at Joint C');
+    fixture.destroy();
+  });
+
+  it('draws both panels from the one reaction dataset keyed by link and joint', async () => {
+    const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'BC');
+    fixture.detectChanges();
+
+    const analysis = fixtureData.mechanism.getForceAnalysis('static');
+    const frame = analysis.frames.find((candidate) => candidate.status === 'ok')!;
+    for (const row of fixture.componentInstance.linkForceRows()) {
+      // The link-side row and the joint-side row address the same map entry.
+      expect(analysis.reactionIndex.linksByJoint.get(row.jointId)).toContain(row.linkId);
+      expect(frame.jointReactionsByLink.get(row.jointId)?.has(row.linkId)).toBe(true);
+    }
     fixture.destroy();
   });
 

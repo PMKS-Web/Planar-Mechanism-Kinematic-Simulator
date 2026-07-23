@@ -36,6 +36,12 @@
 
   #graph-checkbox-list-three,
   #graph-checkbox-list-two {
+    // The negative bottom margin above pulls the chart up into this row, so the
+    // chart's SVG paints over the labels and swallows clicks meant for them.
+    // Lifting the row restores the label as a hit target for its checkbox.
+    position: relative;
+    z-index: 1;
+
     .mdc-form-field {
       align-items: center;
     }

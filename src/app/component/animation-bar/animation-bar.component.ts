@@ -1,22 +1,16 @@
 import {
   AfterViewInit,
   Component,
-  EventEmitter,
-  Input,
+  OnDestroy,
   OnInit,
-  Output,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { NgForm } from '@angular/forms';
 // import {switchMapTo} from "rxjs";
-import { Mechanism } from '../../model/mechanism/mechanism';
-import { ToolbarComponent } from '../toolbar/toolbar.component';
-import { SvgGridService } from '../../services/svg-grid.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
-import { NewGridComponent } from '../new-grid/new-grid.component';
-import { RealJoint, RevJoint } from '../../model/joint';
-import { connect } from 'rxjs';
+import { NumberUnitParserService } from '../../services/number-unit-parser.service';
+import { TimeUnit } from '../../model/utils';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-animation-bar',
@@ -25,7 +19,7 @@ import { connect } from 'rxjs';
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false,
 })
-export class AnimationBarComponent implements OnInit, AfterViewInit {
+export class AnimationBarComponent implements OnInit, AfterViewInit, OnDestroy {
   userIsDragging: boolean = false;
 
   wasAnimating: boolean = false;
@@ -34,43 +28,47 @@ export class AnimationBarComponent implements OnInit, AfterViewInit {
 
   static playButton: HTMLInputElement;
   static pauseButton: HTMLInputElement;
-  static stopButton: HTMLInputElement;
   static slider: HTMLInputElement;
   static sliderContainer: HTMLInputElement;
   static adjustAnimation: boolean;
 
-  timestepDisplay: number = 0;
+  timestepDisplay: string = this.formatTime(0);
+  private positionSub?: Subscription;
 
   constructor(
-    public svgGrid: SvgGridService,
     public mechanismService: MechanismService,
-    public settingsService: SettingsService
+    public settingsService: SettingsService,
+    private nup: NumberUnitParserService
   ) {}
 
   ngOnInit(): void {
     //Subscribte to the emitter inside mechanismStateService
-    this.mechanismService.onMechPositionChange.subscribe((v) => {
-      this.timestepDisplay = Number(this.timeAtStep(v).toFixed(3));
+    this.positionSub = this.mechanismService.onMechPositionChange.subscribe((v) => {
+      this.timestepDisplay = this.formatTime(this.timeAtStep(v));
     });
+  }
+
+  private formatTime(seconds: number): string {
+    return this.nup.formatValueAndUnit(seconds, TimeUnit.SECOND);
+  }
+
+  // The bar is created and destroyed each time the Analyze tab opens.
+  ngOnDestroy(): void {
+    this.positionSub?.unsubscribe();
   }
 
   ngAfterViewInit() {
     AnimationBarComponent.playButton = <HTMLInputElement>document.getElementById('playBtn');
     AnimationBarComponent.pauseButton = <HTMLInputElement>document.getElementById('pauseBtn');
-    AnimationBarComponent.stopButton = <HTMLInputElement>document.getElementById('stopBtn');
     AnimationBarComponent.slider = <HTMLInputElement>document.getElementById('slider');
     AnimationBarComponent.sliderContainer = <HTMLInputElement>(
       document.getElementById('sliderContainer')
     );
   }
 
-  onNewTimeSubmit(simpleForm: any) {
-    const requested = Number(simpleForm.value.timestep);
-    const clamped = Math.min(
-      Math.max(Number.isFinite(requested) ? requested : 0, 0),
-      this.maxTime()
-    );
-    simpleForm.value.timestep = clamped;
+  onNewTimeSubmit() {
+    const [success, requested] = this.nup.parseTimeString(this.timestepDisplay, TimeUnit.SECOND);
+    const clamped = Math.min(Math.max(success ? requested : 0, 0), this.maxTime());
     this.mechanismService.animate(this.nearestTimeStep(clamped), AnimationBarComponent.animate);
 
     if (this.mechanismService.mechanismTimeStep !== 0) {
@@ -78,6 +76,10 @@ export class AnimationBarComponent implements OnInit, AfterViewInit {
     } else {
       this.settingsService.animating.next(false);
     }
+    // Re-show the resolved, unit-formatted value the mechanism actually landed on.
+    this.timestepDisplay = this.formatTime(
+      this.timeAtStep(this.mechanismService.mechanismTimeStep)
+    );
   }
 
   maxTimeSteps() {
@@ -153,48 +155,12 @@ export class AnimationBarComponent implements OnInit, AfterViewInit {
           AnimationBarComponent.animate
         );
         break;
-      case 'stop':
-        AnimationBarComponent.animate = false;
-        this.mechanismService.animate(0, AnimationBarComponent.animate);
-        break;
     }
     if (this.mechanismService.mechanismTimeStep !== 0) {
       this.settingsService.animating.next(true);
     } else {
       this.settingsService.animating.next(false);
     }
-  }
-
-  noJointExsits() {
-    return this.mechanismService.joints.length == 0;
-  }
-
-  noLinkExsits() {
-    return this.mechanismService.links.length == 0;
-  }
-
-  showCenterOfMass() {
-    this.settingsService.isShowCOM.next(!this.settingsService.isShowCOM.value);
-  }
-
-  comIconName() {
-    return this.settingsService.isShowCOM.value ? 'com_off' : 'com';
-  }
-
-  idLabelIconName() {
-    return this.settingsService.isShowID.value ? 'abc_off' : 'abc';
-  }
-
-  onShowIDPressed() {
-    this.settingsService.isShowID.next(!this.settingsService.isShowID.value);
-  }
-
-  onZoomInPressed() {
-    this.svgGrid.zoomIn();
-  }
-
-  onZoomOutPressed() {
-    this.svgGrid.zoomOut();
   }
 
   invalidMechanism() {

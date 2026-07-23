@@ -16,6 +16,8 @@ their source. Everything browser-driven lives here.
 - `full-tour.mjs` — broad tour: panels, templates, settings, share URL, help, mobile viewport
 - `deep-interactions.mjs` — deep grid interaction: add links, drag joints, right-click menus
 - `focused-interactions.mjs` — focused workflows (four-bar build, animation, analysis)
+- `force-analysis-panels.mjs` — Force Analysis rows on the joint and link analysis panels, and the shared Force Analysis Type toggle
+- `left-nav-modes.mjs` — mode-scoped left nav rail: Edit/Analyze tool sections, the absorbed view controls, and the rewind-on-leaving-Analyze behavior
 
 ## Running
 

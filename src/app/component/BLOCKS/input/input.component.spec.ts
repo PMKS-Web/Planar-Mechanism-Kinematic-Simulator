@@ -44,5 +44,13 @@ describe('InputComponent', () => {
     expect(fixture.nativeElement.querySelector('.customInputForm').classList).not.toContain(
       'has-unit'
     );
+    expect(fixture.nativeElement.querySelector('.customInputForm').classList).not.toContain('wide');
+  });
+
+  it('widens the field on request, for values that carry a long unit in their text', () => {
+    fixture.componentInstance.wide = true;
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.customInputForm').classList).toContain('wide');
   });
 });

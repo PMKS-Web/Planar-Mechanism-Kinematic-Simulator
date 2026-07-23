@@ -33,11 +33,10 @@
       </radio-block>
 
       <input-block
-        unit="RPM"
         type="number"
         [formGroup]="this.settingsForm"
         _formControl="speed"
-        tooltip="The constant input speed used for animation and dynamic force analysis, in revolutions per minute."
+        tooltip="The constant input speed used for animation and dynamic force analysis. Defaults to RPM; rad/s and deg/s are also accepted."
         >Input Speed
       </input-block>
     </collapsible-subseciton>

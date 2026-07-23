@@ -58,6 +58,16 @@ export const ANALYSIS_SERIES_COLORS = {
   Z: '#fdb50e',
 } as const;
 
+/**
+ * Time axis labels: a typical cycle runs 0-3 s, where "3.000" is noise. Cap at
+ * three decimals and drop the ones that carry no information.
+ */
+export function formatTimeLabel(value: number): string {
+  const rounded = Number(value);
+  if (!Number.isFinite(rounded)) return '';
+  return Number(rounded.toFixed(3)).toString();
+}
+
 @Component({
   selector: 'app-analysis-graph',
   templateUrl: './analysis-graph.component.html',
@@ -122,7 +132,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       // theme: 'dark',
       x: {
         formatter: function (val) {
-          return 'T = ' + Number(val).toFixed(3) + 's';
+          return 'T = ' + formatTimeLabel(Number(val)) + 's';
         },
       },
       marker: {
@@ -163,10 +173,13 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       labels: {
         rotate: 0,
         rotateAlways: true,
-        trim: true,
+        // Apex trims a label to its own tick slot, which is far narrower than
+        // the space actually free at the two ends of this axis.
+        trim: false,
+        hideOverlappingLabels: false,
         offsetY: 0,
         formatter: function (val) {
-          return Number(val).toFixed(3);
+          return formatTimeLabel(Number(val));
         },
       },
       tickAmount: 1,
@@ -318,10 +331,14 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     this.chartSyncTimer = setTimeout(() => {
       if (this.destroyed) return;
       if (resetSelection) {
-        const selection =
-          this.numberOfSeries === 2
-            ? { x: true, y: true, z: false }
-            : { x: false, y: false, z: true };
+        // Force graphs open on the X/Y components, since the direction of a
+        // reaction is what's being read; kinematic graphs still lead with the
+        // magnitude. A single-series graph only ever has the magnitude to show.
+        const showComponents =
+          this.numberOfSeries === 2 || (this.numberOfSeries === 3 && this.analysis === 'force');
+        const selection = showComponents
+          ? { x: true, y: true, z: false }
+          : { x: false, y: false, z: true };
         this.seriesCheckboxForm.patchValue(selection, { emitEvent: false });
       }
       this.applySeriesVisibility();
@@ -372,7 +389,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           x: timeSeconds,
           borderColor: '#000000',
           label: {
-            text: 'T= ' + timeSeconds.toFixed(3),
+            text: 'T= ' + formatTimeLabel(timeSeconds),
             orientation: 'horizontal',
             offsetY: -20,
           },
@@ -537,7 +554,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
     const fileName = this.chartOptions.yaxis?.title?.text || 'Analysis';
-    link.setAttribute('download', this.mechPart + '_' + fileName + '.csv');
+    // Several rows can graph the same joint, one per reacting link.
+    const part = this.reactionLinkId ? `${this.mechPart}_${this.reactionLinkId}` : this.mechPart;
+    link.setAttribute('download', part + '_' + fileName + '.csv');
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -571,12 +590,11 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
         switch (mechProp) {
           case 'Input Torque':
           case 'Input Effort': {
-            const mode: ForceAnalysisMode =
-              analysisType === 'dynamic' ? 'dynamic' : 'static';
+            const mode: ForceAnalysisMode = analysisType === 'dynamic' ? 'dynamic' : 'static';
             const effortKind = this.mechanismService.mechanisms[0]
               .getForceAnalysis(mode)
-              .frames.find((frame) => frame.status === 'ok' && frame.inputEffort)?.inputEffort
-              ?.kind;
+              .frames.find((frame) => frame.status === 'ok' && frame.inputEffort)
+              ?.inputEffort?.kind;
             yAxisTitle =
               effortKind === 'force'
                 ? this.settingsService.forceUnit.value === ForceUnit.LBF
@@ -597,9 +615,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           }
           case 'Joint Forces':
             yAxisTitle =
-              this.settingsService.forceUnit.value === ForceUnit.LBF
-                ? 'Force (lbf)'
-                : 'Force (N)';
+              this.settingsService.forceUnit.value === ForceUnit.LBF ? 'Force (lbf)' : 'Force (N)';
             [datum, categories] = this.determineAnalysis(
               analysis,
               analysisType,
@@ -795,8 +811,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     const categories: string[] = [];
     const mechanism = this.mechanismService.mechanisms[0];
     if (analysis === 'force') {
-      const mode: ForceAnalysisMode =
-        analysisType === 'dynamic' ? 'dynamic' : 'static';
+      const mode: ForceAnalysisMode = analysisType === 'dynamic' ? 'dynamic' : 'static';
       const result = mechanism.getForceAnalysis(mode);
       const forceConversion =
         this.settingsService.forceUnit.value === ForceUnit.LBF ? 0.22480894387096 : 1;
@@ -850,10 +865,10 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       );
       this.analysisDiagnostic = hasFiniteData
         ? null
-        : result.diagnostic ??
+        : (result.diagnostic ??
           (mechProp === 'Joint Forces'
             ? 'This point is internal to one welded body and has no independent joint reaction.'
-            : 'Input effort is unavailable for this mechanism.');
+            : 'Input effort is unavailable for this mechanism.'));
       return [[datum_X, datum_Y, datum_Z], categories];
     }
 

@@ -183,96 +183,82 @@
         </mat-expansion-panel>
       </collapsible-subseciton>
       <collapsible-subseciton
-          titleLabel="Force Analysis"
-          [expanded]="graphExpanded['JForceAna']"
-          (opened)="graphExpanded['JForceAna'] = true"
-          (closed)="graphExpanded['JForceAna'] = false"
-        >
-          <radio-block
-            tooltip="Determines whether the force analysis is done at static equilibrium or under dynamics conditions. The input speed for the dynamic analysis is set in the settings panel."
-            option1="Static (Equilibrium)"
-            option2="In-motion (Dynamic)"
-            [formGroup]="this.inputSpeedFormGroup"
-            _formControl="speed"
-            >Force Analysis Type
-          </radio-block>
-          @if (selectedJointReactionLinks().length > 1) {
-            <mat-form-field appearance="outline" class="reaction-link-selector">
-              <mat-label>Reaction acting on</mat-label>
-              <mat-select
-                [value]="reactionLinkId()"
-                (selectionChange)="selectReactionLink($event.value)"
-              >
-                @for (link of selectedJointReactionLinks(); track link.id) {
-                  <mat-option [value]="link.id">Link {{ link.name }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-          }
-          @if (!selectedJointHasIndependentReaction()) {
-            <div class="analysis-message" role="status">
-              Joint {{ this.activeSrv.selectedJoint.name }} is internal to one welded body and has
-              no independent pin reaction. Select an external or grounded joint to graph a reaction.
-            </div>
-          } @else {
+        titleLabel="Force Analysis"
+        [expanded]="graphExpanded['JForceAna']"
+        (opened)="graphExpanded['JForceAna'] = true"
+        (closed)="graphExpanded['JForceAna'] = false"
+      >
+        <radio-block
+          tooltip="Determines whether the force analysis is done at static equilibrium or under dynamics conditions. The input speed for the dynamic analysis is set in the settings panel."
+          option1="Static (Equilibrium)"
+          option2="In-motion (Dynamic)"
+          [formGroup]="this.forceAnalysisFormGroup"
+          _formControl="mode"
+          >Force Analysis Type
+        </radio-block>
+        @if (jointForceRows().length === 0) {
+          <div class="analysis-message" role="status">
+            Joint {{ this.activeSrv.selectedJoint.name }} is internal to one welded body and has no
+            independent pin reaction. Select an external or grounded joint to graph a reaction.
+          </div>
+        }
+        @for (row of jointForceRows(); track row.linkId) {
           <mat-expansion-panel
-            [expanded]="graphExpanded['JForce']"
-            (opened)="graphExpanded['JForce'] = true"
-            (closed)="graphExpanded['JForce'] = false"
+            [expanded]="graphExpanded['JForce_' + row.linkId]"
+            (opened)="graphExpanded['JForce_' + row.linkId] = true"
+            (closed)="graphExpanded['JForce_' + row.linkId] = false"
           >
             <mat-expansion-panel-header>
-              <mat-panel-title>
-                Force on Joint {{ this.activeSrv.selectedJoint.name }}
-              </mat-panel-title>
+              <mat-panel-title> Force on Link {{ row.linkName }} </mat-panel-title>
               <mat-panel-description>
                 <mat-icon
-                  matTooltip="The force applied at the selected joint graphed over time"
+                  matTooltip="The reaction force that link carries at the selected joint, graphed over time"
                   [matTooltipShowDelay]="1000"
                   id="graph-help"
                   >help_outline
                 </mat-icon>
               </mat-panel-description>
             </mat-expansion-panel-header>
-            @if (graphExpanded['JForce']) {
+            @if (graphExpanded['JForce_' + row.linkId]) {
               <app-analysis-graph
                 analysis="force"
                 [analysisType]="forceAnalysisMode()"
                 mechProp="Joint Forces"
-                mechPart="{{ this.activeSrv.selectedJoint.id }}"
-                [reactionLinkId]="reactionLinkId()"
+                mechPart="{{ row.jointId }}"
+                [reactionLinkId]="row.linkId"
               ></app-analysis-graph>
             }
           </mat-expansion-panel>
-          }
-          @if (this.activeSrv.selectedJoint.input) {
-            <mat-expansion-panel
-              [expanded]="graphExpanded['JInputForce']"
-              (opened)="graphExpanded['JInputForce'] = true"
-              (closed)="graphExpanded['JInputForce'] = false"
-            >
-              <mat-expansion-panel-header>
-                <mat-panel-title>
-                  Input {{ inputEffortLabel() }} at Joint {{ this.activeSrv.selectedJoint.name }}
-                </mat-panel-title>
-                <mat-panel-description>
-                  <mat-icon
-                    matTooltip="The torque or axial force applied by the selected input joint, graphed over time."
-                    [matTooltipShowDelay]="1000"
-                    id="graph-help"
-                    >help_outline
-                  </mat-icon>
-                </mat-panel-description>
-              </mat-expansion-panel-header>
-              @if (graphExpanded['JInputForce']) {
-                <app-analysis-graph
-                  analysis="force"
-                  [analysisType]="forceAnalysisMode()"
-                  mechProp="Input Effort"
-                  mechPart="{{ this.activeSrv.selectedJoint.id }}"
-                ></app-analysis-graph>
-              }
-            </mat-expansion-panel>
-          }
+        }
+        @if (this.activeSrv.selectedJoint.input) {
+          <mat-expansion-panel
+            [expanded]="graphExpanded['JInputForce']"
+            (opened)="graphExpanded['JInputForce'] = true"
+            (closed)="graphExpanded['JInputForce'] = false"
+          >
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                Input {{ inputEffortLabel() }} at Joint {{ this.activeSrv.selectedJoint.name }}
+              </mat-panel-title>
+              <mat-panel-description>
+                <mat-icon
+                  matTooltip="The torque or axial force applied by the selected input joint, graphed over time."
+                  [matTooltipShowDelay]="1000"
+                  id="graph-help"
+                  >help_outline
+                </mat-icon>
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+            @if (graphExpanded['JInputForce']) {
+              <app-analysis-graph
+                analysis="force"
+                [analysisType]="forceAnalysisMode()"
+                mechProp="Input Effort"
+                mechPart="{{ this.activeSrv.selectedJoint.id }}"
+              ></app-analysis-graph>
+            }
+          </mat-expansion-panel>
+        }
       </collapsible-subseciton>
     </panel-section>
   }
@@ -289,7 +275,7 @@
         }} direction. This can be changed in the
     settings panel."
       >
-        Kinematic Analysis for Link {{ this.activeSrv.selectedLink.name }}
+        Analysis for Link {{ this.activeSrv.selectedLink.name }}
       </title-block>
       <!-- <subtitle-block>Kinematics</subtitle-block> -->
       <!--
@@ -473,6 +459,55 @@
             ></app-analysis-graph>
           }
         </mat-expansion-panel>
+      </collapsible-subseciton>
+      <collapsible-subseciton
+        titleLabel="Force Analysis"
+        [expanded]="graphExpanded['LForceAna']"
+        (opened)="graphExpanded['LForceAna'] = true"
+        (closed)="graphExpanded['LForceAna'] = false"
+      >
+        <radio-block
+          tooltip="Determines whether the force analysis is done at static equilibrium or under dynamics conditions. The input speed for the dynamic analysis is set in the settings panel."
+          option1="Static (Equilibrium)"
+          option2="In-motion (Dynamic)"
+          [formGroup]="this.forceAnalysisFormGroup"
+          _formControl="mode"
+          >Force Analysis Type
+        </radio-block>
+        @if (linkForceRows().length === 0) {
+          <div class="analysis-message" role="status">
+            Link {{ this.activeSrv.selectedLink.name }} has no external joint that carries an
+            independent pin reaction.
+          </div>
+        }
+        @for (row of linkForceRows(); track row.jointId) {
+          <mat-expansion-panel
+            [expanded]="graphExpanded['LForce_' + row.jointId]"
+            (opened)="graphExpanded['LForce_' + row.jointId] = true"
+            (closed)="graphExpanded['LForce_' + row.jointId] = false"
+          >
+            <mat-expansion-panel-header>
+              <mat-panel-title> Force at Joint {{ row.jointName }} </mat-panel-title>
+              <mat-panel-description>
+                <mat-icon
+                  matTooltip="The force this link experiences at that joint, graphed over time"
+                  [matTooltipShowDelay]="1000"
+                  id="graph-help"
+                  >help_outline
+                </mat-icon>
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+            @if (graphExpanded['LForce_' + row.jointId]) {
+              <app-analysis-graph
+                analysis="force"
+                [analysisType]="forceAnalysisMode()"
+                mechProp="Joint Forces"
+                mechPart="{{ row.jointId }}"
+                [reactionLinkId]="row.linkId"
+              ></app-analysis-graph>
+            }
+          </mat-expansion-panel>
+        }
       </collapsible-subseciton>
     </panel-section>
   }

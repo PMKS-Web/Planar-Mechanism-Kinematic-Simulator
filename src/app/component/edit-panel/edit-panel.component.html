@@ -198,14 +198,13 @@
         <input-block
           [formGroup]="linkForm"
           _formControl="mass"
-          [unit]="massUnit()"
           tooltip="The mass used by force analysis."
           >Link Mass</input-block
         >
         <input-block
+          wide
           [formGroup]="linkForm"
           _formControl="massMoI"
-          [unit]="momentOfInertiaUnit()"
           tooltip="The mass moment of inertia about the link's physical center of mass."
           >Moment of Inertia</input-block
         >

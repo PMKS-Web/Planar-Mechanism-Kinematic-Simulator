@@ -61,7 +61,7 @@
       matTooltip="This message and the debug panel will disappear"
       matTooltipShowDelay="1000"
     >
-      <p style="font-size: 10px; pointer-events: none; max-height: 50px; max-width: 270px">
+      <p class="devModeNotice">
         You are in Development Mode. The color will return to normal when you build with the
         production flag.
       </p>
@@ -78,26 +78,6 @@
       Debug
     </button>
   }
-  <button
-    mat-button
-    (click)="handleUndo()"
-    matTooltip="Undo"
-    [disabled]="!canUndo()"
-    matTooltipShowDelay="1000"
-  >
-    <mat-icon>undo</mat-icon>
-    Undo
-  </button>
-  <button
-    mat-button
-    (click)="handleRedo()"
-    matTooltip="Redo"
-    [disabled]="!canRedo()"
-    matTooltipShowDelay="1000"
-  >
-    <mat-icon>redo</mat-icon>
-    Redo
-  </button>
   <button
     mat-button
     (click)="openRightPanelSettings()"

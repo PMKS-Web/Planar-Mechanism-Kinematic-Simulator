@@ -1,6 +1,12 @@
 import { Component, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { SettingsService } from 'src/app/services/settings.service';
-import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
+import {
+  LengthUnit,
+  AngleUnit,
+  AngularVelocityUnit,
+  ForceUnit,
+  GlobalUnit,
+} from 'src/app/model/utils';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
 import { Link, RealLink } from '../../model/link';
@@ -45,7 +51,7 @@ export class SettingsPanelComponent implements OnDestroy {
     this.currentObjectScaleSetting = SettingsService.objectScale;
 
     this.settingsForm.patchValue({
-      speed: this.currentSpeedSetting.toString(),
+      speed: this.formatSpeed(this.currentSpeedSetting),
       objectScale: this.currentObjectScaleSetting.toString(),
       rotation: this.rotateDirection ? '0' : '1',
       lengthunit: this.currentLengthUnit.toString(),
@@ -99,7 +105,7 @@ export class SettingsPanelComponent implements OnDestroy {
           this.currentSpeedSetting = speed;
           this.settingsForm.patchValue(
             {
-              speed: speed.toString(),
+              speed: this.formatSpeed(speed),
               rotation: clockwise ? '0' : '1',
               lengthunit: length.toString(),
               angleunit: (angle - 10).toString(),
@@ -125,12 +131,18 @@ export class SettingsPanelComponent implements OnDestroy {
       this.mechanismSrv.updateMechanism();
     });
     this.settingsForm.controls['speed'].valueChanges.subscribe((val) => {
-      if (this.settingsForm.controls['speed'].invalid) {
-        this.settingsForm.patchValue({ speed: this.currentSpeedSetting.toString() });
-      } else {
-        this.currentSpeedSetting = Number(val);
+      const [success, value] = this.nup.parseAngularVelocityString(
+        val ?? '',
+        AngularVelocityUnit.RPM
+      );
+      if (success) {
+        this.currentSpeedSetting = value;
         this.settingsService.inputSpeed.next(this.currentSpeedSetting);
       }
+      this.settingsForm.patchValue(
+        { speed: this.formatSpeed(this.currentSpeedSetting) },
+        { emitEvent: false }
+      );
       this.mechanismSrv.updateMechanism();
     });
     this.settingsForm.controls['objectScale'].valueChanges.subscribe((val) => {
@@ -232,7 +244,7 @@ export class SettingsPanelComponent implements OnDestroy {
   numRegex = '^-?[0-9]+(.[0-9]{0,10})?$';
   settingsForm = this.fb.group(
     {
-      speed: ['', [Validators.required, Validators.pattern(this.numRegex)]],
+      speed: [''],
       objectScale: ['', [Validators.required, Validators.pattern(this.numRegex)]],
       rotation: ['', { updateOn: 'change' }],
       lengthunit: ['', { updateOn: 'change' }],
@@ -244,6 +256,11 @@ export class SettingsPanelComponent implements OnDestroy {
     },
     { updateOn: 'blur' }
   );
+
+  /** The value carries its own unit, matching every other unit-bearing input. */
+  private formatSpeed(value: number): string {
+    return this.nup.formatValueAndUnit(value, AngularVelocityUnit.RPM);
+  }
 
   updateObjectScale() {
     this.svgGrid.updateObjectScale();

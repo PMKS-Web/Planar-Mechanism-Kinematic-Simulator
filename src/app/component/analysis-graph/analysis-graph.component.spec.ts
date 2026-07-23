@@ -31,6 +31,7 @@ import {
 import {
   ANALYSIS_SERIES_COLORS,
   AnalysisGraphComponent,
+  formatTimeLabel,
 } from './analysis-graph.component';
 
 @Component({
@@ -349,6 +350,39 @@ describe('AnalysisGraphComponent lifecycle', () => {
     stateSub.unsubscribe();
   });
 
+  it('opens force graphs on the X/Y components and kinematic ones on the magnitude', () => {
+    const fixture = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
+    const chart = {
+      addPointAnnotation: vi.fn(),
+      addXaxisAnnotation: vi.fn(),
+      clearAnnotations: vi.fn(),
+      updateOptions: vi.fn(),
+    };
+
+    const defaultsFor = (analysis: string, analysisType: string, mechProp: string) => {
+      const component = createComponent(fixture);
+      component.chart = chart as never;
+      component.analysis = analysis;
+      component.analysisType = analysisType;
+      component.mechProp = mechProp;
+      component.mechPart = 'B';
+      component.ngOnInit();
+      component.ngAfterViewInit();
+      vi.advanceTimersByTime(2);
+      return { series: component.numberOfSeries, form: component.seriesCheckboxForm.getRawValue() };
+    };
+
+    // A reaction's direction is the point of the graph, so it leads with X/Y...
+    const force = defaultsFor('force', 'static', 'Joint Forces');
+    expect(force.series).toBe(3);
+    expect(force.form).toEqual({ x: true, y: true, z: false });
+
+    // ...while an equally three-series kinematic graph still leads with magnitude.
+    const kinematic = defaultsFor('kinematic', 'loop', 'Linear Joint Vel');
+    expect(kinematic.series).toBe(3);
+    expect(kinematic.form).toEqual({ x: false, y: false, z: true });
+  });
+
   it('compacts only graphs that have no component-selector checkboxes', () => {
     const fixture = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
     const component = createComponent(fixture);
@@ -371,10 +405,7 @@ describe('AnalysisGraphComponent lifecycle', () => {
     component.applySeriesVisibility();
 
     expect(component.displayedSeries.map((series) => series.name)).toEqual(['X', 'Z']);
-    expect(component.displayedColors).toEqual([
-      ANALYSIS_SERIES_COLORS.X,
-      ANALYSIS_SERIES_COLORS.Z,
-    ]);
+    expect(component.displayedColors).toEqual([ANALYSIS_SERIES_COLORS.X, ANALYSIS_SERIES_COLORS.Z]);
   });
 });
 
@@ -441,5 +472,25 @@ describe('AnalysisGraphComponent rendered controls', () => {
       false
     );
     fixture.destroy();
+  });
+});
+
+describe('formatTimeLabel', () => {
+  it('drops decimals that carry no information', () => {
+    expect(formatTimeLabel(0)).toBe('0');
+    expect(formatTimeLabel(3)).toBe('3');
+    expect(formatTimeLabel(3.0)).toBe('3');
+    expect(formatTimeLabel(0.3)).toBe('0.3');
+  });
+
+  it('keeps up to three decimals when they matter', () => {
+    expect(formatTimeLabel(3.14159)).toBe('3.142');
+    expect(formatTimeLabel(8.571428)).toBe('8.571');
+    expect(formatTimeLabel(0.0238)).toBe('0.024');
+  });
+
+  it('renders nothing for a non-finite time', () => {
+    expect(formatTimeLabel(Number.NaN)).toBe('');
+    expect(formatTimeLabel(Number.POSITIVE_INFINITY)).toBe('');
   });
 });

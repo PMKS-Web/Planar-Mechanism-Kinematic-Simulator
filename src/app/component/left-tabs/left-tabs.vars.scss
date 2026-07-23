@@ -1,0 +1,6 @@
+// Width of the labelled left nav rail. The bottom bar indents past it and the
+// slide-out panel starts at it, so they all read this one value.
+$rail-width: 96px;
+
+// Height of app-bottombar; the rail and panel stop above it.
+$bottom-bar-height: 20px;

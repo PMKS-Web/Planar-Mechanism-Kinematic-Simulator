@@ -34,10 +34,24 @@ export interface ForceAnalysisFrame {
   message?: string;
 }
 
+/**
+ * Which joint/body pairs carry a pin reaction, derived from the root topology
+ * alone. The analysis panels enumerate their rows from this so a joint's rows
+ * and a link's rows stay two filtered views of the same reaction set, even at
+ * positions where the solve itself fails.
+ */
+export interface ForceReactionIndex {
+  /** Joint id -> ids of the root bodies that react at that joint. */
+  linksByJoint: Map<string, string[]>;
+  /** Root body id -> ids of the joints where that body carries a reaction. */
+  jointsByLink: Map<string, string[]>;
+}
+
 export interface ForceAnalysisSeries {
   mode: ForceAnalysisMode;
   frames: ForceAnalysisFrame[];
   successfulFrames: number;
+  reactionIndex: ForceReactionIndex;
   diagnostic?: string;
 }
 
@@ -203,6 +217,7 @@ export class ForceSolver {
       mode,
       frames,
       successfulFrames,
+      reactionIndex: this.buildReactionIndex(mechanism.joints[0] ?? [], mechanism.links[0] ?? []),
       diagnostic:
         successfulFrames === 0
           ? this.statusMessage(frames[0]?.status ?? 'unsupported-topology')
@@ -253,62 +268,7 @@ export class ForceSolver {
       rowCount += count;
     }
 
-    const reactions: ReactionUnknown[] = [];
-    const incidentByJoint = new Map<string, Link[]>();
-    for (const candidate of joints) {
-      if (!(candidate instanceof RealJoint)) continue;
-      const incident = this.incidentBodies(candidate, bodies);
-      incidentByJoint.set(candidate.id, incident);
-      if (incident.length === 0) continue;
-
-      if (candidate instanceof PrisJoint && candidate.ground) {
-        const piston = incident.find((body) => body instanceof Piston);
-        if (piston) {
-          reactions.push({
-            joint: candidate,
-            positiveBody: piston,
-            direction: [-Math.sin(candidate.angle_rad), Math.cos(candidate.angle_rad)],
-            column: reactions.length,
-          });
-        }
-        continue;
-      }
-
-      if (candidate.ground) {
-        for (const body of incident) {
-          reactions.push({
-            joint: candidate,
-            positiveBody: body,
-            direction: [1, 0],
-            column: reactions.length,
-          });
-          reactions.push({
-            joint: candidate,
-            positiveBody: body,
-            direction: [0, 1],
-            column: reactions.length,
-          });
-        }
-      } else if (incident.length >= 2) {
-        const reference = incident[0];
-        for (const other of incident.slice(1)) {
-          reactions.push({
-            joint: candidate,
-            positiveBody: reference,
-            negativeBody: other,
-            direction: [1, 0],
-            column: reactions.length,
-          });
-          reactions.push({
-            joint: candidate,
-            positiveBody: reference,
-            negativeBody: other,
-            direction: [0, 1],
-            column: reactions.length,
-          });
-        }
-      }
-    }
+    const { reactions, incidentByJoint } = this.enumerateReactions(joints, bodies);
 
     const inputJoint = joints.find(
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
@@ -502,6 +462,94 @@ export class ForceSolver {
     const xDist = pointX - origin.x;
     const yDist = pointY - origin.y;
     return [xDist * forceY, -yDist * forceX, 0];
+  }
+
+  /** The pin-reaction unknowns implied by the topology, before any solve. */
+  private static enumerateReactions(
+    joints: Joint[],
+    bodies: Link[]
+  ): { reactions: ReactionUnknown[]; incidentByJoint: Map<string, Link[]> } {
+    const reactions: ReactionUnknown[] = [];
+    const incidentByJoint = new Map<string, Link[]>();
+    for (const candidate of joints) {
+      if (!(candidate instanceof RealJoint)) continue;
+      const incident = this.incidentBodies(candidate, bodies);
+      incidentByJoint.set(candidate.id, incident);
+      if (incident.length === 0) continue;
+
+      if (candidate instanceof PrisJoint && candidate.ground) {
+        const piston = incident.find((body) => body instanceof Piston);
+        if (piston) {
+          reactions.push({
+            joint: candidate,
+            positiveBody: piston,
+            direction: [-Math.sin(candidate.angle_rad), Math.cos(candidate.angle_rad)],
+            column: reactions.length,
+          });
+        }
+        continue;
+      }
+
+      if (candidate.ground) {
+        for (const body of incident) {
+          reactions.push({
+            joint: candidate,
+            positiveBody: body,
+            direction: [1, 0],
+            column: reactions.length,
+          });
+          reactions.push({
+            joint: candidate,
+            positiveBody: body,
+            direction: [0, 1],
+            column: reactions.length,
+          });
+        }
+      } else if (incident.length >= 2) {
+        const reference = incident[0];
+        for (const other of incident.slice(1)) {
+          reactions.push({
+            joint: candidate,
+            positiveBody: reference,
+            negativeBody: other,
+            direction: [1, 0],
+            column: reactions.length,
+          });
+          reactions.push({
+            joint: candidate,
+            positiveBody: reference,
+            negativeBody: other,
+            direction: [0, 1],
+            column: reactions.length,
+          });
+        }
+      }
+    }
+    return { reactions, incidentByJoint };
+  }
+
+  /** Joint <-> root-body pairing that both analysis panels enumerate rows from. */
+  static buildReactionIndex(joints: Joint[], links: Link[]): ForceReactionIndex {
+    const bodies = links.filter(
+      (link): link is RealLink | Piston => link instanceof RealLink || link instanceof Piston
+    );
+    const linksByJoint = new Map<string, string[]>();
+    const jointsByLink = new Map<string, string[]>();
+    const pair = (jointId: string, bodyId: string): void => {
+      const forJoint = linksByJoint.get(jointId) ?? [];
+      if (!forJoint.includes(bodyId)) forJoint.push(bodyId);
+      linksByJoint.set(jointId, forJoint);
+
+      const forLink = jointsByLink.get(bodyId) ?? [];
+      if (!forLink.includes(jointId)) forLink.push(jointId);
+      jointsByLink.set(bodyId, forLink);
+    };
+
+    for (const reaction of this.enumerateReactions(joints, bodies).reactions) {
+      pair(reaction.joint.id, reaction.positiveBody.id);
+      if (reaction.negativeBody) pair(reaction.joint.id, reaction.negativeBody.id);
+    }
+    return { linksByJoint, jointsByLink };
   }
 
   private static incidentBodies(joint: RealJoint, bodies: Link[]): Link[] {

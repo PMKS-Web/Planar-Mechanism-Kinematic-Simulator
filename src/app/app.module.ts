@@ -6,6 +6,7 @@ import { AppComponent } from './app.component';
 import { LinkageTableComponent } from './component/linkage-table/linkage-table.component';
 import { ToolbarComponent } from './component/toolbar/toolbar.component';
 import { AnimationBarComponent } from './component/animation-bar/animation-bar.component';
+import { ViewControlsComponent } from './component/view-controls/view-controls.component';
 import { ShapeSelectorComponent } from './component/shape-selector/shape-selector.component';
 import { FormsModule } from '@angular/forms';
 // import { TemplatesPopupComponent } from './component/templates-popup/templates-popup.component';
@@ -56,6 +57,7 @@ import { BottombarComponent } from './component/bottombar/bottombar.component';
     LinkageTableComponent,
     ToolbarComponent,
     AnimationBarComponent,
+    ViewControlsComponent,
     ShapeSelectorComponent,
     LeftTabsComponent,
     TitleBlock,
