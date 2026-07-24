@@ -2,6 +2,7 @@
 @use 'src/app/component/toolbar/toolbar.component.scss' as toolbar;
 @use 'src/app/component/left-tabs/left-tabs.component.scss' as left-tabs;
 @use 'src/app/component/animation-bar/animation-bar.component.scss' as animation-bar;
+@use 'src/app/component/view-controls/view-controls.component.scss' as view-controls;
 @use 'app/component/BLOCKS/title/title.component.scss' as title-block;
 @use 'src/app/component/edit-panel/edit-panel.component.scss' as edit-panel;
 @use 'app/component/BLOCKS/button/button.component.scss' as button-block;
@@ -30,7 +31,6 @@
 @use 'src/app/component/equation-panel/equation-panel.component.scss' as equation-panel;
 @use 'src/app/component/MODALS/templates/templates.component.scss' as templates;
 @use 'src/app/component/not-ready-warning/not-ready-warning.component.scss' as not-ready-warning;
-@use 'src/app/component/MODALS/enable-equations/enable-equations.component.scss' as enable-equations;
 @use 'src/app/component/bottombar/bottombar.component.scss' as bottombar;
 
 @include mat.elevation-classes();
@@ -81,6 +81,7 @@ $my-theme: mat.m2-define-light-theme(
 @include toolbar.css($my-theme);
 @include left-tabs.css($my-theme);
 @include animation-bar.css($my-theme);
+@include view-controls.css($my-theme);
 @include edit-panel.css($my-theme);
 @include analysis-panel.css($my-theme);
 @include analysis-graph.css($my-theme);
@@ -91,7 +92,6 @@ $my-theme: mat.m2-define-light-theme(
 @include context-menu.css($my-theme);
 @include equation-panel.css($my-theme);
 @include not-ready-warning.css($my-theme);
-@include enable-equations.css($my-theme);
 @include bottombar.css($my-theme);
 
 @include blocks-common.css($my-theme);

@@ -152,11 +152,21 @@ export class UrlGenerationService {
       this.settings.lengthUnit.getValue()
     );
     encoder.addEnumSetting(EnumSetting.ANGLE_UNIT, AngleUnit, this.settings.angleUnit.getValue());
-    encoder.addEnumSetting(EnumSetting.FORCE_UNIT, ForceUnit, this.settings.forceUnit.getValue());
+    const normalizedGlobal =
+      this.settings.lengthUnit.getValue() === LengthUnit.INCH
+        ? GlobalUnit.ENGLISH
+        : this.settings.lengthUnit.getValue() === LengthUnit.METER
+          ? GlobalUnit.SI
+          : GlobalUnit.METRIC;
+    encoder.addEnumSetting(
+      EnumSetting.FORCE_UNIT,
+      ForceUnit,
+      normalizedGlobal === GlobalUnit.ENGLISH ? ForceUnit.LBF : ForceUnit.NEWTON
+    );
     encoder.addEnumSetting(
       EnumSetting.GLOBAL_UNIT,
       GlobalUnit,
-      this.settings.globalUnit.getValue()
+      normalizedGlobal
     );
     encoder.addBoolSetting(BoolSetting.IS_INPUT_CW, this.settings.isInputCW.getValue());
     //encoder.addBoolSetting(BoolSetting.IS_GRAVITY, this.settings.isGravity.getValue());
@@ -175,7 +185,8 @@ export class UrlGenerationService {
 
     encoder.addIntSetting(IntSetting.TIMESTEP, cachedAnimationFrame);
     
-    encoder.addBoolSetting(BoolSetting.IS_FORCES, this.settings.isForces.getValue());
+    // Keep this legacy bit enabled so existing URL field positions remain compatible.
+    encoder.addBoolSetting(BoolSetting.IS_FORCES, true);
 
     let type: ACTIVE_TYPE;
     let exists = true;

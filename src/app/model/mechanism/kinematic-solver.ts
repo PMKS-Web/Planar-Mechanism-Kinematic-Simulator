@@ -73,21 +73,53 @@ export class KinematicsSolver {
   static determineKinematics(simJoints: Joint[], simLinks: Link[], initialAngularVelocity: number) {
     this.kinematicsInitializer(simJoints, simLinks, initialAngularVelocity);
 
-    // TODO: Determine logic for when mechanism is one physical link and one ground
-    // if (this.requiredLoops.length === 0) { // assume there is just one link
-    // const fixed_joint = simLinks[0].joints.find(j => j.input);
-    // this.linkAngVelMap.set(linkOrJoint.id, X[i][0]);
-    // this.linkAngAccMap.set(linkOrJoint.id, X[i][0]);
-    // this.linkAngVelMap.set(linkOrJoint.id, X[i][0]);
-    // this.jointAccMap.set(linkOrJoint.id, [X[i][0] * Math.cos(linkOrJoint.angle), X[i][0] * Math.sin(linkOrJoint.angle)]);
-    // this.jointVelMap.set(desiredID, [arr[0] + this.jointVelMap.get(firstJointID)[0], arr[1] + this.jointVelMap.get(firstJointID)[1]]);
-    // this.LinVelJointEq.set(desiredID, [firstValue + secondSign + secondValue, thirdValue + fourthSign + fourthValue]);
-    // return
-    // }
+    // A single welded root rotating about its input is a valid one-DOF
+    // mechanism even though it has no closed kinematic loop to solve.
+    if (this.requiredLoops.length === 0) {
+      this.determineLooplessKinematics(simJoints, simLinks, initialAngularVelocity);
+      return;
+    }
 
     this.determineAng(simJoints, simLinks, 'Velocity');
     this.determineAng(simJoints, simLinks, 'Acceleration');
     this.determineLin(simJoints, simLinks);
+  }
+
+  private static determineLooplessKinematics(
+    simJoints: Joint[],
+    simLinks: Link[],
+    initialAngularVelocity: number
+  ): void {
+    const inputJoint = simJoints.find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
+    const inputLink = simLinks.find(
+      (link): link is RealLink =>
+        link instanceof RealLink &&
+        inputJoint !== undefined &&
+        link.joints.some((joint) => joint.id === inputJoint.id)
+    );
+    if (!inputJoint || !inputLink) return;
+
+    const velocityAt = (x: number, y: number): [number, number] => [
+      -initialAngularVelocity * (y - inputJoint.y),
+      initialAngularVelocity * (x - inputJoint.x),
+    ];
+    const accelerationAt = (x: number, y: number): [number, number] => [
+      -Math.pow(initialAngularVelocity, 2) * (x - inputJoint.x),
+      -Math.pow(initialAngularVelocity, 2) * (y - inputJoint.y),
+    ];
+
+    this.linkAngVelMap.set(inputLink.id, initialAngularVelocity);
+    this.linkAngAccMap.set(inputLink.id, 0);
+    this.linkCoMMap.set(inputLink.id, [inputLink.CoM.x, inputLink.CoM.y]);
+    this.linkVelMap.set(inputLink.id, velocityAt(inputLink.CoM.x, inputLink.CoM.y));
+    this.linkAccMap.set(inputLink.id, accelerationAt(inputLink.CoM.x, inputLink.CoM.y));
+
+    inputLink.joints.forEach((joint) => {
+      this.jointVelMap.set(joint.id, velocityAt(joint.x, joint.y));
+      this.jointAccMap.set(joint.id, accelerationAt(joint.x, joint.y));
+    });
   }
 
   private static kinematicsInitializer(

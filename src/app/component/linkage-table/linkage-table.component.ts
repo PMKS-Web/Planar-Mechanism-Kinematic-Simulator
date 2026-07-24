@@ -178,33 +178,28 @@ export class LinkageTableComponent implements OnInit {
         if (isNaN(Number($event.target.value))) {
           return NewGridComponent.sendNotification('Check Force X Position');
         }
-        force.startCoord.x = Number($event.target.value);
+        force.moveAnchor(new Coord(Number($event.target.value), force.startCoord.y));
         break;
       case 'yPos':
         if (isNaN(Number($event.target.value))) {
           return NewGridComponent.sendNotification('Check Force Y Position');
         }
-        force.startCoord.y = Number($event.target.value);
+        force.moveAnchor(new Coord(force.startCoord.x, Number($event.target.value)));
         break;
       case 'mag':
         if (isNaN(Number($event.target.value))) {
           return NewGridComponent.sendNotification('Check Force Magnitude');
         }
-        force.mag = Number($event.target.value);
+        force.setMagnitude(Number($event.target.value));
         break;
       case 'angle':
         if (isNaN(Number($event.target.value))) {
           return NewGridComponent.sendNotification('Check Force Angle');
         }
-        force.angleRad = Number($event.target.value) * (Math.PI / 180);
-        // TODO: Within commonClass, have radToDeg and degToRad
-        force.endCoord.x = Math.cos(force.angleRad) + force.startCoord.x;
-        force.endCoord.y = Math.sin(force.angleRad) + force.startCoord.y;
+        force.setDirectionRadians(Number($event.target.value) * (Math.PI / 180));
         break;
     }
-    force.forceLine = force.createForceLine(force.startCoord, force.endCoord);
-    force.forceArrow = force.createForceArrow(force.startCoord, force.endCoord);
-    this.mechanismService.updateMechanism();
+    this.mechanismService.updateMechanism(true);
   }
 
   static linkageVisibility() {

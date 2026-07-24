@@ -1,37 +1,95 @@
 <div>
   <div class="tabContainer">
-    <button
-      mat-icon-button
-      class="leftButton"
-      (click)="tabClicked(TabID.SYNTHESIZE)"
-      matTooltip="Synthesize"
-      matTooltipShowDelay="0"
-      matTooltipPosition="right"
-    >
-      <mat-icon svgIcon="synthesis"></mat-icon>
-    </button>
-    <button
-      mat-icon-button
-      class="leftButton"
-      (click)="tabClicked(TabID.EDIT)"
-      matTooltip="Edit"
-      matTooltipShowDelay="0"
-      matTooltipPosition="right"
-    >
-      <mat-icon svgIcon="edit_outline"></mat-icon>
-    </button>
-    <button
-      mat-icon-button
-      class="leftButton"
-      (click)="tabClicked(TabID.ANALYZE)"
-      matTooltip="Analyze"
-      matTooltipShowDelay="0"
-      matTooltipPosition="right"
-    >
-      <mat-icon>query_stats</mat-icon>
-    </button>
-    <div [@activeTab]="this.getTabNum().toString()" class="activeTabPill"></div>
+    <div class="tabList">
+      <!-- One pill tracks the active group, so the highlight slides between
+           modes instead of blinking from one to the next. -->
+      <div
+        class="activeTabPill"
+        [class.hidden]="!this.tabs.isTabVisible()"
+        [style.transform]="'translateY(' + pillTop + 'px)'"
+        [style.height.px]="pillHeight"
+      ></div>
+
+      <div class="tabGroup" #tabGroup>
+        <button
+          class="leftButton"
+          (click)="tabClicked(TabID.SYNTHESIZE)"
+          matTooltip="Synthesize"
+          matTooltipShowDelay="0"
+          matTooltipPosition="right"
+        >
+          <mat-icon svgIcon="synthesis"></mat-icon>
+          <span class="tabLabel">Synthesis</span>
+        </button>
+      </div>
+
+      <div class="tabGroup" #tabGroup>
+        <button
+          class="leftButton"
+          (click)="tabClicked(TabID.EDIT)"
+          matTooltip="Edit"
+          matTooltipShowDelay="0"
+          matTooltipPosition="right"
+        >
+          <mat-icon svgIcon="edit_outline"></mat-icon>
+          <span class="tabLabel">Edit</span>
+        </button>
+        <!-- History only applies while editing, so it lives with that mode. -->
+        @if (isActive(TabID.EDIT)) {
+          <div class="tabTools" @grow>
+            <button
+              class="mini-buttons blue"
+              mat-stroked-button
+              color="primary"
+              (click)="handleUndo()"
+              [disabled]="!canUndo()"
+              matTooltip="Undo"
+              matTooltipPosition="right"
+              matTooltipShowDelay="1000"
+            >
+              <mat-icon>undo</mat-icon>
+              Undo
+            </button>
+            <button
+              class="mini-buttons blue"
+              mat-stroked-button
+              color="primary"
+              (click)="handleRedo()"
+              [disabled]="!canRedo()"
+              matTooltip="Redo"
+              matTooltipPosition="right"
+              matTooltipShowDelay="1000"
+            >
+              <mat-icon>redo</mat-icon>
+              Redo
+            </button>
+          </div>
+        }
+      </div>
+
+      <div class="tabGroup" #tabGroup>
+        <button
+          class="leftButton"
+          (click)="tabClicked(TabID.ANALYZE)"
+          matTooltip="Analyze"
+          matTooltipShowDelay="0"
+          matTooltipPosition="right"
+        >
+          <mat-icon>query_stats</mat-icon>
+          <span class="tabLabel">Analyze</span>
+        </button>
+        @if (isActive(TabID.ANALYZE)) {
+          <div class="tabTools" @grow>
+            <app-animation-bar></app-animation-bar>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="navSpacer"></div>
+    <app-view-controls></app-view-controls>
   </div>
+
   <div
     [@openClose]="
       this.tabs.isTabVisible()

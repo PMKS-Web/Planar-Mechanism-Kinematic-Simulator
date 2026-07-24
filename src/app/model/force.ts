@@ -1,10 +1,13 @@
-import { Link, RealLink } from './link';
+import { RealLink } from './link';
 import { Coord } from './coord';
-import { AppConstants } from './app-constants';
 import { SettingsService } from '../services/settings.service';
 import { getAngle } from './utils';
 
 export class Force {
+  static readonly DEFAULT_VISUAL_WIDTH = 0.1;
+  static readonly MIN_VISUAL_WIDTH = 0.075;
+  static readonly MAX_VISUAL_WIDTH = 0.15;
+
   private _id: string;
   private _name: string = '';
   private _link: RealLink;
@@ -18,13 +21,11 @@ export class Force {
   private _fill: string = 'black';
   private _mag: number;
   private _angleRad: number;
-  public xComp: number = 0;
-  public yComp: number = 0;
 
   private _showHighlight: boolean = false;
   isEndSelected: boolean = false;
   isStartSelected: boolean = false;
-  visualWidth: number = 0.1;
+  visualWidth: number = Force.DEFAULT_VISUAL_WIDTH;
 
   constructor(
     id: string,
@@ -35,34 +36,123 @@ export class Force {
     arrowOutward: boolean = true,
     mag: number = 1
   ) {
-    // TODO: Have to have local argument since some forces can be created that are local or global
     this._id = id;
     this._link = link;
     this._startCoord = new Coord(startCoord.x, startCoord.y);
     this._endCoord = new Coord(endCoord.x, endCoord.y);
-    this._forceLine = this.createForceLine(startCoord, endCoord);
-    this._forceArrow = this.createForceArrow(startCoord, endCoord);
     this._local = local;
-    this._arrowOutward = arrowOutward;
-    this._mag = mag;
+    this._stroke = local ? 'blue' : 'black';
+    this._fill = local ? 'blue' : 'black';
+    this._arrowOutward = true;
+    this._mag = this.sanitizeMagnitude(mag);
+
+    // Older URLs could store the arrow at the application point. Normalize those forces so
+    // startCoord is always the application point and endCoord always indicates physical direction.
+    if (!arrowOutward) {
+      this._endCoord = new Coord(
+        this._startCoord.x - (this._endCoord.x - this._startCoord.x),
+        this._startCoord.y - (this._endCoord.y - this._startCoord.y)
+      );
+    }
     this._angleRad = this.updateAngle(this.startCoord, this.endCoord);
-    this.xComp = this.endCoord.x - this.startCoord.x;
-    this.yComp = this.endCoord.y - this.startCoord.y;
-    this.visualWidth = Math.min(this.mag * 0.1, 0.5);
+    this._forceLine = '';
+    this._forceArrow = '';
+    this.refreshVisuals();
   }
 
-  // update start coord to (x,y), but keep the same angle and magnitude, and update everything else
+  /** Move the application point without changing force magnitude or direction. */
   moveForceTo(x: number, y: number) {
-    const dx = x - this.startCoord.x;
-    const dy = y - this.startCoord.y;
-    this.startCoord.x = x;
-    this.startCoord.y = y;
+    this.moveAnchor(new Coord(x, y));
+  }
+
+  moveAnchor(coord: Coord) {
+    const dx = coord.x - this.startCoord.x;
+    const dy = coord.y - this.startCoord.y;
+    this.startCoord.x = coord.x;
+    this.startCoord.y = coord.y;
     this.endCoord.x += dx;
     this.endCoord.y += dy;
+    this.refreshVisuals();
+  }
 
-    // Update force line and arrow
-    this.forceLine = this.createForceLine(this.startCoord, this.endCoord);
-    this.forceArrow = this.createForceArrow(this.startCoord, this.endCoord);
+  /** Move the visual direction handle while preserving physical magnitude. */
+  moveDirectionHandle(coord: Coord) {
+    this.endCoord.x = coord.x;
+    this.endCoord.y = coord.y;
+    if (this.handleLength() > 0) {
+      this._angleRad = this.updateAngle(this.startCoord, this.endCoord);
+    }
+    this.refreshVisuals();
+  }
+
+  setMagnitude(value: number) {
+    this._mag = this.sanitizeMagnitude(value);
+    this.refreshVisuals();
+  }
+
+  setDirectionRadians(value: number) {
+    if (!Number.isFinite(value)) return;
+    this._angleRad = this.normalizeAngle(value);
+    this.alignHandleWithDirection();
+    this.refreshVisuals();
+  }
+
+  setComponents(x: number, y: number) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    this._mag = Math.hypot(x, y);
+    if (this._mag > 0) {
+      this._angleRad = Math.atan2(y, x);
+      this.alignHandleWithDirection();
+    }
+    this.refreshVisuals();
+  }
+
+  reverseDirection() {
+    this.setDirectionRadians(this._angleRad + Math.PI);
+  }
+
+  setLocal(value: boolean) {
+    this._local = value;
+    this._stroke = value ? 'blue' : 'black';
+    this._fill = value ? 'blue' : 'black';
+    this.refreshVisuals();
+  }
+
+  /**
+   * Scale force arrows relative to the other forces currently on the mechanism.
+   * A lone force keeps the familiar 1 N visual size regardless of its physical magnitude.
+   * Multiple forces use a compressed fourth-root scale so their ordering is visible without
+   * allowing one large load to make the other arrows disappear.
+   */
+  static normalizeVisualWidths(forces: Force[]): void {
+    if (forces.length === 0) return;
+    if (forces.length === 1) {
+      forces[0].setVisualWidth(Force.DEFAULT_VISUAL_WIDTH);
+      return;
+    }
+
+    const positiveMagnitudes = forces
+      .map((force) => force.mag)
+      .filter((magnitude) => Number.isFinite(magnitude) && magnitude > 0);
+    if (positiveMagnitudes.length === 0) {
+      forces.forEach((force) => force.setVisualWidth(Force.DEFAULT_VISUAL_WIDTH));
+      return;
+    }
+
+    // The geometric mean supplies a stable middle size across wide magnitude ranges.
+    const referenceMagnitude = Math.exp(
+      positiveMagnitudes.reduce((sum, magnitude) => sum + Math.log(magnitude), 0) /
+        positiveMagnitudes.length
+    );
+    forces.forEach((force) => {
+      const width =
+        force.mag === 0
+          ? Force.MIN_VISUAL_WIDTH
+          : Force.DEFAULT_VISUAL_WIDTH * Math.pow(force.mag / referenceMagnitude, 0.25);
+      force.setVisualWidth(
+        Math.min(Force.MAX_VISUAL_WIDTH, Math.max(Force.MIN_VISUAL_WIDTH, width))
+      );
+    });
   }
 
   updateAngle(startCoord: Coord, endCoord: Coord) {
@@ -70,12 +160,41 @@ export class Force {
   }
 
   updateInternalValues() {
-    this.angleRad = this.updateAngle(this.startCoord, this.endCoord);
-    this.xComp = this.endCoord.x - this.startCoord.x;
-    this.yComp = this.endCoord.y - this.startCoord.y;
-    this.visualWidth = Math.min(this.mag * 0.1, 0.5);
+    if (this.handleLength() > 0) {
+      this._angleRad = this.updateAngle(this.startCoord, this.endCoord);
+    }
+    this.refreshVisuals();
+  }
+
+  private sanitizeMagnitude(value: number): number {
+    return Number.isFinite(value) ? Math.max(0, value) : 0;
+  }
+
+  private normalizeAngle(value: number): number {
+    return Math.atan2(Math.sin(value), Math.cos(value));
+  }
+
+  private handleLength(): number {
+    return Math.hypot(
+      this.endCoord.x - this.startCoord.x,
+      this.endCoord.y - this.startCoord.y
+    );
+  }
+
+  private alignHandleWithDirection() {
+    const length = this.handleLength() || 1;
+    this.endCoord.x = this.startCoord.x + Math.cos(this._angleRad) * length;
+    this.endCoord.y = this.startCoord.y + Math.sin(this._angleRad) * length;
+  }
+
+  private refreshVisuals() {
     this._forceLine = this.createForceLine(this.startCoord, this.endCoord);
     this._forceArrow = this.createForceArrow(this.startCoord, this.endCoord);
+  }
+
+  private setVisualWidth(width: number): void {
+    this.visualWidth = width;
+    this.refreshVisuals();
   }
 
   createForceLine(startCoord: Coord, endCoord: Coord) {
@@ -100,6 +219,8 @@ export class Force {
   }
 
   createForceArrow(startCoord: Coord, endCoord: Coord) {
+    if (startCoord.x === endCoord.x && startCoord.y === endCoord.y) return '';
+
     //Get the tip of the triangle
     const arrowVector = endCoord
       .clone()
@@ -226,7 +347,8 @@ export class Force {
   }
 
   set arrowOutward(value: boolean) {
-    this._arrowOutward = value;
+    if (!value) this.reverseDirection();
+    this._arrowOutward = true;
   }
 
   get local(): boolean {
@@ -234,7 +356,7 @@ export class Force {
   }
 
   set local(value: boolean) {
-    this._local = value;
+    this.setLocal(value);
   }
 
   get stroke(): string {
@@ -258,7 +380,7 @@ export class Force {
   }
 
   set mag(value: number) {
-    this._mag = value;
+    this.setMagnitude(value);
   }
 
   get showHighlight(): boolean {
@@ -274,6 +396,22 @@ export class Force {
   }
 
   set angleRad(value: number) {
-    this._angleRad = value;
+    this.setDirectionRadians(value);
+  }
+
+  get xComp(): number {
+    return this.mag * Math.cos(this.angleRad);
+  }
+
+  set xComp(value: number) {
+    this.setComponents(value, this.yComp);
+  }
+
+  get yComp(): number {
+    return this.mag * Math.sin(this.angleRad);
+  }
+
+  set yComp(value: number) {
+    this.setComponents(this.xComp, value);
   }
 }

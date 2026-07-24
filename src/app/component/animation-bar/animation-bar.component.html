@@ -1,77 +1,49 @@
-<!--https://stackoverflow.com/questions/33193512/css-center-element-on-x-and-y-->
-<div id="barContainer">
-  <div id="animationBar">
+<div class="playbackControls">
+  @if (!this.getStaticAnimating()) {
     <button
-      id="speedButton"
+      class="playButton"
       [disabled]="invalidMechanism()"
-      mat-mini-fab
-      color="white"
-      (click)="handleSpeedChange()"
-      matTooltip="Change Animation Speed"
+      mat-flat-button
+      color="primary"
+      (click)="startAnimation('play')"
+      matTooltip="Play Animation"
+      matTooltipPosition="right"
       matTooltipShowDelay="1000"
     >
-      {{
-        this.mechanismService.mechanismAnimationIncrement === 4
-          ? 3
-          : this.mechanismService.mechanismAnimationIncrement
-      }}x
+      <mat-icon>play_arrow</mat-icon>
     </button>
-
-    @if (!this.getStaticAnimating()) {
-      <button
-        [disabled]="invalidMechanism()"
-        mat-mini-fab
-        color="primary"
-        (click)="startAnimation('play')"
-        matTooltip="Play Animation"
-        matTooltipShowDelay="1000"
-      >
-        <mat-icon>play_arrow</mat-icon>
-      </button>
-    }
-    @if (this.getStaticAnimating()) {
-      <button
-        [disabled]="invalidMechanism()"
-        mat-mini-fab
-        color="primary"
-        (click)="startAnimation('pause')"
-        matTooltip="Pause Animation"
-        matTooltipShowDelay="1000"
-      >
-        <mat-icon>pause</mat-icon>
-      </button>
-    }
+  } @else {
     <button
-      mat-mini-fab
-      color="warn"
+      class="playButton"
       [disabled]="invalidMechanism()"
-      (click)="startAnimation('stop')"
-      matTooltip="Reset to start"
+      mat-flat-button
+      color="primary"
+      (click)="startAnimation('pause')"
+      matTooltip="Pause Animation"
+      matTooltipPosition="right"
       matTooltipShowDelay="1000"
     >
-      <mat-icon>stop</mat-icon>
+      <mat-icon>pause</mat-icon>
     </button>
-  </div>
-  <div id="animationBar">
-    <div id="timeInputWrapper">
-      <div id="tLabel">T:</div>
-      <form
-        #simpleForm="ngForm"
-        (ngSubmit)="onNewTimeSubmit(simpleForm)"
-        (click)="invalidMechanism() ? null : field.select()"
-      >
-        <input
-          [disabled]="invalidMechanism()"
-          id="animationBar-input"
-          name="timestep"
-          type="number"
-          [(ngModel)]="timestepDisplay"
-          #field
-        />
-      </form>
-      <span id="secLabel">sec</span>
-    </div>
+  }
 
+  <button
+    id="speedButton"
+    class="speedButton"
+    [disabled]="invalidMechanism()"
+    mat-stroked-button
+    (click)="handleSpeedChange()"
+    matTooltip="Change Animation Speed"
+    matTooltipPosition="right"
+    matTooltipShowDelay="1000"
+  >
+    {{
+      this.mechanismService.mechanismAnimationIncrement === 4
+        ? 3
+        : this.mechanismService.mechanismAnimationIncrement
+    }}x
+  </button>
+  <div class="verticalSlider">
     <mat-slider
       [disabled]="invalidMechanism()"
       min="0"
@@ -83,60 +55,19 @@
       <input id="slider" matSliderThumb value="{{ this.mechanismService.mechanismTimeStep }}" />
     </mat-slider>
   </div>
-  <div id="viewButtons">
-    @if (settingsService.isForces.value) {
-      <button
-        disabled="{{ noLinkExsits() }}"
-        matTooltip="Show Center of Mass"
-        matTooltipPosition="above"
-        [matTooltipShowDelay]="1000"
-        mat-icon-button
-        color="primary"
-        (click)="showCenterOfMass()"
-      >
-        <mat-icon svgIcon="{{ comIconName() }}"></mat-icon>
-      </button>
-    }
-    <button
-      disabled="{{ noJointExsits() }}"
-      matTooltip="Show ID Labels"
-      matTooltipPosition="above"
-      [matTooltipShowDelay]="1000"
-      mat-icon-button
-      color="primary"
-      (click)="onShowIDPressed()"
-    >
-      <mat-icon svgIcon="{{ idLabelIconName() }}"></mat-icon>
-    </button>
-    <button
-      matTooltip="Zoom In"
-      matTooltipPosition="above"
-      [matTooltipShowDelay]="1000"
-      mat-icon-button
-      color="primary"
-      (click)="onZoomInPressed()"
-    >
-      <mat-icon>zoom_in</mat-icon>
-    </button>
-    <button
-      matTooltip="Zoom Out"
-      matTooltipPosition="above"
-      [matTooltipShowDelay]="1000"
-      mat-icon-button
-      color="primary"
-      (click)="onZoomOutPressed()"
-    >
-      <mat-icon>zoom_out</mat-icon>
-    </button>
-    <button
-      matTooltip="Reset View"
-      matTooltipPosition="above"
-      [matTooltipShowDelay]="1000"
-      mat-icon-button
-      color="primary"
-      (click)="this.svgGrid.scaleToFitLinkage()"
-    >
-      <mat-icon>crop_free</mat-icon>
-    </button>
-  </div>
+
+
+  <!-- The value carries its own unit, matching every other input in the app. -->
+  <form id="timeInputWrapper" (ngSubmit)="field.blur()">
+    <input
+      [disabled]="invalidMechanism()"
+      id="animationBar-input"
+      name="timestep"
+      type="text"
+      [(ngModel)]="timestepDisplay"
+      (blur)="onNewTimeSubmit()"
+      (click)="invalidMechanism() ? null : field.select()"
+      #field
+    />
+  </form>
 </div>

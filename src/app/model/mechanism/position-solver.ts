@@ -328,7 +328,7 @@ export class PositionSolver {
     }
     forces.forEach((f) => {
       this.determineTracerForce(f.link.joints[0], f.link.joints[1], f, 'start');
-      // Logic is backwards
+      this.forceMagnitudeMap.set(f.id + 'x', f.mag);
       if (!f.local) {
         const x_calc =
           f.endCoord.x + (this.forcePositionMap.get(f.id + 'start')!.x - f.startCoord.x);
@@ -338,18 +338,8 @@ export class PositionSolver {
           f.id + 'end',
           new Coord(roundNumber(x_calc, 3), roundNumber(y_calc, 3))
         );
-        this.forceMagnitudeMap.set(f.id + 'x', f.mag);
-        // this.forceMagnitudeMap.set(f.id + 'y', f.yMag);
       } else {
         this.determineTracerForce(f.link.joints[0], f.link.joints[1], f, 'end');
-        // TODO: Check this later... I think the user has to make sure the angle is correct and the values are correct
-        // const absMag = Math.sqrt(Math.pow(f.xMag, 2) + Math.pow(f.yMag , 2));
-        const startCoord = this.forcePositionMap.get(f.id + 'start')!;
-        const endCoord = this.forcePositionMap.get(f.id + 'end')!;
-        // TODO: Be sure this function is put within utils
-        const angle = Math.tan((startCoord.y - endCoord.y) / (startCoord.x - endCoord.x));
-        // this.forceMagnitudeMap.set(f.id + 'x', Math.cos(angle) * absMag);
-        // this.forceMagnitudeMap.set(f.id + 'y', Math.cos(angle) * absMag);
       }
     });
     return true;

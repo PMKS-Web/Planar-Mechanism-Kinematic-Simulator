@@ -1,13 +1,27 @@
-<div id='input-block'>
-  <div class='row' [formGroup]='formGroup'>
-    <span class='label'><ng-content></ng-content></span>
-    <mat-icon matTooltip='{{ this.tooltip }}' [matTooltipShowDelay]='1000' class='label-help'>
+<div id="input-block">
+  <div class="row" [formGroup]="formGroup">
+    <span class="label"><ng-content></ng-content></span>
+    <mat-icon matTooltip="{{ this.tooltip }}" [matTooltipShowDelay]="1000" class="label-help">
       help_outline
     </mat-icon>
-    <div class='spacer'></div>
-    <mat-form-field class='customInputForm' (click)='field.select()'>
-      <input matInput class='customInput' type='text' #field (keyup.enter)='field.blur()'
-             [formControlName]='this._formControl'>
+    <div class="spacer"></div>
+    <mat-form-field
+      class="customInputForm"
+      [class.has-unit]="unit"
+      [class.wide]="wide"
+      (click)="field.select()"
+    >
+      <input
+        matInput
+        class="customInput"
+        type="text"
+        #field
+        (keyup.enter)="field.blur()"
+        [formControlName]="this._formControl"
+      />
+      @if (unit) {
+        <span matTextSuffix class="input-unit">{{ unit }}</span>
+      }
     </mat-form-field>
   </div>
 </div>

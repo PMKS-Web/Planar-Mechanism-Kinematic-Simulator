@@ -21,6 +21,36 @@ export enum ForceUnit {
   NULL = 22,
 }
 
+// Mass and inertia are shown in whichever unit pairs with the current length
+// unit, so these mirror LengthUnit's inch/cm/meter ordering.
+export enum MassUnit {
+  LBM = 40,
+  GRAM = 41,
+  KG = 42,
+  NULL = 43,
+}
+
+export enum InertiaUnit {
+  LBM_IN2 = 50,
+  KG_CM2 = 51,
+  KG_M2 = 52,
+  NULL = 53,
+}
+
+export enum TimeUnit {
+  MILLISECOND = 70,
+  SECOND = 71,
+  MINUTE = 72,
+  NULL = 73,
+}
+
+export enum AngularVelocityUnit {
+  RPM = 60,
+  DEG_PER_SEC = 61,
+  RAD_PER_SEC = 62,
+  NULL = 63,
+}
+
 export enum GlobalUnit {
   ENGLISH = 30,
   METRIC = 31,

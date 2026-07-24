@@ -12,6 +12,14 @@
   $foreground: map.get($theme, foreground);
 
   #input-block {
+    .row {
+      gap: 5px;
+    }
+
+    .label {
+      white-space: nowrap;
+    }
+
     .customInputForm {
       .customInput {
         @include mat.m2-typography-level($typography-config, 'body-2');
@@ -34,6 +42,16 @@
         height: 30px;
         width: 80px;
         padding: 0 6px;
+      }
+
+      &.wide .mat-mdc-text-field-wrapper {
+        width: 104px;
+      }
+
+      .input-unit {
+        margin-left: 4px;
+        color: map.get($foreground, 'secondary-text');
+        white-space: nowrap;
       }
     }
   }

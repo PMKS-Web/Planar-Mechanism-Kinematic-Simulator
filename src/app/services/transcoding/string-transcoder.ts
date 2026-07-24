@@ -237,7 +237,6 @@ export class StringTranscoder extends GenericTranscoder {
         for (let i = 0; i < enumSettings.length; i++) {
             enumString += this.encodeInteger(enumSettings[i]);
         }
-        enumString = enumString.substring(0, enumString.length - 1); // remove trailing comma
         
         let jointString = ""; // encoded string of all the joints
         for (let i = 0; i < this.joints.length; i++) {
@@ -273,6 +272,8 @@ export class StringTranscoder extends GenericTranscoder {
 
     override decodeURL(url: string): void {
 
+        if (url.length < 2) throw new Error("URL data is incomplete");
+
         // Verify checksum
         let checksum = new Checksum();
         let lastChar = url.charAt(url.length - 1); // extract last character
@@ -290,6 +291,7 @@ export class StringTranscoder extends GenericTranscoder {
 
         // Decode bool settings
         let boolString = sd.nextToken(".");
+        if (boolString === "") throw new Error("URL settings are missing");
         let boolSettings = FlagPacker.unpack(boolString, Object.values(this.boolData).length);
         let i = 0;
         for (const key in this.boolData) {
@@ -299,6 +301,7 @@ export class StringTranscoder extends GenericTranscoder {
 
         // Decode decimal settings
         let decimalString = sd.nextToken(".");
+        if (decimalString === "") throw new Error("URL decimal settings are missing");
         let decimalSettings = decimalString.split(",");
         i = 0;
         for (const key in this.decimalData) {
@@ -308,6 +311,7 @@ export class StringTranscoder extends GenericTranscoder {
 
         // Decode int settings
         let intString = sd.nextToken(".");
+        if (intString === "") throw new Error("URL integer settings are missing");
         let intSettings = intString.split(",");
         i = 0;
         for (const key in this.intData) {
@@ -319,7 +323,11 @@ export class StringTranscoder extends GenericTranscoder {
         let enumString = sd.nextToken(".");
         i = 0;
         for (const key in this.enumData) {
-            this.enumData[key] = this.decodeInteger(enumString.charAt(i));
+            // Three-enum URLs predate GLOBAL_UNIT. Missing trailing enum data
+            // must not be decoded as an invalid/truncated base-N token.
+            this.enumData[key] = i < enumString.length
+                ? this.decodeInteger(enumString.charAt(i))
+                : 0;
             i++;
         }
 
@@ -329,29 +337,33 @@ export class StringTranscoder extends GenericTranscoder {
         console.log("Enums:", this.enumData);
 
         // Decode joints
-        while (sd.pollNextCharacter() !== ".") {
+        while (!sd.isEmpty() && sd.pollNextCharacter() !== ".") {
             let joint = sd.nextToken(".");
             this.addJoint(this.decodeJoint(joint));
         }
+        if (sd.isEmpty()) throw new Error("URL link section is missing");
         sd.nextCharacter(); // delete the . and move on to links
 
         // Decode links
-        while (sd.pollNextCharacter() !== ".") {
+        while (!sd.isEmpty() && sd.pollNextCharacter() !== ".") {
             let link = sd.nextToken(".");
             this.addLink(this.decodeLink(link));
         }
+        if (sd.isEmpty()) throw new Error("URL force section is missing");
         sd.nextCharacter(); // delete the . and move on to forces
 
         // Decode forces
-        while (sd.pollNextCharacter() !== ".") {
+        while (!sd.isEmpty() && sd.pollNextCharacter() !== ".") {
             let force = sd.nextToken(".");
             this.addForce(this.decodeForce(force));
         }
-        sd.nextCharacter(); // delete the . and move on to active object
+        if (!sd.isEmpty() && sd.pollNextCharacter() === ".") {
+            sd.nextCharacter(); // delete the . and move on to active object
+        }
 
         // Decode active object. Next char is type, rest is id
-        let activeType = sd.nextCharacter();
-        let activeID = sd.nextToken();
+        let activeType = sd.isEmpty() ? "N" : sd.nextCharacter();
+        let activeID = sd.isEmpty() ? "" : sd.nextToken();
         
         let typeEnum;
         if (activeType === "J") typeEnum = ACTIVE_TYPE.JOINT;
@@ -360,7 +372,47 @@ export class StringTranscoder extends GenericTranscoder {
         else typeEnum = ACTIVE_TYPE.NOTHING;
 
         this.setActiveObj(new ActiveObjData(typeEnum, activeID));
+        this.validateDecodedData();
 
+    }
+
+    private validateDecodedData(): void {
+        const jointIDs = new Set(this.joints.map((joint) => joint.id));
+        const linkIDs = new Set(this.links.map((link) => link.id));
+        if (jointIDs.size !== this.joints.length || linkIDs.size !== this.links.length) {
+            throw new Error("URL contains duplicate object IDs");
+        }
+        this.joints.forEach((joint) => {
+            if (!joint.id || ![joint.x, joint.y, joint.angleRadians].every(Number.isFinite)) {
+                throw new Error("URL contains an invalid joint");
+            }
+        });
+        this.links.forEach((link) => {
+            if (
+                !link.id ||
+                ![link.mass, link.massMoI, link.xCoM, link.yCoM].every(Number.isFinite) ||
+                link.jointIDs.some((id) => !jointIDs.has(id)) ||
+                link.subsetLinkIDs.some((id) => !linkIDs.has(id))
+            ) {
+                throw new Error("URL contains an invalid link");
+            }
+        });
+        this.forces.forEach((force) => {
+            if (
+                !force.id ||
+                !linkIDs.has(force.linkID) ||
+                ![
+                    force.startX,
+                    force.startY,
+                    force.endX,
+                    force.endY,
+                    force.magnitude,
+                ].every(Number.isFinite) ||
+                force.magnitude < 0
+            ) {
+                throw new Error("URL contains an invalid force");
+            }
+        });
     }
 
 }

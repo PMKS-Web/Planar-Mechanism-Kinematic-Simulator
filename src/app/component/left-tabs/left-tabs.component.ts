@@ -1,4 +1,13 @@
-import { Component, inject, Inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  OnDestroy,
+  QueryList,
+  ViewChildren,
+  inject,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { RealJoint } from 'src/app/model/joint';
 import { RealLink } from 'src/app/model/link';
@@ -9,40 +18,25 @@ import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 import { MatDialog } from '@angular/material/dialog';
 import { SynthesisWarningComponent } from '../MODALS/synthesis-warning/synthesis-warning.component';
 import { MechanismService } from 'src/app/services/mechanism.service';
+import { SaveHistoryService } from 'src/app/services/save-history.service';
+import { NewGridComponent } from '../new-grid/new-grid.component';
 
 @Component({
   selector: 'app-left-tabs',
   templateUrl: './left-tabs.component.html',
   styleUrls: ['./left-tabs.component.scss'],
   animations: [
-    trigger('activeTab', [
-      state(
-        '0',
-        style({
-          visibility: 'hidden',
-        })
-      ),
-      state(
-        '1',
-        style({
-          top: '0px',
-        })
-      ),
-      state(
-        '2',
-        style({
-          top: '53px', //Be careful, there are multiple places to change this value
-        })
-      ),
-      state(
-        '3',
-        style({
-          top: '106px', //Be careful, there are multiple places to change this value
-        })
-      ),
-      transition('* => 0', [animate('0s')]),
-      transition('0 => *', [animate('0s')]),
-      transition('* => *', [animate('0.1s ease-in-out')]),
+    // A mode's controls unfold with it rather than popping in. Same duration and
+    // easing as the pill's CSS transition (see the SCSS) so the highlight and the
+    // tools grow in lockstep.
+    trigger('grow', [
+      transition(':enter', [
+        style({ height: 0, opacity: 0 }),
+        animate('200ms cubic-bezier(0.4, 0, 0.2, 1)', style({ height: '*', opacity: 1 })),
+      ]),
+      transition(':leave', [
+        animate('200ms cubic-bezier(0.4, 0, 0.2, 1)', style({ height: 0, opacity: 0 })),
+      ]),
     ]),
     trigger('openClose', [
       // ...
@@ -56,7 +50,7 @@ import { MechanismService } from 'src/app/services/mechanism.service';
       state(
         'closed',
         style({
-          transform: 'translateX(calc(-100% - 70px))',
+          transform: 'translateX(calc(-100% - 100px))',
         })
       ),
       state(
@@ -73,12 +67,19 @@ import { MechanismService } from 'src/app/services/mechanism.service';
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false,
 })
-export class LeftTabsComponent {
+export class LeftTabsComponent implements AfterViewInit, OnDestroy {
   private analytics: AnalyticsService = inject(AnalyticsService);
+
+  @ViewChildren('tabGroup') tabGroups!: QueryList<ElementRef<HTMLElement>>;
+
+  pillTop = 0;
+  pillHeight = 0;
+  private pendingFrame = 0;
 
   constructor(
     public tabs: SelectedTabService,
     private mechanism: MechanismService,
+    private saveHistoryService: SaveHistoryService,
     public dialog: MatDialog
   ) {}
 
@@ -86,15 +87,84 @@ export class LeftTabsComponent {
     return TabID;
   }
 
-  getTabNum(): number {
+  private readonly onResize = () => this.schedulePillUpdate();
+
+  ngAfterViewInit(): void {
+    this.schedulePillUpdate();
+    // A short viewport hides the animation bar's slider, changing the active
+    // group's height, so the pill must re-measure when the window resizes.
+    window.addEventListener('resize', this.onResize);
+  }
+
+  ngOnDestroy(): void {
+    if (this.pendingFrame) cancelAnimationFrame(this.pendingFrame);
+    window.removeEventListener('resize', this.onResize);
+  }
+
+  /**
+   * The pill's target top/height are computed once per tab change and applied as
+   * plain values; a single CSS transition on the element eases it there in step
+   * with the tools' own grow animation. Nothing runs per frame, so the motion
+   * can't stutter or stall midway the way the old resize-tracked pill did.
+   *
+   * Every tab is the same fixed height and only the active one carries tools, so
+   * the active group's final top is just its index times that height, and its
+   * final height is that plus the tools' natural (scroll) height — both known
+   * immediately, even while the tools are still animating open.
+   */
+  private updatePill(): void {
+    const groups = this.tabGroups;
+    if (!groups || groups.length === 0) return;
+    const tabHeight = groups.get(0)!.nativeElement.offsetHeight;
+    const index = this.activeTabIndex();
+    const tools = groups.get(index)?.nativeElement.querySelector('.tabTools') as HTMLElement | null;
+    this.pillTop = index * tabHeight;
+    this.pillHeight = tabHeight + (tools ? tools.scrollHeight : 0);
+  }
+
+  /** Measure after the new tab's tools have rendered, off the CD pass. */
+  private schedulePillUpdate(): void {
+    if (this.pendingFrame) cancelAnimationFrame(this.pendingFrame);
+    this.pendingFrame = requestAnimationFrame(() => {
+      this.pendingFrame = 0;
+      this.updatePill();
+    });
+  }
+
+  private activeTabIndex(): number {
     switch (this.tabs.getCurrentTab()) {
       case TabID.SYNTHESIZE:
-        return 1;
+        return 0;
       case TabID.EDIT:
-        return 2;
+        return 1;
       default:
-        return 3;
+        return 2;
     }
+  }
+
+  /** A tab is only "active" while its panel is open, so its tools hide with it. */
+  isActive(tabID: TabID): boolean {
+    return this.tabs.isTabVisible() && this.tabs.getCurrentTab() === tabID;
+  }
+
+  handleUndo() {
+    NewGridComponent.sendNotification('Undo Called!', 0);
+    this.saveHistoryService.undo();
+  }
+
+  canUndo(): boolean {
+    if (this.mechanism.isAnimating()) return false;
+    return this.saveHistoryService.canUndo();
+  }
+
+  handleRedo() {
+    NewGridComponent.sendNotification('Redo Called!', 0);
+    this.saveHistoryService.redo();
+  }
+
+  canRedo(): boolean {
+    if (this.mechanism.isAnimating()) return false;
+    return this.saveHistoryService.canRedo();
   }
 
   tabClicked(tabID: TabID) {
@@ -121,7 +191,6 @@ export class LeftTabsComponent {
           break;
       }
     }
-    // console.warn(this.openTab);
-    // console.warn(this.isOpen);
+    this.schedulePillUpdate();
   }
 }

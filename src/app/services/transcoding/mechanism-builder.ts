@@ -105,7 +105,12 @@ export class MechanismBuilder {
   // Create Force from ForceData. Links are passed in to be linked to the force
   // For each force, the link is added to the force, and the force is added to the link
   private buildForce(forceData: ForceData, links: Link[]): Force {
-    let link = this.getLinkByID(links, forceData.linkID)!;
+    const link = links.find(
+      (candidate) =>
+        candidate.id === forceData.linkID ||
+        (candidate instanceof RealLink &&
+          candidate.subset.some((subset) => subset.id === forceData.linkID))
+    );
 
     let startCoord = new Coord(forceData.startX, forceData.startY);
     let endCoord = new Coord(forceData.endX, forceData.endY);
@@ -166,6 +171,18 @@ export class MechanismBuilder {
       if (joint instanceof RealJoint) {
         let realJoint = joint as RealJoint;
         realJoint.links = this.mechanism.links.filter((link) => link.joints.includes(realJoint));
+        realJoint.connectedJoints = [];
+        realJoint.links.forEach((link) => {
+          link.joints.forEach((otherJoint) => {
+            if (
+              otherJoint instanceof RealJoint &&
+              otherJoint !== realJoint &&
+              !realJoint.connectedJoints.some((candidate) => candidate.id === otherJoint.id)
+            ) {
+              realJoint.connectedJoints.push(otherJoint);
+            }
+          });
+        });
       }
     });
   }
@@ -202,24 +219,40 @@ export class MechanismBuilder {
     let activeObjData = this.transcoder.getActiveObj();
     let activeObj: any;
     if (activeObjData.type === ACTIVE_TYPE.JOINT) activeObj = this.getJointByID(joints, activeObjData.id)!;
-    else if (activeObjData.type === ACTIVE_TYPE.LINK) activeObj = this.getLinkByID(links, activeObjData.id)!;
-    else if (activeObjData.type === ACTIVE_TYPE.FORCE) activeObj = this.getLinkByID(links, activeObjData.id)!;
+    else if (activeObjData.type === ACTIVE_TYPE.LINK)
+      activeObj = links.find(
+        (link) =>
+          link.id === activeObjData.id ||
+          (link instanceof RealLink && link.subset.some((subset) => subset.id === activeObjData.id))
+      );
+    else if (activeObjData.type === ACTIVE_TYPE.FORCE)
+      activeObj = forces.find((force) => force.id === activeObjData.id);
     else activeObj = null;
 
     this.activeObj.updateSelectedObj(activeObj);
 
     if (updateSettings) {
       // Configure mechanism global flags
-      this.settings.lengthUnit.next(
-        this.transcoder.getEnumSetting(EnumSetting.LENGTH_UNIT, LengthUnit)
-      );
+      const decodedLength = this.transcoder.getEnumSetting(
+        EnumSetting.LENGTH_UNIT,
+        LengthUnit
+      ) as LengthUnit;
+      // Length is the authoritative legacy field. Older URLs omitted the
+      // global enum, and some four-enum URLs encoded a contradictory global
+      // value; normalize the trio before any mechanism is constructed.
+      const normalizedGlobal =
+        decodedLength === LengthUnit.INCH
+          ? GlobalUnit.ENGLISH
+          : decodedLength === LengthUnit.METER
+            ? GlobalUnit.SI
+            : GlobalUnit.METRIC;
+      const normalizedForce =
+        normalizedGlobal === GlobalUnit.ENGLISH ? ForceUnit.LBF : ForceUnit.NEWTON;
+      this.settings.lengthUnit.next(decodedLength);
       this.settings.angleUnit.next(this.transcoder.getEnumSetting(EnumSetting.ANGLE_UNIT, AngleUnit));
-      this.settings.forceUnit.next(this.transcoder.getEnumSetting(EnumSetting.FORCE_UNIT, ForceUnit));
-      this.settings.globalUnit.next(
-        this.transcoder.getEnumSetting(EnumSetting.GLOBAL_UNIT, GlobalUnit)
-      );
+      this.settings.forceUnit.next(normalizedForce);
+      this.settings.globalUnit.next(normalizedGlobal);
       this.settings.isInputCW.next(this.transcoder.getBoolSetting(BoolSetting.IS_INPUT_CW));
-      this.settings.isForces.next(this.transcoder.getBoolSetting(BoolSetting.IS_FORCES));
       this.settings.inputSpeed.next(this.transcoder.getIntSetting(IntSetting.INPUT_SPEED));
       this.settings.animating.next(this.transcoder.getBoolSetting(BoolSetting.ANIMATING));
       this.settings.isShowMajorGrid.next(

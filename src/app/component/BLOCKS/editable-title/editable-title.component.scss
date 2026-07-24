@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use '../blocks.common' as blocks;
 
 @mixin css($theme) {
   // Get the color config from the theme.
@@ -54,28 +55,11 @@
       }
     }
 
+    // The original self-contained look, now shared verbatim with the nav rail.
+    // The #editable-title-block prefix keeps the border-color specificity intact.
+    @include blocks.mini-buttons($theme);
     .mini-buttons {
-      @include mat.m2-typography-level($typography-config, 'body-2');
-      padding: 0 10px;
-      margin: 0;
-      height: 30px;
       flex-grow: 1;
-
-      &.blue {
-        border-color: mat.m2-get-color-from-palette($primary-palette, 500);
-
-        svg > path {
-          fill: mat.m2-get-color-from-palette($primary-palette, 500) !important;
-        }
-      }
-
-      &.red {
-        border-color: var(--mat-warning-color);
-
-        svg > path {
-          fill: var(--mat-warning-color);
-        }
-      }
     }
   }
 }

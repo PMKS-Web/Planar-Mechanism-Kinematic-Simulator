@@ -330,24 +330,7 @@
   <g id="linkHolder" style="transform: scaleY(-1)">
     @for (link of mechanismSrv.getLinks(); track link) {
       <ng-container>
-        @if (
-          gridUtils.typeOfLink(link) == 'R' &&
-          activeObjService.objType == 'Link' &&
-          activeObjService.selectedLink == link
-        ) {
-          <ng-container style="pointer-events: none">
-            @for (subLink of gridUtils.getLinkSubset(link); track subLink) {
-              <path
-                [attr.d]="mechanismSrv.getLinkProp(subLink, 'd')"
-                fill="rgba(0,0,0,0.3)"
-                [attr.stroke]="'black'"
-                [attr.stroke-width]="0.01 * settings.objectScale"
-                [attr.stroke-dasharray]="0.1 * settings.objectScale"
-              ></path>
-            }
-          </ng-container>
-        }
-        @if (gridUtils.typeOfLink(link) == 'R' && !isRenderFail(link)) {
+        @if (gridUtils.typeOfLink(link) == 'R') {
           <path
             (pointerover)="link.showHighlight = true"
             (pointerout)="link.showHighlight = false"
@@ -356,30 +339,31 @@
             [attr.d]="mechanismSrv.getLinkProp(link, 'd')"
             [attr.id]="link.id"
             [attr.fill]="mechanismSrv.getLinkProp(link, 'fill')"
+            fill-rule="evenodd"
             [attr.fill-opacity]="0.7"
             [attr.stroke]="mechanismSrv.getLinkProp(link, 'fill')"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
             [class]="mechanismSrv.getLinkCSSClass(link)"
           ></path>
         }
-        @if (gridUtils.typeOfLink(link) == 'R' && isRenderFail(link)) {
-          <ng-container>
+        @if (
+          gridUtils.typeOfLink(link) == 'R' &&
+          gridUtils.getLinkSubset(link).length > 0 &&
+          activeObjService.objType == 'Link' &&
+          activeObjService.selectedLink == link
+        ) {
+          <g [attr.id]="link.id + '__components'" pointer-events="none">
             @for (subLink of gridUtils.getLinkSubset(link); track subLink) {
               <path
-                (pointerover)="link.showHighlight = true"
-                (pointerout)="link.showHighlight = false"
-                (pointerdown)="setLastLeftClick(link, $event)"
-                (contextmenu)="setLastRightClick(link, $event)"
                 [attr.d]="mechanismSrv.getLinkProp(subLink, 'd')"
-                [attr.id]="link.id"
-                [attr.fill]="mechanismSrv.getLinkProp(link, 'fill')"
-                [attr.fill-opacity]="0.7"
-                [attr.stroke]="mechanismSrv.getLinkProp(link, 'fill')"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-                [class]="mechanismSrv.getLinkCSSClass(link)"
+                [attr.id]="link.id + '__' + subLink.id + '__component'"
+                fill="rgba(0,0,0,0.3)"
+                stroke="black"
+                [attr.stroke-width]="0.01 * settings.objectScale"
+                [attr.stroke-dasharray]="0.1 * settings.objectScale"
               ></path>
             }
-          </ng-container>
+          </g>
         }
       </ng-container>
     }
@@ -432,11 +416,10 @@
         <!--      Welded Joint-->
         @if (gridUtils.getWelded(joint)) {
           <path
+            [attr.id]="'joint_' + joint.id"
             [class]="mechanismSrv.getJointCSSClass(joint)"
             d="M -5.5 -5.5 H-16.5 V4.5 H-5.5 V15.5 H4.5 V4.5 H15.5 V-5.5 H4.5 V-16.5 H-5.5 V-5.5 Z"
-            style="transform: scale({{ 0.01 * settings.objectScale }}) rotateZ({{
-              gridUtils.getAngleFromJoint(joint)
-            }}rad)"
+            [attr.transform]="'scale(' + 0.01 * settings.objectScale + ')'"
           ></path>
         }
       </svg>

@@ -178,7 +178,6 @@
           but2Icon="add_force"
           [but1Action]="mechanismService.addJointAtCOM.bind(mechanismService)"
           [but2Action]="mechanismService.createForceAtCOM.bind(mechanismService)"
-          [btn2Disabled]="!settingsService.isForces.value"
         >
         </dual-button>
       </collapsible-subseciton>
@@ -190,17 +189,35 @@
       >
         <color-picker type="link" [link]="activeSrv.selectedLink">Link Color</color-picker>
       </collapsible-subseciton>
-      @if (settingsService.isForces.value) {
-        <collapsible-subseciton
-          titleLabel="Mass Settings"
-          [expanded]="sectionExpanded['LMass']"
-          (opened)="sectionExpanded['LMass'] = true"
-          (closed)="sectionExpanded['LMass'] = false"
+      <collapsible-subseciton
+        titleLabel="Mass Settings"
+        [expanded]="sectionExpanded['LMass']"
+        (opened)="sectionExpanded['LMass'] = true"
+        (closed)="sectionExpanded['LMass'] = false"
+      >
+        <input-block
+          [formGroup]="linkForm"
+          _formControl="mass"
+          tooltip="The mass used by force analysis."
+          >Link Mass</input-block
         >
-          <input-block> Link Mass</input-block>
-          <dual-input-block> Center of Mass Position</dual-input-block>
-        </collapsible-subseciton>
-      }
+        <input-block
+          wide
+          [formGroup]="linkForm"
+          _formControl="massMoI"
+          tooltip="The mass moment of inertia about the link's physical center of mass."
+          >Moment of Inertia</input-block
+        >
+        <dual-input-block
+          label1="X"
+          label2="Y"
+          formControl1="comX"
+          formControl2="comY"
+          [formGroup]="linkForm"
+          tooltip="The physical center of mass used by force analysis."
+          >Center of Mass Position</dual-input-block
+        >
+      </collapsible-subseciton>
       @if (activeSrv.selectedLink.isCompound) {
         <collapsible-subseciton
           [expanded]="sectionExpanded['LCompound']"

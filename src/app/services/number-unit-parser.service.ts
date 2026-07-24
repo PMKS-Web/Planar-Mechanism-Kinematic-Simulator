@@ -1,5 +1,22 @@
 import { Injectable } from '@angular/core';
-import { LengthUnit, AngleUnit, ForceUnit } from '../model/utils';
+import {
+  LengthUnit,
+  AngleUnit,
+  AngularVelocityUnit,
+  ForceUnit,
+  MassUnit,
+  InertiaUnit,
+  TimeUnit,
+} from '../model/utils';
+import {
+  ANGULAR_VELOCITY_TO_RAD_PER_SEC,
+  INERTIA_TO_KG_M2,
+  MASS_TO_KG,
+  TIME_TO_SECONDS,
+} from '../model/unit-conversions';
+
+type AnyUnit =
+  LengthUnit | AngleUnit | AngularVelocityUnit | ForceUnit | MassUnit | InertiaUnit | TimeUnit;
 
 @Injectable({
   providedIn: 'root',
@@ -7,24 +24,56 @@ import { LengthUnit, AngleUnit, ForceUnit } from '../model/utils';
 export class NumberUnitParserService {
   constructor() {}
 
-  public formatValueAndUnit(value: number, units: LengthUnit | AngleUnit | ForceUnit): string {
+  /** The suffix shown next to an input and appended by formatValueAndUnit. */
+  public unitLabel(units: AnyUnit): string {
     switch (units) {
       case LengthUnit.CM:
-        return value.toFixed(2) + ' cm';
+        return 'cm';
       case LengthUnit.METER:
-        return value.toFixed(2) + ' m';
+        return 'm';
       case LengthUnit.INCH:
-        return value.toFixed(2) + ' in';
+        return 'in';
       case AngleUnit.DEGREE:
-        return value.toFixed(0) + ' deg';
+        return 'deg';
       case AngleUnit.RADIAN:
-        return value.toFixed(2) + ' rad';
+        return 'rad';
       case ForceUnit.LBF:
-        return value.toFixed(2) + ' lbf';
+        return 'lbf';
       case ForceUnit.NEWTON:
-        return value.toFixed(2) + ' N';
+        return 'N';
+      case MassUnit.GRAM:
+        return 'g';
+      case MassUnit.KG:
+        return 'kg';
+      case MassUnit.LBM:
+        return 'lbm';
+      case InertiaUnit.KG_CM2:
+        return 'kg·cm²';
+      case InertiaUnit.KG_M2:
+        return 'kg·m²';
+      case InertiaUnit.LBM_IN2:
+        return 'lbm·in²';
+      case AngularVelocityUnit.RPM:
+        return 'RPM';
+      case AngularVelocityUnit.DEG_PER_SEC:
+        return 'deg/s';
+      case AngularVelocityUnit.RAD_PER_SEC:
+        return 'rad/s';
+      case TimeUnit.MILLISECOND:
+        return 'ms';
+      case TimeUnit.SECOND:
+        return 's';
+      case TimeUnit.MINUTE:
+        return 'min';
     }
-    return 'Error in formatValueAndUnit()';
+    return '';
+  }
+
+  public formatValueAndUnit(value: number, units: AnyUnit): string {
+    const label = this.unitLabel(units);
+    if (label === '') return 'Error in formatValueAndUnit()';
+    const decimals = units === AngleUnit.DEGREE ? 0 : 2;
+    return value.toFixed(decimals) + ' ' + label;
   }
 
   public preProcessInput(input: string): [number, string] {
@@ -169,6 +218,181 @@ export class NumberUnitParserService {
     return [true, value];
   }
 
+  /** Compound suffixes vary by keyboard: kg·cm², kg*cm^2 and kgcm2 all mean one thing. */
+  private normalizeUnitToken(unit: string): string {
+    return unit
+      .toLowerCase()
+      .replace(/²/g, '2')
+      .replace(/[·*.^\-]/g, '');
+  }
+
+  public getMassUnit(input: string): MassUnit {
+    switch (this.normalizeUnitToken(input)) {
+      case 'g':
+      case 'gram':
+      case 'grams':
+        return MassUnit.GRAM;
+      case 'kg':
+      case 'kilogram':
+      case 'kilograms':
+        return MassUnit.KG;
+      case 'lb':
+      case 'lbm':
+      case 'pound':
+      case 'pounds':
+        return MassUnit.LBM;
+      default:
+        return MassUnit.NULL;
+    }
+  }
+
+  public parseMassString(input: string, desiredUnits: MassUnit): [boolean, number] {
+    const [value, unit] = this.preProcessInput(input);
+
+    if (isNaN(value)) return [false, 0]; //If the value is not a number, return fail
+    if (unit.length == 0) return [true, value]; //No units means imply that we have the desired units
+
+    const givenUnits = this.getMassUnit(unit);
+    if (givenUnits === MassUnit.NULL) return [false, value];
+    return [true, this.convertMass(value, givenUnits, desiredUnits)];
+  }
+
+  public getInertiaUnit(input: string): InertiaUnit {
+    switch (this.normalizeUnitToken(input)) {
+      case 'kgcm2':
+        return InertiaUnit.KG_CM2;
+      case 'kgm2':
+        return InertiaUnit.KG_M2;
+      case 'lbmin2':
+      case 'lbin2':
+        return InertiaUnit.LBM_IN2;
+      default:
+        return InertiaUnit.NULL;
+    }
+  }
+
+  public parseInertiaString(input: string, desiredUnits: InertiaUnit): [boolean, number] {
+    const [value, unit] = this.preProcessInput(input);
+
+    if (isNaN(value)) return [false, 0];
+    if (unit.length == 0) return [true, value];
+
+    const givenUnits = this.getInertiaUnit(unit);
+    if (givenUnits === InertiaUnit.NULL) return [false, value];
+    return [true, this.convertInertia(value, givenUnits, desiredUnits)];
+  }
+
+  public getTimeUnit(input: string): TimeUnit {
+    switch (this.normalizeUnitToken(input)) {
+      case 'ms':
+      case 'millisecond':
+      case 'milliseconds':
+        return TimeUnit.MILLISECOND;
+      case 's':
+      case 'sec':
+      case 'second':
+      case 'seconds':
+        return TimeUnit.SECOND;
+      case 'min':
+      case 'minute':
+      case 'minutes':
+        return TimeUnit.MINUTE;
+      default:
+        return TimeUnit.NULL;
+    }
+  }
+
+  public parseTimeString(input: string, desiredUnits: TimeUnit): [boolean, number] {
+    const [value, unit] = this.preProcessInput(input);
+
+    if (isNaN(value)) return [false, 0];
+    if (unit.length == 0) return [true, value];
+
+    const givenUnits = this.getTimeUnit(unit);
+    if (givenUnits === TimeUnit.NULL) return [false, value];
+    return [true, this.convertTime(value, givenUnits, desiredUnits)];
+  }
+
+  public convertTime(value: number, givenUnits: TimeUnit, desiredUnits: TimeUnit): number {
+    return this.convertViaBase(value, givenUnits, desiredUnits, TIME_TO_SECONDS, 'convertTime');
+  }
+
+  public getAngularVelocityUnit(input: string): AngularVelocityUnit {
+    switch (this.normalizeUnitToken(input)) {
+      case 'rpm':
+      case 'rev/min':
+      case 'revs/min':
+        return AngularVelocityUnit.RPM;
+      case 'deg/s':
+      case 'deg/sec':
+      case 'degrees/s':
+      case '°/s':
+        return AngularVelocityUnit.DEG_PER_SEC;
+      case 'rad/s':
+      case 'rad/sec':
+      case 'radians/s':
+        return AngularVelocityUnit.RAD_PER_SEC;
+      default:
+        return AngularVelocityUnit.NULL;
+    }
+  }
+
+  public parseAngularVelocityString(
+    input: string,
+    desiredUnits: AngularVelocityUnit
+  ): [boolean, number] {
+    const [value, unit] = this.preProcessInput(input);
+
+    if (isNaN(value)) return [false, 0];
+    if (unit.length == 0) return [true, value];
+
+    const givenUnits = this.getAngularVelocityUnit(unit);
+    if (givenUnits === AngularVelocityUnit.NULL) return [false, value];
+    return [true, this.convertAngularVelocity(value, givenUnits, desiredUnits)];
+  }
+
+  public convertAngularVelocity(
+    value: number,
+    givenUnits: AngularVelocityUnit,
+    desiredUnits: AngularVelocityUnit
+  ): number {
+    return this.convertViaBase(
+      value,
+      givenUnits,
+      desiredUnits,
+      ANGULAR_VELOCITY_TO_RAD_PER_SEC,
+      'convertAngularVelocity'
+    );
+  }
+
+  public convertMass(value: number, givenUnits: MassUnit, desiredUnits: MassUnit): number {
+    return this.convertViaBase(value, givenUnits, desiredUnits, MASS_TO_KG, 'convertMass');
+  }
+
+  public convertInertia(value: number, givenUnits: InertiaUnit, desiredUnits: InertiaUnit): number {
+    return this.convertViaBase(value, givenUnits, desiredUnits, INERTIA_TO_KG_M2, 'convertInertia');
+  }
+
+  private convertViaBase(
+    value: number,
+    givenUnits: number,
+    desiredUnits: number,
+    toBase: Record<number, number>,
+    caller: string
+  ): number {
+    if (givenUnits === desiredUnits) return value;
+    const given = toBase[givenUnits];
+    const desired = toBase[desiredUnits];
+    if (given === undefined || desired === undefined) {
+      console.error(
+        `Error in NumberUnitParserService.${caller}(): No valid conversion found between ` +
+          `${givenUnits} and ${desiredUnits}`
+      );
+      return value;
+    }
+    return (value * given) / desired;
+  }
+
   public convertLength(value: number, givenUnits: LengthUnit, desiredUnits: LengthUnit): number {
     if (givenUnits == desiredUnits) return value;
     switch (givenUnits) {
@@ -185,7 +409,7 @@ export class NumberUnitParserService {
           case LengthUnit.CM:
             return value * 100;
           case LengthUnit.INCH:
-            return value * 39.3701;
+            return value / 0.0254;
         }
         break;
       case LengthUnit.INCH:
@@ -193,7 +417,7 @@ export class NumberUnitParserService {
           case LengthUnit.CM:
             return value * 2.54;
           case LengthUnit.METER:
-            return value / 39.3701;
+            return value * 0.0254;
         }
         break;
     }

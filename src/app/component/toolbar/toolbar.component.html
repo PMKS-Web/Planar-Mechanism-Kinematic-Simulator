@@ -61,7 +61,7 @@
       matTooltip="This message and the debug panel will disappear"
       matTooltipShowDelay="1000"
     >
-      <p style="font-size: 10px; pointer-events: none; max-height: 50px; max-width: 270px">
+      <p class="devModeNotice">
         You are in Development Mode. The color will return to normal when you build with the
         production flag.
       </p>
@@ -80,26 +80,6 @@
   }
   <button
     mat-button
-    (click)="handleUndo()"
-    matTooltip="Undo"
-    [disabled]="!canUndo()"
-    matTooltipShowDelay="1000"
-  >
-    <mat-icon>undo</mat-icon>
-    Undo
-  </button>
-  <button
-    mat-button
-    (click)="handleRedo()"
-    matTooltip="Redo"
-    [disabled]="!canRedo()"
-    matTooltipShowDelay="1000"
-  >
-    <mat-icon>redo</mat-icon>
-    Redo
-  </button>
-  <button
-    mat-button
     (click)="openRightPanelSettings()"
     matTooltip="Change Linkage Settings"
     matTooltipShowDelay="1000"
@@ -107,17 +87,6 @@
     <mat-icon>settings</mat-icon>
     Settings
   </button>
-  @if (settingsService.isEquationsEnabled.value) {
-    <button
-      mat-button
-      (click)="openRightPanelEquations()"
-      matTooltip="View Equations of Equilibrium"
-      matTooltipShowDelay="1000"
-    >
-      <mat-icon>format_list_numbered</mat-icon>
-      Equations
-    </button>
-  }
   <button
     mat-button
     (click)="openRightPanelHelp()"

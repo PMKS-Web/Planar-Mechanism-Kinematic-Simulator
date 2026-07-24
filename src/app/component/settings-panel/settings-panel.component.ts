@@ -1,19 +1,19 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { SettingsService } from 'src/app/services/settings.service';
-import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
+import {
+  LengthUnit,
+  AngleUnit,
+  AngularVelocityUnit,
+  ForceUnit,
+  GlobalUnit,
+} from 'src/app/model/utils';
 import { FormBuilder, Validators } from '@angular/forms';
-import { NewGridComponent } from '../new-grid/new-grid.component';
 import { MechanismService } from '../../services/mechanism.service';
 import { Link, RealLink } from '../../model/link';
 import { SvgGridService } from '../../services/svg-grid.service';
-import { AnimationBarComponent } from '../animation-bar/animation-bar.component';
-import { ToolbarComponent } from '../toolbar/toolbar.component';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { Coord } from '../../model/coord';
-import { MatDialog } from '@angular/material/dialog';
-import { EnableForcesComponent } from '../MODALS/enable-forces/enable-forces.component';
-import { EnableWeldedComponent } from '../MODALS/enable-welded/enable-welded.component';
-import { EnableEquationsComponent } from '../MODALS/enable-equations/enable-equations.component';
+import { combineLatest, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-settings-panel',
@@ -22,14 +22,13 @@ import { EnableEquationsComponent } from '../MODALS/enable-equations/enable-equa
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false,
 })
-export class SettingsPanelComponent {
+export class SettingsPanelComponent implements OnDestroy {
   constructor(
     public settingsService: SettingsService,
     private fb: FormBuilder,
     public mechanismSrv: MechanismService,
     private svgGrid: SvgGridService,
-    private nup: NumberUnitParserService,
-    public dialog: MatDialog
+    private nup: NumberUnitParserService
   ) {}
 
   currentLengthUnit!: LengthUnit;
@@ -40,19 +39,19 @@ export class SettingsPanelComponent {
   rotateDirection!: boolean;
   currentSpeedSetting!: number;
   currentObjectScaleSetting!: number;
+  private readonly settingsSubscriptions = new Subscription();
 
   ngOnInit(): void {
     this.currentLengthUnit = this.settingsService.lengthUnit.value;
+    this.currentForceUnit = this.settingsService.forceUnit.value;
     this.currentAngleUnit = this.settingsService.angleUnit.value;
     this.currentGlobalUnit = this.settingsService.globalUnit.value;
     this.rotateDirection = this.settingsService.isInputCW.value;
     this.currentSpeedSetting = this.settingsService.inputSpeed.value;
     this.currentObjectScaleSetting = SettingsService.objectScale;
 
-    console.log('start length', this.currentLengthUnit);
-
     this.settingsForm.patchValue({
-      speed: this.currentSpeedSetting.toString(),
+      speed: this.formatSpeed(this.currentSpeedSetting),
       objectScale: this.currentObjectScaleSetting.toString(),
       rotation: this.rotateDirection ? '0' : '1',
       lengthunit: this.currentLengthUnit.toString(),
@@ -63,22 +62,66 @@ export class SettingsPanelComponent {
       showMinorGrid: this.settingsService.isShowMinorGrid.value,
     });
 
-    SettingsService._objectScale.subscribe((val) => {
-      this.currentObjectScaleSetting = val;
-      this.settingsForm.patchValue(
-        { objectScale: this.currentObjectScaleSetting.toString() },
-        { emitEvent: false }
-      );
+    this.settingsSubscriptions.add(
+      SettingsService._objectScale.subscribe((val) => {
+        this.currentObjectScaleSetting = val;
+        this.settingsForm.patchValue(
+          { objectScale: this.currentObjectScaleSetting.toString() },
+          { emitEvent: false }
+        );
 
-      //Werid place to put this but
-      this.mechanismSrv.links.forEach((link: Link) => {
-        (link as RealLink).reComputeDPath();
-      });
+        //Werid place to put this but
+        this.mechanismSrv.links.forEach((link: Link) => {
+          (link as RealLink).reComputeDPath();
+        });
 
-      this.mechanismSrv.updateMechanism();
-    });
+        this.mechanismSrv.updateMechanism();
+      })
+    );
 
     this.onChanges();
+    this.bindSerializedSettings();
+  }
+
+  /** Keep an already-open settings panel synchronized after URL restore/undo. */
+  private bindSerializedSettings(): void {
+    this.settingsSubscriptions.add(
+      combineLatest([
+        this.settingsService.lengthUnit,
+        this.settingsService.angleUnit,
+        this.settingsService.forceUnit,
+        this.settingsService.globalUnit,
+        this.settingsService.isInputCW,
+        this.settingsService.inputSpeed,
+        this.settingsService.isShowMajorGrid,
+        this.settingsService.isShowMinorGrid,
+      ]).subscribe(
+        ([length, angle, force, global, clockwise, speed, showMajorGrid, showMinorGrid]) => {
+          this.currentLengthUnit = length;
+          this.currentAngleUnit = angle;
+          this.currentForceUnit = force;
+          this.currentGlobalUnit = global;
+          this.rotateDirection = clockwise;
+          this.currentSpeedSetting = speed;
+          this.settingsForm.patchValue(
+            {
+              speed: this.formatSpeed(speed),
+              rotation: clockwise ? '0' : '1',
+              lengthunit: length.toString(),
+              angleunit: (angle - 10).toString(),
+              globalunit: (global - 30).toString(),
+              showMajorGrid,
+              showMinorGrid,
+            },
+            { emitEvent: false }
+          );
+        }
+      )
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.settingsSubscriptions.unsubscribe();
   }
 
   onChanges(): void {
@@ -88,12 +131,18 @@ export class SettingsPanelComponent {
       this.mechanismSrv.updateMechanism();
     });
     this.settingsForm.controls['speed'].valueChanges.subscribe((val) => {
-      if (this.settingsForm.controls['speed'].invalid) {
-        this.settingsForm.patchValue({ speed: this.currentSpeedSetting.toString() });
-      } else {
-        this.currentSpeedSetting = Number(val);
+      const [success, value] = this.nup.parseAngularVelocityString(
+        val ?? '',
+        AngularVelocityUnit.RPM
+      );
+      if (success) {
+        this.currentSpeedSetting = value;
         this.settingsService.inputSpeed.next(this.currentSpeedSetting);
       }
+      this.settingsForm.patchValue(
+        { speed: this.formatSpeed(this.currentSpeedSetting) },
+        { emitEvent: false }
+      );
       this.mechanismSrv.updateMechanism();
     });
     this.settingsForm.controls['objectScale'].valueChanges.subscribe((val) => {
@@ -113,63 +162,20 @@ export class SettingsPanelComponent {
     this.settingsForm.controls['globalunit'].valueChanges.subscribe((val) => {
       this.currentGlobalUnit = ParseGlobalUnit(val);
       this.settingsService.globalUnit.next(this.currentGlobalUnit);
-      // this.currentTorqueUnit = ParseTorqueUnit(val);
-      // this.settingsForm.controls['torqueunit'].patchValue(String(this.currentTorqueUnit - 20));
-      if (this.settingsService.globalUnit.value === GlobalUnit.ENGLISH) {
-        this.currentForceUnit = ForceUnit.LBF;
-      } else {
-        this.currentForceUnit = ForceUnit.NEWTON;
-      }
+      this.currentForceUnit =
+        this.currentGlobalUnit === GlobalUnit.ENGLISH ? ForceUnit.LBF : ForceUnit.NEWTON;
       this.settingsService.forceUnit.next(this.currentForceUnit);
-
-      let prevLengthUnit = this.settingsService.lengthUnit.value;
-      this.currentLengthUnit = ParseLengthUnit(val);
-
-      //Scale the grid to the new length unit
-      this.settingsForm.controls['lengthunit'].patchValue(String(this.currentLengthUnit));
-
-      let fromUnit = prevLengthUnit;
-      let toUnit = this.currentLengthUnit;
-
-      //If either unit is in meters, convert that one to cm
-      if (fromUnit === LengthUnit.METER) {
-        fromUnit = LengthUnit.CM;
-      }
-      if (toUnit === LengthUnit.METER) {
-        toUnit = LengthUnit.CM;
-      }
-
-      this.mechanismSrv.updateLinkageUnits(fromUnit, toUnit);
-
-      let tempOriginInScreen = this.svgGrid.SVGtoScreen(new Coord(0, 0));
-      this.svgGrid.panZoomObject.zoomAtPointBy(this.nup.convertLength(1, toUnit, fromUnit), {
-        x: tempOriginInScreen.x,
-        y: tempOriginInScreen.y,
-      });
-
-      //Scale the object to the new length unit
-      SettingsService._objectScale.next(
-        this.nup.convertLength(SettingsService.objectScale, fromUnit, toUnit)
-      );
-
-      //Update graphs with new units
-      this.mechanismSrv.onMechUpdateState.next(2);
-      // this.mechanismSrv.updateMechanism();
-      // setTimeout(() => {
-      //   this.mechanismSrv.onMechUpdateState.next(2);
-      // });
-      // this.svgGrid.scaleToFitLinkage();
-      // ToolbarComponent.unit = this.getUnitStr(this.settingsService.lengthUnit.value);
-      // NewGridComponent.sendNotification('Updated Global Units!');
+      // A global-unit change is, for the geometry, a length-unit change. Route
+      // it through the one method that rescales the mechanism so this path and
+      // the length control can never diverge.
+      this.changeLengthUnit(ParseLengthUnit(val));
     });
     this.settingsForm.controls['lengthunit'].valueChanges.subscribe((val) => {
       let length: LengthUnit;
       if (val === '0') length = LengthUnit.INCH;
       else if (val === '1') length = LengthUnit.CM;
       else length = LengthUnit.METER;
-      console.log(length);
-      this.settingsService.lengthUnit.next(length);
-      this.mechanismSrv.updateMechanism();
+      this.changeLengthUnit(length);
     });
     this.settingsForm.controls['showMajorGrid'].valueChanges.subscribe((val) => {
       this.settingsService.isShowMajorGrid.next(Boolean(val));
@@ -184,22 +190,33 @@ export class SettingsPanelComponent {
     // });
   }
 
-  openEnableForceDialog(): void {
-    this.dialog.open(EnableForcesComponent, {
-      autoFocus: false,
-    });
-  }
+  /**
+   * The single length-unit switch. Both the Global Units radio and the internal
+   * length control funnel here so a unit change always rescales the mechanism's
+   * stored geometry, mass, inertia, and forces — never just relabels them.
+   */
+  private changeLengthUnit(toUnit: LengthUnit): void {
+    const fromUnit = this.settingsService.lengthUnit.value;
+    this.currentLengthUnit = toUnit;
+    this.settingsService.lengthUnit.next(toUnit);
+    this.settingsForm.controls['lengthunit'].patchValue(String(toUnit), { emitEvent: false });
+    if (fromUnit === toUnit) return;
 
-  openEnableWeldedDialog(): void {
-    this.dialog.open(EnableWeldedComponent, {
-      autoFocus: false,
-    });
-  }
+    this.mechanismSrv.updateLinkageUnits(fromUnit, toUnit);
 
-  openEnablEquationsDialog(): void {
-    this.dialog.open(EnableEquationsComponent, {
-      autoFocus: false,
+    // Compensate the viewport zoom so the mechanism keeps its apparent size,
+    // then scale visual affordances to match.
+    const tempOriginInScreen = this.svgGrid.SVGtoScreen(new Coord(0, 0));
+    this.svgGrid.panZoomObject.zoomAtPointBy(this.nup.convertLength(1, toUnit, fromUnit), {
+      x: tempOriginInScreen.x,
+      y: tempOriginInScreen.y,
     });
+    SettingsService._objectScale.next(
+      this.nup.convertLength(SettingsService.objectScale, fromUnit, toUnit)
+    );
+
+    // Update graphs with the new units.
+    this.mechanismSrv.onMechUpdateState.next(2);
   }
 
   getUnitStr(unit: LengthUnit): string {
@@ -218,7 +235,7 @@ export class SettingsPanelComponent {
   numRegex = '^-?[0-9]+(.[0-9]{0,10})?$';
   settingsForm = this.fb.group(
     {
-      speed: ['', [Validators.required, Validators.pattern(this.numRegex)]],
+      speed: [''],
       objectScale: ['', [Validators.required, Validators.pattern(this.numRegex)]],
       rotation: ['', { updateOn: 'change' }],
       lengthunit: ['', { updateOn: 'change' }],
@@ -231,8 +248,9 @@ export class SettingsPanelComponent {
     { updateOn: 'blur' }
   );
 
-  sendComingSoon(): void {
-    NewGridComponent.sendNotification('This feature is coming soon!');
+  /** The value carries its own unit, matching every other unit-bearing input. */
+  private formatSpeed(value: number): string {
+    return this.nup.formatValueAndUnit(value, AngularVelocityUnit.RPM);
   }
 
   updateObjectScale() {

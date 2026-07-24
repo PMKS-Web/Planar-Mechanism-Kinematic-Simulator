@@ -6,9 +6,9 @@ import { AppComponent } from './app.component';
 import { LinkageTableComponent } from './component/linkage-table/linkage-table.component';
 import { ToolbarComponent } from './component/toolbar/toolbar.component';
 import { AnimationBarComponent } from './component/animation-bar/animation-bar.component';
+import { ViewControlsComponent } from './component/view-controls/view-controls.component';
 import { ShapeSelectorComponent } from './component/shape-selector/shape-selector.component';
 import { FormsModule } from '@angular/forms';
-import { NgApexchartsModule } from 'ng-apexcharts';
 // import { TemplatesPopupComponent } from './component/templates-popup/templates-popup.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
@@ -28,6 +28,7 @@ import { DualInputComponent } from './component/BLOCKS/dual-input/dual-input.com
 import { ReactiveFormsModule } from '@angular/forms';
 import { AnalysisPanelComponent } from './component/analysis-panel/analysis-panel.component';
 import { AnalysisGraphComponent } from './component/analysis-graph/analysis-graph.component';
+import { AnalysisApexChartComponent } from './component/analysis-graph/analysis-apex-chart.component';
 import { RightPanelComponent } from './component/right-panel/right-panel.component';
 import { SettingsPanelComponent } from './component/settings-panel/settings-panel.component';
 import { SynthesisPanelComponent } from './component/synthesis-panel/synthesis-panel.component';
@@ -48,9 +49,6 @@ import { CollapsibleSubsecitonComponent } from './component/BLOCKS/collapsible-s
 import { DualButtonComponent } from './component/BLOCKS/dual-button/dual-button.component';
 import { ColorPickerComponent } from './component/BLOCKS/color-picker/color-picker.component';
 import { TriButtonComponent } from './component/BLOCKS/tri-button/tri-button.component';
-import { EnableForcesComponent } from './component/MODALS/enable-forces/enable-forces.component';
-import { EnableWeldedComponent } from './component/MODALS/enable-welded/enable-welded.component';
-import { EnableEquationsComponent } from './component/MODALS/enable-equations/enable-equations.component';
 import { BottombarComponent } from './component/bottombar/bottombar.component';
 
 @NgModule({
@@ -59,6 +57,7 @@ import { BottombarComponent } from './component/bottombar/bottombar.component';
     LinkageTableComponent,
     ToolbarComponent,
     AnimationBarComponent,
+    ViewControlsComponent,
     ShapeSelectorComponent,
     LeftTabsComponent,
     TitleBlock,
@@ -73,6 +72,7 @@ import { BottombarComponent } from './component/bottombar/bottombar.component';
     DualInputComponent,
     AnalysisPanelComponent,
     AnalysisGraphComponent,
+    AnalysisApexChartComponent,
     RightPanelComponent,
     SettingsPanelComponent,
     SynthesisPanelComponent,
@@ -90,16 +90,12 @@ import { BottombarComponent } from './component/bottombar/bottombar.component';
     DualButtonComponent,
     ColorPickerComponent,
     TriButtonComponent,
-    EnableForcesComponent,
-    EnableWeldedComponent,
-    EnableEquationsComponent,
     BottombarComponent,
   ],
   bootstrap: [AppComponent],
   imports: [
     BrowserModule,
     FormsModule,
-    NgApexchartsModule,
     BrowserAnimationsModule,
     MaterialModule,
     ReactiveFormsModule,

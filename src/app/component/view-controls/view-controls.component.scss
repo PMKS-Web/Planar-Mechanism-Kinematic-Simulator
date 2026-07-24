@@ -1,0 +1,34 @@
+@use '../BLOCKS/blocks.common' as blocks;
+
+@mixin css($theme) {
+  .viewControls {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+
+    // Same button look as the edit panel; the container prefix keeps its
+    // border-color winning over Material's default outline.
+    @include blocks.mini-buttons($theme);
+
+    .mini-buttons {
+      justify-content: flex-start;
+    }
+
+    .zoomRow {
+      display: flex;
+      gap: 6px;
+
+      .zoomButton {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 0;
+        justify-content: center;
+
+        .mat-icon {
+          margin: 0;
+        }
+      }
+    }
+  }
+}

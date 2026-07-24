@@ -15,7 +15,9 @@ import {
   ForceUnit,
   getDistance,
   getNewOtherJointPos,
+  InertiaUnit,
   LengthUnit,
+  MassUnit,
 } from 'src/app/model/utils';
 import { AnimationBarComponent } from '../animation-bar/animation-bar.component';
 import { NumberUnitParserService } from 'src/app/services/number-unit-parser.service';
@@ -101,6 +103,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     {
       length: [''],
       angle: [''],
+      mass: [''],
+      massMoI: [''],
+      comX: [''],
+      comY: [''],
     },
     { updateOn: 'blur' }
   );
@@ -407,6 +413,60 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     );
 
     this.onDestroySubscriptions.push(
+      this.linkForm.controls['mass'].valueChanges.subscribe((val) => {
+        const units = this.massUnit();
+        const [success, value] = this.nup.parseMassString(val ?? '', units);
+        if (!success || value < 0) {
+          this.linkForm.patchValue(
+            { mass: this.nup.formatValueAndUnit(this.activeSrv.selectedLink.mass, units) },
+            { emitEvent: false }
+          );
+          return;
+        }
+        this.activeSrv.selectedLink.mass = value;
+        this.mechanismService.updateMechanism(true);
+        this.mechanismService.onMechUpdateState.next(2);
+        this.linkForm.patchValue(
+          { mass: this.nup.formatValueAndUnit(value, units) },
+          { emitEvent: false }
+        );
+      })
+    );
+
+    this.onDestroySubscriptions.push(
+      this.linkForm.controls['massMoI'].valueChanges.subscribe((val) => {
+        const units = this.momentOfInertiaUnit();
+        const [success, value] = this.nup.parseInertiaString(val ?? '', units);
+        if (!success || value < 0) {
+          this.linkForm.patchValue(
+            { massMoI: this.nup.formatValueAndUnit(this.activeSrv.selectedLink.massMoI, units) },
+            { emitEvent: false }
+          );
+          return;
+        }
+        this.activeSrv.selectedLink.massMoI = value;
+        this.mechanismService.updateMechanism(true);
+        this.mechanismService.onMechUpdateState.next(2);
+        this.linkForm.patchValue(
+          { massMoI: this.nup.formatValueAndUnit(value, units) },
+          { emitEvent: false }
+        );
+      })
+    );
+
+    this.onDestroySubscriptions.push(
+      this.linkForm.controls['comX'].valueChanges.subscribe((val) => {
+        this.updateLinkCenterOfMass('x', val);
+      })
+    );
+
+    this.onDestroySubscriptions.push(
+      this.linkForm.controls['comY'].valueChanges.subscribe((val) => {
+        this.updateLinkCenterOfMass('y', val);
+      })
+    );
+
+    this.onDestroySubscriptions.push(
       this.forceForm.controls['magnitude'].valueChanges.subscribe((val) => {
         const [success, value] = this.nup.parseForceString(
           val!,
@@ -417,8 +477,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
             magnitude: this.activeSrv.selectedForce.mag.toFixed(2).toString(),
           });
         } else {
-          this.activeSrv.selectedForce.mag = value;
-          this.resolveNewForceAngle();
+          this.activeSrv.selectedForce.setMagnitude(value);
+          this.mechanismService.updateMechanism(true);
           this.mechanismService.onMechUpdateState.next(2);
           this.forceForm.patchValue(
             {
@@ -445,12 +505,14 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           });
         } else {
           //Always convert to Radian since Force.angle is in Radian
-          this.activeSrv.selectedForce.angleRad = this.nup.convertAngle(
-            value,
-            this.settingsService.angleUnit.getValue(),
-            AngleUnit.RADIAN
+          this.activeSrv.selectedForce.setDirectionRadians(
+            this.nup.convertAngle(
+              value,
+              this.settingsService.angleUnit.getValue(),
+              AngleUnit.RADIAN
+            )
           );
-          this.resolveNewForceAngle();
+          this.mechanismService.updateMechanism(true);
           this.mechanismService.onMechUpdateState.next(2);
           this.forceForm.patchValue(
             {
@@ -474,8 +536,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
             xComp: this.activeSrv.selectedForce.xComp.toFixed(2).toString(),
           });
         } else {
-          this.activeSrv.selectedForce.xComp = value;
-          this.resolveNewForceMagnitude();
+          this.activeSrv.selectedForce.setComponents(value, this.activeSrv.selectedForce.yComp);
+          this.mechanismService.updateMechanism(true);
           this.mechanismService.onMechUpdateState.next(2);
           this.forceForm.patchValue(
             {
@@ -498,8 +560,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
             yComp: this.activeSrv.selectedForce.yComp.toFixed(2).toString(),
           });
         } else {
-          this.activeSrv.selectedForce.yComp = value;
-          this.resolveNewForceMagnitude();
+          this.activeSrv.selectedForce.setComponents(this.activeSrv.selectedForce.xComp, value);
+          this.mechanismService.updateMechanism(true);
           this.mechanismService.onMechUpdateState.next(2);
           this.forceForm.patchValue(
             {
@@ -518,8 +580,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         }
         // this.activeSrv.selectedForce.local = val == '0' ? true : false;
         this.mechanismService.changeForceLocal();
-        this.mechanismService.updateMechanism();
-        this.mechanismService.onMechUpdateState.next(2);
       })
     );
 
@@ -592,6 +652,19 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
                 ),
                 this.settingsService.angleUnit.getValue()
               ),
+              mass: this.nup.formatValueAndUnit(this.activeSrv.selectedLink.mass, this.massUnit()),
+              massMoI: this.nup.formatValueAndUnit(
+                this.activeSrv.selectedLink.massMoI,
+                this.momentOfInertiaUnit()
+              ),
+              comX: this.nup.formatValueAndUnit(
+                this.activeSrv.selectedLink.CoM.x,
+                this.settingsService.lengthUnit.getValue()
+              ),
+              comY: this.nup.formatValueAndUnit(
+                this.activeSrv.selectedLink.CoM.y,
+                this.settingsService.lengthUnit.getValue()
+              ),
             },
             { emitEvent: false }
           );
@@ -628,6 +701,53 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         }
       })
     );
+  }
+
+  private updateLinkCenterOfMass(axis: 'x' | 'y', rawValue: string | null): void {
+    const [success, value] = this.nup.parseLengthString(
+      rawValue ?? '',
+      this.settingsService.lengthUnit.getValue()
+    );
+    const link = this.activeSrv.selectedLink;
+    if (!success) {
+      this.linkForm.patchValue(
+        {
+          [axis === 'x' ? 'comX' : 'comY']: this.nup.formatValueAndUnit(
+            link.CoM[axis],
+            this.settingsService.lengthUnit.getValue()
+          ),
+        },
+        { emitEvent: false }
+      );
+      return;
+    }
+
+    link.CoM[axis] = value;
+    link.updateCoMDs();
+    this.mechanismService.updateMechanism(true);
+    this.mechanismService.onMechUpdateState.next(2);
+  }
+
+  momentOfInertiaUnit(): InertiaUnit {
+    switch (this.settingsService.lengthUnit.value) {
+      case LengthUnit.INCH:
+        return InertiaUnit.LBM_IN2;
+      case LengthUnit.METER:
+        return InertiaUnit.KG_M2;
+      default:
+        return InertiaUnit.KG_CM2;
+    }
+  }
+
+  massUnit(): MassUnit {
+    switch (this.settingsService.lengthUnit.value) {
+      case LengthUnit.INCH:
+        return MassUnit.LBM;
+      case LengthUnit.METER:
+        return MassUnit.KG;
+      default:
+        return MassUnit.GRAM;
+    }
   }
 
   getDistanceBetweenJoints(j1: RevJoint, j2: RevJoint): number {
@@ -720,7 +840,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
   isWeldable(joint: RealJoint) {
     //If there are at least two links that share this joint, return true
-    if (!this.settingsService.isWeldedJointsEnabled.getValue()) return false;
     return joint.canBeWelded();
   }
 

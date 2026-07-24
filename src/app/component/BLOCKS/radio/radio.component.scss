@@ -27,6 +27,32 @@
           padding: 0;
         }
 
+        // Material pins the checkmark absolutely at the button's left edge while
+        // the label centres across the full width, so the space between them
+        // changes with the label's length. Laying the button out as a centred
+        // flex row keeps the pair together at one fixed gap instead.
+        //
+        // Material also reserves 30px of left padding on the checked button for
+        // that absolute mark. With the mark back in the flow the padding only
+        // inflates the selected option and shoves the pair off centre, so it goes.
+        .mat-button-toggle-button {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+        }
+
+        // Back into the flow, and flex-centred so the mark loses the
+        // inline-block baseline drop that left it sitting low against the label.
+        // The extra pixel up balances the checkmark's weight, which hangs below
+        // its own box's centre.
+        .mat-button-toggle-checkbox-wrapper {
+          position: static;
+          display: flex;
+          align-items: center;
+          transform: translateY(-1px);
+        }
+
         button {
           height: 100%;
 
@@ -40,6 +66,22 @@
       .mat-button-toggle-checked {
         background-color: mat.m2-get-color-from-palette($primary-palette, 400);
         color: white;
+
+        // The selection checkmark defaults to a dark color that all but vanishes
+        // against the fill behind it. Material re-declares the variable on the
+        // checkbox element, so it has to be set there rather than inherited from
+        // the toggle; on blue the mark reads white like the label beside it.
+        .mat-pseudo-checkbox {
+          --mat-pseudo-checkbox-minimal-selected-checkmark-color: white;
+          --mat-pseudo-checkbox-minimal-disabled-selected-checkmark-color: rgba(255, 255, 255, 0.5);
+        }
+
+        // Only the checked toggle draws a mark — the wrapper is present but empty
+        // on the others and collapses to nothing — so the gap belongs here, where
+        // it can't push an unselected label off centre.
+        .mat-button-toggle-checkbox-wrapper {
+          margin-right: 8px;
+        }
       }
     }
   }

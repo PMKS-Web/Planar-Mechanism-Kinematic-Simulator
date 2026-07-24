@@ -54,3 +54,10 @@
     // }
   }
 }
+#analysisWrapper .analysis-message {
+  margin: 8px 0 12px;
+  padding: 12px;
+  border-radius: var(--border-radius);
+  background: #f4f5fb;
+  line-height: 1.4;
+}

@@ -249,14 +249,23 @@ export class NewGridComponent {
   }
 
   static getLastLeftClickType(): string {
-    return this.instance.lastLeftClick.constructor.name;
+    return this.instance.objectKind(this.instance.lastLeftClick);
+  }
+
+  private objectKind(value: Joint | Link | String | Force | SynthesisPose): string {
+    if (value instanceof Force) return 'Force';
+    if (value instanceof RealLink) return 'RealLink';
+    if (value instanceof PrisJoint) return 'PrisJoint';
+    if (value instanceof RevJoint) return 'RevJoint';
+    if (value instanceof SynthesisPose) return 'SynthesisPose';
+    if (typeof value === 'string' || value instanceof String) return 'String';
+    return 'Unknown';
   }
 
   updateContextMenuItems() {
     //Switch case based on what type the object is
     this.cMenuItems = [];
-    // console.log(this.lastRightClick.constructor.name);
-    switch (this.lastRightClick.constructor.name) {
+    switch (this.objectKind(this.lastRightClick)) {
       case 'Force':
         this.cMenuItems.push(
           new cMenuItem(
@@ -316,16 +325,14 @@ export class NewGridComponent {
             'Attach Force',
             this.createForce.bind(this),
             'add_force',
-            weldedLinkFilletSelected || !this.settings.isForces.value
+            weldedLinkFilletSelected
           )
         );
         break;
       case 'RevJoint':
         let jointIsSlider = this.gridUtils.isAttachedToSlider(this.lastRightClick);
         let jointIsGround = (this.lastRightClick as RealJoint).ground;
-        let canBeWeldedOrUnwelded =
-          (this.lastRightClick as RealJoint).canBeWeldedOrUnwelded() &&
-          this.settings.isWeldedJointsEnabled.value;
+        let canBeWeldedOrUnwelded = (this.lastRightClick as RealJoint).canBeWeldedOrUnwelded();
         let canTogglePath =
           !(this.lastRightClick as RealJoint).ground && this.mechanismSrv.oneValidMechanismExists();
 
@@ -411,8 +418,18 @@ export class NewGridComponent {
 
   setLastRightClick(clickedObj: Joint | Link | String | Force, event?: MouseEvent) {
     this.lastRightClick = clickedObj;
+    // The edit context menu acts on the selected object, so in Edit mode a
+    // right-click selects what it will target. In Analyze/Synthesis mode a
+    // right-click must not open an edit menu (see onContextMenu), so it must not
+    // move the selection out from under the active panel either.
+    if (
+      this.tabService.getCurrentTab() === TabID.EDIT &&
+      (clickedObj instanceof Joint || clickedObj instanceof Link || clickedObj instanceof Force)
+    ) {
+      this.activeObjService.updateSelectedObj(clickedObj);
+    }
 
-    switch (clickedObj.constructor.name) {
+    switch (this.objectKind(clickedObj)) {
       case 'RealLink':
         this.lastLeftClickType = 'Link';
         if ((clickedObj as RealLink).subset.length > 1) {
@@ -440,8 +457,7 @@ export class NewGridComponent {
   setLastLeftClick(clickedObj: Joint | Link | String | Force | SynthesisPose, event?: MouseEvent) {
     this.lastLeftClick = clickedObj;
     // console.warn('Last Left Click: ');
-    // console.error(clickedObj.constructor.name);
-    switch (clickedObj.constructor.name) {
+    switch (this.objectKind(clickedObj)) {
       case 'Force':
         this.lastLeftClickType = 'Force';
         break;
@@ -464,7 +480,7 @@ export class NewGridComponent {
         break;
       default:
         this.lastLeftClickType = 'Unknown';
-        console.error('Unknown object type clicked: ' + clickedObj.constructor.name);
+        console.error('Unknown object type clicked');
     }
     this.activeObjService.updateSelectedObj(clickedObj);
   }
@@ -509,7 +525,7 @@ export class NewGridComponent {
     // console.log('createLink');
     // console.log(this.lastRightClickCoord);
     const startCoord = this.svgGrid.screenToSVG(this.lastRightClickCoord);
-    switch (this.lastRightClick.constructor.name) {
+    switch (this.objectKind(this.lastRightClick)) {
       case 'String':
         this.gridStates = gridStates.createJointFromGrid;
         break;
@@ -616,7 +632,6 @@ export class NewGridComponent {
           this.activeObjService.selectedJoint,
           mousePosInSvg
         );
-        this.mechanismSrv.updateMechanism();
         this.modifyMechanismWhileDrag = true;
         //So that the panel values update continously
         this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
@@ -718,6 +733,13 @@ export class NewGridComponent {
   onContextMenu($event: MouseEvent) {
     if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
       this.sendNotification('Cannot edit while in Synthesis mode. Switch to Edit mode to edit');
+      this.cMenuItems = [];
+      return;
+    }
+
+    if (this.tabService.getCurrentTab() === TabID.ANALYZE) {
+      // Analyze mode is read-only. Show no edit menu; setLastRightClick has
+      // already declined to change the selection.
       this.cMenuItems = [];
       return;
     }
@@ -915,7 +937,6 @@ export class NewGridComponent {
                   new Coord($event.clientX, $event.clientY)
                 );
                 this.mechanismSrv.createForce(startCoord, endCoord);
-                this.mechanismSrv.updateMechanism(true);
                 this.gridStates = gridStates.waiting;
                 this.forceStates = forceStates.waiting;
                 this.forceTempHolderSVG.style.display = 'none';
@@ -1174,10 +1195,6 @@ export class NewGridComponent {
         return;
       }
     }
-  }
-
-  isRenderFail(link: Link) {
-    return (link as RealLink).renderError;
   }
 
   returnDebugValue() {

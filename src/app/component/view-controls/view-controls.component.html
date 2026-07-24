@@ -1,0 +1,64 @@
+<div class="viewControls">
+  <button
+    class="mini-buttons blue"
+    mat-stroked-button
+    color="primary"
+    [disabled]="noLinkExists()"
+    (click)="showCenterOfMass()"
+    matTooltip="Show Center of Mass"
+    matTooltipPosition="right"
+    [matTooltipShowDelay]="1000"
+  >
+    <mat-icon svgIcon="{{ comIconName() }}"></mat-icon>
+    CoM
+  </button>
+  <button
+    class="mini-buttons blue"
+    mat-stroked-button
+    color="primary"
+    [disabled]="noJointExists()"
+    (click)="onShowIDPressed()"
+    matTooltip="Show ID Labels"
+    matTooltipPosition="right"
+    [matTooltipShowDelay]="1000"
+  >
+    <mat-icon svgIcon="{{ idLabelIconName() }}"></mat-icon>
+    Label
+  </button>
+  <button
+    class="mini-buttons blue"
+    mat-stroked-button
+    color="primary"
+    (click)="onReframePressed()"
+    matTooltip="Reset View"
+    matTooltipPosition="right"
+    [matTooltipShowDelay]="1000"
+  >
+    <mat-icon>crop_free</mat-icon>
+    View
+  </button>
+  <div class="zoomRow">
+    <button
+      class="mini-buttons blue zoomButton"
+      mat-stroked-button
+      color="primary"
+      (click)="onZoomOutPressed()"
+      matTooltip="Zoom Out"
+      matTooltipPosition="right"
+      [matTooltipShowDelay]="1000"
+    >
+      <mat-icon>zoom_out</mat-icon>
+    </button>
+    <button
+      class="mini-buttons blue zoomButton"
+      mat-stroked-button
+      color="primary"
+      (click)="onZoomInPressed()"
+      matTooltip="Zoom In"
+      matTooltipPosition="right"
+      [matTooltipShowDelay]="1000"
+    >
+      <mat-icon>zoom_in</mat-icon>
+    </button>
+  </div>
+</div>
