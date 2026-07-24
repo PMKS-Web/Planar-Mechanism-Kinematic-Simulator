@@ -20,10 +20,12 @@ import { animate, AUTO_STYLE, state, style, transition, trigger } from '@angular
           opacity: '1',
         })
       ),
+      // `display` is not animatable — Angular warns and drops it, so the
+      // collapse relies on the box shrinking to nothing instead. `.panel-content`
+      // clips its overflow so the content is hidden once the height reaches 0.
       state(
         'closed',
         style({
-          display: 'none',
           opacity: '0',
           height: '0px',
           padding: '0px',

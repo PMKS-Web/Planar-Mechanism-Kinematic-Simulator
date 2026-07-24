@@ -29,6 +29,18 @@
     top: 0;
     left: 0;
 
+    // The buttons never wrap or shrink, so on a narrow viewport they used to
+    // run past the window and drag the whole document sideways — panning the
+    // grid and panels off-screen. Keep that overflow inside the bar: it scrolls
+    // itself and every button stays reachable. The scrollbar is hidden because
+    // a classic one would eat half of the 30px strip.
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
     .mat-mdc-button-touch-target {
       height: 100% !important;
     }
