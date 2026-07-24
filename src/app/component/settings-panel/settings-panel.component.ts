@@ -162,58 +162,20 @@ export class SettingsPanelComponent implements OnDestroy {
     this.settingsForm.controls['globalunit'].valueChanges.subscribe((val) => {
       this.currentGlobalUnit = ParseGlobalUnit(val);
       this.settingsService.globalUnit.next(this.currentGlobalUnit);
-      // this.currentTorqueUnit = ParseTorqueUnit(val);
-      // this.settingsForm.controls['torqueunit'].patchValue(String(this.currentTorqueUnit - 20));
-      if (this.settingsService.globalUnit.value === GlobalUnit.ENGLISH) {
-        this.currentForceUnit = ForceUnit.LBF;
-      } else {
-        this.currentForceUnit = ForceUnit.NEWTON;
-      }
+      this.currentForceUnit =
+        this.currentGlobalUnit === GlobalUnit.ENGLISH ? ForceUnit.LBF : ForceUnit.NEWTON;
       this.settingsService.forceUnit.next(this.currentForceUnit);
-
-      let prevLengthUnit = this.settingsService.lengthUnit.value;
-      this.currentLengthUnit = ParseLengthUnit(val);
-      this.settingsService.lengthUnit.next(this.currentLengthUnit);
-
-      //Scale the grid to the new length unit
-      this.settingsForm.controls['lengthunit'].patchValue(String(this.currentLengthUnit), {
-        emitEvent: false,
-      });
-
-      const fromUnit = prevLengthUnit;
-      const toUnit = this.currentLengthUnit;
-
-      this.mechanismSrv.updateLinkageUnits(fromUnit, toUnit);
-
-      let tempOriginInScreen = this.svgGrid.SVGtoScreen(new Coord(0, 0));
-      this.svgGrid.panZoomObject.zoomAtPointBy(this.nup.convertLength(1, toUnit, fromUnit), {
-        x: tempOriginInScreen.x,
-        y: tempOriginInScreen.y,
-      });
-
-      // Scale visual affordances with the mechanism so their apparent size
-      // remains stable after the compensating viewport zoom.
-      SettingsService._objectScale.next(
-        this.nup.convertLength(SettingsService.objectScale, fromUnit, toUnit)
-      );
-
-      //Update graphs with new units
-      this.mechanismSrv.onMechUpdateState.next(2);
-      // this.mechanismSrv.updateMechanism();
-      // setTimeout(() => {
-      //   this.mechanismSrv.onMechUpdateState.next(2);
-      // });
-      // this.svgGrid.scaleToFitLinkage();
-      // ToolbarComponent.unit = this.getUnitStr(this.settingsService.lengthUnit.value);
-      // NewGridComponent.sendNotification('Updated Global Units!');
+      // A global-unit change is, for the geometry, a length-unit change. Route
+      // it through the one method that rescales the mechanism so this path and
+      // the length control can never diverge.
+      this.changeLengthUnit(ParseLengthUnit(val));
     });
     this.settingsForm.controls['lengthunit'].valueChanges.subscribe((val) => {
       let length: LengthUnit;
       if (val === '0') length = LengthUnit.INCH;
       else if (val === '1') length = LengthUnit.CM;
       else length = LengthUnit.METER;
-      this.settingsService.lengthUnit.next(length);
-      this.mechanismSrv.updateMechanism();
+      this.changeLengthUnit(length);
     });
     this.settingsForm.controls['showMajorGrid'].valueChanges.subscribe((val) => {
       this.settingsService.isShowMajorGrid.next(Boolean(val));
@@ -226,6 +188,35 @@ export class SettingsPanelComponent implements OnDestroy {
     // this.settingsForm.controls['torqueunit'].valueChanges.subscribe(() => {
     //   this.settingsService.inputTorque.next(this.currentTorqueUnit);
     // });
+  }
+
+  /**
+   * The single length-unit switch. Both the Global Units radio and the internal
+   * length control funnel here so a unit change always rescales the mechanism's
+   * stored geometry, mass, inertia, and forces — never just relabels them.
+   */
+  private changeLengthUnit(toUnit: LengthUnit): void {
+    const fromUnit = this.settingsService.lengthUnit.value;
+    this.currentLengthUnit = toUnit;
+    this.settingsService.lengthUnit.next(toUnit);
+    this.settingsForm.controls['lengthunit'].patchValue(String(toUnit), { emitEvent: false });
+    if (fromUnit === toUnit) return;
+
+    this.mechanismSrv.updateLinkageUnits(fromUnit, toUnit);
+
+    // Compensate the viewport zoom so the mechanism keeps its apparent size,
+    // then scale visual affordances to match.
+    const tempOriginInScreen = this.svgGrid.SVGtoScreen(new Coord(0, 0));
+    this.svgGrid.panZoomObject.zoomAtPointBy(this.nup.convertLength(1, toUnit, fromUnit), {
+      x: tempOriginInScreen.x,
+      y: tempOriginInScreen.y,
+    });
+    SettingsService._objectScale.next(
+      this.nup.convertLength(SettingsService.objectScale, fromUnit, toUnit)
+    );
+
+    // Update graphs with the new units.
+    this.mechanismSrv.onMechUpdateState.next(2);
   }
 
   getUnitStr(unit: LengthUnit): string {

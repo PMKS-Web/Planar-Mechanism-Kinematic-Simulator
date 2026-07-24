@@ -214,11 +214,39 @@ describe('MechanismService welded links and force ownership', () => {
       0.0003 / (0.45359237 * 0.0254 * 0.0254),
       12
     );
-    expect(force.mag).toBeCloseTo(10 * 0.22480894387096, 12);
+    // Force converts N -> lbf as the exact reciprocal of NEWTONS_PER_LBF.
+    expect(force.mag).toBeCloseTo(10 / 4.4482216152605, 12);
     expect(harness.saveCount()).toBe(2);
 
     harness.service.updateLinkageUnits(LengthUnit.INCH, LengthUnit.INCH);
     expect(harness.saveCount()).toBe(2);
+  });
+
+  it('round-trips cm -> in -> cm back to the original physical values', () => {
+    const harness = createChain();
+    const link = harness.links[0];
+    link.mass = 2;
+    link.massMoI = 3;
+    link.CoM = new Coord(0.5, 0);
+    const force = attachForce(harness.service, link, 'F1', 0.25);
+    const original = {
+      x: harness.joints[1].x,
+      mass: link.mass,
+      massMoI: link.massMoI,
+      comX: link.CoM.x,
+      startX: force.startCoord.x,
+      mag: force.mag,
+    };
+
+    harness.service.updateLinkageUnits(LengthUnit.CM, LengthUnit.INCH);
+    harness.service.updateLinkageUnits(LengthUnit.INCH, LengthUnit.CM);
+
+    expect(harness.joints[1].x).toBeCloseTo(original.x, 12);
+    expect(link.mass).toBeCloseTo(original.mass, 12);
+    expect(link.massMoI).toBeCloseTo(original.massMoI, 12);
+    expect(link.CoM.x).toBeCloseTo(original.comX, 12);
+    expect(force.startCoord.x).toBeCloseTo(original.startX, 12);
+    expect(force.mag).toBeCloseTo(original.mag, 12);
   });
 
   it('converts the RPM setting once at the mechanism boundary and preserves direction', () => {

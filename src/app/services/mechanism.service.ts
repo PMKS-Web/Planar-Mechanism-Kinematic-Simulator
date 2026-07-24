@@ -31,6 +31,7 @@ import { SaveHistoryService } from './save-history.service';
 import { NumberUnitParserService } from './number-unit-parser.service';
 import { PositionSolver } from '../model/mechanism/position-solver';
 import { ColorService } from './color.service';
+import { siUnitFactorsForLength } from '../model/unit-conversions';
 
 @Injectable({
   providedIn: 'root',
@@ -152,27 +153,13 @@ export class MechanismService {
   updateLinkageUnits(fromUnits: LengthUnit, toUnits: LengthUnit) {
     if (fromUnits === toUnits) return;
 
+    const from = siUnitFactorsForLength(fromUnits);
+    const to = siUnitFactorsForLength(toUnits);
     const lengthScale = this.nup.convertLength(1, fromUnits, toUnits);
-    const massToKg = (unit: LengthUnit): number => {
-      if (unit === LengthUnit.INCH) return 0.45359237;
-      if (unit === LengthUnit.CM) return 0.001;
-      return 1;
-    };
-    const inertiaToKgM2 = (unit: LengthUnit): number => {
-      if (unit === LengthUnit.INCH) return 0.45359237 * 0.0254 * 0.0254;
-      if (unit === LengthUnit.CM) return 0.0001;
-      return 1;
-    };
-    const massScale = massToKg(fromUnits) / massToKg(toUnits);
-    const inertiaScale = inertiaToKgM2(fromUnits) / inertiaToKgM2(toUnits);
-    const forceScale =
-      fromUnits === LengthUnit.INCH
-        ? toUnits === LengthUnit.INCH
-          ? 1
-          : 4.4482216152605
-        : toUnits === LengthUnit.INCH
-          ? 0.22480894387096
-          : 1;
+    const massScale = from.massToKg / to.massToKg;
+    const inertiaScale = from.inertiaToKgM2 / to.inertiaToKgM2;
+    // Force converts through newtons: (N per fromUnit) / (N per toUnit).
+    const forceScale = from.forceToN / to.forceToN;
 
     this.joints.forEach((joint) => {
       joint.x *= lengthScale;

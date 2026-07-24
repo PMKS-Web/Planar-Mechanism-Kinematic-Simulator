@@ -418,7 +418,14 @@ export class NewGridComponent {
 
   setLastRightClick(clickedObj: Joint | Link | String | Force, event?: MouseEvent) {
     this.lastRightClick = clickedObj;
-    if (clickedObj instanceof Joint || clickedObj instanceof Link || clickedObj instanceof Force) {
+    // The edit context menu acts on the selected object, so in Edit mode a
+    // right-click selects what it will target. In Analyze/Synthesis mode a
+    // right-click must not open an edit menu (see onContextMenu), so it must not
+    // move the selection out from under the active panel either.
+    if (
+      this.tabService.getCurrentTab() === TabID.EDIT &&
+      (clickedObj instanceof Joint || clickedObj instanceof Link || clickedObj instanceof Force)
+    ) {
       this.activeObjService.updateSelectedObj(clickedObj);
     }
 
@@ -726,6 +733,13 @@ export class NewGridComponent {
   onContextMenu($event: MouseEvent) {
     if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
       this.sendNotification('Cannot edit while in Synthesis mode. Switch to Edit mode to edit');
+      this.cMenuItems = [];
+      return;
+    }
+
+    if (this.tabService.getCurrentTab() === TabID.ANALYZE) {
+      // Analyze mode is read-only. Show no edit menu; setLastRightClick has
+      // already declined to change the selection.
       this.cMenuItems = [];
       return;
     }

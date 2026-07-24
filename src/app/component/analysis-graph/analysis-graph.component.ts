@@ -25,6 +25,7 @@ import {
 import { KinematicsSolver } from 'src/app/model/mechanism/kinematic-solver';
 import { ForceAnalysisMode } from 'src/app/model/mechanism/force-solver';
 import { AngleUnit, ForceUnit, LengthUnit, roundNumber } from '../../model/utils';
+import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../../model/unit-conversions';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { FormBuilder } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
@@ -814,9 +815,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       const mode: ForceAnalysisMode = analysisType === 'dynamic' ? 'dynamic' : 'static';
       const result = mechanism.getForceAnalysis(mode);
       const forceConversion =
-        this.settingsService.forceUnit.value === ForceUnit.LBF ? 0.22480894387096 : 1;
+        this.settingsService.forceUnit.value === ForceUnit.LBF ? LBF_PER_NEWTON : 1;
       const torqueConversion =
-        this.settingsService.forceUnit.value === ForceUnit.LBF ? 8.8507457913272 : 1;
+        this.settingsService.forceUnit.value === ForceUnit.LBF ? LBF_IN_PER_NEWTON_METER : 1;
 
       for (const frame of result.frames) {
         categories.push(frame.timeSeconds.toString());

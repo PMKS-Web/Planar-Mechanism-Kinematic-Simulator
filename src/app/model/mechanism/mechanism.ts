@@ -14,6 +14,7 @@ import {
   ForceSolver,
 } from './force-solver';
 import { roundNumber } from '../utils';
+import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../unit-conversions';
 
 export class Mechanism {
   private _joints: Joint[][] = [[]];
@@ -907,8 +908,8 @@ export class Mechanism {
         accUnitConversion = 1; // cm/s^2
         break;
       case 'in':
-        forceUnitConversion = 0.22480894387096;
-        torqueUnitConversion = 8.8507457913272;
+        forceUnitConversion = LBF_PER_NEWTON;
+        torqueUnitConversion = LBF_IN_PER_NEWTON_METER;
         posUnitConversion = 1;
         velUnitConversion = 1;
         accUnitConversion = 1;

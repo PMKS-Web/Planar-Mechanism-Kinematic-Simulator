@@ -1,6 +1,7 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, Piston, RealLink } from '../link';
 import { KinematicsSolver } from './kinematic-solver';
+import { siUnitFactors, SiUnitFactors } from '../unit-conversions';
 
 export type ForceAnalysisMode = 'static' | 'dynamic';
 
@@ -71,12 +72,7 @@ interface MechanismFrames {
   unit: string;
 }
 
-interface UnitFactors {
-  distanceToM: number;
-  massToKg: number;
-  inertiaToKgM2: number;
-  forceToN: number;
-}
+type UnitFactors = SiUnitFactors;
 
 interface BodyRows {
   link: Link;
@@ -179,14 +175,14 @@ export class ForceSolver {
       mode === 'dynamic' ? this.finiteDifferenceKinematics(mechanism, frameCount) : [];
     const frames: ForceAnalysisFrame[] = [];
 
-    if (mode === 'dynamic') {
-      KinematicsSolver.resetVariables();
-      KinematicsSolver.requiredLoops = mechanism.requiredLoops;
-    }
-
     for (let index = 0; index < frameCount; index++) {
       let kinematics: FrameKinematics | undefined;
       if (mode === 'dynamic') {
+        // Clear the solver's shared maps each frame so a mid-solve failure at
+        // frame k cannot leave frame k-1's finite values in place — which would
+        // read as "current" and hide the failure from the fallback below.
+        KinematicsSolver.resetVariables();
+        KinematicsSolver.requiredLoops = mechanism.requiredLoops;
         try {
           KinematicsSolver.determineKinematics(
             mechanism.joints[index],
@@ -710,7 +706,10 @@ export class ForceSolver {
   }
 
   private static secondDerivative(values: number[], times: number[], index: number): number {
-    if (values.length < 3) return 0;
+    // Fewer than three samples cannot support a finite-difference acceleration;
+    // report NaN so the frame surfaces as missing-kinematics rather than an
+    // unfounded zero.
+    if (values.length < 3) return Number.NaN;
     const center = Math.min(Math.max(index, 1), values.length - 2);
     const t0 = times[center - 1];
     const t1 = times[center];
@@ -744,25 +743,7 @@ export class ForceSolver {
   }
 
   private static unitFactors(unit: string): UnitFactors {
-    switch (unit) {
-      case 'in':
-        return {
-          distanceToM: 0.0254,
-          massToKg: 0.45359237,
-          inertiaToKgM2: 0.45359237 * 0.0254 * 0.0254,
-          forceToN: 4.4482216152605,
-        };
-      case 'm':
-        return { distanceToM: 1, massToKg: 1, inertiaToKgM2: 1, forceToN: 1 };
-      case 'cm':
-      default:
-        return {
-          distanceToM: 0.01,
-          massToKg: 0.001,
-          inertiaToKgM2: 0.0001,
-          forceToN: 1,
-        };
-    }
+    return siUnitFactors(unit);
   }
 
   private static solveLinearSystem(A: number[][], b: number[]): LinearSolution | undefined {

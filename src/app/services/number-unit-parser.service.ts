@@ -8,37 +8,15 @@ import {
   InertiaUnit,
   TimeUnit,
 } from '../model/utils';
+import {
+  ANGULAR_VELOCITY_TO_RAD_PER_SEC,
+  INERTIA_TO_KG_M2,
+  MASS_TO_KG,
+  TIME_TO_SECONDS,
+} from '../model/unit-conversions';
 
 type AnyUnit =
   LengthUnit | AngleUnit | AngularVelocityUnit | ForceUnit | MassUnit | InertiaUnit | TimeUnit;
-
-/** Kilograms per one of each mass unit, matching ForceSolver.unitFactors. */
-const MASS_TO_KG: Record<number, number> = {
-  [MassUnit.GRAM]: 0.001,
-  [MassUnit.KG]: 1,
-  [MassUnit.LBM]: 0.45359237,
-};
-
-/** kg*m^2 per one of each inertia unit, matching ForceSolver.unitFactors. */
-const INERTIA_TO_KG_M2: Record<number, number> = {
-  [InertiaUnit.KG_CM2]: 0.0001,
-  [InertiaUnit.KG_M2]: 1,
-  [InertiaUnit.LBM_IN2]: 0.45359237 * 0.0254 * 0.0254,
-};
-
-/** Seconds per one of each time unit. */
-const TIME_TO_SECONDS: Record<number, number> = {
-  [TimeUnit.MILLISECOND]: 0.001,
-  [TimeUnit.SECOND]: 1,
-  [TimeUnit.MINUTE]: 60,
-};
-
-/** Radians per second per one of each angular velocity unit. */
-const ANGULAR_VELOCITY_TO_RAD_PER_SEC: Record<number, number> = {
-  [AngularVelocityUnit.RPM]: Math.PI / 30,
-  [AngularVelocityUnit.DEG_PER_SEC]: Math.PI / 180,
-  [AngularVelocityUnit.RAD_PER_SEC]: 1,
-};
 
 @Injectable({
   providedIn: 'root',
