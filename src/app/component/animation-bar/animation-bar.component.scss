@@ -80,6 +80,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      width: 100%;
     }
 
     /* Chrome, Safari, Edge, Opera */
@@ -89,21 +90,22 @@
       margin: 0;
     }
 
-    // The time field mirrors the standard input-block: light fill, unit suffix
-    // tucked inside, accent underline on focus. border-box keeps the field inside
-    // the rail's gutter (the padding no longer widens it past the buttons).
+    // The time field mirrors the standard input-block: light fill, accent
+    // underline on focus. It shares the play/speed buttons' full rail width so a
+    // long value ("228.33 s" at a slow input speed) has room; border-box keeps the
+    // padding inside that width rather than widening it past the buttons.
     #animationBar-input {
       @include mat.m2-typography-level($typography-config, 'body-2');
       box-sizing: border-box;
       height: 30px;
       line-height: 30px;
-      width: 68px;
+      width: 100%;
       border: 0;
       outline: none;
       text-align: left;
       background-color: #f0f1f5;
       border-radius: var(--border-radius);
-      padding: 0 20px 0 8px;
+      padding: 0 8px;
 
       // The focus underline is an inset shadow, not a border, so it adds no box
       // height — the number stays put instead of nudging up, matching the
@@ -114,13 +116,6 @@
         box-shadow: inset 0 -2px 0 0 mat.m2-get-color-from-palette($primary-palette, 500);
         border-radius: var(--border-radius) var(--border-radius) 0 0;
       }
-    }
-
-    #secLabel {
-      @include mat.m2-typography-level($typography-config, 'body-2');
-      margin-left: -16px;
-      color: rgba(0, 0, 0, 0.6);
-      pointer-events: none;
     }
   }
 }

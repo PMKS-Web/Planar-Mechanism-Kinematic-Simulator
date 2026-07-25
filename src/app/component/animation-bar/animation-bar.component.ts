@@ -43,8 +43,10 @@ export class AnimationBarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     //Subscribte to the emitter inside mechanismStateService
-    this.positionSub = this.mechanismService.onMechPositionChange.subscribe((v) => {
-      this.timestepDisplay = this.formatTime(this.timeAtStep(v));
+    this.positionSub = this.mechanismService.onMechPositionChange.subscribe(() => {
+      // Playback sits between samples, so read the drawn time rather than the
+      // time of the sample it was blended from.
+      this.timestepDisplay = this.formatTime(this.mechanismService.currentTimeSeconds());
     });
   }
 
@@ -91,24 +93,15 @@ export class AnimationBarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   maxTime(): number {
-    const times = this.mechanismService.mechanisms[0]?.timeNum ?? [];
-    return times[times.length - 1] ?? 0;
+    return this.mechanismService.cyclePeriod();
   }
 
   timeAtStep(index: number): number {
-    return this.mechanismService.mechanisms[0]?.timeNum[index] ?? 0;
+    return this.mechanismService.timeAtStep(index);
   }
 
   nearestTimeStep(timeSeconds: number): number {
-    const times = this.mechanismService.mechanisms[0]?.timeNum ?? [];
-    if (times.length === 0) return 0;
-    let nearest = 0;
-    for (let index = 1; index < times.length; index++) {
-      if (Math.abs(times[index] - timeSeconds) < Math.abs(times[nearest] - timeSeconds)) {
-        nearest = index;
-      }
-    }
-    return nearest;
+    return this.mechanismService.stepAtTime(timeSeconds);
   }
 
   // onDirectionChange() {
@@ -168,11 +161,11 @@ export class AnimationBarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   handleSpeedChange() {
-    //Switch from 1 -> 2 -> 4 -> 1
-    this.mechanismService.mechanismAnimationIncrement =
-      (this.mechanismService.mechanismAnimationIncrement % 4) + 1;
-    if (this.mechanismService.mechanismAnimationIncrement === 3)
-      this.mechanismService.mechanismAnimationIncrement++;
+    // 1x plays back in real time: one revolution takes 60/RPM seconds. The other
+    // stops are explicit fast-forwards for slow input speeds.
+    const rates = [1, 2, 4];
+    const next = rates.indexOf(this.mechanismService.animationSpeedMultiplier) + 1;
+    this.mechanismService.animationSpeedMultiplier = rates[next % rates.length];
   }
 
   sliderDown() {

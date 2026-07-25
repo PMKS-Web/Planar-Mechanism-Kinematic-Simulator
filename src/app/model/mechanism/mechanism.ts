@@ -8,11 +8,7 @@ import { InstantCenter } from '../instant-center';
 import { LoopSolver } from './loop-solver';
 import { Coord } from '../coord';
 import { KinematicsSolver } from './kinematic-solver';
-import {
-  ForceAnalysisMode,
-  ForceAnalysisSeries,
-  ForceSolver,
-} from './force-solver';
+import { ForceAnalysisMode, ForceAnalysisSeries, ForceSolver } from './force-solver';
 import { roundNumber } from '../utils';
 import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../unit-conversions';
 
@@ -314,6 +310,16 @@ export class Mechanism {
     const TOLERANCE = 0.008;
     let max_counter = 0;
     let curTimeNum = 0;
+    // PositionSolver.incrementRevInput steps the crank by exactly one degree, so a
+    // fully rotating revolute input closes its cycle after exactly this many samples.
+    // Ending on that count instead of on a position tolerance keeps the sample count
+    // — and therefore the t=0 pose — identical every time the mechanism is rebuilt.
+    const STEPS_PER_REVOLUTION = 360;
+    const inputJoint = this.joints[0].find((j) => j instanceof RealJoint && j.input);
+    const revoluteInput = inputJoint !== undefined && !(inputJoint instanceof PrisJoint);
+    // A rocker cannot complete a crank revolution; it reverses instead, and only the
+    // return-to-start tolerance can tell us where its cycle ends.
+    let everReversed = false;
     // TODO: Make sure to also account for m/s for slider and for other units, such as degree per second
     const angularSpeed = Math.abs(inputAngVel);
     // Time always moves forward, including across a rocking mechanism's
@@ -357,7 +363,12 @@ export class Mechanism {
     let yDiff = Math.abs(startingPositionY - Math.round(desiredJoint.y * 100) / 100);
     this._timeNum.push(curTimeNum);
 
-    while (!simForward || currentTimeStamp === 0 || xDiff > TOLERANCE || yDiff > TOLERANCE) {
+    const cycleIncomplete = () =>
+      revoluteInput && !everReversed
+        ? currentTimeStamp < STEPS_PER_REVOLUTION
+        : xDiff > TOLERANCE || yDiff > TOLERANCE;
+
+    while (!simForward || currentTimeStamp === 0 || cycleIncomplete()) {
       const possible = PositionSolver.determinePositionAnalysis(
         this._joints[currentTimeStamp],
         this._links[currentTimeStamp],
@@ -470,15 +481,7 @@ export class Mechanism {
                 start.x + (f.endCoord.x - f.startCoord.x),
                 start.y + (f.endCoord.y - f.startCoord.y)
               );
-          const force = new Force(
-            f.id,
-            link,
-            start,
-            end,
-            f.local,
-            f.arrowOutward,
-            f.mag
-          );
+          const force = new Force(f.id, link, start, end, f.local, f.arrowOutward, f.mag);
           force.name = f.name;
           this._forces[currentTimeStamp + 1].push(force);
         });
@@ -521,9 +524,13 @@ export class Mechanism {
           return;
         }
         falseTwice += 1;
+        everReversed = true;
         simForward = !simForward;
         inputAngVel = inputAngVel * -1;
         inputAngVelDirection = !inputAngVelDirection;
+        // The joints are about to retrace their path, so the solver's record of
+        // which way they were heading is now wrong.
+        PositionSolver.clearMotionHistory();
       }
       xDiff = Math.abs(
         startingPositionX - roundNumber(this._joints[currentTimeStamp][desiredJointIndex].x, 2)
@@ -536,6 +543,18 @@ export class Mechanism {
         return;
       }
     }
+
+    // Pin the closing sample to the analytic period 2*pi/|w| rather than to 360
+    // accumulated float additions, so the reported cycle time scales exactly with
+    // input speed and the last sample lines up with the first.
+    if (revoluteInput && !everReversed && angularSpeed > Number.EPSILON) {
+      this._timeNum[this._timeNum.length - 1] = (2 * Math.PI) / angularSpeed;
+    }
+  }
+
+  /** Seconds spanned by one full traversal of the precomputed motion. */
+  get cyclePeriod(): number {
+    return this._timeNum.length > 1 ? this._timeNum[this._timeNum.length - 1] : 0;
   }
 
   private setMechanismInvalid() {

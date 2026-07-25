@@ -11,9 +11,19 @@ import { Force } from '../force';
 import { Coord } from '../coord';
 import { core } from '@angular/compiler';
 
+/**
+ * How close two solve-circle centres must be to count as coincident. Joint
+ * positions are rounded to four decimals each timestep, so the bound is absolute
+ * rather than mechanism-scale relative — matching circleCircleIntersection's own
+ * tangent tolerance.
+ */
+const CONCENTRIC_TOLERANCE = 0.001;
+
 export class PositionSolver {
   static desiredIndexWithinPosAnalysisMap = new Map<string, number>();
   static jointMapPositions = new Map<string, Array<number>>();
+  /** One step behind jointMapPositions; see concentricSolution. */
+  private static priorJointPositions = new Map<string, Array<number>>();
   static sliderAngleMap = new Map<string, number>();
   static desiredJointGroundIndexMap = new Map<string, number>();
   static unknownJointsIndicesMap = new Map<string, number[]>();
@@ -32,6 +42,7 @@ export class PositionSolver {
   static resetStaticVariables() {
     this.desiredIndexWithinPosAnalysisMap = new Map<string, number>();
     this.jointMapPositions = new Map<string, Array<number>>();
+    this.priorJointPositions = new Map<string, Array<number>>();
     this.sliderAngleMap = new Map<string, number>();
     this.desiredJointGroundIndexMap = new Map<string, number>();
     this.unknownJointsIndicesMap = new Map<string, number[]>();
@@ -371,45 +382,120 @@ export class PositionSolver {
 
   // https://www.petercollingridge.co.uk/tutorials/computational-geometry/circle-circle-intersections/
   private static twoCircleIntersectionPoints(j1: Joint, j2: Joint, unknownJoint: Joint) {
-    let desiredIndex = this.desiredIndexWithinPosAnalysisMap.get(unknownJoint.id);
-    if (desiredIndex === undefined || desiredIndex === -1) {
-      // TODO: Have this be determined within setting up stuff
-      desiredIndex = this.determineDesiredIndexTwoCircleIntersection(j1, j2, unknownJoint);
-      this.desiredIndexWithinPosAnalysisMap.set(unknownJoint.id, desiredIndex);
-    }
-    const sols = this.TwoCircleIntersectionMethod(j1, j2, unknownJoint);
-    if (!sols) {
+    const solution =
+      this.concentricSolution(j1, j2, unknownJoint) ??
+      (() => {
+        const sols = this.TwoCircleIntersectionMethod(j1, j2, unknownJoint);
+        return sols ? this.solutionNearestCurrent(sols, unknownJoint) : undefined;
+      })();
+    if (!solution) {
       return false;
     }
-    const x = sols[desiredIndex][0];
-    const y = sols[desiredIndex][1];
-    this.jointMapPositions.set(unknownJoint.id, [roundNumber(x, 4), roundNumber(y, 4)]);
+    this.recordJointPosition(unknownJoint.id, solution[0], solution[1]);
     return true;
   }
 
-  private static determineDesiredIndexTwoCircleIntersection(
-    tempJ1: Joint,
-    tempJ2: Joint,
-    tempUnknownJoint: Joint
-  ) {
-    const sols = this.TwoCircleIntersectionMethod(tempJ1, tempJ2, tempUnknownJoint);
-    if (sols === false || sols === undefined) {
-      return -1;
+  /** Remember where the joint was before this step, for extrapolating through a singularity. */
+  private static recordJointPosition(id: string, x: number, y: number) {
+    const previous = this.jointMapPositions.get(id);
+    if (previous) {
+      this.priorJointPositions.set(id, previous);
     }
+    this.jointMapPositions.set(id, [roundNumber(x, 4), roundNumber(y, 4)]);
+  }
+
+  /**
+   * Solve a joint whose two reference joints have landed on top of each other.
+   *
+   * When a crank is as long as the ground link, the moving pivot passes exactly
+   * through the far ground pivot once a revolution. Both circles that locate the
+   * next joint then share a centre, so every point on that circle satisfies the
+   * link lengths and the intersection is undefined — the solver used to report
+   * "no solution", which findFullMovementPos reads as a toggle and answers by
+   * reversing the input. A parallelogram has no toggle there; it rotates straight
+   * through. Momentum is what disambiguates, so extrapolate the joint's motion and
+   * project the prediction back onto the circle it has to stay on.
+   *
+   * Returns undefined when the centres are apart, i.e. the ordinary case.
+   */
+  private static concentricSolution(
+    j1: Joint,
+    j2: Joint,
+    unknownJoint: Joint
+  ): number[] | undefined {
+    const centre1 = this.jointMapPositions.get(j1.id) ?? [j1.x, j1.y];
+    const centre2 = this.jointMapPositions.get(j2.id) ?? [j2.x, j2.y];
+    if (Math.hypot(centre2[0] - centre1[0], centre2[1] - centre1[1]) > CONCENTRIC_TOLERANCE) {
+      return undefined;
+    }
+
+    const radius = this.jointDistMap.get(unknownJoint.id + ',' + j1.id);
+    const current = this.jointMapPositions.get(unknownJoint.id);
+    if (radius === undefined || !current) {
+      return undefined;
+    }
+
+    // Constant-velocity guess from the last two solved positions; with no history
+    // yet, hold the current heading.
+    const prior = this.priorJointPositions.get(unknownJoint.id) ?? current;
+    const predicted = [2 * current[0] - prior[0], 2 * current[1] - prior[1]];
+
+    let towardX = predicted[0] - centre1[0];
+    let towardY = predicted[1] - centre1[1];
+    let reach = Math.hypot(towardX, towardY);
+    if (reach < 1e-9) {
+      // The prediction landed on the centre; fall back to the current heading.
+      towardX = current[0] - centre1[0];
+      towardY = current[1] - centre1[1];
+      reach = Math.hypot(towardX, towardY);
+      if (reach < 1e-9) {
+        return undefined;
+      }
+    }
+    return [centre1[0] + (towardX / reach) * radius, centre1[1] + (towardY / reach) * radius];
+  }
+
+  /**
+   * Pick which circle-circle root the joint moves to.
+   *
+   * Both roots satisfy the link lengths — they are the linkage's two assembly
+   * modes — so the choice has to follow the joint step by step. Caching one index
+   * for the whole simulation cannot work: the roots trade places as the linkage
+   * passes through a collinear pose, so a fixed index silently becomes the *other*
+   * assembly mode and the joint jumps across the mechanism.
+   *
+   * Comparing against the joint's current position is not enough either. Where the
+   * circles are tangent the two roots meet, so at that sample both are equidistant
+   * and the choice is a coin flip — and once the roots separate again the wrong one
+   * is the crossed mode. A parallelogram meets a tangency every revolution. So
+   * extrapolate the joint's motion and compare against where it was heading: the
+   * velocity carries through the singularity even though position alone does not.
+   */
+  private static solutionNearestCurrent(sols: number[][], unknownJoint: Joint): number[] {
     if (sols.length === 1) {
-      return 0; // index is 0;
+      return sols[0];
     }
-    const intersection1Diff = Math.abs(
-      Math.sqrt(
-        Math.pow(sols[0][0] - tempUnknownJoint.x, 2) + Math.pow(sols[0][1] - tempUnknownJoint.y, 2)
-      )
-    );
-    const intersection2Diff = Math.abs(
-      Math.sqrt(
-        Math.pow(sols[1][0] - tempUnknownJoint.x, 2) + Math.pow(sols[1][1] - tempUnknownJoint.y, 2)
-      )
-    );
-    return intersection1Diff < intersection2Diff ? 0 : 1;
+    const current = this.jointMapPositions.get(unknownJoint.id) ?? [unknownJoint.x, unknownJoint.y];
+    const distance = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+    // Constant-velocity guess. Comparing against the joint's *current* position is
+    // not good enough: coming off a tangency the crossed root can sit nearer than
+    // the true one, because it barely moves, so nearest-position quietly prefers
+    // the degenerate branch. Where the joint was heading does distinguish them.
+    // With no history — the first sample, or just after a reversal dropped it —
+    // this reduces to the current point, which picks the starting assembly mode.
+    const prior = this.priorJointPositions.get(unknownJoint.id) ?? current;
+    const predicted = [2 * current[0] - prior[0], 2 * current[1] - prior[1]];
+    return distance(sols[0], predicted) <= distance(sols[1], predicted) ? sols[0] : sols[1];
+  }
+
+  /**
+   * Forget how the joints were moving. Extrapolation is only meaningful while
+   * motion continues in one direction, so a rocker reversing at a toggle must not
+   * keep predicting forward past the dead point.
+   */
+  static clearMotionHistory() {
+    this.priorJointPositions = new Map<string, Array<number>>();
   }
 
   private static TwoCircleIntersectionMethod(j1: Joint, j2: Joint, unknownJoint: Joint) {
