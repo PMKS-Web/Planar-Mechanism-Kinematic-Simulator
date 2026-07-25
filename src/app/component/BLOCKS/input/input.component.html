@@ -9,6 +9,7 @@
       class="customInputForm"
       [class.has-unit]="unit"
       [class.wide]="wide"
+      [class.has-unit-select]="hasUnitSelect"
       (click)="field.select()"
     >
       <input
@@ -21,6 +22,21 @@
       />
       @if (unit) {
         <span matTextSuffix class="input-unit">{{ unit }}</span>
+      }
+      @if (hasUnitSelect) {
+        <!-- A native select rather than mat-select: mat-select registers itself as
+             a form field's control, so nesting one here would displace the input.
+             stopPropagation keeps opening it from re-selecting the number. -->
+        <select
+          matTextSuffix
+          class="unit-select"
+          [formControlName]="unitFormControl!"
+          (click)="$event.stopPropagation()"
+        >
+          @for (option of unitOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
       }
     </mat-form-field>
   </div>

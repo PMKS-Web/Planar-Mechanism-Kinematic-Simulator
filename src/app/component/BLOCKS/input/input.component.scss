@@ -23,6 +23,9 @@
     .customInputForm {
       .customInput {
         @include mat.m2-typography-level($typography-config, 'body-2');
+        // Lets the number yield space to a unit picker rather than forcing the
+        // field wider than its row.
+        min-width: 0;
       }
 
       .mat-mdc-form-field-subscript-wrapper {
@@ -52,6 +55,48 @@
         margin-left: 4px;
         color: map.get($foreground, 'secondary-text');
         white-space: nowrap;
+      }
+
+      // The unit picker sits inside the field's fill so the pair reads as one
+      // control. Stripped of native chrome and given its own caret, it matches the
+      // static unit suffix in weight while staying an obvious dropdown.
+      &.has-unit-select {
+        min-width: 0;
+
+        // The field asks for 124px but yields to the row when the label leaves
+        // less, so its right edge lines up with every other field in the panel
+        // instead of spilling past the panel edge.
+        .mat-mdc-text-field-wrapper {
+          width: 124px;
+          max-width: 100%;
+        }
+      }
+
+      .unit-select {
+        @include mat.m2-typography-level($typography-config, 'body-2');
+        appearance: none;
+        -webkit-appearance: none;
+        flex: 0 0 auto;
+        margin-left: 2px;
+        padding: 0 12px 0 2px;
+        height: 22px;
+        border: 0;
+        border-radius: 3px;
+        background-color: transparent;
+        color: map.get($foreground, 'secondary-text');
+        cursor: pointer;
+        // Chevron drawn as a background so the control keeps its own height.
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="rgba(0,0,0,0.54)" stroke-width="1.5" stroke-linecap="round"/></svg>');
+        background-repeat: no-repeat;
+        background-position: right 2px center;
+
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.06);
+        }
+
+        &:focus-visible {
+          outline: 1px solid mat.m2-get-color-from-palette($primary-palette, 500);
+        }
       }
     }
   }

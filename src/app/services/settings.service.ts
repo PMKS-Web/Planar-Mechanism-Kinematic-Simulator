@@ -1,6 +1,12 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { LengthUnit, AngleUnit, GlobalUnit, ForceUnit } from '../model/unit-enums';
+import {
+  LengthUnit,
+  AngleUnit,
+  GlobalUnit,
+  ForceUnit,
+  AngularVelocityUnit,
+} from '../model/unit-enums';
 import type { ForceAnalysisMode } from '../model/mechanism/force-solver';
 
 @Injectable({
@@ -13,7 +19,14 @@ export class SettingsService {
   // inputTorque = new BehaviorSubject(TorqueUnit.CM_N);
   globalUnit = new BehaviorSubject(GlobalUnit.METRIC);
   isInputCW = new BehaviorSubject(true);
+  /** Always RPM. The input panel converts for display via inputSpeedUnit. */
   inputSpeed = new BehaviorSubject(20);
+  /**
+   * Display unit for the input joint's speed. Chosen from the Input Settings
+   * section rather than typed, so it is a view preference only — inputSpeed
+   * stays in RPM and the URL format is unchanged.
+   */
+  inputSpeedUnit = new BehaviorSubject(AngularVelocityUnit.RPM);
   // One mechanism-wide choice, shown by every force-analysis panel.
   forceAnalysisMode = new BehaviorSubject<ForceAnalysisMode>('static');
   animating = new BehaviorSubject(false);

@@ -12,6 +12,7 @@ import { FormArray, FormBuilder } from '@angular/forms';
 import { Coord } from 'src/app/model/coord';
 import {
   AngleUnit,
+  AngularVelocityUnit,
   ForceUnit,
   getDistance,
   getNewOtherJointPos,
@@ -19,6 +20,13 @@ import {
   LengthUnit,
   MassUnit,
 } from 'src/app/model/utils';
+
+/** Input Settings unit choices, in the order the picker shows them. */
+const INPUT_SPEED_UNITS = [
+  AngularVelocityUnit.RPM,
+  AngularVelocityUnit.DEG_PER_SEC,
+  AngularVelocityUnit.RAD_PER_SEC,
+];
 import { AnimationBarComponent } from '../animation-bar/animation-bar.component';
 import { NumberUnitParserService } from 'src/app/services/number-unit-parser.service';
 import { SettingsService } from '../../services/settings.service';
@@ -41,6 +49,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   //A dictionary for whether each collapsible section is expanded or not
   sectionExpanded: { [key: string]: boolean } = {
     JBasic: true, //This is the default (starting) state
+    JInput: true, //Expanded on arrival, so a new input's settings are visible
     JVisual: false,
     JDistToJ: true,
     LBasic: true,
@@ -53,6 +62,42 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
   hideEditPanel() {
     return AnimationBarComponent.animate || this.mechanismService.mechanismTimeStep !== 0;
+  }
+
+  /** Unit choices for the Input Speed field's inline picker. */
+  readonly speedUnitOptions = [
+    { value: '0', label: 'RPM' },
+    { value: '1', label: 'DPS' },
+    { value: '2', label: 'RPS' },
+  ];
+
+  /** One button for both directions: flip rather than pick. */
+  flipInputDirection(): void {
+    this.settingsService.isInputCW.next(!this.settingsService.isInputCW.value);
+    this.mechanismService.updateMechanism(true);
+  }
+
+  /** Show the stored RPM speed in whichever unit the picker is set to. */
+  private patchInputSpeedField(): void {
+    const shown = this.nup.convertAngularVelocity(
+      this.settingsService.inputSpeed.value,
+      AngularVelocityUnit.RPM,
+      this.settingsService.inputSpeedUnit.value
+    );
+    this.jointForm.patchValue(
+      { inputSpeed: Number(shown.toFixed(2)).toString() },
+      { emitEvent: false }
+    );
+  }
+
+  /** Mirror the current input speed and unit into the Input Settings fields. */
+  private syncInputSettingsFields(): void {
+    const unitIndex = INPUT_SPEED_UNITS.indexOf(this.settingsService.inputSpeedUnit.value);
+    this.jointForm.patchValue(
+      { inputSpeedUnit: (unitIndex < 0 ? 0 : unitIndex).toString() },
+      { emitEvent: false }
+    );
+    this.patchInputSpeedField();
   }
 
   constructor(
@@ -94,6 +139,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       input: [false, { updateOn: 'change' }],
       slider: [false, { updateOn: 'change' }],
       curve: [false, { updateOn: 'change' }],
+      // Input Settings. The unit picker commits on change; the speed field commits
+      // on blur like every other numeric field. Direction is a button, not a control.
+      inputSpeed: [''],
+      inputSpeedUnit: ['0', { updateOn: 'change' }],
       otherJoints: this.fb.array([]), //Dynamic form array
     },
     { updateOn: 'blur' }
@@ -325,6 +374,42 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         }
         this.mechanismService.updateMechanism();
         this.mechanismService.onMechUpdateState.next(2);
+      })
+    );
+
+    // URL restore and undo rewrite the speed behind the panel's back; mirror it
+    // back into the field so an open Input Settings section stays truthful. The
+    // direction button reads its state directly, so it needs no subscription.
+    this.onDestroySubscriptions.push(
+      this.settingsService.inputSpeed.subscribe(() => this.syncInputSettingsFields())
+    );
+
+    this.onDestroySubscriptions.push(
+      this.jointForm.controls['inputSpeed'].valueChanges.subscribe((val) => {
+        // The unit comes from the picker beside the field, never from the text, so
+        // this reads as a plain number rather than going through the unit parser.
+        const typed = Number(String(val ?? '').trim());
+        // Direction is the radio's job, so the field carries magnitude only —
+        // a negative value here would otherwise silently fight the picker.
+        if (Number.isFinite(typed) && typed !== 0) {
+          this.settingsService.inputSpeed.next(
+            this.nup.convertAngularVelocity(
+              Math.abs(typed),
+              this.settingsService.inputSpeedUnit.value,
+              AngularVelocityUnit.RPM
+            )
+          );
+        }
+        this.patchInputSpeedField();
+        this.mechanismService.updateMechanism(true);
+      })
+    );
+
+    this.onDestroySubscriptions.push(
+      this.jointForm.controls['inputSpeedUnit'].valueChanges.subscribe((val) => {
+        // Changing the unit re-expresses the same speed; it does not alter it.
+        this.settingsService.inputSpeedUnit.next(INPUT_SPEED_UNITS[Number(val)]);
+        this.patchInputSpeedField();
       })
     );
 
@@ -631,6 +716,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
             },
             { emitEvent: false }
           );
+          this.syncInputSettingsFields();
 
           this.disableAndEnableLinkFields();
           setTimeout(() => {

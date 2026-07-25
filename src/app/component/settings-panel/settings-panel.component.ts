@@ -1,12 +1,6 @@
 import { Component, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { SettingsService } from 'src/app/services/settings.service';
-import {
-  LengthUnit,
-  AngleUnit,
-  AngularVelocityUnit,
-  ForceUnit,
-  GlobalUnit,
-} from 'src/app/model/utils';
+import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
 import { Link, RealLink } from '../../model/link';
@@ -36,8 +30,6 @@ export class SettingsPanelComponent implements OnDestroy {
   currentAngleUnit!: AngleUnit;
   // currentTorqueUnit!: TorqueUnit;
   currentGlobalUnit!: GlobalUnit;
-  rotateDirection!: boolean;
-  currentSpeedSetting!: number;
   currentObjectScaleSetting!: number;
   private readonly settingsSubscriptions = new Subscription();
 
@@ -46,14 +38,10 @@ export class SettingsPanelComponent implements OnDestroy {
     this.currentForceUnit = this.settingsService.forceUnit.value;
     this.currentAngleUnit = this.settingsService.angleUnit.value;
     this.currentGlobalUnit = this.settingsService.globalUnit.value;
-    this.rotateDirection = this.settingsService.isInputCW.value;
-    this.currentSpeedSetting = this.settingsService.inputSpeed.value;
     this.currentObjectScaleSetting = SettingsService.objectScale;
 
     this.settingsForm.patchValue({
-      speed: this.formatSpeed(this.currentSpeedSetting),
       objectScale: this.currentObjectScaleSetting.toString(),
-      rotation: this.rotateDirection ? '0' : '1',
       lengthunit: this.currentLengthUnit.toString(),
       angleunit: (this.currentAngleUnit - 10).toString(),
       // torqueunit: (this.currentTorqueUnit - 20).toString(),
@@ -91,32 +79,24 @@ export class SettingsPanelComponent implements OnDestroy {
         this.settingsService.angleUnit,
         this.settingsService.forceUnit,
         this.settingsService.globalUnit,
-        this.settingsService.isInputCW,
-        this.settingsService.inputSpeed,
         this.settingsService.isShowMajorGrid,
         this.settingsService.isShowMinorGrid,
-      ]).subscribe(
-        ([length, angle, force, global, clockwise, speed, showMajorGrid, showMinorGrid]) => {
-          this.currentLengthUnit = length;
-          this.currentAngleUnit = angle;
-          this.currentForceUnit = force;
-          this.currentGlobalUnit = global;
-          this.rotateDirection = clockwise;
-          this.currentSpeedSetting = speed;
-          this.settingsForm.patchValue(
-            {
-              speed: this.formatSpeed(speed),
-              rotation: clockwise ? '0' : '1',
-              lengthunit: length.toString(),
-              angleunit: (angle - 10).toString(),
-              globalunit: (global - 30).toString(),
-              showMajorGrid,
-              showMinorGrid,
-            },
-            { emitEvent: false }
-          );
-        }
-      )
+      ]).subscribe(([length, angle, force, global, showMajorGrid, showMinorGrid]) => {
+        this.currentLengthUnit = length;
+        this.currentAngleUnit = angle;
+        this.currentForceUnit = force;
+        this.currentGlobalUnit = global;
+        this.settingsForm.patchValue(
+          {
+            lengthunit: length.toString(),
+            angleunit: (angle - 10).toString(),
+            globalunit: (global - 30).toString(),
+            showMajorGrid,
+            showMinorGrid,
+          },
+          { emitEvent: false }
+        );
+      })
     );
   }
 
@@ -125,29 +105,10 @@ export class SettingsPanelComponent implements OnDestroy {
   }
 
   onChanges(): void {
-    this.settingsForm.controls['rotation'].valueChanges.subscribe((val) => {
-      this.rotateDirection = String(val) === '0';
-      this.settingsService.isInputCW.next(this.rotateDirection);
-      this.mechanismSrv.updateMechanism();
-    });
-    this.settingsForm.controls['speed'].valueChanges.subscribe((val) => {
-      const [success, value] = this.nup.parseAngularVelocityString(
-        val ?? '',
-        AngularVelocityUnit.RPM
-      );
-      if (success) {
-        this.currentSpeedSetting = value;
-        this.settingsService.inputSpeed.next(this.currentSpeedSetting);
-      }
-      this.settingsForm.patchValue(
-        { speed: this.formatSpeed(this.currentSpeedSetting) },
-        { emitEvent: false }
-      );
-      this.mechanismSrv.updateMechanism();
-    });
     this.settingsForm.controls['objectScale'].valueChanges.subscribe((val) => {
       if (this.settingsForm.controls['objectScale'].invalid) {
-        this.settingsForm.patchValue({ speed: this.currentObjectScaleSetting.toString() });
+        // Restore the last good scale into its own field, not the speed field.
+        this.settingsForm.patchValue({ objectScale: this.currentObjectScaleSetting.toString() });
       } else {
         this.currentObjectScaleSetting = Number(val);
         SettingsService._objectScale.next(this.currentObjectScaleSetting);
@@ -235,9 +196,7 @@ export class SettingsPanelComponent implements OnDestroy {
   numRegex = '^-?[0-9]+(.[0-9]{0,10})?$';
   settingsForm = this.fb.group(
     {
-      speed: [''],
       objectScale: ['', [Validators.required, Validators.pattern(this.numRegex)]],
-      rotation: ['', { updateOn: 'change' }],
       lengthunit: ['', { updateOn: 'change' }],
       angleunit: ['', { updateOn: 'change' }],
       torqueunit: ['', { updateOn: 'change' }],
@@ -247,11 +206,6 @@ export class SettingsPanelComponent implements OnDestroy {
     },
     { updateOn: 'blur' }
   );
-
-  /** The value carries its own unit, matching every other unit-bearing input. */
-  private formatSpeed(value: number): string {
-    return this.nup.formatValueAndUnit(value, AngularVelocityUnit.RPM);
-  }
 
   updateObjectScale() {
     this.svgGrid.updateObjectScale();
