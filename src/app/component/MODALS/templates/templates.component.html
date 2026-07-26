@@ -54,3 +54,23 @@
   </div>
 
 </div>
+
+<!-- Shown when the grid already holds work: opening a template must not
+     silently discard it. Replacing goes through the undo history, so it is
+     recoverable either way. -->
+<ng-template #openChoiceDialog>
+  <div class='modal'>
+    <h1 mat-dialog-title>There is already a linkage on the grid.</h1>
+    <div mat-dialog-content>
+      <p>
+        Open the template in a new tab, or replace the current linkage?
+        Replacing can be undone.
+      </p>
+    </div>
+    <div mat-dialog-actions align='end'>
+      <button mat-button mat-dialog-close>Cancel</button>
+      <button mat-button [mat-dialog-close]="'new-tab'">Open in a new tab</button>
+      <button mat-button cdkFocusInitial [mat-dialog-close]="'replace'">Replace</button>
+    </div>
+  </div>
+</ng-template>

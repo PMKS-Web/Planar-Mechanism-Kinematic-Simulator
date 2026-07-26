@@ -15,4 +15,14 @@ export class InputComponent {
   @Input() tooltip: string | undefined;
   @Input() _formControl!: string;
   @Input() formGroup!: FormGroup;
+  /**
+   * Turns the static unit suffix into a picker sharing the field's fill, for
+   * values whose unit the user chooses rather than types. Needs unitFormControl.
+   */
+  @Input() unitOptions: { value: string; label: string }[] | undefined;
+  @Input() unitFormControl: string | undefined;
+
+  get hasUnitSelect(): boolean {
+    return !!this.unitOptions?.length && !!this.unitFormControl;
+  }
 }

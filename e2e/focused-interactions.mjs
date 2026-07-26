@@ -60,6 +60,19 @@ async function dismissIntro(page) {
   }
 }
 
+// Playback lives in the Analyze group of the left nav rail, so it only exists
+// while that mode is open. The rail buttons toggle their own panel, so clicking
+// blindly would close Analyze when it is already open — check first.
+async function openAnalyze(page) {
+  const playback = page.locator('.playbackControls');
+  if ((await playback.count()) === 0) {
+    await page.locator('.leftButton', { hasText: 'Analyze' }).click();
+    await playback.waitFor({ state: 'visible' });
+    await page.waitForTimeout(600); // the tools grow open over 200ms
+  }
+  return playback;
+}
+
 async function menuItems(page) {
   return await page.locator('#contextMenu #menu-item').evaluateAll((els) => els.filter((el) => {
     const r = el.getBoundingClientRect();
@@ -174,18 +187,21 @@ await runCase('pan-zoom-slider', async (page) => {
   await page.waitForTimeout(500);
   await page.locator('button:has-text("zoom_in")').click();
   await page.locator('button:has-text("zoom_out")').click();
+  await openAnalyze(page);
   const slider = page.locator('#slider');
   const beforeValue = await slider.inputValue().catch(() => null);
-  const r = await slider.boundingBox();
-  await page.mouse.move(r.x + r.width * 0.15, r.y + r.height / 2);
+  // The scrubber is a horizontal Material slider rotated 90deg, so it is dragged
+  // down its height (min at the top) rather than across its width.
+  const r = await page.locator('.verticalSlider').boundingBox();
+  await page.mouse.move(r.x + r.width / 2, r.y + r.height * 0.15);
   await page.mouse.down();
-  await page.mouse.move(r.x + r.width * 0.82, r.y + r.height / 2, { steps: 12 });
+  await page.mouse.move(r.x + r.width / 2, r.y + r.height * 0.82, { steps: 12 });
   await page.mouse.up();
   await page.waitForTimeout(400);
   const afterValue = await slider.inputValue().catch(() => null);
   events.push({ action: 'slider-drag', beforeValue, afterValue });
   if (beforeValue === afterValue) issue('Animation slider drag did not change slider value', { severity: 'medium', beforeValue, afterValue });
-  await page.locator('button:has-text("play_arrow")').click();
+  await page.locator('.playbackControls .playButton').click();
   await page.waitForTimeout(1000);
   await shot(page, 'panzoom-slider-after.png');
   await snap(page, 'pan zoom slider after');

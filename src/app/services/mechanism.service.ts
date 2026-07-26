@@ -32,13 +32,23 @@ import { NumberUnitParserService } from './number-unit-parser.service';
 import { PositionSolver } from '../model/mechanism/position-solver';
 import { ColorService } from './color.service';
 import { siUnitFactorsForLength } from '../model/unit-conversions';
+import { transformRigidCoord, transformRigidPath } from '../model/compound-link-path';
+
+/** Blend two angles along the shorter arc, so a wrap past pi does not spin. */
+function blendAngle(from: number, to: number, blend: number): number {
+  let delta = to - from;
+  while (delta > Math.PI) delta -= 2 * Math.PI;
+  while (delta < -Math.PI) delta += 2 * Math.PI;
+  return from + delta * blend;
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class MechanismService {
   public mechanismTimeStep: number = 0;
-  public mechanismAnimationIncrement: number = 2;
+  /** Playback rate relative to real time. 1 means one simulated second per second. */
+  public animationSpeedMultiplier: number = 1;
   public joints: Joint[] = [];
   public links: Link[] = [];
   public forces: Force[] = [];
@@ -58,6 +68,16 @@ export class MechanismService {
 
   //The which timestep the mechanims is in
   onMechPositionChange = new Subject<number>();
+
+  // Playback is driven by the wall clock, not by a fixed number of samples per
+  // frame: the samples are spaced 1 degree of crank rotation apart, so how much
+  // simulated time one sample covers depends on the input speed. Advancing by
+  // elapsed real time is what makes a faster input speed animate faster.
+  private static readonly FRAME_INTERVAL_MS = 16;
+  private playbackClockMs: number | null = null;
+  private playbackTimeSeconds = 0;
+  private playbackFrameQueued = false;
+  private advancingPlayback = false;
 
   constructor(
     public gridUtils: GridUtilsService,
@@ -101,6 +121,14 @@ export class MechanismService {
   updateMechanism(save: boolean = false) {
     console.log('update mechanism', save);
     Force.normalizeVisualWidths(this.forces);
+    // Changing the input speed re-samples the same geometry onto a different time
+    // axis. Hold the simulation time rather than the sample index, so t and the pose
+    // on screen stay consistent with each other across the rebuild. Read it before
+    // rewinding, which is what the held time is measured against. The drawn time,
+    // not the sample's: during playback it carries the sub-sample fraction.
+    const heldTime = this.currentTimeSeconds();
+    this.restoreStartPose();
+
     // A compound Boolean union is pose-independent. Build it once for the
     // editable pose, then let Mechanism rigidly transform it for solved frames.
     this.links.forEach((link) => {
@@ -109,6 +137,7 @@ export class MechanismService {
     // console.log(this.mechanisms[0]);
     //There are multiple mechanisms since there was a plan to support multiple mechanisms
     //You can treat this as a single mechanism for now at index 0
+
     this.mechanisms = [];
     // TODO: Determine logic later once everything else is determined
     // Settings exposes RPM to users and persistence; solvers use rad/s.
@@ -139,15 +168,39 @@ export class MechanismService {
       )
     );
     this.activeObjService.fakeUpdateSelectedObj();
+    this.reseekToTime(heldTime);
 
     if (save) {
       this.save();
     }
   }
 
+  /**
+   * Re-place the mechanism at a simulation time after a rebuild. Wrapping keeps a
+   * time held from a slower cycle inside the new, shorter one.
+   */
+  private reseekToTime(seconds: number) {
+    if (!this.mechanisms[0]?.isMechanismValid()) {
+      // The rebuild can invalidate the mechanism; a step left pointing into the
+      // old cycle would keep the editor gated on a time that no longer exists.
+      this.mechanismTimeStep = 0;
+      this.playbackTimeSeconds = 0;
+      return;
+    }
+    if (!(seconds > 0)) {
+      return;
+    }
+    const wrapped = this.wrapTime(seconds);
+    this.animate(this.stepAtTime(wrapped), AnimationBarComponent.animate);
+    // animate() treats any external call as a seek and snaps its clock to the
+    // sample, so restore the sub-sample fraction afterwards — playback resumes
+    // from exactly the held time, not the nearest sample.
+    this.playbackTimeSeconds = wrapped;
+  }
+
   save() {
     const saveHistoryService = this.injector.get(SaveHistoryService);
-    saveHistoryService.save()
+    saveHistoryService.save();
   }
 
   updateLinkageUnits(fromUnits: LengthUnit, toUnits: LengthUnit) {
@@ -327,7 +380,9 @@ export class MechanismService {
 
   private createNewCompoundLink(linksToWeld: RealLink[]): RealLink {
     const leaves = linksToWeld.flatMap((link) =>
-      link.subset.length > 0 ? (link.subset.filter((item) => item instanceof RealLink) as RealLink[]) : [link]
+      link.subset.length > 0
+        ? (link.subset.filter((item) => item instanceof RealLink) as RealLink[])
+        : [link]
     );
     return this.createNewCompoundLinkFromSubset(leaves);
   }
@@ -339,7 +394,8 @@ export class MechanismService {
     const newLinkJoints = leaves
       .flatMap((link) => link.joints)
       .filter(
-        (joint, index, joints) => joints.findIndex((candidate) => candidate.id === joint.id) === index
+        (joint, index, joints) =>
+          joints.findIndex((candidate) => candidate.id === joint.id) === index
       );
     const id = newLinkJoints
       .map((joint) => joint.id)
@@ -408,7 +464,9 @@ export class MechanismService {
 
   private detachForce(force: Force): void {
     this.links.forEach((link) => {
-      link.forces = link.forces.filter((candidate) => candidate !== force && candidate.id !== force.id);
+      link.forces = link.forces.filter(
+        (candidate) => candidate !== force && candidate.id !== force.id
+      );
       if (link instanceof RealLink) {
         link.subset.forEach((subset) => {
           subset.forces = subset.forces.filter(
@@ -417,7 +475,9 @@ export class MechanismService {
         });
       }
     });
-    this.forces = this.forces.filter((candidate) => candidate !== force && candidate.id !== force.id);
+    this.forces = this.forces.filter(
+      (candidate) => candidate !== force && candidate.id !== force.id
+    );
   }
 
   private finishStructuralEdit(save: boolean = true): void {
@@ -867,7 +927,8 @@ export class MechanismService {
     this.links.splice(linkIndex, 1);
     this.joints = this.joints.filter(
       (joint) =>
-        !(joint instanceof RealJoint) || this.links.some((candidate) => candidate.joints.includes(joint))
+        !(joint instanceof RealJoint) ||
+        this.links.some((candidate) => candidate.joints.includes(joint))
     );
     this.activeObjService.updateSelectedObj(undefined);
     this.finishStructuralEdit(true);
@@ -1020,26 +1081,140 @@ export class MechanismService {
     });
   }
 
+  /** Sample times (seconds) of the solved mechanism, empty when nothing is solved. */
+  private sampleTimes(): number[] {
+    return this.mechanisms[0]?.timeNum ?? [];
+  }
+
+  /** Simulation time of a sample index. */
+  timeAtStep(step: number): number {
+    const times = this.sampleTimes();
+    if (times.length === 0) {
+      return 0;
+    }
+    const clamped = Math.min(Math.max(Math.round(step), 0), times.length - 1);
+    return times[clamped];
+  }
+
+  /** Seconds spanned by one full traversal of the motion. */
+  cyclePeriod(): number {
+    return this.mechanisms[0]?.cyclePeriod ?? 0;
+  }
+
+  /** Nearest sample index to a simulation time. Sample times strictly increase. */
+  stepAtTime(seconds: number): number {
+    const times = this.sampleTimes();
+    if (times.length === 0 || !Number.isFinite(seconds)) {
+      return 0;
+    }
+    if (seconds <= times[0]) {
+      return 0;
+    }
+    const last = times.length - 1;
+    if (seconds >= times[last]) {
+      return last;
+    }
+    let low = 0;
+    let high = last;
+    while (high - low > 1) {
+      const mid = (low + high) >> 1;
+      if (times[mid] <= seconds) {
+        low = mid;
+      } else {
+        high = mid;
+      }
+    }
+    return seconds - times[low] <= times[high] - seconds ? low : high;
+  }
+
+  /** Last sample at or before a simulation time — the sample playback blends from. */
+  private stepAtOrBeforeTime(seconds: number): number {
+    const nearest = this.stepAtTime(seconds);
+    const times = this.sampleTimes();
+    return nearest > 0 && times[nearest] > seconds ? nearest - 1 : nearest;
+  }
+
+  /**
+   * The time the mechanism is actually drawn at. While playing this sits between
+   * samples, so the readout matches the interpolated pose rather than the sample
+   * it was blended from.
+   */
+  currentTimeSeconds(): number {
+    return AnimationBarComponent.animate
+      ? this.playbackTimeSeconds
+      : this.timeAtStep(this.mechanismTimeStep);
+  }
+
+  /** Fold a time back into [0, period) so playback and re-seeks loop cleanly. */
+  wrapTime(seconds: number): number {
+    const period = this.cyclePeriod();
+    if (!(period > 0) || !Number.isFinite(seconds)) {
+      return 0;
+    }
+    const wrapped = seconds % period;
+    return wrapped < 0 ? wrapped + period : wrapped;
+  }
+
   animate(progress: number, animationState?: boolean) {
     //Round progress to nearest integer
     progress = Math.round(progress);
+    // Sample counts change whenever the mechanism is rebuilt at a new input speed;
+    // never index past them.
+    const sampleCount = this.mechanisms[0]?.joints.length ?? 0;
+    progress = Math.min(Math.max(progress, 0), Math.max(sampleCount - 1, 0));
 
-    this.onMechPositionChange.next(progress);
+    // Set the step before announcing it: subscribers read the drawn time back off
+    // the service, so it has to be current by the time they are notified.
     this.mechanismTimeStep = progress;
+    this.onMechPositionChange.next(progress);
     this.showPathHolder = !(this.mechanismTimeStep === 0 && !animationState);
     if (animationState !== undefined) {
       AnimationBarComponent.animate = animationState;
     }
+    if (sampleCount === 0 || this.mechanisms[0].joints[progress].length === 0) {
+      this.playbackClockMs = null;
+      return;
+    }
+
+    // Samples are one degree of crank rotation apart, so at a low input speed a
+    // sample can span a tenth of a second and stepping between them reads as
+    // stutter. Blend toward the next sample by where playback actually sits
+    // between the two.
+    this.applyPose(progress, this.blendToNextSample(progress));
+
+    if (!AnimationBarComponent.animate) {
+      this.playbackClockMs = null;
+      return;
+    }
+    // Anything other than the playback loop itself (slider, time field, URL restore)
+    // is a seek: re-anchor the clock to the sample the caller asked for.
+    if (!this.advancingPlayback) {
+      this.playbackTimeSeconds = this.timeAtStep(this.mechanismTimeStep);
+      this.playbackClockMs = null;
+    }
+    this.queuePlaybackFrame();
+  }
+
+  /**
+   * Draw a solved sample onto the editable joints, links and forces, optionally
+   * blended toward the next sample. These objects are what the grid renders — and
+   * also what a rebuild treats as t = 0, so see restoreStartPose.
+   */
+  private applyPose(step: number, blend: number) {
+    const nextStep = blend > 0 ? step + 1 : step;
+    const frames = this.mechanisms[0];
 
     this.joints.forEach((j, j_index) => {
-      j.x = this.mechanisms[0].joints[this.mechanismTimeStep][j_index].x;
-      j.y = this.mechanisms[0].joints[this.mechanismTimeStep][j_index].y;
+      const from = frames.joints[step][j_index];
+      const to = frames.joints[nextStep][j_index];
+      j.x = from.x + (to.x - from.x) * blend;
+      j.y = from.y + (to.y - from.y) * blend;
     });
     this.links.forEach((l, l_index) => {
       if (!(l instanceof RealLink)) {
         return;
       }
-      const link = this.mechanisms[0].links[this.mechanismTimeStep][l_index];
+      const link = frames.links[step][l_index];
       if (!(link instanceof RealLink)) {
         return;
       }
@@ -1051,38 +1226,128 @@ export class MechanismService {
               candidate instanceof RealLink && candidate.id === subset.id
           );
           if (!simulatedSubset) return;
-          subset.d = simulatedSubset.d;
-          subset.CoM = simulatedSubset.CoM;
-          subset.updateCoMDs();
-          subset.updateLengthAndAngle();
+          this.placeLinkGeometry(subset, simulatedSubset, blend);
         });
       }
-      l.d = link.d;
-      l.CoM = link.CoM;
-      l.updateCoMDs();
-      l.updateLengthAndAngle();
+      this.placeLinkGeometry(l, link, blend);
     });
     this.forces.forEach((f, f_index) => {
-      f.startCoord.x = this.mechanisms[0].forces[this.mechanismTimeStep][f_index].startCoord.x;
-      f.startCoord.y = this.mechanisms[0].forces[this.mechanismTimeStep][f_index].startCoord.y;
-      f.endCoord.x = this.mechanisms[0].forces[this.mechanismTimeStep][f_index].endCoord.x;
-      f.endCoord.y = this.mechanisms[0].forces[this.mechanismTimeStep][f_index].endCoord.y;
-      f.local = this.mechanisms[0].forces[this.mechanismTimeStep][f_index].local;
-      f.mag = this.mechanisms[0].forces[this.mechanismTimeStep][f_index].mag;
-      f.angleRad = this.mechanisms[0].forces[this.mechanismTimeStep][f_index].angleRad;
+      const from = frames.forces[step][f_index];
+      const to = frames.forces[nextStep][f_index];
+      f.startCoord.x = from.startCoord.x + (to.startCoord.x - from.startCoord.x) * blend;
+      f.startCoord.y = from.startCoord.y + (to.startCoord.y - from.startCoord.y) * blend;
+      f.endCoord.x = from.endCoord.x + (to.endCoord.x - from.endCoord.x) * blend;
+      f.endCoord.y = from.endCoord.y + (to.endCoord.y - from.endCoord.y) * blend;
+      f.local = from.local;
+      f.mag = from.mag + (to.mag - from.mag) * blend;
+      f.angleRad = blendAngle(from.angleRad, to.angleRad, blend);
       f.forceLine = f.createForceLine(f.startCoord, f.endCoord);
       f.forceArrow = f.createForceArrow(f.startCoord, f.endCoord);
     });
-    if (!AnimationBarComponent.animate) {
+  }
+
+  /**
+   * Put the editable objects back on sample 0 before a rebuild.
+   *
+   * The editable joints are simultaneously what the grid draws and what a rebuild
+   * deep-copies as t = 0, and animate() moves them in place. Without this, any
+   * rebuild triggered while the mechanism sits at a non-zero time — merely opening
+   * the Settings panel does one — would silently redefine time zero as wherever
+   * playback happened to be, and the start pose would ratchet forward.
+   */
+  private restoreStartPose() {
+    // While playing, the drawn pose is blended past its sample, so step 0 alone
+    // does not mean the joints hold the start pose — only paused-at-0 does.
+    const atStartPose = this.mechanismTimeStep === 0 && !AnimationBarComponent.animate;
+    if (atStartPose || !this.mechanisms[0]?.joints[0]?.length) {
       return;
     }
-    this.mechanismTimeStep += this.mechanismAnimationIncrement;
-    if (this.mechanismTimeStep >= this.mechanisms[0].joints.length) {
-      this.mechanismTimeStep = 0;
+    this.applyPose(0, 0);
+  }
+
+  /**
+   * How far playback sits past sample `step`, as a 0..1 fraction of the way to the
+   * next one. Zero for any seek and at the last sample, where there is nothing to
+   * blend toward.
+   */
+  private blendToNextSample(step: number): number {
+    if (!this.advancingPlayback) {
+      return 0;
     }
+    const times = this.sampleTimes();
+    if (step + 1 >= times.length) {
+      return 0;
+    }
+    const span = times[step + 1] - times[step];
+    if (!(span > 0)) {
+      return 0;
+    }
+    const fraction = (this.playbackTimeSeconds - times[step]) / span;
+    return Math.min(Math.max(fraction, 0), 1);
+  }
+
+  /**
+   * Copy a solved link's outline onto the editable link. A path string cannot be
+   * blended, so between samples the solved outline is rigidly re-placed onto the
+   * already-blended joints instead — the link is rigid, so that is the same motion.
+   */
+  private placeLinkGeometry(target: RealLink, solved: RealLink, blend: number) {
+    if (blend > 0 && solved.joints.length >= 2 && target.joints.length >= 2) {
+      const [sourceStart, sourceEnd] = solved.joints;
+      const [targetStart, targetEnd] = target.joints;
+      target.d = transformRigidPath(solved.d, sourceStart, sourceEnd, targetStart, targetEnd);
+      const [comX, comY] = transformRigidCoord(
+        solved.CoM,
+        sourceStart,
+        sourceEnd,
+        targetStart,
+        targetEnd
+      );
+      target.CoM = new Coord(comX, comY);
+    } else {
+      target.d = solved.d;
+      target.CoM = solved.CoM;
+    }
+    target.updateCoMDs();
+    target.updateLengthAndAngle();
+  }
+
+  private queuePlaybackFrame() {
+    if (this.playbackFrameQueued) {
+      return;
+    }
+    this.playbackFrameQueued = true;
     setTimeout(() => {
-      this.animate(this.mechanismTimeStep);
-    }, 16);
+      this.playbackFrameQueued = false;
+      this.advancePlayback();
+    }, MechanismService.FRAME_INTERVAL_MS);
+  }
+
+  /**
+   * Advance simulation time by the real time that elapsed since the last frame, so
+   * one revolution takes 60/RPM seconds on screen regardless of frame rate or of how
+   * many samples the cycle was solved into.
+   */
+  private advancePlayback() {
+    if (!AnimationBarComponent.animate) {
+      this.playbackClockMs = null;
+      return;
+    }
+    const now = performance.now();
+    // The first frame after a seek or a resume has no previous frame to measure from.
+    const elapsedSeconds = this.playbackClockMs === null ? 0 : (now - this.playbackClockMs) / 1000;
+    this.playbackClockMs = now;
+    this.playbackTimeSeconds = this.wrapTime(
+      this.playbackTimeSeconds + elapsedSeconds * this.animationSpeedMultiplier
+    );
+
+    this.advancingPlayback = true;
+    try {
+      // Blend forward from the sample at or before now, not the nearest one.
+      this.animate(this.stepAtOrBeforeTime(this.playbackTimeSeconds));
+    } finally {
+      this.advancingPlayback = false;
+    }
   }
 
   getJointCSSClass(joint: Joint) {
@@ -1323,12 +1588,7 @@ export class MechanismService {
     if (this.forces.length !== 0) {
       maxNumber = Math.max(...this.forces.map((f) => parseInt(f.id.replace(/\D/g, '')))) + 1;
     }
-    const force = new Force(
-      'F' + maxNumber.toString(),
-      selectedLink,
-      startCoord,
-      endCoord
-    );
+    const force = new Force('F' + maxNumber.toString(), selectedLink, startCoord, endCoord);
     this.forces.push(force);
     this.attachForceToLink(force, selectedLink);
     PositionSolver.setUpSolvingForces(this.forces);

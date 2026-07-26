@@ -37,11 +37,7 @@
     matTooltipPosition="right"
     matTooltipShowDelay="1000"
   >
-    {{
-      this.mechanismService.mechanismAnimationIncrement === 4
-        ? 3
-        : this.mechanismService.mechanismAnimationIncrement
-    }}x
+    {{ this.mechanismService.animationSpeedMultiplier }}x
   </button>
   <div class="verticalSlider">
     <mat-slider
@@ -55,7 +51,6 @@
       <input id="slider" matSliderThumb value="{{ this.mechanismService.mechanismTimeStep }}" />
     </mat-slider>
   </div>
-
 
   <!-- The value carries its own unit, matching every other input in the app. -->
   <form id="timeInputWrapper" (ngSubmit)="field.blur()">

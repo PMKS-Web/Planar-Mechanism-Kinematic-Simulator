@@ -22,23 +22,8 @@
         [disabled]="this.settingsService.animating.value"
         >Angle Units
       </radio-block>
-      <radio-block
-        option1="Clockwise"
-        option2="Counter-Clockwise"
-        [formGroup]="this.settingsForm"
-        _formControl="rotation"
-        tooltip="Select the direction of rotation for the animation to start in. Note that positive angles are always counter-clockwise."
-        [disabled]="this.settingsService.animating.value"
-        >Input Direction
-      </radio-block>
-
-      <input-block
-        type="number"
-        [formGroup]="this.settingsForm"
-        _formControl="speed"
-        tooltip="The constant input speed used for animation and dynamic force analysis. Defaults to RPM; rad/s and deg/s are also accepted."
-        >Input Speed
-      </input-block>
+      <!-- Input direction and speed belong to the input joint, so they live in that
+           joint's Input Settings section in the Edit panel rather than here. -->
     </collapsible-subseciton>
 
     <collapsible-subseciton titleLabel="Visual Settings" [expanded]="true">

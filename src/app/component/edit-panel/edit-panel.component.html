@@ -103,6 +103,30 @@
         >
         </tri-button>
       </collapsible-subseciton>
+      @if (gridUtils.isVisuallyInput(activeSrv.selectedJoint)) {
+        <div class="inputSettings">
+          <collapsible-subseciton
+            titleLabel="Input Settings"
+            [expanded]="sectionExpanded['JInput']"
+            (opened)="sectionExpanded['JInput'] = true"
+            (closed)="sectionExpanded['JInput'] = false"
+          >
+            <button-block
+              [icon]="settingsService.isInputCW.value ? 'rotate_right' : 'rotate_left'"
+              [click]="flipInputDirection.bind(this)"
+              >{{ settingsService.isInputCW.value ? 'Clockwise' : 'Counter-Clockwise' }}
+            </button-block>
+            <input-block
+              [formGroup]="jointForm"
+              _formControl="inputSpeed"
+              [unitOptions]="speedUnitOptions"
+              unitFormControl="inputSpeedUnit"
+              tooltip="How fast this input joint turns, in the unit picked beside the value. A negative value flips the direction. Drives the animation and dynamic force analysis."
+              >Input Speed
+            </input-block>
+          </collapsible-subseciton>
+        </div>
+      }
       <collapsible-subseciton
         titleLabel="Visual Settings"
         [expanded]="sectionExpanded['JVisual']"

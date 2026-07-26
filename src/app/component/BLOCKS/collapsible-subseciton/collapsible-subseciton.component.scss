@@ -50,6 +50,9 @@
       gap: 10px;
       display: flex;
       flex-direction: column;
+      // The collapse animates this box down to zero height; without clipping,
+      // the children would keep painting over whatever follows.
+      overflow: hidden;
       transition: transform 0.15s ease-in-out;
 
       &.hidden {

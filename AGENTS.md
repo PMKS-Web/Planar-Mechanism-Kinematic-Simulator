@@ -77,7 +77,9 @@ Unit specs stay co-located in `src/**/*.spec.ts`; browser-driven E2E tests are P
 
 ## Deployment / branch rules
 
-**Never push directly to `main`** — commits to `main` auto-deploy to production (app.pmksplus.com) and a GitHub Action bumps the package version on every push to `main`. Work in branches/forks and open PRs. Every non-main branch auto-publishes to `https://[BRANCHNAME]--pmks.netlify.app`.
+**Never push directly to `main`** — commits to `main` auto-deploy to production (app.pmksplus.com). Work in branches/forks and open PRs. Every non-main branch auto-publishes to `https://[BRANCHNAME]--pmks.netlify.app`.
+
+The `version` in `package.json` is now bumped by hand (the automated bump action was removed). It is what the bottom bar displays, via `environments/environment*.ts`, so raise it in the PR that ships a release.
 
 ## Architecture
 
