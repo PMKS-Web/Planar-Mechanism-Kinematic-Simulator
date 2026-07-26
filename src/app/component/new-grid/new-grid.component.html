@@ -244,10 +244,13 @@
           gridUtils.getGround(joint) &&
           gridUtils.typeOfJoint(joint) !== 'P' &&
           gridUtils.getInput(joint) &&
-          settings.isInputCW
+          settings.isInputCW.value
         ) {
+          <!-- The grid's y-flip reverses each asset's apparent chirality, so the
+               file that *looks* clockwise here is InputCW.svg, verified on screen
+               against the actual motion. -->
           <image
-            xlink:href="../../../assets/InputCCW.svg"
+            xlink:href="../../../assets/InputCW.svg"
             [attr.width]="settings.objectScale * 1.2"
             [attr.x]="settings.objectScale * -0.505 * 1.2"
             [attr.y]="settings.objectScale * -0.435 * 1.2"
@@ -259,10 +262,10 @@
           gridUtils.getGround(joint) &&
           gridUtils.typeOfJoint(joint) !== 'P' &&
           gridUtils.getInput(joint) &&
-          !settings.isInputCW
+          !settings.isInputCW.value
         ) {
           <image
-            xlink:href="../../../assets/InputCW.svg"
+            xlink:href="../../../assets/InputCCW.svg"
             [attr.width]="settings.objectScale * 1.2"
             [attr.x]="settings.objectScale * -0.505 * 1.2"
             [attr.y]="settings.objectScale * -0.435 * 1.2"

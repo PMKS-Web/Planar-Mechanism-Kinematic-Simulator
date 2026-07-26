@@ -20,13 +20,6 @@ import {
   LengthUnit,
   MassUnit,
 } from 'src/app/model/utils';
-
-/** Input Settings unit choices, in the order the picker shows them. */
-const INPUT_SPEED_UNITS = [
-  AngularVelocityUnit.RPM,
-  AngularVelocityUnit.DEG_PER_SEC,
-  AngularVelocityUnit.RAD_PER_SEC,
-];
 import { AnimationBarComponent } from '../animation-bar/animation-bar.component';
 import { NumberUnitParserService } from 'src/app/services/number-unit-parser.service';
 import { SettingsService } from '../../services/settings.service';
@@ -34,6 +27,16 @@ import { MechanismService } from '../../services/mechanism.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { RealLink } from '../../model/link';
 import { NewGridComponent } from '../new-grid/new-grid.component';
+
+/**
+ * Input Settings unit choices, in the order the picker shows them. The labels
+ * match how the unit parser prints these units everywhere else in the app.
+ */
+const INPUT_SPEED_UNITS = [
+  { unit: AngularVelocityUnit.RPM, label: 'RPM' },
+  { unit: AngularVelocityUnit.DEG_PER_SEC, label: 'deg/s' },
+  { unit: AngularVelocityUnit.RAD_PER_SEC, label: 'rad/s' },
+];
 
 @Component({
   selector: 'app-edit-panel',
@@ -65,11 +68,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   }
 
   /** Unit choices for the Input Speed field's inline picker. */
-  readonly speedUnitOptions = [
-    { value: '0', label: 'RPM' },
-    { value: '1', label: 'DPS' },
-    { value: '2', label: 'RPS' },
-  ];
+  readonly speedUnitOptions = INPUT_SPEED_UNITS.map((option, index) => ({
+    value: index.toString(),
+    label: option.label,
+  }));
 
   /** One button for both directions: flip rather than pick. */
   flipInputDirection(): void {
@@ -92,7 +94,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
   /** Mirror the current input speed and unit into the Input Settings fields. */
   private syncInputSettingsFields(): void {
-    const unitIndex = INPUT_SPEED_UNITS.indexOf(this.settingsService.inputSpeedUnit.value);
+    const unitIndex = INPUT_SPEED_UNITS.findIndex(
+      (option) => option.unit === this.settingsService.inputSpeedUnit.value
+    );
     this.jointForm.patchValue(
       { inputSpeedUnit: (unitIndex < 0 ? 0 : unitIndex).toString() },
       { emitEvent: false }
@@ -389,9 +393,13 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         // The unit comes from the picker beside the field, never from the text, so
         // this reads as a plain number rather than going through the unit parser.
         const typed = Number(String(val ?? '').trim());
-        // Direction is the radio's job, so the field carries magnitude only —
-        // a negative value here would otherwise silently fight the picker.
+        // A rejected value changes nothing, so it must not mint an undo entry.
         if (Number.isFinite(typed) && typed !== 0) {
+          // The field carries magnitude; a minus sign reads as "the other way",
+          // so -20 becomes 20 with the direction flipped.
+          if (typed < 0) {
+            this.settingsService.isInputCW.next(!this.settingsService.isInputCW.value);
+          }
           this.settingsService.inputSpeed.next(
             this.nup.convertAngularVelocity(
               Math.abs(typed),
@@ -399,16 +407,16 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
               AngularVelocityUnit.RPM
             )
           );
+          this.mechanismService.updateMechanism(true);
         }
         this.patchInputSpeedField();
-        this.mechanismService.updateMechanism(true);
       })
     );
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['inputSpeedUnit'].valueChanges.subscribe((val) => {
         // Changing the unit re-expresses the same speed; it does not alter it.
-        this.settingsService.inputSpeedUnit.next(INPUT_SPEED_UNITS[Number(val)]);
+        this.settingsService.inputSpeedUnit.next(INPUT_SPEED_UNITS[Number(val)].unit);
         this.patchInputSpeedField();
       })
     );

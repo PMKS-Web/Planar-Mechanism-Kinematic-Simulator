@@ -124,8 +124,9 @@ export class MechanismService {
     // Changing the input speed re-samples the same geometry onto a different time
     // axis. Hold the simulation time rather than the sample index, so t and the pose
     // on screen stay consistent with each other across the rebuild. Read it before
-    // rewinding, which is what the held time is measured against.
-    const heldTime = this.mechanismTimeStep > 0 ? this.timeAtStep(this.mechanismTimeStep) : 0;
+    // rewinding, which is what the held time is measured against. The drawn time,
+    // not the sample's: during playback it carries the sub-sample fraction.
+    const heldTime = this.currentTimeSeconds();
     this.restoreStartPose();
 
     // A compound Boolean union is pose-independent. Build it once for the
@@ -179,12 +180,22 @@ export class MechanismService {
    * time held from a slower cycle inside the new, shorter one.
    */
   private reseekToTime(seconds: number) {
-    if (!(seconds > 0) || !this.mechanisms[0]?.isMechanismValid()) {
+    if (!this.mechanisms[0]?.isMechanismValid()) {
+      // The rebuild can invalidate the mechanism; a step left pointing into the
+      // old cycle would keep the editor gated on a time that no longer exists.
+      this.mechanismTimeStep = 0;
+      this.playbackTimeSeconds = 0;
+      return;
+    }
+    if (!(seconds > 0)) {
       return;
     }
     const wrapped = this.wrapTime(seconds);
-    this.playbackTimeSeconds = wrapped;
     this.animate(this.stepAtTime(wrapped), AnimationBarComponent.animate);
+    // animate() treats any external call as a seek and snaps its clock to the
+    // sample, so restore the sub-sample fraction afterwards — playback resumes
+    // from exactly the held time, not the nearest sample.
+    this.playbackTimeSeconds = wrapped;
   }
 
   save() {
@@ -1245,7 +1256,10 @@ export class MechanismService {
    * playback happened to be, and the start pose would ratchet forward.
    */
   private restoreStartPose() {
-    if (this.mechanismTimeStep === 0 || !this.mechanisms[0]?.joints.length) {
+    // While playing, the drawn pose is blended past its sample, so step 0 alone
+    // does not mean the joints hold the start pose — only paused-at-0 does.
+    const atStartPose = this.mechanismTimeStep === 0 && !AnimationBarComponent.animate;
+    if (atStartPose || !this.mechanisms[0]?.joints[0]?.length) {
       return;
     }
     this.applyPose(0, 0);

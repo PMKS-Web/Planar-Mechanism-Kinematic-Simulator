@@ -549,6 +549,14 @@ export class Mechanism {
     // input speed and the last sample lines up with the first.
     if (revoluteInput && !everReversed && angularSpeed > Number.EPSILON) {
       this._timeNum[this._timeNum.length - 1] = (2 * Math.PI) / angularSpeed;
+      // Closing at a fixed 360 steps assumes assembly-mode tracking held all the
+      // way around; if it did not, the cycle no longer ends where it began and
+      // the seam would otherwise be silent.
+      if (xDiff > TOLERANCE || yDiff > TOLERANCE) {
+        console.warn(
+          `Cycle did not close: after one input revolution the reference joint is off by (${xDiff}, ${yDiff})`
+        );
+      }
     }
   }
 

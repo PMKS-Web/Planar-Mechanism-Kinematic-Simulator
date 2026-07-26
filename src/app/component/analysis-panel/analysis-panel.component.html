@@ -89,7 +89,7 @@
       the {{
           settingsService.isInputCW.value ? 'clockwise' : 'counter-clockwise'
         }} direction. This can be changed in the
-    settings panel."
+    input joint's Edit panel."
       >
         Analysis for Joint
         {{ this.activeSrv.selectedJoint.name }}
@@ -189,7 +189,7 @@
         (closed)="graphExpanded['JForceAna'] = false"
       >
         <radio-block
-          tooltip="Determines whether the force analysis is done at static equilibrium or under dynamics conditions. The input speed for the dynamic analysis is set in the settings panel."
+          tooltip="Determines whether the force analysis is done at static equilibrium or under dynamics conditions. The input speed for the dynamic analysis is set on the input joint in the Edit panel."
           option1="Static (Equilibrium)"
           option2="In-motion (Dynamic)"
           [formGroup]="this.forceAnalysisFormGroup"
@@ -273,7 +273,7 @@
       the {{
           settingsService.isInputCW.value ? 'clockwise' : 'counter-clockwise'
         }} direction. This can be changed in the
-    settings panel."
+    input joint's Edit panel."
       >
         Analysis for Link {{ this.activeSrv.selectedLink.name }}
       </title-block>
@@ -467,7 +467,7 @@
         (closed)="graphExpanded['LForceAna'] = false"
       >
         <radio-block
-          tooltip="Determines whether the force analysis is done at static equilibrium or under dynamics conditions. The input speed for the dynamic analysis is set in the settings panel."
+          tooltip="Determines whether the force analysis is done at static equilibrium or under dynamics conditions. The input speed for the dynamic analysis is set on the input joint in the Edit panel."
           option1="Static (Equilibrium)"
           option2="In-motion (Dynamic)"
           [formGroup]="this.forceAnalysisFormGroup"

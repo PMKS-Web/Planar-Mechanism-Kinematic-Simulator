@@ -170,7 +170,7 @@ try {
   await setInputSpeed(20);
   await openAnalyze();
   await timeField().click();
-  await timeField().press('Meta+A');
+  await timeField().press('ControlOrMeta+A');
   await timeField().type('99 s');
   await timeField().press('Enter');
   await page.waitForTimeout(400);
@@ -186,7 +186,7 @@ try {
   await setInputSpeed(40);
   await openAnalyze();
   await timeField().click();
-  await timeField().press('Meta+A');
+  await timeField().press('ControlOrMeta+A');
   await timeField().type('99 s');
   await timeField().press('Enter');
   await page.waitForTimeout(400);
@@ -206,16 +206,20 @@ try {
   const zeroPose = await page.locator('svg').first().innerHTML();
 
   await timeField().click();
-  await timeField().press('Meta+A');
+  await timeField().press('ControlOrMeta+A');
   await timeField().type('1.5 s');
   await timeField().press('Enter');
   await page.waitForTimeout(400);
   const seekedTime = await timeSeconds();
   const seekedPose = await page.locator('svg').first().innerHTML();
 
-  check('seeking to a non-zero time moves the mechanism', seekedTime > 1 && seekedPose !== zeroPose, {
-    seekedTime,
-  });
+  check(
+    'seeking to a non-zero time moves the mechanism',
+    seekedTime > 1 && seekedPose !== zeroPose,
+    {
+      seekedTime,
+    }
+  );
 
   // Round trip through Edit at a non-zero time, twice, then come back to t = 0.
   await setInputSpeed(40);

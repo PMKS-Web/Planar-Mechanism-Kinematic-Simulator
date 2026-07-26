@@ -294,6 +294,29 @@ describe('Real-time playback', () => {
     expect(seen.size).toBe(8);
   });
 
+  it('keeps time zero fixed when a rebuild lands mid-blend at sample 0', () => {
+    const { service, settings } = createLoadedService();
+    setInputSpeed(service, settings, 1); // one sample spans 167 ms
+    const startPose = () =>
+      service.mechanisms[0].joints[0].map((j) => `${j.x.toFixed(9)},${j.y.toFixed(9)}`).join('|');
+    const original = startPose();
+
+    AnimationBarComponent.animate = true;
+    service.animate(0, true);
+    for (let frame = 0; frame < 4; frame++) {
+      clockMs += 16;
+      vi.advanceTimersByTime(16);
+    }
+    // The step is still 0, but the drawn joints are blended past the start pose —
+    // the one displaced pose the step alone cannot reveal.
+    expect(service.mechanismTimeStep).toBe(0);
+
+    service.updateMechanism();
+    AnimationBarComponent.animate = false;
+
+    expect(startPose()).toBe(original);
+  });
+
   it('keeps interpolated joints on their link outlines', () => {
     const { service, settings } = createLoadedService();
     setInputSpeed(service, settings, 1);

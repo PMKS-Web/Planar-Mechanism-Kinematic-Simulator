@@ -113,24 +113,6 @@ export class AnimationBarComponent implements OnInit, AfterViewInit, OnDestroy {
   // getDirection() {
   //   return AnimationBarComponent.direction;
   // }
-  //
-  // onSpeedChange() {
-  //   switch (AnimationBarComponent.speed) {
-  //     case 'slow':
-  //       AnimationBarComponent.speed = 'medium';
-  //       this.mechanismService.mechanismAnimationIncrement = 2;
-  //       break;
-  //     case 'medium':
-  //       AnimationBarComponent.speed = 'fast';
-  //       this.mechanismService.mechanismAnimationIncrement = 3;
-  //       break;
-  //     case 'fast':
-  //       AnimationBarComponent.speed = 'slow';
-  //       this.mechanismService.mechanismAnimationIncrement = 1;
-  //       break;
-  //   }
-  // }
-
   startAnimation(state: string) {
     // console.log('startAnimation ' + state);
     switch (state) {

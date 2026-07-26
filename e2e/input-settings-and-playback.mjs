@@ -31,7 +31,13 @@ page.on('console', (m) => m.type() === 'error' && consoleErrors.push(m.text()));
 await page.goto(`${BASE}?${FOUR_BAR}`, { waitUntil: 'networkidle' });
 
 // The first-run tour overlay swallows clicks until it is dismissed.
-if (await page.locator('.introjs-tooltip, .introjs-overlay').first().isVisible().catch(() => false)) {
+if (
+  await page
+    .locator('.introjs-tooltip, .introjs-overlay')
+    .first()
+    .isVisible()
+    .catch(() => false)
+) {
   await page
     .locator('.introjs-skipbutton')
     .first()
@@ -67,11 +73,17 @@ if (await makeInput.isVisible().catch(() => false)) {
 }
 
 const inputSection = page.locator('text=Input Settings').first();
-check('Input Settings section appears for an input joint', await inputSection.isVisible().catch(() => false));
+check(
+  'Input Settings section appears for an input joint',
+  await inputSection.isVisible().catch(() => false)
+);
 await page.screenshot({ path: `${OUT}/03-input-settings.png`, fullPage: true });
 
 // Direction is one button that flips, not a pair of options.
-const dirButton = page.locator('button#button-block').filter({ hasText: /Clockwise/ }).first();
+const dirButton = page
+  .locator('button#button-block')
+  .filter({ hasText: /Clockwise/ })
+  .first();
 await dirButton.scrollIntoViewIfNeeded();
 const readDirection = async () => ({
   text: (await dirButton.textContent()).trim(),
@@ -80,8 +92,10 @@ const readDirection = async () => ({
 const before = await readDirection();
 check(
   'Input Direction is a single button showing the current direction',
-  (await page.locator('button#button-block').filter({ hasText: /Clockwise/ }).count()) === 1 &&
-    before.icon.startsWith('rotate_'),
+  (await page
+    .locator('button#button-block')
+    .filter({ hasText: /Clockwise/ })
+    .count()) === 1 && before.icon.startsWith('rotate_'),
   `"${before.text}" icon=${before.icon}`
 );
 
@@ -96,12 +110,37 @@ check(
 await dirButton.click(); // back to the original direction
 await page.waitForTimeout(600);
 
+// The grid mirrors the direction on the input joint itself: flipping the button
+// must swap the joint's arrow image, not just the panel. (The template used to
+// test the BehaviorSubject object instead of its value, so the arrow never moved.)
+const gridArrowHref = () =>
+  page.evaluate(() => {
+    const image = [...document.querySelectorAll('svg image')].find((el) =>
+      (el.getAttribute('xlink:href') ?? el.getAttribute('href') ?? '').includes('Input')
+    );
+    return image ? (image.getAttribute('xlink:href') ?? image.getAttribute('href')) : null;
+  });
+const arrowBefore = await gridArrowHref();
+await dirButton.click();
+await page.waitForTimeout(600);
+const arrowAfter = await gridArrowHref();
+check(
+  'Grid arrow on the input joint swaps with the direction',
+  arrowBefore !== null && arrowAfter !== null && arrowBefore !== arrowAfter,
+  `${arrowBefore} -> ${arrowAfter}`
+);
+await dirButton.click(); // back to the original direction
+await page.waitForTimeout(600);
+
 // Unit picker: an inline dropdown sharing the speed field's box
-const unitSelect = page.locator('input-block').filter({ hasText: 'Input Speed' }).locator('select.unit-select');
+const unitSelect = page
+  .locator('input-block')
+  .filter({ hasText: 'Input Speed' })
+  .locator('select.unit-select');
 const unitLabels = (await unitSelect.locator('option').allTextContents()).map((t) => t.trim());
 check(
-  'Speed unit dropdown offers exactly RPM / DPS / RPS',
-  JSON.stringify(unitLabels) === JSON.stringify(['RPM', 'DPS', 'RPS']),
+  'Speed unit dropdown offers exactly RPM, deg/s, rad/s',
+  JSON.stringify(unitLabels) === JSON.stringify(['RPM', 'deg/s', 'rad/s']),
   unitLabels.join(', ')
 );
 
@@ -125,9 +164,7 @@ const layout = await page.evaluate(() => {
   );
   const row = q('.row', block);
   // Joint Position's second (Y) field is the panel's right-aligned reference.
-  const dualFields = [
-    ...document.querySelectorAll('dual-input-block .mat-mdc-text-field-wrapper'),
-  ];
+  const dualFields = [...document.querySelectorAll('dual-input-block .mat-mdc-text-field-wrapper')];
   const right = (e) => Math.round(e.getBoundingClientRect().right);
   return {
     overflow: row.scrollWidth - row.clientWidth,
@@ -149,22 +186,40 @@ check(
 
 // Unit switch re-expresses the same speed
 const rpm = Number(speedValue);
-await unitSelect.selectOption('1'); // DPS
+await unitSelect.selectOption('1'); // deg/s
 await page.waitForTimeout(500);
 const dps = Number(await speedInput.inputValue());
-await unitSelect.selectOption('2'); // RPS
+await unitSelect.selectOption('2'); // rad/s
 await page.waitForTimeout(500);
 const rps = Number(await speedInput.inputValue());
 check(
   'Switching units re-expresses the same speed',
   Math.abs(dps - rpm * 6) < 0.05 && Math.abs(rps - (rpm * Math.PI) / 30) < 0.05,
-  `${rpm} RPM -> ${dps} DPS (expect ${(rpm * 6).toFixed(2)}) -> ${rps} RPS (expect ${((rpm * Math.PI) / 30).toFixed(2)})`
+  `${rpm} RPM -> ${dps} deg/s (expect ${(rpm * 6).toFixed(2)}) -> ${rps} rad/s (expect ${((rpm * Math.PI) / 30).toFixed(2)})`
 );
 await page.screenshot({ path: `${OUT}/04-units-switched.png`, fullPage: true });
 
-// Back to RPM and set a slow speed so the time value gets long.
+// Back to RPM.
 await unitSelect.selectOption('0');
 await page.waitForTimeout(400);
+
+// A negative speed reads as "the other way": magnitude kept, direction flipped.
+const directionBeforeNegative = (await readDirection()).text;
+await speedInput.scrollIntoViewIfNeeded();
+await speedInput.fill('-20');
+await speedInput.press('Tab');
+await page.waitForTimeout(700);
+const negativeValue = await speedInput.inputValue();
+const directionAfterNegative = (await readDirection()).text;
+check(
+  'Typing a negative speed keeps the magnitude and flips the direction',
+  negativeValue === '20' && directionAfterNegative !== directionBeforeNegative,
+  `field="${negativeValue}", ${directionBeforeNegative} -> ${directionAfterNegative}`
+);
+await dirButton.click(); // restore the original direction
+await page.waitForTimeout(600);
+
+// Set a slow speed so the time value gets long.
 await speedInput.scrollIntoViewIfNeeded();
 await speedInput.fill('1');
 await speedInput.press('Tab');
@@ -181,7 +236,11 @@ const settingsText = (await settingsPanel.textContent().catch(() => '')) ?? '';
 check(
   'Global Settings no longer shows Input Direction or Input Speed',
   !settingsText.includes('Input Direction') && !settingsText.includes('Input Speed'),
-  settingsText.includes('Input Direction') ? 'still has Input Direction' : settingsText.includes('Input Speed') ? 'still has Input Speed' : 'both removed'
+  settingsText.includes('Input Direction')
+    ? 'still has Input Direction'
+    : settingsText.includes('Input Speed')
+      ? 'still has Input Speed'
+      : 'both removed'
 );
 await page.screenshot({ path: `${OUT}/05-settings-panel.png`, fullPage: true });
 
