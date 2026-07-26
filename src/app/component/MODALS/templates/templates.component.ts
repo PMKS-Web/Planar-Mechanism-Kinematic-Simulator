@@ -1,4 +1,13 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  Optional,
+  TemplateRef,
+  ViewChild,
+} from '@angular/core';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MechanismService } from 'src/app/services/mechanism.service';
+import { UrlProcessorService } from 'src/app/services/url-processor.service';
 import { BuiltInTemplateID, TEMPLATE_LINKAGES } from './template-linkages';
 
 @Component({
@@ -9,16 +18,61 @@ import { BuiltInTemplateID, TEMPLATE_LINKAGES } from './template-linkages';
   standalone: false,
 })
 export class TemplatesComponent {
+  /** Asks whether to replace the linkage already on the grid or open a new tab. */
+  @ViewChild('openChoiceDialog') openChoiceDialog!: TemplateRef<unknown>;
+
+  constructor(
+    // Optional so the component can also render outside a dialog (tests do).
+    @Optional() private dialogRef: MatDialogRef<TemplatesComponent> | null,
+    private dialog: MatDialog,
+    private mechanismSrv: MechanismService,
+    private urlProcessor: UrlProcessorService
+  ) {}
+
   openLinkage(linkage: BuiltInTemplateID) {
     const content = TEMPLATE_LINKAGES[linkage];
+
+    // An empty grid has nothing to lose, so load right here instead of
+    // spawning a tab the user then has to switch to.
+    if (this.gridIsEmpty()) {
+      this.openHere(content);
+      return;
+    }
+
+    this.dialog
+      .open(this.openChoiceDialog)
+      .afterClosed()
+      .subscribe((choice) => {
+        if (choice === 'replace') {
+          this.openHere(content);
+        } else if (choice === 'new-tab') {
+          this.openInNewTab(content);
+        }
+      });
+  }
+
+  private gridIsEmpty(): boolean {
+    return (
+      this.mechanismSrv.joints.length === 0 &&
+      this.mechanismSrv.links.length === 0 &&
+      this.mechanismSrv.forces.length === 0
+    );
+  }
+
+  private openHere(content: string) {
+    // The same in-place rebuild undo/redo uses. Saved to history, so replacing
+    // an existing linkage is a single undo away from being taken back.
+    this.urlProcessor.updateFromURL(content, true, true, true);
+    this.dialogRef?.close();
+  }
+
+  private openInNewTab(content: string) {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     const pathname = window.location.pathname;
     const port = window.location.port;
     const url = `${protocol}//${hostname}${port ? `:${port}` : ''}${pathname}`;
     const dataURLString = `${url}?${content}`;
-
-    console.log(dataURLString);
 
     const toolman = document.createElement('a');
     toolman.setAttribute('href', dataURLString);

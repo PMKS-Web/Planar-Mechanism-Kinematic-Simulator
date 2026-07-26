@@ -18,8 +18,9 @@ their source. Everything browser-driven lives here.
 - `focused-interactions.mjs` — focused workflows (four-bar build, animation, analysis)
 - `force-analysis-panels.mjs` — Force Analysis rows on the joint and link analysis panels, and the shared Force Analysis Type toggle
 - `left-nav-modes.mjs` — mode-scoped left nav rail: Edit/Analyze tool sections, the absorbed view controls, and the rewind-on-leaving-Analyze behavior
+- `template-open.mjs` — the template library: loads in place on an empty grid, and shows a new-tab / replace / cancel choice (with replace undoable) when the grid already holds work
 - `playback-timing.mjs` — real-time playback: a revolution takes 60/RPM wall-clock seconds, the reported cycle period scales with input speed, and simulation time is held (not the sample index) across a speed change
-- `input-settings-and-playback.mjs` — the input joint's Input Settings section (direction, unit-free speed field, RPM/DPS/RPS picker), its removal from global Settings, the time field's width, and that playback interpolates between samples at a slow input speed
+- `input-settings-and-playback.mjs` — the input joint's Input Settings section (direction, unit-free speed field, RPM / deg/s / rad/s picker), its removal from global Settings, the time field's width, and that playback interpolates between samples at a slow input speed
 
 ## Running
 
