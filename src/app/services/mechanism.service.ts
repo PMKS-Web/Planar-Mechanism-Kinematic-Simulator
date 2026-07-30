@@ -33,6 +33,8 @@ import { PositionSolver } from '../model/mechanism/position-solver';
 import { ColorService } from './color.service';
 import { siUnitFactorsForLength } from '../model/unit-conversions';
 import { transformRigidCoord, transformRigidPath } from '../model/compound-link-path';
+import { MergeRefusal, refuseJointMerge } from '../model/drop-target';
+import { redundantlyHeldJointSets } from '../model/rigid-bodies';
 
 /** Blend two angles along the shorter arc, so a wrap past pi does not spin. */
 function blendAngle(from: number, to: number, blend: number): number {
@@ -485,6 +487,96 @@ export class MechanismService {
     PositionSolver.setUpSolvingForces(this.forces);
     this.updateMechanism(save);
     this.onMechUpdateState.next(3);
+  }
+
+  /**
+   * Fold `source` into `target`: every link that used `source` now uses
+   * `target`, and `source` stops existing. This is the release half of a
+   * joint-onto-joint drag.
+   *
+   * Returns the refusal reason when the merge is illegal, so the caller can say
+   * which rule it hit — a joint that silently declines to merge reads as a
+   * broken drag rather than as a rule.
+   */
+  mergeJoints(source: RealJoint, target: RealJoint): MergeRefusal | undefined {
+    const refusal = refuseJointMerge(source, target);
+    if (refusal) {
+      return refusal;
+    }
+
+    // A weld is a joint flag plus a compound link built around it, so the two
+    // have to be taken apart before the topology moves and rebuilt afterwards.
+    // Going through the weld path rather than editing compounds by hand is what
+    // makes the result a real compound instead of a joint merely flagged welded
+    // with a stray link beside it.
+    const shouldWeld = source.isWelded || target.isWelded;
+    if (source.isWelded) this.unweldJointTopology(source);
+    if (target.isWelded) this.unweldJointTopology(target);
+
+    // Ground and input are things the user set deliberately. A merge that
+    // dropped one would quietly change what the mechanism is, so the survivor
+    // inherits both.
+    target.ground = target.ground || source.ground;
+    target.input = target.input || source.input;
+
+    this.links.forEach((link) => this.replaceJointInLink(link, source, target));
+    this.joints = this.joints.filter((joint) => joint.id !== source.id);
+
+    // Only link membership has moved so far. Everything below reads joint.links
+    // or joint.connectedJoints, so connectivity has to be re-derived first.
+    this.rebuildJointGraph();
+
+    // A slider carried across by the merge has to sit on its new pin: the
+    // prismatic joint and the pin it rides are coincident by construction.
+    this.joints.forEach((joint) => {
+      if (!(joint instanceof PrisJoint)) return;
+      if (!joint.connectedJoints.some((connected) => connected.id === target.id)) return;
+      joint.x = target.x;
+      joint.y = target.y;
+    });
+
+    if (this.activeObjService.selectedJoint?.id === source.id) {
+      this.activeObjService.updateSelectedObj(target);
+    }
+
+    // A refusal here is not silent: canBeWelded declines a grounded, driven, or
+    // slider-carrying joint, and the caller reports the survivor's actual weld
+    // state rather than assuming the weld took.
+    if (shouldWeld) this.weldJointTopology(target);
+
+    // No save here: a merge is the tail of a drag gesture, and the gesture owns
+    // the single undo entry it earns (see DragStateService.release).
+    this.finishStructuralEdit(false);
+    return undefined;
+  }
+
+  private replaceJointInLink(link: Link, source: RealJoint, target: RealJoint): void {
+    if (link instanceof RealLink) {
+      link.subset.forEach((sub) => this.replaceJointInLink(sub, source, target));
+    }
+    const index = link.joints.findIndex((joint) => joint.id === source.id);
+    if (index === -1) {
+      return;
+    }
+
+    link.joints[index] = target;
+    // Link ids are the sorted concatenation of their joint letters, which is
+    // what createNewCompoundLinkFromSubset builds and what the URL codec reads.
+    link.id = link.joints
+      .map((joint) => joint.id)
+      .sort()
+      .join('');
+    link.fixedLocations = link.fixedLocations.map((location) =>
+      location.id === source.id ? { id: target.id, label: target.id } : location
+    );
+    if (link.fixedLocation.fixedPoint === source.id) {
+      link.fixedLocation.fixedPoint = target.id;
+    }
+
+    if (link instanceof RealLink) {
+      link.CoM = RealLink.determineCenterOfMass(link.joints);
+      link.reComputeDPath();
+    }
   }
 
   deleteJoint() {
@@ -1413,8 +1505,59 @@ export class MechanismService {
   }
 
   public weldJoint(joint: RealJoint = this.activeObjService.selectedJoint): void {
-    if (!joint || !this.weldJointTopology(joint)) return;
+    if (!joint) return;
+
+    // Clicking Weld on a named joint is a deliberate act, so this warns rather
+    // than refuses. The linkage still moves and still solves; only its forces
+    // lose a unique solution, and the analysis panel says so in its own right.
+    // A drag that lands on the same geometry is refused instead, because
+    // dropping a joint somewhere is far more easily done by accident.
+    const created = this.weldWouldPinTwice(joint);
+
+    if (!this.weldJointTopology(joint)) return;
+    if (created) {
+      NewGridComponent.sendNotification(
+        `${created[0]} and ${created[1]} are now pinned together twice. The linkage still ` +
+          'moves, but its forces have no unique solution.'
+      );
+    }
     this.finishStructuralEdit(true);
+  }
+
+  /**
+   * The joints a weld at this joint would newly leave held twice, if any.
+   *
+   * Compares the redundancies before the edit with the ones after it, rather
+   * than asking whether anything is redundant afterwards. A mechanism may
+   * legitimately already contain a redundant pin — this branch is what makes
+   * those simulate — and reporting the total would blame every later weld for a
+   * condition it did not cause, naming joints nowhere near the one clicked.
+   *
+   * Predicted rather than measured after the fact, because the compound has
+   * absorbed forces and rewritten link ids by the time it exists. The
+   * prediction needs only its joint set: the union of the links at that joint.
+   */
+  private weldWouldPinTwice(joint: RealJoint): [string, string] | undefined {
+    const linksAtJoint = this.links.filter(
+      (link): link is RealLink => link instanceof RealLink && link.joints.includes(joint)
+    );
+    if (linksAtJoint.length < 2) return undefined;
+
+    const compound = {
+      id: 'compound',
+      joints: linksAtJoint
+        .flatMap((link) => link.joints)
+        .filter((candidate, index, all) => all.findIndex((j) => j.id === candidate.id) === index),
+    };
+    const untouched = this.links.filter((link) => !linksAtJoint.includes(link as RealLink));
+
+    const before = redundantlyHeldJointSets(this.links);
+    const appeared = [...redundantlyHeldJointSets([compound, ...untouched])].find(
+      (held) => !before.has(held)
+    );
+    if (!appeared) return undefined;
+    const [first, second] = appeared.split('|');
+    return [first, second];
   }
 
   private weldJointTopology(joint: RealJoint): boolean {

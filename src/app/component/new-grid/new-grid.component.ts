@@ -54,6 +54,12 @@ import {
 import { ColorService } from '../../services/color.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { EditPanelComponent } from '../edit-panel/edit-panel.component';
+import { DragStateService } from '../../services/drag-state.service';
+import {
+  JointDropCandidate,
+  MERGE_REFUSAL_MESSAGES,
+  resolveDropCandidate,
+} from '../../model/drop-target';
 import introJs from 'intro.js';
 
 @Component({
@@ -84,7 +90,8 @@ export class NewGridComponent {
     public dialog: MatDialog,
     public saveHistoryService: SaveHistoryService,
     private colorService: ColorService,
-    public nup: NumberUnitParserService
+    public nup: NumberUnitParserService,
+    public dragState: DragStateService
   ) {
     //This is for debug purposes, do not make anything else static!
     NewGridComponent.instance = this;
@@ -98,14 +105,28 @@ export class NewGridComponent {
   public lastLeftClick: Joint | Link | Force | String | SynthesisPose = '';
   lastLeftClickType: string = 'Nothing';
 
-  //TODO: These states should be a one stateMachine that is a service
-  private gridStates: gridStates = gridStates.waiting;
-  private jointStates: jointStates = jointStates.waiting;
-  private linkStates: linkStates = linkStates.waiting;
-  private forceStates: forceStates = forceStates.waiting;
+  /**
+   * The joint the one being dragged would merge into on release, or undefined.
+   * Read by the template to draw the snap indicator.
+   */
+  public snapTargetJoint?: RevJoint;
 
-  private mouseWasDragged: boolean = false;
-  private modifyMechanismWhileDrag: boolean = false;
+  /**
+   * A joint in range that will not take the merge, kept with its reason so the
+   * release can say why. Drawn as a refusal marker rather than left blank: a
+   * target that just goes dark reads as the drag being broken.
+   */
+  public refusedTarget?: JointDropCandidate;
+
+  /** Joints playing one-shot drop feedback, by id. */
+  public shakingJointID?: string;
+  public poppingJointID?: string;
+
+  /** Set when the joint being merged approached its target from the right. */
+  private mergeArrowReversed = false;
+
+  /** Where the link being dragged was last placed, in SVG coordinates. */
+  private linkDragAnchor: Coord = new Coord(0, 0);
 
   private jointTempHolderSVG!: SVGElement;
   private forceTempHolderSVG!: SVGElement;
@@ -123,7 +144,6 @@ export class NewGridComponent {
   public delta: number = 6;
   private startX!: number;
   private startY!: number;
-  private isMouseDown: boolean = false;
   mouseLocation: Coord = new Coord(0, 0);
   lastMouseLocation: Coord = new Coord(0, 0);
   private synthesisClickMode: SynthesisClickMode = SynthesisClickMode.NORMAL;
@@ -216,22 +236,22 @@ export class NewGridComponent {
   }
 
   static debugGetGridState() {
-    return this.instance.gridStates;
+    return this.instance.dragState.grid;
     //This is for debug purposes, do not make anything else static!
   }
 
   static debugGetJointState() {
-    return this.instance.jointStates;
+    return this.instance.dragState.joint;
     //This is for debug purposes, do not make anything else static!
   }
 
   static debugGetLinkState() {
-    return this.instance.linkStates;
+    return this.instance.dragState.link;
     //This is for debug purposes, do not make anything else static!
   }
 
   static debugGetForceState() {
-    return this.instance.forceStates;
+    return this.instance.dragState.force;
     //This is for debug purposes, do not make anything else static!
   }
 
@@ -499,8 +519,7 @@ export class NewGridComponent {
   }
 
   createForce() {
-    this.forceStates = forceStates.creating;
-    this.gridStates = gridStates.createForce;
+    this.dragState.beginCreatingForce();
     this.forceTempHolderSVG.style.display = 'block';
     this.mechanismSrv.onMechUpdateState.next(3);
   }
@@ -527,19 +546,17 @@ export class NewGridComponent {
     const startCoord = this.svgGrid.screenToSVG(this.lastRightClickCoord);
     switch (this.objectKind(this.lastRightClick)) {
       case 'String':
-        this.gridStates = gridStates.createJointFromGrid;
+        this.dragState.beginCreatingLinkFromGrid();
         break;
       case 'PrisJoint':
       case 'RevJoint':
         startCoord.x = this.activeObjService.selectedJoint.x;
         startCoord.y = this.activeObjService.selectedJoint.y;
-        this.gridStates = gridStates.createJointFromJoint;
-        this.jointStates = jointStates.creating;
+        this.dragState.beginCreatingLinkFromJoint();
         break;
       case 'RealLink':
         // TODO: Create logic for attaching a link onto a link
-        this.gridStates = gridStates.createJointFromLink;
-        this.linkStates = linkStates.creating;
+        this.dragState.beginCreatingLinkFromLink();
         break;
       default:
         return;
@@ -567,11 +584,11 @@ export class NewGridComponent {
     this.mouseLocationRaw = new Coord($event.clientX, $event.clientY);
     this.mouseLocation = mousePosInSvg;
 
-    this.mouseWasDragged = true;
+    this.dragState.notePointerMoved();
     let deltaMouseX = this.mouseLocation.x - this.lastMouseLocation.x;
     let deltaMouseY = this.mouseLocation.y - this.lastMouseLocation.y;
 
-    if (this.isMouseDown && this.lastLeftClickType === 'SynthesisPose') {
+    if (this.dragState.isPointerDown && this.lastLeftClickType === 'SynthesisPose') {
       if (this.synthesisClickMode === SynthesisClickMode.ROTATE) {
         let pose = this.lastLeftClick as SynthesisPose;
         let rotate =
@@ -592,99 +609,74 @@ export class NewGridComponent {
       }
     }
 
-    switch (this.gridStates) {
-      case gridStates.createForce:
-      case gridStates.createJointFromGrid:
-      case gridStates.createJointFromJoint:
-      case gridStates.createJointFromLink:
-        this.jointTempHolderSVG.children[0].setAttribute('x2', mousePosInSvg.x.toString());
-        this.jointTempHolderSVG.children[0].setAttribute('y2', mousePosInSvg.y.toString());
-        break;
+    if (this.dragState.isCreatingLink || this.dragState.grid === gridStates.createForce) {
+      this.jointTempHolderSVG.children[0].setAttribute('x2', mousePosInSvg.x.toString());
+      this.jointTempHolderSVG.children[0].setAttribute('y2', mousePosInSvg.y.toString());
     }
-    switch (this.jointStates) {
+    switch (this.dragState.joint) {
       case jointStates.creating:
         this.jointTempHolderSVG.children[0].setAttribute('x2', mousePosInSvg.x.toString());
         this.jointTempHolderSVG.children[0].setAttribute('y2', mousePosInSvg.y.toString());
         break;
       case jointStates.dragging:
-        if (AnimationBarComponent.animate) {
-          this.sendNotification('Cannot edit while animation is running');
+        if (!this.canEditNow() || !this.pastDragThreshold($event)) {
           return;
         }
-        if (this.mechanismSrv.mechanismTimeStep !== 0) {
-          this.sendNotification('Stop animation (or reset to 0 position) to edit');
-          return;
-        }
-        if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
-          this.sendNotification('Cannot edit while in Synthesis mode. Switch to Edit mode to edit');
-          return;
-        }
-
-        //Break the timeout if the user is clearly trying to drag the joint
-        if (getDistance(new Coord(this.startX, this.startY), new Coord($event.x, $event.y)) > 10) {
-          this.timeMouseDown = 0;
-        }
-        //If it has been less than 1 seccond since the mouse was pressed down, ignore the drag
-        if (this.timeMouseDown !== undefined && Date.now() - this.timeMouseDown < 100) {
-          return;
-        }
+        this.updateDropCandidate(mousePosInSvg, $event.altKey);
+        // Captured: the joint sits exactly on the target instead of trailing the
+        // cursor, so what is on screen is what a release would produce.
         this.activeObjService.selectedJoint = this.gridUtils.dragJoint(
           this.activeObjService.selectedJoint,
-          mousePosInSvg
+          this.snapTargetJoint
+            ? new Coord(this.snapTargetJoint.x, this.snapTargetJoint.y)
+            : mousePosInSvg
         );
-        this.modifyMechanismWhileDrag = true;
+        this.dragState.noteMechanismModified();
         //So that the panel values update continously
         this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
-        if (this.mechanismSrv.mechanisms[0].joints[0].length !== 0) {
-          if (this.mechanismSrv.mechanisms[0].dof === 1) {
-            if (this.mechanismSrv.showPathHolder == false) {
-              this.mechanismSrv.onMechUpdateState.next(1);
-            }
-            this.mechanismSrv.showPathHolder = true;
-          }
-        }
+        this.showPathWhileDragging();
         break;
     }
-    switch (this.linkStates) {
+    switch (this.dragState.link) {
       case linkStates.creating:
         this.jointTempHolderSVG.children[0].setAttribute('x2', mousePosInSvg.x.toString());
         this.jointTempHolderSVG.children[0].setAttribute('y2', mousePosInSvg.y.toString());
         break;
+      case linkStates.dragging:
+        if (!this.canEditNow() || !this.pastDragThreshold($event)) {
+          return;
+        }
+        // Measured from where the body was last placed, not from the previous
+        // pointer event: the moves held back below the click threshold would
+        // otherwise be lost motion, leaving the link trailing the cursor by
+        // however far the hold lasted.
+        this.gridUtils.dragLink(
+          this.activeObjService.selectedLink,
+          mousePosInSvg.x - this.linkDragAnchor.x,
+          mousePosInSvg.y - this.linkDragAnchor.y
+        );
+        this.linkDragAnchor = mousePosInSvg;
+        this.dragState.noteMechanismModified();
+        this.activeObjService.updateSelectedObj(this.activeObjService.selectedLink);
+        this.showPathWhileDragging();
+        break;
     }
-    switch (this.forceStates) {
+    switch (this.dragState.force) {
       case forceStates.creating:
         this.creatingForce($event);
         break;
       case forceStates.draggingEnd:
-        if (AnimationBarComponent.animate) {
-          this.sendNotification('Cannot edit while animation is running');
-          return;
-        }
-        if (this.mechanismSrv.mechanismTimeStep !== 0) {
-          this.sendNotification('Stop animation (or reset to 0 position) to edit');
-          return;
-        }
-        if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
-          this.sendNotification('Cannot edit while in Synthesis mode. Switch to Edit mode to edit');
+        if (!this.canEditNow()) {
           return;
         }
         //The 3rd params could be this.selectedFroceEndPoint == 'startPoint'
         this.gridUtils.dragForce(this.activeObjService.selectedForce, mousePosInSvg, false);
         //So that the panel values update continously
         this.activeObjService.fakeUpdateSelectedObj();
-        this.modifyMechanismWhileDrag = true;
+        this.dragState.noteMechanismModified();
         break;
       case forceStates.draggingStart:
-        if (AnimationBarComponent.animate) {
-          this.sendNotification('Cannot edit while animation is running');
-          return;
-        }
-        if (this.mechanismSrv.mechanismTimeStep !== 0) {
-          this.sendNotification('Stop animation (or reset to 0 position) to edit');
-          return;
-        }
-        if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
-          this.sendNotification('Cannot edit while in Synthesis mode. Switch to Edit mode to edit');
+        if (!this.canEditNow()) {
           return;
         }
 
@@ -725,9 +717,149 @@ export class NewGridComponent {
         }
         //So that the panel values update continously
         this.activeObjService.fakeUpdateSelectedObj();
-        this.modifyMechanismWhileDrag = true;
+        this.dragState.noteMechanismModified();
         break;
     }
+  }
+
+  /**
+   * Whether an edit is allowed right now, notifying the user when it is not.
+   * Editing is only defined at the t=0 pose in Edit mode: the solved timesteps
+   * are derived from it, so a change made anywhere else has nothing to write to.
+   */
+  private canEditNow(): boolean {
+    if (AnimationBarComponent.animate) {
+      this.sendNotification('Cannot edit while animation is running');
+      return false;
+    }
+    if (this.mechanismSrv.mechanismTimeStep !== 0) {
+      this.sendNotification('Stop animation (or reset to 0 position) to edit');
+      return false;
+    }
+    if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
+      this.sendNotification('Cannot edit while in Synthesis mode. Switch to Edit mode to edit');
+      return false;
+    }
+    // Analyze already refuses to open an edit context menu (see onContextMenu),
+    // but dragging bypassed that: the mode was read-only by menu only. Whole-link
+    // drag would have widened the hole, so the guard covers every drag instead.
+    if (this.tabService.getCurrentTab() === TabID.ANALYZE) {
+      this.sendNotification('Analysis mode is read-only. Switch to Edit mode to edit');
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Whether the pointer has committed to a drag rather than a click. A short
+   * press is held back so that selecting an object does not nudge it; moving
+   * far enough overrides the hold, because by then the intent is unambiguous.
+   */
+  private pastDragThreshold($event: MouseEvent): boolean {
+    if (getDistance(new Coord(this.startX, this.startY), new Coord($event.x, $event.y)) > 10) {
+      this.timeMouseDown = 0;
+    }
+    return !(this.timeMouseDown !== undefined && Date.now() - this.timeMouseDown < 100);
+  }
+
+  /** How close a dragged joint has to get to another before it will merge. */
+  private snapRadius(): number {
+    return this.settings.objectScale * 0.4;
+  }
+
+  /**
+   * Mark the joint the drag is aimed at. Holding Alt suppresses snapping
+   * outright, which is the only way to park a joint on top of another without
+   * merging the two.
+   */
+  private updateDropCandidate(mousePos: Coord, altHeld: boolean): void {
+    this.setDropCandidate(
+      altHeld
+        ? undefined
+        : resolveDropCandidate(
+            this.activeObjService.selectedJoint,
+            mousePos.x,
+            mousePos.y,
+            this.mechanismSrv.joints,
+            this.snapRadius()
+          )
+    );
+  }
+
+  private setDropCandidate(candidate?: JointDropCandidate): void {
+    // Capture starts further out than the joint's own hitbox, so pointerover
+    // cannot be what lifts the target to its hovered fill.
+    if (this.snapTargetJoint && this.snapTargetJoint !== candidate?.joint) {
+      this.snapTargetJoint.showHighlight = false;
+    }
+    const captured = candidate && !candidate.refusal ? candidate.joint : undefined;
+
+    // Which way the arrow points is latched the moment the ring appears, from
+    // the side the joint was still on. Recomputing it per frame would flip it
+    // back and forth as the cursor wanders across the target, and the joint has
+    // by then been parked on top of it anyway, so there is nothing left to read.
+    if (captured && captured !== this.snapTargetJoint) {
+      this.mergeArrowReversed = this.activeObjService.selectedJoint.x > captured.x;
+    }
+
+    this.snapTargetJoint = captured;
+    this.refusedTarget = candidate?.refusal ? candidate : undefined;
+    if (this.snapTargetJoint) this.snapTargetJoint.showHighlight = true;
+  }
+
+  /**
+   * `B → D` when this joint is the one a capture is about to merge into.
+   *
+   * A captured joint sits exactly on its target, so both names render at the
+   * same point and overlap into an unreadable smudge. Naming the merge in one
+   * label reads better than either name alone, and says which of the two
+   * survives — which is not otherwise visible anywhere.
+   */
+  mergeLabelFor(joint: Joint): string {
+    if (!this.snapTargetJoint || joint.id !== this.snapTargetJoint.id) return '';
+    const source = this.activeObjService.selectedJoint;
+    if (!source || source.id === joint.id) return '';
+    return this.mergeArrowReversed
+      ? `${joint.name} \u2190 ${source.name}`
+      : `${source.name} \u2192 ${joint.name}`;
+  }
+
+  /** Whether this joint is the one being dragged into another. */
+  isMergingAway(joint: Joint): boolean {
+    return (
+      !!this.snapTargetJoint &&
+      joint.id === this.activeObjService.selectedJoint?.id &&
+      joint.id !== this.snapTargetJoint.id
+    );
+  }
+
+  /** The one-shot feedback animation playing on `joint`, if any. */
+  jointEffectClass(joint: Joint): string {
+    if (joint.id === this.shakingJointID) return 'jointShake';
+    if (joint.id === this.poppingJointID) return 'jointPop';
+    return '';
+  }
+
+  /** Shake the dropped joint and say why it could not land where it was aimed. */
+  private refuseDrop(jointID: string, message: string): void {
+    this.sendNotification(message);
+    this.shakingJointID = jointID;
+    setTimeout(() => (this.shakingJointID = undefined), 420);
+  }
+
+  /** Pop the survivor of a merge, so the change is legible where it happened. */
+  private popJoint(jointID: string): void {
+    this.poppingJointID = jointID;
+    setTimeout(() => (this.poppingJointID = undefined), 400);
+  }
+
+  private showPathWhileDragging(): void {
+    if (this.mechanismSrv.mechanisms[0].joints[0].length === 0) return;
+    if (this.mechanismSrv.mechanisms[0].dof !== 1) return;
+    if (this.mechanismSrv.showPathHolder === false) {
+      this.mechanismSrv.onMechUpdateState.next(1);
+    }
+    this.mechanismSrv.showPathHolder = true;
   }
 
   onContextMenu($event: MouseEvent) {
@@ -765,31 +897,76 @@ export class NewGridComponent {
 
   mouseUp($event: MouseEvent) {
     //This is the mouseUp that is called no matter what is clicked on
-    // TODO check for condition when a state was not waiting. If it was not waiting, then update the mechanism
-    this.isMouseDown = false;
     this.synthesisClickMode = SynthesisClickMode.NORMAL;
-    this.gridStates = gridStates.waiting;
-    this.jointStates = jointStates.waiting;
-    this.linkStates = linkStates.waiting;
-    if (this.forceStates !== forceStates.waiting) {
-      this.forceStates = forceStates.waiting;
+
+    // Resolve the drop before releasing: the snap target is only meaningful
+    // while the drag it belongs to is still in flight.
+    const merged = this.completePendingJointMerge($event);
+    const outcome = this.dragState.release();
+
+    if (outcome.rebuild) {
       this.mechanismSrv.updateMechanism();
     }
     if (this.mechanismSrv.showPathHolder) {
       this.mechanismSrv.onMechUpdateState.next(2);
     }
     this.mechanismSrv.showPathHolder = false;
-    // this.activeObjService.updateSelectedObj(thing);
 
-    console.log(this.jointStates);
-
-    // create a save if, while dragging, mechanism was updated
-    if (this.mouseWasDragged && this.modifyMechanismWhileDrag) {
+    // One gesture earns one undo entry. Undo is a stack of URL strings, so
+    // saving per pointer-move would fill it with intermediate poses nobody
+    // asked to return to.
+    if (outcome.save || merged) {
       this.mechanismSrv.save();
     }
+  }
 
-    this.mouseWasDragged = false;
-    this.modifyMechanismWhileDrag = false;
+  /**
+   * If a joint drag is ending over another joint, fold the two together.
+   * Returns whether the mechanism changed structurally.
+   */
+  private completePendingJointMerge($event: MouseEvent): boolean {
+    // Alt is read from the release, not from the last pointermove. Pressing a
+    // modifier emits no move, so a target acquired before Alt went down would
+    // otherwise still merge on a release the user meant to be inert.
+    if ($event.altKey) {
+      this.snapTargetJoint = undefined;
+      this.refusedTarget = undefined;
+      return false;
+    }
+    const target = this.snapTargetJoint;
+    const refused = this.refusedTarget;
+    this.setDropCandidate(undefined);
+    if (this.dragState.joint !== jointStates.dragging) {
+      return false;
+    }
+
+    const source = this.activeObjService.selectedJoint;
+    if (refused?.refusal) {
+      this.refuseDrop(source.id, MERGE_REFUSAL_MESSAGES[refused.refusal]);
+      return false;
+    }
+    if (!target) {
+      return false;
+    }
+
+    const wasWelded = source.isWelded || target.isWelded;
+    const refusal = this.mechanismSrv.mergeJoints(source, target);
+    if (refusal) {
+      this.refuseDrop(source.id, MERGE_REFUSAL_MESSAGES[refusal]);
+      return false;
+    }
+
+    // A merged-into-welded joint re-welds itself, but a grounded, driven, or
+    // slider-carrying survivor cannot be welded at all. Losing the weld
+    // silently would leave the user with a linkage they did not ask for. A
+    // merge that goes exactly as asked says nothing: the pop is the receipt.
+    if (wasWelded && !target.isWelded) {
+      this.sendNotification(
+        `Merged joint ${source.id} into ${target.id}, but ${target.id} cannot be welded`
+      );
+    }
+    this.popJoint(target.id);
+    return true;
   }
 
   mouseDown($event: MouseEvent) {
@@ -801,7 +978,7 @@ export class NewGridComponent {
     // $event.preventDefault();
     // $event.stopPropagation();
     // this.disappearContext();
-    this.isMouseDown = true;
+    this.dragState.press();
     this.startX = $event.pageX;
     this.startY = $event.pageY;
     // console.log(this.startX, this.startY);
@@ -811,6 +988,10 @@ export class NewGridComponent {
 
     const mousePosInSvg = this.svgGrid.screenToSVGfromXY($event.clientX, $event.clientY);
     this.mouseLocation = mousePosInSvg;
+    // Where a link drag measures its offset from. Without anchoring it here the
+    // first move would translate the link by the distance from whatever
+    // unrelated pointer event came last — a jump on grab.
+    this.linkDragAnchor = mousePosInSvg;
 
     switch ($event.button) {
       case 0: // Handle Left-Click on canvas
@@ -821,7 +1002,7 @@ export class NewGridComponent {
         // console.warn(this.activeObjService.objType);
         switch (this.lastLeftClickType) {
           case 'Grid':
-            switch (this.gridStates) {
+            switch (this.dragState.grid) {
               case gridStates.createJointFromGrid:
                 //Here's where you actaully make the link
                 joint1 = this.mechanismSrv.createRevJoint(
@@ -850,8 +1031,7 @@ export class NewGridComponent {
                 this.mechanismSrv.mergeToJoints([joint1, joint2]);
                 this.mechanismSrv.mergeToLinks([link]);
                 this.mechanismSrv.updateMechanism(true);
-                this.gridStates = gridStates.waiting;
-                this.linkStates = linkStates.waiting;
+                this.dragState.finishCreating();
                 this.jointTempHolderSVG.style.display = 'none';
                 break;
               case gridStates.createJointFromJoint:
@@ -871,8 +1051,7 @@ export class NewGridComponent {
                 this.mechanismSrv.mergeToJoints([joint2]);
                 this.mechanismSrv.mergeToLinks([link]);
                 this.mechanismSrv.updateMechanism(true);
-                this.gridStates = gridStates.waiting;
-                this.jointStates = jointStates.waiting;
+                this.dragState.finishCreating();
                 this.jointTempHolderSVG.style.display = 'none';
                 break;
               case gridStates.createJointFromLink:
@@ -926,8 +1105,7 @@ export class NewGridComponent {
                 this.activeObjService.selectedLink.d =
                   this.activeObjService.selectedLink.getPathString();
                 this.mechanismSrv.updateMechanism(true);
-                this.gridStates = gridStates.waiting;
-                this.linkStates = linkStates.waiting;
+                this.dragState.finishCreating();
                 this.jointTempHolderSVG.style.display = 'none';
                 break;
               case gridStates.createForce:
@@ -937,8 +1115,7 @@ export class NewGridComponent {
                   new Coord($event.clientX, $event.clientY)
                 );
                 this.mechanismSrv.createForce(startCoord, endCoord);
-                this.gridStates = gridStates.waiting;
-                this.forceStates = forceStates.waiting;
+                this.dragState.finishCreating();
                 this.forceTempHolderSVG.style.display = 'none';
                 break;
             }
@@ -947,7 +1124,7 @@ export class NewGridComponent {
             // this.jointXatMouseDown = thing.x;
             // this.jointYatMouseDown = thing.y;
             // Get the joint that was clicked on and top left of the rectangualr bounds
-            switch (this.gridStates) {
+            switch (this.dragState.grid) {
               case gridStates.waiting:
                 break;
               case gridStates.createJointFromGrid:
@@ -971,8 +1148,7 @@ export class NewGridComponent {
                 this.mechanismSrv.mergeToLinks([link]);
                 this.mechanismSrv.updateMechanism(true);
                 // PositionSolver.setUpSolvingForces(link.forces); // needed to determine force location when dragging a joint
-                this.gridStates = gridStates.waiting;
-                this.linkStates = linkStates.waiting;
+                this.dragState.finishCreating();
                 this.jointTempHolderSVG.style.display = 'none';
                 break;
               case gridStates.createJointFromJoint:
@@ -995,8 +1171,7 @@ export class NewGridComponent {
                   }
                 });
                 if (commonLinkCheck) {
-                  this.gridStates = gridStates.waiting;
-                  this.jointStates = jointStates.waiting;
+                  this.dragState.finishCreating();
                   this.jointTempHolderSVG.style.display = 'none';
                   this.sendNotification("Don't link to a joint on the same link");
                   return;
@@ -1012,8 +1187,7 @@ export class NewGridComponent {
                 joint2.links.push(link);
                 this.mechanismSrv.mergeToLinks([link]);
                 this.mechanismSrv.updateMechanism(true);
-                this.gridStates = gridStates.waiting;
-                this.jointStates = jointStates.waiting;
+                this.dragState.finishCreating();
                 this.jointTempHolderSVG.style.display = 'none';
                 break;
               case gridStates.createJointFromLink:
@@ -1050,71 +1224,65 @@ export class NewGridComponent {
                 this.mechanismSrv.mergeToJoints([joint1]);
                 this.mechanismSrv.mergeToLinks([link]);
                 this.mechanismSrv.updateMechanism(true);
-                this.gridStates = gridStates.waiting;
-                this.linkStates = linkStates.waiting;
+                this.dragState.finishCreating();
                 this.jointTempHolderSVG.style.display = 'none';
                 break;
             }
-            switch (this.jointStates) {
+            switch (this.dragState.joint) {
               case jointStates.waiting:
-                this.jointStates = jointStates.dragging;
+                this.dragState.beginDraggingJoint();
                 // this.selectedJoint = thing;
                 break;
             }
             break;
           case 'Link':
-            if (
-              this.gridStates === gridStates.createJointFromGrid ||
-              this.gridStates === gridStates.createJointFromJoint ||
-              this.gridStates === gridStates.createJointFromLink
-            ) {
+            if (this.dragState.isCreatingLink) {
               this.sendNotification(
                 'Cannot link to a bar. Please create and select a tracer point on the link.'
               );
-              this.gridStates = gridStates.waiting;
-              this.jointStates = jointStates.waiting;
+              this.dragState.cancel();
               this.jointTempHolderSVG.style.display = 'none';
+              break;
+            }
+            if (this.dragState.link === linkStates.waiting) {
+              this.dragState.beginDraggingLink();
             }
             break;
           case 'Force':
             console.log('force is last left click');
-            switch (this.forceStates) {
+            switch (this.dragState.force) {
               case forceStates.waiting:
                 console.log(this.activeObjService.selectedForce);
                 if (this.activeObjService.selectedForce.isStartSelected) {
-                  this.forceStates = forceStates.draggingStart;
+                  this.dragState.beginDraggingForceStart();
                 } else if (this.activeObjService.selectedForce.isEndSelected) {
-                  this.forceStates = forceStates.draggingEnd;
+                  this.dragState.beginDraggingForceEnd();
                 }
             }
             break;
           case 'JointTemp':
-            this.gridStates = gridStates.waiting;
-            this.jointStates = jointStates.waiting;
+            this.dragState.cancel();
             this.jointTempHolderSVG.style.display = 'none';
             this.sendNotification("Don't link a joint to itself");
         }
         break;
       // TODO: Be sure all things reset
       case 1: // Middle-Click
-        this.gridStates = gridStates.waiting;
-        this.jointStates = jointStates.waiting;
-        this.linkStates = linkStates.waiting;
-        this.forceStates = forceStates.waiting;
+        this.dragState.cancel();
         this.jointTempHolderSVG.style.display = 'none';
         return;
       case 2: // Right-Click
-        this.gridStates = gridStates.waiting;
-        this.jointStates = jointStates.waiting;
-        this.linkStates = linkStates.waiting;
-        this.forceStates = forceStates.waiting;
+        this.dragState.cancel();
         this.jointTempHolderSVG.style.display = 'none';
         break;
     }
   }
 
   static sendNotification(text: string, rateLimitMS?: number) {
-    NewGridComponent.instance.sendNotification(text, rateLimitMS);
+    // Services reach the snackbar through here, and they are also exercised in
+    // tests with no component standing. A missing canvas means nobody is
+    // looking, not that the caller did something wrong.
+    NewGridComponent.instance?.sendNotification(text, rateLimitMS);
   }
 
   sendNotification(text: string, rateLimitMS?: number) {
@@ -1159,8 +1327,39 @@ export class NewGridComponent {
     return this.getFirstPosCoords(link).y;
   }
 
+  /**
+   * Re-answer "what would this drop do?" when Alt is pressed or let go.
+   *
+   * A modifier emits no pointer event, so without this the ring would sit there
+   * claiming a target that Alt has already called off, and the user would have
+   * to jiggle the mouse to find out whether the key registered. Alt also
+   * releases a captured joint back to the cursor, because suppressing the snap
+   * while leaving the joint parked on the target says the opposite.
+   */
+  @HostListener('window:keyup', ['$event'])
+  onAltReleased($event: KeyboardEvent) {
+    this.reconsiderDrop($event, false);
+  }
+
+  private reconsiderDrop($event: KeyboardEvent, held: boolean) {
+    if ($event.key !== 'Alt') return;
+    if (this.dragState.joint !== jointStates.dragging) return;
+
+    this.updateDropCandidate(this.mouseLocation, held);
+    const restingOn = this.snapTargetJoint ?? this.mouseLocation;
+    this.activeObjService.selectedJoint = this.gridUtils.dragJoint(
+      this.activeObjService.selectedJoint,
+      new Coord(restingOn.x, restingOn.y)
+    );
+    this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
+  }
+
+  // Angular keys host listeners by event name, so this component gets exactly
+  // one window:keydown. Anything that needs the key down hangs off here.
   @HostListener('window:keydown', ['$event'])
   onKeyPress($event: KeyboardEvent) {
+    this.reconsiderDrop($event, true);
+
     if (($event.ctrlKey || $event.metaKey) && $event.keyCode == 90) {
       //Ctrl + Z
       NewGridComponent.sendNotification(

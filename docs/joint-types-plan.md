@@ -318,24 +318,221 @@ and the separate NaN branch ([`:543-571`](../src/app/model/mechanism/position-so
 Independent of joint types, and a prerequisite for Phase 4's slot drags. This is where the drag
 logic currently living only in the author's head gets written down.
 
-| # | Task | Notes |
-| --- | --- | --- |
-| 1.1 | Extract the drag state machine out of `new-grid.component.ts` | `jointStates`/`linkStates` are scattered across ~12 sites ([`new-grid.component.ts`](../src/app/component/new-grid/new-grid.component.ts)) |
-| 1.2 | Joint-onto-joint drag to snap/merge | new — no snap logic exists today |
-| 1.3 | Whole-link drag | `linkStates.dragging` and `.resizing` are declared ([`utils.ts:30-35`](../src/app/model/utils.ts)) but **never used**; only `creating`/`waiting` appear |
-| 1.4 | Save-on-release discipline | one `updateMechanism(true)` per gesture, not per pointer-move — undo is a stack of URL strings |
+| # | Task | Files | Status |
+| --- | --- | --- | --- |
+| 1.1 | Extract the drag state machine out of `new-grid.component.ts` | [`drag-state.service.ts`](../src/app/services/drag-state.service.ts) | done |
+| 1.2 | Joint-onto-joint drag to snap/merge | [`drop-target.ts`](../src/app/model/drop-target.ts), `MechanismService.mergeJoints` | done |
+| 1.3 | Whole-link drag | `GridUtilsService.dragLink` | done |
+| 1.4 | Save-on-release discipline | `DragStateService.release` | done |
 
-`dragJoint` is currently unconstrained free-drag
-([`grid-utils.service.ts:120-128`](../src/app/services/grid-utils.service.ts)) and already keeps
-the PrisJoint glued to the RevJoint ([`:132-137`](../src/app/services/grid-utils.service.ts)).
-Phase 4 inverts that: the block becomes the constrained thing and the pin follows.
+**1.1** moved the four interaction enums off the component and behind named transitions. The
+component held `gridStates`/`jointStates`/`linkStates`/`forceStates` as private fields assigned from
+roughly a dozen sites, so a gesture that forgot one of them left the canvas in a state no single
+field described. The enums themselves stay in `utils.ts`; only their ownership moved.
+
+Two things fell out of the extraction rather than being planned:
+
+- The three-way "can I edit right now?" guard was duplicated at three call sites, and none of them
+  covered Analyze mode. Analyze already refused the edit context menu, so it *presented* as
+  read-only while dragging went straight through. Whole-link drag would have widened that hole, so
+  the guard now covers every drag.
+- `GridUtilsService` reached the mechanism through `NewGridComponent.instance.mechanismSrv`. It now
+  resolves `MechanismService` through `Injector` at call time — the cycle-breaking pattern the rest
+  of the codebase already uses — which removes one static channel and is what makes `dragLink`
+  testable without a DOM.
+
+**1.2** splits into a pure refusal/nearest-target module and a topology merge on MechanismService.
+The refusal reasons are returned rather than a bare boolean because a joint that silently declines
+to snap reads as a broken drag.
+
+What a merge is *allowed* to land on is the part that took two passes to get right.
+
+| Target | Result |
+| --- | --- |
+| a plain pin | a pin, with the arriving links added |
+| **the revolute half of a slider** | a pin-in-slot: two or more links riding one block |
+| **a welded joint** | the arriving link joins the compound — the survivor re-welds |
+| a slider, when the dragged joint also carries one | refused; two blocks on one pin is a different joint type |
+| the prismatic half of a slider | refused; the slot is not a pin |
+| two joints of one link | refused; the link would collapse to zero length |
+
+The slider and weld rows started out as refusals deferred to Phases 2 and 3. They are not deferrable:
+dropping a pin onto a slider's pin *is* how a pin-in-slot gets built, and it is the gesture the whole
+slot feature is heading towards. Both work on the existing decomposition with no new model —
+the block already carries any number of links at its revolute end.
+
+A weld is a joint flag plus a compound link built around it, so the merge unwelds both ends, moves
+the topology, and welds the survivor again through `weldJointTopology`. Going through the weld path
+rather than editing compounds by hand is what makes the result a real compound instead of a joint
+flagged welded with a stray link beside it. `canBeWelded` declines a grounded, driven, or
+slider-carrying joint, so a merge that grounds the survivor takes the weld away — reported, not
+silent.
+
+**The Weld button reaches the same geometry, and warns instead of refusing.** Welding fuses the
+links meeting at a joint into one compound, and that compound can end up holding a pair of joints
+some other link already holds. The kinematics survive — `groupRigidBodies` merges them and the
+mobility comes out right (§ below) — but the statics do not: a redundant pin carries a share of the
+load rigid-body equilibrium cannot determine, and the force solver has no unique answer.
+
+**Blocking and warning are split by how easily the gesture is made by accident.** Dropping a joint
+somewhere is a slip; clicking Weld on a named joint is a decision. So the drag is refused, with the
+red ring saying so before the drop commits, and the weld goes through with a snackbar. The force
+side already degrades honestly on its own (`unsupported-topology`), so the user is told twice and
+nothing is silently wrong.
+
+Refusing the weld as well was the first attempt, and it was wrong for a reason worth recording: it
+made a mechanism the app can *open* one the app cannot *author*. Unwelding the coupler of the
+linkage that prompted the mobility fix, then welding it back, was refused — a one-way door on a
+file the user had already built. A teaching tool that loads a linkage it will not let you draw is
+harder to explain than an indeterminate force panel.
+
+The warning names the pair the weld *creates*, comparing redundancies before and after rather than
+asking whether anything is redundant afterwards. Since a mechanism may legitimately arrive already
+holding one, the latter would blame every later weld for a condition it did not cause and name
+joints nowhere near the click.
+
+Both this and the drag refusal read [`rigid-bodies.ts`](../src/app/model/rigid-bodies.ts), so
+"what counts as one rigid body" has exactly one definition and cannot drift between them.
+
+**Over-constraint is the one refusal that was not in the plan, and the first version of it was too
+narrow.** It tested for an exact duplicate: links A–B and A–C, with B dropped on C, leave two bars
+spanning the same pair. That misses the case one step out — a bar B–C landing on a *ternary* link
+B–C–G. B and C are already fixed relative to each other by the ternary body, so the bar adds no
+freedom and the solvers see a redundant constraint, but the joint sets are not equal so nothing
+fired. The test is now that the merged link and an existing link must not share **two** joints,
+which catches both: any pair shared by two bodies is a pair each one fixes on its own.
+
+The merge itself reuses `rebuildJointGraph`, so it only has to rewrite `link.joints`, the link id,
+and the `fixedLocations` entries; connectivity is re-derived, and the weld and slider fixups run
+after that rebuild because both read `joint.links`. Ground and input transfer to the survivor,
+because dropping either would quietly change what the mechanism is. A slider carried across by the
+merge is repositioned onto its new pin, since a block and the pin it rides are coincident by
+construction.
+
+#### 1.2a The snap visual language
+
+Adopted from the user's design prototype (`Joint Snap A`), so the canvas says which of three things
+is about to happen *before* the drop rather than after it.
+
+| State | Mark |
+| --- | --- |
+| legal target in range | solid amber ring on the target, and the dragged joint **jumps onto it** rather than trailing the cursor |
+| refused target in range | red ring on that joint, no capture |
+| the other end of the link being dragged | **nothing at all** — see below |
+| release over a refused target | the dragged joint shakes in place, and a snackbar names the rule |
+| **Alt** held at any point, including at the release | no rings, no capture, no merge |
+| a merge that lands | the survivor pops, and **nothing is said** — a gesture that did what it looked like needs no receipt |
+
+While a capture is held the two joints sit on the same point, so their names overlap into a smudge.
+One label replaces both and names the merge — `B → D` — which is also the only place the canvas says
+*which of the two survives*. The arrow points the way the joint travelled, and is latched when the
+ring appears: recomputing it per frame would flip it as the cursor wandered across the target, and
+by then the joint has been parked on top of it anyway, so there is nothing left to read from.
+
+Holding **Alt** suppresses both rings and the capture, for placing a joint on top of another without
+merging them. The release reads Alt from the pointerup event rather than from the last cached
+target: pressing a modifier emits no pointermove, so a drag called off after the ring was acquired
+would otherwise still merge.
+
+A joint on the dragged joint's own link is not a target and gets no mark. Red would be explaining
+something the drawing already says — there is a bar between the two — and a rule the user never
+tried to break should not be announced. It is skipped rather than refused, so a legal joint slightly
+further out can still win the drop.
+
+Capture carries the most: locking the dragged joint to the target's exact position is what makes the
+drop predictable, and it is why the ring radius equals the snap radius rather than being drawn as a
+tight collar — the ring then shows the catch zone honestly.
+
+Two deliberate departures from the prototype. A refused drop does **not** return the joint to where
+it started: in the prototype the drag is abandoned, but here moving a joint is a legitimate edit in
+its own right, and reverting it would silently discard the user's move. And the shake is a
+percentage of the joint's own fill-box rather than the prototype's 7px, because a pixel offset
+inside the zoomed SVG grows with the canvas transform instead of holding its proportion.
+
+**1.3** treats a link drag as a rigid translation rather than as "drag each joint in turn". That
+distinction is visible: the body's own centre of mass and forces translate exactly, so a
+hand-placed CoM survives, while only the *neighbouring* links are deformed and recomputed.
+
+A neighbour's **forces** are recomputed too, and that is easy to get wrong twice over. A load is
+fixed to the body it acts on, so leaving it at its old world position silently slides it to a
+different point of the link — and the drag saves that as the real load. But the transform has to
+scale as well as rotate: a neighbour is *deformed*, its two reference joints changing separation,
+so the rigid transform used elsewhere for link geometry would hold the load's absolute distance
+from the joint and walk it off the end of a shortened link. `pointThroughFrame` scales with the
+frame, which is the invariant `dragJoint` already preserves for a binary link.
+
+`dragJoint` is unconstrained free-drag and already keeps the PrisJoint glued to the RevJoint;
+`dragLink` maintains the same invariant. Phase 4 inverts it: the block becomes the constrained
+thing and the pin follows.
 
 **Drop-target arbitration.** 1.2 and Phase 4.3 both add drop targets. Joint snap must win when a
-joint and a link body are both in range, with a visible indicator of which you're about to get.
+joint and a link body are both in range, with a visible indicator of which you're about to get. The
+joint half is in; the precedence obligation is recorded at `resolveJointDropTarget` for Phase 4.3.
 
-> **Gate 1:** dragging a joint onto another merges them and round-trips through the URL; dragging
-> a link moves all its joints and leaves the mechanism solvable; each gesture is exactly one undo
-> entry.
+`linkStates.resizing` is still declared and still unused — link resizing is not a Phase 1 gesture.
+
+#### What only the browser caught
+
+The unit suite was green and the link drag was still broken on screen. `SvgGridService.handleBeforePan`
+suppressed panning by *enumerating* the drag states — joint dragging, both force endpoints, synthesis
+poses — so a link drag panned the canvas underneath itself. The content moved with the cursor, the
+pointer barely moved in SVG coordinates, and the link translated by about a twentieth of a unit for a
+sixty-pixel drag. Every unit test passed because none of them involve a viewport.
+
+The fix is the reason 1.1 was worth doing: `handleBeforePan` now asks `DragStateService.isDragging`
+instead of listing states, so it is right for gestures that do not exist yet. That also removed two
+more reads of the `NewGridComponent.debugGet*State()` statics.
+
+Anchoring fell out of the same investigation. A link drag accumulates offsets, so every pointer-move
+held back by the click threshold was lost motion and the body trailed the cursor by however long the
+hold lasted. It now measures from where the body was last placed, which makes the suppressed
+distance catch up on the first applied move — matching what joint dragging already did by virtue of
+positioning absolutely.
+
+A third case came from using the app rather than from either suite: with no button held, the canvas
+sometimes followed the cursor after a merge. It took three attempts, and the first two were wrong in
+ways worth recording, because both were confidently argued from evidence that had not been checked.
+
+- **Attempt one blamed Hammer** and guarded its `panstart panmove` handler. Hammer cannot cause this
+  at all: its `MouseInput.handler` turns any `mousemove` with `which !== 1` into `INPUT_END`, so a
+  buttonless move *ends* its gesture.
+- **Attempt two blamed the merge for destroying the node the pointer went down on**, leaving
+  svg-pan-zoom's `mousedown`-set `state === "pan"` with no `mouseup` to clear it. The DOM removal is
+  real — Angular's change detection drains in the microtask checkpoint between `pointerup` and
+  `mouseup` — but Chrome re-aims a release whose target was deleted mid-gesture at the nearest
+  *connected* ancestor. Traces show it landing on `g#jointHolder` and reaching the library.
+- Both attempts shipped browser checks that **passed with the fix removed**. The measurement was at
+  fault: svg-pan-zoom's viewport is `#canvas > g[id^="viewport-"]`, not `.svg-pan-zoom_viewport`,
+  and `ShadowViewport.setCTM` defers its DOM write to `requestAnimationFrame`, so reading the
+  transform inside the dispatch showed nothing either way. That produced the conclusion "synthetic
+  mouse events do not drive svg-pan-zoom", which is false, and everything reasoned from it was void.
+
+What is established: the runaway pan **is** svg-pan-zoom's `state === "pan"` outliving the release,
+confirmed by driving the library into that state and moving a real CDP mouse with no button held.
+What is **not** established is how the release goes missing in the field — 30 CDP scenarios across
+five drags and six release timings, with the guard disabled, produced zero ghost pans.
+
+So `guardAgainstStuckPan` holds the invariant rather than chasing the cause: **a `mousemove`
+carrying no held button cannot belong to a pan**, so it ends the gesture at the source. The release
+is watched on the root — a window-level listener would clear the flag for exactly the releases the
+library missed — and the move on the window, because on the root the two race by registration order
+at `AT_TARGET` and the library registered first, so one pan frame slips through. `handleBeforePan`
+cannot host the test: by then a buttonless pan is indistinguishable from `fit`, `center` and wheel
+zoom, all legitimate.
+
+Its regression check enters the stuck state synthetically, since the field trigger will not
+reproduce, and **it discriminates** — proven by commenting out the guard, polling the served bundle
+until the call was gone, and watching exactly that one check fail with the viewport moving
+`(965, 507) → (1145, 627)`.
+
+The rest is covered by [`e2e/phase1-drag.mjs`](../e2e/phase1-drag.mjs), which asserts in model
+coordinates rather than on screenshots and exits non-zero on any failure.
+
+> **Gate 1 — met.** 310 specs green (was 263); dragging a joint onto another merges them and the
+> result round-trips through the URL; dragging a link moves all its joints and leaves the mechanism
+> valid at DOF 1; every gesture is exactly one undo entry, and a click that only selects is zero.
+> Production build clean. Each new assertion was mutation-checked, and all 46 browser checks in
+> `e2e/phase1-drag.mjs` pass.
 
 ### Phase 2 — Floating Slot: model and solvers
 

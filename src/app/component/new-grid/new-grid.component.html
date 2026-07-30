@@ -388,6 +388,26 @@
         }
       </ng-container>
     }
+    <!-- Where the joint being dragged will land if it is released now -->
+    @if (snapTargetJoint) {
+      <circle
+        class="snapTarget"
+        [attr.r]="0.4 * settings.objectScale"
+        [attr.cx]="snapTargetJoint.x"
+        [attr.cy]="snapTargetJoint.y"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(4)"
+      ></circle>
+    }
+    <!-- A joint in range that will not take the merge -->
+    @if (refusedTarget) {
+      <circle
+        class="snapRefused"
+        [attr.r]="0.38 * settings.objectScale"
+        [attr.cx]="refusedTarget.joint.x"
+        [attr.cy]="refusedTarget.joint.y"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+      ></circle>
+    }
     @for (joint of mechanismSrv.getJoints(); track joint) {
       <svg
         [attr.x]="joint.x"
@@ -401,30 +421,33 @@
         style="overflow: visible"
         cursor="move"
       >
-        <!-- Hitbox -->
-        @if (gridUtils.typeOfJoint(joint) == 'R') {
-          <circle [attr.r]="settings.objectScale / 4" cx="0" cy="0" fill="transparent" />
-        }
-        <!--      Normal Joint-->
-        @if (!gridUtils.getWelded(joint)) {
-          <circle
-            id="joint_{{ joint.id }}"
-            class="joint_circles"
-            [attr.r]="settings.objectScale * gridUtils.getJointR(joint)"
-            [attr.cx]="0"
-            [attr.cy]="0"
-            [class]="mechanismSrv.getJointCSSClass(joint)"
-          />
-        }
-        <!--      Welded Joint-->
-        @if (gridUtils.getWelded(joint)) {
-          <path
-            [attr.id]="'joint_' + joint.id"
-            [class]="mechanismSrv.getJointCSSClass(joint)"
-            d="M -5.5 -5.5 H-16.5 V4.5 H-5.5 V15.5 H4.5 V4.5 H15.5 V-5.5 H4.5 V-16.5 H-5.5 V-5.5 Z"
-            [attr.transform]="'scale(' + 0.01 * settings.objectScale + ')'"
-          ></path>
-        }
+        <!-- Grouped so a refused or completed drop can animate the whole joint -->
+        <g [class]="jointEffectClass(joint)">
+          <!-- Hitbox -->
+          @if (gridUtils.typeOfJoint(joint) == 'R') {
+            <circle [attr.r]="settings.objectScale / 4" cx="0" cy="0" fill="transparent" />
+          }
+          <!--      Normal Joint-->
+          @if (!gridUtils.getWelded(joint)) {
+            <circle
+              id="joint_{{ joint.id }}"
+              class="joint_circles"
+              [attr.r]="settings.objectScale * gridUtils.getJointR(joint)"
+              [attr.cx]="0"
+              [attr.cy]="0"
+              [class]="mechanismSrv.getJointCSSClass(joint)"
+            />
+          }
+          <!--      Welded Joint-->
+          @if (gridUtils.getWelded(joint)) {
+            <path
+              [attr.id]="'joint_' + joint.id"
+              [class]="mechanismSrv.getJointCSSClass(joint)"
+              d="M -5.5 -5.5 H-16.5 V4.5 H-5.5 V15.5 H4.5 V4.5 H15.5 V-5.5 H4.5 V-16.5 H-5.5 V-5.5 Z"
+              [attr.transform]="'scale(' + 0.01 * settings.objectScale + ')'"
+            ></path>
+          }
+        </g>
       </svg>
     }
   </g>
@@ -787,10 +810,19 @@
         [attr.width]="10"
         style="overflow: visible; text-anchor: middle"
       >
-        @if (
-          (gridUtils.typeOfJoint(joint) !== 'P' && settings.isShowID.value) ||
-          joint.showHighlight ||
-          (this.activeObjService.selectedJoint == joint && this.activeObjService.objType == 'Joint')
+        @if (mergeLabelFor(joint); as mergeLabel) {
+          <!-- While a joint is captured, the two names sit on the same point and
+               overlap into an unreadable smudge. One label naming the merge says
+               what is about to happen instead. -->
+          <text style="font-size: {{ svgGrid.scaleWithZoom(20) }}px; text-anchor: middle">
+            {{ mergeLabel }}
+          </text>
+        } @else if (
+          !isMergingAway(joint) &&
+          ((gridUtils.typeOfJoint(joint) !== 'P' && settings.isShowID.value) ||
+            joint.showHighlight ||
+            (this.activeObjService.selectedJoint == joint &&
+              this.activeObjService.objType == 'Joint'))
         ) {
           <text style="font-size: {{ svgGrid.scaleWithZoom(20) }}px; text-anchor: middle">
             {{ joint.name }}

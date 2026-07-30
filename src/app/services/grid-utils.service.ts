@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Injector } from '@angular/core';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import {
   gridStates,
@@ -20,13 +20,46 @@ import { Coord } from '../model/coord';
 import { PositionSolver } from '../model/mechanism/position-solver';
 import { Force } from '../model/force';
 import { Arc, Line } from '../model/line';
-import { NewGridComponent } from '../component/new-grid/new-grid.component';
 import { SynthesisPose } from './synthesis/synthesis-util';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { SynthesisClickMode } from './synthesis/synthesis-constants';
 import { SvgGridService } from './svg-grid.service';
-import { link } from 'fs';
 import { ColorService } from './color.service';
+
+/**
+ * Map a point from one two-joint frame to another, letting the frame stretch.
+ *
+ * A neighbour of a link drag is deformed rather than moved: its reference
+ * joints change separation as well as direction. A rigid transform would hold
+ * the load's absolute distance from the first joint and slide it off the end of
+ * a shortened link, so the frame's scale has to come along too. That keeps the
+ * load at the same point *of the link*, which is the invariant dragJoint
+ * already preserves for a binary link.
+ */
+function pointThroughFrame(
+  point: { x: number; y: number },
+  fromStart: { x: number; y: number },
+  fromEnd: { x: number; y: number },
+  toStart: { x: number; y: number },
+  toEnd: { x: number; y: number }
+): [number, number] {
+  const fromX = fromEnd.x - fromStart.x;
+  const fromY = fromEnd.y - fromStart.y;
+  const fromLengthSquared = fromX * fromX + fromY * fromY;
+  if (fromLengthSquared === 0) {
+    return [point.x + (toStart.x - fromStart.x), point.y + (toStart.y - fromStart.y)];
+  }
+
+  // The point in the frame's own basis: `along` the joint axis and `across` it.
+  const relativeX = point.x - fromStart.x;
+  const relativeY = point.y - fromStart.y;
+  const along = (relativeX * fromX + relativeY * fromY) / fromLengthSquared;
+  const across = (relativeY * fromX - relativeX * fromY) / fromLengthSquared;
+
+  const toX = toEnd.x - toStart.x;
+  const toY = toEnd.y - toStart.y;
+  return [toStart.x + along * toX - across * toY, toStart.y + along * toY + across * toX];
+}
 
 @Injectable({
   providedIn: 'root',
@@ -34,8 +67,18 @@ import { ColorService } from './color.service';
 export class GridUtilsService {
   constructor(
     private synthesisBuilder: SynthesisBuilderService,
-    public svgGrid: SvgGridService
+    public svgGrid: SvgGridService,
+    private injector: Injector
   ) {}
+
+  /**
+   * MechanismService injects this service, so it can only be resolved at call
+   * time — the same cycle-breaking the codebase already uses in MechanismService
+   * and UrlProcessorService.
+   */
+  private get mechanismSrv(): MechanismService {
+    return this.injector.get(MechanismService);
+  }
 
   //Return a boolean, is this link a ground link?
   getGround(joint: Joint) {
@@ -216,8 +259,97 @@ export class GridUtilsService {
         });
         break;
     }
-    NewGridComponent.instance.mechanismSrv.updateMechanism(false);
+    this.mechanismSrv.updateMechanism(false);
     return selectedJoint;
+  }
+
+  /**
+   * Translate a whole link, and everything rigidly attached to it, by (dx, dy).
+   *
+   * A link drag is a rigid translation, which is a stronger statement than "drag
+   * each of its joints in turn": the link's own centre of mass and forces move
+   * with the body exactly, rather than being re-derived from the new joint
+   * positions. Only the *neighbouring* links genuinely change shape, so those
+   * are the ones that get recomputed.
+   */
+  dragLink(selectedLink: Link, dx: number, dy: number) {
+    if (dx === 0 && dy === 0) {
+      return selectedLink;
+    }
+
+    // A neighbour's forces are placed relative to its own two reference joints,
+    // so where they end up depends on where those joints were before the move.
+    // Captured up front, because the move is about to overwrite them.
+    const neighbours = this.mechanismSrv.links
+      .filter((link): link is RealLink => link !== selectedLink && link instanceof RealLink)
+      .map((link) => ({
+        link,
+        from: link.joints.slice(0, 2).map((joint) => ({ x: joint.x, y: joint.y })),
+      }));
+
+    const movedJointIDs = new Set<string>();
+    const moveJoint = (joint: Joint) => {
+      if (movedJointIDs.has(joint.id)) return;
+      movedJointIDs.add(joint.id);
+      joint.x = roundNumber(joint.x + dx, 6);
+      joint.y = roundNumber(joint.y + dy, 6);
+    };
+
+    selectedLink.joints.forEach((joint) => {
+      moveJoint(joint);
+      if (!(joint instanceof RealJoint)) return;
+      // A slider's block joint is coincident with its pin by construction, so it
+      // has to travel with it — the same invariant dragJoint maintains.
+      joint.links.forEach((link) => {
+        if (link instanceof SliderBlock) link.joints.forEach(moveJoint);
+      });
+    });
+
+    this.translateLinkBody(selectedLink, dx, dy);
+    if (selectedLink instanceof RealLink) {
+      selectedLink.subset.forEach((sub) => this.translateLinkBody(sub, dx, dy));
+    }
+
+    // Any other link holding one of the moved joints has been deformed, not
+    // translated, so its shape and centre of mass follow from where its joints
+    // now are. Its forces do not: a load is fixed to the body it acts on, and
+    // leaving it at its old world position would silently move it to a
+    // different point of the link. Carry each one through the same change of
+    // reference frame the link's own geometry goes through.
+    neighbours.forEach(({ link, from }) => {
+      if (!link.joints.some((joint) => movedJointIDs.has(joint.id))) return;
+      const [start, end] = link.joints;
+      if (from.length === 2 && start && end) {
+        link.forces.forEach((force) => {
+          const [x, y] = pointThroughFrame(force.startCoord, from[0], from[1], start, end);
+          force.moveForceTo(x, y);
+        });
+      }
+      link.CoM = RealLink.determineCenterOfMass(link.joints);
+      link.updateCoMDs();
+      link.updateLengthAndAngle();
+      link.subset.forEach((sub) => {
+        const subLink = sub as RealLink;
+        subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+        subLink.updateCoMDs();
+        subLink.updateLengthAndAngle();
+      });
+      PositionSolver.setUpInitialJointLocations(link.joints);
+    });
+
+    this.mechanismSrv.updateMechanism(false);
+    return selectedLink;
+  }
+
+  private translateLinkBody(link: Link, dx: number, dy: number) {
+    link.forces.forEach((force) =>
+      force.moveForceTo(force.startCoord.x + dx, force.startCoord.y + dy)
+    );
+    if (!(link instanceof RealLink)) return;
+    link.CoM = new Coord(link.CoM.x + dx, link.CoM.y + dy);
+    link.updateCoMDs();
+    link.updateLengthAndAngle();
+    PositionSolver.setUpInitialJointLocations(link.joints);
   }
 
   findJointIDIndex(id: string, joints: Joint[]) {

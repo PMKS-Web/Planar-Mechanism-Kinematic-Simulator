@@ -4,8 +4,8 @@ import { Injectable } from '@angular/core';
 import svgPanZoom from 'svg-pan-zoom';
 import { Coord } from '../model/coord';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
-import { forceStates, jointStates } from '../model/utils';
 import { SettingsService } from './settings.service';
+import { DragStateService } from './drag-state.service';
 import Hammer from 'hammerjs';
 
 @Injectable({
@@ -31,10 +31,14 @@ export class SvgGridService {
   private MAX_ZOOM: number = 3300;
   private MIN_ZOOM: number = 0.04;
 
-  constructor(private settingsService: SettingsService) {}
+  constructor(
+    private settingsService: SettingsService,
+    private dragState: DragStateService
+  ) {}
 
   setNewElement(root: HTMLElement) {
     var eventsHandler;
+    const dragState = this.dragState;
 
     eventsHandler = {
       haltEventListeners: ['touchstart', 'touchend', 'touchmove', 'touchleave', 'touchcancel'],
@@ -65,6 +69,18 @@ export class SvgGridService {
 
         // Handle pan
         this.hammer.on('panstart panmove', function (ev: any) {
+          // The canvas may only pan while a pointer is genuinely down. Hammer
+          // tracks that from events on the element it is bound to, and a
+          // gesture whose target is destroyed mid-drag — a joint merged into
+          // another, say — can leave it believing the press never ended, so it
+          // would pan on every later move with no button held. The pointerup on
+          // the root svg always lands, so the state machine is the authority.
+          if (!dragState.isPointerDown) {
+            pannedX = 0;
+            pannedY = 0;
+            return;
+          }
+
           // On pan start reset panned variables
           if (ev.type === 'panstart') {
             pannedX = 0;
@@ -119,6 +135,7 @@ export class SvgGridService {
       onUpdatedCTM: this.handleUpdatedCTM.bind(this),
       customEventsHandler: eventsHandler,
     });
+    this.guardAgainstStuckPan(root);
     this.scaleToFitLinkage();
   }
 
@@ -167,18 +184,59 @@ export class SvgGridService {
     // console.log(this.viewBoxMinY, this.viewBoxMaxY);
   }
 
+  /**
+   * Stop svg-pan-zoom panning a canvas nobody is holding.
+   *
+   * Its mouse listeners live on the root svg: `mousedown` puts it into a "pan"
+   * state that only `mouseup` or `mouseleave` leaves, and every `mousemove`
+   * until then drags the viewport. A release that never reaches this element
+   * therefore leaves the canvas following the bare cursor. Chrome does re-aim a
+   * release whose target was deleted mid-gesture at the nearest surviving
+   * ancestor, so a joint merge alone does not lose one, but anything stacked
+   * over the canvas that swallows the release would.
+   *
+   * Rather than chase the ways a release can go missing, hold the invariant it
+   * exists to protect: a move carrying no held button cannot belong to a pan.
+   * The button state on each move is the authority, so end the gesture at its
+   * source before the library gets to act on it.
+   *
+   * `handleBeforePan` cannot host this test: by then a pan with no button held
+   * is indistinguishable from `fit`, `center` and wheel zoom, which are all
+   * legitimate.
+   */
+  private guardAgainstStuckPan(root: HTMLElement) {
+    let gestureLive = false;
+    // The release is watched on the root rather than on the window, because the
+    // flag has to stay set for exactly the releases the library missed.
+    root.addEventListener('mousedown', () => (gestureLive = true), true);
+    root.addEventListener('mouseup', () => (gestureLive = false), true);
+    // On the window, so this runs before the library's listener whatever the
+    // move is aimed at: on the root itself the two would race by registration
+    // order, and the library registered first.
+    window.addEventListener(
+      'mousemove',
+      (event) => {
+        if (!gestureLive || event.buttons !== 0) return;
+        gestureLive = false;
+        // Non-bubbling, so only the listeners on the root see it.
+        root.dispatchEvent(new MouseEvent('mouseup', { bubbles: false }));
+      },
+      true
+    );
+  }
+
   handleBeforePan(oldPan: any, newPan: any) {
     if (this.panLockOut) {
       this.panLockOut = false;
       return oldPan;
     }
 
-    if (
-      NewGridComponent.debugGetJointState() == jointStates.dragging ||
-      NewGridComponent.debugGetForceState() == forceStates.draggingStart ||
-      NewGridComponent.debugGetForceState() == forceStates.draggingEnd ||
-      NewGridComponent.getLastLeftClickType() === 'SynthesisPose'
-    ) {
+    // Any drag in flight owns the pointer. Asking the state machine rather than
+    // enumerating the drag states is what keeps this correct as gestures are
+    // added: link dragging panned the canvas underneath itself for exactly as
+    // long as this list did not mention it, which made the drag look inert
+    // because the content moved with the cursor.
+    if (this.dragState.isDragging || NewGridComponent.getLastLeftClickType() === 'SynthesisPose') {
       return oldPan;
     }
     return newPan;
