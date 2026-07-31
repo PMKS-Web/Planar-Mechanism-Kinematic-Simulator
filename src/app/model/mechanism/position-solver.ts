@@ -9,6 +9,12 @@ import {
 } from '../utils';
 import { Force } from '../force';
 import { Coord } from '../coord';
+import {
+  assemblyBodyIds,
+  SlideAssembly,
+  slideAssemblies,
+  slotOffset,
+} from '../slide-assembly';
 import { core } from '@angular/compiler';
 
 /**
@@ -46,6 +52,43 @@ interface InverseSlotStep {
   targets: string[];
 }
 
+/**
+ * Sliding a welded assembly along its guide until its own slot reaches the
+ * block riding in it (docs/phase-3-slide-spec.md §3.6).
+ *
+ * The assembly cannot rotate — that is what the weld means — so it has exactly
+ * one freedom and every joint of it moves by the same vector. That also makes
+ * the slot's direction constant, which is what turns the constraint into a line
+ * meeting a line rather than a circle meeting a moving line.
+ */
+interface SlideAssemblyStep {
+  /** Direction of the assembly's guide, fixed in the world. */
+  guide: [number, number];
+  /** What pins the assembly down along that guide. */
+  from:
+    | {
+        /** A member of the assembly some earlier step already placed. */
+        kind: 'member';
+        memberId: string;
+      }
+    | {
+        /** A slot cut into the assembly, which must pass through its block. */
+        kind: 'slot';
+        /** The sliding joint riding in that slot; already located. */
+        blockId: string;
+        /**
+         * A slot-defining joint of the assembly. The offset must be measured
+         * from a point on the slot itself — any other member gives a line
+         * parallel to it but displaced.
+         */
+        anchorId: string;
+        /** Direction of the slot, constant because the assembly cannot turn. */
+        slot: [number, number];
+      };
+  /** Every joint the step moves: the assembly's, minus anything grounded. */
+  targets: string[];
+}
+
 export class PositionSolver {
   static desiredIndexWithinPosAnalysisMap = new Map<string, number>();
   static jointMapPositions = new Map<string, Array<number>>();
@@ -66,6 +109,7 @@ export class PositionSolver {
   /** Joints no primitive could order; empty means the walk completed. */
   static unsolvableJoints: string[] = [];
   private static inverseSlotMap = new Map<string, InverseSlotStep>();
+  private static slideAssemblyMap = new Map<string, SlideAssemblyStep>();
   private static internalTriangleValuesMap = new Map<string, number[]>();
   private static desiredConnectedJointIndicesMap = new Map<string, number[]>();
   private static desiredAnalysisJointMap = new Map<string, string>();
@@ -99,6 +143,7 @@ export class PositionSolver {
     this.initialJointPosMap = new Map<string, [number, number]>();
     this.slotLineMap = new Map<string, SlotLine>();
     this.inverseSlotMap = new Map<string, InverseSlotStep>();
+    this.slideAssemblyMap = new Map<string, SlideAssemblyStep>();
     this.stepCount = 0;
     this.unsolvableJoints = [];
   }
@@ -220,6 +265,7 @@ export class PositionSolver {
         const advanced =
           this.orderCoincidentBlock(joints, joint, orderNum, known) ??
           this.orderCarrierFromBlock(joints, links, joint, orderNum, known) ??
+          this.orderSlideAssembly(joints, links, joint, orderNum, known) ??
           this.orderRiderOnMovingSlot(joints, links, joint, orderNum, known);
         if (advanced !== undefined) {
           orderNum = advanced;
@@ -291,6 +337,24 @@ export class PositionSolver {
       const slotB = candidate.slotJointB;
       if (!carrier || !slotA || !slotB) continue;
       if (!carrier.joints.some((member) => member.id === joint.id)) continue;
+      // This primitive swings the carrier about an anchor, and a welded carrier
+      // cannot turn relative to its block at all. Letting it fire here would
+      // rotate a body the weld forbids to rotate — and it would win, because it
+      // is reached first in the chain.
+      //
+      // Deliberately *every* assembly, not only the grounded ones. A Slide on a
+      // moving carrier is out of scope for Phase 3 (§4), and the point of
+      // leaving it out is that it reports unsolvable rather than animating
+      // wrongly. Skipping only grounded assemblies would drop the floating case
+      // straight into this primitive, which would happily swing it and draw a
+      // plausible picture of the wrong mechanism.
+      if (
+        slideAssemblies(joints).some((assembly) =>
+          assemblyBodyIds(assembly).includes(carrier.id)
+        )
+      ) {
+        continue;
+      }
 
       // Exactly one slot joint known: with neither, there is no ray to swing
       // the link about; with both, the carrier is already placed and this is
@@ -322,6 +386,226 @@ export class PositionSolver {
       return next;
     }
     return undefined;
+  }
+
+  /**
+   * Place a welded slide assembly from the block riding in its own slot
+   * (docs/phase-3-slide-spec.md §3.6).
+   *
+   * Neither existing slot primitive reaches this shape. The inverse one needs a
+   * slot joint already known so it has a ray to swing the carrier about, and the
+   * forward one needs both; a Scotch yoke's yoke has neither, because the only
+   * thing locating it is that its slot must pass through the crank pin.
+   *
+   * What replaces the swing is the weld: the assembly cannot rotate, so its pose
+   * has a single scalar unknown — how far it has slid along its guide — and the
+   * slot's direction is whatever it was at t = 0, for good.
+   */
+  private static orderSlideAssembly(
+    joints: Joint[],
+    links: Link[],
+    joint: RealJoint,
+    orderNum: number,
+    known: string[]
+  ): number | undefined {
+    const assembly = slideAssemblies(joints).find(
+      (candidate) =>
+        candidate.grounded &&
+        assemblyBodyIds(candidate).some((id) =>
+          links.some((link) => link.id === id && link.joints.some((m) => m.id === joint.id))
+        )
+    );
+    if (!assembly) {
+      return undefined;
+    }
+
+    const bodies = assemblyBodyIds(assembly);
+    const members = joints.filter(
+      (candidate): candidate is RealJoint =>
+        candidate instanceof RealJoint &&
+        links.some(
+          (link) => bodies.includes(link.id) && link.joints.some((m) => m.id === candidate.id)
+        )
+    );
+    // The step moves every movable member, not merely the unplaced ones: the
+    // assembly is one rigid body, and translating half of it would tear it
+    // apart against whatever placed the other half.
+    //
+    // A grounded *pin* is the exception, and it should never appear here — an
+    // assembly with one could not translate at all.
+    //
+    // A grounded sliding joint is not that. "Grounded" on a PrisJoint means its
+    // slot line is fixed in the world, not that the joint sits still: the line
+    // is recorded once in slotLineMap and read from there, while the joint
+    // itself is drawn at the block and has to stay on top of the pin it carries
+    // (§2.10 item 2). The existing grounded-slider path has always moved it, and
+    // leaving it behind here stretched the zero-length block a little further
+    // every timestep.
+    const movable = members.filter(
+      (member) => !member.ground || member instanceof PrisJoint
+    );
+    const pending = movable.filter((member) => !known.includes(member.id));
+    if (pending.length === 0) {
+      return undefined;
+    }
+
+    const source = this.slideAssemblySource(joints, assembly, movable, known);
+    if (!source) {
+      return undefined;
+    }
+
+    // Keyed on a *pending* joint. determinePositionAnalysis reads the step back
+    // out of the order map by its first target, so keying on a member some
+    // earlier step already claimed would overwrite that step's entry and make
+    // it run this primitive instead.
+    const key = pending[0];
+    const guide: [number, number] = [
+      Math.cos(assembly.slider.slotAngle),
+      Math.sin(assembly.slider.slotAngle),
+    ];
+    const targets = [key.id, ...movable.filter((m) => m.id !== key.id).map((m) => m.id)];
+
+    this.slideAssemblyMap.set(key.id, { guide, ...source, targets });
+    this.desiredAnalysisJointMap.set(key.id, 'slideAssemblyThroughSlot');
+    this.jointNumOrderSolverMap.set(orderNum, targets);
+    pending.forEach((member) => known.push(member.id));
+
+    let next = orderNum + 1;
+    for (const placed of pending) {
+      next = this.detJointOrder(joints, links, placed, next, known);
+    }
+    return next;
+  }
+
+  /**
+   * What locates the assembly along its guide.
+   *
+   * Two things can, and the cheaper one wins. If some member of it has already
+   * been placed by an ordinary step, the translation is simply how far that
+   * member moved. Otherwise the assembly must be located by a slot cut into it,
+   * which is the Scotch yoke's case and the one nothing else can do.
+   */
+  private static slideAssemblySource(
+    joints: Joint[],
+    assembly: SlideAssembly,
+    movable: RealJoint[],
+    known: string[]
+  ): Pick<SlideAssemblyStep, 'from'> | undefined {
+    // Grounded members are seeded as known before the walk starts, but seeded
+    // is not placed: the assembly's own sliding joint is "known" from the first
+    // moment and does not move until this very step moves it. Reading travel
+    // from one would report the assembly permanently at rest.
+    const placed = movable.find((member) => !member.ground && known.includes(member.id));
+    if (placed) {
+      return { from: { kind: 'member', memberId: placed.id } };
+    }
+
+    const rider = joints.find(
+      (candidate): candidate is PrisJoint =>
+        candidate instanceof PrisJoint &&
+        candidate.isFloating &&
+        candidate.isSlotWellFormed &&
+        assemblyBodyIds(assembly).includes(candidate.carrier!.id)
+    );
+    if (!rider || !known.includes(rider.id)) {
+      return undefined;
+    }
+    // The offset has to be measured from a point actually *on* the slot. Any
+    // other member of the assembly gives a line parallel to it but displaced,
+    // and solving to that line moves the assembly to a plausible wrong place
+    // rather than failing.
+    const anchor = movable.find(
+      (member) => member.id === rider.slotJointA?.id || member.id === rider.slotJointB?.id
+    );
+    if (!anchor) {
+      return undefined;
+    }
+    return {
+      from: {
+        kind: 'slot',
+        blockId: rider.id,
+        anchorId: anchor.id,
+        // Measured now and held: the weld is exactly the statement that this
+        // never changes. A later reader will be tempted to re-measure it per
+        // timestep, which would make the step describe a Slot instead.
+        slot: [Math.cos(rider.slotAngle), Math.sin(rider.slotAngle)],
+      },
+    };
+  }
+
+  /**
+   * Slide a welded assembly along its guide to wherever it is now.
+   *
+   * The pose is one scalar — travel along the guide — because the weld forbids
+   * rotation. Located by a slot, that scalar comes from requiring the block `P`
+   * to lie on the line through the anchor `A₀` along a fixed `v̂`:
+   * `((P − A₀) − t·û) × v̂ = 0`. Located by a placed member, it is just how far
+   * that member has gone.
+   */
+  private static slideAssemblyThroughSlot(targets: string[]): boolean {
+    const step = this.slideAssemblyMap.get(targets[0]);
+    if (!step) {
+      return false;
+    }
+    const travel =
+      step.from.kind === 'member'
+        ? this.travelFromPlacedMember(step)
+        : this.travelFromSlot(step);
+    if (travel === undefined) {
+      return false;
+    }
+
+    for (const id of step.targets) {
+      const start = this.initialJointPosMap.get(id);
+      if (!start) {
+        return false;
+      }
+      this.recordJointPosition(
+        id,
+        start[0] + travel * step.guide[0],
+        start[1] + travel * step.guide[1]
+      );
+    }
+    return true;
+  }
+
+  /** How far a member of the assembly has already been carried along the guide. */
+  private static travelFromPlacedMember(step: SlideAssemblyStep): number | undefined {
+    if (step.from.kind !== 'member') {
+      return undefined;
+    }
+    const now = this.jointMapPositions.get(step.from.memberId);
+    const start = this.initialJointPosMap.get(step.from.memberId);
+    if (!now || !start) {
+      return undefined;
+    }
+    return (now[0] - start[0]) * step.guide[0] + (now[1] - start[1]) * step.guide[1];
+  }
+
+  /** How far to slide so the assembly's own slot reaches the block riding in it. */
+  private static travelFromSlot(step: SlideAssemblyStep): number | undefined {
+    if (step.from.kind !== 'slot') {
+      return undefined;
+    }
+    const cross = step.guide[0] * step.from.slot[1] - step.guide[1] * step.from.slot[0];
+    // A guide parallel to the slot leaves the assembly free to sit anywhere
+    // along it: genuinely no solution, not merely an ill-conditioned one.
+    // Reporting that hands it to the same reversal path a rocker's toggle takes.
+    if (Math.abs(cross) <= DEGENERATE_SLOT_TOLERANCE) {
+      return undefined;
+    }
+    const block = this.jointMapPositions.get(step.from.blockId);
+    const anchorStart = this.initialJointPosMap.get(step.from.anchorId);
+    if (!block || !anchorStart) {
+      return undefined;
+    }
+    return (
+      slotOffset(
+        { x: block[0], y: block[1] },
+        { x: anchorStart[0], y: anchorStart[1] },
+        step.from.slot
+      ) / cross
+    );
   }
 
   /**
@@ -577,6 +861,9 @@ export class PositionSolver {
           break;
         case 'inverseSlot':
           possible = this.inverseSlot(joints, step_targets);
+          break;
+        case 'slideAssemblyThroughSlot':
+          possible = this.slideAssemblyThroughSlot(step_targets);
           break;
         case 'determineTracerJoint':
           this.twoCircleIntersectionPoints(
