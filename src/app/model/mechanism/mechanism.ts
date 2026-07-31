@@ -6,7 +6,7 @@ import { Force } from '../force';
 import { PositionSolver } from './position-solver';
 // import {IcSolver} from "./ic-solver";
 import { InstantCenter } from '../instant-center';
-import { LoopSolver } from './loop-solver';
+import { Loop, LoopSolver } from './loop-solver';
 import { Coord } from '../coord';
 import { KinematicsSolver } from './kinematic-solver';
 import { ForceAnalysisMode, ForceAnalysisSeries, ForceSolver } from './force-solver';
@@ -26,8 +26,7 @@ export class Mechanism {
   private _unit: string;
   private _dof: number;
   private _inputAngularVelocities: number[] = [];
-  private _requiredLoops: string[] = [];
-  private _allLoops: string[] = [];
+  private _requiredLoops: Loop[] = [];
   private mechanismValid = true;
 
   constructor(
@@ -104,10 +103,7 @@ export class Mechanism {
         return j.input;
       }) !== -1
     ) {
-      [this._allLoops, this._requiredLoops] = LoopSolver.determineLoops(
-        this._joints[0],
-        this._links[0]
-      );
+      this._requiredLoops = LoopSolver.determineLoops(this._joints[0], this._links[0]);
       this.findFullMovementPos(inputAngVel);
     } else {
       this.setMechanismInvalid();
@@ -120,6 +116,11 @@ export class Mechanism {
     if (source instanceof PrisJoint) {
       const prisJoint = new PrisJoint(source.id, x, y, source.input, source.ground);
       prisJoint.angle_rad = source.angle_rad;
+      // Points at the editable objects for now; wireJointGraph rebinds it to
+      // this timestep's copies once they exist.
+      if (source.carrier && source.slotJointA && source.slotJointB) {
+        prisJoint.slideOn(source.carrier, source.slotJointA, source.slotJointB);
+      }
       copy = prisJoint;
     } else if (source instanceof RevJoint) {
       copy = new RevJoint(source.id, x, y, source.input, source.ground);
@@ -154,6 +155,13 @@ export class Mechanism {
       joint.connectedJoints = source.connectedJoints
         .map((connected) => joints.find((candidate) => candidate.id === connected.id))
         .filter((connected): connected is Joint => connected !== undefined);
+      // A slot's carrier and defining joints live outside links/connectedJoints
+      // (§2.3 Option A), so nothing above reaches them. Left unrebound they
+      // would keep pointing at the editable mechanism and every timestep would
+      // measure the same, un-moving slot.
+      if (joint instanceof PrisJoint) {
+        joint.rebindSlot(links, joints);
+      }
     }
   }
 
@@ -308,7 +316,18 @@ export class Mechanism {
           if (!(j instanceof PrisJoint)) {
             return;
           }
+          // A prismatic pair costs one lower pair either way. What differs is
+          // the body on the far side of it: ground for a grounded slot, the
+          // carrier link for a floating one — and the carrier is already
+          // counted, since it is an ordinary link.
           J1 += bodiesAt(j);
+          // A guide fixed in the world anchors the mechanism just as a grounded
+          // pin does. Without this, a linkage held only by its slides — an
+          // elliptical trammel, say — has no ground body and reports NaN.
+          if (j.ground && groundNotFound) {
+            N++;
+            groundNotFound = false;
+          }
           break;
       }
     });
@@ -324,7 +343,6 @@ export class Mechanism {
     let inputAngVelDirection = inputAngVel > 0;
     let currentTimeStamp = 0;
     const TOLERANCE = 0.008;
-    let max_counter = 0;
     let curTimeNum = 0;
     // PositionSolver.incrementRevInput steps the crank by exactly one degree, so a
     // fully rotating revolute input closes its cycle after exactly this many samples.
@@ -343,15 +361,6 @@ export class Mechanism {
     // static-equivalent dynamic results can still be plotted and exported.
     let timeNumIncrement =
       angularSpeed > Number.EPSILON ? Math.PI / 180 / angularSpeed : Math.PI / 180;
-    this.joints[0].forEach((j) => {
-      if (!(j instanceof RealJoint)) {
-        return;
-      }
-      if (!j.ground) {
-        max_counter++;
-      }
-    });
-
     PositionSolver.resetStaticVariables();
     PositionSolver.determineJointOrder(this.joints[0], this.links[0]);
     PositionSolver.setUpSolvingForces(this.forces[0]);
@@ -367,7 +376,7 @@ export class Mechanism {
       connectedJointMapIndices.set(l.id, numArray);
     });
 
-    const desiredJointID = PositionSolver.jointNumOrderSolverMap.get(1);
+    const desiredJointID = PositionSolver.jointNumOrderSolverMap.get(1)?.[0];
     const desiredJointIndex = this.joints[0].findIndex((j) => j.id === desiredJointID);
     if (desiredJointIndex === -1) {
       return;
@@ -389,7 +398,6 @@ export class Mechanism {
         this._joints[currentTimeStamp],
         this._links[currentTimeStamp],
         this._forces[currentTimeStamp],
-        max_counter,
         inputAngVelDirection
       );
       if (possible) {
@@ -586,7 +594,6 @@ export class Mechanism {
     this.joints = [[]];
     this.links = [[]];
     this.forces = [[]];
-    this.allLoops = [];
     this.requiredLoops = [];
     this.mechanismValid = false;
   }
@@ -627,20 +634,12 @@ export class Mechanism {
     this._unit = value;
   }
 
-  get requiredLoops(): string[] {
+  get requiredLoops(): Loop[] {
     return this._requiredLoops;
   }
 
-  set requiredLoops(value: string[]) {
+  set requiredLoops(value: Loop[]) {
     this._requiredLoops = value;
-  }
-
-  get allLoops(): string[] {
-    return this._allLoops;
-  }
-
-  set allLoops(value: string[]) {
-    this._allLoops = value;
   }
 
   get joints(): Joint[][] {

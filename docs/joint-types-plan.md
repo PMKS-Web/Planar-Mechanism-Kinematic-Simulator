@@ -548,7 +548,34 @@ coordinates rather than on screenshots and exits non-zero on any failure.
 | 2.8 | Carrier lifecycle and topology — see 2.8a | many |
 | 2.9 | Kinematic solver: add the carrier's ω×r term | [`kinematic-solver.ts:186-202, 269-270`](../src/app/model/mechanism/kinematic-solver.ts) |
 | 2.10 | Force solver: rotate the reaction direction, drop the `.ground` guard, add carrier-side incidence | [`force-solver.ts:476-486, 551`](../src/app/model/mechanism/force-solver.ts) |
-| 2.11 | IC solver: prismatic IC is at infinity ⊥ to a direction that now rotates | [`ic-solver.ts:107-112`](../src/app/model/mechanism/ic-solver.ts) |
+| 2.11 | ~~IC solver: prismatic IC is at infinity ⊥ to a direction that now rotates~~ **De-scoped** — the IC solver is dead code (see status below) | [`ic-solver.ts:107-112`](../src/app/model/mechanism/ic-solver.ts) |
+
+**Status: 2.1–2.10 done, 2.11 de-scoped, Gate 2 met.**
+
+Verified: the model and its three URL tokens with §2.4a decode validation; mobility for grounded
+guides; the inverse and forward position primitives; defer-and-retry ordering with a named-joints
+exit; the §2.8a lifecycle rules; static forces including carrier-side incidence and
+equal-and-opposite reactions across the slot; and velocity and acceleration through a moving slot,
+carrying the carrier's own rotation and the Coriolis term, matched against closed form in both
+directions.
+
+Kinematic loops are now lists of typed edges rather than strings of joint letters, which is what
+let a slot appear in a loop at all — see
+[`floating-slot-kinematics-design.md`](floating-slot-kinematics-design.md).
+
+**2.11 (instant centres): de-scoped, not parked.** Pre-implementation review for 2.9 found the IC
+solver is dead code: nothing imports `ic-solver.ts` (the only references are a commented-out import
+and call at [`mechanism.ts:7`](../src/app/model/mechanism/mechanism.ts) and `:547`),
+`MechanismService.ics` is initialized empty and never filled, and no spec exercises it. The
+instant-center feature was never wired into the app, so there is nothing for a floating slot to
+break. 2.11 and verification case 10 are removed from Gate 2; if the feature is ever revived, that
+is its own project, starting with characterization tests
+(`docs/floating-slot-kinematics-design.md` §6). The `slotAngle` seam it would need is delivered by
+2.9 regardless.
+
+**The Scotch yoke (case 3) belongs to Phase 3, not here.** §4.1 lists it as isolating floating Slot
+**plus grounded Slide**, and Slide is Phase 3: without the assembly-level weld there is nothing to
+stop the yoke rotating about its guide, so the mechanism is DOF 2 and cannot be built yet.
 
 #### 2.5a The inverse direction is the primary case, not an edge case
 
@@ -649,8 +676,19 @@ construction"** and needs its own tests — see §4.2.
 tool that is the worst failure mode available. Do not defer them past this phase.
 
 > **Gate 2:** inverted slider-crank and Whitworth (both **inverse** direction) and the slotted-coupler
-> four-bar (**forward** direction) match closed form for position, velocity, and acceleration; force
-> and IC cases match; carrier lifecycle regressions pass; `Slider_Crank` template still bit-identical.
+> four-bar (**forward** direction) match closed form for position, velocity, and acceleration; the
+> force case matches; carrier lifecycle regressions pass; `Slider_Crank` template still bit-identical.
+> (The IC case was removed when 2.11 was de-scoped — the IC solver is dead code.)
+>
+> **Gate 2 — met.** 425 specs green (was 346 at the end of Phase 1). The inverted slider-crank
+> matches closed form for travel, travel acceleration, lever angular velocity and lever angular
+> acceleration; Whitworth proportions hold the same forms on the rotating branch and turn the lever
+> exactly once per crank revolution; the slotted-coupler four-bar holds the slot constraint in
+> position, velocity and acceleration form, the last only once Coriolis is accounted for. Reactions
+> are equal and opposite across the slot and normal to it. Every §4.2 lifecycle regression passes,
+> and all five template URLs re-encode their joints, links and forces byte-identically. Each new
+> assertion was mutation-checked: dropping the carrier term fails six of seven kinematic
+> assertions, and dropping Coriolis alone fails exactly the one named for it.
 
 ### Phase 3 — Slide (pure prismatic)
 
@@ -777,7 +815,7 @@ mechanism solved the ordinary way.
 | 7 | Cylinder-driven boom | driven | driven floating Slide + linear timing | law of cosines |
 | 8 | Four-bar driven at its coupler–rocker pin | — | driven floating Pin, actuator record | same coupler curve as the crank-driven four-bar |
 | 9 | #2 with a load | — | force reaction direction **and** carrier-side incidence | MATLAB free-body; assert reactions are equal and opposite across the slot |
-| 10 | #2 instant centres | — | IC solver | textbook IC locations |
+| 10 | ~~#2 instant centres~~ | — | ~~IC solver~~ | **De-scoped with 2.11** — the IC solver is dead code; nothing to verify |
 
 Case 5 exists because 2, 3, and 4 are all the inverse direction (§2.5a) and would leave the forward
 primitive untested.
@@ -818,7 +856,7 @@ These are not mechanisms; they are the failure modes that Option A and the slot 
 | --- | --- |
 | `angle_rad` reinterpretation silently changes existing shared URLs | Grounded sliders keep reading the old way (carrier = ground, where the definitions coincide). Gate 0 locks this. |
 | The generic weld path silently cannot express Slide | `SliderBlock` is not a `RealLink` and is filtered out ([`mechanism.service.ts:1418`](../src/app/services/mechanism.service.ts)). Phase 3 builds an assembly-level path instead of extending the compound path. |
-| Force and IC solvers ship wrong-but-plausible numbers | Gates 2 and 4 include force and IC cases; no phase completes on motion alone |
+| Force solver ships wrong-but-plausible numbers | Gates 2 and 4 include force cases; no phase completes on motion alone. (The IC half of this risk dissolved with 2.11 — the IC solver is dead code and ships no numbers at all) |
 | Carrier pointer survives into the per-timestep copies unrebound | Phase 2.8a; the codebase already documents this exact bug class at [`kinematic-solver.ts:180-185`](../src/app/model/mechanism/kinematic-solver.ts) |
 | ~~Carrier reference angle unstable across edits or URL round-trips~~ | **Eliminated by §2.4** — the slot is two named joints, so nothing is measured against a derived link angle |
 | A floating slot silently degrades to grounded on decode | §2.4a — the intermediate state is made impossible and decode validates rather than defaults |

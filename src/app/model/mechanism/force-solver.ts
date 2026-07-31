@@ -1,6 +1,7 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, SliderBlock, RealLink } from '../link';
 import { KinematicsSolver } from './kinematic-solver';
+import { Loop } from './loop-solver';
 import { siUnitFactors, SiUnitFactors } from '../unit-conversions';
 
 export type ForceAnalysisMode = 'static' | 'dynamic';
@@ -63,7 +64,7 @@ interface MechanismFrames {
   links: Link[][];
   timeNum: number[];
   inputAngularVelocities: number[];
-  requiredLoops: string[];
+  requiredLoops: Loop[];
   gravity: boolean;
   unit: string;
 }
@@ -158,7 +159,7 @@ export class ForceSolver {
   }
 
   /** Loop-derived setup is no longer required; keep this as a harmless adapter. */
-  static determineDesiredLoopLettersForce(_requiredLoops: string[]): void {
+  static determineDesiredLoopLettersForce(_requiredLoops: Loop[]): void {
     this.desiredLoopLetters = [];
   }
 
@@ -274,7 +275,9 @@ export class ForceSolver {
       if (inputJoint instanceof PrisJoint) {
         inputBody = incident.find((body) => body instanceof SliderBlock);
         inputKind = inputBody ? 'force' : undefined;
-        inputDirection = [Math.cos(inputJoint.angle_rad), Math.sin(inputJoint.angle_rad)];
+        // slotAngle, not angle_rad: a slot cut into a moving link points
+        // somewhere different at every timestep.
+        inputDirection = [Math.cos(inputJoint.slotAngle), Math.sin(inputJoint.slotAngle)];
       } else {
         inputBody = incident.find((body) => body instanceof RealLink);
         inputKind = inputBody ? 'torque' : undefined;
@@ -470,13 +473,22 @@ export class ForceSolver {
       incidentByJoint.set(candidate.id, incident);
       if (incident.length === 0) continue;
 
-      if (candidate instanceof PrisJoint && candidate.ground) {
+      if (candidate instanceof PrisJoint) {
         const piston = incident.find((body) => body instanceof SliderBlock);
-        if (piston) {
+        // A grounded slot pushes against the world, which needs no equation of
+        // its own. A floating one pushes against the carrier, and that reaction
+        // has to appear in the carrier's equilibrium as well or the slot
+        // transmits force out of nowhere.
+        const carrier = candidate.isFloating
+          ? bodies.find((body) => body.id === candidate.carrier?.id)
+          : undefined;
+        if (piston && (candidate.ground || carrier)) {
           reactions.push({
             joint: candidate,
             positiveBody: piston,
-            direction: [-Math.sin(candidate.angle_rad), Math.cos(candidate.angle_rad)],
+            negativeBody: carrier,
+            // The reaction is normal to the slot, so it rotates with it.
+            direction: [-Math.sin(candidate.slotAngle), Math.cos(candidate.slotAngle)],
             column: reactions.length,
           });
         }
@@ -555,6 +567,13 @@ export class ForceSolver {
     bodies.forEach((body) => {
       if (body.joints.some((candidate) => candidate.id === joint.id)) add(body);
     });
+    // A slot's carrier is reachable through neither route: Option A keeps it out
+    // of the slider's `links` and keeps the slider out of the carrier's
+    // `joints`, so without this the body on the far side of the slot is simply
+    // missing from the joint's incidence.
+    if (joint instanceof PrisJoint && joint.isFloating) {
+      add(bodies.find((body) => body.id === joint.carrier?.id));
+    }
     return ordered;
   }
 
