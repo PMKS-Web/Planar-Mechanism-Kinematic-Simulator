@@ -1,4 +1,4 @@
-import { Joint, RealJoint } from './joint';
+import { Joint, PrisJoint, RealJoint } from './joint';
 import { Coord } from './coord';
 import { AppConstants } from './app-constants';
 import { Force } from './force';
@@ -7,6 +7,7 @@ import hull from 'hull.js';
 import { SettingsService } from '../services/settings.service';
 import { Arc, Line } from './line';
 import { buildCompoundPath, transformRigidCoord, transformRigidPath } from './compound-link-path';
+import { outlineSweepFlag, withoutCollinearVertices } from './outline-winding';
 
 export enum Shape {
   line = 'line',
@@ -268,7 +269,24 @@ export class RealLink extends Link {
   }
 
   getCompoundPathString(): string {
-    const linkSubset = this.subset.filter((link): link is RealLink => link instanceof RealLink);
+    // A sealed cylinder's rod welded into this compound is drawn by the skin,
+    // above the block; the compound repeating it drew the same bar twice, one
+    // copy on the wrong side of the block. The leaf is recognised through its
+    // pin: the joint that shares a SliderBlock with a sealed slider.
+    const isSealedRodLeaf = (leaf: RealLink) =>
+      leaf.joints.length === 2 &&
+      leaf.joints.some(
+        (joint) =>
+          joint instanceof RealJoint &&
+          joint.links.some(
+            (l) =>
+              l instanceof SliderBlock && l.joints.some((j) => j instanceof PrisJoint && j.isSealed)
+          )
+      );
+    const linkSubset = this.subset.filter(
+      (link): link is RealLink =>
+        link instanceof RealLink && !(this.subset.length > 1 && isSealedRodLeaf(link))
+    );
     linkSubset.forEach((link) => link.reComputeDPath());
     const geometry = buildCompoundPath(
       linkSubset.map((link) => link.d),
@@ -346,9 +364,23 @@ export class RealLink extends Link {
     });
 
     let width: number = SettingsService.objectScale / 4;
+    // A joint sitting on the line between two others is not a corner of the
+    // outline, however defensible it is as a hull vertex: the offset edge would
+    // arrive, turn through a semicircle it does not need, and leave along the
+    // same line, folding the outline back over itself. Even-odd fill then
+    // cancels the doubled region and draws it white, which is the thin white
+    // sliver that flickers in and out as a joint is dragged past its neighbours.
+    desiredJointsIDs = withoutCollinearVertices(desiredJointsIDs, allJoints, jointIDtoIndex, width);
     let d = '';
 
-    let clockWise = 'Will be set later';
+    // Which way every corner arc bulges follows from the winding of the outline
+    // being traced, and nothing else. It used to be guessed from one coordinate
+    // of the first corner and then flipped for links with more than three
+    // joints, which is not a property of the outline at all: `hull` does not
+    // return a consistent winding, so on the hulls where the guess disagreed
+    // the arcs took the short way round the *other* circle and drew a concave
+    // notch into every corner instead of rounding it.
+    const clockWise = outlineSweepFlag(desiredJointsIDs, allJoints, jointIDtoIndex, width);
 
     let j: number;
     for (let i = 0; i < desiredJointsIDs.length; i++) {
@@ -462,10 +494,6 @@ export class RealLink extends Link {
       const returnLines: Line[] = [];
 
       if (d === '') {
-        clockWise = coord1.y > point1.y ? '1' : '0';
-        if (allJoints.length > 3) {
-          clockWise = clockWise == '1' ? '0' : '1';
-        }
         d += 'M ' + point1.x.toString() + ' ' + point1.y.toString();
         d += ' L ' + point2.x.toString() + ' ' + point2.y.toString();
         returnLines.push(new Line(point1, point2));

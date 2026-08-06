@@ -8,6 +8,7 @@ import { SvgGridService } from '../../services/svg-grid.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { Coord } from '../../model/coord';
 import { combineLatest, Subscription } from 'rxjs';
+import { MODEL_SCALE } from '../../model/render-scale';
 
 @Component({
   selector: 'app-settings-panel',
@@ -38,7 +39,9 @@ export class SettingsPanelComponent implements OnDestroy {
     this.currentForceUnit = this.settingsService.forceUnit.value;
     this.currentAngleUnit = this.settingsService.angleUnit.value;
     this.currentGlobalUnit = this.settingsService.globalUnit.value;
-    this.currentObjectScaleSetting = SettingsService.objectScale;
+    // The form shows the scale in the user's frame; internally it is
+    // MODEL_SCALE times larger (render-scale.ts), like every other length.
+    this.currentObjectScaleSetting = SettingsService.objectScale / MODEL_SCALE;
 
     this.settingsForm.patchValue({
       objectScale: this.currentObjectScaleSetting.toString(),
@@ -52,18 +55,17 @@ export class SettingsPanelComponent implements OnDestroy {
 
     this.settingsSubscriptions.add(
       SettingsService._objectScale.subscribe((val) => {
-        this.currentObjectScaleSetting = val;
+        this.currentObjectScaleSetting = val / MODEL_SCALE;
         this.settingsForm.patchValue(
           { objectScale: this.currentObjectScaleSetting.toString() },
           { emitEvent: false }
         );
 
-        //Werid place to put this but
-        this.mechanismSrv.links.forEach((link: Link) => {
-          (link as RealLink).reComputeDPath();
-        });
-
-        this.mechanismSrv.updateMechanism();
+        // This used to cast every Link to RealLink and call reComputeDPath,
+        // which throws on the first SliderBlock and abandons every link after
+        // it -- so any mechanism with a slider logged a TypeError the moment
+        // Settings opened. The service does it now, guarded by type.
+        this.mechanismSrv.applyObjectScaleChange();
       })
     );
 
@@ -106,12 +108,21 @@ export class SettingsPanelComponent implements OnDestroy {
 
   onChanges(): void {
     this.settingsForm.controls['objectScale'].valueChanges.subscribe((val) => {
-      if (this.settingsForm.controls['objectScale'].invalid) {
+      const parsed = Number(val);
+      // The pattern is the gate the user sees; this is the one that protects the
+      // canvas. Every dimension in the mark system is a multiple of this number,
+      // so a NaN or a zero does not degrade the drawing -- it erases it, behind
+      // dozens of invalid-SVG errors.
+      if (
+        this.settingsForm.controls['objectScale'].invalid ||
+        !Number.isFinite(parsed) ||
+        parsed <= 0
+      ) {
         // Restore the last good scale into its own field, not the speed field.
         this.settingsForm.patchValue({ objectScale: this.currentObjectScaleSetting.toString() });
       } else {
-        this.currentObjectScaleSetting = Number(val);
-        SettingsService._objectScale.next(this.currentObjectScaleSetting);
+        this.currentObjectScaleSetting = parsed;
+        SettingsService._objectScale.next(this.currentObjectScaleSetting * MODEL_SCALE);
       }
       this.mechanismSrv.updateMechanism();
     });
@@ -193,7 +204,12 @@ export class SettingsPanelComponent implements OnDestroy {
     }
   }
 
-  numRegex = '^-?[0-9]+(.[0-9]{0,10})?$';
+  // The dot is escaped, and the scale has to be positive. Unescaped, `.` matched
+  // any character, so "1x2" validated, Number() turned it into NaN, and the NaN
+  // reached every mark on the canvas -- the mechanism vanished behind dozens of
+  // invalid-SVG errors. A zero or negative scale is just as unusable: every
+  // dimension in the mark system is a multiple of it.
+  numRegex = '^[0-9]*\\.?[0-9]+$';
   settingsForm = this.fb.group(
     {
       objectScale: ['', [Validators.required, Validators.pattern(this.numRegex)]],

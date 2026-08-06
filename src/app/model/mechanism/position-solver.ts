@@ -9,13 +9,23 @@ import {
 } from '../utils';
 import { Force } from '../force';
 import { Coord } from '../coord';
-import {
-  assemblyBodyIds,
-  SlideAssembly,
-  slideAssemblies,
-  slotOffset,
-} from '../slide-assembly';
+import { assemblyBodyIds, SlideAssembly, slideAssemblies, slotOffset } from '../slide-assembly';
 import { core } from '@angular/compiler';
+import { MODEL_SCALE } from '../render-scale';
+
+/**
+ * How far a driven prismatic input advances along its slot per solved sample,
+ * in model length units.
+ *
+ * Exported because the sample spacing is what turns an input speed into a time
+ * axis, and `Mechanism` was dividing a *rotational* step by the speed for every
+ * input alike. A driven slider therefore ran on a clock that had nothing to do
+ * with how fast it was told to move, and the value in the Input Speed box
+ * changed nothing at all.
+ */
+// 0.1 of a user length unit, expressed in internal model units so the sampled
+// motion is identical to what it was before the internal world scaled up.
+export const PRISMATIC_INPUT_STEP = 0.1 * MODEL_SCALE;
 
 /**
  * How close two solve-circle centres must be to count as coincident. Joint
@@ -185,12 +195,26 @@ export class PositionSolver {
     if (!(inputJoint instanceof RealJoint)) {
       return;
     }
+    // The drive turns one body, so only that body's joints travel with it.
+    //
+    // Every joint connected to the input used to be swung round it by the same
+    // degree per sample. That is right for a ternary crank -- its joints are one
+    // rigid body and do move together -- and wrong the moment a second link is
+    // pinned to the same ground pivot: the two are free to turn relative to each
+    // other, so driving both imposes a rigidity the mechanism does not have. On
+    // a bar carrying two blocks, each pushed by its own crank off one pivot, the
+    // second crank's joint was carried round instead of being solved, and its
+    // block left the bar entirely -- nearly two units off at the widest.
+    const driven = this.drivenBody(inputJoint);
     const tracer_joints: Joint[] = [];
     inputJoint.connectedJoints.forEach((j) => {
       if (!(j instanceof RealJoint)) {
         return;
       }
       if (j.ground) {
+        return;
+      }
+      if (!driven.has(j.id)) {
         return;
       }
       // if (j.ground && j.constructor !== PrisJoint) {
@@ -229,10 +253,25 @@ export class PositionSolver {
     orderNum = this.orderDeferredJoints(joints, links, orderNum, knownJointsIds);
     this.stepCount = orderNum - 1;
     this.unsolvableJoints = joints
-      .filter(
-        (j) => j instanceof RealJoint && !j.ground && !knownJointsIds.includes(j.id)
-      )
+      .filter((j) => j instanceof RealJoint && !j.ground && !knownJointsIds.includes(j.id))
       .map((j) => j.id);
+  }
+
+  /**
+   * The joints the drive carries with it: those of the one link it turns.
+   *
+   * A ground pivot can hold several links, and only one of them is being
+   * driven. Which one is not something the model says, so the first non-block
+   * link on the joint is taken and the rest are left to the solver — the same
+   * arbitrary-but-consistent choice `incrementRevInput` was already making when
+   * it picked a neighbour to measure the crank radius from.
+   */
+  private static drivenBody(inputJoint: RealJoint): Set<string> {
+    const body = inputJoint.links.find(
+      (link) => !link.joints.some((joint) => joint instanceof PrisJoint)
+    );
+    const members = (body ?? inputJoint.links[0])?.joints ?? [];
+    return new Set(members.filter((joint) => joint.id !== inputJoint.id).map((joint) => joint.id));
   }
 
   /**
@@ -349,9 +388,7 @@ export class PositionSolver {
       // straight into this primitive, which would happily swing it and draw a
       // plausible picture of the wrong mechanism.
       if (
-        slideAssemblies(joints).some((assembly) =>
-          assemblyBodyIds(assembly).includes(carrier.id)
-        )
+        slideAssemblies(joints).some((assembly) => assemblyBodyIds(assembly).includes(carrier.id))
       ) {
         continue;
       }
@@ -359,7 +396,11 @@ export class PositionSolver {
       // Exactly one slot joint known: with neither, there is no ray to swing
       // the link about; with both, the carrier is already placed and this is
       // the forward direction instead.
-      const anchor = known.includes(slotA.id) ? slotA : known.includes(slotB.id) ? slotB : undefined;
+      const anchor = known.includes(slotA.id)
+        ? slotA
+        : known.includes(slotB.id)
+          ? slotB
+          : undefined;
       if (!anchor || (known.includes(slotA.id) && known.includes(slotB.id))) continue;
 
       const targets = carrier.joints
@@ -441,9 +482,7 @@ export class PositionSolver {
     // (§2.10 item 2). The existing grounded-slider path has always moved it, and
     // leaving it behind here stretched the zero-length block a little further
     // every timestep.
-    const movable = members.filter(
-      (member) => !member.ground || member instanceof PrisJoint
-    );
+    const movable = members.filter((member) => !member.ground || member instanceof PrisJoint);
     const pending = movable.filter((member) => !known.includes(member.id));
     if (pending.length === 0) {
       return undefined;
@@ -548,9 +587,7 @@ export class PositionSolver {
       return false;
     }
     const travel =
-      step.from.kind === 'member'
-        ? this.travelFromPlacedMember(step)
-        : this.travelFromSlot(step);
+      step.from.kind === 'member' ? this.travelFromPlacedMember(step) : this.travelFromSlot(step);
     if (travel === undefined) {
       return false;
     }
@@ -621,8 +658,7 @@ export class PositionSolver {
     known: string[]
   ): number | undefined {
     const slider = joint.connectedJoints.find(
-      (candidate): candidate is PrisJoint =>
-        candidate instanceof PrisJoint && candidate.isFloating
+      (candidate): candidate is PrisJoint => candidate instanceof PrisJoint && candidate.isFloating
     );
     if (!slider || known.includes(joint.id)) {
       return undefined;
@@ -920,7 +956,7 @@ export class PositionSolver {
   }
 
   private static incrementPrisInput(inputJoint: Joint, unknownJoint: Joint, angVelDir: boolean) {
-    const increment = angVelDir ? 0.1 : -0.1; // 0.01 : -0.01;
+    const increment = angVelDir ? PRISMATIC_INPUT_STEP : -PRISMATIC_INPUT_STEP;
     const inputJointAngle = this.sliderAngleMap.get(inputJoint.id)!;
     const xIncrement = increment * Math.cos(inputJointAngle);
     const yIncrement = increment * Math.sin(inputJointAngle);
@@ -1219,12 +1255,7 @@ export class PositionSolver {
    * Record the slot a joint slides along. Stored as a direction rather than a
    * slope so that vertical and near-vertical guides need no special case.
    */
-  private static setSlot(
-    jointID: string,
-    joint: PrisJoint,
-    throughX: number,
-    throughY: number
-  ) {
+  private static setSlot(jointID: string, joint: PrisJoint, throughX: number, throughY: number) {
     if (joint.isFloating && joint.slotJointA && joint.slotJointB) {
       this.slotLineMap.set(jointID, {
         kind: 'through',

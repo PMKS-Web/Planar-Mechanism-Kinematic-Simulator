@@ -43,7 +43,11 @@ describe('a slot losing what defines it', () => {
     expect(s.slot.slotAngle).toBeCloseTo(Math.atan2(2, -2), 9);
   });
 
-  it('regrounds at its last direction when the carrier is deleted', () => {
+  it('dangles when the carrier is deleted, rather than grounding itself', () => {
+    // Phase 2 re-grounded it here, to keep the slider the user drew. That kept
+    // the object and quietly invented the one thing nobody had chosen: where it
+    // points. Phase 4 keeps the block, drops the direction, and draws it red --
+    // the fix is to drag it onto a link (§4.1).
     const s = slottedLever();
     const wasPointing = s.slot.slotAngle;
     s.active.updateSelectedObj(s.cd);
@@ -52,23 +56,43 @@ describe('a slot losing what defines it', () => {
 
     expect(s.slot.isFloating).toBe(false);
     expect(s.slot.carrier).toBeUndefined();
-    expect(s.slot.ground).toBe(true);
-    // The guide keeps pointing where the slot last did, so the drawing does
-    // not jump when the link under it disappears.
+    expect(s.slot.ground).toBe(false);
+    expect(s.slot.isDangling).toBe(true);
+    // The direction is stashed rather than applied, so grounding it later lands
+    // on the guide it had instead of rebuilding one at zero.
     expect(s.slot.slotAngle).toBeCloseTo(wasPointing, 9);
   });
 
-  it('regrounds when a defining joint is merged away by a snap', () => {
+  it('dangles when a defining joint is merged away by a snap', () => {
     const s = slottedLever();
+    // Somewhere unrelated to the assembly, so the merge is legal: D snapping
+    // onto the block's own pin is refused outright now (see below), which
+    // closes that route rather than repairing after it.
+    const spare = new RevJoint('Z', 5, 5);
+    const bar = new RealLink('AZ', [s.a, spare], 1, 1, new Coord(2.5, 2.5));
+    s.service.joints.push(spare);
+    s.service.links.push(bar);
+    wireGraph(s.service);
 
-    // D snaps onto the crank pin, so the carrier no longer has a joint D at all.
-    expect(s.service.mergeJoints(s.d, s.b)).toBeUndefined();
+    expect(s.service.mergeJoints(s.d, spare)).toBeUndefined();
 
     expect(s.slot.isFloating).toBe(false);
-    expect(s.slot.ground).toBe(true);
+    expect(s.slot.isDangling).toBe(true);
   });
 
-  it('regrounds when a defining joint is deleted outright', () => {
+  it('refuses to merge a defining joint into the block riding its own slot', () => {
+    // The assembly would then slide on a link it is part of: the slot's
+    // direction is measured from two joints, one of which has become the block.
+    // Found by dragging a block 25 px, which snapped it onto the nearer end of
+    // its own carrier and left it non-dangling and unflagged.
+    const s = slottedLever();
+
+    expect(s.service.mergeJoints(s.d, s.b)).toBe('own-carrier');
+    expect(s.slot.isFloating, 'the slot is left alone').toBe(true);
+    expect(s.service.joints.map((joint) => joint.id)).toContain('D');
+  });
+
+  it('dangles when a defining joint is deleted outright', () => {
     // Deleting a joint is the one route to a stranded slot that goes through
     // neither mergeJoints nor deleteLink -- it used to end at updateMechanism,
     // which reconciles nothing.
@@ -79,7 +103,7 @@ describe('a slot losing what defines it', () => {
 
     expect(s.service.joints.map((joint) => joint.id)).not.toContain('D');
     expect(s.slot.isFloating).toBe(false);
-    expect(s.slot.ground).toBe(true);
+    expect(s.slot.isDangling).toBe(true);
     expect(s.slot.carrier).toBeUndefined();
   });
 

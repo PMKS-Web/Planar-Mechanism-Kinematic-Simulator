@@ -56,10 +56,54 @@ import { NumberUnitParserService } from '../../services/number-unit-parser.servi
 import { EditPanelComponent } from '../edit-panel/edit-panel.component';
 import { DragStateService } from '../../services/drag-state.service';
 import {
+  Channel,
+  CylinderMark,
+  Guide,
+  RiderDraw,
+  SliderMark,
+  SliderMarkService,
+  WeldPlate,
+} from '../../services/slider-mark.service';
+import {
+  barrelCollapsedPath,
+  curvedArrowPath,
+  cylinderBlockPath,
+  MARK,
+  orientedCapsulePath,
+  pinBackingPath,
+  plusPath,
+  rodBodyPath,
+  slotHalfLength,
+} from '../../model/joint-marks';
+import {
   JointDropCandidate,
   MERGE_REFUSAL_MESSAGES,
   resolveDropCandidate,
+  resolveSlotDropTarget,
+  SlotDropCandidate,
 } from '../../model/drop-target';
+import { mergedChannels, transformRigidPath } from '../../model/compound-link-path';
+import {
+  Cylinder,
+  cylinderCreationLayout,
+  cylinderJoints,
+  isCylinderInterior as isCylinderInteriorOf,
+} from '../../model/cylinder';
+import { SnapGuide, snapToAxes } from '../../model/axis-snap';
+import { drawDepths } from '../../model/draw-order';
+import { MODEL_SCALE } from '../../model/render-scale';
+
+/** One thing to draw in the slider layer, and how deep in the stack it sits. */
+export interface SlotStackItem {
+  key: string;
+  depth: number;
+  kind: 'block' | 'plate' | 'rider';
+  mark: SliderMark;
+  /** Set for a rider; the link this item draws. */
+  rider?: RiderDraw;
+  /** Set for a plate; the fused rider-and-block outline this item draws. */
+  plate?: WeldPlate;
+}
 import introJs from 'intro.js';
 
 @Component({
@@ -91,7 +135,8 @@ export class NewGridComponent {
     public saveHistoryService: SaveHistoryService,
     private colorService: ColorService,
     public nup: NumberUnitParserService,
-    public dragState: DragStateService
+    public dragState: DragStateService,
+    public sliderMarks: SliderMarkService
   ) {
     //This is for debug purposes, do not make anything else static!
     NewGridComponent.instance = this;
@@ -151,6 +196,20 @@ export class NewGridComponent {
 
   public sConstants = new SynthesisConstants();
   mouseLocationRaw: Coord = new Coord(0, 0);
+
+  /** For template bindings that size things in user units. */
+  readonly MODEL_SCALE = MODEL_SCALE;
+
+  /**
+   * A grid line's label, in the user's units. Grid lines live at internal
+   * model coordinates (MODEL_SCALE times the user's unit); the label is the
+   * one place that number reaches the screen, so it converts here. Rounded so
+   * a binary-representation artifact of the division never shows up as
+   * 0.6000000001.
+   */
+  axisLabel(line: number): number {
+    return Math.round((line / MODEL_SCALE) * 1e6) / 1e6;
+  }
 
   @ViewChild('trigger') contextMenu!: CdkContextMenuTrigger;
 
@@ -310,7 +369,29 @@ export class NewGridComponent {
           )
         );
         break;
-      case 'RealLink':
+      case 'RealLink': {
+        // The BODY of a sealed cylinder: barrel, rod or the skin itself. Two
+        // actions only — the assembly is one part, so no attach items (a
+        // tracer on the barrel would be a third joint on a two-joint bar) and
+        // Delete takes the whole cylinder (§ cylinder 3, 5).
+        const bodyCylinder = this.mechanismSrv.cylinderAt(this.lastRightClick as RealLink);
+        if (bodyCylinder) {
+          this.cMenuItems.push(
+            new cMenuItem(
+              'Delete Cylinder',
+              () => this.mechanismSrv.deleteCylinder(bodyCylinder),
+              'remove'
+            )
+          );
+          this.cMenuItems.push(
+            new cMenuItem(
+              bodyCylinder.slider.input ? 'Remove Input' : 'Make Input',
+              () => this.mechanismSrv.toggleCylinderInput(bodyCylinder),
+              bodyCylinder.slider.input ? 'remove_input' : 'add_input'
+            )
+          );
+          break;
+        }
         //Delete Link, Attach Link, Attach Tracer Point, Attach Joint
         //Don't give options if a fillet it selected and not a primary link
         let weldedLinkFilletSelected =
@@ -349,10 +430,54 @@ export class NewGridComponent {
           )
         );
         break;
-      case 'RevJoint':
+      }
+      case 'RevJoint': {
         let jointIsSlider = this.gridUtils.isAttachedToSlider(this.lastRightClick);
         let jointIsGround = (this.lastRightClick as RealJoint).ground;
-        let canBeWeldedOrUnwelded = (this.lastRightClick as RealJoint).canBeWeldedOrUnwelded();
+        let canToggleInput = this.gridUtils.canToggleInput(this.lastRightClick as RealJoint);
+
+        // A MOUNT of a sealed cylinder (the interior joints have no hitboxes,
+        // so no other member can arrive here). Ground and Weld stay; Slider is
+        // structurally off the table, and Delete cascades to the whole part —
+        // mirrored by the edit panel so the two surfaces cannot disagree.
+        const mountCylinder = this.mechanismSrv.cylinderAt(this.lastRightClick as RealJoint);
+        if (mountCylinder) {
+          this.cMenuItems.push(
+            new cMenuItem(
+              'Delete Cylinder',
+              () => this.mechanismSrv.deleteCylinder(mountCylinder),
+              'remove'
+            )
+          );
+          this.cMenuItems.push(
+            new cMenuItem('Attach Link', this.startCreatingLink.bind(this), 'new_link')
+          );
+          this.cMenuItems.push(
+            new cMenuItem(
+              jointIsGround ? 'Remove Ground' : 'Add Ground',
+              this.mechanismSrv.toggleGround.bind(this.mechanismSrv),
+              jointIsGround ? 'remove_ground' : 'add_ground'
+            )
+          );
+          this.cMenuItems.push(
+            new cMenuItem(
+              (this.lastRightClick as RealJoint).input ? 'Remove Input' : 'Make Input',
+              this.mechanismSrv.adjustInput.bind(this.mechanismSrv),
+              (this.lastRightClick as RealJoint).input ? 'remove_input' : 'add_input',
+              !canToggleInput
+            )
+          );
+          this.cMenuItems.push(new cMenuItem('Add Slider', () => {}, 'add_slider', true));
+          this.cMenuItems.push(
+            new cMenuItem(
+              (this.lastRightClick as RealJoint).isWelded ? 'Unweld Joint' : 'Weld Joint',
+              this.mechanismSrv.toggleWeldedJoint.bind(this.mechanismSrv),
+              (this.lastRightClick as RealJoint).isWelded ? 'unweld_joint' : 'weld_joint',
+              !this.gridUtils.canToggleWeld(this.lastRightClick as RealJoint)
+            )
+          );
+          break;
+        }
         let canTogglePath =
           !(this.lastRightClick as RealJoint).ground && this.mechanismSrv.oneValidMechanismExists();
 
@@ -368,12 +493,15 @@ export class NewGridComponent {
           new cMenuItem('Attach Link', this.startCreatingLink.bind(this), 'new_link')
         );
 
+        // Enabled whatever else the joint is, exactly as the panel's toggle is:
+        // Ground and Slider became independent axes of the 2x2 in §4.1, so
+        // greying one out because of the other puts a reachable cell out of
+        // reach from this surface and not from the other.
         this.cMenuItems.push(
           new cMenuItem(
             jointIsGround ? 'Remove Ground' : 'Add Ground',
             this.mechanismSrv.toggleGround.bind(this.mechanismSrv),
-            jointIsGround ? 'remove_ground' : 'add_ground',
-            jointIsSlider
+            jointIsGround ? 'remove_ground' : 'add_ground'
           )
         ); //Rev Joint - Ground
 
@@ -386,7 +514,8 @@ export class NewGridComponent {
               this.mechanismSrv.adjustInput.bind(this.mechanismSrv),
               (this.gridUtils.getSliderJoint(this.lastRightClick as RealJoint) as RealJoint).input
                 ? 'remove_input'
-                : 'add_input'
+                : 'add_input',
+              !canToggleInput
             )
           ); //Rev Joint Slider
         } else {
@@ -395,7 +524,7 @@ export class NewGridComponent {
               (this.lastRightClick as RealJoint).input ? 'Remove Input' : 'Make Input',
               this.mechanismSrv.adjustInput.bind(this.mechanismSrv),
               (this.lastRightClick as RealJoint).input ? 'remove_input' : 'add_input',
-              !jointIsGround
+              !canToggleInput
             ) //Rev Joint - Input
           );
         }
@@ -413,9 +542,12 @@ export class NewGridComponent {
             (this.lastRightClick as RealJoint).isWelded ? 'Unweld Joint' : 'Weld Joint',
             this.mechanismSrv.toggleWeldedJoint.bind(this.mechanismSrv),
             (this.lastRightClick as RealJoint).isWelded ? 'unweld_joint' : 'weld_joint',
-            !canBeWeldedOrUnwelded
+            // Greyed only when there is structurally nothing to fuse (fewer than
+            // two links); a grounded or driven joint still gets the explained
+            // refusal, exactly as the panel's toggle does.
+            !this.gridUtils.canToggleWeld(this.lastRightClick as RealJoint)
           )
-        ); //Rev Joint - Can be welded
+        ); //Rev Joint - the service explains a refusal, as the panel's toggle does
 
         // this.cMenuItems.push(
         //   new cMenuItem(
@@ -428,12 +560,79 @@ export class NewGridComponent {
         //   )
         // ); //Rev Joint - Not Ground and at least one valid mechanism exists
         break;
+      }
 
       case 'String': //This means grid
         this.cMenuItems.push(
           new cMenuItem('Add Link', this.startCreatingLink.bind(this), 'new_link')
         );
+        this.cMenuItems.push(
+          new cMenuItem('Create Cylinder', this.startCreatingCylinder.bind(this), 'add_cylinder')
+        );
     }
+  }
+
+  /** Where the two-point cylinder gesture started: the barrel-side mount. */
+  private cylinderCreateStart?: Coord;
+
+  /**
+   * Begin the two-point cylinder gesture (§ cylinder 2), mirroring Add Link:
+   * the right-click point is the barrel-side mount, a ghost of the assembly
+   * tracks the cursor (which is where the ROD will finish), and the next
+   * left-click commits. Right- or middle-click cancels, exactly as link
+   * creation does.
+   */
+  startCreatingCylinder() {
+    // Same first-object rule as link creation: fit the object scale to the
+    // current zoom before anything is sized from it.
+    if (this.mechanismSrv.links.length == 0) {
+      this.svgGrid.updateObjectScale();
+    }
+    this.cylinderCreateStart = this.svgGrid.screenToSVG(this.lastRightClickCoord);
+    this.dragState.beginCreatingCylinder();
+  }
+
+  /**
+   * The ghost cylinder of the creation gesture, tracking the cursor. Same
+   * paths, same proportions and same frame as the committed skin, so what is
+   * previewed is exactly what the left-click will create.
+   */
+  get cylinderPreview():
+    | {
+        x: number;
+        y: number;
+        rotation: number;
+        barrel: string;
+        rod: string;
+        block: string;
+      }
+    | undefined {
+    if (this.dragState.grid !== gridStates.createCylinder || !this.cylinderCreateStart) {
+      return undefined;
+    }
+    const creation = cylinderCreationLayout(
+      this.cylinderCreateStart,
+      this.mouseLocation,
+      this.settings.objectScale
+    );
+    const r = 0.15 * this.settings.objectScale;
+    return {
+      x: creation.pin.x,
+      y: creation.pin.y,
+      rotation: (creation.angleRad * 180) / Math.PI,
+      barrel: barrelCollapsedPath(r, -creation.pinFromMount),
+      rod: rodBodyPath(r, creation.rodLength),
+      block: cylinderBlockPath(r),
+    };
+  }
+
+  /** The left-click that ends the gesture: build the part, one undo entry. */
+  private commitCylinderCreation(end: Coord) {
+    const start = this.cylinderCreateStart;
+    this.cylinderCreateStart = undefined;
+    this.dragState.finishCreating();
+    if (!start) return;
+    this.mechanismSrv.createCylinderFrom(start, end);
   }
 
   setLastRightClick(clickedObj: Joint | Link | String | Force, event?: MouseEvent) {
@@ -618,31 +817,63 @@ export class NewGridComponent {
         this.jointTempHolderSVG.children[0].setAttribute('x2', mousePosInSvg.x.toString());
         this.jointTempHolderSVG.children[0].setAttribute('y2', mousePosInSvg.y.toString());
         break;
-      case jointStates.dragging:
+      case jointStates.dragging: {
         if (!this.canEditNow() || !this.pastDragThreshold($event)) {
           return;
         }
+        // A mount of a sealed cylinder drags parametrically: the whole
+        // assembly re-poses about the OTHER mount, collinear by construction
+        // (§ cylinder 6). Mounts merge onto other joints like any joint does —
+        // that is how a cylinder attaches — with the refusal rules keeping
+        // welded targets and the part's own joints out. Slot drops stay off
+        // the table: a mount never rides a slot.
+        const draggedCylinder = this.mechanismSrv.cylinderAt(this.activeObjService.selectedJoint);
+        if (draggedCylinder) {
+          this.updateDropCandidate(mousePosInSvg, $event.altKey);
+          this.slotCandidate = undefined;
+          this.axisSnapGuides = [];
+          const wanted = this.snapTargetJoint
+            ? new Coord(this.snapTargetJoint.x, this.snapTargetJoint.y)
+            : this.mountAxisSnap(draggedCylinder, mousePosInSvg);
+          this.gridUtils.dragCylinderMount(
+            draggedCylinder,
+            this.activeObjService.selectedJoint,
+            wanted
+          );
+          this.dragState.noteMechanismModified();
+          this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
+          this.showPathWhileDragging();
+          break;
+        }
         this.updateDropCandidate(mousePosInSvg, $event.altKey);
+        // A capture has a target of its own, so any axis the last move squared
+        // itself against is no longer what decides where the joint goes.
+        this.axisSnapGuides = [];
         // Captured: the joint sits exactly on the target instead of trailing the
         // cursor, so what is on screen is what a release would produce.
+        // A slot capture pulls the joint onto the slot line the same way, so a
+        // drop-on-link is as unsurprising as a drop-on-joint (§4.3).
         this.activeObjService.selectedJoint = this.gridUtils.dragJoint(
           this.activeObjService.selectedJoint,
           this.snapTargetJoint
             ? new Coord(this.snapTargetJoint.x, this.snapTargetJoint.y)
-            : mousePosInSvg
+            : this.slotCandidate
+              ? new Coord(this.slotCandidate.x, this.slotCandidate.y)
+              : this.alongItsSlot(this.activeObjService.selectedJoint, mousePosInSvg)
         );
         this.dragState.noteMechanismModified();
         //So that the panel values update continously
         this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
         this.showPathWhileDragging();
         break;
+      }
     }
     switch (this.dragState.link) {
       case linkStates.creating:
         this.jointTempHolderSVG.children[0].setAttribute('x2', mousePosInSvg.x.toString());
         this.jointTempHolderSVG.children[0].setAttribute('y2', mousePosInSvg.y.toString());
         break;
-      case linkStates.dragging:
+      case linkStates.dragging: {
         if (!this.canEditNow() || !this.pastDragThreshold($event)) {
           return;
         }
@@ -650,16 +881,28 @@ export class NewGridComponent {
         // pointer event: the moves held back below the click threshold would
         // otherwise be lost motion, leaving the link trailing the cursor by
         // however far the hold lasted.
-        this.gridUtils.dragLink(
-          this.activeObjService.selectedLink,
-          mousePosInSvg.x - this.linkDragAnchor.x,
-          mousePosInSvg.y - this.linkDragAnchor.y
-        );
+        const bodyCylinder = this.mechanismSrv.cylinderAt(this.activeObjService.selectedLink);
+        if (bodyCylinder) {
+          // Dragging the body translates the whole assembly rigidly; the
+          // mounts are the handles for re-posing.
+          this.gridUtils.dragCylinder(
+            bodyCylinder,
+            mousePosInSvg.x - this.linkDragAnchor.x,
+            mousePosInSvg.y - this.linkDragAnchor.y
+          );
+        } else {
+          this.gridUtils.dragLink(
+            this.activeObjService.selectedLink,
+            mousePosInSvg.x - this.linkDragAnchor.x,
+            mousePosInSvg.y - this.linkDragAnchor.y
+          );
+        }
         this.linkDragAnchor = mousePosInSvg;
         this.dragState.noteMechanismModified();
         this.activeObjService.updateSelectedObj(this.activeObjService.selectedLink);
         this.showPathWhileDragging();
         break;
+      }
     }
     switch (this.dragState.force) {
       case forceStates.creating:
@@ -773,18 +1016,166 @@ export class NewGridComponent {
    * merging the two.
    */
   private updateDropCandidate(mousePos: Coord, altHeld: boolean): void {
-    this.setDropCandidate(
-      altHeld
+    const candidate = altHeld
+      ? undefined
+      : resolveDropCandidate(
+          this.activeObjService.selectedJoint,
+          mousePos.x,
+          mousePos.y,
+          // A sealed cylinder's interior joints are not attachment points, so
+          // they never capture a drop; the mounts remain ordinary targets.
+          this.mechanismSrv.joints.filter((joint) => !this.isCylinderInterior(joint)),
+          this.snapRadius(),
+          // The full structural picture rides along separately: the filtered
+          // list above cannot answer mount questions (the pins are gone), and
+          // this is the cached list, not a per-move derivation.
+          this.mechanismSrv.sealedStructures()
+        );
+    this.setDropCandidate(candidate);
+
+    // Joint snap wins outright when both are in range (§4.3). A joint is the
+    // more specific intent and the only one that can be aimed at precisely, so
+    // the slot preview only appears where no joint is claiming the drop -- which
+    // is also what makes the two distinguishable before release: you either see
+    // a ring on a joint, or a channel opening in a bar, never both.
+    // A joint you are not allowed to merge with is still a joint you are aiming
+    // at. `resolveDropCandidate` deliberately says nothing about the far end of
+    // your own link -- the drawing already says the two are joined, so there is
+    // no rule there worth explaining -- but dropping on top of it must not then
+    // quietly cut a slot into whatever else passes through that point. Landing
+    // a joint on a joint gave the four-bar a fifth one.
+    const overAJoint = this.mechanismSrv.joints.some(
+      (joint) =>
+        joint.id !== this.activeObjService.selectedJoint?.id &&
+        !(joint instanceof PrisJoint) &&
+        Math.hypot(joint.x - mousePos.x, joint.y - mousePos.y) < this.snapRadius()
+    );
+    this.slotCandidate =
+      altHeld || candidate || overAJoint
         ? undefined
-        : resolveDropCandidate(
+        : resolveSlotDropTarget(
             this.activeObjService.selectedJoint,
             mousePos.x,
             mousePos.y,
-            this.mechanismSrv.joints,
-            this.snapRadius()
-          )
-    );
+            // No slot is ever cut into a sealed cylinder's members: the
+            // barrel's one slot is the part's own bore.
+            this.mechanismSrv.links.filter(
+              (link) => link instanceof RealLink && !this.isCylinderMemberLink(link)
+            ),
+            this.slotDropRadius()
+          );
   }
+
+  /**
+   * Where a block in a channel is allowed to go (§4.4).
+   *
+   * Dragging the block along its slot sets s₀ and changes nothing else, so the
+   * drag is projected onto the slot line and clamped to the span the channel
+   * actually occupies — the block cannot leave a hole it is inside of, and one
+   * drag stays one quantity.
+   *
+   * Only for a floating slot. A grounded guide's line is fixed in the world
+   * rather than cut into a body, so dragging its joint repositions the whole
+   * guide; constraining that would leave no way to move a guide at all.
+   */
+  private alongItsSlot(joint: Joint, wanted: Coord): Coord {
+    const slider = this.mechanismSrv.sliderFor(joint);
+    if (!slider?.isFloating || !slider.isSlotWellFormed) return this.withAxisSnap(joint, wanted);
+
+    const a = slider.slotJointA!;
+    const b = slider.slotJointB!;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const length = Math.hypot(dx, dy);
+    if (length < 1e-9) return wanted;
+
+    const ux = dx / length;
+    const uy = dy / length;
+    const midX = (a.x + b.x) / 2;
+    const midY = (a.y + b.y) / 2;
+    const half = slotHalfLength(0.15 * this.settings.objectScale, length);
+    const offset = (wanted.x - midX) * ux + (wanted.y - midY) * uy;
+    const across = -(wanted.x - midX) * uy + (wanted.y - midY) * ux;
+
+    // Sticky, then it lets go (§4.4). Sliding along the slot is by far the
+    // commoner intent, so the block stays on its line through any amount of
+    // sideways wobble -- but a slot is not a life sentence, and pulling clear
+    // of the bar is the one gesture that plainly means "take this off here".
+    // What is left behind is the dangling block: a slider with nowhere to
+    // slide, drawn red until it is dropped on a link again.
+    if (Math.abs(across) > this.slotReleaseDistance()) {
+      this.mechanismSrv.detachSlider(slider);
+      return this.withAxisSnap(joint, wanted);
+    }
+
+    const along = Math.max(-half, Math.min(half, offset));
+    return new Coord(midX + along * ux, midY + along * uy);
+  }
+
+  /**
+   * How far across its own slot a block has to be pulled before it comes out.
+   *
+   * Two bar-widths: far enough that no ordinary along-the-slot drag reaches it
+   * by accident, close enough that deliberately pulling the block off the bar
+   * does it on the first try.
+   */
+  private slotReleaseDistance(): number {
+    return 4 * MARK.barHalf * 0.15 * this.settings.objectScale;
+  }
+
+  /** Lines showing which joints a drag has just squared itself against. */
+  public axisSnapGuides: SnapGuide[] = [];
+
+  /**
+   * Pull a free drag onto a neighbour's axis when it is nearly on it.
+   *
+   * Only a free drag: a block is already constrained to its slot, and a capture
+   * has a target of its own, so snapping either would be a second opinion about
+   * where the joint goes.
+   */
+  private withAxisSnap(joint: Joint, wanted: Coord): Coord {
+    const others = this.mechanismSrv
+      .getJoints()
+      .filter((other) => other.id !== joint.id && !(other instanceof PrisJoint));
+    const snapped = snapToAxes(wanted, others, this.svgGrid.scaleWithZoom(8));
+    this.axisSnapGuides = snapped.guides;
+    return new Coord(snapped.point.x, snapped.point.y);
+  }
+
+  /**
+   * Axis snapping for a mount drag. The assembly's own joints are excluded:
+   * they move with the drag, so squaring the mount against them would be the
+   * drag chasing its own tail. Every other joint's H/V guides still work.
+   */
+  private mountAxisSnap(sealed: Cylinder, wanted: Coord): Coord {
+    const memberIds = new Set(cylinderJoints(sealed).map((joint) => joint.id));
+    const others = this.mechanismSrv
+      .getJoints()
+      .filter((other) => !memberIds.has(other.id) && !(other instanceof PrisJoint));
+    const snapped = snapToAxes(wanted, others, this.svgGrid.scaleWithZoom(8));
+    this.axisSnapGuides = snapped.guides;
+    return new Coord(snapped.point.x, snapped.point.y);
+  }
+
+  /**
+   * How close to a bar's centreline the cursor must get to cut a slot there.
+   *
+   * Half the bar's own width, so the drop has to be genuinely over the body
+   * rather than merely near it — a slot is a hole through the bar, and offering
+   * one while the cursor is off in open canvas reads as the bar grabbing at it.
+   */
+  private slotDropRadius(): number {
+    return MARK.barHalf * 0.15 * this.settings.objectScale;
+  }
+
+  /**
+   * The slot this drag would cut, previewed as the real thing.
+   *
+   * Not a stand-in: the previewed channel is pushed through the same path
+   * subtraction a committed slot uses, so the hover state is pixel-identical to
+   * the result and its legibility cannot depend on the carrier's random colour.
+   */
+  public slotCandidate?: SlotDropCandidate;
 
   private setDropCandidate(candidate?: JointDropCandidate): void {
     // Capture starts further out than the joint's own hitbox, so pointerover
@@ -898,6 +1289,8 @@ export class NewGridComponent {
   mouseUp($event: MouseEvent) {
     //This is the mouseUp that is called no matter what is clicked on
     this.synthesisClickMode = SynthesisClickMode.NORMAL;
+    // The alignment guides belong to the drag that made them.
+    this.axisSnapGuides = [];
 
     // Resolve the drop before releasing: the snap target is only meaningful
     // while the drag it belongs to is still in flight.
@@ -931,11 +1324,14 @@ export class NewGridComponent {
     if ($event.altKey) {
       this.snapTargetJoint = undefined;
       this.refusedTarget = undefined;
+      this.slotCandidate = undefined;
       return false;
     }
     const target = this.snapTargetJoint;
     const refused = this.refusedTarget;
+    const slot = this.slotCandidate;
     this.setDropCandidate(undefined);
+    this.slotCandidate = undefined;
     if (this.dragState.joint !== jointStates.dragging) {
       return false;
     }
@@ -946,6 +1342,12 @@ export class NewGridComponent {
       return false;
     }
     if (!target) {
+      // No joint claimed the drop, so a bar may have. Cutting the slot is the
+      // gesture's whole point (§4.3) and it earns the same receipt a merge does.
+      if (slot && this.mechanismSrv.cutSlotOn(source, slot)) {
+        this.popJoint(source.id);
+        return true;
+      }
       return false;
     }
 
@@ -995,6 +1397,13 @@ export class NewGridComponent {
 
     switch ($event.button) {
       case 0: // Handle Left-Click on canvas
+        // The second click of the two-point cylinder gesture commits wherever
+        // it lands — over grid, joint or link alike — with the cursor as the
+        // rod's end, exactly where the ghost has been standing.
+        if (this.dragState.grid === gridStates.createCylinder) {
+          this.commitCylinderCreation(mousePosInSvg);
+          break;
+        }
         // let clickPos = new Coord($event.pageX, $event.pageY);
         // let mousePosInSvg = this.svgGrid.screenToSVG(clickPos);
         // console.warn('Mouse down: ');
@@ -1269,10 +1678,12 @@ export class NewGridComponent {
       // TODO: Be sure all things reset
       case 1: // Middle-Click
         this.dragState.cancel();
+        this.cylinderCreateStart = undefined;
         this.jointTempHolderSVG.style.display = 'none';
         return;
       case 2: // Right-Click
         this.dragState.cancel();
+        this.cylinderCreateStart = undefined;
         this.jointTempHolderSVG.style.display = 'none';
         break;
     }
@@ -1325,6 +1736,441 @@ export class NewGridComponent {
 
   getFirstYPos(link: Link) {
     return this.getFirstPosCoords(link).y;
+  }
+
+  /**
+   * The slider marks of §2.8, recomputed only when something they depend on has
+   * actually moved.
+   *
+   * Change detection asks for these far more often than the mechanism changes —
+   * and during playback it asks every frame across ~360 timesteps — so the
+   * fingerprint is what keeps the glyphs cheap. It is deliberately built from
+   * the same values the marks are: anything that can change a mark and not the
+   * fingerprint would be a stale drawing.
+   */
+  private markCache?: { key: string; marks: SliderMark[]; channels: Channel[] };
+
+  get sliderMarkList(): SliderMark[] {
+    const marks = this.freshMarks().marks;
+    // A slider dragged over a valid slot previews the accepted state: the block
+    // turns to the slot's own angle and the red nowhere-to-slide highlight goes
+    // out while the drop would land. Without this the preview showed the cut
+    // opening in the bar while the block stayed unturned and red — the channel
+    // said yes and the block said no about the same release. Presentation only:
+    // the joint itself is not reseated until the drop commits (cutSlotOn).
+    const slot = this.slotCandidate;
+    if (!slot || this.dragState.joint !== jointStates.dragging) return marks;
+    const pinID = this.activeObjService.selectedJoint?.id;
+    if (!pinID) return marks;
+    const slotAngleDeg = (Math.atan2(slot.b.y - slot.a.y, slot.b.x - slot.a.x) * 180) / Math.PI;
+    return marks.map((mark) =>
+      mark.pin.id === pinID ? { ...mark, rotation: slotAngleDeg, dangling: false } : mark
+    );
+  }
+
+  get channelList(): Channel[] {
+    return this.freshMarks().channels;
+  }
+
+  /**
+   * A carrier's outline with its channels cut out of it.
+   *
+   * The link already fills even-odd, so appending a channel subpath subtracts
+   * it, and the link's own stroke then traces the new edge in the link's own
+   * colour — the channel is a hole in the bar rather than a lighter shape laid
+   * on top, which is what keeps its legibility independent of the random colour
+   * that bar happens to have. A bar carrying two slots simply gets two
+   * subpaths.
+   */
+  /**
+   * Where each grounded guide sits in the world, and how far along itself its
+   * block runs.
+   *
+   * Measured over the solved timesteps rather than read off the joint, because
+   * during playback the joint *is* the thing sliding: anchoring the rails to it
+   * makes the track travel with the block, which is only visible once the
+   * mechanism is playing and looks like the whole guide has come loose.
+   *
+   * An unsolved or invalid linkage has no timesteps, and then the joint's own
+   * position is the only frame there is -- which is also the right one, since
+   * nothing is moving.
+   */
+  private guides(): Map<string, Guide> {
+    const found = new Map<string, Guide>();
+    const mechanism = this.mechanismSrv.mechanisms[0];
+    const frames = mechanism?.isMechanismValid() ? mechanism.joints : undefined;
+    if (!frames?.length) return found;
+
+    const rest = frames[0];
+    for (const joint of rest) {
+      if (!(joint instanceof PrisJoint) || !joint.ground) continue;
+      const angle = joint.slotAngle;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      let lo = 0;
+      let hi = 0;
+      for (const frame of frames) {
+        const at = frame.find((member) => member.id === joint.id);
+        if (!at) continue;
+        const along = (at.x - joint.x) * cos + (at.y - joint.y) * sin;
+        lo = Math.min(lo, along);
+        hi = Math.max(hi, along);
+      }
+      found.set(joint.id, { x: joint.x, y: joint.y, lo, hi });
+    }
+    return found;
+  }
+
+  /**
+   * Pins that carry the drive but no block and no ground.
+   *
+   * Grounded pins already have the black input arrow, and a slider's drive
+   * shows as straight arrows on its block. This is the case with neither: the
+   * freedom is a rotation, so the overlay is the curved arrow, and it supplies
+   * its own dark backing because there is nothing underneath to guarantee the
+   * white will read.
+   */
+  get drivenFloatingPins(): Joint[] {
+    return this.mechanismSrv
+      .getJoints()
+      .filter(
+        (joint) =>
+          this.gridUtils.getInput(joint) &&
+          !this.gridUtils.getGround(joint) &&
+          this.gridUtils.typeOfJoint(joint) === 'R' &&
+          !this.gridUtils.isAttachedToSlider(joint)
+      );
+  }
+
+  get drivenPin(): { backing: string; arc: string; head: string } {
+    const r = 0.15 * this.settings.objectScale;
+    return { backing: pinBackingPath(r), ...curvedArrowPath(r) };
+  }
+
+  /**
+   * How many channels this carrier holds. Published on the element because a
+   * cut channel is otherwise indistinguishable from a compound link's extra
+   * subpath, and a test that cannot tell them apart is not testing the channel.
+   */
+  /**
+   * The sealed cylinders, always wearing their skin. Sealed ⇔ skinned: there
+   * is no reveal on selection and no per-session preference any more.
+   */
+  private cylinderListCache?: {
+    revision: number;
+    scale: number;
+    forward: boolean;
+    list: CylinderMark[];
+  };
+
+  /**
+   * The drawn cylinder marks, cached per mechanism revision. This getter runs
+   * for every template binding on every change-detection pass — dozens of
+   * times per pointer move — and each uncached call re-resolved every
+   * assembly and rebuilt every path string, which is where the quarter-second
+   * interaction stutters came from.
+   */
+  get cylinderList(): CylinderMark[] {
+    const revision = this.mechanismSrv.cylinderRevision;
+    const scale = this.settings.objectScale;
+    const forward = !this.settings.isInputCW.value;
+    const cache = this.cylinderListCache;
+    if (
+      !cache ||
+      cache.revision !== revision ||
+      cache.scale !== scale ||
+      cache.forward !== forward
+    ) {
+      this.cylinderListCache = {
+        revision,
+        scale,
+        forward,
+        list: this.sliderMarks.cylinderMarks(this.mechanismSrv.getJoints(), 0.15 * scale, forward),
+      };
+    }
+    return this.cylinderListCache!.list;
+  }
+
+  /** Whether the selection is this cylinder's body, however it was selected. */
+  isBodySelected(mark: CylinderMark): boolean {
+    return (
+      this.activeObjService.objType === 'Link' &&
+      this.activeObjService.selectedLink?.id === mark.body.id
+    );
+  }
+
+  /**
+   * The selection stroke traces the part's exact silhouette — sharp at every
+   * profile step, curved only at the two end caps. The mark computes it
+   * analytically, so there is no union to pay for or to soften the corners.
+   */
+  cylinderSilhouette(mark: CylinderMark): string {
+    return mark.contour;
+  }
+
+  /** A link the cylinder skin is standing in for, so it is not drawn twice. */
+  private skinnedLink(link: Link): CylinderMark | undefined {
+    return this.cylinderList.find((mark) => mark.barrelId === link.id || mark.rodId === link.id);
+  }
+
+  /**
+   * Everything in the slider layer, deepest first.
+   *
+   * A block is above the carrier it slides in; a link is above the block it is
+   * pinned to. Emitting each assembly as a unit — block, then its riders — can
+   * only honour those two while no link is ever both a carrier and a rider, and
+   * the Scotch yoke's yoke is exactly that. It also put one assembly's block
+   * over another's rider whenever the two shared a link, which is what a pair
+   * of dangling blocks on one bar looks like. Ordering by depth is the same two
+   * rules, applied to the chain rather than to a layer number.
+   */
+  get slotStack(): SlotStackItem[] {
+    const depths = drawDepths(this.mechanismSrv.getJoints());
+    const items: SlotStackItem[] = [];
+    for (const mark of this.sliderMarkList) {
+      if (this.isSkinned(mark)) continue;
+      const blockDepth = depths.block.get(mark.id) ?? 1;
+      items.push({ key: `${mark.id}:block`, depth: blockDepth, kind: 'block', mark });
+      const plate = mark.plate;
+      if (plate) {
+        items.push({
+          key: `${mark.id}:plate`,
+          depth: depths.link.get(plate.links[0]?.id ?? '') ?? blockDepth + 1,
+          kind: 'plate',
+          mark,
+          plate,
+        });
+      }
+      for (const rider of mark.riders) {
+        items.push({
+          key: `${mark.id}:${rider.link.id}`,
+          depth: depths.link.get(rider.link.id) ?? blockDepth + 1,
+          kind: 'rider',
+          mark,
+          rider,
+        });
+      }
+    }
+    return items.sort((a, b) => a.depth - b.depth);
+  }
+
+  /**
+   * The weight of a grounded guide's rails, matched to the ground symbol a
+   * grounded pin already uses.
+   *
+   * `Ground.svg` is placed at 1.2 objectScale and draws its baseline 4/157 of
+   * its own width, so this is that same line in model units. It deliberately
+   * does not go through `scaleWithZoom`: that keeps a stroke a constant number
+   * of screen pixels, and the asset beside it does not, so across a 25x zoom
+   * range a rail went from half the hatch's weight to twelve times it. The two
+   * marks say the same thing about the same world, so they have to be drawn the
+   * same way, and the asset is the one that cannot change.
+   */
+  get groundLineWidth(): number {
+    return (1.2 * 4 * this.settings.objectScale) / 157;
+  }
+
+  /** The hatch bars of that same symbol, drawn at 5/157 of its width. */
+  get groundHatchWidth(): number {
+    return (1.2 * 5 * this.settings.objectScale) / 157;
+  }
+
+  /**
+   * A link its own slider assembly is drawing: either fused into a weld plate,
+   * or hoisted above the block it is pinned to. Either way the link layer has
+   * to leave it alone, or it is drawn twice at 0.7 alpha over itself.
+   */
+  private platedLink(link: Link): boolean {
+    return this.sliderMarkList.some((mark) => {
+      if (this.isSkinned(mark)) return false;
+      if (mark.plate?.links.some((rider) => rider.id === link.id)) return true;
+      return mark.riders.some((rider) => rider.link.id === link.id);
+    });
+  }
+
+  /** A slider the cylinder skin has replaced. */
+  isSkinned(mark: SliderMark): boolean {
+    return this.cylinderList.some((cylinder) => cylinder.pin.id === (mark.pin as Joint).id);
+  }
+
+  /**
+   * A cylinder's interior joints — the buried barrel end, the pin, and the
+   * sliding joint — get no hitbox, hover, label or selection at all. Only the
+   * two mounts remain selectable; the skin's own geometry selects the body.
+   */
+  isCylinderInterior(joint: Joint): boolean {
+    // Checked against the structural resolution as well as the drawn marks:
+    // the marks are geometric, and mid-edit (a weld landing, a drag in
+    // flight) they can lag a frame — long enough for an interior label to
+    // blink into view.
+    if (
+      this.cylinderList.some(
+        (mark) =>
+          mark.hiddenJointId === joint.id ||
+          mark.pin.id === joint.id ||
+          mark.cylinder.slider.id === joint.id
+      )
+    ) {
+      return true;
+    }
+    const sealed = this.mechanismSrv.cylinderAt(joint);
+    return !!sealed && isCylinderInteriorOf(sealed, joint);
+  }
+
+  /**
+   * What a link's canvas tag calls it. A sealed cylinder's interior joints are
+   * an implementation detail, so its letters come from the two mounts alone —
+   * and a compound that swallowed a member keeps only its visible letters too.
+   */
+  /** One tag per part: the rod defers to the barrel's tag. */
+  isSecondaryCylinderTag(link: Link): boolean {
+    const sealed = this.mechanismSrv.cylinderAt(link);
+    return !!sealed && link.id !== sealed.barrel.id;
+  }
+
+  linkDisplayName(link: Link): string {
+    const sealed = this.mechanismSrv.cylinderAt(link);
+    if (!sealed) return link.name;
+    const interior = new Set(
+      [sealed.pin.id, sealed.slider.id, sealed.barrelNear.id].map((id) => id)
+    );
+    const stripped = [...link.name].filter((letter) => !interior.has(letter)).join('');
+    if (link.id === sealed.barrel.id || link.id === sealed.rod.id) {
+      return `${sealed.barrelFar.name}${sealed.rodFar.name}`;
+    }
+    return stripped || link.name;
+  }
+
+  /** A member link of a sealed cylinder: never a slot-drop target. */
+  private isCylinderMemberLink(link: Link): boolean {
+    return this.cylinderList.some(
+      (mark) =>
+        mark.barrelId === link.id || mark.rodId === link.id || mark.cylinder.block.id === link.id
+    );
+  }
+
+  channelCountOn(link: Link): number {
+    return (
+      this.channelList.filter((channel) => channel.carrierId === link.id).length +
+      (this.slotCandidate?.carrier.id === link.id ? 1 : 0)
+    );
+  }
+
+  linkPathWithChannels(link: Link): string {
+    // A skinned barrel or rod is drawn by the cylinder instead, so its ordinary
+    // outline is suppressed rather than drawn underneath — otherwise the skin
+    // would be a shape laid over the shape it replaces.
+    if (this.skinnedLink(link)) return '';
+    // Likewise a welded rider: its weld plate draws the rider and the block it
+    // is fused to as one outline, so drawing the rider here as well would put
+    // its own edge inside that outline and double the fill's alpha over itself.
+    if (this.platedLink(link)) return '';
+    const outline = String(this.mechanismSrv.getLinkProp(link, 'd') ?? '');
+    const paths = this.channelList
+      .filter((channel) => channel.carrierId === link.id)
+      .map((channel) => channel.path);
+
+    // The slot being previewed goes through the same subtraction a committed
+    // one does, rather than being drawn as a stand-in on top. Two reasons: the
+    // hover state is then pixel-identical to the result, and a real hole has no
+    // legibility to lose against a link colour it cannot predict -- every
+    // stand-in considered (a white fill, an outline, an amber highlight) fell
+    // below contrast on part of the palette, because the palette is random.
+    const preview = this.previewChannelOn(link);
+    if (preview) paths.push(preview);
+
+    return paths.length === 0 ? outline : `${outline} ${mergedChannels(paths)}`;
+  }
+
+  /**
+   * A rider or plate outline with the previewed slot cut into it as well.
+   *
+   * The preview has to reach whatever is actually drawing the link. Once a
+   * rider is hoisted out of the link layer, cutting the preview into the link
+   * layer's copy cuts it into nothing, and sweeping a joint across a coupler
+   * that happens to be pinned to a slider shows no feedback at all.
+   *
+   * The preview is merged with the piece's committed channels rather than
+   * appended after them, for the same reason `linkPathWithChannels` merges: on
+   * a carrier whose slot is already occupied the preview lands on top of the
+   * committed channel, the overlap is wound twice, and the even-odd fill paints
+   * the slot back in — a solid bar exactly where the drop is legal.
+   */
+  markPathWithPreview(
+    mark: SliderMark,
+    piece: { path: string; outline: string; cuts: string[] },
+    link: Link
+  ): string {
+    const preview = this.previewChannelOn(link);
+    if (!preview) return piece.path;
+    const angle = (mark.rotation * Math.PI) / 180;
+    const localPreview = transformRigidPath(
+      preview,
+      { x: mark.x, y: mark.y },
+      { x: mark.x + Math.cos(angle), y: mark.y + Math.sin(angle) },
+      { x: 0, y: 0 },
+      { x: 1, y: 0 }
+    );
+    return `${piece.outline} ${mergedChannels([...piece.cuts, localPreview])}`.trim();
+  }
+
+  private previewChannelOn(link: Link): string | undefined {
+    const slot = this.slotCandidate;
+    if (!slot || slot.carrier.id !== link.id) return undefined;
+    const r = 0.15 * this.settings.objectScale;
+    const separation = Math.hypot(slot.b.x - slot.a.x, slot.b.y - slot.a.y);
+    return orientedCapsulePath(
+      { x: (slot.a.x + slot.b.x) / 2, y: (slot.a.y + slot.b.y) / 2 },
+      Math.atan2(slot.b.y - slot.a.y, slot.b.x - slot.a.x),
+      slotHalfLength(r, separation),
+      MARK.channelHalfWidth * r
+    );
+  }
+
+  /**
+   * The welded marker, at the 1.47R the mark system specifies.
+   *
+   * It replaces a hand-written path that predates the system and drew 2.2R —
+   * larger than the free circle it stands opposite, which inverted the reading
+   * that a weld removes a freedom. One marker, one size, everywhere.
+   */
+  get weldMarkerPath(): string {
+    return plusPath(0.15 * this.settings.objectScale);
+  }
+
+  private freshMarks(): { marks: SliderMark[]; channels: Channel[] } {
+    const joints = this.mechanismSrv.getJoints();
+    const r = 0.15 * this.settings.objectScale;
+    // A Slide's weld plate is painted in its rider's own colour, so recolouring
+    // a link changes a mark while moving nothing. Same failure as the grounded
+    // angle: the panel shows the new colour and the canvas keeps the old.
+    const paint = this.mechanismSrv
+      .getLinks()
+      .map((link) => `${link.id}:${(link as RealLink).fill}`)
+      .join(',');
+    const key =
+      `${r}|${paint}|${this.settings.isInputCW.value}|` +
+      joints
+        .map((joint) => {
+          const real = joint as RealJoint;
+          const base = `${joint.id},${joint.x.toFixed(6)},${joint.y.toFixed(6)},${real.ground},${real.input},${real.isWelded}`;
+          // Rebinding a slot changes its channel without moving anything, and a
+          // grounded guide's angle turns its whole mark while every coordinate
+          // in the mechanism stays exactly where it was -- so both have to be in
+          // here, or editing the angle field redraws nothing.
+          return joint instanceof PrisJoint
+            ? `${base},${joint.angle_rad},${joint.carrier?.id},${joint.slotJointA?.id},${joint.slotJointB?.id}`
+            : base;
+        })
+        .join(';');
+    if (this.markCache?.key !== key) {
+      this.markCache = {
+        key,
+        marks: this.sliderMarks.marks(joints, r, this.guides(), !this.settings.isInputCW.value),
+        channels: this.sliderMarks.channels(joints, r),
+      };
+    }
+    return this.markCache;
   }
 
   /**
@@ -1432,13 +2278,18 @@ export class NewGridComponent {
             'showLinkLengthOverlay should not be -2, this means an overlay was requested even though the objects to show the overlay based on was not selected'
           );
           break;
-        case -1:
-          let link = this.activeObjService.selectedLink;
-          x1 = link.joints[0].x;
-          y1 = link.joints[0].y;
-          x2 = link.joints[1].x;
-          y2 = link.joints[1].y;
+        case -1: {
+          const link = this.activeObjService.selectedLink;
+          // A cylinder body's span is mount to mount, not the barrel's own
+          // two joints (one of which is buried inside the part).
+          const sealed = this.mechanismSrv.cylinderAt(link);
+          const [from, to] = sealed ? [sealed.barrelFar, sealed.rodFar] : link.joints;
+          x1 = from.x;
+          y1 = from.y;
+          x2 = to.x;
+          y2 = to.y;
           break;
+        }
         default:
           let thisJoint = this.activeObjService.selectedJoint;
           let otherJoint =
@@ -1456,13 +2307,16 @@ export class NewGridComponent {
             'showLinkLengthOverlay should not be -2, this means an overlay was requested even though the objects to show the overlay based on was not selected'
           );
           break;
-        case -1:
-          let link = this.activeObjService.selectedLink;
-          x1 = link.joints[0].x;
-          y1 = link.joints[0].y;
-          x2 = link.joints[1].x;
-          y2 = link.joints[1].y;
+        case -1: {
+          const link = this.activeObjService.selectedLink;
+          const sealed = this.mechanismSrv.cylinderAt(link);
+          const [from, to] = sealed ? [sealed.barrelFar, sealed.rodFar] : link.joints;
+          x1 = from.x;
+          y1 = from.y;
+          x2 = to.x;
+          y2 = to.y;
           break;
+        }
         default:
           let thisJoint = this.activeObjService.selectedJoint;
           let otherJoint = EditPanelComponent.instance.listOfOtherJoints[this.showLinkAngleOverlay];

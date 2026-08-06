@@ -7,6 +7,7 @@ import { NewGridComponent } from '../component/new-grid/new-grid.component';
 import { SettingsService } from './settings.service';
 import { DragStateService } from './drag-state.service';
 import Hammer from 'hammerjs';
+import { MODEL_SCALE } from '../model/render-scale';
 
 @Injectable({
   providedIn: 'root',
@@ -22,14 +23,19 @@ export class SvgGridService {
   verticalLinesMinor: number[] = [];
   horizontalLines: number[] = [];
   horizontalLinesMinor: number[] = [];
-  private defualtCellSize: number = 10000;
+  private defualtCellSize: number = 10000 * MODEL_SCALE;
 
   private cellSize: number = this.defualtCellSize;
 
   private panLockOut: boolean = false;
 
-  private MAX_ZOOM: number = 3300;
-  private MIN_ZOOM: number = 0.04;
+  // The same visual range as the old 3300/0.04, divided by MODEL_SCALE: model
+  // coordinates are 200x larger, so the matrix is 200x smaller for the same
+  // picture. Keeping MAX_ZOOM at ~16.5 is the guarantee that the compositor's
+  // white-streak failure regime (matrix scale ≳450; verified clean at ≤11.3)
+  // can never be zoomed into again.
+  private MAX_ZOOM: number = 16.5;
+  private MIN_ZOOM: number = 0.0002;
 
   constructor(
     private settingsService: SettingsService,

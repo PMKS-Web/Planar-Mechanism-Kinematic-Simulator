@@ -13,6 +13,13 @@ import {
   point_on_line_segment_closest_to_point,
 } from '../model/utils';
 import { Link, SliderBlock, RealLink } from '../model/link';
+import {
+  Cylinder,
+  CylinderPose,
+  layoutCylinder,
+  sealedCylinderStructures,
+} from '../model/cylinder';
+import { SettingsService } from './settings.service';
 import { MechanismService } from './mechanism.service';
 import { ToolbarComponent } from '../component/toolbar/toolbar.component';
 import { Mechanism } from '../model/mechanism/mechanism';
@@ -163,9 +170,65 @@ export class GridUtilsService {
     return (joint as PrisJoint).angle_rad;
   }
 
+  /**
+   * Whether the Input control may be used on this joint.
+   *
+   * Lives here so the Edit panel and the right-click menu ask the same
+   * question. They had drifted: the menu still greyed Ground out on a slider
+   * and Weld out on a joint the reconciler would refuse, both of which the
+   * panel deliberately stopped doing in §4.1 — Ground and Slider are
+   * independent axes of the 2x2 now, and a refusal is explained rather than
+   * hidden. Two surfaces onto one model that disagree about what is possible
+   * are worse than either rule on its own.
+   */
+  canToggleInput(joint: Joint): boolean {
+    return this.isAttachedToSlider(joint) || (joint as RealJoint).ground === true;
+  }
+
+  /**
+   * Whether the Weld control may be used on this joint, shared by the Edit
+   * panel's toggle and the right-click menu so the two cannot drift.
+   *
+   * Structural rule only: a weld fuses what meets at a joint, so a joint with
+   * fewer than two links — a tracer, a bar's free end — has nothing to fuse and
+   * the control is greyed rather than offered-then-refused. A grounded or
+   * driven joint keeps the enabled control and gets the model's refusal with
+   * its reason (§4.1's explained-refusal rule); an already-welded joint stays
+   * enabled because the same control is how it is unwelded.
+   */
+  canToggleWeld(joint: Joint): boolean {
+    if (!(joint instanceof RealJoint)) return false;
+    // A cylinder mount cannot weld: welding a mount into a neighbouring
+    // compound opened more edge cases than it was worth. Attach by revolute.
+    const sealed = this.mechanismSrv.cylinderAt(joint);
+    if (
+      sealed &&
+      (joint.id === sealed.barrelFar.id || joint.id === sealed.rodFar.id) &&
+      !joint.isWelded
+    ) {
+      return false;
+    }
+    return joint.isWelded || joint.links.length >= 2;
+  }
+
   dragJoint(selectedJoint: RealJoint, trueCoord: Coord) {
     // console.error('new drag Joint cycle');
     // TODO: have the round Number be integrated within function for determining trueCoord
+
+    // A cylinder mount never free-moves, whoever asks — canvas drag, the
+    // panel's X/Y fields, the distance-to-joint fields, the linkage table.
+    // Every route lands on the same parametric re-pose, so no surface can
+    // bend the part (§ cylinder 6).
+    const sealed = this.mechanismSrv.cylinderAt(selectedJoint);
+    if (sealed) {
+      if (selectedJoint.id === sealed.barrelFar.id || selectedJoint.id === sealed.rodFar.id) {
+        this.dragCylinderMount(sealed, selectedJoint, trueCoord);
+      }
+      // An interior joint (pin, buried barrel end) takes no free move at all:
+      // nothing selects one, so a call here is a stray path, and moving it
+      // would bend the part.
+      return selectedJoint;
+    }
 
     let oldX = selectedJoint.x;
     let oldY = selectedJoint.y;
@@ -177,9 +240,14 @@ export class GridUtilsService {
         selectedJoint.links.forEach((l) => {
           if (l instanceof SliderBlock) {
             //If the joint is a slider, then the joint is the second joint in the link must follow the first joint
+            // -1 once the block has been taken apart under an in-flight drag.
+            // The gesture is cancelled on delete, but a pointer move can still
+            // arrive first, and writing through -1 throws.
             const jointIndex = l.joints.findIndex((jt) => jt.id !== selectedJoint.id);
-            l.joints[jointIndex].x = roundNumber(trueCoord.x, 6);
-            l.joints[jointIndex].y = roundNumber(trueCoord.y, 6);
+            if (jointIndex >= 0) {
+              l.joints[jointIndex].x = roundNumber(trueCoord.x, 6);
+              l.joints[jointIndex].y = roundNumber(trueCoord.y, 6);
+            }
           }
           if (!(l instanceof RealLink)) {
             return;
@@ -259,6 +327,14 @@ export class GridUtilsService {
         });
         break;
     }
+    // Before the rebuild, not after. A floating slider is deliberately not a
+    // member of its carrier -- that is what makes it a slot rather than a pin --
+    // so moving the carrier, or one of the two joints defining the slot, leaves
+    // the block behind. Putting it back afterwards fixes only the pose on
+    // screen: updateMechanism has already copied the stale position into every
+    // solved timestep, so pressing Play snapped the block straight back off its
+    // channel.
+    this.mechanismSrv.reseatFloatingSliders();
     this.mechanismSrv.updateMechanism(false);
     return selectedJoint;
   }
@@ -286,6 +362,26 @@ export class GridUtilsService {
         link,
         from: link.joints.slice(0, 2).map((joint) => ({ x: joint.x, y: joint.y })),
       }));
+
+    // Member lengths of every sealed cylinder, captured while the geometry is
+    // still straight: a neighbour drag can carry one mount along, and the
+    // re-pose below has to rebuild from the rigid lengths, not from the bent
+    // intermediate state.
+    const carriedCylinders = sealedCylinderStructures(this.mechanismSrv.joints).map((sealed) => ({
+      sealed,
+      barrelLength: this.getPointDistance(
+        sealed.barrelFar.x,
+        sealed.barrelFar.y,
+        sealed.barrelNear.x,
+        sealed.barrelNear.y
+      ),
+      rodLength: this.getPointDistance(
+        sealed.pin.x,
+        sealed.pin.y,
+        sealed.rodFar.x,
+        sealed.rodFar.y
+      ),
+    }));
 
     const movedJointIDs = new Set<string>();
     const moveJoint = (joint: Joint) => {
@@ -337,8 +433,146 @@ export class GridUtilsService {
       PositionSolver.setUpInitialJointLocations(link.joints);
     });
 
+    // A neighbour drag that carried a cylinder mount along re-poses that
+    // cylinder about its other mount, so the part follows its mount instead
+    // of bending (§ cylinder 6). A cylinder whose own pin moved was dragged
+    // as a body — every member translated together, nothing to repair.
+    carriedCylinders.forEach(({ sealed, barrelLength, rodLength }) => {
+      if (movedJointIDs.has(sealed.pin.id)) return;
+      const movedBarrelMount = movedJointIDs.has(sealed.barrelFar.id);
+      const movedRodMount = movedJointIDs.has(sealed.rodFar.id);
+      if (!movedBarrelMount && !movedRodMount) return;
+      const pose = layoutCylinder(
+        { x: sealed.barrelFar.x, y: sealed.barrelFar.y },
+        { x: sealed.rodFar.x, y: sealed.rodFar.y },
+        barrelLength,
+        rodLength,
+        0.15 * SettingsService.objectScale,
+        // Anchor on the mount that did NOT ride along; if both did, the whole
+        // axis translated and either anchor reproduces it.
+        movedBarrelMount ? 'rod' : 'barrel'
+      );
+      if (pose) this.applyCylinderPose(sealed, pose);
+    });
+
+    // Before the rebuild, not after. A floating slider is deliberately not a
+    // member of its carrier -- that is what makes it a slot rather than a pin --
+    // so moving the carrier, or one of the two joints defining the slot, leaves
+    // the block behind. Putting it back afterwards fixes only the pose on
+    // screen: updateMechanism has already copied the stale position into every
+    // solved timestep, so pressing Play snapped the block straight back off its
+    // channel.
+    this.mechanismSrv.reseatFloatingSliders();
     this.mechanismSrv.updateMechanism(false);
     return selectedLink;
+  }
+
+  /**
+   * Drag one mount of a sealed cylinder (§ cylinder 6): the assembly re-poses
+   * about the OTHER mount — axis through the mounts, barrel rigid to mount A,
+   * rod rigid to mount C, pin re-derived on the axis with the stroke clamped
+   * to the slot ends. Collinearity holds by construction, so no drag can bend
+   * a cylinder.
+   */
+  dragCylinderMount(sealed: Cylinder, mount: RealJoint, wanted: Coord): void {
+    const draggingBarrelMount = mount.id === sealed.barrelFar.id;
+    const barrelLength = this.getPointDistance(
+      sealed.barrelFar.x,
+      sealed.barrelFar.y,
+      sealed.barrelNear.x,
+      sealed.barrelNear.y
+    );
+    const rodLength = this.getPointDistance(
+      sealed.pin.x,
+      sealed.pin.y,
+      sealed.rodFar.x,
+      sealed.rodFar.y
+    );
+    const pose = layoutCylinder(
+      draggingBarrelMount ? wanted : sealed.barrelFar,
+      draggingBarrelMount ? sealed.rodFar : wanted,
+      barrelLength,
+      rodLength,
+      0.15 * SettingsService.objectScale,
+      // The anchor is the mount NOT being dragged: it stays exactly still,
+      // and the dragged mount is what the span floor stops.
+      draggingBarrelMount ? 'rod' : 'barrel',
+      // The axis before this move, so a drag through the anchor clamps at the
+      // minimum span instead of flipping the part 180°.
+      {
+        x: sealed.rodFar.x - sealed.barrelFar.x,
+        y: sealed.rodFar.y - sealed.barrelFar.y,
+      }
+    );
+    if (!pose) return;
+    this.applyCylinderPose(sealed, pose);
+  }
+
+  /** Drag the body: the whole assembly translates rigidly. */
+  dragCylinder(sealed: Cylinder, dx: number, dy: number): void {
+    if (dx === 0 && dy === 0) return;
+    this.applyCylinderPose(sealed, {
+      barrelFar: { x: sealed.barrelFar.x + dx, y: sealed.barrelFar.y + dy },
+      barrelNear: { x: sealed.barrelNear.x + dx, y: sealed.barrelNear.y + dy },
+      pin: { x: sealed.pin.x + dx, y: sealed.pin.y + dy },
+      rodFar: { x: sealed.rodFar.x + dx, y: sealed.rodFar.y + dy },
+    });
+  }
+
+  /**
+   * Land a pose on the assembly's five joints (the slider rides the pin),
+   * then rebuild what depends on them — member links, genuinely deformed
+   * neighbours, and their forces, by the same frame-carrying rule dragLink
+   * applies.
+   */
+  private applyCylinderPose(sealed: Cylinder, pose: CylinderPose): void {
+    const placements: [Joint, { x: number; y: number }][] = [
+      [sealed.barrelFar, pose.barrelFar],
+      [sealed.barrelNear, pose.barrelNear],
+      [sealed.pin, pose.pin],
+      [sealed.slider, pose.pin],
+      [sealed.rodFar, pose.rodFar],
+    ];
+    const movedIds = new Set(placements.map(([joint]) => joint.id));
+    // Captured before the move: forces are placed relative to their link's
+    // own two reference joints, wherever those were.
+    const affected = this.mechanismSrv.links
+      .filter(
+        (link): link is RealLink =>
+          link instanceof RealLink && link.joints.some((joint) => movedIds.has(joint.id))
+      )
+      .map((link) => ({
+        link,
+        from: link.joints.slice(0, 2).map((joint) => ({ x: joint.x, y: joint.y })),
+      }));
+
+    placements.forEach(([joint, at]) => {
+      joint.x = roundNumber(at.x, 6);
+      joint.y = roundNumber(at.y, 6);
+    });
+
+    affected.forEach(({ link, from }) => {
+      const [start, end] = link.joints;
+      if (from.length === 2 && start && end) {
+        link.forces.forEach((force) => {
+          const [x, y] = pointThroughFrame(force.startCoord, from[0], from[1], start, end);
+          force.moveForceTo(x, y);
+        });
+      }
+      link.CoM = RealLink.determineCenterOfMass(link.joints);
+      link.updateCoMDs();
+      link.updateLengthAndAngle();
+      link.subset.forEach((sub) => {
+        const subLink = sub as RealLink;
+        subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+        subLink.updateCoMDs();
+        subLink.updateLengthAndAngle();
+      });
+      PositionSolver.setUpInitialJointLocations(link.joints);
+    });
+
+    this.mechanismSrv.reseatFloatingSliders();
+    this.mechanismSrv.updateMechanism(false);
   }
 
   private translateLinkBody(link: Link, dx: number, dy: number) {
