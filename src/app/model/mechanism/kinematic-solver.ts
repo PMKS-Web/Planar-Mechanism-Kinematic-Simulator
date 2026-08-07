@@ -3,6 +3,7 @@ import { SliderBlock, Link, RealLink } from '../link';
 import { matLinearSystem } from '../utils';
 import { Loop, LoopEdge } from './loop-solver';
 import { hasFixedOrientation, SlideAssembly, slideAssemblies } from '../slide-assembly';
+import { PositionSolver } from './position-solver';
 
 /** A slot edge's geometry in the frame being solved. */
 interface SlotFrame {
@@ -103,6 +104,15 @@ export class KinematicsSolver {
 
   static determineKinematics(simJoints: Joint[], simLinks: Link[], initialAngularVelocity: number) {
     this.kinematicsInitializer(simJoints, simLinks, initialAngularVelocity);
+
+    // A mechanism the constraint set solved gets its rates from the same
+    // constraints, differentiated (§2.7a). Loop detection cannot see through a
+    // sealed cylinder, so every cylinder-driven mechanism reached the loopless
+    // path below and came away with no velocities at all -- the graphs plotted
+    // NaN and said nothing about why.
+    if (this.applyConstraintKinematics(simJoints, simLinks, initialAngularVelocity)) {
+      return;
+    }
 
     // A single welded root rotating about its input is a valid one-DOF
     // mechanism even though it has no closed kinematic loop to solve.
@@ -219,6 +229,70 @@ export class KinematicsSolver {
     }
   }
 
+  /**
+   * Rates for a mechanism solved by the constraint set, if it was one.
+   *
+   * Joint rates come straight from differentiating the constraints. A body's
+   * angular rate then follows from any two of its joints, and its centre of
+   * mass from that -- the same relations the loop solver ends with, read off a
+   * solved motion rather than assembled into a matrix.
+   */
+  private static applyConstraintKinematics(
+    simJoints: Joint[],
+    simLinks: Link[],
+    commandRate: number
+  ): boolean {
+    const rates = PositionSolver.constraintKinematics(simJoints, simLinks, commandRate);
+    if (!rates) {
+      return false;
+    }
+
+    const zero: [number, number] = [0, 0];
+    for (const joint of simJoints) {
+      // Anything the constraint set did not solve is held by the ground.
+      this.jointVelMap.set(joint.id, rates.velocity.get(joint.id) ?? zero);
+      this.jointAccMap.set(joint.id, rates.acceleration.get(joint.id) ?? zero);
+    }
+
+    for (const link of simLinks) {
+      const [first, second] = link.joints;
+      if (!first || !second) {
+        continue;
+      }
+      const rx = second.x - first.x;
+      const ry = second.y - first.y;
+      const spanSquared = rx * rx + ry * ry;
+      const velocityOf = (joint: Joint) => this.jointVelMap.get(joint.id) ?? zero;
+      const accelerationOf = (joint: Joint) => this.jointAccMap.get(joint.id) ?? zero;
+      const [v1x, v1y] = velocityOf(first);
+      const [v2x, v2y] = velocityOf(second);
+      const [a1x, a1y] = accelerationOf(first);
+      const [a2x, a2y] = accelerationOf(second);
+      // omega = r x dv / |r|^2, and the same for alpha once the centripetal
+      // term omega^2 r is taken back out of the relative acceleration.
+      const omega = spanSquared < 1e-12 ? 0 : (rx * (v2y - v1y) - ry * (v2x - v1x)) / spanSquared;
+      const alpha =
+        spanSquared < 1e-12
+          ? 0
+          : (rx * (a2y - a1y + omega * omega * ry) - ry * (a2x - a1x - omega * omega * rx)) /
+            spanSquared;
+      this.linkAngVelMap.set(link.id, omega);
+      this.linkAngAccMap.set(link.id, alpha);
+
+      if (link instanceof RealLink) {
+        const cx = link.CoM.x - first.x;
+        const cy = link.CoM.y - first.y;
+        this.linkCoMMap.set(link.id, [link.CoM.x, link.CoM.y]);
+        this.linkVelMap.set(link.id, [v1x - omega * cy, v1y + omega * cx]);
+        this.linkAccMap.set(link.id, [
+          a1x - alpha * cy - omega * omega * cx,
+          a1y + alpha * cx - omega * omega * cy,
+        ]);
+      }
+    }
+    return true;
+  }
+
   private static determineLooplessKinematics(
     simJoints: Joint[],
     simLinks: Link[],
@@ -307,7 +381,11 @@ export class KinematicsSolver {
           if (inputLink.joints === undefined) {
             return;
           }
-          const realJoint = inputLink.joints.find((j) => j instanceof RealJoint);
+          // The sliding joint, specifically. `instanceof RealJoint` matched the
+          // block's *pin* first -- a PrisJoint is a RealJoint -- and the
+          // PrisJoint check below then bailed out of the whole initializer, so
+          // a driven block was seeded with no velocity at all.
+          const realJoint = inputLink.joints.find((j) => j instanceof PrisJoint);
           if (realJoint === undefined) {
             return;
           }
@@ -330,11 +408,20 @@ export class KinematicsSolver {
         if (!(realJoint instanceof PrisJoint)) {
           return;
         }
-        this.jointVelMap.set(realJoint.id, [
-          initialAngularVelocity * Math.cos(realJoint.slotAngle),
-          initialAngularVelocity * Math.sin(realJoint.slotAngle),
-        ]);
-        this.jointAccMap.set(realJoint.id, [0.0, 0.0]);
+        // Along the guide at the commanded speed -- true only while the guide
+        // is fixed in the world. On a slot cut into a moving link the block's
+        // absolute velocity is the carrier's plus the sliding rate, and
+        // writing the sliding rate alone would report a cylinder's mount as
+        // travelling through ground it is actually being carried over. Phase 5
+        // drives such a cylinder's *positions*; its velocity analysis is left
+        // unseeded rather than seeded wrongly, and is Phase 6 work.
+        if (realJoint.ground) {
+          this.jointVelMap.set(realJoint.id, [
+            initialAngularVelocity * Math.cos(realJoint.slotAngle),
+            initialAngularVelocity * Math.sin(realJoint.slotAngle),
+          ]);
+          this.jointAccMap.set(realJoint.id, [0.0, 0.0]);
+        }
         break;
       default:
         break;
@@ -762,10 +849,8 @@ export class KinematicsSolver {
     if (!velocity) {
       // Coriolis and centripetal, both settled by the velocity pass.
       const rate = this.slideRateMap.get(frame.slider.id) ?? 0;
-      const carriedX =
-        2 * rate * omega * frame.uPerp[0] - frame.s * omega * omega * frame.u[0];
-      const carriedY =
-        2 * rate * omega * frame.uPerp[1] - frame.s * omega * omega * frame.u[1];
+      const carriedX = 2 * rate * omega * frame.uPerp[0] - frame.s * omega * omega * frame.u[0];
+      const carriedY = 2 * rate * omega * frame.uPerp[1] - frame.s * omega * omega * frame.u[1];
       B[rowIndex][0] -= frame.sign * carriedX;
       B[rowIndex + 1][0] -= frame.sign * carriedY;
     }

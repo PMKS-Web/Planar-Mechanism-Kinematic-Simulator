@@ -262,21 +262,32 @@ export function scotchYokeWithTracerFixture(): MechanismFixture {
  * slides. Nothing is pinned to ground, so it is the case that proves a grounded
  * guide anchors the mechanism.
  *
- * No input joint: this exists to be counted, not solved. Two slots on one bar
- * is not a shape the position solver reduces.
+ * `driven` adds a carried point T on the bar and drives one slider along its
+ * guide, which turns the mobility fixture into a kinematic one: the point T
+ * then traces an exact ellipse, and an exact curve is worth having a mechanism
+ * checked against.
  */
-export function ellipticalTrammelFixture(): MechanismFixture {
+export function ellipticalTrammelFixture(
+  driven: boolean = false,
+  scale: number = 1
+): MechanismFixture {
+  // A driven slide advances by a step measured in internal model units, so a
+  // mechanism that is to be *solved* has to be built in them; one that is only
+  // to be counted does not care.
   return {
     joints: [
-      { id: 'A', x: 1, y: 0 },
-      { id: 'B', x: 0, y: 1 },
+      { id: 'A', x: 1 * scale, y: 0 },
+      { id: 'B', x: 0, y: 1 * scale },
+      // A third of the way along the bar from A, so its ellipse has distinct
+      // axes rather than being the circle the midpoint traces.
+      ...(driven ? [{ id: 'T', x: (2 / 3) * scale, y: (1 / 3) * scale }] : []),
     ],
-    links: [{ joints: 'AB' }],
+    links: [{ joints: driven ? 'ABT' : 'AB' }],
     sliders: [
-      { at: 'A', prisId: 'C', angleRad: 0 },
+      { at: 'A', prisId: 'C', angleRad: 0, input: driven },
       { at: 'B', prisId: 'D', angleRad: Math.PI / 2 },
     ],
-    inputAngVel: INPUT_SPEED,
+    inputAngVel: INPUT_SPEED * scale,
   };
 }
 
@@ -303,5 +314,192 @@ export function cylinderSkinFixture(): MechanismFixture {
     sliders: [{ at: 'C', prisId: 'P', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true }],
     welds: ['C'],
     inputAngVel: INPUT_SPEED,
+  };
+}
+
+/**
+ * A boom raised by a hydraulic cylinder — the Gate 5 mechanism (§5.1).
+ *
+ * O and G are ground; the boom O→C is rigid; the cylinder runs G→C and is the
+ * drive. Commanding its length therefore fixes the boom angle by the law of
+ * cosines, which is the closed form the verification spec asserts against.
+ *
+ * `scale` exists because the cylinder's stroke is bounded by its own slot, and
+ * a slot is drawn in mark units — absolute internal model units. Solving this
+ * mechanism needs it built in that world, where the other slot fixtures are in
+ * user units and never ask a mark how big it is.
+ */
+export function cylinderBoomFixture(scale: number = 1): MechanismFixture {
+  const at = (x: number, y: number) => ({ x: x * scale, y: y * scale });
+  return {
+    joints: [
+      { id: 'O', ...at(0, 0), ground: true },
+      { id: 'C', ...at(0, 4) },
+      { id: 'G', ...at(3, 0), ground: true },
+      { id: 'N', ...at(1.5, 2) },
+      { id: 'P', ...at(1.8, 1.6) },
+    ],
+    links: [{ joints: 'OC' }, { joints: 'GN' }, { joints: 'PC' }],
+    slider: {
+      at: 'P',
+      prisId: 'S',
+      on: { carrier: 'GN', a: 'G', b: 'N' },
+      sealed: true,
+      input: true,
+    },
+    welds: ['P'],
+    inputAngVel: INPUT_SPEED * scale,
+  };
+}
+
+/**
+ * A cylinder-driven gripper, drawn by a user and shared as a URL.
+ *
+ * Worth keeping exactly as drawn — hand-placed coordinates, near-symmetric
+ * rather than symmetric — because it is the first mechanism in this suite that
+ * no chain of dyads can solve. The cylinder A→D pushes the plate DGHIJ; the
+ * plate reaches two arms MQS and TVX through four short links; and each arm has
+ * two points riding two vertical rails. The plate's pose and the two arms are
+ * one simultaneous system of five unknowns, so it needs § 2.7a rather than the
+ * ordering walk.
+ *
+ * It also has two bars pinned to ground at both ends — the rails KL and OP —
+ * which is the natural way to draw a fixed guide and which Gruebler counts as
+ * a body with two lower pairs, subtracting a degree of freedom per rail.
+ */
+export function gripperFixture(scale: number = 1): MechanismFixture {
+  const at = (x: number, y: number) => ({ x: x * scale, y: y * scale });
+  return {
+    joints: [
+      { id: 'A', ...at(-4.684, 0.747), ground: true },
+      { id: 'B', ...at(-0.693, 0.746) },
+      { id: 'C', ...at(-1.531, 0.746) },
+      { id: 'D', ...at(2.902, 0.745) },
+      { id: 'G', ...at(4.311, 3.004) },
+      { id: 'H', ...at(8.246, 3.004) },
+      { id: 'I', ...at(4.311, -1.011) },
+      { id: 'J', ...at(8.246, -1.011) },
+      { id: 'K', ...at(0.0, 9.696), ground: true },
+      { id: 'L', ...at(0.09, -7.371), ground: true },
+      { id: 'M', ...at(0.02, 5.903) },
+      { id: 'O', ...at(6.519, 9.862), ground: true },
+      { id: 'P', ...at(6.682, -10.105), ground: true },
+      { id: 'Q', ...at(6.552, 5.786) },
+      { id: 'S', ...at(14.851, 4.32) },
+      { id: 'T', ...at(0.07, -3.573) },
+      { id: 'V', ...at(6.63, -3.716) },
+      { id: 'X', ...at(14.851, -2.223) },
+    ],
+    links: [
+      { joints: 'AB' },
+      { joints: 'CD' },
+      { joints: 'DGHIJ' },
+      { joints: 'KL' },
+      { joints: 'GM' },
+      { joints: 'OP' },
+      { joints: 'HQ' },
+      { joints: 'MQS' },
+      { joints: 'IT' },
+      { joints: 'JV' },
+      { joints: 'TVX' },
+    ],
+    sliders: [
+      { at: 'C', prisId: 'E', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
+      { at: 'M', prisId: 'N', on: { carrier: 'KL', a: 'K', b: 'L' } },
+      { at: 'Q', prisId: 'R', on: { carrier: 'OP', a: 'O', b: 'P' } },
+      { at: 'T', prisId: 'U', on: { carrier: 'KL', a: 'K', b: 'L' } },
+      { at: 'V', prisId: 'W', on: { carrier: 'OP', a: 'O', b: 'P' } },
+    ],
+    welds: ['C'],
+    inputAngVel: INPUT_SPEED * scale,
+  };
+}
+
+/** A bar doing nothing, pinned to ground at both ends: a guide rail, alone. */
+export function anchoredBarFixture(withRail: boolean): MechanismFixture {
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true, input: true },
+      { id: 'B', x: 1, y: 1 },
+      { id: 'C', x: 4, y: 1 },
+      { id: 'D', x: 5, y: 0, ground: true },
+      ...(withRail
+        ? [
+            { id: 'E', x: 0, y: 5, ground: true },
+            { id: 'F', x: 3, y: 5, ground: true },
+          ]
+        : []),
+    ],
+    links: [
+      { joints: 'AB' },
+      { joints: 'BC' },
+      { joints: 'CD' },
+      ...(withRail ? [{ joints: 'EF' }] : []),
+    ],
+    inputAngVel: INPUT_SPEED,
+  };
+}
+
+/**
+ * A gripper whose cylinder actually closes the jaws (§2.7a companion).
+ *
+ * Built after the shared gripper turned out to do something else: there, each
+ * arm has two blocks riding two rails, which leaves it able to slide but
+ * barely able to turn, so the jaws travel up and down rather than pinching.
+ * Jaws pinch when the two levers *counter-rotate*, and this is the smallest
+ * arrangement that makes them:
+ *
+ * - each jaw is a lever on its own ground pivot, free to swing;
+ * - one coupler ties them together, attached on *opposite* sides of the two
+ *   pivots. That is the whole trick — with both attachments on the same side
+ *   the levers turn together, like a parallelogram, and the jaws stay parallel;
+ * - the cylinder drives the upper lever directly.
+ *
+ * The pin sits where it does so the far end of the stroke is exactly where the
+ * jaws meet: extend past that and the levers swing on and the jaws pass
+ * through each other.
+ */
+export function pinchingGripperFixture(scale: number = 1): MechanismFixture {
+  const at = (x: number, y: number) => ({ x: x * scale, y: y * scale });
+  // The cylinder runs from its ground mount to the point it drives, so barrel
+  // and rod are collinear by construction rather than by careful typing.
+  const mount = { x: -10, y: 3 };
+  const driven = { x: 0.7, y: 4.2 };
+  const reach = Math.hypot(driven.x - mount.x, driven.y - mount.y);
+  const along = (distance: number) => ({
+    x: mount.x + ((driven.x - mount.x) * distance) / reach,
+    y: mount.y + ((driven.y - mount.y) * distance) / reach,
+  });
+  const barrelEnd = along(4);
+  const pin = along(2.927);
+
+  return {
+    joints: [
+      { id: 'A', ...at(mount.x, mount.y), ground: true },
+      { id: 'B', ...at(barrelEnd.x, barrelEnd.y) },
+      { id: 'C', ...at(pin.x, pin.y) },
+      { id: 'D', ...at(driven.x, driven.y) },
+      { id: 'G', ...at(4, 3), ground: true },
+      { id: 'H', ...at(5.2, 1.8) },
+      { id: 'I', ...at(11, 2) },
+      { id: 'J', ...at(4, -3), ground: true },
+      { id: 'K', ...at(2.8, -1.8) },
+      { id: 'L', ...at(11, -2) },
+    ],
+    links: [
+      { joints: 'AB' },
+      { joints: 'CD' },
+      // The upper lever: ground pivot G, driven at D, coupled at H, jaw at I.
+      { joints: 'DGHI' },
+      // The coupler, crossing between the pivots.
+      { joints: 'HK' },
+      // The lower lever: ground pivot J, coupled at K, jaw at L.
+      { joints: 'JKL' },
+    ],
+    sliders: [
+      { at: 'C', prisId: 'E', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
+    ],
+    welds: ['C'],
+    inputAngVel: INPUT_SPEED * scale,
   };
 }

@@ -66,14 +66,14 @@ import {
 } from '../../services/slider-mark.service';
 import {
   barrelCollapsedPath,
-  curvedArrowPath,
   cylinderBlockPath,
   MARK,
   orientedCapsulePath,
-  pinBackingPath,
   plusPath,
   rodBodyPath,
   slotHalfLength,
+  motorBodyPath,
+  motorBodyAt,
 } from '../../model/joint-marks';
 import {
   JointDropCandidate,
@@ -92,6 +92,9 @@ import {
 import { SnapGuide, snapToAxes } from '../../model/axis-snap';
 import { drawDepths } from '../../model/draw-order';
 import { MODEL_SCALE } from '../../model/render-scale';
+import { buildCompoundPath } from '../../model/compound-link-path';
+
+import { angleReference, GROUND_BODY, resolveActuator } from '../../model/actuator';
 
 /** One thing to draw in the slider layer, and how deep in the stack it sits. */
 export interface SlotStackItem {
@@ -435,6 +438,7 @@ export class NewGridComponent {
         let jointIsSlider = this.gridUtils.isAttachedToSlider(this.lastRightClick);
         let jointIsGround = (this.lastRightClick as RealJoint).ground;
         let canToggleInput = this.gridUtils.canToggleInput(this.lastRightClick as RealJoint);
+        const jointIsInput = this.gridUtils.isVisuallyInput(this.lastRightClick as RealJoint);
 
         // A MOUNT of a sealed cylinder (the interior joints have no hitboxes,
         // so no other member can arrive here). Ground and Weld stay; Slider is
@@ -450,7 +454,12 @@ export class NewGridComponent {
             )
           );
           this.cMenuItems.push(
-            new cMenuItem('Attach Link', this.startCreatingLink.bind(this), 'new_link')
+            new cMenuItem(
+              'Attach Link',
+              this.startCreatingLink.bind(this),
+              'new_link',
+              jointIsInput
+            )
           );
           this.cMenuItems.push(
             new cMenuItem(
@@ -489,8 +498,11 @@ export class NewGridComponent {
           )
         );
 
+        // A third body at a driven joint is what "driven" stops being able to
+        // describe (§2.9), so the item that would add one is greyed rather
+        // than offered and then refused after the fact.
         this.cMenuItems.push(
-          new cMenuItem('Attach Link', this.startCreatingLink.bind(this), 'new_link')
+          new cMenuItem('Attach Link', this.startCreatingLink.bind(this), 'new_link', jointIsInput)
         );
 
         // Enabled whatever else the joint is, exactly as the panel's toggle is:
@@ -529,11 +541,15 @@ export class NewGridComponent {
           );
         }
 
+        // A block is a body too, so adding one to a driven pin puts a third at
+        // the joint exactly as attaching a link does. Removing one is always
+        // allowed -- that direction takes a body away.
         this.cMenuItems.push(
           new cMenuItem(
             this.gridUtils.isAttachedToSlider(this.lastRightClick) ? 'Remove Slider' : 'Add Slider',
             this.mechanismSrv.toggleSlider.bind(this.mechanismSrv),
-            this.gridUtils.isAttachedToSlider(this.lastRightClick) ? 'remove_slider' : 'add_slider'
+            this.gridUtils.isAttachedToSlider(this.lastRightClick) ? 'remove_slider' : 'add_slider',
+            jointIsInput && !this.gridUtils.isAttachedToSlider(this.lastRightClick)
           )
         ); //Rev Joint - Always
 
@@ -1842,9 +1858,38 @@ export class NewGridComponent {
       );
   }
 
-  get drivenPin(): { backing: string; arc: string; head: string } {
-    const r = 0.15 * this.settings.objectScale;
-    return { backing: pinBackingPath(r), ...curvedArrowPath(r) };
+  /**
+   * Each driven pin, in the frame of the body its motor is bolted to.
+   *
+   * An actuator has a reference body and a driven one (§2.9). The motor's case
+   * is fixed to the reference body and its shaft turns the other, so the mark
+   * is drawn along the reference body's direction — which is what lets the
+   * fillets meet that bar and makes the pair read as one welded piece.
+   */
+  get drivenPinMotors(): {
+    id: string;
+    x: number;
+    y: number;
+    angle: number;
+    bodyId: string | undefined;
+  }[] {
+    return this.drivenFloatingPins.map((joint) => {
+      const actuator = resolveActuator(joint);
+      const reference = actuator
+        ? angleReference(actuator.referenceBody, joint as RealJoint)
+        : undefined;
+      // Degrees, in the same frame the joints are drawn in: the layer's own
+      // y-flip is what turns this into a screen angle, so the mark must not
+      // pre-flip it as well or it lands mirrored about the bar.
+      const angle = reference
+        ? (Math.atan2(reference.y - joint.y, reference.x - joint.x) * 180) / Math.PI
+        : 0;
+      const bodyId =
+        actuator && actuator.referenceBody !== GROUND_BODY
+          ? (actuator.referenceBody as Link).id
+          : undefined;
+      return { id: joint.id, x: joint.x, y: joint.y, angle, bodyId };
+    });
   }
 
   /**
@@ -1858,6 +1903,7 @@ export class NewGridComponent {
    */
   private cylinderListCache?: {
     revision: number;
+    pose: number;
     scale: number;
     forward: boolean;
     list: CylinderMark[];
@@ -1869,20 +1915,27 @@ export class NewGridComponent {
    * times per pointer move — and each uncached call re-resolved every
    * assembly and rebuilt every path string, which is where the quarter-second
    * interaction stutters came from.
+   *
+   * Keyed on the pose as well as the structure. A mark is a drawing of where
+   * the joints *are*, and against the structure revision alone the skin stayed
+   * painted where the mechanism was built while the linkage under it animated.
    */
   get cylinderList(): CylinderMark[] {
     const revision = this.mechanismSrv.cylinderRevision;
+    const pose = this.mechanismSrv.poseRevision;
     const scale = this.settings.objectScale;
     const forward = !this.settings.isInputCW.value;
     const cache = this.cylinderListCache;
     if (
       !cache ||
       cache.revision !== revision ||
+      cache.pose !== pose ||
       cache.scale !== scale ||
       cache.forward !== forward
     ) {
       this.cylinderListCache = {
         revision,
+        pose,
         scale,
         forward,
         list: this.sliderMarks.cylinderMarks(this.mechanismSrv.getJoints(), 0.15 * scale, forward),
@@ -2056,6 +2109,54 @@ export class NewGridComponent {
     );
   }
 
+  /**
+   * Where the motor's turning arrow is drawn: exactly where a grounded input
+   * draws its own. The wider circle the arrow rides is in the asset, not here,
+   * so the two stay the same weight and the same placement.
+   */
+  get motorArrowBox(): { size: number; x: number; y: number } {
+    const box = this.settings.objectScale * 1.2;
+    return { size: box, x: -0.505 * box, y: -0.435 * box };
+  }
+
+  /** The motor's case in its own frame, for the black layer beneath the links. */
+  get drivenPinCase(): string {
+    return motorBodyPath(0.15 * this.settings.objectScale);
+  }
+
+  /** The unioned outline, per pose, so the clipping is not redone every frame. */
+  private motorUnionCache?: { pose: number; scale: number; byLink: Map<string, string> };
+
+  /**
+   * A link's outline, with the motor's case fused into it where one is bolted
+   * on (§2.9).
+   *
+   * A union rather than a black box laid behind: the motor's case *is* part of
+   * the body it is bolted to, and drawing it as a separate shape in a separate
+   * colour says the opposite -- that it is an ornament sitting on the joint.
+   * Same Boolean and the same fillet a welded compound uses, so a motor reads
+   * as the app's other rigid attachments read.
+   */
+  private outlineWithMotor(link: Link): string {
+    const outline = String(this.mechanismSrv.getLinkProp(link, 'd') ?? '');
+    const pose = this.mechanismSrv.poseRevision;
+    const scale = this.settings.objectScale;
+    if (this.motorUnionCache?.pose !== pose || this.motorUnionCache.scale !== scale) {
+      this.motorUnionCache = { pose, scale, byLink: new Map() };
+    }
+    const cached = this.motorUnionCache.byLink.get(link.id);
+    if (cached !== undefined) return cached;
+
+    const r = 0.15 * scale;
+    const cases = this.drivenPinMotors
+      .filter((motor) => motor.bodyId === link.id)
+      .map((motor) => motorBodyAt(r, { x: motor.x, y: motor.y }, (motor.angle * Math.PI) / 180));
+    const fused =
+      cases.length === 0 ? outline : buildCompoundPath([outline, ...cases], MARK.fillet * r).path;
+    this.motorUnionCache.byLink.set(link.id, fused);
+    return fused;
+  }
+
   linkPathWithChannels(link: Link): string {
     // A skinned barrel or rod is drawn by the cylinder instead, so its ordinary
     // outline is suppressed rather than drawn underneath — otherwise the skin
@@ -2065,7 +2166,7 @@ export class NewGridComponent {
     // is fused to as one outline, so drawing the rider here as well would put
     // its own edge inside that outline and double the fill's alpha over itself.
     if (this.platedLink(link)) return '';
-    const outline = String(this.mechanismSrv.getLinkProp(link, 'd') ?? '');
+    const outline = this.outlineWithMotor(link);
     const paths = this.channelList
       .filter((channel) => channel.carrierId === link.id)
       .map((channel) => channel.path);

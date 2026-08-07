@@ -37,6 +37,7 @@ import { GridUtilsService } from './grid-utils.service';
 import { ActiveObjService } from './active-obj.service';
 import { AnimationBarComponent } from '../component/animation-bar/animation-bar.component';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
+import { canDrive, describeActuator } from '../model/actuator';
 import { SettingsService } from './settings.service';
 import { slotHalfLength } from '../model/joint-marks';
 import { DragStateService } from './drag-state.service';
@@ -166,6 +167,7 @@ export class MechanismService {
     // here because this is the one funnel every mutation passes through, so
     // within a revision the topology cannot have changed.
     this.cylinderRevision++;
+    this.poseRevision++;
     Force.normalizeVisualWidths(this.forces);
     // Changing the input speed re-samples the same geometry onto a different time
     // axis. Hold the simulation time rather than the sample index, so t and the pose
@@ -194,16 +196,18 @@ export class MechanismService {
     this.mechanisms = [];
     // TODO: Determine logic later once everything else is determined
     // Settings exposes RPM to users and persistence; solvers use rad/s.
-    let inputAngularVelocity = (this.settingsService.inputSpeed.value * Math.PI) / 30;
-    // A prismatic input's speed is linear -- length per second -- and the
-    // solvers consume it against internal model units, which are MODEL_SCALE
-    // times the user's. Scaling it here keeps the time axis and the solved
-    // velocities meaning exactly what they meant before the world scaled up;
-    // an angular speed has no length in it and passes through untouched.
+    //
+    // A prismatic input is a different quantity, not another unit of the same
+    // one: its speed is length per second, so it comes from its own setting and
+    // never meets the pi/30 conversion -- which used to run on it anyway,
+    // leaving a driven block travelling at a tenth of the speed the panel
+    // reported. What it does need is the MODEL_SCALE the solvers measure length
+    // in; an angular speed has no length in it to want one.
     const drivenJoint = this.joints.find((j) => j instanceof RealJoint && j.input);
-    if (drivenJoint instanceof PrisJoint) {
-      inputAngularVelocity = inputAngularVelocity * MODEL_SCALE;
-    }
+    let inputAngularVelocity =
+      drivenJoint instanceof PrisJoint
+        ? this.settingsService.linearInputSpeed.value * MODEL_SCALE
+        : (this.settingsService.inputSpeed.value * Math.PI) / 30;
     if (this.settingsService.isInputCW.value) {
       inputAngularVelocity = inputAngularVelocity * -1;
     }
@@ -1341,6 +1345,19 @@ export class MechanismService {
 
   /** Bumped by updateMechanism; consumers key caches on it. */
   cylinderRevision = 0;
+  /**
+   * Bumped whenever the drawn pose changes — by a rebuild, and by every
+   * animation frame.
+   *
+   * Structure and pose need separate counters. A sealed cylinder's *drawing*
+   * is a function of where its joints are, and keying it on the structure
+   * revision alone left the skin painted at the pose the mechanism was built
+   * in: correct until Phase 5 made a cylinder something that could be driven,
+   * at which point the boom animated and the cylinder sat still on top of it.
+   * Reusing the structure counter here instead would rebuild the assembly walk
+   * on every frame to answer a question whose answer cannot have changed.
+   */
+  poseRevision = 0;
   private structuresCache?: { revision: number; list: Cylinder[] };
 
   /**
@@ -1358,6 +1375,58 @@ export class MechanismService {
       };
     }
     return this.structuresCache.list;
+  }
+
+  /**
+   * Why this mechanism will not run, in its own terms (§6).
+   *
+   * "This linkage is not valid" is true of every failure and useful for none of
+   * them. An excavator boom is three cylinders and therefore three degrees of
+   * freedom, and the plan named that as the single most likely source of
+   * disappointment once cylinders existed — so the number it actually has is
+   * the thing to say, not a checklist to read against.
+   *
+   * Returns nothing when the mechanism is fine.
+   */
+  invalidReason(): string | undefined {
+    if (this.oneValidMechanismExists()) {
+      return undefined;
+    }
+    if (this.joints.length === 0) {
+      return undefined;
+    }
+    const dangling = this.joints.filter((joint) => joint instanceof PrisJoint && joint.isDangling);
+    if (dangling.length > 0) {
+      const names = dangling.map((joint) => joint.name || joint.id).join(', ');
+      return `Slider ${names} has nothing to slide along. Drag it onto a link to cut a slot, or ground it to fix its direction.`;
+    }
+    if (!this.joints.some((joint) => joint instanceof RealJoint && joint.input)) {
+      return 'No joint is driven. Right-click a joint and choose Make Input to say what moves the mechanism.';
+    }
+    // A driven joint the actuator record cannot describe -- most often because
+    // an edit added a third body to it long after Driven was switched on. The
+    // toggle refuses this, but nothing stops a later edit walking around it.
+    const driven = this.joints.find((joint) => joint instanceof RealJoint && joint.input);
+    if (driven) {
+      const refusal = describeActuator(driven);
+      if (typeof refusal === 'string') {
+        return refusal;
+      }
+    }
+    const dof = this.mechanisms[0]?.dof;
+    if (dof !== undefined && Number.isNaN(dof)) {
+      return 'Nothing is holding this mechanism in place. Ground a joint, or ground a slider\u2019s guide.';
+    }
+    if (dof !== undefined && dof !== 1) {
+      return dof > 1
+        ? `This mechanism has ${dof} degrees of freedom, and one input can only drive one. Add a constraint, or remove a body.`
+        : `This mechanism has ${dof} degrees of freedom \u2014 it is over-constrained and cannot move. Remove a constraint.`;
+    }
+    const stuck = PositionSolver.unsolvableJoints;
+    if (stuck.length > 0) {
+      return `These joints cannot be placed from the ones around them: ${stuck.join(', ')}. They may need another link, or a driven joint nearer to them.`;
+    }
+    return 'This mechanism reached a position it could not solve from the one before it \u2014 usually a toggle, where the linkage locks.';
   }
 
   /** The sealed cylinder a joint or link belongs to, if any. */
@@ -1552,6 +1621,19 @@ export class MechanismService {
           j.input = false;
         }
       });
+    }
+
+    // Turning a joint *on* has to name the two bodies it drives between
+    // (§2.9). Three bodies meet at some joints, and then "driven" says nothing
+    // about which pair moves -- every answer the solvers could pick is a guess
+    // the user never made. Refused here with the reason, rather than accepted
+    // and guessed at downstream. Turning one off is always allowed.
+    if (!jointToToggleInput.input) {
+      const refusal = describeActuator(jointToToggleInput);
+      if (typeof refusal === 'string') {
+        NewGridComponent.sendNotification(refusal);
+        return;
+      }
     }
 
     //Toggle the input joint
@@ -1976,6 +2058,9 @@ export class MechanismService {
   private applyPose(step: number, blend: number) {
     const nextStep = blend > 0 ? step + 1 : step;
     const frames = this.mechanisms[0];
+    // This is the one place a solved sample becomes the drawn pose, so it is
+    // where anything cached against the pose has to be let go of.
+    this.poseRevision++;
 
     this.joints.forEach((j, j_index) => {
       const from = frames.joints[step][j_index];

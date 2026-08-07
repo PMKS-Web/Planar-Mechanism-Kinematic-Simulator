@@ -1,0 +1,13 @@
+<!-- The turning arrow of a driven joint, alone: the same artwork as
+     InputCCW.svg with the case and the ground marks removed, and every
+     point pushed 9 units further from the pin it turns about.
+
+     Pushed rather than scaled. A driven pin has the member it turns
+     running straight over it, and at the shipped radius the bar covered
+     the arrow entirely; scaling the glyph up would have cleared the bar
+     by thickening every stroke with it. Moving each point outward by a
+     fixed distance leaves the stroke exactly as heavy as it is on a
+     grounded joint and only widens the circle it rides. -->
+<svg width="157" height="120" viewBox="0 0 157 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M 114.5535 68.2808 C 116.1505 65.2837 117.2911 62.2873 117.9896 59.2836 C 118.6345 56.2650 118.9717 53.1880 119.0000 50.0479 C 118.6795 39.3026 114.8304 30.0502 107.3413 22.0698 C 99.3887 14.5642 90.1828 10.7125 79.5000 10.3979 L 74.2088 10.4773 L 83.8515 2.7734 L 79.2686 -0.9999 L 60.9673 14.2804 L 79.1824 27.5437 L 84.9624 23.9017 L 74.1970 16.2536 L 79.5000 16.1448 C 88.6694 16.4626 96.5399 19.7422 103.3381 26.0926 C 109.6774 32.9130 112.9573 40.8234 113.2810 50.0479 C 113.2560 52.5704 113.0118 54.9612 112.5520 57.2258 C 112.0524 59.4811 111.4424 61.6018 110.7270 63.5898 L 114.5535 68.2808 Z M 79.9631 100.9996 L 98.2777 85.6912 L 80.1371 72.4536 L 74.4452 76.0270 L 85.3224 83.7236 L 79.5000 83.8552 C 70.3221 83.5351 62.4458 80.2497 55.6445 73.8901 C 49.3085 67.0615 46.0340 59.1454 45.7189 49.9173 C 45.7465 47.3951 45.9777 45.0058 46.4068 42.7447 C 46.8757 40.4947 47.5360 38.3714 48.3861 36.3687 L 44.5598 31.6854 C 42.9594 34.6823 41.7987 37.6804 41.0658 40.6866 C 40.3861 43.7068 40.0306 46.7840 40.0000 49.9238 C 40.3136 60.6720 44.1583 69.9291 51.6445 77.9161 C 59.5996 85.4293 68.8103 89.2856 79.5000 89.6021 L 85.0402 89.5147 L 75.3815 97.2304 L 79.9631 100.9996 Z" fill="white"/>
+</svg>

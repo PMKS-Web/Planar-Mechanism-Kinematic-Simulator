@@ -1,4 +1,5 @@
 import { MechanismFixture } from './fixture';
+import { INPUT_SPEED } from './slot-fixtures';
 
 // Fixtures mirror the MATLAB mechanism definitions in
 // PMKS-Web/PMKS_Verification (Initializer.m / main.m of each mechanism, with
@@ -123,5 +124,54 @@ export function wattIFixture(gravity = false): MechanismFixture {
     },
     inputAngVel: rpmToRadPerSec(10),
     gravity,
+  };
+}
+
+/**
+ * Gate 6: one four-bar, drivable from either of two joints.
+ *
+ * `drivenAt: 'A'` is the ordinary machine — a grounded crank, solved by the
+ * walk. `drivenAt: 'C'` drives the *coupler–rocker pin*, which is a floating
+ * joint: nothing about its position is known when the walk starts, so it
+ * reaches the constraint set instead (§2.9, Phase 6).
+ *
+ * The point of having both is that they are the same mechanism. Whatever the
+ * coupler traces one way it must trace the other, which makes the reference
+ * exact and leaves no data to drift.
+ *
+ * Grashof proportions, so the crank turns fully: ground 4, crank 1.5,
+ * coupler 3.5, rocker 3. T is a tracer on the coupler, off its line, so the
+ * curve it draws is a real coupler curve rather than a circle.
+ */
+export function fourBarDrivenAtFixture(
+  drivenAt: 'A' | 'C',
+  /**
+   * Hang a second chain off the driven pin, so three bodies meet there. An
+   * input then names no particular pair of them (§2.9), and the mechanism has
+   * to say so rather than drive one of them and hope.
+   */
+  extraChainAtC: boolean = false
+): MechanismFixture {
+  return {
+    joints: [
+      { id: 'O', x: 0, y: 0, ground: true, input: drivenAt === 'A' },
+      { id: 'A', x: 0.45, y: 1.43 },
+      { id: 'C', x: 3.3, y: 2.4, input: drivenAt === 'C' },
+      { id: 'D', x: 4, y: 0, ground: true },
+      { id: 'T', x: 2.1, y: 3.3 },
+      ...(extraChainAtC
+        ? [
+            { id: 'U', x: 5.2, y: 2.9 },
+            { id: 'V', x: 6.4, y: 1.4, ground: true },
+          ]
+        : []),
+    ],
+    links: [
+      { joints: 'OA' },
+      { joints: 'ACT' },
+      { joints: 'CD' },
+      ...(extraChainAtC ? [{ joints: 'CU' }, { joints: 'UV' }] : []),
+    ],
+    inputAngVel: INPUT_SPEED,
   };
 }

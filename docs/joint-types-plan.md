@@ -638,6 +638,31 @@ without redesigning the ordering:
 4. The exit calls a **strategy**. v1 ships exactly one: report unsolvable, naming the joints it
    could not order.
 
+**Built in Phase 5** (`simultaneous-solver.ts`), against a real mechanism a user shared: a
+cylinder-driven toggle gripper whose plate reaches two arms through four links, each arm riding two
+fixed rails. The ordering walk emits *zero* steps for it — there is no joint anywhere in it that two
+known joints locate.
+
+The shape the section anticipated was right, and three things about it were not obvious in advance:
+
+- **The constraint set is small and mechanical to derive.** A link holds its joints at fixed
+  distances (2n−3 of them, not every pair), a block is a single point, a slider stays on its slot, a
+  weld keeps a rider parallel to the slot it rides, and the drive prescribes one length. The
+  gripper comes out as 36 residuals in 36 unknowns.
+- **Newton is the wrong solver, and fails on exactly the mechanisms this exists for.** A toggle
+  clamp works *because* it sits near a dead-centre, and there the Jacobian is nearly singular:
+  undamped steps fly off, and a finite-difference Jacobian is not accurate enough to recover.
+  Levenberg–Marquardt with an analytic Jacobian converges; both were needed, and the second only
+  became visible once the first was in place.
+- **A mechanism drawn on its own limit is normal, not pathological.** A toggle clamp is drawn
+  clamped. The solve at the fold is singular, so `settleInitialPose` settles at the nearest command
+  that can be reached — thousandths of a sample away — and the return leg reinstates a pose it
+  solved on the way out rather than re-deriving one at the singularity. Without those two, the
+  cycle never closes and the run ends at the sample cap calling the mechanism invalid.
+
+Item 3's residual library exists as `residuals()`, and it earns its keep exactly as predicted: the
+Jacobian is checked against it, and the gripper spec checks the solved poses against it.
+
 If the fallback does land, it is Newton–Raphson (or Levenberg–Marquardt for damping near
 singularities) over the unsolved joint coordinates, with equations of the form
 `(xᵢ−xⱼ)² + (yᵢ−yⱼ)² − Lᵢⱼ² = 0` for rigid links and `(P − A) × û = 0` for slots, **seeded from
@@ -836,6 +861,42 @@ Decide which entry point is canonical: the joint panel's Driven toggle, or the l
 > **Gate 5:** cylinder-driven boom matches the law-of-cosines solution; a linear input completes a
 > cycle, reverses correctly, and its speed round-trips through the URL in its own units.
 
+**What Phase 5 actually did**, where it departed from the table above:
+
+- **5.1 is smaller than expected and 5.3 is larger.** The constraint was exactly the predicted
+  one-line dyad. What it needed underneath was a way to place a *sealed cylinder as one part* —
+  barrel and rod lengths read once at t = 0, the interior derived from the two mounts — which is
+  also what lifts the §4 restriction that put a Slide on a moving carrier out of scope. The
+  cylinder's stroke is the pin's travel in its own slot, the same range the pose normalizer clamps
+  to, so a driven part can only reach poses it can be drawn in.
+- **Sampling is per stroke, not per unit length.** `SAMPLES_PER_STROKE` cuts the travel into 180,
+  so an out-and-back cycle costs about the 360 samples a crank costs, whatever the part measures;
+  the old fixed 0.1-unit step sampled a long slot finely and a short one into a handful of frames.
+- **Cycle termination needed *two* reversals, not one.** A reversing input passes through its
+  starting pose on the way back from the first limit, and the tolerance test stopped there —
+  precomputing whichever part of the stroke happened to lie on one side of where the part was
+  drawn. This was already true of a rocking *revolute* input; a cylinder made it visible.
+- **5.4 found a bug rather than a scaling factor.** The kinematics initializer looked up a driven
+  block's sliding joint with `instanceof RealJoint`, matched the pin first and bailed, so no driven
+  block has ever been seeded with a velocity. Fixed for a grounded guide. Deliberately left
+  unseeded for a slot on a moving carrier: there the block's absolute velocity is the carrier's
+  plus the sliding rate, and seeding the rate alone reports a cylinder mount as travelling through
+  ground it is being carried over. **A cylinder-driven mechanism has correct positions and playback
+  and no velocity analysis** — that pairing is Phase 6's, alongside the floating pin.
+- **5.5 stops at the labels.** A cylinder's direction button and the analysis header now say
+  extending/retracting. `isInputCW` keeps its name: the URL bit keeps its meaning, and renaming the
+  property across seven files buys no reader anything.
+- **5.6 and 5.7 were overtaken by Phase 4.** The skin shipped there, and sealed ⇔ skinned means
+  there is no reveal-on-select to decide about.
+- **5.8 was already true.** The edit panel is hidden whenever the timestep is not zero, and the
+  cylinder panel measures its length from the mounts rather than caching one. Nothing to change.
+- **The canonical entry point is the joint's `input` flag**, reached from the cylinder body panel.
+  The link panel has no "driven length" field and did not grow one.
+- **A rendering bug came with it**, worth recording because the class will recur: the cylinder's
+  marks were cached against the structure revision, which no animation frame bumps, so the skin
+  stayed painted at the build pose while the linkage animated under it — with every model-level
+  assertion passing. Structure and pose are separate counters now.
+
 ### Phase 6 — Driven floating Pin
 
 Two problems, not one.
@@ -853,6 +914,30 @@ the panel before this lands.
 > **Gate 6:** a standard four-bar **driven at its coupler–rocker pin** instead of at the crank
 > reproduces the same coupler curve as the crank-driven version, with velocities rescaled by the
 > joint-angle relationship.
+
+**What Phase 6 actually did.** Gate 6 passes, and three things about it were not obvious in advance:
+
+- **The ordering half cost almost nothing**, because §2.7a had already been built. A floating pin's
+  position is unknown when the walk starts, so the mechanism goes to the constraint set — which
+  needed one new row, the angle at a pivot from one body round to the other, written as a length so
+  one tolerance still covers the system. Grounded inputs keep their existing path deliberately.
+- **The actuator record is derived, not stored.** §2.9's ordering requirement is satisfied by
+  `joint.links` order, which *is* the serialization order, so the pairing round-trips through the
+  URL without the codec learning anything. The panel refuses Driven where three bodies meet and
+  says why; decode never refuses, so no shared URL stops opening.
+- **The gate's wording was optimistic in one respect.** The pin-driven version traces an *arc* of
+  the coupler curve, not the whole of it, because the angle at that pin is the transmission angle —
+  it oscillates between limits rather than turning through a revolution. Every point it reaches is
+  on the crank-driven curve; there are simply fewer of them. The curves also have to be compared as
+  sets of points, since equal steps of crank angle are not equal steps of joint angle.
+
+**Velocities and accelerations came with it.** Loop detection cannot see through a sealed cylinder,
+so every cylinder-driven mechanism reached the loopless path and came away with nothing — and a
+floating-pin input would have been worse than nothing, since the loop path would have handed the
+coupler the *input's* angular velocity. Rather than teach the loop formulation about variable-length
+members, the rates come from differentiating the constraints the positions came from: `J q̇ = −F_c ċ`,
+and once more for the accelerations, gated on the boom's closed form. Contained to the drives the
+loop path cannot express; a grounded crank keeps its MATLAB-verified route.
 
 An earlier draft proposed a "geared-five-bar-style" gate. That was incoherent: gears are out of
 scope (§1), and an ungeared five-bar is DOF 2, which the engine rejects. The four-bar driven at a
@@ -892,7 +977,7 @@ These are not mechanisms; they are the failure modes that Option A and the slot 
 | Slot joints not members of the carrier | rejected at decode |
 | Missing carrier tokens (pre-existing URL) | decodes as grounded, geometry unchanged |
 | Per-timestep cloning | carrier **and both slot joint** references point at the *copies*, not the editable objects |
-| Carrier link deleted | dependent sliders are regrounded or removed; no dangling reference |
+| Carrier link deleted | dependent sliders **dangle** — they keep their block and lose their direction. Superseded "regrounded or removed": inventing a direction nobody chose is worse than saying so (§2.4a, `dangling-slider.spec.ts`) |
 | Either slot joint deleted or merged by snap | same — a slot cannot outlive a defining joint |
 | Carrier link welded into a compound | carrier remaps; both slot joints still members |
 | Two slots on one link | independent joint pairs on the same carrier both solve |

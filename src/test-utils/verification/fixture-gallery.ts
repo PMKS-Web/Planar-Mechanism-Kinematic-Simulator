@@ -1,5 +1,6 @@
 import { MechanismFixture, BuiltMechanism, buildMechanism } from './fixture';
 import {
+  fourBarDrivenAtFixture,
   sliderCrankTracerFixture,
   stephensonIiiEx2Fixture,
   teachingLabFourBarFixture,
@@ -7,7 +8,10 @@ import {
   wattIFixture,
 } from './fixtures';
 import {
+  cylinderBoomFixture,
   cylinderSkinFixture,
+  gripperFixture,
+  pinchingGripperFixture,
   ellipticalTrammelFixture,
   invertedSliderCrankFixture,
   loadedInvertedSliderCrankFixture,
@@ -94,6 +98,30 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     fixture: cylinderSkinFixture(),
   },
   {
+    name: 'Cylinder-driven boom',
+    purpose: 'Gate 5: the cylinder is the drive, and the boom follows the law of cosines',
+    spec: 'driven-cylinder.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    fixture: cylinderBoomFixture(),
+  },
+  {
+    name: 'Cylinder-driven gripper',
+    purpose: '§2.7a: no chain of dyads solves this — the plate and both arms settle together',
+    spec: 'gripper.spec.ts, anchored-bar-mobility.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    fixture: gripperFixture(),
+  },
+  {
+    name: 'Gripper the cylinder closes',
+    purpose: 'Counter-rotating jaw levers: extending the cylinder pinches them shut',
+    spec: 'pinching-gripper.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    fixture: pinchingGripperFixture(),
+  },
+  {
     name: 'Inverted slider-crank',
     purpose: 'Inverse slot direction: position, velocity and acceleration against closed form',
     spec: 'inverted-slider-crank.spec.ts, slot-kinematics.spec.ts',
@@ -151,6 +179,13 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'slot-mobility.spec.ts',
     floatingSlot: false,
     fixture: ellipticalTrammelFixture(),
+  },
+  {
+    name: 'Four-bar driven at its coupler-rocker pin',
+    purpose: 'Gate 6: a floating pin as the input \u2014 same coupler curve as driving the crank',
+    spec: 'driven-floating-pin.spec.ts',
+    floatingSlot: false,
+    fixture: fourBarDrivenAtFixture('C'),
   },
   {
     name: 'TeachingLab four-bar',
