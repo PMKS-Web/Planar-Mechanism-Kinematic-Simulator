@@ -1,49 +1,43 @@
 <div class="setup">
   <div class="setupHead">
-    <div class="setupTitle">Analysis setup</div>
+    <div class="setupTitle">{{ title }}</div>
     <p class="setupSummary">{{ summary }}</p>
   </div>
 
-  @for (item of readiness; track item.id) {
-    <div class="mechBlock">
-      <button class="sectionHeader" (click)="toggle(item)">
-        <span class="sectionName">
-          Mechanism {{ item.id }}
-          <span class="chip" [class]="chipFor(item).kind">{{ chipFor(item).text }}</span>
-        </span>
-        <mat-icon>{{ isOpen(item) ? 'expand_less' : 'expand_more' }}</mat-icon>
-      </button>
+  @if (mode === 'kinematic') {
+    @for (item of readiness; track item.id) {
+      <div class="mechBlock">
+        <button class="sectionHeader" (click)="toggle(item)">
+          <span class="sectionName">
+            Mechanism {{ item.id }}
+            <span class="chip" [class]="chipFor(item).kind">{{ chipFor(item).text }}</span>
+          </span>
+          <mat-icon>{{ isOpen(item) ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
 
-      @if (isOpen(item)) {
-        <div class="factGrid">
-          @for (fact of item.facts; track fact.label) {
-            <div class="fact">
-              <span class="factLabel">{{ fact.label }}</span>
-              <span class="factValue">{{ fact.value }}</span>
-            </div>
-          }
-        </div>
-        <div class="checkList">
-          @for (check of item.checks; track check.title) {
-            <div class="check">
-              <mat-icon class="checkIcon" [class]="check.state">{{ iconFor(check) }}</mat-icon>
-              <div class="checkBody">
-                <div class="checkTitle">{{ check.title }}</div>
-                <p class="checkText">{{ check.body }}</p>
-                @if (check.action && check.at) {
-                  <button class="actionButton" (click)="goTo(check.at)">
-                    {{ check.action }} {{ nameOf(check.at) }}
-                  </button>
-                }
+        @if (isOpen(item)) {
+          <div class="checkList">
+            @for (check of item.checks; track check.title) {
+              <div class="check">
+                <mat-icon class="checkIcon" [class]="check.state">{{ iconFor(check) }}</mat-icon>
+                <div class="checkBody">
+                  <div class="checkTitle">{{ check.title }}</div>
+                  <p class="checkText">{{ check.body }}</p>
+                  @if (check.action && check.at) {
+                    <button class="actionButton" (click)="goTo(check.at)">
+                      {{ check.action }} {{ nameOf(check.at) }}
+                    </button>
+                  }
+                </div>
               </div>
-            </div>
-          }
-        </div>
-      }
-    </div>
+            }
+          </div>
+        }
+      </div>
+    }
   }
 
-  @if (forceOutstanding > 0) {
+  @if (mode === 'force') {
     <div class="mechBlock">
       <button class="sectionHeader" (click)="forceOpen = !forceOpen">
         <span class="sectionName">
@@ -71,7 +65,7 @@
     </div>
   }
 
-  @if (unassigned.length > 0) {
+  @if (mode === 'kinematic' && unassigned.length > 0) {
     <div class="mechBlock">
       <button class="sectionHeader muted" (click)="unassignedOpen = !unassignedOpen">
         <span class="sectionName">

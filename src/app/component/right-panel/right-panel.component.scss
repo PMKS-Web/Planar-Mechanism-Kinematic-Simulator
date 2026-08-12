@@ -15,6 +15,38 @@
   // A floating card like the strip above it, clear of both: the drawer used to
   // start under a toolbar that ran the width of the window and could sit flush
   // against the edge. Nothing is flush any more.
+  // Top right of the drawer, over whatever it contains: every panel in here
+  // was written before the drawer could be closed from inside it, so none of
+  // them leaves room for this.
+  .closeDrawer {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #5f6368;
+    cursor: pointer;
+    padding: 0;
+
+    mat-icon {
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+      line-height: 20px;
+    }
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+  }
+
   #rightPanel {
     position: absolute;
     top: nav.$top-strip-height;

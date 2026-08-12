@@ -152,7 +152,9 @@ await page.evaluate(() => {
   srv.updateMechanism();
 });
 await page.waitForTimeout(500);
-await page.locator('.tabButton', { hasText: 'Force' }).click();
+// One machine is still fine, so Kinematic is enterable and pressing it does
+// not refuse. The chip is the way to the list either way.
+await page.locator('.tabButton', { hasText: 'Kinematic' }).locator('.chip').click();
 await page.waitForTimeout(700);
 const drawer = await page.locator('app-analysis-setup').innerText();
 record(

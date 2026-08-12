@@ -2,16 +2,27 @@
   <div
     [@openClose]="
       getIsOpen()
-        ? getOpenTab() === 1 || getOpenTab() === 3 || getOpenTab() === 5
+        ? getOpenTab() === 1 || getOpenTab() === 3 || getOpenTab() === 5 || getOpenTab() === 6
           ? 'open'
           : 'openWide'
         : 'closed'
     "
     id="rightPanel"
   >
+    <!-- Every drawer closes the same way, from the same corner. -->
+    @if (getIsOpen()) {
+      <button class="closeDrawer" (click)="close()" aria-label="Close" matTooltip="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    }
     @if (getOpenTab() === 5) {
       <div class="page1">
-        <app-analysis-setup></app-analysis-setup>
+        <app-analysis-setup mode="kinematic"></app-analysis-setup>
+      </div>
+    }
+    @if (getOpenTab() === 6) {
+      <div class="page1">
+        <app-analysis-setup mode="force"></app-analysis-setup>
       </div>
     }
     @if (getOpenTab() === 1) {

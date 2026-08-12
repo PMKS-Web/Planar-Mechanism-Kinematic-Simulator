@@ -165,7 +165,12 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   select(tab: TabID): void {
     this.menuOpen = false;
     if (this.tabs.isAnalysisMode(tab) && !this.canAnalyse(tab)) {
-      RightPanelComponent.tabClicked(RightPanelComponent.SETUP_TAB);
+      // The setup for the mode that was pressed, not the other one's.
+      RightPanelComponent.tabClicked(
+        tab === TabID.FORCE
+          ? RightPanelComponent.FORCE_SETUP_TAB
+          : RightPanelComponent.KINEMATIC_SETUP_TAB
+      );
       return;
     }
     this.tabs.setTab(tab);
@@ -243,8 +248,29 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     RightPanelComponent.tabClicked(4);
   }
 
+  /**
+   * The chip opens that mode's setup, whether or not the mode can be entered.
+   *
+   * Otherwise the list is reachable only by being refused, and a drawing where
+   * one machine is ready and another is not can be *entered* -- leaving the
+   * reader with a chip that counts problems and no way to read them.
+   */
+  openSetupFor(tab: TabID, event: Event): void {
+    event.stopPropagation();
+    this.menuOpen = false;
+    RightPanelComponent.tabClicked(
+      tab === TabID.FORCE
+        ? RightPanelComponent.FORCE_SETUP_TAB
+        : RightPanelComponent.KINEMATIC_SETUP_TAB
+    );
+  }
+
   openSetup(): void {
-    RightPanelComponent.tabClicked(RightPanelComponent.SETUP_TAB);
+    RightPanelComponent.tabClicked(
+      this.tabs.getCurrentTab() === TabID.FORCE
+        ? RightPanelComponent.FORCE_SETUP_TAB
+        : RightPanelComponent.KINEMATIC_SETUP_TAB
+    );
   }
 
   upload($event: Event): void {

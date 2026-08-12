@@ -54,15 +54,16 @@ await open(payloads['4-Bar']);
 await tab('Force').click();
 await page.waitForTimeout(600);
 let text = await drawerText();
-record('pressing a mode it cannot enter opens the list', text.includes('Analysis setup'), text);
 record(
-  'the ready mechanism is named and marked ready',
-  /Mechanism M1[\s\S]*Ready/.test(text),
+  'pressing a mode it cannot enter opens the list',
+  text.includes('Force analysis setup'),
   text
 );
+// Each mode has a drawer of its own: a reader refused by one should not have
+// to read past the other mode's list to find out why.
 record(
   'and the list answers the question that was asked, not the other one',
-  text.includes('Force analysis') && text.includes('A load to react against'),
+  text.includes('A load to react against') && !text.includes('Mechanism M1'),
   text
 );
 record('naming the way out rather than only the wall', /Attach Force/.test(text), text);
@@ -117,6 +118,8 @@ const undoDisabled = await page.locator('.historyButton', { hasText: 'Undo' }).i
 record('going to a part is not an edit, so Undo stays where it was', undoDisabled === true);
 
 // --- geometry that is in no mechanism ---------------------------------------
+// The drawer opens when a mode refuses, so the mechanism is left undriven too:
+// a valid one simply enters Kinematic and there is no drawer to read.
 await open(payloads['4-Bar']);
 await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
@@ -133,10 +136,11 @@ await page.evaluate(() => {
     input: false,
   });
   srv.joints.push(loose);
+  srv.joints.forEach((joint) => (joint.input = false));
   srv.updateMechanism();
 });
 await page.waitForTimeout(400);
-await tab('Force').click();
+await tab('Kinematic').click();
 await page.waitForTimeout(600);
 text = await drawerText();
 record(

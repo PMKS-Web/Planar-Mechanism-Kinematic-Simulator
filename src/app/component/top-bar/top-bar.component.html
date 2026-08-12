@@ -49,9 +49,15 @@
         <mat-icon>query_stats</mat-icon>
         <span class="tabLabel long">Kinematic Analysis</span>
         <span class="tabLabel short">Kinematic</span>
-        <span class="chip" [class.ok]="statusOf(TabID.ANALYZE).ready">{{
-          statusOf(TabID.ANALYZE).text
-        }}</span>
+        <span
+          class="chip"
+          role="button"
+          [class.ok]="statusOf(TabID.ANALYZE).ready"
+          (click)="openSetupFor(TabID.ANALYZE, $event)"
+          [matTooltip]="'What this mode needs'"
+          matTooltipShowDelay="600"
+          >{{ statusOf(TabID.ANALYZE).text }}</span
+        >
       </button>
 
       <button
@@ -63,9 +69,15 @@
         <mat-icon>balance</mat-icon>
         <span class="tabLabel long">Force Analysis</span>
         <span class="tabLabel short">Force</span>
-        <span class="chip" [class.ok]="statusOf(TabID.FORCE).ready">{{
-          statusOf(TabID.FORCE).text
-        }}</span>
+        <span
+          class="chip"
+          role="button"
+          [class.ok]="statusOf(TabID.FORCE).ready"
+          (click)="openSetupFor(TabID.FORCE, $event)"
+          [matTooltip]="'What this mode needs'"
+          matTooltipShowDelay="600"
+          >{{ statusOf(TabID.FORCE).text }}</span
+        >
       </button>
     </div>
   </div>

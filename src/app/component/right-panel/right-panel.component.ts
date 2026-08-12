@@ -47,7 +47,10 @@ import { UrlGenerationService } from 'src/app/services/url-generation.service';
       state(
         'closed',
         style({
-          transform: 'translateX(calc(100% + 10px))',
+          // Clear of the 12px inset the drawer now floats at, plus a margin.
+          // The old 10px was measured against a panel flush to the edge and
+          // left a two-pixel sliver of it on screen.
+          transform: 'translateX(calc(100% + 24px))',
         })
       ),
       state(
@@ -82,11 +85,18 @@ export class RightPanelComponent {
   static openTab = 0; //Default open tab to "Edit" /
   static isOpen = false; // Is the tab open?
   /**
-   * The drawer that lists what still stands between the drawing and its
-   * animation. Numbered like its neighbours because that is how this panel has
-   * always been addressed; named because "5" at a call site says nothing.
+   * The two setup drawers, one per analysis mode.
+   *
+   * Separate because they answer different questions with different fixes: a
+   * mechanism that will not run and a force analysis that has nothing to react
+   * against are not the same problem, and a reader refused by one mode should
+   * not have to read past the other mode's list to find out why.
+   *
+   * Numbered like their neighbours because that is how this panel has always
+   * been addressed; named because "5" at a call site says nothing.
    */
-  static readonly SETUP_TAB = 5;
+  static readonly KINEMATIC_SETUP_TAB = 5;
+  static readonly FORCE_SETUP_TAB = 6;
   turnOnDebugger() {
     this.settingsService.isGridDebugOn = !this.settingsService.isGridDebugOn;
   }
@@ -113,6 +123,11 @@ export class RightPanelComponent {
     }
     // console.warn(this.openTab);
     // console.warn(this.isOpen);
+  }
+
+  /** Shut the drawer, whichever one is open. */
+  close(): void {
+    RightPanelComponent.isOpen = false;
   }
 
   getOpenTab() {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { Joint, RealJoint } from '../../model/joint';
 import { Link, RealLink } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
@@ -27,6 +27,15 @@ import { MechanismReadiness, ReadinessCheck } from '../../model/mechanism/readin
   standalone: false,
 })
 export class AnalysisSetupComponent {
+  /**
+   * Which question this drawer is answering.
+   *
+   * The two are separate drawers because they have different fixes: a
+   * mechanism that will not run and a force analysis with nothing to react
+   * against are not the same problem, and a reader refused by one mode should
+   * not have to read past the other's list to find out why.
+   */
+  @Input() mode: 'kinematic' | 'force' = 'kinematic';
   /** Which mechanisms the reader has folded away, by id. */
   private collapsed = new Set<string>();
   unassignedOpen = false;
@@ -68,7 +77,17 @@ export class AnalysisSetupComponent {
    *
    * Counted rather than listed, because the list is right underneath it.
    */
+  get title(): string {
+    return this.mode === 'force' ? 'Force analysis setup' : 'Analysis setup';
+  }
+
   get summary(): string {
+    if (this.mode === 'force') {
+      const outstanding = this.forceOutstanding;
+      return outstanding === 0
+        ? 'Force analysis is ready to run.'
+        : `${outstanding} ${outstanding === 1 ? 'thing has' : 'things have'} to be set before forces can be solved.`;
+    }
     const all = this.readiness;
     if (all.length === 0) {
       return this.unassigned.length > 0
@@ -95,22 +114,16 @@ export class AnalysisSetupComponent {
 
   isOpen(readiness: MechanismReadiness): boolean {
     // Open when something is wrong, closed when nothing is — so a drawing that
-    // is fine collapses to a list of names, and the facts about a healthy
-    // mechanism are one press away rather than in the way.
-    return this.collapsed.has(readiness.id)
-      ? false
-      : this.expanded.has(readiness.id) || readiness.checks.length > 0;
+    // is fine collapses to a list of names. What a mechanism *is* lives in its
+    // own panel now; this drawer carries only what is in the way.
+    return this.collapsed.has(readiness.id) ? false : readiness.checks.length > 0;
   }
-
-  private expanded = new Set<string>();
 
   toggle(readiness: MechanismReadiness): void {
     if (this.isOpen(readiness)) {
       this.collapsed.add(readiness.id);
-      this.expanded.delete(readiness.id);
     } else {
       this.collapsed.delete(readiness.id);
-      this.expanded.add(readiness.id);
     }
   }
 
