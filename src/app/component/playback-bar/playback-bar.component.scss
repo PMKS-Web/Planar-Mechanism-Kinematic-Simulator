@@ -135,14 +135,16 @@
     height: 26px;
     padding: 0 12px;
     border: none;
-    border-radius: 10px 10px 0 0;
-    background: #fff;
+    border-radius: var(--card-radius) var(--card-radius) 0 0;
+    background: var(--card-surface);
     color: #5f6368;
     font-family: inherit;
     font-size: 12px;
     white-space: nowrap;
     cursor: pointer;
     z-index: 1;
+    // Upward, unlike every other card: this one is a tab under nothing, and
+    // the card below it would otherwise cast a shadow onto its own tab.
     box-shadow: 0 -3px 6px -2px rgba(0, 0, 0, 0.18);
 
     &.on {
