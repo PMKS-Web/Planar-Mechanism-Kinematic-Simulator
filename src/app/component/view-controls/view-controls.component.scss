@@ -1,11 +1,27 @@
 @use '../BLOCKS/blocks.common' as blocks;
 
 @mixin css($theme) {
+  // A floating card at the bottom right, beside the transport rather than
+  // stacked in a rail: these say what you can see, the transport says what is
+  // moving, and both belong at the edge nearest the grid they act on.
   .viewControls {
+    position: absolute;
+    right: 12px;
+    bottom: 38px;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
     gap: 6px;
-    padding: 8px;
+    padding: 8px 10px;
+    height: 60px;
+    background: #fff;
+    border-radius: 10px;
+    z-index: 8;
+    box-sizing: border-box;
+    box-shadow:
+      0 3px 5px -1px rgba(0, 0, 0, 0.2),
+      0 6px 10px 0 rgba(0, 0, 0, 0.14),
+      0 1px 18px 0 rgba(0, 0, 0, 0.12);
 
     // Same button look as the edit panel; the container prefix keeps its
     // border-color winning over Material's default outline.
@@ -18,6 +34,7 @@
     .zoomRow {
       display: flex;
       gap: 6px;
+      flex: 0 0 auto;
 
       .zoomButton {
         flex: 1 1 0;

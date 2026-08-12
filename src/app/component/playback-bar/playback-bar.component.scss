@@ -1,0 +1,191 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+
+@mixin css($theme) {
+  $color-config: mat.m2-get-color-config($theme);
+  $primary-palette: map.get($color-config, 'primary');
+
+  $card-shadow:
+    0 3px 5px -1px rgba(0, 0, 0, 0.2),
+    0 6px 10px 0 rgba(0, 0, 0, 0.14),
+    0 1px 18px 0 rgba(0, 0, 0, 0.12);
+
+  // Floats over the grid rather than sitting in a rail, and clears the status
+  // strip beneath it.
+  .playbackRow {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 38px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 12px;
+    padding: 0 12px;
+    z-index: 8;
+    pointer-events: none;
+
+    .card {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: $card-shadow;
+      pointer-events: auto;
+      box-sizing: border-box;
+    }
+  }
+
+  .transportCard {
+    gap: 8px;
+    height: 60px;
+    padding: 0 12px;
+    flex: 0 0 auto;
+  }
+
+  .scrubCard {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 6px;
+    min-height: 60px;
+    padding: 9px 14px;
+    flex: 0 1 470px;
+    min-width: 260px;
+  }
+
+  .playButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: mat.m2-get-color-from-palette($primary-palette, 400);
+    color: #fff;
+    cursor: pointer;
+    padding: 0;
+
+    &:disabled {
+      background: #d5d7e0;
+      cursor: default;
+    }
+
+    mat-icon {
+      width: 26px;
+      height: 26px;
+      font-size: 26px;
+      line-height: 26px;
+    }
+  }
+
+  .speedButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    border: 1px solid #dfe1ea;
+    border-radius: 6px;
+    background: #fff;
+    color: #5f6368;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+
+    &:disabled {
+      color: #b7bac7;
+      cursor: default;
+    }
+  }
+
+  .scrubber {
+    width: 100%;
+    margin: 0;
+    height: 4px;
+    accent-color: mat.m2-get-color-from-palette($primary-palette, 500);
+    cursor: pointer;
+
+    &:disabled {
+      cursor: default;
+    }
+  }
+
+  .mechRows {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .mechRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+  }
+
+  .mechChip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 20px;
+    padding: 0 7px;
+    border-radius: 6px;
+    background: #f0f1f5;
+    color: #2c2c2c;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .mechNote {
+    color: rgba(0, 0, 0, 0.42);
+  }
+
+  .rowSpacer {
+    flex: 1 1 auto;
+  }
+
+  .timeForm input {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.24);
+    background: transparent;
+    font-family: inherit;
+    font-size: 12px;
+    color: #2c2c2c;
+    padding: 2px 0;
+
+    &:disabled {
+      color: rgba(0, 0, 0, 0.38);
+    }
+  }
+
+  .playbackRow .iconButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    border: 1px solid #dfe1ea;
+    border-radius: 6px;
+    background: #fff;
+    color: #5f6368;
+    cursor: pointer;
+    padding: 0;
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+      line-height: 18px;
+    }
+  }
+}

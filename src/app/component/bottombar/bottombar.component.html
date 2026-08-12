@@ -1,8 +1,7 @@
 <div id="bottomBar">
-  <ul>
-    <li>Degrees of Freedom: {{ degreesOfFreedom }}</li>
-    <li>Units: {{ humanReadableString(settings.globalUnit.getValue()) }}</li>
-    <li style="flex-grow: 1"></li>
-    <li>PMKS+ Version {{ getVersion() }}</li>
-  </ul>
+  <span class="mode">{{ modeName }}</span>
+  <span class="status">{{ status }}</span>
+  <span class="spacer"></span>
+  <span class="units">Units: {{ humanReadableString(settings.globalUnit.getValue()) }}</span>
+  <span class="version">PMKS+ Version {{ getVersion() }}</span>
 </div>

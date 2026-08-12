@@ -3,44 +3,50 @@
 @use 'src/app/component/left-tabs/left-tabs.vars' as nav;
 
 @mixin css($theme) {
-  // Get the color config from the theme.
   $color-config: mat.m2-get-color-config($theme);
-  // Get the primary color palette from the color-config.
-  $primary-palette: map.get($color-config, 'primary');
-  $accent-palette: map.get($color-config, 'accent');
   $typography-config: mat.m2-get-typography-config($theme);
-  $background: map.get($theme, background);
-  $foreground: map.get($theme, foreground);
 
+  // A strip that reports and does nothing else. Nothing in it is a control, so
+  // nothing in it is clickable: a status line that sometimes acts on a click is
+  // a line you have to test before trusting.
   #bottomBar {
-    //5 pixel high absolute posositon white bar in the bottom of the screen 100% width
     position: absolute;
     bottom: 0;
+    left: 0;
     right: 0;
-    width: 100vw;
     height: nav.$bottom-bar-height;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 14px;
     background-color: white;
-    //z-index: 100;
+    box-sizing: border-box;
+    z-index: 7;
+    pointer-events: none;
+    user-select: none;
 
-    //Include elevation and font
     @include mat.elevation(2);
     @include mat.m2-typography-level($typography-config, 'subtitle-2');
     font-weight: 400;
     color: #2c2c2c;
 
-    ul {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
+    .mode {
+      font-weight: 500;
+      white-space: nowrap;
+    }
 
-      //Hide the list bullets
-      list-style-type: none;
-      margin: 0;
-      padding: 0;
-      // Clear the nav rail, which sits above this bar on the left.
-      padding-left: 14px;
-      padding-right: 10px;
+    .status,
+    .units {
+      color: rgba(0, 0, 0, 0.55);
+      white-space: nowrap;
+    }
+
+    .spacer {
+      flex: 1 1 auto;
+    }
+
+    .version {
+      white-space: nowrap;
     }
   }
 }

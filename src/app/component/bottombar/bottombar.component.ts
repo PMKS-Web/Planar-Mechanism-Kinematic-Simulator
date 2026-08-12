@@ -3,6 +3,7 @@ import { GlobalUnit } from '../../model/utils';
 import { SettingsService } from '../../services/settings.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { environment } from '../../../environments/environment';
+import { SelectedTabService, TabID } from '../../selected-tab.service';
 
 @Component({
   selector: 'app-bottombar',
@@ -14,8 +15,49 @@ import { environment } from '../../../environments/environment';
 export class BottombarComponent {
   constructor(
     public settings: SettingsService,
-    public mechanismSrv: MechanismService
+    public mechanismSrv: MechanismService,
+    private tabs: SelectedTabService
   ) {}
+
+  /**
+   * Which mode the app is in, spelled the way the tabs spell it.
+   *
+   * The strip says it because the two modes now differ in what they will let
+   * you do, and a rule that silently refuses is worse than one that is written
+   * down somewhere.
+   */
+  get modeName(): string {
+    switch (this.tabs.getCurrentTab()) {
+      case TabID.SYNTHESIZE:
+        return 'Synthesis';
+      case TabID.EDIT:
+        return 'Edit';
+      case TabID.FORCE:
+        return 'Force';
+      default:
+        return 'Kinematic';
+    }
+  }
+
+  /**
+   * What the mode means for the mechanism right now.
+   *
+   * Read-only, like the rest of this strip. It reports; the drawer is where
+   * anything is done about it.
+   */
+  get status(): string {
+    if (this.tabs.isAnalysisMode()) {
+      return 'Geometry locked';
+    }
+    const blockers = this.mechanismSrv.blockerCount();
+    if (this.mechanismSrv.mechanisms.length === 0) {
+      return 'Nothing to analyse yet';
+    }
+    if (blockers === 0) {
+      return 'Ready to analyse';
+    }
+    return `${blockers} ${blockers === 1 ? 'fix' : 'fixes'} before analysis`;
+  }
 
   /**
    * The mobility, or a dash where there is no such number.

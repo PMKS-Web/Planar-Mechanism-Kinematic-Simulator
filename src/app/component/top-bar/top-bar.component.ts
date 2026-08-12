@@ -4,6 +4,9 @@ import {
   Component,
   ElementRef,
   OnDestroy,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  NgZone,
   ViewChild,
   inject,
   isDevMode,
@@ -43,6 +46,7 @@ interface TabStatus {
   selector: 'app-top-bar',
   templateUrl: './top-bar.component.html',
   styleUrls: ['./top-bar.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
   animations: [
     // The same 200ms and easing the mode highlight slides on, so the menu and
     // everything else in this strip move as one piece of machinery.
@@ -75,7 +79,9 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     private history: SaveHistoryService,
     private urlGeneration: UrlGenerationService,
     private urlProcessor: UrlProcessorService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private zone: NgZone,
+    private changes: ChangeDetectorRef
   ) {}
 
   isDevMode(): boolean {
@@ -121,7 +127,11 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   }
 
   private scheduleHighlight(): void {
-    if (this.pendingFrame) cancelAnimationFrame(this.pendingFrame);
+    // Coalesce rather than restart. Cancelling the pending frame on every
+    // checked pass means a busy app -- playback runs change detection every
+    // frame -- cancels the measurement before it can ever run, and the
+    // highlight sits on whichever tab was active last time things went quiet.
+    if (this.pendingFrame) return;
     this.pendingFrame = requestAnimationFrame(() => {
       this.pendingFrame = 0;
       const active = this.tabStrip?.nativeElement.querySelector<HTMLElement>('.tabButton.active');
@@ -131,12 +141,24 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       // Only on a real change, so the measure-every-pass above settles instead
       // of asking for another pass forever.
       if (
-        next.left !== this.highlight.left ||
-        next.width !== this.highlight.width ||
-        next.visible !== this.highlight.visible
+        next.left === this.highlight.left &&
+        next.width === this.highlight.width &&
+        next.visible === this.highlight.visible
       ) {
-        this.highlight = next;
+        return;
       }
+      // Back inside Angular to assign it. An animation frame runs outside, so
+      // the new position would sit in the field unrendered until something else
+      // happened to trigger a pass -- which is the next tab change, leaving the
+      // highlight permanently one behind.
+      this.zone.run(() => {
+        this.highlight = next;
+        // And re-check this view explicitly. The assignment happens after the
+        // pass that would have rendered it, so without this the new position
+        // waits for whatever causes the *next* pass -- which is the next tab
+        // change, leaving the highlight permanently one behind.
+        this.changes.detectChanges();
+      });
     });
   }
 

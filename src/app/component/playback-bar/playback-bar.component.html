@@ -1,0 +1,64 @@
+@if (tabs.isAnalysisMode()) {
+  <div class="playbackRow">
+    <div class="card transportCard">
+      <button class="speedButton" (click)="cycleSpeed()" [disabled]="!canPlay">{{ speed }}x</button>
+      <button
+        class="playButton"
+        (click)="play()"
+        [disabled]="!canPlay"
+        [attr.aria-label]="playing ? 'Pause' : 'Play'"
+      >
+        <mat-icon>{{ playing ? 'pause' : 'play_arrow' }}</mat-icon>
+      </button>
+    </div>
+
+    <div class="card scrubCard">
+      <input
+        id="slider"
+        class="scrubber"
+        type="range"
+        min="0"
+        [max]="maxStep"
+        [value]="step"
+        [disabled]="!canPlay"
+        (mousedown)="onScrubDown()"
+        (mouseup)="onScrubUp()"
+        (input)="onScrub($event)"
+      />
+
+      <div class="mechRows">
+        @for (row of rows; track row.id) {
+          <div class="mechRow">
+            <span class="mechChip">{{ row.id }}</span>
+            <span class="mechTime">{{ row.time }}</span>
+            @if (row.reciprocating) {
+              <span class="mechNote">reciprocating</span>
+            }
+            <div class="rowSpacer"></div>
+            <button
+              class="iconButton"
+              (click)="flipDirection(row)"
+              [matTooltip]="row.clockwise ? 'Driven clockwise' : 'Driven counter-clockwise'"
+              matTooltipShowDelay="600"
+            >
+              <mat-icon>{{ row.clockwise ? 'rotate_right' : 'rotate_left' }}</mat-icon>
+            </button>
+          </div>
+        }
+      </div>
+
+      <form class="timeForm" (ngSubmit)="field.blur()">
+        <input
+          id="animationBar-input"
+          name="timestep"
+          type="text"
+          [disabled]="!canPlay"
+          [(ngModel)]="timeDisplay"
+          (blur)="onTimeSubmit()"
+          (click)="field.select()"
+          #field
+        />
+      </form>
+    </div>
+  </div>
+}
