@@ -8,7 +8,6 @@ import { SelectedTabService } from '../../selected-tab.service';
 import { TimeUnit } from '../../model/utils';
 import { Mechanism } from '../../model/mechanism/mechanism';
 import { RealJoint } from '../../model/joint';
-import { AnimationBarComponent } from '../animation-bar/animation-bar.component';
 
 /** One machine's line in the transport. */
 export interface PlaybackRow {
@@ -78,7 +77,7 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
   }
 
   get playing(): boolean {
-    return AnimationBarComponent.animate;
+    return this.mechanism.isPlaying;
   }
 
   get canPlay(): boolean {
@@ -160,8 +159,8 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
 
   play(): void {
     if (!this.canPlay) return;
-    AnimationBarComponent.animate = !AnimationBarComponent.animate;
-    this.mechanism.animate(this.mechanism.mechanismTimeStep, AnimationBarComponent.animate);
+    this.mechanism.isPlaying = !this.mechanism.isPlaying;
+    this.mechanism.animate(this.mechanism.mechanismTimeStep, this.mechanism.isPlaying);
     this.settings.animating.next(this.mechanism.mechanismTimeStep !== 0);
   }
 
@@ -189,28 +188,28 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
 
   onScrubDown(): void {
     this.dragging = true;
-    this.wasAnimating = AnimationBarComponent.animate;
-    AnimationBarComponent.animate = false;
+    this.wasAnimating = this.mechanism.isPlaying;
+    this.mechanism.isPlaying = false;
   }
 
   onScrubUp(): void {
     this.dragging = false;
     if (this.wasAnimating) {
-      AnimationBarComponent.animate = true;
+      this.mechanism.isPlaying = true;
       this.mechanism.animate(this.mechanism.mechanismTimeStep, true);
     }
   }
 
   onScrub(event: Event): void {
     const value = Number((event.target as HTMLInputElement).value);
-    this.mechanism.animate(value, AnimationBarComponent.animate);
+    this.mechanism.animate(value, this.mechanism.isPlaying);
     this.settings.animating.next(value !== 0);
   }
 
   onTimeSubmit(): void {
     const [ok, requested] = this.nup.parseTimeString(this.timeDisplay, TimeUnit.SECOND);
     const clamped = Math.min(Math.max(ok ? requested : 0, 0), this.mechanism.cyclePeriod());
-    this.mechanism.animate(this.mechanism.stepAtTime(clamped), AnimationBarComponent.animate);
+    this.mechanism.animate(this.mechanism.stepAtTime(clamped), this.mechanism.isPlaying);
     this.timeDisplay = this.format(this.mechanism.currentTimeSeconds());
   }
 }

@@ -2,7 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { AppModule } from '../app.module';
 import { MechanismService } from './mechanism.service';
 import { UrlProcessorService } from './url-processor.service';
-import { AnimationBarComponent } from '../component/animation-bar/animation-bar.component';
 import { TEMPLATE_LINKAGES } from '../component/MODALS/templates/template-linkages';
 
 /**
@@ -39,7 +38,7 @@ describe('opening a linkage while another is animating', () => {
   // A static, so it outlives the TestBed and a spec that leaves it playing
   // fails whatever runs next.
   afterEach(() => {
-    AnimationBarComponent.animate = false;
+    mechanism.isPlaying = false;
     mechanism.animate(0, false);
   });
 
@@ -72,10 +71,10 @@ describe('opening a linkage while another is animating', () => {
   it('stops playback rather than running the new linkage on the old clock', () => {
     load(SHORT);
     mechanism.animate(40, true);
-    expect(AnimationBarComponent.animate).toBe(true);
+    expect(mechanism.isPlaying).toBe(true);
 
     load(LONG);
-    expect(AnimationBarComponent.animate).toBe(false);
+    expect(mechanism.isPlaying).toBe(false);
     expect(mechanism.mechanismTimeStep).toBe(0);
   });
 });

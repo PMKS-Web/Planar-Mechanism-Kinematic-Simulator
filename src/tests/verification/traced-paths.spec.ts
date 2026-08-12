@@ -5,7 +5,6 @@ import { TestBed } from '@angular/core/testing';
 import { AppModule } from '../../app/app.module';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { UrlProcessorService } from '../../app/services/url-processor.service';
-import { AnimationBarComponent } from '../../app/component/animation-bar/animation-bar.component';
 import { fixturePayload } from '../../test-utils/verification/fixture-gallery';
 import { cylinderBoomFixture } from '../../test-utils/verification/slot-fixtures';
 
@@ -20,7 +19,6 @@ import { cylinderBoomFixture } from '../../test-utils/verification/slot-fixtures
  */
 describe('the traced path of a joint', () => {
   let mechanism: MechanismService;
-  const wasAnimating = AnimationBarComponent.animate;
 
   beforeEach(() => {
     TestBed.configureTestingModule({ imports: [AppModule] });
@@ -34,7 +32,8 @@ describe('the traced path of a joint', () => {
   });
 
   afterEach(() => {
-    AnimationBarComponent.animate = wasAnimating;
+    // A fresh service per test now owns the flag, so nothing survives to reset.
+    mechanism.isPlaying = false;
   });
 
   it('is drawn while the mechanism is parked at its start pose', () => {

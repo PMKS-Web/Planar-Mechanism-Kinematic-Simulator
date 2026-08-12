@@ -20,7 +20,6 @@ import {
   LengthUnit,
   MassUnit,
 } from 'src/app/model/utils';
-import { AnimationBarComponent } from '../animation-bar/animation-bar.component';
 import { NumberUnitParserService } from 'src/app/services/number-unit-parser.service';
 import { SettingsService } from '../../services/settings.service';
 import { MechanismService } from '../../services/mechanism.service';
@@ -72,7 +71,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   };
 
   hideEditPanel() {
-    return AnimationBarComponent.animate || this.mechanismService.mechanismTimeStep !== 0;
+    return this.mechanismService.isPlaying || this.mechanismService.mechanismTimeStep !== 0;
   }
 
   /** Unit choices for the Input Speed field's inline picker. */

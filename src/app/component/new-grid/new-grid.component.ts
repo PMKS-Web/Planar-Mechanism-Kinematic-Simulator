@@ -37,7 +37,6 @@ import {
 import { Force } from '../../model/force';
 import { PositionSolver } from '../../model/mechanism/position-solver';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AnimationBarComponent } from '../animation-bar/animation-bar.component';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { CdkContextMenuTrigger, Menu } from '@angular/cdk/menu';
@@ -1239,7 +1238,7 @@ export class NewGridComponent implements OnDestroy {
    * are derived from it, so a change made anywhere else has nothing to write to.
    */
   private canEditNow(): boolean {
-    if (AnimationBarComponent.animate) {
+    if (this.mechanismSrv.isPlaying) {
       this.sendNotification(CANNOT_EDIT.animating);
       return false;
     }
@@ -1544,7 +1543,7 @@ export class NewGridComponent implements OnDestroy {
       return;
     }
 
-    if (AnimationBarComponent.animate == true) {
+    if (this.mechanismSrv.isPlaying == true) {
       this.sendNotification(CANNOT_EDIT.animating);
       this.cMenuItems = [];
       return;

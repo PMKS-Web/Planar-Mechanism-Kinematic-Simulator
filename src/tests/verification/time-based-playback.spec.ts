@@ -1,5 +1,4 @@
 import { Injector } from '@angular/core';
-import { AnimationBarComponent } from '../../app/component/animation-bar/animation-bar.component';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { ColorService } from '../../app/services/color.service';
 import { GridUtilsService } from '../../app/services/grid-utils.service';
@@ -222,21 +221,22 @@ describe('Real-time playback', () => {
   });
 
   afterEach(() => {
-    AnimationBarComponent.animate = false;
+    // Each test makes its own service, and playback is now that service's own
+    // state rather than a global, so there is nothing left to reset here.
     vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
   /** Play for `wallSeconds` of real time and report the crank angle reached. */
   function playFor(service: MechanismService, wallSeconds: number): number {
-    AnimationBarComponent.animate = true;
+    service.isPlaying = true;
     service.animate(0, true);
     const frames = Math.round((wallSeconds * 1000) / 16);
     for (let frame = 0; frame < frames; frame++) {
       clockMs += 16;
       vi.advanceTimersByTime(16);
     }
-    AnimationBarComponent.animate = false;
+    service.isPlaying = false;
     return crankDegreesAt(service.mechanismTimeStep);
   }
 
@@ -285,7 +285,7 @@ describe('Real-time playback', () => {
     // a 16 ms frame would leave the mechanism on the same sample ten frames running.
     setInputSpeed(service, settings, 1);
 
-    AnimationBarComponent.animate = true;
+    service.isPlaying = true;
     service.animate(0, true);
 
     const seen = new Set<string>();
@@ -294,7 +294,7 @@ describe('Real-time playback', () => {
       vi.advanceTimersByTime(16);
       seen.add(service.joints.map((j) => `${j.x.toFixed(6)},${j.y.toFixed(6)}`).join('|'));
     }
-    AnimationBarComponent.animate = false;
+    service.isPlaying = false;
 
     // Every frame is a distinct pose even though they all sit on one sample.
     expect(service.mechanismTimeStep).toBe(0);
@@ -308,7 +308,7 @@ describe('Real-time playback', () => {
       service.mechanisms[0].joints[0].map((j) => `${j.x.toFixed(9)},${j.y.toFixed(9)}`).join('|');
     const original = startPose();
 
-    AnimationBarComponent.animate = true;
+    service.isPlaying = true;
     service.animate(0, true);
     for (let frame = 0; frame < 4; frame++) {
       clockMs += 16;
@@ -319,7 +319,7 @@ describe('Real-time playback', () => {
     expect(service.mechanismTimeStep).toBe(0);
 
     service.updateMechanism();
-    AnimationBarComponent.animate = false;
+    service.isPlaying = false;
 
     expect(startPose()).toBe(original);
   });
@@ -328,11 +328,11 @@ describe('Real-time playback', () => {
     const { service, settings } = createLoadedService();
     setInputSpeed(service, settings, 1);
 
-    AnimationBarComponent.animate = true;
+    service.isPlaying = true;
     service.animate(0, true);
     clockMs += 80; // land mid-sample, where the blend is largest
     vi.advanceTimersByTime(16);
-    AnimationBarComponent.animate = false;
+    service.isPlaying = false;
 
     // A rigid link's joint separation must survive interpolation, otherwise the
     // outline and the joints would drift apart on screen.
@@ -353,7 +353,7 @@ describe('Real-time playback', () => {
     const { service, settings } = createLoadedService();
     setInputSpeed(service, settings, 1);
 
-    AnimationBarComponent.animate = true;
+    service.isPlaying = true;
     service.animate(0, true);
     // The first frame only anchors the clock, so four frames advance 48 ms.
     for (let frame = 0; frame < 4; frame++) {
@@ -362,7 +362,7 @@ describe('Real-time playback', () => {
     }
 
     const drawn = service.currentTimeSeconds();
-    AnimationBarComponent.animate = false;
+    service.isPlaying = false;
 
     // 48 ms in, between sample 0 (t=0) and sample 1 (t=0.167 s).
     expect(drawn).toBeCloseTo(0.048, 3);
@@ -373,7 +373,7 @@ describe('Real-time playback', () => {
     const { service, settings } = createLoadedService();
     setInputSpeed(service, settings, 10);
 
-    AnimationBarComponent.animate = true;
+    service.isPlaying = true;
     service.animate(0, true);
     clockMs += 16;
     vi.advanceTimersByTime(16);

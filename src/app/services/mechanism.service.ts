@@ -48,7 +48,6 @@ import {
 import { BehaviorSubject, connect, Subject } from 'rxjs';
 import { GridUtilsService } from './grid-utils.service';
 import { ActiveObjService } from './active-obj.service';
-import { AnimationBarComponent } from '../component/animation-bar/animation-bar.component';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
 import { canDrive, describeActuator } from '../model/actuator';
 import { SettingsService } from './settings.service';
@@ -79,6 +78,15 @@ function blendAngle(from: number, to: number, blend: number): number {
 })
 export class MechanismService {
   public mechanismTimeStep: number = 0;
+  /**
+   * Is the animation running?
+   *
+   * On the service that owns playback. It used to be a static on the animation
+   * bar, which was a component: the flag outlived the bar's own rendering by a
+   * whole redesign, and every part of the app that needed to know whether the
+   * mechanism was moving had to import a piece of chrome to ask.
+   */
+  public isPlaying: boolean = false;
   /** Playback rate relative to real time. 1 means one simulated second per second. */
   public animationSpeedMultiplier: number = 1;
   public joints: Joint[] = [];
@@ -470,7 +478,7 @@ export class MechanismService {
       return;
     }
     const wrapped = this.wrapTime(seconds);
-    this.animate(this.stepAtTime(wrapped), AnimationBarComponent.animate);
+    this.animate(this.stepAtTime(wrapped), this.isPlaying);
     // animate() treats any external call as a seek and snaps its clock to the
     // sample, so restore the sub-sample fraction afterwards — playback resumes
     // from exactly the held time, not the nearest sample.
@@ -2588,9 +2596,7 @@ export class MechanismService {
    * it was blended from.
    */
   currentTimeSeconds(): number {
-    return AnimationBarComponent.animate
-      ? this.playbackTimeSeconds
-      : this.timeAtStep(this.mechanismTimeStep);
+    return this.isPlaying ? this.playbackTimeSeconds : this.timeAtStep(this.mechanismTimeStep);
   }
 
   /** Fold a time back into [0, period) so playback and re-seeks loop cleanly. */
@@ -2624,7 +2630,7 @@ export class MechanismService {
     // itself had rewound.
     this.mechanismTimeStep = progress;
     if (animationState !== undefined) {
-      AnimationBarComponent.animate = animationState;
+      this.isPlaying = animationState;
       if (!animationState) {
         this.playbackTimeSeconds = this.timeAtStep(progress);
       }
@@ -2654,7 +2660,7 @@ export class MechanismService {
     // between the two.
     this.applyPose(progress, this.blendToNextSample(progress));
 
-    if (!AnimationBarComponent.animate) {
+    if (!this.isPlaying) {
       this.playbackClockMs = null;
       return;
     }
@@ -2802,7 +2808,7 @@ export class MechanismService {
    * zero, and that combination used to answer yes.
    */
   private atStartPose(): boolean {
-    if (AnimationBarComponent.animate) {
+    if (this.isPlaying) {
       return false;
     }
     if (!this.syncMechanisms && this.ownSeconds.some((seconds) => seconds !== 0)) {
@@ -2889,7 +2895,7 @@ export class MechanismService {
    * many samples the cycle was solved into.
    */
   private advancePlayback() {
-    if (!AnimationBarComponent.animate) {
+    if (!this.isPlaying) {
       this.playbackClockMs = null;
       return;
     }
@@ -2937,20 +2943,20 @@ export class MechanismService {
   /** Put one machine at a time in its own cycle. Only meaningful while unsynced. */
   seekMechanism(index: number, seconds: number): void {
     this.ownSeconds[index] = seconds;
-    this.animate(this.mechanismTimeStep, AnimationBarComponent.animate);
+    this.animate(this.mechanismTimeStep, this.isPlaying);
   }
 
   isMechanismPlaying(index: number): boolean {
-    return this.syncMechanisms ? AnimationBarComponent.animate : !!this.ownPlaying[index];
+    return this.syncMechanisms ? this.isPlaying : !!this.ownPlaying[index];
   }
 
   toggleMechanismPlaying(index: number): void {
     this.ownPlaying[index] = !this.ownPlaying[index];
     // The frame loop is shared, so it has to be running for any machine to move.
     if (this.ownPlaying.some(Boolean)) {
-      AnimationBarComponent.animate = true;
+      this.isPlaying = true;
     }
-    this.animate(this.mechanismTimeStep, AnimationBarComponent.animate);
+    this.animate(this.mechanismTimeStep, this.isPlaying);
   }
 
   /**
@@ -2966,10 +2972,10 @@ export class MechanismService {
     }
     if (!sync) {
       this.ownSeconds = this.mechanisms.map((_, index) => this.secondsOf(index));
-      this.ownPlaying = this.mechanisms.map(() => AnimationBarComponent.animate);
+      this.ownPlaying = this.mechanisms.map(() => this.isPlaying);
     }
     this.syncMechanisms = sync;
-    this.animate(this.mechanismTimeStep, AnimationBarComponent.animate);
+    this.animate(this.mechanismTimeStep, this.isPlaying);
   }
 
   getJointCSSClass(joint: Joint) {
