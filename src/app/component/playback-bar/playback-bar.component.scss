@@ -80,15 +80,19 @@
     width: 40px;
     height: 40px;
     flex: 0 0 auto;
-    border: 1px solid #dfe1ea;
+    border: none;
     border-radius: 6px;
-    background: #fff;
+    background: transparent;
     color: #5f6368;
     font-family: inherit;
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
     padding: 0;
+
+    &:hover:not(:disabled) {
+      background: rgba(0, 0, 0, 0.04);
+    }
 
     &:disabled {
       color: #b7bac7;
@@ -176,29 +180,21 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 2px;
     height: 40px;
-    padding: 0 6px 0 8px;
+    min-width: 44px;
+    padding: 0 10px;
     flex: 0 0 auto;
-    border: 1px solid mat.m2-get-color-from-palette($primary-palette, 200);
+    border: none;
     border-radius: 6px;
-    background: var(--card-surface);
+    background: transparent;
     color: mat.m2-get-color-from-palette($primary-palette, 500);
     font-family: inherit;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
 
-    .mechChipCaret {
-      width: 16px;
-      height: 16px;
-      font-size: 16px;
-      line-height: 16px;
-    }
-
     &:hover {
-      background: #eef1fc;
-      border-color: mat.m2-get-color-from-palette($primary-palette, 500);
+      background: rgba(0, 0, 0, 0.04);
     }
 
     &.selected {
@@ -211,15 +207,11 @@
     // thing for it to select.
     &.plain {
       font-size: 13px;
-      padding: 0 8px;
       cursor: default;
-      border-color: transparent;
-      background: #f0f1f5;
-      color: #2c2c2c;
+      color: #5f6368;
 
       &:hover {
-        background: #f0f1f5;
-        border-color: transparent;
+        background: transparent;
       }
     }
   }
@@ -351,12 +343,16 @@
     width: 40px;
     height: 40px;
     flex: 0 0 auto;
-    border: 1px solid #dfe1ea;
+    border: none;
     border-radius: 6px;
-    background: #fff;
+    background: transparent;
     color: #5f6368;
     cursor: pointer;
     padding: 0;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
 
     mat-icon {
       width: 18px;

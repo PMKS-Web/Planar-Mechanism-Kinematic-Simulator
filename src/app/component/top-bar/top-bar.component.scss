@@ -11,6 +11,7 @@
     position: absolute;
     top: nav.$card-inset;
     left: nav.$card-inset;
+    right: nav.$card-inset;
     right: 12px;
     display: flex;
     align-items: flex-start;
@@ -57,12 +58,15 @@
       overflow: hidden;
     }
 
-    // Beside the modes rather than pinned to the far edge, so the three cards
-    // read as one group instead of two things at opposite ends of the window.
+    // Against the right edge, with the slack between it and the modes. The
+    // status chips change width as a mechanism becomes ready, and with this
+    // card packed against the modes that made Undo and Redo shuffle sideways
+    // every time. The gap is what moves now.
     .historyCard {
       gap: 6px;
       padding: 0 6px;
       flex: 0 0 auto;
+      margin-left: auto;
     }
   }
 

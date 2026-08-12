@@ -2863,7 +2863,20 @@ export class MechanismService {
    */
   easeToStart(durationMs = 220): void {
     if (this.atStartPose()) return;
+    const samples = this.masterMechanism()?.joints.length ?? 0;
+    if (samples < 2) {
+      this.animate(0, false);
+      return;
+    }
     const from = this.mechanismTimeStep;
+    // Whichever way round is shorter. The cycle is closed, so the last sample
+    // is the start's neighbour: from near the end of it, running backwards
+    // through the whole cycle to reach a pose one step away reads as the
+    // machine bolting.
+    const back = -from;
+    const forward = samples - from;
+    const delta = forward < from ? forward : back;
+
     this.isPlaying = false;
     let startedAt: number | null = null;
     let lastDrawn = from;
@@ -2876,7 +2889,7 @@ export class MechanismService {
       const t = Math.min(1, (now - startedAt) / durationMs);
       // Ease out: quick off the pose being left, gentle into the start.
       const eased = 1 - (1 - t) ** 3;
-      const next = Math.round(from * (1 - eased));
+      const next = Math.round(from + eased * delta) % samples;
       // The first frame is the pose already on screen, and at 60 fps over a
       // fifth of a second several later ones round to the same sample.
       if (next !== lastDrawn) {
@@ -3132,6 +3145,9 @@ export class MechanismService {
     if (this.isInSelectedMechanism(joint)) {
       return 'joint-selected';
     }
+    if (this.isInHoveredMechanism(joint)) {
+      return 'joint-highlight';
+    }
     if (joint.showHighlight) {
       return 'joint-highlight';
     } else {
@@ -3144,7 +3160,26 @@ export class MechanismService {
     if (this.activeObjService.objType !== 'Mechanism') {
       return false;
     }
-    const partition = this.partitions[this.activeObjService.selectedMechanismIndex];
+    return this.isInPartition(part, this.activeObjService.selectedMechanismIndex);
+  }
+
+  /**
+   * Which machine the reader is pointing at without having picked it yet.
+   *
+   * The transport names machines M1, M2, M3 and there is nothing in those
+   * names to say which is which. Pointing at one lights it up on the canvas,
+   * so the answer is available before committing to a selection.
+   */
+  hoveredMechanismIndex = -1;
+
+  private isInHoveredMechanism(part: Joint | Link): boolean {
+    return this.hoveredMechanismIndex >= 0
+      ? this.isInPartition(part, this.hoveredMechanismIndex)
+      : false;
+  }
+
+  private isInPartition(part: Joint | Link, index: number): boolean {
+    const partition = this.partitions[index];
     if (!partition) {
       return false;
     }
@@ -3163,6 +3198,9 @@ export class MechanismService {
     }
     if (this.isInSelectedMechanism(link)) {
       return 'link-selected';
+    }
+    if (this.isInHoveredMechanism(link)) {
+      return 'link-hovered';
     }
     return 'link-default';
   }

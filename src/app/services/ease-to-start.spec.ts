@@ -11,15 +11,18 @@ interface Stub {
   mechanismTimeStep: number;
   isPlaying: boolean;
   atStartPose(): boolean;
+  masterMechanism(): { joints: unknown[] };
   animate(step: number, playing: boolean): void;
 }
 
-function drive(from: number, interrupt?: (frame: number, stub: Stub) => void) {
+/** `samples` is the length of the solved cycle, which decides the short way. */
+function drive(from: number, interrupt?: (frame: number, stub: Stub) => void, samples = 361) {
   const drawn: number[] = [];
   const stub: Stub = {
     mechanismTimeStep: from,
     isPlaying: true,
     atStartPose: () => stub.mechanismTimeStep === 0,
+    masterMechanism: () => ({ joints: new Array(samples) }),
     animate: (step) => {
       stub.mechanismTimeStep = step;
       drawn.push(step);
@@ -56,6 +59,17 @@ describe('MechanismService easing back to the start of the cycle', () => {
     expect(stub.mechanismTimeStep).toBe(0);
     // Monotonic: a rewind that overshoots and comes back is its own glitch.
     expect(drawn.every((step, i) => i === 0 || step <= drawn[i - 1])).toBe(true);
+  });
+
+  it('goes forward to the start when forward is the shorter way round', () => {
+    // The cycle is closed, so from near its end the start is a step away. Going
+    // backwards through the whole of it to reach the neighbouring pose reads as
+    // the machine bolting.
+    const { drawn, stub } = drive(340);
+
+    expect(drawn[0]).toBeGreaterThan(340);
+    expect(drawn.some((step) => step > 350)).toBe(true);
+    expect(stub.mechanismTimeStep).toBe(0);
   });
 
   it('stops playback before the first frame, not after the last', () => {

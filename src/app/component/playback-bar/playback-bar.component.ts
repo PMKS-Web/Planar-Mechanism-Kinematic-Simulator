@@ -61,6 +61,7 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
   private positionSub?: Subscription;
   private dragging = false;
   private wasAnimating = false;
+  private wasRowAnimating = false;
 
   constructor(
     public mechanism: MechanismService,
@@ -142,7 +143,7 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
           time: this.format(now),
           scrub: this.trackPosition(lead.mechanism, now, period),
           clockwise: this.drivenSpeedOf(lead.mechanism) < 0,
-          note: this.noteFor(lead.mechanism, now, lead.index),
+          note: runnable.length === 1 ? this.noteFor(lead.mechanism, now, lead.index) : '',
           playing: this.playing,
           ownPlay: false,
           period,
@@ -172,20 +173,79 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
   /**
    * Where along the track to draw the handle.
    *
-   * The handle carries the direction: a clockwise input runs it left to right,
-   * a counter-clockwise one right to left. A machine that reverses runs it out
-   * and back, because its input does -- its samples go to the limit and return
-   * as one cycle, so reading the handle off position in that array would send
-   * it round and round, which is the one thing the reversal was worth showing
-   * instead of.
+   * The track is the input's position, not the clock. A reader watching a ram
+   * extend expects the handle to travel with it and come back with it; a reader
+   * watching a crank expects it to sweep once per turn. Reading it off the
+   * clock got the second right and the first wrong, because a ram's cycle
+   * spends its second half undoing its first, and the handle carried on to the
+   * right through both. Time is still what the machine is *at* -- it is just
+   * not what the handle measures.
    */
   private trackPosition(mechanism: Mechanism, seconds: number, period: number): number {
+    return Math.round(this.alongTravel(mechanism, seconds, period) * 1000);
+  }
+
+  /** 0..1 along the input's own travel, at this time. */
+  private alongTravel(mechanism: Mechanism, seconds: number, period: number): number {
     const fraction = period > 0 ? Math.min(Math.max(seconds / period, 0), 1) : 0;
-    if (this.isReciprocating(mechanism)) {
-      return Math.round((fraction <= 0.5 ? fraction * 2 : (1 - fraction) * 2) * 1000);
+    const profile = this.travelProfile(mechanism);
+    if (profile) {
+      const sample = Math.min(Math.round(fraction * (profile.length - 1)), profile.length - 1);
+      return profile[sample];
     }
-    const along = this.drivenSpeedOf(mechanism) < 0 ? fraction : 1 - fraction;
-    return Math.round(along * 1000);
+    // A rotary drive turns at a constant rate, so its angle and its clock are
+    // the same number twice -- but which end of the track it starts from is the
+    // direction it turns.
+    return this.drivenSpeedOf(mechanism) < 0 ? fraction : 1 - fraction;
+  }
+
+  /**
+   * Where a linear input sits along its stroke, sample by sample, as 0..1.
+   *
+   * Only for a linear input: a slider or a ram has a position that a reader can
+   * see, and the handle is worth nothing if it disagrees with it. Undefined for
+   * a rotary drive, whose angle the clock already tracks.
+   */
+  private travelProfile(mechanism: Mechanism): number[] | undefined {
+    if (this.profileOf.get(mechanism) !== undefined) {
+      return this.profileOf.get(mechanism) ?? undefined;
+    }
+    const profile = this.buildTravelProfile(mechanism);
+    this.profileOf.set(mechanism, profile ?? null);
+    return profile;
+  }
+
+  private profileOf = new WeakMap<Mechanism, number[] | null>();
+
+  private buildTravelProfile(mechanism: Mechanism): number[] | undefined {
+    const frames = mechanism.joints;
+    const first = frames[0] ?? [];
+    const at = first.findIndex((joint) => joint instanceof PrisJoint && (joint as RealJoint).input);
+    if (at === -1 || frames.length < 2) {
+      return undefined;
+    }
+    // Along the line the slider actually travels, taken from the two ends of
+    // its own path rather than from a stored angle -- a slot's rail and a
+    // ram's bore are described differently and this is true of both.
+    const start = frames[0][at];
+    const far = frames.reduce(
+      (best, frame) => {
+        const d = Math.hypot(frame[at].x - start.x, frame[at].y - start.y);
+        return d > best.d ? { d, x: frame[at].x, y: frame[at].y } : best;
+      },
+      { d: 0, x: start.x, y: start.y }
+    );
+    if (!(far.d > 0)) return undefined;
+    const ux = (far.x - start.x) / far.d;
+    const uy = (far.y - start.y) / far.d;
+
+    const along = frames.map(
+      (frame) => (frame[at].x - start.x) * ux + (frame[at].y - start.y) * uy
+    );
+    const low = Math.min(...along);
+    const span = Math.max(...along) - low;
+    if (!(span > 0)) return undefined;
+    return along.map((value) => (value - low) / span);
   }
 
   /**
@@ -247,6 +307,11 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Light the machine up on the canvas while the reader points at its name. */
+  hoverMechanism(row: PlaybackRow, over: boolean): void {
+    this.mechanism.hoveredMechanismIndex = over && row.index >= 0 ? row.index : -1;
+  }
+
   isSelected(row: PlaybackRow): boolean {
     return (
       this.activeObj.getSelectedObjType() === 'Mechanism' &&
@@ -259,28 +324,54 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Drag a row's handle without stopping the animation.
+   * Drag a row's handle to a position, and let the clock follow.
    *
-   * The handle is the drive's position, so on a reversing machine the same
-   * place on the track means two different times — the way out and the way
-   * back. Dragging keeps whichever leg it was already on.
+   * The handle is the input's position, and a machine that turns around passes
+   * every position twice -- once on the way out and once on the way back. The
+   * drag keeps whichever leg it was already on, so pulling the handle back does
+   * not jump the machine to the other half of its cycle.
    */
   scrubRow(row: PlaybackRow, event: Event): void {
     const along = Number((event.target as HTMLInputElement).value) / 1000;
     const source =
       row.index === -1 ? this.mechanism.mechanisms[0] : this.mechanism.mechanisms[row.index];
-    let fraction = along;
-    if (source && this.isReciprocating(source)) {
-      const wasReturning = this.mechanism.secondsOf(Math.max(row.index, 0)) / row.period > 0.5;
-      fraction = wasReturning ? 1 - along / 2 : along / 2;
-    } else if (source && this.drivenSpeedOf(source) >= 0) {
-      fraction = 1 - along;
-    }
+    if (!source) return;
+    const now = this.mechanism.secondsOf(Math.max(row.index, 0));
+    const seconds = this.timeAtTravel(source, along, row.period, now);
     if (row.index === -1) {
-      this.mechanism.animate(this.mechanism.stepAtTime(fraction * row.period), this.playing);
+      this.mechanism.animate(this.mechanism.stepAtTime(seconds), this.playing);
       return;
     }
-    this.mechanism.seekMechanism(row.index, fraction * row.period);
+    this.mechanism.seekMechanism(row.index, seconds);
+  }
+
+  /**
+   * The time at which the input sits this far along its travel.
+   *
+   * Searched rather than inverted: the mapping is a sampled curve, not a
+   * formula, and on a machine that turns around it is not one-to-one. Ties go
+   * to the leg the machine is already on.
+   */
+  private timeAtTravel(mechanism: Mechanism, along: number, period: number, now: number): number {
+    const profile = this.travelProfile(mechanism);
+    if (!profile) {
+      const forward = this.drivenSpeedOf(mechanism) < 0 ? along : 1 - along;
+      return forward * period;
+    }
+    const wasReturning = period > 0 && now / period > 0.5;
+    let best = 0;
+    let bestCost = Infinity;
+    profile.forEach((value, sample) => {
+      const onReturnLeg = sample > (profile.length - 1) / 2;
+      // Half a step of preference for the leg it is on: enough to break a tie,
+      // never enough to pick a position the reader did not ask for.
+      const cost = Math.abs(value - along) + (onReturnLeg === wasReturning ? 0 : 0.001);
+      if (cost < bestCost) {
+        bestCost = cost;
+        best = sample;
+      }
+    });
+    return (best / (profile.length - 1)) * period;
   }
 
   /**
@@ -335,14 +426,32 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     this.mechanism.reverseDrive(row.index);
   }
 
-  onScrubDown(): void {
+  /**
+   * Dragging one machine's handle stops that machine, not the drawing.
+   *
+   * The rows have their own clocks precisely so they can be read apart; pausing
+   * everything to scrub one of them threw that away.
+   */
+  onScrubDown(row?: PlaybackRow): void {
     this.dragging = true;
+    if (row && row.ownPlay && row.index >= 0) {
+      this.wasRowAnimating = this.mechanism.isMechanismPlaying(row.index);
+      if (this.wasRowAnimating) this.mechanism.toggleMechanismPlaying(row.index);
+      return;
+    }
     this.wasAnimating = this.mechanism.isPlaying;
     this.mechanism.isPlaying = false;
   }
 
-  onScrubUp(): void {
+  onScrubUp(row?: PlaybackRow): void {
     this.dragging = false;
+    if (row && row.ownPlay && row.index >= 0) {
+      if (this.wasRowAnimating && !this.mechanism.isMechanismPlaying(row.index)) {
+        this.mechanism.toggleMechanismPlaying(row.index);
+      }
+      this.wasRowAnimating = false;
+      return;
+    }
     if (this.wasAnimating) {
       this.mechanism.isPlaying = true;
       this.mechanism.animate(this.mechanism.mechanismTimeStep, true);

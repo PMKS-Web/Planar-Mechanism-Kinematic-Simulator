@@ -72,6 +72,12 @@
     stroke: mat.m2-get-color-from-palette($accent-palette, 400);
   }
 
+  // Pointed at from the transport, not picked: enough to say which machine is
+  // which, not enough to be mistaken for a selection.
+  .link-hovered {
+    stroke: mat.m2-get-color-from-palette($accent-palette, 200);
+  }
+
   #mouseLocation {
     position: absolute;
     top: 35px;
