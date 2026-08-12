@@ -61,7 +61,7 @@ const shot = (name) =>
   page.screenshot({ path: path.join(screenshotDir, `${runPrefix}-${name}`), fullPage: false });
 
 const tab = (label) => page.locator('.tabButton', { hasText: label });
-const timeValue = () => page.locator('#animationBar-input').inputValue();
+const timeValue = () => page.locator('#playbackTime').innerText();
 /** The value carries its own unit, so read the leading number off "0.20 s". */
 const timeSeconds = async () => parseFloat(await timeValue());
 const currentTab = () =>
@@ -320,7 +320,7 @@ try {
     };
     return {
       playVisible: inView('.playButton'),
-      timeVisible: inView('#animationBar-input'),
+      timeVisible: inView('#playbackTime'),
       viewControlsVisible: inView('.viewControls'),
       transportClearsStatusStrip: clears('app-playback-bar .scrubCard'),
       viewControlsClearStatusStrip: clears('.viewControls'),

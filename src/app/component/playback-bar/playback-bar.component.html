@@ -65,20 +65,15 @@
               />
             </div>
             <div class="rowLabels">
-              <!-- Reads as the mock's plain text and still takes a typed time,
-                   which the mock had no way to do. -->
-              <input
-                class="rowTime"
-                [id]="row.master ? 'animationBar-input' : null"
-                type="text"
-                [disabled]="!canPlay"
-                [ngModel]="row.master ? timeDisplay : row.time"
-                (ngModelChange)="timeDisplay = $event"
-                [ngModelOptions]="{ standalone: true }"
-                [readOnly]="!row.master"
-                (blur)="onTimeSubmit()"
-                (keydown.enter)="onTimeSubmit()"
-              />
+              <!-- Where the input is, and how long it has been going. Read
+                   only: the handle is how you move it, and a typed time is a
+                   question about a coordinate the transport no longer uses. -->
+              @if (row.position) {
+                <span class="rowPosition" [id]="row.master ? 'playbackPosition' : null">{{
+                  row.position
+                }}</span>
+              }
+              <span class="rowTime" [id]="row.master ? 'playbackTime' : null">{{ row.time }}</span>
               <span class="rowNote">{{ row.note }}</span>
             </div>
           </div>

@@ -248,12 +248,12 @@ await page.screenshot({ path: `${OUT}/05-settings-panel.png`, fullPage: true });
 await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
 await page.waitForTimeout(700);
 
-const timeInput = page.locator('#animationBar-input');
-// The field used to be sized against the Play button because both stacked in
-// one narrow rail column. They are in separate cards now, so what is left to
-// hold is that the field stays inside the card it lives in -- a field wide
-// enough for a long time value but wider than its card is the failure that
-// sizing rule was there to prevent.
+const timeInput = page.locator('#playbackTime');
+// A readout now rather than a field -- the handle measures the input's
+// position, and a typed time is a question about a coordinate the transport no
+// longer uses. What is left to hold is that it stays inside the card it lives
+// in: a readout wide enough for a long value but wider than its card is the
+// failure the old sizing rule was there to prevent.
 const metrics = await timeInput.evaluate((el) => {
   const card = el.closest('.scrubCard');
   const field = el.getBoundingClientRect();
@@ -265,7 +265,7 @@ const metrics = await timeInput.evaluate((el) => {
   };
 });
 check(
-  'Time field stays inside the transport card it sits in',
+  'Time readout stays inside the transport card it sits in',
   metrics.fieldWidth > 0 && metrics.overflowLeft <= 0 && metrics.overflowRight <= 0,
   `field=${metrics.fieldWidth}px, spill left=${metrics.overflowLeft}px right=${metrics.overflowRight}px`
 );

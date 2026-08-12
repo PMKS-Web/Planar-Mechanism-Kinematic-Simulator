@@ -7,7 +7,8 @@ import { ActiveObjService } from '../../services/active-obj.service';
 import { SelectedTabService } from '../../selected-tab.service';
 import { TimeUnit } from '../../model/utils';
 import { Mechanism } from '../../model/mechanism/mechanism';
-import { PrisJoint, RealJoint } from '../../model/joint';
+import { RealJoint } from '../../model/joint';
+import { MODEL_SCALE } from '../../model/render-scale';
 
 /** One line in the transport: a machine, or all of them together. */
 export interface PlaybackRow {
@@ -18,8 +19,10 @@ export interface PlaybackRow {
   isMechanism: boolean;
   /** The line the shared scrubber and the time field belong to. */
   master: boolean;
-  /** Where this machine is in its own cycle, as text. */
+  /** How long this machine has been going, from its start pose. */
   time: string;
+  /** Where its input is, in the input's own units. */
+  position: string;
   /**
    * 0–1000 along the track.
    *
@@ -57,7 +60,6 @@ export interface PlaybackRow {
   standalone: false,
 })
 export class PlaybackBarComponent implements OnInit, OnDestroy {
-  timeDisplay = '';
   private positionSub?: Subscription;
   private dragging = false;
   private wasAnimating = false;
@@ -72,14 +74,9 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // Seed it: the subject only emits when the pose moves, so a mechanism
-    // sitting at zero would show an empty time until something played.
-    this.timeDisplay = this.format(this.mechanism.currentTimeSeconds());
-    this.positionSub = this.mechanism.onMechPositionChange.subscribe(() => {
-      // Playback sits between samples, so read the drawn time rather than the
-      // time of the sample it was blended from.
-      this.timeDisplay = this.format(this.mechanism.currentTimeSeconds());
-    });
+    // The rows are rebuilt from the service on every change detection, and the
+    // pose moving is what has to trigger one.
+    this.positionSub = this.mechanism.onMechPositionChange.subscribe(() => undefined);
   }
 
   ngOnDestroy(): void {
@@ -130,122 +127,74 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
       return [];
     }
 
+    // Synced, the machines are started and stopped together and there is one
+    // answer about what is running -- but not one answer about where anything
+    // is, because each measures a different thing. The combined row follows the
+    // first machine and says nothing about direction.
     if (this.mechanism.syncMechanisms) {
-      const period = this.mechanism.cyclePeriod() || 1;
-      const now = this.mechanism.currentTimeSeconds();
       const lead = runnable[0];
-      return [
-        {
-          id: runnable.length === 1 ? (this.mechanism.partitions[lead.index]?.id ?? 'M1') : 'All',
-          index: runnable.length === 1 ? lead.index : -1,
-          isMechanism: runnable.length === 1,
-          master: true,
-          time: this.format(now),
-          scrub: this.trackPosition(lead.mechanism, now, period),
-          clockwise: this.drivenSpeedOf(lead.mechanism) < 0,
-          note: runnable.length === 1 ? this.noteFor(lead.mechanism, now, lead.index) : '',
-          playing: this.playing,
-          ownPlay: false,
-          period,
-        },
-      ];
+      const alone = runnable.length === 1;
+      return [this.rowFor(lead.index, true, false, alone ? undefined : 'All')];
     }
 
-    return runnable.map(({ mechanism, index }, position) => {
-      const period = mechanism.cyclePeriod || 1;
-      const local = this.mechanism.secondsOf(index);
-      return {
-        id: this.mechanism.partitions[index]?.id ?? `M${index + 1}`,
-        index,
-        isMechanism: true,
-        master: position === 0,
-        time: this.format(local),
-        scrub: this.trackPosition(mechanism, local, period),
-        clockwise: this.drivenSpeedOf(mechanism) < 0,
-        note: this.noteFor(mechanism, local, index),
-        playing: this.mechanism.isMechanismPlaying(index),
-        ownPlay: runnable.length > 1,
-        period,
-      };
+    return runnable.map(({ index }, position) =>
+      this.rowFor(index, position === 0, runnable.length > 1)
+    );
+  }
+
+  private rowFor(index: number, master: boolean, ownPlay: boolean, name?: string): PlaybackRow {
+    const mechanism = this.mechanism.mechanisms[index];
+    const seconds = this.mechanism.secondsOf(index);
+    const combined = name !== undefined;
+    return {
+      id: name ?? this.mechanism.partitions[index]?.id ?? `M${index + 1}`,
+      index: combined ? -1 : index,
+      isMechanism: !combined,
+      master,
+      time: this.format(seconds),
+      position: combined ? '' : this.positionLabel(index),
+      scrub: Math.round((this.mechanism.travelOf(index) ?? 0) * 1000),
+      clockwise: this.drivenSpeedOf(mechanism) < 0,
+      note: combined ? '' : this.noteFor(index),
+      playing: this.mechanism.isMechanismPlaying(index),
+      ownPlay,
+      period: mechanism.cyclePeriod || 1,
+    };
+  }
+
+  /**
+   * Where the input is, in the units the input is measured in.
+   *
+   * The handle says how far along; this says how far along *what*. A crank
+   * reads in degrees of its own turn, a ram in the length its rod has come out.
+   */
+  private positionLabel(index: number): string {
+    const profile = this.mechanism.driveProfileOf(index);
+    const along = this.mechanism.travelOf(index);
+    if (!profile || along === undefined) {
+      return '';
+    }
+    if (!profile.linear) {
+      return `${Math.round(along * 360)}\u00b0`;
+    }
+    const stroke = this.strokeLength(index);
+    return stroke === undefined
+      ? `${Math.round(along * 100)}%`
+      : this.nup.formatValueAndUnit(along * stroke, this.settings.lengthUnit.value);
+  }
+
+  /** How far the input slide travels end to end, in the drawing's own units. */
+  private strokeLength(index: number): number | undefined {
+    const mechanism = this.mechanism.mechanisms[index];
+    const frames = mechanism?.joints ?? [];
+    const at = frames[0]?.findIndex((joint) => (joint as RealJoint).input) ?? -1;
+    if (at === -1 || frames.length < 2) return undefined;
+    let far = 0;
+    frames.forEach((frame) => {
+      const d = Math.hypot(frame[at].x - frames[0][at].x, frame[at].y - frames[0][at].y);
+      if (d > far) far = d;
     });
-  }
-
-  /**
-   * Where along the track to draw the handle.
-   *
-   * The track is the input's position, not the clock. A reader watching a ram
-   * extend expects the handle to travel with it and come back with it; a reader
-   * watching a crank expects it to sweep once per turn. Reading it off the
-   * clock got the second right and the first wrong, because a ram's cycle
-   * spends its second half undoing its first, and the handle carried on to the
-   * right through both. Time is still what the machine is *at* -- it is just
-   * not what the handle measures.
-   */
-  private trackPosition(mechanism: Mechanism, seconds: number, period: number): number {
-    return Math.round(this.alongTravel(mechanism, seconds, period) * 1000);
-  }
-
-  /** 0..1 along the input's own travel, at this time. */
-  private alongTravel(mechanism: Mechanism, seconds: number, period: number): number {
-    const fraction = period > 0 ? Math.min(Math.max(seconds / period, 0), 1) : 0;
-    const profile = this.travelProfile(mechanism);
-    if (profile) {
-      const sample = Math.min(Math.round(fraction * (profile.length - 1)), profile.length - 1);
-      return profile[sample];
-    }
-    // A rotary drive turns at a constant rate, so its angle and its clock are
-    // the same number twice -- but which end of the track it starts from is the
-    // direction it turns.
-    return this.drivenSpeedOf(mechanism) < 0 ? fraction : 1 - fraction;
-  }
-
-  /**
-   * Where a linear input sits along its stroke, sample by sample, as 0..1.
-   *
-   * Only for a linear input: a slider or a ram has a position that a reader can
-   * see, and the handle is worth nothing if it disagrees with it. Undefined for
-   * a rotary drive, whose angle the clock already tracks.
-   */
-  private travelProfile(mechanism: Mechanism): number[] | undefined {
-    if (this.profileOf.get(mechanism) !== undefined) {
-      return this.profileOf.get(mechanism) ?? undefined;
-    }
-    const profile = this.buildTravelProfile(mechanism);
-    this.profileOf.set(mechanism, profile ?? null);
-    return profile;
-  }
-
-  private profileOf = new WeakMap<Mechanism, number[] | null>();
-
-  private buildTravelProfile(mechanism: Mechanism): number[] | undefined {
-    const frames = mechanism.joints;
-    const first = frames[0] ?? [];
-    const at = first.findIndex((joint) => joint instanceof PrisJoint && (joint as RealJoint).input);
-    if (at === -1 || frames.length < 2) {
-      return undefined;
-    }
-    // Along the line the slider actually travels, taken from the two ends of
-    // its own path rather than from a stored angle -- a slot's rail and a
-    // ram's bore are described differently and this is true of both.
-    const start = frames[0][at];
-    const far = frames.reduce(
-      (best, frame) => {
-        const d = Math.hypot(frame[at].x - start.x, frame[at].y - start.y);
-        return d > best.d ? { d, x: frame[at].x, y: frame[at].y } : best;
-      },
-      { d: 0, x: start.x, y: start.y }
-    );
-    if (!(far.d > 0)) return undefined;
-    const ux = (far.x - start.x) / far.d;
-    const uy = (far.y - start.y) / far.d;
-
-    const along = frames.map(
-      (frame) => (frame[at].x - start.x) * ux + (frame[at].y - start.y) * uy
-    );
-    const low = Math.min(...along);
-    const span = Math.max(...along) - low;
-    if (!(span > 0)) return undefined;
-    return along.map((value) => (value - low) / span);
+    return far > 0 ? far / MODEL_SCALE : undefined;
   }
 
   /**
@@ -255,36 +204,13 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
    * other. "Reciprocating" said only that the machine was of a kind that turns
    * around, which is not something the reader needs told twice a cycle.
    */
-  private noteFor(mechanism: Mechanism, seconds: number, index: number): string {
-    const outward = this.travellingForward(mechanism, seconds, index);
-    if (this.isLinearInput(mechanism)) {
+  private noteFor(index: number): string {
+    const profile = this.mechanism.driveProfileOf(index);
+    const outward = this.mechanism.travellingForward(index);
+    if (profile?.linear) {
       return outward ? 'Extending' : 'Retracting';
     }
     return outward ? 'Clockwise' : 'CCW';
-  }
-
-  /**
-   * Whether the input is going the way its own drive speed says, right now.
-   *
-   * Two things can turn it around: the second half of a reversing machine's
-   * cycle, and playback being run backwards. Either one on its own flips the
-   * answer; both together cancel.
-   */
-  private travellingForward(mechanism: Mechanism, seconds: number, index: number): boolean {
-    const period = mechanism.cyclePeriod || 1;
-    const onReturnLeg = this.isReciprocating(mechanism) && seconds / period > 0.5;
-    const rewinding = this.mechanism.directionOf(Math.max(index, 0)) < 0;
-    const driveIsForward = this.drivenSpeedOf(mechanism) < 0;
-    return (driveIsForward !== onReturnLeg) !== rewinding;
-  }
-
-  /** A slider or cylinder drive, which extends rather than turns. */
-  private isLinearInput(mechanism: Mechanism): boolean {
-    return (
-      mechanism.joints[0]?.some(
-        (joint) => joint instanceof PrisJoint && (joint as RealJoint).input
-      ) ?? false
-    );
   }
 
   /** Only worth offering when there is more than one machine to get out of step. */
@@ -324,54 +250,22 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Drag a row's handle to a position, and let the clock follow.
+   * Drag a row's handle to a place along its input's travel.
    *
-   * The handle is the input's position, and a machine that turns around passes
-   * every position twice -- once on the way out and once on the way back. The
-   * drag keeps whichever leg it was already on, so pulling the handle back does
-   * not jump the machine to the other half of its cycle.
+   * The handle is a position, so this is a position. What time that is, is the
+   * service's problem -- and on a machine that turns back it is two times, one
+   * on each leg, which is why it is told where the machine is now.
    */
   scrubRow(row: PlaybackRow, event: Event): void {
     const along = Number((event.target as HTMLInputElement).value) / 1000;
-    const source =
-      row.index === -1 ? this.mechanism.mechanisms[0] : this.mechanism.mechanisms[row.index];
-    if (!source) return;
-    const now = this.mechanism.secondsOf(Math.max(row.index, 0));
-    const seconds = this.timeAtTravel(source, along, row.period, now);
+    const index = row.index === -1 ? this.mechanism.masterMechanismIndex() : row.index;
+    if (index === -1) return;
     if (row.index === -1) {
-      this.mechanism.animate(this.mechanism.stepAtTime(seconds), this.playing);
+      // The combined row stands for all of them, so all of them go.
+      this.mechanism.seekAllAlong(index, along);
       return;
     }
-    this.mechanism.seekMechanism(row.index, seconds);
-  }
-
-  /**
-   * The time at which the input sits this far along its travel.
-   *
-   * Searched rather than inverted: the mapping is a sampled curve, not a
-   * formula, and on a machine that turns around it is not one-to-one. Ties go
-   * to the leg the machine is already on.
-   */
-  private timeAtTravel(mechanism: Mechanism, along: number, period: number, now: number): number {
-    const profile = this.travelProfile(mechanism);
-    if (!profile) {
-      const forward = this.drivenSpeedOf(mechanism) < 0 ? along : 1 - along;
-      return forward * period;
-    }
-    const wasReturning = period > 0 && now / period > 0.5;
-    let best = 0;
-    let bestCost = Infinity;
-    profile.forEach((value, sample) => {
-      const onReturnLeg = sample > (profile.length - 1) / 2;
-      // Half a step of preference for the leg it is on: enough to break a tie,
-      // never enough to pick a position the reader did not ask for.
-      const cost = Math.abs(value - along) + (onReturnLeg === wasReturning ? 0 : 0.001);
-      if (cost < bestCost) {
-        bestCost = cost;
-        best = sample;
-      }
-    });
-    return (best / (profile.length - 1)) * period;
+    this.mechanism.seekMechanismTo(index, along);
   }
 
   /**
@@ -462,12 +356,5 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     const value = Number((event.target as HTMLInputElement).value);
     this.mechanism.animate(value, this.mechanism.isPlaying);
     this.settings.animating.next(value !== 0);
-  }
-
-  onTimeSubmit(): void {
-    const [ok, requested] = this.nup.parseTimeString(this.timeDisplay, TimeUnit.SECOND);
-    const clamped = Math.min(Math.max(ok ? requested : 0, 0), this.mechanism.cyclePeriod());
-    this.mechanism.animate(this.mechanism.stepAtTime(clamped), this.mechanism.isPlaying);
-    this.timeDisplay = this.format(this.mechanism.currentTimeSeconds());
   }
 }

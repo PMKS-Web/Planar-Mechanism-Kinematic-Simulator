@@ -17,6 +17,11 @@ import {
   structuralCylinderAt,
 } from '../model/cylinder';
 import { Force } from '../model/force';
+import {
+  DriveProfile,
+  driveProfileOf as buildDriveProfile,
+  sampleAlong,
+} from '../model/mechanism/drive-profile';
 import { Mechanism } from '../model/mechanism/mechanism';
 import {
   MechanismPartition,
@@ -134,9 +139,16 @@ export class MechanismService {
    * machine's cycle without the others moving.
    */
   syncMechanisms = true;
-  /** Each machine's own time, used only while unsynced. */
+  /**
+   * Each machine's own place in its own cycle, in seconds from its start pose.
+   *
+   * Always -- not only while unsynced. The machines were sharing one clock and
+   * one running flag, which is why pausing or scrubbing one of them moved the
+   * others. `syncMechanisms` decides how many rows the transport offers, and
+   * nothing else now.
+   */
   private ownSeconds: number[] = [];
-  /** Which machines are running, used only while unsynced. */
+  /** Which machines are running. */
   private ownPlaying: boolean[] = [];
   /**
    * Which way each machine's playback runs, +1 or -1.
@@ -151,6 +163,8 @@ export class MechanismService {
   private playbackDirection: number[] = [];
   private playbackFrameQueued = false;
   private advancingPlayback = false;
+  /** Set while one row is being seeked, so the seek does not spread. */
+  private seekingOneMechanism = false;
 
   constructor(
     public gridUtils: GridUtilsService,
@@ -401,7 +415,7 @@ export class MechanismService {
    * measured against: run every machine on the same wall clock and the master
    * timeline has to be long enough to hold the slowest of them.
    */
-  private masterMechanismIndex(): number {
+  masterMechanismIndex(): number {
     let best = -1;
     let longest = -1;
     this.mechanisms.forEach((mechanism, index) => {
@@ -2646,6 +2660,14 @@ export class MechanismService {
     // kept showing the time the mechanism had been left at while the mechanism
     // itself had rewound.
     this.mechanismTimeStep = progress;
+    // The pose applier reads each machine's own clock now, so a seek has to put
+    // those clocks where the caller asked. A seek through here means the whole
+    // drawing -- a rewind, a URL restore, the shared scrubber -- so every
+    // machine goes. The playback loop has already moved them and says so; so
+    // does a row being scrubbed on its own.
+    if (!this.advancingPlayback && !this.seekingOneMechanism) {
+      this.seekAllTo(this.timeAtStep(progress));
+    }
     if (animationState !== undefined) {
       this.isPlaying = animationState;
       if (!animationState) {
@@ -2707,11 +2729,7 @@ export class MechanismService {
     const seconds =
       this.timeAtStep(step) + blend * (this.timeAtStep(step + 1) - this.timeAtStep(step));
     this.mechanisms.forEach((frames, index) => {
-      this.applyMechanismPose(
-        frames,
-        this.partitions[index],
-        this.syncMechanisms ? seconds : (this.ownSeconds[index] ?? 0)
-      );
+      this.applyMechanismPose(frames, this.partitions[index], this.ownSeconds[index] ?? 0);
     });
   }
 
@@ -2978,20 +2996,26 @@ export class MechanismService {
         elapsedSeconds * this.animationSpeedMultiplier * this.directionOf(0)
     );
 
-    // Unsynced, each running machine carries its own time forward. The shared
-    // clock still advances underneath, because the scrubber and the time field
-    // are measured against it.
-    if (!this.syncMechanisms) {
-      this.mechanisms.forEach((mechanism, index) => {
-        if (!this.ownPlaying[index] || !mechanism.isMechanismValid()) {
-          return;
-        }
-        const period = mechanism.cyclePeriod;
-        const next =
-          (this.ownSeconds[index] ?? 0) +
-          elapsedSeconds * this.animationSpeedMultiplier * this.directionOf(index);
-        this.ownSeconds[index] = period > 0 ? ((next % period) + period) % period : next;
-      });
+    // Every running machine carries its own time forward, off the same wall
+    // clock. Synced means they are started and stopped together, not that they
+    // share a variable -- two machines at different speeds have no shared
+    // position to share.
+    this.mechanisms.forEach((mechanism, index) => {
+      if (!this.isMechanismPlaying(index) || !mechanism.isMechanismValid()) {
+        return;
+      }
+      const period = mechanism.cyclePeriod;
+      const next =
+        (this.ownSeconds[index] ?? 0) +
+        elapsedSeconds * this.animationSpeedMultiplier * this.directionOf(index);
+      this.ownSeconds[index] = period > 0 ? ((next % period) + period) % period : next;
+    });
+
+    // The shared readout follows the master machine, which is the one the
+    // sample index and the graphs have always meant.
+    const master = this.masterMechanismIndex();
+    if (master !== -1) {
+      this.playbackTimeSeconds = this.ownSeconds[master] ?? this.playbackTimeSeconds;
     }
 
     this.advancingPlayback = true;
@@ -3042,6 +3066,94 @@ export class MechanismService {
     return true;
   }
 
+  /**
+   * Where one machine's input sits, out of everything it can do, 0..1.
+   *
+   * The transport's own coordinate. Cached against the solved Mechanism, so it
+   * is rebuilt exactly when the cycle is.
+   */
+  travelOf(index: number): number | undefined {
+    const mechanism = this.mechanisms[index];
+    const profile = this.driveProfileOf(index);
+    if (!mechanism || !profile) return undefined;
+    const period = mechanism.cyclePeriod;
+    const last = profile.along.length - 1;
+    if (!(period > 0) || last <= 0) return profile.along[0] ?? 0;
+    const fraction = Math.min(Math.max(this.secondsOf(index) / period, 0), 1);
+    return profile.along[Math.min(Math.round(fraction * last), last)];
+  }
+
+  /**
+   * Put every machine at the place the leader's input has reached.
+   *
+   * For the combined row, which stands for all of them: the machines are on one
+   * wall clock, so the time the leader is at is the time they are all at.
+   */
+  seekAllAlong(leader: number, along: number): void {
+    const mechanism = this.mechanisms[leader];
+    const profile = this.driveProfileOf(leader);
+    if (!mechanism || !profile) return;
+    const period = mechanism.cyclePeriod;
+    const last = profile.along.length - 1;
+    if (!(period > 0) || last <= 0) return;
+    const nearSample = Math.round(Math.min(Math.max(this.secondsOf(leader) / period, 0), 1) * last);
+    const sample = sampleAlong(profile, Math.min(Math.max(along, 0), 1), nearSample);
+    this.animate(this.stepAtTime((sample / last) * period), this.isPlaying);
+  }
+
+  /**
+   * Is this machine's input going the way its drive speed says, right now?
+   *
+   * Read off the profile's own slope rather than off the half-way point of the
+   * cycle: a ram does not turn around half way through its period, it turns
+   * around when it reaches the end of its stroke, and those are not the same
+   * moment. Playback running backwards flips the answer again.
+   */
+  travellingForward(index: number): boolean {
+    const profile = this.driveProfileOf(index);
+    const mechanism = this.mechanisms[index];
+    const forwardDrive = (mechanism?.inputAngularVelocities[0] ?? 0) < 0;
+    const rewinding = this.directionOf(index) < 0;
+    if (!profile || !mechanism || profile.continuous) {
+      return forwardDrive !== rewinding;
+    }
+    const period = mechanism.cyclePeriod;
+    const last = profile.along.length - 1;
+    if (!(period > 0) || last <= 0) return forwardDrive !== rewinding;
+    const sample = Math.min(
+      Math.round(Math.min(Math.max(this.secondsOf(index) / period, 0), 1) * last),
+      last
+    );
+    const before = profile.along[Math.max(sample - 1, 0)];
+    const after = profile.along[Math.min(sample + 1, last)];
+    const rising = after >= before;
+    return rising !== rewinding;
+  }
+
+  /** Put one machine at a place along its input's travel. */
+  seekMechanismTo(index: number, along: number): void {
+    const mechanism = this.mechanisms[index];
+    const profile = this.driveProfileOf(index);
+    if (!mechanism || !profile) return;
+    const period = mechanism.cyclePeriod;
+    const last = profile.along.length - 1;
+    if (!(period > 0) || last <= 0) return;
+    const nearSample = Math.round(Math.min(Math.max(this.secondsOf(index) / period, 0), 1) * last);
+    const sample = sampleAlong(profile, Math.min(Math.max(along, 0), 1), nearSample);
+    this.seekMechanism(index, (sample / last) * period);
+  }
+
+  driveProfileOf(index: number): DriveProfile | undefined {
+    const mechanism = this.mechanisms[index];
+    if (!mechanism) return undefined;
+    if (!this.profiles.has(mechanism)) {
+      this.profiles.set(mechanism, buildDriveProfile(mechanism) ?? null);
+    }
+    return this.profiles.get(mechanism) ?? undefined;
+  }
+
+  private profiles = new WeakMap<Mechanism, DriveProfile | null>();
+
   /** Which way this machine's playback is running: +1 forward, -1 backward. */
   directionOf(index: number): number {
     return this.playbackDirection[index] === -1 ? -1 : 1;
@@ -3061,26 +3173,58 @@ export class MechanismService {
 
   /** Where one machine is in its own cycle. */
   secondsOf(index: number): number {
-    if (this.syncMechanisms) {
-      const period = this.mechanisms[index]?.cyclePeriod ?? 0;
-      const now = this.currentTimeSeconds();
-      return period > 0 ? ((now % period) + period) % period : now;
-    }
     return this.ownSeconds[index] ?? 0;
   }
 
-  /** Put one machine at a time in its own cycle. Only meaningful while unsynced. */
+  /** Put one machine at a place in its own cycle, and leave the others alone. */
   seekMechanism(index: number, seconds: number): void {
-    this.ownSeconds[index] = seconds;
-    this.animate(this.mechanismTimeStep, this.isPlaying);
+    const period = this.mechanisms[index]?.cyclePeriod ?? 0;
+    const local = period > 0 ? ((seconds % period) + period) % period : seconds;
+    this.ownSeconds[index] = local;
+    // The sample index is the master machine's, and half the app reads it --
+    // the graphs, the URL, and the rule that says the editor is only open at
+    // the start pose. Moving the master without it left the drawing mid-cycle
+    // while everything else believed it was parked.
+    const step =
+      index === this.masterMechanismIndex() ? this.stepAtTime(local) : this.mechanismTimeStep;
+    this.seekingOneMechanism = true;
+    try {
+      this.animate(step, this.isPlaying);
+    } finally {
+      this.seekingOneMechanism = false;
+    }
   }
 
+  /**
+   * Put every machine at the same moment of the shared clock.
+   *
+   * Each in its own cycle: a machine whose cycle is shorter than the one the
+   * sample index is measured in wraps inside it rather than running out.
+   */
+  private seekAllTo(seconds: number): void {
+    this.mechanisms.forEach((mechanism, index) => {
+      if (!mechanism.isMechanismValid()) return;
+      const period = mechanism.cyclePeriod;
+      this.ownSeconds[index] = period > 0 ? ((seconds % period) + period) % period : seconds;
+    });
+  }
+
+  /**
+   * Is this machine running?
+   *
+   * Synced, one flag answers for all of them -- that is what synced means. Set
+   * them apart and each row answers for itself, and stopping one of them says
+   * nothing about the rest.
+   */
   isMechanismPlaying(index: number): boolean {
-    return this.syncMechanisms ? this.isPlaying : !!this.ownPlaying[index];
+    if (this.syncMechanisms) {
+      return this.isPlaying && (this.mechanisms[index]?.isMechanismValid() ?? false);
+    }
+    return !!this.ownPlaying[index];
   }
 
   toggleMechanismPlaying(index: number): void {
-    this.ownPlaying[index] = !this.ownPlaying[index];
+    this.ownPlaying[index] = !this.isMechanismPlaying(index);
     // The frame loop is shared, so it has to be running for any machine to move
     // -- and there is no reason for it to be running when none of them are. The
     // transport's own button reads this flag, so leaving it set with every row
@@ -3097,11 +3241,7 @@ export class MechanismService {
    */
   setAllPlaying(playing: boolean): void {
     this.isPlaying = playing;
-    if (!this.syncMechanisms) {
-      this.ownPlaying = this.mechanisms.map((mechanism) =>
-        playing && mechanism.isMechanismValid() ? true : false
-      );
-    }
+    this.ownPlaying = this.mechanisms.map((mechanism) => playing && mechanism.isMechanismValid());
     this.animate(this.mechanismTimeStep, playing);
   }
 
@@ -3116,11 +3256,15 @@ export class MechanismService {
     if (sync === this.syncMechanisms) {
       return;
     }
-    if (!sync) {
-      this.ownSeconds = this.mechanisms.map((_, index) => this.secondsOf(index));
-      this.ownPlaying = this.mechanisms.map(() => this.isPlaying);
-    }
     this.syncMechanisms = sync;
+    // Coming back to one row means one answer about what is running, so the
+    // machines are put back in step with each other -- not with a shared
+    // variable, which no longer exists, but with each other's play state.
+    if (sync) {
+      this.ownPlaying = this.mechanisms.map(
+        (mechanism) => this.isPlaying && mechanism.isMechanismValid()
+      );
+    }
     this.animate(this.mechanismTimeStep, this.isPlaying);
   }
 

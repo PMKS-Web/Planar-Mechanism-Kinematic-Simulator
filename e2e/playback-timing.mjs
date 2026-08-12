@@ -48,11 +48,24 @@ const shot = (name) =>
   page.screenshot({ path: path.join(screenshotDir, `${runPrefix}-${name}`), fullPage: false });
 
 const tab = (label) => page.locator('.tabButton', { hasText: label });
-const timeField = () => page.locator('#animationBar-input');
-const timeSeconds = async () =>
-  parseFloat((await timeField().inputValue()).replace(/[^\d.-]/g, ''));
+const timeField = () => page.locator('#playbackTime');
+const timeSeconds = async () => parseFloat((await timeField().innerText()).replace(/[^\d.-]/g, ''));
 
 const speedField = () => page.locator('input-block:has-text("Input Speed") input').first();
+
+/**
+ * Drag the handle to a place along the input's travel.
+ *
+ * The transport is a position now, not a clock: there is no time to type into,
+ * and the handle is how a reader moves the machine.
+ */
+const seekAlong = async (fraction) => {
+  await page.locator('#slider').evaluate((el, value) => {
+    el.value = String(Math.round(value * 1000));
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }, fraction);
+  await page.waitForTimeout(400);
+};
 
 // The transport only exists in the analysis modes, so its presence is how we
 // tell whether Kinematic is already open -- pressing the mode again is harmless
@@ -172,29 +185,21 @@ try {
   // --- Cycle length reported by the time field --------------------------------
   await setInputSpeed(20);
   await openKinematic();
-  await timeField().click();
-  await timeField().press('ControlOrMeta+A');
-  await timeField().type('99 s');
-  await timeField().press('Enter');
-  await page.waitForTimeout(400);
+  // Half way along the track is half a turn of the crank, which at 20 RPM is a
+  // second and a half. The far right end is not measured from: the track is a
+  // loop for a crank that goes all the way round, so its right edge is its left
+  // edge.
+  await seekAlong(0.5);
   const maxAt20 = await timeSeconds();
-  check(
-    'clamping past the end of the cycle reports the 3 s period at 20 RPM',
-    Math.abs(maxAt20 - 3) < 0.02,
-    {
-      maxAt20,
-    }
-  );
+  check('half the track is half a turn, which is 1.5 s at 20 RPM', Math.abs(maxAt20 - 1.5) < 0.05, {
+    maxAt20,
+  });
 
   await setInputSpeed(40);
   await openKinematic();
-  await timeField().click();
-  await timeField().press('ControlOrMeta+A');
-  await timeField().type('99 s');
-  await timeField().press('Enter');
-  await page.waitForTimeout(400);
+  await seekAlong(0.5);
   const maxAt40 = await timeSeconds();
-  check('the reported period halves at double the input speed', Math.abs(maxAt40 - 1.5) < 0.02, {
+  check('and takes half as long at double the input speed', Math.abs(maxAt40 - 0.75) < 0.05, {
     maxAt40,
   });
   await shot('02-period-at-40rpm.png');
@@ -208,11 +213,7 @@ try {
   await openKinematic();
   const zeroPose = await page.locator('svg').first().innerHTML();
 
-  await timeField().click();
-  await timeField().press('ControlOrMeta+A');
-  await timeField().type('1.5 s');
-  await timeField().press('Enter');
-  await page.waitForTimeout(400);
+  await seekAlong(0.5);
   const seekedTime = await timeSeconds();
   const seekedPose = await page.locator('svg').first().innerHTML();
 
