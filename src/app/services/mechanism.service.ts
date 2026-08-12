@@ -94,7 +94,7 @@ export class MechanismService {
    */
   public partitions: MechanismPartition[] = [];
   /** Geometry that is in no mechanism, and why. Reported, never solved. */
-  public unassigned: UnassignedGeometry = { floatingChains: [], looseJoints: [] };
+  public unassigned: UnassignedGeometry = { floatingChains: [], looseJoints: [], fixedLinks: [] };
   public showPathHolder: boolean = true;
 
   // private moveModes: moveModes = moveModes;
@@ -328,12 +328,33 @@ export class MechanismService {
     this.settingsService.isInputCW.next(signed < 0);
   }
 
+  /**
+   * Take the drive away from whatever currently has it in this joint's machine.
+   *
+   * One input per *mechanism*, not one per drawing. Clearing every input in the
+   * document -- which is what this used to do -- meant that driving a second
+   * linkage stopped the first, so two machines could never run at once however
+   * well the solver handled them.
+   */
+  private clearInputsSharingMechanismWith(joint: RealJoint): void {
+    const index = this.indexOfMechanismContaining(joint);
+    const scope = index === -1 ? this.joints : this.partitions[index].ownJoints;
+    scope.forEach((candidate) => {
+      if (candidate instanceof RealJoint && candidate.input && candidate.id !== joint.id) {
+        candidate.input = false;
+      }
+    });
+  }
+
   /** Which mechanism holds this joint, link or force — none, if it is unassigned. */
   indexOfMechanismContaining(part: Joint | Link | Force): number {
     const id = part.id;
+    // Owned, not merely referenced: a fixed bar between two frames puts its far
+    // end in both partitions, and that joint belongs to the machine it can
+    // actually move -- not to whichever partition was built first.
     return this.partitions.findIndex(
       (partition) =>
-        partition.joints.some((joint) => joint.id === id) ||
+        partition.ownJoints.some((joint) => joint.id === id) ||
         partition.links.some((link) => link.id === id) ||
         partition.forces.some((force) => force.id === id)
     );
@@ -1648,7 +1669,7 @@ export class MechanismService {
           return found ? this.cylinderName(found) : sliderId;
         },
         drivenRefusal: (part) => {
-          const driven = part.joints.find((joint) => joint instanceof RealJoint && joint.input);
+          const driven = part.ownJoints.find((joint) => joint instanceof RealJoint && joint.input);
           if (!driven) {
             return undefined;
           }
@@ -1714,8 +1735,16 @@ export class MechanismService {
             'One of these mechanisms has no determinate force-equilibrium model.'),
     });
 
+    // Only the links of machines that could actually be analysed. A massless
+    // bar in some unrelated -- or unassigned -- corner of the drawing used to
+    // block force analysis for a perfectly good mechanism.
+    const analysable = new Set(
+      this.partitions
+        .filter((_, index) => this.mechanisms[index]?.isMechanismValid())
+        .flatMap((partition) => partition.links.map((link) => link.id))
+    );
     const massless = this.links.filter(
-      (link) => link instanceof RealLink && !(link.mass > 0)
+      (link) => link instanceof RealLink && analysable.has(link.id) && !(link.mass > 0)
     ) as RealLink[];
     requirements.push({
       met: massless.length === 0,
@@ -1730,12 +1759,15 @@ export class MechanismService {
               )} still ${massless.length === 1 ? 'weighs' : 'weigh'} nothing. A massless link contributes no inertia, so a dynamic answer will not account for it. Set Link Mass in Mass Settings.`,
     });
 
+    // And a force has to be on one of them: a load attached to a linkage that
+    // cannot run says nothing about the one that can.
+    const loads = this.forces.filter((force) => analysable.has(force.link?.id));
     requirements.push({
-      met: this.forces.length > 0,
+      met: loads.length > 0,
       title: 'A load to react against',
       body:
-        this.forces.length > 0
-          ? `${this.forces.length} ${this.forces.length === 1 ? 'force is' : 'forces are'} applied.`
+        loads.length > 0
+          ? `${loads.length} ${loads.length === 1 ? 'force is' : 'forces are'} applied.`
           : 'Without an applied force the only load is the drive itself, so every reaction comes from it. Right-click a link and choose Attach Force to add one.',
     });
 
@@ -2096,10 +2128,8 @@ export class MechanismService {
     const sealed = target ?? this.cylinderAt(this.activeObjService.selectedLink);
     if (!sealed) return;
     if (!sealed.slider.input) {
-      // Only one input at a time, same as adjustInput.
-      this.joints.forEach((joint) => {
-        if (joint instanceof RealJoint && joint.input) joint.input = false;
-      });
+      // One input per mechanism, same as adjustInput.
+      this.clearInputsSharingMechanismWith(sealed.slider);
     }
     sealed.slider.input = !sealed.slider.input;
     this.updateMechanism();
@@ -2183,12 +2213,9 @@ export class MechanismService {
         NewGridComponent.sendNotification(refusal);
         return;
       }
-      // One input at a time, so the joint taking the job displaces the old one.
-      this.joints.forEach((j) => {
-        if (j instanceof RealJoint && j.input) {
-          j.input = false;
-        }
-      });
+      // One input per mechanism, so the joint taking the job displaces the old
+      // one -- in its own machine only.
+      this.clearInputsSharingMechanismWith(jointToToggleInput);
     }
 
     //Toggle the input joint
@@ -2743,11 +2770,33 @@ export class MechanismService {
     if (this.atStartPose() || !this.masterMechanism()?.joints[0]?.length) {
       return;
     }
-    this.applyPose(0, 0);
+    // Every machine at *its own* time zero, bypassing the clocks entirely.
+    // Going through applyPose would have honoured the private clocks while
+    // unsynced and left each mechanism wherever its own scrubber was -- and
+    // since this runs immediately before a rebuild deep-copies the editable
+    // joints as t = 0, that silently redefines the start pose as wherever
+    // playback happened to be. The pose then ratchets forward on every edit.
+    this.poseRevision++;
+    this.mechanisms.forEach((frames, index) => {
+      this.applyMechanismPose(frames, this.partitions[index], 0);
+    });
   }
 
+  /**
+   * Are the editable objects holding the pose a rebuild may treat as t = 0?
+   *
+   * Every clock has to be at zero, not just the shared one: while unsynced a
+   * row can be scrubbed away from the start with the shared step still reading
+   * zero, and that combination used to answer yes.
+   */
   private atStartPose(): boolean {
-    return this.mechanismTimeStep === 0 && !AnimationBarComponent.animate;
+    if (AnimationBarComponent.animate) {
+      return false;
+    }
+    if (!this.syncMechanisms && this.ownSeconds.some((seconds) => seconds !== 0)) {
+      return false;
+    }
+    return this.mechanismTimeStep === 0;
   }
 
   /**

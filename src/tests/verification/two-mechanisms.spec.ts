@@ -143,6 +143,43 @@ describe('two four-bars in one drawing', () => {
     expect(service.mechanisms[1].inputAngularVelocities[0]).toBeLessThan(0);
   });
 
+  it('takes the drive away only within the mechanism that gains it', () => {
+    // One input per *mechanism*, not one per drawing. Clearing every input in
+    // the document -- which is what this used to do -- meant driving a second
+    // linkage stopped the first, so two machines could never run at once
+    // however well the solver handled them.
+    const { service, active, first, second } = twoFourBars();
+    expect(second.joints[1].input).toBe(false);
+
+    active.updateSelectedObj(second.joints[1]);
+    service.adjustInput();
+
+    expect(second.joints[1].input).toBe(true);
+    // The other machine keeps its own.
+    expect(first.joints[0].input).toBe(true);
+    // And the one it displaced was its own former input.
+    expect(second.joints[0].input).toBe(false);
+  });
+
+  it('does not redefine the start pose when a machine is scrubbed off zero', () => {
+    // A rebuild deep-copies the editable joints as t = 0, so anything that
+    // leaves them mid-cycle silently ratchets the mechanism forward on every
+    // edit. Unsynced, each machine has a clock of its own, and the shared step
+    // can read zero while a row is scrubbed away from it.
+    const { service, first } = twoFourBars();
+    const rest = { x: first.joints[1].x, y: first.joints[1].y };
+
+    service.setSyncMechanisms(false);
+    service.seekMechanism(0, service.mechanisms[0].cyclePeriod / 3);
+    expect(Math.hypot(first.joints[1].x - rest.x, first.joints[1].y - rest.y)).toBeGreaterThan(0.1);
+
+    service.updateMechanism();
+
+    const startSample = service.mechanisms[0].joints[0].find((joint) => joint.id === 'B')!;
+    expect(startSample.x).toBeCloseTo(rest.x, 6);
+    expect(startSample.y).toBeCloseTo(rest.y, 6);
+  });
+
   it('moves both when the shared clock advances, each on its own frames', () => {
     const { service, first, second } = twoFourBars();
     const restAt = (joint: RealJoint) => ({ x: joint.x, y: joint.y });

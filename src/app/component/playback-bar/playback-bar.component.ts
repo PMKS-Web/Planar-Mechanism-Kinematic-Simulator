@@ -7,6 +7,7 @@ import { ActiveObjService } from '../../services/active-obj.service';
 import { SelectedTabService } from '../../selected-tab.service';
 import { TimeUnit } from '../../model/utils';
 import { Mechanism } from '../../model/mechanism/mechanism';
+import { RealJoint } from '../../model/joint';
 import { AnimationBarComponent } from '../animation-bar/animation-bar.component';
 
 /** One machine's line in the transport. */

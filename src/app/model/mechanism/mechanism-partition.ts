@@ -7,7 +7,18 @@ import { assignBodies, WORLD } from './bodies';
 export interface MechanismPartition {
   /** Derived, never stored: M1, M2… in a stable order. See `partitionMechanisms`. */
   id: string;
+  /** Everything the solver has to be handed, frame pieces included. */
   joints: Joint[];
+  /**
+   * The joints this mechanism is actually made of.
+   *
+   * A subset of `joints`: a machine has to be solved against frame it shares
+   * with others — a fixed bar between two frames, a rail a slider runs along —
+   * and the far ends of those pieces belong to whatever else is bolted to them.
+   * Ask this, not `joints`, whenever the question is "which of these is *mine*"
+   * — which input drives me, which joint do I own.
+   */
+  ownJoints: Joint[];
   links: Link[];
   forces: Force[];
 }
@@ -23,6 +34,8 @@ export interface UnassignedGeometry {
   floatingChains: { joints: Joint[]; links: Link[] }[];
   /** Joints with no link at all. */
   looseJoints: Joint[];
+  /** Bars pinned down at every joint: part of the frame, and part of no machine. */
+  fixedLinks: Link[];
 }
 
 export interface Partitioning {
@@ -93,11 +106,17 @@ export function partitionMechanisms(
     });
   });
 
-  const members = new Map<string, { joints: Set<Joint>; links: Set<Link> }>();
+  // `joints` is everything the solver has to be handed; `owned` is the subset
+  // this component is actually made of. They differ because a mechanism needs
+  // frame pieces -- an anchored bar its slider runs along, a fixed link between
+  // two frames -- whose far ends belong to some other machine entirely. Without
+  // the distinction those far ends look like this component's own joints, and a
+  // second linkage's driven joint gets picked up as this one's input.
+  const members = new Map<string, { joints: Set<Joint>; owned: Set<Joint>; links: Set<Link> }>();
   const memberOf = (component: string) => {
     let entry = members.get(component);
     if (!entry) {
-      entry = { joints: new Set(), links: new Set() };
+      entry = { joints: new Set(), owned: new Set(), links: new Set() };
       members.set(component, entry);
     }
     return entry;
@@ -112,7 +131,10 @@ export function partitionMechanisms(
     }
     const entry = memberOf(find(body));
     entry.links.add(link);
-    link.joints.forEach((joint) => entry.joints.add(joint));
+    link.joints.forEach((joint) => {
+      entry.joints.add(joint);
+      entry.owned.add(joint);
+    });
   });
 
   // An anchored bar is part of the world, which every machine shares. It is
@@ -182,6 +204,7 @@ export function partitionMechanisms(
         const body = bodyOf(link);
         if (body !== WORLD && members.has(find(body))) {
           memberOf(find(body)).joints.add(joint);
+          memberOf(find(body)).owned.add(joint);
         }
       });
     });
@@ -200,6 +223,7 @@ export function partitionMechanisms(
     return {
       id: `M${index + 1}`,
       joints: [...entry.joints],
+      ownJoints: [...entry.owned],
       links: partitionLinks,
       forces: forces.filter((force) => partitionLinks.some((link) => link.id === force.link?.id)),
     };
@@ -215,7 +239,14 @@ export function partitionMechanisms(
 
   const placed = new Set<Joint>();
   members.forEach((entry) => entry.joints.forEach((joint) => placed.add(joint)));
-  const looseJoints = joints.filter((joint) => !placed.has(joint));
+  // Loose means *no link*, which is a different situation from a bar fixed at
+  // both ends: that has links, cannot move, and belongs to no machine because
+  // there is no machine to belong to. Calling those joints loose told the
+  // reader to attach a link to something that already had one.
+  const looseJoints = joints.filter(
+    (joint) => !placed.has(joint) && (!(joint instanceof RealJoint) || joint.links.length === 0)
+  );
+  const fixedLinks = links.filter((link) => !placed.has(link.joints[0]) && link.joints.length > 0);
 
-  return { mechanisms, unassigned: { floatingChains, looseJoints } };
+  return { mechanisms, unassigned: { floatingChains, looseJoints, fixedLinks } };
 }

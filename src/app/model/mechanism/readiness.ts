@@ -110,7 +110,7 @@ export function readinessOf(
     case 'not-driven': {
       // Point at a joint that could actually take the job, so the button is an
       // answer rather than a place to start looking.
-      const candidate = partition.joints.find(
+      const candidate = partition.ownJoints.find(
         (joint) => joint instanceof RealJoint && canDrive(joint)
       );
       add({
@@ -166,7 +166,7 @@ export function readinessOf(
   // joint that was legitimately driven when it was switched on.
   const refusal = helpers.drivenRefusal(partition);
   if (refusal) {
-    const driven = partition.joints.find((joint) => joint instanceof RealJoint && joint.input);
+    const driven = partition.ownJoints.find((joint) => joint instanceof RealJoint && joint.input);
     add({
       state: 'blocker',
       title: 'The driven joint cannot be driven',
@@ -207,7 +207,7 @@ function factsOf(
   const dof = mechanism.dof;
   const facts: MechanismFact[] = [
     { label: 'Degrees of freedom', value: Number.isFinite(dof) ? String(dof) : '—' },
-    { label: 'Links / joints', value: `${moving} / ${partition.joints.length}` },
+    { label: 'Links / joints', value: `${moving} / ${partition.ownJoints.length}` },
     { label: 'Driven joint', value: driven ? driven.name || driven.id : 'Not set' },
   ];
   if (mechanism.isMechanismValid()) {
@@ -267,6 +267,13 @@ export function describeUnassigned(unassigned: UnassignedGeometry): UnassignedRe
       at: sorted[0],
       title: `Joints ${names(sorted)} never reach ground`,
       body: 'Nothing anchors this chain, so there is nothing for it to move against and no position to solve for. Ground one of its joints to make it a mechanism.',
+    });
+  });
+
+  unassigned.fixedLinks.forEach((link) => {
+    reports.push({
+      title: `Link ${link.name || link.id} is fixed at both ends`,
+      body: 'Every joint on it is grounded, so it is part of the frame and nothing about it can move. Unground one of its joints to make it a mechanism, or leave it as a fixed reference.',
     });
   });
 

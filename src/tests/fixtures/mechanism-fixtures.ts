@@ -96,7 +96,14 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
   // applyPose walks these rather than the whole drawing, so a harness that
   // leaves them empty draws no pose at all.
   service.partitions = [
-    { id: 'M1', joints: service.joints, links: service.links, forces: service.forces },
+    {
+      id: 'M1',
+      joints: service.joints,
+      // One mechanism holding the whole drawing, so everything in it is its own.
+      ownJoints: service.joints,
+      links: service.links,
+      forces: service.forces,
+    },
   ];
   service.oneValidMechanismExists = () => mechanism.isMechanismValid();
   // Borrowed rather than restated: the panels now ask which machine owns the
