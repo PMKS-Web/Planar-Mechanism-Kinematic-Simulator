@@ -1,0 +1,102 @@
+<div class="setup">
+  <div class="setupHead">
+    <div class="setupTitle">Analysis setup</div>
+    <p class="setupSummary">{{ summary }}</p>
+  </div>
+
+  @for (item of readiness; track item.id) {
+    <div class="mechBlock">
+      <button class="sectionHeader" (click)="toggle(item)">
+        <span class="sectionName">
+          Mechanism {{ item.id }}
+          <span class="chip" [class]="chipFor(item).kind">{{ chipFor(item).text }}</span>
+        </span>
+        @if (item.checks.length > 0) {
+          <mat-icon>{{ isOpen(item) ? 'expand_less' : 'expand_more' }}</mat-icon>
+        }
+      </button>
+
+      @if (isOpen(item)) {
+        <div class="checkList">
+          @for (check of item.checks; track check.title) {
+            <div class="check">
+              <mat-icon class="checkIcon" [class]="check.state">{{ iconFor(check) }}</mat-icon>
+              <div class="checkBody">
+                <div class="checkTitle">{{ check.title }}</div>
+                <p class="checkText">{{ check.body }}</p>
+                @if (check.action && check.at) {
+                  <button class="actionButton" (click)="goTo(check.at)">
+                    {{ check.action }} {{ nameOf(check.at) }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (forceOutstanding > 0) {
+    <div class="mechBlock">
+      <button class="sectionHeader" (click)="forceOpen = !forceOpen">
+        <span class="sectionName">
+          Force analysis
+          <span class="chip warning">{{ forceOutstanding }} to set</span>
+        </span>
+        <mat-icon>{{ forceOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+      </button>
+
+      @if (forceOpen) {
+        <div class="checkList">
+          @for (requirement of forceRequirements; track requirement.title) {
+            @if (!requirement.met) {
+              <div class="check">
+                <mat-icon class="checkIcon warning">radio_button_unchecked</mat-icon>
+                <div class="checkBody">
+                  <div class="checkTitle">{{ requirement.title }}</div>
+                  <p class="checkText">{{ requirement.body }}</p>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (unassigned.length > 0) {
+    <div class="mechBlock">
+      <button class="sectionHeader muted" (click)="unassignedOpen = !unassignedOpen">
+        <span class="sectionName">
+          Not in any mechanism
+          <span class="chip">{{ unassigned.length }}</span>
+        </span>
+        <mat-icon>{{ unassignedOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+      </button>
+
+      @if (unassignedOpen) {
+        <div class="checkList">
+          <p class="checkText note">
+            Drawn dashed on the grid. Analysis skips these, and they count towards no mechanism's
+            degrees of freedom.
+          </p>
+          @for (report of unassigned; track report.title) {
+            <div class="check">
+              <mat-icon class="checkIcon muted">scatter_plot</mat-icon>
+              <div class="checkBody">
+                <div class="checkTitle">{{ report.title }}</div>
+                <p class="checkText">{{ report.body }}</p>
+                @if (report.at) {
+                  <button class="actionButton" (click)="goTo(report.at)">
+                    Go To Joint {{ nameOf(report.at) }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

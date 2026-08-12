@@ -1,10 +1,19 @@
 <div>
   <div
     [@openClose]="
-      getIsOpen() ? (getOpenTab() === 1 || getOpenTab() == 3 ? 'open' : 'openWide') : 'closed'
+      getIsOpen()
+        ? getOpenTab() === 1 || getOpenTab() === 3 || getOpenTab() === 5
+          ? 'open'
+          : 'openWide'
+        : 'closed'
     "
     id="rightPanel"
   >
+    @if (getOpenTab() === 5) {
+      <div class="page1">
+        <app-analysis-setup></app-analysis-setup>
+      </div>
+    }
     @if (getOpenTab() === 1) {
       <div class="page1">
         <app-settings-panel></app-settings-panel>

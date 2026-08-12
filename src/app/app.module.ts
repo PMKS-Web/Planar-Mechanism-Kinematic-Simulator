@@ -5,6 +5,7 @@ import { provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/com
 import { AppComponent } from './app.component';
 import { LinkageTableComponent } from './component/linkage-table/linkage-table.component';
 import { TopBarComponent } from './component/top-bar/top-bar.component';
+import { AnalysisSetupComponent } from './component/analysis-setup/analysis-setup.component';
 import { AnimationBarComponent } from './component/animation-bar/animation-bar.component';
 import { ViewControlsComponent } from './component/view-controls/view-controls.component';
 import { ShapeSelectorComponent } from './component/shape-selector/shape-selector.component';
@@ -56,6 +57,7 @@ import { BottombarComponent } from './component/bottombar/bottombar.component';
     AppComponent,
     LinkageTableComponent,
     TopBarComponent,
+    AnalysisSetupComponent,
     AnimationBarComponent,
     ViewControlsComponent,
     ShapeSelectorComponent,

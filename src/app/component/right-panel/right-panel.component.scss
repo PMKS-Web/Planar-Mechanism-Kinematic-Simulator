@@ -1,6 +1,8 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
 
+@use '../left-tabs/left-tabs.vars' as nav;
+
 @mixin css($theme) {
   // Get the color config from the theme.
   $color-config: mat.m2-get-color-config($theme);
@@ -10,17 +12,25 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
+  // A floating card like the strip above it, clear of both: the drawer used to
+  // start under a toolbar that ran the width of the window and could sit flush
+  // against the edge. Nothing is flush any more.
   #rightPanel {
-    //pointer-events: none;
     position: absolute;
-    top: 30px;
-    right: 0px;
-    // width: 300px;
+    top: nav.$top-strip-height;
+    right: 12px;
     overflow-x: hidden;
     overflow-y: auto;
-    max-height: calc(100% - 128px);
+    max-height: calc(100% - #{nav.$top-strip-height} - #{nav.$playback-clearance});
     display: flex;
-    border-radius: var(--border-radius);
+    background: #fafafa;
+    border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
+    border-radius: 5px;
+    z-index: 9;
+    box-shadow:
+      0 2px 4px -1px rgba(0, 0, 0, 0.2),
+      0 4px 5px 0 rgba(0, 0, 0, 0.14),
+      0 1px 10px 0 rgba(0, 0, 0, 0.12);
 
     animation-duration: 4s;
 
