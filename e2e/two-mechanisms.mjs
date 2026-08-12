@@ -107,7 +107,7 @@ record(
   'synced, the transport shows one line for all of them',
   (await page.locator('.mechRow').count()) === 1,
   {
-    rows: await page.locator('.mechRows').innerText(),
+    rows: await page.locator('.scrubCard').innerText(),
   }
 );
 record(
@@ -120,7 +120,7 @@ record('and offers to unsync them', (await page.locator('.syncToggle').count()) 
 await page.locator('.syncToggle').click();
 await page.waitForTimeout(500);
 record('unsynced, the transport lists both', (await page.locator('.mechRow').count()) === 2, {
-  rows: await page.locator('.mechRows').innerText(),
+  rows: await page.locator('.scrubCard').innerText(),
 });
 record('and each row gets its own play button', (await page.locator('.rowPlay').count()) === 2);
 record(

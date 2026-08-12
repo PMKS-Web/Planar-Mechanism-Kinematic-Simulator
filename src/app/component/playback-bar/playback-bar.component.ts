@@ -71,6 +71,9 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    // Seed it: the subject only emits when the pose moves, so a mechanism
+    // sitting at zero would show an empty time until something played.
+    this.timeDisplay = this.format(this.mechanism.currentTimeSeconds());
     this.positionSub = this.mechanism.onMechPositionChange.subscribe(() => {
       // Playback sits between samples, so read the drawn time rather than the
       // time of the sample it was blended from.

@@ -1,9 +1,10 @@
 <div class="playbackRow">
   @if (tabs.isAnalysisMode()) {
-    <div class="card transportCard">
+    <div class="transportCard">
       <button class="speedButton" (click)="cycleSpeed()" [disabled]="!canPlay">{{ speed }}x</button>
       <button
         class="playButton"
+        [class.live]="canPlay"
         (click)="play()"
         [disabled]="!canPlay"
         [attr.aria-label]="playing ? 'Pause' : 'Play'"
@@ -12,77 +13,87 @@
       </button>
     </div>
 
-    <div class="card scrubCard">
-      <div class="mechRows">
-        @for (row of rows; track row.id) {
-          <div class="mechRow">
-            <button
-              class="mechChip"
-              [class.selected]="isSelected(row)"
-              (click)="selectMechanism(row)"
-              [matTooltip]="'Select ' + row.id"
-              matTooltipShowDelay="600"
-            >
-              {{ row.id }}
-            </button>
-            @if (row.ownPlay) {
-              <button
-                class="rowPlay"
-                [class.idle]="!row.playing"
-                (click)="toggleRow(row)"
-                [attr.aria-label]="row.playing ? 'Pause ' + row.id : 'Play ' + row.id"
-              >
-                <mat-icon>{{ row.playing ? 'pause' : 'play_arrow' }}</mat-icon>
-              </button>
-            }
-            <input
-              class="rowScrubber"
-              [id]="row.master ? 'slider' : null"
-              type="range"
-              min="0"
-              max="1000"
-              [value]="row.scrub"
-              [disabled]="!canPlay"
-              (mousedown)="onScrubDown()"
-              (mouseup)="onScrubUp()"
-              (input)="scrubRow(row, $event)"
-            />
-            <span class="mechTime">{{ row.time }}</span>
-            @if (row.note) {
-              <span class="mechNote">{{ row.note }}</span>
-            }
-            @if (row.isMechanism) {
-              <button
-                class="iconButton"
-                (click)="flipDirection(row)"
-                [matTooltip]="row.clockwise ? 'Driven clockwise' : 'Driven counter-clockwise'"
-                matTooltipShowDelay="600"
-              >
-                <mat-icon>{{ row.clockwise ? 'rotate_right' : 'rotate_left' }}</mat-icon>
-              </button>
-            }
-          </div>
-        }
-      </div>
-
-      <form class="timeForm" (ngSubmit)="field.blur()">
-        <input
-          id="animationBar-input"
-          name="timestep"
-          type="text"
-          [disabled]="!canPlay"
-          [(ngModel)]="timeDisplay"
-          (blur)="onTimeSubmit()"
-          (click)="field.select()"
-          #field
-        />
-      </form>
-
+    <div class="scrubCard">
+      <!-- A tab off the top edge of the card, as in the mock, rather than a
+           control inside it: it governs the whole card, so it sits on it. -->
       @if (canSync) {
-        <button class="syncToggle" (click)="toggleSync()">
+        <button class="syncToggle" [class.on]="synced" (click)="toggleSync()">
           <mat-icon>{{ synced ? 'unfold_more' : 'unfold_less' }}</mat-icon>
           {{ synced ? 'Control each mechanism' : 'Sync all mechanisms' }}
         </button>
+      }
+
+      @for (row of rows; track row.id) {
+        <div class="mechRow">
+          <button
+            class="mechChip"
+            [class.selected]="isSelected(row)"
+            [class.plain]="!row.isMechanism"
+            (click)="selectMechanism(row)"
+            [attr.title]="row.isMechanism ? 'Select ' + row.id : 'All mechanisms move together'"
+          >
+            {{ row.id }}
+          </button>
+
+          @if (row.ownPlay) {
+            <button
+              class="rowPlay"
+              [class.live]="canPlay"
+              (click)="toggleRow(row)"
+              title="Play / pause"
+              [attr.aria-label]="row.playing ? 'Pause ' + row.id : 'Play ' + row.id"
+            >
+              <mat-icon>{{ row.playing ? 'pause' : 'play_arrow' }}</mat-icon>
+            </button>
+          }
+
+          <div class="rowBody">
+            <div class="trackWell">
+              <input
+                class="rowScrubber"
+                [id]="row.master ? 'slider' : null"
+                type="range"
+                min="0"
+                max="1000"
+                [value]="row.scrub"
+                [disabled]="!canPlay"
+                (mousedown)="onScrubDown()"
+                (mouseup)="onScrubUp()"
+                (input)="scrubRow(row, $event)"
+              />
+            </div>
+            <div class="rowLabels">
+              <!-- Reads as the mock's plain text and still takes a typed time,
+                   which the mock had no way to do. -->
+              <input
+                class="rowTime"
+                [id]="row.master ? 'animationBar-input' : null"
+                type="text"
+                [disabled]="!canPlay"
+                [ngModel]="row.master ? timeDisplay : row.time"
+                (ngModelChange)="timeDisplay = $event"
+                [ngModelOptions]="{ standalone: true }"
+                [readOnly]="!row.master"
+                (blur)="onTimeSubmit()"
+                (keydown.enter)="onTimeSubmit()"
+              />
+              @if (row.note) {
+                <span class="rowNote">{{ row.note }}</span>
+              }
+            </div>
+          </div>
+
+          @if (row.isMechanism) {
+            <button
+              class="dirButton"
+              (click)="flipDirection(row)"
+              title="Input direction"
+              [attr.aria-label]="row.clockwise ? 'Driven clockwise' : 'Driven counter-clockwise'"
+            >
+              <mat-icon>{{ row.clockwise ? 'rotate_right' : 'rotate_left' }}</mat-icon>
+            </button>
+          }
+        </div>
       }
     </div>
   }

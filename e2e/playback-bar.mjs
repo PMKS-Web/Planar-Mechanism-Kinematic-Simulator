@@ -56,8 +56,8 @@ record('Kinematic has one', (await page.locator('.playButton').count()) === 1);
 record('with a row for the mechanism that runs', (await page.locator('.mechRow').count()) === 1);
 record(
   'and no readiness word beside it, because being listed is what ready means',
-  !(await page.locator('.mechRows').innerText()).match(/Ready|DoF/i),
-  await page.locator('.mechRows').innerText()
+  !(await page.locator('.scrubCard').innerText()).match(/Ready|DoF/i),
+  await page.locator('.scrubCard').innerText()
 );
 
 // --- the highlight lands on the mode that was chosen ------------------------

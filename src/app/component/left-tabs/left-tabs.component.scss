@@ -21,6 +21,10 @@
   // than twice in the two components that draw it.
   .helpPanel {
     padding: 14px 15px 18px;
+    background: #fafafa;
+    border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
+    border-radius: var(--border-radius);
+    @include mat.elevation(4);
   }
 
   .helpTitle {
@@ -76,14 +80,7 @@
     overflow-y: auto;
     max-height: calc(100% - #{nav.$top-strip-height} - #{nav.$playback-clearance});
     display: flex;
-    background: #fafafa;
-    border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
-    border-radius: 5px;
     z-index: 5;
-    box-shadow:
-      0 2px 4px -1px rgba(0, 0, 0, 0.2),
-      0 4px 5px 0 rgba(0, 0, 0, 0.14),
-      0 1px 10px 0 rgba(0, 0, 0, 0.12);
 
     .page1 {
       width: 270px; //Be careful, there are multiple places to change this value
