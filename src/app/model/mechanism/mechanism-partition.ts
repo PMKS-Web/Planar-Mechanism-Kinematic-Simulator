@@ -1,4 +1,4 @@
-import { Joint, RealJoint } from '../joint';
+import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link } from '../link';
 import { Force } from '../force';
 import { assignBodies, WORLD } from './bodies';
@@ -126,6 +126,51 @@ export function partitionMechanisms(
       }
     });
   });
+
+  // A slot's carrier and the two joints that draw its line live outside
+  // `links` and `connectedJoints` (§2.3 Option A), so nothing above reaches
+  // them. When the carrier is a *moving* link the slider's own body edge has
+  // already pulled it in, but a slot cut into an anchored bar is part of the
+  // world and has no edge -- and a mechanism handed its sliders without the
+  // rails they run on does not fail loudly. It solves something else: the
+  // gripper's arms wandered off and never closed their cycle.
+  //
+  // Repeated to a fixed point because a carrier can itself carry a slider.
+  for (let settled = false; !settled;) {
+    settled = true;
+    members.forEach((entry) => {
+      [...entry.joints].forEach((joint) => {
+        if (!(joint instanceof PrisJoint)) {
+          return;
+        }
+        const rails: (Link | Joint | undefined)[] = [
+          joint.carrier,
+          joint.slotJointA,
+          joint.slotJointB,
+        ];
+        rails.forEach((part) => {
+          if (!part) return;
+          if (part instanceof Joint) {
+            if (!entry.joints.has(part)) {
+              entry.joints.add(part);
+              settled = false;
+            }
+            return;
+          }
+          if (!entry.links.has(part)) {
+            entry.links.add(part);
+            settled = false;
+          }
+          part.joints.forEach((railJoint) => {
+            if (!entry.joints.has(railJoint)) {
+              entry.joints.add(railJoint);
+              settled = false;
+            }
+          });
+        });
+      });
+    });
+  }
 
   // A grounded joint sits on the frame, so it belongs to every machine bolted
   // to it — added by body above, and by name here for a joint whose links all

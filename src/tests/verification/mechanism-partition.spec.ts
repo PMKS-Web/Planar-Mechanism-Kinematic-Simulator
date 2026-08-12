@@ -3,6 +3,7 @@
 import '../../app/model/joint';
 import { partitionMechanisms } from '../../app/model/mechanism/mechanism-partition';
 import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
+import { FIXTURE_GALLERY } from '../../test-utils/verification/fixture-gallery';
 
 /**
  * What counts as one machine.
@@ -147,6 +148,25 @@ describe('splitting a drawing into the machines it contains', () => {
     expect(mechanisms).toHaveLength(1);
     expect(unassigned.floatingChains).toEqual([]);
     expect(unassigned.looseJoints.map((j) => j.id)).toEqual(['E']);
+  });
+
+  it('keeps the rails a slot is cut into, even when they are part of the frame', () => {
+    // The gripper's sliders run in slots cut into anchored bars — links whose
+    // joints are all grounded, so they *are* the world and have no body of
+    // their own to be joined by. A slot's carrier lives outside `links` and
+    // `connectedJoints`, so nothing in the component walk reaches it, and a
+    // mechanism handed its sliders without the rails they run on does not fail
+    // loudly: it solves something else, and the arms never close their cycle.
+    const entry = FIXTURE_GALLERY.find((f) => f.name === 'Cylinder-driven gripper')!;
+    const built = buildMechanism(entry.fixture);
+    const { mechanisms, unassigned } = partitionMechanisms(built.joints, built.links, built.forces);
+
+    expect(mechanisms).toHaveLength(1);
+    // Every joint and link in the drawing belongs to it. Nothing is left over.
+    expect(mechanisms[0].joints).toHaveLength(built.joints.length);
+    expect(mechanisms[0].links).toHaveLength(built.links.length);
+    expect(unassigned.looseJoints).toEqual([]);
+    expect(unassigned.floatingChains).toEqual([]);
   });
 
   it('does not split a mechanism at a slider that rides on one of its own links', () => {
