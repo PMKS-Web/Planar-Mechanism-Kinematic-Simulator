@@ -68,7 +68,11 @@ export class RealJoint extends Joint {
     this._ground = ground;
     this._links = links;
     this._connectedJoints = connectedJoints;
-    this.showCurve = true;
+    // Off, and turned on per joint in Visual Settings. Every joint tracing by
+    // default draws every path at once, which on anything past a four-bar is a
+    // thicket the mechanism itself has to be picked out of — and the one path
+    // worth looking at is worth choosing.
+    this.showCurve = false;
   }
 
   //R is radius of the joint
@@ -125,8 +129,22 @@ export class RealJoint extends Joint {
    * rider and its block — and without this the panel would offer Weld and
    * Unweld at the same time.
    */
+  /**
+   * Ground is *not* part of this test, though it used to be.
+   *
+   * Welding two bars that meet at a grounded pin fuses them into one body that
+   * still turns about that pin — a bell crank grounded at its pivot, which is
+   * an ordinary machine. And the app already holds that state: weld a free
+   * joint and then ground it and you arrive at exactly it, no refusal
+   * anywhere. So the rule was not protecting the model from a shape it cannot
+   * represent; it was an accident of the order the two edits are done in.
+   *
+   * It was also invisible. `canToggleWeld` enables the control whenever there
+   * are two links to fuse, so Weld sat there offered, was pressed, and refused
+   * one layer down without a word.
+   */
   canBeWelded(): boolean {
-    return !this.input && !this.ground && !this.isWelded && this.links.length >= 2;
+    return !this.input && !this.isWelded && this.links.length >= 2;
   }
 
   canBeUnwelded(): boolean {

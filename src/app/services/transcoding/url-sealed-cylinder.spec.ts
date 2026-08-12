@@ -3,6 +3,9 @@ import { Coord } from '../../model/coord';
 import { PrisJoint, RevJoint } from '../../model/joint';
 import { RealLink, SliderBlock } from '../../model/link';
 import {
+  cylinderHeadHalf,
+  cylinderSpanLayoutFrom,
+  HEAD_CLEARANCE_R,
   cylinderCollinearTolerance,
   sealedCylinderAt,
   sealedCylinders,
@@ -32,15 +35,33 @@ function targetService(): MechanismService {
  * A sealed cylinder tilted off the axes, so the codec's 3-decimal user-unit
  * quantization actually perturbs the collinearity it has to preserve.
  * Proportions mirror the fixture gallery's hydraulic cylinder.
+ *
+ * Only the two mounts are chosen. Barrel and rod are the same length in every
+ * cylinder that can exist, so the buried barrel end and the pin follow from the
+ * mounts and from where in its travel the part sits — mid-stroke here, as a
+ * freshly drawn ram is. Typing them instead would build a part the geometric
+ * test refuses, and the round-trip below would then be checking nothing.
  */
 function sealedSource(options: { sealed?: boolean; angle?: number } = {}) {
   const angle = options.angle ?? 0.31; // radians, deliberately irrational-ish
   const at = (along: number) => new Coord(along * Math.cos(angle) * S, along * Math.sin(angle) * S);
 
-  const a = new RevJoint('A', at(-4).x, at(-4).y, false, true);
-  const b = new RevJoint('B', at(-1).x, at(-1).y);
-  const c = new RevJoint('C', at(0).x, at(0).y);
-  const d = new RevJoint('D', at(4).x, at(4).y);
+  // In user units: R is 0.15 objectScale and one objectScale is one user unit,
+  // so each constant at that R is just itself scaled by 0.15.
+  const CLEARANCE = HEAD_CLEARANCE_R * 0.15;
+  const MOUNT_A = -4;
+  const MOUNT_D = 4;
+  // Through the model's own span rule rather than by hand: the body length a
+  // span carries is not a constant, because the head shrinks on a short ram.
+  const { stroke } = cylinderSpanLayoutFrom(MOUNT_D - MOUNT_A, 0.5, 0.15);
+  const HEAD_HALF = cylinderHeadHalf(stroke + CLEARANCE, 0.15);
+  const buried = MOUNT_A + stroke + CLEARANCE;
+
+  const a = new RevJoint('A', at(MOUNT_A).x, at(MOUNT_A).y, false, true);
+  const b = new RevJoint('B', at(buried).x, at(buried).y);
+  const pinAlong = MOUNT_A + CLEARANCE + HEAD_HALF + stroke * 0.5;
+  const c = new RevJoint('C', at(pinAlong).x, at(pinAlong).y);
+  const d = new RevJoint('D', at(MOUNT_D).x, at(MOUNT_D).y);
   const slider = new PrisJoint('P', c.x, c.y);
   slider.isSealed = options.sealed ?? true;
 

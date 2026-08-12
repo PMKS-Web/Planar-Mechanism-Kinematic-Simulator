@@ -20,6 +20,31 @@ export type Constraint =
   | { kind: 'distance'; a: string; b: string; length: number }
   /** A zero-length block: its two joints are one point (§2.10 item 1). */
   | { kind: 'coincident'; a: string; b: string }
+  /**
+   * `point` held at fixed coordinates in the frame `from` -> `to` carries.
+   *
+   * A rigid body's extra joints used to be pinned by a distance to each of two
+   * anchors, which is the right count of constraints and the wrong two. Where
+   * the three points are collinear both gradients lie along the same line, the
+   * two rows collapse to one, and the body is left free to bend sideways. A
+   * scissor lift is nothing but collinear bodies — a straight arm pinned at its
+   * middle — so its rate system came out rank 19 of 22 and least squares spread
+   * the missing three directions over every joint in the machine.
+   *
+   * Resolving the offset along and across the anchor line instead keeps the
+   * same two rows independent at every pose, and picks the side of the line the
+   * body is actually on rather than leaving the mirror pose an equal answer.
+   */
+  | {
+      kind: 'rigidOffset';
+      point: string;
+      from: string;
+      to: string;
+      /** Offset along the unit vector from `from` to `to`. */
+      along: number;
+      /** Offset across it, positive to the left of that vector. */
+      across: number;
+    }
   /** `point` lies on the line through `from` and `to`, wherever those end up. */
   | { kind: 'onLine'; point: string; from: string; to: string }
   /** `point` lies on a line fixed in the world. */
@@ -103,6 +128,22 @@ export function residuals(
         const ey = ty - fy;
         const span = Math.hypot(ex, ey);
         out.push(span < 1e-9 ? 0 : ((px - fx) * ey - (py - fy) * ex) / span);
+        break;
+      }
+      case 'rigidOffset': {
+        const [px, py] = at(c.point);
+        const [fx, fy] = at(c.from);
+        const [tx, ty] = at(c.to);
+        const ex = tx - fx;
+        const ey = ty - fy;
+        const wx = px - fx;
+        const wy = py - fy;
+        const span = Math.hypot(ex, ey);
+        if (span < 1e-9) {
+          out.push(0, 0);
+          break;
+        }
+        out.push((wx * ex + wy * ey) / span - c.along, (ex * wy - ey * wx) / span - c.across);
         break;
       }
       case 'onFixedLine': {
@@ -223,6 +264,42 @@ export function jacobian(
         add(current, c.to, -wy / span - scaled * ex, wx / span - scaled * ey);
         break;
       }
+      case 'rigidOffset': {
+        // r1 = (w.e)/L, r2 = (e x w)/L, with e = to - from and w = point - from.
+        // Both are differentiated through w and through e, and `from` moves
+        // both at once because it is subtracted from each.
+        const [px, py] = at(c.point);
+        const [fx, fy] = at(c.from);
+        const [tx, ty] = at(c.to);
+        const ex = tx - fx;
+        const ey = ty - fy;
+        const wx = px - fx;
+        const wy = py - fy;
+        const span = Math.hypot(ex, ey) || 1;
+        const alongNumerator = wx * ex + wy * ey;
+        const acrossNumerator = ex * wy - ey * wx;
+        const cubed = span * span * span;
+        const alongByW = [ex / span, ey / span];
+        const alongByE = [
+          wx / span - (alongNumerator * ex) / cubed,
+          wy / span - (alongNumerator * ey) / cubed,
+        ];
+        const acrossByW = [-ey / span, ex / span];
+        const acrossByE = [
+          wy / span - (acrossNumerator * ex) / cubed,
+          -wx / span - (acrossNumerator * ey) / cubed,
+        ];
+        for (const [byW, byE] of [
+          [alongByW, alongByE],
+          [acrossByW, acrossByE],
+        ]) {
+          const current = row();
+          add(current, c.point, byW[0], byW[1]);
+          add(current, c.to, byE[0], byE[1]);
+          add(current, c.from, -byW[0] - byE[0], -byW[1] - byE[1]);
+        }
+        break;
+      }
       case 'onFixedLine': {
         const span = Math.hypot(c.dir[0], c.dir[1]) || 1;
         const current = row();
@@ -284,6 +361,83 @@ export function jacobian(
     }
   }
   return rows;
+}
+
+/**
+ * How small a column may get, once the ones before it have been projected out,
+ * before the constraints stop being independent.
+ *
+ * Compared against columns already scaled to unit length, so it is a ratio
+ * rather than a length and means the same thing whatever the mechanism is
+ * measured in. Set well above the 1e-16 where float noise lives and well below
+ * anything a real linkage produces away from a dead-centre.
+ */
+const RANK_TOLERANCE = 1e-7;
+
+/**
+ * Whether the constraints pin the unknowns down at this pose, rather than
+ * leaving a direction they are free to drift along.
+ *
+ * Counting rows is not enough. A square system whose Jacobian loses a column is
+ * a mechanism at a dead-centre, or one whose constraints say the same thing
+ * twice — and Levenberg–Marquardt will happily return *an* answer for it, drawn
+ * from whichever direction the damping happened to favour. That answer is a
+ * picture of a linkage the user did not build, which is the one outcome worth
+ * refusing over.
+ *
+ * Pivoted Gram-Schmidt on the columns, each scaled to unit length first: the
+ * smallest pivot it reaches is a scaled singular value, and scaling is what
+ * stops a mechanism being called singular merely because one joint's residuals
+ * are numerically larger than another's.
+ */
+export function hasFullColumnRank(
+  system: SimultaneousSystem,
+  positions: PositionMap,
+  command: number = 0
+): boolean {
+  const ids = system.unknownIds;
+  const width = ids.length * 2;
+  if (width === 0) return false;
+  const columnOf = new Map(ids.map((id, index) => [id, index]));
+  const rows = jacobian(system, positions, columnOf, command);
+  if (rows.length < width) return false;
+
+  const norm = (vector: number[]) => Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0));
+  const remaining: number[][] = [];
+  for (let column = 0; column < width; column++) {
+    const values = rows.map((row) => row[column]);
+    const length = norm(values);
+    // A column of zeros is an unknown no constraint mentions at all.
+    if (length < RANK_TOLERANCE) return false;
+    remaining.push(values.map((value) => value / length));
+  }
+
+  const basis: number[][] = [];
+  while (remaining.length > 0) {
+    let bestIndex = -1;
+    let bestLength = 0;
+    let best: number[] = [];
+    for (let index = 0; index < remaining.length; index++) {
+      let residual = remaining[index];
+      for (const direction of basis) {
+        const projection = residual.reduce((sum, value, i) => sum + value * direction[i], 0);
+        residual = residual.map((value, i) => value - projection * direction[i]);
+      }
+      const length = norm(residual);
+      if (length > bestLength) {
+        bestIndex = index;
+        bestLength = length;
+        best = residual;
+      }
+    }
+    // Taking the longest remaining column each time is what makes the smallest
+    // pivot meaningful: any other order can make a full-rank matrix look
+    // deficient by unlucky elimination.
+    if (bestIndex < 0 || bestLength < RANK_TOLERANCE) return false;
+    basis.push(best.map((value) => value / bestLength));
+    remaining.splice(bestIndex, 1);
+  }
+  return true;
 }
 
 /** Solve `A x = b` by Gaussian elimination with partial pivoting. */
@@ -412,6 +566,95 @@ function solveDamped(jacobian: number[][], f: number[], damping: number): number
 }
 
 /**
+ * The joints a system's constraints read but do not solve for.
+ *
+ * For a set driven by a grounded crank these are the moving boundary: the crank
+ * pin the actuator placed, and any ground the constraints mention. Listed here
+ * rather than at the caller so a new constraint kind cannot quietly acquire a
+ * reference that nothing knows to follow.
+ */
+export function boundaryJoints(system: SimultaneousSystem): string[] {
+  const known = new Set(system.unknownIds);
+  const found = new Set<string>();
+  const note = (...ids: string[]) => {
+    for (const id of ids) if (!known.has(id)) found.add(id);
+  };
+  for (const c of system.constraints) {
+    switch (c.kind) {
+      case 'distance':
+      case 'driven':
+      case 'coincident':
+        note(c.a, c.b);
+        break;
+      case 'onLine':
+        note(c.point, c.from, c.to);
+        break;
+      case 'onFixedLine':
+        note(c.point);
+        break;
+      case 'parallel':
+        note(c.a1, c.a2, c.b1, c.b2);
+        break;
+      case 'drivenAngle':
+        note(c.pivot, c.reference, c.driven);
+        break;
+      // Two rows in a body's own frame, and its two anchors can both be joints
+      // an earlier step already placed — a body reached at its third joint.
+      // No distance row is written between two known anchors, so if this case
+      // is missing nothing else names them, and a boundary-driven solve then
+      // interpolates a boundary that does not include the joints its own
+      // constraints are reading.
+      case 'rigidOffset':
+        note(c.point, c.from, c.to);
+        break;
+      default: {
+        // Every kind, or the compiler says so. This function exists to stop a
+        // new constraint acquiring a reference nothing knows to follow, and it
+        // only does that if forgetting one is an error rather than a silence —
+        // which is exactly how `rigidOffset` came to be missing from it.
+        const unhandled: never = c;
+        throw new Error(`boundaryJoints has no case for ${(unhandled as Constraint).kind}`);
+      }
+    }
+  }
+  return [...found];
+}
+
+/**
+ * Where the unknowns are headed when the *boundary* moves, to first order.
+ *
+ * The same differentiation that gives velocities from a commanded rate, with
+ * the boundary joints in the command's place: `F(q, b) = 0` differentiates to
+ * `J_q Δq = −J_b Δb`, so the Jacobian that solves the positions also says which
+ * way — and how far — the solve is about to go before it is run.
+ *
+ * That is worth a linear solve because a root finder cannot tell one assembly
+ * mode from another, and this can: the answer only belongs to the branch the
+ * mechanism is on if it is near the direction the branch was pointing.
+ *
+ * Returns nothing at a pose where the constraints cannot be differentiated —
+ * a dead-centre, where the branch has no direction to predict.
+ */
+export function boundaryTangent(
+  system: SimultaneousSystem,
+  positions: PositionMap,
+  boundaryStep: PositionMap
+): PositionMap | undefined {
+  const ids = system.unknownIds;
+  const moved = [...boundaryStep.keys()];
+  const unknownColumns = new Map(ids.map((id, index) => [id, index]));
+  const boundaryColumns = new Map(moved.map((id, index) => [id, index]));
+  const byBoundary = jacobian(system, positions, boundaryColumns);
+  const step = moved.flatMap((id) => boundaryStep.get(id)!);
+  const rhs = byBoundary.map((row) => -row.reduce((sum, value, i) => sum + value * step[i], 0));
+  const predicted = leastSquares(jacobian(system, positions, unknownColumns), rhs);
+  if (!predicted || !predicted.every(Number.isFinite)) {
+    return undefined;
+  }
+  return new Map(ids.map((id, index) => [id, [predicted[index * 2], predicted[index * 2 + 1]]]));
+}
+
+/**
  * How each residual moves when the *command* moves, holding the pose still.
  *
  * Only the driven row has one, and this is the whole of what makes velocities
@@ -445,7 +688,11 @@ export function commandDerivative(
         out.push((-cross * Math.sin(command) - dot * Math.cos(command)) / arm);
         break;
       }
+      // Two-row constraints, neither of which the command appears in. The
+      // count is what matters: this vector is indexed by residual row, so a
+      // single zero here would shift every row after it against the Jacobian.
       case 'coincident':
+      case 'rigidOffset':
         out.push(0, 0);
         break;
       default:

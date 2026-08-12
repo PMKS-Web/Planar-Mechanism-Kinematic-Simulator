@@ -944,6 +944,142 @@ scope (§1), and an ungeared five-bar is DOF 2, which the engine rejects. The fo
 floating joint is DOF 1, uses no out-of-scope features, and has an exact reference — the same
 mechanism solved the ordinary way.
 
+### Phase 7 — Mobility by rank, not by counting
+
+**Not started.** Found by rebuilding the MotionGen library's gripper
+([`motiongen-gripper.spec.ts`](../src/tests/verification/motiongen-gripper.spec.ts)): a mechanism
+that a second engine animates, that this one reports as DOF 0 and refuses.
+
+Gruebler counts joints and bodies, which is only right when every constraint says something new.
+The gripper's do not — each jaw is reached by two rods while its two rail pins already confine it to
+pure translation, so the second rod repeats the first. Four freedoms, four constraints, three of
+them independent. A door with two hinges counts the same way and opens anyway.
+
+| # | Task |
+| --- | --- |
+| 7.1 | Mobility from the **rank of the constraint Jacobian** — unknowns minus rank — instead of a joint-and-body count |
+| 7.2 | A scaled QR or SVD, because the rank tolerance *is* the problem: too tight reads a real mechanism as rigid, too loose reads a rigid frame as mobile |
+| 7.3 | Sample rank at more than the drawn pose. Rank drops at a dead centre too, so a one-pose answer changes as the user drags a joint |
+| 7.4 | Gate it: Gruebler stays the fast path, and the rank test runs only where the count comes out 0 or negative — which is where it is wrong and nowhere else |
+
+The machinery is mostly built. [`simultaneous-solver.ts`](../src/app/model/mechanism/simultaneous-solver.ts)
+already assembles every constraint row and its analytic Jacobian (§2.7a), so 7.1 is a rank call on a
+matrix that exists. As with Phase 5's numerics, a dyadically decomposable mechanism must keep the
+closed-form path bit-identically; this changes what is *reported as mobile*, never a solved position.
+
+**A second defect hides behind the first, and is not fixed by this.** A body with two pins on two
+parallel rails is both what makes the gripper over-constrained *and* a permanent tangency for the
+closed-form primitives — locating the second pin intersects a circle with a line whose distance from
+the centre is exactly the radius, at every pose rather than at one of them, so the discriminant sits
+on zero and rounding decides its sign. Counting it correctly does not make it solvable.
+[`pivoting-gripper.spec.ts`](../src/tests/verification/pivoting-gripper.spec.ts) is the same gripper
+with the rails taken off the jaws, and runs; the two are published as URLs to open side by side.
+
+### Phase 7a — Reach the simultaneous solver from an ordinary crank
+
+**Not started, and it blocks the linkage library.** Found by rebuilding the MotionGen library's
+"Elliptical Crank" ([`elliptical-crank.spec.ts`](../src/tests/verification/elliptical-crank.spec.ts)):
+a six-bar with a grounded crank and one fixed guide, counted correctly at DOF 1, that will not solve.
+
+No joint in it is locatable from two already-known ones, so it is the case §2.7a exists for. The
+fallback is reached and declines. Three things are in the way, each verified by experiment:
+
+| # | Task |
+| --- | --- |
+| 7a.1 | `buildSimultaneousSystem` requires a **drive among its own unknowns** (`if (!drive) return undefined`). A cylinder or floating pin is one; a grounded crank is not — the walk swings its pin first and hands the system an anchor. The drive has to become optional |
+| 7a.2 | Opening that gate alone lets the system swallow five deliberate refusals — a rider whose carrier is unknown, the circular case, a Slide on a moving carrier, a driven pin with three bodies. Gate a driveless system on the walk having placed something **and** on the system being square (`constraints === 2 × unknowns`), which restores all five |
+| 7a.3 | Even then the system is the wrong six equations: the walk marks the grounded block *known*, so the constraint set comes out five distances and a coincidence, with **no line constraint at all** — E is pinned to a fixed block instead of sliding along its guide. The block has to enter the system as an unknown that slides |
+
+7a.1 and 7a.2 are done and reverted rather than left in; 7a.3 is where it stands. A grounded
+prismatic joint carries `ground` because its slot is cut into the world, not because it cannot move,
+and several places treat those as the same thing.
+
+**Most of the shortlisted linkage-library candidates are this shape** — Jansen, the six-bar walkers,
+Chebyshev, the windshield wiper are all non-dyadic with an ordinary crank. Building the library
+before this lands produces a set of fixtures that all record the same refusal.
+
+> **Gate 7a:** the elliptical crank turns a full revolution with every bar rigid and its follower on
+> the guide; all five refusal specs still refuse.
+
+> **Gate 7:** the MotionGen gripper reports one degree of freedom and traces the jaw paths captured
+> in `PMKS_Verification/reference-data/motiongen-library/gripper` — the comparison that spec already
+> holds and does not yet run. Every mechanism in §4.1 keeps the mobility it reports today.
+
+### The cylinder, re-parameterised
+
+Shipped after Phase 7a, from a design package rather than from this plan, and worth recording here
+because it changes what §2.7 means.
+
+**Barrel and rod are now the same length, always.** Everything else follows: retracted and extended
+stop being free to disagree with the stroke, an impossible cylinder can no longer be described, and
+the resolution table for which number gives way is gone because nothing is left to negotiate. A ram
+is one size number and one position number, and its only remaining failure is being too small.
+
+- **Nothing is stored for it.** Barrel and rod are still joint positions, so the codec is untouched;
+  stroke and start are derived views the panel reads and writes. The alternative — two fields on the
+  joint — is the same two knobs with a second place that can disagree about one geometry.
+- **The invariant lives at the constructive paths, and `normalizedCylinderPose` derives rather than
+  clamps.** It holds both mounts by contract, so the pin can only be at `span - barrel` — barrel and
+  rod are equal, and there is nothing to choose. It used to project a stray pin onto the axis and
+  clamp it into the travel, which only resembled the right answer while the bore left almost nothing
+  to clamp into; straightened that way a flung pin produced exactly the mismatch the equality
+  tripwire rejects, so the repair hid the skin instead of fixing it. It also runs on every rebuild,
+  where its repair path resets link CoM without carrying forces through the new frame; that was only
+  ever safe because it was the identity, and it still is.
+- **The three-phase drag and the layout function turned out to be the same function.** Inside the
+  ram's travel a span moves only the piston; past a stop it resizes with both halves equal. So
+  `flexLayout` was replaced rather than supplemented, and the behaviour applies to both mounts and
+  to a mount a neighbour carries.
+- **Size and pose needed separate entry points.** Asked for a longer stroke at the same position,
+  the resulting span usually still lies inside the *old* stroke's travel, so the span rule would
+  hold the size and slide the piston instead — a field labelled Travel changing the position.
+- **There is no bore any more, only a clearance.** It was 13.28 R — twice a slot inset plus the whole
+  piston head — on the reading that a channel needs a margin at each end and the head never leaves
+  it. Neither holds for a sealed part: the barrel is a closed body and no slot is ever drawn, and a
+  head that stays inside gives full extension no silhouette of its own. What is left is
+  `HEAD_CLEARANCE_R`, 1.4 R, the gap the head stops at when the ram is shut. Closed, it stands clear
+  of the barrel's mount joint; open, its back edge has reached the mouth and the head is entirely
+  outside, riding the exposed rod. `barrel = rod = stroke + CLEARANCE`, and
+  `span = stroke × (1 + start) + lock`.
+- **The head is full size whenever it fits, and it is the floor when it does not.** Exactly the block
+  a bare slider wears, on any ram with room for it. It is a function of the barrel only because it
+  has to fit inside one at full retraction, so below that it follows the barrel down to half its
+  length and grows straight back. `lock` is therefore a function of the stroke rather than a
+  constant, and `cylinderSpanLayoutFrom` inverts the span rule by bisection — the closed form needs
+  a case per regime and a test for which one lands, three chances to be subtly wrong at the seams on
+  the path a drag runs every pointermove.
+- **§2.7's "collapsed skin" was drawing the barrel to the piston**, so the one rigid part of the
+  assembly was the one part visibly changing length. It is drawn at its member length now. The two
+  stop notches and the dotted motion line it briefly carried are gone: the head's own two stops are
+  in the silhouette, and the notches were annotating what the drawing already says.
+- **Two failures the app reaches on its own now say so.** A sealed input with no travel is refused
+  rather than falling through to the ordinary prismatic drive, which would have telescoped the rod
+  out of its own barrel; and a ram bigger than the machine it drives gets a warning beside
+  `invalidReason` rather than in it, because the mechanism is valid and simply cannot use the whole
+  stroke. Warned about, not clamped.
+
+**Found by review rather than by the suite, and since fixed:**
+
+- `MIN_STROKE_R` was a hard floor at 0.34 R, which is not a *readable* minimum. It is derived now:
+  the shortest ram is the one whose barrel is exactly a square head, 1.65 R of stroke and 5.98 R of
+  span against the 20.3 R the bore model could manage.
+- **Merging a cylinder mount destroyed the ram.** The merge rebuilt every link the joint was in but
+  left the slot cut into the barrel naming a joint that no longer existed. General to every floating
+  slot, not to cylinders — it was only invisible because no gesture depended on it.
+- **Analyze had no cylinder branch**, so selecting the body analysed its *barrel* and offered force
+  at an interior joint the canvas gives no hitbox to.
+- **The weld guard and the model disagreed.** Both guards were probed: a cylinder cannot reach a
+  welded compound by any route, so `twoJointLeaf` is defence rather than a supported shape, and
+  `cylinder-weld-guards.spec.ts` pins both so the comments cannot drift again.
+- **No Edit panel field anywhere wrote an undo entry.** Every typed edit is one undo step now,
+  wherever it was typed.
+
+**Still open:**
+
+- Welding a cylinder mount's neighbour can take the mechanism to −2 degrees of freedom with no
+  snackbar at the moment of the weld. The DOF readout and Analyze both say so, so the user is told;
+  a warning at the gesture is an addition rather than a fix.
+
 ---
 
 ## 4. Test ladder

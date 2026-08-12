@@ -1,13 +1,13 @@
 import { Injectable } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../model/joint';
 import { Link, RealLink, SliderBlock } from '../model/link';
-import { Cylinder, sealedCylinders } from '../model/cylinder';
+import { Cylinder, cylinderHeadHalf, sealedCylinders } from '../model/cylinder';
 import {
-  barrelCollapsedPath,
+  barrelPath,
   blockPath,
-  borePath,
   cylinderArrowPaths,
   cylinderBlockPath,
+  collinearGuides,
   MARK,
   orientedCapsulePath,
   GuideBand,
@@ -15,7 +15,6 @@ import {
   Segment,
   rodBodyPath,
   cylinderContourPath,
-  cylinderMotionDash,
   slotHalfLength,
   straightArrowPaths,
 } from '../model/joint-marks';
@@ -139,8 +138,6 @@ export interface CylinderMark {
   block: string;
   /** The exact silhouette, for the selection stroke. */
   contour: string;
-  /** The dotted linear-motion cue inside the barrel. */
-  dash: { x1: number; x2: number; width: number; dashArray: string };
   driven: boolean;
   arrows: { line: Segment; head: string; emphasised: boolean }[];
 }
@@ -208,7 +205,7 @@ export class SliderMarkService {
           joints,
           claimed,
           driveForward,
-          [...bands.entries()].filter(([id]) => id !== slider.id).map(([, band]) => band)
+          this.crossingsFor(slider.id, bands, r)
         )
       )
       .filter((mark): mark is SliderMark => mark !== undefined);
@@ -302,7 +299,24 @@ export class SliderMarkService {
     const { pin, rodFar, barrelNear } = found;
     const angle = Math.atan2(rodFar.y - pin.y, rodFar.x - pin.x);
     const rodReach = Math.hypot(rodFar.x - pin.x, rodFar.y - pin.y);
-    const barrelReach = -Math.hypot(found.barrelFar.x - pin.x, found.barrelFar.y - pin.y);
+    // Both ends of the barrel, not just the one behind the piston. The barrel
+    // is a rigid bar and the piston runs along it: its anchor is behind, its
+    // mouth ahead. Measuring only back to the anchor drew the barrel *to* the
+    // piston, so the rigid part visibly changed length every frame.
+    //
+    // Projected onto the mark's axis rather than taken as a distance, because
+    // the mouth is not always ahead of the pin: fully extended the head has
+    // come clean out of the barrel, and an unsigned distance then drew the
+    // mouth on the wrong side and the barrel through the exposed rod.
+    const ux = rodReach > 1e-9 ? (rodFar.x - pin.x) / rodReach : 1;
+    const uy = rodReach > 1e-9 ? (rodFar.y - pin.y) / rodReach : 0;
+    const along = (point: { x: number; y: number }) =>
+      (point.x - pin.x) * ux + (point.y - pin.y) * uy;
+    const anchor = along(found.barrelFar);
+    const mouth = along(barrelNear);
+    // The head is full size on any ram with room for it and shrinks only on one
+    // too short to hold it, so it is read off this barrel rather than assumed.
+    const headHalf = cylinderHeadHalf(mouth - anchor, r);
     const driven = found.slider.input || pin.input;
     // The mark's frame runs +x toward the rod; the drive direction is declared
     // along the slot, which may point either way along the same line.
@@ -325,16 +339,15 @@ export class SliderMarkService {
       barrelId: found.barrel.id,
       rodId: found.rod.id,
       hiddenJointId: barrelNear.id,
-      barrel: barrelCollapsedPath(r, barrelReach),
+      barrel: barrelPath(r, anchor, mouth),
       barrelFill: (found.barrel as RealLink).fill ?? '#000000',
-      rod: rodBodyPath(r, rodReach),
+      rod: rodBodyPath(r, rodReach, headHalf),
       // One part, one colour: the rod wears the barrel's fill, always.
       rodFill: (found.barrel as RealLink).fill ?? '#000000',
-      block: cylinderBlockPath(r),
-      contour: cylinderContourPath(r, barrelReach, rodReach),
-      dash: cylinderMotionDash(r, barrelReach),
+      block: cylinderBlockPath(r, headHalf),
+      contour: cylinderContourPath(r, anchor, mouth, rodReach),
       driven,
-      arrows: driven ? cylinderArrowPaths(r, leading) : [],
+      arrows: driven ? cylinderArrowPaths(r, headHalf, leading) : [],
     };
   }
 
@@ -593,6 +606,28 @@ export class SliderMarkService {
       halfLength,
       halfWidth: MARK.railOffset * r,
     };
+  }
+
+  /**
+   * The other guides one guide has to draw around.
+   *
+   * Two guides on the same line are not two members crossing — they are one
+   * line, and breaking either of them for the other draws a dashed gap through
+   * a rail that is perfectly continuous. So one of the pair is chosen to hatch
+   * the span they share (by id, which is stable and does not depend on the
+   * order joints happen to be in) and the other simply stays off it; both draw
+   * their rails solid end to end, over each other, as the one line they are.
+   */
+  private crossingsFor(id: string, bands: Map<string, GuideBand>, r: number): GuideBand[] {
+    const own = bands.get(id);
+    const slack = MARK.railMergeSlack * r;
+    const found: GuideBand[] = [];
+    for (const [other, band] of bands) {
+      if (other === id) continue;
+      if (!own || !collinearGuides(own, band, slack)) found.push(band);
+      else if (other < id) found.push({ ...band, coincident: true });
+    }
+    return found;
   }
 
   /** Every grounded guide's strip, keyed by its slider, for crossing tests. */

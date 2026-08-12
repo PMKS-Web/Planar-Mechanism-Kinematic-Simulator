@@ -55,6 +55,7 @@ import {
   IntSetting,
 } from 'src/app/services/transcoding/stored-settings';
 import { UrlGenerationService } from 'src/app/services/url-generation.service';
+import { NOT_BUILT_YET } from '../../ui-text';
 
 @Component({
   selector: 'app-toolbar',
@@ -168,6 +169,12 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
   //   this.analytics.logEvent('open_templates');
   // }
 
+  /** Open a blank project in a new tab, leaving this one as it is. */
+  newProject(): void {
+    this.analytics.logEvent('new_file');
+    window.open(window.location.origin, '_blank');
+  }
+
   upload($event: any) {
     console.log('upload');
     this.analytics.logEvent('upload_file');
@@ -219,7 +226,7 @@ export class ToolbarComponent implements OnInit, AfterViewInit {
 
   alertNotAvailable() {
     //Use this.mechanismService.sendNotification() instead
-    NewGridComponent.sendNotification('This feature is not available yet');
+    NewGridComponent.sendNotification(NOT_BUILT_YET);
   }
 
   downloadLinkage() {

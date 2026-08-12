@@ -17,6 +17,7 @@ import {
   Cylinder,
   CylinderPose,
   layoutCylinder,
+  poseFromStrokeAndStart,
   sealedCylinderStructures,
 } from '../model/cylinder';
 import { SettingsService } from './settings.service';
@@ -245,10 +246,48 @@ export class GridUtilsService {
     // panel's X/Y fields, the distance-to-joint fields, the linkage table.
     // Every route lands on the same parametric re-pose, so no surface can
     // bend the part (§ cylinder 6).
-    const sealed = this.mechanismSrv.cylinderAt(selectedJoint);
-    if (sealed) {
-      if (selectedJoint.id === sealed.barrelFar.id || selectedJoint.id === sealed.rodFar.id) {
-        this.dragCylinderMount(sealed, selectedJoint, trueCoord);
+    // Every cylinder on this joint, not just the first: two rams can share a
+    // mount, and each has to be told about the move in its own terms. Left to
+    // the normalizer afterwards, the second one holds its mounts and repairs
+    // the only thing it can -- its interior -- so it quietly changes size.
+    const sealedHere = this.mechanismSrv.cylindersAt(selectedJoint);
+    if (sealedHere.length > 0) {
+      const mounted = sealedHere.filter(
+        (sealed) =>
+          selectedJoint.id === sealed.barrelFar.id || selectedJoint.id === sealed.rodFar.id
+      );
+      // Where the mount can actually go, agreed between every ram on it before
+      // any of them moves.
+      //
+      // Each ram clamps the mount at its own minimum span, along its own axis,
+      // so asked one at a time they write different positions to the one joint
+      // and the last to run wins -- which makes the result depend on the order
+      // the cylinders happen to be in. Taking the most restrictive answer first
+      // and then posing all of them to it is order-independent, and it is also
+      // the right answer: a mount two rams hold can only go where both allow.
+      // Iterated to a fixed point, not decided in one pass. Each ram clamps
+      // along its own axis, so the landing that satisfies the most restrictive
+      // one may still violate another's minimum -- in two dimensions "furthest
+      // from where the cursor asked" is not a proof of feasibility. Re-clamping
+      // the agreed point against every ram until it stops moving is, and it
+      // terminates because a clamp only ever pushes the point further from the
+      // request. The cap is a backstop against a pathological arrangement, not
+      // an expected exit.
+      let agreed = trueCoord;
+      for (let pass = 0; pass < 8; pass++) {
+        let moved = false;
+        for (const sealed of mounted) {
+          const landed = this.cylinderMountLanding(sealed, selectedJoint, agreed);
+          if (!landed) continue;
+          if (this.getPointDistance(landed.x, landed.y, agreed.x, agreed.y) > 1e-6) {
+            agreed = landed;
+            moved = true;
+          }
+        }
+        if (!moved) break;
+      }
+      for (const sealed of mounted) {
+        this.dragCylinderMount(sealed, selectedJoint, agreed);
       }
       // An interior joint (pin, buried barrel end) takes no free move at all:
       // nothing selects one, so a call here is a stray path, and moving it
@@ -401,12 +440,6 @@ export class GridUtilsService {
         sealed.barrelNear.x,
         sealed.barrelNear.y
       ),
-      rodLength: this.getPointDistance(
-        sealed.pin.x,
-        sealed.pin.y,
-        sealed.rodFar.x,
-        sealed.rodFar.y
-      ),
     }));
 
     const movedJointIDs = new Set<string>();
@@ -463,7 +496,10 @@ export class GridUtilsService {
     // cylinder about its other mount, so the part follows its mount instead
     // of bending (§ cylinder 6). A cylinder whose own pin moved was dragged
     // as a body — every member translated together, nothing to repair.
-    carriedCylinders.forEach(({ sealed, barrelLength, rodLength }) => {
+    // Sequentially, and that is safe here in a way it is not for a shared mount:
+    // a link drag moves whole bodies, so each ram is re-posed about its own
+    // untouched mount and no two of them are writing to the same joint.
+    carriedCylinders.forEach(({ sealed, barrelLength }) => {
       if (movedJointIDs.has(sealed.pin.id)) return;
       const movedBarrelMount = movedJointIDs.has(sealed.barrelFar.id);
       const movedRodMount = movedJointIDs.has(sealed.rodFar.id);
@@ -472,7 +508,6 @@ export class GridUtilsService {
         { x: sealed.barrelFar.x, y: sealed.barrelFar.y },
         { x: sealed.rodFar.x, y: sealed.rodFar.y },
         barrelLength,
-        rodLength,
         0.15 * SettingsService.objectScale,
         // Anchor on the mount that did NOT ride along; if both did, the whole
         // axis translated and either anchor reproduces it.
@@ -500,7 +535,23 @@ export class GridUtilsService {
    * to the slot ends. Collinearity holds by construction, so no drag can bend
    * a cylinder.
    */
-  dragCylinderMount(sealed: Cylinder, mount: RealJoint, wanted: Coord): void {
+  /** Where this ram would put the mount, without moving anything. */
+  private cylinderMountLanding(
+    sealed: Cylinder,
+    mount: RealJoint,
+    wanted: Coord
+  ): Coord | undefined {
+    const pose = this.cylinderMountPose(sealed, mount, wanted);
+    if (!pose) return undefined;
+    const landed = mount.id === sealed.barrelFar.id ? pose.barrelFar : pose.rodFar;
+    return new Coord(landed.x, landed.y);
+  }
+
+  private cylinderMountPose(
+    sealed: Cylinder,
+    mount: RealJoint,
+    wanted: Coord
+  ): CylinderPose | undefined {
     const draggingBarrelMount = mount.id === sealed.barrelFar.id;
     const barrelLength = this.getPointDistance(
       sealed.barrelFar.x,
@@ -508,17 +559,10 @@ export class GridUtilsService {
       sealed.barrelNear.x,
       sealed.barrelNear.y
     );
-    const rodLength = this.getPointDistance(
-      sealed.pin.x,
-      sealed.pin.y,
-      sealed.rodFar.x,
-      sealed.rodFar.y
-    );
-    const pose = layoutCylinder(
+    return layoutCylinder(
       draggingBarrelMount ? wanted : sealed.barrelFar,
       draggingBarrelMount ? sealed.rodFar : wanted,
       barrelLength,
-      rodLength,
       0.15 * SettingsService.objectScale,
       // The anchor is the mount NOT being dragged: it stays exactly still,
       // and the dragged mount is what the span floor stops.
@@ -530,8 +574,13 @@ export class GridUtilsService {
         y: sealed.rodFar.y - sealed.barrelFar.y,
       }
     );
-    if (!pose) return;
+  }
+
+  dragCylinderMount(sealed: Cylinder, mount: RealJoint, wanted: Coord): boolean {
+    const pose = this.cylinderMountPose(sealed, mount, wanted);
+    if (!pose) return false;
     this.applyCylinderPose(sealed, pose);
+    return pose.atMinimum === true;
   }
 
   /** Drag the body: the whole assembly translates rigidly. */
@@ -551,6 +600,29 @@ export class GridUtilsService {
    * neighbours, and their forces, by the same frame-carrying rule dragLink
    * applies.
    */
+  /**
+   * Resize a cylinder to a stroke and a position in it, holding its barrel
+   * mount and its axis — what the panel's Travel and Starts-at fields write.
+   *
+   * Deliberately not routed through the mount drag like the other panel edits.
+   * A drag says "put this mount here" and the layout answers with a size; this
+   * says "be this size" and the mount goes wherever that puts it. Sent through
+   * the drag instead, a longer stroke at the same position asks for a span that
+   * usually still lies inside the *old* stroke's travel — so the layout would
+   * dutifully keep the old size and slide the piston, and a field labelled
+   * Travel would change the position and not the travel.
+   */
+  resizeCylinder(sealed: Cylinder, stroke: number, start: number): void {
+    const pose = poseFromStrokeAndStart(
+      { x: sealed.barrelFar.x, y: sealed.barrelFar.y },
+      Math.atan2(sealed.rodFar.y - sealed.barrelFar.y, sealed.rodFar.x - sealed.barrelFar.x),
+      stroke,
+      start,
+      0.15 * SettingsService.objectScale
+    );
+    this.applyCylinderPose(sealed, pose);
+  }
+
   private applyCylinderPose(sealed: Cylinder, pose: CylinderPose): void {
     const placements: [Joint, { x: number; y: number }][] = [
       [sealed.barrelFar, pose.barrelFar],
@@ -616,26 +688,78 @@ export class GridUtilsService {
     return joints.findIndex((j) => j.id === id);
   }
 
-  dragForce(selectedForce: Force, trueCoord: Coord, isStartSelected: boolean) {
-    if (isStartSelected) {
-      if (selectedForce.link.joints.length !== 2) {
-        selectedForce.moveAnchor(trueCoord);
-      } else {
-        const joint1 = selectedForce.link.joints[0];
-        const joint2 = selectedForce.link.joints[1];
-        const [x, y] = point_on_line_segment_closest_to_point(
-          trueCoord.x,
-          trueCoord.y,
-          joint1.x,
-          joint1.y,
-          joint2.x,
-          joint2.y
-        );
-        selectedForce.moveAnchor(new Coord(x, y));
+  /**
+   * Where a force's anchor may sit on its link, given where the pointer is.
+   *
+   * Two joints are two different answers. A pin shared by more than one link is
+   * refused outright: a force applied *there* does not say which of the bodies
+   * meeting there it acts on, and every answer the force solver could pick is a
+   * guess the user never made — the same rule a driven joint follows. A joint on
+   * exactly one link has no such ambiguity, so the anchor snaps onto it, which
+   * is how a load is put on a tracer point at the end of a boom.
+   *
+   * `undefined` means the anchor may not go there at all. The caller keeps its
+   * own "inside the bar" test, because that one needs the drawn path.
+   */
+  forceAnchorAt(
+    link: RealLink,
+    point: Coord,
+    objectScale: number
+  ): { at: Coord; snappedTo?: RealJoint } | undefined {
+    // Generous enough to catch by hand: a joint is 0.15 object scales across.
+    const snapRadius = 0.3 * objectScale;
+    let nearest: RealJoint | undefined;
+    let nearestGap = Infinity;
+    for (const joint of link.joints) {
+      if (!(joint instanceof RealJoint)) continue;
+      const gap = Math.hypot(joint.x - point.x, joint.y - point.y);
+      if (gap < nearestGap) {
+        nearest = joint;
+        nearestGap = gap;
       }
-    } else {
-      selectedForce.moveDirectionHandle(trueCoord);
     }
+    if (nearest && nearestGap <= snapRadius) {
+      if (nearest.links.length > 1) return undefined;
+      return { at: new Coord(nearest.x, nearest.y), snappedTo: nearest };
+    }
+    return { at: point };
+  }
+
+  /**
+   * Move a force under a drag.
+   *
+   * `how` says which of the three things the gesture is: the tail alone (the
+   * point the load acts at), the whole arrow, or the head (its direction).
+   */
+  /**
+   * Move a force under a drag.
+   *
+   * `how` names which of the three things the gesture is: the tail alone (the
+   * point the load acts at, leaving the arrow pointing where it did *from* the
+   * new point), the whole arrow, or the head (its direction).
+   */
+  dragForce(selectedForce: Force, trueCoord: Coord, how: 'anchor' | 'whole' | 'direction') {
+    if (how === 'direction') {
+      selectedForce.moveDirectionHandle(trueCoord);
+      return selectedForce;
+    }
+    // On a plain two-joint bar the anchor is held to the line between them, so
+    // a load cannot end up floating beside the link it is applied to.
+    let at = trueCoord;
+    if (selectedForce.link.joints.length === 2) {
+      const [first, second] = selectedForce.link.joints;
+      const [x, y] = point_on_line_segment_closest_to_point(
+        trueCoord.x,
+        trueCoord.y,
+        first.x,
+        first.y,
+        second.x,
+        second.y
+      );
+      at = new Coord(x, y);
+    }
+    if (how === 'whole') selectedForce.moveAnchor(at);
+    else selectedForce.moveApplicationPoint(at);
     return selectedForce;
   }
 

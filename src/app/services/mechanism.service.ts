@@ -5,6 +5,8 @@ import { isSlideCandidate, slideAssemblyAt } from '../model/slide-assembly';
 import {
   Cylinder,
   cylinderCreationLayout,
+  cylinderJoints,
+  cylinderStrokeAlong,
   cylinderOfJoint,
   cylinderOfJointIn,
   cylinderOfLink,
@@ -45,7 +47,7 @@ import { Coord } from '../model/coord';
 import { Line } from '../model/line';
 import { SaveHistoryService } from './save-history.service';
 import { NumberUnitParserService } from './number-unit-parser.service';
-import { PositionSolver } from '../model/mechanism/position-solver';
+import { PositionSolver, SAMPLES_PER_STROKE } from '../model/mechanism/position-solver';
 import { ColorService } from './color.service';
 import { siUnitFactorsForLength } from '../model/unit-conversions';
 import { transformRigidCoord, transformRigidPath } from '../model/compound-link-path';
@@ -261,7 +263,6 @@ export class MechanismService {
         sealed.barrelFar,
         sealed.rodFar,
         barrelLength,
-        sealed.pin,
         0.15 * this.settingsService.objectScale
       );
       if (!pose) continue;
@@ -418,22 +419,33 @@ export class MechanismService {
     }
   }
 
+  /**
+   * The traced path of one joint across every solved sample.
+   *
+   * Every lookup here is guarded, and none of the guards is theoretical. This
+   * runs from a template binding, so a throw does not fail one path — it aborts
+   * the whole change-detection pass, and the frame that would have drawn the
+   * rest of the mechanism never renders. Asked for a joint that has just been
+   * added, or during the window where a structural edit has emptied the solved
+   * frames, it dereferenced `undefined` and took the canvas down with it.
+   * Nothing to draw yet is an ordinary state; the honest answer is no path.
+   */
   getJointPath(joint: Joint) {
-    if (this.mechanisms[0].joints[0].length === 0) {
+    const solved = this.mechanisms[0];
+    if (!solved || solved.joints.length === 0 || solved.joints[0].length === 0) {
       return '';
     }
-    let string = 'M';
     const jointIndex = this.joints.findIndex((j) => j.id === joint.id);
-    string +=
-      this.mechanisms[0].joints[0][jointIndex].x.toString() +
-      ' , ' +
-      this.mechanisms[0].joints[0][jointIndex].y.toString();
-    for (let j_index = 1; j_index < this.mechanisms[0].joints.length; j_index++) {
-      string +=
-        'L' +
-        this.mechanisms[0].joints[j_index][jointIndex].x.toString() +
-        ' , ' +
-        this.mechanisms[0].joints[j_index][jointIndex].y.toString();
+    if (jointIndex < 0 || !solved.joints[0][jointIndex]) {
+      return '';
+    }
+    const at = (step: number) => {
+      const sample = solved.joints[step][jointIndex];
+      return `${sample.x} , ${sample.y}`;
+    };
+    let string = 'M' + at(0);
+    for (let j_index = 1; j_index < solved.joints.length; j_index++) {
+      string += 'L' + at(j_index);
     }
     return string;
   }
@@ -704,7 +716,38 @@ export class MechanismService {
         }
         return;
       }
-      if (!this.compoundAt(joint)) joint.isWelded = false;
+      if (!this.compoundAt(joint)) {
+        joint.isWelded = false;
+        return;
+      }
+
+      // A weld that only got half way. A welded joint is rigid, so every body
+      // meeting it belongs to one compound; here it is in two, or in one with a
+      // loose bar beside it. The joint then draws its weld marker while one of
+      // the links through it is still free to turn — welded and pinned at the
+      // same time, which is not a state the model has an answer for and not one
+      // a user can see the shape of.
+      //
+      // Repaired the same way the branch above repairs a Slide: take the flag
+      // off (both weld guards refuse an already-welded joint, since they exist
+      // to stop a *second* weld) and let the ordinary weld run, which fuses
+      // everything at the joint into one body. Restore the flag if it will not.
+      //
+      // Nothing in the app builds this any more — welding a joint already in a
+      // compound absorbs that compound — but a URL can carry it in, and a URL
+      // is a compatibility surface: mechanisms saved by earlier versions have
+      // to keep opening, and they have to open as something coherent.
+      const bodiesAtJoint = this.links.filter(
+        (link): link is RealLink => link instanceof RealLink && link.joints.includes(joint)
+      );
+      if (bodiesAtJoint.length > 1) {
+        joint.isWelded = false;
+        if (this.weldJointTopology(joint)) {
+          this.rebuildJointGraph();
+        } else {
+          joint.isWelded = true;
+        }
+      }
     });
   }
 
@@ -751,6 +794,27 @@ export class MechanismService {
     target.input = target.input || source.input;
 
     this.links.forEach((link) => this.replaceJointInLink(link, source, target));
+
+    // A slot names two joints on its carrier, and those names are references
+    // rather than lookups — so a slot whose endpoint was just merged away still
+    // pointed at a joint that no longer exists in any link. `isSlotWellFormed`
+    // then answered no, and everything downstream agreed: the slider stopped
+    // being floating, its cylinder stopped resolving, and the skin disappeared
+    // with nothing said. Attaching a ram to the rest of a linkage is exactly
+    // what this gesture is for, so it was deleting the part in the one case it
+    // most needed to survive.
+    this.joints.forEach((joint) => {
+      if (!(joint instanceof PrisJoint) || !joint.isFloating) return;
+      const a = joint.slotJointA!;
+      const b = joint.slotJointB!;
+      if (a.id !== source.id && b.id !== source.id) return;
+      joint.slideOn(
+        joint.carrier!,
+        a.id === source.id ? target : a,
+        b.id === source.id ? target : b
+      );
+    });
+
     this.joints = this.joints.filter((joint) => joint.id !== source.id);
 
     // Only link membership has moved so far. Everything below reads joint.links
@@ -854,12 +918,27 @@ export class MechanismService {
   }
 
   deleteJoint() {
-    // Deleting a mount (or, defensively, any member joint) of a sealed
-    // cylinder deletes the whole assembly in one step (§ cylinder 5).
+    // Deleting a mount (or, defensively, any member joint) of a sealed cylinder
+    // takes the whole assembly with it (§ cylinder 5) — and then goes on to
+    // delete the joint itself.
+    //
+    // It used to stop at the cylinder. A mount held by some other link survived
+    // its own deletion, and so did that link: asked to delete joint K, the app
+    // removed the ram and left K sitting on the bar it shared with M. "Delete
+    // Cylinder" on the joint's own menu still means only the cylinder, and says
+    // so; this is the generic Delete, which has one meaning everywhere else —
+    // the joint goes, and so does any link that cannot stand without it.
     const sealed = this.cylinderAt(this.activeObjService.selectedJoint);
     if (sealed) {
-      this.deleteCylinder(sealed);
-      return;
+      const doomed = this.activeObjService.selectedJoint;
+      this.deleteCylinderTopology(sealed);
+      // The cascade may already have taken it: a mount no other link holds is
+      // removed as orphaned, and there is nothing left to delete.
+      if (!this.joints.some((joint) => joint.id === doomed.id)) {
+        this.activeObjService.updateSelectedObj(undefined);
+        this.finishStructuralEdit(true);
+        return;
+      }
     }
     // Deleting a joint of a NEIGHBOUR welded to a mount must not take the
     // cylinder with it: dismantling the compound through the generic path
@@ -1110,23 +1189,42 @@ export class MechanismService {
             l_subset_index = l_subset_index - 1;
           }
         }
-        // Now that all subsets have been gone over, do the final check
+        // Now that all subsets have been gone over, do the final check.
+        //
+        // A compound down to one leaf stops being a compound: the leaf takes
+        // its place as an ordinary link.
+        //
+        // Both branches used to look the surviving link up *after* reassigning
+        // `l` to the leaf, so they searched `links` for the leaf's id and got
+        // -1 whenever the leaf was not already top-level — and `splice(-1, 1)`
+        // does not do nothing. It removes the *last* link in the mechanism.
+        // Deleting one joint quietly deleted an unrelated body somewhere else
+        // on the grid, and left the emptied compound standing beside the leaf
+        // it was supposed to become. It only ever went unnoticed because the
+        // id rewriting above usually leaves the compound and its last leaf
+        // sharing a name, and then the wrong lookup happens to find the right
+        // link.
+        const removeLink = (id: string) => {
+          const at = this.links.findIndex((li) => li.id === id);
+          if (at >= 0) this.links.splice(at, 1);
+        };
         if (l.subset.length === 1) {
-          l = l.subset[0];
-          const delLinkIndex = this.links.findIndex((li) => li.id === l.id);
-          this.links.splice(delLinkIndex, 1);
-          this.links.push(l);
-          l.joints.forEach((jt) => {
+          const compoundId = l.id;
+          const survivor = l.subset[0];
+          removeLink(compoundId);
+          removeLink(survivor.id);
+          this.links.push(survivor);
+          survivor.joints.forEach((jt) => {
             if (!(jt instanceof RealJoint)) {
               return;
             }
             jt.isWelded = false;
             jt.links = [];
-            jt.links.push(l);
+            jt.links.push(survivor);
           });
+          l = survivor;
         } else if (l.subset.length === 0) {
-          const sliceIndex = this.links.findIndex((li) => li.id === l.id);
-          this.links.splice(sliceIndex, 1);
+          removeLink(l.id);
         }
       }
 
@@ -1286,32 +1384,39 @@ export class MechanismService {
   addJointAt(coord: Coord) {
     const newId = this.determineNextLetter();
     const newJoint = new RevJoint(newId, coord.x, coord.y);
-    this.activeObjService.selectedLink.joints.forEach((j) => {
-      if (!(j instanceof RealJoint)) {
-        return;
-      }
-      j.connectedJoints.push(newJoint);
-      newJoint.connectedJoints.push(j);
-    });
-    if (
-      this.activeObjService.selectedLink.isWelded &&
-      this.activeObjService.selectedLink.lastSelectedSublink
-    ) {
-      this.activeObjService.selectedLink.lastSelectedSublink.id =
-        this.activeObjService.selectedLink.lastSelectedSublink?.id.concat(newJoint.id);
-      this.activeObjService.selectedLink.lastSelectedSublink.fixedLocations.push({
-        id: newJoint.id,
-        label: newJoint.id,
-      });
-      this.activeObjService.selectedLink.lastSelectedSublink.joints.push(newJoint);
-    }
-    newJoint.links.push(this.activeObjService.selectedLink);
-    this.activeObjService.selectedLink.joints.push(newJoint);
-    this.activeObjService.selectedLink.id += newJoint.id;
-    this.activeObjService.selectedLink.d = this.activeObjService.selectedLink.getPathString();
+    this.graftJointOnto(newJoint, this.activeObjService.selectedLink);
     this.joints.push(newJoint);
     this.onMechUpdateState.next(3);
     this.updateMechanism(true);
+  }
+
+  /**
+   * Make an existing joint a member of `link`: the body grows to include it and
+   * turns as one rigid piece from then on.
+   *
+   * Lifted out of `addJointAt` so a cylinder's mount can arrive the same way a
+   * tracer point does. Neither pushes the joint onto `this.joints` or saves —
+   * a mount is created as part of a larger assembly that has its own single
+   * undo entry, and grafting is one step of building it rather than an edit of
+   * its own.
+   */
+  private graftJointOnto(joint: RealJoint, link: RealLink): void {
+    link.joints.forEach((member) => {
+      if (!(member instanceof RealJoint)) return;
+      member.connectedJoints.push(joint);
+      joint.connectedJoints.push(member);
+    });
+    // A welded compound is drawn from its leaves, so the leaf the user actually
+    // clicked has to grow too or the new joint belongs to a body nothing draws.
+    if (link.isWelded && link.lastSelectedSublink) {
+      link.lastSelectedSublink.id = link.lastSelectedSublink.id.concat(joint.id);
+      link.lastSelectedSublink.fixedLocations.push({ id: joint.id, label: joint.id });
+      link.lastSelectedSublink.joints.push(joint);
+    }
+    joint.links.push(link);
+    link.joints.push(joint);
+    link.id += joint.id;
+    link.d = link.getPathString();
   }
 
   deleteLink() {
@@ -1401,7 +1506,7 @@ export class MechanismService {
       return `Slider ${names} has nothing to slide along. Drag it onto a link to cut a slot, or ground it to fix its direction.`;
     }
     if (!this.joints.some((joint) => joint instanceof RealJoint && joint.input)) {
-      return 'No joint is driven. Right-click a joint and choose Make Input to say what moves the mechanism.';
+      return 'No joint is driven. Right-click a joint and choose Add Input to say what moves the mechanism.';
     }
     // A driven joint the actuator record cannot describe -- most often because
     // an edit added a third body to it long after Driven was switched on. The
@@ -1422,6 +1527,12 @@ export class MechanismService {
         ? `This mechanism has ${dof} degrees of freedom, and one input can only drive one. Add a constraint, or remove a body.`
         : `This mechanism has ${dof} degrees of freedom \u2014 it is over-constrained and cannot move. Remove a constraint.`;
     }
+    const noTravel = PositionSolver.unusableCylinderDrive;
+    if (noTravel) {
+      const cylinder = this.sealedStructures().find((found) => found.slider.id === noTravel);
+      const name = cylinder ? this.cylinderName(cylinder) : noTravel;
+      return `Cylinder ${name} has no travel: its barrel is too short to slide in at all. Lengthen the cylinder, or reduce Object Scale — a larger scale draws everything on the rod bigger without lengthening the barrel.`;
+    }
     const stuck = PositionSolver.unsolvableJoints;
     if (stuck.length > 0) {
       return `These joints cannot be placed from the ones around them: ${stuck.join(', ')}. They may need another link, or a driven joint nearer to them.`;
@@ -1429,11 +1540,110 @@ export class MechanismService {
     return 'This mechanism reached a position it could not solve from the one before it \u2014 usually a toggle, where the linkage locks.';
   }
 
+  /**
+   * What a mechanism that *does* run still cannot do, in its own terms.
+   *
+   * Separate from `invalidReason` because the mechanism is not invalid: it
+   * solves, it animates, and every number it reports is right. It simply cannot
+   * use the whole of a cylinder it contains, because the linkage binds \u2014 or
+   * reaches a toggle \u2014 before the ram runs out of barrel. The stroke is the
+   * cylinder's own property and nothing constrains it to what the mechanism
+   * around it can follow, so this can only be found by running the thing.
+   *
+   * Warned about rather than clamped, deliberately. Clamping would silently
+   * resize a part the user sized, and the interesting information \u2014 *this ram
+   * is bigger than this machine needs* \u2014 is exactly what clamping would hide.
+   */
+  cylinderReachWarning(): string | undefined {
+    // A template getter, so this is asked on every change-detection pass while
+    // the answer only changes when the mechanism is rebuilt. `cylinderRevision`
+    // is bumped exactly once per rebuild and never by an animation frame, which
+    // is the difference that matters: keyed on the pose instead, the sweep
+    // below would run against all 360 samples on every frame of playback.
+    if (this.reachWarningRevision === this.cylinderRevision) {
+      return this.reachWarningCache;
+    }
+    this.reachWarningRevision = this.cylinderRevision;
+    this.reachWarningCache = this.computeCylinderReachWarning();
+    return this.reachWarningCache;
+  }
+
+  private reachWarningRevision = -1;
+  private reachWarningCache: string | undefined;
+
+  private computeCylinderReachWarning(): string | undefined {
+    const solved = this.mechanisms[0];
+    if (!solved || !this.oneValidMechanismExists()) return undefined;
+    const frames = solved.joints.length;
+    if (frames < 2) return undefined;
+
+    for (const cylinder of this.sealedStructures()) {
+      const r = 0.15 * SettingsService.objectScale;
+      const barrelLength = getDistance(cylinder.barrelFar, cylinder.barrelNear);
+      const travel = cylinderStrokeAlong(barrelLength, r);
+      if (!travel.usable) continue;
+      const stroke = travel.max - travel.min;
+
+      const indexOf = (id: string) => solved.joints[0].findIndex((joint) => joint.id === id);
+      const anchor = indexOf(cylinder.barrelFar.id);
+      const pin = indexOf(cylinder.pin.id);
+      if (anchor < 0 || pin < 0) continue;
+
+      let low = Infinity;
+      let high = -Infinity;
+      for (let t = 0; t < frames; t++) {
+        const along = getDistance(solved.joints[t][anchor], solved.joints[t][pin]);
+        low = Math.min(low, along);
+        high = Math.max(high, along);
+      }
+      const used = high - low;
+      // A clean reversal touches both stops, so anything short of the whole
+      // stroke by more than the solver's own tolerance is the linkage stopping
+      // the ram rather than the ram stopping itself.
+      // Three sample steps of slack, and the number comes from the sampling
+      // rather than from taste. A reversing drive turns round at whichever
+      // sample first fails, not at the limit itself, so even a ram the linkage
+      // follows perfectly comes up about one step short at each end -- a fixed
+      // tolerance in model units either cried wolf on every cylinder or went
+      // deaf on small ones, because the shortfall scales with the stroke.
+      if (used >= stroke - (3 * stroke) / SAMPLES_PER_STROKE) continue;
+      const percent = Math.round((used / stroke) * 100);
+      return `Cylinder ${this.cylinderName(cylinder)} can only use ${percent}% of its stroke \u2014 the linkage binds before the cylinder does. Shorten its travel, or give the mechanism more room.`;
+    }
+    return undefined;
+  }
+
+  /** What to call a cylinder in a message: its two mounts, as the panel titles it. */
+  private cylinderName(cylinder: Cylinder): string {
+    return (
+      (cylinder.barrelFar.name || cylinder.barrelFar.id) +
+      (cylinder.rodFar.name || cylinder.rodFar.id)
+    );
+  }
+
   /** The sealed cylinder a joint or link belongs to, if any. */
   cylinderAt(obj: Joint | Link | undefined): Cylinder | undefined {
     if (obj instanceof Joint) return cylinderOfJointIn(this.sealedStructures(), obj);
     if (obj instanceof Link) return cylinderOfLinkIn(this.sealedStructures(), obj);
     return undefined;
+  }
+
+  /**
+   * Every sealed cylinder a joint belongs to, not just the first.
+   *
+   * Two rams can share a mount — an excavator's boom and stick meet that way,
+   * and it is the natural thing to draw. `cylinderAt` answers with whichever
+   * one happens to come first, which is right for "what am I looking at" and
+   * wrong for "what has to move": dragging a shared mount re-posed one ram
+   * parametrically and left the other to be straightened afterwards by the
+   * normalizer, which holds the mounts and can only move the interior — so the
+   * second ram silently changed size to absorb a drag meant for the first.
+   */
+  cylindersAt(joint: Joint | undefined): Cylinder[] {
+    if (!joint) return [];
+    return this.sealedStructures().filter((cylinder) =>
+      cylinderJoints(cylinder).some((member) => member.id === joint.id)
+    );
   }
 
   /**
@@ -1445,13 +1655,31 @@ export class MechanismService {
    * with its slot, block and welded pin, sealed slider, rod — is exactly
    * collinear along the drawn axis by construction.
    *
+   * `mountAt` is the joint version of `mountOn`: started from a joint's own
+   * menu, the barrel's mount *is* that joint rather than a new one beside it,
+   * so the ram hangs off everything already meeting there. A second joint at
+   * the same point would look identical and behave like neither.
+   *
    * One `finishStructuralEdit(true)` at the end makes creation one undo entry.
    */
-  createCylinderFrom(start: Coord, end: Coord): void {
+  createCylinderFrom(start: Coord, end: Coord, mountOn?: RealLink, mountAt?: RealJoint): void {
+    // A weld says everything meeting here is one rigid body. A ram's mount
+    // arriving would be a third body inside that statement without being part
+    // of it, and the reconcilers then disagree about what the compound is —
+    // which is a broken mechanism rather than a refused edit. The menu greys
+    // the item out; this is the same rule where the edit actually happens, so
+    // no other caller can get round it.
+    if (mountAt?.isWelded) {
+      NewGridComponent.sendNotification(
+        'This joint is welded, so a cylinder mounted on it would be a third body inside one rigid one. Unweld it, or attach the cylinder to the link instead.'
+      );
+      return;
+    }
     const creation = cylinderCreationLayout(start, end, this.settingsService.objectScale);
 
-    const aId = this.determineNextLetter();
-    const bId = this.determineNextLetter([aId]);
+    const taken = mountAt ? [mountAt.id] : [];
+    const aId = mountAt ? mountAt.id : this.determineNextLetter();
+    const bId = this.determineNextLetter(taken.concat(aId));
     const cId = this.determineNextLetter([bId]);
     const dId = this.determineNextLetter([cId]);
     const pId = this.determineNextLetter([dId]);
@@ -1460,14 +1688,19 @@ export class MechanismService {
       roundNumber(at.x, 3),
       roundNumber(at.y, 3),
     ];
-    const barrelFar = new RevJoint(aId, ...place(creation.barrelFar));
+    const barrelFar = mountAt ?? new RevJoint(aId, ...place(creation.barrelFar));
     const barrelNear = new RevJoint(bId, ...place(creation.barrelNear));
     const pin = new RevJoint(cId, ...place(creation.pin));
     const rodFar = new RevJoint(dId, ...place(creation.rodFar));
     const slider = new PrisJoint(pId, pin.x, pin.y);
     slider.isSealed = true;
 
-    const barrel = this.gridUtils.createRealLink(aId + bId, [barrelFar, barrelNear]);
+    // Link ids are their joints' letters in order, and an existing mount's
+    // letter is whatever it already was — not necessarily before the new one.
+    const barrel = this.gridUtils.createRealLink([aId, bId].sort().join(''), [
+      barrelFar,
+      barrelNear,
+    ]);
     const rod = this.gridUtils.createRealLink(cId + dId, [pin, rodFar]);
     const block = new SliderBlock(cId + pId, [pin, slider]);
     slider.slideOn(barrel, barrelFar, barrelNear);
@@ -1479,7 +1712,17 @@ export class MechanismService {
     rodFar.links.push(rod);
     slider.links.push(block);
 
-    this.joints.push(barrelFar, barrelNear, pin, rodFar, slider);
+    // Anchored on a link, when the gesture started from one: the barrel's mount
+    // joins that body and the ram swings with it, which is what a ram bolted to
+    // a boom or a frame does. The rod's far end is left free for the user to
+    // attach to whatever it drives — a ram fixed at both ends before it exists
+    // would be a ram with nowhere to go.
+    if (mountOn) this.graftJointOnto(barrelFar, mountOn);
+
+    // Started from a joint, that joint is already in the mechanism and already
+    // holds its own links; it has just gained one more.
+    if (!mountAt) this.joints.push(barrelFar);
+    this.joints.push(barrelNear, pin, rodFar, slider);
     this.links.push(barrel, rod, block);
     // The body is what a click on the skin selects; select it on creation so
     // the edit panel opens on the cylinder.
@@ -1499,6 +1742,22 @@ export class MechanismService {
       this.cylinderAt(this.activeObjService.selectedJoint) ??
       this.cylinderAt(this.activeObjService.selectedLink);
     if (!sealed) return;
+    this.deleteCylinderTopology(sealed);
+    this.activeObjService.updateSelectedObj(undefined);
+    this.finishStructuralEdit(true);
+  }
+
+  /**
+   * Take a cylinder out of the mechanism. Pure topology — no rebuild, no save,
+   * and the selection is left alone.
+   *
+   * Split from `deleteCylinder` for the same reason `weldTopology` is split
+   * from `weldJoint`: two callers want the same removal and different endings.
+   * Deleting the *cylinder* ends here; deleting a *joint* that happens to be
+   * one of its mounts carries on to remove the joint too, and wants one undo
+   * entry covering both.
+   */
+  private deleteCylinderTopology(sealed: Cylinder): void {
     // A gesture in flight targets objects about to stop existing.
     this.injector.get(DragStateService).cancel();
 
@@ -1526,8 +1785,22 @@ export class MechanismService {
         this.links.some((candidate) => candidate.joints.includes(joint))
     );
 
-    this.activeObjService.updateSelectedObj(undefined);
-    this.finishStructuralEdit(true);
+    // Scrub what survived of what did not.
+    //
+    // A surviving mount keeps its own `links` and `connectedJoints` arrays, and
+    // they still name the ram's links and its interior joints. Nothing noticed
+    // while this was the last step of a deletion — the rebuild reads the link
+    // list, not the joint's copy of it — but any code that walks a joint's own
+    // neighbours afterwards is walking to objects that no longer exist. The
+    // generic joint deletion does exactly that, and looked up a joint that had
+    // been removed a moment earlier.
+    const liveLinks = new Set(this.links.map((link) => link.id));
+    const liveJoints = new Set(this.joints.map((joint) => joint.id));
+    this.joints.forEach((joint) => {
+      if (!(joint instanceof RealJoint)) return;
+      joint.links = joint.links.filter((link) => liveLinks.has(link.id));
+      joint.connectedJoints = joint.connectedJoints.filter((other) => liveJoints.has(other.id));
+    });
   }
 
   /**
@@ -1610,36 +1883,37 @@ export class MechanismService {
       jointToToggleInput = this.activeObjService.selectedJoint;
     }
 
-    //If we are about to enable input, we need to check to see if there is an existing input joint
-    if (!jointToToggleInput.input) {
-      //Go through all other joints and disable input
-      this.joints.forEach((j) => {
-        if (!(j instanceof RealJoint)) {
-          return;
-        }
-        if (j.input) {
-          j.input = false;
-        }
-      });
-    }
-
     // Turning a joint *on* has to name the two bodies it drives between
     // (§2.9). Three bodies meet at some joints, and then "driven" says nothing
     // about which pair moves -- every answer the solvers could pick is a guess
     // the user never made. Refused here with the reason, rather than accepted
     // and guessed at downstream. Turning one off is always allowed.
+    //
+    // Asked *before* anything is changed. The old input used to be cleared
+    // first and the refusal returned after, which left the mechanism with no
+    // driven joint at all -- a click that was refused still took the input
+    // away, and there was no undo entry to get it back.
     if (!jointToToggleInput.input) {
       const refusal = describeActuator(jointToToggleInput);
       if (typeof refusal === 'string') {
         NewGridComponent.sendNotification(refusal);
         return;
       }
+      // One input at a time, so the joint taking the job displaces the old one.
+      this.joints.forEach((j) => {
+        if (j instanceof RealJoint && j.input) {
+          j.input = false;
+        }
+      });
     }
 
     //Toggle the input joint
     jointToToggleInput.input = !jointToToggleInput.input;
 
-    this.updateMechanism();
+    // Saved, like every other edit that changes what the mechanism is. Moving
+    // the input from one joint to another is one of the larger things a user
+    // can do to a mechanism, and it was the one edit undo could not reach.
+    this.updateMechanism(true);
     this.onMechUpdateState.next(3);
   }
 
@@ -2022,7 +2296,19 @@ export class MechanismService {
     // the service, so it has to be current by the time they are notified.
     this.mechanismTimeStep = progress;
     this.onMechPositionChange.next(progress);
-    this.showPathHolder = !(this.mechanismTimeStep === 0 && !animationState);
+    // Paths are drawn whenever there is a solved cycle to draw them from,
+    // including at rest.
+    //
+    // They used to be hidden while the mechanism was parked at its start pose,
+    // on the grounds that nothing had been traced yet. That reasoning belonged
+    // to a time when every joint traced by default: the path was a by-product,
+    // so showing one before anything had moved was a claim about motion that
+    // had not happened. A path is asked for a joint at a time now, and the
+    // whole cycle is precomputed the moment the mechanism is valid — so the
+    // answer to "show me where this joint goes" is available immediately, and
+    // hiding it until the user presses play is hiding the thing they just
+    // switched on.
+    this.showPathHolder = this.oneValidMechanismExists();
     if (animationState !== undefined) {
       AnimationBarComponent.animate = animationState;
     }
@@ -2116,11 +2402,28 @@ export class MechanismService {
   private restoreStartPose() {
     // While playing, the drawn pose is blended past its sample, so step 0 alone
     // does not mean the joints hold the start pose — only paused-at-0 does.
-    const atStartPose = this.mechanismTimeStep === 0 && !AnimationBarComponent.animate;
-    if (atStartPose || !this.mechanisms[0]?.joints[0]?.length) {
+    if (this.atStartPose() || !this.mechanisms[0]?.joints[0]?.length) {
       return;
     }
     this.applyPose(0, 0);
+  }
+
+  private atStartPose(): boolean {
+    return this.mechanismTimeStep === 0 && !AnimationBarComponent.animate;
+  }
+
+  /**
+   * Stop playback and draw the start of the cycle.
+   *
+   * For callers about to replace the mechanism wholesale. `restoreStartPose`
+   * does the same job as part of a rebuild, but a rebuild that swaps in a
+   * different linkage is too late for it: the joints and the solved samples it
+   * pairs off by index no longer describe the same mechanism by then. This runs
+   * while they still do, and leaves that call nothing to undo.
+   */
+  rewindToStart(): void {
+    if (this.atStartPose()) return;
+    this.animate(0, false);
   }
 
   /**
@@ -2423,12 +2726,32 @@ export class MechanismService {
     if (joint instanceof RealJoint) this.unWeldJoint(joint);
   }
 
-  public unweldAll(): void {
+  /**
+   * Take one compound apart: every weld holding *this* body together, and no
+   * others.
+   *
+   * The control that calls this lives inside a selected link's own Compound
+   * Link Settings, so "all" has always meant "all of this one". It was reading
+   * as "all in the mechanism": pressing it on a two-leaf compound dissolved
+   * every other compound on the grid, which is a large, silent, and entirely
+   * unrelated edit.
+   *
+   * With no link it still means the whole mechanism, because that is what a
+   * caller with nothing selected can only mean.
+   */
+  public unweldAll(link: Link | undefined = this.activeObjService.selectedLink): void {
+    const scope =
+      link instanceof RealLink && link.subset.length > 0
+        ? this.joints.filter(
+            (joint): joint is RealJoint =>
+              joint instanceof RealJoint && joint.isWelded && link.joints.includes(joint)
+          )
+        : this.joints.filter(
+            (joint): joint is RealJoint => joint instanceof RealJoint && joint.isWelded
+          );
+
     let changed = false;
-    const weldedJoints = this.joints.filter(
-      (joint): joint is RealJoint => joint instanceof RealJoint && joint.isWelded
-    );
-    weldedJoints.forEach((joint) => {
+    scope.forEach((joint) => {
       changed = this.unweldTopology(joint) || changed;
     });
     if (changed) this.finishStructuralEdit(true);

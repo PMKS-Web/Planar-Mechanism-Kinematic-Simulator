@@ -7,6 +7,7 @@ import { Link, SliderBlock, RealLink } from '../../app/model/link';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { ColorService } from '../../app/services/color.service';
 import { SettingsService } from '../../app/services/settings.service';
+import { MODEL_SCALE } from '../../app/model/render-scale';
 
 /**
  * Declarative description of a linkage that mirrors the MATLAB models in
@@ -15,7 +16,20 @@ import { SettingsService } from '../../app/services/settings.service';
  */
 export interface MechanismFixture {
   /** Joint ids must be the single letters the dataset uses, in creation order. */
-  joints: { id: string; x: number; y: number; ground?: boolean; input?: boolean }[];
+  joints: {
+    id: string;
+    x: number;
+    y: number;
+    ground?: boolean;
+    input?: boolean;
+    /**
+     * Draw this joint's path. Off everywhere by default, as it is in the app:
+     * a mechanism that traces every joint at once hides itself behind the
+     * thicket. Set it where the path *is* the mechanism — the straight line a
+     * straight-line linkage draws, the ellipse an elliptical crank draws.
+     */
+    trace?: boolean;
+  }[];
   /**
    * `joints` is the concatenated joint letters (also the link id). List links
    * in the MATLAB free-body-chain order (input crank first): each shared
@@ -91,7 +105,29 @@ export interface BuiltMechanism {
   fixture: MechanismFixture;
 }
 
+/**
+ * The drawing scale a fixture is solved at unless its caller says otherwise.
+ *
+ * It has to be *some* fixed value rather than whatever the process happens to
+ * be holding. `SettingsService.objectScale` is a process-wide static, and the
+ * solver measures real things against it — a cylinder's stroke, and now the
+ * ends of a slot. Vitest runs spec files unisolated, so left ambient it is
+ * whichever file last set it, and the same mechanism solves differently from
+ * run to run. That is what the intermittent cylinder failures were.
+ */
+const SOLVING_OBJECT_SCALE = 1 * MODEL_SCALE;
+
 export function buildMechanism(fixture: MechanismFixture): BuiltMechanism {
+  const previousScale = SettingsService.objectScale;
+  SettingsService._objectScale.next(SOLVING_OBJECT_SCALE);
+  try {
+    return buildMechanismNow(fixture);
+  } finally {
+    SettingsService._objectScale.next(previousScale);
+  }
+}
+
+function buildMechanismNow(fixture: MechanismFixture): BuiltMechanism {
   // ColorService registers itself as a static singleton that RealLink depends
   // on; SettingsService.objectScale is used when forces render their SVG.
   if (!ColorService.instance) {
@@ -102,6 +138,7 @@ export function buildMechanism(fixture: MechanismFixture): BuiltMechanism {
   const jointById = new Map<string, RevJoint>();
   const joints: Joint[] = fixture.joints.map((spec) => {
     const joint = new RevJoint(spec.id, spec.x, spec.y, !!spec.input, !!spec.ground);
+    joint.showCurve = !!spec.trace;
     jointById.set(spec.id, joint);
     return joint;
   });
@@ -205,4 +242,30 @@ export function buildMechanism(fixture: MechanismFixture): BuiltMechanism {
     fixture.inputAngVel
   );
   return { mechanism, joints, links, forces, fixture };
+}
+
+/**
+ * Build a fixture at a given drawing scale, leaving the shared static as found.
+ *
+ * `SettingsService.objectScale` is process-wide, and a cylinder's stroke and a
+ * slot's ends are both measured against it — so a spec that needs a particular
+ * scale has to pin one. Pinning it and walking away is what made this suite
+ * order-dependent: Vitest runs files unisolated, so whichever spec set it last
+ * decided what every concurrent file saw, and the failures moved around the
+ * cylinder specs from run to run.
+ *
+ * Set, build, put back. The built mechanism has already captured what it needed
+ * from the scale by the time this returns.
+ */
+export function buildMechanismAtScale(
+  fixture: MechanismFixture,
+  objectScale: number
+): BuiltMechanism {
+  const previous = SettingsService.objectScale;
+  SettingsService._objectScale.next(objectScale);
+  try {
+    return buildMechanismNow(fixture);
+  } finally {
+    SettingsService._objectScale.next(previous);
+  }
 }

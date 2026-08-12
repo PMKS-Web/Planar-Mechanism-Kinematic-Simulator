@@ -13,9 +13,13 @@ their source. Everything browser-driven lives here.
 
 ## E2E scripts
 
-- `full-tour.mjs` — broad tour: panels, templates, settings, share URL, help, mobile viewport
-- `deep-interactions.mjs` — deep grid interaction: add links, drag joints, right-click menus
-- `focused-interactions.mjs` — focused workflows (four-bar build, animation, analysis)
+- `full-tour.mjs` — broad tour: panels, templates, settings, share URL, help, and a fresh load at
+  phone size. Looks for a NaN degrees-of-freedom, a page wider than its viewport, a Save that starts
+  no download and a template dialog that will not close; exits non-zero on any of them
+- `interaction-sweep.mjs` — every context-menu action on every kind of object (joint, link, force,
+  bare grid) across several mechanisms: each enabled item is clicked, the model and drawing are read
+  back, and it is undone. Catches the silent click — enabled, pressed, and nothing happened and
+  nothing was said. `ONLY=4-Bar,Cylinder_Boom` narrows it
 - `phase1-drag.mjs` — drag gestures: joint snap ring and merge, merging onto a slider's pin,
   refusing an over-constraining merge, whole-link drag, one undo entry per gesture,
   click-without-nudge, the canvas staying put after a merge, and Analyze mode refusing drags.
@@ -23,6 +27,8 @@ their source. Everything browser-driven lives here.
 - `force-analysis-panels.mjs` — Force Analysis rows on the joint and link analysis panels, and the shared Force Analysis Type toggle
 - `left-nav-modes.mjs` — mode-scoped left nav rail: Edit/Analyze tool sections, the absorbed view controls, and the rewind-on-leaving-Analyze behavior
 - `template-open.mjs` — the template library: loads in place on an empty grid, and shows a new-tab / replace / cancel choice (with replace undoable) when the grid already holds work
+- `template-graphs.mjs` — every template in the library, checked for *correct* kinematic graphs: opens each payload, selects each moving joint on the Analyze tab, reads the plotted series out of `AnalysisGraphComponent` (numbers, not pixels) and cross-checks position against the solved joint positions and velocity/acceleration against difference quotients of the series above them. Reversals and dead centres are identified from the source series and reported by sample index rather than tolerated silently. Exits non-zero on any failure
+- `template-thumbnails.mjs` — regenerates the library cards' images in `src/assets/gifs/` by opening each generated template payload and clipping the canvas. Not a check: it writes assets, so run it after `npm run template-payloads` changes a payload
 - `playback-timing.mjs` — real-time playback: a revolution takes 60/RPM wall-clock seconds, the reported cycle period scales with input speed, and simulation time is held (not the sample index) across a speed change
 - `input-settings-and-playback.mjs` — the input joint's Input Settings section (direction, unit-free speed field, RPM / deg/s / rad/s picker), its removal from global Settings, the time field's width, and that playback interpolates between samples at a slow input speed
 
@@ -36,7 +42,7 @@ deploy installs. Run these scripts directly for local validation; they are not
 part of CI (see `SKILLS.md` and `.claude/skills/ui-validate/SKILL.md`).
 
 ```bash
-node e2e/focused-interactions.mjs
+node e2e/interaction-sweep.mjs
 ```
 
 Environment overrides:

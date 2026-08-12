@@ -55,13 +55,25 @@ interface Neighbour {
 
 export class LoopSolver {
   /**
-   * Every loop that runs from one ground joint to another.
+   * An independent set of loops running from one ground joint to another.
+   *
+   * Every such walk is enumerated, then reduced to a cycle basis: see
+   * `independent` for why the extras have to go rather than merely being
+   * harmless.
    *
    * Loops are **open chains**: the returned edges stop at the second ground
    * joint. The closing ground-to-ground step is not represented, because no
    * `Link` joins two ground joints and no consumer ever asked for one — the old
    * letter format appended the starting letter back on and then every walk
    * stopped one short of it.
+   *
+   * Every pair of ground joints is walked, not only the pairs containing the
+   * input. A closure that touches no ground pivot the input sits on is still a
+   * closure: a shaper's output stage — lever tip, connecting link, ram on its
+   * own guide — runs between the lever's pivot and the ram's guide, and both
+   * are ground. Enumerating only the input's own chains left that stage in no
+   * loop at all, so the velocity walk never reached the ram and the graph drew
+   * a joint that travels three units as standing still.
    */
   static determineLoops(joints: Joint[], links: Link[]): Loop[] {
     const loops: Loop[] = [];
@@ -95,13 +107,105 @@ export class LoopSolver {
             { jointId: next.joint.id, viaSliderId: next.viaSliderId },
           ],
           loops,
-          desiredGround.input,
           links,
           slotNeighbours
         );
       });
     }
-    return this.deduplicate(loops);
+    return this.independent(this.deduplicate(loops));
+  }
+
+  /**
+   * Keep only the loops that say something the earlier ones did not.
+   *
+   * `deduplicate` removes a loop that repeats another one's bodies, but a
+   * mechanism can enumerate more distinct walks than it has independent
+   * closures. Jansen's leg yields four — `O-A-B-G`, `O-A-B-C-E-D-G`,
+   * `O-A-D-G`, `O-A-D-E-C-G` — and the fourth is the sum of the other three.
+   * The velocity system sizes its matrix from the unknown count (six here) but
+   * indexes its rows by loop, so a fourth loop writes past the last row.
+   *
+   * Independence is settled here, on topology, rather than in the solver: the
+   * loops are enumerated once per mechanism and the solver rebuilds its
+   * matrices every timestep, and every consumer of `requiredLoops` — the
+   * velocity solver, the force solver, the instant centres — has to be looking
+   * at the same set or they disagree about what the mechanism is.
+   *
+   * The test is elimination over GF(2) in the mechanism's cycle space. A loop
+   * is the set of (body, joint) incidences it uses; a walk that reduces to the
+   * empty set is a sum of loops already kept, and so adds no equation. What
+   * survives is a cycle basis, and because the scan is greedy in order, a
+   * mechanism whose loops were already independent comes back untouched.
+   */
+  private static independent(loops: Loop[]): Loop[] {
+    const basis = new Map<string, Set<string>>();
+    const kept: Loop[] = [];
+    for (const loop of loops) {
+      let vector = this.incidences(loop);
+      // Reduce against the basis, smallest remaining incidence first.
+      for (let pivot = this.lowest(vector); pivot !== undefined; pivot = this.lowest(vector)) {
+        const row = basis.get(pivot);
+        if (!row) {
+          break;
+        }
+        for (const bit of row) {
+          if (vector.has(bit)) {
+            vector.delete(bit);
+          } else {
+            vector.add(bit);
+          }
+        }
+      }
+      const pivot = this.lowest(vector);
+      if (pivot === undefined) {
+        continue;
+      }
+      basis.set(pivot, vector);
+      kept.push(loop);
+    }
+    return kept;
+  }
+
+  /**
+   * A loop as the (body, joint) incidences it uses, one bit each.
+   *
+   * Bodies and joints both become nodes and an incidence becomes an edge, so a
+   * pin shared by three bodies contributes three edges rather than a triangle
+   * that would count as an extra cycle. Prefixes keep the three kinds of body
+   * apart: a link, a sliding pair, and the frame that closes the walk — loops
+   * are returned as open ground-to-ground chains, and without that closing
+   * step they would not be cycles at all.
+   */
+  private static incidences(loop: Loop): Set<string> {
+    const bits = new Set<string>();
+    const toggle = (bodyId: string, jointId: string) => {
+      const bit = `${bodyId}|${jointId}`;
+      if (bits.has(bit)) {
+        bits.delete(bit);
+      } else {
+        bits.add(bit);
+      }
+    };
+    for (const edge of loop.edges) {
+      const bodyId = edge.kind === 'slot' ? `S:${edge.sliderId}` : `L:${edge.linkId}`;
+      toggle(bodyId, edge.fromId);
+      toggle(bodyId, edge.toId);
+    }
+    if (loop.edges.length > 0) {
+      toggle('F:', loop.edges[0].fromId);
+      toggle('F:', loop.edges[loop.edges.length - 1].toId);
+    }
+    return bits;
+  }
+
+  private static lowest(bits: Set<string>): string | undefined {
+    let lowest: string | undefined;
+    for (const bit of bits) {
+      if (lowest === undefined || bit < lowest) {
+        lowest = bit;
+      }
+    }
+    return lowest;
   }
 
   /**
@@ -186,7 +290,6 @@ export class LoopSolver {
     visited: string[],
     path: PathStep[],
     loops: Loop[],
-    storeJointPath: boolean,
     links: Link[],
     slotNeighbours: Map<string, Neighbour[]>
   ): void {
@@ -200,7 +303,7 @@ export class LoopSolver {
       }
       const step: PathStep = { jointId: j.id, viaSliderId: next.viaSliderId };
       if (j.ground) {
-        if (groundJoints.indexOf(j) === -1 || !storeJointPath) {
+        if (groundJoints.indexOf(j) === -1) {
           continue;
         }
         const edges = this.edgesAlong([...path, step], links);
@@ -214,7 +317,6 @@ export class LoopSolver {
           [...visited, j.id],
           [...path, step],
           loops,
-          storeJointPath,
           links,
           slotNeighbours
         );

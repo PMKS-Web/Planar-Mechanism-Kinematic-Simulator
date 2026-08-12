@@ -367,10 +367,16 @@
     @for (motor of drivenPinMotors; track motor.id) {
       <!-- Placed exactly as the grounded glyph is placed, because it is the
            same element with the same attributes on an asset that differs only
-           by what has been taken out of it. Upright, not turned with the case:
-           a driven joint should not look like a different kind of thing
-           depending on which body its motor is bolted to. -->
-      <g [attr.transform]="'translate(' + motor.x + ' ' + motor.y + ')'">
+           by what has been taken out of it.
+
+           Turned with the case, in the same composition order, so the two are
+           one piece. Drawn upright it read as a label hovering over the motor
+           rather than as part of it: the case swung round with the bar it is
+           bolted to and the arrow inside it did not, which is the one thing a
+           mark meant to say "this is bolted here" must not do. -->
+      <g
+        [attr.transform]="'translate(' + motor.x + ' ' + motor.y + ') rotate(' + motor.angle + ')'"
+      >
         <image
           [attr.xlink:href]="
             settings.isInputCW.value
@@ -579,19 +585,9 @@
           [attr.stroke]="cyl.barrelFill"
           [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
         />
-        <!-- The linear-motion cue, under the block: a dotted line inside the
-             barrel that never draws over the part sliding through it. -->
-        <line
-          pointer-events="none"
-          [attr.x1]="cyl.dash.x1"
-          y1="0"
-          [attr.x2]="cyl.dash.x2"
-          y2="0"
-          stroke="#ffffff"
-          stroke-opacity="0.5"
-          [attr.stroke-width]="cyl.dash.width"
-          [attr.stroke-dasharray]="cyl.dash.dashArray"
-        />
+        <!-- No stop notches and no dotted motion line. The bore is the head's
+             own length, so the head bottoms out flush with the barrel's ends
+             and the silhouette says where the travel ends by itself. -->
         <path
           cursor="move"
           (pointerdown)="setLastLeftClick(cyl.body, $event)"
@@ -656,10 +652,12 @@
         [attr.transform]="sliderMarks.frame(ghost)"
       >
         <!-- Same per-path alphas as the committed skin, so the black block
-             reads through the rod exactly as it will once built. -->
-        <path [attr.d]="ghost.barrel" fill="#9fa8da" fill-opacity="0.7" />
+             reads through the rod exactly as it will once built — and the same
+             colour, which is the one the barrel is about to be handed rather
+             than a stand-in that changes at the moment of the click. -->
+        <path [attr.d]="ghost.barrel" [attr.fill]="ghost.fill" fill-opacity="0.7" />
         <path [attr.d]="ghost.block" fill="#000000" />
-        <path [attr.d]="ghost.rod" fill="#9fa8da" fill-opacity="0.7" />
+        <path [attr.d]="ghost.rod" [attr.fill]="ghost.fill" fill-opacity="0.7" />
       </g>
     }
   </g>
@@ -1008,9 +1006,9 @@
   @for (force of mechanismSrv.getForces(); track force) {
     <g
       id="forcesHolder"
-      style="transform: scaleY(-1)"
+      style="transform: scaleY(-1); cursor: move"
       (contextmenu)="setLastRightClick(force)"
-      (pointerdown)="setLastLeftClick(force)"
+      (pointerdown)="beginDraggingForceBody(force, $event); setLastLeftClick(force)"
       (pointerover)="force.showHighlight = true"
       (pointerout)="force.showHighlight = false"
     >
@@ -1020,18 +1018,22 @@
           [attr.y]="force.startCoord.y"
           style="pointer-events: none; overflow: visible"
         >
+          <!-- Global: a disc, small enough that a joint it is sitting on still
+               reads around it. At the old 0.15 object scales it was the same
+               size as the joint and covered it exactly. -->
           @if (!force.local) {
-            <circle [attr.r]="settings.objectScale * 0.15" class="forceAnchor"></circle>
+            <circle [attr.r]="forceAnchorRadius(force)" class="forceAnchor"></circle>
           }
+          <!-- Local: the welded joint's own plus. A local force is carried by
+               the body rather than fixed in the world, which is the statement a
+               weld makes about a joint — so it is that mark, from that geometry,
+               and the two cannot drift apart. -->
           @if (force.local) {
-            <rect
-              [attr.width]="settings.objectScale * 0.25"
-              [attr.height]="settings.objectScale * 0.25"
-              [attr.x]="settings.objectScale * -0.125"
-              [attr.y]="settings.objectScale * -0.125"
+            <path
+              [attr.d]="forceWeldMark(force)"
               class="forceAnchor"
-              style="transform: rotateZ({{ force.angleRad + 0.785 }}rad)"
-            ></rect>
+              style="transform: rotateZ({{ force.angleRad }}rad)"
+            ></path>
           }
         </svg>
         <!-- Transpent thicker force to increase hitbox for the group for highliting-->
@@ -1074,14 +1076,7 @@
             width="10"
             style="overflow: visible; cursor: move"
           >
-            <rect
-              [attr.x]="-0.075 * settings.objectScale"
-              [attr.y]="-0.075 * settings.objectScale"
-              [attr.width]="0.15 * settings.objectScale"
-              [attr.height]="0.15 * settings.objectScale"
-              class="forceEndpointSquare"
-              style="transform: rotateZ({{ force.angleRad }}rad)"
-            ></rect>
+            <circle [attr.r]="0.075 * settings.objectScale" class="forceEndpointHandle"></circle>
           </svg>
           <svg
             id="endForceEndpoint"
@@ -1098,14 +1093,7 @@
             width="10"
             style="overflow: visible; cursor: move"
           >
-            <rect
-              [attr.x]="-0.075 * settings.objectScale"
-              [attr.y]="-0.075 * settings.objectScale"
-              [attr.width]="0.15 * settings.objectScale"
-              [attr.height]="0.15 * settings.objectScale"
-              class="forceEndpointSquare"
-              style="transform: rotateZ({{ force.angleRad }}rad)"
-            ></rect>
+            <circle [attr.r]="0.075 * settings.objectScale" class="forceEndpointHandle"></circle>
           </svg>
         </ng-container>
       }
@@ -1224,41 +1212,37 @@
       </svg>
     }
   </g>
-  <g id="jointTempHolder" style="display: none; transform: scaleY(-1)">
-    <line
-      stroke="black"
-      [attr.stroke-width]="0.02 * settings.objectScale"
-      stroke-opacity="0.5"
-      style="pointer-events: none"
-    ></line>
-    <svg height="10" width="10" style="overflow: visible" cursor="move">
+  <!-- The bar being drawn. Same capsule, same half-width as the link it will
+       become, so the preview is the part rather than a line suggesting one. -->
+  @if (linkPreview; as preview) {
+    <g style="pointer-events: none; transform: scaleY(-1)" opacity="0.5">
+      <path
+        [attr.d]="preview.bar"
+        [attr.fill]="preview.fill"
+        [attr.fill-opacity]="0.7"
+        [attr.stroke]="preview.fill"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+      ></path>
+    </g>
+  }
+  <!-- The force being drawn. Same two paths the finished arrow is made of, so
+       what is previewed is exactly what the next click will create. -->
+  @if (forceGhost; as ghost) {
+    <g id="forceTempHolder" opacity="0.5" style="pointer-events: none; transform: scaleY(-1)">
       <circle
-        [attr.r]="0.14 * settings.objectScale"
-        cx="0%"
-        cy="0%"
-        fill="black"
-        fill-opacity="0.5"
-        stroke-opacity="0.5"
+        [attr.cx]="ghost.startCoord.x"
+        [attr.cy]="ghost.startCoord.y"
+        [attr.r]="forceAnchorRadius(ghost)"
+        class="forceAnchor"
       ></circle>
-      <!--      (pointerdown)="mouseDown($event, 'jointTemp')"-->
-      <circle
-        [attr.r]="0.1 * settings.objectScale"
-        cx="0%"
-        cy="0%"
-        fill="gray"
-        stroke="#00000000"
-        stroke-width="0.2"
-      ></circle>
-    </svg>
-  </g>
-  <g
-    id="forceTempHolder"
-    opacity="0.5"
-    style="display: none; pointer-events: none; transform: scaleY(-1)"
-  >
-    <path stroke-width="0.04" stroke="black" d=""></path>
-    <path fill="black" d=""></path>
-  </g>
+      <path
+        [attr.d]="ghost.forceLine"
+        class="forceLine"
+        [attr.stroke-width]="ghost.visualWidth * settings.objectScale"
+      ></path>
+      <path [attr.d]="ghost.forceArrow" class="forceArrow" [attr.fill]="ghost.fill"></path>
+    </g>
+  }
 
   @if (
     (activeObjService.objType == 'Link' || activeObjService.objType == 'Joint') &&
@@ -1336,6 +1320,98 @@
             this.settings.angleUnit.getValue()
           )
         }}
+      </text>
+    </g>
+  }
+  <!-- The ram's travel, as the stretch of ground its rod mount covers. One
+       picture for both size fields: Travel is how long this line is, Starts at
+       is how far along it the ram is standing right now. -->
+  @if (cylinderRange; as range) {
+    <g style="pointer-events: none; transform: scaleY(-1)">
+      <line
+        [attr.x1]="range.from.x"
+        [attr.y1]="range.from.y"
+        [attr.x2]="range.to.x"
+        [attr.y2]="range.to.y"
+        stroke="#000000"
+        stroke-linecap="round"
+        [attr.stroke-width]="0.02 * settings.objectScale"
+        [attr.stroke-dasharray]="0.08 * settings.objectScale"
+      />
+      <!-- Solid as far as the ram has gone, dashed for what is left of the
+           travel: the split *is* the percentage, without a second mark. -->
+      @if (range.showsPosition) {
+        <line
+          [attr.x1]="range.from.x"
+          [attr.y1]="range.from.y"
+          [attr.x2]="range.at.x"
+          [attr.y2]="range.at.y"
+          stroke="#000000"
+          stroke-linecap="round"
+          [attr.stroke-width]="0.04 * settings.objectScale"
+        />
+      }
+      @for (cap of cylinderRangeCaps(range); track $index) {
+        <line
+          [attr.x1]="cap.x1"
+          [attr.y1]="cap.y1"
+          [attr.x2]="cap.x2"
+          [attr.y2]="cap.y2"
+          stroke="#000000"
+          [attr.stroke-width]="0.02 * settings.objectScale"
+        />
+      }
+      <text
+        text-anchor="middle"
+        style="transform: scaleY(-1)"
+        [attr.x]="cylinderRangeLabelPos(range).x"
+        [attr.y]="-cylinderRangeLabelPos(range).y"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
+        [attr.font-size]="svgGrid.scaleWithZoom(20)"
+      >
+        {{ range.label }}
+      </text>
+    </g>
+  }
+  @if (slotAngleGuide; as guide) {
+    <g style="pointer-events: none; transform: scaleY(-1)">
+      <!-- The frame the number is in: +x from the block, dashed, because it is
+           a reference rather than a part of the mechanism. -->
+      <line
+        [attr.x1]="guide.at.x"
+        [attr.y1]="guide.at.y"
+        [attr.x2]="guide.axis.x"
+        [attr.y2]="guide.axis.y"
+        stroke="#000000"
+        stroke-linecap="round"
+        [attr.stroke-width]="0.02 * settings.objectScale"
+        [attr.stroke-dasharray]="0.08 * settings.objectScale"
+      />
+      <!-- Where the slot actually points, solid, because it is. -->
+      <line
+        [attr.x1]="guide.at.x"
+        [attr.y1]="guide.at.y"
+        [attr.x2]="guide.along.x"
+        [attr.y2]="guide.along.y"
+        stroke="#000000"
+        stroke-linecap="round"
+        [attr.stroke-width]="0.03 * settings.objectScale"
+      />
+      <path
+        [attr.d]="guide.arc"
+        fill="none"
+        stroke="#000000"
+        [attr.stroke-width]="0.02 * settings.objectScale"
+      />
+      <text
+        text-anchor="middle"
+        style="transform: scaleY(-1)"
+        [attr.x]="guide.labelAt.x"
+        [attr.y]="-guide.labelAt.y"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
+        [attr.font-size]="svgGrid.scaleWithZoom(20)"
+      >
+        {{ guide.label }}
       </text>
     </g>
   }

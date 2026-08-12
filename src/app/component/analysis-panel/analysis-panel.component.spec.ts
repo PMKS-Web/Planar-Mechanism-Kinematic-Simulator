@@ -188,4 +188,57 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Axial Stress');
     fixture.destroy();
   });
+
+  it('shows a cylinder that cannot use its whole stroke, without calling it invalid', async () => {
+    // A mechanism can be perfectly valid and still be driven by a ram bigger
+    // than it needs. That is worth saying and is not a reason to refuse
+    // analysis, so it gets its own line rather than the invalid block's.
+    const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'AB');
+    fixtureData.service.cylinderReachWarning = () => 'Cylinder GC can only use 62% of its stroke.';
+    fixture.detectChanges();
+
+    // NO_ERRORS_SCHEMA stubs the block components, so their inputs do not
+    // render -- the section being there at all is what this can honestly check.
+    expect(fixture.nativeElement.querySelector('#cylinderReachContainer')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('#placeholderContainer')).toBeNull();
+    fixture.destroy();
+  });
+});
+
+describe('AnalysisPanelComponent with a cylinder selected', () => {
+  beforeEach(() => vi.spyOn(console, 'log').mockImplementation(() => undefined));
+  afterEach(() => {
+    vi.restoreAllMocks();
+    TestBed.resetTestingModule();
+  });
+
+  it('names the cylinder rather than its barrel link', async () => {
+    // The canvas outlines the whole ram as selected while this panel headed
+    // itself "Analysis for Link GN" -- the two disagreeing about what is
+    // selected, for a part the rest of the app treats as one body.
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'GN');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Analysis for Cylinder');
+    expect(fixture.nativeElement.textContent).not.toContain('Analysis for Link GN');
+    fixture.destroy();
+  });
+
+  it('offers no force row at a joint buried inside the part', async () => {
+    // The buried barrel end and the slider in the bore have no hitbox on the
+    // canvas and no row in the Edit panel; a pin reaction there is internal to
+    // a body the user is being shown as one piece.
+    const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'GN');
+    fixture.detectChanges();
+
+    const cylinder = fixtureData.service.cylinderAt(
+      fixtureData.service.links.find((link) => link.id === 'GN')
+    );
+    expect(cylinder, 'the fixture really is a cylinder').toBeDefined();
+    const interior = [cylinder!.barrelNear.id, cylinder!.pin.id, cylinder!.slider.id];
+    for (const row of fixture.componentInstance.linkForceRows()) {
+      expect(interior).not.toContain(row.jointId);
+    }
+    fixture.destroy();
+  });
 });

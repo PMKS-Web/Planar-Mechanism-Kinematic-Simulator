@@ -16,8 +16,9 @@
  * width on screen; a hairline that scaled with the geometry would disappear when
  * zoomed out and turn into a slab when zoomed in. The R rule is about how big
  * things are, and how thick you draw their edges is a question the app already
- * answered. There are deliberately no stroke constants below, so nothing here
- * implies a rule the drawing does not follow.
+ * answered. `GROUND_STROKE` is the single exception, and only because the ground
+ * marks are the one place a stroke *is* in model units: the hatch has to know
+ * how thick its own line is to sit flush against the rail.
  */
 
 /** Every dimension of the mark system, in multiples of R. */
@@ -48,11 +49,25 @@ export const MARK = {
    */
   plateFillet: 5 / 3,
 
-  /** Grounded rails and their ground ticks. */
-  railOffset: 1.975,
+  /**
+   * Grounded rails and their ground ticks.
+   *
+   * The rails sit 0.325R clear of the block's own 1.525R half-height. It was
+   * 0.45R, which read as a block floating between its rails rather than one
+   * held by them — the guide is a close fit, and the drawing should say so.
+   */
+  railOffset: 1.85,
   railHalfLengthMin: 9.6,
   tickLeg: 0.8,
   tickPitch: 1.3,
+
+  /**
+   * How far apart two grounded guides may be and still be drawn as one line.
+   *
+   * Half a rail's own stroke: closer than that and the two rails cannot be told
+   * apart on screen, so drawing them as two crossing members is a fiction.
+   */
+  railMergeSlack: 0.1,
 
   /** The plate that welds a rider to its block — visual only. */
   fillet: 1.25,
@@ -94,17 +109,60 @@ export const MARK = {
 } as const;
 
 /**
+ * The two strokes of a grounded mark, in R.
+ *
+ * `Ground.svg` is placed at 1.2 objectScale and draws its baseline 4/157 of its
+ * own width and its hatch 5/157, and R is 0.15 objectScale — so both are fixed
+ * multiples of R, and the rail marks are the one place in the app where a
+ * stroke is in model units rather than screen pixels. They are stated here, not
+ * only in the template, because the hatch geometry has to know its own weight:
+ * a round cap is centred on the point it caps, so a tick whose root sits on the
+ * rail's centreline puts half its width on the far side of the line.
+ */
+export const GROUND_STROKE = {
+  rail: (1.2 * 4) / 157 / 0.15,
+  hatch: (1.2 * 5) / 157 / 0.15,
+} as const;
+
+/**
  * The cylinder skin (§2.7). Scoped to the skin: the barrel is deliberately much
  * fatter than the rod, and that heft is what reads as a cylinder body rather
  * than as another bar.
  */
 export const CYLINDER = {
   /**
-   * Was 2.95 — nearly twice the block. The redesign reads the barrel as a
-   * sleeve just proud of the block rather than a fat body: a quarter over the
-   * block's half-height keeps the step visible without the bulk.
+   * The barrel is a body the rod lives inside, so it has to be visibly fatter
+   * than the rod along its whole length.
+   *
+   * This was cut to 1.9 — a quarter over the block's half-height — when the
+   * barrel was drawn only as far as the piston. As a short stub behind the
+   * block that read as a sleeve; as the full-length bar it now is, at 1.9 the
+   * rod's 1.525 sits so close inside it that the two merge into one uniform
+   * capsule and the mouth, where one rigid body ends and the other continues,
+   * disappears. 2.6 leaves a clear margin of barrel above and below the rod
+   * for the whole of the inserted length, which is the cue the whole drawing
+   * rests on, without going back to the 2.95 slab.
    */
-  barrelHalf: 1.9,
+  barrelHalf: 2.6,
+  /**
+   * The piston head along the axis, at full size: exactly the block a bare
+   * slider wears, because on any ram with room for it that is what it is.
+   *
+   * It is not always this. The head is what sets the floor on how short a ram
+   * can be — it has to fit inside the barrel at full retraction — so on a ram
+   * too short to hold the whole block it shrinks to half the barrel instead,
+   * and grows back to this the moment there is room. `cylinderHeadHalf` is the
+   * one place that choice is made.
+   */
+  headAlongHalfMax: MARK.blockAlongHalf,
+  /**
+   * The shortest the head is ever drawn: square, as long as it is across.
+   *
+   * The real floor on the whole part, and it is a drawing judgement rather than
+   * a mechanical one — a head shorter than it is wide stops reading as a head
+   * at all, and there is nothing else left holding the size up.
+   */
+  headAlongHalfMin: MARK.blockAcrossHalf,
   /**
    * Exactly the block's own half-height, so block and rod form one uniform bar.
    * It was 1.84 — the same mockup rounding `barHalf` documents — and the extra
@@ -112,53 +170,66 @@ export const CYLINDER = {
    * the two meet.
    */
   rodHalf: MARK.blockAcrossHalf,
-  /** Where the barrel stops: inside the block, so the rod visibly enters it. */
-  flatCut: 0.56,
-  boreHalf: 1.39,
-  arrowTail: 1.55,
-  arrowHeadBase: 2.75,
-  arrowTip: 3.3,
-  arrowHeadHalf: 0.62,
+  // The skin carries no arrow dimensions of its own any more. It had a larger
+  // set, sized for the full 3.84 R block it used to draw; the head is shorter
+  // than that now, and the honest answer is the block's own arrows scaled by
+  // the head — same mark, same proportions, one place to change either.
 } as const;
 
 /**
- * The barrel, collapsed: rounded on its own far joint and cut flat inside the
- * block, so the rod disappears into it instead of stopping against it.
+ * The barrel: its own bar, at its own length, rounded on the mount it pivots
+ * about and cut square at the mouth the rod slides through.
  *
- * `reach` is how far the barrel's far joint sits from the block, measured
- * against the slot with the rod in the +x direction — so the barrel runs the
- * other way and `reach` is negative.
+ * `anchor` and `mouth` are the barrel's two ends in the mark's frame, which is
+ * centred on the *pin* with +x toward the rod — so the anchor is behind the
+ * piston (negative) and the mouth ahead of it (positive), and the barrel
+ * straddles the piston rather than stopping at it.
+ *
+ * That straddling is the whole point, and it is what this used to get wrong.
+ * The barrel was drawn from the piston back to the anchor, so it grew and
+ * shrank as the ram cycled: the one part of the assembly that is rigid was the
+ * one part visibly changing length, and the stroke was invisible because
+ * nothing marked where the bore ended. Drawn at its member length instead, only
+ * the *exposed* rod changes, which is what a ram actually does — and how much
+ * rod is still inside is the stroke, legible without any annotation.
  */
-export function barrelCollapsedPath(r: number, reach: number): string {
+export function barrelPath(r: number, anchor: number, mouth: number): string {
   const h = CYLINDER.barrelHalf * r;
-  const cut = CYLINDER.flatCut * MARK.blockAlongHalf * r * Math.sign(reach || -1) * -1;
-  const cap = reach;
-  const sweep = reach < 0 ? 1 : 0;
   return (
-    `M ${cap} ${-h} L ${cut} ${-h} L ${cut} ${h} L ${cap} ${h} ` +
-    `A ${h} ${h} 0 0 ${sweep} ${cap} ${-h} Z`
+    `M ${mouth} ${-h} L ${anchor} ${-h} ` +
+    `A ${h} ${h} 0 0 0 ${anchor} ${h} ` +
+    `L ${mouth} ${h} Z`
   );
 }
 
 /**
- * Rod and block as one body: square where it slides inside the barrel — it is a
- * cut plane, not a free end — and rounded only on the joint it reaches.
+ * Rod and block as one body: square where it disappears into the barrel — it is
+ * a cut plane, not a free end — and rounded only on the joint it reaches.
+ *
+ * Drawn over the barrel at the fill alpha every link uses, so the length of it
+ * still inside the bore reads as a darker band. One cue, no callout, and it is
+ * the cue that carries the whole structure.
  */
-export function rodBodyPath(r: number, reach: number): string {
+export function rodBodyPath(r: number, reach: number, headHalf: number): string {
   const h = CYLINDER.rodHalf * r;
-  const inner = -MARK.blockAlongHalf * r * Math.sign(reach || 1);
+  const inner = -headHalf * Math.sign(reach || 1);
   const sweep = reach > 0 ? 1 : 0;
   return `M ${inner} ${-h} L ${reach} ${-h} A ${h} ${h} 0 0 ${sweep} ${reach} ${h} L ${inner} ${h} Z`;
 }
 
+// The skin used to carry two stop notches on the barrel's edges, marking where
+// the head bottoms out. The head now stops a visible clearance off the mount at
+// one end and clean outside the mouth at the other, so the silhouette says
+// where the travel ends and the notches were annotating it twice.
+
 /**
- * The block of the collapsed skin: §2.8 block proportions, but square on the
- * side facing the barrel (-x) and rounded only where it reaches toward the rod.
- * The barrel's flat cut ends underneath it, and a rounded corner there drew a
- * sliver of daylight between two parts that are supposed to be flush.
+ * The piston head: §2.8 block proportions at the cylinder's own length, square
+ * on the side facing the barrel (-x) and rounded only where it reaches toward
+ * the rod. The barrel's flat cut ends underneath it, and a rounded corner there
+ * drew a sliver of daylight between two parts that are supposed to be flush.
  */
-export function cylinderBlockPath(r: number): string {
-  const a = MARK.blockAlongHalf * r;
+export function cylinderBlockPath(r: number, headHalf: number): string {
+  const a = headHalf;
   const c = MARK.blockAcrossHalf * r;
   const k = MARK.blockCorner * r;
   return (
@@ -167,43 +238,33 @@ export function cylinderBlockPath(r: number): string {
   );
 }
 
-/** The bore, for the revealed state: the barrel's own slot, cut through it. */
-export function borePath(r: number, halfLength: number): string {
-  return capsulePath(-halfLength, halfLength, CYLINDER.boreHalf * r);
-}
-
-/**
- * The dotted line inside the barrel that says "this part translates": from
- * just clear of the barrel mount's pin to just short of the block. Drawn
- * white at half opacity over the barrel fill, sized in R so it scales with
- * the part like every other mark.
- */
-export function cylinderMotionDash(
-  r: number,
-  barrelReach: number
-): { x1: number; x2: number; width: number; dashArray: string } {
-  return {
-    x1: barrelReach + 2.3 * r,
-    x2: -MARK.blockAlongHalf * r - 0.55 * r,
-    width: 0.2 * r,
-    dashArray: `${0.55 * r} ${0.42 * r}`,
-  };
-}
+// A dotted white line used to run along the blind end of the bore to say "this
+// part translates". With the head bottoming out on the barrel's own ends there
+// is no blind end left to draw it in at full retraction, and at every other
+// position it was a second mark competing with the one that carries the
+// structure — how much rod is still inside.
 
 /**
  * The exact outline of the assembled part, for the selection stroke: the
- * barrel's profile to its flat cut, a sharp step down to the block-and-rod
- * bar, and on to the rod's end. The only curves are the two end caps — a
- * selection is a crisp trace of the silhouette, not a softened echo of it.
+ * barrel's profile from its anchor to its mouth, a sharp step down to the rod,
+ * and on to the rod's end. The only curves are the two end caps — a selection
+ * is a crisp trace of the silhouette, not a softened echo of it.
+ *
+ * A step, not a fade: the mouth is where one rigid body ends and another
+ * continues, and the outline should say so.
  */
-export function cylinderContourPath(r: number, barrelReach: number, rodReach: number): string {
+export function cylinderContourPath(
+  r: number,
+  anchor: number,
+  mouth: number,
+  rodReach: number
+): string {
   const hB = CYLINDER.barrelHalf * r;
   const hR = CYLINDER.rodHalf * r;
-  const cut = CYLINDER.flatCut * MARK.blockAlongHalf * r;
   return (
-    `M ${cut} ${-hB} L ${barrelReach} ${-hB} A ${hB} ${hB} 0 0 0 ${barrelReach} ${hB} ` +
-    `L ${cut} ${hB} L ${cut} ${hR} L ${rodReach} ${hR} ` +
-    `A ${hR} ${hR} 0 0 0 ${rodReach} ${-hR} L ${cut} ${-hR} Z`
+    `M ${mouth} ${-hB} L ${anchor} ${-hB} A ${hB} ${hB} 0 0 0 ${anchor} ${hB} ` +
+    `L ${mouth} ${hB} L ${mouth} ${hR} L ${rodReach} ${hR} ` +
+    `A ${hR} ${hR} 0 0 0 ${rodReach} ${-hR} L ${mouth} ${-hR} Z`
   );
 }
 
@@ -212,37 +273,45 @@ export function cylinderContourPath(r: number, barrelReach: number, rodReach: nu
 // is gone and the block reads as the block.
 
 /**
- * The driven arrows of a cylinder, flanking its marker.
+ * The driven arrows of a cylinder, on its piston head.
  *
- * `leading` is the way the block sets off, and that arrow is drawn larger and
+ * `leading` is the way the head sets off, and that arrow is drawn larger and
  * heavier — the same §4.2b emphasis the unskinned driven mark carries, because
  * the skin changes the drawing, not what the mark has to say.
+ *
+ * The same arrows a driven block wears, at the size this head has room for.
+ * `fit` is the whole difference: on a ram short enough that the head has
+ * shrunk, the pair is scaled by the same ratio and keeps the margin the
+ * straight arrows already have — at the emphasis factor the larger tip still
+ * lands inside the black, which is the only place white is guaranteed to read.
+ * On a full-size head it is 1 and these are exactly the block's own arrows.
+ *
+ * Scaled as a pair, never the emphasised one alone. Bounding only the big
+ * arrow is the obvious move and it inverts the emphasis: clamped to the head it
+ * came out *smaller* than the arrow it is supposed to be shouting over.
  */
 export function cylinderArrowPaths(
   r: number,
+  headHalf: number,
   leading?: 1 | -1
 ): { line: Segment; head: string; emphasised: boolean }[] {
+  const fit = headHalf / (MARK.blockAlongHalf * r);
   return [1, -1].map((side) => {
     const emphasised = side === leading;
-    // Bounded by the block, like the straight arrows: the cylinder's arrows are
-    // already larger, so the full 1.25 would push the tip past blockAlongHalf
-    // and out onto the rod, where white is no longer guaranteed to read.
-    const grow = emphasised
-      ? Math.min(MARK.arrowEmphasis, (MARK.blockAlongHalf * 0.97) / CYLINDER.arrowTip)
-      : 1;
+    const grow = (emphasised ? MARK.arrowEmphasis : 1) * fit;
     return {
       line: {
-        x1: side * CYLINDER.arrowTail * r,
+        x1: side * MARK.arrowTail * r * fit,
         y1: 0,
-        x2: side * CYLINDER.arrowHeadBase * r * grow,
+        x2: side * MARK.arrowHeadBase * r * grow,
         y2: 0,
       },
       head: arrowHeadAt(
-        side * CYLINDER.arrowTip * r * grow,
+        side * MARK.arrowTip * r * grow,
         0,
         side > 0 ? 0 : Math.PI,
         MARK.arrowHeadLength * r * grow,
-        CYLINDER.arrowHeadHalf * r * grow
+        MARK.arrowHeadHalf * r * grow
       ),
       emphasised,
     };
@@ -377,6 +446,30 @@ export interface GuideBand {
   angle: number;
   halfLength: number;
   halfWidth: number;
+  /**
+   * Set when this guide lies on the same line as the one being drawn, and is
+   * the one of the pair that draws the shared span. Its rails are not something
+   * to break for — they are the same rails — so the guide reading it keeps its
+   * own solid and only stands out of the way of its hatch.
+   */
+  coincident?: boolean;
+}
+
+/**
+ * Whether two guides are the same line, within `slack`.
+ *
+ * Both of `b`'s ends are measured against `a`'s line, so this is one test for
+ * two ways of being apart: a guide offset from `a` fails on both ends, and one
+ * turned away from it fails on at least one.
+ */
+export function collinearGuides(a: GuideBand, b: GuideBand, slack: number): boolean {
+  const nx = -Math.sin(a.angle);
+  const ny = Math.cos(a.angle);
+  const ends = [b.halfLength, -b.halfLength].map((along) => ({
+    x: b.x + along * Math.cos(b.angle),
+    y: b.y + along * Math.sin(b.angle),
+  }));
+  return ends.every((end) => Math.abs((end.x - a.x) * nx + (end.y - a.y) * ny) <= slack);
 }
 
 /**
@@ -392,6 +485,9 @@ export interface GuideBand {
  * the ticks in that strip are dropped: two guides drawn solid straight through
  * each other paint an X-shaped knot with no reading at all, whereas a broken
  * line is the drawing convention for the member that passes behind.
+ *
+ * A guide marked `coincident` is not crossed at all — it is the same line seen
+ * twice — so nothing breaks for it and the two draw as one continuous rail.
  */
 export function railGeometry(
   r: number,
@@ -402,6 +498,18 @@ export function railGeometry(
   const offset = MARK.railOffset * r;
   const leg = MARK.tickLeg * r;
   const pitch = MARK.tickPitch * r;
+  // Where the tick meets the rail: on the rail's far edge, so its round cap
+  // reaches back into the line and stops short of the near edge.
+  //
+  // This is what `Ground.svg` draws, and the two marks say the same thing about
+  // the same world, so they have to look the same. There a hatch stroke starts
+  // on the far edge of the baseline and its cap projects back to just past the
+  // baseline's middle — hatch and line overlap, with no daylight between them.
+  // Rooted on the centreline instead, as this was, the cap hangs half the
+  // hatch's width over the block's side and the hatching reads as piercing its
+  // own rail; backed off far enough to be tangent to the edge, it reads as
+  // floating clear of it. Neither is what a ground symbol looks like.
+  const clear = (GROUND_STROKE.rail / 2) * r;
   const whole: Segment[] = [
     { x1: -halfLength, y1: -offset, x2: halfLength, y2: -offset },
     { x1: -halfLength, y1: offset, x2: halfLength, y2: offset },
@@ -411,28 +519,73 @@ export function railGeometry(
   const dashedRails: Segment[] = [];
   for (const rail of whole) {
     const inside = mergeIntervals(
-      crossings.flatMap((band) => segmentInsideBand(rail, band, place))
+      crossings
+        .filter((band) => !band.coincident)
+        .flatMap((band) => segmentInsideBand(rail, band, place))
     );
     rails.push(...outsideIntervals(rail, inside));
     dashedRails.push(...inside.map(([from, to]) => sliceSegment(rail, from, to)));
   }
 
+  // Ticks step along a lattice fixed to the world rather than to this guide's
+  // own midpoint, so two guides sharing a line hatch the same set of stations
+  // and one can take over from the other at any point without the pitch
+  // stuttering. Hatching says the world is on this side, and it is the world
+  // the spacing belongs to.
+  const start = -halfLength + leg + clear;
+  const phase = worldPhase(place, pitch);
   const ticks: Segment[] = [];
-  for (let x = -halfLength + leg; x <= halfLength; x += pitch) {
+  for (let x = Math.ceil((start + phase) / pitch) * pitch - phase; x <= halfLength; x += pitch) {
+    // The station on the guide's own centreline, which is what a coincident
+    // guide's reach has to be measured against: compared at the tick's root
+    // instead, the two guides' claims overlap by the root's own offset and
+    // leave a station hatched by neither.
+    const station = place({ x, y: 0 });
     for (const side of [-1, 1]) {
-      const tick = { x1: x, y1: side * offset, x2: x - leg, y2: side * (offset + leg) };
+      const tick = {
+        x1: x - clear,
+        y1: side * (offset + clear),
+        x2: x - clear - leg,
+        y2: side * (offset + clear + leg),
+      };
       // Both ends, not just the root: a tick whose leg reaches into the other
       // guide draws an X across its rail, which is the knot this is avoiding.
-      const touches = crossings.some(
-        (band) =>
-          pointInBand(place({ x: tick.x1, y: tick.y1 }), band) ||
-          pointInBand(place({ x: tick.x2, y: tick.y2 }), band)
+      const touches = crossings.some((band) =>
+        // A guide on the same line has no strip to fall inside — its rails and
+        // this one's are the same two lines — so what has to be avoided is
+        // hatching the span it already hatches, twice and out of step.
+        band.coincident
+          ? withinReach(station, band)
+          : pointInBand(place({ x: tick.x1, y: tick.y1 }), band) ||
+            pointInBand(place({ x: tick.x2, y: tick.y2 }), band)
       );
       if (touches) continue;
       ticks.push(tick);
     }
   }
   return { rails, dashedRails, ticks };
+}
+
+/**
+ * Where this guide's midpoint falls between two stations of the world lattice,
+ * read off `place` rather than passed in, so the frame the caller is drawing
+ * through stays the single source of where the guide is.
+ */
+function worldPhase(
+  place: (point: { x: number; y: number }) => { x: number; y: number },
+  pitch: number
+): number {
+  const origin = place({ x: 0, y: 0 });
+  const ahead = place({ x: 1, y: 0 });
+  const along = origin.x * (ahead.x - origin.x) + origin.y * (ahead.y - origin.y);
+  return ((along % pitch) + pitch) % pitch;
+}
+
+/** Within the length a guide runs, whichever side of it the point is on. */
+function withinReach(point: { x: number; y: number }, band: GuideBand): boolean {
+  const dx = point.x - band.x;
+  const dy = point.y - band.y;
+  return Math.abs(dx * Math.cos(band.angle) + dy * Math.sin(band.angle)) <= band.halfLength;
 }
 
 function pointInBand(point: { x: number; y: number }, band: GuideBand): boolean {

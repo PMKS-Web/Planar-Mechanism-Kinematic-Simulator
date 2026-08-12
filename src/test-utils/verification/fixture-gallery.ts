@@ -12,16 +12,39 @@ import {
   cylinderSkinFixture,
   gripperFixture,
   pinchingGripperFixture,
+  ellipticalCrankFixture,
   ellipticalTrammelFixture,
   invertedSliderCrankFixture,
   loadedInvertedSliderCrankFixture,
   scotchYokeFixture,
   scotchYokeGuidedAtFarEndFixture,
   scotchYokeWithTracerFixture,
+  motionGenGripperFixture,
+  pivotingGripperFixture,
+  chebyshevStraightLineFixture,
+  radialEngineFixture,
+  windshieldWiperFixture,
   slottedCouplerFixture,
+  squareRodSliderCrankFixture,
   WHITWORTH_CRANK,
   WHITWORTH_OFFSET,
 } from './slot-fixtures';
+import {
+  jibCraneFixture,
+  offsetLoadFourBarFixture,
+  punchPressFixture,
+  toggleClampFixture,
+} from './force-fixtures';
+import {
+  excavatorBucketFixture,
+  jansenLegFixture,
+  oscillatingFanFixture,
+  pedalingLegFixture,
+  pumpjackFixture,
+  scissorLiftFixture,
+  shaperQuickReturnFixture,
+  togglePressFixture,
+} from './library-fixtures';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { ActiveObjService } from '../../app/services/active-obj.service';
@@ -40,10 +63,14 @@ import { MODEL_SCALE } from '../../app/model/render-scale';
  * rebuilding it by hand.
  */
 /**
- * The scale a freshly opened app uses; pinned so payloads do not drift. In
- * internal units: the encoder divides by MODEL_SCALE, so the URL stores 1.
+ * The drawing scale a published mechanism opens at.
+ *
+ * 0.7, matching the app's own default: pins and bar widths large enough to grab
+ * without the parts crowding the linkage they belong to. A template that opened
+ * at a different scale from a fresh grid meant the first joint a user added
+ * arrived a visibly different size from the ones already there.
  */
-const DEFAULT_OBJECT_SCALE = 1 * MODEL_SCALE;
+const DEFAULT_OBJECT_SCALE = 0.7 * MODEL_SCALE;
 
 /**
  * Lift a fixture-built mechanism from user units into the internal model
@@ -85,10 +112,63 @@ export interface GalleryEntry {
   floatingSlot: boolean;
   /** True when a rider is welded rigid to its block — a Slide (§2.1). */
   slide?: boolean;
+  /**
+   * How large the app should draw pins and bar widths, in model units.
+   *
+   * Omitted means the default a fresh app uses, which suits the mechanisms
+   * built at single-digit sizes — nearly all of them. Set it where the
+   * mechanism is built at a much larger scale, or it draws as hairlines.
+   */
+  objectScale?: number;
+  /**
+   * How fast this mechanism opens running, when the shared default is wrong for
+   * it. A stroke of a few centimetres crossed at the default 5 cm/s is over
+   * before it can be watched, and a demonstration of a straight line is worth
+   * nothing at a speed nobody can follow.
+   */
+  speed?: PublishedSpeed;
   fixture: MechanismFixture;
 }
 
+/** Whichever of the two input speeds a mechanism actually uses. */
+export interface PublishedSpeed {
+  /** Turns per minute, for a mechanism driven at a pin. */
+  rpm?: number;
+  /** User length units per second, for one driven along a slot. */
+  unitsPerSecond?: number;
+}
+
 export const FIXTURE_GALLERY: GalleryEntry[] = [
+  {
+    name: 'Punch press',
+    purpose:
+      'A load on the ram: the crank torque spikes where the rod comes into line with the slide',
+    spec: 'force-templates.spec.ts',
+    floatingSlot: false,
+    fixture: punchPressFixture(),
+  },
+  {
+    name: 'Derrick crane',
+    purpose: 'A weight far out on a boom held close in: the link carries several times the load',
+    spec: 'force-templates.spec.ts',
+    floatingSlot: false,
+    fixture: jibCraneFixture(),
+  },
+  {
+    name: 'Toggle clamp',
+    purpose:
+      'Where mechanical advantage comes from: the clamping force runs away as the links line up',
+    spec: 'force-templates.spec.ts',
+    floatingSlot: false,
+    fixture: toggleClampFixture(),
+  },
+  {
+    name: 'Rocker with an offset load',
+    purpose: 'A load off the line of its link is a moment — the term a free-body sketch leaves out',
+    spec: 'force-templates.spec.ts',
+    floatingSlot: false,
+    fixture: offsetLoadFourBarFixture(),
+  },
   {
     name: 'Hydraulic cylinder',
     purpose: 'Cylinder skin (§2.7): a rod welded to a block sliding in a barrel, all on one line',
@@ -103,6 +183,10 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'driven-cylinder.spec.ts',
     floatingSlot: true,
     slide: true,
+    // A hand's pace. The shared default of 5 cm/s runs this ram end to end in
+    // well under a second, which shows a boom that jumps rather than one that
+    // lifts.
+    speed: { unitsPerSecond: 1 },
     fixture: cylinderBoomFixture(),
   },
   {
@@ -120,6 +204,116 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     floatingSlot: true,
     slide: true,
     fixture: pinchingGripperFixture(),
+  },
+  {
+    name: 'Backhoe bucket',
+    purpose: 'A driven ram feeding an ordinary four-bar: bell crank, link, and the bucket curls',
+    spec: 'excavator-bucket.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    fixture: excavatorBucketFixture(),
+  },
+  {
+    name: 'Toggle press',
+    purpose:
+      'A ram closing a toggle onto a block: travel traded for force as it approaches straight',
+    spec: 'toggle-press.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    fixture: togglePressFixture(),
+  },
+  {
+    name: 'Scissor lift',
+    purpose:
+      'Ram, supporting block and a slot in the moving platform — all three parts, three jobs',
+    spec: 'scissor-lift.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    fixture: scissorLiftFixture(),
+  },
+  {
+    name: "Shaper's quick-return drive",
+    purpose: 'A floating slot handing off to a grounded one: the ram cuts slow and returns fast',
+    spec: 'shaper-quick-return.spec.ts',
+    floatingSlot: true,
+    slide: false,
+    fixture: shaperQuickReturnFixture(),
+  },
+  {
+    name: 'Slider-crank whose rod comes square to the guide',
+    purpose: 'The slot tangent to the rod circle: the two roots meet and trade places',
+    spec: 'square-rod-tangency.spec.ts',
+    floatingSlot: false,
+    fixture: squareRodSliderCrankFixture(),
+  },
+  {
+    name: 'MotionGen gripper',
+    purpose:
+      "A second engine's mechanism, rebuilt: over-constrained, so PMKS+ reports DOF 0 and refuses it",
+    spec: 'motiongen-gripper.spec.ts',
+    floatingSlot: false,
+    slide: false,
+    fixture: motionGenGripperFixture(),
+  },
+  {
+    name: 'Gripper with the redundancy removed',
+    purpose: 'The same gripper, jaws pivoting instead of railed: DOF 1, and it runs',
+    spec: 'pivoting-gripper.spec.ts',
+    floatingSlot: false,
+    slide: false,
+    fixture: pivotingGripperFixture(),
+  },
+  {
+    name: 'Radial engine, five cylinders',
+    purpose: 'Five sliders on one crank pin; piston stroke is exactly twice the throw',
+    spec: 'radial-engine.spec.ts',
+    floatingSlot: false,
+    slide: false,
+    fixture: radialEngineFixture(),
+  },
+  {
+    name: 'Chebyshev straight-line linkage',
+    purpose: 'Approximate straight-line generation: the coupler midpoint runs flat along the top',
+    spec: 'chebyshev-straight-line.spec.ts',
+    floatingSlot: false,
+    slide: false,
+    // Slow, because the point of it is a straight line and a line is something
+    // to be watched being drawn.
+    speed: { rpm: 2 },
+    fixture: chebyshevStraightLineFixture(),
+  },
+  {
+    name: 'Windshield wiper',
+    purpose: 'Crank-rocker: continuous rotation into a bounded sweep, against the closed form',
+    spec: 'windshield-wiper.spec.ts',
+    floatingSlot: false,
+    slide: false,
+    fixture: windshieldWiperFixture(),
+  },
+  {
+    name: 'Jansen leg',
+    purpose: "One leg of a Strandbeest: eight bars on Jansen's holy numbers, and the foot walks",
+    spec: 'jansen-leg.spec.ts',
+    floatingSlot: false,
+    slide: false,
+    // Jansen's holy numbers run to 65 units where the rest of the gallery is
+    // single-digit, and pin radius and bar width are absolute rather than
+    // relative to the linkage. At the default the leg draws as hairlines with
+    // no visible pins. Scaling the drawing rather than the fixture keeps the
+    // published numbers exactly as Jansen quotes them.
+    // Kept at ten times the default rather than at a number of its own, so it
+    // moves with it: this is "much bigger than usual because the linkage is",
+    // not an absolute size anybody measured.
+    objectScale: 10 * DEFAULT_OBJECT_SCALE,
+    fixture: jansenLegFixture(),
+  },
+  {
+    name: 'Elliptical crank',
+    purpose: 'A six-bar no dyad reaches: the coupler and its guided end have to be solved together',
+    spec: 'elliptical-crank.spec.ts',
+    floatingSlot: false,
+    slide: false,
+    fixture: ellipticalCrankFixture(),
   },
   {
     name: 'Inverted slider-crank',
@@ -188,6 +382,28 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     fixture: fourBarDrivenAtFixture('C'),
   },
   {
+    name: 'Leg on a bicycle crank',
+    purpose: 'A driven knee, carried by the thigh: one leg can only rock the crank half a turn',
+    spec: 'pedaling-leg.spec.ts',
+    floatingSlot: false,
+    fixture: pedalingLegFixture(),
+  },
+  {
+    name: 'Oscillating fan',
+    purpose:
+      'The motor rides the head it sweeps: the driven pin turns right round, the head does not',
+    spec: 'oscillating-fan.spec.ts',
+    floatingSlot: false,
+    fixture: oscillatingFanFixture(),
+  },
+  {
+    name: 'Walking-beam pumping unit',
+    purpose: 'Driven where the pitman meets the beam, and the output is a straight-line stroke',
+    spec: 'pumpjack.spec.ts',
+    floatingSlot: false,
+    fixture: pumpjackFixture(),
+  },
+  {
     name: 'TeachingLab four-bar',
     purpose: 'MATLAB-verified positions, velocities, accelerations and forces',
     spec: 'teaching-lab-four-bar.spec.ts',
@@ -232,15 +448,30 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
  * payload depends on what every earlier spec happened to do — the table would
  * differ between a full suite run and a single-file one, and the drift check
  * would fail for reasons with nothing to do with the mechanisms.
+ *
+ * `objectScale` is how large the app draws pins and bar widths, in model units;
+ * it is a display setting rather than geometry, and the default is what a fresh
+ * app uses. A mechanism whose bars are tens of units long needs a larger one or
+ * it renders as hairlines — see the Jansen leg in template-fixtures.ts.
  */
-export function fixturePayload(fixture: MechanismFixture): string {
+export function fixturePayload(
+  fixture: MechanismFixture,
+  objectScale: number = DEFAULT_OBJECT_SCALE,
+  speed: PublishedSpeed = {}
+): string {
   const previousColors = ColorService.instance;
   const previousScale = SettingsService.objectScale;
   new ColorService();
-  SettingsService._objectScale.next(DEFAULT_OBJECT_SCALE);
+  SettingsService._objectScale.next(objectScale);
   try {
     const built = buildMechanism(fixture);
     scaleBuiltToModelUnits(built);
+    // The speeds ride the URL as settings rather than as anything on a joint,
+    // so they are set on the service the encoder is about to read. A fresh one
+    // per call, so nothing here leaks into the next mechanism's payload.
+    const settings = new SettingsService();
+    if (speed.rpm !== undefined) settings.inputSpeed.next(speed.rpm);
+    if (speed.unitsPerSecond !== undefined) settings.linearInputSpeed.next(speed.unitsPerSecond);
     return new UrlGenerationService(
       {
         joints: built.joints,
@@ -248,7 +479,7 @@ export function fixturePayload(fixture: MechanismFixture): string {
         forces: built.forces,
         mechanismTimeStep: 0,
       } as unknown as MechanismService,
-      new SettingsService(),
+      settings,
       new ActiveObjService()
     ).generateUrlQuery();
   } finally {
@@ -266,7 +497,7 @@ export function fixturePayload(fixture: MechanismFixture): string {
  */
 export function galleryMarkdown(baseUrl: string): string {
   const rows = FIXTURE_GALLERY.map((entry) => {
-    const link = `${baseUrl}/?${fixturePayload(entry.fixture)}`;
+    const link = `${baseUrl}/?${fixturePayload(entry.fixture, entry.objectScale, entry.speed)}`;
     const slot = entry.floatingSlot ? 'yes' : '—';
     const slide = entry.slide ? 'yes' : '—';
     return `| [${entry.name}](${link}) | ${entry.purpose} | ${slot} | ${slide} | \`${entry.spec}\` |`;

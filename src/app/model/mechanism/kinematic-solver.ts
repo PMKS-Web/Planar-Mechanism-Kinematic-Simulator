@@ -104,7 +104,17 @@ export class KinematicsSolver {
 
   static determineKinematics(simJoints: Joint[], simLinks: Link[], initialAngularVelocity: number) {
     this.kinematicsInitializer(simJoints, simLinks, initialAngularVelocity);
+    this.solveRates(simJoints, simLinks, initialAngularVelocity);
+    // Last, because all three routes below seed a grounded guide with zero and
+    // none of them ever revisits it.
+    this.matchGuidesToRiders(simLinks);
+  }
 
+  private static solveRates(
+    simJoints: Joint[],
+    simLinks: Link[],
+    initialAngularVelocity: number
+  ): void {
     // A mechanism the constraint set solved gets its rates from the same
     // constraints, differentiated (§2.7a). Loop detection cannot see through a
     // sealed cylinder, so every cylinder-driven mechanism reached the loopless
@@ -124,6 +134,51 @@ export class KinematicsSolver {
     this.determineAng(simJoints, simLinks, 'Velocity');
     this.determineAng(simJoints, simLinks, 'Acceleration');
     this.determineLin(simJoints, simLinks);
+  }
+
+  /**
+   * Give a grounded guide the motion of the pin riding in it.
+   *
+   * `ground` reads differently on the two joint types. On a RevJoint it means
+   * the point is fixed in the world, and `kinematicsInitializer` seeds every
+   * grounded joint with zero rates on that reading. On a PrisJoint it means
+   * only that the *line* is fixed — the joint itself is the block's coordinate
+   * and travels along that line. Left with the seeded zero it reports the block
+   * stationary while the pin it is coincident with demonstrably moves, so the
+   * animation and the velocity table describe different mechanisms.
+   *
+   * The rider's rates are copied rather than rebuilt out of the slide rate for
+   * the same reason `copyCoincidentMotion` copies a floating block's: the two
+   * are one point at every timestep, so the value the loop (or the constraint
+   * set) actually solved is the only one that cannot drift from the motion
+   * being drawn. Deriving a second answer along the guide would agree only as
+   * long as nothing else changed.
+   */
+  private static matchGuidesToRiders(simLinks: Link[]): void {
+    for (const link of simLinks) {
+      if (!(link instanceof SliderBlock)) {
+        continue;
+      }
+      const guide = link.joints.find(
+        (joint): joint is PrisJoint =>
+          joint instanceof PrisJoint && joint.ground && !joint.isFloating
+      );
+      const rider = link.joints.find((joint) => !(joint instanceof PrisJoint));
+      if (!guide || !rider) {
+        continue;
+      }
+      const velocity = this.jointVelMap.get(rider.id);
+      const acceleration = this.jointAccMap.get(rider.id);
+      // A rider the walk never reached has no answer to share; leaving the
+      // guide's seed alone keeps an unsolved mechanism unsolved rather than
+      // dressing it as a still one.
+      if (velocity) {
+        this.jointVelMap.set(guide.id, [velocity[0], velocity[1]]);
+      }
+      if (acceleration) {
+        this.jointAccMap.set(guide.id, [acceleration[0], acceleration[1]]);
+      }
+    }
   }
 
   /**
@@ -375,19 +430,24 @@ export class KinematicsSolver {
       case SliderBlock:
         if (!this.realJointIndexMap.has(links[this.inputLinkIndex].id)) {
           const inputLink = links[this.inputLinkIndex];
-          if (!(inputLink instanceof RealLink)) {
-            return;
-          }
-          if (inputLink.joints === undefined) {
-            return;
+          // The body this case is about, with the joints the lines below
+          // search. `RealLink` was copied over from the case above, and a
+          // SliderBlock extends Link rather than RealLink -- so the guard was
+          // always taken and the whole initializer returned before it built
+          // linkIndexMap, leaving determineArrays to index a link that was
+          // never registered. Seeding a block that turns out to be malformed
+          // breaks out of the switch instead of abandoning the initializer:
+          // an unseeded input is one missing velocity, not no analysis at all.
+          if (!(inputLink instanceof SliderBlock) || inputLink.joints === undefined) {
+            break;
           }
           // The sliding joint, specifically. `instanceof RealJoint` matched the
           // block's *pin* first -- a PrisJoint is a RealJoint -- and the
           // PrisJoint check below then bailed out of the whole initializer, so
           // a driven block was seeded with no velocity at all.
-          const realJoint = inputLink.joints.find((j) => j instanceof PrisJoint);
+          const realJoint = inputLink.joints.find((j): j is PrisJoint => j instanceof PrisJoint);
           if (realJoint === undefined) {
-            return;
+            break;
           }
           // Match by id: the per-timestep joint arrays hold copies, so an
           // identity indexOf against the link's original joints finds nothing.
@@ -395,18 +455,20 @@ export class KinematicsSolver {
             links[this.inputLinkIndex].id,
             joints.findIndex((j) => j.id === realJoint.id)
           );
-          const prisJoint = links[this.inputLinkIndex].joints.find(
-            (jt) => jt instanceof PrisJoint
-          ) as PrisJoint;
-          this.desiredAngleMap.set(links[this.inputLinkIndex].id, prisJoint.slotAngle);
+          // Keyed by the sliding joint, because that is what every reader asks
+          // for: `determineArrays` looks the angle up by the joint
+          // `realJointIndexMap` points at, and the block registration below
+          // keys it the same way. Keyed by the *link* it was never found, and
+          // cos(undefined) put a NaN into the input side of every equation.
+          this.desiredAngleMap.set(realJoint.id, realJoint.slotAngle);
         }
         const inputLink = links[this.inputLinkIndex].id;
         if (inputLink === undefined) {
-          return;
+          break;
         }
         const realJoint = joints[this.realJointIndexMap.get(inputLink)!];
         if (!(realJoint instanceof PrisJoint)) {
-          return;
+          break;
         }
         // Along the guide at the commanded speed -- true only while the guide
         // is fixed in the world. On a slot cut into a moving link the block's
@@ -416,11 +478,20 @@ export class KinematicsSolver {
         // drives such a cylinder's *positions*; its velocity analysis is left
         // unseeded rather than seeded wrongly, and is Phase 6 work.
         if (realJoint.ground) {
-          this.jointVelMap.set(realJoint.id, [
+          const alongGuide: [number, number] = [
             initialAngularVelocity * Math.cos(realJoint.slotAngle),
             initialAngularVelocity * Math.sin(realJoint.slotAngle),
-          ]);
-          this.jointAccMap.set(realJoint.id, [0.0, 0.0]);
+          ];
+          // Every joint of the block, not only the sliding one. A block on a
+          // guide fixed in the world cannot turn, so the pin riding in it
+          // travels at exactly the commanded rate -- and it is the pin, not
+          // the sliding joint, that determineLin walks outward from. Seeding
+          // the sliding joint alone left the pin unset and the walk read an
+          // undefined velocity the moment it stepped off the block.
+          for (const blockJoint of links[this.inputLinkIndex].joints) {
+            this.jointVelMap.set(blockJoint.id, [alongGuide[0], alongGuide[1]]);
+            this.jointAccMap.set(blockJoint.id, [0.0, 0.0]);
+          }
         }
         break;
       default:
@@ -969,14 +1040,16 @@ export class KinematicsSolver {
                   ]);
                   break;
                 case SliderBlock:
-                  const realJoint = simJoints[this.realJointIndexMap.get(link.id)!];
-                  // // slider crank x, y
-                  // if (!(realJoint instanceof PrisJoint)) {
-                  //   return;
-                  // }
-                  const desiredAngle = this.desiredAngleMap.get(realJoint.id)!;
-                  arr = [Math.cos(desiredAngle), Math.sin(desiredAngle), 0];
-                  // arr = [Math.cos(realJoint.slotAngle), Math.sin(realJoint.slotAngle), 0];
+                  // The driven block's own rate, as the initializer seeded it,
+                  // carried to the right-hand side. What stood here was the
+                  // bare unit vector `[cos, sin]`: the same direction at unit
+                  // speed and pointing the wrong way, so every rate it fed
+                  // came out 1/inputSpeed of the truth and negated. Reading
+                  // the seed keeps the equation and the number the graphs plot
+                  // for the input joint as one answer rather than two.
+                  arr = this.negated(
+                    this.jointVelMap.get(simJoints[this.realJointIndexMap.get(link.id)!].id)
+                  );
                   break;
                 default:
                   return;
@@ -1033,13 +1106,13 @@ export class KinematicsSolver {
                   sol = this.addTwoArrays(transAccel, angularAccel);
                   break;
                 case SliderBlock:
-                  const realJoint = simJoints[this.realJointIndexMap.get(link.id)!];
-                  // if (!(realJoint instanceof PrisJoint)) {
-                  //   return;
-                  // }
-                  const desiredAngle = this.desiredAngleMap.get(realJoint.id)!;
-                  // arr = [-Math.cos(desiredAngle), -Math.sin(desiredAngle), 0];
-                  sol = [Math.cos(desiredAngle), Math.sin(desiredAngle)];
+                  // The driven block's acceleration along its guide, from the
+                  // same seed as the velocity term above -- zero while the
+                  // input runs at a constant rate, where the old unit vector
+                  // claimed the input was accelerating.
+                  sol = this.negated(
+                    this.jointAccMap.get(simJoints[this.realJointIndexMap.get(link.id)!].id)
+                  );
                   break;
                 default:
                   return;
@@ -1109,6 +1182,18 @@ export class KinematicsSolver {
 
   private static getJoint(simJoints: Joint[], joint_id: string) {
     return simJoints[this.jointIndexMap.get(joint_id)!];
+  }
+
+  /**
+   * A seeded rate moved to the known side of a loop equation.
+   *
+   * Missing means the driven block's own motion was never established, and a
+   * zero would read as a mechanism standing still rather than one nobody
+   * solved — the same reason `matchGuidesToRiders` leaves an unreached guide
+   * alone instead of writing a comfortable number into it.
+   */
+  private static negated(rate: [number, number] | undefined): [number, number, number] {
+    return rate ? [-rate[0], -rate[1], 0] : [Number.NaN, Number.NaN, 0];
   }
 
   private static addTwoArrays(first_array: any, second_array: any) {

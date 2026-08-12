@@ -10,6 +10,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
+import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
 const OUT = 'artifacts/phase4-cylinder';
@@ -31,8 +32,8 @@ page.on('console', (m) => {
 page.on('pageerror', (e) => consoleErrors.push(String(e)));
 mkdirSync(OUT, { recursive: true });
 
-await page.goto(BASE, { waitUntil: 'networkidle' });
-await page.waitForTimeout(800);
+await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
 // Dismiss the intro tour if it came up.
 await page.evaluate(() => document.querySelector('.introjs-skipbutton')?.click());
 await page.waitForTimeout(300);
@@ -83,7 +84,7 @@ const abort = await page.evaluate(() => {
   c.lastRightClickCoord.x = start.x;
   c.lastRightClickCoord.y = start.y;
   c.setLastRightClick('grid');
-  c.cMenuItems.find((i) => i.label === 'Create Cylinder')?.action();
+  c.cMenuItems.find((i) => i.label === 'Add Cylinder')?.action();
   return start;
 });
 await page.mouse.move(abort.x + 90, abort.y + 40);
@@ -110,12 +111,12 @@ const gesture = await page.evaluate(() => {
   c.lastRightClickCoord.y = start.y;
   c.setLastRightClick('grid');
   const labels = c.cMenuItems.map((i) => i.label);
-  c.cMenuItems.find((i) => i.label === 'Create Cylinder')?.action();
+  c.cMenuItems.find((i) => i.label === 'Add Cylinder')?.action();
   return { labels, start, end: { x: start.x + 320, y: start.y } };
 });
 checkThat(
-  'the grid menu offers Create Cylinder beside Add Link',
-  gesture.labels.includes('Create Cylinder'),
+  'the grid menu offers Add Cylinder beside Add Link',
+  gesture.labels.includes('Add Cylinder'),
   gesture.labels.join(', ')
 );
 
@@ -361,13 +362,13 @@ const bodyMenu = await page.evaluate(() => {
   const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === 'A'));
   c.setLastRightClick(barrel);
   const labels = c.cMenuItems.map((i) => i.label);
-  c.cMenuItems.find((i) => i.label === 'Make Input')?.action();
+  c.cMenuItems.find((i) => i.label === 'Add Input')?.action();
   return labels;
 });
 await page.waitForTimeout(500);
 checkThat(
-  'the body menu is exactly Delete Cylinder + Make Input',
-  JSON.stringify(bodyMenu) === JSON.stringify(['Delete Cylinder', 'Make Input']),
+  'the body menu is exactly Delete Cylinder + Add Input',
+  JSON.stringify(bodyMenu) === JSON.stringify(['Delete Cylinder', 'Add Input']),
   bodyMenu.join(', ')
 );
 state = await model();

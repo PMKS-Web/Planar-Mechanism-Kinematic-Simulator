@@ -1,6 +1,7 @@
 import { SvgGridService } from '../../services/svg-grid.service';
 import {
   AfterViewInit,
+  OnDestroy,
   Component,
   HostListener,
   ViewChild,
@@ -31,6 +32,7 @@ import {
   AngleUnit,
   radToDeg,
   GlobalUnit,
+  point_on_line_segment_closest_to_point,
 } from '../../model/utils';
 import { Force } from '../../model/force';
 import { PositionSolver } from '../../model/mechanism/position-solver';
@@ -65,8 +67,9 @@ import {
   WeldPlate,
 } from '../../services/slider-mark.service';
 import {
-  barrelCollapsedPath,
+  barrelPath,
   cylinderBlockPath,
+  GROUND_STROKE,
   MARK,
   orientedCapsulePath,
   plusPath,
@@ -74,6 +77,7 @@ import {
   slotHalfLength,
   motorBodyPath,
   motorBodyAt,
+  Segment,
 } from '../../model/joint-marks';
 import {
   JointDropCandidate,
@@ -86,6 +90,10 @@ import { mergedChannels, transformRigidPath } from '../../model/compound-link-pa
 import {
   Cylinder,
   cylinderCreationLayout,
+  cylinderHeadHalf,
+  cylinderSizeOf,
+  cylinderSpanRange,
+  cylinderMinimumSpan,
   cylinderJoints,
   isCylinderInterior as isCylinderInteriorOf,
 } from '../../model/cylinder';
@@ -108,6 +116,7 @@ export interface SlotStackItem {
   plate?: WeldPlate;
 }
 import introJs from 'intro.js';
+import { CANNOT_EDIT } from '../../ui-text';
 
 @Component({
   selector: 'app-new-grid',
@@ -116,7 +125,7 @@ import introJs from 'intro.js';
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false,
 })
-export class NewGridComponent {
+export class NewGridComponent implements OnDestroy {
   public static debugValue: any;
   static debugPoints: Coord[] = [];
   public static debugLines: Line[] = [];
@@ -158,6 +167,11 @@ export class NewGridComponent {
    * Read by the template to draw the snap indicator.
    */
   public snapTargetJoint?: RevJoint;
+  /**
+   * Whether this gesture has already said it reached the ram's floor. Reset
+   * when a drag begins, so the message is per-gesture and not per-frame.
+   */
+  private cylinderFloorReported = false;
 
   /**
    * A joint in range that will not take the merge, kept with its reason so the
@@ -175,9 +189,6 @@ export class NewGridComponent {
 
   /** Where the link being dragged was last placed, in SVG coordinates. */
   private linkDragAnchor: Coord = new Coord(0, 0);
-
-  private jointTempHolderSVG!: SVGElement;
-  private forceTempHolderSVG!: SVGElement;
 
   //This is terrible but:
   // -2 => hidden
@@ -289,9 +300,19 @@ export class NewGridComponent {
     });
   }
 
+  ngOnDestroy() {
+    // Let go of the static. It is a debug handle, but services reach the
+    // snackbar through it and it was never cleared — so a torn-down grid stayed
+    // registered, and the next thing to send a notification sent it to a
+    // component that no longer exists. In the app there is one grid for the
+    // session and it never showed; across a test run there are many, and it
+    // made unrelated specs fail depending on what had run before them.
+    if (NewGridComponent.instance === this) {
+      NewGridComponent.instance = undefined as unknown as NewGridComponent;
+    }
+  }
+
   ngAfterViewInit() {
-    this.jointTempHolderSVG = document.getElementById('jointTempHolder') as unknown as SVGElement;
-    this.forceTempHolderSVG = document.getElementById('forceTempHolder') as unknown as SVGElement;
     this.svgGridElement = document.getElementsByClassName(
       'svg-pan-zoom_viewport'
     )[0] as HTMLElement;
@@ -388,7 +409,7 @@ export class NewGridComponent {
           );
           this.cMenuItems.push(
             new cMenuItem(
-              bodyCylinder.slider.input ? 'Remove Input' : 'Make Input',
+              bodyCylinder.slider.input ? 'Remove Input' : 'Add Input',
               () => this.mechanismSrv.toggleCylinderInput(bodyCylinder),
               bodyCylinder.slider.input ? 'remove_input' : 'add_input'
             )
@@ -413,6 +434,17 @@ export class NewGridComponent {
             'Attach Link',
             this.startCreatingLink.bind(this),
             'new_link',
+            weldedLinkFilletSelected
+          )
+        );
+        // Beside Attach Link, because it is the same gesture with a different
+        // member on the end of it: this link is what the ram is bolted to, and
+        // the next click is where its rod finishes.
+        this.cMenuItems.push(
+          new cMenuItem(
+            'Attach Cylinder',
+            this.startCreatingCylinder.bind(this),
+            'add_cylinder',
             weldedLinkFilletSelected
           )
         );
@@ -470,7 +502,7 @@ export class NewGridComponent {
           );
           this.cMenuItems.push(
             new cMenuItem(
-              (this.lastRightClick as RealJoint).input ? 'Remove Input' : 'Make Input',
+              (this.lastRightClick as RealJoint).input ? 'Remove Input' : 'Add Input',
               this.mechanismSrv.adjustInput.bind(this.mechanismSrv),
               (this.lastRightClick as RealJoint).input ? 'remove_input' : 'add_input',
               !canToggleInput
@@ -504,6 +536,24 @@ export class NewGridComponent {
         this.cMenuItems.push(
           new cMenuItem('Attach Link', this.startCreatingLink.bind(this), 'new_link', jointIsInput)
         );
+        // Beside Attach Link here for the same reason it is beside Attach Link
+        // on a body: the two are one gesture with a different member on the end
+        // of it. This joint becomes the ram's own mount, so it swings with
+        // whatever already meets here.
+        //
+        // Not on a welded joint. A weld is the statement that everything
+        // meeting here is one rigid body, and a ram's mount arriving would be a
+        // third body joining that statement without being part of it — the
+        // reconcilers then disagree about what the compound is, which is a
+        // broken mechanism rather than a refused edit.
+        this.cMenuItems.push(
+          new cMenuItem(
+            'Attach Cylinder',
+            this.startCreatingCylinder.bind(this),
+            'add_cylinder',
+            jointIsInput || (this.lastRightClick as RealJoint).isWelded
+          )
+        );
 
         // Enabled whatever else the joint is, exactly as the panel's toggle is:
         // Ground and Slider became independent axes of the 2x2 in §4.1, so
@@ -522,7 +572,7 @@ export class NewGridComponent {
             new cMenuItem(
               (this.gridUtils.getSliderJoint(this.lastRightClick as RealJoint) as RealJoint).input
                 ? 'Remove Input'
-                : 'Make Input',
+                : 'Add Input',
               this.mechanismSrv.adjustInput.bind(this.mechanismSrv),
               (this.gridUtils.getSliderJoint(this.lastRightClick as RealJoint) as RealJoint).input
                 ? 'remove_input'
@@ -533,7 +583,7 @@ export class NewGridComponent {
         } else {
           this.cMenuItems.push(
             new cMenuItem(
-              (this.lastRightClick as RealJoint).input ? 'Remove Input' : 'Make Input',
+              (this.lastRightClick as RealJoint).input ? 'Remove Input' : 'Add Input',
               this.mechanismSrv.adjustInput.bind(this.mechanismSrv),
               (this.lastRightClick as RealJoint).input ? 'remove_input' : 'add_input',
               !canToggleInput
@@ -583,13 +633,17 @@ export class NewGridComponent {
           new cMenuItem('Add Link', this.startCreatingLink.bind(this), 'new_link')
         );
         this.cMenuItems.push(
-          new cMenuItem('Create Cylinder', this.startCreatingCylinder.bind(this), 'add_cylinder')
+          new cMenuItem('Add Cylinder', this.startCreatingCylinder.bind(this), 'add_cylinder')
         );
     }
   }
 
   /** Where the two-point cylinder gesture started: the barrel-side mount. */
   private cylinderCreateStart?: Coord;
+  /** The link the gesture started on, when it started on one rather than the grid. */
+  private cylinderCreateOn?: RealLink;
+  /** The joint it started on, when it started on one: the mount, already built. */
+  private cylinderCreateAt?: RealJoint;
 
   /**
    * Begin the two-point cylinder gesture (§ cylinder 2), mirroring Add Link:
@@ -597,14 +651,24 @@ export class NewGridComponent {
    * tracks the cursor (which is where the ROD will finish), and the next
    * left-click commits. Right- or middle-click cancels, exactly as link
    * creation does.
+   *
+   * Started from a link's own menu, that link is what the ram is bolted to and
+   * the mount joins its body — the same difference Attach Link has from Add
+   * Link, and the reason both live on both menus.
    */
   startCreatingCylinder() {
-    // Same first-object rule as link creation: fit the object scale to the
-    // current zoom before anything is sized from it.
-    if (this.mechanismSrv.links.length == 0) {
-      this.svgGrid.updateObjectScale();
-    }
-    this.cylinderCreateStart = this.svgGrid.screenToSVG(this.lastRightClickCoord);
+    this.fitObjectScaleToFirstPart();
+    this.cylinderCreateOn =
+      this.lastRightClick instanceof RealLink ? this.lastRightClick : undefined;
+    this.cylinderCreateAt =
+      this.lastRightClick instanceof RealJoint ? this.lastRightClick : undefined;
+    // From a joint, the mount is the joint itself, so the gesture starts at
+    // where it actually is rather than wherever inside its hitbox the click
+    // landed — a ram drawn a few pixels off its own mount is a ram at an angle
+    // to the one the user pointed at.
+    this.cylinderCreateStart = this.cylinderCreateAt
+      ? new Coord(this.cylinderCreateAt.x, this.cylinderCreateAt.y)
+      : this.svgGrid.screenToSVG(this.lastRightClickCoord);
     this.dragState.beginCreatingCylinder();
   }
 
@@ -621,6 +685,7 @@ export class NewGridComponent {
         barrel: string;
         rod: string;
         block: string;
+        fill: string;
       }
     | undefined {
     if (this.dragState.grid !== gridStates.createCylinder || !this.cylinderCreateStart) {
@@ -636,19 +701,28 @@ export class NewGridComponent {
       x: creation.pin.x,
       y: creation.pin.y,
       rotation: (creation.angleRad * 180) / Math.PI,
-      barrel: barrelCollapsedPath(r, -creation.pinFromMount),
-      rod: rodBodyPath(r, creation.rodLength),
-      block: cylinderBlockPath(r),
+      // The preview is the part it will become: the barrel at its own length,
+      // straddling the piston, with the rod telescoping out of its mouth.
+      barrel: barrelPath(r, -creation.pinFromMount, creation.barrelLength - creation.pinFromMount),
+      rod: rodBodyPath(r, creation.rodLength, cylinderHeadHalf(creation.barrelLength, r)),
+      block: cylinderBlockPath(r, cylinderHeadHalf(creation.barrelLength, r)),
+      // The colour the barrel will be handed when the click builds it, which
+      // the rod then wears too.
+      fill: this.nextLinkColor,
     };
   }
 
   /** The left-click that ends the gesture: build the part, one undo entry. */
   private commitCylinderCreation(end: Coord) {
     const start = this.cylinderCreateStart;
+    const mountOn = this.cylinderCreateOn;
+    const mountAt = this.cylinderCreateAt;
     this.cylinderCreateStart = undefined;
+    this.cylinderCreateOn = undefined;
+    this.cylinderCreateAt = undefined;
     this.dragState.finishCreating();
     if (!start) return;
-    this.mechanismSrv.createCylinderFrom(start, end);
+    this.mechanismSrv.createCylinderFrom(start, end, mountOn, mountAt);
   }
 
   setLastRightClick(clickedObj: Joint | Link | String | Force, event?: MouseEvent) {
@@ -735,29 +809,218 @@ export class NewGridComponent {
 
   createForce() {
     this.dragState.beginCreatingForce();
-    this.forceTempHolderSVG.style.display = 'block';
+    // A real Force, built on the link the gesture started from, so the preview
+    // is drawn by the same code as the finished arrow rather than by a line
+    // that only resembles one. Same reason the cylinder gesture previews its
+    // actual members: what is shown is what the next click will make.
+    const at = this.svgGrid.screenToSVG(this.lastRightClickCoord);
+    this.forceGhost =
+      this.lastRightClick instanceof RealLink
+        ? new Force('ghost', this.lastRightClick, at, new Coord(at.x, at.y))
+        : undefined;
     this.mechanismSrv.onMechUpdateState.next(3);
   }
 
+  /** The force being drawn, tracking the cursor. Undefined when not drawing. */
+  forceGhost?: Force;
+
+  /**
+   * The bar being drawn, tracking the cursor.
+   *
+   * Link creation showed a hairline and a dot, which says where the gesture
+   * started and where it will end and nothing about what it will make — the
+   * cylinder and force gestures both preview the part itself. This is the same
+   * capsule a two-joint link is drawn as, at the same half-width, so what is
+   * under the cursor is the bar the click commits.
+   */
+  /**
+   * Settle the object scale before the first part is drawn.
+   *
+   * On an empty grid the scale is derived from the current zoom, so whatever is
+   * built first decides how large every pin and bar is from then on. Deciding
+   * that when the gesture *starts* is what lets its ghost be the right size:
+   * done at the commit instead, the preview is drawn at the old scale and the
+   * part appears at a different one the instant it is made.
+   */
+  private fitObjectScaleToFirstPart(): void {
+    if (this.mechanismSrv.links.length === 0) {
+      this.svgGrid.updateObjectScale();
+    }
+  }
+
+  /** Where the link gesture started, in model coordinates. */
+  private linkCreateStart?: Coord;
+
+  /**
+   * The point the link gesture began at.
+   *
+   * The three commit paths used to read this back out of the preview's own SVG
+   * element, as two string attributes — so the drawing was load-bearing, and
+   * removing it would have quietly changed where links get built. It is kept
+   * here instead, which is also what the preview draws from.
+   */
+  private linkGestureStart(): Coord {
+    return this.linkCreateStart ?? this.mouseLocation;
+  }
+
+  /**
+   * The colour the next link created will wear.
+   *
+   * A cylinder's barrel is the first link its gesture builds, and its rod wears
+   * the barrel's fill — one part, one colour — so both gestures preview the
+   * same answer.
+   */
+  get nextLinkColor(): string {
+    return this.colorService.peekNextLinkColor();
+  }
+
+  get linkPreview(): { bar: string; from: Coord; fill: string } | undefined {
+    const from = this.linkCreateStart;
+    if (!this.dragState.isCreatingLink || !from) return undefined;
+    const to = this.mouseLocation;
+    const half = this.settings.objectScale / 4;
+    const span = Math.hypot(to.x - from.x, to.y - from.y);
+    // Nothing to point along yet: the first pixel of the gesture would spin a
+    // zero-length bar through every angle at once.
+    if (span < 1e-6) return undefined;
+    return {
+      bar: orientedCapsulePath(
+        { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
+        Math.atan2(to.y - from.y, to.x - from.x),
+        span / 2,
+        half
+      ),
+      from,
+      fill: this.nextLinkColor,
+    };
+  }
+
+  /**
+   * How big a force's anchor mark is drawn.
+   *
+   * Tied to the arrow's own thickness, which is how a force shows its
+   * magnitude: a heavy load draws a thick arrow, and a mark at a fixed size
+   * beside it reads as belonging to something else. Both constants are set so
+   * that a force at the default width keeps the size it had.
+   */
+  forceAnchorRadius(force: Force): number {
+    return 0.75 * force.visualWidth * this.settings.objectScale;
+  }
+
+  /** The plus a *local* force wears, at the same thickness as its arrow. */
+  forceWeldMark(force: Force): string {
+    return plusPath(1.5 * force.visualWidth * this.settings.objectScale);
+  }
+
+  /** Where inside the arrow a body drag picked it up, so it does not jump. */
+  private forceGrabOffset = new Coord(0, 0);
+
+  beginDraggingForceBody(force: Force, event: PointerEvent): void {
+    const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
+    this.forceGrabOffset = new Coord(at.x - force.startCoord.x, at.y - force.startCoord.y);
+  }
+
+  /**
+   * Put a force's anchor where the pointer asks, if it may go there.
+   *
+   * Two rules, and the joint one is checked first because a joint is on the
+   * link whether or not the point lands inside the drawn bar: the anchor snaps
+   * onto a joint that belongs to one link only, and is refused at a pin where
+   * several meet — a force there does not say which body it acts on. Anywhere
+   * else it has to be inside the bar.
+   */
+  private moveForceAnchor(wanted: Coord, how: 'anchor' | 'whole'): void {
+    const force = this.activeObjService.selectedForce;
+    // The force's own link, not whatever the panel last selected: a force knows
+    // what it acts on, and the two can disagree after a click on the body.
+    const link = force.link;
+    const anchor = this.gridUtils.forceAnchorAt(link, wanted, this.settings.objectScale);
+    if (!anchor) {
+      this.sendNotification(
+        'Several links meet at that joint, so a force there would not say which one it acts on.',
+        1500
+      );
+      return;
+    }
+    if (!anchor.snappedTo && !this.pointIsInsideLink(link, anchor.at)) {
+      // Nothing moved, so nothing happened. Crediting the gesture anyway put an
+      // identical URL on the undo stack: dragging the arrow off its own link
+      // armed Undo, and pressing it appeared to do nothing because there was
+      // nothing between the two states to see.
+      return;
+    }
+    this.gridUtils.dragForce(force, anchor.at, how);
+    // So that the panel values update continuously.
+    this.activeObjService.fakeUpdateSelectedObj();
+    this.dragState.noteMechanismModified();
+  }
+
+  /**
+   * Whether a point lands on the body of a link.
+   *
+   * Asked of the model rather than of the drawing. It used to hit-test the
+   * link's own SVG path, which fails silently in a way that is very hard to see:
+   * a link whose element carries an empty `d` — the punch press's rod is one —
+   * answers "not inside" for every point in it, so its force could not be moved
+   * anywhere at all while three other templates worked fine.
+   *
+   * A two-joint bar is a special case rather than an exception. Its hull is a
+   * line segment, so no point off that line is ever "inside" it — and the
+   * anchor of a force on such a bar has already been projected onto the segment
+   * by `dragForce`, which is what makes it a bar's whole reachable set.
+   */
+  private pointIsInsideLink(link: RealLink, point: Coord): boolean {
+    const half = this.settings.objectScale / 4;
+    const joints = link.joints;
+    if (joints.length < 2) return false;
+    // Within a bar's own width of the line between any two of its joints. This
+    // is what a link is drawn as, so it covers the straight ones — including
+    // the three-joint booms, whose joints are collinear and whose hull is
+    // therefore a line with no inside at all.
+    for (let first = 0; first < joints.length; first++) {
+      for (let second = first + 1; second < joints.length; second++) {
+        const [x, y] = point_on_line_segment_closest_to_point(
+          point.x,
+          point.y,
+          joints[first].x,
+          joints[first].y,
+          joints[second].x,
+          joints[second].y
+        );
+        if (Math.hypot(point.x - x, point.y - y) <= half) return true;
+      }
+    }
+    // And anywhere in the middle of a plate, which the edges above do not cover.
+    return link.isPointInsideHull(point.x, point.y);
+  }
+
+  /**
+   * The joint a force's anchor is sitting on, if it is sitting on one.
+   *
+   * Derived rather than stored, so a force that arrived in a URL already on a
+   * tracer point reads the same as one just dragged there.
+   */
+  forceSnappedJoint(force: Force): RealJoint | undefined {
+    for (const joint of force.link.joints) {
+      if (!(joint instanceof RealJoint) || joint.links.length > 1) continue;
+      if (Math.hypot(joint.x - force.startCoord.x, joint.y - force.startCoord.y) < 1e-6) {
+        return joint;
+      }
+    }
+    return undefined;
+  }
+
   creatingForce($event: MouseEvent) {
-    const startCoord = this.svgGrid.screenToSVGfromXY(
-      this.lastRightClickCoord.x,
-      this.lastRightClickCoord.y
-    );
     const mousePos = this.svgGrid.screenToSVGfromXY($event.clientX, $event.clientY);
-    this.forceTempHolderSVG.children[0].setAttribute(
-      'd',
-      'M ' + startCoord.x + ' ' + startCoord.y + ' L ' + mousePos.x + ' ' + mousePos.y
-    );
-    this.forceTempHolderSVG.children[1].setAttribute(
-      'd',
-      'M ' + startCoord.x + ' ' + startCoord.y + ' L ' + mousePos.x + ' ' + mousePos.y
-    );
+    this.forceGhost?.moveDirectionHandle(mousePos);
   }
 
   startCreatingLink() {
-    // console.log('createLink');
-    // console.log(this.lastRightClickCoord);
+    // The first part on an empty grid sets the object scale from the zoom, and
+    // everything is sized from it — so it has to be settled before anything is
+    // drawn at it. It used to be settled at the *commit*, which meant the ghost
+    // was drawn at the old scale and the bar changed size under the click.
+    this.fitObjectScaleToFirstPart();
     const startCoord = this.svgGrid.screenToSVG(this.lastRightClickCoord);
     switch (this.objectKind(this.lastRightClick)) {
       case 'String':
@@ -784,11 +1047,7 @@ export class NewGridComponent {
     // // TODO: Within future, create a tempJoint and temp Link and set those values as these values in order to avoid
     // // TODO: having to call setAttribute and have HTML update for you automatically
     // console.log(startCoord);
-    this.jointTempHolderSVG.children[0].setAttribute('x1', startCoord.x.toString());
-    this.jointTempHolderSVG.children[0].setAttribute('y1', startCoord.y.toString());
-    this.jointTempHolderSVG.children[1].setAttribute('x', startCoord.x.toString());
-    this.jointTempHolderSVG.children[1].setAttribute('y', startCoord.y.toString());
-    this.jointTempHolderSVG.style.display = 'block';
+    this.linkCreateStart = startCoord;
     // this.onMechUpdateState.next(3);
   }
 
@@ -824,14 +1083,8 @@ export class NewGridComponent {
       }
     }
 
-    if (this.dragState.isCreatingLink || this.dragState.grid === gridStates.createForce) {
-      this.jointTempHolderSVG.children[0].setAttribute('x2', mousePosInSvg.x.toString());
-      this.jointTempHolderSVG.children[0].setAttribute('y2', mousePosInSvg.y.toString());
-    }
     switch (this.dragState.joint) {
       case jointStates.creating:
-        this.jointTempHolderSVG.children[0].setAttribute('x2', mousePosInSvg.x.toString());
-        this.jointTempHolderSVG.children[0].setAttribute('y2', mousePosInSvg.y.toString());
         break;
       case jointStates.dragging: {
         if (!this.canEditNow() || !this.pastDragThreshold($event)) {
@@ -843,19 +1096,40 @@ export class NewGridComponent {
         // that is how a cylinder attaches — with the refusal rules keeping
         // welded targets and the part's own joints out. Slot drops stay off
         // the table: a mount never rides a slot.
-        const draggedCylinder = this.mechanismSrv.cylinderAt(this.activeObjService.selectedJoint);
-        if (draggedCylinder) {
+        const draggedCylinders = this.mechanismSrv.cylindersAt(this.activeObjService.selectedJoint);
+        if (draggedCylinders.length > 0) {
           this.updateDropCandidate(mousePosInSvg, $event.altKey);
           this.slotCandidate = undefined;
           this.axisSnapGuides = [];
+          // Snap to the axis of the ram the gesture is most obviously about --
+          // the first -- but re-pose all of them, so a mount two rams share
+          // does not drag one and deform the other.
           const wanted = this.snapTargetJoint
             ? new Coord(this.snapTargetJoint.x, this.snapTargetJoint.y)
-            : this.mountAxisSnap(draggedCylinder, mousePosInSvg);
-          this.gridUtils.dragCylinderMount(
-            draggedCylinder,
-            this.activeObjService.selectedJoint,
-            wanted
+            : this.mountAxisSnap(draggedCylinders[0], mousePosInSvg);
+          // Through dragJoint rather than straight at dragCylinderMount, so a
+          // mount two rams share is agreed between them before either moves.
+          this.gridUtils.dragJoint(this.activeObjService.selectedJoint, wanted);
+          const atMinimum = draggedCylinders.some(
+            (draggedCylinder) =>
+              this.gridUtils.getPointDistance(
+                draggedCylinder.barrelFar.x,
+                draggedCylinder.barrelFar.y,
+                draggedCylinder.rodFar.x,
+                draggedCylinder.rodFar.y
+              ) <=
+              cylinderMinimumSpan(0.15 * this.settings.objectScale) + 1e-6
           );
+          // The mount stops following the cursor at the shortest ram there is,
+          // and a gesture that stops should say why. Once per drag: this runs
+          // on every pointermove, and a message repeated sixty times a second
+          // is noise rather than an explanation.
+          if (atMinimum && !this.cylinderFloorReported) {
+            this.cylinderFloorReported = true;
+            this.sendNotification(
+              'That is the shortest cylinder there is — any less and the barrel has no room to slide in.'
+            );
+          }
           this.dragState.noteMechanismModified();
           this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
           this.showPathWhileDragging();
@@ -886,8 +1160,6 @@ export class NewGridComponent {
     }
     switch (this.dragState.link) {
       case linkStates.creating:
-        this.jointTempHolderSVG.children[0].setAttribute('x2', mousePosInSvg.x.toString());
-        this.jointTempHolderSVG.children[0].setAttribute('y2', mousePosInSvg.y.toString());
         break;
       case linkStates.dragging: {
         if (!this.canEditNow() || !this.pastDragThreshold($event)) {
@@ -929,7 +1201,7 @@ export class NewGridComponent {
           return;
         }
         //The 3rd params could be this.selectedFroceEndPoint == 'startPoint'
-        this.gridUtils.dragForce(this.activeObjService.selectedForce, mousePosInSvg, false);
+        this.gridUtils.dragForce(this.activeObjService.selectedForce, mousePosInSvg, 'direction');
         //So that the panel values update continously
         this.activeObjService.fakeUpdateSelectedObj();
         this.dragState.noteMechanismModified();
@@ -938,45 +1210,22 @@ export class NewGridComponent {
         if (!this.canEditNow()) {
           return;
         }
-
-        //The 3rd params could be this.selectedFroceEndPoint == 'startPoint'
-        const fake_link = document.getElementById(this.activeObjService.selectedLink.id) as unknown;
-        const link_svg = fake_link as SVGElement;
-        const geo = fake_link as SVGGeometryElement;
-        let isIn = false;
-        if (geo.isPointInFill) {
-          const fakeGrid = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          const svgp = fakeGrid.createSVGPoint();
-          svgp.x = mousePosInSvg.x;
-          svgp.y = mousePosInSvg.y;
-          isIn = geo.isPointInFill(svgp);
-        } else {
-          isIn = isInside([mousePosInSvg.x, mousePosInSvg.y], geo.getAttribute('d')); //1634 in SVGFuncs.ts
+        this.moveForceAnchor(mousePosInSvg, 'anchor');
+        break;
+      // Grabbing the arrow itself carries the whole force. `moveAnchor` already
+      // translates both ends, so this is the same move as dragging the start —
+      // less the jump, because where inside the arrow it was picked up is kept.
+      case forceStates.draggingBody:
+        if (!this.canEditNow()) {
+          return;
         }
-        // force is in link. Check to make sure that the force is not on top of a joint
-        if (isIn) {
-          this.activeObjService.selectedLink.joints.forEach((j) => {
-            if (!(j instanceof RealJoint)) {
-              return;
-            }
-            const x = j.x;
-            const y = j.y;
-            const r = this.settings.objectScale * j.r * 2;
-            let dx = x - mousePosInSvg.x;
-            let dy = y - mousePosInSvg.y;
-            let distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance <= r) {
-              isIn = false;
-            }
-          });
-        }
-        if (isIn) {
-          //The 3rd params could be this.selectedFroceEndPoint == 'startPoint'
-          this.gridUtils.dragForce(this.activeObjService.selectedForce, mousePosInSvg, true);
-        }
-        //So that the panel values update continously
-        this.activeObjService.fakeUpdateSelectedObj();
-        this.dragState.noteMechanismModified();
+        this.moveForceAnchor(
+          new Coord(
+            mousePosInSvg.x - this.forceGrabOffset.x,
+            mousePosInSvg.y - this.forceGrabOffset.y
+          ),
+          'whole'
+        );
         break;
     }
   }
@@ -988,22 +1237,22 @@ export class NewGridComponent {
    */
   private canEditNow(): boolean {
     if (AnimationBarComponent.animate) {
-      this.sendNotification('Cannot edit while animation is running');
+      this.sendNotification(CANNOT_EDIT.animating);
       return false;
     }
     if (this.mechanismSrv.mechanismTimeStep !== 0) {
-      this.sendNotification('Stop animation (or reset to 0 position) to edit');
+      this.sendNotification(CANNOT_EDIT.awayFromStart);
       return false;
     }
     if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
-      this.sendNotification('Cannot edit while in Synthesis mode. Switch to Edit mode to edit');
+      this.sendNotification(CANNOT_EDIT.synthesizeMode);
       return false;
     }
     // Analyze already refuses to open an edit context menu (see onContextMenu),
     // but dragging bypassed that: the mode was read-only by menu only. Whole-link
     // drag would have widened the hole, so the guard covers every drag instead.
     if (this.tabService.getCurrentTab() === TabID.ANALYZE) {
-      this.sendNotification('Analysis mode is read-only. Switch to Edit mode to edit');
+      this.sendNotification(CANNOT_EDIT.analyzeMode);
       return false;
     }
     return true;
@@ -1271,7 +1520,7 @@ export class NewGridComponent {
 
   onContextMenu($event: MouseEvent) {
     if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
-      this.sendNotification('Cannot edit while in Synthesis mode. Switch to Edit mode to edit');
+      this.sendNotification(CANNOT_EDIT.synthesizeMode);
       this.cMenuItems = [];
       return;
     }
@@ -1284,12 +1533,12 @@ export class NewGridComponent {
     }
 
     if (AnimationBarComponent.animate == true) {
-      this.sendNotification('Cannot open context menu while animating. Stop animation to edit');
+      this.sendNotification(CANNOT_EDIT.animating);
       this.cMenuItems = [];
       return;
     }
     if (this.mechanismSrv.mechanismTimeStep !== 0) {
-      this.sendNotification('Reset to T=0 (or push stop button) to edit');
+      this.sendNotification(CANNOT_EDIT.awayFromStart);
       this.cMenuItems = [];
       //Close the MatContextMenu
       // console.log(this.contextMenu);
@@ -1307,6 +1556,8 @@ export class NewGridComponent {
     this.synthesisClickMode = SynthesisClickMode.NORMAL;
     // The alignment guides belong to the drag that made them.
     this.axisSnapGuides = [];
+    // As does the floor message: the next gesture gets to say it again.
+    this.cylinderFloorReported = false;
 
     // Resolve the drop before releasing: the snap target is only meaningful
     // while the drag it belongs to is still in flight.
@@ -1431,24 +1682,16 @@ export class NewGridComponent {
               case gridStates.createJointFromGrid:
                 //Here's where you actaully make the link
                 joint1 = this.mechanismSrv.createRevJoint(
-                  this.jointTempHolderSVG.children[0].getAttribute('x1')!,
-                  this.jointTempHolderSVG.children[0].getAttribute('y1')!
+                  this.linkGestureStart().x.toString(),
+                  this.linkGestureStart().y.toString()
                 );
                 joint2 = this.mechanismSrv.createRevJoint(
-                  this.jointTempHolderSVG.children[0].getAttribute('x2')!,
-                  this.jointTempHolderSVG.children[0].getAttribute('y2')!,
+                  this.mouseLocation.x.toString(),
+                  this.mouseLocation.y.toString(),
                   joint1.id
                 );
                 joint1.connectedJoints.push(joint2);
                 joint2.connectedJoints.push(joint1);
-
-                if (this.mechanismSrv.links.length == 0) {
-                  // console.log('first link');
-                  this.svgGrid.updateObjectScale();
-                  // console.log(this.svgGrid.panZoomObject);
-                  // console.log(this.svgGrid.panZoomObject.getZoom().toFixed(2));
-                  // console.log(Number((70 / this.svgGrid.panZoomObject.getZoom()).toFixed(2)));
-                }
 
                 link = this.gridUtils.createRealLink(joint1.id + joint2.id, [joint1, joint2]);
                 joint1.links.push(link);
@@ -1457,12 +1700,12 @@ export class NewGridComponent {
                 this.mechanismSrv.mergeToLinks([link]);
                 this.mechanismSrv.updateMechanism(true);
                 this.dragState.finishCreating();
-                this.jointTempHolderSVG.style.display = 'none';
+                this.linkCreateStart = undefined;
                 break;
               case gridStates.createJointFromJoint:
                 joint2 = this.mechanismSrv.createRevJoint(
-                  this.jointTempHolderSVG.children[0].getAttribute('x2')!,
-                  this.jointTempHolderSVG.children[0].getAttribute('y2')!
+                  this.mouseLocation.x.toString(),
+                  this.mouseLocation.y.toString()
                 );
                 this.activeObjService.prevSelectedJoint.connectedJoints.push(joint2);
                 joint2.connectedJoints.push(this.activeObjService.prevSelectedJoint);
@@ -1477,7 +1720,7 @@ export class NewGridComponent {
                 this.mechanismSrv.mergeToLinks([link]);
                 this.mechanismSrv.updateMechanism(true);
                 this.dragState.finishCreating();
-                this.jointTempHolderSVG.style.display = 'none';
+                this.linkCreateStart = undefined;
                 break;
               case gridStates.createJointFromLink:
                 // console.warn('reset position');
@@ -1486,12 +1729,12 @@ export class NewGridComponent {
                 this.startX = 9999999;
                 // TODO: set context Link as a part of joint 1 or joint 2
                 joint1 = this.mechanismSrv.createRevJoint(
-                  this.jointTempHolderSVG.children[0].getAttribute('x1')!,
-                  this.jointTempHolderSVG.children[0].getAttribute('y1')!
+                  this.linkGestureStart().x.toString(),
+                  this.linkGestureStart().y.toString()
                 );
                 joint2 = this.mechanismSrv.createRevJoint(
-                  this.jointTempHolderSVG.children[0].getAttribute('x2')!,
-                  this.jointTempHolderSVG.children[0].getAttribute('y2')!,
+                  this.mouseLocation.x.toString(),
+                  this.mouseLocation.y.toString(),
                   joint1.id
                 );
                 // Have within constructor other joints so when you add joint, that joint's connected joints also attach
@@ -1531,7 +1774,7 @@ export class NewGridComponent {
                   this.activeObjService.selectedLink.getPathString();
                 this.mechanismSrv.updateMechanism(true);
                 this.dragState.finishCreating();
-                this.jointTempHolderSVG.style.display = 'none';
+                this.linkCreateStart = undefined;
                 break;
               case gridStates.createForce:
                 const startCoord = this.svgGrid.screenToSVG(this.lastRightClickCoord);
@@ -1541,7 +1784,7 @@ export class NewGridComponent {
                 );
                 this.mechanismSrv.createForce(startCoord, endCoord);
                 this.dragState.finishCreating();
-                this.forceTempHolderSVG.style.display = 'none';
+                this.forceGhost = undefined;
                 break;
             }
             break;
@@ -1554,8 +1797,8 @@ export class NewGridComponent {
                 break;
               case gridStates.createJointFromGrid:
                 joint1 = this.mechanismSrv.createRevJoint(
-                  this.jointTempHolderSVG.children[0].getAttribute('x1')!,
-                  this.jointTempHolderSVG.children[0].getAttribute('y1')!
+                  this.linkGestureStart().x.toString(),
+                  this.linkGestureStart().y.toString()
                 );
                 joint2 = this.activeObjService.selectedJoint;
                 // joint2 = this.createRevJoint(
@@ -1574,7 +1817,7 @@ export class NewGridComponent {
                 this.mechanismSrv.updateMechanism(true);
                 // PositionSolver.setUpSolvingForces(link.forces); // needed to determine force location when dragging a joint
                 this.dragState.finishCreating();
-                this.jointTempHolderSVG.style.display = 'none';
+                this.linkCreateStart = undefined;
                 break;
               case gridStates.createJointFromJoint:
                 // joint2 = this.createRevJoint(
@@ -1597,8 +1840,8 @@ export class NewGridComponent {
                 });
                 if (commonLinkCheck) {
                   this.dragState.finishCreating();
-                  this.jointTempHolderSVG.style.display = 'none';
-                  this.sendNotification("Don't link to a joint on the same link");
+                  this.linkCreateStart = undefined;
+                  this.sendNotification('Those two joints are already on one link.');
                   return;
                 }
                 this.activeObjService.prevSelectedJoint.connectedJoints.push(joint2);
@@ -1613,13 +1856,13 @@ export class NewGridComponent {
                 this.mechanismSrv.mergeToLinks([link]);
                 this.mechanismSrv.updateMechanism(true);
                 this.dragState.finishCreating();
-                this.jointTempHolderSVG.style.display = 'none';
+                this.linkCreateStart = undefined;
                 break;
               case gridStates.createJointFromLink:
                 // TODO: set context Link as a part of joint 1 or joint 2
                 joint1 = this.mechanismSrv.createRevJoint(
-                  this.jointTempHolderSVG.children[0].getAttribute('x1')!,
-                  this.jointTempHolderSVG.children[0].getAttribute('y1')!
+                  this.linkGestureStart().x.toString(),
+                  this.linkGestureStart().y.toString()
                 );
                 // joint2 = this.createRevJoint(
                 //   this.jointTempHolderSVG.children[0].getAttribute('x2')!,
@@ -1650,7 +1893,7 @@ export class NewGridComponent {
                 this.mechanismSrv.mergeToLinks([link]);
                 this.mechanismSrv.updateMechanism(true);
                 this.dragState.finishCreating();
-                this.jointTempHolderSVG.style.display = 'none';
+                this.linkCreateStart = undefined;
                 break;
             }
             switch (this.dragState.joint) {
@@ -1666,7 +1909,7 @@ export class NewGridComponent {
                 'Cannot link to a bar. Please create and select a tracer point on the link.'
               );
               this.dragState.cancel();
-              this.jointTempHolderSVG.style.display = 'none';
+              this.linkCreateStart = undefined;
               break;
             }
             if (this.dragState.link === linkStates.waiting) {
@@ -1677,30 +1920,35 @@ export class NewGridComponent {
             console.log('force is last left click');
             switch (this.dragState.force) {
               case forceStates.waiting:
-                console.log(this.activeObjService.selectedForce);
                 if (this.activeObjService.selectedForce.isStartSelected) {
                   this.dragState.beginDraggingForceStart();
                 } else if (this.activeObjService.selectedForce.isEndSelected) {
                   this.dragState.beginDraggingForceEnd();
+                } else {
+                  // Neither handle: the arrow itself was grabbed, so the whole
+                  // force moves. This is the ordinary way to pick one up —
+                  // reaching for the little square at its tail is not.
+                  this.dragState.beginDraggingForceBody();
                 }
             }
             break;
-          case 'JointTemp':
-            this.dragState.cancel();
-            this.jointTempHolderSVG.style.display = 'none';
-            this.sendNotification("Don't link a joint to itself");
+          // 'JointTemp' used to be here: clicking the ghost joint the old
+          // line-and-dot preview drew at the start of the gesture. Nothing sets
+          // that type any more, and a click back on the joint itself is caught
+          // where the link is actually built — with a better sentence, because
+          // by then it knows the two joints already share a bar.
         }
         break;
       // TODO: Be sure all things reset
       case 1: // Middle-Click
         this.dragState.cancel();
         this.cylinderCreateStart = undefined;
-        this.jointTempHolderSVG.style.display = 'none';
+        this.linkCreateStart = undefined;
         return;
       case 2: // Right-Click
         this.dragState.cancel();
         this.cylinderCreateStart = undefined;
-        this.jointTempHolderSVG.style.display = 'none';
+        this.linkCreateStart = undefined;
         break;
     }
   }
@@ -1906,6 +2154,7 @@ export class NewGridComponent {
     pose: number;
     scale: number;
     forward: boolean;
+    paint: string;
     list: CylinderMark[];
   };
 
@@ -1919,29 +2168,174 @@ export class NewGridComponent {
    * Keyed on the pose as well as the structure. A mark is a drawing of where
    * the joints *are*, and against the structure revision alone the skin stayed
    * painted where the mechanism was built while the linkage under it animated.
+   * And on the paint, because a skin wears its barrel's colour: without it the
+   * Visual Settings picker moved its own swatch and repainted nothing.
    */
   get cylinderList(): CylinderMark[] {
     const revision = this.mechanismSrv.cylinderRevision;
     const pose = this.mechanismSrv.poseRevision;
     const scale = this.settings.objectScale;
     const forward = !this.settings.isInputCW.value;
+    const paint = this.linkPaint();
     const cache = this.cylinderListCache;
     if (
       !cache ||
       cache.revision !== revision ||
       cache.pose !== pose ||
       cache.scale !== scale ||
-      cache.forward !== forward
+      cache.forward !== forward ||
+      cache.paint !== paint
     ) {
       this.cylinderListCache = {
         revision,
         pose,
         scale,
         forward,
+        paint,
         list: this.sliderMarks.cylinderMarks(this.mechanismSrv.getJoints(), 0.15 * scale, forward),
       };
     }
     return this.cylinderListCache!.list;
+  }
+
+  /**
+   * Which of the cylinder panel's two size fields is being pointed at, if any.
+   * 'travel' is how far the rod goes; 'start' is where in that it sits now.
+   */
+  cylinderRangeOverlay?: 'travel' | 'start';
+
+  setCylinderRangeOverlay(which: 'travel' | 'start' | undefined): void {
+    this.cylinderRangeOverlay = which;
+  }
+
+  /**
+   * The stretch of ground the rod's mount covers, drawn on the canvas.
+   *
+   * One picture for both fields, because they are two readings of one line:
+   * *Travel* is how long it is, and *Starts at* is how far along it the ram is
+   * standing. Drawn as the mount's own path rather than as a bar beside the
+   * barrel — what a user wants to see when typing a stroke is where the end of
+   * the ram will get to, and that is a place on the grid rather than a length
+   * in the abstract.
+   *
+   * Nothing is drawn for a ram with no usable travel: the line would be a point
+   * and the number beside it a zero, which says less than the panel already does.
+   */
+  get cylinderRange():
+    { from: Coord; to: Coord; at: Coord; showsPosition: boolean; label: string } | undefined {
+    if (!this.cylinderRangeOverlay) return undefined;
+    const sealed = this.mechanismSrv.cylinderAt(this.activeObjService.selectedLink);
+    if (!sealed) return undefined;
+    const r = 0.15 * this.settings.objectScale;
+    const size = cylinderSizeOf(sealed, r);
+    if (!(size.stroke > 0)) return undefined;
+
+    const { barrelFar, rodFar } = sealed;
+    const span = Math.hypot(rodFar.x - barrelFar.x, rodFar.y - barrelFar.y);
+    if (!(span > 1e-9)) return undefined;
+    const ux = (rodFar.x - barrelFar.x) / span;
+    const uy = (rodFar.y - barrelFar.y) / span;
+    const at = (along: number) => new Coord(barrelFar.x + along * ux, barrelFar.y + along * uy);
+
+    const ends = cylinderSpanRange(size.stroke, r);
+    const showsPosition = this.cylinderRangeOverlay === 'start';
+    return {
+      from: at(ends.retracted),
+      to: at(ends.extended),
+      at: at(span),
+      showsPosition,
+      label: showsPosition
+        ? `${Math.round(size.start * 1000) / 10}%`
+        : this.nup.formatModelLength(size.stroke, this.settings.lengthUnit.getValue()),
+    };
+  }
+
+  /** Whether the slot-angle field is being pointed at. */
+  slotAngleOverlay = false;
+
+  setSlotAngleOverlay(showing: boolean): void {
+    this.slotAngleOverlay = showing;
+  }
+
+  /**
+   * What a grounded slot's angle is measured from, drawn where the slot is.
+   *
+   * The panel used to say "Slot angle measured from the +x axis" underneath the
+   * field, which is a sentence explaining a picture. This is the picture: a ray
+   * out along +x from the block, the slot's own direction, and the arc between
+   * them carrying the number. Nothing has to be read to know which way a bigger
+   * number turns the slot, because the arc is already going that way.
+   */
+  get slotAngleGuide():
+    | { at: Coord; axis: Coord; along: Coord; arc: string; label: string; labelAt: Coord }
+    | undefined {
+    if (!this.slotAngleOverlay) return undefined;
+    const slider = this.mechanismSrv.sliderFor(this.activeObjService.selectedJoint);
+    if (!slider || !slider.ground) return undefined;
+
+    // Clear of the block, which is itself about 0.58 object scales across the
+    // joint: drawn any smaller the whole guide hides underneath the part it is
+    // describing, which is how the first cut of it looked.
+    const radius = 1.8 * this.settings.objectScale;
+    const angle = slider.slotAngle;
+    const at = new Coord(slider.x, slider.y);
+    const axis = new Coord(at.x + radius, at.y);
+    const along = new Coord(at.x + radius * Math.cos(angle), at.y + radius * Math.sin(angle));
+
+    // Swept from +x to the slot, the short way round, so the arc reads as the
+    // angle the number names rather than as its reflex twin.
+    const swept = Math.atan2(Math.sin(angle), Math.cos(angle));
+    const arcRadius = radius * 0.62;
+    const arcEnd = new Coord(
+      at.x + arcRadius * Math.cos(swept),
+      at.y + arcRadius * Math.sin(swept)
+    );
+    const sweepFlag = swept >= 0 ? 1 : 0;
+    const arc =
+      `M ${at.x + arcRadius} ${at.y} ` +
+      `A ${arcRadius} ${arcRadius} 0 0 ${sweepFlag} ${arcEnd.x} ${arcEnd.y}`;
+
+    const halfway = swept / 2;
+    const labelRadius = arcRadius + 0.16 * this.settings.objectScale;
+    return {
+      at,
+      axis,
+      along,
+      arc,
+      label: `${Math.round(((swept * 180) / Math.PI) * 10) / 10}°`,
+      labelAt: new Coord(
+        at.x + labelRadius * Math.cos(halfway),
+        at.y + labelRadius * Math.sin(halfway)
+      ),
+    };
+  }
+
+  /** End ticks across the travel line, so its two ends read as limits. */
+  cylinderRangeCaps(range: { from: Coord; to: Coord }): Segment[] {
+    const dx = range.to.x - range.from.x;
+    const dy = range.to.y - range.from.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const half = 0.12 * this.settings.objectScale;
+    const nx = (-dy / length) * half;
+    const ny = (dx / length) * half;
+    return [range.from, range.to].map((end) => ({
+      x1: end.x - nx,
+      y1: end.y - ny,
+      x2: end.x + nx,
+      y2: end.y + ny,
+    }));
+  }
+
+  /** The label sits clear of the line, on the side away from the barrel. */
+  cylinderRangeLabelPos(range: { from: Coord; to: Coord }): Coord {
+    const dx = range.to.x - range.from.x;
+    const dy = range.to.y - range.from.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const off = 0.28 * this.settings.objectScale;
+    return new Coord(
+      (range.from.x + range.to.x) / 2 - (dy / length) * off,
+      (range.from.y + range.to.y) / 2 + (dx / length) * off
+    );
   }
 
   /** Whether the selection is this cylinder's body, however it was selected. */
@@ -2018,14 +2412,19 @@ export class NewGridComponent {
    * range a rail went from half the hatch's weight to twelve times it. The two
    * marks say the same thing about the same world, so they have to be drawn the
    * same way, and the asset is the one that cannot change.
+   *
+   * Stated in R by `GROUND_STROKE` rather than here, because the hatch geometry
+   * needs the same two numbers to sit its ticks against the rail, and a stroke
+   * the drawing and the geometry each carry their own copy of is a stroke they
+   * can disagree about.
    */
   get groundLineWidth(): number {
-    return (1.2 * 4 * this.settings.objectScale) / 157;
+    return GROUND_STROKE.rail * 0.15 * this.settings.objectScale;
   }
 
   /** The hatch bars of that same symbol, drawn at 5/157 of its width. */
   get groundHatchWidth(): number {
-    return (1.2 * 5 * this.settings.objectScale) / 157;
+    return GROUND_STROKE.hatch * 0.15 * this.settings.objectScale;
   }
 
   /**
@@ -2239,18 +2638,28 @@ export class NewGridComponent {
     return plusPath(0.15 * this.settings.objectScale);
   }
 
-  private freshMarks(): { marks: SliderMark[]; channels: Channel[] } {
-    const joints = this.mechanismSrv.getJoints();
-    const r = 0.15 * this.settings.objectScale;
-    // A Slide's weld plate is painted in its rider's own colour, so recolouring
-    // a link changes a mark while moving nothing. Same failure as the grounded
-    // angle: the panel shows the new colour and the canvas keeps the old.
-    const paint = this.mechanismSrv
+  /**
+   * Every link's colour, as one string.
+   *
+   * A mark can be painted in a link's own colour — a Slide's weld plate is its
+   * rider's, a cylinder's skin is its barrel's — so recolouring changes a mark
+   * while moving nothing at all. Every cache down here is keyed on where things
+   * *are*, and a colour is the one edit that changes what is drawn without
+   * changing that, so it has to be in the key or the panel shows the new colour
+   * beside a canvas still wearing the old one.
+   */
+  private linkPaint(): string {
+    return this.mechanismSrv
       .getLinks()
       .map((link) => `${link.id}:${(link as RealLink).fill}`)
       .join(',');
+  }
+
+  private freshMarks(): { marks: SliderMark[]; channels: Channel[] } {
+    const joints = this.mechanismSrv.getJoints();
+    const r = 0.15 * this.settings.objectScale;
     const key =
-      `${r}|${paint}|${this.settings.isInputCW.value}|` +
+      `${r}|${this.linkPaint()}|${this.settings.isInputCW.value}|` +
       joints
         .map((joint) => {
           const real = joint as RealJoint;
@@ -2327,7 +2736,9 @@ export class NewGridComponent {
       if (true) {
         //TODO: Sorry jacob you need to fix this it used to say: if(GridComponent.canDelete)
         if (this.activeObjService.objType === 'Grid') {
-          NewGridComponent.sendNotification('Select an object to delete.');
+          NewGridComponent.sendNotification(
+            'Select something first — Delete removes whatever is selected.'
+          );
           return;
         }
         if (this.activeObjService.objType === 'Joint') {
@@ -2336,7 +2747,6 @@ export class NewGridComponent {
           this.mechanismSrv.deleteLink();
         }
         this.activeObjService.updateSelectedObj(undefined);
-        NewGridComponent.sendNotification('Deleted Selected Object.');
       } else {
         return;
       }
