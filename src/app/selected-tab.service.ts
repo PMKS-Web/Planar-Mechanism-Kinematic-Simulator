@@ -93,6 +93,9 @@ export class SelectedTabService {
     if (this.getCurrentTab() === TabID.SYNTHESIZE) {
       // reset flag
       this.synthesis.modifiedMechanism = false;
+      // A fresh visit synthesises a new linkage rather than editing the one the
+      // last visit left behind, so nothing here belongs to this one yet.
+      this.synthesis.synthesisedIds = { joints: [], links: [] };
     } else if (previousTab === TabID.SYNTHESIZE && this.getCurrentTab() === TabID.EDIT) {
       // save mechanism state if modified in synthesis tab
       this.mechanism.save();

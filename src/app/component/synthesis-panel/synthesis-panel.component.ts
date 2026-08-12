@@ -260,6 +260,40 @@ export class SynthesisPanelComponent implements OnInit {
     else return 'p3theta';
   }
 
+  /**
+   * Take back the linkage this visit to Synthesis last produced.
+   *
+   * By id, and only the ids this visit recorded: anything else on the grid was
+   * drawn by hand or left by an earlier visit and is not this one's to remove.
+   * Forces attached to a removed link go with it -- a force on a link that no
+   * longer exists belongs to no mechanism and would sit in the drawing
+   * unreachable.
+   */
+  private removePreviousSynthesis(): void {
+    const { joints, links } = this.synthesisBuilder.synthesisedIds;
+    if (joints.length === 0 && links.length === 0) return;
+
+    const goneLinks = new Set(links);
+    const goneJoints = new Set(joints);
+    this.mechanismSrv.forces = this.mechanismSrv.forces.filter(
+      (force) => !goneLinks.has(force.link?.id ?? '')
+    );
+    this.mechanismSrv.links = this.mechanismSrv.links.filter((link) => !goneLinks.has(link.id));
+    this.mechanismSrv.joints = this.mechanismSrv.joints.filter(
+      (joint) => !goneJoints.has(joint.id)
+    );
+    this.synthesisBuilder.synthesisedIds = { joints: [], links: [] };
+  }
+
+  /** Four ids nothing on the grid is already using, in order. */
+  private nextFourLetters(): string[] {
+    const taken: string[] = [];
+    for (let i = 0; i < 4; i++) {
+      taken.push(this.mechanismSrv.determineNextLetter(taken));
+    }
+    return taken;
+  }
+
   synthesisFunction() {
     //call synthesis functions
 
@@ -283,23 +317,34 @@ export class SynthesisPanelComponent implements OnInit {
     let thirdPoint = pose1_coord2;
     let fourthPoint = this.findIntersectionPoint2(pose1_coord2, pose2_coord2, pose3_coord2);
 
+    // Take back what this visit put on the grid last time it ran -- it runs
+    // again on every change to a pose -- and leave everything else alone. It
+    // used to empty the whole drawing, which is the wrong answer now that a
+    // drawing can hold more than one machine.
+    this.removePreviousSynthesis();
+
     //now create joints, links, etc. from the above four coordinates
 
-    let joint1 = new RevJoint('A', firstPoint.x, firstPoint.y, true, true);
-    let joint2 = new RevJoint('B', secondPoint.x, secondPoint.y, false, false);
-    let joint3 = new RevJoint('C', thirdPoint.x, thirdPoint.y, false, false);
-    let joint4 = new RevJoint('D', fourthPoint.x, fourthPoint.y, false, true);
+    // Not A, B, C, D: those letters are taken as soon as there is anything else
+    // on the grid, and two joints with one id is not a mechanism, it is a bug
+    // waiting for the codec to find it.
+    const [idA, idB, idC, idD] = this.nextFourLetters();
+
+    let joint1 = new RevJoint(idA, firstPoint.x, firstPoint.y, true, true);
+    let joint2 = new RevJoint(idB, secondPoint.x, secondPoint.y, false, false);
+    let joint3 = new RevJoint(idC, thirdPoint.x, thirdPoint.y, false, false);
+    let joint4 = new RevJoint(idD, fourthPoint.x, fourthPoint.y, false, true);
 
     joint1.connectedJoints.push(joint2);
     joint2.connectedJoints.push(joint1, joint3);
     joint3.connectedJoints.push(joint2, joint4);
     joint4.connectedJoints.push(joint3);
 
-    let link1 = new RealLink('AB', [joint1, joint2]);
+    let link1 = new RealLink(idA + idB, [joint1, joint2]);
     link1.fill = this.colorService.getLinkColorFromIndex(0);
-    let link2 = new RealLink('BC', [joint2, joint3]);
+    let link2 = new RealLink(idB + idC, [joint2, joint3]);
     link2.fill = this.colorService.getLinkColorFromIndex(1);
-    let link3 = new RealLink('CD', [joint3, joint4]);
+    let link3 = new RealLink(idC + idD, [joint3, joint4]);
     link3.fill = this.colorService.getLinkColorFromIndex(0);
 
     joint1.links.push(link1);
@@ -307,11 +352,14 @@ export class SynthesisPanelComponent implements OnInit {
     joint3.links.push(link2, link3);
     joint4.links.push(link3);
 
-    this.mechanismSrv.joints.splice(0);
-    this.mechanismSrv.links.splice(0);
-
-    this.mechanismSrv.mergeToJoints([joint1, joint2, joint3, joint4]);
-    this.mechanismSrv.mergeToLinks([link1, link2, link3]);
+    const madeJoints = [joint1, joint2, joint3, joint4];
+    const madeLinks = [link1, link2, link3];
+    this.mechanismSrv.mergeToJoints(madeJoints);
+    this.mechanismSrv.mergeToLinks(madeLinks);
+    this.synthesisBuilder.synthesisedIds = {
+      joints: madeJoints.map((joint) => joint.id),
+      links: madeLinks.map((link) => link.id),
+    };
 
     this.mechanismSrv.mechanismTimeStep = 0;
     this.mechanismSrv.updateMechanism();
@@ -328,11 +376,16 @@ export class SynthesisPanelComponent implements OnInit {
       pose3_coord2,
     ];
 
-    let quality = this.compareTheQualityofSynthesis(
-      this.mechanismSrv.mechanisms[0].joints,
-      posCoords,
-      qualityfromUser
-    );
+    // The machine this synthesis just made, not whichever one sorts first: a
+    // drawing can hold several now, and the quality being reported is this
+    // one's.
+    const solved = this.mechanismSrv.mechanismContaining(joint1);
+    // Nothing to score if it did not solve. 999 is what the scorer itself uses
+    // for a pose it could not reach, and every reader here compares against a
+    // threshold, so this reads as three misses -- which is what happened.
+    let quality = solved
+      ? this.compareTheQualityofSynthesis(solved.joints, posCoords, qualityfromUser)
+      : [999, 999, 999, 999, 999, 999, 999, 999, 999];
 
     //  let trialCoord = new Coord(this.mechanismSrv.mechanisms[0].joints[0][0].x, this.mechanismSrv.mechanisms[0].joints[0][0].y);
 

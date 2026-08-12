@@ -25,6 +25,17 @@ export class SynthesisBuilderService {
   // if so, when switching back to edit mode, save state
   public modifiedMechanism: boolean = false;
 
+  /**
+   * What this visit to Synthesis has put on the grid.
+   *
+   * Synthesis adds a mechanism now rather than replacing the drawing, and it
+   * re-runs on every change to a pose -- so it has to be able to take back its
+   * own previous answer without touching anything else. Cleared on entering the
+   * tab, so each visit leaves one linkage behind rather than editing the one
+   * from last time.
+   */
+  public synthesisedIds: { joints: string[]; links: string[] } = { joints: [], links: [] };
+
   _COR: COR;
   _length: number; // length of the end-effector link
   _selectedPose: number; // currently selected pose (1-3)
