@@ -9,7 +9,7 @@
       <div class="mechBlock">
         <button class="sectionHeader" (click)="toggle(item)">
           <span class="sectionName">
-            Mechanism {{ item.id }}
+            <span class="mechLink" (click)="select($index, $event)">Mechanism {{ item.id }}</span>
             <span class="chip" [class]="chipFor(item).kind">{{ chipFor(item).text }}</span>
           </span>
           <mat-icon>{{ isOpen(item) ? 'expand_less' : 'expand_more' }}</mat-icon>

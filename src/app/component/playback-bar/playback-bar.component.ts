@@ -205,6 +205,20 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     this.mechanism.setSyncMechanisms(!this.mechanism.syncMechanisms);
   }
 
+  /** The chip names a machine, so pressing it selects that machine. */
+  selectMechanism(row: PlaybackRow): void {
+    if (row.index >= 0) {
+      this.activeObj.selectMechanism(row.index);
+    }
+  }
+
+  isSelected(row: PlaybackRow): boolean {
+    return (
+      this.activeObj.getSelectedObjType() === 'Mechanism' &&
+      this.activeObj.selectedMechanismIndex === row.index
+    );
+  }
+
   toggleRow(row: PlaybackRow): void {
     this.mechanism.toggleMechanismPlaying(row.index);
   }

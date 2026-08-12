@@ -60,6 +60,13 @@
     padding: 8px 0;
   }
 
+  .mechLink {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: rgba(63, 81, 181, 0.35);
+    cursor: pointer;
+  }
+
   .chip {
     display: inline-flex;
     align-items: center;

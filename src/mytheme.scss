@@ -2,6 +2,7 @@
 @use 'src/app/component/top-bar/top-bar.component.scss' as top-bar;
 @use 'src/app/component/analysis-setup/analysis-setup.component.scss' as analysis-setup;
 @use 'src/app/component/playback-bar/playback-bar.component.scss' as playback-bar;
+@use 'src/app/component/mechanism-panel/mechanism-panel.component.scss' as mechanism-panel;
 @use 'src/app/component/left-tabs/left-tabs.component.scss' as left-tabs;
 @use 'src/app/component/view-controls/view-controls.component.scss' as view-controls;
 @use 'app/component/BLOCKS/title/title.component.scss' as title-block;
@@ -82,6 +83,7 @@ $my-theme: mat.m2-define-light-theme(
 @include top-bar.css($my-theme);
 @include analysis-setup.css($my-theme);
 @include playback-bar.css($my-theme);
+@include mechanism-panel.css($my-theme);
 @include left-tabs.css($my-theme);
 @include view-controls.css($my-theme);
 @include edit-panel.css($my-theme);

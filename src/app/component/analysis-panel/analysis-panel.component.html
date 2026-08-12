@@ -99,6 +99,10 @@
     </div>
   }
 
+  @if (this.activeSrv.objType == 'Mechanism') {
+    <app-mechanism-panel></app-mechanism-panel>
+  }
+
   <!-- Joint Kinematics-->
   @if (validMechanisms() && this.activeSrv.objType == 'Joint') {
     <panel-section id="analysis-panel">

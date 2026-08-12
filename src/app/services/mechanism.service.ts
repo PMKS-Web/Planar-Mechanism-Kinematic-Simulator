@@ -2993,6 +2993,12 @@ export class MechanismService {
     ) {
       return 'joint-selected';
     }
+    // Selecting a whole machine selects everything in it, so every one of its
+    // joints reads as selected rather than the reader having to infer the
+    // extent of the thing they just picked.
+    if (this.isInSelectedMechanism(joint)) {
+      return 'joint-selected';
+    }
     if (joint.showHighlight) {
       return 'joint-highlight';
     } else {
@@ -3000,11 +3006,29 @@ export class MechanismService {
     }
   }
 
+  /** Is this part of the machine the reader has selected as a whole? */
+  private isInSelectedMechanism(part: Joint | Link): boolean {
+    if (this.activeObjService.objType !== 'Mechanism') {
+      return false;
+    }
+    const partition = this.partitions[this.activeObjService.selectedMechanismIndex];
+    if (!partition) {
+      return false;
+    }
+    return (
+      partition.ownJoints.some((joint) => joint.id === part.id) ||
+      partition.links.some((link) => link.id === part.id)
+    );
+  }
+
   getLinkCSSClass(link: Link) {
     if (
       this.activeObjService.objType == 'Link' &&
       link.id === this.activeObjService.selectedLink.id
     ) {
+      return 'link-selected';
+    }
+    if (this.isInSelectedMechanism(link)) {
       return 'link-selected';
     }
     return 'link-default';

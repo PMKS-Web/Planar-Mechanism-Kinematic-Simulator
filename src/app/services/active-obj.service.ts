@@ -5,7 +5,8 @@ import { RealLink } from '../model/link';
 import { Coord } from '../model/coord';
 import { SynthesisPose } from './synthesis/synthesis-util';
 
-export type ActiveObjType = 'Nothing' | 'Joint' | 'Force' | 'Link' | 'Grid' | 'SynthesisPose';
+export type ActiveObjType =
+  'Nothing' | 'Joint' | 'Force' | 'Link' | 'Grid' | 'SynthesisPose' | 'Mechanism';
 
 @Injectable({
   providedIn: 'root',
@@ -18,6 +19,14 @@ export class ActiveObjService {
   selectedLink!: RealLink;
   selectedPose!: SynthesisPose;
   selectedForceEndPoint: string = '';
+  /**
+   * Which machine is selected, by its place in MechanismService.partitions.
+   *
+   * An index rather than the object, because a mechanism is rebuilt from
+   * scratch on every edit — holding the old one would pin a selection to
+   * something that no longer exists.
+   */
+  selectedMechanismIndex: number = -1;
   private skipThisSeleciton: boolean = false;
 
   constructor() {}
@@ -46,8 +55,16 @@ export class ActiveObjService {
     this.onActiveObjChange.emit(this.objType);
   }
 
+  /** Select a whole machine: everything in it, rather than one part of it. */
+  selectMechanism(index: number) {
+    this.selectedMechanismIndex = index;
+    this.objType = 'Mechanism';
+    this.onActiveObjChange.emit(this.objType);
+  }
+
   updateSelectedObj(newActiveObj: any, forceParent: Force | null = null) {
     this.prevSelectedJoint = this.selectedJoint;
+    this.selectedMechanismIndex = -1;
     if (newActiveObj === undefined || newActiveObj === null) {
       this.objType = 'Grid';
     } else if (newActiveObj instanceof RealJoint) {

@@ -16,7 +16,15 @@
       <div class="mechRows">
         @for (row of rows; track row.id) {
           <div class="mechRow">
-            <span class="mechChip">{{ row.id }}</span>
+            <button
+              class="mechChip"
+              [class.selected]="isSelected(row)"
+              (click)="selectMechanism(row)"
+              [matTooltip]="'Select ' + row.id"
+              matTooltipShowDelay="600"
+            >
+              {{ row.id }}
+            </button>
             @if (row.ownPlay) {
               <button
                 class="rowPlay"

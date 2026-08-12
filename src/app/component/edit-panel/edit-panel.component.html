@@ -31,6 +31,10 @@
     </div>
   }
 
+  @if (this.activeSrv.objType == 'Mechanism' && !hideEditPanel()) {
+    <app-mechanism-panel [editable]="true"></app-mechanism-panel>
+  }
+
   <!--  JOINT PANEL-->
   @if (this.activeSrv.objType == 'Joint' && !hideEditPanel()) {
     <panel-section>

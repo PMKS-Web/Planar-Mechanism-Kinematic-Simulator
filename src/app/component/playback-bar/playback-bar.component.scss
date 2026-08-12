@@ -132,6 +132,9 @@
   }
 
   .mechChip {
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -143,6 +146,11 @@
     color: #2c2c2c;
     font-size: 12px;
     font-weight: 500;
+
+    &.selected {
+      border-color: mat.m2-get-color-from-palette($primary-palette, 500);
+      color: mat.m2-get-color-from-palette($primary-palette, 500);
+    }
   }
 
   .mechNote {

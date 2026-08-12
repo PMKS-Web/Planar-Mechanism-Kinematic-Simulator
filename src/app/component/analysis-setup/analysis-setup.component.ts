@@ -43,7 +43,7 @@ export class AnalysisSetupComponent {
 
   constructor(
     public mechanism: MechanismService,
-    private activeObj: ActiveObjService,
+    public activeObj: ActiveObjService,
     private tabs: SelectedTabService
   ) {}
 
@@ -137,6 +137,17 @@ export class AnalysisSetupComponent {
       return { text: `${warnings} ${warnings === 1 ? 'warning' : 'warnings'}`, kind: 'warning' };
     }
     return { text: 'Ready', kind: 'ok' };
+  }
+
+  /**
+   * Select the whole machine this section is about.
+   *
+   * The way to a mechanism's own panel in *either* mode: the transport chip
+   * only exists while analysing, and Edit needs a route too.
+   */
+  select(index: number, event: Event): void {
+    event.stopPropagation();
+    this.activeObj.selectMechanism(index);
   }
 
   iconFor(check: ReadinessCheck): string {
