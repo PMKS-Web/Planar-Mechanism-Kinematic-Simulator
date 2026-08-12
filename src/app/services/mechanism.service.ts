@@ -138,6 +138,17 @@ export class MechanismService {
   private ownSeconds: number[] = [];
   /** Which machines are running, used only while unsynced. */
   private ownPlaying: boolean[] = [];
+  /**
+   * Which way each machine's playback runs, +1 or -1.
+   *
+   * Only ever -1 for a machine whose input reverses on its own. Turning a
+   * continuous drive round is an edit -- the solved cycle itself is mirrored --
+   * but a machine that already goes out and back has no other direction to be
+   * driven in, so the only thing "reverse" can mean there is to play the cycle
+   * backwards. That is a view of the same motion, not a different mechanism,
+   * which is why it lives here and not in the URL.
+   */
+  private playbackDirection: number[] = [];
   private playbackFrameQueued = false;
   private advancingPlayback = false;
 
@@ -2950,7 +2961,8 @@ export class MechanismService {
     const elapsedSeconds = this.playbackClockMs === null ? 0 : (now - this.playbackClockMs) / 1000;
     this.playbackClockMs = now;
     this.playbackTimeSeconds = this.wrapTime(
-      this.playbackTimeSeconds + elapsedSeconds * this.animationSpeedMultiplier
+      this.playbackTimeSeconds +
+        elapsedSeconds * this.animationSpeedMultiplier * this.directionOf(0)
     );
 
     // Unsynced, each running machine carries its own time forward. The shared
@@ -2962,7 +2974,9 @@ export class MechanismService {
           return;
         }
         const period = mechanism.cyclePeriod;
-        const next = (this.ownSeconds[index] ?? 0) + elapsedSeconds * this.animationSpeedMultiplier;
+        const next =
+          (this.ownSeconds[index] ?? 0) +
+          elapsedSeconds * this.animationSpeedMultiplier * this.directionOf(index);
         this.ownSeconds[index] = period > 0 ? ((next % period) + period) % period : next;
       });
     }
@@ -2974,6 +2988,23 @@ export class MechanismService {
     } finally {
       this.advancingPlayback = false;
     }
+  }
+
+  /** Which way this machine's playback is running: +1 forward, -1 backward. */
+  directionOf(index: number): number {
+    return this.playbackDirection[index] === -1 ? -1 : 1;
+  }
+
+  /**
+   * Turn a reversing machine's playback round without moving it.
+   *
+   * It keeps its place in the cycle and keeps running; only the way it is
+   * headed changes.
+   */
+  setPlaybackDirection(index: number, direction: number): void {
+    this.playbackDirection[index] = direction < 0 ? -1 : 1;
+    // The clock measures from the last frame, and this frame is not late.
+    this.playbackClockMs = null;
   }
 
   /** Where one machine is in its own cycle. */
@@ -2998,11 +3029,28 @@ export class MechanismService {
 
   toggleMechanismPlaying(index: number): void {
     this.ownPlaying[index] = !this.ownPlaying[index];
-    // The frame loop is shared, so it has to be running for any machine to move.
-    if (this.ownPlaying.some(Boolean)) {
-      this.isPlaying = true;
-    }
+    // The frame loop is shared, so it has to be running for any machine to move
+    // -- and there is no reason for it to be running when none of them are. The
+    // transport's own button reads this flag, so leaving it set with every row
+    // stopped showed a pause button over a drawing that was not moving.
+    this.isPlaying = this.ownPlaying.some(Boolean);
     this.animate(this.mechanismTimeStep, this.isPlaying);
+  }
+
+  /**
+   * Start or stop everything at once, from the transport's own button.
+   *
+   * Unsynced, the rows are what actually run, so the master has to move them
+   * rather than a flag they do not read.
+   */
+  setAllPlaying(playing: boolean): void {
+    this.isPlaying = playing;
+    if (!this.syncMechanisms) {
+      this.ownPlaying = this.mechanisms.map((mechanism) =>
+        playing && mechanism.isMechanismValid() ? true : false
+      );
+    }
+    this.animate(this.mechanismTimeStep, playing);
   }
 
   /**

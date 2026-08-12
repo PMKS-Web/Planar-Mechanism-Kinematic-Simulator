@@ -77,9 +77,7 @@
                 (blur)="onTimeSubmit()"
                 (keydown.enter)="onTimeSubmit()"
               />
-              @if (row.note) {
-                <span class="rowNote">{{ row.note }}</span>
-              }
+              <span class="rowNote">{{ row.note }}</span>
             </div>
           </div>
 
@@ -88,7 +86,7 @@
               class="dirButton"
               (click)="flipDirection(row)"
               title="Input direction"
-              [attr.aria-label]="row.clockwise ? 'Driven clockwise' : 'Driven counter-clockwise'"
+              [attr.aria-label]="'Reverse ' + row.id"
             >
               <mat-icon>{{ row.clockwise ? 'rotate_right' : 'rotate_left' }}</mat-icon>
             </button>

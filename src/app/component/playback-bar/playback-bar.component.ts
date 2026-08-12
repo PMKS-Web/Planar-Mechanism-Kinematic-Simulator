@@ -7,7 +7,7 @@ import { ActiveObjService } from '../../services/active-obj.service';
 import { SelectedTabService } from '../../selected-tab.service';
 import { TimeUnit } from '../../model/utils';
 import { Mechanism } from '../../model/mechanism/mechanism';
-import { RealJoint } from '../../model/joint';
+import { PrisJoint, RealJoint } from '../../model/joint';
 
 /** One line in the transport: a machine, or all of them together. */
 export interface PlaybackRow {
@@ -28,7 +28,7 @@ export interface PlaybackRow {
    */
   scrub: number;
   clockwise: boolean;
-  /** "Reciprocating", or "Reversing" while it is actually running backwards. */
+  /** Which way the input is going right now: "Clockwise", "Retracting", ... */
   note: string;
   playing: boolean;
   /** Whether this line carries a play button of its own. */
@@ -142,7 +142,7 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
           time: this.format(now),
           scrub: this.trackPosition(lead.mechanism, now, period),
           clockwise: this.drivenSpeedOf(lead.mechanism) < 0,
-          note: this.noteFor(lead.mechanism, now),
+          note: this.noteFor(lead.mechanism, now, lead.index),
           playing: this.playing,
           ownPlay: false,
           period,
@@ -161,7 +161,7 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
         time: this.format(local),
         scrub: this.trackPosition(mechanism, local, period),
         clockwise: this.drivenSpeedOf(mechanism) < 0,
-        note: this.noteFor(mechanism, local),
+        note: this.noteFor(mechanism, local, index),
         playing: this.mechanism.isMechanismPlaying(index),
         ownPlay: runnable.length > 1,
         period,
@@ -172,27 +172,59 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
   /**
    * Where along the track to draw the handle.
    *
-   * A machine that reverses runs the handle up and then back down, because its
-   * input does. Its samples go out to the limit and back as one cycle, so
-   * position in the sample array climbs the whole way through — reading the
-   * handle off that would send it round and round, which is the one thing the
-   * reversal was worth showing instead of.
+   * The handle carries the direction: a clockwise input runs it left to right,
+   * a counter-clockwise one right to left. A machine that reverses runs it out
+   * and back, because its input does -- its samples go to the limit and return
+   * as one cycle, so reading the handle off position in that array would send
+   * it round and round, which is the one thing the reversal was worth showing
+   * instead of.
    */
   private trackPosition(mechanism: Mechanism, seconds: number, period: number): number {
     const fraction = period > 0 ? Math.min(Math.max(seconds / period, 0), 1) : 0;
-    if (!this.isReciprocating(mechanism)) {
-      return Math.round(fraction * 1000);
+    if (this.isReciprocating(mechanism)) {
+      return Math.round((fraction <= 0.5 ? fraction * 2 : (1 - fraction) * 2) * 1000);
     }
-    return Math.round((fraction <= 0.5 ? fraction * 2 : (1 - fraction) * 2) * 1000);
+    const along = this.drivenSpeedOf(mechanism) < 0 ? fraction : 1 - fraction;
+    return Math.round(along * 1000);
   }
 
-  /** Say it reverses, and say when it is actually going backwards. */
-  private noteFor(mechanism: Mechanism, seconds: number): string {
-    if (!this.isReciprocating(mechanism)) {
-      return '';
+  /**
+   * Which way the input is travelling at this moment, in words.
+   *
+   * A linear drive extends and retracts; a rotary one turns one way or the
+   * other. "Reciprocating" said only that the machine was of a kind that turns
+   * around, which is not something the reader needs told twice a cycle.
+   */
+  private noteFor(mechanism: Mechanism, seconds: number, index: number): string {
+    const outward = this.travellingForward(mechanism, seconds, index);
+    if (this.isLinearInput(mechanism)) {
+      return outward ? 'Extending' : 'Retracting';
     }
+    return outward ? 'Clockwise' : 'CCW';
+  }
+
+  /**
+   * Whether the input is going the way its own drive speed says, right now.
+   *
+   * Two things can turn it around: the second half of a reversing machine's
+   * cycle, and playback being run backwards. Either one on its own flips the
+   * answer; both together cancel.
+   */
+  private travellingForward(mechanism: Mechanism, seconds: number, index: number): boolean {
     const period = mechanism.cyclePeriod || 1;
-    return seconds / period > 0.5 ? 'Reversing' : 'Reciprocating';
+    const onReturnLeg = this.isReciprocating(mechanism) && seconds / period > 0.5;
+    const rewinding = this.mechanism.directionOf(Math.max(index, 0)) < 0;
+    const driveIsForward = this.drivenSpeedOf(mechanism) < 0;
+    return (driveIsForward !== onReturnLeg) !== rewinding;
+  }
+
+  /** A slider or cylinder drive, which extends rather than turns. */
+  private isLinearInput(mechanism: Mechanism): boolean {
+    return (
+      mechanism.joints[0]?.some(
+        (joint) => joint instanceof PrisJoint && (joint as RealJoint).input
+      ) ?? false
+    );
   }
 
   /** Only worth offering when there is more than one machine to get out of step. */
@@ -241,6 +273,8 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     if (source && this.isReciprocating(source)) {
       const wasReturning = this.mechanism.secondsOf(Math.max(row.index, 0)) / row.period > 0.5;
       fraction = wasReturning ? 1 - along / 2 : along / 2;
+    } else if (source && this.drivenSpeedOf(source) >= 0) {
+      fraction = 1 - along;
     }
     if (row.index === -1) {
       this.mechanism.animate(this.mechanism.stepAtTime(fraction * row.period), this.playing);
@@ -266,8 +300,10 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
 
   play(): void {
     if (!this.canPlay) return;
-    this.mechanism.isPlaying = !this.mechanism.isPlaying;
-    this.mechanism.animate(this.mechanism.mechanismTimeStep, this.mechanism.isPlaying);
+    // Every row, not just the shared flag: unsynced it is the rows that run,
+    // and a master button that left them alone showed a pause icon over a
+    // drawing standing still.
+    this.mechanism.setAllPlaying(!this.mechanism.isPlaying);
     this.settings.animating.next(this.mechanism.mechanismTimeStep !== 0);
   }
 
@@ -279,8 +315,25 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     this.mechanism.animationSpeedMultiplier = rates[next % rates.length];
   }
 
-  /** Turn this machine's drive the other way. An edit, so it is undoable. */
+  /**
+   * Turn this machine round.
+   *
+   * A continuously driven machine is turned round by reversing its drive: the
+   * cycle is re-solved mirrored, which is an edit and so is undoable. A machine
+   * whose input already reverses on its own has no other direction to be driven
+   * in, so the only thing left to turn round is playback, and that is a view of
+   * the same motion rather than a change to the drawing.
+   *
+   * Either way it keeps its place in the cycle and keeps running, and the pose
+   * it starts from is untouched.
+   */
   flipDirection(row: PlaybackRow): void {
+    const mechanism = this.mechanism.mechanisms[row.index];
+    if (mechanism && this.isReciprocating(mechanism)) {
+      this.mechanism.setPlaybackDirection(row.index, -this.mechanism.directionOf(row.index));
+      return;
+    }
+
     const partition = this.mechanism.partitions[row.index];
     const driven = partition?.joints.find((joint) => (joint as { input?: boolean }).input) as
       { driveSpeed: number } | undefined;
@@ -290,6 +343,12 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
         ? driven.driveSpeed
         : (this.settings.isInputCW.value ? -1 : 1) * this.settings.inputSpeed.value;
     driven.driveSpeed = -current;
+    // The input itself has turned round, so time runs forward through the new
+    // cycle again -- otherwise a machine reversed twice would be running
+    // backwards through a mirrored cycle, which is where it started.
+    this.mechanism.setPlaybackDirection(row.index, 1);
+    // updateMechanism holds the simulation time across the rebuild, which is
+    // what keeps the machine where it was and keeps it running.
     this.mechanism.updateMechanism(true);
   }
 

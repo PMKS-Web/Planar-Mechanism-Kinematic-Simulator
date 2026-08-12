@@ -144,6 +144,12 @@ export class UrlGenerationService {
   generateUrlQuery(): string {
     // First, reset animation to the beginning, but cache animation frame to restore afterwards
     let cachedAnimationFrame = this.mechanism.mechanismTimeStep;
+    // And whether it was running. Encoding is a round trip through the start
+    // pose, so it has to stop playback -- but it has to hand it back, or any
+    // edit made while the mechanism is moving stops it. Reversing a machine
+    // from the transport is exactly that edit, and it looked like the reverse
+    // button was also a pause button.
+    const wasPlaying = this.mechanism.isPlaying;
     if (cachedAnimationFrame > 0) this.mechanism.animate(0, false);
 
     let encoder = new StringTranscoder();
@@ -226,7 +232,7 @@ export class UrlGenerationService {
     let urlRaw = encoder.encodeURL();
 
     // Restore animation frame
-    if (cachedAnimationFrame > 0) this.mechanism.animate(cachedAnimationFrame, false);
+    if (cachedAnimationFrame > 0) this.mechanism.animate(cachedAnimationFrame, wasPlaying);
 
     return urlRaw;
   }
