@@ -47,7 +47,8 @@
         (click)="select(TabID.ANALYZE)"
       >
         <mat-icon>query_stats</mat-icon>
-        <span class="tabLabel">Kinematic</span>
+        <span class="tabLabel long">Kinematic Analysis</span>
+        <span class="tabLabel short">Kinematic</span>
         <span class="chip" [class.ok]="statusOf(TabID.ANALYZE).ready">{{
           statusOf(TabID.ANALYZE).text
         }}</span>
@@ -60,7 +61,8 @@
         (click)="select(TabID.FORCE)"
       >
         <mat-icon>balance</mat-icon>
-        <span class="tabLabel">Force</span>
+        <span class="tabLabel long">Force Analysis</span>
+        <span class="tabLabel short">Force</span>
         <span class="chip" [class.ok]="statusOf(TabID.FORCE).ready">{{
           statusOf(TabID.FORCE).text
         }}</span>
@@ -68,16 +70,18 @@
     </div>
   </div>
 
-  <div class="card historyCard">
-    <button class="historyButton" (click)="undo()" [disabled]="!canUndo()">
-      <mat-icon>undo</mat-icon>
-      <span class="historyLabel">Undo</span>
-    </button>
-    <button class="historyButton" (click)="redo()" [disabled]="!canRedo()">
-      <mat-icon>redo</mat-icon>
-      <span class="historyLabel">Redo</span>
-    </button>
-  </div>
+  @if (!tabs.isAnalysisMode()) {
+    <div class="card historyCard">
+      <button class="historyButton" (click)="undo()" [disabled]="!canUndo()">
+        <mat-icon>undo</mat-icon>
+        <span class="historyLabel">Undo</span>
+      </button>
+      <button class="historyButton" (click)="redo()" [disabled]="!canRedo()">
+        <mat-icon>redo</mat-icon>
+        <span class="historyLabel">Redo</span>
+      </button>
+    </div>
+  }
 </div>
 
 @if (menuOpen) {

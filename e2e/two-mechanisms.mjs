@@ -101,17 +101,32 @@ record(
 await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
 await page.waitForTimeout(900);
 
-record('the transport lists both', (await page.locator('.mechRow').count()) === 2, {
-  rows: await page.locator('.mechRows').innerText(),
-});
+// Synced, the machines move together and there is nothing to say about them
+// separately, so the transport collapses to one line for all of them.
+record(
+  'synced, the transport shows one line for all of them',
+  (await page.locator('.mechRow').count()) === 1,
+  {
+    rows: await page.locator('.mechRows').innerText(),
+  }
+);
+record(
+  'with no row play beside the transport play',
+  (await page.locator('.rowPlay').count()) === 0
+);
 record('and offers to unsync them', (await page.locator('.syncToggle').count()) === 1);
 
 // --- unsyncing gives each its own clock -------------------------------------
 await page.locator('.syncToggle').click();
 await page.waitForTimeout(500);
+record('unsynced, the transport lists both', (await page.locator('.mechRow').count()) === 2, {
+  rows: await page.locator('.mechRows').innerText(),
+});
+record('and each row gets its own play button', (await page.locator('.rowPlay').count()) === 2);
 record(
-  'unsynced, each row gets its own play button',
-  (await page.locator('.rowPlay').count()) === 2
+  'one scrubber per line, never two for one motion',
+  (await page.locator('.rowScrubber').count()) === 2 &&
+    (await page.locator('.scrubber').count()) === 0
 );
 
 const seconds = () =>

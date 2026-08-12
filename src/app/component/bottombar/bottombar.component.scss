@@ -36,6 +36,7 @@
     }
 
     .status,
+    .cursor,
     .units {
       color: rgba(0, 0, 0, 0.55);
       white-space: nowrap;
@@ -45,16 +46,12 @@
       flex: 1 1 auto;
     }
 
-    .version {
-      white-space: nowrap;
-    }
-
     // On a phone the version and the units are the first things to go: the
     // mode and what it means for the mechanism are the reason this strip
     // exists.
     @media (max-width: 720px) {
       .units,
-      .version {
+      .cursor {
         display: none;
       }
     }

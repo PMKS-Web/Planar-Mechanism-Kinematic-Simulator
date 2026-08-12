@@ -17,4 +17,22 @@
     gap: 10px;
     padding: 10px;
   }
+
+  .versionRow {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 15px 14px;
+    border-top: 1px solid #eceef5;
+    font-size: 13px;
+  }
+
+  .versionLabel {
+    color: rgba(0, 0, 0, 0.45);
+  }
+
+  .versionValue {
+    margin-left: auto;
+    color: rgba(0, 0, 0, 0.6);
+  }
 }

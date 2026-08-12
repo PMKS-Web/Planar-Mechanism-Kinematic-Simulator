@@ -12,6 +12,19 @@
 
   // Floats over the grid rather than sitting in a rail, and clears the status
   // strip beneath it.
+  .clusterSpacer {
+    flex-grow: 1;
+    flex-shrink: 0;
+    flex-basis: 0;
+    min-width: 0;
+    height: 1px;
+    transition: flex-grow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &.analysis {
+      flex-grow: 0;
+    }
+  }
+
   .playbackRow {
     position: absolute;
     left: 0;
@@ -47,11 +60,11 @@
     flex-direction: column;
     align-items: stretch;
     justify-content: center;
-    gap: 6px;
+    gap: 7px;
     min-height: 60px;
-    padding: 9px 14px;
+    padding: 9px 12px;
     flex: 0 1 470px;
-    min-width: 260px;
+    min-width: 250px;
   }
 
   .playButton {
@@ -103,81 +116,10 @@
     }
   }
 
-  .scrubber {
-    width: 100%;
-    margin: 0;
-    height: 4px;
-    accent-color: mat.m2-get-color-from-palette($primary-palette, 500);
-    cursor: pointer;
-
-    &:disabled {
-      cursor: default;
-    }
-  }
-
-  .syncToggle {
-    align-self: flex-start;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    height: 22px;
-    padding: 0 8px;
-    margin-bottom: 2px;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: #5f6368;
-    font-family: inherit;
-    font-size: 12px;
-    cursor: pointer;
-
-    mat-icon {
-      width: 17px;
-      height: 17px;
-      font-size: 17px;
-      line-height: 17px;
-    }
-
-    &:hover {
-      background: rgba(0, 0, 0, 0.04);
-    }
-  }
-
-  .rowPlay {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    flex: 0 0 auto;
-    border: none;
-    border-radius: 50%;
-    background: #eef1fc;
-    color: #3f51b5;
-    cursor: pointer;
-    padding: 0;
-
-    mat-icon {
-      width: 18px;
-      height: 18px;
-      font-size: 18px;
-      line-height: 18px;
-    }
-  }
-
-  .rowScrubber {
-    flex: 1 1 auto;
-    min-width: 60px;
-    margin: 0;
-    height: 3px;
-    accent-color: #3f51b5;
-    cursor: pointer;
-  }
-
   .mechRows {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 7px;
   }
 
   .mechRow {

@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Component, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { SettingsService } from 'src/app/services/settings.service';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
@@ -18,6 +19,8 @@ import { MODEL_SCALE } from '../../model/render-scale';
   standalone: false,
 })
 export class SettingsPanelComponent implements OnDestroy {
+  readonly appVersion = environment.appVersion;
+
   constructor(
     public settingsService: SettingsService,
     private fb: FormBuilder,

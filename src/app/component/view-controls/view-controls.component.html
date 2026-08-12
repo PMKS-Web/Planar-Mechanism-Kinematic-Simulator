@@ -1,64 +1,56 @@
-<div class="viewControls">
+<div class="viewControls" [class.analysis]="tabs.isAnalysisMode()">
   <button
-    class="mini-buttons blue"
-    mat-stroked-button
-    color="primary"
+    class="viewButton"
+    [class.on]="isShowingCoM()"
     [disabled]="noLinkExists()"
     (click)="showCenterOfMass()"
     matTooltip="Show Center of Mass"
-    matTooltipPosition="right"
-    [matTooltipShowDelay]="1000"
+    matTooltipPosition="above"
+    [matTooltipShowDelay]="600"
+    aria-label="Show Center of Mass"
   >
     <mat-icon svgIcon="{{ comIconName() }}"></mat-icon>
-    CoM
   </button>
   <button
-    class="mini-buttons blue"
-    mat-stroked-button
-    color="primary"
+    class="viewButton"
+    [class.on]="isShowingIDs()"
     [disabled]="noJointExists()"
     (click)="onShowIDPressed()"
-    matTooltip="Show ID Labels"
-    matTooltipPosition="right"
-    [matTooltipShowDelay]="1000"
+    matTooltip="Show joint IDs"
+    matTooltipPosition="above"
+    [matTooltipShowDelay]="600"
+    aria-label="Show joint IDs"
   >
     <mat-icon svgIcon="{{ idLabelIconName() }}"></mat-icon>
-    Label
   </button>
   <button
-    class="mini-buttons blue"
-    mat-stroked-button
-    color="primary"
+    class="viewButton"
+    (click)="onZoomOutPressed()"
+    matTooltip="Zoom Out"
+    matTooltipPosition="above"
+    [matTooltipShowDelay]="600"
+    aria-label="Zoom Out"
+  >
+    <mat-icon>zoom_out</mat-icon>
+  </button>
+  <button
+    class="viewButton"
+    (click)="onZoomInPressed()"
+    matTooltip="Zoom In"
+    matTooltipPosition="above"
+    [matTooltipShowDelay]="600"
+    aria-label="Zoom In"
+  >
+    <mat-icon>zoom_in</mat-icon>
+  </button>
+  <button
+    class="viewButton"
     (click)="onReframePressed()"
     matTooltip="Reset View"
-    matTooltipPosition="right"
-    [matTooltipShowDelay]="1000"
+    matTooltipPosition="above"
+    [matTooltipShowDelay]="600"
+    aria-label="Reset View"
   >
     <mat-icon>crop_free</mat-icon>
-    View
   </button>
-  <div class="zoomRow">
-    <button
-      class="mini-buttons blue zoomButton"
-      mat-stroked-button
-      color="primary"
-      (click)="onZoomOutPressed()"
-      matTooltip="Zoom Out"
-      matTooltipPosition="right"
-      [matTooltipShowDelay]="1000"
-    >
-      <mat-icon>zoom_out</mat-icon>
-    </button>
-    <button
-      class="mini-buttons blue zoomButton"
-      mat-stroked-button
-      color="primary"
-      (click)="onZoomInPressed()"
-      matTooltip="Zoom In"
-      matTooltipPosition="right"
-      [matTooltipShowDelay]="1000"
-    >
-      <mat-icon>zoom_in</mat-icon>
-    </button>
-  </div>
 </div>

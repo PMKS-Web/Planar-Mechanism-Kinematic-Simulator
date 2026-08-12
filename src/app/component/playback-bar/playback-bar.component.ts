@@ -9,20 +9,30 @@ import { TimeUnit } from '../../model/utils';
 import { Mechanism } from '../../model/mechanism/mechanism';
 import { RealJoint } from '../../model/joint';
 
-/** One machine's line in the transport. */
+/** One line in the transport: a machine, or all of them together. */
 export interface PlaybackRow {
   id: string;
+  /** -1 for the combined row, which stands for every machine at once. */
   index: number;
+  /** Whether this line is one machine, and so has a direction to flip. */
+  isMechanism: boolean;
+  /** The line the shared scrubber and the time field belong to. */
+  master: boolean;
   /** Where this machine is in its own cycle, as text. */
   time: string;
-  /** 0–1000, its own position within its own cycle. */
+  /**
+   * 0–1000 along the track.
+   *
+   * For a machine that reverses this runs up and back down again, because the
+   * input does: it is the drive's position, not an index into the samples.
+   */
   scrub: number;
   clockwise: boolean;
-  /** Out-and-back, rather than round and round. */
-  reciprocating: boolean;
+  /** "Reciprocating", or "Reversing" while it is actually running backwards. */
+  note: string;
   playing: boolean;
-  /** Seconds, for its own scrubber. */
-  seconds: number;
+  /** Whether this line carries a play button of its own. */
+  ownPlay: boolean;
   period: number;
 }
 
@@ -98,31 +108,93 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     return this.mechanism.mechanismTimeStep;
   }
 
-  /** Only the machines that can run. */
+  /**
+   * One line per machine that can run — or one line for all of them, synced.
+   *
+   * Synced, the machines move together and there is nothing to say about them
+   * separately, so they collapse to a single `All` row. A row carries a play
+   * button only when it is one of several being controlled apart; otherwise the
+   * transport's own button is the only one, and two buttons doing the same
+   * thing side by side is worse than one.
+   */
   get rows(): PlaybackRow[] {
-    return this.mechanism.mechanisms
+    const runnable = this.mechanism.mechanisms
       .map((mechanism, index) => ({ mechanism, index }))
-      .filter(({ mechanism }) => mechanism.isMechanismValid())
-      .map(({ mechanism, index }) => {
-        const period = mechanism.cyclePeriod || 1;
-        const local = this.mechanism.secondsOf(index);
-        return {
-          id: this.mechanism.partitions[index]?.id ?? `M${index + 1}`,
-          index,
-          time: this.format(local),
-          scrub: Math.round((local / period) * 1000),
-          clockwise: this.drivenSpeedOf(mechanism, index) < 0,
-          reciprocating: this.isReciprocating(mechanism),
-          playing: this.mechanism.isMechanismPlaying(index),
-          seconds: local,
+      .filter(({ mechanism }) => mechanism.isMechanismValid());
+
+    if (runnable.length === 0) {
+      return [];
+    }
+
+    if (this.mechanism.syncMechanisms) {
+      const period = this.mechanism.cyclePeriod() || 1;
+      const now = this.mechanism.currentTimeSeconds();
+      const lead = runnable[0];
+      return [
+        {
+          id: runnable.length === 1 ? (this.mechanism.partitions[lead.index]?.id ?? 'M1') : 'All',
+          index: runnable.length === 1 ? lead.index : -1,
+          isMechanism: runnable.length === 1,
+          master: true,
+          time: this.format(now),
+          scrub: this.trackPosition(lead.mechanism, now, period),
+          clockwise: this.drivenSpeedOf(lead.mechanism) < 0,
+          note: this.noteFor(lead.mechanism, now),
+          playing: this.playing,
+          ownPlay: false,
           period,
-        };
-      });
+        },
+      ];
+    }
+
+    return runnable.map(({ mechanism, index }, position) => {
+      const period = mechanism.cyclePeriod || 1;
+      const local = this.mechanism.secondsOf(index);
+      return {
+        id: this.mechanism.partitions[index]?.id ?? `M${index + 1}`,
+        index,
+        isMechanism: true,
+        master: position === 0,
+        time: this.format(local),
+        scrub: this.trackPosition(mechanism, local, period),
+        clockwise: this.drivenSpeedOf(mechanism) < 0,
+        note: this.noteFor(mechanism, local),
+        playing: this.mechanism.isMechanismPlaying(index),
+        ownPlay: runnable.length > 1,
+        period,
+      };
+    });
+  }
+
+  /**
+   * Where along the track to draw the handle.
+   *
+   * A machine that reverses runs the handle up and then back down, because its
+   * input does. Its samples go out to the limit and back as one cycle, so
+   * position in the sample array climbs the whole way through — reading the
+   * handle off that would send it round and round, which is the one thing the
+   * reversal was worth showing instead of.
+   */
+  private trackPosition(mechanism: Mechanism, seconds: number, period: number): number {
+    const fraction = period > 0 ? Math.min(Math.max(seconds / period, 0), 1) : 0;
+    if (!this.isReciprocating(mechanism)) {
+      return Math.round(fraction * 1000);
+    }
+    return Math.round((fraction <= 0.5 ? fraction * 2 : (1 - fraction) * 2) * 1000);
+  }
+
+  /** Say it reverses, and say when it is actually going backwards. */
+  private noteFor(mechanism: Mechanism, seconds: number): string {
+    if (!this.isReciprocating(mechanism)) {
+      return '';
+    }
+    const period = mechanism.cyclePeriod || 1;
+    return seconds / period > 0.5 ? 'Reversing' : 'Reciprocating';
   }
 
   /** Only worth offering when there is more than one machine to get out of step. */
   get canSync(): boolean {
-    return this.rows.length > 1;
+    return this.mechanism.mechanisms.filter((m) => m.isMechanismValid()).length > 1;
   }
 
   get synced(): boolean {
@@ -137,8 +209,26 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     this.mechanism.toggleMechanismPlaying(row.index);
   }
 
+  /**
+   * Drag a row's handle without stopping the animation.
+   *
+   * The handle is the drive's position, so on a reversing machine the same
+   * place on the track means two different times — the way out and the way
+   * back. Dragging keeps whichever leg it was already on.
+   */
   scrubRow(row: PlaybackRow, event: Event): void {
-    const fraction = Number((event.target as HTMLInputElement).value) / 1000;
+    const along = Number((event.target as HTMLInputElement).value) / 1000;
+    const source =
+      row.index === -1 ? this.mechanism.mechanisms[0] : this.mechanism.mechanisms[row.index];
+    let fraction = along;
+    if (source && this.isReciprocating(source)) {
+      const wasReturning = this.mechanism.secondsOf(Math.max(row.index, 0)) / row.period > 0.5;
+      fraction = wasReturning ? 1 - along / 2 : along / 2;
+    }
+    if (row.index === -1) {
+      this.mechanism.animate(this.mechanism.stepAtTime(fraction * row.period), this.playing);
+      return;
+    }
     this.mechanism.seekMechanism(row.index, fraction * row.period);
   }
 
@@ -153,7 +243,7 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     return speeds.some((speed) => speed > 0) && speeds.some((speed) => speed < 0);
   }
 
-  private drivenSpeedOf(mechanism: Mechanism, index: number): number {
+  private drivenSpeedOf(mechanism: Mechanism): number {
     return mechanism.inputAngularVelocities[0] ?? 0;
   }
 

@@ -158,7 +158,7 @@ try {
   const kinematicHighlight = await highlighted();
   record(
     'the highlight settles exactly on Kinematic, not the mode before it',
-    kinematicHighlight?.label === 'Kinematic' &&
+    kinematicHighlight?.label.startsWith('Kinematic') &&
       Math.abs(kinematicHighlight.dLeft) <= 1 &&
       Math.abs(kinematicHighlight.dWidth) <= 1,
     kinematicHighlight
@@ -263,7 +263,9 @@ try {
   // the next click, so the pointer is parked away from them between presses.
   const restCursor = () => page.mouse.move(700, 450);
   const comMarks = () => page.locator('#comTagHolder path').count();
-  const comButton = page.locator('.viewControls .mini-buttons', { hasText: 'CoM' });
+  // Icon-only squares now, so they are addressed by what they are for rather
+  // than by a word that is no longer printed on them.
+  const comButton = page.locator('.viewControls .viewButton[aria-label="Show Center of Mass"]');
   const comBefore = await comMarks();
   await comButton.click();
   await page.waitForTimeout(500);
@@ -275,10 +277,10 @@ try {
   await comButton.click();
   await page.waitForTimeout(300);
   await restCursor();
-  await page.locator('.viewControls .mini-buttons', { hasText: 'View' }).click();
+  await page.locator('.viewControls .viewButton[aria-label="Reset View"]').click();
   await page.waitForTimeout(600);
   await restCursor();
-  await page.locator('.zoomButton').first().click();
+  await page.locator('.viewControls .viewButton[aria-label="Zoom In"]').click();
   await page.waitForTimeout(400);
   record('the CoM marks come off again', (await comMarks()) === 0);
   await shot('05-view-controls.png');

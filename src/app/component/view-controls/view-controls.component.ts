@@ -1,3 +1,4 @@
+import { SelectedTabService } from '../../selected-tab.service';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
@@ -18,8 +19,24 @@ export class ViewControlsComponent {
   constructor(
     public svgGrid: SvgGridService,
     public mechanismService: MechanismService,
-    public settingsService: SettingsService
+    public settingsService: SettingsService,
+    public tabs: SelectedTabService
   ) {}
+
+  /**
+   * Whether the thing this button switches on is currently on.
+   *
+   * The icon already swaps between an on and an off glyph; the button also
+   * carries the state as a tint now that the words have gone, because an icon
+   * alone is a weaker signal than an icon beside the word it stands for.
+   */
+  isShowingCoM(): boolean {
+    return this.settingsService.isShowCOM.value;
+  }
+
+  isShowingIDs(): boolean {
+    return this.settingsService.isShowID.value;
+  }
 
   noJointExists(): boolean {
     return this.mechanismService.joints.length === 0;

@@ -37,14 +37,14 @@
     }
 
     .brandCard {
-      gap: 8px;
-      padding: 0 12px 0 6px;
+      gap: 6px;
+      padding: 0 8px 0 6px;
       flex: 0 0 auto;
       white-space: nowrap;
     }
 
     .logo {
-      height: 30px;
+      height: 26px;
       width: auto;
       flex: 0 0 auto;
       display: block;
@@ -59,11 +59,12 @@
       overflow: hidden;
     }
 
+    // Beside the modes rather than pinned to the far edge, so the three cards
+    // read as one group instead of two things at opposite ends of the window.
     .historyCard {
       gap: 6px;
       padding: 0 8px;
       flex: 0 0 auto;
-      margin-left: auto;
     }
   }
 
@@ -139,6 +140,17 @@
     // the button still does something: it opens the list of what is missing.
     &.notReady .tabLabel {
       color: rgba(0, 0, 0, 0.55);
+    }
+  }
+
+  // The short spelling only appears once the long one has gone.
+  .tabButton .tabLabel.short {
+    display: none;
+  }
+
+  @media (max-width: 1280px) {
+    .tabButton .tabLabel.short {
+      display: inline;
     }
   }
 
@@ -227,7 +239,7 @@
     position: absolute;
     top: 66px;
     left: 12px;
-    width: 200px;
+    width: 188px;
     padding: 4px 0;
     background: #fff;
     border-radius: 5px;
@@ -243,7 +255,7 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    height: 36px;
+    height: 34px;
     padding: 0 14px;
     border: none;
     background: transparent;
@@ -274,6 +286,12 @@
   }
 
   // Narrow windows drop the words before they drop a mode.
+  @media (max-width: 1280px) {
+    .tabButton .tabLabel.long {
+      display: none;
+    }
+  }
+
   @media (max-width: 1080px) {
     .tabButton .tabLabel {
       display: none;
@@ -315,6 +333,17 @@
 
       .chip {
         display: none;
+      }
+    }
+
+    // The short spelling only appears once the long one has gone.
+    .tabButton .tabLabel.short {
+      display: none;
+    }
+
+    @media (max-width: 1280px) {
+      .tabButton .tabLabel.short {
+        display: inline;
       }
     }
 

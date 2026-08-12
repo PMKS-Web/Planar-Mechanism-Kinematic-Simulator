@@ -1,5 +1,8 @@
+import { SvgGridService } from '../../services/svg-grid.service';
+import { NumberUnitParserService } from '../../services/number-unit-parser.service';
+import { MODEL_SCALE } from '../../model/render-scale';
 import { Component, ChangeDetectionStrategy } from '@angular/core';
-import { GlobalUnit } from '../../model/utils';
+import { AngleUnit, GlobalUnit } from '../../model/utils';
 import { SettingsService } from '../../services/settings.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { environment } from '../../../environments/environment';
@@ -16,7 +19,9 @@ export class BottombarComponent {
   constructor(
     public settings: SettingsService,
     public mechanismSrv: MechanismService,
-    private tabs: SelectedTabService
+    private tabs: SelectedTabService,
+    private svgGrid: SvgGridService,
+    private nup: NumberUnitParserService
   ) {}
 
   /**
@@ -78,6 +83,40 @@ export class BottombarComponent {
       .map((mechanism) => mechanism.dof)
       .filter((dof) => typeof dof === 'number' && Number.isFinite(dof));
     return each.length > 0 ? each.join(', ') : '—';
+  }
+
+  /**
+   * Where the cursor is, in the mechanism's own units.
+   *
+   * Absent until the pointer has been over the grid, because "0.00, 0.00" for a
+   * cursor that has never been anywhere is a reading of nothing.
+   */
+  get cursor(): string {
+    const at = this.svgGrid.cursorAt;
+    if (!at) {
+      return '';
+    }
+    const unit = this.nup.unitLabel(this.settings.lengthUnit.value);
+    const show = (value: number) => (value / MODEL_SCALE).toFixed(2);
+    return `${show(at.x)} ${unit}, ${show(at.y)} ${unit}`;
+  }
+
+  /**
+   * The whole set of units in play, not just the length one.
+   *
+   * A mechanism is measured in four quantities and the strip has room to name
+   * them, so naming one and leaving the reader to infer the rest is a saving
+   * nobody asked for.
+   */
+  get unitSet(): string {
+    const lengths: Record<number, string> = {
+      [GlobalUnit.ENGLISH]: 'in, lbm, lbf',
+      [GlobalUnit.SI]: 'm, kg, N',
+      [GlobalUnit.METRIC]: 'cm, g, N',
+    };
+    const base = lengths[this.settings.globalUnit.getValue()] ?? 'cm, g, N';
+    const angle = this.settings.angleUnit.getValue() === AngleUnit.RADIAN ? 'radians' : 'degrees';
+    return `${base}, ${angle}`;
   }
 
   humanReadableString(value: GlobalUnit) {

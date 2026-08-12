@@ -13,6 +13,14 @@ import { MODEL_SCALE } from '../model/render-scale';
   providedIn: 'root',
 })
 export class SvgGridService {
+  /**
+   * Where the cursor last was, in model units.
+   *
+   * Kept here rather than on the grid component so the status strip can read it
+   * without reaching into a component to do so -- and so it survives the strip
+   * and the grid being rebuilt independently.
+   */
+  public cursorAt: { x: number; y: number } | null = null;
   public panZoomObject: any;
   public CTM!: SVGMatrix;
   public viewBoxMinX: number = 0;

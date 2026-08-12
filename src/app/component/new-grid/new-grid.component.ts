@@ -1059,6 +1059,7 @@ export class NewGridComponent implements OnDestroy {
     this.originInScreen = this.svgGrid.SVGtoScreen(new Coord(0, 0));
     this.mouseLocationRaw = new Coord($event.clientX, $event.clientY);
     this.mouseLocation = mousePosInSvg;
+    this.svgGrid.cursorAt = mousePosInSvg;
 
     this.dragState.notePointerMoved();
     let deltaMouseX = this.mouseLocation.x - this.lastMouseLocation.x;
@@ -1668,6 +1669,7 @@ export class NewGridComponent implements OnDestroy {
 
     const mousePosInSvg = this.svgGrid.screenToSVGfromXY($event.clientX, $event.clientY);
     this.mouseLocation = mousePosInSvg;
+    this.svgGrid.cursorAt = mousePosInSvg;
     // Where a link drag measures its offset from. Without anchoring it here the
     // first move would translate the link by the distance from whatever
     // unrelated pointer event came last — a jump on grab.
