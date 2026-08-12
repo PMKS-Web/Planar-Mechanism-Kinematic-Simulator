@@ -1510,8 +1510,13 @@ export class NewGridComponent implements OnDestroy {
   }
 
   private showPathWhileDragging(): void {
-    if (this.mechanismSrv.mechanisms[0].joints[0].length === 0) return;
-    if (this.mechanismSrv.mechanisms[0].dof !== 1) return;
+    // The machine being dragged, not whichever was built first — and possibly
+    // none at all, while a chain is still being drawn and has yet to reach
+    // ground.
+    const dragged = this.activeObjService.selectedJoint;
+    const solved = dragged ? this.mechanismSrv.mechanismContaining(dragged) : undefined;
+    if (!solved || solved.joints[0].length === 0) return;
+    if (solved.dof !== 1) return;
     if (this.mechanismSrv.showPathHolder === false) {
       this.mechanismSrv.onMechUpdateState.next(1);
     }

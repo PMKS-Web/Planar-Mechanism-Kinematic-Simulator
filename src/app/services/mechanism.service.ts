@@ -18,6 +18,11 @@ import {
 } from '../model/cylinder';
 import { Force } from '../model/force';
 import { Mechanism } from '../model/mechanism/mechanism';
+import {
+  MechanismPartition,
+  partitionMechanisms,
+  UnassignedGeometry,
+} from '../model/mechanism/mechanism-partition';
 import { ToolbarComponent } from '../component/toolbar/toolbar.component';
 import { InstantCenter } from '../model/instant-center';
 import {
@@ -75,6 +80,15 @@ export class MechanismService {
   public forces: Force[] = [];
   public ics: InstantCenter[] = [];
   public mechanisms: Mechanism[] = [];
+  /**
+   * Which part of the drawing each entry of `mechanisms` was built from, in the
+   * same order. Kept beside the solved mechanisms rather than inside them
+   * because these are the *editable* objects the grid draws and the panels
+   * mutate; a Mechanism holds deep copies at every timestep.
+   */
+  public partitions: MechanismPartition[] = [];
+  /** Geometry that is in no mechanism, and why. Reported, never solved. */
+  public unassigned: UnassignedGeometry = { floatingChains: [], looseJoints: [] };
   public showPathHolder: boolean = true;
 
   // private moveModes: moveModes = moveModes;
@@ -191,28 +205,6 @@ export class MechanismService {
     this.links.forEach((link) => {
       if (link instanceof RealLink) link.reComputeDPath();
     });
-    // console.log(this.mechanisms[0]);
-    //There are multiple mechanisms since there was a plan to support multiple mechanisms
-    //You can treat this as a single mechanism for now at index 0
-
-    this.mechanisms = [];
-    // TODO: Determine logic later once everything else is determined
-    // Settings exposes RPM to users and persistence; solvers use rad/s.
-    //
-    // A prismatic input is a different quantity, not another unit of the same
-    // one: its speed is length per second, so it comes from its own setting and
-    // never meets the pi/30 conversion -- which used to run on it anyway,
-    // leaving a driven block travelling at a tenth of the speed the panel
-    // reported. What it does need is the MODEL_SCALE the solvers measure length
-    // in; an angular speed has no length in it to want one.
-    const drivenJoint = this.joints.find((j) => j instanceof RealJoint && j.input);
-    let inputAngularVelocity =
-      drivenJoint instanceof PrisJoint
-        ? this.settingsService.linearInputSpeed.value * MODEL_SCALE
-        : (this.settingsService.inputSpeed.value * Math.PI) / 30;
-    if (this.settingsService.isInputCW.value) {
-      inputAngularVelocity = inputAngularVelocity * -1;
-    }
     let unitStr = 'cm';
     switch (this.settingsService.lengthUnit.value) {
       case LengthUnit.INCH:
@@ -222,18 +214,26 @@ export class MechanismService {
         unitStr = 'm';
         break;
     }
-    this.mechanisms.push(
-      //This creates a new mechanism with the current state of the joints, links, forces, and ics
-      //If the mechnaism is simulatable, it will generate loops and all future time steps
-      new Mechanism(
-        this.joints,
-        this.links,
-        this.forces,
-        this.ics,
-        true,
-        unitStr,
-        inputAngularVelocity
-      )
+
+    // One machine per grounded component of the drawing. Each is solved on its
+    // own -- its own mobility, its own input, its own cycle -- so a half-built
+    // chain in the corner no longer makes the finished linkage beside it
+    // unsolvable.
+    const partitioning = partitionMechanisms(this.joints, this.links, this.forces);
+    this.partitions = partitioning.mechanisms;
+    this.unassigned = partitioning.unassigned;
+    this.mechanisms = this.partitions.map(
+      //If the mechanism is simulatable, it will generate loops and all future time steps
+      (partition) =>
+        new Mechanism(
+          partition.joints,
+          partition.links,
+          partition.forces,
+          this.ics,
+          true,
+          unitStr,
+          this.inputVelocityFor(partition)
+        )
     );
     this.activeObjService.fakeUpdateSelectedObj();
     this.reseekToTime(heldTime);
@@ -241,6 +241,81 @@ export class MechanismService {
     if (save) {
       this.save();
     }
+  }
+
+  /**
+   * How fast this mechanism's own input is driven, in the units its solver wants.
+   *
+   * Settings exposes RPM to users and persistence; solvers use rad/s. A
+   * prismatic input is a different quantity, not another unit of the same one:
+   * its speed is length per second, so it comes from its own setting and never
+   * meets the pi/30 conversion -- which used to run on it anyway, leaving a
+   * driven block travelling at a tenth of the speed the panel reported. What it
+   * does need is the MODEL_SCALE the solvers measure length in; an angular
+   * speed has no length in it to want one.
+   *
+   * Asked per mechanism rather than once for the drawing, because which of the
+   * two quantities applies depends on what *this* machine is driven by: a
+   * cylinder beside a crank must not be handed the crank's rpm.
+   */
+  private inputVelocityFor(partition: MechanismPartition): number {
+    const driven = partition.joints.find((j) => j instanceof RealJoint && j.input);
+    const speed =
+      driven instanceof PrisJoint
+        ? this.settingsService.linearInputSpeed.value * MODEL_SCALE
+        : (this.settingsService.inputSpeed.value * Math.PI) / 30;
+    return this.settingsService.isInputCW.value ? -speed : speed;
+  }
+
+  /** Which mechanism holds this joint, link or force — none, if it is unassigned. */
+  indexOfMechanismContaining(part: Joint | Link | Force): number {
+    const id = part.id;
+    return this.partitions.findIndex(
+      (partition) =>
+        partition.joints.some((joint) => joint.id === id) ||
+        partition.links.some((link) => link.id === id) ||
+        partition.forces.some((force) => force.id === id)
+    );
+  }
+
+  /** The solved mechanism this part belongs to, if it belongs to one. */
+  mechanismContaining(part: Joint | Link | Force): Mechanism | undefined {
+    const index = this.indexOfMechanismContaining(part);
+    return index === -1 ? undefined : this.mechanisms[index];
+  }
+
+  /** Can this part's own machine be simulated? Says nothing about the others. */
+  isPartSimulatable(part: Joint | Link | Force): boolean {
+    return this.mechanismContaining(part)?.isMechanismValid() ?? false;
+  }
+
+  /**
+   * The mechanism whose cycle is longest, which is the one the shared clock is
+   * measured against: run every machine on the same wall clock and the master
+   * timeline has to be long enough to hold the slowest of them.
+   */
+  private masterMechanismIndex(): number {
+    let best = -1;
+    let longest = -1;
+    this.mechanisms.forEach((mechanism, index) => {
+      if (!mechanism.isMechanismValid()) {
+        return;
+      }
+      if (mechanism.cyclePeriod > longest) {
+        longest = mechanism.cyclePeriod;
+        best = index;
+      }
+    });
+    // Nothing runs, so nothing is really the master. Naming the first anyway
+    // keeps the timeline reporting the empty clock an unsolved mechanism has
+    // always reported, instead of a missing one.
+    return best === -1 && this.mechanisms.length > 0 ? 0 : best;
+  }
+
+  /** The mechanism the shared scrubber is measured against, if any can run. */
+  masterMechanism(): Mechanism | undefined {
+    const index = this.masterMechanismIndex();
+    return index === -1 ? undefined : this.mechanisms[index];
   }
 
   /**
@@ -302,7 +377,7 @@ export class MechanismService {
    * time held from a slower cycle inside the new, shorter one.
    */
   private reseekToTime(seconds: number) {
-    if (!this.mechanisms[0]?.isMechanismValid()) {
+    if (!this.oneValidMechanismExists()) {
       // The rebuild can invalidate the mechanism; a step left pointing into the
       // old cycle would keep the editor gated on a time that no longer exists.
       this.mechanismTimeStep = 0;
@@ -431,16 +506,18 @@ export class MechanismService {
    * Nothing to draw yet is an ordinary state; the honest answer is no path.
    */
   getJointPath(joint: Joint) {
-    const solved = this.mechanisms[0];
+    // Its own mechanism, found by id: a joint traces the cycle of the machine
+    // it belongs to, and looking its position up by index into another
+    // machine's frames would draw some other joint's path under it.
+    const solved = this.mechanismContaining(joint);
     if (!solved || solved.joints.length === 0 || solved.joints[0].length === 0) {
       return '';
     }
-    const jointIndex = this.joints.findIndex((j) => j.id === joint.id);
-    if (jointIndex < 0 || !solved.joints[0][jointIndex]) {
+    if (!solved.joints[0].some((candidate) => candidate.id === joint.id)) {
       return '';
     }
     const at = (step: number) => {
-      const sample = solved.joints[step][jointIndex];
+      const sample = solved.joints[step].find((candidate) => candidate.id === joint.id)!;
       return `${sample.x} , ${sample.y}`;
     };
     let string = 'M' + at(0);
@@ -450,11 +527,20 @@ export class MechanismService {
     return string;
   }
 
+  /**
+   * Can anything in this drawing be simulated?
+   *
+   * "Any" rather than "all" on purpose: one half-built chain in the corner must
+   * not lock a finished linkage out of analysis. Where the question is really
+   * about a particular part, ask `isPartSimulatable` instead.
+   */
   oneValidMechanismExists() {
-    if (this.mechanisms.length == 0 || this.mechanisms[0] === undefined) {
-      return false;
-    }
-    return this.mechanisms[0].isMechanismValid();
+    return this.mechanisms.some((mechanism) => mechanism?.isMechanismValid());
+  }
+
+  /** Every mechanism in the drawing is ready. The stricter question. */
+  allMechanismsValid(): boolean {
+    return this.mechanisms.length > 0 && this.mechanisms.every((m) => m.isMechanismValid());
   }
 
   mergeToJoints(joints: Joint[]) {
@@ -1518,7 +1604,9 @@ export class MechanismService {
         return refusal;
       }
     }
-    const dof = this.mechanisms[0]?.dof;
+    // Nothing in the drawing runs, so the mobility worth reporting is the first
+    // one that is wrong -- not whichever mechanism happened to be built first.
+    const dof = (this.mechanisms.find((m) => !m.isMechanismValid()) ?? this.mechanisms[0])?.dof;
     if (dof !== undefined && Number.isNaN(dof)) {
       return 'Nothing is holding this mechanism in place. Ground a joint, or ground a slider\u2019s guide.';
     }
@@ -1572,12 +1660,15 @@ export class MechanismService {
   private reachWarningCache: string | undefined;
 
   private computeCylinderReachWarning(): string | undefined {
-    const solved = this.mechanisms[0];
-    if (!solved || !this.oneValidMechanismExists()) return undefined;
-    const frames = solved.joints.length;
-    if (frames < 2) return undefined;
-
     for (const cylinder of this.sealedStructures()) {
+      // Each ram is measured against the frames of its own machine. Read from
+      // another mechanism's cycle -- a different length, a different motion --
+      // the travel below is a measurement of the wrong thing entirely.
+      const solved = this.mechanismContaining(cylinder.pin);
+      if (!solved?.isMechanismValid()) continue;
+      const frames = solved.joints.length;
+      if (frames < 2) continue;
+
       const r = 0.15 * SettingsService.objectScale;
       const barrelLength = getDistance(cylinder.barrelFar, cylinder.barrelNear);
       const travel = cylinderStrokeAlong(barrelLength, r);
@@ -2210,9 +2301,17 @@ export class MechanismService {
     });
   }
 
-  /** Sample times (seconds) of the solved mechanism, empty when nothing is solved. */
+  /**
+   * Sample times (seconds) of the mechanism the shared clock follows, empty
+   * when nothing is solved.
+   *
+   * Every machine runs on the same wall clock, so the scrubber has to span the
+   * longest cycle in the drawing; a shorter one wraps inside it. Measuring the
+   * timeline against whichever mechanism happened to be built first would cut
+   * playback off partway through the slowest one.
+   */
   private sampleTimes(): number[] {
-    return this.mechanisms[0]?.timeNum ?? [];
+    return this.masterMechanism()?.timeNum ?? [];
   }
 
   /** Simulation time of a sample index. */
@@ -2225,9 +2324,9 @@ export class MechanismService {
     return times[clamped];
   }
 
-  /** Seconds spanned by one full traversal of the motion. */
+  /** Seconds spanned by one full traversal of the longest motion in the drawing. */
   cyclePeriod(): number {
-    return this.mechanisms[0]?.cyclePeriod ?? 0;
+    return this.masterMechanism()?.cyclePeriod ?? 0;
   }
 
   /** Nearest sample index to a simulation time. Sample times strictly increase. */
@@ -2289,7 +2388,7 @@ export class MechanismService {
     progress = Math.round(progress);
     // Sample counts change whenever the mechanism is rebuilt at a new input speed;
     // never index past them.
-    const sampleCount = this.mechanisms[0]?.joints.length ?? 0;
+    const sampleCount = this.masterMechanism()?.joints.length ?? 0;
     progress = Math.min(Math.max(progress, 0), Math.max(sampleCount - 1, 0));
 
     // Set the step before announcing it: subscribers read the drawn time back off
@@ -2312,7 +2411,7 @@ export class MechanismService {
     if (animationState !== undefined) {
       AnimationBarComponent.animate = animationState;
     }
-    if (sampleCount === 0 || this.mechanisms[0].joints[progress].length === 0) {
+    if (sampleCount === 0 || this.masterMechanism()!.joints[progress].length === 0) {
       this.playbackClockMs = null;
       return;
     }
@@ -2342,23 +2441,62 @@ export class MechanismService {
    * also what a rebuild treats as t = 0, so see restoreStartPose.
    */
   private applyPose(step: number, blend: number) {
-    const nextStep = blend > 0 ? step + 1 : step;
-    const frames = this.mechanisms[0];
     // This is the one place a solved sample becomes the drawn pose, so it is
     // where anything cached against the pose has to be let go of.
     this.poseRevision++;
 
-    this.joints.forEach((j, j_index) => {
-      const from = frames.joints[step][j_index];
-      const to = frames.joints[nextStep][j_index];
+    // The step and blend arrive measured against the shared clock, which runs
+    // on the longest cycle in the drawing. Turn them into a time, and let each
+    // machine find that time among its own samples: a mechanism with a shorter
+    // cycle wraps inside the master one rather than running out.
+    const seconds =
+      this.timeAtStep(step) + blend * (this.timeAtStep(step + 1) - this.timeAtStep(step));
+    this.mechanisms.forEach((frames, index) => {
+      this.applyMechanismPose(frames, this.partitions[index], seconds);
+    });
+  }
+
+  /**
+   * Draw one machine's solved sample onto its own editable objects.
+   *
+   * Matched by id rather than by position. The editable arrays hold the whole
+   * drawing while a Mechanism holds only its own component, so the two are no
+   * longer the same list in the same order -- and pairing them positionally
+   * would quietly move one mechanism's joint to another's coordinates.
+   */
+  private applyMechanismPose(frames: Mechanism, partition: MechanismPartition, seconds: number) {
+    const times = frames.timeNum ?? [];
+    if (!frames.isMechanismValid() || times.length === 0) {
+      return;
+    }
+    const period = frames.cyclePeriod;
+    let local = seconds;
+    if (period > 0 && Number.isFinite(seconds)) {
+      local = seconds % period;
+      if (local < 0) local += period;
+    }
+    let step = 0;
+    while (step + 1 < times.length && times[step + 1] <= local) step++;
+    const nextStep = Math.min(step + 1, times.length - 1);
+    const span = times[nextStep] - times[step];
+    const blend = span > 0 ? Math.min(Math.max((local - times[step]) / span, 0), 1) : 0;
+
+    const jointFrom = frames.joints[step];
+    const jointTo = frames.joints[nextStep];
+    partition.joints.forEach((j) => {
+      const from = jointFrom.find((candidate) => candidate.id === j.id);
+      const to = jointTo.find((candidate) => candidate.id === j.id);
+      if (!from || !to) {
+        return;
+      }
       j.x = from.x + (to.x - from.x) * blend;
       j.y = from.y + (to.y - from.y) * blend;
     });
-    this.links.forEach((l, l_index) => {
+    partition.links.forEach((l) => {
       if (!(l instanceof RealLink)) {
         return;
       }
-      const link = frames.links[step][l_index];
+      const link = frames.links[step].find((candidate) => candidate.id === l.id);
       if (!(link instanceof RealLink)) {
         return;
       }
@@ -2375,9 +2513,12 @@ export class MechanismService {
       }
       this.placeLinkGeometry(l, link, blend);
     });
-    this.forces.forEach((f, f_index) => {
-      const from = frames.forces[step][f_index];
-      const to = frames.forces[nextStep][f_index];
+    partition.forces.forEach((f) => {
+      const from = frames.forces[step].find((candidate) => candidate.id === f.id);
+      const to = frames.forces[nextStep].find((candidate) => candidate.id === f.id);
+      if (!from || !to) {
+        return;
+      }
       f.startCoord.x = from.startCoord.x + (to.startCoord.x - from.startCoord.x) * blend;
       f.startCoord.y = from.startCoord.y + (to.startCoord.y - from.startCoord.y) * blend;
       f.endCoord.x = from.endCoord.x + (to.endCoord.x - from.endCoord.x) * blend;
@@ -2402,7 +2543,7 @@ export class MechanismService {
   private restoreStartPose() {
     // While playing, the drawn pose is blended past its sample, so step 0 alone
     // does not mean the joints hold the start pose — only paused-at-0 does.
-    if (this.atStartPose() || !this.mechanisms[0]?.joints[0]?.length) {
+    if (this.atStartPose() || !this.masterMechanism()?.joints[0]?.length) {
       return;
     }
     this.applyPose(0, 0);

@@ -11,7 +11,17 @@ describe('AnimationBarComponent timestamps', () => {
     // Real prototype over stub data: the component delegates its time lookups to the
     // service, so the service's own lookup logic has to run for these to mean anything.
     const mechanismService = Object.assign(Object.create(MechanismService.prototype), {
-      mechanisms: [{ timeNum: [0, 0.2, 0.55], joints: [[], [], []], cyclePeriod: 0.55 }],
+      // isMechanismValid, because the shared clock now follows the longest
+      // *running* cycle: with several machines in a drawing, one that cannot
+      // solve must not be the thing the scrubber is measured against.
+      mechanisms: [
+        {
+          timeNum: [0, 0.2, 0.55],
+          joints: [[], [], []],
+          cyclePeriod: 0.55,
+          isMechanismValid: () => true,
+        },
+      ],
       mechanismTimeStep,
       onMechPositionChange: position,
       animate,

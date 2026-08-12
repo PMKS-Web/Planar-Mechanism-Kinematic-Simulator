@@ -92,6 +92,12 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
     inputSpeedRadPerSecond
   );
   service.mechanisms = [mechanism];
+  // The editable objects each mechanism was built from, in the same order.
+  // applyPose walks these rather than the whole drawing, so a harness that
+  // leaves them empty draws no pose at all.
+  service.partitions = [
+    { id: 'M1', joints: service.joints, links: service.links, forces: service.forces },
+  ];
   service.oneValidMechanismExists = () => mechanism.isMechanismValid();
 
   return { active, mechanism, service, settings };

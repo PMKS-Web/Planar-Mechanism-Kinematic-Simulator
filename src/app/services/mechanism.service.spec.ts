@@ -255,6 +255,9 @@ describe('MechanismService welded links and force ownership', () => {
 
   it('converts the RPM setting once at the mechanism boundary and preserves direction', () => {
     const harness = createChain();
+    // Grounded, so the chain is a machine at all: a component that never
+    // reaches ground has no solvable position and is not built as a mechanism.
+    harness.joints[0].ground = true;
     harness.settings.inputSpeed.next(60);
     harness.settings.lengthUnit.next(LengthUnit.METER);
     harness.settings.isInputCW.next(false);
