@@ -69,12 +69,12 @@ is why they have them.
 
 | Use | For | Not |
 | --- | --- | --- |
-| **mechanism** | the thing on the grid | ~~linkage~~ (stops being true the moment it has a cylinder), ~~assembly~~ |
+| **mechanism** | one machine on the grid — a drawing may hold several, named M1, M2… | ~~linkage~~ (stops being true the moment it has a cylinder), ~~assembly~~ |
 | **project** | the saved document | — |
 | **animation** | playing the mechanism | ~~simulation~~, ~~playback~~ (internal only) |
 | **input** | in controls: the driven joint | — |
 | **driven** | in prose about the mechanism | ~~actuator~~ (internal only) |
-| **Edit / Analyze / Synthesis** | the three modes, capitalised as the tabs spell them | ~~analysis mode~~ |
+| **Synthesis / Edit / Kinematic / Force** | the four modes, capitalised as the tabs spell them | ~~Analyze~~ (it split into Kinematic and Force), ~~analysis mode~~ |
 
 `Share Project` and `New Project` are about the document, and stay.
 
