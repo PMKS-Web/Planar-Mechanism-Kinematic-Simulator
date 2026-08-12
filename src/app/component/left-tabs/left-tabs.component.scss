@@ -29,7 +29,7 @@
     padding: 14px 15px 18px;
     background: var(--card-surface);
     border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
-    border-radius: var(--border-radius);
+    border-radius: var(--card-radius);
     box-shadow: var(--card-shadow);
   }
 
@@ -88,6 +88,7 @@
     overflow-y: auto;
     --panel-clearance: #{nav.$bottom-bar-height + 12px};
     max-height: calc(100% - #{nav.$top-strip-height} - var(--panel-clearance));
+    max-width: calc(100vw - 24px);
     display: flex;
     z-index: 5;
 
@@ -124,6 +125,17 @@
         flex-direction: column;
         min-height: 0;
       }
+    }
+
+    // Never wider than the window it is in. The analysis page is 420px, which
+    // is wider than a phone, and the page scrolled sideways to show the rest of
+    // a card whose rounded corner was off the edge. The cap has to be on the
+    // frame too: its width is an animation state, which is a style on the
+    // element and beats a rule from this file.
+    .page1,
+    .page2,
+    .page3 {
+      max-width: calc(100vw - 24px);
     }
 
     .page1 {

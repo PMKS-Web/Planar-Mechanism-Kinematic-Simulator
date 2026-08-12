@@ -91,18 +91,23 @@
     }
   }
 
-  #debugWrapper {
+  // One inset and one gap for every drawer page. The two setup drawers had
+  // neither, so their card came out 20px wider than the Settings card and sat
+  // 10px closer to the window edge -- the drawer visibly changed shape when you
+  // switched between them.
+  #rightPanel > div {
     display: flex;
     flex-direction: column;
     gap: 10px;
     padding: 10px;
+    box-sizing: border-box;
   }
 
+  #debugWrapper,
   #helpWrapper {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 10px;
   }
 
   .max-width {

@@ -10,7 +10,7 @@
     padding-bottom: 8px;
     background: var(--card-surface);
     border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
-    border-radius: var(--border-radius);
+    border-radius: var(--card-radius);
     box-shadow: var(--card-shadow);
   }
 

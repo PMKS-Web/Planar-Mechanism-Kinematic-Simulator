@@ -315,8 +315,6 @@
   // is also on the status strip.
   @media (max-width: 740px) {
     .topStrip {
-      gap: 6px;
-
       .tabCard {
         flex: 1 1 auto;
         overflow-x: auto;
@@ -330,7 +328,6 @@
 
       .historyCard {
         gap: 2px;
-        padding: 0 4px;
       }
     }
 
@@ -348,6 +345,16 @@
 
     .historyButton {
       padding: 0 8px;
+    }
+  }
+
+  // Narrower than this the four modes do not fit beside the wordmark -- and a
+  // mode reachable only by scrolling a card that gives no sign it scrolls is a
+  // mode that is not there. The hamburger stays; the wordmark is what the
+  // window can spare.
+  @media (max-width: 430px) {
+    .topStrip .logo {
+      display: none;
     }
   }
 }
