@@ -107,7 +107,7 @@
   @if (validMechanisms() && this.activeSrv.objType == 'Joint') {
     <panel-section id="analysis-panel">
       <title-block
-        description="{{ inputSummary }} This can be changed in the input joint's Edit panel."
+        description="{{ inputSummary }} {{ inputEditHint }}"
       >
         Analysis for Joint
         {{ this.activeSrv.selectedJoint.name }}
@@ -289,7 +289,7 @@
   @if (validMechanisms() && this.activeSrv.objType == 'Link') {
     <panel-section id="analysis-panel">
       <title-block
-        description="{{ inputSummary }} This can be changed in the input joint's Edit panel."
+        description="{{ inputSummary }} {{ inputEditHint }}"
       >
         Analysis for {{ selectedBodyLabel }}
       </title-block>
@@ -318,7 +318,7 @@
           >
             <mat-expansion-panel-header>
               <mat-panel-title>
-                Angle of Link {{ this.activeSrv.selectedLink.name }}
+                Angle of {{ selectedBodyLabel }}
               </mat-panel-title>
               <mat-panel-description>
                 <mat-icon
@@ -345,7 +345,7 @@
           >
             <mat-expansion-panel-header>
               <mat-panel-title>
-                Angular Velocity of Link {{ this.activeSrv.selectedLink.name }}
+                Angular Velocity of {{ selectedBodyLabel }}
               </mat-panel-title>
               <mat-panel-description>
                 <mat-icon
@@ -372,7 +372,7 @@
           >
             <mat-expansion-panel-header>
               <mat-panel-title>
-                Angular Acceleration of Link {{ this.activeSrv.selectedLink.name }}
+                Angular Acceleration of {{ selectedBodyLabel }}
               </mat-panel-title>
               <mat-panel-description>
                 <mat-icon
@@ -393,7 +393,7 @@
             }
           </mat-expansion-panel>
           <subtitle-block style="margin-top: 20px"
-            >Center of Mass (COM) of Link {{ this.activeSrv.selectedLink.name }}</subtitle-block
+            >Center of Mass (COM) of {{ selectedBodyLabel }}</subtitle-block
           >
           <mat-expansion-panel
             [expanded]="graphExpanded['LPos']"
@@ -402,7 +402,7 @@
           >
             <mat-expansion-panel-header>
               <mat-panel-title>
-                Position of Link {{ this.activeSrv.selectedLink.name }}'s COM
+                Position of {{ selectedBodyLabel }}'s COM
               </mat-panel-title>
               <mat-panel-description>
                 <mat-icon
@@ -429,7 +429,7 @@
           >
             <mat-expansion-panel-header>
               <mat-panel-title>
-                Velocity of Link {{ this.activeSrv.selectedLink.name }}'s COM
+                Velocity of {{ selectedBodyLabel }}'s COM
               </mat-panel-title>
               <mat-panel-description>
                 <mat-icon
@@ -456,7 +456,7 @@
           >
             <mat-expansion-panel-header>
               <mat-panel-title>
-                Acceleration of Link {{ this.activeSrv.selectedLink.name }}'s COM
+                Acceleration of {{ selectedBodyLabel }}'s COM
               </mat-panel-title>
               <mat-panel-description>
                 <mat-icon
@@ -495,7 +495,7 @@
           </radio-block>
           @if (linkForceRows().length === 0) {
             <div class="analysis-message" role="status">
-              Link {{ this.activeSrv.selectedLink.name }} has no external joint that carries an
+              {{ selectedBodyLabel }} has no external joint that carries an
               independent pin reaction.
             </div>
           }

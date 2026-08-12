@@ -230,6 +230,27 @@ describe('AnalysisPanelComponent with a cylinder selected', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Analysis for Cylinder');
     expect(fixture.nativeElement.textContent).not.toContain('Analysis for Link GN');
+    // And so does everything under the heading. A panel that calls the body a
+    // cylinder at the top and a link in every row below has only moved the
+    // disagreement down the page.
+    expect(fixture.nativeElement.textContent).not.toContain('of Link GN');
+    expect(fixture.nativeElement.textContent).toContain('Angle of Cylinder');
+    fixture.destroy();
+  });
+
+  it("sends the reader to the cylinder's own panel to change its speed", async () => {
+    // The joint driving a cylinder is buried inside it: no hitbox on the
+    // canvas, no row in the Edit panel. "The input joint's Edit panel" names
+    // somewhere the reader cannot get to.
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'GN');
+    fixture.detectChanges();
+
+    // The hint is passed to a block component the schema here stubs out, so
+    // it is read off the panel rather than off the rendered text.
+    const hint = fixture.componentInstance.inputEditHint;
+    expect(hint).toContain('Expansion Speed');
+    expect(hint).toContain('Cylinder GC');
+    expect(hint).not.toContain("input joint's Edit panel");
     fixture.destroy();
   });
 

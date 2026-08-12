@@ -368,6 +368,12 @@ export class MechanismService {
     );
   }
 
+  /** The partition this part belongs to, if it belongs to one. */
+  partitionContaining(part: Joint | Link | Force): MechanismPartition | undefined {
+    const index = this.indexOfMechanismContaining(part);
+    return index === -1 ? undefined : this.partitions[index];
+  }
+
   /** The solved mechanism this part belongs to, if it belongs to one. */
   mechanismContaining(part: Joint | Link | Force): Mechanism | undefined {
     const index = this.indexOfMechanismContaining(part);

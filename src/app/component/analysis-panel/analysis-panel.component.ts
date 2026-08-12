@@ -96,17 +96,54 @@ export class AnalysisPanelComponent {
    * 5 cm/s as turning at 5.00 RPM clockwise.
    */
   get inputSummary(): string {
-    const driven = this.mechanismService.joints.find(
-      (joint) => joint instanceof RealJoint && joint.input
-    );
+    const driven = this.drivenJointOfSelection;
+    const signed = this.mechanismService.driveSpeedOf(driven);
+    const speed = Math.abs(signed);
     if (driven instanceof PrisJoint) {
-      const speed = this.settingsService.linearInputSpeed.value.toFixed(2);
-      const direction = this.settingsService.isInputCW.value ? 'retracting' : 'extending';
-      return `The input speed is set to ${speed} ${this.linearSpeedUnit}, ${direction}.`;
+      const direction = signed < 0 ? 'retracting' : 'extending';
+      return `The input speed is set to ${speed.toFixed(2)} ${this.linearSpeedUnit}, ${direction}.`;
     }
-    const speed = this.settingsService.inputSpeed.value.toFixed(2);
-    const direction = this.settingsService.isInputCW.value ? 'clockwise' : 'counter-clockwise';
-    return `The input speed is set to ${speed} RPM in the ${direction} direction.`;
+    const direction = signed < 0 ? 'clockwise' : 'counter-clockwise';
+    return `The input speed is set to ${speed.toFixed(2)} RPM in the ${direction} direction.`;
+  }
+
+  /**
+   * Where that speed is actually changed.
+   *
+   * A cylinder is driven by a joint buried inside it that the canvas gives no
+   * hitbox and the Edit panel never lists, so sending the reader to "the input
+   * joint" sends them somewhere they cannot go. The field is on the cylinder,
+   * under its own name.
+   */
+  get inputEditHint(): string {
+    const driven = this.drivenJointOfSelection;
+    const sealed = driven && this.mechanismService.cylinderAt(driven);
+    if (sealed) {
+      const name = `Cylinder ${sealed.barrelFar.name || sealed.barrelFar.id}${
+        sealed.rodFar.name || sealed.rodFar.id
+      }`;
+      return `This can be changed under Expansion Speed in ${name}'s Edit panel.`;
+    }
+    return "This can be changed in the input joint's Edit panel.";
+  }
+
+  /**
+   * The drive of the mechanism the selection belongs to.
+   *
+   * A drawing can hold several mechanisms turning at different speeds, so the
+   * first driven joint in the document is only the right answer when there is
+   * one of them.
+   */
+  private get drivenJointOfSelection(): RealJoint | undefined {
+    const selection =
+      this.activeSrv.objType === 'Link'
+        ? this.activeSrv.selectedLink
+        : this.activeSrv.objType === 'Joint'
+          ? this.activeSrv.selectedJoint
+          : undefined;
+    const own = selection && this.mechanismService.partitionContaining(selection);
+    const pool = own ? own.joints : this.mechanismService.joints;
+    return pool.find((joint): joint is RealJoint => joint instanceof RealJoint && joint.input);
   }
 
   /** Length per second, spelled the way the mechanism's length unit is. */

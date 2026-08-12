@@ -64,6 +64,9 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
     mechanismTimeStep: 0,
     onMechUpdateState: new BehaviorSubject(0),
     onMechPositionChange: new BehaviorSubject(0),
+    // The real `driveSpeedOf` falls back to the document default, so the stub
+    // has to be able to reach the same settings the panel reads.
+    settingsService: settings,
     // A stub, not the real thing: the panel renders this and the fixtures here
     // are all well-proportioned, so the default answer is "nothing to say".
     // A spec that wants the warning rendered overrides it.
@@ -112,6 +115,8 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
   service.indexOfMechanismContaining =
     MechanismService.prototype.indexOfMechanismContaining.bind(service);
   service.mechanismContaining = MechanismService.prototype.mechanismContaining.bind(service);
+  service.partitionContaining = MechanismService.prototype.partitionContaining.bind(service);
+  service.driveSpeedOf = MechanismService.prototype.driveSpeedOf.bind(service);
 
   return { active, mechanism, service, settings };
 }
