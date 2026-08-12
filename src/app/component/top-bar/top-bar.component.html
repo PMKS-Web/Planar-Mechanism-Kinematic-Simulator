@@ -30,7 +30,7 @@
         (click)="select(TabID.SYNTHESIZE)"
         aria-label="Synthesis"
       >
-        <mat-icon svgIcon="synthesis"></mat-icon>
+        <mat-icon matTooltip="Synthesis" matTooltipShowDelay="600" svgIcon="synthesis"></mat-icon>
         <span class="tabLabel">Synthesis</span>
       </button>
 
@@ -40,7 +40,7 @@
         (click)="select(TabID.EDIT)"
         aria-label="Edit"
       >
-        <mat-icon svgIcon="edit_outline"></mat-icon>
+        <mat-icon matTooltip="Edit" matTooltipShowDelay="600" svgIcon="edit_outline"></mat-icon>
         <span class="tabLabel">Edit</span>
       </button>
 
@@ -53,7 +53,7 @@
         (click)="select(TabID.ANALYZE)"
         aria-label="Kinematic Analysis"
       >
-        <mat-icon>query_stats</mat-icon>
+        <mat-icon matTooltip="Kinematic Analysis" matTooltipShowDelay="600">query_stats</mat-icon>
         <span class="tabLabel long">Kinematic Analysis</span>
         <span class="tabLabel short">Kinematic</span>
         <span
@@ -75,7 +75,7 @@
         (click)="select(TabID.FORCE)"
         aria-label="Force Analysis"
       >
-        <mat-icon>balance</mat-icon>
+        <mat-icon matTooltip="Force Analysis" matTooltipShowDelay="600">balance</mat-icon>
         <span class="tabLabel long">Force Analysis</span>
         <span class="tabLabel short">Force</span>
         <span
