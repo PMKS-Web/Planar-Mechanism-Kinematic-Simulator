@@ -1,8 +1,16 @@
 /* You can add global styles to this file, and also import other style files */
 
+// The app fills the window and everything inside it scrolls on its own, so the
+// document itself never should. Without this a drawer parked past the right
+// edge can be scrolled back into view after being closed.
 html,
 body {
   height: 100%;
+  // `clip` rather than `hidden`: hidden removes the scrollbar but still allows
+  // the document to be scrolled programmatically, which is how a closed drawer
+  // could be brought back into view.
+  overflow: hidden;
+  overflow: clip;
 }
 
 body {

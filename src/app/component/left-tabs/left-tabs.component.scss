@@ -13,6 +13,12 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
+  @media (max-width: 900px) {
+    .panel.behindDrawer {
+      display: none;
+    }
+  }
+
   // The mock's help panel: a title, a lead, a rule and a hint or two. It
   // replaces a collapsible section wrapped round a GIF -- an animation of the
   // gesture, which had to be watched and could not be scanned.

@@ -290,6 +290,28 @@
     color: rgba(0, 0, 0, 0.45);
   }
 
+  // A phone cannot hold three cards across one line. The cluster wraps, the
+  // scrub card takes the width it can get, and the view controls sit under it
+  // rather than half off the edge.
+  @media (max-width: 720px) {
+    .playbackRow {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 8px;
+    }
+
+    .clusterSpacer {
+      display: none;
+    }
+
+    .scrubCard {
+      flex: 1 1 100%;
+      min-width: 0;
+      order: 3;
+    }
+  }
+
   .dirButton {
     display: flex;
     align-items: center;

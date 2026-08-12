@@ -1,3 +1,4 @@
+import { RightPanelComponent } from './component/right-panel/right-panel.component';
 import { T } from '@angular/cdk/keycodes';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
@@ -77,6 +78,11 @@ export class SelectedTabService {
   }
 
   private onNewTab(previousTab: TabID) {
+    // A setup drawer answers a question about one mode, so it goes when that
+    // mode does -- otherwise the Force list sits over the Synthesis canvas
+    // looking like the app is stuck between two places.
+    RightPanelComponent.closeSetupUnlessFor(this.getCurrentTab());
+
     // Replaces the old stop button: leaving Analyze is what rewinds the
     // mechanism, so the other modes always act on the pose at time 0.
     if (this.isAnalysisMode(previousTab) && !this.isAnalysisMode()) {

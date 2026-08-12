@@ -293,8 +293,12 @@
     }
   }
 
+  // Every label goes at once. Naming the short spelling explicitly, because the
+  // rule that switched it on lives in a later media block and would otherwise
+  // keep it while the other two modes had already gone icon-only.
   @media (max-width: 1080px) {
-    .tabButton .tabLabel {
+    .tabButton .tabLabel,
+    .tabButton .tabLabel.short {
       display: none;
     }
 
@@ -334,17 +338,6 @@
 
       .chip {
         display: none;
-      }
-    }
-
-    // The short spelling only appears once the long one has gone.
-    .tabButton .tabLabel.short {
-      display: none;
-    }
-
-    @media (max-width: 1280px) {
-      .tabButton .tabLabel.short {
-        display: inline;
       }
     }
 

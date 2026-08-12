@@ -1,3 +1,4 @@
+import { TabID } from '../../selected-tab.service';
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NewGridComponent } from '../new-grid/new-grid.component';
@@ -51,6 +52,9 @@ import { UrlGenerationService } from 'src/app/services/url-generation.service';
           // The old 10px was measured against a panel flush to the edge and
           // left a two-pixel sliver of it on screen.
           transform: 'translateX(calc(100% + 24px))',
+          // And genuinely gone. Parked off the edge it still occupied the
+          // page's width, so a closed drawer could be scrolled back into view.
+          visibility: 'hidden',
         })
       ),
       state(
@@ -128,6 +132,29 @@ export class RightPanelComponent {
   /** Shut the drawer, whichever one is open. */
   close(): void {
     RightPanelComponent.isOpen = false;
+  }
+
+  /**
+   * Close a setup drawer that no longer describes the mode being shown.
+   *
+   * Settings and Help are about the app rather than a mode, so they stay.
+   */
+  static closeSetupUnlessFor(tab: TabID): void {
+    if (!this.isOpen) {
+      return;
+    }
+    const wanted =
+      tab === TabID.FORCE
+        ? RightPanelComponent.FORCE_SETUP_TAB
+        : tab === TabID.ANALYZE
+          ? RightPanelComponent.KINEMATIC_SETUP_TAB
+          : -1;
+    const showingSetup =
+      this.openTab === RightPanelComponent.KINEMATIC_SETUP_TAB ||
+      this.openTab === RightPanelComponent.FORCE_SETUP_TAB;
+    if (showingSetup && this.openTab !== wanted) {
+      this.isOpen = false;
+    }
   }
 
   getOpenTab() {

@@ -3,6 +3,7 @@
     this.tabs.isTabVisible() ? (this.tabs.isAnalysisMode() ? 'openWide' : 'open') : 'closed'
   "
   class="panel"
+  [class.behindDrawer]="drawerOpen"
 >
   @if (this.tabs.getCurrentTab() === TabID.SYNTHESIZE) {
     <div class="page1">

@@ -1,3 +1,4 @@
+import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
@@ -49,5 +50,16 @@ export class LeftTabsComponent {
 
   public get TabID(): typeof TabID {
     return TabID;
+  }
+
+  /**
+   * Is a right-hand drawer open?
+   *
+   * On a wide window both can be read at once. On a narrow one they overlap,
+   * and two cards interleaving their borders reads as a broken layout rather
+   * than as one thing in front of another — so the drawer wins and this hides.
+   */
+  get drawerOpen(): boolean {
+    return RightPanelComponent.isOpen;
   }
 }
