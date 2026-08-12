@@ -6,14 +6,6 @@
   $primary-palette: map.get($color-config, 'primary');
   $typography-config: mat.m2-get-typography-config($theme);
 
-  // One elevation for every floating card in the app, so the strip, the
-  // playback card and the drawers all read as sitting at the same height above
-  // the grid.
-  $card-shadow:
-    0 3px 5px -1px rgba(0, 0, 0, 0.2),
-    0 6px 10px 0 rgba(0, 0, 0, 0.14),
-    0 1px 18px 0 rgba(0, 0, 0, 0.12);
-
   .topStrip {
     position: absolute;
     top: 12px;
@@ -21,7 +13,7 @@
     right: 12px;
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: var(--card-gap);
     z-index: 6;
     pointer-events: none;
 
@@ -29,16 +21,21 @@
       display: flex;
       align-items: center;
       height: 48px;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: $card-shadow;
+      background: var(--card-surface);
+      border-radius: var(--card-radius);
+      box-shadow: var(--card-shadow);
       pointer-events: auto;
       box-sizing: border-box;
     }
 
+    // 48px card, 36px controls, 6px padding: the same inset above, below and
+    // to either side of whatever the card holds. The buttons were 34px and 40px
+    // tall in an 8px-padded card, so the blue behind them sat at two different
+    // heights and never at the same distance from the edge as it was from the
+    // top.
     .brandCard {
       gap: 6px;
-      padding: 0 8px 0 6px;
+      padding: 0 6px;
       flex: 0 0 auto;
       white-space: nowrap;
     }
@@ -55,7 +52,7 @@
     .tabCard {
       flex: 0 1 auto;
       min-width: 0;
-      padding: 0 8px;
+      padding: 0 6px;
       overflow: hidden;
     }
 
@@ -63,7 +60,7 @@
     // read as one group instead of two things at opposite ends of the window.
     .historyCard {
       gap: 6px;
-      padding: 0 8px;
+      padding: 0 6px;
       flex: 0 0 auto;
     }
   }
@@ -148,7 +145,12 @@
     display: none;
   }
 
-  @media (max-width: 1280px) {
+  // Each step down is taken only once the level above would actually run out
+  // of room. Measured, not guessed: the strip is 1019px wide with full labels,
+  // 899 with short ones and 716 icon-only, so these are those numbers with a
+  // little to spare. It used to shorten at 1280 and go icon-only at 1080,
+  // throwing away words while a quarter of the window was still empty.
+  @media (max-width: 1040px) {
     .tabButton .tabLabel.short {
       display: inline;
     }
@@ -184,8 +186,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border: none;
     border-radius: 6px;
     background: transparent;
@@ -206,11 +208,11 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    height: 34px;
+    height: 36px;
     padding: 0 12px;
     border: 1px solid mat.m2-get-color-from-palette($primary-palette, 500);
     border-radius: 4px;
-    background: #fff;
+    background: var(--card-surface);
     color: mat.m2-get-color-from-palette($primary-palette, 500);
     font-family: inherit;
     font-size: 14px;
@@ -242,13 +244,10 @@
     left: 12px;
     width: 188px;
     padding: 4px 0;
-    background: #fff;
-    border-radius: 5px;
+    background: var(--card-surface);
+    border-radius: var(--border-radius);
     z-index: 20;
-    box-shadow:
-      0 7px 8px -4px rgba(0, 0, 0, 0.2),
-      0 13px 19px 2px rgba(0, 0, 0, 0.14),
-      0 5px 24px 4px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--card-shadow);
   }
 
   .menuItem {
@@ -286,8 +285,10 @@
     margin: 6px 14px;
   }
 
-  // Narrow windows drop the words before they drop a mode.
-  @media (max-width: 1280px) {
+  // Narrow windows drop the words before they drop a mode. Paired with the
+  // rule that switches the short spelling on -- one width, two halves of the
+  // same step, so they have to move together.
+  @media (max-width: 1040px) {
     .tabButton .tabLabel.long {
       display: none;
     }
@@ -296,7 +297,7 @@
   // Every label goes at once. Naming the short spelling explicitly, because the
   // rule that switched it on lives in a later media block and would otherwise
   // keep it while the other two modes had already gone icon-only.
-  @media (max-width: 1080px) {
+  @media (max-width: 920px) {
     .tabButton .tabLabel,
     .tabButton .tabLabel.short {
       display: none;
@@ -312,7 +313,7 @@
   // somewhere unreachable, with the page scrolling sideways to prove it -- the
   // tab card scrolls on its own and the chips go, since the status they carry
   // is also on the status strip.
-  @media (max-width: 720px) {
+  @media (max-width: 740px) {
     .topStrip {
       gap: 6px;
 

@@ -13,19 +13,21 @@
 
   #normalPanel {
     pointer-events: all;
-    // One elevation for every panel, so nesting one inside another cannot read
-    // as two different heights.
-    @include mat.elevation(2);
+    box-shadow: var(--card-shadow);
     border-radius: var(--border-radius);
     display: flex;
     flex-direction: column;
     //gap: 10px;
-    background-color: mat.m2-get-color-from-palette($background, 'background');
+    background-color: var(--card-surface);
     border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
     //padding: 20px;
 
+    // Stretched to the panel's own width -- which is a content-box width, so a
+    // child with side padding would come out wider than the panel it is in and
+    // overflow the drawer. That is how the version row ran off the edge.
     > * {
       width: 100%;
+      box-sizing: border-box;
     }
   }
 }

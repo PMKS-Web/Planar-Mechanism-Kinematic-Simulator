@@ -18,7 +18,11 @@
     padding: 10px;
   }
 
+  // The panel stretches its children to its own width, which is a content-box
+  // width -- so a row with side padding came out wider than the drawer and the
+  // version ran off the edge.
   .versionRow {
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     gap: 5px;

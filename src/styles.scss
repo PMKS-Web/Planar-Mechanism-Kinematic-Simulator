@@ -29,6 +29,23 @@ body {
 :root {
   --border-radius: 5px;
   --mat-warning-color: #f44336;
+
+  /*
+   * The app's chrome, in one place.
+   *
+   * Every surface that floats above the grid -- the top strip, the transport,
+   * the view controls, the drawers, the panels, the status strip -- is the same
+   * white, sits at the same height above it, and is separated from its
+   * neighbours by the same gap. These are those three facts. Anything that
+   * writes its own #fff, its own box-shadow or its own 10px is either wrong or
+   * has a reason worth writing down beside it.
+   */
+  --card-surface: #fff;
+  --card-radius: 10px;
+  --card-gap: 12px;
+  --card-shadow:
+    0 3px 5px -1px rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.14),
+    0 1px 18px 0 rgba(0, 0, 0, 0.12);
 }
 
 /* Remove all default margins and padding */

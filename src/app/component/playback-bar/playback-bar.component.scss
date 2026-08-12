@@ -5,11 +5,6 @@
 // than from an eye: the bottom cluster was tuned there, and re-deriving it by
 // looking at a screenshot is how it drifted the first time.
 @mixin css($theme) {
-  $card-shadow:
-    0 3px 5px -1px rgba(0, 0, 0, 0.2),
-    0 6px 10px 0 rgba(0, 0, 0, 0.14),
-    0 1px 18px 0 rgba(0, 0, 0, 0.12);
-
   .playbackRow {
     position: absolute;
     left: 0;
@@ -18,18 +13,26 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    gap: 12px;
-    padding: 0 12px;
+    // The sync tab hangs 26px off the top of the scrub card, so a wrapped row
+    // needs that much again between lines or the tab lands on the card above
+    // it. Column gap stays the cluster's own.
+    column-gap: var(--card-gap);
+    row-gap: calc(26px + var(--card-gap));
+    padding: 0 var(--card-gap);
     z-index: 8;
     pointer-events: none;
   }
 
+  // A flex child at zero width still takes the row's gap on both sides, so the
+  // spacer -- which is nothing at all in analysis mode -- was widening the one
+  // gap in the cluster it sits in by double. Pull one gap back out of it.
   .clusterSpacer {
     flex-grow: 1;
     flex-shrink: 0;
     flex-basis: 0;
     min-width: 0;
     height: 1px;
+    margin-right: calc(-1 * var(--card-gap));
     transition: flex-grow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     &.analysis {
@@ -43,12 +46,12 @@
     gap: 8px;
     height: 60px;
     padding: 0 12px;
-    background: #fff;
-    border-radius: 10px;
+    background: var(--card-surface);
+    border-radius: var(--card-radius);
     pointer-events: auto;
     flex: 0 0 auto;
     box-sizing: border-box;
-    box-shadow: $card-shadow;
+    box-shadow: var(--card-shadow);
   }
 
   .scrubCard {
@@ -59,13 +62,13 @@
     gap: 7px;
     padding: 9px 12px;
     min-height: 60px;
-    background: #fff;
-    border-radius: 10px;
+    background: var(--card-surface);
+    border-radius: var(--card-radius);
     pointer-events: auto;
     flex: 0 1 470px;
     min-width: 250px;
     box-sizing: border-box;
-    box-shadow: $card-shadow;
+    box-shadow: var(--card-shadow);
   }
 
   .speedButton {
@@ -297,7 +300,11 @@
     .playbackRow {
       flex-wrap: wrap;
       justify-content: center;
-      gap: 8px;
+      // The scrub card goes to a line of its own here, and its sync tab hangs
+      // 26px off its top edge -- into the transport card above it, unless the
+      // line below is given room for it.
+      column-gap: 8px;
+      row-gap: 34px;
       padding: 0 8px;
     }
 
