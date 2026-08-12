@@ -94,16 +94,23 @@ export class AnalysisSetupComponent {
   }
 
   isOpen(readiness: MechanismReadiness): boolean {
-    // Open when there is something to read, closed when there is not — so a
-    // drawing that is fine collapses to a list of names.
-    return this.collapsed.has(readiness.id) ? false : readiness.checks.length > 0;
+    // Open when something is wrong, closed when nothing is — so a drawing that
+    // is fine collapses to a list of names, and the facts about a healthy
+    // mechanism are one press away rather than in the way.
+    return this.collapsed.has(readiness.id)
+      ? false
+      : this.expanded.has(readiness.id) || readiness.checks.length > 0;
   }
+
+  private expanded = new Set<string>();
 
   toggle(readiness: MechanismReadiness): void {
     if (this.isOpen(readiness)) {
       this.collapsed.add(readiness.id);
+      this.expanded.delete(readiness.id);
     } else {
       this.collapsed.delete(readiness.id);
+      this.expanded.add(readiness.id);
     }
   }
 

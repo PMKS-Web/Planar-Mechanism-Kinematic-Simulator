@@ -23,6 +23,7 @@ describe('why a mechanism will not run', () => {
     cylinderName: (id: string) => id,
     drivenRefusal: () => undefined,
     strokeWarning: () => undefined,
+    describeSpeed: () => '20.00 RPM CCW',
   };
 
   function checksFor(fixture: MechanismFixture, helpers = noHelpers) {

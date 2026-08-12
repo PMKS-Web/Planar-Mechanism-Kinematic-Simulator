@@ -11,12 +11,18 @@
           Mechanism {{ item.id }}
           <span class="chip" [class]="chipFor(item).kind">{{ chipFor(item).text }}</span>
         </span>
-        @if (item.checks.length > 0) {
-          <mat-icon>{{ isOpen(item) ? 'expand_less' : 'expand_more' }}</mat-icon>
-        }
+        <mat-icon>{{ isOpen(item) ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>
 
       @if (isOpen(item)) {
+        <div class="factGrid">
+          @for (fact of item.facts; track fact.label) {
+            <div class="fact">
+              <span class="factLabel">{{ fact.label }}</span>
+              <span class="factValue">{{ fact.value }}</span>
+            </div>
+          }
+        </div>
         <div class="checkList">
           @for (check of item.checks; track check.title) {
             <div class="check">

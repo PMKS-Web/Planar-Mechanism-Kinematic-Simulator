@@ -87,6 +87,30 @@
     }
   }
 
+  .factGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+    padding: 10px 15px 4px;
+  }
+
+  .fact {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .factLabel {
+    font-size: 11px;
+    color: rgba(0, 0, 0, 0.45);
+  }
+
+  .factValue {
+    font-size: 13px;
+    color: #2c2c2c;
+  }
+
   .checkList {
     padding: 4px 15px 14px;
   }

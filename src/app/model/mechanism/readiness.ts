@@ -22,10 +22,18 @@ export interface ReadinessCheck {
   action?: string;
 }
 
+/** A named number about a mechanism, for the overview grid. */
+export interface MechanismFact {
+  label: string;
+  value: string;
+}
+
 export interface MechanismReadiness {
   id: string;
   ready: boolean;
   checks: ReadinessCheck[];
+  /** What this mechanism *is*, for a reader whose question is not "why is it broken". */
+  facts: MechanismFact[];
 }
 
 /** The two strings only the service can produce, passed in rather than reached for. */
@@ -36,6 +44,8 @@ export interface ReadinessHelpers {
   drivenRefusal(partition: MechanismPartition): string | undefined;
   /** The cylinder-cannot-use-its-whole-stroke warning for this mechanism. */
   strokeWarning(partition: MechanismPartition): string | undefined;
+  /** This mechanism's input speed, in the units the panel shows it in. */
+  describeSpeed(partition: MechanismPartition): string;
 }
 
 const names = (joints: Joint[]): string =>
@@ -175,7 +185,55 @@ export function readinessOf(
     id: partition.id,
     ready: mechanism.isMechanismValid() && checks.every((check) => check.state !== 'blocker'),
     checks,
+    facts: factsOf(partition, mechanism, helpers),
   };
+}
+
+/**
+ * What a mechanism is, as opposed to what is wrong with it.
+ *
+ * A reader who has just been told their linkage is ready still has questions —
+ * which joint drives it, how long a cycle takes, whether it goes round or backs
+ * up — and until now the app answered none of them anywhere.
+ */
+function factsOf(
+  partition: MechanismPartition,
+  mechanism: Mechanism,
+  helpers: ReadinessHelpers
+): MechanismFact[] {
+  const driven = partition.joints.find((joint) => joint instanceof RealJoint && joint.input) as
+    RealJoint | undefined;
+  const moving = partition.links.length;
+  const dof = mechanism.dof;
+  const facts: MechanismFact[] = [
+    { label: 'Degrees of freedom', value: Number.isFinite(dof) ? String(dof) : '—' },
+    { label: 'Links / joints', value: `${moving} / ${partition.joints.length}` },
+    { label: 'Driven joint', value: driven ? driven.name || driven.id : 'Not set' },
+  ];
+  if (mechanism.isMechanismValid()) {
+    facts.push({ label: 'Input speed', value: helpers.describeSpeed(partition) });
+    facts.push({ label: 'Cycle time', value: `${mechanism.cyclePeriod.toFixed(2)} s` });
+    facts.push({
+      label: 'Motion',
+      value: reciprocates(mechanism) ? 'Reciprocating' : 'Continuous',
+    });
+  }
+  return facts;
+}
+
+/**
+ * Out and back, rather than round and round.
+ *
+ * Taken from the sign of the recorded input velocity, which the solver flips at
+ * each reversal — so a cycle containing both signs is one that turned around.
+ *
+ * An earlier version compared a joint's position at the start and the midpoint,
+ * which read every mechanism as reciprocating: the joint it sampled was the
+ * first in the frame, and the first joint is usually ground, which never moves.
+ */
+function reciprocates(mechanism: Mechanism): boolean {
+  const speeds = mechanism.inputAngularVelocities;
+  return speeds.some((speed) => speed > 0) && speeds.some((speed) => speed < 0);
 }
 
 /** One condition force analysis needs, and whether the drawing meets it. */

@@ -117,17 +117,12 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
   /**
    * Out-and-back rather than round and round.
    *
-   * Read off the samples rather than recomputed: a reversing input is sampled
-   * out to its limit and back again as one cycle, so its last sample returns to
-   * where the first one started. A full rotation does not.
+   * From the sign of the recorded input velocity, which the solver flips at
+   * each reversal: a cycle holding both signs is one that turned around.
    */
   private isReciprocating(mechanism: Mechanism): boolean {
-    const frames = mechanism.joints;
-    if (frames.length < 3) return false;
-    const first = frames[0][0];
-    const middle = frames[Math.floor(frames.length / 2)][0];
-    if (!first || !middle) return false;
-    return Math.hypot(middle.x - first.x, middle.y - first.y) < 1e-6;
+    const speeds = mechanism.inputAngularVelocities;
+    return speeds.some((speed) => speed > 0) && speeds.some((speed) => speed < 0);
   }
 
   private drivenSpeedOf(mechanism: Mechanism, index: number): number {

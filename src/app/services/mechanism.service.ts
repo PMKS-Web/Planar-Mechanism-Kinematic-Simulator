@@ -1643,6 +1643,19 @@ export class MechanismService {
           return typeof refusal === 'string' ? refusal : undefined;
         },
         strokeWarning: (part) => this.strokeWarningFor(part),
+        describeSpeed: (part) => {
+          const driven = part.joints.find((joint) => joint instanceof RealJoint && joint.input) as
+            RealJoint | undefined;
+          if (!driven) {
+            return 'Not set';
+          }
+          const signed = this.driveSpeedOf(driven);
+          const magnitude = Math.abs(signed).toFixed(2);
+          const way = signed < 0 ? 'CW' : 'CCW';
+          return driven instanceof PrisJoint
+            ? `${magnitude} ${this.nup.unitLabel(this.settingsService.lengthUnit.value)}/s`
+            : `${magnitude} RPM ${way}`;
+        },
       })
     );
   }
