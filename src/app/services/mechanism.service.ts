@@ -23,6 +23,12 @@ import {
   partitionMechanisms,
   UnassignedGeometry,
 } from '../model/mechanism/mechanism-partition';
+import {
+  describeUnassigned,
+  MechanismReadiness,
+  readinessOf,
+  UnassignedReport,
+} from '../model/mechanism/readiness';
 import { ToolbarComponent } from '../component/toolbar/toolbar.component';
 import { InstantCenter } from '../model/instant-center';
 import {
@@ -1579,6 +1585,40 @@ export class MechanismService {
    *
    * Returns nothing when the mechanism is fine.
    */
+  readinessOfEachMechanism(): MechanismReadiness[] {
+    return this.partitions.map((partition, index) =>
+      readinessOf(partition, this.mechanisms[index], {
+        cylinderName: (sliderId) => {
+          const found = this.sealedStructures().find((c) => c.slider.id === sliderId);
+          return found ? this.cylinderName(found) : sliderId;
+        },
+        drivenRefusal: (part) => {
+          const driven = part.joints.find((joint) => joint instanceof RealJoint && joint.input);
+          if (!driven) {
+            return undefined;
+          }
+          const refusal = describeActuator(driven);
+          return typeof refusal === 'string' ? refusal : undefined;
+        },
+        strokeWarning: (part) => this.strokeWarningFor(part),
+      })
+    );
+  }
+
+  /** What to say about geometry that is in no mechanism. */
+  unassignedReports(): UnassignedReport[] {
+    return describeUnassigned(this.unassigned);
+  }
+
+  /** How many blockers stand between this drawing and a full set of animations. */
+  blockerCount(): number {
+    return this.readinessOfEachMechanism().reduce(
+      (total, readiness) =>
+        total + readiness.checks.filter((check) => check.state === 'blocker').length,
+      0
+    );
+  }
+
   invalidReason(): string | undefined {
     if (this.oneValidMechanismExists()) {
       return undefined;
@@ -1660,7 +1700,18 @@ export class MechanismService {
   private reachWarningCache: string | undefined;
 
   private computeCylinderReachWarning(): string | undefined {
+    return this.strokeWarningFor();
+  }
+
+  /**
+   * The first cylinder in `only` -- or in the whole drawing -- that the linkage
+   * stops before the barrel does.
+   */
+  private strokeWarningFor(only?: MechanismPartition): string | undefined {
     for (const cylinder of this.sealedStructures()) {
+      if (only && !only.joints.some((joint) => joint.id === cylinder.pin.id)) {
+        continue;
+      }
       // Each ram is measured against the frames of its own machine. Read from
       // another mechanism's cycle -- a different length, a different motion --
       // the travel below is a measurement of the wrong thing entirely.

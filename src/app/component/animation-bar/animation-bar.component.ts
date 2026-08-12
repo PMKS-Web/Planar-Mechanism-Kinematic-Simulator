@@ -85,11 +85,10 @@ export class AnimationBarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   maxTimeSteps() {
-    if (this.mechanismService.mechanisms.length === 0) {
-      return 0;
-    } else {
-      return this.mechanismService.mechanisms[0].joints.length - 1;
-    }
+    // The shared scrubber spans the longest running cycle in the drawing; a
+    // machine with a shorter one wraps inside it.
+    const master = this.mechanismService.masterMechanism();
+    return master ? master.joints.length - 1 : 0;
   }
 
   maxTime(): number {

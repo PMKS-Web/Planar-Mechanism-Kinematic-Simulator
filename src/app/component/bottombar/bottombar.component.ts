@@ -29,8 +29,13 @@ export class BottombarComponent {
    * the reason belongs.
    */
   get degreesOfFreedom(): string {
-    const dof = this.mechanismSrv.mechanisms[0]?.dof;
-    return typeof dof === 'number' && Number.isFinite(dof) ? String(dof) : '—';
+    // One number per machine, because a drawing can hold several and their
+    // mobilities are separate facts -- summing them would describe a mechanism
+    // that is not on the screen.
+    const each = this.mechanismSrv.mechanisms
+      .map((mechanism) => mechanism.dof)
+      .filter((dof) => typeof dof === 'number' && Number.isFinite(dof));
+    return each.length > 0 ? each.join(', ') : '—';
   }
 
   humanReadableString(value: GlobalUnit) {

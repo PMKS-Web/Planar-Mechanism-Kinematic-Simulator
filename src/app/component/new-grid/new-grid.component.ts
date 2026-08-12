@@ -519,8 +519,11 @@ export class NewGridComponent implements OnDestroy {
           );
           break;
         }
+        // Its own machine: a path can be drawn for a joint whose linkage
+        // solves, whatever the state of any other linkage in the drawing.
         let canTogglePath =
-          !(this.lastRightClick as RealJoint).ground && this.mechanismSrv.oneValidMechanismExists();
+          !(this.lastRightClick as RealJoint).ground &&
+          this.mechanismSrv.isPartSimulatable(this.lastRightClick as RealJoint);
 
         this.cMenuItems.push(
           new cMenuItem(
@@ -1991,12 +1994,12 @@ export class NewGridComponent implements OnDestroy {
   }
 
   getFirstPosCoords(link: Link) {
-    if (this.mechanismSrv.oneValidMechanismExists()) {
-      const jointIndex = this.mechanismSrv.joints.indexOf(link.joints[0]);
-      return this.mechanismSrv.mechanisms[0].joints[0][jointIndex];
-    } else {
-      return link.joints[0];
-    }
+    // The link's own machine, and its joint found by name. Indexing another
+    // mechanism's frames by this drawing's array position would label the link
+    // at some unrelated joint's coordinates.
+    const solved = this.mechanismSrv.mechanismContaining(link);
+    const anchor = link.joints[0];
+    return solved?.joints[0]?.find((candidate) => candidate.id === anchor.id) ?? anchor;
   }
 
   getFirstXPos(link: Link) {
@@ -2066,26 +2069,30 @@ export class NewGridComponent implements OnDestroy {
    */
   private guides(): Map<string, Guide> {
     const found = new Map<string, Guide>();
-    const mechanism = this.mechanismSrv.mechanisms[0];
-    const frames = mechanism?.isMechanismValid() ? mechanism.joints : undefined;
-    if (!frames?.length) return found;
+    // Every machine in the drawing, because a rail belongs to whichever one
+    // slides along it. Reading one mechanism's frames would leave the guides of
+    // every other linkage undrawn.
+    for (const mechanism of this.mechanismSrv.mechanisms) {
+      const frames = mechanism?.isMechanismValid() ? mechanism.joints : undefined;
+      if (!frames?.length) continue;
 
-    const rest = frames[0];
-    for (const joint of rest) {
-      if (!(joint instanceof PrisJoint) || !joint.ground) continue;
-      const angle = joint.slotAngle;
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-      let lo = 0;
-      let hi = 0;
-      for (const frame of frames) {
-        const at = frame.find((member) => member.id === joint.id);
-        if (!at) continue;
-        const along = (at.x - joint.x) * cos + (at.y - joint.y) * sin;
-        lo = Math.min(lo, along);
-        hi = Math.max(hi, along);
+      const rest = frames[0];
+      for (const joint of rest) {
+        if (!(joint instanceof PrisJoint) || !joint.ground) continue;
+        const angle = joint.slotAngle;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        let lo = 0;
+        let hi = 0;
+        for (const frame of frames) {
+          const at = frame.find((member) => member.id === joint.id);
+          if (!at) continue;
+          const along = (at.x - joint.x) * cos + (at.y - joint.y) * sin;
+          lo = Math.min(lo, along);
+          hi = Math.max(hi, along);
+        }
+        found.set(joint.id, { x: joint.x, y: joint.y, lo, hi });
       }
-      found.set(joint.id, { x: joint.x, y: joint.y, lo, hi });
     }
     return found;
   }

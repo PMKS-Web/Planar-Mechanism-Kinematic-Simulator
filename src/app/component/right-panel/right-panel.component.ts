@@ -160,7 +160,7 @@ export class RightPanelComponent {
 
   printMechanism() {
     this.analytics.logEvent('debug_print_mechanism');
-    console.log(this.mechanismService.mechanisms[0]);
+    console.log(this.mechanismService.mechanisms);
     console.log(this.mechanismService.links);
     console.log(this.mechanismService.joints);
   }

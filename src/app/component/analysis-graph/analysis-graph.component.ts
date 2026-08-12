@@ -24,6 +24,7 @@ import {
 } from 'apexcharts';
 import { KinematicsSolver } from 'src/app/model/mechanism/kinematic-solver';
 import { ForceAnalysisMode } from 'src/app/model/mechanism/force-solver';
+import { Mechanism } from 'src/app/model/mechanism/mechanism';
 import { AngleUnit, ForceUnit, LengthUnit, roundNumber } from '../../model/utils';
 import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../../model/unit-conversions';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -372,7 +373,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       this.chart.clearAnnotations();
       return;
     }
-    const timeSeconds = this.mechanismService.mechanisms[0]?.timeNum[timeIndex] ?? timeIndex;
+    const timeSeconds = this.mechanismFor(this.mechPart)?.timeNum[timeIndex] ?? timeIndex;
     if (
       this.seriesCheckboxForm.value.x ||
       this.seriesCheckboxForm.value.y ||
@@ -474,15 +475,16 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     return null;
   }
 
-  private pointTime(point: unknown, index: number): number {
+  private pointTime(point: unknown, index: number, times: number[]): number {
     if (point && typeof point === 'object' && 'x' in point) {
       const value = (point as { x: unknown }).x;
       if (typeof value === 'number' && Number.isFinite(value)) return value;
     }
-    return this.mechanismService.mechanisms[0]?.timeNum[index] ?? index;
+    return times[index] ?? index;
   }
 
   buildCSVContent(): string {
+    const times = this.mechanismFor(this.mechPart)?.timeNum ?? [];
     const xSeries = this.chartOptions.series?.find((s) => s.name === 'X');
     const ySeries = this.chartOptions.series?.find((s) => s.name === 'Y');
     const zSeries = this.chartOptions.series?.find((s) => s.name === 'Z');
@@ -495,7 +497,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       csvContent += 'Time (seconds),Time (steps),' + fileName + '\n';
       for (let i = 0; i < timeSteps; i++) {
         csvContent +=
-          this.pointTime(zSeries?.data[i], i) +
+          this.pointTime(zSeries?.data[i], i, times) +
           ',' +
           i +
           ',' +
@@ -506,7 +508,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       csvContent += 'Time (seconds),Time (steps),X ' + yAxisUnit + ',Y ' + yAxisUnit + '\n';
       for (let i = 0; i < timeSteps; i++) {
         csvContent +=
-          this.pointTime(xSeries?.data[i], i) +
+          this.pointTime(xSeries?.data[i], i, times) +
           ',' +
           i +
           ',' +
@@ -519,7 +521,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       csvContent += 'Time (seconds),Time (steps),' + fileName + ', X-comp,Y-comp\n';
       for (let i = 0; i < timeSteps; i++) {
         csvContent +=
-          this.pointTime(zSeries.data[i], i) +
+          this.pointTime(zSeries.data[i], i, times) +
           ',' +
           i +
           ',' +
@@ -547,6 +549,21 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     link.remove();
   }
 
+  /**
+   * The machine that owns the part being graphed.
+   *
+   * A drawing holds several independent mechanisms, each with its own samples
+   * and its own clock, so the series, the time axis and the force analysis all
+   * have to come from this part's machine rather than from whichever one was
+   * built first. A part in a floating chain belongs to none, and graphs nothing.
+   */
+  private mechanismFor(mechPart: string): Mechanism | undefined {
+    const part =
+      this.mechanismService.joints.find((joint) => joint.id === mechPart) ??
+      this.mechanismService.links.find((link) => link.id === mechPart);
+    return part ? this.mechanismService.mechanismContaining(part) : undefined;
+  }
+
   determineChart(analysis: string, analysisType: string, mechProp: string, mechPart: string) {
     try {
       this.buildChart(analysis, analysisType, mechProp, mechPart);
@@ -571,6 +588,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     mechProp: string,
     mechPart: string
   ): void {
+    const mechanism = this.mechanismFor(mechPart);
     let data1Title = '';
     let data2Title = '';
     let data3Title = '';
@@ -599,8 +617,8 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           case 'Input Torque':
           case 'Input Effort': {
             const mode: ForceAnalysisMode = analysisType === 'dynamic' ? 'dynamic' : 'static';
-            const effortKind = this.mechanismService.mechanisms[0]
-              .getForceAnalysis(mode)
+            const effortKind = mechanism
+              ?.getForceAnalysis(mode)
               .frames.find((frame) => frame.status === 'ok' && frame.inputEffort)
               ?.inputEffort?.kind;
             yAxisTitle =
@@ -783,7 +801,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     // ApexCharts/Safari can fail the entire chart when one exact toggle pose
     // contributes NaN or Infinity. A null point creates an intentional gap at
     // that singular timestep while preserving the rest of the series.
-    const times = this.mechanismService.mechanisms[0]?.timeNum ?? [];
+    const times = mechanism?.timeNum ?? [];
     const chartSeries = seriesData.map((series) => ({
       ...series,
       data: series.data.map((value, index) => ({
@@ -817,7 +835,10 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     let y = 0;
     let z = 0;
     const categories: string[] = [];
-    const mechanism = this.mechanismService.mechanisms[0];
+    const mechanism = this.mechanismFor(mechPart);
+    // A loose joint, or a chain that never reaches ground, is in no mechanism
+    // and so has nothing solved to plot.
+    if (!mechanism) return [[datum_X, datum_Y, datum_Z], categories];
     if (analysis === 'force') {
       const mode: ForceAnalysisMode = analysisType === 'dynamic' ? 'dynamic' : 'static';
       const result = mechanism.getForceAnalysis(mode);
@@ -895,9 +916,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
         // each internal model value divides by MODEL_SCALE for display in the
         // user's unit. Angular series carry no length and pass through.
         case 'Linear Joint Pos':
-          const jt = this.mechanismService.mechanisms[0].joints[index].find(
-            (j) => j.id === mechPart
-          );
+          const jt = mechanism.joints[index].find((j) => j.id === mechPart);
           x = (jt?.x ?? Number.NaN) / MODEL_SCALE;
           y = (jt?.y ?? Number.NaN) / MODEL_SCALE;
           datum_X.push(roundNumber(x, 3));
@@ -905,9 +924,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           break;
         case 'Linear Joint Vel':
           KinematicsSolver.determineKinematics(
-            this.mechanismService.mechanisms[0].joints[index],
-            this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
+            mechanism.joints[index],
+            mechanism.links[index],
+            mechanism.inputAngularVelocities[index]
           );
           [x, y] = vector(KinematicsSolver.jointVelMap.get(mechPart));
           x /= MODEL_SCALE;
@@ -919,9 +938,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           break;
         case 'Linear Joint Acc':
           KinematicsSolver.determineKinematics(
-            this.mechanismService.mechanisms[0].joints[index],
-            this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
+            mechanism.joints[index],
+            mechanism.links[index],
+            mechanism.inputAngularVelocities[index]
           );
           [x, y] = vector(KinematicsSolver.jointAccMap.get(mechPart));
           x /= MODEL_SCALE;
@@ -933,9 +952,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           break;
         case "Linear Link's CoM Pos":
           KinematicsSolver.determineKinematics(
-            this.mechanismService.mechanisms[0].joints[index],
-            this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
+            mechanism.joints[index],
+            mechanism.links[index],
+            mechanism.inputAngularVelocities[index]
           );
           [x, y] = vector(KinematicsSolver.linkCoMMap.get(mechPart));
           x /= MODEL_SCALE;
@@ -945,9 +964,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           break;
         case "Linear Link's CoM Vel":
           KinematicsSolver.determineKinematics(
-            this.mechanismService.mechanisms[0].joints[index],
-            this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
+            mechanism.joints[index],
+            mechanism.links[index],
+            mechanism.inputAngularVelocities[index]
           );
           [x, y] = vector(KinematicsSolver.linkVelMap.get(mechPart));
           x /= MODEL_SCALE;
@@ -959,9 +978,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           break;
         case "Linear Link's CoM Acc":
           KinematicsSolver.determineKinematics(
-            this.mechanismService.mechanisms[0].joints[index],
-            this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
+            mechanism.joints[index],
+            mechanism.links[index],
+            mechanism.inputAngularVelocities[index]
           );
           [x, y] = vector(KinematicsSolver.linkAccMap.get(mechPart));
           x /= MODEL_SCALE;
@@ -973,27 +992,27 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           break;
         case 'Angular Link Pos':
           KinematicsSolver.determineKinematics(
-            this.mechanismService.mechanisms[0].joints[index],
-            this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
+            mechanism.joints[index],
+            mechanism.links[index],
+            mechanism.inputAngularVelocities[index]
           );
           x = KinematicsSolver.linkAngPosMap.get(mechPart) ?? Number.NaN;
           datum_X.push(roundNumber(x, 3));
           break;
         case 'Angular Link Vel':
           KinematicsSolver.determineKinematics(
-            this.mechanismService.mechanisms[0].joints[index],
-            this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
+            mechanism.joints[index],
+            mechanism.links[index],
+            mechanism.inputAngularVelocities[index]
           );
           x = KinematicsSolver.linkAngVelMap.get(mechPart) ?? Number.NaN;
           datum_X.push(roundNumber(x, 3));
           break;
         case 'Angular Link Acc':
           KinematicsSolver.determineKinematics(
-            this.mechanismService.mechanisms[0].joints[index],
-            this.mechanismService.mechanisms[0].links[index],
-            this.mechanismService.mechanisms[0].inputAngularVelocities[index]
+            mechanism.joints[index],
+            mechanism.links[index],
+            mechanism.inputAngularVelocities[index]
           );
           x = KinematicsSolver.linkAngAccMap.get(mechPart) ?? Number.NaN;
           datum_X.push(roundNumber(x, 3));

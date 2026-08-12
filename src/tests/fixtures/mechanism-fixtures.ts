@@ -99,6 +99,12 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
     { id: 'M1', joints: service.joints, links: service.links, forces: service.forces },
   ];
   service.oneValidMechanismExists = () => mechanism.isMechanismValid();
+  // Borrowed rather than restated: the panels now ask which machine owns the
+  // part they are drawing, and the real lookup reads exactly the two fields
+  // set above, so a copy here could only drift away from it.
+  service.indexOfMechanismContaining =
+    MechanismService.prototype.indexOfMechanismContaining.bind(service);
+  service.mechanismContaining = MechanismService.prototype.mechanismContaining.bind(service);
 
   return { active, mechanism, service, settings };
 }

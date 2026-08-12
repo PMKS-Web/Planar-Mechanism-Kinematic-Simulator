@@ -13,7 +13,22 @@ import { ForceAnalysisMode, ForceAnalysisSeries, ForceSolver } from './force-sol
 import { roundNumber } from '../utils';
 import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../unit-conversions';
 
+/**
+ * Why a mechanism will not run. One of these, not a boolean, because the ways a
+ * linkage fails call for quite different things to be done about them.
+ */
+export type MechanismFailure =
+  | 'dangling-slider'
+  | 'mobility'
+  | 'not-driven'
+  | 'nothing-can-move'
+  | 'dead-position'
+  | 'cycle-never-closes'
+  | 'cylinder-has-no-travel';
+
 export class Mechanism {
+  private _failure: MechanismFailure | undefined;
+  private _unusableCylinder: string | undefined;
   private _joints: Joint[][] = [[]];
   private _links: Link[][] = [[]];
   private _forces: Force[][] = [[]];
@@ -100,21 +115,29 @@ export class Mechanism {
     const dangling = this._joints[0].some(
       (joint) => joint instanceof PrisJoint && joint.isDangling
     );
-    if (
-      //If DOF is 1 and at least one joint is an input joint
-      !dangling &&
-      this._dof === 1 &&
-      this._joints[0].findIndex((j) => {
-        if (!(j instanceof RealJoint)) {
-          return;
-        }
-        return j.input;
-      }) !== -1
-    ) {
+    const driven = this._joints[0].some((j) => j instanceof RealJoint && j.input);
+    // Ordered the way the fixes depend on each other, because this is also the
+    // order the panel reports them in: a slider with nothing to slide along has
+    // no mobility worth counting, and adding an input to a linkage whose
+    // mobility is wrong will not make it run.
+    if (dangling) {
+      this.setMechanismInvalid('dangling-slider');
+    } else if (this._dof !== 1) {
+      this.setMechanismInvalid('mobility');
+    } else if (!driven) {
+      this.setMechanismInvalid('not-driven');
+    } else {
       this._requiredLoops = LoopSolver.determineLoops(this._joints[0], this._links[0]);
       this.findFullMovementPos(inputAngVel);
-    } else {
-      this.setMechanismInvalid();
+      // The solver's static holds what *this* build found; read it now, before
+      // the next mechanism's build resets and overwrites it.
+      this._unusableCylinder = PositionSolver.unusableCylinderDrive;
+      // A sealed cylinder with no stroke emits no steps, so the failure above
+      // is already recorded -- as "nothing can move", which is true but says
+      // nothing a student can act on. Name the ram instead.
+      if (this._unusableCylinder !== undefined && !this.mechanismValid) {
+        this._failure = 'cylinder-has-no-travel';
+      }
     }
   }
 
@@ -376,7 +399,7 @@ export class Mechanism {
       // move. Returning quietly left it *reporting itself valid* with a single
       // frame: the play button enabled, nothing happening, and the panel with
       // nothing to say about why.
-      this.setMechanismInvalid();
+      this.setMechanismInvalid('nothing-can-move');
       return;
     }
     const desiredJoint = this.joints[0][desiredJointIndex];
@@ -548,7 +571,7 @@ export class Mechanism {
       } else {
         if ((!simForward && currentTimeStamp === 0) || falseTwice === 2) {
           //If we are here, the mechnism is in a toggle point
-          this.setMechanismInvalid();
+          this.setMechanismInvalid('dead-position');
           return;
         }
         falseTwice += 1;
@@ -567,7 +590,7 @@ export class Mechanism {
         startingPositionY - roundNumber(this._joints[currentTimeStamp][desiredJointIndex].y, 2)
       );
       if (currentTimeStamp === 750) {
-        this.setMechanismInvalid();
+        this.setMechanismInvalid('cycle-never-closes');
         return;
       }
     }
@@ -593,17 +616,43 @@ export class Mechanism {
     return this._timeNum.length > 1 ? this._timeNum[this._timeNum.length - 1] : 0;
   }
 
-  private setMechanismInvalid() {
+  private setMechanismInvalid(cause: MechanismFailure) {
     // TODO: Set all of the joints, links, force, instant center positions as empty
     this.joints = [[]];
     this.links = [[]];
     this.forces = [[]];
     this.requiredLoops = [];
     this.mechanismValid = false;
+    this._failure = cause;
   }
 
   public isMechanismValid(): boolean {
     return this.mechanismValid;
+  }
+
+  /**
+   * Why this mechanism will not run, or undefined if it will.
+   *
+   * Four quite different situations used to arrive at the same false: a shape
+   * nothing can move, a linkage locked at a dead position, a cycle that never
+   * comes back to where it started, and a mobility that is simply not one. The
+   * panel can only tell a student which of those they are looking at -- and so
+   * what to do about it -- if the solver says which one it hit.
+   */
+  get failure(): MechanismFailure | undefined {
+    return this._failure;
+  }
+
+  /**
+   * The cylinder whose barrel is too short to slide in at all, if any.
+   *
+   * Captured here rather than read from the solver's static afterwards: with
+   * several mechanisms built one after another, that static holds whatever the
+   * last one found, so a good linkage would inherit the complaint of a bad one
+   * built after it.
+   */
+  get unusableCylinder(): string | undefined {
+    return this._unusableCylinder;
   }
 
   get internalTriangleSimLinkMap(): Map<string, number[]> {

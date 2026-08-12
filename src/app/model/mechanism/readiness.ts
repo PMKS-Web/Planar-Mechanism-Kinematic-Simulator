@@ -1,0 +1,215 @@
+import { Joint, PrisJoint, RealJoint } from '../joint';
+import { Link } from '../link';
+import { canDrive } from '../actuator';
+import { Mechanism } from './mechanism';
+import { MechanismPartition, UnassignedGeometry } from './mechanism-partition';
+
+/**
+ * A blocker stops the mechanism running at all. A warning means it runs, and
+ * there is something about the result worth knowing before trusting it.
+ */
+export type CheckState = 'blocker' | 'warning';
+
+export interface ReadinessCheck {
+  state: CheckState;
+  /** A short sentence-case phrase naming the situation. */
+  title: string;
+  /** What is wrong and what to do about it. */
+  body: string;
+  /** The part at fault, so the panel can offer to go to it. */
+  at?: Joint | Link;
+  /** Title Case, because it labels a button. */
+  action?: string;
+}
+
+export interface MechanismReadiness {
+  id: string;
+  ready: boolean;
+  checks: ReadinessCheck[];
+}
+
+/** The two strings only the service can produce, passed in rather than reached for. */
+export interface ReadinessHelpers {
+  /** What to call a cylinder identified by its slider joint's id. */
+  cylinderName(sliderId: string): string;
+  /** Why this mechanism's driven joint cannot be driven, if it cannot. */
+  drivenRefusal(partition: MechanismPartition): string | undefined;
+  /** The cylinder-cannot-use-its-whole-stroke warning for this mechanism. */
+  strokeWarning(partition: MechanismPartition): string | undefined;
+}
+
+const names = (joints: Joint[]): string =>
+  joints.map((joint) => (joint as RealJoint).name || joint.id).join(', ');
+
+/**
+ * Everything standing between one mechanism and its animation, worst first.
+ *
+ * Ordered the way the fixes depend on one another rather than by severity,
+ * because a list a student works down should not send them to do something that
+ * cannot help yet: a slider with nothing to slide along has no mobility worth
+ * counting, and giving an input to a linkage whose mobility is wrong will not
+ * make it run. Each blocker names the way out, not just the wall.
+ */
+export function readinessOf(
+  partition: MechanismPartition,
+  mechanism: Mechanism,
+  helpers: ReadinessHelpers
+): MechanismReadiness {
+  const checks: ReadinessCheck[] = [];
+  const add = (check: ReadinessCheck) => checks.push(check);
+
+  switch (mechanism.failure) {
+    case 'dangling-slider': {
+      const dangling = partition.joints.filter(
+        (joint) => joint instanceof PrisJoint && joint.isDangling
+      );
+      add({
+        state: 'blocker',
+        title: 'A slider has nothing to slide along',
+        body: `Slider ${names(dangling)} has no slot and no ground, so there is no direction for it to move in. Drag it onto a link to cut a slot, or ground it to fix its direction.`,
+        at: dangling[0],
+        action: 'Go To Slider',
+      });
+      break;
+    }
+
+    case 'mobility': {
+      const dof = mechanism.dof;
+      if (Number.isNaN(dof)) {
+        add({
+          state: 'blocker',
+          title: 'Nothing holds this mechanism in place',
+          body: 'It has no ground, so every part of it is free to drift. Ground a joint, or ground a slider’s guide.',
+        });
+      } else if (dof > 1) {
+        add({
+          state: 'blocker',
+          title: `This mechanism has ${dof} degrees of freedom`,
+          body: `One input can drive only one degree of freedom. Ground another joint, or connect a free joint to a second link, until this reads 1.`,
+        });
+      } else {
+        add({
+          state: 'blocker',
+          title: `This mechanism has ${dof} degrees of freedom`,
+          body: 'It is over-constrained, so nothing can move at all. Remove a link, or unground a joint, until this reads 1.',
+        });
+      }
+      break;
+    }
+
+    case 'not-driven': {
+      // Point at a joint that could actually take the job, so the button is an
+      // answer rather than a place to start looking.
+      const candidate = partition.joints.find(
+        (joint) => joint instanceof RealJoint && canDrive(joint)
+      );
+      add({
+        state: 'blocker',
+        title: 'Nothing drives this mechanism',
+        body: candidate
+          ? `There is no time to solve against until one joint is driven. Right-click joint ${(candidate as RealJoint).name || candidate.id} and choose Add Input.`
+          : 'There is no time to solve against until one joint is driven. Right-click a grounded joint and choose Add Input.',
+        at: candidate,
+        action: candidate ? 'Go To Joint' : undefined,
+      });
+      break;
+    }
+
+    case 'cylinder-has-no-travel': {
+      const id = mechanism.unusableCylinder;
+      const subject = id ? `Cylinder ${helpers.cylinderName(id)}` : 'This cylinder';
+      add({
+        state: 'blocker',
+        title: 'A cylinder has no travel',
+        body: `${subject} has a barrel too short for its rod to slide in at all. Lengthen the cylinder, or reduce Object Scale — a larger scale draws everything on the rod bigger without lengthening the barrel.`,
+      });
+      break;
+    }
+
+    case 'dead-position':
+      add({
+        state: 'blocker',
+        title: 'This mechanism starts at a dead position',
+        body: 'The driven joint is at a limit of its travel and cannot turn away from it in either direction. Drag a joint to move the mechanism off the limit.',
+      });
+      break;
+
+    case 'cycle-never-closes':
+      add({
+        state: 'blocker',
+        title: 'The motion never repeats',
+        body: 'This mechanism never comes back to the pose it started in, so there is no cycle to animate. Check the link lengths — a loop that only just closes can wander instead of repeating.',
+      });
+      break;
+
+    case 'nothing-can-move':
+      add({
+        state: 'blocker',
+        title: 'Nothing moves when the input turns',
+        body: 'The driven joint cannot reach the rest of the mechanism, so no other joint has a position to solve for. Check that it is connected through links to the parts you expect it to move.',
+      });
+      break;
+  }
+
+  // Asked even of a mechanism the solver accepted: the toggle refuses a joint
+  // it cannot describe, but nothing stops a later edit adding a third body to a
+  // joint that was legitimately driven when it was switched on.
+  const refusal = helpers.drivenRefusal(partition);
+  if (refusal) {
+    const driven = partition.joints.find((joint) => joint instanceof RealJoint && joint.input);
+    add({
+      state: 'blocker',
+      title: 'The driven joint cannot be driven',
+      body: refusal,
+      at: driven,
+      action: driven ? 'Go To Joint' : undefined,
+    });
+  }
+
+  const stroke = helpers.strokeWarning(partition);
+  if (stroke) {
+    add({ state: 'warning', title: 'A cylinder cannot use its whole stroke', body: stroke });
+  }
+
+  return {
+    id: partition.id,
+    ready: mechanism.isMechanismValid() && checks.every((check) => check.state !== 'blocker'),
+    checks,
+  };
+}
+
+export interface UnassignedReport {
+  /** The part at fault, so the panel can offer to go to it. */
+  at?: Joint;
+  title: string;
+  body: string;
+}
+
+/**
+ * What to say about geometry that is in no mechanism.
+ *
+ * Split by cause, because the two have different ways out: a floating chain
+ * needs grounding, a joint on its own needs connecting.
+ */
+export function describeUnassigned(unassigned: UnassignedGeometry): UnassignedReport[] {
+  const reports: UnassignedReport[] = [];
+
+  unassigned.floatingChains.forEach((chain) => {
+    const sorted = [...chain.joints].sort((a, b) => a.id.localeCompare(b.id));
+    reports.push({
+      at: sorted[0],
+      title: `Joints ${names(sorted)} never reach ground`,
+      body: 'Nothing anchors this chain, so there is nothing for it to move against and no position to solve for. Ground one of its joints to make it a mechanism.',
+    });
+  });
+
+  unassigned.looseJoints.forEach((joint) => {
+    reports.push({
+      at: joint,
+      title: `Joint ${(joint as RealJoint).name || joint.id} has no link`,
+      body: 'A joint on its own is not part of any mechanism and is skipped by analysis. Attach a link to it, or delete it.',
+    });
+  });
+
+  return reports;
+}

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ForceAnalysisMode, ForceReactionIndex } from 'src/app/model/mechanism/force-solver';
+import { Mechanism } from 'src/app/model/mechanism/mechanism';
 import { PrisJoint, RealJoint } from 'src/app/model/joint';
 import { Cylinder, isCylinderInterior } from 'src/app/model/cylinder';
 import { LengthUnit } from 'src/app/model/unit-enums';
@@ -127,11 +128,23 @@ export class AnalysisPanelComponent {
     return this.settingsService.forceAnalysisMode.value;
   }
 
-  /** Joint id -> link ids and back, for the single mechanism-wide reaction set. */
-  private reactionIndex(): ForceReactionIndex | undefined {
-    if (!this.mechanismService.oneValidMechanismExists()) return undefined;
-    return this.mechanismService.mechanisms[0]?.getForceAnalysis(this.forceAnalysisMode())
-      .reactionIndex;
+  /** Joint id -> link ids and back, for one mechanism's reaction set. */
+  private reactionIndex(mechanism: Mechanism | undefined): ForceReactionIndex | undefined {
+    if (!mechanism?.isMechanismValid()) return undefined;
+    return mechanism.getForceAnalysis(this.forceAnalysisMode()).reactionIndex;
+  }
+
+  /**
+   * The machine the selected part belongs to. Reactions are a property of one
+   * machine, so a part in another one -- or in none, as an ungrounded chain is
+   * -- must not be answered out of whichever mechanism came first.
+   */
+  private mechanismFor(kind: 'joint' | 'link', partId: string): Mechanism | undefined {
+    const part =
+      kind === 'joint'
+        ? this.jointById(partId)
+        : this.mechanismService.links.find((link) => link.id === partId);
+    return part ? this.mechanismService.mechanismContaining(part) : undefined;
   }
 
   private linkName(linkId: string): string {
@@ -147,13 +160,13 @@ export class AnalysisPanelComponent {
    * changes; the template reads them on every change-detection pass.
    */
   private cachedRows(kind: 'joint' | 'link', partId: string): ForceAnalysisRow[] {
-    const mechanism = this.mechanismService.mechanisms[0];
+    const mechanism = this.mechanismFor(kind, partId);
     const key = `${kind}|${partId}|${this.forceAnalysisMode()}`;
     if (this.rowCache?.key === key && this.rowCache.mechanism === mechanism) {
       return this.rowCache.rows;
     }
 
-    const index = this.reactionIndex();
+    const index = this.reactionIndex(mechanism);
     let rows: ForceAnalysisRow[] = [];
     if (index && partId) {
       rows =
