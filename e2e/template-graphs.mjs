@@ -445,14 +445,15 @@ for (const id of IDS) {
     }
     notes.push(`joints ${moving.join(',')}`);
 
-    // Open Analyze once; the expansion state survives changing the selection.
+    // Open the Kinematic mode once; the expansion state survives changing the
+    // selection.
     await selectJoint(moving[0]);
     const analyzeOpen = await page
       .locator('app-analysis-panel #analysisWrapper')
       .first()
       .isVisible()
       .catch(() => false);
-    if (!analyzeOpen) await page.locator('button.leftButton').nth(2).click();
+    if (!analyzeOpen) await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
     await page.waitForTimeout(900);
     await openKinematicRows();
 

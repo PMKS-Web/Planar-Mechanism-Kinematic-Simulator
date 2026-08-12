@@ -94,15 +94,17 @@ try {
   await shot(page, 'loaded.png');
 
   // DOF 1 is the whole of task 3.3. Unwelded this linkage reports 2 and refuses
-  // to simulate at all, so the footer is the cheapest end-to-end proof the
-  // assembly merge reached the running app.
-  const bodyText = await page.evaluate(() => document.body.innerText);
-  const dofMatch = bodyText.match(/Degrees of Freedom[^0-9-]*(-?\d+)/i);
-  record('the app reports one degree of freedom', dofMatch?.[1] === '1', {
-    reported: dofMatch?.[1] ?? '(not found)',
-  });
+  // to simulate at all, so the mobility the running app arrived at is the
+  // cheapest end-to-end proof the assembly merge reached it. The status strip
+  // no longer prints the number, so it is read off the solved mechanism.
+  const reportedDof = await page.evaluate(
+    () =>
+      ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.mechanisms[0]?.dof ??
+      null
+  );
+  record('the app reports one degree of freedom', reportedDof === 1, { reported: reportedDof });
 
-  await page.locator('button:has-text("Analyze")').first().click({ force: true });
+  await page.locator('.tabButton', { hasText: 'Kinematic' }).click({ force: true });
   await page.waitForTimeout(900);
 
   const play = page.locator('.playButton').first();

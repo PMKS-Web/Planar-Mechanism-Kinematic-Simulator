@@ -52,7 +52,15 @@ const state = () =>
     return {
       joints: [...document.querySelectorAll('[id^="joint_"]')].map((n) => n.id.slice(6)).join(''),
       skins: document.querySelectorAll('.cylinder-mark').length,
-      dof: (document.body.textContent.match(/Degrees of Freedom:\s*(-?[\d.]+|—)/) ?? [])[1],
+      // The status strip stopped printing the mobility, so it is read from the
+      // machines themselves -- one number each, and a dash where there is none,
+      // exactly as the footer used to spell it.
+      dof: (() => {
+        const each = grid.mechanismSrv.mechanisms
+          .map((mechanism) => mechanism.dof)
+          .filter((value) => typeof value === 'number' && Number.isFinite(value));
+        return each.length > 0 ? each.join(', ') : '—';
+      })(),
       links: grid.mechanismSrv.links.map((link) => link.id),
       nan: [...document.querySelectorAll('svg *')].filter((node) =>
         [...node.attributes].some((a) => /NaN/.test(a.value))

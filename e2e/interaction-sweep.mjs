@@ -81,13 +81,17 @@ const signature = () =>
     const forces = mech.forces
       .map((f) => `${f.id ?? f.name}:${f.local}:${f.startCoord.x.toFixed(1)}`)
       .join('|');
-    const dofText = (document.body.textContent.match(/Degrees of Freedom:\s*(-?[\d.]+|NaN|—)/) ??
-      [])[1];
+    // The status strip stopped printing the mobility, so it comes off the
+    // machines. NaN is kept as its own flag: it is the thing worth catching,
+    // and a joined string would have to spell it to say so.
+    const dofs = mech.mechanisms.map((mechanism) => mechanism.dof);
+    const dofText = dofs.length > 0 ? dofs.join(', ') : null;
     return {
       key: `${joints}//${links}//${forces}`,
       joints: mech.joints.length,
       links: mech.links.length,
-      dof: dofText ?? null,
+      dof: dofText,
+      dofNaN: dofs.some((value) => Number.isNaN(value)),
       skins: document.querySelectorAll('.cylinder-mark').length,
       drawnJoints: document.querySelectorAll('[id^="joint_"]').length,
       nan: [...document.querySelectorAll('svg *')].filter((node) =>
@@ -233,7 +237,7 @@ for (const id of MECHANISMS) {
       if (errors.length) note({ what: `threw: ${errors[0]}`, where, kind: 'threw' });
       if (after.nan > before.nan)
         note({ what: `put ${after.nan - before.nan} NaN into the drawing`, where, kind: 'nan' });
-      if (after.dof === 'NaN') note({ what: 'left degrees of freedom NaN', where, kind: 'nan' });
+      if (after.dofNaN) note({ what: 'left degrees of freedom NaN', where, kind: 'nan' });
       if (before.joints > 0 && after.joints === 0 && !/Delete/.test(entry.label))
         note({ what: 'emptied the mechanism', where, kind: 'destroyed' });
       if (before.skins > after.skins && !/Delete/.test(entry.label))
@@ -243,11 +247,12 @@ for (const id of MECHANISMS) {
         note({ what: 'did nothing, and said nothing', where, kind: 'silent' });
 
       // Back to where we were, so the next action starts from the same place.
+      // Undo moved out of the left panel and into the top strip.
       await page.evaluate(() => {
         const grid = ng.getComponent(document.querySelector('app-new-grid'));
-        const tabs = document.querySelector('app-left-tabs');
-        const left = tabs && ng.getComponent(tabs);
-        if (left && left.canUndo()) left.handleUndo();
+        const strip = document.querySelector('app-top-bar');
+        const top = strip && ng.getComponent(strip);
+        if (top && top.canUndo()) top.undo();
         else grid.mechanismSrv.updateMechanism(false);
       });
       await page.waitForTimeout(400);

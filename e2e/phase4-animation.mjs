@@ -90,11 +90,32 @@ for (const mech of MECHANISMS) {
   await page.waitForSelector('#sliderHolder', { state: 'attached', timeout: 15000 });
   await page.waitForTimeout(700);
 
-  // The animation bar is only rendered on the Analyze tab.
-  await page.getByText('Analyze', { exact: true }).first().click();
+  // The transport is only rendered in an analysis mode.
+  await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
   await page.waitForTimeout(1200);
+  // A mechanism that cannot be analysed used to get a disabled transport; the
+  // mode now refuses to open at all, so an absent play button is the same
+  // failure and has to be read as one rather than waited on.
   const play = page.locator('.playButton').first();
-  if (!checkThat(`${mech.name}: the mechanism plays`, !(await play.isDisabled()))) continue;
+  const offered = (await play.count()) === 1 && !(await play.isDisabled());
+  if (
+    !checkThat(
+      `${mech.name}: the mechanism plays`,
+      offered,
+      offered
+        ? ''
+        : (
+            (await page
+              .locator('app-analysis-setup')
+              .innerText()
+              .catch(() => '')) || 'no transport, no setup drawer'
+          )
+            .replace(/\s+/g, ' ')
+            .slice(0, 200)
+    )
+  ) {
+    continue;
+  }
   await play.click();
 
   const frames = [];

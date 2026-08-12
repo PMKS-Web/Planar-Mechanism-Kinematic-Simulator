@@ -1,5 +1,5 @@
 // Phase 1 drag foundation: joint snap/merge, whole-link drag, one undo entry
-// per gesture, click-without-nudge, and Analyze mode refusing every drag.
+// per gesture, click-without-nudge, and the analysis modes refusing every drag.
 // See docs/joint-types-plan.md, Phase 1.
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
@@ -324,11 +324,14 @@ await safe('dragging a link body translates all of its joints', async () => {
     { A: [adx, ady], D: [ddx, ddy] }
   );
 
-  const dof = await page.evaluate(() => {
-    const match = document.body.innerText.match(/Degrees of Freedom:\s*([^\n]+)/i);
-    return match ? match[1].trim() : null;
-  });
-  record('the mechanism is still solvable after the drag', dof === '1', { dof });
+  // The status strip stopped printing the mobility, so it comes off the machine
+  // the drag left behind.
+  const dof = await page.evaluate(
+    () =>
+      ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.mechanisms[0]?.dof ??
+      null
+  );
+  record('the mechanism is still solvable after the drag', dof === 1, { dof });
 });
 
 // --- 4. A click selects without nudging -----------------------------------
@@ -356,11 +359,11 @@ await safe('a plain click selects without moving anything', async () => {
   record('the click earned no undo entry', undoEnabled === false, { undoEnabled });
 });
 
-// --- 5. Analyze mode refuses drags ---------------------------------------
-await safe('Analyze mode refuses to drag a joint or a link', async () => {
+// --- 5. An analysis mode refuses drags ------------------------------------
+await safe('an analysis mode refuses to drag a joint or a link', async () => {
   await loadFourBar(page);
   const before = await jointState(page);
-  await page.locator('button.leftButton', { hasText: 'Analyze' }).first().click();
+  await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
   await page.waitForTimeout(800);
 
   const b = before.find((j) => j.id === 'B');
@@ -376,7 +379,7 @@ await safe('Analyze mode refuses to drag a joint or a link', async () => {
   await shot(page, 'analyze-drag-refused.png');
 
   record(
-    'the joint did not move in Analyze mode',
+    'the joint did not move in an analysis mode',
     Math.abs(afterB.modelX - b.modelX) < 0.001 && Math.abs(afterB.modelY - b.modelY) < 0.001,
     { before: [b.modelX, b.modelY], after: [afterB.modelX, afterB.modelY] }
   );
@@ -787,20 +790,32 @@ await safe('welding a pair that is already pinned goes through with a warning', 
       before: closed,
       after,
     });
-    const dof = await page.evaluate(() => {
-      const match = document.body.innerText.match(/Degrees of Freedom:\s*(-?[\d.]+|—)/i);
-      return match ? match[1] : null;
-    });
+    const dof = await page.evaluate(
+      () =>
+        ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.mechanisms[0]?.dof ??
+        null
+    );
     // Fusing the three bars at C ties D to E, and ground already ties them, so
     // this weld costs the mechanism its freedom -- it comes back at -2.
     record('the weld over-constrains, as this pairing should', Number(dof) < 0, { dof });
-    // And the app says so through the degrees-of-freedom readout rather than a
-    // snackbar. The check this replaced wanted a snackbar about a redundant
-    // pin; there is no such message, and the standing readout plus the Analyze
-    // panel's "over-constrained and cannot move" is where a user finds out.
-    // Asserted as it is rather than as it might ideally be: a transient warning
-    // at the moment of the weld would be an addition, not a fix.
-    record('the readout reports it rather than staying at one', dof !== '1', { dof, note });
+    // And the app has to say so somewhere a user will meet it. The check this
+    // replaced wanted a snackbar about a redundant pin; there is none, and the
+    // standing footer that used to print the number has been deleted. What is
+    // left is the Analysis setup drawer, which is what pressing an analysis
+    // mode now opens when the mechanism will not run -- so that is where the
+    // number is read back from.
+    await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+    await page.waitForTimeout(800);
+    const drawer = await page
+      .locator('app-analysis-setup')
+      .innerText()
+      .catch(() => '');
+    const reported = drawer.match(/Degrees of freedom\s*\n?\s*(-?[\d.]+)/i)?.[1] ?? null;
+    record('the app reports it rather than leaving the reader at one', reported === String(dof), {
+      dof,
+      reported,
+      note,
+    });
   }
 });
 

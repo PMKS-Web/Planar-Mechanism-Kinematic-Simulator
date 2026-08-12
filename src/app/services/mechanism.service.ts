@@ -2611,9 +2611,24 @@ export class MechanismService {
     const sampleCount = this.masterMechanism()?.joints.length ?? 0;
     progress = Math.min(Math.max(progress, 0), Math.max(sampleCount - 1, 0));
 
-    // Set the step before announcing it: subscribers read the drawn time back off
-    // the service, so it has to be current by the time they are notified.
+    // Set the step *and the running flag* before announcing it: subscribers
+    // read the drawn time back off the service, so both have to be current by
+    // the time they are notified.
+    //
+    // The flag used to be applied twenty lines further down, which meant a
+    // caller stopping playback -- leaving an analysis mode does exactly that,
+    // with animate(0, false) -- notified its subscribers while the service
+    // still believed it was playing. currentTimeSeconds() then answered with
+    // the playback clock instead of the time of sample zero, and the readout
+    // kept showing the time the mechanism had been left at while the mechanism
+    // itself had rewound.
     this.mechanismTimeStep = progress;
+    if (animationState !== undefined) {
+      AnimationBarComponent.animate = animationState;
+      if (!animationState) {
+        this.playbackTimeSeconds = this.timeAtStep(progress);
+      }
+    }
     this.onMechPositionChange.next(progress);
     // Paths are drawn whenever there is a solved cycle to draw them from,
     // including at rest.
@@ -2628,9 +2643,6 @@ export class MechanismService {
     // hiding it until the user presses play is hiding the thing they just
     // switched on.
     this.showPathHolder = this.oneValidMechanismExists();
-    if (animationState !== undefined) {
-      AnimationBarComponent.animate = animationState;
-    }
     if (sampleCount === 0 || this.masterMechanism()!.joints[progress].length === 0) {
       this.playbackClockMs = null;
       return;

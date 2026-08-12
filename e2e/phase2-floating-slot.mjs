@@ -98,8 +98,8 @@ try {
   await shot(page, 'loaded.png');
 
   // Animate and confirm the lever actually swings.
-  // Playback and the analysis output both live behind the Analyze tab.
-  await page.locator('button:has-text("Analyze")').first().click({ force: true });
+  // Playback and the analysis output both live behind the Kinematic mode.
+  await page.locator('.tabButton', { hasText: 'Kinematic' }).click({ force: true });
   await page.waitForTimeout(900);
   await shot(page, 'analyze.png');
 

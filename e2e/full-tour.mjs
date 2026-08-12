@@ -11,7 +11,7 @@ await fs.mkdir(screenshotDir, { recursive: true });
 const chromePath =
   process.env.PMKS_CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const userDataDir = `/tmp/pmks-playwright-profile-${Date.now()}`;
-const baseUrl = process.env.PMKS_URL || 'http://127.0.0.1:4200/';
+const baseUrl = process.env.PMKS_BASE_URL || process.env.PMKS_URL || 'http://127.0.0.1:4200/';
 const verificationQuery =
   '0P.SS.K,0.101.MA,A,0wS,0bg,0.GB,B,0gW,EE,0.GC,C,Oi,6k,0.GD,D,03m,_g,0.GE,E,1FO,1I_,0.GF,F,1-C,qM,0.KG,G,1oO,0ss,0..YRAB,AB,Fe,Fe,0oU,0Bk,c5cae9,A,B,,.YRBCD,BCD,Fe,Fe,07C,Rt,303e9f,B,C,D,,.YRDE,DE,Fe,Fe,bq,18q,0d125a,D,E,,.YREF,EF,Fe,Fe,1dI,13g,B2DFDB,E,F,,.YRFCG,FCG,Fe,Fe,1Om,1Q,26A69A,F,C,G,,...JGp';
 const runPrefix = process.env.RUN_PREFIX || 'tour';
@@ -139,32 +139,41 @@ async function clickByText(page, re, label) {
   return false;
 }
 
-async function clickToolbar(page, labelText) {
-  return await clickFirst(
-    page,
-    [
-      `button:has-text("${labelText}")`,
-      `[role=button]:has-text("${labelText}")`,
-      `text="${labelText}"`,
-    ],
-    labelText
-  );
+/**
+ * The file actions — Templates, Save, Share, Settings, Help — left the toolbar
+ * for the hamburger menu, so each of them is now two presses.
+ */
+async function clickProjectMenu(page, labelText) {
+  await page.locator('.topStrip .iconButton').first().click();
+  const item = page.locator('.projectMenu .menuItem', { hasText: labelText }).first();
+  if (!(await item.isVisible().catch(() => false))) {
+    recordIssue(`Project menu has no "${labelText}" entry`, { severity: 'high' });
+    await page.keyboard.press('Escape');
+    return false;
+  }
+  await item.click();
+  events.push({ action: 'click', label: labelText, selector: '.projectMenu .menuItem' });
+  return true;
 }
 
 async function checkLayout(page, label) {
-  const state = await page.evaluate(
-    (snapshotLabel) => ({
+  const state = await page.evaluate((snapshotLabel) => {
+    // The status strip stopped printing the mobility, so a NaN one is asked of
+    // the machines instead of read off the screen.
+    const host = document.querySelector('app-new-grid');
+    const service = host && window.ng ? window.ng.getComponent(host).mechanismSrv : null;
+    return {
       label: snapshotLabel,
       text: document.body.innerText,
       scrollWidth: document.documentElement.scrollWidth,
       clientWidth: document.documentElement.clientWidth,
       innerWidth,
       visibleModal: !!document.querySelector('.mat-mdc-dialog-container, .introjs-tooltip'),
-    }),
-    label
-  );
-  if (/Degrees of Freedom:\s*NaN/i.test(state.text)) {
-    recordIssue('Degrees of Freedom displays NaN', { severity: 'medium', label });
+      dofNaN: !!service && service.mechanisms.some((mechanism) => Number.isNaN(mechanism.dof)),
+    };
+  }, label);
+  if (state.dofNaN) {
+    recordIssue('Degrees of freedom came out NaN', { severity: 'medium', label });
   }
   if (state.scrollWidth > state.clientWidth + 2) {
     recordIssue('Page has horizontal overflow', {
@@ -242,7 +251,7 @@ await safeStep('initial load', async () => {
 const snapshots = [await appSnapshot(page, 'initial')];
 
 await safeStep('open templates/library', async () => {
-  await clickToolbar(page, 'Templates');
+  await clickProjectMenu(page, 'Templates');
   await page.waitForTimeout(700);
   await shot(page, '02-template-or-library.png');
   snapshots.push(await appSnapshot(page, 'template/library'));
@@ -277,13 +286,13 @@ await safeStep('open templates/library', async () => {
 });
 
 await safeStep('toolbar controls and project actions', async () => {
-  await clickToolbar(page, 'Share Project');
+  await clickProjectMenu(page, 'Share Project');
   await page.waitForTimeout(500);
   await shot(page, '03-share-url.png');
   await page.keyboard.press('Escape').catch(() => {});
 
   const downloadPromise = page.waitForEvent('download', { timeout: 3000 }).catch(() => null);
-  await clickToolbar(page, 'Save');
+  await clickProjectMenu(page, 'Save');
   const download = await downloadPromise;
   if (download) {
     events.push({ action: 'download', suggestedFilename: download.suggestedFilename() });
@@ -307,13 +316,12 @@ await safeStep('load verification mechanism from shared URL', async () => {
 });
 
 await safeStep('left panels edit analysis synthesis', async () => {
-  const leftButtons = page.locator('button.leftButton');
-  for (const [name, index] of [
-    ['analysis', 0],
-    ['edit', 1],
-    ['synthesis', 2],
+  for (const [name, mode] of [
+    ['analysis', 'Kinematic'],
+    ['edit', 'Edit'],
+    ['synthesis', 'Synthesis'],
   ]) {
-    await leftButtons.nth(index).click();
+    await page.locator('.tabButton', { hasText: mode }).click();
     await page.waitForTimeout(700);
     await shot(page, `04-panel-${name}.png`);
     snapshots.push(await appSnapshot(page, `panel ${name}`));
@@ -322,7 +330,7 @@ await safeStep('left panels edit analysis synthesis', async () => {
 
 await safeStep('settings and equations panels', async () => {
   for (const name of ['Settings', 'Help / Feedback']) {
-    await clickToolbar(page, name);
+    await clickProjectMenu(page, name);
     await page.waitForTimeout(700);
     await shot(page, `05-right-${name.toLowerCase().replace(/[^a-z]+/g, '-')}.png`);
     snapshots.push(await appSnapshot(page, `right ${name}`));
@@ -342,11 +350,10 @@ await safeStep('canvas interaction', async () => {
 });
 
 await safeStep('animation controls', async () => {
-  await clickFirst(
-    page,
-    ['button:has-text("play_arrow")', 'button:has-text("pause")', 'button >> text=play_arrow'],
-    'play/pause'
-  );
+  // The transport only exists in an analysis mode now, so get into one first.
+  await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+  await page.waitForTimeout(900);
+  await clickFirst(page, ['.playButton'], 'play/pause');
   await page.waitForTimeout(1100);
   await shot(page, '07-animation-controls.png');
   snapshots.push(await appSnapshot(page, 'animation'));

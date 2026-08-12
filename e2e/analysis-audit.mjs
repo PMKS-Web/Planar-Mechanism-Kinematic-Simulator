@@ -1,5 +1,5 @@
 /**
- * Every Analyze panel, on every template, for every part of it.
+ * Every analysis panel, on every template, for every part of it.
  *
  * `template-graphs.mjs` already checks the *joint* kinematic graphs numerically,
  * against difference quotients of the plotted positions. This walks the rest:
@@ -57,8 +57,11 @@ const load = async (id) => {
   await page.goto(`${BASE}/?${payloads[id]}`, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
   errors = [];
-  // Analyze is where the panels live.
-  await page.click('text=Analyze').catch(() => undefined);
+  // Kinematic is where the panels live -- what used to be called Analyze.
+  await page
+    .locator('.tabButton', { hasText: 'Kinematic' })
+    .click()
+    .catch(() => undefined);
   await page.waitForTimeout(900);
 };
 
@@ -130,7 +133,7 @@ const select = (kind, id) =>
   );
 
 /**
- * Every series the Analyze panel can build, asked for directly.
+ * Every series the analysis panel can build, asked for directly.
  *
  * The panel builds each graph from four strings, so one live graph component
  * can be asked for all of them in turn. That is the whole reason this does not
@@ -231,7 +234,7 @@ for (const id of MECHANISMS) {
     continue;
   }
   if (!(await primeGraph())) {
-    note('empty', id, 'Analyze never put a graph on screen', {});
+    note('empty', id, 'the analysis panel never put a graph on screen', {});
     continue;
   }
 

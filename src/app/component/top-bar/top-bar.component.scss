@@ -283,4 +283,47 @@
       display: none;
     }
   }
+
+  // A phone cannot hold four modes and a history card across one line. Rather
+  // than let the strip run off the edge -- which put two of the four modes
+  // somewhere unreachable, with the page scrolling sideways to prove it -- the
+  // tab card scrolls on its own and the chips go, since the status they carry
+  // is also on the status strip.
+  @media (max-width: 720px) {
+    .topStrip {
+      gap: 6px;
+
+      .tabCard {
+        flex: 1 1 auto;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+      }
+
+      .tabCard::-webkit-scrollbar {
+        display: none;
+      }
+
+      .historyCard {
+        gap: 2px;
+        padding: 0 4px;
+      }
+    }
+
+    .tabButton {
+      padding: 0 10px;
+
+      .chip {
+        display: none;
+      }
+    }
+
+    .modeDivider {
+      margin: 0 4px;
+    }
+
+    .historyButton {
+      padding: 0 8px;
+    }
+  }
 }

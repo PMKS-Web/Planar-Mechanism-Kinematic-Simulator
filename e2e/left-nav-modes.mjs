@@ -221,10 +221,23 @@ try {
   await page.waitForTimeout(1200);
   await tab('Kinematic').click();
   await page.waitForTimeout(1000);
+  // Asked of the mechanism and of the readout separately, because they can
+  // disagree: the pose is what the other modes edit, the readout is what says
+  // where the pose is, and a readout that has drifted off the pose is worse
+  // than no readout at all.
+  const rewound = await page.evaluate(() => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    return { step: srv.mechanismTimeStep, seconds: srv.currentTimeSeconds() };
+  });
+  record('switching to Edit rewound the mechanism to time 0', rewound.step === 0, {
+    playing,
+    rewound,
+  });
   const afterSwitch = await timeSeconds();
-  record('switching to Edit rewound the mechanism to time 0', afterSwitch === 0, {
+  record('and the time readout agrees with the mechanism', afterSwitch === 0, {
     playing,
     afterSwitch,
+    rewound,
   });
   record(
     'animation is no longer running after the mode switch',
@@ -246,18 +259,28 @@ try {
 
   await tab('Edit').click();
   await page.waitForTimeout(600);
+  // These buttons carry tooltips that appear under the cursor and then swallow
+  // the next click, so the pointer is parked away from them between presses.
+  const restCursor = () => page.mouse.move(700, 450);
+  const comMarks = () => page.locator('#comTagHolder path').count();
   const comButton = page.locator('.viewControls .mini-buttons', { hasText: 'CoM' });
-  const comBefore = await page.locator('#comHolder, .comIcon').count();
+  const comBefore = await comMarks();
   await comButton.click();
   await page.waitForTimeout(500);
-  const comAfter = await page.locator('#comHolder, .comIcon').count();
-  record('the CoM toggle acts on the drawing', comAfter !== comBefore, { comBefore, comAfter });
+  const comAfter = await comMarks();
+  record('the CoM toggle acts on the drawing', comBefore === 0 && comAfter > 0, {
+    comBefore,
+    comAfter,
+  });
   await comButton.click();
   await page.waitForTimeout(300);
+  await restCursor();
   await page.locator('.viewControls .mini-buttons', { hasText: 'View' }).click();
   await page.waitForTimeout(600);
+  await restCursor();
   await page.locator('.zoomButton').first().click();
   await page.waitForTimeout(400);
+  record('the CoM marks come off again', (await comMarks()) === 0);
   await shot('05-view-controls.png');
 
   // --- the status strip reports the mode rather than acting on it ------------

@@ -139,9 +139,10 @@ for (const { name, query } of galleryRows()) {
   if (shouldSolve) {
     // The button a user presses, not the method behind it -- it carries a
     // disabled binding, and a mechanism that cannot be played is exactly the
-    // failure worth catching. It lives on the Analyze tab.
-    await page.getByText('Analyze', { exact: true }).first().click();
-    await page.waitForTimeout(800);
+    // failure worth catching. The transport only renders in an analysis mode.
+    await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+    await page.locator('.playButton').first().waitFor({ state: 'visible', timeout: 10000 });
+    await page.waitForTimeout(400);
     const play = page.locator('.playButton').first();
     if (checkThat(`${name}: play is offered`, !(await play.isDisabled()))) {
       await play.click();

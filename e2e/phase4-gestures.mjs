@@ -401,7 +401,9 @@ console.log('\nhostile input');
 // dozens of invalid-SVG errors. The pattern used an unescaped dot, so "1x2"
 // validated and Number() turned it into NaN.
 await load(FOUR_BAR);
-await page.getByText('Settings', { exact: true }).first().click();
+// Settings is a project-menu entry now, so the hamburger opens first.
+await page.locator('.topStrip .iconButton').first().click();
+await page.locator('.projectMenu .menuItem', { hasText: 'Settings' }).click();
 await page.waitForTimeout(900);
 const scaleField = page.locator('app-settings-panel input').first();
 let scaleOk = true;

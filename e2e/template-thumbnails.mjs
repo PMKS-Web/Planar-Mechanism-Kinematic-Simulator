@@ -144,7 +144,8 @@ for (const { id, payload } of libraryTemplates()) {
   // nothing.
   await page.addStyleTag({
     content:
-      'app-toolbar, app-bottombar, app-left-tabs, app-right-panel { display: none !important }',
+      'app-top-bar, app-bottombar, app-left-tabs, app-right-panel, app-playback-bar,' +
+      ' app-view-controls { display: none !important }',
   });
   await page.waitForTimeout(800);
 
