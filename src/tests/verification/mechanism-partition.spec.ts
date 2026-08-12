@@ -150,6 +150,64 @@ describe('splitting a drawing into the machines it contains', () => {
     expect(unassigned.looseJoints.map((j) => j.id)).toEqual(['E']);
   });
 
+  it("does not let a shared frame bar hand one machine another machine's joints", () => {
+    // Two four-bars whose frames are bolted together by a fixed bar D–E. The
+    // bar is part of the world, so both machines have to be solved against it,
+    // but its far end belongs to whichever machine can actually move it.
+    // Without the distinction M1 picks up E — and E is what drives M2.
+    const { mechanisms, unassigned } = split({
+      joints: [
+        { id: 'A', x: 0, y: 0, ground: true, input: true },
+        { id: 'B', x: 0, y: 1 },
+        { id: 'C', x: 3, y: 2 },
+        { id: 'D', x: 4, y: 0, ground: true },
+        { id: 'E', x: 10, y: 0, ground: true, input: true },
+        { id: 'F', x: 10, y: 1 },
+        { id: 'G', x: 13, y: 2 },
+        { id: 'H', x: 14, y: 0, ground: true },
+      ],
+      links: [
+        { joints: 'AB' },
+        { joints: 'BC' },
+        { joints: 'CD' },
+        { joints: 'DE' },
+        { joints: 'EF' },
+        { joints: 'FG' },
+        { joints: 'GH' },
+      ],
+      inputAngVel: 1,
+    });
+
+    expect(mechanisms).toHaveLength(2);
+    // Solved against the shared bar, so E is among the joints handed over...
+    expect(mechanisms[0].joints.map((j) => j.id)).toContain('E');
+    // ...but it is not one of M1's own, and so cannot be taken for its input.
+    expect(mechanisms[0].ownJoints.map((j) => j.id).sort()).toEqual(['A', 'B', 'C', 'D']);
+    expect(mechanisms[1].ownJoints.map((j) => j.id).sort()).toEqual(['E', 'F', 'G', 'H']);
+    expect(unassigned.looseJoints).toEqual([]);
+  });
+
+  it('calls a bar fixed at both ends what it is, not a joint with no link', () => {
+    // It belongs to no machine, which is true — but it plainly has a link, and
+    // telling the reader to attach one is advice about a different drawing.
+    const { mechanisms, unassigned } = split({
+      joints: [
+        { id: 'A', x: 0, y: 0, ground: true, input: true },
+        { id: 'B', x: 0, y: 1 },
+        { id: 'C', x: 3, y: 2 },
+        { id: 'D', x: 4, y: 0, ground: true },
+        { id: 'E', x: 9, y: 9, ground: true },
+        { id: 'F', x: 11, y: 9, ground: true },
+      ],
+      links: [{ joints: 'AB' }, { joints: 'BC' }, { joints: 'CD' }, { joints: 'EF' }],
+      inputAngVel: 1,
+    });
+
+    expect(mechanisms).toHaveLength(1);
+    expect(unassigned.looseJoints).toEqual([]);
+    expect(unassigned.fixedLinks.map((link) => link.id)).toEqual(['EF']);
+  });
+
   it('keeps the rails a slot is cut into, even when they are part of the frame', () => {
     // The gripper's sliders run in slots cut into anchored bars — links whose
     // joints are all grounded, so they *are* the world and have no body of
