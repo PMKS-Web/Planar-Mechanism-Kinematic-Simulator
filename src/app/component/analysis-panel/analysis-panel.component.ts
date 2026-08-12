@@ -35,6 +35,28 @@ export class AnalysisPanelComponent {
    * question could say what *it* needed. They are separate modes now, so the
    * panel shows one at a time.
    */
+  /**
+   * What the empty analysis panel says, which depends on why it is empty.
+   *
+   * Nothing selected is a different situation from a selection whose mechanism
+   * cannot run, and telling the second reader to select something would send
+   * them round a loop they are already standing in.
+   */
+  get analysisHelpLead(): string {
+    const selected = this.activeSrv.getSelectedObjType();
+    if (selected === 'Joint' || selected === 'Link') {
+      const part =
+        this.activeSrv.objType === 'Joint'
+          ? this.activeSrv.selectedJoint
+          : this.activeSrv.selectedLink;
+      const owner = part ? this.mechanismService.indexOfMechanismContaining(part) : -1;
+      if (owner !== -1 && !this.mechanismService.mechanisms[owner]?.isMechanismValid()) {
+        return `Finish analysis setup on ${this.mechanismService.partitions[owner].id} to see its graphs.`;
+      }
+    }
+    return 'Select a part of the linkage to analyze it.';
+  }
+
   get showKinematic(): boolean {
     return this.tabs.getCurrentTab() !== TabID.FORCE;
   }

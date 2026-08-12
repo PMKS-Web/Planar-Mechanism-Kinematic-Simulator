@@ -12,33 +12,23 @@
   }
 
   @if (
-    (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') &&
-    mechanismService.joints.length == 0 &&
-    !hideEditPanel()
+    (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') && !hideEditPanel()
   ) {
-    <panel-section-collapsible [warning]="true" [expanded]="false" id="placeholderContainer">
-      <title-block
-        alwaysShown
-        icon="expand_more"
-        description="Right click on the grid to create a link."
-        >Edit Help
-      </title-block>
-      <img src="assets/gifs/Create.gif" />
-    </panel-section-collapsible>
-  }
-
-  @if (
-    this.activeSrv.objType == 'Grid' && mechanismService.joints.length != 0 && !hideEditPanel()
-  ) {
-    <panel-section-collapsible [warning]="true" [expanded]="false" id="placeholderContainer">
-      <title-block
-        alwaysShown
-        icon="expand_more"
-        description="Select a joint or link to edit properties."
-        >Edit Help
-      </title-block>
-      <img src="assets/gifs/Click.gif" />
-    </panel-section-collapsible>
+    <div class="helpPanel">
+      <div class="helpTitle">Edit</div>
+      <p class="helpLead">Select a joint or link on the grid to edit its properties.</p>
+      <div class="helpRule"></div>
+      <div class="helpHints">
+        <div class="helpHint">
+          <mat-icon>touch_app</mat-icon>
+          <span>Click a joint or link to select it. Drag a joint to move it.</span>
+        </div>
+        <div class="helpHint">
+          <mat-icon>add_circle_outline</mat-icon>
+          <span>Right-click the grid to create a link, tracer point or force.</span>
+        </div>
+      </div>
+    </div>
   }
 
   <!--  JOINT PANEL-->

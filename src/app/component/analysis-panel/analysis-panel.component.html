@@ -82,19 +82,21 @@
 
   <!-- Valid Mech but Nothing Selected -->
 
-  @if (
-    (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') &&
-    this.mechanismService.oneValidMechanismExists()
-  ) {
-    <panel-section-collapsible [warning]="true" [expanded]="false" id="placeholderContainer">
-      <title-block
-        alwaysShown
-        icon="expand_more"
-        description="Select a part of the linkage to analyze it."
-        >Analysis Help
-      </title-block>
-      <img src="assets/gifs/Click.gif" />
-    </panel-section-collapsible>
+  @if (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') {
+    <div class="helpPanel">
+      <div class="helpTitle">Analysis Help</div>
+      <p class="helpLead">{{ analysisHelpLead }}</p>
+      <div class="helpRule"></div>
+      <div class="helpHints">
+        <div class="helpHint">
+          <mat-icon>touch_app</mat-icon>
+          <span
+            >Click a joint for position, velocity and acceleration graphs, or a link for its angular
+            kinematics.</span
+          >
+        </div>
+      </div>
+    </div>
   }
 
   <!-- Joint Kinematics-->

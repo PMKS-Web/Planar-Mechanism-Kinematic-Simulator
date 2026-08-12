@@ -13,6 +13,59 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
+  // The mock's help panel: a title, a lead, a rule and a hint or two. It
+  // replaces a collapsible section wrapped round a GIF -- an animation of the
+  // gesture, which had to be watched and could not be scanned.
+  //
+  // Defined once here, where both panels this drawer hosts can reach it, rather
+  // than twice in the two components that draw it.
+  .helpPanel {
+    padding: 14px 15px 18px;
+  }
+
+  .helpTitle {
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 28px;
+  }
+
+  .helpLead {
+    font-size: 14px;
+    line-height: 20px;
+    color: rgba(0, 0, 0, 0.6);
+    margin: 6px 0 0;
+  }
+
+  .helpRule {
+    height: 1px;
+    background: #e6e7ee;
+    margin: 14px 0;
+  }
+
+  .helpHints {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .helpHint {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 14px;
+    line-height: 20px;
+    color: rgba(0, 0, 0, 0.6);
+
+    mat-icon {
+      flex: 0 0 auto;
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+      line-height: 20px;
+      color: mat.m2-get-color-from-palette($primary-palette, 500);
+    }
+  }
+
   // Below the top strip and clear of the playback card, which floats over the
   // bottom of the grid.
   .panel {
@@ -23,8 +76,14 @@
     overflow-y: auto;
     max-height: calc(100% - #{nav.$top-strip-height} - #{nav.$playback-clearance});
     display: flex;
+    background: #fafafa;
+    border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
     border-radius: 5px;
     z-index: 5;
+    box-shadow:
+      0 2px 4px -1px rgba(0, 0, 0, 0.2),
+      0 4px 5px 0 rgba(0, 0, 0, 0.14),
+      0 1px 10px 0 rgba(0, 0, 0, 0.12);
 
     .page1 {
       width: 270px; //Be careful, there are multiple places to change this value
