@@ -13,7 +13,9 @@
 
   #normalPanel {
     pointer-events: all;
-    @include mat.elevation(4);
+    // One elevation for every panel, so nesting one inside another cannot read
+    // as two different heights.
+    @include mat.elevation(2);
     border-radius: var(--border-radius);
     display: flex;
     flex-direction: column;

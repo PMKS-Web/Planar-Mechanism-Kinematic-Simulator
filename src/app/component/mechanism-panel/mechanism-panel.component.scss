@@ -11,7 +11,7 @@
     background: #fafafa;
     border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
     border-radius: var(--border-radius);
-    @include mat.elevation(4);
+    @include mat.elevation(2);
   }
 
   .mechHead {

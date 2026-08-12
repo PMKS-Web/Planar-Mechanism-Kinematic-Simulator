@@ -241,36 +241,44 @@ export class NewGridComponent implements OnDestroy {
 
     if (this.mechanismSrv.joints.length == 0) {
       setTimeout(() => {
+        const steps = [
+          {
+            title: '👋 Welcome',
+            intro: 'Let us show you around Planar Mechanism Kinematic Simulator Plus!',
+          },
+          {
+            // The mode strip, which is where the vertical rail this used to
+            // point at ended up. A step whose element is missing dims the
+            // whole app and shows no card at all, so these have to follow
+            // the chrome when it moves.
+            element: document.querySelector('.tabCard') as HTMLElement,
+            intro:
+              'PMKS+ has four modes: Synthesis, Edit, and the two analyses — Kinematic and Force.',
+          },
+          {
+            element: document.querySelector('#editWrapper') as HTMLElement,
+            intro:
+              'The Edit mode is active. Selecting a joint or link will show its properties here.',
+          },
+          {
+            element: document.querySelector('app-view-controls') as HTMLElement,
+            intro: 'These change what you can see: labels, centres of mass, and the zoom.',
+          },
+          {
+            // Help and Templates live inside this menu now, and pointing at
+            // something inside a closed menu spotlights nothing.
+            element: document.querySelector('.brandCard .iconButton') as HTMLElement,
+            title: "🙌 That's it!",
+            intro:
+              'Everything else is in here: open an example linkage from Templates, or find help and feedback.',
+          },
+        ];
         introJs()
           .setOptions({
-            steps: [
-              {
-                title: '👋 Welcome',
-                intro: 'Let us show you around Planar Mechanism Kinematic Simulator Plus!',
-              },
-              {
-                element: document.querySelector('.tabContainer') as HTMLElement,
-                intro: 'PMKS+ is divided into 3 modes. Synthesis, Editing, and Analysis.',
-              },
-              {
-                element: document.querySelector('#editWrapper') as HTMLElement,
-                intro:
-                  'The Edit mode is active. Selecting a joint or link will show its properties here.',
-              },
-              {
-                element: document.querySelector('#barContainer') as HTMLElement,
-                intro: 'Once the mechanism is created, you can animate it here.',
-              },
-              {
-                element: document.querySelector('#helpButton') as HTMLElement,
-                intro: 'If you get stuck at any point, click here for help.',
-              },
-              {
-                element: document.querySelector('#templatesButton') as HTMLElement,
-                title: "🙌 That's it!",
-                intro: 'Get started by opening an example linkage!',
-              },
-            ],
+            // Any step whose element has gone is dropped rather than shown:
+            // intro.js dims the app for a missing element and renders no card,
+            // which reads as the tour having frozen.
+            steps: steps.filter((step) => !('element' in step) || !!step.element),
             dontShowAgain: true,
           })
           .start();

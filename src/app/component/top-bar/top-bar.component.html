@@ -28,12 +28,18 @@
         class="tabButton"
         [class.active]="isActive(TabID.SYNTHESIZE)"
         (click)="select(TabID.SYNTHESIZE)"
+        aria-label="Synthesis"
       >
         <mat-icon svgIcon="synthesis"></mat-icon>
         <span class="tabLabel">Synthesis</span>
       </button>
 
-      <button class="tabButton" [class.active]="isActive(TabID.EDIT)" (click)="select(TabID.EDIT)">
+      <button
+        class="tabButton"
+        [class.active]="isActive(TabID.EDIT)"
+        (click)="select(TabID.EDIT)"
+        aria-label="Edit"
+      >
         <mat-icon svgIcon="edit_outline"></mat-icon>
         <span class="tabLabel">Edit</span>
       </button>
@@ -45,6 +51,7 @@
         [class.active]="isActive(TabID.ANALYZE)"
         [class.notReady]="!canAnalyse(TabID.ANALYZE)"
         (click)="select(TabID.ANALYZE)"
+        aria-label="Kinematic Analysis"
       >
         <mat-icon>query_stats</mat-icon>
         <span class="tabLabel long">Kinematic Analysis</span>
@@ -65,6 +72,7 @@
         [class.active]="isActive(TabID.FORCE)"
         [class.notReady]="!canAnalyse(TabID.FORCE)"
         (click)="select(TabID.FORCE)"
+        aria-label="Force Analysis"
       >
         <mat-icon>balance</mat-icon>
         <span class="tabLabel long">Force Analysis</span>
@@ -84,11 +92,11 @@
 
   @if (!tabs.isAnalysisMode()) {
     <div class="card historyCard">
-      <button class="historyButton" (click)="undo()" [disabled]="!canUndo()">
+      <button class="historyButton" (click)="undo()" [disabled]="!canUndo()" aria-label="Undo">
         <mat-icon>undo</mat-icon>
         <span class="historyLabel">Undo</span>
       </button>
-      <button class="historyButton" (click)="redo()" [disabled]="!canRedo()">
+      <button class="historyButton" (click)="redo()" [disabled]="!canRedo()" aria-label="Redo">
         <mat-icon>redo</mat-icon>
         <span class="historyLabel">Redo</span>
       </button>

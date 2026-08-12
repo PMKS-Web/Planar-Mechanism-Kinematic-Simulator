@@ -120,6 +120,9 @@ export class AnalysisSetupComponent {
   }
 
   toggle(readiness: MechanismReadiness): void {
+    if (readiness.checks.length === 0) {
+      return;
+    }
     if (this.isOpen(readiness)) {
       this.collapsed.add(readiness.id);
     } else {

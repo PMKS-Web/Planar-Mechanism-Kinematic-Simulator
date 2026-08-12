@@ -12,7 +12,12 @@
             <span class="mechLink" (click)="select($index, $event)">Mechanism {{ item.id }}</span>
             <span class="chip" [class]="chipFor(item).kind">{{ chipFor(item).text }}</span>
           </span>
-          <mat-icon>{{ isOpen(item) ? 'expand_less' : 'expand_more' }}</mat-icon>
+          <!-- Only where there is something behind it. A ready mechanism has
+               no blockers, and an arrow that opens onto nothing is a promise
+               the panel cannot keep. -->
+          @if (item.checks.length > 0) {
+            <mat-icon>{{ isOpen(item) ? 'expand_less' : 'expand_more' }}</mat-icon>
+          }
         </button>
 
         @if (isOpen(item)) {
