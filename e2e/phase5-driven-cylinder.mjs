@@ -126,15 +126,15 @@ await page.screenshot({ path: `${OUT}/01-opened.png` });
 
 // Animate, sampling the part as it goes.
 await page
-  .locator('.leftButton', { hasText: 'Analyze' })
+  .locator('.tabButton', { hasText: 'Kinematic' })
   .click()
   .catch(() => {});
 await page
-  .locator('.playbackControls')
+  .locator('app-playback-bar .playButton')
   .waitFor({ state: 'visible' })
   .catch(() => {});
 await page.waitForTimeout(500);
-await page.locator('.playbackControls .playButton').click();
+await page.locator('app-playback-bar .playButton').click();
 
 // Sampled well inside one cycle: at 0.66s a 320ms interval lands on nearly the
 // same pose every other time, which makes a frozen canvas look like a moving
@@ -147,7 +147,7 @@ for (let i = 0; i < 10; i++) {
 }
 await page.waitForTimeout(120);
 await page.screenshot({ path: `${OUT}/02-mid-stroke.png` });
-await page.locator('.playbackControls .playButton').click();
+await page.locator('app-playback-bar .playButton').click();
 await page.waitForTimeout(400);
 await page.screenshot({ path: `${OUT}/03-stopped.png` });
 
@@ -230,7 +230,7 @@ await page.evaluate(() => {
   c.mechanismSrv.mechanismTimeStep = 0;
 });
 await page
-  .locator('.leftButton', { hasText: 'Edit' })
+  .locator('.tabButton', { hasText: 'Edit' })
   .click()
   .catch(() => {});
 await page.waitForTimeout(400);

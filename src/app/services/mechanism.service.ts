@@ -117,6 +117,19 @@ export class MechanismService {
   private static readonly FRAME_INTERVAL_MS = 16;
   private playbackClockMs: number | null = null;
   private playbackTimeSeconds = 0;
+  /**
+   * Whether every machine runs on the one clock.
+   *
+   * Synced is the default and the useful case: two mechanisms on the same wall
+   * clock can be compared, which is the whole reason for drawing them together.
+   * Unsynced gives each its own time and its own play button, for reading one
+   * machine's cycle without the others moving.
+   */
+  syncMechanisms = true;
+  /** Each machine's own time, used only while unsynced. */
+  private ownSeconds: number[] = [];
+  /** Which machines are running, used only while unsynced. */
+  private ownPlaying: boolean[] = [];
   private playbackFrameQueued = false;
   private advancingPlayback = false;
 
@@ -2632,7 +2645,11 @@ export class MechanismService {
     const seconds =
       this.timeAtStep(step) + blend * (this.timeAtStep(step + 1) - this.timeAtStep(step));
     this.mechanisms.forEach((frames, index) => {
-      this.applyMechanismPose(frames, this.partitions[index], seconds);
+      this.applyMechanismPose(
+        frames,
+        this.partitions[index],
+        this.syncMechanisms ? seconds : (this.ownSeconds[index] ?? 0)
+      );
     });
   }
 
@@ -2823,6 +2840,20 @@ export class MechanismService {
       this.playbackTimeSeconds + elapsedSeconds * this.animationSpeedMultiplier
     );
 
+    // Unsynced, each running machine carries its own time forward. The shared
+    // clock still advances underneath, because the scrubber and the time field
+    // are measured against it.
+    if (!this.syncMechanisms) {
+      this.mechanisms.forEach((mechanism, index) => {
+        if (!this.ownPlaying[index] || !mechanism.isMechanismValid()) {
+          return;
+        }
+        const period = mechanism.cyclePeriod;
+        const next = (this.ownSeconds[index] ?? 0) + elapsedSeconds * this.animationSpeedMultiplier;
+        this.ownSeconds[index] = period > 0 ? ((next % period) + period) % period : next;
+      });
+    }
+
     this.advancingPlayback = true;
     try {
       // Blend forward from the sample at or before now, not the nearest one.
@@ -2830,6 +2861,54 @@ export class MechanismService {
     } finally {
       this.advancingPlayback = false;
     }
+  }
+
+  /** Where one machine is in its own cycle. */
+  secondsOf(index: number): number {
+    if (this.syncMechanisms) {
+      const period = this.mechanisms[index]?.cyclePeriod ?? 0;
+      const now = this.currentTimeSeconds();
+      return period > 0 ? ((now % period) + period) % period : now;
+    }
+    return this.ownSeconds[index] ?? 0;
+  }
+
+  /** Put one machine at a time in its own cycle. Only meaningful while unsynced. */
+  seekMechanism(index: number, seconds: number): void {
+    this.ownSeconds[index] = seconds;
+    this.animate(this.mechanismTimeStep, AnimationBarComponent.animate);
+  }
+
+  isMechanismPlaying(index: number): boolean {
+    return this.syncMechanisms ? AnimationBarComponent.animate : !!this.ownPlaying[index];
+  }
+
+  toggleMechanismPlaying(index: number): void {
+    this.ownPlaying[index] = !this.ownPlaying[index];
+    // The frame loop is shared, so it has to be running for any machine to move.
+    if (this.ownPlaying.some(Boolean)) {
+      AnimationBarComponent.animate = true;
+    }
+    this.animate(this.mechanismTimeStep, AnimationBarComponent.animate);
+  }
+
+  /**
+   * Switch between one clock and several.
+   *
+   * Leaving sync hands every machine the time it is showing right now, so
+   * nothing jumps at the moment the toggle is pressed; returning to sync puts
+   * them all back on the shared clock, which is where they visibly converge.
+   */
+  setSyncMechanisms(sync: boolean): void {
+    if (sync === this.syncMechanisms) {
+      return;
+    }
+    if (!sync) {
+      this.ownSeconds = this.mechanisms.map((_, index) => this.secondsOf(index));
+      this.ownPlaying = this.mechanisms.map(() => AnimationBarComponent.animate);
+    }
+    this.syncMechanisms = sync;
+    this.animate(this.mechanismTimeStep, AnimationBarComponent.animate);
   }
 
   getJointCSSClass(joint: Joint) {

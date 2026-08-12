@@ -10,7 +10,7 @@ const { chromium } = await import(
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
 
-const BASE = process.env.PMKS_URL ?? 'http://127.0.0.1:4200/';
+const BASE = process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://127.0.0.1:4200/';
 // Same encoded four-bar the other e2e scripts use — loading by URL avoids the
 // template dialog entirely.
 const FOUR_BAR =
@@ -52,11 +52,10 @@ await page.waitForTimeout(800);
 await page.screenshot({ path: `${OUT}/01-loaded.png` });
 
 // ---------------------------------------------------------------- Edit panel
-// The tab toggles the panel, so click until the panel is actually showing.
 const editPanel = page.locator('app-edit-panel');
 for (let attempt = 0; attempt < 3; attempt++) {
   if (await editPanel.isVisible().catch(() => false)) break;
-  await page.locator('button.leftButton').nth(1).click();
+  await page.locator('.tabButton', { hasText: 'Edit' }).click();
   await page.waitForTimeout(600);
 }
 check('Edit panel opens', await editPanel.isVisible().catch(() => false));
@@ -228,11 +227,10 @@ await speedInput.press('Tab');
 await page.waitForTimeout(900);
 
 // ------------------------------------------------------- Global settings gone
-const settingsTab = page.locator('button.leftButton', { hasText: /Settings/i }).first();
-if (await settingsTab.isVisible().catch(() => false)) {
-  await settingsTab.click();
-  await page.waitForTimeout(600);
-}
+// Settings is a project-menu entry now, so the hamburger has to be opened first.
+await page.locator('.topStrip .iconButton').first().click();
+await page.locator('.projectMenu .menuItem', { hasText: 'Settings' }).click();
+await page.waitForTimeout(700);
 const settingsPanel = page.locator('app-settings-panel');
 const settingsText = (await settingsPanel.textContent().catch(() => '')) ?? '';
 check(
@@ -246,24 +244,30 @@ check(
 );
 await page.screenshot({ path: `${OUT}/05-settings-panel.png`, fullPage: true });
 
-// ------------------------------------------------------------- Analyze / time
-await page.locator('button.leftButton').nth(2).click();
+// ----------------------------------------------------------- Kinematic / time
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
 await page.waitForTimeout(700);
 
 const timeInput = page.locator('#animationBar-input');
+// The field used to be sized against the Play button because both stacked in
+// one narrow rail column. They are in separate cards now, so what is left to
+// hold is that the field stays inside the card it lives in -- a field wide
+// enough for a long time value but wider than its card is the failure that
+// sizing rule was there to prevent.
 const metrics = await timeInput.evaluate((el) => {
-  const play = document.querySelector('.playButton');
+  const card = el.closest('.scrubCard');
+  const field = el.getBoundingClientRect();
+  const box = card.getBoundingClientRect();
   return {
-    clientWidth: el.clientWidth,
-    scrollWidth: el.scrollWidth,
-    offsetWidth: el.offsetWidth,
-    playWidth: play ? play.getBoundingClientRect().width : 0,
+    fieldWidth: Math.round(field.width),
+    overflowLeft: Math.round(box.left - field.left),
+    overflowRight: Math.round(field.right - box.right),
   };
 });
 check(
-  'Time field spans the same width as the Play button',
-  Math.abs(metrics.offsetWidth - metrics.playWidth) <= 2,
-  `time=${metrics.offsetWidth}px, play=${metrics.playWidth}px`
+  'Time field stays inside the transport card it sits in',
+  metrics.fieldWidth > 0 && metrics.overflowLeft <= 0 && metrics.overflowRight <= 0,
+  `field=${metrics.fieldWidth}px, spill left=${metrics.overflowLeft}px right=${metrics.overflowRight}px`
 );
 
 // ------------------------------------------------------------ Playback motion

@@ -26,10 +26,30 @@
         (input)="onScrub($event)"
       />
 
+      @if (canSync) {
+        <button class="syncToggle" (click)="toggleSync()">
+          <mat-icon>{{ synced ? 'unfold_more' : 'unfold_less' }}</mat-icon>
+          {{ synced ? 'Control each mechanism' : 'Sync all mechanisms' }}
+        </button>
+      }
+
       <div class="mechRows">
         @for (row of rows; track row.id) {
           <div class="mechRow">
             <span class="mechChip">{{ row.id }}</span>
+            @if (!synced) {
+              <button class="rowPlay" (click)="toggleRow(row)">
+                <mat-icon>{{ row.playing ? 'pause' : 'play_arrow' }}</mat-icon>
+              </button>
+              <input
+                class="rowScrubber"
+                type="range"
+                min="0"
+                max="1000"
+                [value]="row.scrub"
+                (input)="scrubRow(row, $event)"
+              />
+            }
             <span class="mechTime">{{ row.time }}</span>
             @if (row.reciprocating) {
               <span class="mechNote">reciprocating</span>

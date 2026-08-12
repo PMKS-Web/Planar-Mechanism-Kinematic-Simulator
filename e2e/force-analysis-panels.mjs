@@ -1,6 +1,10 @@
 // Verifies the Force Analysis accordion on both the joint and the link
 // analysis panels: one row per reacting link / per external joint, and a single
 // mechanism-wide "Force Analysis Type" toggle shared by both.
+//
+// These rows now live in the Force mode rather than beside the kinematic ones,
+// and that mode refuses to open without a load — so the four-bar is given one
+// first, through the same context menu a user would reach for.
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
@@ -10,7 +14,7 @@ import path from 'node:path';
 const screenshotDir = path.resolve('artifacts/screenshots');
 await fs.mkdir(screenshotDir, { recursive: true });
 
-const baseUrl = process.env.PMKS_URL || 'http://127.0.0.1:4200/';
+const baseUrl = process.env.PMKS_BASE_URL || process.env.PMKS_URL || 'http://127.0.0.1:4200/';
 const runPrefix = process.env.RUN_PREFIX || 'force-panels';
 const chromePath =
   process.env.PMKS_CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -86,17 +90,57 @@ async function toggleLabels() {
   });
 }
 
-/** Select a joint or link by clicking its SVG element, then open the Analyze tab. */
+/** Model-space point to screen, through the layer the mechanism is drawn in. */
+const toScreen = (x, y) =>
+  page.evaluate(
+    ([modelX, modelY]) => {
+      const m = document.querySelector('#linkHolder').getScreenCTM();
+      return { x: modelX * m.a + modelY * m.c + m.e, y: modelX * m.b + modelY * m.d + m.f };
+    },
+    [x, y]
+  );
+
+const jointCoord = (id) =>
+  page.evaluate((jointId) => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const joint = srv.joints.find((candidate) => candidate.id === jointId);
+    return joint ? { x: joint.x, y: joint.y } : undefined;
+  }, id);
+
+const forceCount = () =>
+  page.evaluate(
+    () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.forces.length
+  );
+
+/** Hang a load on link BC, which is what makes the Force mode enterable at all. */
+async function attachForceToBC() {
+  const b = await jointCoord('B');
+  const c = await jointCoord('C');
+  const on = await toScreen(b.x + (c.x - b.x) * 0.4, b.y + (c.y - b.y) * 0.4);
+  await page.mouse.move(on.x, on.y);
+  await page.mouse.click(on.x, on.y, { button: 'right' });
+  await page.waitForTimeout(500);
+  await page.evaluate(() => {
+    const item = [...document.querySelectorAll('#contextMenu #menu-item')].find((node) =>
+      /Attach Force/.test(node.textContent)
+    );
+    item?.querySelector('button')?.click();
+  });
+  await page.waitForTimeout(300);
+  await page.mouse.move(on.x + 110, on.y - 80, { steps: 8 });
+  await page.waitForTimeout(200);
+  await page.mouse.click(on.x + 110, on.y - 80);
+  await page.waitForTimeout(800);
+}
+
+/** Select a joint or link by clicking its SVG element, then open the Force mode. */
 async function selectAndAnalyze(selector, index) {
+  // Selection is an Edit-mode act; the analysis modes lock the geometry.
+  await page.locator('.tabButton', { hasText: 'Edit' }).click();
+  await page.waitForTimeout(400);
   await page.locator(selector).nth(index).click({ force: true });
   await page.waitForTimeout(400);
-  // The tab button toggles, so only click it when the panel is not already open.
-  const open = await page
-    .locator('app-analysis-panel #analysisWrapper')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (!open) await page.locator('button.leftButton').nth(2).click();
+  await page.locator('.tabButton', { hasText: 'Force' }).click();
   await page.waitForTimeout(900);
 }
 
@@ -112,6 +156,11 @@ try {
   await page.goto(`${baseUrl}?${fourBar}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await waitForReady(page);
   await dismissIntro();
+
+  await attachForceToBC();
+  check('the four-bar took a load, so Force analysis can be entered', (await forceCount()) === 1, {
+    forces: await forceCount(),
+  });
 
   // --- Joint panel: joint B connects links AB and BC. ---
   await selectAndAnalyze('#jointHolder svg', 1);
@@ -233,4 +282,6 @@ try {
 }
 
 const failed = checks.filter((c) => !c.ok);
+for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}`);
 console.log(JSON.stringify({ passed: checks.length - failed.length, failed, issues }, null, 2));
+process.exit(failed.length ? 1 : 0);

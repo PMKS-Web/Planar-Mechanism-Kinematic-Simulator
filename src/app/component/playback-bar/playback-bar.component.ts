@@ -20,6 +20,10 @@ export interface PlaybackRow {
   clockwise: boolean;
   /** Out-and-back, rather than round and round. */
   reciprocating: boolean;
+  playing: boolean;
+  /** Seconds, for its own scrubber. */
+  seconds: number;
+  period: number;
 }
 
 /**
@@ -96,13 +100,12 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
 
   /** Only the machines that can run. */
   get rows(): PlaybackRow[] {
-    const now = this.mechanism.currentTimeSeconds();
     return this.mechanism.mechanisms
       .map((mechanism, index) => ({ mechanism, index }))
       .filter(({ mechanism }) => mechanism.isMechanismValid())
       .map(({ mechanism, index }) => {
         const period = mechanism.cyclePeriod || 1;
-        const local = ((now % period) + period) % period;
+        const local = this.mechanism.secondsOf(index);
         return {
           id: this.mechanism.partitions[index]?.id ?? `M${index + 1}`,
           index,
@@ -110,8 +113,33 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
           scrub: Math.round((local / period) * 1000),
           clockwise: this.drivenSpeedOf(mechanism, index) < 0,
           reciprocating: this.isReciprocating(mechanism),
+          playing: this.mechanism.isMechanismPlaying(index),
+          seconds: local,
+          period,
         };
       });
+  }
+
+  /** Only worth offering when there is more than one machine to get out of step. */
+  get canSync(): boolean {
+    return this.rows.length > 1;
+  }
+
+  get synced(): boolean {
+    return this.mechanism.syncMechanisms;
+  }
+
+  toggleSync(): void {
+    this.mechanism.setSyncMechanisms(!this.mechanism.syncMechanisms);
+  }
+
+  toggleRow(row: PlaybackRow): void {
+    this.mechanism.toggleMechanismPlaying(row.index);
+  }
+
+  scrubRow(row: PlaybackRow, event: Event): void {
+    const fraction = Number((event.target as HTMLInputElement).value) / 1000;
+    this.mechanism.seekMechanism(row.index, fraction * row.period);
   }
 
   /**

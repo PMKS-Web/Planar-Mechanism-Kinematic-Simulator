@@ -115,6 +115,65 @@
     }
   }
 
+  .syncToggle {
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 22px;
+    padding: 0 8px;
+    margin-bottom: 2px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #5f6368;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+
+    mat-icon {
+      width: 17px;
+      height: 17px;
+      font-size: 17px;
+      line-height: 17px;
+    }
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+  }
+
+  .rowPlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
+    border: none;
+    border-radius: 50%;
+    background: #eef1fc;
+    color: #3f51b5;
+    cursor: pointer;
+    padding: 0;
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+      line-height: 18px;
+    }
+  }
+
+  .rowScrubber {
+    flex: 1 1 auto;
+    min-width: 60px;
+    margin: 0;
+    height: 3px;
+    accent-color: #3f51b5;
+    cursor: pointer;
+  }
+
   .mechRows {
     display: flex;
     flex-direction: column;

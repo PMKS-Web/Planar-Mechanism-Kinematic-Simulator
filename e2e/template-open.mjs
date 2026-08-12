@@ -48,24 +48,31 @@ const linkCount = (page) =>
       ).length
   );
 
+// Templates moved off the file toolbar and into the project menu, so it takes
+// two presses to reach now.
+const openTemplates = async (page) => {
+  await page.locator('.topStrip .iconButton').first().click();
+  await page.locator('.projectMenu #templatesButton').click();
+  await page.waitForTimeout(600);
+};
+
 // --- Case 1: empty grid, template loads in this window -----------------------
 const page = await context.newPage();
 page.setDefaultTimeout(15000);
 newPages = 0; // ignore the page we created ourselves
-const BASE = process.env.PMKS_URL ?? 'http://127.0.0.1:4200/';
+const BASE = process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://127.0.0.1:4200/';
 await page.goto(BASE, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await dismissIntro(page);
 await page.waitForTimeout(600);
-// The library opens by itself on a blank start; open it from the toolbar if not.
+// The library opens by itself on a blank start; open it from the menu if not.
 if (
   !(await page
     .locator('#templates')
     .isVisible()
     .catch(() => false))
 ) {
-  await page.locator('button:has-text("Templates")').first().click();
-  await page.waitForTimeout(600);
+  await openTemplates(page);
 }
 const before = await linkCount(page);
 await page.locator('#templates panel-section').first().click();
@@ -89,8 +96,7 @@ await page.goto(`${BASE}?${FOUR_BAR}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await dismissIntro(page);
 await page.waitForTimeout(800);
-await page.locator('button:has-text("Templates")').first().click();
-await page.waitForTimeout(600);
+await openTemplates(page);
 await page.locator('#templates panel-section').nth(1).click(); // Watt I
 await page.waitForTimeout(600);
 const dialogVisible = await page
@@ -123,18 +129,11 @@ check(
   `links ${beforeReplace} -> ${afterReplace}, new tabs=${newPages}`
 );
 
-// Undo brings the old linkage back. The Undo button lives in the Edit tab's
-// tool strip, so open Edit first; it being enabled proves the replace saved.
-if (
-  !(await page
-    .locator('button:has-text("Undo")')
-    .isVisible()
-    .catch(() => false))
-) {
-  await page.locator('.leftButton', { hasText: 'Edit' }).click();
-  await page.waitForTimeout(700);
-}
-await page.locator('button:has-text("Undo")').click();
+// Undo brings the old linkage back. Undo now sits in the top strip in every
+// mode, so no mode switch is needed; it being enabled proves the replace saved.
+const undo = page.locator('.historyButton', { hasText: 'Undo' });
+check('Replace armed Undo', (await undo.isDisabled()) === false);
+await undo.click();
 await page.waitForTimeout(1200);
 const afterUndo = await linkCount(page);
 check(
@@ -150,8 +149,7 @@ if (
     .isVisible()
     .catch(() => false))
 ) {
-  await page.locator('button:has-text("Templates")').first().click();
-  await page.waitForTimeout(600);
+  await openTemplates(page);
 }
 await page.locator('#templates panel-section').first().click();
 await page.waitForTimeout(600);

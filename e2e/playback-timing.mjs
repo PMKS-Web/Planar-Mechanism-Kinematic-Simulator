@@ -11,7 +11,7 @@ import path from 'node:path';
 const screenshotDir = path.resolve('artifacts/screenshots');
 await fs.mkdir(screenshotDir, { recursive: true });
 
-const baseUrl = process.env.PMKS_URL || 'http://127.0.0.1:4200/';
+const baseUrl = process.env.PMKS_BASE_URL || process.env.PMKS_URL || 'http://127.0.0.1:4200/';
 const runPrefix = process.env.RUN_PREFIX || 'playback-timing';
 const chromePath =
   process.env.PMKS_CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -47,22 +47,24 @@ page.on('console', (msg) => {
 const shot = (name) =>
   page.screenshot({ path: path.join(screenshotDir, `${runPrefix}-${name}`), fullPage: false });
 
-const tab = (label) => page.locator('.leftButton', { hasText: label });
+const tab = (label) => page.locator('.tabButton', { hasText: label });
 const timeField = () => page.locator('#animationBar-input');
 const timeSeconds = async () =>
   parseFloat((await timeField().inputValue()).replace(/[^\d.-]/g, ''));
 
 const speedField = () => page.locator('input-block:has-text("Input Speed") input').first();
 
-// The rail buttons toggle their panel, so clicking blindly can close what we need.
-async function openAnalyze() {
+// The transport only exists in the analysis modes, so its presence is how we
+// tell whether Kinematic is already open -- pressing the mode again is harmless
+// but the wait below would otherwise race the panel animation.
+async function openKinematic() {
   if (
     !(await page
       .locator('.playButton')
       .isVisible()
       .catch(() => false))
   ) {
-    await tab('Analyze').click();
+    await tab('Kinematic').click();
   }
   await page.locator('.playButton').waitFor({ state: 'visible' });
   await page.waitForTimeout(400);
@@ -110,7 +112,7 @@ async function setInputSpeed(rpm) {
 
 /** Play until the time readout wraps back toward zero; return real elapsed seconds. */
 async function measureRevolution() {
-  await openAnalyze();
+  await openKinematic();
   await page.locator('.playButton').click();
 
   const started = Date.now();
@@ -169,7 +171,7 @@ try {
 
   // --- Cycle length reported by the time field --------------------------------
   await setInputSpeed(20);
-  await openAnalyze();
+  await openKinematic();
   await timeField().click();
   await timeField().press('ControlOrMeta+A');
   await timeField().type('99 s');
@@ -185,7 +187,7 @@ try {
   );
 
   await setInputSpeed(40);
-  await openAnalyze();
+  await openKinematic();
   await timeField().click();
   await timeField().press('ControlOrMeta+A');
   await timeField().type('99 s');
@@ -197,13 +199,13 @@ try {
   });
   await shot('02-period-at-40rpm.png');
 
-  // --- Leaving Analyze rewinds, and time zero survives the round trip ---------
+  // --- Leaving Kinematic rewinds, and time zero survives the round trip -------
   // Input speed lives with the input joint now, so changing it means entering Edit
   // mode, which deliberately rewinds to t = 0 (it replaced the stop button). The
   // model-level "hold the time across a rebuild" guarantee is covered by the unit
   // suite; what matters here is that the round trip cannot move the start pose.
   await setInputSpeed(20);
-  await openAnalyze();
+  await openKinematic();
   const zeroPose = await page.locator('svg').first().innerHTML();
 
   await timeField().click();
@@ -224,13 +226,13 @@ try {
 
   // Round trip through Edit at a non-zero time, twice, then come back to t = 0.
   await setInputSpeed(40);
-  await openAnalyze();
+  await openKinematic();
   await setInputSpeed(20);
-  await openAnalyze();
+  await openKinematic();
   const rewoundTime = await timeSeconds();
   const rewoundPose = await page.locator('svg').first().innerHTML();
 
-  check('leaving Analyze rewinds to time zero', Math.abs(rewoundTime) < 0.02, { rewoundTime });
+  check('leaving Kinematic rewinds to time zero', Math.abs(rewoundTime) < 0.02, { rewoundTime });
   check(
     'time zero still means the same pose after switching modes at a non-zero time',
     rewoundPose === zeroPose
@@ -247,4 +249,6 @@ try {
 }
 
 const failed = checks.filter((c) => !c.ok);
+for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}`);
 console.log(JSON.stringify({ passed: checks.length - failed.length, failed, issues }, null, 2));
+process.exit(failed.length ? 1 : 0);
