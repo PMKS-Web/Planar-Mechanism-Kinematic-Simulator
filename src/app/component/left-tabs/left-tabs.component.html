@@ -3,6 +3,7 @@
     this.tabs.isTabVisible() ? (this.tabs.isAnalysisMode() ? 'openWide' : 'open') : 'closed'
   "
   class="panel"
+  [class.analysis]="this.tabs.isAnalysisMode()"
   [class.behindDrawer]="drawerOpen"
 >
   @if (this.tabs.getCurrentTab() === TabID.SYNTHESIZE) {

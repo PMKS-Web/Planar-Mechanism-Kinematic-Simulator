@@ -13,6 +13,15 @@
 
   #normalPanel {
     pointer-events: all;
+    // The card owns the scroll, not the frame around it. Scrolling the frame
+    // cut the card off square at the bottom of the window; scrolling the card
+    // keeps its own rounded corner as the edge, and lets the title stay put
+    // while the settings under it move. The height it is capped at is the
+    // frame's, which is set from the top strip and whatever is along the
+    // bottom in this mode.
+    max-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
     box-shadow: var(--card-shadow);
     border-radius: var(--border-radius);
     display: flex;
@@ -28,6 +37,17 @@
     > * {
       width: 100%;
       box-sizing: border-box;
+      flex: 0 0 auto;
+    }
+
+    // The name of the thing being edited, and what can be done to it, stay
+    // where they are; everything below them scrolls.
+    > title-block:first-child,
+    > editable-title-block:first-child {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--card-surface);
     }
   }
 }

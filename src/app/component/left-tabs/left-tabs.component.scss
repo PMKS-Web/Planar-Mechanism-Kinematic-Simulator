@@ -76,17 +76,55 @@
     }
   }
 
-  // Below the top strip and clear of the playback card, which floats over the
-  // bottom of the grid.
+  // Below the top strip, and clear of whatever is along the bottom -- which is
+  // the playback card in the analysis modes and only the status strip in the
+  // others. Edit used to keep the playback card's room clear too, and stopped
+  // 70px short of anything.
   .panel {
     position: absolute;
     top: nav.$top-strip-height;
     left: 12px;
     overflow-x: hidden;
     overflow-y: auto;
-    max-height: calc(100% - #{nav.$top-strip-height} - #{nav.$playback-clearance});
+    --panel-clearance: #{nav.$bottom-bar-height + 12px};
+    max-height: calc(100% - #{nav.$top-strip-height} - var(--panel-clearance));
     display: flex;
     z-index: 5;
+
+    &.analysis {
+      --panel-clearance: #{nav.$playback-clearance};
+    }
+
+    // Hand the height down to the card, which is what scrolls. Each step needs
+    // `min-height: 0` or a flex item refuses to shrink below its content and
+    // the cap never reaches the bottom of the chain.
+    .page1,
+    .page2,
+    .page3 {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+
+      > * {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+
+      #editWrapper,
+      #analysisWrapper,
+      #synthesisWrapper {
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+
+      panel-section {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+    }
 
     .page1 {
       width: 270px; //Be careful, there are multiple places to change this value

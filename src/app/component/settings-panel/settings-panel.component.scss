@@ -26,7 +26,10 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: 10px 15px 14px;
+    // The same 40px row on a 15px gutter every section header in the app uses,
+    // rather than 10px of air above it and 14px below.
+    height: 40px;
+    padding: 0 15px;
     border-top: 1px solid #eceef5;
     font-size: 13px;
   }
