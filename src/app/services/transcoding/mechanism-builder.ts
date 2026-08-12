@@ -77,6 +77,7 @@ export class MechanismBuilder {
     joint.name = jointData.name;
     joint.isWelded = jointData.isWelded;
     joint.showCurve = jointData.showCurve;
+    joint.driveSpeed = jointData.driveSpeed;
     console.log('build joint', jointData.type);
 
     return joint;
@@ -254,20 +255,33 @@ export class MechanismBuilder {
 
     this.addAdjacentLinksForJoints();
 
-    // set active object
-    let activeObjData = this.transcoder.getActiveObj();
-    let activeObj: any;
-    if (activeObjData.type === ACTIVE_TYPE.JOINT)
-      activeObj = this.getJointByID(joints, activeObjData.id)!;
-    else if (activeObjData.type === ACTIVE_TYPE.LINK)
-      activeObj = links.find(
-        (link) =>
-          link.id === activeObjData.id ||
-          (link instanceof RealLink && link.subset.some((subset) => subset.id === activeObjData.id))
-      );
-    else if (activeObjData.type === ACTIVE_TYPE.FORCE)
-      activeObj = forces.find((force) => force.id === activeObjData.id);
-    else activeObj = null;
+    // What was selected before this rebuild, re-found among the new objects.
+    //
+    // The URL used to carry the selection, which made it two things it should
+    // never have been: part of what a shared link says, so opening someone
+    // else's mechanism selected whatever they happened to have clicked; and
+    // part of the undo history, since undo is URL replay. Selecting is not an
+    // edit and pressing Undo after one should move the mechanism, not the
+    // highlight.
+    //
+    // The field is still written, always empty, because its position in the
+    // format is load-bearing for every URL already shared.
+    const selectedType = this.activeObj.getSelectedObjType();
+    const previousId = ['Joint', 'Link', 'Force'].includes(selectedType)
+      ? this.activeObj.getSelectedObj().id
+      : undefined;
+    let activeObj: any = null;
+    if (previousId) {
+      activeObj =
+        this.getJointByID(joints, previousId) ??
+        links.find(
+          (link) =>
+            link.id === previousId ||
+            (link instanceof RealLink && link.subset.some((subset) => subset.id === previousId))
+        ) ??
+        forces.find((force) => force.id === previousId) ??
+        null;
+    }
 
     this.activeObj.updateSelectedObj(activeObj);
 

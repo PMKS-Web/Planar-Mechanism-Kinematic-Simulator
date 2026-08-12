@@ -53,6 +53,20 @@ export class RealJoint extends Joint {
   private _connectedJoints: Joint[];
   public showCurve: boolean;
   public isWelded: boolean = false;
+  /**
+   * How fast this joint drives its own mechanism, signed for direction, in the
+   * units its kind of drive is measured in: rpm for a pin, length per second
+   * for a slider.
+   *
+   * Lives on the joint because a drawing can hold several mechanisms and each
+   * is driven at its own speed. The driven joint is the natural place to keep
+   * it -- one per mechanism, already saved, and it is where the panel has
+   * always shown the setting anyway.
+   *
+   * Zero means "follow the document-wide default", which is what every joint
+   * loaded from a URL written before this existed says.
+   */
+  public driveSpeed: number = 0;
 
   constructor(
     id: string,

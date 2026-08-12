@@ -103,6 +103,23 @@ describe('two four-bars in one drawing', () => {
     ]);
   });
 
+  it('lets each run at its own speed, and spans the longer cycle', () => {
+    const { service, first, second } = twoFourBars();
+    // 30 rpm against the document default of 20: the same crank turning twice
+    // as fast has to come round in half the time.
+    (first.joints[0] as RealJoint).driveSpeed = 30;
+    service.updateMechanism();
+
+    const [fast, slow] = service.mechanisms;
+    expect(fast.cyclePeriod).toBeLessThan(slow.cyclePeriod);
+    expect(fast.cyclePeriod).toBeCloseTo(slow.cyclePeriod * (20 / 30), 2);
+
+    // The shared scrubber has to be long enough to hold the slowest machine,
+    // or playback would cut off partway through it.
+    expect(service.cyclePeriod()).toBeCloseTo(slow.cyclePeriod, 6);
+    expect(second.joints.length).toBeGreaterThan(0);
+  });
+
   it('moves both when the shared clock advances, each on its own frames', () => {
     const { service, first, second } = twoFourBars();
     const restAt = (joint: RealJoint) => ({ x: joint.x, y: joint.y });

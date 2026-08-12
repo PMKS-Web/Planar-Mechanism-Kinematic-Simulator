@@ -48,7 +48,20 @@ export class JointData {
     // The sealed-cylinder bit (§ atomic cylinder). Sixth joint flag: base-64
     // packs six flags into the same single character five occupied, so every
     // pre-existing URL decodes it as false and nothing shifts.
-    public isSealed: boolean = false
+    public isSealed: boolean = false,
+    /**
+     * How fast this joint drives its own mechanism, signed for direction.
+     *
+     * Stored on the joint because a drawing can hold several mechanisms and
+     * each is driven at its own speed, and the driven joint is the only handle
+     * on a mechanism that the URL carries -- mechanism names are derived from
+     * the geometry, not saved, so there is nothing else stable to key on.
+     *
+     * Zero means "this URL predates the setting"; the builder then keeps the
+     * document-wide default. Zero is safe to spend that way because a drive
+     * that does not move is not a speed anyone chose -- the panel refuses it.
+     */
+    public driveSpeed: number = 0
   ) {}
 }
 

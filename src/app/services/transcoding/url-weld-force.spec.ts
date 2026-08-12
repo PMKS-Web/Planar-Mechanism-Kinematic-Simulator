@@ -59,7 +59,7 @@ function weldedSource() {
 }
 
 describe('welded force URL compatibility', () => {
-  it('round-trips production welded forces, the last enum, and active force selection', () => {
+  it('round-trips production welded forces and the last enum, carrying no selection', () => {
     const source = weldedSource();
     const sourceService = {
       ...source,
@@ -91,8 +91,13 @@ describe('welded force URL compatibility', () => {
     expect(target.forces).toHaveLength(1);
     expect(target.forces[0].link).toBe(target.links[0]);
     expect((target.links[0] as RealLink).forces).toEqual(target.forces);
-    expect(targetActive.objType).toBe('Force');
-    expect(targetActive.selectedForce).toBe(target.forces[0]);
+    // What is selected is deliberately not part of the URL: a shared link
+    // should open on the reader's own nothing-selected rather than on whatever
+    // the sender last clicked, and undo — which replays these URLs — should
+    // move the mechanism rather than the highlight.
+    // 'Grid' is how this app spells nothing-selected once something has looked:
+    // the grid is what is active when no part is.
+    expect(targetActive.objType).toBe('Grid');
     expect(targetSettings.globalUnit.value).toBe(GlobalUnit.SI);
     expect(targetSettings.lengthUnit.value).toBe(LengthUnit.METER);
     expect(targetSettings.forceUnit.value).toBe(ForceUnit.NEWTON);

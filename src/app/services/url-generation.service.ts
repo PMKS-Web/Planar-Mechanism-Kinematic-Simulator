@@ -57,7 +57,12 @@ export class UrlGenerationService {
           joint.input,
           joint.isWelded,
           0,
-          joint.showCurve
+          joint.showCurve,
+          '',
+          '',
+          '',
+          false,
+          joint.driveSpeed
         )
       );
     } else if (joint instanceof PrisJoint) {
@@ -76,7 +81,8 @@ export class UrlGenerationService {
           joint.carrier?.id ?? '',
           joint.slotJointA?.id ?? '',
           joint.slotJointB?.id ?? '',
-          joint.isSealed
+          joint.isSealed,
+          joint.driveSpeed
         )
       );
     }
@@ -208,20 +214,14 @@ export class UrlGenerationService {
     // Keep this legacy bit enabled so existing URL field positions remain compatible.
     encoder.addBoolSetting(BoolSetting.IS_FORCES, true);
 
-    let type: ACTIVE_TYPE;
-    let exists = true;
-    if (this.activeObj.objType === 'Joint') type = ACTIVE_TYPE.JOINT;
-    else if (this.activeObj.objType === 'Link') type = ACTIVE_TYPE.LINK;
-    else if (this.activeObj.objType === 'Force') type = ACTIVE_TYPE.FORCE;
-    else {
-      type = ACTIVE_TYPE.NOTHING;
-      exists = false;
-    }
-
-    let id;
-    if (exists) id = this.activeObj.getSelectedObj().id;
-    else id = '_';
-    encoder.setActiveObj(new ActiveObjData(type, id));
+    // Deliberately empty. What is selected is not part of the mechanism: a
+    // shared link should open on the reader's own nothing-selected, not on
+    // whatever the sender last clicked, and undo -- which replays these URLs --
+    // should move the mechanism rather than the highlight.
+    //
+    // The field itself stays, always empty, because its position in the format
+    // is load-bearing for every URL already shared.
+    encoder.setActiveObj(new ActiveObjData(ACTIVE_TYPE.NOTHING, '_'));
 
     let urlRaw = encoder.encodeURL();
 

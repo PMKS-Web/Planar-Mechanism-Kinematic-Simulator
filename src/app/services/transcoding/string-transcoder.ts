@@ -73,9 +73,24 @@ export class StringTranscoder extends GenericTranscoder {
     let yString = this.encodeDecimalNumber(joint.y);
     let angleString = this.encodeDecimalNumber(joint.angleRadians);
 
+    // Written only by a joint that has actually been given its own speed, so a
+    // mechanism running at the document-wide default encodes exactly as it
+    // always did -- every template and every previously shared URL still comes
+    // back byte-identical, and only a drawing that uses the feature pays for
+    // it.
+    //
+    // It has to land *after* the slot triple, so a joint with a speed and no
+    // slot writes the triple empty; without those placeholders the decoder
+    // would read the speed as a carrier id.
+    let driveString =
+      joint.isInput && joint.driveSpeed !== 0
+        ? ',' + this.encodeDecimalNumber(joint.driveSpeed)
+        : '';
     let slotString =
       joint.carrierID === ''
-        ? ''
+        ? driveString === ''
+          ? ''
+          : ',,,'
         : ',' + joint.carrierID + ',' + joint.slotJointAID + ',' + joint.slotJointBID;
 
     return (
@@ -90,7 +105,8 @@ export class StringTranscoder extends GenericTranscoder {
       yString +
       ',' +
       angleString +
-      slotString
+      slotString +
+      driveString
     );
   }
 
@@ -115,6 +131,9 @@ export class StringTranscoder extends GenericTranscoder {
     let carrierID = sd.nextToken();
     let slotJointAID = sd.nextToken();
     let slotJointBID = sd.nextToken();
+    // Zero past the end, which is how a URL written before per-mechanism speed
+    // says "use the document-wide default".
+    let driveSpeed = sd.nextDecimalNumber();
 
     return new JointData(
       jointType,
@@ -130,7 +149,8 @@ export class StringTranscoder extends GenericTranscoder {
       carrierID,
       slotJointAID,
       slotJointBID,
-      isSealed
+      isSealed,
+      driveSpeed
     );
   }
 

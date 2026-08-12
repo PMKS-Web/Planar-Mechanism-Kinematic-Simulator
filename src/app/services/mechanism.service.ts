@@ -265,12 +265,22 @@ export class MechanismService {
    * cylinder beside a crank must not be handed the crank's rpm.
    */
   private inputVelocityFor(partition: MechanismPartition): number {
-    const driven = partition.joints.find((j) => j instanceof RealJoint && j.input);
-    const speed =
-      driven instanceof PrisJoint
-        ? this.settingsService.linearInputSpeed.value * MODEL_SCALE
-        : (this.settingsService.inputSpeed.value * Math.PI) / 30;
-    return this.settingsService.isInputCW.value ? -speed : speed;
+    const driven = partition.joints.find((j) => j instanceof RealJoint && j.input) as
+      RealJoint | undefined;
+    const prismatic = driven instanceof PrisJoint;
+    // The joint's own speed if it has been given one, and the document-wide
+    // default otherwise -- which is what a URL written before mechanisms could
+    // be driven separately says, and what a joint just switched on says too.
+    const own = driven?.driveSpeed ?? 0;
+    const magnitude =
+      own !== 0
+        ? Math.abs(own)
+        : prismatic
+          ? this.settingsService.linearInputSpeed.value
+          : this.settingsService.inputSpeed.value;
+    const speed = prismatic ? magnitude * MODEL_SCALE : (magnitude * Math.PI) / 30;
+    const clockwise = own !== 0 ? own < 0 : this.settingsService.isInputCW.value;
+    return clockwise ? -speed : speed;
   }
 
   /** Which mechanism holds this joint, link or force — none, if it is unassigned. */
