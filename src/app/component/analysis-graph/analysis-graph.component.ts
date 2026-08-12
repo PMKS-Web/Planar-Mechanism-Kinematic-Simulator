@@ -239,6 +239,27 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     return this.numberOfSeries === 1;
   }
 
+  /**
+   * What this graph plots, in words.
+   *
+   * Its own controls are labelled "X" and "Y", which say nothing on their own:
+   * a panel showing six graphs offers a dozen checkboxes all called the same
+   * two things. The graph itself is a canvas with no text in it at all.
+   */
+  get graphLabel(): string {
+    const part = this.mechPart ? ` of ${this.mechPart}` : '';
+    return `${this.mechProp}${part}`;
+  }
+
+  /** The label, plus what a reader who cannot see the plot would ask next. */
+  get graphSummary(): string {
+    const names = this.displayedSeries
+      .map((series) => series.name)
+      .filter((name): name is string => !!name);
+    const plotted = names.length ? `, plotting ${names.join(', ')}` : '';
+    return `Graph of ${this.graphLabel} over one cycle${plotted}. The same data is available as a CSV below.`;
+  }
+
   noDataSelected: boolean = false;
   analysisDiagnostic: string | null = null;
 
