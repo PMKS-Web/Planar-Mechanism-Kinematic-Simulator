@@ -1254,7 +1254,11 @@ export class NewGridComponent implements OnDestroy {
     // Analyze already refuses to open an edit context menu (see onContextMenu),
     // but dragging bypassed that: the mode was read-only by menu only. Whole-link
     // drag would have widened the hole, so the guard covers every drag instead.
-    if (this.tabService.getCurrentTab() === TabID.ANALYZE) {
+    //
+    // Both analysis modes, not just the kinematic one. Force analysis reads the
+    // same solved cycle and is no more able to survive the geometry moving
+    // under it.
+    if (this.tabService.isAnalysisMode()) {
       this.sendNotification(CANNOT_EDIT.analyzeMode);
       return false;
     }
@@ -1533,9 +1537,9 @@ export class NewGridComponent implements OnDestroy {
       return;
     }
 
-    if (this.tabService.getCurrentTab() === TabID.ANALYZE) {
-      // Analyze mode is read-only. Show no edit menu; setLastRightClick has
-      // already declined to change the selection.
+    if (this.tabService.isAnalysisMode()) {
+      // Both analysis modes are read-only. Show no edit menu; setLastRightClick
+      // has already declined to change the selection.
       this.cMenuItems = [];
       return;
     }
