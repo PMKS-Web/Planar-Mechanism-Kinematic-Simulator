@@ -9,7 +9,10 @@ import { SettingsService } from './services/settings.service';
 export enum TabID {
   SYNTHESIZE,
   EDIT,
+  /** Kinematic analysis: position, velocity, acceleration. */
   ANALYZE,
+  /** Force analysis, which asks for more of a mechanism than kinematics does. */
+  FORCE,
 }
 
 @Injectable({
@@ -63,10 +66,20 @@ export class SelectedTabService {
     return this._tabVisible.getValue();
   }
 
+  /**
+   * Either of the two analysis modes.
+   *
+   * The geometry is locked in both, and both are read-only, so almost
+   * everything that used to ask "is this the Analyze tab" means this instead.
+   */
+  public isAnalysisMode(tab: TabID = this.getCurrentTab()) {
+    return tab === TabID.ANALYZE || tab === TabID.FORCE;
+  }
+
   private onNewTab(previousTab: TabID) {
     // Replaces the old stop button: leaving Analyze is what rewinds the
     // mechanism, so the other modes always act on the pose at time 0.
-    if (previousTab === TabID.ANALYZE) {
+    if (this.isAnalysisMode(previousTab) && !this.isAnalysisMode()) {
       this.mechanism.animate(0, false);
       this.settings.animating.next(false);
     }

@@ -7,7 +7,7 @@ import { RealLink } from '../model/link';
 import { ActiveObjService } from '../services/active-obj.service';
 import { EditPanelComponent } from './edit-panel/edit-panel.component';
 import { SettingsPanelComponent } from './settings-panel/settings-panel.component';
-import { ToolbarComponent } from './toolbar/toolbar.component';
+import { TopBarComponent } from './top-bar/top-bar.component';
 import { TemplatesComponent } from './MODALS/templates/templates.component';
 import { TEMPLATE_IDS } from './MODALS/templates/template-linkages';
 
@@ -25,9 +25,9 @@ describe('always-on force and weld UI', () => {
     expect(settingsText).not.toContain('Enable Welded');
     expect(settingsText).not.toContain('Equations');
 
-    const toolbar = TestBed.createComponent(ToolbarComponent);
-    toolbar.detectChanges();
-    expect(toolbar.nativeElement.textContent).not.toContain('Equations');
+    const topBar = TestBed.createComponent(TopBarComponent);
+    topBar.detectChanges();
+    expect(topBar.nativeElement.textContent).not.toContain('Equations');
   });
 
   it('renders weld and force editing controls without enablement flags', () => {

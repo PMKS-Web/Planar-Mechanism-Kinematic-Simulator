@@ -23,7 +23,6 @@ import {
 import { SettingsService } from './settings.service';
 import { MechanismService } from './mechanism.service';
 import { canDrive } from '../model/actuator';
-import { ToolbarComponent } from '../component/toolbar/toolbar.component';
 import { Mechanism } from '../model/mechanism/mechanism';
 import { Coord } from '../model/coord';
 import { PositionSolver } from '../model/mechanism/position-solver';

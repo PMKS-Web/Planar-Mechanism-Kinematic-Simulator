@@ -178,6 +178,15 @@ export function readinessOf(
   };
 }
 
+/** One condition force analysis needs, and whether the drawing meets it. */
+export interface ForceRequirement {
+  met: boolean;
+  /** A short sentence-case phrase naming the condition. */
+  title: string;
+  /** Met: what is true. Unmet: what is missing, and how to supply it. */
+  body: string;
+}
+
 export interface UnassignedReport {
   /** The part at fault, so the panel can offer to go to it. */
   at?: Joint;

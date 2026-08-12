@@ -27,7 +27,6 @@ import { SettingsService } from '../../services/settings.service';
 import { Arc, Line } from '../../model/line';
 import { Coord } from '../../model/coord';
 import { SvgGridService } from '../../services/svg-grid.service';
-import { ToolbarComponent } from '../toolbar/toolbar.component';
 import introJs from 'intro.js';
 import { UrlGenerationService } from 'src/app/services/url-generation.service';
 
@@ -82,6 +81,12 @@ export class RightPanelComponent {
 
   static openTab = 0; //Default open tab to "Edit" /
   static isOpen = false; // Is the tab open?
+  /**
+   * The drawer that lists what still stands between the drawing and its
+   * animation. Numbered like its neighbours because that is how this panel has
+   * always been addressed; named because "5" at a call site says nothing.
+   */
+  static readonly SETUP_TAB = 5;
   turnOnDebugger() {
     this.settingsService.isGridDebugOn = !this.settingsService.isGridDebugOn;
   }

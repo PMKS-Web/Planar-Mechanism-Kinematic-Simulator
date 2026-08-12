@@ -13,120 +13,18 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
-  #collapsibleContainer {
-    overflow-y: hidden;
-  }
-
-  .tabList {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-  }
-
-  // The active mode's controls sit inside its group, so the highlight wraps
-  // both the tab and its tools.
-  .activeTabPill {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 0;
-    box-sizing: border-box;
-    background-color: mat.m2-get-color-from-palette($primary-palette, 50);
-    border-left: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
-    // translateY (GPU-composited) slides the highlight between tabs; height eases
-    // it open. Both match the tools' grow animation exactly — same 200ms and
-    // easing — so the highlight and its contents move as one, with no per-frame
-    // JS to stutter or leave it stranded mid-slide.
-    transition:
-      transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
-      height 200ms cubic-bezier(0.4, 0, 0.2, 1),
-      opacity 150ms ease;
-    will-change: transform, height;
-
-    &.hidden {
-      opacity: 0;
-    }
-  }
-
-  .tabGroup {
-    position: relative;
-    z-index: 1;
-    box-sizing: border-box;
-    border-left: 5px solid transparent;
-  }
-
-  .leftButton {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    width: 100%;
-    padding: 10px 0 8px;
-    border: 0;
-    background: none;
-    cursor: pointer;
-    color: inherit;
-    font-family: inherit;
-
-    mat-icon {
-      transform: scale(1.3);
-      height: 24px;
-      width: 24px;
-      margin: 0;
-      overflow: visible;
-    }
-
-    .tabLabel {
-      @include mat.m2-typography-level($typography-config, 'body-2');
-      line-height: 16px;
-    }
-  }
-
-  .tabTools {
-    // A flex column so the buttons and the animation bar stretch to one width;
-    // the 8px side padding gives every control an equal gutter inside the pill.
-    // The bottom padding is part of the box (not a child margin) so scrollHeight,
-    // which the pill measures, includes it. overflow:hidden lets the grow
-    // animation collapse the box cleanly.
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 0 8px 10px;
-    overflow: hidden;
-
-    // While the grow animation constrains this box's height, its children must
-    // keep their natural size (not flex-shrink to fit) so scrollHeight — which
-    // the pill measures for its target height — stays the true, full height.
-    > * {
-      flex-shrink: 0;
-    }
-
-    // Same button look as the edit panel; the container prefix keeps its
-    // border-color winning over Material's default outline.
-    @include blocks.mini-buttons($theme);
-
-    .mini-buttons {
-      width: 100%;
-      justify-content: flex-start;
-    }
-  }
-
-  .navSpacer {
-    flex: 1 1 auto;
-  }
-
+  // Below the top strip and clear of the playback card, which floats over the
+  // bottom of the grid.
   .panel {
     position: absolute;
-    top: 30px;
-    left: nav.$rail-width;
+    top: nav.$top-strip-height;
+    left: 12px;
     overflow-x: hidden;
     overflow-y: auto;
-    max-height: calc(100% - 30px - #{nav.$bottom-bar-height});
+    max-height: calc(100% - #{nav.$top-strip-height} - #{nav.$playback-clearance});
     display: flex;
-
-    animation-duration: 4s;
+    border-radius: 5px;
+    z-index: 5;
 
     .page1 {
       width: 270px; //Be careful, there are multiple places to change this value
@@ -139,24 +37,5 @@
     .page3 {
       width: 420px; //Be careful, there are multiple places to change this value
     }
-  }
-
-  .tabContainer {
-    @include mat.elevation(2);
-    background-color: white;
-    display: flex;
-    flex-direction: column;
-    z-index: 1;
-
-    position: absolute;
-    top: 30px;
-    left: 0px;
-    width: nav.$rail-width;
-    // Runs to the very bottom so the rail covers the bottom bar's left end
-    // rather than leaving a bare corner beneath it.
-    height: calc(100% - 30px);
-    // No scrollbar; on a short viewport the animation bar drops its vertical
-    // slider (see animation-bar.scss) so the remaining controls still fit.
-    overflow-y: hidden;
   }
 }

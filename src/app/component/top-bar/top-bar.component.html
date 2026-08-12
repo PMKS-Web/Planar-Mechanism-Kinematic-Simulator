@@ -1,0 +1,105 @@
+<div class="topStrip" [class.devMode]="isDevMode()">
+  <div class="card brandCard">
+    <button
+      class="iconButton"
+      [class.on]="menuOpen"
+      (click)="toggleMenu()"
+      matTooltip="Project menu"
+      matTooltipShowDelay="600"
+      aria-label="Project menu"
+    >
+      <mat-icon>menu</mat-icon>
+    </button>
+    <img class="logo" alt="PMKS+" src="assets/PMKS_logo.png" />
+  </div>
+
+  <div class="card tabCard">
+    <div class="tabStrip" #tabStrip>
+      <!-- One highlight for all four modes, so it slides between them instead
+           of blinking from one to the next. -->
+      <div
+        class="activeTabPill"
+        [class.hidden]="!highlight.visible"
+        [style.transform]="'translateX(' + highlight.left + 'px)'"
+        [style.width.px]="highlight.width"
+      ></div>
+
+      <button
+        class="tabButton"
+        [class.active]="isActive(TabID.SYNTHESIZE)"
+        (click)="select(TabID.SYNTHESIZE)"
+      >
+        <mat-icon svgIcon="synthesis"></mat-icon>
+        <span class="tabLabel">Synthesis</span>
+      </button>
+
+      <button class="tabButton" [class.active]="isActive(TabID.EDIT)" (click)="select(TabID.EDIT)">
+        <mat-icon svgIcon="edit_outline"></mat-icon>
+        <span class="tabLabel">Edit</span>
+      </button>
+
+      <div class="modeDivider"></div>
+
+      <button
+        class="tabButton"
+        [class.active]="isActive(TabID.ANALYZE)"
+        [class.notReady]="!canAnalyse(TabID.ANALYZE)"
+        (click)="select(TabID.ANALYZE)"
+      >
+        <mat-icon>query_stats</mat-icon>
+        <span class="tabLabel">Kinematic</span>
+        <span class="chip" [class.ok]="statusOf(TabID.ANALYZE).ready">{{
+          statusOf(TabID.ANALYZE).text
+        }}</span>
+      </button>
+
+      <button
+        class="tabButton"
+        [class.active]="isActive(TabID.FORCE)"
+        [class.notReady]="!canAnalyse(TabID.FORCE)"
+        (click)="select(TabID.FORCE)"
+      >
+        <mat-icon>balance</mat-icon>
+        <span class="tabLabel">Force</span>
+        <span class="chip" [class.ok]="statusOf(TabID.FORCE).ready">{{
+          statusOf(TabID.FORCE).text
+        }}</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="card historyCard">
+    <button class="historyButton" (click)="undo()" [disabled]="!canUndo()">
+      <mat-icon>undo</mat-icon>
+      <span class="historyLabel">Undo</span>
+    </button>
+    <button class="historyButton" (click)="redo()" [disabled]="!canRedo()">
+      <mat-icon>redo</mat-icon>
+      <span class="historyLabel">Redo</span>
+    </button>
+  </div>
+</div>
+
+@if (menuOpen) {
+  <div class="menuScrim" (click)="closeMenu()"></div>
+  <div class="projectMenu" @menuOpen>
+    <button class="menuItem" (click)="newProject()">
+      <mat-icon>note_add</mat-icon>New Project
+    </button>
+    <input #fileInput hidden type="file" accept="text" (change)="upload($event)" />
+    <button class="menuItem" (click)="fileInput.click()"><mat-icon>file_open</mat-icon>Open</button>
+    <button class="menuItem" id="templatesButton" (click)="openTemplates()">
+      <mat-icon>apps</mat-icon>Templates
+    </button>
+    <button class="menuItem" (click)="downloadLinkage()"><mat-icon>save</mat-icon>Save</button>
+    <button class="menuItem" (click)="copyURL()"><mat-icon>link</mat-icon>Share Project</button>
+    <div class="menuDivider"></div>
+    <button class="menuItem" (click)="openSettings()"><mat-icon>settings</mat-icon>Settings</button>
+    <button class="menuItem" id="helpButton" (click)="openHelp()">
+      <mat-icon>help</mat-icon>Help / Feedback
+    </button>
+    @if (isDevMode()) {
+      <button class="menuItem" (click)="openDebug()"><mat-icon>bug_report</mat-icon>Debug</button>
+    }
+  </div>
+}

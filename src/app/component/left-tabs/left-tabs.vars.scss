@@ -1,6 +1,10 @@
-// Width of the labelled left nav rail. The bottom bar indents past it and the
-// slide-out panel starts at it, so they all read this one value.
-$rail-width: 96px;
+// Where the left panel starts: below the floating strip along the top (12px
+// inset + 48px card + 14px of air). The strip, the panel and the playback card
+// all read these so they cannot drift apart.
+$top-strip-height: 74px;
 
-// Height of app-bottombar; the rail and panel stop above it.
+// Room kept at the bottom for the playback card and the status strip beneath it.
+$playback-clearance: 110px;
+
+// Height of app-bottombar.
 $bottom-bar-height: 20px;

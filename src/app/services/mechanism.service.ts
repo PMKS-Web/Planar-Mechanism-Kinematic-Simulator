@@ -25,11 +25,11 @@ import {
 } from '../model/mechanism/mechanism-partition';
 import {
   describeUnassigned,
+  ForceRequirement,
   MechanismReadiness,
   readinessOf,
   UnassignedReport,
 } from '../model/mechanism/readiness';
-import { ToolbarComponent } from '../component/toolbar/toolbar.component';
 import { InstantCenter } from '../model/instant-center';
 import {
   gridStates,
@@ -1613,6 +1613,80 @@ export class MechanismService {
         strokeWarning: (part) => this.strokeWarningFor(part),
       })
     );
+  }
+
+  /**
+   * What force analysis still needs, asked of the force solver rather than
+   * guessed at.
+   *
+   * The solver already refuses precisely and says why -- an unsupported
+   * topology, mass properties that are not numbers, an equilibrium that is
+   * singular. Restating those conditions here would be a second opinion free to
+   * drift from the first, and the drift would show as a tab that says Ready
+   * above a panel that says it cannot solve.
+   */
+  forceAnalysisRequirements(): ForceRequirement[] {
+    const requirements: ForceRequirement[] = [];
+
+    const runnable = this.mechanisms.filter((mechanism) => mechanism.isMechanismValid());
+    requirements.push({
+      met: runnable.length > 0,
+      title: 'A mechanism that runs',
+      body:
+        runnable.length > 0
+          ? 'Force analysis is solved over a solved cycle, and there is one.'
+          : 'Forces are solved at each position of a cycle, so the kinematics have to work first. Analysis setup lists what is missing.',
+    });
+    if (runnable.length === 0) {
+      return requirements;
+    }
+
+    // Ask for the analysis the panel would show. It is memoised per mechanism,
+    // so this costs nothing after the first time.
+    const refused = runnable
+      .map((mechanism) => ({ mechanism, series: mechanism.getForceAnalysis('static') }))
+      .filter(({ series }) => series.successfulFrames === 0);
+    requirements.push({
+      met: refused.length === 0,
+      title: 'A topology the solver can balance',
+      body:
+        refused.length === 0
+          ? 'Every body has an equilibrium the solver can write down.'
+          : (refused[0].series.diagnostic ??
+            'One of these mechanisms has no determinate force-equilibrium model.'),
+    });
+
+    const massless = this.links.filter(
+      (link) => link instanceof RealLink && !(link.mass > 0)
+    ) as RealLink[];
+    requirements.push({
+      met: massless.length === 0,
+      title: 'Mass on every link',
+      body:
+        massless.length === 0
+          ? 'Every link has a mass and a moment of inertia.'
+          : `${massless.length === 1 ? 'Link' : 'Links'} ${massless
+              .map((link) => link.name || link.id)
+              .join(
+                ', '
+              )} still ${massless.length === 1 ? 'weighs' : 'weigh'} nothing. A massless link contributes no inertia, so a dynamic answer will not account for it. Set Link Mass in Mass Settings.`,
+    });
+
+    requirements.push({
+      met: this.forces.length > 0,
+      title: 'A load to react against',
+      body:
+        this.forces.length > 0
+          ? `${this.forces.length} ${this.forces.length === 1 ? 'force is' : 'forces are'} applied.`
+          : 'Without an applied force the only load is the drive itself, so every reaction comes from it. Right-click a link and choose Attach Force to add one.',
+    });
+
+    return requirements;
+  }
+
+  /** Can the Force tab show anything worth reading? */
+  forceAnalysisReady(): boolean {
+    return this.forceAnalysisRequirements().every((requirement) => requirement.met);
   }
 
   /** What to say about geometry that is in no mechanism. */

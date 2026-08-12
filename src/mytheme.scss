@@ -1,5 +1,5 @@
 @use '@angular/material' as mat;
-@use 'src/app/component/toolbar/toolbar.component.scss' as toolbar;
+@use 'src/app/component/top-bar/top-bar.component.scss' as top-bar;
 @use 'src/app/component/left-tabs/left-tabs.component.scss' as left-tabs;
 @use 'src/app/component/animation-bar/animation-bar.component.scss' as animation-bar;
 @use 'src/app/component/view-controls/view-controls.component.scss' as view-controls;
@@ -78,7 +78,7 @@ $my-theme: mat.m2-define-light-theme(
 
 @include mat.all-component-themes($my-theme);
 @include mat.strong-focus-indicators-theme($my-theme);
-@include toolbar.css($my-theme);
+@include top-bar.css($my-theme);
 @include left-tabs.css($my-theme);
 @include animation-bar.css($my-theme);
 @include view-controls.css($my-theme);

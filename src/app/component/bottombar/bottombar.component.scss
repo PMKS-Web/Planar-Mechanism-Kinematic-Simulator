@@ -39,7 +39,7 @@
       margin: 0;
       padding: 0;
       // Clear the nav rail, which sits above this bar on the left.
-      padding-left: calc(#{nav.$rail-width} + 10px);
+      padding-left: 14px;
       padding-right: 10px;
     }
   }
