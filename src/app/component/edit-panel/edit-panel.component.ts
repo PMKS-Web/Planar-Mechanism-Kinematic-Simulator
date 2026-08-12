@@ -81,9 +81,22 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     label: option.label,
   }));
 
+  /** The joint whose drive this panel is editing, if it is editing one. */
+  private get drivenJoint(): RealJoint | undefined {
+    const joint = this.activeSrv.selectedJoint;
+    return joint && joint.input ? joint : undefined;
+  }
+
   /** One button for both directions: flip rather than pick. */
   flipInputDirection(): void {
-    this.settingsService.isInputCW.next(!this.settingsService.isInputCW.value);
+    const joint = this.drivenJoint;
+    if (joint) {
+      // This mechanism's drive, not the document's. A drawing can hold several
+      // and turning one round must leave the others turning as they were.
+      this.mechanismService.setDriveSpeed(joint, -this.mechanismService.driveSpeedOf(joint));
+    } else {
+      this.settingsService.isInputCW.next(!this.settingsService.isInputCW.value);
+    }
     this.mechanismService.updateMechanism(true);
   }
 
@@ -95,10 +108,11 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
    * where the rotational speed is kept in RPM and converted for display.
    */
   private patchInputSpeedField(): void {
+    const own = Math.abs(this.mechanismService.driveSpeedOf(this.drivenJoint));
     const shown = this.isSliderInput
-      ? this.settingsService.linearInputSpeed.value
+      ? own
       : this.nup.convertAngularVelocity(
-          this.settingsService.inputSpeed.value,
+          own,
           AngularVelocityUnit.RPM,
           this.settingsService.inputSpeedUnit.value
         );
@@ -791,21 +805,26 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         const typed = Number(String(val ?? '').trim());
         // A rejected value changes nothing, so it must not mint an undo entry.
         if (Number.isFinite(typed) && typed !== 0) {
-          // The field carries magnitude; a minus sign reads as "the other way",
-          // so -20 becomes 20 with the direction flipped.
-          if (typed < 0) {
-            this.settingsService.isInputCW.next(!this.settingsService.isInputCW.value);
-          }
-          if (this.isSliderInput) {
-            this.settingsService.linearInputSpeed.next(Math.abs(typed));
-          } else {
-            this.settingsService.inputSpeed.next(
-              this.nup.convertAngularVelocity(
+          const joint = this.drivenJoint;
+          const magnitude = this.isSliderInput
+            ? Math.abs(typed)
+            : this.nup.convertAngularVelocity(
                 Math.abs(typed),
                 this.settingsService.inputSpeedUnit.value,
                 AngularVelocityUnit.RPM
-              )
-            );
+              );
+          // The field carries magnitude; a minus sign reads as "the other way",
+          // so -20 becomes 20 with the direction flipped.
+          const wasClockwise = this.mechanismService.driveSpeedOf(joint) < 0;
+          const clockwise = typed < 0 ? !wasClockwise : wasClockwise;
+          if (joint) {
+            this.mechanismService.setDriveSpeed(joint, clockwise ? -magnitude : magnitude);
+          } else if (this.isSliderInput) {
+            this.settingsService.linearInputSpeed.next(magnitude);
+            this.settingsService.isInputCW.next(clockwise);
+          } else {
+            this.settingsService.inputSpeed.next(magnitude);
+            this.settingsService.isInputCW.next(clockwise);
           }
           this.mechanismService.updateMechanism(true);
         }

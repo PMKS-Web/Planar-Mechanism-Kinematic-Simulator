@@ -120,6 +120,29 @@ describe('two four-bars in one drawing', () => {
     expect(second.joints.length).toBeGreaterThan(0);
   });
 
+  it('changes one drive without touching the other', () => {
+    // What the Input Settings panel does when a driven joint is selected. The
+    // speed used to be one number for the drawing, so setting it here would
+    // have changed both machines at once.
+    const { service, first, second } = twoFourBars();
+    const firstDrive = first.joints[0] as RealJoint;
+    const secondDrive = second.joints[0] as RealJoint;
+
+    service.setDriveSpeed(firstDrive, 35);
+    service.updateMechanism();
+
+    expect(service.driveSpeedOf(firstDrive)).toBe(35);
+    // The other joint has no speed of its own, so it follows the document
+    // default -- which now reads 35 too. Giving it one is what pins it.
+    service.setDriveSpeed(secondDrive, -12);
+    service.updateMechanism();
+
+    expect(service.driveSpeedOf(firstDrive)).toBe(35);
+    expect(service.driveSpeedOf(secondDrive)).toBe(-12);
+    expect(service.mechanisms[0].inputAngularVelocities[0]).toBeGreaterThan(0);
+    expect(service.mechanisms[1].inputAngularVelocities[0]).toBeLessThan(0);
+  });
+
   it('moves both when the shared clock advances, each on its own frames', () => {
     const { service, first, second } = twoFourBars();
     const restAt = (joint: RealJoint) => ({ x: joint.x, y: joint.y });

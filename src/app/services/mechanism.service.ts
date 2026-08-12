@@ -267,20 +267,52 @@ export class MechanismService {
   private inputVelocityFor(partition: MechanismPartition): number {
     const driven = partition.joints.find((j) => j instanceof RealJoint && j.input) as
       RealJoint | undefined;
-    const prismatic = driven instanceof PrisJoint;
-    // The joint's own speed if it has been given one, and the document-wide
-    // default otherwise -- which is what a URL written before mechanisms could
-    // be driven separately says, and what a joint just switched on says too.
-    const own = driven?.driveSpeed ?? 0;
+    const signed = this.driveSpeedOf(driven);
+    // rpm for a pin, length per second for a slider -- two different
+    // quantities, and only the second has a length in it wanting MODEL_SCALE.
+    return driven instanceof PrisJoint ? signed * MODEL_SCALE : (signed * Math.PI) / 30;
+  }
+
+  /**
+   * How fast a joint drives its mechanism, signed for direction, in the units
+   * its kind of drive is measured in.
+   *
+   * One definition, read by the solver and shown by the panel. Zero on the
+   * joint means "follow the document-wide default", which is what a URL written
+   * before mechanisms could be driven separately says, and what a joint just
+   * switched on says too.
+   */
+  driveSpeedOf(joint: RealJoint | undefined): number {
+    if (joint && joint.driveSpeed !== 0) {
+      return joint.driveSpeed;
+    }
     const magnitude =
-      own !== 0
-        ? Math.abs(own)
-        : prismatic
-          ? this.settingsService.linearInputSpeed.value
-          : this.settingsService.inputSpeed.value;
-    const speed = prismatic ? magnitude * MODEL_SCALE : (magnitude * Math.PI) / 30;
-    const clockwise = own !== 0 ? own < 0 : this.settingsService.isInputCW.value;
-    return clockwise ? -speed : speed;
+      joint instanceof PrisJoint
+        ? this.settingsService.linearInputSpeed.value
+        : this.settingsService.inputSpeed.value;
+    return this.settingsService.isInputCW.value ? -magnitude : magnitude;
+  }
+
+  /**
+   * Set the speed of one mechanism's drive.
+   *
+   * The document-wide default follows along, so the next joint switched on
+   * starts where the reader last was rather than at whatever the app shipped
+   * with -- and so a drawing holding one mechanism behaves exactly as it did
+   * when the speed really was one number.
+   */
+  setDriveSpeed(joint: RealJoint, signed: number): void {
+    if (!Number.isFinite(signed) || signed === 0) {
+      return;
+    }
+    joint.driveSpeed = signed;
+    const magnitude = Math.abs(signed);
+    if (joint instanceof PrisJoint) {
+      this.settingsService.linearInputSpeed.next(magnitude);
+    } else {
+      this.settingsService.inputSpeed.next(magnitude);
+    }
+    this.settingsService.isInputCW.next(signed < 0);
   }
 
   /** Which mechanism holds this joint, link or force — none, if it is unassigned. */
