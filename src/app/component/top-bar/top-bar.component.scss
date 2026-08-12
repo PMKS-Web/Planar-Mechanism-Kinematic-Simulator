@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use '../left-tabs/left-tabs.vars' as nav;
 
 @mixin css($theme) {
   $color-config: mat.m2-get-color-config($theme);
@@ -8,8 +9,8 @@
 
   .topStrip {
     position: absolute;
-    top: 12px;
-    left: 12px;
+    top: nav.$card-inset;
+    left: nav.$card-inset;
     right: 12px;
     display: flex;
     align-items: flex-start;
@@ -204,31 +205,38 @@
     }
   }
 
+  // The same button the view controls use: no outline, a hover tint, and the
+  // icon carrying it. An outlined blue button in the top strip read as the one
+  // emphatic thing in a row of quiet ones, which undo is not.
   .historyButton {
     display: flex;
     align-items: center;
     gap: 6px;
     height: 36px;
-    padding: 0 12px;
-    border: 1px solid mat.m2-get-color-from-palette($primary-palette, 500);
-    border-radius: 4px;
-    background: var(--card-surface);
-    color: mat.m2-get-color-from-palette($primary-palette, 500);
+    padding: 0 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #5f6368;
     font-family: inherit;
     font-size: 14px;
     cursor: pointer;
 
     mat-icon {
-      width: 18px;
-      height: 18px;
-      font-size: 18px;
-      line-height: 18px;
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+      line-height: 20px;
+    }
+
+    &:hover:not(:disabled) {
+      background: rgba(0, 0, 0, 0.04);
     }
 
     &:disabled {
-      border-color: #dfe1ea;
-      color: #a9adc4;
+      color: #c4c7d0;
       cursor: default;
+      background: transparent;
     }
   }
 
@@ -238,10 +246,12 @@
     z-index: 19;
   }
 
+  // Under the card that opened it, the same distance below it as that card is
+  // from the top of the window and from the card beside it.
   .projectMenu {
     position: absolute;
-    top: 66px;
-    left: 12px;
+    top: nav.$panel-top + nav.$shadow-room;
+    left: nav.$card-inset;
     width: 188px;
     padding: 4px 0;
     background: var(--card-surface);

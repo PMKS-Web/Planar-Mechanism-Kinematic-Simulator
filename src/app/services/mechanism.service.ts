@@ -2990,6 +2990,45 @@ export class MechanismService {
     }
   }
 
+  /**
+   * Turn one machine's drive round without moving it.
+   *
+   * A mirrored cycle passes through the same poses in the opposite order, so
+   * the pose that was at time t sits at `period - t` in the new one. Seeking
+   * there leaves the linkage exactly where it stood and the handle exactly
+   * where it sat -- only the clock jumps, which is the one of the three that
+   * can. Reversing while it runs is meant to look like a machine changing its
+   * mind, not like the drawing being replaced.
+   */
+  reverseDrive(index: number): boolean {
+    const driven = this.partitions[index]?.joints.find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
+    if (!driven) return false;
+
+    const period = this.mechanisms[index]?.cyclePeriod ?? 0;
+    const was = this.secondsOf(index);
+    this.setDriveSpeed(driven, -this.driveSpeedOf(driven));
+    // The input itself has turned round, so time runs forward through the new
+    // cycle again.
+    this.playbackDirection[index] = 1;
+    this.updateMechanism(true);
+
+    if (!(period > 0)) return true;
+    const mirrored = this.wrapTime(period - was);
+    if (this.syncMechanisms) {
+      this.animate(this.stepAtTime(mirrored), this.isPlaying);
+      // animate() snaps its clock to the sample it landed on; the pose was
+      // between two of them, and putting it back is what keeps the drawing
+      // still.
+      this.playbackTimeSeconds = mirrored;
+    } else {
+      this.ownSeconds[index] = mirrored;
+      this.animate(this.mechanismTimeStep, this.isPlaying);
+    }
+    return true;
+  }
+
   /** Which way this machine's playback is running: +1 forward, -1 backward. */
   directionOf(index: number): number {
     return this.playbackDirection[index] === -1 ? -1 : 1;

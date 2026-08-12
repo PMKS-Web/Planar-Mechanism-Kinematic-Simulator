@@ -318,14 +318,13 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
   /**
    * Turn this machine round.
    *
-   * A continuously driven machine is turned round by reversing its drive: the
-   * cycle is re-solved mirrored, which is an edit and so is undoable. A machine
-   * whose input already reverses on its own has no other direction to be driven
-   * in, so the only thing left to turn round is playback, and that is a view of
-   * the same motion rather than a change to the drawing.
+   * A continuously driven machine is turned round by reversing its drive; a
+   * machine whose input already reverses on its own has no other direction to
+   * be driven in, so the only thing left to turn round is playback, and that is
+   * a view of the same motion rather than a change to the drawing.
    *
-   * Either way it keeps its place in the cycle and keeps running, and the pose
-   * it starts from is untouched.
+   * Either way nothing moves. The linkage holds the pose it was in and the
+   * handle holds its place; the time is what jumps.
    */
   flipDirection(row: PlaybackRow): void {
     const mechanism = this.mechanism.mechanisms[row.index];
@@ -333,23 +332,7 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
       this.mechanism.setPlaybackDirection(row.index, -this.mechanism.directionOf(row.index));
       return;
     }
-
-    const partition = this.mechanism.partitions[row.index];
-    const driven = partition?.joints.find((joint) => (joint as { input?: boolean }).input) as
-      { driveSpeed: number } | undefined;
-    if (!driven) return;
-    const current =
-      driven.driveSpeed !== 0
-        ? driven.driveSpeed
-        : (this.settings.isInputCW.value ? -1 : 1) * this.settings.inputSpeed.value;
-    driven.driveSpeed = -current;
-    // The input itself has turned round, so time runs forward through the new
-    // cycle again -- otherwise a machine reversed twice would be running
-    // backwards through a mirrored cycle, which is where it started.
-    this.mechanism.setPlaybackDirection(row.index, 1);
-    // updateMechanism holds the simulation time across the rebuild, which is
-    // what keeps the machine where it was and keeps it running.
-    this.mechanism.updateMechanism(true);
+    this.mechanism.reverseDrive(row.index);
   }
 
   onScrubDown(): void {

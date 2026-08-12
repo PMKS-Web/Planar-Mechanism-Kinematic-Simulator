@@ -1,7 +1,30 @@
-// Where the left panel starts: below the floating strip along the top (12px
-// inset + 48px card + 14px of air). The strip, the panel and the playback card
-// all read these so they cannot drift apart.
-$top-strip-height: 74px;
+// Where the chrome sits, in one place, so the strip, the panels, the drawers,
+// the playback card and the project menu cannot drift apart.
+//
+// Everything is measured from the *card*, which is what a reader sees. A card
+// is $card-inset from the window and from its neighbour -- always that, in
+// every direction. The frames the scrolling cards live in are set back by
+// $shadow-room so the card's own shadow has somewhere to fall inside a box that
+// clips; that is why the frame numbers are not round.
+
+/** The one gap. Between a card and the window, and between a card and a card. */
+$card-inset: 12px;
+
+/** Air a card needs around it inside a frame that clips, for its shadow. */
+$shadow-room: 10px;
+
+/** Height of the cards along the top. */
+$top-card-height: 48px;
+
+/** Where the top strip's cards end. */
+$top-strip-bottom: $card-inset + $top-card-height;
+
+/** Frames are set back from the card line by the room their shadow needs. */
+$frame-inset: $card-inset - $shadow-room;
+$panel-top: $top-strip-bottom + $card-inset - $shadow-room;
+
+// Kept for anything still measuring from the top of the panel frame.
+$top-strip-height: $panel-top;
 
 // Room kept at the bottom for the playback card and the status strip beneath it.
 $playback-clearance: 110px;

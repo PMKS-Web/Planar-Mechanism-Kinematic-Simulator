@@ -10,7 +10,9 @@
     padding-bottom: 8px;
     background: var(--card-surface);
     border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
-    border-radius: var(--card-radius);
+    // Square at the top, where the accent bar runs the card's full width:
+    // rounding those corners tapers the bar's ends to a point.
+    border-radius: 0 0 var(--card-radius) var(--card-radius);
     box-shadow: var(--card-shadow);
   }
 

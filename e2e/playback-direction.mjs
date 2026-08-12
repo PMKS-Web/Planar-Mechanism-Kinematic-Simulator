@@ -43,6 +43,8 @@ const state = () =>
       rowPlaying: srv.mechanisms.map((_, i) => srv.isMechanismPlaying(i)),
       scrub: [...document.querySelectorAll('.rowScrubber')].map((s) => +s.value),
       notes: [...document.querySelectorAll('.rowNote')].map((n) => n.textContent.trim()),
+      // The drawn pose, to the pixel: reversing must not move the drawing.
+      pose: srv.joints.map((j) => `${j.x.toFixed(2)},${j.y.toFixed(2)}`).join(' '),
     };
   });
 
@@ -69,25 +71,47 @@ record('the handle has moved off the left end', running.scrub[0] > atRest.scrub[
 });
 
 // --- reversing keeps the place and keeps playing -----------------------------
+// Paused for this one: the pose has to be compared across the flip, and a
+// running clock moves it between the two reads for reasons that are not the
+// flip's doing.
+await page.locator('.transportCard .playButton').click();
+await page.waitForTimeout(300);
 const before = await state();
 await page.locator('.dirButton').first().click();
-await page.waitForTimeout(300);
+await page.waitForTimeout(400);
 const after = await state();
-record('reversing leaves it playing', after.playing === true, { before, after });
+record('reversing does not stop it being resumable', after.playing === false, { before, after });
 record(
-  'and near where it was, not back at the start',
-  after.seconds > 0.05 && Math.abs(after.seconds - before.seconds) < 0.6,
-  { before, after }
+  'and the linkage has not moved -- the same pose, still',
+  before.pose && after.pose && before.pose === after.pose,
+  { before: before.pose, after: after.pose }
 );
-record(
-  'and the handle now runs the other way along the track',
-  Math.abs(after.scrub[0] - (1000 - before.scrub[0])) < 220,
-  { before, after }
-);
+record('nor has the handle', Math.abs(after.scrub[0] - before.scrub[0]) < 30, {
+  before: before.scrub,
+  after: after.scrub,
+});
+record('only the clock, which is allowed to', after.seconds !== before.seconds, {
+  before: before.seconds,
+  after: after.seconds,
+});
 record('and the label changed with it', after.notes[0] !== before.notes[0], {
   before: before.notes,
   after: after.notes,
 });
+
+// And reversing while it runs leaves it running.
+await page.locator('.transportCard .playButton').click();
+await page.waitForTimeout(900);
+await page.locator('.dirButton').first().click();
+await page.waitForTimeout(400);
+const stillRunning = await state();
+record(
+  'reversing a running machine leaves it running',
+  stillRunning.playing === true,
+  stillRunning
+);
+await page.locator('.transportCard .playButton').click();
+await page.waitForTimeout(300);
 
 // --- the start pose is untouched by any of it -------------------------------
 await page.locator('.tabButton', { hasText: 'Edit' }).click();

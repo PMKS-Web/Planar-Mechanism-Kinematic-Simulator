@@ -11,10 +11,11 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
+  // The frame around this leaves the card's shadow its room; a second inset
+  // here would put the card 10px in from where every other card sits.
   #analysisWrapper {
     display: flex;
     flex-direction: column;
-    padding: 10px;
     gap: 10px;
   }
 

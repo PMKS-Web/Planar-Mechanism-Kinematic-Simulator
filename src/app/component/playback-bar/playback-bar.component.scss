@@ -5,6 +5,8 @@
 // than from an eye: the bottom cluster was tuned there, and re-deriving it by
 // looking at a screenshot is how it drifted the first time.
 @mixin css($theme) {
+  $primary-palette: map.get(mat.m2-get-color-config($theme), 'primary');
+
   .playbackRow {
     position: absolute;
     left: 0;
@@ -75,8 +77,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 40px;
+    height: 40px;
     flex: 0 0 auto;
     border: 1px solid #dfe1ea;
     border-radius: 6px;
@@ -166,39 +168,58 @@
     gap: 8px;
   }
 
+  // The way to select a machine, and the only one outside the canvas -- so it
+  // has to read as a control rather than as a label that happens to react.
+  // Outlined in the app's own blue, with a caret to say there is something
+  // behind it, and filled once it is the machine being looked at.
   .mechChip {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 30px;
+    gap: 2px;
+    height: 40px;
+    padding: 0 6px 0 8px;
     flex: 0 0 auto;
-    border: 1px solid transparent;
+    border: 1px solid mat.m2-get-color-from-palette($primary-palette, 200);
     border-radius: 6px;
-    background: #f0f1f5;
-    color: #2c2c2c;
+    background: var(--card-surface);
+    color: mat.m2-get-color-from-palette($primary-palette, 500);
     font-family: inherit;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    padding: 0;
+
+    .mechChipCaret {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+      line-height: 16px;
+    }
 
     &:hover {
-      background: #e8eaf6;
+      background: #eef1fc;
+      border-color: mat.m2-get-color-from-palette($primary-palette, 500);
     }
 
     &.selected {
-      border: 1.5px solid #3f51b5;
+      background: mat.m2-get-color-from-palette($primary-palette, 500);
+      border-color: mat.m2-get-color-from-palette($primary-palette, 500);
+      color: #fff;
     }
 
     // The combined row stands for every machine at once, so there is no single
     // thing for it to select.
     &.plain {
       font-size: 13px;
+      padding: 0 8px;
       cursor: default;
+      border-color: transparent;
+      background: #f0f1f5;
+      color: #2c2c2c;
 
       &:hover {
         background: #f0f1f5;
+        border-color: transparent;
       }
     }
   }
@@ -232,8 +253,10 @@
   .rowBody {
     display: flex;
     flex-direction: column;
+    justify-content: center;
     flex: 1 1 auto;
     min-width: 0;
+    height: 40px;
     gap: 2px;
   }
 
@@ -325,8 +348,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 40px;
+    height: 40px;
     flex: 0 0 auto;
     border: 1px solid #dfe1ea;
     border-radius: 6px;

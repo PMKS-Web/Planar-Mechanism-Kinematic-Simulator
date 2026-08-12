@@ -51,8 +51,9 @@
 
   #rightPanel {
     position: absolute;
-    top: nav.$top-strip-height;
-    right: 12px;
+    top: nav.$panel-top;
+    right: nav.$frame-inset;
+    box-sizing: border-box;
     overflow-x: hidden;
     overflow-y: auto;
     max-height: calc(100% - #{nav.$top-strip-height} - #{nav.$playback-clearance});
@@ -95,11 +96,14 @@
   // neither, so their card came out 20px wider than the Settings card and sat
   // 10px closer to the window edge -- the drawer visibly changed shape when you
   // switched between them.
+  // The inset lives on the page rather than on the drawer around it: a closed
+  // drawer has no page, and padding on the drawer itself gave the closed one a
+  // 20px box that hung off the right of the window.
   #rightPanel > div {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 10px;
+    padding: nav.$shadow-room;
     box-sizing: border-box;
   }
 

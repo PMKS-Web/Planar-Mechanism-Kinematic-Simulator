@@ -33,6 +33,9 @@
             [attr.title]="row.isMechanism ? 'Select ' + row.id : 'All mechanisms move together'"
           >
             {{ row.id }}
+            @if (row.isMechanism) {
+              <mat-icon class="mechChipCaret">arrow_drop_down</mat-icon>
+            }
           </button>
 
           @if (row.ownPlay) {

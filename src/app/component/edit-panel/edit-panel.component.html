@@ -16,16 +16,32 @@
   ) {
     <div class="helpPanel">
       <div class="helpTitle">Edit</div>
-      <p class="helpLead">Select a joint or link on the grid to edit its properties.</p>
+      <!-- An empty grid has nothing to click, so it is not told to click. -->
+      <p class="helpLead">
+        @if (gridIsEmpty()) {
+          Draw something to edit.
+        } @else {
+          Select a joint or link on the grid to edit its properties.
+        }
+      </p>
       <div class="helpRule"></div>
       <div class="helpHints">
-        <div class="helpHint">
-          <mat-icon>touch_app</mat-icon>
-          <span>Click a joint or link to select it. Drag a joint to move it.</span>
-        </div>
+        @if (!gridIsEmpty()) {
+          <div class="helpHint">
+            <mat-icon>touch_app</mat-icon>
+            <span>Click a joint or link to select it. Drag a joint to move it.</span>
+          </div>
+        }
         <div class="helpHint">
           <mat-icon>add_circle_outline</mat-icon>
-          <span>Right-click the grid to add a link or a cylinder. Right-click a link to attach a tracer point or a force to it.</span>
+          <span>
+            @if (gridIsEmpty()) {
+              Right-click the grid to add a link or a cylinder.
+            } @else {
+              Right-click the grid to add a link or a cylinder. Right-click a link to attach a
+              tracer point or a force to it.
+            }
+          </span>
         </div>
       </div>
     </div>

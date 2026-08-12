@@ -70,6 +70,11 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     FVisual: false,
   };
 
+  /** Nothing drawn yet, so nothing to select and nothing to drag. */
+  gridIsEmpty(): boolean {
+    return this.mechanismService.joints.length === 0 && this.mechanismService.links.length === 0;
+  }
+
   hideEditPanel() {
     return this.mechanismService.isPlaying || this.mechanismService.mechanismTimeStep !== 0;
   }

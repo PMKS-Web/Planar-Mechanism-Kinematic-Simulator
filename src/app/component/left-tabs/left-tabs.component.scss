@@ -29,7 +29,9 @@
     padding: 14px 15px 18px;
     background: var(--card-surface);
     border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
-    border-radius: var(--card-radius);
+    // Square at the top, where the accent bar runs the card's full width:
+    // rounding those corners tapers the bar's ends to a point.
+    border-radius: 0 0 var(--card-radius) var(--card-radius);
     box-shadow: var(--card-shadow);
   }
 
@@ -82,8 +84,15 @@
   // 70px short of anything.
   .panel {
     position: absolute;
-    top: nav.$top-strip-height;
-    left: 12px;
+    top: nav.$panel-top;
+    left: nav.$frame-inset;
+    // The inset is the frame's, not the wrapper's inside it: the frame is what
+    // clips, so it is the frame that has to leave the card's shadow somewhere
+    // to fall. It used to be a margin on the wrapper, which put the card 10px
+    // past the bottom of a frame capped at the frame's own height and cut the
+    // shadow off there.
+    padding: nav.$shadow-room;
+    box-sizing: border-box;
     overflow-x: hidden;
     overflow-y: auto;
     --panel-clearance: #{nav.$bottom-bar-height + 12px};
