@@ -2838,6 +2838,46 @@ export class MechanismService {
   }
 
   /**
+   * Draw the way back to the start of the cycle rather than cutting to it.
+   *
+   * Leaving an analysis mode rewinds the mechanism, and doing that in one frame
+   * teleports a linkage the user was just watching move -- the pose they had
+   * paused on is replaced by a different one with nothing in between, which
+   * reads as the drawing breaking rather than as playback ending.
+   *
+   * This is a seek per frame, not playback: it never runs the solver and it
+   * lands on exactly the same pose the cut landed on. If anything else moves
+   * the mechanism while it is running -- another seek, a rebuild, playback
+   * starting again -- it stops where it is and leaves that caller alone.
+   */
+  easeToStart(durationMs = 220): void {
+    if (this.atStartPose()) return;
+    const from = this.mechanismTimeStep;
+    this.isPlaying = false;
+    let startedAt: number | null = null;
+    let lastDrawn = from;
+
+    const frame = (now: number) => {
+      // Someone else has taken the mechanism somewhere since the last frame.
+      // Whatever they wanted, it is newer than this.
+      if (this.mechanismTimeStep !== lastDrawn) return;
+      startedAt ??= now;
+      const t = Math.min(1, (now - startedAt) / durationMs);
+      // Ease out: quick off the pose being left, gentle into the start.
+      const eased = 1 - (1 - t) ** 3;
+      const next = Math.round(from * (1 - eased));
+      // The first frame is the pose already on screen, and at 60 fps over a
+      // fifth of a second several later ones round to the same sample.
+      if (next !== lastDrawn) {
+        lastDrawn = next;
+        this.animate(next, false);
+      }
+      if (t < 1) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }
+
+  /**
    * How far playback sits past sample `step`, as a 0..1 fraction of the way to the
    * next one. Zero for any seek and at the last sample, where there is nothing to
    * blend toward.

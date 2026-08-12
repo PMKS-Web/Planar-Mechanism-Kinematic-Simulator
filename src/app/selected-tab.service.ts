@@ -86,7 +86,7 @@ export class SelectedTabService {
     // Replaces the old stop button: leaving Analyze is what rewinds the
     // mechanism, so the other modes always act on the pose at time 0.
     if (this.isAnalysisMode(previousTab) && !this.isAnalysisMode()) {
-      this.mechanism.animate(0, false);
+      this.mechanism.easeToStart();
       this.settings.animating.next(false);
     }
 
