@@ -89,6 +89,12 @@ export class UrlProcessorService {
         ? { type: this.activeObj.objType, id: this.activeObj.getSelectedObj()?.id }
         : undefined;
     mechanismSrv.rewindToStart();
+    // The unit the drawing is about to be expressed in decides how big it is on
+    // screen, and the viewport is compensated for that -- but only where the
+    // change came from the settings panel. Replaying a step that crossed a unit
+    // change has to compensate too, or the geometry comes back at its old size
+    // through a viewport still zoomed for the new one.
+    const unitBefore = this.settingsSrv.lengthUnit.value;
 
     // the transcoder is responsible for decoding the url into a mechanism
     const decoder = new StringTranscoder();
@@ -162,6 +168,8 @@ export class UrlProcessorService {
       // mechanism that arrives should already be in view, not zoom itself in
       // once a second has passed. `scaleToFitLinkage` waits for the render.
       this.svgGrid.scaleToFitLinkage(false);
+    } else {
+      this.svgGrid.compensateForUnitChange(unitBefore, this.settingsSrv.lengthUnit.value);
     }
   }
 }

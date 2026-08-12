@@ -8,6 +8,15 @@ import { SettingsService } from './settings.service';
 import { DragStateService } from './drag-state.service';
 import Hammer from 'hammerjs';
 import { MODEL_SCALE } from '../model/render-scale';
+import { LengthUnit } from '../model/unit-enums';
+
+/** One of each unit, in centimetres. The only ratio this file needs. */
+const LENGTH_IN_CM: Record<LengthUnit, number> = {
+  [LengthUnit.CM]: 1,
+  [LengthUnit.METER]: 100,
+  [LengthUnit.INCH]: 2.54,
+  [LengthUnit.NULL]: 1,
+};
 
 @Injectable({
   providedIn: 'root',
@@ -175,6 +184,25 @@ export class SvgGridService {
     const screenPos = svgPos.applyMatrix(CTM);
     // screenPos.y = screenPos.y * -1;
     return screenPos;
+  }
+
+  /**
+   * Keep the drawing the same size on screen across a change of length unit.
+   *
+   * A unit change rescales the stored geometry, so without this the linkage
+   * would appear to grow or shrink by the conversion factor. The settings panel
+   * does this for a change the reader made; undo and redo replay a URL that can
+   * carry the same change, and had no way to do it -- the geometry came back at
+   * its old size through a viewport still zoomed for the new one, which is the
+   * jump.
+   */
+  compensateForUnitChange(fromUnit: LengthUnit, toUnit: LengthUnit): void {
+    if (fromUnit === toUnit || !this.panZoomObject) return;
+    const origin = this.SVGtoScreen(new Coord(0, 0));
+    this.panZoomObject.zoomAtPointBy(LENGTH_IN_CM[toUnit] / LENGTH_IN_CM[fromUnit], {
+      x: origin.x,
+      y: origin.y,
+    });
   }
 
   screenToSVGfromXY(screenX: number, screenY: number): Coord {
