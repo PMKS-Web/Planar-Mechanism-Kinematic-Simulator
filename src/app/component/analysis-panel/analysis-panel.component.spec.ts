@@ -1,3 +1,4 @@
+import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -13,12 +14,17 @@ import {
 import { TEMPLATE_LINKAGES } from '../MODALS/templates/template-linkages';
 import { AnalysisPanelComponent } from './analysis-panel.component';
 
-async function createPanel(payload: string, selectedId: string) {
+async function createPanel(payload: string, selectedId: string, mode: TabID = TabID.ANALYZE) {
   const fixtureData = buildMechanismFixture(payload);
   const selected =
     fixtureData.service.joints.find((joint) => joint.id === selectedId) ??
     fixtureData.service.links.find((link) => link.id === selectedId)!;
   fixtureData.active.updateSelectedObj(selected);
+
+  // Which mode the panel is being asked about. Kinematic and force analysis are
+  // separate modes now and the panel shows one at a time, so a spec about force
+  // rows has to be asking the force question.
+  const tabs = { getCurrentTab: () => mode } as unknown as SelectedTabService;
 
   await TestBed.configureTestingModule({
     declarations: [AnalysisPanelComponent],
@@ -27,6 +33,7 @@ async function createPanel(payload: string, selectedId: string) {
       { provide: ActiveObjService, useValue: fixtureData.active },
       { provide: MechanismService, useValue: fixtureData.service },
       { provide: SettingsService, useValue: fixtureData.settings },
+      { provide: SelectedTabService, useValue: tabs },
     ],
     schemas: [NO_ERRORS_SCHEMA],
   }).compileComponents();
@@ -43,16 +50,17 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     TestBed.resetTestingModule();
   });
 
-  it('renders analysis controls for a valid loopless welded link instead of blanking', async () => {
-    const { fixture } = await createPanel(LOOPLESS_WELDED_MECHANISM, 'A');
+  it('renders force controls for a valid loopless welded link instead of blanking', async () => {
+    // Force analysis is its own mode now, so this asks the force question and
+    // counts only what that question answers: a graph per reacting link, plus
+    // the input effort. The kinematic graphs are the other mode's, and the
+    // test below is where they are counted.
+    const { fixture } = await createPanel(LOOPLESS_WELDED_MECHANISM, 'A', TabID.FORCE);
     expect(() => fixture.detectChanges()).not.toThrow();
 
     const rows = fixture.componentInstance.jointForceRows();
     expect(rows.length).toBeGreaterThan(0);
-    Object.assign(fixture.componentInstance.graphExpanded, {
-      JPos: true,
-      JInputForce: true,
-    });
+    fixture.componentInstance.graphExpanded['JInputForce'] = true;
     for (const row of rows) {
       fixture.componentInstance.graphExpanded['JForce_' + row.linkId] = true;
     }
@@ -60,8 +68,9 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Analysis for Joint A');
     expect(fixture.nativeElement.textContent).toContain('Force Analysis');
+    expect(fixture.nativeElement.textContent).not.toContain('Kinematic Analysis');
     expect(fixture.nativeElement.querySelectorAll('app-analysis-graph').length).toBe(
-      rows.length + 2
+      rows.length + 1
     );
 
     fixture.destroy();
@@ -83,7 +92,7 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
   });
 
   it('explains that an internal welded joint has no independent pin reaction', async () => {
-    const { fixture } = await createPanel(LOOPLESS_WELDED_MECHANISM, 'B');
+    const { fixture } = await createPanel(LOOPLESS_WELDED_MECHANISM, 'B', TabID.FORCE);
     fixture.detectChanges();
 
     expect(fixture.componentInstance.jointForceRows()).toHaveLength(0);
@@ -93,7 +102,7 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
   });
 
   it('lists one force row per link reacting at an external multi-link pin', async () => {
-    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'B');
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'B', TabID.FORCE);
     fixture.detectChanges();
 
     const rows = fixture.componentInstance.jointForceRows();
@@ -111,7 +120,7 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
   });
 
   it('lists one force row per external joint on a link, sharing the joint-side dataset', async () => {
-    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'BC');
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'BC', TabID.FORCE);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Analysis for Link BC');

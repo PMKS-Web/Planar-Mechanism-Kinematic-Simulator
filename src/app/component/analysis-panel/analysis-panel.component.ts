@@ -1,3 +1,4 @@
+import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ForceAnalysisMode, ForceReactionIndex } from 'src/app/model/mechanism/force-solver';
 import { Mechanism } from 'src/app/model/mechanism/mechanism';
@@ -26,6 +27,22 @@ export interface ForceAnalysisRow {
   standalone: false,
 })
 export class AnalysisPanelComponent {
+  /**
+   * Which half of the analysis this mode is asking for.
+   *
+   * The two used to sit one above the other in a single Analyze panel, which
+   * meant every reader scrolled past the answer they did not want and neither
+   * question could say what *it* needed. They are separate modes now, so the
+   * panel shows one at a time.
+   */
+  get showKinematic(): boolean {
+    return this.tabs.getCurrentTab() !== TabID.FORCE;
+  }
+
+  get showForce(): boolean {
+    return this.tabs.getCurrentTab() === TabID.FORCE;
+  }
+
   //A dictionary for wether each graph is expanded or not
   graphExpanded: { [key: string]: boolean } = {
     LKineAna: true,
@@ -80,7 +97,8 @@ export class AnalysisPanelComponent {
     public activeSrv: ActiveObjService,
     private fb: FormBuilder,
     public mechanismService: MechanismService,
-    public settingsService: SettingsService
+    public settingsService: SettingsService,
+    private tabs: SelectedTabService
   ) {
     this.forceAnalysisFormGroup.patchValue(
       { mode: this.settingsService.forceAnalysisMode.value === 'dynamic' ? '1' : '0' },
