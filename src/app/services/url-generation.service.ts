@@ -196,7 +196,9 @@ export class UrlGenerationService {
       );
       encoder.addEnumSetting(EnumSetting.GLOBAL_UNIT, GlobalUnit, normalizedGlobal);
       encoder.addBoolSetting(BoolSetting.IS_INPUT_CW, this.settings.isInputCW.getValue());
-      //encoder.addBoolSetting(BoolSetting.IS_GRAVITY, this.settings.isGravity.getValue());
+      // Inverted on purpose: false is what every pre-flag URL unpacks, and
+      // false has to keep meaning gravity on (see stored-settings.ts).
+      encoder.addBoolSetting(BoolSetting.GRAVITY_OFF, !this.settings.isGravity.getValue());
       encoder.addIntSetting(IntSetting.INPUT_SPEED, this.settings.inputSpeed.getValue());
       encoder.addDecimalSetting(
         DecimalSetting.LINEAR_INPUT_SPEED,
@@ -211,7 +213,10 @@ export class UrlGenerationService {
         this.settings.isShowMinorGrid.getValue()
       );
       encoder.addBoolSetting(BoolSetting.IS_SHOW_ID, this.settings.isShowID.getValue());
-      encoder.addBoolSetting(BoolSetting.IS_SHOW_COM, this.settings.isShowCOM.getValue());
+      // Frozen at the old default: the CoM toggle is a machine-local display
+      // preference now and the decoder no longer reads this bit. Writing the
+      // live value would churn every generated URL for a bit nobody consumes.
+      encoder.addBoolSetting(BoolSetting.IS_SHOW_COM, false);
       encoder.addDecimalSetting(DecimalSetting.SCALE, this.settings.objectScale / MODEL_SCALE);
 
       encoder.addIntSetting(IntSetting.TIMESTEP, cachedAnimationFrame);

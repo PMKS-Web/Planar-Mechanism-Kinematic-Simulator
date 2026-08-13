@@ -1148,7 +1148,7 @@
   @if (settings.isShowCOM.value || settings.previewCoMLinkId) {
     <g id="comTagHolder" style="transform: scaleY(-1); pointer-events: none">
       @for (link of mechanismSrv.getLinks(); track link) {
-        @if (settings.isShowCOM.value || settings.previewCoMLinkId === link.id) {
+        @if (showsCoM(link)) {
           <svg style="overflow: visible">
             <!-- The standard mark, drawn to be read over whatever is beneath it.
                  Two of the four quarters are filled and the other two are not
@@ -1210,7 +1210,7 @@
               [attr.fill]="tag.ink"
               [attr.fill-opacity]="tag.opacity"
               [attr.transform]="tag.angle ? 'rotate(' + tag.angle + ')' : null"
-              [attr.dy]="settings.isShowCOM.value ? -settings.objectScale * 0.13 : 0"
+              [attr.dy]="showsCoM(link) ? -settings.objectScale * 0.13 : 0"
               [style.font-size.px]="tagFontSize"
               style="text-anchor: middle"
             >

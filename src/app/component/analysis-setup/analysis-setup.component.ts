@@ -69,7 +69,13 @@ export class AnalysisSetupComponent {
   }
 
   get forceOutstanding(): number {
-    return this.forceRequirements.filter((requirement) => !requirement.met).length;
+    return this.forceRequirements.filter((requirement) => !requirement.met && !requirement.warning)
+      .length;
+  }
+
+  get forceWarnings(): number {
+    return this.forceRequirements.filter((requirement) => !requirement.met && requirement.warning)
+      .length;
   }
 
   /**
@@ -84,9 +90,13 @@ export class AnalysisSetupComponent {
   get summary(): string {
     if (this.mode === 'force') {
       const outstanding = this.forceOutstanding;
-      return outstanding === 0
-        ? 'Force analysis is ready to run.'
-        : `${outstanding} ${outstanding === 1 ? 'thing has' : 'things have'} to be set before forces can be solved.`;
+      if (outstanding > 0) {
+        return `${outstanding} ${outstanding === 1 ? 'thing has' : 'things have'} to be set before forces can be solved.`;
+      }
+      const warnings = this.forceWarnings;
+      return warnings > 0
+        ? `Force analysis runs. ${warnings === 1 ? 'One thing below is' : `${warnings} things below are`} worth a look before trusting the numbers.`
+        : 'Force analysis is ready to run.';
     }
     const all = this.readiness;
     if (all.length === 0) {

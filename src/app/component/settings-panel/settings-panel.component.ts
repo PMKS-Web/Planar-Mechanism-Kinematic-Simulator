@@ -58,6 +58,7 @@ export class SettingsPanelComponent implements OnDestroy {
       showMinorGrid: this.settingsService.isShowMinorGrid.value,
       snapToGrid: this.settingsService.isSnapToGrid.value,
       snapToAlignment: this.settingsService.isSnapToAlignment.value,
+      gravity: this.settingsService.isGravity.value,
     });
 
     this.settingsSubscriptions.add(
@@ -184,6 +185,14 @@ export class SettingsPanelComponent implements OnDestroy {
       this.settingsService.isShowMinorGrid.next(Boolean(val));
       this.mechanismSrv.updateMechanism();
     });
+    // Gravity changes what the force analysis means, so it is an edit: the
+    // mechanisms are rebuilt with the new flag and the change is undoable.
+    this.settingsForm.controls['gravity'].valueChanges.subscribe((val) => {
+      const on = val === true;
+      if (on === this.settingsService.isGravity.value) return;
+      this.settingsService.isGravity.next(on);
+      this.mechanismSrv.updateMechanism(true);
+    });
     // this.settingsForm.controls['torqueunit'].valueChanges.subscribe(() => {
     //   this.settingsService.inputTorque.next(this.currentTorqueUnit);
     // });
@@ -259,6 +268,7 @@ export class SettingsPanelComponent implements OnDestroy {
       showMajorGrid: [true, { updateOn: 'change' }],
       snapToGrid: [false, { updateOn: 'change' }],
       snapToAlignment: [true, { updateOn: 'change' }],
+      gravity: [true, { updateOn: 'change' }],
     },
     { updateOn: 'blur' }
   );

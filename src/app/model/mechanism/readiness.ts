@@ -92,16 +92,40 @@ export function readinessOf(
           body: 'It has no ground, so every part of it is free to drift. Ground a joint, or ground a slider’s guide.',
         });
       } else if (dof > 1) {
+        // Point at the loose ends when there are any: a joint on one link with
+        // no ground is a freedom the reader can see.
+        const freeEnds = partition.ownJoints.filter(
+          (joint) =>
+            joint instanceof RealJoint &&
+            !(joint instanceof PrisJoint) &&
+            !joint.ground &&
+            joint.links.length === 1
+        );
         add({
           state: 'blocker',
           title: `This mechanism has ${dof} degrees of freedom`,
-          body: `One input can drive only one degree of freedom. Ground another joint, or connect a free joint to a second link, until this reads 1.`,
+          body:
+            `One input can drive only one degree of freedom. Ground another joint, or connect a free joint to a second link, until this reads 1.` +
+            (freeEnds.length > 0
+              ? ` ${freeEnds.length === 1 ? 'Joint' : 'Joints'} ${names(freeEnds)} ${
+                  freeEnds.length === 1 ? 'hangs' : 'hang'
+                } on only one link — free ends like that are where extra freedom usually lives.`
+              : ''),
+          at: freeEnds[0],
+          action: freeEnds.length > 0 ? 'Go To Joint' : undefined,
         });
       } else {
+        const welded = partition.ownJoints.some(
+          (joint) => joint instanceof RealJoint && joint.isWelded
+        );
         add({
           state: 'blocker',
           title: `This mechanism has ${dof} degrees of freedom`,
-          body: 'It is over-constrained, so nothing can move at all. Remove a link, or unground a joint, until this reads 1.',
+          body:
+            'It is over-constrained, so nothing can move at all. Remove a link, or unground a joint, until this reads 1.' +
+            (welded
+              ? ' A weld also removes freedom — unwelding a joint is another way out.'
+              : ''),
         });
       }
       break;
@@ -144,21 +168,44 @@ export function readinessOf(
       });
       break;
 
-    case 'cycle-never-closes':
+    case 'cycle-never-closes': {
+      const gap = mechanism.cycleGap;
       add({
         state: 'blocker',
         title: 'The motion never repeats',
-        body: 'This mechanism never comes back to the pose it started in, so there is no cycle to animate. Check the link lengths — a loop that only just closes can wander instead of repeating.',
+        body:
+          'This mechanism never comes back to the pose it started in, so there is no cycle to animate.' +
+          (gap !== undefined && Number.isFinite(gap)
+            ? gap < 0.5
+              ? ` The closest it comes is ${gap.toFixed(2)} units away — a loop that only just fails to close usually has a link length slightly off.`
+              : ` The closest it comes is ${gap.toFixed(1)} units away — the motion wanders rather than repeating. Check the link lengths.`
+            : ' Check the link lengths — a loop that only just closes can wander instead of repeating.'),
       });
       break;
+    }
 
-    case 'nothing-can-move':
+    case 'nothing-can-move': {
+      const unreachable = partition.ownJoints.filter((joint) =>
+        mechanism.unreachableJoints.includes(joint.id)
+      );
       add({
         state: 'blocker',
         title: 'Nothing moves when the input turns',
-        body: 'The driven joint cannot reach the rest of the mechanism, so no other joint has a position to solve for. Check that it is connected through links to the parts you expect it to move.',
+        body:
+          unreachable.length > 0
+            ? `The solver never finds a position for ${
+                unreachable.length === 1 ? 'joint' : 'joints'
+              } ${names(unreachable)} — the driven joint cannot reach ${
+                unreachable.length === 1 ? 'it' : 'them'
+              } through the links. Check the connections between the input and ${
+                unreachable.length === 1 ? 'that joint' : 'those joints'
+              }.`
+            : 'The driven joint cannot reach the rest of the mechanism, so no other joint has a position to solve for. Check that it is connected through links to the parts you expect it to move.',
+        at: unreachable[0],
+        action: unreachable.length > 0 ? 'Go To Joint' : undefined,
       });
       break;
+    }
   }
 
   // Asked even of a mechanism the solver accepted: the toggle refuses a joint
@@ -239,6 +286,12 @@ function reciprocates(mechanism: Mechanism): boolean {
 /** One condition force analysis needs, and whether the drawing meets it. */
 export interface ForceRequirement {
   met: boolean;
+  /**
+   * Unmet-but-not-blocking: the analysis runs anyway, and the row is worth
+   * reading before trusting the numbers. Warnings do not gate readiness and
+   * are not counted by the "N to set" chips.
+   */
+  warning?: boolean;
   /** A short sentence-case phrase naming the condition. */
   title: string;
   /** Met: what is true. Unmet: what is missing, and how to supply it. */

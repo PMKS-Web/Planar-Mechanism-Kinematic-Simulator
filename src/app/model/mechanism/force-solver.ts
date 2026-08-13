@@ -279,7 +279,8 @@ export class ForceSolver {
     });
 
     if (bodies.length === 0) return empty('unsupported-topology');
-    if (!this.propertiesAreValid(bodies, units)) return empty('invalid-properties');
+    const badProperty = this.invalidProperty(bodies, units);
+    if (badProperty) return empty('invalid-properties', badProperty);
     if (mode === 'dynamic' && !this.kinematicsAreComplete(bodies, kinematics)) {
       return empty('missing-kinematics');
     }
@@ -350,9 +351,15 @@ export class ForceSolver {
 
     const unknownCount = reactions.length + couples.length + (inputBody && inputKind ? 1 : 0);
     if (unknownCount !== rowCount) {
+      // Cause first, arithmetic second: "10 equations, 9 unknowns" is the
+      // solver talking to itself. What a reader can act on is which way the
+      // count is off — too many supports, or a body with none.
+      const counts = `(${rowCount} equilibrium equations, ${unknownCount} unknowns)`;
       return empty(
         'unsupported-topology',
-        `Force equilibrium has ${rowCount} equations and ${unknownCount} unknowns.`
+        unknownCount > rowCount
+          ? `This linkage has more supports than equilibrium can determine — a redundant support, link, or weld leaves the load's split between them ambiguous. Remove one ${counts}.`
+          : `A body here has nothing to react against, so its equilibrium cannot be written. Check for a part carrying load with no support ${counts}.`
       );
     }
 
@@ -682,22 +689,37 @@ export class ForceSolver {
     return ordered;
   }
 
-  private static propertiesAreValid(bodies: Link[], units: UnitFactors): boolean {
-    if (!Object.values(units).every(Number.isFinite)) return false;
-    return bodies.every((body) => {
-      if (!Number.isFinite(body.mass) || body.mass < 0) return false;
-      if (body instanceof RealLink) {
-        if (!Number.isFinite(body.massMoI) || body.massMoI < 0) return false;
-        return body.forces.every(
-          (force) =>
-            Number.isFinite(force.mag) &&
-            Number.isFinite(force.angleRad) &&
-            Number.isFinite(force.startCoord.x) &&
-            Number.isFinite(force.startCoord.y)
-        );
+  /**
+   * The first invalid mass, inertia, or force property, described by name —
+   * or undefined when everything is a usable number. The panel shows this
+   * sentence verbatim, so it has to say which part to go and fix.
+   */
+  private static invalidProperty(bodies: Link[], units: UnitFactors): string | undefined {
+    if (!Object.values(units).every(Number.isFinite)) {
+      return 'The unit conversion is invalid — reselect the global units.';
+    }
+    const nameOf = (body: Link): string => ('name' in body && body.name) || body.id;
+    for (const body of bodies) {
+      if (!Number.isFinite(body.mass) || body.mass < 0) {
+        return `Link ${nameOf(body)} has a mass that is not a usable number. Set Link Mass in Mass Settings.`;
       }
-      return true;
-    });
+      if (body instanceof RealLink) {
+        if (!Number.isFinite(body.massMoI) || body.massMoI < 0) {
+          return `Link ${nameOf(body)} has a moment of inertia that is not a usable number. Set it in Mass Settings.`;
+        }
+        for (const force of body.forces) {
+          if (
+            !Number.isFinite(force.mag) ||
+            !Number.isFinite(force.angleRad) ||
+            !Number.isFinite(force.startCoord.x) ||
+            !Number.isFinite(force.startCoord.y)
+          ) {
+            return `The force on link ${nameOf(body)} has an invalid magnitude or position. Select it and re-enter its values.`;
+          }
+        }
+      }
+    }
+    return undefined;
   }
 
   private static kinematicsAreComplete(

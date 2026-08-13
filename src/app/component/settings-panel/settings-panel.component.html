@@ -22,6 +22,13 @@
         [disabled]="!unitsEditable()"
         >Angle Units
       </radio-block>
+      <toggle-block
+        [formGroup]="this.settingsForm"
+        _formControl="gravity"
+        tooltip="Weight loads every link that has mass. Turn off to analyze forces without gravity. Stored in the URL, so a shared analysis keeps it."
+      >
+        Gravity
+      </toggle-block>
       <!-- Input direction and speed belong to the input joint, so they live in that
            joint's Input Settings section in the Edit panel rather than here. -->
     </collapsible-subseciton>

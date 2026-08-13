@@ -71,6 +71,26 @@ describe('why a mechanism will not run', () => {
     expect(check.body).toMatch(/Ground another joint, or connect a free joint to a second link/);
   });
 
+  it('points at the free end that carries the extra freedom', () => {
+    // Same loose chain: C hangs on one link, and that is where the second
+    // degree of freedom lives. The message should say so and offer the trip.
+    const readiness = checksFor({
+      joints: [
+        { id: 'A', x: 0, y: 0, ground: true, input: true },
+        { id: 'B', x: 1, y: 0 },
+        { id: 'C', x: 2, y: 0 },
+      ],
+      links: [{ joints: 'AB' }, { joints: 'BC' }],
+      inputAngVel: 1,
+    });
+
+    const [check] = readiness.checks;
+    expect(check.body).toContain('C');
+    expect(check.body).toMatch(/free end/i);
+    expect(check.at?.id).toBe('C');
+    expect(check.action).toBe('Go To Joint');
+  });
+
   it('reports the mobility first when a linkage is both loose and undriven', () => {
     // Both are wrong, and the order matters: giving this an input would not
     // make it run, so sending the reader to add one first wastes the fix.

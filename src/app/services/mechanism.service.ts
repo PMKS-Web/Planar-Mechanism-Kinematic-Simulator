@@ -300,7 +300,7 @@ export class MechanismService {
           partition.links,
           partition.forces,
           this.ics,
-          true,
+          this.settingsService.isGravity.value,
           unitStr,
           this.inputVelocityFor(partition)
         )
@@ -1903,12 +1903,16 @@ export class MechanismService {
         .filter((_, index) => this.mechanisms[index]?.isMechanismValid())
         .flatMap((partition) => partition.links.map((link) => link.id))
     );
+    // A massless link is a legitimate idealization -- the solver simply skips
+    // its weight and inertia -- so this is a warning, not a gate. It is worth
+    // one, because zero is the mass nobody chose: every link starts there.
     const massless = this.links.filter(
       (link) => link instanceof RealLink && analysable.has(link.id) && !(link.mass > 0)
     ) as RealLink[];
     requirements.push({
       met: massless.length === 0,
-      title: 'Mass on every link',
+      warning: true,
+      title: 'Massless links',
       body:
         massless.length === 0
           ? 'Every link has a mass and a moment of inertia.'
@@ -1916,19 +1920,29 @@ export class MechanismService {
               .map((link) => link.name || link.id)
               .join(
                 ', '
-              )} still ${massless.length === 1 ? 'weighs' : 'weigh'} nothing. A massless link contributes no inertia, so a dynamic answer will not account for it. Set Link Mass in Mass Settings.`,
+              )} ${massless.length === 1 ? 'weighs' : 'weigh'} nothing, so gravity and inertia pass ${massless.length === 1 ? 'it' : 'them'} by. Fine for an idealized bar — set Link Mass in Mass Settings to include ${massless.length === 1 ? 'it' : 'them'}.`,
     });
 
-    // And a force has to be on one of them: a load attached to a linkage that
-    // cannot run says nothing about the one that can.
+    // Something has to load the linkage, but weight counts: with gravity on,
+    // a link with mass hangs from it, and that is a complete static problem.
+    // Demanding a drawn arrow on top of that refused analyses that meant
+    // something.
     const loads = this.forces.filter((force) => analysable.has(force.link?.id));
+    const weighted = this.links.some(
+      (link) => link instanceof RealLink && analysable.has(link.id) && link.mass > 0
+    );
+    const gravityLoads = this.settingsService.isGravity.value && weighted;
     requirements.push({
-      met: loads.length > 0,
+      met: loads.length > 0 || gravityLoads,
       title: 'A load to react against',
       body:
         loads.length > 0
           ? `${loads.length} ${loads.length === 1 ? 'force is' : 'forces are'} applied.`
-          : 'Without an applied force the only load is the drive itself, so every reaction comes from it. Right-click a link and choose Attach Force to add one.',
+          : gravityLoads
+            ? 'Gravity loads the links that have mass.'
+            : this.settingsService.isGravity.value
+              ? 'Nothing loads this mechanism yet: no force is applied and every link is massless. Right-click a link and choose Attach Force, or give a link mass — gravity is on, so weight alone is a load.'
+              : 'Nothing loads this mechanism: gravity is off and no force is applied. Right-click a link and choose Attach Force, or turn gravity on in Settings and give a link mass.',
     });
 
     return requirements;
@@ -1936,7 +1950,9 @@ export class MechanismService {
 
   /** Can the Force tab show anything worth reading? */
   forceAnalysisReady(): boolean {
-    return this.forceAnalysisRequirements().every((requirement) => requirement.met);
+    return this.forceAnalysisRequirements().every(
+      (requirement) => requirement.met || requirement.warning === true
+    );
   }
 
   /** What to say about geometry that is in no mechanism. */

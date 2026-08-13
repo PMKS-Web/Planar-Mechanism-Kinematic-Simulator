@@ -2711,6 +2711,20 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
+   * Whether this link's centre-of-mass mark is on screen right now.
+   *
+   * The view toggle governs it, but a massless link is excused: mass starts at
+   * zero until someone chooses one, and a centre-of-mass mark on a link with no
+   * mass points at a property the link does not have. The preview (hovering
+   * the analysis panel's centre-of-mass heading) still shows it, because there
+   * the reader is asking about exactly that property.
+   */
+  showsCoM(link: Link): boolean {
+    if (this.settings.previewCoMLinkId === link.id) return true;
+    return this.settings.isShowCOM.value && link.mass > 0;
+  }
+
+  /**
    * Where a link's name goes, and in what ink.
    *
    * The anchor is the average of the joints the link is made of, which is

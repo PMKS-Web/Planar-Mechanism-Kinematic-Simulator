@@ -324,7 +324,10 @@ export class MechanismBuilder {
         this.transcoder.getBoolSetting(BoolSetting.IS_SHOW_MINOR_GRID)
       );
       this.settings.isShowID.next(this.transcoder.getBoolSetting(BoolSetting.IS_SHOW_ID));
-      this.settings.isShowCOM.next(this.transcoder.getBoolSetting(BoolSetting.IS_SHOW_COM));
+      // IS_SHOW_COM is deliberately not read any more: it is a display
+      // preference, kept on this machine, and nearly every circulating URL
+      // carries the old default in that bit (settings.service.ts).
+      this.settings.isGravity.next(!this.transcoder.getBoolSetting(BoolSetting.GRAVITY_OFF));
       // The URL stores the user-unit object scale; the internal one is
       // MODEL_SCALE times larger, like every other length.
       SettingsService._objectScale.next(

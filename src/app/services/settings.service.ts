@@ -90,7 +90,21 @@ export class SettingsService {
   isSnapToAlignment = new BehaviorSubject(readStoredFlag('snapToAlignment', true));
 
   isShowID = new BehaviorSubject(false);
-  isShowCOM = new BehaviorSubject(false);
+  /**
+   * On by default, and remembered on this machine rather than in the URL: the
+   * mark only appears on links that have been given mass — a massless link has
+   * no centre of mass worth pointing at — so a fresh drawing shows nothing
+   * extra, and a link given weight announces it. Nearly every circulating URL
+   * carries the *old* default (off) in its stored bit, which is why the bit is
+   * no longer read: a display preference should not travel with the drawing.
+   */
+  isShowCOM = new BehaviorSubject(readStoredFlag('showCoM', true));
+  /**
+   * Whether weight loads the mechanism. On by default — every link with mass
+   * hangs from it — and recorded in the URL when turned off, so a shared
+   * analysis means the same thing on arrival.
+   */
+  isGravity = new BehaviorSubject(true);
   /**
    * A link whose centre of mass to draw while the reader is asking about it.
    *

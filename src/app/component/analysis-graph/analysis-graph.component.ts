@@ -962,8 +962,14 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       const hasFiniteData = [datum_X, datum_Y, datum_Z].some((values) =>
         values.some(Number.isFinite)
       );
+      // A hole in an otherwise good series is worth a sentence of its own: a
+      // silent gap at a toggle position reads as a plotting bug, when it is
+      // the most physical thing on the chart.
+      const failed = result.frames.length - result.successfulFrames;
       this.analysisDiagnostic = hasFiniteData
-        ? null
+        ? failed > 0
+          ? `${failed} of ${result.frames.length} positions have no solution — the chart has a gap there. Those are toggle positions: reactions grow without bound as the mechanism approaches them.`
+          : null
         : (result.diagnostic ??
           (mechProp === 'Joint Forces'
             ? 'This point is internal to one welded body and has no independent joint reaction.'

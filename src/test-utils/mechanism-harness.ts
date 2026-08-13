@@ -21,6 +21,8 @@ import { SynthesisBuilderService } from '../app/services/synthesis/synthesis-bui
 export interface MechanismHarness {
   service: MechanismService;
   active: ActiveObjService;
+  /** The service's own settings, for specs that flip gravity or units. */
+  settings: SettingsService;
   /**
    * How many undo entries the service has asked for.
    *
@@ -57,7 +59,7 @@ export function createMechanismHarness(): MechanismHarness {
     get: (token: unknown) => (token === DragStateService ? dragState : history),
   } as unknown as Injector;
   service = new MechanismService(grid, active, injector, settings, parser);
-  return { service, active, saveCount: () => saves };
+  return { service, active, settings, saveCount: () => saves };
 }
 
 /**
