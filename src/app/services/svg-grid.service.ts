@@ -387,18 +387,25 @@ export class SvgGridService {
     // first twenty seconds of a session and for twenty seconds after any
     // unrelated message: the whole of the time somebody is finding their zoom.
     const drawnAt = this.getZoom() * this.settingsService.objectScale;
+    // The fix is one number, and this service is holding it. Sending the reader
+    // to Settings to press a button that does exactly this was asking them to
+    // carry out an instruction the app could simply follow.
+    const fixIt = {
+      label: 'Fit to zoom',
+      run: () => this.updateObjectScale(),
+    };
     if (drawnAt < 5) {
       this.notify.warning(
         'zoom.links-tiny',
-        'The links are drawn far smaller than the grid. Reset the view, or set the object scale in Settings.',
-        60000
+        'The links are drawn far smaller than the grid at this zoom.',
+        { cooldownMs: 60000, action: fixIt }
       );
     }
     if (drawnAt > 200) {
       this.notify.warning(
         'zoom.links-huge',
-        'The links are drawn far larger than the grid. Reset the view, or set the object scale in Settings.',
-        60000
+        'The links are drawn far larger than the grid at this zoom.',
+        { cooldownMs: 60000, action: fixIt }
       );
     }
   }

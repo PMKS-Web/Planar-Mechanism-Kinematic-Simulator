@@ -2392,7 +2392,12 @@ export class MechanismService {
     if (!jointToToggleInput.input) {
       const refusal = describeActuator(jointToToggleInput);
       if (typeof refusal === 'string') {
-        this.notify.refusal('input.cannot-drive', refusal);
+        // Silently: this is unreachable from either surface. Both the menu item
+        // and the panel's button are disabled on `canToggleInput`, which is
+        // `input || canDrive` -- and `canDrive` is exactly "describeActuator
+        // did not refuse", asked of this same joint. Checked across all 25
+        // templates: 147 presses of every enabled control, no refusal. Kept as
+        // a guard so a third caller cannot drive what the model will not.
         return;
       }
       // One input per mechanism, so the joint taking the job displaces the old

@@ -116,7 +116,6 @@ export interface SlotStackItem {
   plate?: WeldPlate;
 }
 import introJs from 'intro.js';
-import { CANNOT_EDIT } from '../../ui-text';
 
 @Component({
   selector: 'app-new-grid',
@@ -973,7 +972,7 @@ export class NewGridComponent implements OnDestroy {
       this.notify.refusal(
         'force.ambiguous-anchor',
         'Several links meet at that joint, so a force there would not say which one it acts on.',
-        1500
+        { cooldownMs: 1500 }
       );
       return;
     }
@@ -1308,21 +1307,25 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Whether an edit is allowed right now, notifying the user when it is not.
+   * Whether an edit is allowed right now.
+   *
    * Editing is only defined at the t=0 pose in Edit mode: the solved timesteps
    * are derived from it, so a change made anywhere else has nothing to write to.
+   *
+   * Silently. Each of these used to announce itself, and each was saying
+   * something the reader could already see — which mode they are in is written
+   * across the top strip and down the side of the window, and whether the
+   * animation is running is the thing they are watching. A message for it was
+   * a fifth place saying the same word.
    */
   private canEditNow(): boolean {
     if (this.mechanismSrv.isPlaying) {
-      this.notify.refusal('edit.animating', CANNOT_EDIT.animating);
       return false;
     }
     if (this.mechanismSrv.mechanismTimeStep !== 0) {
-      this.notify.refusal('edit.away-from-start', CANNOT_EDIT.awayFromStart);
       return false;
     }
     if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
-      this.notify.refusal('edit.synthesize-mode', CANNOT_EDIT.synthesizeMode);
       return false;
     }
     // Analyze already refuses to open an edit context menu (see onContextMenu),
@@ -1333,7 +1336,6 @@ export class NewGridComponent implements OnDestroy {
     // same solved cycle and is no more able to survive the geometry moving
     // under it.
     if (this.tabService.isAnalysisMode()) {
-      this.notify.refusal('edit.analyze-mode', CANNOT_EDIT.analyzeMode);
       return false;
     }
     return true;
@@ -1685,7 +1687,6 @@ export class NewGridComponent implements OnDestroy {
 
   onContextMenu($event: MouseEvent) {
     if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
-      this.notify.refusal('edit.synthesize-mode', CANNOT_EDIT.synthesizeMode);
       this.cMenuItems = [];
       return;
     }
@@ -1698,12 +1699,10 @@ export class NewGridComponent implements OnDestroy {
     }
 
     if (this.mechanismSrv.isPlaying == true) {
-      this.notify.refusal('edit.animating', CANNOT_EDIT.animating);
       this.cMenuItems = [];
       return;
     }
     if (this.mechanismSrv.mechanismTimeStep !== 0) {
-      this.notify.refusal('edit.away-from-start', CANNOT_EDIT.awayFromStart);
       this.cMenuItems = [];
       //Close the MatContextMenu
       // console.log(this.contextMenu);

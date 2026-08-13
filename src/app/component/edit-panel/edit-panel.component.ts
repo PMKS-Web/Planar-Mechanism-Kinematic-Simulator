@@ -34,6 +34,8 @@ import {
   cylinderMinimumSpan,
   cylinderSizeOf,
 } from '../../model/cylinder';
+import { NotificationService } from 'src/app/services/notification.service';
+import { NOT_A } from 'src/app/ui-text';
 
 /**
  * Input Settings unit choices, in the order the picker shows them. The labels
@@ -169,7 +171,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     private nup: NumberUnitParserService,
     private cd: ChangeDetectorRef,
     public mechanismService: MechanismService,
-    public gridUtils: GridUtilsService
+    public gridUtils: GridUtilsService,
+    private notify: NotificationService
   ) {
     //Set the instance to this
     EditPanelComponent.instance = this;
@@ -662,6 +665,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           this.settingsService.lengthUnit.getValue()
         );
         if (!success) {
+          this.notify.refusal('value.length', NOT_A.length);
           this.jointForm.patchValue({
             xPos: this.nup.formatModelLength(
               this.activeSrv.selectedJoint.x,
@@ -699,6 +703,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           this.settingsService.lengthUnit.getValue()
         );
         if (!success) {
+          this.notify.refusal('value.length', NOT_A.length);
           this.jointForm.patchValue({
             yPos: this.nup.formatModelLength(
               this.activeSrv.selectedJoint.y,
@@ -738,6 +743,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         if (!this.activeSrv.selectedJoint) return;
         if (!this.gridUtils.isAttachedToSlider(this.activeSrv.selectedJoint)) return;
         if (!success) {
+          this.notify.refusal('value.angle', NOT_A.angle);
           // Two things had to be true for this to recurse until the stack ran
           // out, and both were: the angle was read off the *pin*, which has no
           // angle_rad, so the field was restored to the string "NaN"; and the
@@ -915,6 +921,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           this.settingsService.lengthUnit.getValue()
         );
         if (!success) {
+          this.notify.refusal('value.length', NOT_A.length);
           this.linkForm.patchValue({
             length: this.nup.formatModelLength(
               this.activeSrv.selectedLink.length,
@@ -1023,8 +1030,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           val!,
           this.settingsService.angleUnit.getValue()
         );
-        if (!success) this.patchCylinderForm();
-        else
+        if (!success) {
+          this.notify.refusal('value.angle', NOT_A.angle);
+          this.patchCylinderForm();
+        } else
           this.reposeCylinder(
             undefined,
             this.nup.convertAngle(
@@ -1043,6 +1052,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           this.settingsService.angleUnit.getValue()
         );
         if (!success) {
+          this.notify.refusal('value.angle', NOT_A.angle);
           this.linkForm.patchValue({
             angle: this.nup
               .convertAngle(
@@ -1140,6 +1150,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           this.settingsService.forceUnit.getValue()
         );
         if (!success) {
+          this.notify.refusal('value.force', NOT_A.force);
           this.forceForm.patchValue({
             magnitude: this.activeSrv.selectedForce.mag.toFixed(2).toString(),
           });
@@ -1167,6 +1178,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           this.settingsService.angleUnit.getValue()
         );
         if (!success) {
+          this.notify.refusal('value.angle', NOT_A.angle);
           this.forceForm.patchValue({
             angle: this.activeSrv.selectedForce.angleRad.toFixed(2).toString(),
           });
@@ -1199,6 +1211,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           this.settingsService.forceUnit.getValue()
         );
         if (!success) {
+          this.notify.refusal('value.force', NOT_A.force);
           this.forceForm.patchValue({
             xComp: this.activeSrv.selectedForce.xComp.toFixed(2).toString(),
           });
@@ -1223,6 +1236,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           this.settingsService.forceUnit.getValue()
         );
         if (!success) {
+          this.notify.refusal('value.force', NOT_A.force);
           this.forceForm.patchValue({
             yComp: this.activeSrv.selectedForce.yComp.toFixed(2).toString(),
           });
@@ -1387,6 +1401,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     );
     const link = this.activeSrv.selectedLink;
     if (!success) {
+      this.notify.refusal('value.length', NOT_A.length);
       this.linkForm.patchValue(
         {
           [axis === 'x' ? 'comX' : 'comY']: this.nup.formatModelLength(
@@ -1609,6 +1624,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
             this.settingsService.lengthUnit.getValue()
           );
           if (!success) {
+            this.notify.refusal('value.length', NOT_A.length);
             this.otherJoints.controls[i * 2].patchValue(
               this.nup.formatModelLength(
                 this.getDistanceBetweenJoints(this.activeSrv.selectedJoint, joint),
@@ -1634,6 +1650,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
             this.settingsService.angleUnit.getValue()
           );
           if (!success) {
+            this.notify.refusal('value.angle', NOT_A.angle);
             this.otherJoints.controls[i * 2 + 1].patchValue(
               this.nup
                 .convertAngle(

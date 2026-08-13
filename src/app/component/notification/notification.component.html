@@ -1,7 +1,30 @@
-<mat-icon class="notificationIcon">{{ icon }}</mat-icon>
-<span class="notificationText">{{ data.text }}</span>
-<!-- On every kind, not only the ones that wait. A message that has been read is
-     in the way, and four seconds is long enough to be in the way. -->
-<button class="notificationClose" type="button" (click)="data.dismiss()" aria-label="Dismiss">
-  <mat-icon>close</mat-icon>
-</button>
+<div class="notificationStack">
+  @for (one of notifications.live; track one.key) {
+    <div
+      class="notification notification--{{ one.kind }}"
+      [@card]
+      role="status"
+      [attr.aria-live]="politenessFor(one)"
+    >
+      <mat-icon class="notificationIcon">{{ iconFor(one) }}</mat-icon>
+      <span class="notificationText">{{ one.text }}</span>
+      <!-- Where there is one obvious thing to do about it, the message does it,
+           rather than naming a control elsewhere for the reader to go and find. -->
+      @if (one.action) {
+        <button class="notificationAction" type="button" (click)="notifications.act(one)">
+          {{ one.action.label }}
+        </button>
+      }
+      <!-- On every kind, not only the ones that wait. A message that has been
+           read is in the way, and four seconds is long enough to be in the way. -->
+      <button
+        class="notificationClose"
+        type="button"
+        (click)="notifications.dismiss(one.key)"
+        aria-label="Dismiss"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  }
+</div>

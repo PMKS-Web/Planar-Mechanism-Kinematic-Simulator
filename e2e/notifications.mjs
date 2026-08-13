@@ -35,23 +35,19 @@ const record = (what, ok, detail) => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}${ok ? '' : ' — ' + JSON.stringify(detail)}`);
 };
 
-/** Every message opened since the last drain, with the kind it was opened as. */
+/** Every message that actually reached the stack since the last drain. */
 const watch = () =>
   page.evaluate(() => {
     window.__said = [];
     const notify = ng.getComponent(document.querySelector('app-new-grid')).notify;
     for (const kind of ['success', 'refusal', 'warning', 'failure']) {
       const original = notify[kind].bind(notify);
-      notify[kind] = (id, text, cooldown) => {
-        const before = document.querySelectorAll('.pmksNotification').length;
-        original(id, text, cooldown);
-        // Recorded only if it actually opened, so a suppressed message is
-        // absent here rather than present and invisible.
-        setTimeout(() => {
-          if (document.querySelectorAll('.pmksNotification').length > before || before > 0) {
-            window.__said.push({ kind, id });
-          }
-        }, 60);
+      notify[kind] = (id, text, options) => {
+        const before = notify.live.length;
+        original(id, text, options);
+        // Only if it was really added: a suppressed message is absent here
+        // rather than present and invisible.
+        if (notify.live.length > before) window.__said.push({ kind, id });
       };
     }
   });
@@ -63,17 +59,38 @@ const drain = () =>
     return said;
   });
 
-const say = (kind, id, text, cooldown) =>
+const say = (kind, id, text, options) =>
   page.evaluate(
-    ({ kind, id, text, cooldown }) =>
-      ng.getComponent(document.querySelector('app-new-grid')).notify[kind](id, text, cooldown),
-    { kind, id, text, cooldown }
+    ({ kind, id, text, options }) =>
+      ng.getComponent(document.querySelector('app-new-grid')).notify[kind](id, text, options),
+    { kind, id, text, options }
   );
 
-const showing = () => page.locator('.pmksNotification').count();
+/**
+ * Send the welcome tour away.
+ *
+ * Its overlay swallows clicks, so a suite that presses anything has to get past
+ * it first -- and so does a reader, which is why it is dismissed rather than
+ * clicked through.
+ */
+const closeTour = async () => {
+  await page
+    .locator('.introjs-skipbutton, .introjs-tooltip .introjs-skipbutton')
+    .first()
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.evaluate(() => {
+    document
+      .querySelectorAll('.introjs-overlay, .introjs-tooltipReferenceLayer, .introjs-helperLayer')
+      .forEach((node) => node.remove());
+  });
+  await page.waitForTimeout(200);
+};
+
+const showing = () => page.locator('.notification').count();
 const clear = async () => {
   await page.evaluate(() =>
-    ng.getComponent(document.querySelector('app-new-grid')).notify.dismiss()
+    ng.getComponent(document.querySelector('app-new-grid')).notify.dismissAll()
   );
   await page.waitForTimeout(350);
 };
@@ -81,15 +98,16 @@ const clear = async () => {
 await page.goto(BASE, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('app-new-grid svg', { timeout: 30000 });
 await waitForReady(page);
+await closeTour();
 await watch();
 
 // ---- the four kinds are told apart on screen -------------------------------
 
 for (const [kind, cls] of [
-  ['success', 'pmksNotification--success'],
-  ['refusal', 'pmksNotification--refusal'],
-  ['warning', 'pmksNotification--warning'],
-  ['failure', 'pmksNotification--failure'],
+  ['success', 'notification--success'],
+  ['refusal', 'notification--refusal'],
+  ['warning', 'notification--warning'],
+  ['failure', 'notification--failure'],
 ]) {
   await say(kind, `probe.${kind}`, `A ${kind}.`);
   await page.waitForTimeout(500);
@@ -154,11 +172,86 @@ await clear();
 // the page loaded -- the fault that kept the zoom warnings quiet for the first
 // twenty seconds of every session.
 await drain();
-await say('warning', 'rate.patient', 'Rare, but not on page load.', 20000);
+await say('warning', 'rate.patient', 'Rare, but not on page load.', { cooldownMs: 20000 });
 await page.waitForTimeout(400);
 const rare = await drain();
 record('a message with a long cooldown can still speak at once', rare.length === 1, rare);
 await clear();
+
+// ---- more than one at a time ------------------------------------------------
+
+await clear();
+await drain();
+await say('warning', 'stack.a', 'The first, waiting.');
+await say('failure', 'stack.b', 'The second, waiting.');
+await say('refusal', 'stack.c', 'The third, leaving by itself.');
+await page.waitForTimeout(500);
+record('three messages stand together', (await showing()) === 3, await showing());
+
+// A fourth pushes out the one that was going to leave anyway, not a warning
+// the reader has not dealt with.
+await say('warning', 'stack.d', 'The fourth, waiting.');
+await page.waitForTimeout(500);
+const stacked = await page.evaluate(() =>
+  ng.getComponent(document.querySelector('app-new-grid')).notify.live.map((one) => one.id)
+);
+record(
+  'a fourth displaces the one that was leaving anyway',
+  stacked.length === 3 && !stacked.includes('stack.c') && stacked.includes('stack.d'),
+  stacked
+);
+await clear();
+
+// ---- a message that can fix the thing it is about ---------------------------
+
+await drain();
+const ran = await page.evaluate(async () => {
+  const notify = ng.getComponent(document.querySelector('app-new-grid')).notify;
+  let done = false;
+  notify.warning('act.probe', 'Something is off.', {
+    action: { label: 'Put it right', run: () => (done = true) },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const button = document.querySelector('.notificationAction');
+  const label = button?.textContent?.trim();
+  button?.click();
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  return { label, done, left: notify.live.length };
+});
+record('a message can carry the fix for what it is about', ran.label === 'Put it right', ran);
+record('pressing it does the thing, and takes the message away', ran.done && ran.left === 0, ran);
+
+// ---- the zoom warning is the real one that carries one -----------------------
+
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  for (let i = 0; i < 60; i++) grid.svgGrid.zoomOut();
+  grid.svgGrid.handleZoom(grid.svgGrid.getZoom());
+});
+await page.waitForTimeout(500);
+const zoomed = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const one = grid.notify.live.find((n) => n.id.startsWith('zoom.'));
+  return { id: one?.id, label: one?.action?.label };
+});
+record('zooming past the band warns, with a way out', !!zoomed.id && !!zoomed.label, zoomed);
+
+const fixed = await page.evaluate(async () => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const before = grid.settings.objectScale;
+  document.querySelector('.notificationAction')?.click();
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const zoom = grid.svgGrid.getZoom();
+  return { before, after: grid.settings.objectScale, drawnAt: zoom * grid.settings.objectScale };
+});
+record(
+  'and taking it puts the drawing back inside the band',
+  fixed.drawnAt > 5 && fixed.drawnAt < 200,
+  fixed
+);
+await clear();
+
+// ---- a value that will not parse says what would --------------------------
 
 // ---- Ctrl+Z undoes -----------------------------------------------------------
 
@@ -172,6 +265,7 @@ const joints = () =>
 // separate fault and not this suite's business.
 await page.goto(`${BASE}/?${FOUR_BAR}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
+await closeTour();
 await watch();
 
 const jointX = () =>

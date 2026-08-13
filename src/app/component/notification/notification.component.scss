@@ -2,8 +2,11 @@
 @use '@angular/material' as mat;
 @use 'src/app/component/left-tabs/left-tabs.vars.scss' as vars;
 
+/** Width of the accent, and therefore the corner radius. See below. */
+$accent: 5px;
+
 @mixin css($theme) {
-  // Which colour each kind is written in. Only the icon and the edge are
+  // Which colour each kind is written in. Only the accent and the glyph are
   // coloured -- the sentence stays the app's text colour, because a red
   // sentence is harder to read and the glyph has already said which of the
   // four this is.
@@ -14,53 +17,40 @@
     'failure': #c62828,
   );
 
-  // The snackbar renders in an overlay, outside the component tree, so these
-  // rules are global by necessity -- the same reason every other component's
-  // styles in this app are pulled into `mytheme.scss` rather than scoped.
-  .pmksNotification {
-    // Below the top strip rather than over it. It used to be pushed down by a
-    // bare 50px, which was neither the strip's height nor a gap from anything.
-    margin-top: vars.$top-strip-bottom + vars.$card-inset !important;
+  // Below the top strip rather than over it, and out of the way of the pointer:
+  // the canvas underneath is still being worked on while a message sits here.
+  .notificationStack {
+    position: fixed;
+    top: vars.$top-strip-bottom + vars.$card-inset;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: max-content;
+    max-width: min(640px, 90vw);
+    pointer-events: none;
+  }
 
-    // Material's own surface is the wrong shape for this app: a dark slab with
-    // white text. The card underneath is what everything else that floats over
-    // the grid looks like.
-    //
-    // Set through Material's own custom properties rather than by out-shouting
-    // its rules. Its surface selector has the same specificity as anything
-    // written here, so which one wins comes down to the order the two
-    // stylesheets happen to be concatenated in -- which is not something to
-    // rest a colour on.
-    --mat-snack-bar-container-color: var(--card-surface);
-    --mat-snack-bar-supporting-text-color: #2c2c2c;
+  .notification {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 8px 11px 13px;
+    background: var(--card-surface);
+    color: #2c2c2c;
+    box-shadow: var(--card-shadow);
+    pointer-events: auto;
 
-    // Both spellings: the class was renamed between Material versions and the
-    // element carries the old one as well as the new.
-    .mat-mdc-snackbar-surface,
-    .mdc-snackbar__surface {
-      min-width: 0;
-      max-width: min(640px, 90vw);
-      padding: 0;
-      border-radius: var(--card-radius);
-      box-shadow: var(--card-shadow);
-    }
-
-    .mat-mdc-snack-bar-label,
-    .mdc-snackbar__label {
-      padding: 0;
-    }
-
-    app-notification {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      // The colour bar is the whole left edge, so the padding starts after it.
-      padding: 12px 8px 12px 14px;
-      border-left: 4px solid transparent;
-      border-radius: var(--card-radius);
-      // A message can run to two or three lines; the icon stays on the first.
-      color: #2c2c2c;
-    }
+    // The same trick the help panel uses for its top bar: a border's *inner*
+    // edge is rounded by the radius minus the border width, so a radius equal
+    // to the bar leaves that edge straight while the card's own corners stay
+    // round. At the floating chrome's 10px against a 4px bar the accent curved
+    // away from the card on both ends and read as a separate rounded pill
+    // sitting behind it.
+    border-left: $accent solid transparent;
+    border-radius: $accent;
   }
 
   .notificationIcon {
@@ -83,6 +73,26 @@
     font-size: 14px;
     line-height: 20px;
     letter-spacing: 0.15px;
+  }
+
+  // Reads as the message's own verb, so it takes the message's own colour.
+  .notificationAction {
+    flex: 0 0 auto;
+    align-self: center;
+    margin: -4px 0;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
   }
 
   // Small and grey: it is the way out of a message, not part of what the
@@ -116,12 +126,13 @@
   }
 
   @each $kind, $color in $kinds {
-    .pmksNotification--#{$kind} app-notification {
+    .notification--#{$kind} {
       border-left-color: $color;
-    }
 
-    .pmksNotification--#{$kind} .notificationIcon {
-      color: $color;
+      .notificationIcon,
+      .notificationAction {
+        color: $color;
+      }
     }
   }
 }

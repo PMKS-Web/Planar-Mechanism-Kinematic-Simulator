@@ -8,9 +8,10 @@ list at the bottom instead.
 > **This describes the old system.** What replaced it is in
 > `src/app/services/notification.service.ts`: four kinds (`success`, `refusal`,
 > `warning`, `failure`), each with its own colour, glyph, and answer to whether
-> it takes itself away; and a cooldown per message id rather than one for the
-> whole app. Every message below now has an id. The faults listed under "What is
-> wrong with the system" are fixed except where marked.
+> it takes itself away; a cooldown per message id rather than one for the whole
+> app; up to three on screen at once; and an optional action, so a message that
+> knows the fix can carry it. Every message below now has an id. The faults
+> listed under "What is wrong with the system" are fixed except where marked.
 
 Two surfaces existed:
 
@@ -90,7 +91,7 @@ snackbar is the third telling of the same fact.
 
 `Select something first — Delete removes whatever is selected.` — Delete key
 
-### Rejected typed values (6, `NOT_A`) — **debug panel only**
+### Rejected typed values (6, `NOT_A`) — was debug-only, now on every field
 
 `That is not a length. Type a number, with or without a unit — 2, 2 cm, 0.75 in.` ·
 `That is not an angle. Type a number of degrees.` ·
@@ -99,8 +100,13 @@ snackbar is the third telling of the same fact.
 `That is not a force. Type a number.` ·
 `A name has to be letters or numbers, and cannot be one already in use.`
 
-These fire from the linkage table, which is rendered only inside the Debug tab
-(Project menu → Debug). The shipping Edit panel rejects bad numbers silently.
+These fired only from the linkage table, inside the Debug tab (Project menu →
+Debug), while the Edit panel put the old value back without a word.
+
+They now fire from all thirteen of the Edit panel's numeric fields as well, and
+each one names the units its field accepts. Every numeric field in the app takes
+`2 cm` and `0.75 in` as readily as `2`, and nothing on screen said so — a
+rejected value is the moment somebody is most willing to be told.
 
 ### Rejected renames (2) — Edit panel title
 
@@ -187,6 +193,27 @@ Fixed:
   else.
 - **Messages have ids**, so they can be deduplicated and asserted on. `e2e/notifications.mjs`
   does both.
+- **Up to three stand at once.** The old snackbar showed one and took the
+  previous one away to do it, so a refusal could silently swallow a warning
+  nobody had read. A fourth displaces the oldest message that was going to
+  leave by itself, never one still waiting to be dismissed.
+- **A message can carry its own fix.** The zoom warnings offer *Fit to zoom*,
+  which is the button they used to send the reader to Settings to find.
+
+Removed entirely:
+
+- **The four mode and timing refusals** — "Switch to Edit mode to change the
+  mechanism", "Cannot edit while the animation is running", "Step back to the
+  start to edit". Every guard stays; none of them announces itself. Which mode
+  you are in is written across the top strip and down the side of the window,
+  and whether the animation is running is the thing you are watching.
+- **The four driven-joint refusals**, which turned out to be unreachable. Both
+  the context menu item and the panel button are disabled on `canToggleInput`,
+  which is `input || canDrive` — and `canDrive` is exactly "describeActuator
+  did not refuse", asked of the same joint `adjustInput` re-tests. Checked
+  across all 25 templates: 147 presses of every enabled control, no refusal.
+  The guard stays, silent. The four sentences are still used by the setup
+  panel's blocker list, which is where they are actually read.
 
 Reworded or removed:
 
@@ -207,11 +234,8 @@ Reworded or removed:
 
 Still open:
 
-- **The eleven drop refusals** are still snackbars, on top of the canvas
-  refusal marker and the joint shake. Deferred: judge it once the new system is
-  on screen.
-- **The six `NOT_A` messages** are still debug-only, and the Edit panel still
-  rejects bad numbers in silence.
+- **The eleven drop refusals** are still messages, on top of the canvas refusal
+  marker and the joint shake. Kept deliberately for now.
 - **Deleting a joint is not undoable.** `deleteJoint` ends in
   `finishStructuralEdit(false)`, so no history entry is written and Undo cannot
   bring it back. Found while wiring Ctrl+Z; pre-existing, and the `false` is
