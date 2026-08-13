@@ -310,6 +310,11 @@ export class AnalysisPanelComponent {
    * one more thing to open before reaching a graph. The panel's own title says
    * it now.
    */
+  /** Point at the thing on the grid these numbers describe, while asked to. */
+  highlightCoM(on: boolean): void {
+    this.settingsService.previewCoMLinkId = on ? (this.activeSrv.selectedLink?.id ?? null) : null;
+  }
+
   get modeLabel(): string {
     return this.tabs.getCurrentTab() === TabID.FORCE ? 'Force Analysis' : 'Kinematic Analysis';
   }

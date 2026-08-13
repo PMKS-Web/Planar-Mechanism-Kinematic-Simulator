@@ -11,36 +11,40 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
-  #graphNoSeries,
-  #graphDragging {
-    background-color: rgb(255, 255, 255);
-    position: absolute;
-    top: 100px;
-    left: 0;
-    width: 100%;
-    height: 240px;
-    z-index: 100;
+  // Stands where the chart would, so nothing has to guess its height.
+  .graphPlaceholder {
     display: flex;
+    align-items: center;
     justify-content: center;
-    align-items: start;
-    color: black;
+    min-height: 160px;
+    margin: 4px 0 8px;
+    border: 1px dashed #dfe1ea;
     border-radius: var(--border-radius);
-    pointer-events: none;
-    padding-top: 80px;
-
-    &.compact-single-series {
-      top: 60px;
-    }
+    background: #fafbfd;
+    color: rgba(0, 0, 0, 0.5);
+    font-size: 13px;
+    text-align: center;
+    padding: 0 16px;
   }
 
-  app-analysis-apex-chart.compact-single-series {
+  app-analysis-apex-chart.hidden {
+    display: none;
+  }
+
+  // A single-series graph is shorter, not lifted: the -40px here closed the gap
+  // the old checkbox row left behind, and with that row gone it pulled the plot
+  // up over the values above it.
+  app-analysis-apex-chart {
     display: block;
-    margin-top: -40px;
   }
 
   app-analysis-apex-chart > div:not(.chart-render-error) {
     min-height: 0 !important;
-    height: 225px !important;
+    height: 250px !important;
+  }
+
+  app-analysis-apex-chart.compact-single-series > div:not(.chart-render-error) {
+    height: 210px !important;
   }
 
   .chart-render-error {
@@ -52,7 +56,6 @@
     text-align: center;
     color: mat.m2-get-color-from-palette($primary-palette, 900);
   }
-
 
   .analysis-diagnostic {
     margin: 16px 4px 12px;

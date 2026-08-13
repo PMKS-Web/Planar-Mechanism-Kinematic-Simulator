@@ -1,5 +1,18 @@
-<div class="graphSection" [class.open]="expanded">
-  <button class="graphHeader" type="button" (click)="toggle()" [attr.aria-expanded]="expanded">
+<!-- Closed, the whole card opens it: the values are as much an invitation to
+     look closer as the title is, and a reader aiming at either was hitting a
+     strip only the title lived in. -->
+<div
+  class="graphSection"
+  [class.open]="expanded"
+  [class.closed]="!expanded"
+  (click)="expanded ? null : toggle()"
+>
+  <button
+    class="graphHeader"
+    type="button"
+    (click)="toggle(); $event.stopPropagation()"
+    [attr.aria-expanded]="expanded"
+  >
     <span class="graphTitle">{{ label }}</span>
     <mat-icon class="graphChevron">{{ expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
   </button>

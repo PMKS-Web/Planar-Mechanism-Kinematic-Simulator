@@ -13,22 +13,34 @@
     border-radius: var(--border-radius);
     background: var(--card-surface);
     margin-bottom: 8px;
+
+    &.closed {
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.02);
+      }
+    }
   }
 
+  // The title and its chevron, in a band with the same air above and below --
+  // it was 9px over and 3px under, which read as the title sitting high in its
+  // own highlight.
   .graphHeader {
     display: flex;
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 9px 12px 3px;
+    min-height: 38px;
+    padding: 6px 12px;
     border: none;
     background: transparent;
     font-family: inherit;
     text-align: left;
     cursor: pointer;
-    border-radius: var(--border-radius);
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
 
-    &:hover {
+    .graphSection.open &:hover {
       background: rgba(0, 0, 0, 0.02);
     }
   }
@@ -46,7 +58,7 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 2px 12px;
-    padding: 0 12px 9px;
+    padding: 0 12px 8px;
     font-size: 12px;
     color: rgba(0, 0, 0, 0.6);
   }
@@ -105,7 +117,7 @@
   // quantity, not a control of the card.
   .graphHelp {
     position: absolute;
-    top: 11px;
+    top: 12px;
     right: 38px;
     width: 17px;
     height: 17px;
@@ -115,7 +127,10 @@
     pointer-events: auto;
   }
 
+  // The same gutter the title and the values sit on, so the plot's frame lines
+  // up with the text above it rather than running wider than the card's own
+  // margin.
   .graphBody {
-    padding: 0 6px 6px;
+    padding: 0 12px 8px;
   }
 }

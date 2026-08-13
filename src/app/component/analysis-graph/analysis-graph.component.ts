@@ -145,7 +145,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       show: true,
       padding: {
         top: 0,
-        bottom: 12,
+        bottom: 0,
       },
       xaxis: {
         lines: {
@@ -160,8 +160,10 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     },
     xaxis: {
       type: 'numeric',
-      position: 'top',
-      offsetY: 15,
+      // Under the plot, where a time axis reads. It sat on top because the
+      // legend used to want the room below it, and the legend has gone.
+      position: 'bottom',
+      offsetY: 0,
       // floating: true,
       // categories: categories,
       labels: {
@@ -179,8 +181,8 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       tickAmount: 1,
       title: {
         text: 'Time (seconds)',
-        // small nudge to sit on the same baseline as the tick labels
-        offsetY: 6,
+        // On the same baseline as the tick labels either side of it.
+        offsetY: -4,
         offsetX: 0,
       },
       tooltip: {

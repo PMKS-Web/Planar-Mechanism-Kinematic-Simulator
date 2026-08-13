@@ -490,7 +490,7 @@ describe('AnalysisGraphComponent rendered controls', () => {
     fixture.detectChanges();
     expect(graph.displayedSeries).toHaveLength(0);
     expect(graph.noDataSelected).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Please select at least one data series.');
+    expect(fixture.nativeElement.textContent).toContain('No series shown. Pick one above.');
 
     graph.toggleSeries('x');
     fixture.detectChanges();

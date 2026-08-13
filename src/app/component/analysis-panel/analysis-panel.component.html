@@ -142,14 +142,16 @@
         ></app-analysis-graph-section>
       }
       @if (showForce) {
-        <radio-block
-          tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
-          option1="Static (Equilibrium)"
-          option2="In-motion (Dynamic)"
-          [formGroup]="this.forceAnalysisFormGroup"
-          _formControl="mode"
-          >Force Analysis Type
-        </radio-block>
+        <div class="forceModeRow">
+          <radio-block
+            tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
+            option1="Static (Equilibrium)"
+            option2="In-motion (Dynamic)"
+            [formGroup]="this.forceAnalysisFormGroup"
+            _formControl="mode"
+            >Force Analysis Type
+          </radio-block>
+        </div>
         @if (jointForceRows().length === 0) {
           <div class="analysis-message" role="status">
             Joint {{ this.activeSrv.selectedJoint.name }} is internal to one welded body and has no
@@ -233,9 +235,13 @@
           [expanded]="graphExpanded['LAngAcc']"
           (expandedChange)="graphExpanded['LAngAcc'] = $event"
         ></app-analysis-graph-section>
-        <subtitle-block style="margin-top: 20px"
-          >Center of Mass (COM) of {{ selectedBodyLabel }}</subtitle-block
+        <div
+          class="graphGroupHeading"
+          (mouseenter)="highlightCoM(true)"
+          (mouseleave)="highlightCoM(false)"
         >
+          Centre of mass
+        </div>
         <app-analysis-graph-section
           label="Position of {{ selectedBodyLabel }}'s COM"
           help="Where this link’s centre of mass is"
@@ -268,14 +274,16 @@
         ></app-analysis-graph-section>
       }
       @if (showForce) {
-        <radio-block
-          tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
-          option1="Static (Equilibrium)"
-          option2="In-motion (Dynamic)"
-          [formGroup]="this.forceAnalysisFormGroup"
-          _formControl="mode"
-          >Force Analysis Type
-        </radio-block>
+        <div class="forceModeRow">
+          <radio-block
+            tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
+            option1="Static (Equilibrium)"
+            option2="In-motion (Dynamic)"
+            [formGroup]="this.forceAnalysisFormGroup"
+            _formControl="mode"
+            >Force Analysis Type
+          </radio-block>
+        </div>
         @if (linkForceRows().length === 0) {
           <div class="analysis-message" role="status">
             {{ selectedBodyLabel }} has no external joint that carries an independent pin reaction.

@@ -53,6 +53,14 @@ export class SettingsService {
 
   isShowID = new BehaviorSubject(false);
   isShowCOM = new BehaviorSubject(false);
+  /**
+   * A link whose centre of mass to draw while the reader is asking about it.
+   *
+   * Hovering the analysis panel's centre-of-mass heading points at the thing on
+   * the grid the numbers under it describe, without turning the setting on
+   * behind the reader's back.
+   */
+  previewCoMLinkId: string | null = null;
   tempGridDisable: boolean = false; //This is to hide the grid lines to fit only to the linkage when doing a svg fit
 
   isGridDebugOn: boolean = false;
