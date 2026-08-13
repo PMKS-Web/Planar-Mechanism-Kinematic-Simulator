@@ -539,6 +539,50 @@ export function normalizedCylinderPose(
   };
 }
 
+/**
+ * Re-lay a ram between two mounts that have moved, resizing it to reach.
+ *
+ * The straightener above holds the size it finds, which is right when the
+ * question is "put this back on its axis" and wrong when the mounts themselves
+ * have been carried apart: the head lands as far outside the barrel as the
+ * stretch, joined to it by nothing, and the part is drawn in two pieces.
+ *
+ * Two rams can share a mount -- the first's rod end is the second's barrel end
+ * -- so moving one moves the other's mount without the other being asked. This
+ * is what asks it. Both halves grow or shrink together, exactly as a drag on a
+ * ram's own mount resizes it past its stops, so both of its ends move; and both
+ * mounts are held, because they belong to whatever moved them.
+ *
+ * Only called where a mount is known to have moved. Applied blindly it could
+ * not tell that from a barrel some other write had shortened, and would quietly
+ * repair a starved ram into a working one.
+ */
+export function stretchedCylinderPose(
+  barrelMount: { x: number; y: number },
+  rodMount: { x: number; y: number },
+  barrelLength: number,
+  r: number
+): CylinderPose | undefined {
+  const dx = rodMount.x - barrelMount.x;
+  const dy = rodMount.y - barrelMount.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance < 1e-9 || !(barrelLength > 1e-9)) return undefined;
+  const ux = dx / distance;
+  const uy = dy / distance;
+  const flex = cylinderSpanLayout(distance, cylinderStroke(barrelLength, r), r);
+  const at = (along: number) => ({
+    x: barrelMount.x + along * ux,
+    y: barrelMount.y + along * uy,
+  });
+  return {
+    barrelFar: { x: barrelMount.x, y: barrelMount.y },
+    barrelNear: at(flex.barrel),
+    pin: at(flex.pinAlong),
+    rodFar: { x: rodMount.x, y: rodMount.y },
+    atMinimum: flex.atMinimum,
+  };
+}
+
 /** Where each joint of a re-posed cylinder lands. */
 export interface CylinderPose {
   /** True when the layout had to hold the ram at its shortest. */

@@ -15,8 +15,10 @@ import {
   cylinderMembers,
   cylinderSizeOf,
   cylinderStroke,
+  cylinderSpanRange,
   cylinderStrokeAlong,
   sealedCylinders,
+  stretchedCylinderPose,
 } from '../../app/model/cylinder';
 import { CYLINDER, rodBodyPath } from '../../app/model/joint-marks';
 import { buildMechanism } from '../../test-utils/verification/fixture';
@@ -438,5 +440,41 @@ describe('merging a cylinder mount onto another joint', () => {
     expect(after[0].slider.isFloating).toBe(true);
     // And the slot now names the joint that survived.
     expect([after[0].slider.slotJointA!.id, after[0].slider.slotJointB!.id]).toContain(target.id);
+  });
+
+  it('grows to reach a mount another part carried away, rather than coming apart', () => {
+    // Two rams can share a mount -- the first's rod end is the second's barrel
+    // end -- so moving the first moves the second's mount without the second
+    // being asked. Held to the size it was built at, the second's head landed
+    // as far outside its own barrel as the stretch, joined to it by nothing:
+    // the part was drawn in two pieces with a gap down the middle.
+    const r = 0.15 * MODEL_SCALE;
+    const barrelLength = 4 * MODEL_SCALE;
+    const { extended } = cylinderSpanRange(cylinderStroke(barrelLength, r), r);
+    const reach = extended + 3 * MODEL_SCALE;
+
+    const pose = stretchedCylinderPose({ x: 0, y: 0 }, { x: reach, y: 0 }, barrelLength, r)!;
+    expect(pose).toBeDefined();
+
+    // Both mounts are where they were put: they belong to whatever moved them.
+    expect(pose.barrelFar.x).toBeCloseTo(0, 9);
+    expect(pose.rodFar.x).toBeCloseTo(reach, 9);
+    // Both halves grew together, which is what carries the far end along.
+    const grownBarrel = pose.barrelNear.x - pose.barrelFar.x;
+    const grownRod = pose.rodFar.x - pose.pin.x;
+    expect(grownBarrel).toBeGreaterThan(barrelLength);
+    expect(grownRod).toBeCloseTo(grownBarrel, 6);
+    // And the head's back edge is at the barrel's mouth -- fully extended, and
+    // still one object. Past it there is nothing joining the two halves.
+    expect(pose.pin.x - grownBarrel).toBeCloseTo(cylinderHeadHalf(grownBarrel, r), 6);
+
+    // Inside its own travel nothing is resized: the ram poses, as before.
+    const inside = stretchedCylinderPose(
+      { x: 0, y: 0 },
+      { x: (cylinderSpanRange(cylinderStroke(barrelLength, r), r).retracted + extended) / 2, y: 0 },
+      barrelLength,
+      r
+    )!;
+    expect(inside.barrelNear.x - inside.barrelFar.x).toBeCloseTo(barrelLength, 6);
   });
 });

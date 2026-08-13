@@ -19,6 +19,7 @@ import {
   layoutCylinder,
   poseFromStrokeAndStart,
   sealedCylinderStructures,
+  stretchedCylinderPose,
 } from '../model/cylinder';
 import { SettingsService } from './settings.service';
 import { MechanismService } from './mechanism.service';
@@ -500,17 +501,15 @@ export class GridUtilsService {
     // untouched mount and no two of them are writing to the same joint.
     carriedCylinders.forEach(({ sealed, barrelLength }) => {
       if (movedJointIDs.has(sealed.pin.id)) return;
-      const movedBarrelMount = movedJointIDs.has(sealed.barrelFar.id);
-      const movedRodMount = movedJointIDs.has(sealed.rodFar.id);
-      if (!movedBarrelMount && !movedRodMount) return;
-      const pose = layoutCylinder(
+      if (!movedJointIDs.has(sealed.barrelFar.id) && !movedJointIDs.has(sealed.rodFar.id)) return;
+      // Both mounts held: they are where the drag put them, and the ram
+      // resizes between them if it has to reach. Anchoring on one of them and
+      // recomputing the other put a mount somewhere the drag had not asked for.
+      const pose = stretchedCylinderPose(
         { x: sealed.barrelFar.x, y: sealed.barrelFar.y },
         { x: sealed.rodFar.x, y: sealed.rodFar.y },
         barrelLength,
-        0.15 * SettingsService.objectScale,
-        // Anchor on the mount that did NOT ride along; if both did, the whole
-        // axis translated and either anchor reproduces it.
-        movedBarrelMount ? 'rod' : 'barrel'
+        0.15 * SettingsService.objectScale
       );
       if (pose) this.applyCylinderPose(sealed, pose);
     });
@@ -622,7 +621,59 @@ export class GridUtilsService {
     this.applyCylinderPose(sealed, pose);
   }
 
+  /**
+   * Land a pose, and carry any ram bolted to what just moved.
+   *
+   * Two rams can share a mount: the first's rod end is the second's barrel end.
+   * Moving the first moves that joint without the second being asked, and the
+   * second was then holding a barrel of the wrong length with its head as far
+   * outside it as the stretch -- on screen, a part in two pieces with a gap
+   * down the middle. It re-lays itself between its own two mounts instead,
+   * resizing to reach: both halves together, so both of its ends move, which is
+   * what a drag on a ram's own mount has always done past its stops.
+   *
+   * `dragLink` has always repaired this for a link drag. Every path that poses
+   * a cylinder needs it, which is all of them: dragging the body, dragging a
+   * mount, and the Travel and Starts-at fields in its panel.
+   *
+   * One level deep, as `dragLink` is: a third ram bolted to the second follows
+   * on the next rebuild rather than in this one.
+   */
   private applyCylinderPose(sealed: Cylinder, pose: CylinderPose): void {
+    // Every other ram's rigid barrel length, read while its geometry is still
+    // straight -- rebuilding from a bent intermediate state is what bakes the
+    // split in.
+    const others = sealedCylinderStructures(this.mechanismSrv.joints)
+      .filter((other) => other.pin.id !== sealed.pin.id)
+      .map((other) => ({
+        other,
+        barrelLength: this.getPointDistance(
+          other.barrelFar.x,
+          other.barrelFar.y,
+          other.barrelNear.x,
+          other.barrelNear.y
+        ),
+      }));
+
+    const movedIds = this.placeCylinder(sealed, pose);
+
+    others.forEach(({ other, barrelLength }) => {
+      if (!movedIds.has(other.barrelFar.id) && !movedIds.has(other.rodFar.id)) return;
+      const carried = stretchedCylinderPose(
+        { x: other.barrelFar.x, y: other.barrelFar.y },
+        { x: other.rodFar.x, y: other.rodFar.y },
+        barrelLength,
+        0.15 * SettingsService.objectScale
+      );
+      if (carried) this.placeCylinder(other, carried);
+    });
+
+    this.mechanismSrv.reseatFloatingSliders();
+    this.mechanismSrv.updateMechanism(false);
+  }
+
+  /** One assembly's five joints, and everything derived from them. */
+  private placeCylinder(sealed: Cylinder, pose: CylinderPose): Set<string> {
     const placements: [Joint, { x: number; y: number }][] = [
       [sealed.barrelFar, pose.barrelFar],
       [sealed.barrelNear, pose.barrelNear],
@@ -668,8 +719,7 @@ export class GridUtilsService {
       PositionSolver.setUpInitialJointLocations(link.joints);
     });
 
-    this.mechanismSrv.reseatFloatingSliders();
-    this.mechanismSrv.updateMechanism(false);
+    return movedIds;
   }
 
   private translateLinkBody(link: Link, dx: number, dy: number) {
