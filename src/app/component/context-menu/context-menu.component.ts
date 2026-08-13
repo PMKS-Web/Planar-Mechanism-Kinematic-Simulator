@@ -20,8 +20,11 @@ export class cMenuItem {
   }
 
   actionWrapper() {
+    // The test is the timestep, so the reason has to be the timestep. It said
+    // the animation was running, which it need not be -- a mechanism parked
+    // anywhere but the start pose refuses edits whether it is moving or not.
     if (NewGridComponent.instance.mechanismSrv.mechanismTimeStep !== 0) {
-      NewGridComponent.sendNotification(CANNOT_EDIT.animating);
+      NewGridComponent.instance.notify.refusal('edit.away-from-start', CANNOT_EDIT.awayFromStart);
       return;
     }
     this.action();

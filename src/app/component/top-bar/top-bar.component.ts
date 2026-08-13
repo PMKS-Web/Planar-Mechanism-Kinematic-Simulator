@@ -19,10 +19,10 @@ import { SaveHistoryService } from '../../services/save-history.service';
 import { AnalyticsService } from '../../services/analytics.service';
 import { UrlGenerationService } from '../../services/url-generation.service';
 import { UrlProcessorService } from '../../services/url-processor.service';
-import { NewGridComponent } from '../new-grid/new-grid.component';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { TemplatesComponent } from '../MODALS/templates/templates.component';
 import { AnalysisExportService } from '../../services/analysis-export.service';
+import { NotificationService } from '../../services/notification.service';
 
 /** A mode's chip: whether that analysis can be entered, and what is missing. */
 interface TabStatus {
@@ -120,7 +120,8 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     private dialog: MatDialog,
     private zone: NgZone,
     private changes: ChangeDetectorRef,
-    private exports: AnalysisExportService
+    private exports: AnalysisExportService,
+    private notify: NotificationService
   ) {}
 
   isDevMode(): boolean {
@@ -423,13 +424,15 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     this.analytics.logEvent('upload_file');
     this.closeMenu();
     const input = $event.target as HTMLInputElement;
+    // Silently. This fires when the picker is dismissed, and cancelling a
+    // dialogue is not a thing that went wrong -- the reader closed it knowing
+    // full well that they had chosen nothing.
     if (!input.files || input.files.length !== 1) {
-      NewGridComponent.sendNotification('No file selected');
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
-      NewGridComponent.sendNotification('Loaded Mechanism from File');
+      this.notify.success('file.loaded', 'Mechanism loaded.');
       this.urlProcessor.updateFromURL(reader.result as string);
       // Reset the input so the same file can be opened again.
       input.value = '';
@@ -465,8 +468,6 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     scratch.select();
     document.execCommand('copy');
     document.body.removeChild(scratch);
-    NewGridComponent.sendNotification(
-      'Mechanism URL copied. If you make additional changes, copy the URL again.'
-    );
+    this.notify.success('share.copied', 'Link copied. Copy again after your next change.');
   }
 }

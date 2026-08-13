@@ -46,6 +46,3 @@ export const NOT_A = {
   force: 'That is not a force. Type a number.',
   name: 'A name has to be letters or numbers, and cannot be one already in use.',
 } as const;
-
-/** Features that exist as a button and nothing else yet. */
-export const NOT_BUILT_YET = 'Not built yet.';

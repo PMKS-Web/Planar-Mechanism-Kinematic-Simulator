@@ -1,6 +1,5 @@
 import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder, FormControl, FormGroup } from '@angular/forms';
-import { NewGridComponent } from '../new-grid/new-grid.component';
 import { Pose } from '../../model/pose';
 import { Coord } from '../../model/coord';
 import { Joint, RealJoint, RevJoint } from '../../model/joint';
@@ -200,39 +199,6 @@ export class SynthesisPanelComponent implements OnInit {
     position3Match: [''],
   });
 
-  handleButton() {
-    //Send notification to grid for now
-    NewGridComponent.sendNotification(
-      'Call your backend function with these values! A0: (' +
-        this.synthesisForm.value.a0x! +
-        ',' +
-        this.synthesisForm.value.a0y! +
-        ') B0: (' +
-        this.synthesisForm.value.b0x! +
-        ',' +
-        this.synthesisForm.value.b0y! +
-        ') A1: (' +
-        this.synthesisForm.value.a1x! +
-        ',' +
-        this.synthesisForm.value.a1y! +
-        ') B1: (' +
-        this.synthesisForm.value.b1x! +
-        ',' +
-        this.synthesisForm.value.b1y! +
-        ') A2: (' +
-        this.synthesisForm.value.a2x! +
-        ',' +
-        this.synthesisForm.value.a2y! +
-        ') B2: (' +
-        this.synthesisForm.value.b2x! +
-        ',' +
-        this.synthesisForm.value.b2y! +
-        ')'
-    );
-    //If you need the values as a number instead of a string, use this:
-    console.log(Number(this.synthesisForm.value.a0x!));
-  }
-
   // for html to get current pose as a number
   getCurrentPose(): number {
     return this.synthesisBuilder.selectedPose;
@@ -307,8 +273,6 @@ export class SynthesisPanelComponent implements OnInit {
     let pose3_coord2 = this.synthesisBuilder.poses[3].posFront;
 
     let qualityfromUser = Number(this.synthesisForm.value.quality);
-
-    //   NewGridComponent.sendNotification(qualityfromUser + ';');
 
     //find first itnersection point
 
@@ -389,17 +353,10 @@ export class SynthesisPanelComponent implements OnInit {
 
     //  let trialCoord = new Coord(this.mechanismSrv.mechanisms[0].joints[0][0].x, this.mechanismSrv.mechanisms[0].joints[0][0].y);
 
-    // NewGridComponent.sendNotification(firstPoint.x + ',' + firstPoint.y + ',' + fourthPoint.x + ',' + fourthPoint.y);
-
-    //  NewGridComponent.sendNotification(trialCoord.x+','+trialCoord.y);
-
-    //  NewGridComponent.sendNotification(quality[0]+';');
-
     //now check if there is 999 in the quality. Count 999 and say which position matches
 
     let whichPositionMatches = this.checkQuality(quality);
 
-    // NewGridComponent.sendNotification(
     //   'Position Matches:' +
     //     whichPositionMatches[0] +
     //     ',' +
@@ -468,10 +425,6 @@ export class SynthesisPanelComponent implements OnInit {
           Math.pow(jointValues[val][1].y - posCoords[4].y, 2)
       );
 
-      //  NewGridComponent.sendNotification('JointCoord;' + jointValues[val][1].x + ';');
-      //  NewGridComponent.sendNotification('PosCoord;' + posCoords[0].x + ';');
-      //   NewGridComponent.sendNotification('val:' + val);
-
       let pos1Value_c = Math.sqrt(
         Math.pow(jointValues[val][2].x - posCoords[1].x, 2) +
           Math.pow(jointValues[val][2].y - posCoords[1].y, 2)
@@ -523,8 +476,6 @@ export class SynthesisPanelComponent implements OnInit {
           let jointC_x = (jointValues[val][2].x + jointValues[index - 2][2].x) / 2;
           let jointC_y = (jointValues[val][2].y + jointValues[index - 2][2].y) / 2;
 
-          //    NewGridComponent.sendNotification("Midpoint;" + val+';'+index);
-
           let pos1Value_b = Math.sqrt(
             Math.pow(jointB_x - posCoords[0].x, 2) + Math.pow(jointB_y - posCoords[0].y, 2)
           );
@@ -534,10 +485,6 @@ export class SynthesisPanelComponent implements OnInit {
           let pos3Value_b = Math.sqrt(
             Math.pow(jointB_x - posCoords[4].x, 2) + Math.pow(jointB_y - posCoords[4].y, 2)
           );
-
-          //  NewGridComponent.sendNotification('JointCoord;' + jointValues[val][1].x + ';');
-          //  NewGridComponent.sendNotification('PosCoord;' + posCoords[0].x + ';');
-          //   NewGridComponent.sendNotification('val:' + val);
 
           let pos1Value_c = Math.sqrt(
             Math.pow(jointC_x - posCoords[1].x, 2) + Math.pow(jointC_y - posCoords[1].y, 2)
@@ -566,10 +513,7 @@ export class SynthesisPanelComponent implements OnInit {
       }
 
       index = index + 1;
-
-      //  NewGridComponent.sendNotification('index:' + index);
     }
-    //    NewGridComponent.sendNotification('quality3c:' + quality3_c);
 
     //now compile quality array and then pass it back
 
@@ -586,8 +530,6 @@ export class SynthesisPanelComponent implements OnInit {
       quality3_c,
       pos3TimeStep,
     ];
-
-    // NewGridComponent.sendNotification(";" + qualityCompilation);
 
     return qualityCompilation;
   }

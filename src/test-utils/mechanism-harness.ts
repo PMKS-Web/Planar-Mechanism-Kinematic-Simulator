@@ -9,6 +9,7 @@ import { NumberUnitParserService } from '../app/services/number-unit-parser.serv
 import { SettingsService } from '../app/services/settings.service';
 import { SvgGridService } from '../app/services/svg-grid.service';
 import { SynthesisBuilderService } from '../app/services/synthesis/synthesis-builder.service';
+import { silentNotifications } from './notification-stub';
 
 /**
  * A real `MechanismService` with its dependencies stubbed just enough to run
@@ -35,7 +36,12 @@ export function createMechanismHarness(): MechanismHarness {
   if (!ColorService.instance) new ColorService();
   const settings = new SettingsService();
   const parser = new NumberUnitParserService();
-  const svg = new SvgGridService(settings, new DragStateService(), {} as unknown as Injector);
+  const svg = new SvgGridService(
+    settings,
+    new DragStateService(),
+    {} as unknown as Injector,
+    silentNotifications()
+  );
   const synthesis = new SynthesisBuilderService(parser, settings);
   let service!: MechanismService;
   const grid = new GridUtilsService(synthesis, svg, {
@@ -56,7 +62,7 @@ export function createMechanismHarness(): MechanismHarness {
   const injector = {
     get: (token: unknown) => (token === DragStateService ? dragState : history),
   } as unknown as Injector;
-  service = new MechanismService(grid, active, injector, settings, parser);
+  service = new MechanismService(grid, active, injector, settings, parser, silentNotifications());
   return { service, active, saveCount: () => saves };
 }
 

@@ -1,0 +1,127 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+@use 'src/app/component/left-tabs/left-tabs.vars.scss' as vars;
+
+@mixin css($theme) {
+  // Which colour each kind is written in. Only the icon and the edge are
+  // coloured -- the sentence stays the app's text colour, because a red
+  // sentence is harder to read and the glyph has already said which of the
+  // four this is.
+  $kinds: (
+    'success': #2e7d32,
+    'refusal': #455a64,
+    'warning': #ef6c00,
+    'failure': #c62828,
+  );
+
+  // The snackbar renders in an overlay, outside the component tree, so these
+  // rules are global by necessity -- the same reason every other component's
+  // styles in this app are pulled into `mytheme.scss` rather than scoped.
+  .pmksNotification {
+    // Below the top strip rather than over it. It used to be pushed down by a
+    // bare 50px, which was neither the strip's height nor a gap from anything.
+    margin-top: vars.$top-strip-bottom + vars.$card-inset !important;
+
+    // Material's own surface is the wrong shape for this app: a dark slab with
+    // white text. The card underneath is what everything else that floats over
+    // the grid looks like.
+    //
+    // Set through Material's own custom properties rather than by out-shouting
+    // its rules. Its surface selector has the same specificity as anything
+    // written here, so which one wins comes down to the order the two
+    // stylesheets happen to be concatenated in -- which is not something to
+    // rest a colour on.
+    --mat-snack-bar-container-color: var(--card-surface);
+    --mat-snack-bar-supporting-text-color: #2c2c2c;
+
+    // Both spellings: the class was renamed between Material versions and the
+    // element carries the old one as well as the new.
+    .mat-mdc-snackbar-surface,
+    .mdc-snackbar__surface {
+      min-width: 0;
+      max-width: min(640px, 90vw);
+      padding: 0;
+      border-radius: var(--card-radius);
+      box-shadow: var(--card-shadow);
+    }
+
+    .mat-mdc-snack-bar-label,
+    .mdc-snackbar__label {
+      padding: 0;
+    }
+
+    app-notification {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      // The colour bar is the whole left edge, so the padding starts after it.
+      padding: 12px 8px 12px 14px;
+      border-left: 4px solid transparent;
+      border-radius: var(--card-radius);
+      // A message can run to two or three lines; the icon stays on the first.
+      color: #2c2c2c;
+    }
+  }
+
+  .notificationIcon {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    line-height: 1;
+    // Material gives mat-icon a 24px box whatever the glyph is, so a 20px
+    // glyph would otherwise sit high in it against a 20px line of text.
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+
+  .notificationText {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0.15px;
+  }
+
+  // Small and grey: it is the way out of a message, not part of what the
+  // message says.
+  .notificationClose {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin: -2px 0 0;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.06);
+      color: rgba(0, 0, 0, 0.7);
+    }
+
+    .mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+      line-height: 1;
+    }
+  }
+
+  @each $kind, $color in $kinds {
+    .pmksNotification--#{$kind} app-notification {
+      border-left-color: $color;
+    }
+
+    .pmksNotification--#{$kind} .notificationIcon {
+      color: $color;
+    }
+  }
+}

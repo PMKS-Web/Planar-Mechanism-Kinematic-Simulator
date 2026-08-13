@@ -53,10 +53,12 @@ import { DualButtonComponent } from './component/BLOCKS/dual-button/dual-button.
 import { ColorPickerComponent } from './component/BLOCKS/color-picker/color-picker.component';
 import { TriButtonComponent } from './component/BLOCKS/tri-button/tri-button.component';
 import { BottombarComponent } from './component/bottombar/bottombar.component';
+import { NotificationComponent } from './component/notification/notification.component';
 
 @NgModule({
   declarations: [
     AppComponent,
+    NotificationComponent,
     LinkageTableComponent,
     TopBarComponent,
     AnalysisSetupComponent,

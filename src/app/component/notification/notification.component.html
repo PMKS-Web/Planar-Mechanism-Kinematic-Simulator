@@ -1,0 +1,7 @@
+<mat-icon class="notificationIcon">{{ icon }}</mat-icon>
+<span class="notificationText">{{ data.text }}</span>
+<!-- On every kind, not only the ones that wait. A message that has been read is
+     in the way, and four seconds is long enough to be in the way. -->
+<button class="notificationClose" type="button" (click)="data.dismiss()" aria-label="Dismiss">
+  <mat-icon>close</mat-icon>
+</button>

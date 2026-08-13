@@ -10,7 +10,7 @@ import { SettingsService } from './settings.service';
 import { MechanismBuilder } from './transcoding/mechanism-builder';
 import { SvgGridService } from './svg-grid.service';
 import { ActiveObjService } from './active-obj.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { NotificationService } from './notification.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 
 @Injectable({
@@ -22,7 +22,7 @@ export class UrlProcessorService {
     private settingsSrv: SettingsService,
     private svgGrid: SvgGridService,
     private activeObj: ActiveObjService,
-    private snackBar: MatSnackBar
+    private notify: NotificationService
   ) {
     // the content part of the url (the part after the ?)
     const url = this.getURLContent();
@@ -114,12 +114,16 @@ export class UrlProcessorService {
         builder.build(updateSettings);
       } catch (error) {
         console.error('Unable to load mechanism URL', error);
+        // Deferred because this can run inside the service's own constructor,
+        // before there is an overlay to open into. A failure, and it waits to
+        // be dismissed: the reader followed a link that did not work, and the
+        // grid they are looking at instead is not an obvious clue that it
+        // didn't.
         setTimeout(() => {
-          this.snackBar.open('Unable to load the shared mechanism URL.', '', {
-            duration: 4000,
-            horizontalPosition: 'center',
-            verticalPosition: 'top',
-          });
+          this.notify.failure(
+            'url.undecodable',
+            'That shared link could not be opened — it may be from an older version of PMKS+.'
+          );
         });
       } finally {
         // Invalid data must not remain in the address bar or be retried on refresh.

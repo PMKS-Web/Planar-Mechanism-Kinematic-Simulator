@@ -15,6 +15,7 @@ import { SynthesisBuilderService } from './services/synthesis/synthesis-builder.
 import { ColorService } from './services/color.service';
 import { KinematicsSolver } from './model/mechanism/kinematic-solver';
 import { euclideanDistance } from './model/utils';
+import { silentNotifications } from '../test-utils/notification-stub';
 
 describe('SixbarService', () => {
   // it('should show the calculated position of the Joints DO match the expected', () => {
@@ -31,7 +32,8 @@ describe('SixbarService', () => {
   const svgGridService: SvgGridService = new SvgGridService(
     settingsService,
     new DragStateService(),
-    {} as unknown as Injector
+    {} as unknown as Injector,
+    silentNotifications()
   );
   const synthesisBuilder: SynthesisBuilderService = new SynthesisBuilderService(
     nup,
@@ -50,7 +52,8 @@ describe('SixbarService', () => {
     activeObjService,
     Injector.create({ providers: [] }),
     settingsService,
-    nup
+    nup,
+    silentNotifications()
   );
 
   // Link AB

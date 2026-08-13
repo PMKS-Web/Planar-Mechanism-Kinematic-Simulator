@@ -14,6 +14,7 @@ import { SynthesisBuilderService } from '../../app/services/synthesis/synthesis-
 import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { silentNotifications } from '../../test-utils/notification-stub';
 
 // The linkage from issue #199. An exact parallelogram four-bar: A->B and D->C are
 // the same vector, so every revolution the crank lines up with the ground link and
@@ -39,12 +40,17 @@ function loadMechanism(payload: string) {
   let service!: MechanismService;
   const grid = new GridUtilsService(
     new SynthesisBuilderService(parser, settings),
-    new SvgGridService(settings, new DragStateService(), {} as unknown as Injector),
+    new SvgGridService(
+      settings,
+      new DragStateService(),
+      {} as unknown as Injector,
+      silentNotifications()
+    ),
     { get: () => service } as unknown as Injector
   );
   const active = new ActiveObjService();
   const injector = { get: () => ({ save: () => {} }) } as unknown as Injector;
-  service = new MechanismService(grid, active, injector, settings, parser);
+  service = new MechanismService(grid, active, injector, settings, parser, silentNotifications());
 
   const decoder = new StringTranscoder();
   decoder.decodeURL(payload);

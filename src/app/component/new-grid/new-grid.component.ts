@@ -36,7 +36,7 @@ import {
 } from '../../model/utils';
 import { Force } from '../../model/force';
 import { PositionSolver } from '../../model/mechanism/position-solver';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { NotificationService } from '../../services/notification.service';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { CdkContextMenuTrigger, Menu } from '@angular/cdk/menu';
@@ -81,6 +81,7 @@ import {
 import {
   JointDropCandidate,
   MERGE_REFUSAL_MESSAGES,
+  MergeRefusal,
   resolveDropCandidate,
   resolveSlotDropTarget,
   SlotDropCandidate,
@@ -141,7 +142,9 @@ export class NewGridComponent implements OnDestroy {
     public activeObjService: ActiveObjService,
     private tabService: SelectedTabService,
     public synthesisBuilder: SynthesisBuilderService,
-    private snackBar: MatSnackBar,
+    // Public because `cMenuItem` is a plain class with no injector and reaches
+    // the canvas for its guards, exactly as it already does for the mechanism.
+    public notify: NotificationService,
     public dialog: MatDialog,
     public saveHistoryService: SaveHistoryService,
     private colorService: ColorService,
@@ -211,7 +214,6 @@ export class NewGridComponent implements OnDestroy {
   public showLinkAngleOverlay: number = -2;
 
   static instance: NewGridComponent;
-  private lastNotificationTime: number = Date.now();
   //To distinguish between a click and a drag
   public delta: number = 6;
   private startX!: number;
@@ -968,7 +970,8 @@ export class NewGridComponent implements OnDestroy {
     const link = force.link;
     const anchor = this.gridUtils.forceAnchorAt(link, wanted, this.settings.objectScale);
     if (!anchor) {
-      this.sendNotification(
+      this.notify.refusal(
+        'force.ambiguous-anchor',
         'Several links meet at that joint, so a force there would not say which one it acts on.',
         1500
       );
@@ -1164,7 +1167,8 @@ export class NewGridComponent implements OnDestroy {
           // is noise rather than an explanation.
           if (atMinimum && !this.cylinderFloorReported) {
             this.cylinderFloorReported = true;
-            this.sendNotification(
+            this.notify.refusal(
+              'cylinder.at-minimum',
               'That is the shortest cylinder there is — any less and the barrel has no room to slide in.'
             );
           }
@@ -1310,15 +1314,15 @@ export class NewGridComponent implements OnDestroy {
    */
   private canEditNow(): boolean {
     if (this.mechanismSrv.isPlaying) {
-      this.sendNotification(CANNOT_EDIT.animating);
+      this.notify.refusal('edit.animating', CANNOT_EDIT.animating);
       return false;
     }
     if (this.mechanismSrv.mechanismTimeStep !== 0) {
-      this.sendNotification(CANNOT_EDIT.awayFromStart);
+      this.notify.refusal('edit.away-from-start', CANNOT_EDIT.awayFromStart);
       return false;
     }
     if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
-      this.sendNotification(CANNOT_EDIT.synthesizeMode);
+      this.notify.refusal('edit.synthesize-mode', CANNOT_EDIT.synthesizeMode);
       return false;
     }
     // Analyze already refuses to open an edit context menu (see onContextMenu),
@@ -1329,7 +1333,7 @@ export class NewGridComponent implements OnDestroy {
     // same solved cycle and is no more able to survive the geometry moving
     // under it.
     if (this.tabService.isAnalysisMode()) {
-      this.sendNotification(CANNOT_EDIT.analyzeMode);
+      this.notify.refusal('edit.analyze-mode', CANNOT_EDIT.analyzeMode);
       return false;
     }
     return true;
@@ -1646,9 +1650,15 @@ export class NewGridComponent implements OnDestroy {
     return '';
   }
 
-  /** Shake the dropped joint and say why it could not land where it was aimed. */
-  private refuseDrop(jointID: string, message: string): void {
-    this.sendNotification(message);
+  /**
+   * Shake the dropped joint and say why it could not land where it was aimed.
+   *
+   * The reason is its own message rather than a shared "cannot drop here", so
+   * dragging against one rule and then another says both instead of falling
+   * silent on the second.
+   */
+  private refuseDrop(jointID: string, reason: MergeRefusal): void {
+    this.notify.refusal(`merge.${reason}`, MERGE_REFUSAL_MESSAGES[reason]);
     this.shakingJointID = jointID;
     setTimeout(() => (this.shakingJointID = undefined), 420);
   }
@@ -1675,7 +1685,7 @@ export class NewGridComponent implements OnDestroy {
 
   onContextMenu($event: MouseEvent) {
     if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
-      this.sendNotification(CANNOT_EDIT.synthesizeMode);
+      this.notify.refusal('edit.synthesize-mode', CANNOT_EDIT.synthesizeMode);
       this.cMenuItems = [];
       return;
     }
@@ -1688,12 +1698,12 @@ export class NewGridComponent implements OnDestroy {
     }
 
     if (this.mechanismSrv.isPlaying == true) {
-      this.sendNotification(CANNOT_EDIT.animating);
+      this.notify.refusal('edit.animating', CANNOT_EDIT.animating);
       this.cMenuItems = [];
       return;
     }
     if (this.mechanismSrv.mechanismTimeStep !== 0) {
-      this.sendNotification(CANNOT_EDIT.awayFromStart);
+      this.notify.refusal('edit.away-from-start', CANNOT_EDIT.awayFromStart);
       this.cMenuItems = [];
       //Close the MatContextMenu
       // console.log(this.contextMenu);
@@ -1760,7 +1770,7 @@ export class NewGridComponent implements OnDestroy {
 
     const source = this.activeObjService.selectedJoint;
     if (refused?.refusal) {
-      this.refuseDrop(source.id, MERGE_REFUSAL_MESSAGES[refused.refusal]);
+      this.refuseDrop(source.id, refused.refusal);
       return false;
     }
     if (!target) {
@@ -1776,7 +1786,7 @@ export class NewGridComponent implements OnDestroy {
     const wasWelded = source.isWelded || target.isWelded;
     const refusal = this.mechanismSrv.mergeJoints(source, target);
     if (refusal) {
-      this.refuseDrop(source.id, MERGE_REFUSAL_MESSAGES[refusal]);
+      this.refuseDrop(source.id, refusal);
       return false;
     }
 
@@ -1784,9 +1794,12 @@ export class NewGridComponent implements OnDestroy {
     // slider-carrying survivor cannot be welded at all. Losing the weld
     // silently would leave the user with a linkage they did not ask for. A
     // merge that goes exactly as asked says nothing: the pop is the receipt.
+    // A warning, not a refusal: the merge happened, and the linkage the reader
+    // now has is not quite the one they drew. It waits to be dismissed.
     if (wasWelded && !target.isWelded) {
-      this.sendNotification(
-        `Merged joint ${source.id} into ${target.id}, but ${target.id} cannot be welded`
+      this.notify.warning(
+        'merge.weld-lost',
+        `Merged ${source.id} into ${target.id}. The weld did not carry over — ${target.id} cannot be welded.`
       );
     }
     this.popJoint(target.id);
@@ -1998,7 +2011,10 @@ export class NewGridComponent implements OnDestroy {
                 if (commonLinkCheck) {
                   this.dragState.finishCreating();
                   this.linkCreateStart = undefined;
-                  this.sendNotification('Those two joints are already on one link.');
+                  this.notify.refusal(
+                    'link.already-joined',
+                    'Those two joints are already on one link.'
+                  );
                   return;
                 }
                 this.activeObjService.prevSelectedJoint.connectedJoints.push(joint2);
@@ -2062,8 +2078,9 @@ export class NewGridComponent implements OnDestroy {
             break;
           case 'Link':
             if (this.dragState.isCreatingLink) {
-              this.sendNotification(
-                'Cannot link to a bar. Please create and select a tracer point on the link.'
+              this.notify.refusal(
+                'link.needs-a-joint',
+                'A link joins two joints. Add a tracer point to that bar, then draw to it.'
               );
               this.dragState.cancel();
               this.linkCreateStart = undefined;
@@ -2107,27 +2124,6 @@ export class NewGridComponent implements OnDestroy {
         this.cylinderCreateStart = undefined;
         this.linkCreateStart = undefined;
         break;
-    }
-  }
-
-  static sendNotification(text: string, rateLimitMS?: number) {
-    // Services reach the snackbar through here, and they are also exercised in
-    // tests with no component standing. A missing canvas means nobody is
-    // looking, not that the caller did something wrong.
-    NewGridComponent.instance?.sendNotification(text, rateLimitMS);
-  }
-
-  sendNotification(text: string, rateLimitMS?: number) {
-    rateLimitMS = rateLimitMS || 1000; //Default to 1 second
-    //If there is more than one notification in the last seccond, ingore all but the first
-    if (this.lastNotificationTime + rateLimitMS < Date.now()) {
-      this.lastNotificationTime = Date.now();
-      this.snackBar.open(text, '', {
-        panelClass: 'my-custom-snackbar',
-        horizontalPosition: 'center',
-        verticalPosition: 'top',
-        duration: 4000,
-      });
     }
   }
 
@@ -3030,24 +3026,47 @@ export class NewGridComponent implements OnDestroy {
     this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
   }
 
+  /** Whether the keystroke was aimed at somewhere text is being entered. */
+  private typingInAField($event: KeyboardEvent): boolean {
+    const target = $event.target as HTMLElement | null;
+    if (!target) return false;
+    const tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+  }
+
   // Angular keys host listeners by event name, so this component gets exactly
   // one window:keydown. Anything that needs the key down hangs off here.
   @HostListener('window:keydown', ['$event'])
   onKeyPress($event: KeyboardEvent) {
     this.reconsiderDrop($event, true);
 
-    if (($event.ctrlKey || $event.metaKey) && $event.keyCode == 90) {
-      //Ctrl + Z
-      NewGridComponent.sendNotification(
-        'You attempted to undo. What were you trying to undo? Please let us know through the report button in the help section.'
-      );
+    // A key pressed into a text field belongs to that field. Undo there means
+    // undo the typing, and Delete means delete a character -- not the joint
+    // whose name is being typed.
+    if (this.typingInAField($event)) {
+      return;
+    }
+
+    // Ctrl/Cmd+Z, and Shift or Y for the other direction. This used to ask the
+    // reader what they had been trying to undo, as a question for a study that
+    // has since ended, while undo itself sat in the top strip working fine.
+    const held = $event.ctrlKey || $event.metaKey;
+    const key = $event.key.toLowerCase();
+    if (held && (key === 'z' || key === 'y')) {
+      $event.preventDefault();
+      // Hidden in the analysis modes for the same reason the buttons are: there
+      // is nothing there to undo.
+      if (this.tabService.isAnalysisMode()) return;
+      if (key === 'y' || $event.shiftKey) {
+        this.saveHistoryService.redo();
+      } else {
+        this.saveHistoryService.undo();
+      }
+      return;
     }
 
     if ($event.keyCode == 27) {
       //Escape Key
-      // NewGridComponent.sendNotification(
-      //   'You pressed the "Escape" key. What were you trying to do and in what context? (This is an Easter Egg. Please talk about in the final question of the survey.)'
-      // );
       this.activeObjService.updateSelectedObj(undefined);
     }
 
@@ -3056,7 +3075,8 @@ export class NewGridComponent implements OnDestroy {
       if (true) {
         //TODO: Sorry jacob you need to fix this it used to say: if(GridComponent.canDelete)
         if (this.activeObjService.objType === 'Grid') {
-          NewGridComponent.sendNotification(
+          this.notify.refusal(
+            'delete.nothing-selected',
             'Select something first — Delete removes whatever is selected.'
           );
           return;

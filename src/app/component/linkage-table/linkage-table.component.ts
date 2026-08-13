@@ -14,9 +14,9 @@ import { roundNumber } from '../../model/utils';
 import { Mechanism } from '../../model/mechanism/mechanism';
 import { InstantCenter } from '../../model/instant-center';
 import { MechanismService } from '../../services/mechanism.service';
-import { NewGridComponent } from '../new-grid/new-grid.component';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { NOT_A } from '../../ui-text';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'app-linkage-table',
@@ -32,7 +32,10 @@ export class LinkageTableComponent implements OnInit {
   private static forceButton: SVGElement;
   private static showLinkageTableButton: SVGElement;
 
-  constructor(private mechanismService: MechanismService) {}
+  constructor(
+    private mechanismService: MechanismService,
+    private notify: NotificationService
+  ) {}
 
   // The table's cells speak the user's units; the model is MODEL_SCALE times
   // larger (render-scale.ts), so every length converts at this boundary.
@@ -76,7 +79,7 @@ export class LinkageTableComponent implements OnInit {
     const sealed = this.mechanismService.cylinderAt(joint);
     if (sealed && (jointProp === 'x' || jointProp === 'y')) {
       if (isNaN(Number($event.target.value))) {
-        return NewGridComponent.sendNotification(NOT_A.length);
+        return this.notify.refusal('value.length', NOT_A.length);
       }
       const value = Number($event.target.value) * MODEL_SCALE;
       const wanted = new Coord(
@@ -93,7 +96,7 @@ export class LinkageTableComponent implements OnInit {
       // TODO: When changing the joint positions, be sure to also change the ('d') path of the link
       case 'x':
         if (isNaN(Number($event.target.value))) {
-          return NewGridComponent.sendNotification(NOT_A.length);
+          return this.notify.refusal('value.length', NOT_A.length);
         }
         joint.x = Number($event.target.value) * MODEL_SCALE;
         joint.links.forEach((l) => {
@@ -115,7 +118,7 @@ export class LinkageTableComponent implements OnInit {
         break;
       case 'y':
         if (isNaN(Number($event.target.value))) {
-          return NewGridComponent.sendNotification(NOT_A.length);
+          return this.notify.refusal('value.length', NOT_A.length);
         }
         joint.y = Number($event.target.value) * MODEL_SCALE;
         joint.links.forEach((l) => {
@@ -135,7 +138,7 @@ export class LinkageTableComponent implements OnInit {
         break;
       case 'id':
         if (!(typeof $event.target.value === 'string')) {
-          return NewGridComponent.sendNotification(NOT_A.name);
+          return this.notify.refusal('value.name', NOT_A.name);
         }
         joint.links.forEach((l) => {
           l.id = l.id.replace(joint.id, $event.target.value);
@@ -144,7 +147,7 @@ export class LinkageTableComponent implements OnInit {
         break;
       case 'angle':
         if (isNaN(Number($event.target.value))) {
-          return NewGridComponent.sendNotification(NOT_A.angle);
+          return this.notify.refusal('value.angle', NOT_A.angle);
         }
         if (!(joint instanceof PrisJoint)) {
           return;
@@ -164,25 +167,25 @@ export class LinkageTableComponent implements OnInit {
     switch (linkProp) {
       case 'mass':
         if (isNaN(Number($event.target.value))) {
-          return NewGridComponent.sendNotification(NOT_A.mass);
+          return this.notify.refusal('value.mass', NOT_A.mass);
         }
         link.mass = Number($event.target.value);
         break;
       case 'massMoI':
         if (isNaN(Number($event.target.value))) {
-          return NewGridComponent.sendNotification(NOT_A.momentOfInertia);
+          return this.notify.refusal('value.momentOfInertia', NOT_A.momentOfInertia);
         }
         link.massMoI = Number($event.target.value);
         break;
       case 'CoMX':
         if (isNaN(Number($event.target.value))) {
-          return NewGridComponent.sendNotification(NOT_A.length);
+          return this.notify.refusal('value.length', NOT_A.length);
         }
         link.CoM.x = Number($event.target.value) * MODEL_SCALE;
         break;
       case 'CoMY':
         if (isNaN(Number($event.target.value))) {
-          return NewGridComponent.sendNotification(NOT_A.length);
+          return this.notify.refusal('value.length', NOT_A.length);
         }
         link.CoM.y = Number($event.target.value) * MODEL_SCALE;
         break;
@@ -198,31 +201,31 @@ export class LinkageTableComponent implements OnInit {
     switch (forceProp) {
       case 'id':
         if (!(typeof $event.target.value === 'string')) {
-          return NewGridComponent.sendNotification(NOT_A.name);
+          return this.notify.refusal('value.name', NOT_A.name);
         }
         force.id = $event.target.value;
         break;
       case 'xPos':
         if (isNaN(Number($event.target.value))) {
-          return NewGridComponent.sendNotification(NOT_A.length);
+          return this.notify.refusal('value.length', NOT_A.length);
         }
         force.moveAnchor(new Coord(Number($event.target.value) * MODEL_SCALE, force.startCoord.y));
         break;
       case 'yPos':
         if (isNaN(Number($event.target.value))) {
-          return NewGridComponent.sendNotification(NOT_A.length);
+          return this.notify.refusal('value.length', NOT_A.length);
         }
         force.moveAnchor(new Coord(force.startCoord.x, Number($event.target.value) * MODEL_SCALE));
         break;
       case 'mag':
         if (isNaN(Number($event.target.value))) {
-          return NewGridComponent.sendNotification(NOT_A.force);
+          return this.notify.refusal('value.force', NOT_A.force);
         }
         force.setMagnitude(Number($event.target.value));
         break;
       case 'angle':
         if (isNaN(Number($event.target.value))) {
-          return NewGridComponent.sendNotification(NOT_A.angle);
+          return this.notify.refusal('value.angle', NOT_A.angle);
         }
         force.setDirectionRadians(Number($event.target.value) * (Math.PI / 180));
         break;
