@@ -150,14 +150,24 @@
     display: none;
   }
 
-  // Each step down is taken only once the level above would actually run out
-  // of room. Measured, not guessed: the strip is 1019px wide with full labels,
-  // 899 with short ones and 716 icon-only, so these are those numbers with a
-  // little to spare. It used to shorten at 1280 and go icon-only at 1080,
-  // throwing away words while a quarter of the window was still empty.
-  @media (max-width: 1040px) {
+  // How much of each label there is room for, decided by measuring rather than
+  // by window width. A width has to be chosen for the widest the strip ever
+  // gets -- four modes, two chips, everything spelled out -- so it throws words
+  // away long before this particular strip has run out of room for them.
+  .tabCard.level1 {
+    .tabButton .tabLabel.long {
+      display: none;
+    }
+
     .tabButton .tabLabel.short {
       display: inline;
+    }
+  }
+
+  .tabCard.level0 {
+    .tabButton .tabLabel,
+    .tabButton .tabLabel.short {
+      display: none;
     }
   }
 
@@ -299,24 +309,9 @@
     margin: 6px 14px;
   }
 
-  // Narrow windows drop the words before they drop a mode. Paired with the
-  // rule that switches the short spelling on -- one width, two halves of the
-  // same step, so they have to move together.
-  @media (max-width: 1040px) {
-    .tabButton .tabLabel.long {
-      display: none;
-    }
-  }
-
-  // Every label goes at once. Naming the short spelling explicitly, because the
-  // rule that switched it on lives in a later media block and would otherwise
-  // keep it while the other two modes had already gone icon-only.
+  // The history card's words go with the modes' -- it is the same strip
+  // running out of the same room.
   @media (max-width: 920px) {
-    .tabButton .tabLabel,
-    .tabButton .tabLabel.short {
-      display: none;
-    }
-
     .historyCard .historyLabel {
       display: none;
     }

@@ -1,3 +1,4 @@
+import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { environment } from '../../../environments/environment';
 import { Component, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { SettingsService } from 'src/app/services/settings.service';
@@ -26,7 +27,8 @@ export class SettingsPanelComponent implements OnDestroy {
     private fb: FormBuilder,
     public mechanismSrv: MechanismService,
     private svgGrid: SvgGridService,
-    private nup: NumberUnitParserService
+    private nup: NumberUnitParserService,
+    private tabs: SelectedTabService
   ) {}
 
   currentLengthUnit!: LengthUnit;
@@ -170,6 +172,17 @@ export class SettingsPanelComponent implements OnDestroy {
    * length control funnel here so a unit change always rescales the mechanism's
    * stored geometry, mass, inertia, and forces — never just relabels them.
    */
+  /**
+   * A unit change rescales the drawing's stored geometry, so it is an edit.
+   *
+   * The analysis modes lock the geometry, and Synthesis is writing its own --
+   * changing what a number means underneath either of them is the same class
+   * of surprise the lock exists to prevent.
+   */
+  unitsEditable(): boolean {
+    return this.tabs.getCurrentTab() === TabID.EDIT && !this.settingsService.animating.value;
+  }
+
   private changeLengthUnit(toUnit: LengthUnit): void {
     const fromUnit = this.settingsService.lengthUnit.value;
     this.currentLengthUnit = toUnit;

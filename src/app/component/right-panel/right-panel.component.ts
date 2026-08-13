@@ -1,5 +1,5 @@
 import { TabID } from '../../selected-tab.service';
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, DoCheck } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 import {
@@ -71,7 +71,7 @@ import { UrlGenerationService } from 'src/app/services/url-generation.service';
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false,
 })
-export class RightPanelComponent {
+export class RightPanelComponent implements DoCheck {
   private analytics: AnalyticsService = inject(AnalyticsService);
 
   public sendingEmail: boolean = false;
@@ -114,6 +114,26 @@ export class RightPanelComponent {
     private fb: FormBuilder
   ) {}
 
+  /**
+   * Bumped when a drawer is asked for that is already showing.
+   *
+   * Pressing a mode that is not ready opens the setup that says why. Pressing
+   * it again used to close that setup -- so the reader who did not spot it the
+   * first time asked twice and got nothing. It draws attention to itself
+   * instead, which is what the second press was asking for.
+   */
+  static attentionCount = 0;
+
+  /** Ask for a drawer without ever closing it. */
+  static insistOn(tabID: number): void {
+    if (this.isOpen && this.openTab === tabID) {
+      this.attentionCount++;
+      return;
+    }
+    this.isOpen = true;
+    this.openTab = tabID;
+  }
+
   static tabClicked(tabID: number) {
     if (!this.isOpen) {
       this.isOpen = true;
@@ -127,6 +147,23 @@ export class RightPanelComponent {
     }
     // console.warn(this.openTab);
     // console.warn(this.isOpen);
+  }
+
+  /**
+   * Whether the drawer is currently being pointed at.
+   *
+   * A class for one animation's length, taken off again so a second ask plays
+   * it a second time rather than doing nothing.
+   */
+  attention = false;
+  private shownAttention = 0;
+
+  ngDoCheck(): void {
+    if (RightPanelComponent.attentionCount !== this.shownAttention && !this.attention) {
+      this.shownAttention = RightPanelComponent.attentionCount;
+      this.attention = true;
+      setTimeout(() => (this.attention = false), 450);
+    }
   }
 
   /** Shut the drawer, whichever one is open. */

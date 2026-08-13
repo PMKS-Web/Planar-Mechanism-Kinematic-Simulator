@@ -2761,9 +2761,16 @@ export class MechanismService {
       this.playbackClockMs = null;
       return;
     }
-    // Anything other than the playback loop itself (slider, time field, URL restore)
-    // is a seek: re-anchor the clock to the sample the caller asked for.
-    if (!this.advancingPlayback) {
+    // Anything other than the playback loop itself (a scrubber, a URL restore)
+    // is a seek of the whole drawing: re-anchor the clock to the sample the
+    // caller asked for.
+    //
+    // Except a seek of one machine, which must leave the frame clock alone.
+    // Clearing it says "the next frame has no previous frame to measure from",
+    // so a drag -- which seeks sixty times a second -- measured zero elapsed
+    // every frame and every other machine stood still for as long as the drag
+    // lasted.
+    if (!this.advancingPlayback && !this.seekingOneMechanism) {
       this.playbackTimeSeconds = this.timeAtStep(this.mechanismTimeStep);
       this.playbackClockMs = null;
     }
@@ -3401,6 +3408,11 @@ export class MechanismService {
       this.ownPlaying = this.mechanisms.map(
         (mechanism) => this.isPlaying && mechanism.isMechanismValid()
       );
+      // And back onto one clock. Synced means one row and one handle, and a
+      // handle standing for machines that are at four different times can only
+      // lie about three of them -- which is what made it jump when dragged
+      // after a spell apart.
+      this.seekAllTo(this.ownSeconds[this.masterMechanismIndex()] ?? 0);
     }
     this.drawOwnClocks(this.isPlaying);
   }

@@ -9,8 +9,8 @@
         option3="SI (m)"
         [formGroup]="this.settingsForm"
         _formControl="globalunit"
-        tooltip="Select the global units to be used for the analysis."
-        [disabled]="this.settingsService.animating.value"
+        tooltip="Select the global units to be used for the analysis. Available in Edit mode."
+        [disabled]="!unitsEditable()"
         >Global Units
       </radio-block>
       <radio-block
@@ -18,8 +18,8 @@
         option2="Radian"
         [formGroup]="this.settingsForm"
         _formControl="angleunit"
-        tooltip="Select the units to be used for angles. This updates units for derived units as well (e.g. angular velocity, etc.)"
-        [disabled]="this.settingsService.animating.value"
+        tooltip="Select the units to be used for angles. This updates units for derived units as well (e.g. angular velocity, etc.) Available in Edit mode."
+        [disabled]="!unitsEditable()"
         >Angle Units
       </radio-block>
       <!-- Input direction and speed belong to the input joint, so they live in that

@@ -1,4 +1,4 @@
-<div class="topStrip" [class.devMode]="isDevMode()">
+<div class="topStrip" #strip [class.devMode]="isDevMode()">
   <div class="card brandCard">
     <button
       class="iconButton"
@@ -13,7 +13,7 @@
     <img class="logo" alt="PMKS+" src="assets/PMKS_logo.png" />
   </div>
 
-  <div class="card tabCard">
+  <div class="card tabCard" [class]="'card tabCard level' + labelLevel">
     <div class="tabStrip" #tabStrip>
       <!-- One highlight for all four modes, so it slides between them instead
            of blinking from one to the next. -->
@@ -56,16 +56,19 @@
         <mat-icon matTooltip="Kinematic Analysis" matTooltipShowDelay="600">query_stats</mat-icon>
         <span class="tabLabel long">Kinematic Analysis</span>
         <span class="tabLabel short">Kinematic</span>
-        <span
-          class="chip"
-          role="button"
-          [class.ok]="statusOf(TabID.ANALYZE).ready"
-          [attr.aria-label]="'Kinematic Analysis setup: ' + statusOf(TabID.ANALYZE).text"
-          (click)="openSetupFor(TabID.ANALYZE, $event)"
-          [matTooltip]="'What this mode needs'"
-          matTooltipShowDelay="600"
-          >{{ statusOf(TabID.ANALYZE).text }}</span
-        >
+        <!-- Nothing drawn, nothing to be ready for. -->
+        @if (hasStatus()) {
+          <span
+            class="chip"
+            role="button"
+            [class.ok]="statusOf(TabID.ANALYZE).ready"
+            [attr.aria-label]="'Kinematic Analysis setup: ' + statusOf(TabID.ANALYZE).text"
+            (click)="openSetupFor(TabID.ANALYZE, $event)"
+            [matTooltip]="'What this mode needs'"
+            matTooltipShowDelay="600"
+            >{{ statusOf(TabID.ANALYZE).text }}</span
+          >
+        }
       </button>
 
       <button
@@ -78,16 +81,19 @@
         <mat-icon matTooltip="Force Analysis" matTooltipShowDelay="600">balance</mat-icon>
         <span class="tabLabel long">Force Analysis</span>
         <span class="tabLabel short">Force</span>
-        <span
-          class="chip"
-          role="button"
-          [class.ok]="statusOf(TabID.FORCE).ready"
-          [attr.aria-label]="'Force Analysis setup: ' + statusOf(TabID.FORCE).text"
-          (click)="openSetupFor(TabID.FORCE, $event)"
-          [matTooltip]="'What this mode needs'"
-          matTooltipShowDelay="600"
-          >{{ statusOf(TabID.FORCE).text }}</span
-        >
+        <!-- Nothing drawn, nothing to be ready for. -->
+        @if (hasStatus()) {
+          <span
+            class="chip"
+            role="button"
+            [class.ok]="statusOf(TabID.FORCE).ready"
+            [attr.aria-label]="'Force Analysis setup: ' + statusOf(TabID.FORCE).text"
+            (click)="openSetupFor(TabID.FORCE, $event)"
+            [matTooltip]="'What this mode needs'"
+            matTooltipShowDelay="600"
+            >{{ statusOf(TabID.FORCE).text }}</span
+          >
+        }
       </button>
     </div>
   </div>

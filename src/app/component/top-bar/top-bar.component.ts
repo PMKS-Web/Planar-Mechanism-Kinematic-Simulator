@@ -72,6 +72,18 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   private analytics: AnalyticsService = inject(AnalyticsService);
 
   @ViewChild('tabStrip') tabStrip?: ElementRef<HTMLElement>;
+  @ViewChild('strip') strip?: ElementRef<HTMLElement>;
+
+  /**
+   * How much of each label the strip has room for: 2 full, 1 short, 0 icons.
+   *
+   * Measured rather than guessed at a width. Fixed breakpoints have to be set
+   * for the widest the strip ever gets -- four modes, two status chips, both
+   * spelled out -- so they throw words away long before the window has run out
+   * of room for them. This asks the strip.
+   */
+  labelLevel = 2;
+  private naturalWidths?: [number, number, number];
 
   constructor(
     public tabs: SelectedTabService,
@@ -118,7 +130,50 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   // written by the very pass that would read it back, so measuring inside one
   // reports where the highlight used to be and it trails a tab behind.
   ngAfterViewChecked(): void {
+    this.fitLabels();
     this.scheduleHighlight();
+  }
+
+  /**
+   * Drop a level of label only once the level above will not fit.
+   *
+   * The three natural widths are measured once, by laying the strip out at each
+   * level and reading what it wanted. After that it is arithmetic against the
+   * space available, which is cheap enough to do on every checked pass.
+   */
+  private fitLabels(): void {
+    const strip = this.strip?.nativeElement;
+    const card = this.tabStrip?.nativeElement.parentElement;
+    if (!strip || !card || strip.clientWidth === 0) return;
+
+    if (!this.naturalWidths) {
+      const measured: number[] = [];
+      const was = this.labelLevel;
+      for (const level of [2, 1, 0]) {
+        card.classList.remove('level2', 'level1', 'level0');
+        card.classList.add(`level${level}`);
+        measured[level] = card.scrollWidth;
+      }
+      card.classList.remove('level2', 'level1', 'level0');
+      this.labelLevel = was;
+      if (measured.some((width) => !(width > 0))) return;
+      this.naturalWidths = [measured[0], measured[1], measured[2]];
+    }
+
+    // What is left for the tab card once its neighbours have taken theirs.
+    const others = [...strip.children]
+      .filter((child) => child !== card)
+      .reduce((total, child) => total + (child as HTMLElement).offsetWidth, 0);
+    const gaps = 12 * Math.max(strip.children.length - 1, 0);
+    const room = strip.clientWidth - others - gaps;
+
+    const [icons, short, full] = this.naturalWidths;
+    const level = room >= full ? 2 : room >= short ? 1 : 0;
+    void icons;
+    if (level !== this.labelLevel) {
+      this.labelLevel = level;
+      this.changes.detectChanges();
+    }
   }
 
   ngOnDestroy(): void {
@@ -165,8 +220,10 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   select(tab: TabID): void {
     this.menuOpen = false;
     if (this.tabs.isAnalysisMode(tab) && !this.canAnalyse(tab)) {
-      // The setup for the mode that was pressed, not the other one's.
-      RightPanelComponent.tabClicked(
+      // The setup for the mode that was pressed, not the other one's -- and
+      // never a toggle: a reader pressing a mode that will not open is asking
+      // why, and closing the answer is not one.
+      RightPanelComponent.insistOn(
         tab === TabID.FORCE
           ? RightPanelComponent.FORCE_SETUP_TAB
           : RightPanelComponent.KINEMATIC_SETUP_TAB
@@ -181,6 +238,17 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     return tab === TabID.FORCE
       ? this.mechanism.forceAnalysisReady()
       : this.mechanism.oneValidMechanismExists();
+  }
+
+  /**
+   * An empty grid has nothing to be ready for.
+   *
+   * "Ready" over a blank canvas is a promise about a mechanism that has not
+   * been drawn: nothing is stopping analysis because there is nothing to
+   * analyse.
+   */
+  hasStatus(): boolean {
+    return this.mechanism.joints.length > 0 || this.mechanism.links.length > 0;
   }
 
   statusOf(tab: TabID): TabStatus {
