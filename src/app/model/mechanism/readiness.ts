@@ -93,13 +93,16 @@ export function readinessOf(
         });
       } else if (dof > 1) {
         // Point at the loose ends when there are any: a joint on one link with
-        // no ground is a freedom the reader can see.
+        // no ground is a freedom the reader can see. Only on a *binary* link,
+        // though — a third joint riding a link that already has two is a tracer
+        // point, and a tracer adds no freedom worth sending anyone to.
         const freeEnds = partition.ownJoints.filter(
           (joint) =>
             joint instanceof RealJoint &&
             !(joint instanceof PrisJoint) &&
             !joint.ground &&
-            joint.links.length === 1
+            joint.links.length === 1 &&
+            joint.links[0].joints.length <= 2
         );
         add({
           state: 'blocker',

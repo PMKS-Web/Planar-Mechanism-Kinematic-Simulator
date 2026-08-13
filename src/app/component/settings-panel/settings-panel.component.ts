@@ -97,7 +97,8 @@ export class SettingsPanelComponent implements OnDestroy {
         this.settingsService.globalUnit,
         this.settingsService.isShowMajorGrid,
         this.settingsService.isShowMinorGrid,
-      ]).subscribe(([length, angle, force, global, showMajorGrid, showMinorGrid]) => {
+        this.settingsService.isGravity,
+      ]).subscribe(([length, angle, force, global, showMajorGrid, showMinorGrid, gravity]) => {
         this.currentLengthUnit = length;
         this.currentAngleUnit = angle;
         this.currentForceUnit = force;
@@ -109,6 +110,7 @@ export class SettingsPanelComponent implements OnDestroy {
             globalunit: (global - 30).toString(),
             showMajorGrid,
             showMinorGrid,
+            gravity,
           },
           { emitEvent: false }
         );
@@ -192,6 +194,9 @@ export class SettingsPanelComponent implements OnDestroy {
       if (on === this.settingsService.isGravity.value) return;
       this.settingsService.isGravity.next(on);
       this.mechanismSrv.updateMechanism(true);
+      // An open force graph is plotting the old gravity; ask for a redraw the
+      // same way a unit change does.
+      this.mechanismSrv.onMechUpdateState.next(2);
     });
     // this.settingsForm.controls['torqueunit'].valueChanges.subscribe(() => {
     //   this.settingsService.inputTorque.next(this.currentTorqueUnit);

@@ -1928,8 +1928,15 @@ export class MechanismService {
     // Demanding a drawn arrow on top of that refused analyses that meant
     // something.
     const loads = this.forces.filter((force) => analysable.has(force.link?.id));
+    // Any body's mass, not only a RealLink's: the solver hangs a slider block's
+    // weight from gravity too, so a drawing whose only massive body is a block
+    // is genuinely loaded. (The massless *warning* above stays about links --
+    // every block starts massless and naming them all would be noise.)
     const weighted = this.links.some(
-      (link) => link instanceof RealLink && analysable.has(link.id) && link.mass > 0
+      (link) =>
+        (link instanceof RealLink || link instanceof SliderBlock) &&
+        analysable.has(link.id) &&
+        link.mass > 0
     );
     const gravityLoads = this.settingsService.isGravity.value && weighted;
     requirements.push({
