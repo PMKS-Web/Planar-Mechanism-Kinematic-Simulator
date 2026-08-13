@@ -95,10 +95,6 @@
     // shadow off there.
     padding: nav.$shadow-room;
     box-sizing: border-box;
-    // Wide enough for the card plus the room its shadow needs. Shrink-to-fit
-    // sized the frame to the card alone, so the card overhung its own padding
-    // and the right-hand shadow was cut off against the frame's edge.
-    width: max-content;
     overflow-x: hidden;
     overflow-y: auto;
     --panel-clearance: #{nav.$bottom-bar-height + 12px};
@@ -153,16 +149,21 @@
       max-width: calc(100vw - 24px);
     }
 
+    // The frame's width minus the room it keeps around the card for the card's
+    // shadow. The card was always this wide -- the inset used to be a margin on
+    // the wrapper inside the page, and moving it to the frame left the page at
+    // the frame's own width, so the card overhung it and its right-hand shadow
+    // was cut off.
     .page1 {
-      width: 270px; //Be careful, there are multiple places to change this value
+      width: 250px; //Be careful, there are multiple places to change this value
     }
 
     .page2 {
-      width: 270px; //Be careful, there are multiple places to change this value
+      width: 250px; //Be careful, there are multiple places to change this value
     }
 
     .page3 {
-      width: 420px; //Be careful, there are multiple places to change this value
+      width: 400px; //Be careful, there are multiple places to change this value
     }
   }
 }
