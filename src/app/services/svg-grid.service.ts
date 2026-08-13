@@ -7,6 +7,7 @@ import { NewGridComponent } from '../component/new-grid/new-grid.component';
 import { SettingsService } from './settings.service';
 import { DragStateService } from './drag-state.service';
 import { NotificationService } from './notification.service';
+import { MechanismService } from './mechanism.service';
 import Hammer from 'hammerjs';
 import { MODEL_SCALE } from '../model/render-scale';
 
@@ -538,5 +539,11 @@ export class SvgGridService {
 
   updateObjectScale() {
     SettingsService._objectScale.next(Number((60 / this.getZoom()).toFixed(2)));
+    // A link's outline is computed once and cached, and its width is a fraction
+    // of this scale -- so a route that changes the scale has to say so, or the
+    // bars stay the width they were while every joint, ground mark and arrow
+    // around them changes size. The Settings panel does this from its own
+    // field; this is the other way in, from the warning that offers it as a fix.
+    this.injector.get(MechanismService).applyObjectScaleChange();
   }
 }
