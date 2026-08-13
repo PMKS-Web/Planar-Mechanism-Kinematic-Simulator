@@ -2655,6 +2655,61 @@ export class NewGridComponent implements OnDestroy {
     return !!sealed && link.id !== sealed.barrel.id;
   }
 
+  /** Nothing on the canvas can be moved in an analysis mode. */
+  get geometryLocked(): boolean {
+    return this.tabService.isAnalysisMode();
+  }
+
+  /**
+   * The ink the "this is not attached to anything" marks are drawn in.
+   *
+   * Red on the canvas means "fix this", which is a thing to do in Edit. In an
+   * analysis mode the same geometry is scenery -- greyed out, not analysed, not
+   * even selectable -- so a red ring around it is the loudest thing on a canvas
+   * about something the reader cannot act on and did not ask about. It goes
+   * grey with the rest of the body it marks.
+   */
+  get orphanMarkInk(): string {
+    return this.tabService.isAnalysisMode() ? '#b6bac6' : '#F44336';
+  }
+
+  /** The pale fill inside that mark, likewise. */
+  get orphanMarkFill(): string {
+    return this.tabService.isAnalysisMode() ? '#d9dbe2' : '#c5cae9';
+  }
+
+  /**
+   * How big a name on the canvas is drawn, for joints, links and forces alike.
+   *
+   * A fraction of the object scale rather than a pixel size, so a name keeps
+   * its proportion to the part it names at every zoom level.
+   */
+  get tagFontSize(): number {
+    return this.settings.objectScale * 0.2;
+  }
+
+  /**
+   * The angle a link's name is written at, in degrees clockwise from flat.
+   *
+   * A bar is long and thin, and a name longer than a couple of letters written
+   * across it hangs off both edges. Written along it, it has the whole bar to
+   * sit in. Only bars: a compound body is not a direction, and a two-letter
+   * name already fits, so both stay level and stay easy to read.
+   *
+   * Kept within a quarter turn of flat, so the name is never upside down.
+   */
+  private linkLabelAngle(link: Link, name: string): number {
+    if ((link.joints?.length ?? 0) !== 2) return 0;
+    if (name.length <= 2) return 0;
+    const [from, to] = link.joints;
+    // Screen degrees: y runs down here, and the label sits in a frame that has
+    // already flipped it, so the rise is negated.
+    let angle = (Math.atan2(-(to.y - from.y), to.x - from.x) * 180) / Math.PI;
+    if (angle > 90) angle -= 180;
+    if (angle < -90) angle += 180;
+    return Math.round(angle * 10) / 10;
+  }
+
   /**
    * Where a link's name goes, and in what ink.
    *
@@ -2671,7 +2726,16 @@ export class NewGridComponent implements OnDestroy {
    * with a channel down it, so the name goes in the channel, in full black:
    * there is no body colour behind it there to be read against.
    */
-  linkLabelStyle(link: Link): { x: number; y: number; ink: string; opacity: number } {
+  linkLabelStyle(link: Link): {
+    x: number;
+    y: number;
+    ink: string;
+    opacity: number;
+    name: string;
+    angle: number;
+  } {
+    const name = this.linkDisplayName(link);
+    const angle = this.linkLabelAngle(link, name);
     const slot = this.slotCarriedBy(link);
     if (slot) {
       const [from, to] = [slot.slotJointA!, slot.slotJointB!];
@@ -2680,6 +2744,8 @@ export class NewGridComponent implements OnDestroy {
         y: (from.y + to.y) / 2,
         ink: 'black',
         opacity: 1,
+        name,
+        angle,
       };
     }
     const parts = (link instanceof RealLink ? link.subset : []) ?? [];
@@ -2700,7 +2766,7 @@ export class NewGridComponent implements OnDestroy {
       parts.length === 0
         ? link
         : parts.reduce((best, part) => (span(part) > span(best) ? part : best));
-    return { ...middleOf(on), ink: this.linkLabelInk(link), opacity: 0.55 };
+    return { ...middleOf(on), ink: this.linkLabelInk(link), opacity: 0.55, name, angle };
   }
 
   /** The slot this bar carries, if it is a plain bar carrying one. */

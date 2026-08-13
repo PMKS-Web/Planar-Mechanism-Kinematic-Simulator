@@ -804,18 +804,22 @@ await safe('welding a pair that is already pinned goes through with a warning', 
     // left is the Analysis setup drawer, which is what pressing an analysis
     // mode now opens when the mechanism will not run -- so that is where the
     // number is read back from.
+    //
+    // In the blocker itself rather than in a table of facts: the drawer lists
+    // what has to change, and the count is the thing that has to change. The
+    // table it used to be read from went with the mechanism panel, which is a
+    // page about a machine that runs.
     await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
     await page.waitForTimeout(800);
     const drawer = await page
       .locator('app-analysis-setup')
       .innerText()
       .catch(() => '');
-    const reported = drawer.match(/Degrees of freedom\s*\n?\s*(-?[\d.]+)/i)?.[1] ?? null;
-    record('the app reports it rather than leaving the reader at one', reported === String(dof), {
-      dof,
-      reported,
-      note,
-    });
+    record(
+      'the app reports it rather than leaving the reader at one',
+      drawer.includes(`${dof} degrees of freedom`),
+      { dof, drawer: drawer.slice(0, 300), note }
+    );
   }
 });
 

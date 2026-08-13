@@ -87,17 +87,24 @@
   .panel {
     position: absolute;
     top: nav.$panel-top;
-    left: nav.$frame-inset;
+    // Flush with the window on its own side, and the card set in from there by
+    // the one gap. The frame used to start $shadow-room short of the card, which
+    // once the shadow needed more room than the gap is wide put the frame four
+    // pixels off the edge of the window -- and a box hanging off the window is a
+    // page that can be scrolled sideways.
+    left: 0;
     // The inset is the frame's, not the wrapper's inside it: the frame is what
     // clips, so it is the frame that has to leave the card's shadow somewhere
     // to fall. It used to be a margin on the wrapper, which put the card 10px
     // past the bottom of a frame capped at the frame's own height and cut the
-    // shadow off there.
+    // shadow off there. Only three sides need it: on the fourth the window
+    // itself is the edge, and a shadow fading off the screen fades off it.
     padding: nav.$shadow-room;
+    padding-left: nav.$card-inset;
     box-sizing: border-box;
     overflow-x: hidden;
     overflow-y: auto;
-    --panel-clearance: #{nav.$bottom-bar-height + 12px};
+    --panel-clearance: #{nav.$panel-bottom-clearance};
     max-height: calc(100% - #{nav.$top-strip-height} - var(--panel-clearance));
     max-width: calc(100vw - 24px);
     display: flex;
@@ -110,7 +117,7 @@
       // it, so the panel can run down to the status strip like it does in the
       // other modes.
       @media (min-width: nav.$cluster-clears-panel) {
-        --panel-clearance: #{nav.$bottom-bar-height + 12px};
+        --panel-clearance: #{nav.$panel-bottom-clearance};
       }
     }
 

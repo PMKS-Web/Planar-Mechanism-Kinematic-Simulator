@@ -29,18 +29,7 @@
     [legend]="chartOptions.legend!"
   >
   </app-analysis-apex-chart>
-
-  <!-- The graph is a picture of numbers the reader may want the numbers of.
-       The button went with the checkbox row the header replaced; the method
-       behind it never went anywhere. -->
-  <button
-    id="csvDownload"
-    (click)="downloadCSV()"
-    mat-stroked-button
-    color="primary"
-    [attr.aria-label]="'Download ' + graphLabel + ' data as CSV'"
-  >
-    <mat-icon>download</mat-icon>
-    Download Data (CSV)
-  </button>
+  <!-- The numbers behind every plot leave together, from Export Data in the top
+       strip: a button under each graph meant one file per plot, each with its
+       own time column to line up by hand. -->
 }

@@ -80,7 +80,11 @@
   #rightPanel {
     position: absolute;
     top: nav.$panel-top;
-    right: nav.$frame-inset;
+    // Flush with the window; the card is set in from there by the gap, and the
+    // frame's own padding is what leaves the shadow room on the other three
+    // sides. Four pixels of frame hanging off the right of the window is four
+    // pixels the page can be scrolled sideways.
+    right: 0;
     box-sizing: border-box;
     overflow-x: hidden;
     overflow-y: auto;
@@ -125,14 +129,31 @@
   // 10px closer to the window edge -- the drawer visibly changed shape when you
   // switched between them.
   // The inset lives on the page rather than on the drawer around it: a closed
-  // drawer has no page, and padding on the drawer itself gave the closed one a
-  // 20px box that hung off the right of the window.
+  // drawer has no page, and padding on the drawer itself gives the closed one a
+  // box of exactly that width, which its parked transform then carries off the
+  // right of the window.
+  // `content-box`, so the width each page declares is its card's width and the
+  // inset is added around it. As a border-box it was subtracted instead, and a
+  // drawer that says 300 held a card of 272.
   #rightPanel > div {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    box-sizing: content-box;
     padding: nav.$shadow-room;
-    box-sizing: border-box;
+    padding-right: nav.$card-inset;
+    min-height: 0;
+  }
+
+  // Hand the drawer's height down to the setup card, which is what scrolls --
+  // the same chain the left-hand panels use to keep their own title in place.
+  // Each step needs `min-height: 0`, or a flex item refuses to shrink below its
+  // content and the cap never reaches the card.
+  app-analysis-setup {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   #debugWrapper,

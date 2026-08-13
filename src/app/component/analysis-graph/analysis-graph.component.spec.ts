@@ -204,21 +204,6 @@ describe('AnalysisGraphComponent production fixtures', () => {
     analyze.mockRestore();
   });
 
-  it('uses mechanism timestamps identically in chart points and CSV output', () => {
-    const fixture = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
-    const component = createComponent(fixture);
-    const input = fixture.mechanism.joints[0].find(
-      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
-    )!;
-    component.determineChart('force', 'dynamic', 'Input Effort', input.id);
-
-    const csvRows = component.buildCSVContent().trim().split('\n').slice(1);
-    expect(csvRows).toHaveLength(fixture.mechanism.timeNum.length);
-    csvRows.forEach((row, index) => {
-      expect(Number(row.split(',')[0])).toBeCloseTo(fixture.mechanism.timeNum[index], 12);
-    });
-  });
-
   it('produces mode-dependent dynamic input effort', () => {
     const fixture = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
     const component = createComponent(fixture);
@@ -299,7 +284,6 @@ describe('AnalysisGraphComponent production fixtures', () => {
     ).y;
     expect(component.chartOptions.yaxis!.title!.text).toBe('Force (lbf)');
     expect(lbfValue).toBeCloseTo(newtonValue * 0.22480894387096, 3);
-    expect(component.buildCSVContent().split('\n')[0]).toContain('(lbf)');
   });
 });
 

@@ -62,6 +62,8 @@
         [mechProp]="mechProp"
         [mechPart]="mechPart"
         [reactionLinkId]="reactionLinkId"
+        [initialSeries]="shownSeries"
+        (shownSeriesChange)="adoptSeries($event)"
       ></app-analysis-graph>
     }
   </div>

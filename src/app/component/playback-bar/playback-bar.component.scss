@@ -1,6 +1,5 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
-@use '../left-tabs/left-tabs.vars' as nav;
 
 // Every measurement in this file comes from the mock's own inline styles rather
 // than from an eye: the bottom cluster was tuned there, and re-deriving it by
@@ -8,6 +7,11 @@
 @mixin css($theme) {
   $primary-palette: map.get(mat.m2-get-color-config($theme), 'primary');
 
+  // Right-aligned in every mode, so the view controls at its right-hand end sit
+  // in exactly the same place whatever mode is open. They used to be pushed
+  // there by a growing spacer in Edit and centred with the transport in
+  // analysis, which moved them -- twice, and by different amounts at different
+  // window widths.
   .playbackRow {
     position: absolute;
     left: 0;
@@ -15,7 +19,7 @@
     bottom: 38px;
     display: flex;
     align-items: flex-end;
-    justify-content: center;
+    justify-content: flex-end;
     // The sync tab hangs 26px off the top of the scrub card, so a wrapped row
     // needs that much again between lines or the tab lands on the card above
     // it. Column gap stays the cluster's own.
@@ -24,33 +28,6 @@
     padding: 0 var(--card-gap);
     z-index: 8;
     pointer-events: none;
-
-    // Out of the panel's way once there is room beside it. Centred, the
-    // cluster keeps a strip of the window free across its whole width, and the
-    // analysis panel stops well short of the bottom for a card that is not
-    // under it.
-    @media (min-width: nav.$cluster-clears-panel) {
-      &.analysis {
-        justify-content: flex-end;
-      }
-    }
-  }
-
-  // A flex child at zero width still takes the row's gap on both sides, so the
-  // spacer -- which is nothing at all in analysis mode -- was widening the one
-  // gap in the cluster it sits in by double. Pull one gap back out of it.
-  .clusterSpacer {
-    flex-grow: 1;
-    flex-shrink: 0;
-    flex-basis: 0;
-    min-width: 0;
-    height: 1px;
-    margin-right: calc(-1 * var(--card-gap));
-    transition: flex-grow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-    &.analysis {
-      flex-grow: 0;
-    }
   }
 
   .transportCard {
@@ -322,17 +299,13 @@
   @media (max-width: 720px) {
     .playbackRow {
       flex-wrap: wrap;
-      justify-content: center;
+      justify-content: flex-end;
       // The scrub card goes to a line of its own here, and its sync tab hangs
       // 26px off its top edge -- into the transport card above it, unless the
       // line below is given room for it.
       column-gap: 8px;
       row-gap: 34px;
       padding: 0 8px;
-    }
-
-    .clusterSpacer {
-      display: none;
     }
 
     .scrubCard {

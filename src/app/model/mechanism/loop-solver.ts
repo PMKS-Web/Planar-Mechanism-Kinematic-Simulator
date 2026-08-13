@@ -92,23 +92,25 @@ export class LoopSolver {
       }
     });
 
+    const neighbourCache = new Map<string, Neighbour[]>();
     while (groundJoints.length >= 2) {
       const desiredGround = groundJoints.shift()!;
       if (!(desiredGround instanceof RealJoint)) {
         continue;
       }
-      this.neighboursOf(desiredGround, slotNeighbours).forEach((next) => {
+      this.neighboursOf(desiredGround, slotNeighbours, neighbourCache).forEach((next) => {
         this.findGround(
           next.joint,
           groundJoints,
-          [next.joint.id],
+          new Set([next.joint.id]),
           [
             { jointId: desiredGround.id },
             { jointId: next.joint.id, viaSliderId: next.viaSliderId },
           ],
           loops,
           links,
-          slotNeighbours
+          slotNeighbours,
+          neighbourCache
         );
       });
     }
@@ -243,14 +245,27 @@ export class LoopSolver {
     return adjacency;
   }
 
+  /**
+   * Who this joint is connected to, worked out once per enumeration.
+   *
+   * The walk below visits the same joint on thousands of different paths, and
+   * this answer is the same every time -- it depends only on the drawing. Built
+   * fresh, it was a fifth of the time spent enumerating a forty-five joint
+   * linkage's loops, and most of its garbage.
+   */
   private static neighboursOf(
     joint: RealJoint,
-    slotNeighbours: Map<string, Neighbour[]>
+    slotNeighbours: Map<string, Neighbour[]>,
+    cache?: Map<string, Neighbour[]>
   ): Neighbour[] {
+    const known = cache?.get(joint.id);
+    if (known) return known;
     const linked = joint.connectedJoints
       .filter((candidate): candidate is RealJoint => candidate instanceof RealJoint)
       .map((candidate) => ({ joint: candidate }) as Neighbour);
-    return [...linked, ...(slotNeighbours.get(joint.id) ?? [])];
+    const all = [...linked, ...(slotNeighbours.get(joint.id) ?? [])];
+    cache?.set(joint.id, all);
+    return all;
   }
 
   /**
@@ -283,22 +298,31 @@ export class LoopSolver {
     );
   }
 
-  /** Walk outward until another ground joint is reached. */
+  /**
+   * Walk outward until another ground joint is reached.
+   *
+   * The walk backtracks in place: `visited` and `path` are one set and one
+   * array pushed and popped as it descends, rather than a fresh copy of each
+   * per branch. On a linkage the size of a running horse this recursion visits
+   * hundreds of thousands of nodes, and copying two growing arrays at every one
+   * of them was most of the cost of opening the drawing at all.
+   */
   private static findGround(
     joint: Joint,
     groundJoints: Joint[],
-    visited: string[],
+    visited: Set<string>,
     path: PathStep[],
     loops: Loop[],
     links: Link[],
-    slotNeighbours: Map<string, Neighbour[]>
+    slotNeighbours: Map<string, Neighbour[]>,
+    neighbourCache: Map<string, Neighbour[]>
   ): void {
     if (!(joint instanceof RealJoint)) {
       return;
     }
-    for (const next of this.neighboursOf(joint, slotNeighbours)) {
+    for (const next of this.neighboursOf(joint, slotNeighbours, neighbourCache)) {
       const j = next.joint;
-      if (visited.includes(j.id)) {
+      if (visited.has(j.id)) {
         continue;
       }
       const step: PathStep = { jointId: j.id, viaSliderId: next.viaSliderId };
@@ -306,20 +330,27 @@ export class LoopSolver {
         if (groundJoints.indexOf(j) === -1) {
           continue;
         }
-        const edges = this.edgesAlong([...path, step], links);
+        path.push(step);
+        const edges = this.edgesAlong(path, links);
+        path.pop();
         if (edges) {
           loops.push({ id: loopId(edges), edges });
         }
       } else {
+        visited.add(j.id);
+        path.push(step);
         this.findGround(
           j,
           groundJoints,
-          [...visited, j.id],
-          [...path, step],
+          visited,
+          path,
           loops,
           links,
-          slotNeighbours
+          slotNeighbours,
+          neighbourCache
         );
+        path.pop();
+        visited.delete(j.id);
       }
     }
   }

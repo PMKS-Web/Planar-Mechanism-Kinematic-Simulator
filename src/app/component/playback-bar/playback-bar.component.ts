@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
+import { animate, style, transition, trigger } from '@angular/animations';
 import { Subscription } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
@@ -58,6 +59,23 @@ export interface PlaybackRow {
   selector: 'app-playback-bar',
   templateUrl: './playback-bar.component.html',
   styleUrls: ['./playback-bar.component.scss'],
+  // Off the bottom of the window and back, rather than fading in place: these
+  // cards belong to the analysis modes, and a transport arriving from the edge
+  // it lives on reads as the mode bringing its own controls with it.
+  animations: [
+    trigger('riseFromBottom', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(calc(100% + 38px))' }),
+        animate('260ms cubic-bezier(0.4, 0, 0.2, 1)', style({ opacity: 1, transform: 'none' })),
+      ]),
+      transition(':leave', [
+        animate(
+          '200ms cubic-bezier(0.4, 0, 1, 1)',
+          style({ opacity: 0, transform: 'translateY(calc(100% + 38px))' })
+        ),
+      ]),
+    ]),
+  ],
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false,
 })

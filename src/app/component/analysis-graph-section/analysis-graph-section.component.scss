@@ -15,7 +15,16 @@
     // On the panel's own text gutter, so the card's edges line up with the
     // paragraph above it rather than running the full width of the panel.
     margin: 0 15px 8px;
-    overflow: hidden;
+    // Room for the read-out that rides the plot.
+    //
+    // Apex draws the value at the playhead in a little bordered box, and at the
+    // top or the far right of a plot that box sticks out past the plot's own
+    // frame -- which is a couple of pixels inside this card, so the card was
+    // cutting the number in half. `clip` with a margin lets exactly that much
+    // out and no more, so the card still clips its corners and still hides the
+    // plot while the card is closing.
+    overflow: clip;
+    overflow-clip-margin: 30px;
 
     &.closed {
       cursor: pointer;
@@ -144,6 +153,9 @@
   // margin.
   .graphBody {
     padding: 0 12px 8px;
-    overflow: hidden;
+    // As the card above: the height animation needs this clipped, the playhead
+    // read-out needs a little of it back.
+    overflow: clip;
+    overflow-clip-margin: 30px;
   }
 }

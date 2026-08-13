@@ -223,6 +223,10 @@ const type = await page.evaluate(() => {
     gridNumber: px(document.querySelector('#axes_numbers')),
     perUnit,
     objectScale: ng.getComponent(document.querySelector('app-new-grid')).settings.objectScale,
+    // Asked of the grid rather than restated here: one number decides how big
+    // every name on the canvas is, and a copy of it in this file is a copy that
+    // goes stale the first time it is tuned.
+    tagFontSize: ng.getComponent(document.querySelector('app-new-grid')).tagFontSize,
   };
 });
 record(
@@ -243,8 +247,8 @@ record(
 // the size, so are their names, which is the point.
 record(
   'every label is sized from the object scale',
-  type.labels.every((label) => Math.abs(label.size / type.perUnit - type.objectScale * 0.18) < 0.5),
-  { labels: type.labels.map((l) => l.size), objectScale: type.objectScale }
+  type.labels.every((label) => Math.abs(label.size / type.perUnit - type.tagFontSize) < 0.5),
+  { labels: type.labels.map((l) => l.size), want: type.tagFontSize }
 );
 
 // Sized in the drawing's units, not the screen's: the name is the size of the

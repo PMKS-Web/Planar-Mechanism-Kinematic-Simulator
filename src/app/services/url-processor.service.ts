@@ -11,6 +11,7 @@ import { MechanismBuilder } from './transcoding/mechanism-builder';
 import { SvgGridService } from './svg-grid.service';
 import { ActiveObjService } from './active-obj.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { SelectedTabService, TabID } from '../selected-tab.service';
 
 @Injectable({
   providedIn: 'root',
@@ -161,6 +162,18 @@ export class UrlProcessorService {
       setTimeout(() => {
         mechanismSrv.animate(heldStep, false);
       }, 0);
+    }
+
+    // A drawing that arrives while an analysis mode is open, and that nothing
+    // in can be analysed, leaves the reader in a mode with no graphs, no
+    // transport and no way to fix any of it -- the geometry is locked. Edit is
+    // where the work is. Only for a drawing that *arrives*: a step through this
+    // mechanism's own history is not a new subject.
+    if (!continuingHistory) {
+      const tabs = this.injector.get(SelectedTabService);
+      if (tabs.isAnalysisMode() && !mechanismSrv.oneValidMechanismExists()) {
+        tabs.setTab(TabID.EDIT);
+      }
     }
 
     if (resetSvgScale) {

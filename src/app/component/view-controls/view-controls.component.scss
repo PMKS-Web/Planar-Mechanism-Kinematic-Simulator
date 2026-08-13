@@ -11,16 +11,12 @@
     gap: 6px;
     padding: 0 12px;
     height: 60px;
-    margin-right: 16px;
-    transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: auto;
 
-    &.analysis {
-      margin-right: 0;
-    }
-
+    // One place, in every mode. It used to carry an extra 16px in Edit that it
+    // gave up in analysis, so the card slid sideways on the way into a mode
+    // whose controls have nothing to do with it.
     @media (max-width: 720px) {
-      margin-right: 0;
       padding: 0 6px;
       gap: 2px;
     }

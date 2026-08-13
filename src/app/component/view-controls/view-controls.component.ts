@@ -1,4 +1,3 @@
-import { SelectedTabService } from '../../selected-tab.service';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
@@ -19,8 +18,7 @@ export class ViewControlsComponent {
   constructor(
     public svgGrid: SvgGridService,
     public mechanismService: MechanismService,
-    public settingsService: SettingsService,
-    public tabs: SelectedTabService
+    public settingsService: SettingsService
   ) {}
 
   /**

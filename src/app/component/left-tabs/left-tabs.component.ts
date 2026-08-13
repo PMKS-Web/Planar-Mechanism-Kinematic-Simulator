@@ -10,11 +10,16 @@ import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
   animations: [
     trigger('openClose', [
       // ...
+      // The card's own width, plus the gap it keeps from the window on one side
+      // and the room its shadow needs on the other -- `$card-inset` and
+      // `$shadow-room` in left-tabs.vars.scss. An animation state is a style
+      // written onto the element, so it beats the stylesheet and these two have
+      // to be kept in step by hand: 250 + 12 + 16, and 400 + 12 + 16.
       state(
         'open',
         style({
           transform: 'translateX(0)',
-          width: '270px', //Be careful, there are multiple places to change this value
+          width: '278px', //Be careful, there are multiple places to change this value
         })
       ),
       state(
@@ -26,7 +31,7 @@ import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
       state(
         'openWide',
         style({
-          width: '420px', //Be careful, there are multiple places to change this value
+          width: '428px', //Be careful, there are multiple places to change this value
         })
       ),
       transition('open => openWide', [animate('0.1s ease-in-out')]),

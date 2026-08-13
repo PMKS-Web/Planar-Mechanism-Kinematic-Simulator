@@ -63,10 +63,20 @@
     // card packed against the modes that made Undo and Redo shuffle sideways
     // every time. The gap is what moves now.
     .historyCard {
+      position: relative;
       gap: 6px;
       padding: 0 6px;
       flex: 0 0 auto;
       margin-left: auto;
+    }
+
+    // The two faces of that card, one leaving as the other arrives. The one on
+    // its way out is taken out of flow by the animation itself, so the card is
+    // sized by the one arriving rather than by both at once.
+    .cardFace {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
   }
 

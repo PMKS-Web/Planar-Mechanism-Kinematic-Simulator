@@ -328,17 +328,21 @@ const selectedJointId = () =>
 
 const GRAPH_ROWS = ['Position of Joint', 'Velocity of Joint', 'Acceleration of Joint'];
 
+/**
+ * Open each of the three kinematic cards, so its graph exists to be read.
+ *
+ * One card per quantity, each holding its plot only while it is open. These
+ * used to be Material expansion panels; the panel is built from its own cards
+ * now, and a harness looking for the old ones quietly found nothing and read no
+ * graphs at all.
+ */
 async function openKinematicRows() {
   for (const label of GRAPH_ROWS) {
-    const header = page.locator('mat-expansion-panel-header', { hasText: label }).first();
-    if ((await header.count()) === 0) continue;
-    const panel = page.locator('mat-expansion-panel', { hasText: label }).first();
-    const expanded = await panel
-      .getAttribute('class')
-      .then((c) => (c ?? '').includes('mat-expanded'))
-      .catch(() => false);
-    if (expanded) continue;
-    await header.scrollIntoViewIfNeeded();
+    const section = page.locator('app-analysis-graph-section', { hasText: label }).first();
+    if ((await section.count()) === 0) continue;
+    if ((await section.locator('.graphSection.open').count()) > 0) continue;
+    const header = section.locator('.graphHeader').first();
+    await header.scrollIntoViewIfNeeded().catch(() => {});
     await header.click({ force: true });
     await page.waitForTimeout(600);
   }
@@ -500,7 +504,7 @@ for (const id of IDS) {
         for (const label of GRAPH_ROWS)
           await shot(
             `${id}_${j}_${label.split(' ')[0].toLowerCase()}`,
-            page.locator('mat-expansion-panel', { hasText: label }).first()
+            page.locator('app-analysis-graph-section', { hasText: label }).first()
           );
         continue;
       }
@@ -610,7 +614,7 @@ for (const id of IDS) {
         for (const label of GRAPH_ROWS)
           await shot(
             `${id}_${j}_${label.split(' ')[0].toLowerCase()}`,
-            page.locator('mat-expansion-panel', { hasText: label }).first()
+            page.locator('app-analysis-graph-section', { hasText: label }).first()
           );
       }
     }

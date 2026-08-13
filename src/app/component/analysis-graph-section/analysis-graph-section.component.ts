@@ -1,5 +1,4 @@
 import {
-  AfterViewChecked,
   ChangeDetectionStrategy,
   Component,
   EventEmitter,
@@ -8,7 +7,11 @@ import {
   ViewChild,
 } from '@angular/core';
 import { animate, AUTO_STYLE, state, style, transition, trigger } from '@angular/animations';
-import { AnalysisGraphComponent } from '../analysis-graph/analysis-graph.component';
+import {
+  AnalysisGraphComponent,
+  defaultSeriesSelection,
+  SeriesSelection,
+} from '../analysis-graph/analysis-graph.component';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { AnalysisSampleService } from '../../services/analysis-sample.service';
@@ -48,7 +51,7 @@ export interface SeriesPreview {
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false,
 })
-export class AnalysisGraphSectionComponent implements AfterViewChecked {
+export class AnalysisGraphSectionComponent {
   @Input() label = '';
   @Input() help = '';
   @Input() analysis = '';
@@ -73,6 +76,15 @@ export class AnalysisGraphSectionComponent implements AfterViewChecked {
    * solving every sample of every collapsed graph to answer that would cost
    * more than the graphs themselves.
    */
+  /**
+   * The last answer, and what it was an answer to.
+   *
+   * Reading one sample means solving the mechanism at that pose, and the
+   * template asks this three times per pass -- to decide whether to draw the
+   * row, to draw it, and to size the legend. Once per pose is enough.
+   */
+  private previewCache?: { key: string; mechanism: unknown; series: SeriesPreview[] };
+
   get preview(): SeriesPreview[] {
     const mechanism = this.mechanismFor();
     if (!mechanism) return [];
@@ -86,6 +98,20 @@ export class AnalysisGraphSectionComponent implements AfterViewChecked {
         : this.mechanismService.currentSampleOf(at),
       mechanism.joints.length - 1
     );
+    const key = [
+      step,
+      this.settings.lengthUnit.value,
+      this.settings.angleUnit.value,
+      this.settings.forceUnit.value,
+      this.analysis,
+      this.analysisType,
+      this.mechProp,
+      this.mechPart,
+      this.reactionLinkId,
+    ].join('|');
+    if (this.previewCache?.key === key && this.previewCache.mechanism === mechanism) {
+      return this.previewCache.series;
+    }
     const values = this.samples.sampleAt(
       mechanism,
       Math.max(step, 0),
@@ -95,20 +121,19 @@ export class AnalysisGraphSectionComponent implements AfterViewChecked {
       this.mechPart,
       this.reactionLinkId
     );
-    if (values.length === 0) return [];
-
     const names = this.seriesNames(values.length);
     const keys: ('x' | 'y' | 'z')[] = ['x', 'y', 'z'];
     const unit = this.unitFor();
-    return values.map((value, index) => ({
+    const series = values.map((value, index) => ({
       key: keys[index],
       name: names[index],
       color: this.colorFor(names[index]),
       text: Number.isFinite(value) ? `${roundNumber(value, 2).toFixed(2)} ${unit}`.trim() : '—',
     }));
+    this.previewCache = { key, mechanism, series };
+    return series;
   }
 
-  /** Whether the open graph is drawing this series. Closed, everything reads. */
   /**
    * Which series the legend is showing, held here rather than asked of the
    * graph.
@@ -116,40 +141,57 @@ export class AnalysisGraphSectionComponent implements AfterViewChecked {
    * The graph only exists while the section is open, so asking it during the
    * template's own evaluation gave a different answer before and after the
    * child was created in that same pass -- which Angular reports as NG0100
-   * against the legend's own class.
+   * against the legend's own class. Held here, it also survives the card being
+   * closed and opened again, which is what a reader who turned a line off
+   * expects.
+   *
+   * Undefined until the reader has an opinion, which is when the graph's own
+   * default stands: the same default, computed from the same two facts, so the
+   * legend and the plot agree on the very first frame rather than the legend
+   * lighting everything up over a plot drawing one line.
    */
-  private hidden = new Set<'x' | 'y' | 'z'>();
+  private chosen?: SeriesSelection;
+
+  /**
+   * The default, held rather than made fresh each time it is asked for.
+   *
+   * It is handed to the graph as an input, and a new object every pass would
+   * read as a new value -- which rebuilds the chart, which asks again.
+   */
+  private fallback = defaultSeriesSelection(0, '');
+  private fallbackFor = -1;
+
+  get shownSeries(): SeriesSelection {
+    if (this.chosen) return this.chosen;
+    const count = this.preview.length;
+    if (count !== this.fallbackFor) {
+      this.fallbackFor = count;
+      this.fallback = defaultSeriesSelection(count, this.analysis);
+    }
+    return this.fallback;
+  }
 
   isShown(key: 'x' | 'y' | 'z'): boolean {
-    return !this.hidden.has(key);
+    return this.shownSeries[key];
+  }
+
+  /**
+   * The graph reporting what it is drawing, which is the legend's own state.
+   *
+   * By value, not by object: the graph reports after every rebuild, and taking
+   * a fresh object each time would change an input it is bound to, which
+   * rebuilds it, which reports again.
+   */
+  adoptSeries(selection: SeriesSelection): void {
+    const shown = this.shownSeries;
+    const same = shown.x === selection.x && shown.y === selection.y && shown.z === selection.z;
+    this.chosen = same ? shown : selection;
   }
 
   toggleSeries(key: 'x' | 'y' | 'z'): void {
-    if (this.hidden.has(key)) this.hidden.delete(key);
-    else this.hidden.add(key);
+    const next = { ...this.shownSeries, [key]: !this.isShown(key) };
+    this.chosen = next;
     this.graph?.toggleSeries(key);
-  }
-
-  /** The graph this section has already handed its legend state to. */
-  private syncedWith?: AnalysisGraphComponent;
-
-  /**
-   * Hand the graph the legend's state once, when it arrives.
-   *
-   * On a later turn of the loop, not this one: patching the graph's form
-   * rebuilds the series it is bound to, and doing that inside the pass that is
-   * checking those bindings is the other half of NG0100.
-   */
-  ngAfterViewChecked(): void {
-    const graph = this.graph;
-    if (!graph || graph === this.syncedWith) return;
-    this.syncedWith = graph;
-    setTimeout(() => {
-      if (this.graph !== graph) return;
-      (['x', 'y', 'z'] as const).forEach((key) => {
-        if (graph.isSeriesShown(key) !== this.isShown(key)) graph.toggleSeries(key);
-      });
-    });
   }
 
   /**

@@ -8,8 +8,16 @@
   // Its own card, because this panel is not built from panel-sections and the
   // drawer behind it deliberately draws nothing: one card per panel, never a
   // card inside a card.
+  // The card owns the scroll and keeps its title, exactly as `panel-section`
+  // does for every panel built out of blocks. This one is not, because it is a
+  // single card rather than a stack of sections -- so it has to say the same
+  // three things itself rather than inherit them.
   .setup {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding-bottom: 8px;
     background: var(--card-surface);
     border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
@@ -21,8 +29,21 @@
     box-shadow: var(--card-shadow);
   }
 
+  // Everything in the card is laid out at the card's own width, and stays
+  // there: a sticky head that could shrink would slide out from over a list
+  // wider than itself.
+  .setup > * {
+    width: 100%;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+  }
+
   .setupHead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     padding: 12px 15px 12px;
+    background: var(--card-surface);
   }
 
   .setupTitle {

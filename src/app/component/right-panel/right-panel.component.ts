@@ -38,11 +38,16 @@ import { UrlGenerationService } from 'src/app/services/url-generation.service';
   animations: [
     trigger('openClose', [
       // ...
+      // The card's width, plus the gap it keeps from the window on one side and
+      // the room its shadow needs on the other -- `$card-inset` and
+      // `$shadow-room` in left-tabs.vars.scss: 300 + 12 + 16, and 500 + 12 + 16.
+      // These used to be the card widths alone, so every drawer came out
+      // narrower than the page inside it says it is.
       state(
         'open',
         style({
           transform: 'translateX(0)',
-          width: '300px',
+          width: '328px',
         })
       ),
       state(
@@ -60,7 +65,7 @@ import { UrlGenerationService } from 'src/app/services/url-generation.service';
       state(
         'openWide',
         style({
-          width: '500px', //Be careful, there are multiple places to change this value
+          width: '528px', //Be careful, there are multiple places to change this value
         })
       ),
       transition('open => openWide', [animate('0.1s ease-in-out')]),

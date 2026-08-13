@@ -10,8 +10,15 @@
 /** The one gap. Between a card and the window, and between a card and a card. */
 $card-inset: 12px;
 
-/** Air a card needs around it inside a frame that clips, for its shadow. */
-$shadow-room: 10px;
+/**
+ * Air a card needs around it inside a frame that clips, for its shadow.
+ *
+ * Read off `--card-shadow`, not chosen: its widest layer is `0 6px 10px`, which
+ * reaches 6 + 10/2 = 11px below the card, and `0 1px 18px` reaches 10px to the
+ * sides. 10px was a pixel under both, which is why every scrolling panel ended
+ * in a shadow that stopped square instead of fading out.
+ */
+$shadow-room: 16px;
 
 /** Height of the cards along the top. */
 $top-card-height: 48px;
@@ -40,3 +47,13 @@ $cluster-clears-panel: 1340px;
 
 // Height of app-bottombar.
 $bottom-bar-height: 26px;
+
+/**
+ * How far a panel's *frame* stops short of the bottom in the non-analysis
+ * modes, so its *card* stops $card-inset above the status strip.
+ *
+ * The card sits $shadow-room inside the frame, so the frame has to stop that
+ * much sooner than the card is meant to. Measuring the frame as though it were
+ * the card left 22px under the panel against 12px over it.
+ */
+$panel-bottom-clearance: $bottom-bar-height + $frame-inset;

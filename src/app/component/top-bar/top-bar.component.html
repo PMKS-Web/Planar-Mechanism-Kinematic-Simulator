@@ -98,18 +98,38 @@
     </div>
   </div>
 
-  @if (!tabs.isAnalysisMode()) {
-    <div class="card historyCard">
-      <button class="historyButton" (click)="undo()" [disabled]="!canUndo()" aria-label="Undo">
-        <mat-icon>undo</mat-icon>
-        <span class="historyLabel">Undo</span>
-      </button>
-      <button class="historyButton" (click)="redo()" [disabled]="!canRedo()" aria-label="Redo">
-        <mat-icon>redo</mat-icon>
-        <span class="historyLabel">Redo</span>
-      </button>
-    </div>
-  }
+  <!-- The same corner in every mode, holding whatever that mode's verb is:
+       taking an edit back where edits can be made, and taking the numbers away
+       where they can only be read. One card that changes hands rather than two
+       that appear and disappear in the same place. -->
+  <div class="card historyCard">
+    @if (!tabs.isAnalysisMode()) {
+      <div class="cardFace" @swapFace>
+        <button class="historyButton" (click)="undo()" [disabled]="!canUndo()" aria-label="Undo">
+          <mat-icon>undo</mat-icon>
+          <span class="historyLabel">Undo</span>
+        </button>
+        <button class="historyButton" (click)="redo()" [disabled]="!canRedo()" aria-label="Redo">
+          <mat-icon>redo</mat-icon>
+          <span class="historyLabel">Redo</span>
+        </button>
+      </div>
+    } @else {
+      <div class="cardFace" @swapFace>
+        <button
+          class="historyButton"
+          (click)="exportData()"
+          [disabled]="!canExport()"
+          [matTooltip]="exportTooltip()"
+          matTooltipShowDelay="600"
+          aria-label="Export data"
+        >
+          <mat-icon>download</mat-icon>
+          <span class="historyLabel">Export Data</span>
+        </button>
+      </div>
+    }
+  </div>
 </div>
 
 @if (menuOpen) {

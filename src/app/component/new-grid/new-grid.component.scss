@@ -114,6 +114,14 @@
     fill: #d9dbe2;
   }
 
+  // Geometry is frozen in the analysis modes, so the four-headed move cursor is
+  // an offer the mode will not honour: the drag it promises does nothing. These
+  // parts can still be *clicked*, to choose what the panel graphs, which is
+  // what a pointer says.
+  #canvas.geometryLocked [cursor='move'] {
+    cursor: pointer;
+  }
+
   #mouseLocation {
     position: absolute;
     top: 35px;

@@ -71,6 +71,14 @@ import { MergeRefusal, refuseJointMerge } from '../model/drop-target';
 import { redundantlyHeldJointSets } from '../model/rigid-bodies';
 import { MODEL_SCALE } from '../model/render-scale';
 
+/**
+ * The names joints are given, in the order they are handed out.
+ *
+ * Letters only, and only ones that survive a round trip through the URL codec,
+ * where a joint's name is a token in a comma- and period-delimited payload.
+ */
+const JOINT_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+
 /** Blend two angles along the shorter arc, so a wrap past pi does not spin. */
 function blendAngle(from: number, to: number, blend: number): number {
   let delta = to - from;
@@ -283,6 +291,7 @@ export class MechanismService {
     const partitioning = partitionMechanisms(this.joints, this.links, this.forces);
     this.partitions = partitioning.mechanisms;
     this.unassigned = partitioning.unassigned;
+    this.rebuildOwnerIndex();
     this.mechanisms = this.partitions.map(
       //If the mechanism is simulatable, it will generate loops and all future time steps
       (partition) =>
@@ -389,12 +398,50 @@ export class MechanismService {
     });
   }
 
+  /**
+   * Which machine each part belongs to, worked out once per rebuild.
+   *
+   * This question is asked of every joint and every link on every change
+   * detection pass -- the canvas asks it to decide each part's colour, the
+   * panels ask it to decide whose clock they are reading -- and answering it by
+   * searching the partitions is quadratic in the size of the drawing. On a
+   * forty-five joint linkage that was tens of thousands of id comparisons per
+   * frame, which is what made the stress test crawl and what made *anything*
+   * that redraws, the settings drawer included, crawl along with it.
+   */
+  private ownerOfPart = new Map<Joint | Link | Force, number>();
+
+  /** Every joint some link is made of, for the same reason. */
+  private jointsOnALink = new Set<Joint>();
+
+  private rebuildOwnerIndex(): void {
+    const attached = new Set<Joint>();
+    this.links.forEach((link) => link.joints.forEach((joint) => attached.add(joint)));
+    this.jointsOnALink = attached;
+
+    const owner = new Map<Joint | Link | Force, number>();
+    // In partition order, first writer wins: a fixed bar between two frames
+    // puts its far end in both, and `ownJoints` is what says whose it is.
+    this.partitions.forEach((partition, index) => {
+      const claim = (part: Joint | Link | Force) => {
+        if (!owner.has(part)) owner.set(part, index);
+      };
+      partition.ownJoints.forEach(claim);
+      partition.links.forEach(claim);
+      partition.forces.forEach(claim);
+    });
+    this.ownerOfPart = owner;
+  }
+
   /** Which mechanism holds this joint, link or force — none, if it is unassigned. */
   indexOfMechanismContaining(part: Joint | Link | Force): number {
+    // Optional because this method is also borrowed onto a stub in the test
+    // fixtures, which has partitions but never ran a rebuild.
+    const known = this.ownerOfPart?.get(part);
+    if (known !== undefined) return known;
+    // A part the index has not seen -- one made since the last rebuild, or a
+    // copy carrying the same id. Answer it the slow, always-correct way.
     const id = part.id;
-    // Owned, not merely referenced: a fixed bar between two frames puts its far
-    // end in both partitions, and that joint belongs to the machine it can
-    // actually move -- not to whichever partition was built first.
     return this.partitions.findIndex(
       (partition) =>
         partition.ownJoints.some((joint) => joint.id === id) ||
@@ -734,22 +781,38 @@ export class MechanismService {
     });
   }
 
+  /**
+   * The next name for a joint: A, B, C ... Z, then a, b, c ... z.
+   *
+   * It used to be the highest letter in use plus one in character codes, which
+   * walks straight off the end of the alphabet: the joint after Z was called
+   * "[", then "\", then "]" -- names that read as damage, and that the panels
+   * then repeated back as "Edit Cylinder ]`". Past z the gaps left by deleted
+   * joints are filled, and past those a two-letter name is used; a drawing with
+   * fifty-three live joints has run out of single letters honestly.
+   */
   determineNextLetter(additionalLetters?: string[]) {
-    let lastLetter = '';
-    if (this.joints.length === 0 && additionalLetters === undefined) {
-      return 'A';
+    const taken = new Set<string>(this.joints.map((joint) => joint.id));
+    additionalLetters?.forEach((letter) => taken.add(letter));
+
+    let highest = -1;
+    taken.forEach((id) => {
+      const at = JOINT_ALPHABET.indexOf(id);
+      if (at > highest) highest = at;
+    });
+
+    const next = JOINT_ALPHABET[highest + 1];
+    if (next !== undefined && !taken.has(next)) return next;
+
+    const free = [...JOINT_ALPHABET].find((letter) => !taken.has(letter));
+    if (free !== undefined) return free;
+
+    for (const first of JOINT_ALPHABET) {
+      for (const second of JOINT_ALPHABET) {
+        if (!taken.has(first + second)) return first + second;
+      }
     }
-    this.joints.forEach((j) => {
-      if (j.id > lastLetter) {
-        lastLetter = j.id;
-      }
-    });
-    additionalLetters?.forEach((l) => {
-      if (l > lastLetter) {
-        lastLetter = l;
-      }
-    });
-    return String.fromCharCode(lastLetter.charCodeAt(0) + 1);
+    return 'A';
   }
 
   createRevJoint(x: string, y: string, prevID?: string) {
@@ -3497,7 +3560,19 @@ export class MechanismService {
    * about a machine that runs.
    */
   isPartInert(part: Joint | Link): boolean {
-    return this.injector.get(SelectedTabService).isAnalysisMode() && !this.isPartSimulatable(part);
+    return this.tabs.isAnalysisMode() && !this.isPartSimulatable(part);
+  }
+
+  /**
+   * The tab service, held after the first ask.
+   *
+   * It is fetched through the injector to break a cycle, and `isPartInert` runs
+   * once per joint and once per link on every change detection pass -- so the
+   * lookup itself was on the redraw path.
+   */
+  private tabsService?: SelectedTabService;
+  private get tabs(): SelectedTabService {
+    return (this.tabsService ??= this.injector.get(SelectedTabService));
   }
 
   /** Is this part of the machine the reader has selected as a whole? */
@@ -3588,6 +3663,7 @@ export class MechanismService {
 
   isJointOrphan(joint: Joint) {
     //Return true if the given joint is an orphan (not part of a link).
+    if (this.jointsOnALink) return !this.jointsOnALink.has(joint);
     return this.links.every((l) => !l.joints.includes(joint));
   }
 

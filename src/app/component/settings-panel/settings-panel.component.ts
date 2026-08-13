@@ -9,7 +9,7 @@ import { Link, RealLink } from '../../model/link';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { Coord } from '../../model/coord';
-import { combineLatest, Subscription } from 'rxjs';
+import { combineLatest, skip, Subscription } from 'rxjs';
 import { MODEL_SCALE } from '../../model/render-scale';
 
 @Component({
@@ -61,7 +61,13 @@ export class SettingsPanelComponent implements OnDestroy {
     });
 
     this.settingsSubscriptions.add(
-      SettingsService._objectScale.subscribe((val) => {
+      // `skip(1)`, because this is a BehaviorSubject: subscribing to it hands
+      // back the value the drawing is *already* drawn at, and acting on that
+      // re-derived every link's outline and re-solved every mechanism from
+      // scratch. On a forty-five joint linkage that is seven seconds of work to
+      // arrive at the picture already on screen -- which is why opening
+      // Settings, which changes nothing, was the slowest thing in the app.
+      SettingsService._objectScale.pipe(skip(1)).subscribe((val) => {
         this.currentObjectScaleSetting = val / MODEL_SCALE;
         this.settingsForm.patchValue(
           { objectScale: this.currentObjectScaleSetting.toString() },

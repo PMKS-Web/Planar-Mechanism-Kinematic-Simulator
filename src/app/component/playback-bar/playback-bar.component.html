@@ -1,6 +1,10 @@
-<div class="playbackRow" [class.analysis]="tabs.isAnalysisMode()">
+<div class="playbackRow">
+  <!-- In and out from the bottom edge, the way a transport arrives. The view
+       controls beside it never move: they say what you can see, which is a
+       question every mode has, so they belong in the same corner in all of
+       them. -->
   @if (tabs.isAnalysisMode()) {
-    <div class="transportCard">
+    <div class="transportCard" @riseFromBottom>
       <button class="speedButton" (click)="cycleSpeed()" [disabled]="!canPlay">{{ speed }}x</button>
       <button
         class="playButton"
@@ -13,7 +17,7 @@
       </button>
     </div>
 
-    <div class="scrubCard">
+    <div class="scrubCard" @riseFromBottom>
       <!-- A tab off the top edge of the card, as in the mock, rather than a
            control inside it: it governs the whole card, so it sits on it. -->
       @if (canSync) {
@@ -92,10 +96,6 @@
       }
     </div>
   }
-
-  <!-- Grows in Edit and collapses in analysis, so the view controls glide from
-       the right edge into the centred cluster instead of jumping there. -->
-  <div class="clusterSpacer" [class.analysis]="tabs.isAnalysisMode()"></div>
 
   <app-view-controls></app-view-controls>
 </div>

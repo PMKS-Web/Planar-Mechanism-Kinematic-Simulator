@@ -11,23 +11,17 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
-  // Stands where the chart would, so nothing has to guess its height.
-  // Under the plot, full width, quiet: it is an export rather than the thing
-  // the card is for.
-  #csvDownload {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
-    margin-top: 4px;
-  }
-
+  // Stands where the chart would, at the chart's own height.
+  //
+  // Shorter, it was: turning the last series off shrank the card by ninety
+  // pixels, and in a panel scrolled to the bottom the browser clamps the scroll
+  // to the shorter content and does not put it back -- so a click on the legend
+  // of the last graph scrolled the panel out from under the pointer.
   .graphPlaceholder {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 160px;
+    min-height: 244px;
     margin: 4px 0 8px;
     border: 1px dashed #dfe1ea;
     border-radius: var(--border-radius);
@@ -45,8 +39,13 @@
   // A single-series graph is shorter, not lifted: the -40px here closed the gap
   // the old checkbox row left behind, and with that row gone it pulled the plot
   // up over the values above it.
+  //
+  // The floor is the height the chart draws itself at. Apex empties its host
+  // for an instant while it re-lays a chart out, and a host that collapses to
+  // nothing takes the panel's scroll position with it.
   app-analysis-apex-chart {
     display: block;
+    min-height: 250px;
   }
 
   // The chart draws itself 250px tall; a host shorter than that does not make
@@ -60,6 +59,16 @@
   // Nothing below the plot but the axis it belongs to.
   .apexcharts-canvas {
     margin-bottom: -6px;
+  }
+
+  // Apex clips at its own SVG, which sits a few pixels inside the card -- so
+  // the read-out box that rides the playhead lost its right-hand edge near the
+  // end of a cycle, and its top at the peak of a curve. The series are clipped
+  // by a mask of their own rather than by this, so letting the SVG overflow
+  // frees the labels and moves nothing else. The card outside it still clips,
+  // with a margin wide enough to hold a label and no more.
+  .apexcharts-svg {
+    overflow: visible !important;
   }
 
   // A container Apex leaves in the DOM with a border on it whether or not there

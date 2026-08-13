@@ -184,20 +184,14 @@ async function primeGraph() {
     grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints[0]);
   });
   await page.waitForTimeout(700);
-  for (let pass = 0; pass < 3; pass++) {
+  // One card per quantity, each holding its graph only while it is open. Any
+  // one of them will do -- the audit drives whichever it gets through its own
+  // inputs rather than through the panel.
+  for (let pass = 0; pass < 3 && !(await page.$('app-analysis-graph')); pass++) {
     await page.evaluate(() => {
-      document.querySelectorAll('collapsible-subseciton').forEach((section) => {
-        const header = section.querySelector('button.panel-header');
-        if (header && !section.querySelector('mat-icon.rotate180')) header.click();
-      });
-      document.querySelectorAll('mat-expansion-panel').forEach((panel) => {
-        if (!panel.classList.contains('mat-expanded'))
-          panel
-            .querySelector('mat-expansion-panel-header')
-            ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      });
+      document.querySelector('app-analysis-graph-section .graphHeader')?.click();
     });
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(800);
   }
   await page.waitForTimeout(500);
   return (await page.$('app-analysis-graph')) !== null;

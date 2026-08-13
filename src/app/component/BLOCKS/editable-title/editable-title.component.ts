@@ -2,6 +2,7 @@ import { Component, Input, OnInit, ChangeDetectionStrategy } from '@angular/core
 import { FormBuilder } from '@angular/forms';
 import { NewGridComponent } from '../../new-grid/new-grid.component';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
+import { MechanismService } from 'src/app/services/mechanism.service';
 
 @Component({
   selector: 'editable-title-block',
@@ -20,7 +21,8 @@ export class EditableTitleComponent {
 
   constructor(
     private fb: FormBuilder,
-    public activeObjService: ActiveObjService
+    public activeObjService: ActiveObjService,
+    private mechanismService: MechanismService
   ) {}
 
   newIDForm = this.fb.group({ newID: [''] });
@@ -62,9 +64,13 @@ export class EditableTitleComponent {
     }
 
     let activeObj = this.activeObjService.getSelectedObj();
-    activeObj.name = newID;
-    console.log('Set new name to ' + newID + ' for ' + this.activeObjService.objType);
     this.editMode = false;
+    if (activeObj.name === newID) return;
+    activeObj.name = newID;
+    // A name is carried in the URL like everything else, so a rename is an edit
+    // and belongs in the history. Without this it was the one change to the
+    // drawing that Undo could not take back.
+    this.mechanismService.updateMechanism(true);
   }
 
   exitEditModeWithoutSaving() {

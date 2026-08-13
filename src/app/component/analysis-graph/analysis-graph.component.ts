@@ -1,7 +1,9 @@
 import {
   AfterViewInit,
   Component,
+  EventEmitter,
   Input,
+  Output,
   OnChanges,
   OnDestroy,
   OnInit,
@@ -76,6 +78,58 @@ export function formatAxisEnd(value: number): string {
   const rounded = Number(value);
   if (!Number.isFinite(rounded)) return '';
   return rounded.toFixed(1);
+}
+
+/** Apex's own fallback, kept by name so the axis can be handed back to it. */
+export const FLOOR_OF = (min: number) => Math.floor(min);
+export const CEIL_OF = (max: number) => Math.ceil(max);
+
+/**
+ * A y axis whose gridlines land on round numbers -- zero among them.
+ *
+ * Both limits are whole multiples of one step, so every line between them is
+ * too. Undefined for a flat series, where there is no range to divide and
+ * Apex's own choice is as good as any.
+ */
+export function niceAxisScale(
+  low: number,
+  high: number
+): { min: number; max: number; tickAmount: number } | undefined {
+  if (!Number.isFinite(low) || !Number.isFinite(high) || high <= low) return undefined;
+  const magnitude = Math.pow(10, Math.floor(Math.log10((high - low) / 4)));
+  const step =
+    [1, 2, 2.5, 5, 10]
+      .map((factor) => factor * magnitude)
+      .find((size) => size >= (high - low) / 4) ?? 10 * magnitude;
+  // Away from binary noise: 0.1 + 0.2 arithmetic leaves limits like -1.0000000000000002,
+  // which Apex prints in full.
+  const round = (value: number) => Number(value.toPrecision(12));
+  const min = round(Math.floor(low / step) * step);
+  const max = round(Math.ceil(high / step) * step);
+  return { min, max, tickAmount: Math.max(1, Math.round((max - min) / step)) };
+}
+
+/** Which of a graph's three series it draws. */
+export interface SeriesSelection {
+  x: boolean;
+  y: boolean;
+  z: boolean;
+}
+
+/**
+ * Which series a graph opens on.
+ *
+ * Force graphs open on the X and Y components, since the direction of a
+ * reaction is what is being read; kinematic graphs lead with the magnitude. A
+ * single-series graph only ever has the magnitude to show.
+ *
+ * Exported because the legend above the plot has to say the same thing on the
+ * very first frame. It used to ask the graph, and the graph did not exist yet,
+ * so the legend showed everything lit while the plot drew one line.
+ */
+export function defaultSeriesSelection(count: number, analysis: string): SeriesSelection {
+  const showComponents = count === 2 || (count === 3 && analysis === 'force');
+  return showComponents ? { x: true, y: true, z: false } : { x: false, y: false, z: true };
 }
 
 @Component({
@@ -221,12 +275,8 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           fontWeight: 400,
         },
       },
-      min: function (min) {
-        return Math.floor(min);
-      },
-      max: function (max) {
-        return Math.ceil(max);
-      },
+      min: FLOOR_OF,
+      max: CEIL_OF,
       title: {
         text: 'setLater',
         style: {
@@ -255,6 +305,18 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   @Input() mechProp: string = '';
   @Input() mechPart: string = '';
   @Input() reactionLinkId: string = '';
+
+  /**
+   * Which series to open on, when the card above already has an opinion.
+   *
+   * The legend is outside this component and survives the card being closed and
+   * opened again, so it is the legend that remembers what the reader last chose
+   * and hands it back here.
+   */
+  @Input() initialSeries?: SeriesSelection;
+
+  /** What this graph is actually drawing, whenever that changes. */
+  @Output() shownSeriesChange = new EventEmitter<SeriesSelection>();
 
   //Get the child element in the template with "#chart"
   @ViewChild('chart', { static: false }) chart!: AnalysisApexChartComponent;
@@ -286,7 +348,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       .map((series) => series.name)
       .filter((name): name is string => !!name);
     const plotted = names.length ? `, plotting ${names.join(', ')}` : '';
-    return `Graph of ${this.graphLabel} over one cycle${plotted}. The same data is available as a CSV below.`;
+    return `Graph of ${this.graphLabel} over one cycle${plotted}. The same numbers are available from Export Data in the top strip.`;
   }
 
   noDataSelected: boolean = false;
@@ -317,6 +379,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes || !this.analysis || !this.mechProp || !this.mechPart) return;
+    // The legend handing back what it remembers is not a change to what is
+    // plotted, and rebuilding the chart for it would be a rebuild per click.
+    if (Object.keys(changes).every((name) => name === 'initialSeries')) return;
     this.updateChartData();
   }
 
@@ -381,15 +446,10 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     this.chartSyncTimer = setTimeout(() => {
       if (this.destroyed) return;
       if (resetSelection) {
-        // Force graphs open on the X/Y components, since the direction of a
-        // reaction is what's being read; kinematic graphs still lead with the
-        // magnitude. A single-series graph only ever has the magnitude to show.
-        const showComponents =
-          this.numberOfSeries === 2 || (this.numberOfSeries === 3 && this.analysis === 'force');
-        const selection = showComponents
-          ? { x: true, y: true, z: false }
-          : { x: false, y: false, z: true };
-        this.seriesCheckboxForm.patchValue(selection, { emitEvent: false });
+        this.seriesCheckboxForm.patchValue(
+          this.initialSeries ?? defaultSeriesSelection(this.numberOfSeries, this.analysis),
+          { emitEvent: false }
+        );
       }
       this.applySeriesVisibility();
       this.updateYAxis();
@@ -440,7 +500,38 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     );
     this.displayedColors = this.displayedSeries.map((series) => this.colorForSeries(series.name));
     this.noDataSelected = this.displayedSeries.length === 0;
+    this.applyYAxisScale();
+    this.shownSeriesChange.emit({ x: !!data.x, y: !!data.y, z: !!data.z });
     if (this.chart) this.showAnnotations(this.mechanismService.mechanismTimeStep);
+  }
+
+  /**
+   * Where the y axis starts, stops, and puts its lines.
+   *
+   * Apex picks its own round numbers, and for a series running from -1.1 to 2.0
+   * it drew lines at 0.3, 1.0 and 1.7 -- so a graph that crosses zero, which is
+   * usually the fact the reader came for, had nothing marking where it does.
+   * Every tick here is a whole number of one step away from a limit that is
+   * itself a whole number of steps, so zero is a line whenever it is in range.
+   */
+  private applyYAxisScale(): void {
+    const values: number[] = [];
+    this.displayedSeries.forEach((series) =>
+      series.data.forEach((point) => {
+        const value = this.pointValue(point);
+        if (value !== null) values.push(value);
+      })
+    );
+    const yaxis = this.chartOptions.yaxis!;
+    const scale = values.length
+      ? niceAxisScale(Math.min(...values), Math.max(...values))
+      : undefined;
+    this.chartOptions = {
+      ...this.chartOptions,
+      yaxis: scale
+        ? { ...yaxis, min: scale.min, max: scale.max, tickAmount: scale.tickAmount }
+        : { ...yaxis, min: FLOOR_OF, max: CEIL_OF, tickAmount: undefined },
+    };
   }
 
   private updateYAxis(): void {
@@ -562,80 +653,6 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       return typeof value === 'number' && Number.isFinite(value) ? value : null;
     }
     return null;
-  }
-
-  private pointTime(point: unknown, index: number, times: number[]): number {
-    if (point && typeof point === 'object' && 'x' in point) {
-      const value = (point as { x: unknown }).x;
-      if (typeof value === 'number' && Number.isFinite(value)) return value;
-    }
-    return times[index] ?? index;
-  }
-
-  buildCSVContent(): string {
-    const times = this.mechanismFor(this.mechPart)?.timeNum ?? [];
-    const xSeries = this.chartOptions.series?.find((s) => s.name === 'X');
-    const ySeries = this.chartOptions.series?.find((s) => s.name === 'Y');
-    const zSeries = this.chartOptions.series?.find((s) => s.name === 'Z');
-    const source = xSeries ?? ySeries ?? zSeries;
-    const timeSteps = source?.data.length ?? 0;
-    const fileName = this.chartOptions.yaxis?.title?.text || 'Z';
-    const yAxisUnit = fileName.split(' ').pop()?.replace('Â', '') ?? '';
-    let csvContent = '';
-    if (!xSeries && !ySeries) {
-      csvContent += 'Time (seconds),Time (steps),' + fileName + '\n';
-      for (let i = 0; i < timeSteps; i++) {
-        csvContent +=
-          this.pointTime(zSeries?.data[i], i, times) +
-          ',' +
-          i +
-          ',' +
-          (this.pointValue(zSeries?.data[i]) ?? '') +
-          '\n';
-      }
-    } else if (!zSeries) {
-      csvContent += 'Time (seconds),Time (steps),X ' + yAxisUnit + ',Y ' + yAxisUnit + '\n';
-      for (let i = 0; i < timeSteps; i++) {
-        csvContent +=
-          this.pointTime(xSeries?.data[i], i, times) +
-          ',' +
-          i +
-          ',' +
-          (this.pointValue(xSeries?.data[i]) ?? '') +
-          ',' +
-          (this.pointValue(ySeries?.data[i]) ?? '') +
-          '\n';
-      }
-    } else {
-      csvContent += 'Time (seconds),Time (steps),' + fileName + ', X-comp,Y-comp\n';
-      for (let i = 0; i < timeSteps; i++) {
-        csvContent +=
-          this.pointTime(zSeries.data[i], i, times) +
-          ',' +
-          i +
-          ',' +
-          (this.pointValue(zSeries.data[i]) ?? '') +
-          ',' +
-          (this.pointValue(xSeries?.data[i]) ?? '') +
-          ',' +
-          (this.pointValue(ySeries?.data[i]) ?? '') +
-          '\n';
-      }
-    }
-    return csvContent;
-  }
-
-  downloadCSV() {
-    const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + this.buildCSVContent());
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    const fileName = this.chartOptions.yaxis?.title?.text || 'Analysis';
-    // Several rows can graph the same joint, one per reacting link.
-    const part = this.reactionLinkId ? `${this.mechPart}_${this.reactionLinkId}` : this.mechPart;
-    link.setAttribute('download', part + '_' + fileName + '.csv');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
   }
 
   /**

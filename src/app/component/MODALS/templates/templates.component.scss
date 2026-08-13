@@ -66,13 +66,16 @@
         //blending mode darken
       }
 
-      //Increase elevation when hovering
-      &:hover {
+      // Lifted on hover -- on the card, not on the wrapper around it. The
+      // wrapper is a square box behind a rounded card, so a shadow on it drew a
+      // second, squarer shadow a few pixels out from the card's own.
+      &:hover #normalPanel {
         @include mat.elevation(4);
       }
 
-      //delay the hover effect
-      transition: all 0.1s ease-in-out;
+      #normalPanel {
+        transition: box-shadow 0.1s ease-in-out;
+      }
     }
 
     .linkage-grid {
@@ -82,7 +85,9 @@
       // Add a 10px gap
       grid-gap: 20px;
       padding: 24px;
-      padding-top: 0px;
+      // Not zero: the cards cast a shadow upwards too, and the list scrolls, so
+      // with nothing above them the top row's shadow was cut off square.
+      padding-top: 6px;
 
       //Set all the cards to the same height
     }
@@ -109,11 +114,12 @@
   }
 }
 
-// The dev section's heading and its cards, which have no artwork to show.
-// Lined up with the cards under it, which carry the grid's own left inset.
+// A section's name, on the same left edge as the cards under it -- which is
+// the grid's own 24px inset, not a 10px one that left the heading hanging out
+// to the left of everything it names.
 .section-heading {
-  margin: 4px 0 10px;
-  padding-left: 10px;
+  margin: 4px 0 12px;
+  padding: 0 24px;
   font-size: 15px;
   font-weight: 500;
   color: rgba(0, 0, 0, 0.55);
@@ -123,7 +129,11 @@
 // variant to cross-fade to, and so no absolutely-positioned copy landing on
 // top of the words. The bottom padding is the Open button's room.
 .dev-note {
+  // On the card's own text gutter, the one its title sits on: the image runs
+  // to the card's edges, and text that followed it there read as a caption
+  // pressed against the border.
   margin: 8px 0 0;
+  padding: 0 15px;
   // Clear of the Open button, which is positioned against the card's bottom
   // right corner -- text flowing under it is text the button cuts in half.
   padding-bottom: 52px;

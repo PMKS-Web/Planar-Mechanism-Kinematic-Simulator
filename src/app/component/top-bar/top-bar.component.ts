@@ -22,6 +22,7 @@ import { UrlProcessorService } from '../../services/url-processor.service';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { TemplatesComponent } from '../MODALS/templates/templates.component';
+import { AnalysisExportService } from '../../services/analysis-export.service';
 
 /** A mode's chip: whether that analysis can be entered, and what is missing. */
 interface TabStatus {
@@ -48,6 +49,22 @@ interface TabStatus {
   styleUrls: ['./top-bar.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   animations: [
+    // Undo/Redo giving the corner over to Export Data, and back. The one on its
+    // way out leaves the flow, so the card takes the width of the one arriving
+    // instead of holding both.
+    trigger('swapFace', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(7px)' }),
+        animate('180ms cubic-bezier(0.4, 0, 0.2, 1)', style({ opacity: 1, transform: 'none' })),
+      ]),
+      transition(':leave', [
+        style({ position: 'absolute', top: 0, right: '6px', bottom: 0 }),
+        animate(
+          '140ms cubic-bezier(0.4, 0, 0.2, 1)',
+          style({ opacity: 0, transform: 'translateY(-7px)' })
+        ),
+      ]),
+    ]),
     // The same 200ms and easing the mode highlight slides on, so the menu and
     // everything else in this strip move as one piece of machinery.
     trigger('menuOpen', [
@@ -102,7 +119,8 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     private urlProcessor: UrlProcessorService,
     private dialog: MatDialog,
     private zone: NgZone,
-    private changes: ChangeDetectorRef
+    private changes: ChangeDetectorRef,
+    private exports: AnalysisExportService
   ) {}
 
   isDevMode(): boolean {
@@ -316,6 +334,22 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
 
   canRedo(): boolean {
     return !this.mechanism.isAnimating() && this.history.canRedo();
+  }
+
+  /** Everything the analysis panel is showing for the selection, as one CSV. */
+  canExport(): boolean {
+    return this.exports.canExport();
+  }
+
+  exportTooltip(): string {
+    const subject = this.exports.subjectName();
+    return subject
+      ? `Download every graph for ${subject} as a CSV`
+      : 'Select a joint or a link to export its data';
+  }
+
+  exportData(): void {
+    this.exports.download();
   }
 
   undo(): void {
