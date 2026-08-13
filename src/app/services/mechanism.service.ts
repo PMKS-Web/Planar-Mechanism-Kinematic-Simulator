@@ -2815,6 +2815,28 @@ export class MechanismService {
    * longer the same list in the same order -- and pairing them positionally
    * would quietly move one mechanism's joint to another's coordinates.
    */
+  /**
+   * The sample one machine is showing right now, in its own sample array.
+   *
+   * Not `mechanismTimeStep`: that indexes the shared clock's cycle, and while
+   * the machines are unsynced each of them is somewhere else. Anything asking
+   * "what does this quantity read at the pose on screen" has to ask the
+   * machine that quantity belongs to.
+   */
+  currentSampleOf(index: number): number {
+    const frames = this.mechanisms[index];
+    const times = frames?.timeNum ?? [];
+    if (!frames || times.length === 0) return 0;
+    const period = frames.cyclePeriod;
+    let local = this.secondsOf(index);
+    if (period > 0 && Number.isFinite(local)) {
+      local = ((local % period) + period) % period;
+    }
+    let step = 0;
+    while (step + 1 < times.length && times[step + 1] <= local) step++;
+    return step;
+  }
+
   private applyMechanismPose(frames: Mechanism, partition: MechanismPartition, seconds: number) {
     const times = frames.timeNum ?? [];
     if (!frames.isMechanismValid() || times.length === 0) {

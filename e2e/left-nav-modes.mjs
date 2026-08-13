@@ -91,6 +91,14 @@ try {
     .first()
     .click({ force: true })
     .catch(() => {});
+  // And take the overlay away if it outlived the click: it swallows pointer
+  // events over the whole page, so a later tab click waits for a layer that is
+  // never going anywhere.
+  await page.evaluate(() =>
+    document
+      .querySelectorAll('.introjs-overlay,.introjs-helperLayer,.introjs-tooltipReferenceLayer')
+      .forEach((node) => node.remove())
+  );
   await page.waitForTimeout(400);
 
   // --- the rail and the file toolbar are gone, not merely restyled -----------

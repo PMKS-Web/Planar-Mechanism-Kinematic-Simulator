@@ -66,22 +66,30 @@ async function dismissIntro() {
 }
 
 /** Titles of the expansion rows under the Force Analysis subsection. */
+/**
+ * The reaction rows the panel is showing.
+ *
+ * They no longer sit inside a "Force Analysis" collapsible: the panel puts the
+ * mode radio and the rows at its own level now, so the rows are found by what
+ * they are rather than by what used to contain them.
+ */
 async function forceRowTitles() {
   return page.evaluate(() => {
-    const sections = [...document.querySelectorAll('collapsible-subseciton')];
-    const forceSection = sections.find((el) => /Force Analysis/.test(el.innerText));
-    if (!forceSection) return null;
-    return [...forceSection.querySelectorAll('mat-expansion-panel-header')].map((el) =>
-      el.innerText.replace(/help_outline/g, '').trim()
+    const panel = document.querySelector('app-analysis-panel');
+    if (!panel || !/Force Analysis Type/.test(panel.innerText)) return null;
+    return (
+      [...panel.querySelectorAll('app-analysis-graph-section .graphTitle')]
+        .map((el) => el.innerText.replace(/help_outline/g, '').trim())
+        // "Force on Link AB" on a joint, "Force at Joint B" on a link.
+        .filter((text) => /^Force (on Link|at Joint)/.test(text))
     );
   });
 }
 
 async function toggleLabels() {
   return page.evaluate(() => {
-    const sections = [...document.querySelectorAll('collapsible-subseciton')];
-    const forceSection = sections.find((el) => /Force Analysis/.test(el.innerText));
-    const group = forceSection?.querySelector('mat-button-toggle-group');
+    const row = document.querySelector('.forceModeRow');
+    const group = row?.querySelector('mat-button-toggle-group');
     if (!group) return null;
     return [...group.querySelectorAll('mat-button-toggle')].map((el) => ({
       text: el.innerText.trim(),
@@ -111,6 +119,26 @@ const forceCount = () =>
   page.evaluate(
     () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.forces.length
   );
+
+/**
+ * Weigh every link.
+ *
+ * Links arrive massless, and "Mass on every link" is one of the things force
+ * analysis asks for -- so a drawing that has never been given masses cannot
+ * enter the mode at all, which is the requirement doing its job rather than
+ * something to work around in the product.
+ */
+async function weighTheLinks() {
+  await page.evaluate(() => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    srv.links.forEach((link) => {
+      link.mass = 1;
+      link.massMoI = 1;
+    });
+    srv.updateMechanism(true);
+  });
+  await page.waitForTimeout(600);
+}
 
 /** Hang a load on link BC, which is what makes the Force mode enterable at all. */
 async function attachForceToBC() {
@@ -144,9 +172,9 @@ async function selectAndAnalyze(selector, index) {
   await page.waitForTimeout(900);
 }
 
-/** Expansion headers live in a scrolling panel; bring one into view before clicking. */
+/** Graph headers live in a scrolling panel; bring one into view before clicking. */
 async function expandRow(text) {
-  const row = page.locator('mat-expansion-panel-header', { hasText: text }).first();
+  const row = page.locator('app-analysis-graph-section .graphHeader', { hasText: text }).first();
   await row.scrollIntoViewIfNeeded();
   await row.click();
   await page.waitForTimeout(1500);
@@ -157,6 +185,7 @@ try {
   await waitForReady(page);
   await dismissIntro();
 
+  await weighTheLinks();
   await attachForceToBC();
   check('the four-bar took a load, so Force analysis can be entered', (await forceCount()) === 1, {
     forces: await forceCount(),

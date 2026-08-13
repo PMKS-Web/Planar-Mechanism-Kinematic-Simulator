@@ -1,4 +1,5 @@
 import {
+  AfterViewChecked,
   ChangeDetectionStrategy,
   Component,
   EventEmitter,
@@ -47,7 +48,7 @@ export interface SeriesPreview {
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false,
 })
-export class AnalysisGraphSectionComponent {
+export class AnalysisGraphSectionComponent implements AfterViewChecked {
   @Input() label = '';
   @Input() help = '';
   @Input() analysis = '';
@@ -75,7 +76,16 @@ export class AnalysisGraphSectionComponent {
   get preview(): SeriesPreview[] {
     const mechanism = this.mechanismFor();
     if (!mechanism) return [];
-    const step = Math.min(this.mechanismService.mechanismTimeStep, mechanism.joints.length - 1);
+    // This machine's own sample, not the shared clock's: while the machines
+    // are unsynced they are each somewhere different, and the header has to
+    // agree with the pose actually on screen.
+    const at = this.mechanismService.mechanisms.indexOf(mechanism);
+    const step = Math.min(
+      at === -1
+        ? this.mechanismService.mechanismTimeStep
+        : this.mechanismService.currentSampleOf(at),
+      mechanism.joints.length - 1
+    );
     const values = this.samples.sampleAt(
       mechanism,
       Math.max(step, 0),
@@ -99,17 +109,60 @@ export class AnalysisGraphSectionComponent {
   }
 
   /** Whether the open graph is drawing this series. Closed, everything reads. */
+  /**
+   * Which series the legend is showing, held here rather than asked of the
+   * graph.
+   *
+   * The graph only exists while the section is open, so asking it during the
+   * template's own evaluation gave a different answer before and after the
+   * child was created in that same pass -- which Angular reports as NG0100
+   * against the legend's own class.
+   */
+  private hidden = new Set<'x' | 'y' | 'z'>();
+
   isShown(key: 'x' | 'y' | 'z'): boolean {
-    return !this.graph || this.graph.isSeriesShown(key);
+    return !this.hidden.has(key);
   }
 
   toggleSeries(key: 'x' | 'y' | 'z'): void {
+    if (this.hidden.has(key)) this.hidden.delete(key);
+    else this.hidden.add(key);
     this.graph?.toggleSeries(key);
   }
 
+  /** The graph this section has already handed its legend state to. */
+  private syncedWith?: AnalysisGraphComponent;
+
+  /**
+   * Hand the graph the legend's state once, when it arrives.
+   *
+   * On a later turn of the loop, not this one: patching the graph's form
+   * rebuilds the series it is bound to, and doing that inside the pass that is
+   * checking those bindings is the other half of NG0100.
+   */
+  ngAfterViewChecked(): void {
+    const graph = this.graph;
+    if (!graph || graph === this.syncedWith) return;
+    this.syncedWith = graph;
+    setTimeout(() => {
+      if (this.graph !== graph) return;
+      (['x', 'y', 'z'] as const).forEach((key) => {
+        if (graph.isSeriesShown(key) !== this.isShown(key)) graph.toggleSeries(key);
+      });
+    });
+  }
+
+  /**
+   * Ask the panel to open or close this section; do not decide it here.
+   *
+   * Every use of this component binds `expanded` both ways, so writing the
+   * field as well as emitting gave the flag two owners: the view was checked
+   * against the old value from the parent and then changed by the local write
+   * in the same pass, which is what NG0100 was reporting against the card's
+   * own open/closed class.
+   */
   toggle(): void {
-    this.expanded = !this.expanded;
-    this.expandedChange.emit(this.expanded);
+    this.expandedChange.emit(!this.expanded);
   }
 
   private mechanismFor() {
