@@ -11,81 +11,6 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
-  #graph-checkbox-list-three {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    padding-left: 4px;
-    padding-right: 10px;
-    margin-top: -10px;
-    margin-bottom: -25px;
-  }
-
-  #graph-checkbox-list-two {
-    display: flex;
-    flex-direction: row;
-    justify-content: start;
-    align-items: center;
-    gap: 20px;
-    padding-left: 4px;
-    padding-right: 10px;
-    margin-top: -10px;
-    margin-bottom: -25px;
-  }
-
-  #graph-checkbox-list-three,
-  #graph-checkbox-list-two {
-    // The negative bottom margin above pulls the chart up into this row, so the
-    // chart's SVG paints over the labels and swallows clicks meant for them.
-    // Lifting the row restores the label as a hit target for its checkbox.
-    position: relative;
-    z-index: 1;
-
-    .mdc-form-field {
-      align-items: center;
-    }
-
-    .mdc-label {
-      line-height: 20px;
-    }
-
-    .series-x {
-      --mat-checkbox-selected-focus-icon-color: #313aa7;
-      --mat-checkbox-selected-hover-icon-color: #313aa7;
-      --mat-checkbox-selected-icon-color: #313aa7;
-      --mat-checkbox-selected-pressed-icon-color: #313aa7;
-      --mat-checkbox-selected-focus-state-layer-color: #313aa7;
-      --mat-checkbox-selected-hover-state-layer-color: #313aa7;
-      --mat-checkbox-selected-pressed-state-layer-color: #313aa7;
-    }
-
-    .series-y {
-      --mat-checkbox-selected-focus-icon-color: #ea2b29;
-      --mat-checkbox-selected-hover-icon-color: #ea2b29;
-      --mat-checkbox-selected-icon-color: #ea2b29;
-      --mat-checkbox-selected-pressed-icon-color: #ea2b29;
-      --mat-checkbox-selected-focus-state-layer-color: #ea2b29;
-      --mat-checkbox-selected-hover-state-layer-color: #ea2b29;
-      --mat-checkbox-selected-pressed-state-layer-color: #ea2b29;
-    }
-
-    .series-z {
-      --mat-checkbox-selected-focus-icon-color: #fdb50e;
-      --mat-checkbox-selected-hover-icon-color: #fdb50e;
-      --mat-checkbox-selected-icon-color: #fdb50e;
-      --mat-checkbox-selected-pressed-icon-color: #fdb50e;
-      --mat-checkbox-selected-focus-state-layer-color: #fdb50e;
-      --mat-checkbox-selected-hover-state-layer-color: #fdb50e;
-      --mat-checkbox-selected-pressed-state-layer-color: #fdb50e;
-    }
-  }
-
-  #shift-up {
-    margin-top: -100px;
-    background-color: red;
-  }
-
   #graphNoSeries,
   #graphDragging {
     background-color: rgb(255, 255, 255);
@@ -128,29 +53,6 @@
     color: mat.m2-get-color-from-palette($primary-palette, 900);
   }
 
-  #csvDownload {
-    width: 100%;
-    border-color: mat.m2-get-color-from-palette($primary-palette, 500) !important;
-    margin-top: 6px;
-    margin-bottom: 10px;
-
-    .mdc-button__label {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      line-height: 20px;
-      white-space: nowrap;
-    }
-
-    .mat-icon {
-      margin: 0;
-      height: 20px;
-      width: 20px;
-      font-size: 20px;
-      line-height: 20px;
-    }
-  }
 
   .analysis-diagnostic {
     margin: 16px 4px 12px;

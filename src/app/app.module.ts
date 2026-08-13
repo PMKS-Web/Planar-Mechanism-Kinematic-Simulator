@@ -30,6 +30,7 @@ import { DualInputComponent } from './component/BLOCKS/dual-input/dual-input.com
 import { ReactiveFormsModule } from '@angular/forms';
 import { AnalysisPanelComponent } from './component/analysis-panel/analysis-panel.component';
 import { AnalysisGraphComponent } from './component/analysis-graph/analysis-graph.component';
+import { AnalysisGraphSectionComponent } from './component/analysis-graph-section/analysis-graph-section.component';
 import { AnalysisApexChartComponent } from './component/analysis-graph/analysis-apex-chart.component';
 import { RightPanelComponent } from './component/right-panel/right-panel.component';
 import { SettingsPanelComponent } from './component/settings-panel/settings-panel.component';
@@ -76,6 +77,7 @@ import { BottombarComponent } from './component/bottombar/bottombar.component';
     DualInputComponent,
     AnalysisPanelComponent,
     AnalysisGraphComponent,
+    AnalysisGraphSectionComponent,
     AnalysisApexChartComponent,
     RightPanelComponent,
     SettingsPanelComponent,
