@@ -17,10 +17,23 @@
     opacity: 0.3;
   }
 
+  // The grid is a background, and reads as one: two greys a shade apart, the
+  // minor one barely there, and the axes the only line on it with any weight.
+  // Both were black at a hairline width, which is a grey the browser chooses
+  // rather than one the app does -- and a different grey at every zoom level.
+  .gridLineMinor {
+    stroke: #f2f2f4;
+  }
+
+  .gridLineMajor {
+    stroke: #e6e6ea;
+  }
+
   #axes_numbers {
-    fill: mat.m2-get-color-from-palette($foreground, 'text');
+    // Lighter than body text: these are a reference, not something to read.
+    fill: rgba(0, 0, 0, 0.55);
     paint-order: stroke;
-    stroke: white;
+    stroke: #fff;
     stroke-linejoin: round;
     stroke-linecap: round;
     alignment-baseline: middle;

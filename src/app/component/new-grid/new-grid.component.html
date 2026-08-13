@@ -116,8 +116,8 @@
                 [attr.y1]="svgGrid.viewBoxMinY"
                 [attr.x2]="line"
                 [attr.y2]="svgGrid.viewBoxMaxY"
-                stroke="black"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(0.15)"
+                class="gridLineMinor"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
               ></line>
             </ng-container>
           }
@@ -128,8 +128,8 @@
                 [attr.y1]="line"
                 [attr.x2]="svgGrid.viewBoxMaxX"
                 [attr.y2]="line"
-                stroke="black"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(0.15)"
+                class="gridLineMinor"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
               ></line>
             </ng-container>
           }
@@ -145,8 +145,8 @@
                 [attr.y1]="svgGrid.viewBoxMinY"
                 [attr.x2]="line"
                 [attr.y2]="svgGrid.viewBoxMaxY"
-                stroke="black"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(0.75)"
+                class="gridLineMajor"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
               ></line>
             </ng-container>
           }
@@ -157,8 +157,8 @@
                 [attr.y1]="line"
                 [attr.x2]="svgGrid.viewBoxMaxX"
                 [attr.y2]="line"
-                stroke="black"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(0.75)"
+                class="gridLineMajor"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
               ></line>
             </ng-container>
           }
@@ -171,7 +171,7 @@
         y1="0"
         [attr.x2]="svgGrid.viewBoxMaxX"
         y2="0"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
       ></line>
       <line
         id="axes"
@@ -179,7 +179,7 @@
         [attr.y1]="svgGrid.viewBoxMinY"
         x2="0"
         [attr.y2]="svgGrid.viewBoxMaxY"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
       ></line>
       <!-- Axes Labels -->
       <ng-container>
@@ -190,8 +190,8 @@
               text-anchor="middle"
               [attr.x]="line"
               [attr.y]="svgGrid.scaleWithZoom(20)"
-              [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
-              [attr.font-size]="svgGrid.scaleWithZoom(15)"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+              [attr.font-size]="svgGrid.scaleWithZoom(14)"
             >
               {{ axisLabel(line) }}
             </text>
@@ -204,8 +204,8 @@
               text-anchor="end"
               [attr.y]="line"
               [attr.x]="svgGrid.scaleWithZoom(-10)"
-              [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
-              [attr.font-size]="svgGrid.scaleWithZoom(15)"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+              [attr.font-size]="svgGrid.scaleWithZoom(14)"
             >
               {{ axisLabel(-line) }}
             </text>
@@ -216,8 +216,8 @@
           text-anchor="end"
           [attr.y]="svgGrid.scaleWithZoom(20)"
           [attr.x]="svgGrid.scaleWithZoom(-10)"
-          [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
-          [attr.font-size]="svgGrid.scaleWithZoom(15)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          [attr.font-size]="svgGrid.scaleWithZoom(14)"
         >
           0
         </text>

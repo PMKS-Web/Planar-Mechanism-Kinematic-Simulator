@@ -8,6 +8,15 @@ import { SettingsService } from './settings.service';
 import { DragStateService } from './drag-state.service';
 import Hammer from 'hammerjs';
 import { MODEL_SCALE } from '../model/render-scale';
+
+/**
+ * Minor lines to a major cell.
+ *
+ * Five, so the lines between two labels are whole units: the labels fall on
+ * multiples of five, and at four divisions every line between them was a
+ * quarter of whatever the label said.
+ */
+const MINOR_DIVISIONS = 5;
 import { LengthUnit } from '../model/unit-enums';
 
 /** One of each unit, in centimetres. The only ratio this file needs. */
@@ -299,10 +308,12 @@ export class SvgGridService {
     }
 
     this.verticalLinesMinor = [];
-    currentLine = Math.floor(this.viewBoxMinX / (this.cellSize / 4)) * (this.cellSize / 4);
+    currentLine =
+      Math.floor(this.viewBoxMinX / (this.cellSize / MINOR_DIVISIONS)) *
+      (this.cellSize / MINOR_DIVISIONS);
     while (currentLine < this.viewBoxMaxX) {
       this.verticalLinesMinor.push(currentLine);
-      currentLine += this.cellSize / 4;
+      currentLine += this.cellSize / MINOR_DIVISIONS;
     }
 
     this.horizontalLines = [];
@@ -317,10 +328,12 @@ export class SvgGridService {
     }
 
     this.horizontalLinesMinor = [];
-    currentLine = Math.floor(this.viewBoxMinY / (this.cellSize / 4)) * (this.cellSize / 4);
+    currentLine =
+      Math.floor(this.viewBoxMinY / (this.cellSize / MINOR_DIVISIONS)) *
+      (this.cellSize / MINOR_DIVISIONS);
     while (currentLine < this.viewBoxMaxY) {
       this.horizontalLinesMinor.push(currentLine);
-      currentLine += this.cellSize / 4;
+      currentLine += this.cellSize / MINOR_DIVISIONS;
     }
 
     //Clean up the lines by rounding them to 2 decimal places
@@ -364,14 +377,7 @@ export class SvgGridService {
 
   handleZoom(zoomLevel: number) {
     // console.log(this.getZoom());
-    this.cellSize = this.defualtCellSize;
-    const divisionSequnece: number[] = [2.5, 2, 2];
-    let i = 0;
-    while (this.cellSize * this.getZoom() > 200) {
-      //This number is the maximum size of the cell, if it's any larger it will get sub-divided
-      this.cellSize = this.cellSize / divisionSequnece[i % divisionSequnece.length];
-      i++;
-    }
+    this.cellSize = this.cellSizeFor(this.getZoom());
     this.handlePan();
     if (this.getZoom() * this.settingsService.objectScale < 5) {
       NewGridComponent.sendNotification(
@@ -385,6 +391,28 @@ export class SvgGridService {
         20000
       );
     }
+  }
+
+  /**
+   * How far apart the labelled lines go at this zoom.
+   *
+   * A minor cell of one, two or five of whatever decade fits -- so the number
+   * on a labelled line is always round, and so is every minor line between
+   * them. Five minors to the major means every label is a multiple of five.
+   *
+   * It used to halve and quarter its way down from a fixed starting size,
+   * which is a one-two-four ladder: the labels came out on multiples of four
+   * and the lines between them on quarters of whatever the label said.
+   */
+  private cellSizeFor(zoom: number): number {
+    const MAX_MAJOR_PX = 200;
+    const unitsPerMinor = MAX_MAJOR_PX / (zoom * MODEL_SCALE * MINOR_DIVISIONS);
+    if (!(unitsPerMinor > 0) || !Number.isFinite(unitsPerMinor)) {
+      return this.defualtCellSize;
+    }
+    const decade = 10 ** Math.floor(Math.log10(unitsPerMinor));
+    const minorUnits = [5, 2, 1].find((step) => decade * step <= unitsPerMinor) ?? 1;
+    return decade * minorUnits * MINOR_DIVISIONS * MODEL_SCALE;
   }
 
   handleUpdatedCTM(newCTM: SVGMatrix) {
