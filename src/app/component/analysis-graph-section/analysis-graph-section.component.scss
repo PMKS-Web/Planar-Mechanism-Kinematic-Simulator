@@ -12,7 +12,10 @@
     border: 1px solid #eceef5;
     border-radius: var(--border-radius);
     background: var(--card-surface);
-    margin-bottom: 8px;
+    // On the panel's own text gutter, so the card's edges line up with the
+    // paragraph above it rather than running the full width of the panel.
+    margin: 0 15px 8px;
+    overflow: hidden;
 
     &.closed {
       cursor: pointer;
@@ -27,6 +30,7 @@
   // it was 9px over and 3px under, which read as the title sitting high in its
   // own highlight.
   .graphHeader {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -114,11 +118,10 @@
   }
 
   // Over the header's right end, before the chevron: a question about the
-  // quantity, not a control of the card.
+  // quantity, not a control of the card. Centred on the title's line, with the
+  // chevron -- the three of them used to sit at three heights.
   .graphHelp {
-    position: absolute;
-    top: 12px;
-    right: 38px;
+    flex: 0 0 auto;
     width: 17px;
     height: 17px;
     font-size: 17px;
@@ -132,5 +135,6 @@
   // margin.
   .graphBody {
     padding: 0 12px 8px;
+    overflow: hidden;
   }
 }

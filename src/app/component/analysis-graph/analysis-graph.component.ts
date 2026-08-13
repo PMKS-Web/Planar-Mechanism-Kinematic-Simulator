@@ -66,6 +66,18 @@ export function formatTimeLabel(value: number): string {
   return Number(rounded.toFixed(3)).toString();
 }
 
+/**
+ * The two ends of the time axis, to one decimal.
+ *
+ * They read beside the y axis, which is also one decimal, and "0" against
+ * "6.0" looks like two different kinds of number.
+ */
+export function formatAxisEnd(value: number): string {
+  const rounded = Number(value);
+  if (!Number.isFinite(rounded)) return '';
+  return rounded.toFixed(1);
+}
+
 @Component({
   selector: 'app-analysis-graph',
   templateUrl: './analysis-graph.component.html',
@@ -144,7 +156,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       position: 'back',
       show: true,
       padding: {
-        top: 0,
+        top: -14,
         bottom: 0,
       },
       xaxis: {
@@ -173,16 +185,22 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
         // the space actually free at the two ends of this axis.
         trim: false,
         hideOverlappingLabels: false,
-        offsetY: 0,
+        // Clear of the plot's own frame, which they used to sit against.
+        offsetY: 4,
+        style: {
+          fontSize: '12px',
+          fontWeight: 400,
+          colors: ['#373d3f', '#373d3f'],
+        },
         formatter: function (val) {
-          return formatTimeLabel(Number(val));
+          return formatAxisEnd(Number(val));
         },
       },
       tickAmount: 1,
       title: {
         text: 'Time (seconds)',
-        // On the same baseline as the tick labels either side of it.
-        offsetY: -4,
+        // Up beside the two ends rather than on a line of its own below them.
+        offsetY: -18,
         offsetX: 0,
       },
       tooltip: {

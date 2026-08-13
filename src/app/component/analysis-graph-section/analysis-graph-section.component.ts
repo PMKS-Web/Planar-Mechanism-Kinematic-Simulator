@@ -6,6 +6,7 @@ import {
   Output,
   ViewChild,
 } from '@angular/core';
+import { animate, AUTO_STYLE, state, style, transition, trigger } from '@angular/animations';
 import { AnalysisGraphComponent } from '../analysis-graph/analysis-graph.component';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
@@ -32,6 +33,15 @@ export interface SeriesPreview {
  */
 @Component({
   selector: 'app-analysis-graph-section',
+  // The same open and close every other section in the app uses.
+  animations: [
+    trigger('openClose', [
+      state('open', style({ visibility: AUTO_STYLE, height: AUTO_STYLE, opacity: '1' })),
+      state('closed', style({ opacity: '0', height: '0px', padding: '0px' })),
+      transition(':enter', []),
+      transition('* => *', [animate('0.15s ease-in-out')]),
+    ]),
+  ],
   templateUrl: './analysis-graph-section.component.html',
   styleUrls: ['./analysis-graph-section.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,

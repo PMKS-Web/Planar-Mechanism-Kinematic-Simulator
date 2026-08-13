@@ -14,6 +14,11 @@
     [attr.aria-expanded]="expanded"
   >
     <span class="graphTitle">{{ label }}</span>
+    @if (help) {
+      <mat-icon class="graphHelp" [matTooltip]="help" [matTooltipShowDelay]="600" aria-hidden="true"
+        >help_outline</mat-icon
+      >
+    }
     <mat-icon class="graphChevron">{{ expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
   </button>
 
@@ -48,14 +53,8 @@
     </div>
   }
 
-  @if (help) {
-    <mat-icon class="graphHelp" [matTooltip]="help" [matTooltipShowDelay]="600" aria-hidden="true"
-      >help_outline</mat-icon
-    >
-  }
-
-  @if (expanded) {
-    <div class="graphBody">
+  <div class="graphBody" [@openClose]="expanded ? 'open' : 'closed'">
+    @if (expanded) {
       <app-analysis-graph
         #graph
         [analysis]="analysis"
@@ -64,6 +63,6 @@
         [mechPart]="mechPart"
         [reactionLinkId]="reactionLinkId"
       ></app-analysis-graph>
-    </div>
-  }
+    }
+  </div>
 </div>
