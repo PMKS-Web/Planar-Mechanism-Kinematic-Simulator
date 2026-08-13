@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use '../left-tabs/left-tabs.vars' as nav;
 
 // Every measurement in this file comes from the mock's own inline styles rather
 // than from an eye: the bottom cluster was tuned there, and re-deriving it by
@@ -23,6 +24,16 @@
     padding: 0 var(--card-gap);
     z-index: 8;
     pointer-events: none;
+
+    // Out of the panel's way once there is room beside it. Centred, the
+    // cluster keeps a strip of the window free across its whole width, and the
+    // analysis panel stops well short of the bottom for a card that is not
+    // under it.
+    @media (min-width: nav.$cluster-clears-panel) {
+      &.analysis {
+        justify-content: flex-end;
+      }
+    }
   }
 
   // A flex child at zero width still takes the row's gap on both sides, so the

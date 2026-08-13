@@ -21,9 +21,16 @@
       margin-right: auto;
     }
 
-    .customInputForm,
-    .mat-mdc-text-field-wrapper {
+    // The field takes the row it was given a line of its own for -- including
+    // the input inside it, which otherwise sizes to its own text and clips a
+    // long unit like kg&middot;cm&sup2; against a wrapper that had the room.
+    // Written at the base rule's own depth, or the 80px width there wins.
+    .row .customInputForm,
+    .row .customInputForm .mat-mdc-text-field-wrapper,
+    .row .customInputForm .mat-mdc-form-field-infix,
+    .row .customInputForm .customInput {
       width: 100%;
+      max-width: 100%;
     }
   }
   // Get the color config from the theme.

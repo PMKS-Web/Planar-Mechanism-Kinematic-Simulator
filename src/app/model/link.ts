@@ -53,7 +53,10 @@ export class Link {
   constructor(id: string, joints: Joint[], mass?: number) {
     this._id = id;
     this._joints = joints;
-    this._mass = mass !== undefined ? mass : 1;
+    // Nothing weighs anything until someone says so. A link that arrives with
+    // a mass of 1 g invites a force analysis to be run on a number nobody
+    // chose, and reports it as though it meant something.
+    this._mass = mass !== undefined ? mass : 0;
     joints.forEach((j) => {
       this.fixedLocations.push({ id: j.id, label: j.id });
     });

@@ -70,6 +70,28 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     FVisual: false,
   };
 
+  /**
+   * A massless link has no inertia and no centre of mass to speak of.
+   *
+   * Those three fields describe how a mass is distributed, so with no mass
+   * they describe nothing -- and a force analysis run off numbers nobody chose
+   * reports an answer that looks meant. Angular's own disable is what greys
+   * them, so the value stays and comes back the moment a mass does.
+   */
+  private syncMassDependents(): void {
+    const massless = !(this.activeSrv.selectedLink?.mass > 0);
+    const dependents = [
+      this.linkForm.controls.massMoI,
+      this.linkForm.controls.comX,
+      this.linkForm.controls.comY,
+    ];
+    for (const control of dependents) {
+      if (!control) continue;
+      if (massless && control.enabled) control.disable({ emitEvent: false });
+      if (!massless && control.disabled) control.enable({ emitEvent: false });
+    }
+  }
+
   /** Nothing drawn yet, so nothing to select and nothing to drag. */
   gridIsEmpty(): boolean {
     return this.mechanismService.joints.length === 0 && this.mechanismService.links.length === 0;
@@ -1068,6 +1090,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           return;
         }
         this.activeSrv.selectedLink.mass = value;
+        this.syncMassDependents();
         this.mechanismService.updateMechanism(true);
         this.mechanismService.onMechUpdateState.next(2);
         this.linkForm.patchValue(
@@ -1318,6 +1341,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
             },
             { emitEvent: false }
           );
+          this.syncMassDependents();
           // A cylinder body reuses the joint form's Input Settings controls
           // (speed, unit), so they have to be truthful when the body opens.
           this.syncInputSettingsFields();

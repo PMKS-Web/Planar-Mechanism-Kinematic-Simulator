@@ -7,6 +7,44 @@
   </div>
 
   <div mat-dialog-content id="remove_top_padding">
+    <!-- Drawings for working on the app rather than for learning a linkage.
+         First, because that is where whoever wants them is looking. -->
+    @if (isDevMode()) {
+      <h2 class="section-heading">Dev</h2>
+      <div class="linkage-grid devGrid">
+        <panel-section (click)="openLinkage('Dev_All_Mechanism_Types')">
+          <title-block>Every Kind of Machine</title-block>
+          <div class="dev-thumb"><mat-icon>tune</mat-icon></div>
+          <p class="dev-note">
+            A crank, a ram, a slider and a chain that never reaches ground — every readiness state
+            and every playback row at once.
+          </p>
+          <button mat-flat-button color="primary">Open</button>
+        </panel-section>
+
+        <panel-section (click)="openLinkage('Dev_Object_Gallery')">
+          <title-block>Object Gallery</title-block>
+          <div class="dev-thumb"><mat-icon>category</mat-icon></div>
+          <p class="dev-note">
+            One of everything the canvas draws, laid out in rows. Deliberately not simulatable.
+          </p>
+          <button mat-flat-button color="primary">Open</button>
+        </panel-section>
+
+        <panel-section (click)="openLinkage('Dev_Render_Stress')">
+          <title-block>Render Stress Test</title-block>
+          <div class="dev-thumb"><mat-icon>speed</mat-icon></div>
+          <p class="dev-note">
+            Twenty joints and thirteen links on one degree of freedom, every moving joint tracing
+            its path.
+          </p>
+          <button mat-flat-button color="primary">Open</button>
+        </panel-section>
+      </div>
+
+      <h2 class="section-heading">Linkages</h2>
+    }
+
     <div class="linkage-grid">
       <panel-section (click)="openLinkage('4-Bar')">
         <title-block>Four Bar Linkage</title-block>

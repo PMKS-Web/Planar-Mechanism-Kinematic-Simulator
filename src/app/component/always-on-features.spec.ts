@@ -82,9 +82,12 @@ describe('always-on force and weld UI', () => {
   it('renders every analyzed built-in template as an immediately available action', () => {
     const templates = TestBed.createComponent(TemplatesComponent);
     templates.detectChanges();
-    expect(templates.nativeElement.querySelectorAll('panel-section').length).toBe(
-      TEMPLATE_IDS.length
-    );
+    // The library's own grid, not the dev one above it: a development build
+    // offers a few drawings that exist to exercise the app rather than to
+    // teach a linkage, and they answer to nothing here.
+    expect(
+      templates.nativeElement.querySelectorAll('.linkage-grid:not(.devGrid) panel-section').length
+    ).toBe(TEMPLATE_IDS.length);
     const text = templates.nativeElement.textContent;
     expect(text).toContain('Four Bar Linkage');
     expect(text).toContain("Watt's Linkage");

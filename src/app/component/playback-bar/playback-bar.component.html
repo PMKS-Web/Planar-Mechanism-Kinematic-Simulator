@@ -1,4 +1,4 @@
-<div class="playbackRow">
+<div class="playbackRow" [class.analysis]="tabs.isAnalysisMode()">
   @if (tabs.isAnalysisMode()) {
     <div class="transportCard">
       <button class="speedButton" (click)="cycleSpeed()" [disabled]="!canPlay">{{ speed }}x</button>

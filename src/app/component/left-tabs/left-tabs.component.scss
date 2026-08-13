@@ -105,6 +105,13 @@
 
     &.analysis {
       --panel-clearance: #{nav.$playback-clearance};
+
+      // Wide enough for the cluster to sit beside the panel rather than under
+      // it, so the panel can run down to the status strip like it does in the
+      // other modes.
+      @media (min-width: nav.$cluster-clears-panel) {
+        --panel-clearance: #{nav.$bottom-bar-height + 12px};
+      }
     }
 
     // Hand the height down to the card, which is what scrolls. Each step needs

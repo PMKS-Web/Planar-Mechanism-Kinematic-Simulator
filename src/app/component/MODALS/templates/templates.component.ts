@@ -1,6 +1,7 @@
 import {
   Component,
   ChangeDetectionStrategy,
+  isDevMode,
   Optional,
   TemplateRef,
   ViewChild,
@@ -8,6 +9,7 @@ import {
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MechanismService } from 'src/app/services/mechanism.service';
 import { UrlProcessorService } from 'src/app/services/url-processor.service';
+import { DEV_TEMPLATES, DevTemplateID } from './dev-templates';
 import { TemplateID, TEMPLATE_LINKAGES } from './template-linkages';
 
 @Component({
@@ -29,8 +31,16 @@ export class TemplatesComponent {
     private urlProcessor: UrlProcessorService
   ) {}
 
-  openLinkage(linkage: TemplateID) {
-    const content = TEMPLATE_LINKAGES[linkage];
+  /** Only a development build offers the drawings that exercise the app. */
+  isDevMode(): boolean {
+    return isDevMode();
+  }
+
+  openLinkage(linkage: TemplateID | DevTemplateID) {
+    const content =
+      linkage in DEV_TEMPLATES
+        ? DEV_TEMPLATES[linkage as DevTemplateID]
+        : TEMPLATE_LINKAGES[linkage as TemplateID];
 
     // An empty grid has nothing to lose, so load right here instead of
     // spawning a tab the user then has to switch to.

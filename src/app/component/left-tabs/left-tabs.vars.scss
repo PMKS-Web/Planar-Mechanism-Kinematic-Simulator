@@ -29,5 +29,14 @@ $top-strip-height: $panel-top;
 // Room kept at the bottom for the playback card and the status strip beneath it.
 $playback-clearance: 110px;
 
+/**
+ * Where the playback cluster can stand clear of the analysis panel.
+ *
+ * The panel is 420px wide in the analysis modes and the cluster about 880, so
+ * past this the two fit side by side -- and once they do, the cluster moves to
+ * the right and the panel takes the height the cluster was keeping free.
+ */
+$cluster-clears-panel: 1340px;
+
 // Height of app-bottombar.
 $bottom-bar-height: 26px;
