@@ -46,9 +46,16 @@
       <toggle-block
         [formGroup]="this.settingsForm"
         _formControl="snapToGrid"
-        tooltip="Dragging a joint or a link lands it on the nearest grid square."
+        tooltip="Dragging a joint or a link lands it on the nearest grid square. Hold Option to drag free of it."
       >
         Snap to Grid
+      </toggle-block>
+      <toggle-block
+        [formGroup]="this.settingsForm"
+        _formControl="snapToAlignment"
+        tooltip="Dragging squares up with a joint it is nearly level with, and says which one. Hold Option to drag free of it."
+      >
+        Snap to Alignment
       </toggle-block>
       <input-block
         type="number"

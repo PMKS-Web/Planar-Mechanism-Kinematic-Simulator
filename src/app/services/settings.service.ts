@@ -80,6 +80,15 @@ export class SettingsService {
    */
   isSnapToGrid = new BehaviorSubject(readStoredFlag('snapToGrid', false));
 
+  /**
+   * Whether a drag squares itself up with its neighbours.
+   *
+   * On, because it always has been: a joint dragged nearly level with another
+   * one has been pulled level, with a guide line to say so, for as long as
+   * there have been guide lines. The toggle is for turning it off.
+   */
+  isSnapToAlignment = new BehaviorSubject(readStoredFlag('snapToAlignment', true));
+
   isShowID = new BehaviorSubject(false);
   isShowCOM = new BehaviorSubject(false);
   tempGridDisable: boolean = false; //This is to hide the grid lines to fit only to the linkage when doing a svg fit

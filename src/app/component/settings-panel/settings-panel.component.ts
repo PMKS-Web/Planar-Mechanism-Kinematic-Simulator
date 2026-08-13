@@ -57,6 +57,7 @@ export class SettingsPanelComponent implements OnDestroy {
       showMajorGrid: this.settingsService.isShowMajorGrid.value,
       showMinorGrid: this.settingsService.isShowMinorGrid.value,
       snapToGrid: this.settingsService.isSnapToGrid.value,
+      snapToAlignment: this.settingsService.isSnapToAlignment.value,
     });
 
     this.settingsSubscriptions.add(
@@ -167,6 +168,12 @@ export class SettingsPanelComponent implements OnDestroy {
       writeStoredFlag('snapToGrid', on);
     });
 
+    this.settingsForm.controls['snapToAlignment'].valueChanges.subscribe((val) => {
+      const on = val === true;
+      this.settingsService.isSnapToAlignment.next(on);
+      writeStoredFlag('snapToAlignment', on);
+    });
+
     this.settingsForm.controls['showMinorGrid'].valueChanges.subscribe((val) => {
       this.settingsService.isShowMinorGrid.next(Boolean(val));
       this.mechanismSrv.updateMechanism();
@@ -245,6 +252,7 @@ export class SettingsPanelComponent implements OnDestroy {
       showMinorGrid: [true, { updateOn: 'change' }],
       showMajorGrid: [true, { updateOn: 'change' }],
       snapToGrid: [false, { updateOn: 'change' }],
+      snapToAlignment: [true, { updateOn: 'change' }],
     },
     { updateOn: 'blur' }
   );
