@@ -60,8 +60,9 @@ const inCells = () =>
 const onCorner = (joint) =>
   Math.abs(joint.x - Math.round(joint.x)) < 1e-6 && Math.abs(joint.y - Math.round(joint.y)) < 1e-6;
 
-/** A real press, a real path, a real release. */
-const dragFrom = async (box, dx, dy) => {
+/** A real press, a real path, a real release. Optionally with Option held. */
+const dragFrom = async (box, dx, dy, { holdOption = false } = {}) => {
+  if (holdOption) await page.keyboard.down('Alt');
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   for (let step = 1; step <= 8; step++) {
@@ -72,6 +73,7 @@ const dragFrom = async (box, dx, dy) => {
     );
   }
   await page.mouse.up();
+  if (holdOption) await page.keyboard.up('Alt');
   await page.waitForTimeout(500);
 };
 
@@ -110,6 +112,18 @@ record('turning it on takes effect', (await inCells()).snapOn === true);
 await dragFrom(await page.locator('#joint_B').boundingBox(), 63, -41);
 const dragged = (await inCells()).joints.find((joint) => joint.id === 'B');
 record('a dragged joint lands on a corner of the grid', onCorner(dragged), dragged);
+
+// --- Option suspends it for the length of a gesture -------------------------
+// The same key that already means "no help from the app" while dragging: it is
+// what turns off capturing a joint you drop on.
+await fresh();
+await dragFrom(await page.locator('#joint_B').boundingBox(), 43, -29, { holdOption: true });
+const withOption = (await inCells()).joints.find((joint) => joint.id === 'B');
+record('holding Option drags free of the grid', !onCorner(withOption), withOption);
+// And lets go of it again.
+await dragFrom(await page.locator('#joint_B').boundingBox(), 31, 22);
+const afterOption = (await inCells()).joints.find((joint) => joint.id === 'B');
+record('and the next drag snaps again', onCorner(afterOption), afterOption);
 
 // --- a link lands its reference joint there ---------------------------------
 await fresh();

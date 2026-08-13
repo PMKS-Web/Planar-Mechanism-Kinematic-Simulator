@@ -1137,34 +1137,31 @@
     <g id="comTagHolder" style="transform: scaleY(-1); pointer-events: none">
       @for (link of mechanismSrv.getLinks(); track link) {
         <svg style="overflow: visible">
-          <path
-            stroke-width="2"
-            stroke-linejoin="round"
-            fill="black"
-            opacity="1.0"
-            [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d1')"
-          ></path>
-          <path
-            stroke-width="2"
-            stroke-linejoin="round"
-            fill="white"
-            opacity="1.0"
-            [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d2')"
-          ></path>
-          <path
-            stroke-width="2"
-            stroke-linejoin="round"
-            fill="black"
-            opacity="1.0"
-            [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d3')"
-          ></path>
-          <path
-            stroke-width="2"
-            stroke-linejoin="round"
-            fill="white"
-            opacity="1.0"
-            [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d4')"
-          ></path>
+          <!-- The standard mark, drawn to be read over whatever is beneath it.
+               Two of the four quarters are filled and the other two are not
+               painted at all, so the link's own colour shows through where the
+               white used to be, and everything is half opaque. The outline is
+               the same four wedges stroked rather than a circle drawn beside
+               them -- one set of coordinates, so it cannot land anywhere else. -->
+          @for (
+            quarter of [
+              mechanismSrv.getLinkProp(link, 'CoM_d1'),
+              mechanismSrv.getLinkProp(link, 'CoM_d2'),
+              mechanismSrv.getLinkProp(link, 'CoM_d3'),
+              mechanismSrv.getLinkProp(link, 'CoM_d4')
+            ];
+            track $index
+          ) {
+            <path
+              [attr.d]="quarter"
+              [attr.fill]="$index % 2 === 0 ? 'black' : 'none'"
+              fill-opacity="0.45"
+              stroke="black"
+              stroke-opacity="0.45"
+              stroke-linejoin="round"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+            ></path>
+          }
         </svg>
       }
     </g>
@@ -1172,21 +1169,31 @@
   <g id="linkTagHolder" style="pointer-events: none">
     @for (link of mechanismSrv.getLinks(); track link) {
       <svg
-        [attr.x]="mechanismSrv.getLinkProp(link, 'CoMX')"
-        [attr.y]="mechanismSrv.getLinkProp(link, 'CoMY')"
+        [attr.x]="linkLabelAnchor(link).x"
+        [attr.y]="-linkLabelAnchor(link).y"
         [attr.height]="10"
         [attr.width]="10"
         style="overflow: visible; text-anchor: middle"
       >
+        <!-- Always drawn, unlike the joint and force labels: a link is a body
+             with room to hold its own name, and the name is how the panels and
+             the analysis refer to it. The toggle still governs the labels that
+             would otherwise crowd the joints. -->
         @if (
           this.showLinkLengthOverlay < -1 &&
           this.showLinkAngleOverlay < -1 &&
           !isSecondaryCylinderTag(link) &&
-          ((gridUtils.typeOfLink(link) !== 'P' && settings.isShowID.value) ||
-            link.showHighlight ||
-            (this.activeObjService.selectedLink == link && this.activeObjService.objType == 'Link'))
+          gridUtils.typeOfLink(link) !== 'P'
         ) {
-          <text style="font-size: {{ svgGrid.scaleWithZoom(20) }}px; text-anchor: middle">
+          <!-- Both the name and the centre-of-mass mark belong at the centre
+               of the link, so when the mark is being shown the name steps up
+               out of its way. -->
+          <text
+            [attr.fill]="linkLabelInk(link)"
+            [attr.dy]="settings.isShowCOM.value ? -settings.objectScale * 0.11 : 0"
+            fill-opacity="0.55"
+            style="font-size: {{ settings.objectScale * 0.15 }}px; text-anchor: middle"
+          >
             {{ linkDisplayName(link) }}
           </text>
         }

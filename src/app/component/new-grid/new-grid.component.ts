@@ -1173,7 +1173,7 @@ export class NewGridComponent implements OnDestroy {
                   // Last, and only here: a capture is a target the reader
                   // picked, and a joint on a slot has a line to stay on. The
                   // grid gets the position nothing else has a claim on.
-                  this.svgGrid.snapToGrid(mousePosInSvg)
+                  this.svgGrid.snapToGrid(mousePosInSvg, $event.altKey)
                 )
         );
         this.dragState.noteMechanismModified();
@@ -1212,7 +1212,8 @@ export class NewGridComponent implements OnDestroy {
           const wantedX = mousePosInSvg.x - this.linkDragAnchor.x;
           const wantedY = mousePosInSvg.y - this.linkDragAnchor.y;
           const landed = this.svgGrid.snapToGrid(
-            new Coord(reference.x + wantedX, reference.y + wantedY)
+            new Coord(reference.x + wantedX, reference.y + wantedY),
+            $event.altKey
           );
           this.gridUtils.dragLink(
             this.activeObjService.selectedLink,
@@ -2548,6 +2549,57 @@ export class NewGridComponent implements OnDestroy {
   isSecondaryCylinderTag(link: Link): boolean {
     const sealed = this.mechanismSrv.cylinderAt(link);
     return !!sealed && link.id !== sealed.barrel.id;
+  }
+
+  /**
+   * Where to write a link's name so it lands on the link.
+   *
+   * The average of the joints it is made of, which is inside the hull they
+   * describe -- and the body is drawn around that hull, so it is inside the
+   * body. A welded link is the Boolean union of its parts and can be any shape
+   * at all (an L has nothing in the crook), so the name goes in the middle of
+   * the biggest part, which is inside the union because that part is.
+   *
+   * Not the centre of mass, which is where this used to go: that is a physical
+   * property with a field of its own in the Edit panel, and a link told its
+   * mass sits out at one end is a link whose name was written off the metal.
+   */
+  linkLabelAnchor(link: Link): { x: number; y: number } {
+    const parts = (link instanceof RealLink ? link.subset : []) ?? [];
+    const middleOf = (of: Link) => {
+      const joints = of.joints ?? [];
+      if (joints.length === 0) return { x: 0, y: 0 };
+      return {
+        x: joints.reduce((total, joint) => total + joint.x, 0) / joints.length,
+        y: joints.reduce((total, joint) => total + joint.y, 0) / joints.length,
+      };
+    };
+    if (parts.length === 0) return middleOf(link);
+    const span = (part: Link) => {
+      const first = part.joints[0];
+      const last = part.joints[part.joints.length - 1];
+      return first && last ? Math.hypot(last.x - first.x, last.y - first.y) : 0;
+    };
+    return middleOf(parts.reduce((best, part) => (span(part) > span(best) ? part : best)));
+  }
+
+  /**
+   * Black or white, whichever the link's own colour can be read against.
+   *
+   * The label sits on the body it names, and the bodies run from pale mint to
+   * navy, so one ink cannot serve them all. Relative luminance decides it, the
+   * same rule a contrast checker uses.
+   */
+  linkLabelInk(link: Link): string {
+    const fill = (link as { fill?: string }).fill ?? '#ffffff';
+    const hex = fill.replace('#', '');
+    if (hex.length < 6) return 'black';
+    const channel = (at: number) => {
+      const value = parseInt(hex.slice(at, at + 2), 16) / 255;
+      return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    };
+    const luminance = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+    return luminance > 0.45 ? 'black' : 'white';
   }
 
   linkDisplayName(link: Link): string {

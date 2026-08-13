@@ -407,12 +407,16 @@ export class SvgGridService {
   /**
    * The nearest corner of the drawn grid, if snapping is on.
    *
-   * Off, or with no grid to snap to, the point is returned as it came --
-   * callers can use this unconditionally.
+   * Off, suspended, or with no grid to snap to, the point is returned as it
+   * came -- callers can use this unconditionally.
+   *
+   * `suspended` is the Option key, which already means "no help from the app"
+   * while dragging: it is what turns off capturing a joint you drop on, and it
+   * turns off the grid for the same gesture and the same reason.
    */
-  snapToGrid(coord: Coord): Coord {
+  snapToGrid(coord: Coord, suspended = false): Coord {
     const cell = this.minorCellSize;
-    if (!this.settingsService.isSnapToGrid.value || !(cell > 0)) {
+    if (suspended || !this.settingsService.isSnapToGrid.value || !(cell > 0)) {
       return coord;
     }
     return new Coord(Math.round(coord.x / cell) * cell, Math.round(coord.y / cell) * cell);
