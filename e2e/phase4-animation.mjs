@@ -36,9 +36,12 @@ const MECHANISMS = [
   {
     name: 'four-bar-slotted-coupler',
     note: 'a slot on a coupler that both turns and translates',
+    // The published fixture, not a copy of it: this one had kept the older
+    // geometry whose channel ends exactly where the rider starts, so the
+    // mechanism opened at a limit of its travel and refused to run.
     grounded: false,
     query:
-      '?2P.Fe.K,0.1011.MA,A,0,0,0.GB,B,Fe,0,0.GC,C,d4,ec,0.KD,D,_W,0,0.KE,E,VG,7q,0.GF,F,bo,cO,0.HP,P,bo,cO,0,BC,B,C..YRAB,AB,Fe,Fe,7q,0,c5cae9,A,B,,.YRBC,BC,Fe,Fe,RM,KJ,303e9f,B,C,,.YRCD,CD,Fe,Fe,oo,KJ,0d125a,C,D,,.YREF,EF,Fe,Fe,YX,N6,B2DFDB,E,F,,.YPFP,FP,Fe,0,0,0,,F,P,,...N_L',
+      '?2P.Ay,1E8.5,0.1011.6A,A,0,0,0.0B,B,Fe,0,0.0C,C,d4,ec,0.4D,D,_W,0,0.4E,E,VG,7q,0.0F,F,bo,cO,0.0X,X,tU,151,0.1P,P,bo,cO,0,BCX,B,X..YRAB,AB,Fe,Fe,7q,0,c5cae9,A,B,,.YRBCX,BCX,Fe,Fe,ak,aY,303e9f,B,C,X,,.YRCD,CD,Fe,Fe,oo,KJ,0d125a,C,D,,.YREF,EF,Fe,Fe,YX,N6,B2DFDB,E,F,,.YPFP,FP,0,0,0,0,,F,P,,...N_h',
   },
 ];
 
