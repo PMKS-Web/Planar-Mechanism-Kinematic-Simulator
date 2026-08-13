@@ -396,9 +396,10 @@ export class SvgGridService {
   /**
    * How far apart the labelled lines go at this zoom.
    *
-   * A minor cell of one, two or five of whatever decade fits -- so the number
-   * on a labelled line is always round, and so is every minor line between
-   * them. Five minors to the major means every label is a multiple of five.
+   * One, two or five of whatever decade fits, which is the ladder every graph
+   * paper and plotting library climbs: 0.5, 1, 2, 5, 10, 20, 50. Five minor
+   * lines to a major, so the labelled lines land on round numbers and the
+   * grid subdivides at a steady rate rather than in jumps.
    *
    * It used to halve and quarter its way down from a fixed starting size,
    * which is a one-two-four ladder: the labels came out on multiples of four
@@ -406,13 +407,14 @@ export class SvgGridService {
    */
   private cellSizeFor(zoom: number): number {
     const MAX_MAJOR_PX = 200;
-    const unitsPerMinor = MAX_MAJOR_PX / (zoom * MODEL_SCALE * MINOR_DIVISIONS);
-    if (!(unitsPerMinor > 0) || !Number.isFinite(unitsPerMinor)) {
+    const unitsPerMajor = MAX_MAJOR_PX / (zoom * MODEL_SCALE);
+    if (!(unitsPerMajor > 0) || !Number.isFinite(unitsPerMajor)) {
       return this.defualtCellSize;
     }
-    const decade = 10 ** Math.floor(Math.log10(unitsPerMinor));
-    const minorUnits = [5, 2, 1].find((step) => decade * step <= unitsPerMinor) ?? 1;
-    return decade * minorUnits * MINOR_DIVISIONS * MODEL_SCALE;
+    // The largest one, two or five of this decade that still fits the budget.
+    const decade = 10 ** Math.floor(Math.log10(unitsPerMajor));
+    const majorUnits = [5, 2, 1].find((step) => decade * step <= unitsPerMajor) ?? 1;
+    return decade * majorUnits * MODEL_SCALE;
   }
 
   handleUpdatedCTM(newCTM: SVGMatrix) {
