@@ -1247,7 +1247,12 @@ export class MechanismService {
     this.slotStashes.clear();
   }
 
-  deleteJoint() {
+  /**
+   * @param save mints the undo entry. Only a caller that deletes several joints
+   * as one gesture passes `false`, and it owes a `finishStructuralEdit(true)`
+   * of its own once the last one is gone — see `deleteMechanism`.
+   */
+  deleteJoint(save: boolean = true) {
     // Deleting a mount (or, defensively, any member joint) of a sealed cylinder
     // takes the whole assembly with it (§ cylinder 5) — and then goes on to
     // delete the joint itself.
@@ -1266,7 +1271,7 @@ export class MechanismService {
       // removed as orphaned, and there is nothing left to delete.
       if (!this.joints.some((joint) => joint.id === doomed.id)) {
         this.activeObjService.updateSelectedObj(undefined);
-        this.finishStructuralEdit(true);
+        this.finishStructuralEdit(save);
         return;
       }
     }
@@ -1650,7 +1655,12 @@ export class MechanismService {
     // Through the shared path, so a slot whose defining joint was just deleted
     // gets reconciled. Deleting a joint by itself is the one way to strand a
     // slot that does not go through mergeJoints or deleteLink.
-    this.finishStructuralEdit(false);
+    //
+    // Saving here is what makes the deletion undoable. This read `false` for as
+    // long as the tail read `updateMechanism()`, whose save flag defaults off —
+    // so a joint deleted on its own left no history at all, while the very same
+    // deletion routed through the cylinder branch above did.
+    this.finishStructuralEdit(save);
     setTimeout(() => {
       this.onMechUpdateState.next(3);
     });
