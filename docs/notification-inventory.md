@@ -236,10 +236,16 @@ Still open:
 
 - **The eleven drop refusals** are still messages, on top of the canvas refusal
   marker and the joint shake. Kept deliberately for now.
-- **Deleting a joint is not undoable.** `deleteJoint` ends in
-  `finishStructuralEdit(false)`, so no history entry is written and Undo cannot
-  bring it back. Found while wiring Ctrl+Z; pre-existing, and the `false` is
-  explicit enough to be worth asking about before changing.
+- **The six `NOT_A` messages** now fire from the Edit panel too, but the
+  linkage table they came from is still reachable only through the Debug tab.
+  Whether that table should exist at all is a separate question.
+
+Closed since:
+
+- **Deleting a joint is now undoable** (`Let Ctrl+Z put back a joint you
+  deleted`). It ended in `finishStructuralEdit(false)`, so no history entry was
+  written and Undo could not bring it back — found while wiring Ctrl+Z, which
+  is what made it visible.
 
 ## Dead — coded but not reachable
 
