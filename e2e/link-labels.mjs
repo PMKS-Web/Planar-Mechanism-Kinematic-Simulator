@@ -265,6 +265,34 @@ record('and it grows with the object scale', doubled > type.labels[0].size * 1.6
   now: doubled,
 });
 
+// --- a joint's name lands wherever its joint is -----------------------------
+await load(payloads['Stephenson_III']);
+await page.evaluate(() => {
+  ng.getComponent(document.querySelector('app-new-grid')).settings.isShowID.next(true);
+});
+await page.waitForTimeout(600);
+const jointInk = await page.evaluate(() => {
+  const svg = document.querySelector('#canvas') ?? document.querySelector('svg');
+  const perUnit = Math.abs(svg.querySelector('g').getScreenCTM().a);
+  return [...document.querySelectorAll('#jointTagHolder text')].map((text) => {
+    const style = getComputedStyle(text);
+    return {
+      name: text.textContent.trim(),
+      halo: style.stroke,
+      order: style.paintOrder,
+      haloPx: +(parseFloat(style.strokeWidth) * perUnit).toFixed(2),
+    };
+  });
+});
+record(
+  'a joint name wears a white halo, so it reads over whatever it has landed on',
+  jointInk.length > 0 &&
+    jointInk.every(
+      (label) => label.halo === 'rgb(255, 255, 255)' && label.order === 'stroke' && label.haloPx > 1
+    ),
+  jointInk.slice(0, 4)
+);
+
 // --- the other labels still answer to the button ----------------------------
 await load(payloads['4-Bar']);
 const governed = await page.evaluate(() => {

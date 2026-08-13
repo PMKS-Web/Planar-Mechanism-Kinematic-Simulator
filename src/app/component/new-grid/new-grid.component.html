@@ -1115,7 +1115,10 @@
           <!-- While a joint is captured, the two names sit on the same point and
                overlap into an unreadable smudge. One label naming the merge says
                what is about to happen instead. -->
-          <text style="font-size: {{ settings.objectScale * 0.18 }}px; text-anchor: middle">
+          <text
+            [attr.stroke-width]="settings.objectScale * 0.035"
+            style="font-size: {{ settings.objectScale * 0.18 }}px; text-anchor: middle"
+          >
             {{ mergeLabel }}
           </text>
         } @else if (
@@ -1126,7 +1129,10 @@
             (this.activeObjService.selectedJoint == joint &&
               this.activeObjService.objType == 'Joint'))
         ) {
-          <text style="font-size: {{ settings.objectScale * 0.18 }}px; text-anchor: middle">
+          <text
+            [attr.stroke-width]="settings.objectScale * 0.035"
+            style="font-size: {{ settings.objectScale * 0.18 }}px; text-anchor: middle"
+          >
             {{ joint.name }}
           </text>
         }

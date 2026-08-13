@@ -29,6 +29,16 @@
     stroke: #e6e6ea;
   }
 
+  // A joint's name lands wherever its joint is, which is often on top of a
+  // link, another joint's name, or a ground hatch. The same white halo the
+  // grid's own numbers wear, so it reads over whatever it has landed on.
+  #jointTagHolder text {
+    paint-order: stroke;
+    stroke: #fff;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
   #axes_numbers {
     // Lighter than body text: these are a reference, not something to read.
     fill: rgba(0, 0, 0, 0.55);
