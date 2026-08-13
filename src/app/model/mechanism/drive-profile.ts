@@ -29,6 +29,14 @@ export interface DriveProfile {
   readonly continuous: boolean;
   /** A slider or ram, which extends; otherwise a crank, which turns. */
   readonly linear: boolean;
+  /** End to end of the input's travel, in model units. Zero for a crank. */
+  readonly span: number;
+}
+
+/** The two joints a ram's length is measured between, when the input is one. */
+export interface RamEnds {
+  readonly from: string;
+  readonly to: string;
 }
 
 /**
@@ -38,7 +46,7 @@ export interface DriveProfile {
  * slot's rail, a ram's bore and a pin's crank are described three different
  * ways in the model and are all just a moving joint here.
  */
-export function driveProfileOf(mechanism: Mechanism): DriveProfile | undefined {
+export function driveProfileOf(mechanism: Mechanism, ram?: RamEnds): DriveProfile | undefined {
   const frames = mechanism.joints;
   if (!mechanism.isMechanismValid() || frames.length < 2) {
     return undefined;
@@ -49,7 +57,12 @@ export function driveProfileOf(mechanism: Mechanism): DriveProfile | undefined {
   }
 
   const linear = frames[0][at] instanceof PrisJoint;
-  const raw = linear ? strokeOf(frames, at) : turnOf(mechanism);
+  // A ram is measured by how far out its rod is, not by how far its slider has
+  // moved from wherever the drawing put it: the two run opposite ways as often
+  // as not, and the second one has no name a reader would recognise. Anything
+  // else linear has no extension to speak of, so it is measured along the line
+  // it slides on.
+  const raw = linear ? ((ram && lengthOf(frames, ram)) ?? strokeOf(frames, at)) : turnOf(mechanism);
   if (!raw) {
     return undefined;
   }
@@ -72,6 +85,7 @@ export function driveProfileOf(mechanism: Mechanism): DriveProfile | undefined {
       }),
       continuous,
       linear,
+      span: 0,
     };
   }
 
@@ -80,7 +94,19 @@ export function driveProfileOf(mechanism: Mechanism): DriveProfile | undefined {
   if (!(span > 0)) {
     return undefined;
   }
-  return { along: raw.map((value) => (value - low) / span), continuous, linear };
+  return { along: raw.map((value) => (value - low) / span), continuous, linear, span };
+}
+
+/** How far the ram's rod is out, sample by sample. */
+function lengthOf(frames: Mechanism['joints'], ram: RamEnds): number[] | undefined {
+  const from = frames[0].findIndex((joint) => joint.id === ram.from);
+  const to = frames[0].findIndex((joint) => joint.id === ram.to);
+  if (from === -1 || to === -1) {
+    return undefined;
+  }
+  return frames.map((frame) =>
+    Math.hypot(frame[to].x - frame[from].x, frame[to].y - frame[from].y)
+  );
 }
 
 /** How far the input has moved along the line it slides on, sample by sample. */

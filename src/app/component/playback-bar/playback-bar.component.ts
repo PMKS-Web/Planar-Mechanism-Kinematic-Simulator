@@ -166,7 +166,8 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
    * Where the input is, in the units the input is measured in.
    *
    * The handle says how far along; this says how far along *what*. A crank
-   * reads in degrees of its own turn, a ram in the length its rod has come out.
+   * reads in degrees of its own turn, a ram in the length its rod has come out
+   * past the shortest it gets.
    */
   private positionLabel(index: number): string {
     const profile = this.mechanism.driveProfileOf(index);
@@ -175,26 +176,16 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
       return '';
     }
     if (!profile.linear) {
-      return `${Math.round(along * 360)}\u00b0`;
+      const bearing = this.mechanism.inputAngleDegrees(index);
+      return bearing === undefined ? '' : `${Math.round(bearing)}\u00b0`;
     }
-    const stroke = this.strokeLength(index);
-    return stroke === undefined
-      ? `${Math.round(along * 100)}%`
-      : this.nup.formatValueAndUnit(along * stroke, this.settings.lengthUnit.value);
-  }
-
-  /** How far the input slide travels end to end, in the drawing's own units. */
-  private strokeLength(index: number): number | undefined {
-    const mechanism = this.mechanism.mechanisms[index];
-    const frames = mechanism?.joints ?? [];
-    const at = frames[0]?.findIndex((joint) => (joint as RealJoint).input) ?? -1;
-    if (at === -1 || frames.length < 2) return undefined;
-    let far = 0;
-    frames.forEach((frame) => {
-      const d = Math.hypot(frame[at].x - frames[0][at].x, frame[at].y - frames[0][at].y);
-      if (d > far) far = d;
-    });
-    return far > 0 ? far / MODEL_SCALE : undefined;
+    if (!(profile.span > 0)) {
+      return `${Math.round(along * 100)}%`;
+    }
+    return this.nup.formatValueAndUnit(
+      (along * profile.span) / MODEL_SCALE,
+      this.settings.lengthUnit.value
+    );
   }
 
   /**
@@ -210,7 +201,7 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     if (profile?.linear) {
       return outward ? 'Extending' : 'Retracting';
     }
-    return outward ? 'Clockwise' : 'CCW';
+    return outward ? 'Clockwise' : 'Counter-clockwise';
   }
 
   /** Only worth offering when there is more than one machine to get out of step. */

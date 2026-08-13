@@ -630,9 +630,11 @@
         <!-- Selecting the body highlights the WHOLE part: one accent outline
              around the fused barrel + block + rod silhouette, in exactly the
              stroke a selected link wears — not a per-piece treatment. -->
-        @if (isBodySelected(cyl)) {
+        @if (isBodySelected(cyl) || isBodyHovered(cyl)) {
           <path
-            class="link-selected cylinder-selected"
+            class="cylinder-selected"
+            [class.link-selected]="isBodySelected(cyl)"
+            [class.link-hovered]="!isBodySelected(cyl)"
             pointer-events="none"
             [attr.d]="cylinderSilhouette(cyl)"
             fill="none"

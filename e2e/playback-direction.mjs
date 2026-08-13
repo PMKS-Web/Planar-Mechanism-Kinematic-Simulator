@@ -43,8 +43,8 @@ const state = () =>
       rowPlaying: srv.mechanisms.map((_, i) => srv.isMechanismPlaying(i)),
       scrub: [...document.querySelectorAll('.rowScrubber')].map((s) => +s.value),
       notes: [...document.querySelectorAll('.rowNote')].map((n) => n.textContent.trim()),
-      // The drawn pose, to the pixel: reversing must not move the drawing.
-      pose: srv.joints.map((j) => `${j.x.toFixed(2)},${j.y.toFixed(2)}`).join(' '),
+      // The drawn pose: reversing must not move the drawing.
+      pose: srv.joints.map((j) => [j.x, j.y]),
     };
   });
 
@@ -57,7 +57,7 @@ await page.waitForTimeout(900);
 const atRest = await state();
 record(
   'the row says which way the input is going',
-  ['Clockwise', 'CCW', 'Extending', 'Retracting'].includes(atRest.notes[0]),
+  ['Clockwise', 'Counter-clockwise', 'Extending', 'Retracting'].includes(atRest.notes[0]),
   atRest.notes
 );
 
@@ -81,11 +81,17 @@ await page.locator('.dirButton').first().click();
 await page.waitForTimeout(400);
 const after = await state();
 record('reversing does not stop it being resumable', after.playing === false, { before, after });
-record(
-  'and the linkage has not moved -- the same pose, still',
-  before.pose && after.pose && before.pose === after.pose,
-  { before: before.pose, after: after.pose }
+// Within a model unit, which is a two-hundredth of a centimetre: the mirrored
+// cycle lands on the neighbouring sample, so "did not move" is a question about
+// pixels rather than about the fourteenth decimal place.
+const moved = Math.max(
+  ...before.pose.map(([x, y], i) => Math.hypot(after.pose[i][0] - x, after.pose[i][1] - y))
 );
+record('and the linkage has not moved -- the same pose, still', moved < 1, {
+  moved,
+  before: before.pose,
+  after: after.pose,
+});
 record('nor has the handle', Math.abs(after.scrub[0] - before.scrub[0]) < 30, {
   before: before.scrub,
   after: after.scrub,

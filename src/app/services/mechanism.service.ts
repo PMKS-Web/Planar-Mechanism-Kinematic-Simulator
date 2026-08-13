@@ -60,6 +60,7 @@ import { slotHalfLength } from '../model/joint-marks';
 import { DragStateService } from './drag-state.service';
 import { Coord } from '../model/coord';
 import { Line } from '../model/line';
+import { SelectedTabService } from '../selected-tab.service';
 import { SaveHistoryService } from './save-history.service';
 import { NumberUnitParserService } from './number-unit-parser.service';
 import { PositionSolver, SAMPLES_PER_STROKE } from '../model/mechanism/position-solver';
@@ -243,6 +244,14 @@ export class MechanismService {
     // rewinding, which is what the held time is measured against. The drawn time,
     // not the sample's: during playback it carries the sub-sample fraction.
     const heldTime = this.currentTimeSeconds();
+    // Each machine's own place, not just the master's. Restoring only the
+    // shared time put every machine back on the master's clock, so any edit --
+    // a speed change, a reversal, a joint moved -- silently pulled them all
+    // back into step with each other.
+    const heldEach = this.partitions.map((partition, index) => ({
+      id: partition.id,
+      seconds: this.ownSeconds[index] ?? 0,
+    }));
     this.restoreStartPose();
 
     // The sealed-cylinder invariant is enforced HERE, at the one funnel every
@@ -289,6 +298,7 @@ export class MechanismService {
     );
     this.activeObjService.fakeUpdateSelectedObj();
     this.reseekToTime(heldTime);
+    this.restoreOwnTimes(heldEach);
 
     if (save) {
       this.save();
@@ -514,6 +524,54 @@ export class MechanismService {
     // sample, so restore the sub-sample fraction afterwards — playback resumes
     // from exactly the held time, not the nearest sample.
     this.playbackTimeSeconds = wrapped;
+  }
+
+  /**
+   * Put each machine back where it was after a rebuild.
+   *
+   * By partition id, not by index: a rebuild can add, remove or reorder
+   * mechanisms, and pairing them positionally would hand one machine another's
+   * place in its cycle.
+   */
+  private restoreOwnTimes(held: { id: string; seconds: number }[]): void {
+    if (!this.oneValidMechanismExists()) return;
+    this.partitions.forEach((partition, index) => {
+      const was = held.find((entry) => entry.id === partition.id);
+      const period = this.mechanisms[index]?.cyclePeriod ?? 0;
+      if (!was || !(period > 0) || !(was.seconds > 0)) return;
+      this.ownSeconds[index] = ((was.seconds % period) + period) % period;
+    });
+    this.applyPose(this.mechanismTimeStep, 0);
+  }
+
+  /**
+   * Run something with the drawing parked at its start pose, and put every
+   * machine back afterwards.
+   *
+   * Encoding a URL is a round trip through t = 0, because that is the pose the
+   * format stores. Getting there and back used to go through `animate`, which
+   * treats an outside call as a seek of the whole drawing -- so saving, which
+   * happens on every edit, quietly pulled every machine onto the master's
+   * clock. That is most of what "the mechanisms are not independent" was.
+   */
+  encodeFromStartPose<T>(encode: (heldStep: number) => T): T {
+    const held = this.ownSeconds.slice();
+    const step = this.mechanismTimeStep;
+    const playing = this.isPlaying;
+    if (step > 0) {
+      this.animate(0, false);
+    }
+    try {
+      return encode(step);
+    } finally {
+      this.ownSeconds = held;
+      this.seekingOneMechanism = true;
+      try {
+        this.animate(step, playing);
+      } finally {
+        this.seekingOneMechanism = false;
+      }
+    }
   }
 
   save() {
@@ -2881,42 +2939,73 @@ export class MechanismService {
    */
   easeToStart(durationMs = 220): void {
     if (this.atStartPose()) return;
-    const samples = this.masterMechanism()?.joints.length ?? 0;
-    if (samples < 2) {
-      this.animate(0, false);
+    // Each machine goes back to its own start, on its own clock, by whichever
+    // way round is shorter for it. Driving this off the shared sample index
+    // pulled every machine onto the master's time on the first frame -- so
+    // three machines at three different places in their cycles all jumped to
+    // one place and then eased down together, which is the bounce.
+    const from = this.mechanisms.map((_, index) => this.secondsOf(index));
+    const periods = this.mechanisms.map((mechanism) => mechanism.cyclePeriod);
+    const deltas = from.map((seconds, index) => {
+      const period = periods[index];
+      if (!(period > 0) || !(seconds > 0)) return 0;
+      return seconds > period / 2 ? period - seconds : -seconds;
+    });
+    if (deltas.every((delta) => delta === 0)) {
+      this.rewindToStart();
       return;
     }
-    const from = this.mechanismTimeStep;
-    // Whichever way round is shorter. The cycle is closed, so the last sample
-    // is the start's neighbour: from near the end of it, running backwards
-    // through the whole cycle to reach a pose one step away reads as the
-    // machine bolting.
-    const back = -from;
-    const forward = samples - from;
-    const delta = forward < from ? forward : back;
 
     this.isPlaying = false;
+    this.ownPlaying = this.ownPlaying.map(() => false);
     let startedAt: number | null = null;
-    let lastDrawn = from;
+    let lastDrawn = from.slice();
 
     const frame = (now: number) => {
-      // Someone else has taken the mechanism somewhere since the last frame.
+      // Someone else has taken a machine somewhere since the last frame.
       // Whatever they wanted, it is newer than this.
-      if (this.mechanismTimeStep !== lastDrawn) return;
+      if (this.mechanisms.some((_, index) => this.secondsOf(index) !== lastDrawn[index])) {
+        return;
+      }
       startedAt ??= now;
       const t = Math.min(1, (now - startedAt) / durationMs);
       // Ease out: quick off the pose being left, gentle into the start.
       const eased = 1 - (1 - t) ** 3;
-      const next = Math.round(from + eased * delta) % samples;
-      // The first frame is the pose already on screen, and at 60 fps over a
-      // fifth of a second several later ones round to the same sample.
-      if (next !== lastDrawn) {
+      const next = from.map((seconds, index) => {
+        const period = periods[index];
+        const ahead = seconds + eased * deltas[index];
+        return period > 0 ? ((ahead % period) + period) % period : ahead;
+      });
+      // The first frame is the pose already on screen; drawing it again is a
+      // frame's worth of nothing. A microsecond, not exact equality: wrapping
+      // into the period puts float noise on a value that has not moved.
+      if (next.some((seconds, index) => Math.abs(seconds - lastDrawn[index]) > 1e-6)) {
         lastDrawn = next;
-        this.animate(next, false);
+        lastDrawn.forEach((seconds, index) => (this.ownSeconds[index] = seconds));
+        this.drawOwnClocks();
       }
       if (t < 1) requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
+  }
+
+  /**
+   * Draw every machine where its own clock says, without moving any of them.
+   *
+   * `animate` treats an outside call as a seek of the whole drawing, which is
+   * right for a scrubber and wrong for anything that has already decided where
+   * each machine goes.
+   */
+  private drawOwnClocks(playing = false): void {
+    const master = this.masterMechanismIndex();
+    const step =
+      master === -1 ? this.mechanismTimeStep : this.stepAtTime(this.ownSeconds[master] ?? 0);
+    this.seekingOneMechanism = true;
+    try {
+      this.animate(step, playing);
+    } finally {
+      this.seekingOneMechanism = false;
+    }
   }
 
   /**
@@ -3045,24 +3134,28 @@ export class MechanismService {
 
     const period = this.mechanisms[index]?.cyclePeriod ?? 0;
     const was = this.secondsOf(index);
+    // Write every machine's current speed onto its own drive first. Setting one
+    // machine's speed also moves the document-wide default, and a machine that
+    // has never been given a speed of its own reads that default -- so
+    // reversing one machine turned round every machine that had not been
+    // turned round before.
+    this.pinDriveSpeeds();
     this.setDriveSpeed(driven, -this.driveSpeedOf(driven));
     // The input itself has turned round, so time runs forward through the new
     // cycle again.
     this.playbackDirection[index] = 1;
-    this.updateMechanism(true);
+    // Not saved. Reversing is done from the transport, which is a way of
+    // watching the drawing rather than of changing it, and nothing else a
+    // reader does in an analysis mode lands in the undo history either. The
+    // drive still carries its new sign, so the next real edit writes it out.
+    this.updateMechanism(false);
 
     if (!(period > 0)) return true;
-    const mirrored = this.wrapTime(period - was);
-    if (this.syncMechanisms) {
-      this.animate(this.stepAtTime(mirrored), this.isPlaying);
-      // animate() snaps its clock to the sample it landed on; the pose was
-      // between two of them, and putting it back is what keeps the drawing
-      // still.
-      this.playbackTimeSeconds = mirrored;
-    } else {
-      this.ownSeconds[index] = mirrored;
-      this.animate(this.mechanismTimeStep, this.isPlaying);
-    }
+    // The pose that was at time t sits at period - t in the mirrored cycle.
+    // This machine goes there and the others stay where they are: they are on
+    // a shared wall clock, not a shared position, and this one turning round
+    // is no reason for them to move.
+    this.seekMechanism(index, this.wrapTime(period - was));
     return true;
   }
 
@@ -3130,6 +3223,45 @@ export class MechanismService {
     return rising !== rewinding;
   }
 
+  /**
+   * Give every machine a drive speed of its own.
+   *
+   * Until one is set, a driven joint reads the document-wide default, which
+   * means two machines share a number and neither of them knows it.
+   */
+  private pinDriveSpeeds(): void {
+    this.partitions.forEach((partition) => {
+      const driven = partition.ownJoints.find(
+        (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+      );
+      if (driven && driven.driveSpeed === 0) {
+        driven.driveSpeed = this.driveSpeedOf(driven);
+      }
+    });
+  }
+
+  /**
+   * Which way the input crank is pointing, in degrees from the positive x axis.
+   *
+   * An absolute bearing, not a count of how far round it has come: a reader
+   * comparing the drawing with the readout is looking at where the crank is
+   * pointing, and "0" meaning "wherever it was drawn" is a different question
+   * they did not ask.
+   */
+  inputAngleDegrees(index: number): number | undefined {
+    const partition = this.partitions[index];
+    const driven = partition?.ownJoints.find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
+    if (!driven) return undefined;
+    // The end of the crank, which is what points somewhere -- the input joint
+    // itself is usually pinned to the frame and points nowhere.
+    const end = driven.connectedJoints.find((joint) => !(joint as RealJoint).ground);
+    if (!end) return undefined;
+    const degrees = (Math.atan2(end.y - driven.y, end.x - driven.x) * 180) / Math.PI;
+    return (degrees + 360) % 360;
+  }
+
   /** Put one machine at a place along its input's travel. */
   seekMechanismTo(index: number, along: number): void {
     const mechanism = this.mechanisms[index];
@@ -3147,7 +3279,12 @@ export class MechanismService {
     const mechanism = this.mechanisms[index];
     if (!mechanism) return undefined;
     if (!this.profiles.has(mechanism)) {
-      this.profiles.set(mechanism, buildDriveProfile(mechanism) ?? null);
+      // A ram is measured by its own extension, so the profile is told which
+      // two joints that is between.
+      const driven = mechanism.joints[0]?.find((joint) => (joint as RealJoint).input);
+      const sealed = driven && this.cylinderAt(this.joints.find((j) => j.id === driven.id));
+      const ram = sealed ? { from: sealed.barrelFar.id, to: sealed.rodFar.id } : undefined;
+      this.profiles.set(mechanism, buildDriveProfile(mechanism, ram) ?? null);
     }
     return this.profiles.get(mechanism) ?? undefined;
   }
@@ -3230,7 +3367,7 @@ export class MechanismService {
     // transport's own button reads this flag, so leaving it set with every row
     // stopped showed a pause button over a drawing that was not moving.
     this.isPlaying = this.ownPlaying.some(Boolean);
-    this.animate(this.mechanismTimeStep, this.isPlaying);
+    this.drawOwnClocks(this.isPlaying);
   }
 
   /**
@@ -3242,7 +3379,7 @@ export class MechanismService {
   setAllPlaying(playing: boolean): void {
     this.isPlaying = playing;
     this.ownPlaying = this.mechanisms.map((mechanism) => playing && mechanism.isMechanismValid());
-    this.animate(this.mechanismTimeStep, playing);
+    this.drawOwnClocks(playing);
   }
 
   /**
@@ -3265,7 +3402,7 @@ export class MechanismService {
         (mechanism) => this.isPlaying && mechanism.isMechanismValid()
       );
     }
-    this.animate(this.mechanismTimeStep, this.isPlaying);
+    this.drawOwnClocks(this.isPlaying);
   }
 
   getJointCSSClass(joint: Joint) {
@@ -3286,6 +3423,9 @@ export class MechanismService {
     // Selecting a whole machine selects everything in it, so every one of its
     // joints reads as selected rather than the reader having to infer the
     // extent of the thing they just picked.
+    if (this.isPartInert(joint)) {
+      return 'joint-inert';
+    }
     if (this.isInSelectedMechanism(joint)) {
       return 'joint-selected';
     }
@@ -3297,6 +3437,29 @@ export class MechanismService {
     } else {
       return 'joint-default';
     }
+  }
+
+  /**
+   * Geometry the analysis modes have nothing to say about.
+   *
+   * A machine that cannot be simulated has no cycle, no graphs and no row in
+   * the transport, so in an analysis mode it is scenery: drawn so the reader
+   * can see it is still there, greyed so they can see it is not part of the
+   * question, and not selectable, because every panel behind a selection is
+   * about a machine that runs.
+   */
+  isPartInert(part: Joint | Link): boolean {
+    return this.injector.get(SelectedTabService).isAnalysisMode() && !this.isPartSimulatable(part);
+  }
+
+  /** Is this part of the machine the reader has selected as a whole? */
+  isPartInSelectedMechanism(part: Joint | Link): boolean {
+    return this.isInSelectedMechanism(part);
+  }
+
+  /** Is this part of the machine the reader is pointing at? */
+  isPartInHoveredMechanism(part: Joint | Link): boolean {
+    return this.isInHoveredMechanism(part);
   }
 
   /** Is this part of the machine the reader has selected as a whole? */
@@ -3334,6 +3497,9 @@ export class MechanismService {
   }
 
   getLinkCSSClass(link: Link) {
+    if (this.isPartInert(link)) {
+      return 'link-inert';
+    }
     if (
       this.activeObjService.objType == 'Link' &&
       link.id === this.activeObjService.selectedLink.id

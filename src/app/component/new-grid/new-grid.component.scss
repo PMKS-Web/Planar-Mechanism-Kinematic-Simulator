@@ -78,6 +78,19 @@
     stroke: mat.m2-get-color-from-palette($accent-palette, 200);
   }
 
+  // Scenery in the analysis modes: still drawn, so the reader can see it is
+  // there, but grey and out of the way of the machine being analysed.
+  .link-inert {
+    fill: #c4c7d0 !important;
+    stroke: #c4c7d0 !important;
+    fill-opacity: 0.45;
+  }
+
+  .joint-inert {
+    filter: none;
+    fill: #d9dbe2;
+  }
+
   #mouseLocation {
     position: absolute;
     top: 35px;

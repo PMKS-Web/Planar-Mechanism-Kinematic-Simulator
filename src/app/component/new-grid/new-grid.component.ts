@@ -774,6 +774,14 @@ export class NewGridComponent implements OnDestroy {
   }
 
   setLastLeftClick(clickedObj: Joint | Link | String | Force | SynthesisPose, event?: MouseEvent) {
+    // Scenery in the analysis modes takes no clicks: every panel behind a
+    // selection is about a machine that runs, and this geometry is not in one.
+    if (
+      (clickedObj instanceof Joint || clickedObj instanceof Link) &&
+      this.mechanismSrv.isPartInert(clickedObj)
+    ) {
+      return;
+    }
     this.lastLeftClick = clickedObj;
     // console.warn('Last Left Click: ');
     switch (this.objectKind(clickedObj)) {
@@ -2363,12 +2371,26 @@ export class NewGridComponent implements OnDestroy {
     );
   }
 
-  /** Whether the selection is this cylinder's body, however it was selected. */
+  /**
+   * Whether the selection is this cylinder's body, however it was selected.
+   *
+   * Including by selecting the whole machine it belongs to: the cylinder is
+   * drawn as one part by its own skin rather than through the link classes, so
+   * it was the one body a machine-wide selection left unlit.
+   */
   isBodySelected(mark: CylinderMark): boolean {
-    return (
+    if (
       this.activeObjService.objType === 'Link' &&
       this.activeObjService.selectedLink?.id === mark.body.id
-    );
+    ) {
+      return true;
+    }
+    return this.mechanismSrv.isPartInSelectedMechanism(mark.body);
+  }
+
+  /** The reader is pointing at this cylinder's machine in the transport. */
+  isBodyHovered(mark: CylinderMark): boolean {
+    return this.mechanismSrv.isPartInHoveredMechanism(mark.body);
   }
 
   /**

@@ -23,9 +23,11 @@
     overflow-y: auto;
     overflow-x: hidden;
     box-shadow: var(--card-shadow);
-    // Square at the top, where the accent bar runs the card's full width:
-    // rounding those corners tapers the bar's ends to a point.
-    border-radius: 0 0 var(--card-radius) var(--card-radius);
+    // 5px, matching the 5px accent bar above it: a border's inner edge is
+    // rounded by the corner radius minus the border width, so any radius wider
+    // than the bar curves the bar's underside. The floating chrome has no bar
+    // and keeps the wider corner.
+    border-radius: var(--border-radius);
     display: flex;
     flex-direction: column;
     //gap: 10px;

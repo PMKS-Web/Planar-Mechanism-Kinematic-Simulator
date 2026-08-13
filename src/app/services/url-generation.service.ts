@@ -142,99 +142,96 @@ export class UrlGenerationService {
   }
 
   generateUrlQuery(): string {
-    // First, reset animation to the beginning, but cache animation frame to restore afterwards
-    let cachedAnimationFrame = this.mechanism.mechanismTimeStep;
-    // And whether it was running. Encoding is a round trip through the start
-    // pose, so it has to stop playback -- but it has to hand it back, or any
-    // edit made while the mechanism is moving stops it. Reversing a machine
-    // from the transport is exactly that edit, and it looked like the reverse
-    // button was also a pause button.
-    const wasPlaying = this.mechanism.isPlaying;
-    if (cachedAnimationFrame > 0) this.mechanism.animate(0, false);
+    // The format stores the start pose, so encoding is a round trip through
+    // t = 0 -- and every machine has to come back to its own place afterwards,
+    // not to the master's, which is the mechanism service's job because the
+    // clocks are its. A collaborator that has no clocks to protect -- the
+    // stubs the codec is tested against -- encodes where it stands.
+    const park =
+      this.mechanism.encodeFromStartPose?.bind(this.mechanism) ??
+      ((run: (step: number) => string) => run(this.mechanism.mechanismTimeStep ?? 0));
+    return park((cachedAnimationFrame) => {
+      let encoder = new StringTranscoder();
 
-    let encoder = new StringTranscoder();
+      // add each joint
+      this.mechanism.joints.forEach((joint) => {
+        this._addJointToEncoder(encoder, joint);
+      });
 
-    // add each joint
-    this.mechanism.joints.forEach((joint) => {
-      this._addJointToEncoder(encoder, joint);
+      // add each (non-subset) link
+      this.mechanism.links.forEach((link) => {
+        this._addLinkToEncoder(encoder, link, true);
+      });
+
+      // for each link, add subset links
+      this.mechanism.links.forEach((link) => {
+        if (link instanceof RealLink) {
+          link.subset.forEach((subsetLink) => {
+            this._addLinkToEncoder(encoder, subsetLink, false);
+          });
+        }
+      });
+
+      this.mechanism.forces.forEach((force) => {
+        this._addForceToEncoder(encoder, force);
+      });
+
+      // Encode global settings
+      encoder.addEnumSetting(
+        EnumSetting.LENGTH_UNIT,
+        LengthUnit,
+        this.settings.lengthUnit.getValue()
+      );
+      encoder.addEnumSetting(EnumSetting.ANGLE_UNIT, AngleUnit, this.settings.angleUnit.getValue());
+      const normalizedGlobal =
+        this.settings.lengthUnit.getValue() === LengthUnit.INCH
+          ? GlobalUnit.ENGLISH
+          : this.settings.lengthUnit.getValue() === LengthUnit.METER
+            ? GlobalUnit.SI
+            : GlobalUnit.METRIC;
+      encoder.addEnumSetting(
+        EnumSetting.FORCE_UNIT,
+        ForceUnit,
+        normalizedGlobal === GlobalUnit.ENGLISH ? ForceUnit.LBF : ForceUnit.NEWTON
+      );
+      encoder.addEnumSetting(EnumSetting.GLOBAL_UNIT, GlobalUnit, normalizedGlobal);
+      encoder.addBoolSetting(BoolSetting.IS_INPUT_CW, this.settings.isInputCW.getValue());
+      //encoder.addBoolSetting(BoolSetting.IS_GRAVITY, this.settings.isGravity.getValue());
+      encoder.addIntSetting(IntSetting.INPUT_SPEED, this.settings.inputSpeed.getValue());
+      encoder.addDecimalSetting(
+        DecimalSetting.LINEAR_INPUT_SPEED,
+        this.settings.linearInputSpeed.getValue()
+      );
+      encoder.addBoolSetting(
+        BoolSetting.IS_SHOW_MAJOR_GRID,
+        this.settings.isShowMajorGrid.getValue()
+      );
+      encoder.addBoolSetting(
+        BoolSetting.IS_SHOW_MINOR_GRID,
+        this.settings.isShowMinorGrid.getValue()
+      );
+      encoder.addBoolSetting(BoolSetting.IS_SHOW_ID, this.settings.isShowID.getValue());
+      encoder.addBoolSetting(BoolSetting.IS_SHOW_COM, this.settings.isShowCOM.getValue());
+      encoder.addDecimalSetting(DecimalSetting.SCALE, this.settings.objectScale / MODEL_SCALE);
+
+      encoder.addIntSetting(IntSetting.TIMESTEP, cachedAnimationFrame);
+
+      // Keep this legacy bit enabled so existing URL field positions remain compatible.
+      encoder.addBoolSetting(BoolSetting.IS_FORCES, true);
+
+      // Deliberately empty. What is selected is not part of the mechanism: a
+      // shared link should open on the reader's own nothing-selected, not on
+      // whatever the sender last clicked, and undo -- which replays these URLs --
+      // should move the mechanism rather than the highlight.
+      //
+      // The field itself stays, always empty, because its position in the format
+      // is load-bearing for every URL already shared.
+      encoder.setActiveObj(new ActiveObjData(ACTIVE_TYPE.NOTHING, '_'));
+
+      let urlRaw = encoder.encodeURL();
+
+      return urlRaw;
     });
-
-    // add each (non-subset) link
-    this.mechanism.links.forEach((link) => {
-      this._addLinkToEncoder(encoder, link, true);
-    });
-
-    // for each link, add subset links
-    this.mechanism.links.forEach((link) => {
-      if (link instanceof RealLink) {
-        link.subset.forEach((subsetLink) => {
-          this._addLinkToEncoder(encoder, subsetLink, false);
-        });
-      }
-    });
-
-    this.mechanism.forces.forEach((force) => {
-      this._addForceToEncoder(encoder, force);
-    });
-
-    // Encode global settings
-    encoder.addEnumSetting(
-      EnumSetting.LENGTH_UNIT,
-      LengthUnit,
-      this.settings.lengthUnit.getValue()
-    );
-    encoder.addEnumSetting(EnumSetting.ANGLE_UNIT, AngleUnit, this.settings.angleUnit.getValue());
-    const normalizedGlobal =
-      this.settings.lengthUnit.getValue() === LengthUnit.INCH
-        ? GlobalUnit.ENGLISH
-        : this.settings.lengthUnit.getValue() === LengthUnit.METER
-          ? GlobalUnit.SI
-          : GlobalUnit.METRIC;
-    encoder.addEnumSetting(
-      EnumSetting.FORCE_UNIT,
-      ForceUnit,
-      normalizedGlobal === GlobalUnit.ENGLISH ? ForceUnit.LBF : ForceUnit.NEWTON
-    );
-    encoder.addEnumSetting(EnumSetting.GLOBAL_UNIT, GlobalUnit, normalizedGlobal);
-    encoder.addBoolSetting(BoolSetting.IS_INPUT_CW, this.settings.isInputCW.getValue());
-    //encoder.addBoolSetting(BoolSetting.IS_GRAVITY, this.settings.isGravity.getValue());
-    encoder.addIntSetting(IntSetting.INPUT_SPEED, this.settings.inputSpeed.getValue());
-    encoder.addDecimalSetting(
-      DecimalSetting.LINEAR_INPUT_SPEED,
-      this.settings.linearInputSpeed.getValue()
-    );
-    encoder.addBoolSetting(
-      BoolSetting.IS_SHOW_MAJOR_GRID,
-      this.settings.isShowMajorGrid.getValue()
-    );
-    encoder.addBoolSetting(
-      BoolSetting.IS_SHOW_MINOR_GRID,
-      this.settings.isShowMinorGrid.getValue()
-    );
-    encoder.addBoolSetting(BoolSetting.IS_SHOW_ID, this.settings.isShowID.getValue());
-    encoder.addBoolSetting(BoolSetting.IS_SHOW_COM, this.settings.isShowCOM.getValue());
-    encoder.addDecimalSetting(DecimalSetting.SCALE, this.settings.objectScale / MODEL_SCALE);
-
-    encoder.addIntSetting(IntSetting.TIMESTEP, cachedAnimationFrame);
-
-    // Keep this legacy bit enabled so existing URL field positions remain compatible.
-    encoder.addBoolSetting(BoolSetting.IS_FORCES, true);
-
-    // Deliberately empty. What is selected is not part of the mechanism: a
-    // shared link should open on the reader's own nothing-selected, not on
-    // whatever the sender last clicked, and undo -- which replays these URLs --
-    // should move the mechanism rather than the highlight.
-    //
-    // The field itself stays, always empty, because its position in the format
-    // is load-bearing for every URL already shared.
-    encoder.setActiveObj(new ActiveObjData(ACTIVE_TYPE.NOTHING, '_'));
-
-    let urlRaw = encoder.encodeURL();
-
-    // Restore animation frame
-    if (cachedAnimationFrame > 0) this.mechanism.animate(cachedAnimationFrame, wasPlaying);
-
-    return urlRaw;
   }
 
   getURLPrefix(): string {

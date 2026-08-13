@@ -20,8 +20,14 @@ export class SettingsService {
   // inputTorque = new BehaviorSubject(TorqueUnit.CM_N);
   globalUnit = new BehaviorSubject(GlobalUnit.METRIC);
   isInputCW = new BehaviorSubject(true);
-  /** Always RPM. The input panel converts for display via inputSpeedUnit. */
-  inputSpeed = new BehaviorSubject(20);
+  /**
+   * Always RPM. The input panel converts for display via inputSpeedUnit.
+   *
+   * Slow on purpose: the point of the animation is to be watched, and 20 RPM
+   * is three seconds a turn, which is faster than a reader can follow a coupler
+   * point round.
+   */
+  inputSpeed = new BehaviorSubject(5);
   /**
    * Display unit for the input joint's speed. Chosen from the Input Settings
    * section rather than typed, so it is a view preference only — inputSpeed
