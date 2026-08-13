@@ -301,7 +301,11 @@ export class ForceSolver {
     for (const assembly of slideAssemblies(joints)) {
       // A dangling guide exerts nothing, so it owes no couple either.
       if (!assembly.slider.ground && !assembly.slider.isFloating) continue;
-      const rider = this.rootBody(bodies, assembly.riders[0]);
+      // A settled weld has fused every rider into one compound. Mid-edit, the
+      // riders can still be several distinct bodies, and one couple cannot
+      // speak for all of them — refuse rather than pick a favourite.
+      const riderRoots = new Set(assembly.riders.map((leaf) => this.rootBody(bodies, leaf)));
+      const rider = riderRoots.size === 1 ? [...riderRoots][0] : undefined;
       const carrier = assembly.slider.isFloating
         ? this.rootBody(bodies, assembly.slider.carrier)
         : undefined;
@@ -578,9 +582,10 @@ export class ForceSolver {
         // A grounded slot pushes against the world, which needs no equation of
         // its own. A floating one pushes against the carrier, and that reaction
         // has to appear in the carrier's equilibrium as well or the slot
-        // transmits force out of nowhere.
+        // transmits force out of nowhere. Resolved through compounds: a weld
+        // may have folded the carrier into a root whose id is not its own.
         const carrier = candidate.isFloating
-          ? bodies.find((body) => body.id === candidate.carrier?.id)
+          ? this.rootBody(bodies, candidate.carrier)
           : undefined;
         if (piston && (candidate.ground || carrier)) {
           reactions.push({
@@ -672,7 +677,7 @@ export class ForceSolver {
     // `joints`, so without this the body on the far side of the slot is simply
     // missing from the joint's incidence.
     if (joint instanceof PrisJoint && joint.isFloating) {
-      add(bodies.find((body) => body.id === joint.carrier?.id));
+      add(this.rootBody(bodies, joint.carrier));
     }
     return ordered;
   }

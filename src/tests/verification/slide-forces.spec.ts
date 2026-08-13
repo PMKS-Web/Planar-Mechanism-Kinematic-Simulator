@@ -39,8 +39,12 @@ import {
 /** Horizontal load on the yoke, newtons. */
 const P = 40;
 
-const loadedYoke = (fixture: MechanismFixture): Mechanism => {
-  fixture.load = { onLink: 'CD', at: [YOKE_CRANK, SLOT_RISE], vector: [P, 0] };
+const loadedYoke = (
+  fixture: MechanismFixture,
+  at: [number, number] = [YOKE_CRANK, SLOT_RISE],
+  vector: [number, number] = [P, 0]
+): Mechanism => {
+  fixture.load = { onLink: 'CD', at, vector };
   return buildMechanism(fixture).mechanism;
 };
 
@@ -88,6 +92,22 @@ describe('force analysis of a welded slide assembly', () => {
       const expected = handStatics(mechanism, t, 'D');
       expect(frame.inputEffort!.valueSI).toBeCloseTo(expected.torque, 6);
       expect(frame.guideCouples.get('G')).toBeCloseTo(expected.couple, 6);
+    });
+  });
+
+  it('carries a tilted, offset load: the transverse term reaches the couple', () => {
+    // The first two sweeps have fy = 0 and the load directly above the guide
+    // pin, so the −fy·(x_L − x_G) term of the couple is silently zero and a
+    // solver that dropped it would still pass them. This load is tilted and
+    // hung 0.6 to the side, so both terms carry weight on every frame.
+    const mechanism = loadedYoke(scotchYokeFixture(), [YOKE_CRANK + 0.6, 0.9], [P, -25]);
+    const series = mechanism.getForceAnalysis('static');
+    everyFrameOk(series);
+
+    series.frames.forEach((frame, t) => {
+      const expected = handStatics(mechanism, t, 'C');
+      expect(frame.inputEffort!.valueSI).toBeCloseTo(expected.torque, 6);
+      expect(frame.guideCouples.get('F')).toBeCloseTo(expected.couple, 6);
     });
   });
 
