@@ -727,7 +727,9 @@ export class RealLink extends Link {
 
   updateCoMDs() {
     //This is such a bad way of doing this. Just import the SVG file from the assets folder and use that instead of constructing the exact same thing every time.
-    const radius = SettingsService.objectScale * 0.2;
+    // Small. The mark says where the centre of mass is; at the size it was, on
+    // a drawing with several links, it was the loudest thing on the canvas.
+    const radius = SettingsService.objectScale * 0.11;
     this._CoM_d1 =
       'M' +
       this.CoM.x +

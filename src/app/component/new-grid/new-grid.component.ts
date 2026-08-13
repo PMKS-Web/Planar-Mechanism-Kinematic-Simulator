@@ -189,6 +189,20 @@ export class NewGridComponent implements OnDestroy {
   /** Where the link being dragged was last placed, in SVG coordinates. */
   private linkDragAnchor: Coord = new Coord(0, 0);
 
+  /**
+   * Where the dragged body's reference point stood when the drag began.
+   *
+   * Snapping needs the whole distance dragged, not this frame's part of it: a
+   * single pointer event moves a few units, which rounds to no move at all, and
+   * a body measured frame by frame would never leave its corner however far the
+   * cursor went.
+   *
+   * Taken on the first move rather than at the press, because which point is
+   * the reference depends on what turned out to be under the cursor -- a bar's
+   * first joint, or the mount a ram is named from.
+   */
+  private bodyDragOrigin?: { at: Coord; from: Coord };
+
   //This is terrible but:
   // -2 => hidden
   // -1 => Link length and angle shown
@@ -1070,6 +1084,7 @@ export class NewGridComponent implements OnDestroy {
   }
 
   mouseMove($event: MouseEvent) {
+    this.snapSuspended = $event.altKey;
     const mousePosInSvg = this.svgGrid.screenToSVGfromXY($event.clientX, $event.clientY);
     this.lastMouseLocation = this.mouseLocation;
     this.originInScreen = this.svgGrid.SVGtoScreen(new Coord(0, 0));
@@ -1125,7 +1140,11 @@ export class NewGridComponent implements OnDestroy {
           // does not drag one and deform the other.
           const wanted = this.snapTargetJoint
             ? new Coord(this.snapTargetJoint.x, this.snapTargetJoint.y)
-            : this.mountAxisSnap(draggedCylinders[0], mousePosInSvg);
+            : this.mountAxisSnap(
+                draggedCylinders[0],
+                this.activeObjService.selectedJoint,
+                mousePosInSvg
+              );
           // Through dragJoint rather than straight at dragCylinderMount, so a
           // mount two rams share is agreed between them before either moves.
           this.gridUtils.dragJoint(this.activeObjService.selectedJoint, wanted);
@@ -1168,7 +1187,13 @@ export class NewGridComponent implements OnDestroy {
             ? new Coord(this.snapTargetJoint.x, this.snapTargetJoint.y)
             : this.slotCandidate
               ? new Coord(this.slotCandidate.x, this.slotCandidate.y)
-              : this.alongItsSlot(this.activeObjService.selectedJoint, mousePosInSvg)
+              : this.alongItsSlot(
+                  this.activeObjService.selectedJoint,
+                  // Last, and only here: a capture is a target the reader
+                  // picked, and a joint on a slot has a line to stay on. The
+                  // grid gets the position nothing else has a claim on.
+                  this.svgGrid.snapToGrid(mousePosInSvg, $event.altKey)
+                )
         );
         this.dragState.noteMechanismModified();
         //So that the panel values update continously
@@ -1191,18 +1216,47 @@ export class NewGridComponent implements OnDestroy {
         const bodyCylinder = this.mechanismSrv.cylinderAt(this.activeObjService.selectedLink);
         if (bodyCylinder) {
           // Dragging the body translates the whole assembly rigidly; the
-          // mounts are the handles for re-posing.
-          this.gridUtils.dragCylinder(
-            bodyCylinder,
-            mousePosInSvg.x - this.linkDragAnchor.x,
-            mousePosInSvg.y - this.linkDragAnchor.y
+          // mounts are the handles for re-posing. It squares up and lands on
+          // the grid the same way a bar does, measured on the mount the ram is
+          // named from -- its own joints are excluded, because they move with
+          // the drag and squaring against them is the drag chasing its tail.
+          const mount = bodyCylinder.barrelFar;
+          const target = this.placeDraggedBody(
+            mount,
+            mousePosInSvg,
+            new Set(cylinderJoints(bodyCylinder).map((joint) => joint.id))
           );
+          this.gridUtils.dragCylinder(bodyCylinder, target.x - mount.x, target.y - mount.y);
+          this.linkDragAnchor = mousePosInSvg;
+          this.dragState.noteMechanismModified();
+          this.activeObjService.updateSelectedObj(this.activeObjService.selectedLink);
+          this.showPathWhileDragging();
+          break;
         } else {
+          // A rigid body cannot put every joint on the grid -- its lengths are
+          // what they are -- so one of them is the one that lands, and the
+          // rest keep their places around it. The first joint, which is the
+          // one the link is named from.
+          //
+          // Measured from where the grab started, not from the last frame: one
+          // pointer event is a few units, which rounds to no move at all, and a
+          // link asked frame by frame would sit on its corner for ever.
+          const reference = this.activeObjService.selectedLink.joints[0];
+          const landed = this.placeDraggedBody(
+            reference,
+            mousePosInSvg,
+            new Set(this.activeObjService.selectedLink.joints.map((joint) => joint.id))
+          );
           this.gridUtils.dragLink(
             this.activeObjService.selectedLink,
-            mousePosInSvg.x - this.linkDragAnchor.x,
-            mousePosInSvg.y - this.linkDragAnchor.y
+            landed.x - reference.x,
+            landed.y - reference.y
           );
+          this.linkDragAnchor = mousePosInSvg;
+          this.dragState.noteMechanismModified();
+          this.activeObjService.updateSelectedObj(this.activeObjService.selectedLink);
+          this.showPathWhileDragging();
+          break;
         }
         this.linkDragAnchor = mousePosInSvg;
         this.dragState.noteMechanismModified();
@@ -1411,8 +1465,65 @@ export class NewGridComponent implements OnDestroy {
     return 4 * MARK.barHalf * 0.15 * this.settings.objectScale;
   }
 
+  /**
+   * Where a whole body being dragged should put its reference point.
+   *
+   * The same two helpers a joint drag gets, in the same order. Alignment first,
+   * because squaring up with a real neighbour is a more specific intent than
+   * landing on an anonymous grid corner -- and the guide line says which
+   * neighbour, where the grid says nothing. The grid catches what alignment
+   * does not.
+   */
+  private placeDraggedBody(
+    reference: { x: number; y: number },
+    cursor: Coord,
+    exclude: Set<string>
+  ): Coord {
+    // Measured from the press, not from this first qualifying move: the moves
+    // held back below the click threshold are still part of the gesture, and
+    // starting the sum after them leaves the body trailing the cursor by
+    // however far the hold lasted.
+    this.bodyDragOrigin ??= {
+      at: new Coord(reference.x, reference.y),
+      from: new Coord(this.linkDragAnchor.x, this.linkDragAnchor.y),
+    };
+    const held = this.bodyDragOrigin;
+    const wanted = new Coord(
+      held.at.x + (cursor.x - held.from.x),
+      held.at.y + (cursor.y - held.from.y)
+    );
+
+    if (this.alignmentAllowed()) {
+      const others = this.mechanismSrv
+        .getJoints()
+        .filter((other) => !exclude.has(other.id) && !(other instanceof PrisJoint));
+      const aligned = snapToAxes(wanted, others, this.svgGrid.scaleWithZoom(8));
+      if (aligned.guides.length > 0) {
+        this.axisSnapGuides = aligned.guides;
+        return new Coord(aligned.point.x, aligned.point.y);
+      }
+    }
+    this.axisSnapGuides = [];
+    return this.svgGrid.snapToGrid(wanted, this.snapSuspended);
+  }
+
   /** Lines showing which joints a drag has just squared itself against. */
   public axisSnapGuides: SnapGuide[] = [];
+
+  /**
+   * Whether the Option key is down, meaning "no help from the app".
+   *
+   * Read at the top of every move rather than passed down: the axis snap is
+   * reached through `alongItsSlot`, three call sites deep, and a flag set once
+   * a gesture is easier to keep true than a parameter threaded through all of
+   * them.
+   */
+  private snapSuspended = false;
+
+  /** Is the app allowed to square this drag up with anything? */
+  private alignmentAllowed(): boolean {
+    return this.settings.isSnapToAlignment.value && !this.snapSuspended;
+  }
 
   /**
    * Pull a free drag onto a neighbour's axis when it is nearly on it.
@@ -1422,6 +1533,10 @@ export class NewGridComponent implements OnDestroy {
    * where the joint goes.
    */
   private withAxisSnap(joint: Joint, wanted: Coord): Coord {
+    if (!this.alignmentAllowed()) {
+      this.axisSnapGuides = [];
+      return wanted;
+    }
     const others = this.mechanismSrv
       .getJoints()
       .filter((other) => other.id !== joint.id && !(other instanceof PrisJoint));
@@ -1435,8 +1550,20 @@ export class NewGridComponent implements OnDestroy {
    * they move with the drag, so squaring the mount against them would be the
    * drag chasing its own tail. Every other joint's H/V guides still work.
    */
-  private mountAxisSnap(sealed: Cylinder, wanted: Coord): Coord {
+  private mountAxisSnap(sealed: Cylinder, dragged: Joint | undefined, wanted: Coord): Coord {
+    if (!this.alignmentAllowed()) {
+      this.axisSnapGuides = [];
+      return wanted;
+    }
     const memberIds = new Set(cylinderJoints(sealed).map((joint) => joint.id));
+    // All but the mount at the other end. That one does not move when this one
+    // is dragged, so it is exactly the thing to square up against -- and
+    // squaring a ram against its own far mount is what stands it at 0, 90 or
+    // 180, which is what a bar has always been able to do against its own far
+    // joint. The rest of the assembly travels with the drag, and squaring
+    // against those is the drag chasing its own tail.
+    const opposite = dragged?.id === sealed.barrelFar.id ? sealed.rodFar : sealed.barrelFar;
+    memberIds.delete(opposite.id);
     const others = this.mechanismSrv
       .getJoints()
       .filter((other) => !memberIds.has(other.id) && !(other instanceof PrisJoint));
@@ -1690,6 +1817,7 @@ export class NewGridComponent implements OnDestroy {
     // first move would translate the link by the distance from whatever
     // unrelated pointer event came last — a jump on grab.
     this.linkDragAnchor = mousePosInSvg;
+    this.bodyDragOrigin = undefined;
 
     switch ($event.button) {
       case 0: // Handle Left-Click on canvas
@@ -2525,6 +2653,85 @@ export class NewGridComponent implements OnDestroy {
   isSecondaryCylinderTag(link: Link): boolean {
     const sealed = this.mechanismSrv.cylinderAt(link);
     return !!sealed && link.id !== sealed.barrel.id;
+  }
+
+  /**
+   * Where a link's name goes, and in what ink.
+   *
+   * The anchor is the average of the joints the link is made of, which is
+   * inside the hull they describe -- and the body is drawn around that hull, so
+   * it is inside the body. Not the centre of mass, which is a physical property
+   * with a field of its own in the Edit panel: a link told its mass sits out at
+   * one end is a link whose name was written off the metal.
+   *
+   * Two bodies are not their own hull. A welded link is the Boolean union of
+   * its parts and can be any shape at all -- an L has nothing in the crook --
+   * so the name goes in the middle of its biggest part, which is inside the
+   * union because that part is. And a bar carrying a slot is drawn as a rail
+   * with a channel down it, so the name goes in the channel, in full black:
+   * there is no body colour behind it there to be read against.
+   */
+  linkLabelStyle(link: Link): { x: number; y: number; ink: string; opacity: number } {
+    const slot = this.slotCarriedBy(link);
+    if (slot) {
+      const [from, to] = [slot.slotJointA!, slot.slotJointB!];
+      return {
+        x: (from.x + to.x) / 2,
+        y: (from.y + to.y) / 2,
+        ink: 'black',
+        opacity: 1,
+      };
+    }
+    const parts = (link instanceof RealLink ? link.subset : []) ?? [];
+    const middleOf = (of: Link) => {
+      const joints = of.joints ?? [];
+      if (joints.length === 0) return { x: 0, y: 0 };
+      return {
+        x: joints.reduce((total, joint) => total + joint.x, 0) / joints.length,
+        y: joints.reduce((total, joint) => total + joint.y, 0) / joints.length,
+      };
+    };
+    const span = (part: Link) => {
+      const first = part.joints[0];
+      const last = part.joints[part.joints.length - 1];
+      return first && last ? Math.hypot(last.x - first.x, last.y - first.y) : 0;
+    };
+    const on =
+      parts.length === 0
+        ? link
+        : parts.reduce((best, part) => (span(part) > span(best) ? part : best));
+    return { ...middleOf(on), ink: this.linkLabelInk(link), opacity: 0.55 };
+  }
+
+  /** The slot this bar carries, if it is a plain bar carrying one. */
+  private slotCarriedBy(link: Link): PrisJoint | undefined {
+    if ((link.joints?.length ?? 0) !== 2) return undefined;
+    return this.mechanismSrv.joints.find(
+      (joint): joint is PrisJoint =>
+        joint instanceof PrisJoint &&
+        joint.carrier?.id === link.id &&
+        !!joint.slotJointA &&
+        !!joint.slotJointB
+    );
+  }
+
+  /**
+   * Black or white, whichever the link's own colour can be read against.
+   *
+   * The label sits on the body it names, and the bodies run from pale mint to
+   * navy, so one ink cannot serve them all. Relative luminance decides it, the
+   * same rule a contrast checker uses.
+   */
+  linkLabelInk(link: Link): string {
+    const fill = (link as { fill?: string }).fill ?? '#ffffff';
+    const hex = fill.replace('#', '');
+    if (hex.length < 6) return 'black';
+    const channel = (at: number) => {
+      const value = parseInt(hex.slice(at, at + 2), 16) / 255;
+      return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    };
+    const luminance = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+    return luminance > 0.45 ? 'black' : 'white';
   }
 
   linkDisplayName(link: Link): string {

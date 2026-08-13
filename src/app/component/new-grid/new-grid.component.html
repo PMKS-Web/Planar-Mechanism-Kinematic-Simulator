@@ -116,8 +116,8 @@
                 [attr.y1]="svgGrid.viewBoxMinY"
                 [attr.x2]="line"
                 [attr.y2]="svgGrid.viewBoxMaxY"
-                stroke="black"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(0.15)"
+                class="gridLineMinor"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
               ></line>
             </ng-container>
           }
@@ -128,8 +128,8 @@
                 [attr.y1]="line"
                 [attr.x2]="svgGrid.viewBoxMaxX"
                 [attr.y2]="line"
-                stroke="black"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(0.15)"
+                class="gridLineMinor"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
               ></line>
             </ng-container>
           }
@@ -145,8 +145,8 @@
                 [attr.y1]="svgGrid.viewBoxMinY"
                 [attr.x2]="line"
                 [attr.y2]="svgGrid.viewBoxMaxY"
-                stroke="black"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(0.75)"
+                class="gridLineMajor"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
               ></line>
             </ng-container>
           }
@@ -157,8 +157,8 @@
                 [attr.y1]="line"
                 [attr.x2]="svgGrid.viewBoxMaxX"
                 [attr.y2]="line"
-                stroke="black"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(0.75)"
+                class="gridLineMajor"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
               ></line>
             </ng-container>
           }
@@ -171,7 +171,7 @@
         y1="0"
         [attr.x2]="svgGrid.viewBoxMaxX"
         y2="0"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
       ></line>
       <line
         id="axes"
@@ -179,7 +179,7 @@
         [attr.y1]="svgGrid.viewBoxMinY"
         x2="0"
         [attr.y2]="svgGrid.viewBoxMaxY"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
       ></line>
       <!-- Axes Labels -->
       <ng-container>
@@ -190,8 +190,8 @@
               text-anchor="middle"
               [attr.x]="line"
               [attr.y]="svgGrid.scaleWithZoom(20)"
-              [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
-              [attr.font-size]="svgGrid.scaleWithZoom(15)"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+              [attr.font-size]="svgGrid.scaleWithZoom(14)"
             >
               {{ axisLabel(line) }}
             </text>
@@ -204,8 +204,8 @@
               text-anchor="end"
               [attr.y]="line"
               [attr.x]="svgGrid.scaleWithZoom(-10)"
-              [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
-              [attr.font-size]="svgGrid.scaleWithZoom(15)"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+              [attr.font-size]="svgGrid.scaleWithZoom(14)"
             >
               {{ axisLabel(-line) }}
             </text>
@@ -216,8 +216,8 @@
           text-anchor="end"
           [attr.y]="svgGrid.scaleWithZoom(20)"
           [attr.x]="svgGrid.scaleWithZoom(-10)"
-          [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
-          [attr.font-size]="svgGrid.scaleWithZoom(15)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          [attr.font-size]="svgGrid.scaleWithZoom(14)"
         >
           0
         </text>
@@ -1115,7 +1115,10 @@
           <!-- While a joint is captured, the two names sit on the same point and
                overlap into an unreadable smudge. One label naming the merge says
                what is about to happen instead. -->
-          <text style="font-size: {{ svgGrid.scaleWithZoom(20) }}px; text-anchor: middle">
+          <text
+            [attr.stroke-width]="settings.objectScale * 0.035"
+            style="font-size: {{ settings.objectScale * 0.18 }}px; text-anchor: middle"
+          >
             {{ mergeLabel }}
           </text>
         } @else if (
@@ -1126,7 +1129,10 @@
             (this.activeObjService.selectedJoint == joint &&
               this.activeObjService.objType == 'Joint'))
         ) {
-          <text style="font-size: {{ svgGrid.scaleWithZoom(20) }}px; text-anchor: middle">
+          <text
+            [attr.stroke-width]="settings.objectScale * 0.035"
+            style="font-size: {{ settings.objectScale * 0.18 }}px; text-anchor: middle"
+          >
             {{ joint.name }}
           </text>
         }
@@ -1138,34 +1144,31 @@
       @for (link of mechanismSrv.getLinks(); track link) {
         @if (settings.isShowCOM.value || settings.previewCoMLinkId === link.id) {
           <svg style="overflow: visible">
-            <path
-              stroke-width="2"
-              stroke-linejoin="round"
-              fill="black"
-              opacity="1.0"
-              [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d1')"
-            ></path>
-            <path
-              stroke-width="2"
-              stroke-linejoin="round"
-              fill="white"
-              opacity="1.0"
-              [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d2')"
-            ></path>
-            <path
-              stroke-width="2"
-              stroke-linejoin="round"
-              fill="black"
-              opacity="1.0"
-              [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d3')"
-            ></path>
-            <path
-              stroke-width="2"
-              stroke-linejoin="round"
-              fill="white"
-              opacity="1.0"
-              [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d4')"
-            ></path>
+            <!-- The standard mark, drawn to be read over whatever is beneath it.
+                 Two of the four quarters are filled and the other two are not
+                 painted at all, so the link's own colour shows through where the
+                 white used to be, and everything is half opaque. The outline is
+                 the same four wedges stroked rather than a circle drawn beside
+                 them -- one set of coordinates, so it cannot land anywhere else. -->
+            @for (
+              quarter of [
+                mechanismSrv.getLinkProp(link, 'CoM_d1'),
+                mechanismSrv.getLinkProp(link, 'CoM_d2'),
+                mechanismSrv.getLinkProp(link, 'CoM_d3'),
+                mechanismSrv.getLinkProp(link, 'CoM_d4')
+              ];
+              track $index
+            ) {
+              <path
+                [attr.d]="quarter"
+                [attr.fill]="$index % 2 === 0 ? 'black' : 'none'"
+                fill-opacity="0.45"
+                stroke="black"
+                stroke-opacity="0.45"
+                stroke-linejoin="round"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+              ></path>
+            }
           </svg>
         }
       }
@@ -1174,21 +1177,31 @@
   <g id="linkTagHolder" style="pointer-events: none">
     @for (link of mechanismSrv.getLinks(); track link) {
       <svg
-        [attr.x]="mechanismSrv.getLinkProp(link, 'CoMX')"
-        [attr.y]="mechanismSrv.getLinkProp(link, 'CoMY')"
+        [attr.x]="linkLabelStyle(link).x"
+        [attr.y]="-linkLabelStyle(link).y"
         [attr.height]="10"
         [attr.width]="10"
         style="overflow: visible; text-anchor: middle"
       >
+        <!-- Always drawn, unlike the joint and force labels: a link is a body
+             with room to hold its own name, and the name is how the panels and
+             the analysis refer to it. The toggle still governs the labels that
+             would otherwise crowd the joints. -->
         @if (
           this.showLinkLengthOverlay < -1 &&
           this.showLinkAngleOverlay < -1 &&
           !isSecondaryCylinderTag(link) &&
-          ((gridUtils.typeOfLink(link) !== 'P' && settings.isShowID.value) ||
-            link.showHighlight ||
-            (this.activeObjService.selectedLink == link && this.activeObjService.objType == 'Link'))
+          gridUtils.typeOfLink(link) !== 'P'
         ) {
-          <text style="font-size: {{ svgGrid.scaleWithZoom(20) }}px; text-anchor: middle">
+          <!-- Both the name and the centre-of-mass mark belong at the centre
+               of the link, so when the mark is being shown the name steps up
+               out of its way. -->
+          <text
+            [attr.fill]="linkLabelStyle(link).ink"
+            [attr.fill-opacity]="linkLabelStyle(link).opacity"
+            [attr.dy]="settings.isShowCOM.value ? -settings.objectScale * 0.13 : 0"
+            style="font-size: {{ settings.objectScale * 0.18 }}px; text-anchor: middle"
+          >
             {{ linkDisplayName(link) }}
           </text>
         }
@@ -1209,7 +1222,7 @@
           force.showHighlight ||
           (this.activeObjService.selectedForce == force && this.activeObjService.objType == 'Force')
         ) {
-          <text style="font-size: {{ svgGrid.scaleWithZoom(20) }}px; text-anchor: left">
+          <text style="font-size: {{ settings.objectScale * 0.18 }}px; text-anchor: left">
             {{ force.name }}
           </text>
         }

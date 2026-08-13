@@ -1,7 +1,7 @@
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { environment } from '../../../environments/environment';
 import { Component, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
-import { SettingsService } from 'src/app/services/settings.service';
+import { SettingsService, writeStoredFlag } from 'src/app/services/settings.service';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
@@ -56,6 +56,8 @@ export class SettingsPanelComponent implements OnDestroy {
       globalunit: (this.currentGlobalUnit - 30).toString(),
       showMajorGrid: this.settingsService.isShowMajorGrid.value,
       showMinorGrid: this.settingsService.isShowMinorGrid.value,
+      snapToGrid: this.settingsService.isSnapToGrid.value,
+      snapToAlignment: this.settingsService.isSnapToAlignment.value,
     });
 
     this.settingsSubscriptions.add(
@@ -158,6 +160,20 @@ export class SettingsPanelComponent implements OnDestroy {
       this.settingsService.isShowMajorGrid.next(Boolean(val));
       this.mechanismSrv.updateMechanism();
     });
+    // Remembered on this machine rather than written to the URL: see
+    // SettingsService.isSnapToGrid.
+    this.settingsForm.controls['snapToGrid'].valueChanges.subscribe((val) => {
+      const on = val === true;
+      this.settingsService.isSnapToGrid.next(on);
+      writeStoredFlag('snapToGrid', on);
+    });
+
+    this.settingsForm.controls['snapToAlignment'].valueChanges.subscribe((val) => {
+      const on = val === true;
+      this.settingsService.isSnapToAlignment.next(on);
+      writeStoredFlag('snapToAlignment', on);
+    });
+
     this.settingsForm.controls['showMinorGrid'].valueChanges.subscribe((val) => {
       this.settingsService.isShowMinorGrid.next(Boolean(val));
       this.mechanismSrv.updateMechanism();
@@ -235,6 +251,8 @@ export class SettingsPanelComponent implements OnDestroy {
       globalunit: ['', { updateOn: 'change' }],
       showMinorGrid: [true, { updateOn: 'change' }],
       showMajorGrid: [true, { updateOn: 'change' }],
+      snapToGrid: [false, { updateOn: 'change' }],
+      snapToAlignment: [true, { updateOn: 'change' }],
     },
     { updateOn: 'blur' }
   );
