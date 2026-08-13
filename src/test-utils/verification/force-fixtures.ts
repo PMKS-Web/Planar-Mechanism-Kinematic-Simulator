@@ -57,8 +57,9 @@ export function punchPressFixture(): MechanismFixture {
  * held by a *tie bar* is what a crane looks like in a drawing and is a
  * structure, not a mechanism — two bars and the ground make a triangle, and a
  * triangle has nothing to analyse. Luffing it with a **ram** moves, but the
- * force analysis reports an unsupported topology for a sealed cylinder, and a
- * force demonstration whose force panel is empty is not one.
+ * force analysis of the day reported an unsupported topology for a sealed
+ * cylinder (it solves one now — see cylinder-forces.spec.ts), and a force
+ * demonstration whose force panel is empty is not one.
  *
  * So it luffs on a crank and a link, which is how a derrick actually raises its
  * boom, and every joint in it is a pin. The point on a force panel is the size

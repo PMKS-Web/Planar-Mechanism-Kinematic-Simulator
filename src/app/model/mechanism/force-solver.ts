@@ -27,6 +27,12 @@ export interface ForceAnalysisFrame {
   jointReactionsByLink: Map<string, Map<string, ForceVector>>;
   /** Compatibility/default view: the resultant on the joint's first root body. */
   jointReactions: Map<string, ForceVector>;
+  /**
+   * The couple each welded guide applies to its rider, keyed by the sliding
+   * joint's id. N·m, counterclockwise-positive on the rider. Only welded
+   * prismatic pairs carry one; a free-turning block cannot transmit a moment.
+   */
+  guideCouples: Map<string, number>;
   inputEffort?: ForceAnalysisEffort;
   rank: number;
   residual: number;
@@ -83,6 +89,25 @@ interface ReactionUnknown {
   positiveBody: Link;
   negativeBody?: Link;
   direction: ForceVector;
+  column: number;
+}
+
+/**
+ * The couple a welded guide transmits (docs/phase-3-slide-spec.md §3.8, §9).
+ *
+ * A free-turning block exchanges only a normal force with its slot. Welding a
+ * rider to the block stops the pair rotating, so the guide must also supply a
+ * moment — the unknown the count guard used to come up one short by. The block
+ * is zero-length and has no moment equation, so the couple passes through it
+ * untouched and can couple the rider to the guide directly.
+ */
+interface GuideCouple {
+  /** The sliding joint whose guide supplies the couple. */
+  slider: PrisJoint;
+  /** The root body the weld holds rigid with the block; +1 in its moment row. */
+  rider: RealLink;
+  /** The slot's carrier when it is cut into a moving body; −1 in its moment row. */
+  carrier?: Link;
   column: number;
 }
 
@@ -212,9 +237,12 @@ export class ForceSolver {
       frames,
       successfulFrames,
       reactionIndex: this.buildReactionIndex(mechanism.joints[0] ?? [], mechanism.links[0] ?? []),
+      // The frame's own message first: it names the joint or the count, where
+      // the status alone can only say "topology".
       diagnostic:
         successfulFrames === 0
-          ? this.statusMessage(frames[0]?.status ?? 'unsupported-topology')
+          ? (frames[0]?.message ??
+            this.statusMessage(frames[0]?.status ?? 'unsupported-topology'))
           : undefined,
     };
   }
@@ -244,26 +272,13 @@ export class ForceSolver {
       timeSeconds,
       jointReactionsByLink: new Map(),
       jointReactions: new Map(),
+      guideCouples: new Map(),
       rank,
       residual,
       message,
     });
 
     if (bodies.length === 0) return empty('unsupported-topology');
-    // A welded slide assembly is refused by name rather than by arithmetic
-    // (docs/phase-3-slide-spec.md §3.8). The equation count catches it too --
-    // it comes out one unknown short, because a prismatic pair welded to a body
-    // with a moment equation transmits a couple the model has no column for --
-    // but a count that happens to be wrong is not a reason, and it would go
-    // quiet the moment some other change made the numbers balance.
-    const welded = slideAssemblies(joints);
-    if (welded.length > 0) {
-      return empty(
-        'unsupported-topology',
-        `Joint ${welded[0].weldJoint.id} welds ${welded[0].riders[0].id} rigidly to its slider. ` +
-          'A prismatic pair carrying a moment has no force solution here yet.'
-      );
-    }
     if (!this.propertiesAreValid(bodies, units)) return empty('invalid-properties');
     if (mode === 'dynamic' && !this.kinematicsAreComplete(bodies, kinematics)) {
       return empty('missing-kinematics');
@@ -278,6 +293,36 @@ export class ForceSolver {
     }
 
     const { reactions, incidentByJoint } = this.enumerateReactions(joints, bodies);
+
+    // One couple unknown per welded slide (docs/phase-3-slide-spec.md §9).
+    // Shapes the couple cannot be written for are refused by name rather than
+    // left to the count guard, which would only catch them by coincidence.
+    const couples: GuideCouple[] = [];
+    for (const assembly of slideAssemblies(joints)) {
+      // A dangling guide exerts nothing, so it owes no couple either.
+      if (!assembly.slider.ground && !assembly.slider.isFloating) continue;
+      const rider = this.rootBody(bodies, assembly.riders[0]);
+      const carrier = assembly.slider.isFloating
+        ? this.rootBody(bodies, assembly.slider.carrier)
+        : undefined;
+      if (
+        !(rider instanceof RealLink) ||
+        rider === carrier ||
+        (carrier !== undefined && !(carrier instanceof RealLink))
+      ) {
+        return empty(
+          'unsupported-topology',
+          `Joint ${assembly.weldJoint.id} welds ${assembly.riders[0]?.id ?? 'a link'} rigidly ` +
+            'to its slider, and that shape has no force model.'
+        );
+      }
+      couples.push({
+        slider: assembly.slider,
+        rider,
+        carrier,
+        column: reactions.length + couples.length,
+      });
+    }
 
     const inputJoint = joints.find(
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
@@ -299,7 +344,7 @@ export class ForceSolver {
       }
     }
 
-    const unknownCount = reactions.length + (inputBody && inputKind ? 1 : 0);
+    const unknownCount = reactions.length + couples.length + (inputBody && inputKind ? 1 : 0);
     if (unknownCount !== rowCount) {
       return empty(
         'unsupported-topology',
@@ -346,7 +391,15 @@ export class ForceSolver {
       }
     }
 
-    const inputColumn = reactions.length;
+    // A couple has no force resultant: it enters moment rows alone.
+    for (const couple of couples) {
+      A[bodyRows.get(couple.rider.id)!.start + 2][couple.column] += 1;
+      if (couple.carrier) {
+        A[bodyRows.get(couple.carrier.id)!.start + 2][couple.column] -= 1;
+      }
+    }
+
+    const inputColumn = reactions.length + couples.length;
     if (inputBody && inputKind) {
       const rows = bodyRows.get(inputBody.id)!;
       if (inputKind === 'torque' && inputBody instanceof RealLink) {
@@ -354,6 +407,17 @@ export class ForceSolver {
       } else if (inputKind === 'force') {
         A[rows.start][inputColumn] = inputDirection[0];
         A[rows.start + 1][inputColumn] = inputDirection[1];
+        // An actuator pushes against something. On a grounded guide that is
+        // the world; in a sealed cylinder it is the barrel, and leaving the
+        // reaction off turns the drive into an outside hand pushing the block
+        // through space — which breaks the oldest property a cylinder has, of
+        // being a two-force member between its mounts.
+        if (inputJoint instanceof PrisJoint && inputJoint.isFloating) {
+          const carrier = this.rootBody(bodies, inputJoint.carrier);
+          if (carrier) {
+            addForceCoefficient(carrier, inputJoint, inputDirection, inputColumn, -1);
+          }
+        }
       }
     }
 
@@ -427,6 +491,11 @@ export class ForceSolver {
       if (value) jointReactions.set(jointId, value);
     }
 
+    const guideCouples = new Map<string, number>();
+    for (const couple of couples) {
+      guideCouples.set(couple.slider.id, solution.values[couple.column]);
+    }
+
     const inputEffort =
       inputJoint && inputKind
         ? {
@@ -442,10 +511,26 @@ export class ForceSolver {
       timeSeconds,
       jointReactionsByLink,
       jointReactions,
+      guideCouples,
       inputEffort,
       rank: solution.rank,
       residual: solution.residual,
     };
+  }
+
+  /**
+   * The root body in `bodies` that `leaf` belongs to.
+   *
+   * A weld fuses links into a compound whose members survive as `subset`
+   * leaves, so the link a slide assembly names is not always the body the
+   * equilibrium rows are written for.
+   */
+  private static rootBody(bodies: Link[], leaf: Link | undefined): Link | undefined {
+    if (!leaf) return undefined;
+    const contains = (link: Link): boolean =>
+      link.id === leaf.id ||
+      (link instanceof RealLink && link.subset.some((member) => contains(member)));
+    return bodies.find(contains);
   }
 
   static statusMessage(status: ForceAnalysisStatus): string {

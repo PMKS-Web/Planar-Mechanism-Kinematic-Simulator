@@ -555,6 +555,15 @@ message that names the joint, and §9 carries it.
 
 ## 9. Follow-up: statics for welded assemblies
 
+**Landed.** The couple column exists (`GuideCouple` in `force-solver.ts`), the refusal in 3.8 is
+retired, and the verification is the shape this section asked for: hand statics swept over the
+loaded Scotch yoke (`slide-forces.spec.ts`), the two-force-member property of a sealed cylinder
+(`cylinder-forces.spec.ts`), and a virtual-work audit across every topology class
+(`force-power-balance.spec.ts`). One deviation from the sketch below: rider and block stay
+separate bodies — the block is zero-length, so the couple passes through it untouched and no
+merged mass/CoM/parallel-axis bookkeeping is needed. The section is kept as written for the
+reasoning.
+
 Deliberately **not** in Phase 3, and to be specified on its own rather than left as optional work
 inside this one. Recorded here so its scope is visible rather than implied — it is wider than the
 equilibrium change that makes it sound small:
