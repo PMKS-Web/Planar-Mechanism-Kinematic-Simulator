@@ -108,24 +108,33 @@
     flex: 0 0 auto;
   }
 
-  .graphChevron {
+  .graphHeader .graphChevron {
     flex: 0 0 auto;
-    width: 20px;
-    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
     font-size: 20px;
-    line-height: 20px;
+    line-height: 1;
     color: mat.m2-get-color-from-palette($primary-palette, 500);
   }
 
   // Over the header's right end, before the chevron: a question about the
   // quantity, not a control of the card. Centred on the title's line, with the
   // chevron -- the three of them used to sit at three heights.
-  .graphHelp {
+  // Material gives mat-icon a 24px box whatever the glyph inside it is, so a
+  // 17px glyph with a 17px line-height sat at the top of it. Centre the glyph
+  // in the box the box actually is.
+  .graphHeader .graphHelp {
     flex: 0 0 auto;
-    width: 17px;
-    height: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
     font-size: 17px;
-    line-height: 17px;
+    line-height: 1;
     color: rgba(0, 0, 0, 0.3);
     pointer-events: auto;
   }

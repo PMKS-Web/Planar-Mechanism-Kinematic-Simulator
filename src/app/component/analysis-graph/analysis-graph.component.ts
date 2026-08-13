@@ -210,6 +210,15 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     yaxis: {
       showForNullSeries: false,
       forceNiceScale: true,
+      // The same size and weight as the time axis. Apex defaults the two axes
+      // to 11px and the x axis was set to 12px on its own, so the two ends of
+      // one plot were lettered differently.
+      labels: {
+        style: {
+          fontSize: '12px',
+          fontWeight: 400,
+        },
+      },
       min: function (min) {
         return Math.floor(min);
       },
@@ -218,6 +227,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       },
       title: {
         text: 'setLater',
+        style: {
+          fontSize: '12px',
+        },
       },
       // tickAmount: 1,
       decimalsInFloat: 1,
