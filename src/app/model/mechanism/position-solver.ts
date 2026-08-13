@@ -229,6 +229,29 @@ interface CylinderDrive {
 }
 
 /**
+ * A driven *pin* (§2.9, Phase 6): the actuator's two bodies, as the three
+ * points whose angle the drive prescribes. Held in the same shape as the
+ * cylinder's record so one stepping path serves both.
+ */
+interface PinDrive {
+  pivotId: string;
+  referenceId: string;
+  drivenId: string;
+  angle: number;
+  step: number;
+}
+
+/**
+ * One mechanism's drive, taken out of this solver's statics so it can be put
+ * back later. See `PositionSolver.captureDriveState`.
+ */
+export interface PositionSolverDriveState {
+  cylinderDrive?: CylinderDrive;
+  pinDrive?: PinDrive;
+  simultaneousSystem?: SimultaneousSystem;
+}
+
+/**
  * Whether a joint's coordinates are something the rate system has to solve for.
  *
  * `ground` means two different things, and reading it as one of them is what
@@ -287,13 +310,7 @@ export class PositionSolver {
    * points whose angle the drive prescribes. Held in the same shape as the
    * cylinder's record so one stepping path serves both.
    */
-  private static pinDrive?: {
-    pivotId: string;
-    referenceId: string;
-    drivenId: string;
-    angle: number;
-    step: number;
-  };
+  private static pinDrive?: PinDrive;
   /** Joints no chain of dyads can place, and what they have to satisfy (§2.7a). */
   private static simultaneousSystem?: SimultaneousSystem;
   /**
@@ -350,6 +367,58 @@ export class PositionSolver {
   private static slotLineMap = new Map<string, SlotLine>();
   static forcePositionMap = new Map<string, Coord>();
   static forceMagnitudeMap = new Map<string, number>();
+
+  /**
+   * Everything in this solver that describes one particular mechanism's drive.
+   *
+   * These three statics are written while a mechanism is being solved and read
+   * again, much later, whenever something differentiates it -- a velocity
+   * graph, a dynamic force analysis. With one mechanism in a drawing that was
+   * safe. With three, the last one solved owns them, and a graph asked about
+   * the first one was answered out of the third one's constraints: it found no
+   * drive it recognised, fell through to the loop formulation, and came back
+   * with nothing at all. Every velocity and acceleration graph of a
+   * cylinder-driven machine standing beside another machine was empty.
+   */
+  /**
+   * Build this mechanism's constraint set now, while its own state is loaded.
+   *
+   * Differentiating a mechanism needs the set, and a mechanism whose positions
+   * the dyad walk solved never built one -- so it was built on demand, at the
+   * moment a graph was opened. By then a drawing with more than one machine in
+   * it has solved every other machine over the top of this one, and the set
+   * came out of the *last* machine's slot lines, distances and drive. Every
+   * velocity and acceleration graph of the first machine was empty.
+   *
+   * Only where the drive needs it: a plain crank is differentiated through the
+   * loop formulation, which asks nothing of this and is cheaper.
+   */
+  static ensureSimultaneousSystem(joints: Joint[], links: Link[]): void {
+    if (this.simultaneousSystem || (!this.cylinderDrive && !this.pinDrive)) {
+      return;
+    }
+    this.simultaneousSystem = this.buildSimultaneousSystem(
+      joints,
+      links,
+      joints.filter(isRateUnknown).map((joint) => joint.id)
+    );
+  }
+
+  static captureDriveState(): PositionSolverDriveState {
+    return {
+      cylinderDrive: this.cylinderDrive,
+      pinDrive: this.pinDrive,
+      simultaneousSystem: this.simultaneousSystem,
+    };
+  }
+
+  /** Put this solver back on the constraints of the mechanism named by `state`. */
+  static restoreDriveState(state: PositionSolverDriveState | undefined): void {
+    if (!state) return;
+    this.cylinderDrive = state.cylinderDrive;
+    this.pinDrive = state.pinDrive;
+    this.simultaneousSystem = state.simultaneousSystem;
+  }
 
   static resetStaticVariables() {
     this.jointMapPositions = new Map<string, Array<number>>();

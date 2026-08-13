@@ -334,7 +334,11 @@ describe('AnalysisGraphComponent lifecycle', () => {
     expect(component.noDataSelected).toBe(true);
     component.seriesCheckboxForm.patchValue({ x: true, y: false, z: false });
 
+    // The broadcast says something moved; the graph asks its own machine where
+    // it is, because with several machines the shared index means nothing to
+    // any one of them.
     const annotationIndex = Math.min(2, fixture.mechanism.timeNum.length - 1);
+    fixture.service.mechanismTimeStep = annotationIndex;
     fixture.service.onMechPositionChange.next(annotationIndex);
     expect(chart.addXaxisAnnotation).toHaveBeenLastCalledWith(
       expect.objectContaining({ x: fixture.mechanism.timeNum[annotationIndex] }),
@@ -484,6 +488,7 @@ describe('AnalysisGraphComponent rendered controls', () => {
     const chartStub = fixture.debugElement.query(By.directive(ApexChartStubComponent))
       .componentInstance as ApexChartStubComponent;
     const annotationIndex = Math.min(3, fixtureData.mechanism.timeNum.length - 1);
+    fixtureData.service.mechanismTimeStep = annotationIndex;
     fixtureData.service.onMechPositionChange.next(annotationIndex);
     expect(chartStub.addXaxisAnnotation).toHaveBeenLastCalledWith(
       expect.objectContaining({ x: fixtureData.mechanism.timeNum[annotationIndex] }),

@@ -3,7 +3,7 @@ import { Link, SliderBlock, RealLink, Shape } from '../link';
 import { assignBodies, WORLD } from './bodies';
 import { Force } from '../force';
 // import {LoopSolver} from "./loop-solver";
-import { PositionSolver, PRISMATIC_INPUT_STEP } from './position-solver';
+import { PositionSolver, PositionSolverDriveState, PRISMATIC_INPUT_STEP } from './position-solver';
 // import {IcSolver} from "./ic-solver";
 import { InstantCenter } from '../instant-center';
 import { Loop, LoopSolver } from './loop-solver';
@@ -42,6 +42,7 @@ export class Mechanism {
   private _dof: number;
   private _inputAngularVelocities: number[] = [];
   private _requiredLoops: Loop[] = [];
+  private _driveState?: PositionSolverDriveState;
   private mechanismValid = true;
 
   constructor(
@@ -132,6 +133,12 @@ export class Mechanism {
       // The solver's static holds what *this* build found; read it now, before
       // the next mechanism's build resets and overwrites it.
       this._unusableCylinder = PositionSolver.unusableCylinderDrive;
+      // For the same reason, and for anything that differentiates this
+      // mechanism after every other one has been solved over the top of it.
+      // Built here rather than on demand: it is derived from a dozen more of
+      // the same statics, and by the time a graph asks they belong elsewhere.
+      PositionSolver.ensureSimultaneousSystem(this._joints[0], this._links[0]);
+      this._driveState = PositionSolver.captureDriveState();
       // A sealed cylinder with no stroke emits no steps, so the failure above
       // is already recorded -- as "nothing can move", which is true but says
       // nothing a student can act on. Name the ram instead.
@@ -687,6 +694,20 @@ export class Mechanism {
     this._unit = value;
   }
 
+  /**
+   * Put the shared solvers back on this mechanism's own constraints.
+   *
+   * `KinematicsSolver` and `PositionSolver` both keep their working state in
+   * statics, which was fine when a drawing held one mechanism. It holds as many
+   * as are drawn now, and every one of them is solved over the top of the last
+   * -- so anything that comes back later to differentiate a particular one has
+   * to say which one it means first. Cheap: three assignments and a reference.
+   */
+  prepareSolvers(): void {
+    PositionSolver.restoreDriveState(this._driveState);
+    KinematicsSolver.requiredLoops = this._requiredLoops;
+  }
+
   get requiredLoops(): Loop[] {
     return this._requiredLoops;
   }
@@ -1042,7 +1063,9 @@ export class Mechanism {
     ForceSolver.determineDesiredLoopLettersForce(this.requiredLoops);
     if (analysisType === 'dynamics') {
       KinematicsSolver.resetVariables();
-      KinematicsSolver.requiredLoops = this.requiredLoops;
+      // The inertia terms come from differentiating this mechanism, and the
+      // solvers have been used by every other mechanism in the drawing since.
+      this.prepareSolvers();
     }
     // Go through each step within the mechanism
     this.joints.forEach((_, index) => {
@@ -1228,7 +1251,7 @@ export class Mechanism {
   kinematicLoopAnalysis() {
     const kinematicAnalysis = Array<Array<string>>();
     KinematicsSolver.resetVariables();
-    KinematicsSolver.requiredLoops = this.requiredLoops;
+    this.prepareSolvers();
     this.joints.forEach((_, index) => {
       // const row = Array<number>();
       const row = Array<string>();

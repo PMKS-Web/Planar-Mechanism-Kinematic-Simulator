@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+} from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { Subscription } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
@@ -10,6 +17,11 @@ import { TimeUnit } from '../../model/utils';
 import { Mechanism } from '../../model/mechanism/mechanism';
 import { RealJoint } from '../../model/joint';
 import { MODEL_SCALE } from '../../model/render-scale';
+
+/** How far the cluster floats above the status strip, matching its own CSS. */
+const BOTTOM_OFFSET = 38;
+/** The one gap the chrome keeps between any two cards. */
+const CARD_GAP = 12;
 
 /** One line in the transport: a machine, or all of them together. */
 export interface PlaybackRow {
@@ -79,7 +91,7 @@ export interface PlaybackRow {
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false,
 })
-export class PlaybackBarComponent implements OnInit, OnDestroy {
+export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   private positionSub?: Subscription;
   private dragging = false;
   private wasAnimating = false;
@@ -90,7 +102,8 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     public settings: SettingsService,
     public activeObj: ActiveObjService,
     public tabs: SelectedTabService,
-    private nup: NumberUnitParserService
+    private nup: NumberUnitParserService,
+    private host: ElementRef<HTMLElement>
   ) {}
 
   ngOnInit(): void {
@@ -99,8 +112,36 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     this.positionSub = this.mechanism.onMechPositionChange.subscribe(() => undefined);
   }
 
+  /**
+   * Tell the rest of the chrome how much room this cluster is taking.
+   *
+   * The panels stop short of the bottom of the window so they do not run under
+   * the transport, and that was a fixed 110px -- the height of a transport with
+   * one row in it. Unsynced, this card carries a row per machine and grows to
+   * twice that, and the setup drawer came down through it. Measured rather than
+   * guessed, so a drawing with six machines in it works out the same way.
+   */
+  ngAfterViewInit(): void {
+    const row = this.host.nativeElement.querySelector('.playbackRow') as HTMLElement | null;
+    if (!row || typeof ResizeObserver === 'undefined') return;
+    this.publishHeight(row);
+    this.heightWatch = new ResizeObserver(() => this.publishHeight(row));
+    this.heightWatch.observe(row);
+  }
+
+  private heightWatch?: ResizeObserver;
+
+  private publishHeight(row: HTMLElement): void {
+    // The card's own height, the gap it floats above the status strip, and one
+    // more gap between it and whatever stops above it.
+    const clearance = Math.round(row.getBoundingClientRect().height) + BOTTOM_OFFSET + CARD_GAP;
+    document.documentElement.style.setProperty('--playback-clearance', `${clearance}px`);
+  }
+
   ngOnDestroy(): void {
     this.positionSub?.unsubscribe();
+    this.heightWatch?.disconnect();
+    document.documentElement.style.removeProperty('--playback-clearance');
   }
 
   private format(seconds: number): string {
@@ -180,7 +221,13 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
       master,
       time: this.format(seconds),
       position: combined ? '' : this.positionLabel(index),
-      scrub: Math.round((this.mechanism.travelOf(index) ?? 0) * 1000),
+      // A machine's own handle is where its input has got to; the combined one
+      // is where the clock has got to. See `seekAllAlong`: an input that rocks
+      // is in the same place twice a cycle, and a handle that means two times
+      // at once cannot be dragged.
+      scrub: combined
+        ? Math.round(Math.min(Math.max(seconds / (mechanism.cyclePeriod || 1), 0), 1) * 1000)
+        : Math.round((this.mechanism.travelOf(index) ?? 0) * 1000),
       clockwise: this.drivenSpeedOf(mechanism) < 0,
       note: combined ? '' : this.noteFor(index),
       playing: this.mechanism.isMechanismPlaying(index),

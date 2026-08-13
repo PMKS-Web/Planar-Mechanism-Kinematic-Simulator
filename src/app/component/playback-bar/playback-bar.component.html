@@ -29,17 +29,24 @@
 
       @for (row of rows; track row.id) {
         <div class="mechRow">
-          <button
-            class="mechChip"
-            [class.selected]="isSelected(row)"
-            [class.plain]="!row.isMechanism"
-            (click)="selectMechanism(row)"
-            (mouseenter)="hoverMechanism(row, true)"
-            (mouseleave)="hoverMechanism(row, false)"
-            [attr.title]="row.isMechanism ? 'Select ' + row.id : 'All mechanisms move together'"
-          >
-            {{ row.id }}
-          </button>
+          <!-- A machine's name is the way to select it. The combined row is not
+               a machine, so its name is a label rather than a control: as a
+               button it could be focused, pressed and shown as selected, none
+               of which lead anywhere. -->
+          @if (row.isMechanism) {
+            <button
+              class="mechChip"
+              [class.selected]="isSelected(row)"
+              (click)="selectMechanism(row)"
+              (mouseenter)="hoverMechanism(row, true)"
+              (mouseleave)="hoverMechanism(row, false)"
+              [attr.title]="'Select ' + row.id"
+            >
+              {{ row.id }}
+            </button>
+          } @else {
+            <span class="mechChip plain" title="All mechanisms move together">{{ row.id }}</span>
+          }
 
           @if (row.ownPlay) {
             <button

@@ -111,7 +111,11 @@
     z-index: 5;
 
     &.analysis {
-      --panel-clearance: #{nav.$playback-clearance};
+      // Measured by the playback bar, which is the only thing that knows how
+      // tall it is: unsynced it carries a row per machine. The fallback is the
+      // height of a transport with one row in it, which is what this was until
+      // a drawing with three machines came down through it.
+      --panel-clearance: var(--playback-clearance, #{nav.$playback-clearance});
 
       // Wide enough for the cluster to sit beside the panel rather than under
       // it, so the panel can run down to the status strip like it does in the

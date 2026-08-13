@@ -92,6 +92,16 @@ export class SettingsService {
   isShowID = new BehaviorSubject(false);
   isShowCOM = new BehaviorSubject(false);
   /**
+   * Whether the traced paths are drawn at all.
+   *
+   * Which joints trace their path is a property of the drawing, kept per joint
+   * and shared in its URL. This is the view's own switch over the lot of them:
+   * a drawing with several machines tracing at once is mostly ink, and reading
+   * it means putting the ink away for a moment -- not editing every joint that
+   * was asked to trace and then having to ask again.
+   */
+  isShowTraces = new BehaviorSubject(true);
+  /**
    * A link whose centre of mass to draw while the reader is asking about it.
    *
    * Hovering the analysis panel's centre-of-mass heading points at the thing on

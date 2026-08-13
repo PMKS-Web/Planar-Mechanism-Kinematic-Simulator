@@ -2789,6 +2789,11 @@ export class NewGridComponent implements OnDestroy {
    * same rule a contrast checker uses.
    */
   linkLabelInk(link: Link): string {
+    // A body the analysis modes have nothing to say about is drawn in one pale
+    // grey whatever colour it was given, so its name is read against that grey
+    // rather than against the colour it no longer wears. A dark link's white
+    // name went invisible the moment the body went grey under it.
+    if (this.mechanismSrv.isPartInert(link)) return 'black';
     const fill = (link as { fill?: string }).fill ?? '#ffffff';
     const hex = fill.replace('#', '');
     if (hex.length < 6) return 'black';

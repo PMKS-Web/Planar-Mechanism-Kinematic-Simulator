@@ -114,6 +114,22 @@
     fill: #d9dbe2;
   }
 
+  // A force on a body the analysis modes have nothing to say about. The arrow
+  // is the loudest thing on the canvas and it was still full-strength navy over
+  // a machine drawn as scenery.
+  .force-inert {
+    .forceLine,
+    .forceArrow,
+    .forceAnchor {
+      stroke: #c4c7d0;
+      fill: #c4c7d0;
+    }
+
+    .forceAnchor {
+      stroke: #c4c7d0;
+    }
+  }
+
   // Geometry is frozen in the analysis modes, so the four-headed move cursor is
   // an offer the mode will not honour: the drag it promises does nothing. These
   // parts can still be *clicked*, to choose what the panel graphs, which is

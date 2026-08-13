@@ -1245,7 +1245,12 @@ export class MechanismService {
     this.slotStashes.clear();
   }
 
-  deleteJoint() {
+  /**
+   * @param save mints the undo entry. Only a caller that deletes several joints
+   * as one gesture passes `false`, and it owes a `finishStructuralEdit(true)`
+   * of its own once the last one is gone — see `deleteMechanism`.
+   */
+  deleteJoint(save: boolean = true) {
     // Deleting a mount (or, defensively, any member joint) of a sealed cylinder
     // takes the whole assembly with it (§ cylinder 5) — and then goes on to
     // delete the joint itself.
@@ -1264,7 +1269,7 @@ export class MechanismService {
       // removed as orphaned, and there is nothing left to delete.
       if (!this.joints.some((joint) => joint.id === doomed.id)) {
         this.activeObjService.updateSelectedObj(undefined);
-        this.finishStructuralEdit(true);
+        this.finishStructuralEdit(save);
         return;
       }
     }
@@ -1648,7 +1653,12 @@ export class MechanismService {
     // Through the shared path, so a slot whose defining joint was just deleted
     // gets reconciled. Deleting a joint by itself is the one way to strand a
     // slot that does not go through mergeJoints or deleteLink.
-    this.finishStructuralEdit(false);
+    //
+    // Saving here is what makes the deletion undoable. This read `false` for as
+    // long as the tail read `updateMechanism()`, whose save flag defaults off —
+    // so a joint deleted on its own left no history at all, while the very same
+    // deletion routed through the cylinder branch above did.
+    this.finishStructuralEdit(save);
     setTimeout(() => {
       this.onMechUpdateState.next(3);
     });
@@ -3278,25 +3288,24 @@ export class MechanismService {
   }
 
   /**
-   * Put every machine at the place the leader's input has reached.
+   * Put every machine at one moment of the longest cycle in the drawing.
    *
-   * For the combined row, which stands for all of them: the machines are on one
-   * wall clock, so the time the leader is at is the time they are all at.
+   * The combined handle measures *time*, where a single machine's own handle
+   * measures how far along its input has come. That is the right thing for one
+   * machine -- degrees of crank, centimetres of ram -- but there is no such
+   * thing as the input position of three machines at once, and the leader's own
+   * is worse than useless when the leader rocks: a rocking input passes through
+   * the same position twice per cycle, so "where the handle is" answered with
+   * two different times and a drag across it ran the whole drawing backwards.
+   * Dragged from end to end it jumped back thirty times in two hundred steps.
+   *
+   * Time has one answer everywhere, always increases with the handle, and is
+   * what the machines are actually sharing while they are synced.
    */
   seekAllAlong(leader: number, along: number): void {
-    const mechanism = this.mechanisms[leader];
-    const profile = this.driveProfileOf(leader);
-    if (!mechanism || !profile) return;
-    const period = mechanism.cyclePeriod;
-    const last = profile.along.length - 1;
-    if (!(period > 0) || last <= 0) return;
-    const nearSample = Math.round(Math.min(Math.max(this.secondsOf(leader) / period, 0), 1) * last);
-    const sample = fractionalSampleAlong(profile, Math.min(Math.max(along, 0), 1), nearSample);
-    // Straight onto every machine's own clock. Going through the master's
-    // sample grid quantised the answer a second time -- once against the
-    // leader's samples and again against the master's -- and two grids for a
-    // drag to cross is what the drawing was stuttering over.
-    this.seekAllTo((sample / last) * period);
+    const period = this.mechanisms[leader]?.cyclePeriod;
+    if (!(period > 0)) return;
+    this.seekAllTo(Math.min(Math.max(along, 0), 1) * period);
     this.drawOwnClocks(this.isPlaying);
   }
 

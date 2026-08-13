@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnDestroy,
+} from '@angular/core';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { SvgGridService } from '../../services/svg-grid.service';
@@ -14,12 +20,43 @@ import { SvgGridService } from '../../services/svg-grid.service';
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false,
 })
-export class ViewControlsComponent {
+export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   constructor(
     public svgGrid: SvgGridService,
     public mechanismService: MechanismService,
-    public settingsService: SettingsService
+    public settingsService: SettingsService,
+    private host: ElementRef<HTMLElement>
   ) {}
+
+  /**
+   * Publish how wide this card is, for the drawer that stands over it.
+   *
+   * The setup drawer is meant to line up with these controls, and this card's
+   * width is the number of buttons it happens to carry -- so it is measured
+   * here rather than written down twice and left to drift the next time a
+   * button is added.
+   */
+  ngAfterViewInit(): void {
+    const card = this.host.nativeElement.querySelector('.viewControls') as HTMLElement | null;
+    if (!card || typeof ResizeObserver === 'undefined') return;
+    this.publishWidth(card);
+    this.widthWatch = new ResizeObserver(() => this.publishWidth(card));
+    this.widthWatch.observe(card);
+  }
+
+  private widthWatch?: ResizeObserver;
+
+  private publishWidth(card: HTMLElement): void {
+    const width = Math.round(card.getBoundingClientRect().width);
+    if (width > 0) {
+      document.documentElement.style.setProperty('--view-controls-width', `${width}px`);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.widthWatch?.disconnect();
+    document.documentElement.style.removeProperty('--view-controls-width');
+  }
 
   /**
    * Whether the thing this button switches on is currently on.
@@ -38,6 +75,31 @@ export class ViewControlsComponent {
 
   noJointExists(): boolean {
     return this.mechanismService.joints.length === 0;
+  }
+
+  isShowingTraces(): boolean {
+    return this.settingsService.isShowTraces.value;
+  }
+
+  /**
+   * Nothing traces its path, so there is nothing for this switch to do.
+   *
+   * Greyed rather than hidden: a control that comes and goes as joints are
+   * asked to trace is a control nobody learns the position of.
+   */
+  noTracedJoint(): boolean {
+    return !this.mechanismService.joints.some(
+      (joint) => (joint as { showCurve?: boolean }).showCurve
+    );
+  }
+
+  /** The glyph offers the other state, as the centre-of-mass button does. */
+  traceIconName(): string {
+    return this.settingsService.isShowTraces.value ? 'hide_path' : 'show_path';
+  }
+
+  onShowTracesPressed(): void {
+    this.settingsService.isShowTraces.next(!this.settingsService.isShowTraces.value);
   }
 
   noLinkExists(): boolean {

@@ -88,40 +88,36 @@
     box-sizing: border-box;
     overflow-x: hidden;
     overflow-y: auto;
-    max-height: calc(100% - #{nav.$top-strip-height} - #{nav.$playback-clearance});
+    // The transport is measured rather than assumed: unsynced it carries a row
+    // per machine, and a drawer capped for a one-row transport came down
+    // through a three-row one.
+    max-height: calc(
+      100% - #{nav.$top-strip-height} - var(--playback-clearance, #{nav.$playback-clearance})
+    );
     display: flex;
     z-index: 9;
 
+    // As wide as the view controls it stands over, which the view controls
+    // measure and publish -- so the two edges line up however many buttons that
+    // card ends up carrying. The frame is that plus the room its card needs on
+    // either side. Two pages hold a table rather than a panel and say so.
+    width: calc(var(--view-controls-width, 294px) + #{nav.$shadow-room} + #{nav.$card-inset});
+    transition: width 0.1s ease-in-out;
+
+    &.wide {
+      width: calc(500px + #{nav.$shadow-room} + #{nav.$card-inset});
+    }
+
+    // The setup drawer runs to the bottom rather than stopping under its last
+    // section: it is a list that grows as a drawing does, and a card that ends
+    // half way reads as a card that has been cut off.
+    &.fullHeight {
+      height: calc(
+        100% - #{nav.$top-strip-height} - var(--playback-clearance, #{nav.$playback-clearance})
+      );
+    }
+
     animation-duration: 4s;
-
-    //Check here for 2nd parameter options: node_modules/@angular/material/core/theming/_palette.scss: Line 674
-    // background-color: mat.get-color-from-palette($background, 'background');
-    // background-color: mat.get-color-from-palette($primary-palette, 50);
-
-    .page1 {
-      width: 300px;
-      //height: 100%;
-      // border-radius: var(--border-radius);
-    }
-
-    .page2 {
-      //position: absolute;
-      //top: 0;
-      //right: 0;
-      width: 500px;
-      //overflow-y: visible;
-      ////Be careful, there are multiple places to change this value
-      //height: 1000px;
-      // border-radius: var(--border-radius);
-    }
-
-    .page3 {
-      width: 300px;
-    }
-
-    .page4 {
-      width: 500px;
-    }
   }
 
   // One inset and one gap for every drawer page. The two setup drawers had
@@ -132,14 +128,15 @@
   // drawer has no page, and padding on the drawer itself gives the closed one a
   // box of exactly that width, which its parked transform then carries off the
   // right of the window.
-  // `content-box`, so the width each page declares is its card's width and the
-  // inset is added around it. As a border-box it was subtracted instead, and a
-  // drawer that says 300 held a card of 272.
+  // The page fills the frame, which is what decides the width; it used to be
+  // the other way round, and a page and a frame that each named a width came
+  // out 28px apart -- a drawer that says 300 holding a card of 272.
   #rightPanel > div {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    box-sizing: content-box;
+    width: 100%;
+    box-sizing: border-box;
     padding: nav.$shadow-room;
     padding-right: nav.$card-inset;
     min-height: 0;

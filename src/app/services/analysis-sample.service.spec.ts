@@ -151,5 +151,35 @@ describe('AnalysisSampleService', () => {
       expect(piston).toHaveLength(1);
       expect(Number.isNaN(piston[0])).toBe(true);
     });
+
+    /**
+     * A drawing holds as many machines as are drawn, and every one of them is
+     * solved over the top of the last: the solvers keep their working state in
+     * statics. Positions survive that, because they were computed while the
+     * state was still this machine's — but rates are worked out later, when a
+     * graph is opened, and a cylinder drive needs the constraint set to
+     * differentiate. Asked for after a second machine had been built, this one
+     * was differentiated against the *other* machine's constraints and every
+     * velocity and acceleration it plotted came back NaN.
+     */
+    it('still has rates once another machine has been solved after it', () => {
+      const boom = fixture;
+      // A second machine, built over the top of the first as the service does.
+      buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
+
+      const velocity = service.sampleAt(
+        boom.mechanism,
+        45,
+        'kinematic',
+        'loop',
+        'Linear Joint Vel',
+        'C',
+        ''
+      );
+      expect(velocity).toHaveLength(3);
+      expect(velocity.every(Number.isFinite)).toBe(true);
+      // And the same numbers it gives when it is the only machine there.
+      expect(velocity).toEqual(sample(45, 'Linear Joint Vel', 'C'));
+    });
   });
 });

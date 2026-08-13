@@ -11,6 +11,7 @@ import { Coord } from '../../app/model/coord';
 import { RevJoint, RealJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
+import { LEGACY_FORCE_MECHANISM } from '../fixtures/mechanism-fixtures';
 
 /**
  * A mechanism built to be awkward: four welded compounds, two cylinders, a
@@ -203,5 +204,62 @@ describe('undo', () => {
     expect(active.selectedJoint.id, 'still looking at the joint that was edited').toBe('B');
     // And the object selected is the live one, not the copy the undo replaced.
     expect(mechanism.joints.some((joint) => joint === active.selectedJoint)).toBe(true);
+  });
+
+  it('puts back a joint that was deleted', () => {
+    // Deleting a joint wrote no history at all: the joint went, Undo stayed
+    // greyed out, and Ctrl+Z did nothing. The tail of `deleteJoint` had asked
+    // not to save since back when it read `updateMechanism()`, whose save flag
+    // is off by default — so the flag was never a decision, just the default
+    // carried forward through a refactor that made it explicit.
+    //
+    // It was invisible for as long as it was, because the same deletion routed
+    // through the cylinder branch *did* save, as does `deleteLink`.
+    TestBed.configureTestingModule({ imports: [AppModule] });
+    const mechanism = TestBed.inject(MechanismService);
+    const active = TestBed.inject(ActiveObjService);
+    const history = TestBed.inject(SaveHistoryService);
+    TestBed.inject(UrlProcessorService).updateFromURL(LEGACY_FORCE_MECHANISM, false, true, false);
+    // Loading does not write the loaded state — the one entry standing behind
+    // it is the empty grid — so the four-bar has to be saved to be landed on.
+    mechanism.save();
+
+    const b = mechanism.joints.find((joint) => joint.id === 'b') as RealJoint;
+    active.updateSelectedObj(b);
+    mechanism.deleteJoint();
+    expect(mechanism.joints.some((joint) => joint.id === 'b')).toBe(false);
+
+    expect(history.canUndo(), 'a deletion is an edit, so it earns an entry').toBe(true);
+
+    history.undo();
+
+    // The whole four-bar, not just `b`: if the delete had written nothing, this
+    // undo would step past it onto the empty grid the load sat on top of.
+    expect(mechanism.joints.map((joint) => joint.id).sort()).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('spends one entry on a delete, or none when the caller owns the gesture', () => {
+    // `deleteMechanism` deletes every joint of a partition in a loop. Saving
+    // per joint would make restoring it cost one Ctrl+Z per joint it happened
+    // to have, so that caller opts out and mints the single entry itself.
+    const harness = createMechanismHarness();
+    const a = new RevJoint('A', 0, 0);
+    const b = new RevJoint('B', 4, 0);
+    const c = new RevJoint('C', 4, 3);
+    harness.service.joints.push(a, b, c);
+    harness.service.links.push(
+      new RealLink('AB', [a, b], 1, 1, new Coord(2, 0)),
+      new RealLink('BC', [b, c], 1, 1, new Coord(4, 1.5))
+    );
+    wireGraph(harness.service);
+    const before = harness.saveCount();
+
+    harness.active.updateSelectedObj(c);
+    harness.service.deleteJoint();
+    expect(harness.saveCount() - before).toBe(1);
+
+    harness.active.updateSelectedObj(b);
+    harness.service.deleteJoint(false);
+    expect(harness.saveCount() - before, 'the caller saves for this one').toBe(1);
   });
 });

@@ -109,6 +109,9 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
     },
   ];
   service.oneValidMechanismExists = () => mechanism.isMechanismValid();
+  // One machine, so its own place in its cycle is the shared step. The real
+  // one reads a per-machine clock the harness has no reason to run.
+  service.currentSampleOf = () => service.mechanismTimeStep;
   // Borrowed rather than restated: the panels now ask which machine owns the
   // part they are drawing, and the real lookup reads exactly the two fields
   // set above, so a copy here could only drift away from it.

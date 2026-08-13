@@ -435,9 +435,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       })
     );
     this.subscriptions.add(
-      this.mechanismService.onMechPositionChange.subscribe((timeIndex) => {
-        this.showAnnotations(timeIndex);
-      })
+      // The broadcast says *something* moved, not which; this graph asks its
+      // own machine where it is.
+      this.mechanismService.onMechPositionChange.subscribe(() => this.showAnnotations())
     );
   }
 
@@ -502,7 +502,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     this.noDataSelected = this.displayedSeries.length === 0;
     this.applyYAxisScale();
     this.shownSeriesChange.emit({ x: !!data.x, y: !!data.y, z: !!data.z });
-    if (this.chart) this.showAnnotations(this.mechanismService.mechanismTimeStep);
+    if (this.chart) this.showAnnotations();
   }
 
   /**
@@ -541,8 +541,29 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     this.chart.updateOptions({ yaxis: this.chartOptions.yaxis }, false, true);
   }
 
-  private showAnnotations(timeIndex: number) {
+  /**
+   * Where this machine is in its own cycle, as a sample of its own solve.
+   *
+   * Not the shared clock. Each machine has a clock of its own while they are
+   * being controlled apart, and a graph of a paused machine was drawing its
+   * playhead at the running machine's time -- a line sweeping across a plot of
+   * something standing still on the grid. Machines also have different numbers
+   * of samples, so the shared index does not even mean the same moment.
+   */
+  private ownSample(): number {
+    const mechanism = this.mechanismFor(this.mechPart);
+    if (!mechanism) return 0;
+    const at = this.mechanismService.mechanisms.indexOf(mechanism);
+    const step =
+      at === -1
+        ? this.mechanismService.mechanismTimeStep
+        : this.mechanismService.currentSampleOf(at);
+    return Math.max(Math.min(step, mechanism.joints.length - 1), 0);
+  }
+
+  private showAnnotations() {
     if (!this.chart) return;
+    const timeIndex = this.ownSample();
     if (timeIndex === 0) {
       this.chart.clearAnnotations();
       return;

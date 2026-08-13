@@ -136,10 +136,15 @@ export class MechanismPanelComponent {
     }
     // Deleting its joints takes the links with them, which is what "delete this
     // mechanism" means: nothing of it is left, and nothing else is touched.
+    //
+    // The joints go one at a time, but the gesture is a single press: none of
+    // them saves, and the removal is minted as one undo entry below. Otherwise
+    // restoring the mechanism would cost one undo per joint it happened to have.
     [...partition.ownJoints].forEach((joint) => {
       this.activeObj.updateSelectedObj(joint);
-      this.mechanism.deleteJoint();
+      this.mechanism.deleteJoint(false);
     });
     this.activeObj.updateSelectedObj(null);
+    this.mechanism.finishStructuralEdit(true);
   }
 }

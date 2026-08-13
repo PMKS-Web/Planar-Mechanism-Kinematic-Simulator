@@ -25,6 +25,20 @@
   </button>
   <button
     class="viewButton"
+    [class.on]="isShowingTraces()"
+    [disabled]="noTracedJoint()"
+    (click)="onShowTracesPressed()"
+    [matTooltip]="isShowingTraces() ? 'Hide traced paths' : 'Show traced paths'"
+    matTooltipPosition="above"
+    [matTooltipShowDelay]="600"
+    aria-label="Show traced paths"
+  >
+    <!-- The app's own curve glyph, which is a traced point with its path behind
+         it. A line chart reads as another kind of analysis. -->
+    <mat-icon svgIcon="{{ traceIconName() }}"></mat-icon>
+  </button>
+  <button
+    class="viewButton"
     (click)="onZoomOutPressed()"
     matTooltip="Zoom Out"
     matTooltipPosition="above"

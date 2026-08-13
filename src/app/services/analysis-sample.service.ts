@@ -160,7 +160,10 @@ export class AnalysisSampleService {
       KinematicsSolver.resetVariables();
       this.preparedFor = mechanism;
     }
-    KinematicsSolver.requiredLoops = mechanism.requiredLoops;
+    // Every time, not only on a change of mechanism: the solvers hold their
+    // state in statics, and a drawing with three machines in it has solved the
+    // other two over the top of this one since the graphs were last drawn.
+    mechanism.prepareSolvers();
     KinematicsSolver.determineKinematics(
       mechanism.joints[index],
       mechanism.links[index],

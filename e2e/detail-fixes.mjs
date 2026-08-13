@@ -25,6 +25,14 @@ const payloads = Object.fromEntries(
   ])
 );
 
+/**
+ * Three machines in one drawing: a ram, a rocker and a crank, with the ram
+ * first. Reported by a reader whose ram had no graphs and whose combined
+ * handle ran the whole drawing backwards when dragged.
+ */
+const THREE_MACHINES =
+  '2O.Ay,Fe.5,4x.1011.4O,O,0,0,0.0C,C,YJ,qG,0.4G,G,ku,0,0.0N,N,aM,hl,0.8P,P,ir,8X,0.ZS,S,ir,8X,0,GN,G,N.0T,T,nJ,oD,0.0U,U,1Nd,dn,0.6V,V,1ca,jH,0,,,,1E8.6W,W,J-,1GP,0.0X,X,PF,1dt,0.0Y,Y,rW,1g7,0.4Z,Z,-P,1FX,0.0%5B,%5B,1Tk,16n,0.0%5C,%5C,1ft,1bA,0.0%5E,%5E,1pZ,1Gc,0.0_,_,1_5,_W,0.0%60,%60,2AU,1OV,0.1a,a,2AU,1OV,0..YROC,OC,Fe,Fe,HA,Q8,c5cae9,O,C,,.YRGN,GN,Fe,Fe,fd,Lu,303e9f,G,N,,.YRPC,PC,Fe,Fe,da,UO,0d125a,P,C,,.YPPS,PS,Fe,0,0,0,,P,S,,.YRGT,GT,Fe,Fe,m5,P7,c5cae9,G,T,,.YRTU,TU,Fe,Fe,14T,i-,303e9f,T,U,,.YRUV,UV,Fe,Fe,1V5,gX,0d125a,U,V,,.YRWX,WX,Fe,Fe,Md,1S8,B2DFDB,W,X,,.YRXY,XY,Fe,Fe,dN,1f0,26A69A,X,Y,,.YRYZ,YZ,Fe,Fe,wS,1Sr,00695C,Y,Z,,.YR%5B%5C,%5B%5C,Fe,Fe,1Zp,1Lz,c5cae9,%5B,%5C,,.YR_%60,_%60,Fe,Fe,24I,1BV,B2DFDB,_,%60,,.YP%60a,%60a,Fe,0,0,0,,%60,a,,...N_b';
+
 /** Two joints and a bar: in no mechanism, so nothing about it can be analysed. */
 const LONE_BAR =
   '2P.Zz,1E8.5,0.1011.0A,A,2UW,9v,0.0B,B,3E8,1Zn,0..YRAB,AB,Fe,Fe,2sK,sr,303e9f,A,B,,...N_P';
@@ -255,6 +263,168 @@ if (file) {
     { head: csv[0], rows: csv.length }
   );
 }
+
+// --- three machines at once -------------------------------------------------
+await load(THREE_MACHINES);
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click({ force: true });
+await page.waitForTimeout(900);
+
+// Every graph of the first machine, which is cylinder-driven and was solved
+// before the other two were solved over the top of its solver state.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((j) => j.id === 'C'));
+});
+await page.waitForTimeout(800);
+await page.evaluate(() =>
+  document.querySelector('app-analysis-graph-section .graphHeader')?.click()
+);
+await page.waitForTimeout(1500);
+const firstMachine = await page.evaluate(() => {
+  const graph = ng.getComponent(document.querySelector('app-analysis-graph'));
+  const plotted = (prop, part) => {
+    graph.determineChart('kinematic', 'loop', prop, part);
+    const series = graph.chartOptions?.series ?? [];
+    return series.map((s) => (s.data ?? []).filter((point) => Number.isFinite(point?.y)).length);
+  };
+  return {
+    velocity: plotted('Linear Joint Vel', 'C'),
+    acceleration: plotted('Linear Joint Acc', 'C'),
+    linkVelocity: plotted('Angular Link Vel', 'OC'),
+    frames: ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.mechanisms[0]
+      .joints.length,
+  };
+});
+record(
+  'the first machine still has rates after the others were solved over it',
+  [firstMachine.velocity, firstMachine.acceleration, firstMachine.linkVelocity].every(
+    (series) => series.length > 0 && series.every((n) => n === firstMachine.frames)
+  ),
+  firstMachine
+);
+
+// The combined handle measures time, so dragging it never runs anything back.
+const swept = await page.evaluate(() => {
+  const bar = ng.getComponent(document.querySelector('app-playback-bar'));
+  if (!bar.synced) bar.toggleSync();
+  const srv = bar.mechanism;
+  const row = bar.rows.find((r) => r.index === -1);
+  if (!row) return null;
+  const seen = [];
+  for (let value = 0; value <= 1000; value += 5) {
+    bar.scrubRow(row, { target: { value: String(value) } });
+    seen.push(srv.mechanisms.map((_, i) => srv.secondsOf(i)));
+  }
+  const period = srv.mechanisms.map((m) => m.cyclePeriod);
+  // A shorter cycle legitimately starts again part way along the longest one.
+  // Anything else going backwards is the handle disagreeing with itself.
+  const backwards = period.map((_, machine) => {
+    let count = 0;
+    for (let i = 1; i < seen.length; i++) {
+      const step = seen[i][machine] - seen[i - 1][machine];
+      if (step < -1e-9 && seen[i - 1][machine] < period[machine] - 0.5) count++;
+    }
+    return count;
+  });
+  return { backwards, wraps: period.map((p) => Math.round((p / Math.max(...period)) * 200)) };
+});
+record(
+  'dragging the combined handle only ever moves time forwards',
+  !!swept && swept.backwards.every((n) => n === 0),
+  swept
+);
+
+// --- a graph's playhead is on its own machine's clock -----------------------
+const playhead = await page.evaluate(async () => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const srv = grid.mechanismSrv;
+  const bar = ng.getComponent(document.querySelector('app-playback-bar'));
+  if (bar.synced) bar.toggleSync();
+  // A joint of the second machine, graphed.
+  grid.activeObjService.updateSelectedObj(srv.joints.find((joint) => joint.id === 'T'));
+  await new Promise((done) => setTimeout(done, 700));
+  // Only if nothing is open: the sections remember which quantity was
+  // expanded, so a click here would close the one already showing.
+  if (!document.querySelector('app-analysis-graph')) {
+    document.querySelector('app-analysis-graph-section .graphHeader')?.click();
+    await new Promise((done) => setTimeout(done, 1600));
+  }
+  // Park it, and run the first machine instead.
+  srv.seekMechanism(1, 3);
+  if (!srv.isMechanismPlaying(0)) srv.toggleMechanismPlaying(0);
+  const label = () => document.querySelector('.apexcharts-xaxis-annotation-label')?.textContent;
+  const before = { at: label(), running: srv.secondsOf(0), parked: srv.secondsOf(1) };
+  await new Promise((done) => setTimeout(done, 1500));
+  const after = { at: label(), running: srv.secondsOf(0), parked: srv.secondsOf(1) };
+  if (srv.isMechanismPlaying(0)) srv.toggleMechanismPlaying(0);
+  // Back to one handle for the checks that follow.
+  if (!bar.synced) bar.toggleSync();
+  return { before, after };
+});
+record(
+  'the other machine really is running',
+  playhead.after.running > playhead.before.running + 0.2,
+  playhead
+);
+record(
+  "a paused machine's graph keeps its playhead where the machine is",
+  playhead.before.at === playhead.after.at && playhead.after.at === 'T= 3.0',
+  playhead
+);
+
+// --- the combined row's name is a label, not a control ----------------------
+// One handle again, which is the only arrangement that has a combined row.
+await page.waitForTimeout(900);
+const allChip = await page.evaluate(() => {
+  const chip = [...document.querySelectorAll('.mechChip')].find(
+    (node) => node.textContent.trim() === 'All'
+  );
+  if (!chip) return null;
+  return {
+    tag: chip.tagName,
+    selectable: getComputedStyle(chip).userSelect,
+    selected: chip.classList.contains('selected'),
+  };
+});
+record(
+  'the combined row is named by a label that cannot be pressed or selected',
+  !!allChip && allChip.tag === 'SPAN' && allChip.selectable === 'none' && !allChip.selected,
+  allChip
+);
+
+// --- one switch for every traced path ---------------------------------------
+const traces = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const button = [...document.querySelectorAll('.viewControls .viewButton')].find((node) =>
+    (node.getAttribute('aria-label') ?? '').includes('traced')
+  );
+  const drawn = () => document.querySelectorAll('#pathsHolder path').length;
+  if (!button) return null;
+  const disabledWithNone = button.disabled;
+  // Ask two joints to trace, as the Edit panel does.
+  grid.mechanismSrv.joints.slice(0, 2).forEach((joint) => (joint.showCurve = true));
+  grid.mechanismSrv.updateMechanism();
+  return { disabledWithNone, drawn: drawn() };
+});
+await page.waitForTimeout(900);
+const tracesAfter = await page.evaluate(() => {
+  const button = [...document.querySelectorAll('.viewControls .viewButton')].find((node) =>
+    (node.getAttribute('aria-label') ?? '').includes('traced')
+  );
+  const drawn = () => document.querySelectorAll('#pathsHolder path').length;
+  const withTraces = drawn();
+  button.click();
+  return { withTraces };
+});
+await page.waitForTimeout(500);
+const hidden = await page.evaluate(() => document.querySelectorAll('#pathsHolder path').length);
+record(
+  'with nothing tracing, the traces switch is greyed',
+  traces?.disabledWithNone === true,
+  traces
+);
+record('two joints asked to trace draw two paths', tracesAfter.withTraces === 2, tracesAfter);
+record('and the switch puts every one of them away', hidden === 0, { hidden });
 
 // --- the transport comes and goes; the view controls do not ----------------
 const controlsAt = () =>

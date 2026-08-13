@@ -470,6 +470,7 @@
                  hitbox. -->
             <g
               class="slider-block"
+              [class.link-inert]="mechanismSrv.isPartInert(item.mark.pin)"
               cursor="move"
               (pointerdown)="setLastLeftClick(item.mark.pin)"
               (contextmenu)="setLastRightClick(item.mark.pin)"
@@ -573,8 +574,13 @@
          the interior pin and the buried barrel joint have no hitboxes at all. -->
     @for (cyl of cylinderList; track cyl.id) {
       <g class="cylinder-mark" [attr.transform]="sliderMarks.frame(cyl)">
+        <!-- A ram is a body like any other: in an analysis mode, one the mode
+             cannot analyse is scenery and goes grey with the rest of its
+             machine. Its skin is painted from its own fill rather than through
+             the link classes, so it was the one part that stayed in colour. -->
         <path
           class="cylinder-barrel"
+          [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
           cursor="move"
           (pointerover)="cyl.body.showHighlight = true"
           (pointerout)="cyl.body.showHighlight = false"
@@ -590,15 +596,17 @@
              own length, so the head bottoms out flush with the barrel's ends
              and the silhouette says where the travel ends by itself. -->
         <path
+          [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
           cursor="move"
           (pointerdown)="setLastLeftClick(cyl.body, $event)"
           (contextmenu)="setLastRightClick(cyl.body, $event)"
           [attr.d]="cyl.block"
           fill="#000000"
-          filter="url(#elevation-1)"
+          [attr.filter]="mechanismSrv.isPartInert(cyl.body) ? null : 'url(#elevation-1)'"
         />
         <path
           class="cylinder-rod"
+          [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
           cursor="move"
           (pointerover)="cyl.body.showHighlight = true"
           (pointerout)="cyl.body.showHighlight = false"
@@ -610,7 +618,7 @@
           [attr.stroke]="cyl.rodFill"
           [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
         />
-        @if (cyl.driven) {
+        @if (cyl.driven && !mechanismSrv.isPartInert(cyl.body)) {
           <g pointer-events="none">
             <!-- The heavier arrow is the way the block sets off, same as the
                  unskinned driven mark (§4.2b): the skin changes the drawing,
@@ -990,7 +998,7 @@
     </g>
   }
 
-  @if (mechanismSrv.showPathHolder) {
+  @if (mechanismSrv.showPathHolder && settings.isShowTraces.value) {
     <g id="pathsHolder">
       @for (joint of mechanismSrv.getJoints(); track joint) {
         <ng-container>
@@ -1007,9 +1015,15 @@
     </g>
   }
   @for (force of mechanismSrv.getForces(); track force) {
+    <!-- A force is something to place, and placing is an Edit job: the analysis
+         modes have no panel for one and cannot move it, so it is drawn and
+         nothing more. It also goes grey with the body it acts on, which is what
+         the rest of an unanalysable machine does. -->
     <g
       id="forcesHolder"
       cursor="move"
+      [class.force-inert]="mechanismSrv.isPartInert(force.link)"
+      [attr.pointer-events]="geometryLocked ? 'none' : null"
       style="transform: scaleY(-1)"
       (contextmenu)="setLastRightClick(force)"
       (pointerdown)="beginDraggingForceBody(force, $event); setLastLeftClick(force)"

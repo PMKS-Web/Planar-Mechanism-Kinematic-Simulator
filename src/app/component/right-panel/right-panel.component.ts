@@ -38,16 +38,14 @@ import { UrlGenerationService } from 'src/app/services/url-generation.service';
   animations: [
     trigger('openClose', [
       // ...
-      // The card's width, plus the gap it keeps from the window on one side and
-      // the room its shadow needs on the other -- `$card-inset` and
-      // `$shadow-room` in left-tabs.vars.scss: 300 + 12 + 16, and 500 + 12 + 16.
-      // These used to be the card widths alone, so every drawer came out
-      // narrower than the page inside it says it is.
+      // No width here: the drawer is as wide as the view controls it sits
+      // above, which only the stylesheet can know -- see `--view-controls-width`.
+      // An animation state is written onto the element and beats a stylesheet,
+      // so a width here would be a second, silent opinion about it.
       state(
         'open',
         style({
           transform: 'translateX(0)',
-          width: '328px',
         })
       ),
       state(
@@ -62,12 +60,7 @@ import { UrlGenerationService } from 'src/app/services/url-generation.service';
           visibility: 'hidden',
         })
       ),
-      state(
-        'openWide',
-        style({
-          width: '528px', //Be careful, there are multiple places to change this value
-        })
-      ),
+      state('openWide', style({})),
       transition('open => openWide', [animate('0.1s ease-in-out')]),
       transition('openWide => open', [animate('0.1s ease-in-out')]),
       transition('* => *', [animate('0.3s ease-in-out')]),
@@ -201,6 +194,26 @@ export class RightPanelComponent implements DoCheck {
 
   getOpenTab() {
     return RightPanelComponent.openTab;
+  }
+
+  /** Two of these pages hold a table rather than a panel, and need the room. */
+  isWidePage(): boolean {
+    return this.getOpenTab() === 2 || this.getOpenTab() === 4;
+  }
+
+  /**
+   * The setup lists run to the bottom of the window.
+   *
+   * They grow with the drawing -- a mechanism per section, a check per blocker
+   * -- so a card sized to its content ends somewhere different every time and
+   * reads as having been cut off. The other pages are fixed lists and stop
+   * where they stop.
+   */
+  isSetupPage(): boolean {
+    return (
+      this.getOpenTab() === RightPanelComponent.KINEMATIC_SETUP_TAB ||
+      this.getOpenTab() === RightPanelComponent.FORCE_SETUP_TAB
+    );
   }
 
   getIsOpen() {
