@@ -38,13 +38,26 @@
     display: block;
   }
 
+  // The chart draws itself 250px tall; a host shorter than that does not make
+  // a shorter chart, it cuts the bottom off one -- which is where the time
+  // axis's label lives.
   app-analysis-apex-chart > div:not(.chart-render-error) {
     min-height: 0 !important;
-    height: 250px !important;
+    height: auto !important;
   }
 
-  app-analysis-apex-chart.compact-single-series > div:not(.chart-render-error) {
-    height: 210px !important;
+  // Nothing below the plot but the axis it belongs to.
+  .apexcharts-canvas {
+    margin-bottom: -6px;
+  }
+
+  // A container Apex leaves in the DOM with a border on it whether or not there
+  // is anything to say. Empty, it reads as a stray box floating over the plot,
+  // and half of one while the card is opening.
+  .apexcharts-tooltip:not(.apexcharts-active),
+  .apexcharts-xaxistooltip:not(.apexcharts-active),
+  .apexcharts-yaxistooltip:not(.apexcharts-active) {
+    display: none !important;
   }
 
   .chart-render-error {

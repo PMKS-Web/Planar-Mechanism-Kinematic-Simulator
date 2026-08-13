@@ -157,7 +157,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       show: true,
       padding: {
         top: -14,
-        bottom: 0,
+        bottom: -8,
       },
       xaxis: {
         lines: {
@@ -199,9 +199,11 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       tickAmount: 1,
       title: {
         text: 'Time (seconds)',
-        // Up beside the two ends rather than on a line of its own below them.
-        offsetY: -18,
-        offsetX: 0,
+        // Up beside the two ends rather than on a line of its own below them,
+        // and centred between them: Apex centres it on the whole canvas, which
+        // the y axis's own labels make eight pixels wider on the left.
+        offsetY: -20,
+        offsetX: -8,
       },
       tooltip: {
         enabled: false,
