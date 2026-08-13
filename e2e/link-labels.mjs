@@ -98,6 +98,12 @@ const anchorsAreCentres = () =>
   page.evaluate(() => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
     return grid.mechanismSrv.getLinks().map((link) => {
+      // A bar carrying a slot is drawn as a rail; its name goes in the channel,
+      // which is checked separately.
+      const carriedSlot = grid.mechanismSrv.joints.find(
+        (joint) => joint.carrier?.id === link.id && joint.slotJointA && joint.slotJointB
+      );
+      if (carriedSlot) return { id: link.id, centred: true };
       const parts = link.subset?.length ? link.subset : [link];
       const span = (part) => {
         const first = part.joints[0];
@@ -110,7 +116,7 @@ const anchorsAreCentres = () =>
         x: joints.reduce((total, joint) => total + joint.x, 0) / (joints.length || 1),
         y: joints.reduce((total, joint) => total + joint.y, 0) / (joints.length || 1),
       };
-      const got = grid.linkLabelAnchor(link);
+      const got = grid.linkLabelStyle(link);
       return {
         id: link.id,
         centred:
@@ -150,6 +156,38 @@ for (const name of ['4-Bar', 'Stephenson_III', 'Watt_I', 'Jansen_Leg', 'Cylinder
   );
 }
 
+// --- a bar carrying a slot, whose name goes in the channel ------------------
+for (const name of ['Scotch_Yoke', 'Whitworth_Quick_Return']) {
+  await load(payloads[name]);
+  const slotted = await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    return grid.mechanismSrv
+      .getLinks()
+      .map((link) => {
+        const slot = grid.mechanismSrv.joints.find(
+          (joint) => joint.carrier?.id === link.id && joint.slotJointA && joint.slotJointB
+        );
+        if (!slot) return null;
+        const style = grid.linkLabelStyle(link);
+        return {
+          id: link.id,
+          inTheChannel:
+            Math.abs(style.x - (slot.slotJointA.x + slot.slotJointB.x) / 2) < 1e-6 &&
+            Math.abs(style.y - (slot.slotJointA.y + slot.slotJointB.y) / 2) < 1e-6,
+          ink: style.ink,
+          opacity: style.opacity,
+        };
+      })
+      .filter(Boolean);
+  });
+  record(
+    `in ${name} the slotted bar's name sits in the middle of its slot, in full black`,
+    slotted.length > 0 &&
+      slotted.every((link) => link.inTheChannel && link.ink === 'black' && link.opacity === 1),
+    slotted
+  );
+}
+
 // --- a welded body, which is where the centre of mass stops being safe -------
 await load(payloads['Stephenson_III']);
 await page.evaluate(() => {
@@ -183,6 +221,7 @@ const type = await page.evaluate(() => {
       size: px(text),
     })),
     gridNumber: px(document.querySelector('#axes_numbers')),
+    perUnit,
     objectScale: ng.getComponent(document.querySelector('app-new-grid')).settings.objectScale,
   };
 });
@@ -198,12 +237,14 @@ record(
   type.labels.every((label) => label.opacity === '0.55'),
   type.labels
 );
-// Sized from the object scale, so it matches the grid's numbers on a drawing
-// at the default scale and follows the parts from there.
+// Sized from the object scale rather than from the screen, so a name is the
+// size of the thing it names. On a drawing at the default scale that lands
+// within a few points of the grid's own numbers; on one whose parts are half
+// the size, so are their names, which is the point.
 record(
-  "no bigger than the grid's own numbers",
-  type.labels.every((label) => label.size <= type.gridNumber + 0.5),
-  { labels: type.labels.map((l) => l.size), gridNumber: type.gridNumber }
+  'every label is sized from the object scale',
+  type.labels.every((label) => Math.abs(label.size / type.perUnit - type.objectScale * 0.18) < 0.5),
+  { labels: type.labels.map((l) => l.size), objectScale: type.objectScale }
 );
 
 // Sized in the drawing's units, not the screen's: the name is the size of the

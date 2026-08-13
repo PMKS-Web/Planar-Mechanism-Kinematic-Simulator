@@ -189,6 +189,16 @@ export class NewGridComponent implements OnDestroy {
   /** Where the link being dragged was last placed, in SVG coordinates. */
   private linkDragAnchor: Coord = new Coord(0, 0);
 
+  /**
+   * Where the grabbed link's reference joint stood when the drag began.
+   *
+   * Snapping needs the whole distance dragged, not this frame's part of it: a
+   * single pointer event moves a few units, which rounds to no move at all, and
+   * a link measured frame by frame would never leave its corner however far the
+   * cursor went.
+   */
+  private linkDragOrigin?: { at: Coord; from: Coord };
+
   //This is terrible but:
   // -2 => hidden
   // -1 => Link length and angle shown
@@ -1208,20 +1218,24 @@ export class NewGridComponent implements OnDestroy {
           // what they are -- so one of them is the one that lands, and the
           // rest keep their places around it. The first joint, which is the
           // one the link is named from.
+          //
+          // Measured from where the grab started, not from the last frame: one
+          // pointer event is a few units, which rounds to no move at all, and a
+          // link asked frame by frame would sit on its corner for ever.
           const reference = this.activeObjService.selectedLink.joints[0];
-          const wantedX = mousePosInSvg.x - this.linkDragAnchor.x;
-          const wantedY = mousePosInSvg.y - this.linkDragAnchor.y;
-          const landed = this.svgGrid.snapToGrid(
-            new Coord(reference.x + wantedX, reference.y + wantedY),
-            $event.altKey
-          );
+          const grab = this.linkDragOrigin;
+          const wantedX = grab
+            ? grab.at.x + (mousePosInSvg.x - grab.from.x)
+            : reference.x + (mousePosInSvg.x - this.linkDragAnchor.x);
+          const wantedY = grab
+            ? grab.at.y + (mousePosInSvg.y - grab.from.y)
+            : reference.y + (mousePosInSvg.y - this.linkDragAnchor.y);
+          const landed = this.svgGrid.snapToGrid(new Coord(wantedX, wantedY), $event.altKey);
           this.gridUtils.dragLink(
             this.activeObjService.selectedLink,
             landed.x - reference.x,
             landed.y - reference.y
           );
-          // The cursor's own position, so the body does not drift away from it
-          // as the rounding is applied over and over.
           this.linkDragAnchor = mousePosInSvg;
           this.dragState.noteMechanismModified();
           this.activeObjService.updateSelectedObj(this.activeObjService.selectedLink);
@@ -1714,6 +1728,10 @@ export class NewGridComponent implements OnDestroy {
     // first move would translate the link by the distance from whatever
     // unrelated pointer event came last — a jump on grab.
     this.linkDragAnchor = mousePosInSvg;
+    const grabbed = this.activeObjService.selectedLink?.joints?.[0];
+    this.linkDragOrigin = grabbed
+      ? { at: new Coord(grabbed.x, grabbed.y), from: new Coord(mousePosInSvg.x, mousePosInSvg.y) }
+      : undefined;
 
     switch ($event.button) {
       case 0: // Handle Left-Click on canvas
@@ -2552,19 +2570,32 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Where to write a link's name so it lands on the link.
+   * Where a link's name goes, and in what ink.
    *
-   * The average of the joints it is made of, which is inside the hull they
-   * describe -- and the body is drawn around that hull, so it is inside the
-   * body. A welded link is the Boolean union of its parts and can be any shape
-   * at all (an L has nothing in the crook), so the name goes in the middle of
-   * the biggest part, which is inside the union because that part is.
+   * The anchor is the average of the joints the link is made of, which is
+   * inside the hull they describe -- and the body is drawn around that hull, so
+   * it is inside the body. Not the centre of mass, which is a physical property
+   * with a field of its own in the Edit panel: a link told its mass sits out at
+   * one end is a link whose name was written off the metal.
    *
-   * Not the centre of mass, which is where this used to go: that is a physical
-   * property with a field of its own in the Edit panel, and a link told its
-   * mass sits out at one end is a link whose name was written off the metal.
+   * Two bodies are not their own hull. A welded link is the Boolean union of
+   * its parts and can be any shape at all -- an L has nothing in the crook --
+   * so the name goes in the middle of its biggest part, which is inside the
+   * union because that part is. And a bar carrying a slot is drawn as a rail
+   * with a channel down it, so the name goes in the channel, in full black:
+   * there is no body colour behind it there to be read against.
    */
-  linkLabelAnchor(link: Link): { x: number; y: number } {
+  linkLabelStyle(link: Link): { x: number; y: number; ink: string; opacity: number } {
+    const slot = this.slotCarriedBy(link);
+    if (slot) {
+      const [from, to] = [slot.slotJointA!, slot.slotJointB!];
+      return {
+        x: (from.x + to.x) / 2,
+        y: (from.y + to.y) / 2,
+        ink: 'black',
+        opacity: 1,
+      };
+    }
     const parts = (link instanceof RealLink ? link.subset : []) ?? [];
     const middleOf = (of: Link) => {
       const joints = of.joints ?? [];
@@ -2574,13 +2605,28 @@ export class NewGridComponent implements OnDestroy {
         y: joints.reduce((total, joint) => total + joint.y, 0) / joints.length,
       };
     };
-    if (parts.length === 0) return middleOf(link);
     const span = (part: Link) => {
       const first = part.joints[0];
       const last = part.joints[part.joints.length - 1];
       return first && last ? Math.hypot(last.x - first.x, last.y - first.y) : 0;
     };
-    return middleOf(parts.reduce((best, part) => (span(part) > span(best) ? part : best)));
+    const on =
+      parts.length === 0
+        ? link
+        : parts.reduce((best, part) => (span(part) > span(best) ? part : best));
+    return { ...middleOf(on), ink: this.linkLabelInk(link), opacity: 0.55 };
+  }
+
+  /** The slot this bar carries, if it is a plain bar carrying one. */
+  private slotCarriedBy(link: Link): PrisJoint | undefined {
+    if ((link.joints?.length ?? 0) !== 2) return undefined;
+    return this.mechanismSrv.joints.find(
+      (joint): joint is PrisJoint =>
+        joint instanceof PrisJoint &&
+        joint.carrier?.id === link.id &&
+        !!joint.slotJointA &&
+        !!joint.slotJointB
+    );
   }
 
   /**

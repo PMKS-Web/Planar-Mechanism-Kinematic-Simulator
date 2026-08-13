@@ -1115,7 +1115,7 @@
           <!-- While a joint is captured, the two names sit on the same point and
                overlap into an unreadable smudge. One label naming the merge says
                what is about to happen instead. -->
-          <text style="font-size: {{ svgGrid.scaleWithZoom(20) }}px; text-anchor: middle">
+          <text style="font-size: {{ settings.objectScale * 0.18 }}px; text-anchor: middle">
             {{ mergeLabel }}
           </text>
         } @else if (
@@ -1126,7 +1126,7 @@
             (this.activeObjService.selectedJoint == joint &&
               this.activeObjService.objType == 'Joint'))
         ) {
-          <text style="font-size: {{ svgGrid.scaleWithZoom(20) }}px; text-anchor: middle">
+          <text style="font-size: {{ settings.objectScale * 0.18 }}px; text-anchor: middle">
             {{ joint.name }}
           </text>
         }
@@ -1169,8 +1169,8 @@
   <g id="linkTagHolder" style="pointer-events: none">
     @for (link of mechanismSrv.getLinks(); track link) {
       <svg
-        [attr.x]="linkLabelAnchor(link).x"
-        [attr.y]="-linkLabelAnchor(link).y"
+        [attr.x]="linkLabelStyle(link).x"
+        [attr.y]="-linkLabelStyle(link).y"
         [attr.height]="10"
         [attr.width]="10"
         style="overflow: visible; text-anchor: middle"
@@ -1189,10 +1189,10 @@
                of the link, so when the mark is being shown the name steps up
                out of its way. -->
           <text
-            [attr.fill]="linkLabelInk(link)"
-            [attr.dy]="settings.isShowCOM.value ? -settings.objectScale * 0.11 : 0"
-            fill-opacity="0.55"
-            style="font-size: {{ settings.objectScale * 0.15 }}px; text-anchor: middle"
+            [attr.fill]="linkLabelStyle(link).ink"
+            [attr.fill-opacity]="linkLabelStyle(link).opacity"
+            [attr.dy]="settings.isShowCOM.value ? -settings.objectScale * 0.13 : 0"
+            style="font-size: {{ settings.objectScale * 0.18 }}px; text-anchor: middle"
           >
             {{ linkDisplayName(link) }}
           </text>
@@ -1214,7 +1214,7 @@
           force.showHighlight ||
           (this.activeObjService.selectedForce == force && this.activeObjService.objType == 'Force')
         ) {
-          <text style="font-size: {{ svgGrid.scaleWithZoom(20) }}px; text-anchor: left">
+          <text style="font-size: {{ settings.objectScale * 0.18 }}px; text-anchor: left">
             {{ force.name }}
           </text>
         }
