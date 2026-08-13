@@ -15,6 +15,8 @@ export interface PlaybackRow {
   id: string;
   /** -1 for the combined row, which stands for every machine at once. */
   index: number;
+  /** The machine the row's handle is measured against. */
+  leader: number;
   /** Whether this line is one machine, and so has a direction to flip. */
   isMechanism: boolean;
   /** The line the shared scrubber and the time field belong to. */
@@ -132,7 +134,13 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     // is, because each measures a different thing. The combined row follows the
     // first machine and says nothing about direction.
     if (this.mechanism.syncMechanisms) {
-      const lead = runnable[0];
+      // The longest cycle in the drawing, so one handle can reach every frame
+      // of every machine. Following the first one instead left the slower
+      // machines with a stretch at the end of their cycles the handle could
+      // not get to.
+      const lead = runnable.reduce((longest, candidate) =>
+        candidate.mechanism.cyclePeriod > longest.mechanism.cyclePeriod ? candidate : longest
+      );
       const alone = runnable.length === 1;
       return [this.rowFor(lead.index, true, false, alone ? undefined : 'All')];
     }
@@ -149,6 +157,7 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
     return {
       id: name ?? this.mechanism.partitions[index]?.id ?? `M${index + 1}`,
       index: combined ? -1 : index,
+      leader: index,
       isMechanism: !combined,
       master,
       time: this.format(seconds),
@@ -249,13 +258,13 @@ export class PlaybackBarComponent implements OnInit, OnDestroy {
    */
   scrubRow(row: PlaybackRow, event: Event): void {
     const along = Number((event.target as HTMLInputElement).value) / 1000;
-    const index = row.index === -1 ? this.mechanism.masterMechanismIndex() : row.index;
-    if (index === -1) return;
     if (row.index === -1) {
-      // The combined row stands for all of them, so all of them go.
-      this.mechanism.seekAllAlong(index, along);
+      // The combined row stands for all of them, so all of them go -- led by
+      // the longest cycle, which is the one whose frames the handle spans.
+      this.mechanism.seekAllAlong(row.leader, along);
       return;
     }
+    const index = row.index;
     this.mechanism.seekMechanismTo(index, along);
   }
 

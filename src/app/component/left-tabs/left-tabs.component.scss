@@ -95,6 +95,10 @@
     // shadow off there.
     padding: nav.$shadow-room;
     box-sizing: border-box;
+    // Wide enough for the card plus the room its shadow needs. Shrink-to-fit
+    // sized the frame to the card alone, so the card overhung its own padding
+    // and the right-hand shadow was cut off against the frame's edge.
+    width: max-content;
     overflow-x: hidden;
     overflow-y: auto;
     --panel-clearance: #{nav.$bottom-bar-height + 12px};

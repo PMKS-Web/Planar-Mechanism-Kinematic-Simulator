@@ -1882,12 +1882,21 @@ export class MechanismService {
   }
 
   /** How many blockers stand between this drawing and a full set of animations. */
+  /**
+   * How many things stand between the drawing and being analysed.
+   *
+   * Geometry that is in no mechanism counts. Without it a drawing of two
+   * joints and a bar -- which is in no mechanism, has no input and cannot be
+   * analysed at all -- reported nothing to fix, because there was no mechanism
+   * for anything to be wrong with, and the chip read "Ready".
+   */
   blockerCount(): number {
-    return this.readinessOfEachMechanism().reduce(
+    const inMechanisms = this.readinessOfEachMechanism().reduce(
       (total, readiness) =>
         total + readiness.checks.filter((check) => check.state === 'blocker').length,
       0
     );
+    return inMechanisms + this.unassignedReports().length;
   }
 
   invalidReason(): string | undefined {

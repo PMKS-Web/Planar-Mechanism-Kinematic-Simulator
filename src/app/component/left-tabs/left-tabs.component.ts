@@ -10,11 +10,15 @@ import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
   animations: [
     trigger('openClose', [
       // ...
+      // The card's own width plus the 20px the frame keeps around it for its
+      // shadow. Set to the card's width alone, the frame was exactly as wide
+      // as what it held, so the card overhung its own padding and the
+      // right-hand shadow was cut off against the frame's edge.
       state(
         'open',
         style({
           transform: 'translateX(0)',
-          width: '270px', //Be careful, there are multiple places to change this value
+          width: '290px', //Be careful, there are multiple places to change this value
         })
       ),
       state(
@@ -26,7 +30,7 @@ import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
       state(
         'openWide',
         style({
-          width: '420px', //Be careful, there are multiple places to change this value
+          width: '440px', //Be careful, there are multiple places to change this value
         })
       ),
       transition('open => openWide', [animate('0.1s ease-in-out')]),

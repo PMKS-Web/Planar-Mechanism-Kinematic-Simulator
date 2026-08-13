@@ -1,4 +1,4 @@
-<div class="topStrip" #strip [class.devMode]="isDevMode()">
+<div class="topStrip" #strip [class]="'topStrip fit' + labelLevel" [class.devMode]="isDevMode()">
   <div class="card brandCard">
     <button
       class="iconButton"
@@ -13,7 +13,7 @@
     <img class="logo" alt="PMKS+" src="assets/PMKS_logo.png" />
   </div>
 
-  <div class="card tabCard" [class]="'card tabCard level' + labelLevel">
+  <div class="card tabCard">
     <div class="tabStrip" #tabStrip>
       <!-- One highlight for all four modes, so it slides between them instead
            of blinking from one to the next. -->

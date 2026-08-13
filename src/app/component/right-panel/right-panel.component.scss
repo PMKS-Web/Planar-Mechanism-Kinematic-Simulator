@@ -49,25 +49,31 @@
     }
   }
 
-  // Asked for while already open: a short nudge, so the reader's eye goes to
-  // the answer they just asked for twice.
+  // Asked for while already open. A deliberate pull rather than a wobble: it
+  // steps out and back twice, at a size a reader reads as "look here" instead
+  // of as a drawer having trouble closing.
   .insisting {
-    animation: drawerNudge 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+    animation: drawerNudge 0.62s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   @keyframes drawerNudge {
-    0%,
-    100% {
+    0% {
       transform: translateX(0);
     }
-    18% {
-      transform: translateX(-9px);
+    14% {
+      transform: translateX(-26px);
     }
-    42% {
-      transform: translateX(6px);
+    34% {
+      transform: translateX(0);
     }
-    68% {
-      transform: translateX(-3px);
+    54% {
+      transform: translateX(-26px);
+    }
+    76% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(0);
     }
   }
 

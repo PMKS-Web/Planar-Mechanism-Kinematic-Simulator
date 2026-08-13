@@ -162,7 +162,7 @@ export class RightPanelComponent implements DoCheck {
     if (RightPanelComponent.attentionCount !== this.shownAttention && !this.attention) {
       this.shownAttention = RightPanelComponent.attentionCount;
       this.attention = true;
-      setTimeout(() => (this.attention = false), 450);
+      setTimeout(() => (this.attention = false), 650);
     }
   }
 

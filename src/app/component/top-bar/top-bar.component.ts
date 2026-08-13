@@ -82,8 +82,17 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * spelled out -- so they throw words away long before the window has run out
    * of room for them. This asks the strip.
    */
-  labelLevel = 2;
-  private naturalWidths?: [number, number, number];
+  labelLevel = 3;
+  /**
+   * The room and the labels the current level was chosen for.
+   *
+   * Nothing else is remembered between fits. The natural widths depend on the
+   * chips, the font and the layout being finished, and a set measured before
+   * any of that settled says the strip is small enough for anything -- which
+   * is how a phone came to show four full labels in a card a fifth of the
+   * width they need.
+   */
+  private lastFit = '';
 
   constructor(
     public tabs: SelectedTabService,
@@ -124,12 +133,17 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   ngAfterViewInit(): void {
     this.scheduleHighlight();
     window.addEventListener('resize', this.onResize);
+    document.fonts?.ready.then(() => {
+      this.lastFit = '';
+      this.zone.run(() => this.fitLabels());
+    });
   }
 
   // After the pass, not during it: the `active` class this measures off is
   // written by the very pass that would read it back, so measuring inside one
   // reports where the highlight used to be and it trails a tab behind.
   ngAfterViewChecked(): void {
+    this.watchCard();
     this.fitLabels();
     this.scheduleHighlight();
   }
@@ -143,33 +157,41 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    */
   private fitLabels(): void {
     const strip = this.strip?.nativeElement;
-    const card = this.tabStrip?.nativeElement.parentElement;
-    if (!strip || !card || strip.clientWidth === 0) return;
+    if (!strip || strip.clientWidth === 0) return;
 
-    if (!this.naturalWidths) {
-      const measured: number[] = [];
-      const was = this.labelLevel;
-      for (const level of [2, 1, 0]) {
-        card.classList.remove('level2', 'level1', 'level0');
-        card.classList.add(`level${level}`);
-        measured[level] = card.scrollWidth;
-      }
-      card.classList.remove('level2', 'level1', 'level0');
-      this.labelLevel = was;
-      if (measured.some((width) => !(width > 0))) return;
-      this.naturalWidths = [measured[0], measured[1], measured[2]];
+    // Re-fit when the question changes, not on every pass: four class toggles
+    // and four layout reads is cheap once and dear sixty times a second. The
+    // chips are part of the question -- "Ready" is half of "3 to set".
+    const question = [
+      strip.clientWidth,
+      this.statusOf(TabID.ANALYZE).text,
+      this.statusOf(TabID.FORCE).text,
+      this.tabs.getCurrentTab(),
+    ].join('|');
+    if (question === this.lastFit) return;
+    this.lastFit = question;
+
+    // What the strip wants at each level: its cards at their natural widths,
+    // plus the gaps between them. Their laid-out widths would only tell us how
+    // far they have already been squeezed.
+    const gaps = 12 * Math.max(strip.children.length - 1, 0);
+    const restore = strip.className;
+    const wants = [0, 1, 2, 3].map((level) => {
+      strip.classList.remove('fit0', 'fit1', 'fit2', 'fit3');
+      strip.classList.add(`fit${level}`);
+      return [...strip.children].reduce((total, card) => total + card.scrollWidth, 0) + gaps;
+    });
+    strip.className = restore;
+    if (!(wants[3] > 0)) {
+      // Nothing has been laid out yet. Ask again rather than remembering that.
+      this.lastFit = '';
+      return;
     }
 
-    // What is left for the tab card once its neighbours have taken theirs.
-    const others = [...strip.children]
-      .filter((child) => child !== card)
-      .reduce((total, child) => total + (child as HTMLElement).offsetWidth, 0);
-    const gaps = 12 * Math.max(strip.children.length - 1, 0);
-    const room = strip.clientWidth - others - gaps;
-
-    const [icons, short, full] = this.naturalWidths;
-    const level = room >= full ? 2 : room >= short ? 1 : 0;
-    void icons;
+    const level = wants.reduce(
+      (best, want, at) => (want <= strip.clientWidth ? Math.max(best, at) : best),
+      0
+    );
     if (level !== this.labelLevel) {
       this.labelLevel = level;
       this.changes.detectChanges();
@@ -179,6 +201,28 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   ngOnDestroy(): void {
     if (this.pendingFrame) cancelAnimationFrame(this.pendingFrame);
     window.removeEventListener('resize', this.onResize);
+    this.cardWatch?.disconnect();
+  }
+
+  private cardWatch?: ResizeObserver;
+
+  /**
+   * Watch the card, not just the window.
+   *
+   * The card can be squeezed without the window changing -- a chip growing, a
+   * drawer opening beside it -- and a squeeze nothing asks a question about is
+   * one the reader sees as clipped text.
+   */
+  private watchCard(): void {
+    const card = this.strip?.nativeElement;
+    if (!card || this.cardWatch || typeof ResizeObserver === 'undefined') return;
+    this.cardWatch = new ResizeObserver(() =>
+      this.zone.run(() => {
+        this.lastFit = '';
+        this.fitLabels();
+      })
+    );
+    this.cardWatch.observe(card);
   }
 
   private scheduleHighlight(): void {
