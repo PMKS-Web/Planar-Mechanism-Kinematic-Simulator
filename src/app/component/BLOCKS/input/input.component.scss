@@ -2,6 +2,30 @@
 @use '@angular/material' as mat;
 
 @mixin css($theme) {
+  // Label above, field below, each across the row's full width. For a label
+  // too long to share a line with its field -- "Moment of Inertia" beside a
+  // value in kg&middot;cm&sup2; wants 239px of a 220px row, and one of the two
+  // gets crushed. The panel already reads this way for Joint Position and
+  // Center of Mass.
+  #input-block.stacked {
+    .row {
+      flex-wrap: wrap;
+      row-gap: 4px;
+    }
+
+    .spacer {
+      display: none;
+    }
+
+    .label-help {
+      margin-right: auto;
+    }
+
+    .customInputForm,
+    .mat-mdc-text-field-wrapper {
+      width: 100%;
+    }
+  }
   // Get the color config from the theme.
   $color-config: mat.m2-get-color-config($theme);
   // Get the primary color palette from the color-config.
@@ -45,10 +69,6 @@
         height: 30px;
         width: 80px;
         padding: 0 6px;
-      }
-
-      &.wide .mat-mdc-text-field-wrapper {
-        width: 104px;
       }
 
       .input-unit {

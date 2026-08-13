@@ -175,6 +175,38 @@ function turnsBack(raw: number[]): boolean {
  * handle backwards does not jump it to the other half of the cycle.
  */
 export function sampleAlong(profile: DriveProfile, along: number, near: number): number {
+  return Math.round(fractionalSampleAlong(profile, along, near));
+}
+
+/**
+ * The same answer, between samples.
+ *
+ * A drag is continuous and the samples are not: a degree of crank is a couple
+ * of pixels of track, so snapping to the nearest one holds the drawing still
+ * for two pixels and then jumps it. Interpolating between the sample found and
+ * its neighbour on the side the reader is pointing lets the drawing follow the
+ * hand.
+ */
+export function fractionalSampleAlong(profile: DriveProfile, along: number, near: number): number {
+  const at = nearestSample(profile, along, near);
+  const last = profile.along.length - 1;
+  if (last <= 0) return 0;
+  const here = profile.along[at];
+  // Toward whichever neighbour lies on the side the reader asked for.
+  const step = along > here ? 1 : -1;
+  const next = at + step;
+  if (next < 0 || next > last) return at;
+  const span = profile.along[next] - here;
+  if (Math.abs(span) < 1e-9) return at;
+  const share = (along - here) / span;
+  // Only between the two. Off the end of a loop the nearest sample is the one
+  // at the far end -- the right edge of the track being the left edge -- and
+  // interpolating away from it would walk back the way the drag came.
+  if (!(share > 0 && share < 1)) return at;
+  return at + step * share;
+}
+
+function nearestSample(profile: DriveProfile, along: number, near: number): number {
   const last = profile.along.length - 1;
   if (last <= 0) {
     return 0;

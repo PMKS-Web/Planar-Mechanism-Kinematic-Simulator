@@ -20,7 +20,7 @@ import { Force } from '../model/force';
 import {
   DriveProfile,
   driveProfileOf as buildDriveProfile,
-  sampleAlong,
+  fractionalSampleAlong,
 } from '../model/mechanism/drive-profile';
 import { Mechanism } from '../model/mechanism/mechanism';
 import {
@@ -3206,8 +3206,13 @@ export class MechanismService {
     const last = profile.along.length - 1;
     if (!(period > 0) || last <= 0) return;
     const nearSample = Math.round(Math.min(Math.max(this.secondsOf(leader) / period, 0), 1) * last);
-    const sample = sampleAlong(profile, Math.min(Math.max(along, 0), 1), nearSample);
-    this.animate(this.stepAtTime((sample / last) * period), this.isPlaying);
+    const sample = fractionalSampleAlong(profile, Math.min(Math.max(along, 0), 1), nearSample);
+    // Straight onto every machine's own clock. Going through the master's
+    // sample grid quantised the answer a second time -- once against the
+    // leader's samples and again against the master's -- and two grids for a
+    // drag to cross is what the drawing was stuttering over.
+    this.seekAllTo((sample / last) * period);
+    this.drawOwnClocks(this.isPlaying);
   }
 
   /**
@@ -3287,7 +3292,7 @@ export class MechanismService {
     const last = profile.along.length - 1;
     if (!(period > 0) || last <= 0) return;
     const nearSample = Math.round(Math.min(Math.max(this.secondsOf(index) / period, 0), 1) * last);
-    const sample = sampleAlong(profile, Math.min(Math.max(along, 0), 1), nearSample);
+    const sample = fractionalSampleAlong(profile, Math.min(Math.max(along, 0), 1), nearSample);
     this.seekMechanism(index, (sample / last) * period);
   }
 

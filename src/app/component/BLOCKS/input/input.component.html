@@ -1,4 +1,4 @@
-<div id="input-block">
+<div id="input-block" [class.stacked]="stacked">
   <div class="row" [formGroup]="formGroup">
     <span class="label"><ng-content></ng-content></span>
     <mat-icon matTooltip="{{ this.tooltip }}" [matTooltipShowDelay]="1000" class="label-help">

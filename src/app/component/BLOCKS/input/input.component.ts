@@ -19,6 +19,15 @@ export class InputComponent {
   @Input() unit: string | undefined;
   /** Widens the field for values whose unit suffix does not fit the default. */
   @Input({ transform: booleanAttribute }) wide: boolean = false;
+  /**
+   * Put the label on its own line, with the field under it.
+   *
+   * For a label too long to share a line with its field -- "Moment of Inertia"
+   * next to a value in kg&middot;cm&sup2; wants 239px of a 220px row, and one
+   * of the two gets crushed. The panel already reads this way for Joint
+   * Position and Center of Mass.
+   */
+  @Input({ transform: booleanAttribute }) stacked: boolean = false;
   @Input() tooltip: string | undefined;
   @Input() _formControl!: string;
   @Input() formGroup!: FormGroup;

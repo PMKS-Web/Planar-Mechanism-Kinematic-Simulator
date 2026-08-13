@@ -1,5 +1,5 @@
 import { Injector } from '@angular/core';
-import { DriveProfile, driveProfileOf, sampleAlong } from './drive-profile';
+import { DriveProfile, driveProfileOf, fractionalSampleAlong, sampleAlong } from './drive-profile';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { ColorService } from '../../services/color.service';
 import { DragStateService } from '../../services/drag-state.service';
@@ -104,6 +104,19 @@ describe('Where a machine says its input is', () => {
 
     expect(sampleAlong(profile, profile.along[outbound], outbound)).toBeLessThan(last / 2);
     expect(sampleAlong(profile, profile.along[returning], returning)).toBeGreaterThan(last / 2);
+  });
+
+  it('answers between samples, so a drag is not a series of small jumps', () => {
+    // A degree of crank is a couple of pixels of track. Snapping to the nearest
+    // sample held the drawing still for those two pixels and then jumped it,
+    // which is what a reader sees as stutter.
+    const profile = profileOf('4-Bar');
+    const half = (profile.along[10] + profile.along[11]) / 2;
+    const at = fractionalSampleAlong(profile, half, 10);
+    expect(at).toBeGreaterThan(10);
+    expect(at).toBeLessThan(11);
+    // And still lands exactly on a sample when that is what was asked for.
+    expect(fractionalSampleAlong(profile, profile.along[10], 10)).toBe(10);
   });
 
   it('treats the two ends of a loop as the same place', () => {
