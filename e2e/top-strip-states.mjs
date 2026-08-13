@@ -66,7 +66,7 @@ const inspect = (page) =>
     const scrolls = scroller.scrollLeft;
     scroller.scrollLeft = was;
     return {
-      level: Number((card.className.match(/level(\d)/) ?? [, '2'])[1]),
+      level: Number((strip.className.match(/fit(\d)/) ?? [, '3'])[1]),
       clipped: card.scrollWidth - card.clientWidth,
       escaped,
       scrolls,
@@ -154,10 +154,11 @@ const steps = (seen) =>
   seen.filter((state, i) => i > 0 && state.level !== seen[i - 1].level).map((s) => s.width);
 const downSteps = steps(down);
 const upSteps = steps(up);
-record('it steps down twice and back up twice', downSteps.length === 2 && upSteps.length === 2, {
-  downSteps,
-  upSteps,
-});
+record(
+  'it steps down through the ladder and back up the same way',
+  downSteps.length === 3 && upSteps.length === 3,
+  { downSteps, upSteps }
+);
 // Hysteresis: the width it gives a label back at is above the one it took it
 // away at, so a window dragged slowly across the boundary does not flicker.
 record(
