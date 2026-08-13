@@ -16,6 +16,7 @@ import { KinematicsSolver } from '../../model/mechanism/kinematic-solver';
 import { ForceUnit, LengthUnit } from '../../model/unit-enums';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { ActiveObjService } from '../../services/active-obj.service';
+import { AnalysisSampleService } from '../../services/analysis-sample.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { BUILT_IN_TEMPLATE_IDS, TEMPLATE_LINKAGES } from '../MODALS/templates/template-linkages';
@@ -82,7 +83,8 @@ function createComponent(fixture: MechanismFixture): AnalysisGraphComponent {
     fixture.service,
     fixture.settings,
     new NumberUnitParserService(),
-    fixture.active
+    fixture.active,
+    new AnalysisSampleService(fixture.settings)
   );
 }
 
@@ -442,7 +444,7 @@ describe('AnalysisGraphComponent lifecycle', () => {
 describe('AnalysisGraphComponent rendered controls', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('updates the rendered chart series when its Material checkboxes are clicked', async () => {
+  it('updates the rendered chart series when a series is switched off and on', async () => {
     const fixtureData = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
     await TestBed.configureTestingModule({
       declarations: [AnalysisGraphComponent, ApexChartStubComponent],
@@ -472,26 +474,28 @@ describe('AnalysisGraphComponent rendered controls', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const loader = TestbedHarnessEnvironment.loader(fixture);
-    const xCheckbox = await loader.getHarness(MatCheckboxHarness.with({ label: 'X' }));
-    const yCheckbox = await loader.getHarness(MatCheckboxHarness.with({ label: 'Y' }));
-    expect(await xCheckbox.isChecked()).toBe(true);
-    expect(await yCheckbox.isChecked()).toBe(true);
+    // The switches live on the panel header that owns this graph now -- one row
+    // that reads the values out and turns the lines on and off -- so this drives
+    // the API that row calls rather than a checkbox that no longer exists.
+    const graph = fixture.componentInstance;
+    expect(graph.isSeriesShown('x')).toBe(true);
+    expect(graph.isSeriesShown('y')).toBe(true);
 
-    await xCheckbox.uncheck();
+    graph.toggleSeries('x');
     fixture.detectChanges();
-    expect(fixture.componentInstance.displayedSeries.map((series) => series.name)).toEqual(['Y']);
+    expect(graph.isSeriesShown('x')).toBe(false);
+    expect(graph.displayedSeries.map((series) => series.name)).toEqual(['Y']);
 
-    await yCheckbox.uncheck();
+    graph.toggleSeries('y');
     fixture.detectChanges();
-    expect(fixture.componentInstance.displayedSeries).toHaveLength(0);
-    expect(fixture.componentInstance.noDataSelected).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Please select at least one data series.');
+    expect(graph.displayedSeries).toHaveLength(0);
+    expect(graph.noDataSelected).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('No series shown. Pick one above.');
 
-    await xCheckbox.check();
+    graph.toggleSeries('x');
     fixture.detectChanges();
-    expect(fixture.componentInstance.displayedSeries.map((series) => series.name)).toEqual(['X']);
-    expect(fixture.componentInstance.noDataSelected).toBe(false);
+    expect(graph.displayedSeries.map((series) => series.name)).toEqual(['X']);
+    expect(graph.noDataSelected).toBe(false);
 
     const chartStub = fixture.debugElement.query(By.directive(ApexChartStubComponent))
       .componentInstance as ApexChartStubComponent;

@@ -67,10 +67,6 @@ export class AnalysisPanelComponent {
 
   //A dictionary for wether each graph is expanded or not
   graphExpanded: { [key: string]: boolean } = {
-    LKineAna: true,
-    LForceAna: true,
-    JKineAna: true,
-    JForceAna: true,
     LAng: false,
     LAngVel: false,
     LAngAcc: false,
@@ -306,6 +302,23 @@ export class AnalysisPanelComponent {
    * it -- the canvas outlines the whole ram while the panel headed itself
    * "Analysis for Link GN".
    */
+  /**
+   * Which analysis this panel is showing.
+   *
+   * It used to be an accordion inside the panel headed "Kinematic Analysis" --
+   * a heading that only ever said what mode the reader had already chosen, and
+   * one more thing to open before reaching a graph. The panel's own title says
+   * it now.
+   */
+  /** Point at the thing on the grid these numbers describe, while asked to. */
+  highlightCoM(on: boolean): void {
+    this.settingsService.previewCoMLinkId = on ? (this.activeSrv.selectedLink?.id ?? null) : null;
+  }
+
+  get modeLabel(): string {
+    return this.tabs.getCurrentTab() === TabID.FORCE ? 'Force Analysis' : 'Kinematic Analysis';
+  }
+
   get selectedBodyLabel(): string {
     const sealed = this.selectedCylinder;
     if (!sealed) return `Link ${this.activeSrv.selectedLink.name}`;

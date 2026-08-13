@@ -1,0 +1,68 @@
+<!-- Closed, the whole card opens it: the values are as much an invitation to
+     look closer as the title is, and a reader aiming at either was hitting a
+     strip only the title lived in. -->
+<div
+  class="graphSection"
+  [class.open]="expanded"
+  [class.closed]="!expanded"
+  (click)="expanded ? null : toggle()"
+>
+  <button
+    class="graphHeader"
+    type="button"
+    (click)="toggle(); $event.stopPropagation()"
+    [attr.aria-expanded]="expanded"
+  >
+    <span class="graphTitle">{{ label }}</span>
+    @if (help) {
+      <mat-icon class="graphHelp" [matTooltip]="help" [matTooltipShowDelay]="600" aria-hidden="true"
+        >help_outline</mat-icon
+      >
+    }
+    <mat-icon class="graphChevron">{{ expanded ? 'expand_less' : 'expand_more' }}</mat-icon>
+  </button>
+
+  <!-- One row, two jobs: what each series reads at the pose on screen, and --
+       once the graph is open -- which of them the graph is drawing. Closed it
+       is a read-out; open it is the legend. Two rows saying the same names in
+       different orders was what the checkboxes and the values came to. -->
+  @if (preview.length) {
+    <div class="graphPreview" [class.interactive]="expanded">
+      @for (series of preview; track series.name) {
+        @if (expanded && preview.length > 1) {
+          <button
+            type="button"
+            class="previewSeries"
+            [class.off]="!isShown(series.key)"
+            [attr.aria-pressed]="isShown(series.key)"
+            (click)="toggleSeries(series.key)"
+          >
+            <span class="previewRule" [style.background]="series.color"></span>
+            {{ series.name }}: {{ series.text }}
+          </button>
+        } @else {
+          <span class="previewSeries">
+            <span class="previewRule" [style.background]="series.color"></span>
+            @if (series.name) {
+              {{ series.name }}:
+            }
+            {{ series.text }}
+          </span>
+        }
+      }
+    </div>
+  }
+
+  <div class="graphBody" [@openClose]="expanded ? 'open' : 'closed'">
+    @if (expanded) {
+      <app-analysis-graph
+        #graph
+        [analysis]="analysis"
+        [analysisType]="analysisType"
+        [mechProp]="mechProp"
+        [mechPart]="mechPart"
+        [reactionLinkId]="reactionLinkId"
+      ></app-analysis-graph>
+    }
+  </div>
+</div>

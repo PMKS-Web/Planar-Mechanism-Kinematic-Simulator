@@ -25,6 +25,7 @@
 @use 'app/component/BLOCKS/tri-button/tri-button.component.scss' as tri-button;
 @use 'src/app/component/analysis-panel/analysis-panel.component.scss' as analysis-panel;
 @use 'src/app/component/analysis-graph/analysis-graph.component.scss' as analysis-graph;
+@use 'src/app/component/analysis-graph-section/analysis-graph-section.component.scss' as analysis-graph-section;
 @use 'src/app/component/right-panel/right-panel.component.scss' as right-panel;
 @use 'src/app/component/settings-panel/settings-panel.component.scss' as settings-panel;
 @use 'src/app/component/synthesis-panel/synthesis-panel.component.scss' as synthesis-panel;
@@ -89,6 +90,7 @@ $my-theme: mat.m2-define-light-theme(
 @include edit-panel.css($my-theme);
 @include analysis-panel.css($my-theme);
 @include analysis-graph.css($my-theme);
+@include analysis-graph-section.css($my-theme);
 @include right-panel.css($my-theme);
 @include settings-panel.css($my-theme);
 @include synthesis-panel.css($my-theme);

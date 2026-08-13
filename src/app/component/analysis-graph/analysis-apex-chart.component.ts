@@ -84,13 +84,43 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
   ngAfterViewInit(): void {
     this.viewInitialized = true;
     this.scheduleUpdate();
+    this.watchWidth();
   }
 
   ngOnDestroy(): void {
     this.destroyed = true;
     this.updateGeneration++;
+    this.widthWatch?.disconnect();
     this.chartInstance?.destroy();
     this.chartInstance = undefined;
+  }
+
+  private widthWatch?: ResizeObserver;
+  private renderedWidth = 0;
+
+  /**
+   * Re-lay the chart out when its container's width changes under it.
+   *
+   * Apex measures the host once, at construction, and keeps that width. A chart
+   * built while the panel was still settling -- which is every chart on the
+   * first render of a panel -- stayed at the width it was built for, so the
+   * label at the far end of the axis sat past the card's edge and was clipped.
+   * Toggling the card rebuilt the chart and it came back right, which is what
+   * made this look like a rendering bug rather than a measuring one.
+   */
+  private watchWidth(): void {
+    const host = this.chartHost?.nativeElement;
+    if (!host || typeof ResizeObserver === 'undefined') return;
+    this.renderedWidth = host.clientWidth;
+    this.widthWatch = new ResizeObserver(() => {
+      const width = host.clientWidth;
+      if (!width || width === this.renderedWidth || this.destroyed) return;
+      this.renderedWidth = width;
+      this.zone.runOutsideAngular(() => {
+        this.chartInstance?.updateOptions({ chart: { width } }, false, false);
+      });
+    });
+    this.widthWatch.observe(host);
   }
 
   updateOptions(

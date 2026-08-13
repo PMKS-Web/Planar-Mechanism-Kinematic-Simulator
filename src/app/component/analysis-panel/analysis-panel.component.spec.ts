@@ -43,6 +43,20 @@ async function createPanel(payload: string, selectedId: string, mode: TabID = Ta
   return { fixture, fixtureData };
 }
 
+/**
+ * What the panel calls each of its graphs, read off the section it renders.
+ *
+ * From the property rather than the attribute: an interpolated binding sets the
+ * property, and this spec stubs the section component, so the attribute holds
+ * only the static half of the string.
+ */
+function sectionLabels(fixture: ComponentFixture<AnalysisPanelComponent>): string[] {
+  return [...fixture.nativeElement.querySelectorAll('app-analysis-graph-section')].map(
+    (section: Element) =>
+      ((section as unknown as { label?: string }).label ?? section.getAttribute('label') ?? '').trim()
+  );
+}
+
 describe('AnalysisPanelComponent welded mechanism regression', () => {
   beforeEach(() => vi.spyOn(console, 'log').mockImplementation(() => undefined));
   afterEach(() => {
@@ -66,10 +80,9 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     }
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Analysis for Joint A');
-    expect(fixture.nativeElement.textContent).toContain('Force Analysis');
+    expect(fixture.nativeElement.textContent).toContain('Force Analysis for Joint A');
     expect(fixture.nativeElement.textContent).not.toContain('Kinematic Analysis');
-    expect(fixture.nativeElement.querySelectorAll('app-analysis-graph').length).toBe(
+    expect(fixture.nativeElement.querySelectorAll('app-analysis-graph-section').length).toBe(
       rows.length + 1
     );
 
@@ -110,9 +123,7 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     expect(rows.every((row) => row.jointId === 'B')).toBe(true);
     expect(fixture.nativeElement.querySelector('.reaction-link-selector')).toBeNull();
 
-    const titles = [...fixture.nativeElement.querySelectorAll('mat-panel-title')].map(
-      (title: Element) => title.textContent!.trim()
-    );
+    const titles = sectionLabels(fixture);
     for (const row of rows) {
       expect(titles).toContain(`Force on Link ${row.linkName}`);
     }
@@ -123,16 +134,15 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'BC', TabID.FORCE);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Analysis for Link BC');
-    expect(fixture.nativeElement.textContent).not.toContain('Kinematic Analysis for Link');
+    // The panel names the analysis it is showing, which is the heading the
+    // accordion inside it used to carry.
+    expect(fixture.nativeElement.textContent).toContain('Force Analysis for Link BC');
 
     const rows = fixture.componentInstance.linkForceRows();
     expect(rows.map((row) => row.jointId)).toEqual(['B', 'C']);
     expect(rows.every((row) => row.linkId === 'BC')).toBe(true);
 
-    const titles = [...fixture.nativeElement.querySelectorAll('mat-panel-title')].map(
-      (title: Element) => title.textContent!.trim()
-    );
+    const titles = sectionLabels(fixture);
     expect(titles).toContain('Force at Joint B');
     expect(titles).toContain('Force at Joint C');
     fixture.destroy();
@@ -161,8 +171,9 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     });
     fixture.detectChanges();
 
-    const graphs = [...fixture.nativeElement.querySelectorAll('app-analysis-graph')];
-    const properties = graphs.map((graph: Element) => graph.getAttribute('mechprop'));
+    const properties = [
+      ...fixture.nativeElement.querySelectorAll('app-analysis-graph-section'),
+    ].map((section: Element) => section.getAttribute('mechprop'));
     expect(properties).toEqual(
       expect.arrayContaining(['Linear Joint Pos', 'Linear Joint Vel', 'Linear Joint Acc'])
     );
@@ -184,8 +195,10 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     });
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelectorAll('app-analysis-graph')).toHaveLength(6);
-    expect(fixture.nativeElement.querySelector('mat-panel-title mat-panel-title')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('app-analysis-graph-section')).toHaveLength(6);
+    // One heading each, and no accordion wrapping the six of them.
+    expect(sectionLabels(fixture)).toHaveLength(6);
+    expect(fixture.nativeElement.querySelector('collapsible-subseciton')).toBeNull();
     fixture.destroy();
   });
 
@@ -230,11 +243,12 @@ describe('AnalysisPanelComponent with a cylinder selected', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Analysis for Cylinder');
     expect(fixture.nativeElement.textContent).not.toContain('Analysis for Link GN');
-    // And so does everything under the heading. A panel that calls the body a
+    // And so does every graph under the heading. A panel that calls the body a
     // cylinder at the top and a link in every row below has only moved the
     // disagreement down the page.
-    expect(fixture.nativeElement.textContent).not.toContain('of Link GN');
-    expect(fixture.nativeElement.textContent).toContain('Angle of Cylinder');
+    const labels = sectionLabels(fixture);
+    expect(labels.some((label) => label.includes('Link GN'))).toBe(false);
+    expect(labels).toContain('Angle of Cylinder GC');
     fixture.destroy();
   });
 

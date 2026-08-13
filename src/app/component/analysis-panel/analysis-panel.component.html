@@ -106,109 +106,43 @@
   <!-- Joint Kinematics-->
   @if (validMechanisms() && this.activeSrv.objType == 'Joint') {
     <panel-section id="analysis-panel">
-      <title-block
-        description="{{ inputSummary }} {{ inputEditHint }}"
-      >
-        Analysis for Joint
-        {{ this.activeSrv.selectedJoint.name }}
+      <title-block description="{{ inputSummary }} {{ inputEditHint }}">
+        {{ modeLabel }} for Joint {{ this.activeSrv.selectedJoint.name }}
       </title-block>
       @if (showKinematic) {
-        <collapsible-subseciton
-          titleLabel="Kinematic Analysis"
-          [expanded]="graphExpanded['JKineAna']"
-          (opened)="graphExpanded['JKineAna'] = true"
-          (closed)="graphExpanded['JKineAna'] = false"
-        >
-          <mat-expansion-panel
-            [expanded]="graphExpanded['JPos']"
-            (opened)="graphExpanded['JPos'] = true"
-            (closed)="graphExpanded['JPos'] = false"
-          >
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                Position of Joint {{ this.activeSrv.selectedJoint.name }}
-              </mat-panel-title>
-              <mat-panel-description>
-                <mat-icon
-                  matTooltip="Where this joint is, through the cycle"
-                  [matTooltipShowDelay]="1000"
-                  id="graph-help"
-                  >help_outline
-                </mat-icon>
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-            @if (graphExpanded['JPos']) {
-              <app-analysis-graph
-                analysis="kinematic"
-                analysisType="loop"
-                mechProp="Linear Joint Pos"
-                mechPart="{{ this.activeSrv.selectedJoint.id }}"
-              ></app-analysis-graph>
-            }
-          </mat-expansion-panel>
-          <mat-expansion-panel
-            [expanded]="graphExpanded['JVel']"
-            (opened)="graphExpanded['JVel'] = true"
-            (closed)="graphExpanded['JVel'] = false"
-          >
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                Velocity of Joint {{ this.activeSrv.selectedJoint.name }}
-              </mat-panel-title>
-              <mat-panel-description>
-                <mat-icon
-                  matTooltip="How fast this joint moves, and which way"
-                  [matTooltipShowDelay]="1000"
-                  id="graph-help"
-                  >help_outline
-                </mat-icon>
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-            @if (graphExpanded['JVel']) {
-              <app-analysis-graph
-                analysis="kinematic"
-                analysisType="loop"
-                mechProp="Linear Joint Vel"
-                mechPart="{{ this.activeSrv.selectedJoint.id }}"
-              ></app-analysis-graph>
-            }
-          </mat-expansion-panel>
-          <mat-expansion-panel
-            [expanded]="graphExpanded['JAcc']"
-            (opened)="graphExpanded['JAcc'] = true"
-            (closed)="graphExpanded['JAcc'] = false"
-          >
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                Acceleration of Joint {{ this.activeSrv.selectedJoint.name }}
-              </mat-panel-title>
-              <mat-panel-description>
-                <mat-icon
-                  matTooltip="How this joint’s velocity changes"
-                  [matTooltipShowDelay]="1000"
-                  id="graph-help"
-                  >help_outline
-                </mat-icon>
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-            @if (graphExpanded['JAcc']) {
-              <app-analysis-graph
-                analysis="kinematic"
-                analysisType="loop"
-                mechProp="Linear Joint Acc"
-                mechPart="{{ this.activeSrv.selectedJoint.id }}"
-              ></app-analysis-graph>
-            }
-          </mat-expansion-panel>
-        </collapsible-subseciton>
+        <app-analysis-graph-section
+          label="Position of Joint {{ this.activeSrv.selectedJoint.name }}"
+          help="Where this joint is, through the cycle"
+          analysis="kinematic"
+          analysisType="loop"
+          mechProp="Linear Joint Pos"
+          mechPart="{{ this.activeSrv.selectedJoint.id }}"
+          [expanded]="graphExpanded['JPos']"
+          (expandedChange)="graphExpanded['JPos'] = $event"
+        ></app-analysis-graph-section>
+        <app-analysis-graph-section
+          label="Velocity of Joint {{ this.activeSrv.selectedJoint.name }}"
+          help="How fast this joint moves, and which way"
+          analysis="kinematic"
+          analysisType="loop"
+          mechProp="Linear Joint Vel"
+          mechPart="{{ this.activeSrv.selectedJoint.id }}"
+          [expanded]="graphExpanded['JVel']"
+          (expandedChange)="graphExpanded['JVel'] = $event"
+        ></app-analysis-graph-section>
+        <app-analysis-graph-section
+          label="Acceleration of Joint {{ this.activeSrv.selectedJoint.name }}"
+          help="How this joint’s velocity changes"
+          analysis="kinematic"
+          analysisType="loop"
+          mechProp="Linear Joint Acc"
+          mechPart="{{ this.activeSrv.selectedJoint.id }}"
+          [expanded]="graphExpanded['JAcc']"
+          (expandedChange)="graphExpanded['JAcc'] = $event"
+        ></app-analysis-graph-section>
       }
       @if (showForce) {
-        <collapsible-subseciton
-          titleLabel="Force Analysis"
-          [expanded]="graphExpanded['JForceAna']"
-          (opened)="graphExpanded['JForceAna'] = true"
-          (closed)="graphExpanded['JForceAna'] = false"
-        >
+        <div class="forceModeRow">
           <radio-block
             tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
             option1="Static (Equilibrium)"
@@ -217,70 +151,38 @@
             _formControl="mode"
             >Force Analysis Type
           </radio-block>
-          @if (jointForceRows().length === 0) {
-            <div class="analysis-message" role="status">
-              Joint {{ this.activeSrv.selectedJoint.name }} is internal to one welded body and has
-              no independent pin reaction. Select an external or grounded joint to graph a reaction.
-            </div>
-          }
-          @for (row of jointForceRows(); track row.linkId) {
-            <mat-expansion-panel
-              [expanded]="graphExpanded['JForce_' + row.linkId]"
-              (opened)="graphExpanded['JForce_' + row.linkId] = true"
-              (closed)="graphExpanded['JForce_' + row.linkId] = false"
-            >
-              <mat-expansion-panel-header>
-                <mat-panel-title> Force on Link {{ row.linkName }} </mat-panel-title>
-                <mat-panel-description>
-                  <mat-icon
-                    matTooltip="The reaction that link carries at this joint"
-                    [matTooltipShowDelay]="1000"
-                    id="graph-help"
-                    >help_outline
-                  </mat-icon>
-                </mat-panel-description>
-              </mat-expansion-panel-header>
-              @if (graphExpanded['JForce_' + row.linkId]) {
-                <app-analysis-graph
-                  analysis="force"
-                  [analysisType]="forceAnalysisMode()"
-                  mechProp="Joint Forces"
-                  mechPart="{{ row.jointId }}"
-                  [reactionLinkId]="row.linkId"
-                ></app-analysis-graph>
-              }
-            </mat-expansion-panel>
-          }
-          @if (this.activeSrv.selectedJoint.input) {
-            <mat-expansion-panel
-              [expanded]="graphExpanded['JInputForce']"
-              (opened)="graphExpanded['JInputForce'] = true"
-              (closed)="graphExpanded['JInputForce'] = false"
-            >
-              <mat-expansion-panel-header>
-                <mat-panel-title>
-                  Input {{ inputEffortLabel() }} at Joint {{ this.activeSrv.selectedJoint.name }}
-                </mat-panel-title>
-                <mat-panel-description>
-                  <mat-icon
-                    matTooltip="The effort the input has to supply to drive the mechanism"
-                    [matTooltipShowDelay]="1000"
-                    id="graph-help"
-                    >help_outline
-                  </mat-icon>
-                </mat-panel-description>
-              </mat-expansion-panel-header>
-              @if (graphExpanded['JInputForce']) {
-                <app-analysis-graph
-                  analysis="force"
-                  [analysisType]="forceAnalysisMode()"
-                  mechProp="Input Effort"
-                  mechPart="{{ this.activeSrv.selectedJoint.id }}"
-                ></app-analysis-graph>
-              }
-            </mat-expansion-panel>
-          }
-        </collapsible-subseciton>
+        </div>
+        @if (jointForceRows().length === 0) {
+          <div class="analysis-message" role="status">
+            Joint {{ this.activeSrv.selectedJoint.name }} is internal to one welded body and has no
+            independent pin reaction. Select an external or grounded joint to graph a reaction.
+          </div>
+        }
+        @for (row of jointForceRows(); track row.linkId) {
+          <app-analysis-graph-section
+            label="Force on Link {{ row.linkName }}"
+            help="The reaction that link carries at this joint"
+            analysis="force"
+            [analysisType]="forceAnalysisMode()"
+            mechProp="Joint Forces"
+            mechPart="{{ row.jointId }}"
+            [reactionLinkId]="row.linkId"
+            [expanded]="graphExpanded['JForce_' + row.linkId]"
+            (expandedChange)="graphExpanded['JForce_' + row.linkId] = $event"
+          ></app-analysis-graph-section>
+        }
+        @if (this.activeSrv.selectedJoint.input) {
+          <app-analysis-graph-section
+            label="Input {{ inputEffortLabel() }} at Joint {{ this.activeSrv.selectedJoint.name }}"
+            help="The effort the input has to supply to drive the mechanism"
+            analysis="force"
+            [analysisType]="forceAnalysisMode()"
+            mechProp="Input Effort"
+            mechPart="{{ this.activeSrv.selectedJoint.id }}"
+            [expanded]="graphExpanded['JInputForce']"
+            (expandedChange)="graphExpanded['JInputForce'] = $event"
+          ></app-analysis-graph-section>
+        }
       }
     </panel-section>
   }
@@ -288,10 +190,8 @@
   <!-- Link Kinematics-->
   @if (validMechanisms() && this.activeSrv.objType == 'Link') {
     <panel-section id="analysis-panel">
-      <title-block
-        description="{{ inputSummary }} {{ inputEditHint }}"
-      >
-        Analysis for {{ selectedBodyLabel }}
+      <title-block description="{{ inputSummary }} {{ inputEditHint }}">
+        {{ modeLabel }} for {{ selectedBodyLabel }}
       </title-block>
       <!-- <subtitle-block>Kinematics</subtitle-block> -->
       <!--
@@ -305,186 +205,76 @@
               //Param 4: mechPart: If Joint 'a','b','c'... If Link 'ab','bc','cd'...
               -->
       @if (showKinematic) {
-        <collapsible-subseciton
-          titleLabel="Kinematic Analysis"
-          [expanded]="graphExpanded['LKineAna']"
-          (opened)="graphExpanded['LKineAna'] = true"
-          (closed)="graphExpanded['LKineAna'] = false"
+        <app-analysis-graph-section
+          label="Angle of {{ selectedBodyLabel }}"
+          help="The angle of this link above the horizontal"
+          analysis="kinematic"
+          analysisType="loop"
+          mechProp="Angular Link Pos"
+          mechPart="{{ this.activeSrv.selectedLink.id }}"
+          [expanded]="graphExpanded['LAng']"
+          (expandedChange)="graphExpanded['LAng'] = $event"
+        ></app-analysis-graph-section>
+        <app-analysis-graph-section
+          label="Angular Velocity of {{ selectedBodyLabel }}"
+          help="How fast this link turns, and which way"
+          analysis="kinematic"
+          analysisType="loop"
+          mechProp="Angular Link Vel"
+          mechPart="{{ this.activeSrv.selectedLink.id }}"
+          [expanded]="graphExpanded['LAngVel']"
+          (expandedChange)="graphExpanded['LAngVel'] = $event"
+        ></app-analysis-graph-section>
+        <app-analysis-graph-section
+          label="Angular Acceleration of {{ selectedBodyLabel }}"
+          help="How this link’s turning rate changes"
+          analysis="kinematic"
+          analysisType="loop"
+          mechProp="Angular Link Acc"
+          mechPart="{{ this.activeSrv.selectedLink.id }}"
+          [expanded]="graphExpanded['LAngAcc']"
+          (expandedChange)="graphExpanded['LAngAcc'] = $event"
+        ></app-analysis-graph-section>
+        <div
+          class="graphGroupHeading"
+          (mouseenter)="highlightCoM(true)"
+          (mouseleave)="highlightCoM(false)"
         >
-          <mat-expansion-panel
-            [expanded]="graphExpanded['LAng']"
-            (opened)="graphExpanded['LAng'] = true"
-            (closed)="graphExpanded['LAng'] = false"
-          >
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                Angle of {{ selectedBodyLabel }}
-              </mat-panel-title>
-              <mat-panel-description>
-                <mat-icon
-                  matTooltip="The angle of this link above the horizontal"
-                  [matTooltipShowDelay]="1000"
-                  id="graph-help"
-                  >help_outline
-                </mat-icon>
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-            @if (graphExpanded['LAng']) {
-              <app-analysis-graph
-                analysis="kinematic"
-                analysisType="loop"
-                mechProp="Angular Link Pos"
-                mechPart="{{ this.activeSrv.selectedLink.id }}"
-              ></app-analysis-graph>
-            }
-          </mat-expansion-panel>
-          <mat-expansion-panel
-            [expanded]="graphExpanded['LAngVel']"
-            (opened)="graphExpanded['LAngVel'] = true"
-            (closed)="graphExpanded['LAngVel'] = false"
-          >
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                Angular Velocity of {{ selectedBodyLabel }}
-              </mat-panel-title>
-              <mat-panel-description>
-                <mat-icon
-                  matTooltip="How fast this link turns, and which way"
-                  [matTooltipShowDelay]="1000"
-                  id="graph-help"
-                  >help_outline
-                </mat-icon>
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-            @if (graphExpanded['LAngVel']) {
-              <app-analysis-graph
-                analysis="kinematic"
-                analysisType="loop"
-                mechProp="Angular Link Vel"
-                mechPart="{{ this.activeSrv.selectedLink.id }}"
-              ></app-analysis-graph>
-            }
-          </mat-expansion-panel>
-          <mat-expansion-panel
-            [expanded]="graphExpanded['LAngAcc']"
-            (opened)="graphExpanded['LAngAcc'] = true"
-            (closed)="graphExpanded['LAngAcc'] = false"
-          >
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                Angular Acceleration of {{ selectedBodyLabel }}
-              </mat-panel-title>
-              <mat-panel-description>
-                <mat-icon
-                  matTooltip="How this link’s turning rate changes"
-                  [matTooltipShowDelay]="1000"
-                  id="graph-help"
-                  >help_outline
-                </mat-icon>
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-            @if (graphExpanded['LAngAcc']) {
-              <app-analysis-graph
-                analysis="kinematic"
-                analysisType="loop"
-                mechProp="Angular Link Acc"
-                mechPart="{{ this.activeSrv.selectedLink.id }}"
-              ></app-analysis-graph>
-            }
-          </mat-expansion-panel>
-          <subtitle-block style="margin-top: 20px"
-            >Center of Mass (COM) of {{ selectedBodyLabel }}</subtitle-block
-          >
-          <mat-expansion-panel
-            [expanded]="graphExpanded['LPos']"
-            (opened)="graphExpanded['LPos'] = true"
-            (closed)="graphExpanded['LPos'] = false"
-          >
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                Position of {{ selectedBodyLabel }}'s COM
-              </mat-panel-title>
-              <mat-panel-description>
-                <mat-icon
-                  matTooltip="Where this link’s centre of mass is"
-                  [matTooltipShowDelay]="1000"
-                  id="graph-help"
-                  >help_outline
-                </mat-icon>
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-            @if (graphExpanded['LPos']) {
-              <app-analysis-graph
-                analysis="kinematic"
-                analysisType="loop"
-                mechProp="Linear Link's CoM Pos"
-                mechPart="{{ this.activeSrv.selectedLink.id }}"
-              ></app-analysis-graph>
-            }
-          </mat-expansion-panel>
-          <mat-expansion-panel
-            [expanded]="graphExpanded['LVel']"
-            (opened)="graphExpanded['LVel'] = true"
-            (closed)="graphExpanded['LVel'] = false"
-          >
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                Velocity of {{ selectedBodyLabel }}'s COM
-              </mat-panel-title>
-              <mat-panel-description>
-                <mat-icon
-                  matTooltip="How fast this link’s centre of mass moves"
-                  [matTooltipShowDelay]="1000"
-                  id="graph-help"
-                  >help_outline
-                </mat-icon>
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-            @if (graphExpanded['LVel']) {
-              <app-analysis-graph
-                analysis="kinematic"
-                analysisType="loop"
-                mechProp="Linear Link's CoM Vel"
-                mechPart="{{ this.activeSrv.selectedLink.id }}"
-              ></app-analysis-graph>
-            }
-          </mat-expansion-panel>
-          <mat-expansion-panel
-            [expanded]="graphExpanded['LAcc']"
-            (opened)="graphExpanded['LAcc'] = true"
-            (closed)="graphExpanded['LAcc'] = false"
-          >
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                Acceleration of {{ selectedBodyLabel }}'s COM
-              </mat-panel-title>
-              <mat-panel-description>
-                <mat-icon
-                  matTooltip="How this link’s centre of mass changes speed"
-                  [matTooltipShowDelay]="1000"
-                  id="graph-help"
-                  >help_outline
-                </mat-icon>
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-            @if (graphExpanded['LAcc']) {
-              <app-analysis-graph
-                analysis="kinematic"
-                analysisType="loop"
-                mechProp="Linear Link's CoM Acc"
-                mechPart="{{ this.activeSrv.selectedLink.id }}"
-              ></app-analysis-graph>
-            }
-          </mat-expansion-panel>
-        </collapsible-subseciton>
+          Centre of mass
+        </div>
+        <app-analysis-graph-section
+          label="Position of {{ selectedBodyLabel }}'s COM"
+          help="Where this link’s centre of mass is"
+          analysis="kinematic"
+          analysisType="loop"
+          mechProp="Linear Link's CoM Pos"
+          mechPart="{{ this.activeSrv.selectedLink.id }}"
+          [expanded]="graphExpanded['LPos']"
+          (expandedChange)="graphExpanded['LPos'] = $event"
+        ></app-analysis-graph-section>
+        <app-analysis-graph-section
+          label="Velocity of {{ selectedBodyLabel }}'s COM"
+          help="How fast this link’s centre of mass moves"
+          analysis="kinematic"
+          analysisType="loop"
+          mechProp="Linear Link's CoM Vel"
+          mechPart="{{ this.activeSrv.selectedLink.id }}"
+          [expanded]="graphExpanded['LVel']"
+          (expandedChange)="graphExpanded['LVel'] = $event"
+        ></app-analysis-graph-section>
+        <app-analysis-graph-section
+          label="Acceleration of {{ selectedBodyLabel }}'s COM"
+          help="How this link’s centre of mass changes speed"
+          analysis="kinematic"
+          analysisType="loop"
+          mechProp="Linear Link's CoM Acc"
+          mechPart="{{ this.activeSrv.selectedLink.id }}"
+          [expanded]="graphExpanded['LAcc']"
+          (expandedChange)="graphExpanded['LAcc'] = $event"
+        ></app-analysis-graph-section>
       }
       @if (showForce) {
-        <collapsible-subseciton
-          titleLabel="Force Analysis"
-          [expanded]="graphExpanded['LForceAna']"
-          (opened)="graphExpanded['LForceAna'] = true"
-          (closed)="graphExpanded['LForceAna'] = false"
-        >
+        <div class="forceModeRow">
           <radio-block
             tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
             option1="Static (Equilibrium)"
@@ -493,41 +283,25 @@
             _formControl="mode"
             >Force Analysis Type
           </radio-block>
-          @if (linkForceRows().length === 0) {
-            <div class="analysis-message" role="status">
-              {{ selectedBodyLabel }} has no external joint that carries an
-              independent pin reaction.
-            </div>
-          }
-          @for (row of linkForceRows(); track row.jointId) {
-            <mat-expansion-panel
-              [expanded]="graphExpanded['LForce_' + row.jointId]"
-              (opened)="graphExpanded['LForce_' + row.jointId] = true"
-              (closed)="graphExpanded['LForce_' + row.jointId] = false"
-            >
-              <mat-expansion-panel-header>
-                <mat-panel-title> Force at Joint {{ row.jointName }} </mat-panel-title>
-                <mat-panel-description>
-                  <mat-icon
-                    matTooltip="The reaction this link carries at that joint"
-                    [matTooltipShowDelay]="1000"
-                    id="graph-help"
-                    >help_outline
-                  </mat-icon>
-                </mat-panel-description>
-              </mat-expansion-panel-header>
-              @if (graphExpanded['LForce_' + row.jointId]) {
-                <app-analysis-graph
-                  analysis="force"
-                  [analysisType]="forceAnalysisMode()"
-                  mechProp="Joint Forces"
-                  mechPart="{{ row.jointId }}"
-                  [reactionLinkId]="row.linkId"
-                ></app-analysis-graph>
-              }
-            </mat-expansion-panel>
-          }
-        </collapsible-subseciton>
+        </div>
+        @if (linkForceRows().length === 0) {
+          <div class="analysis-message" role="status">
+            {{ selectedBodyLabel }} has no external joint that carries an independent pin reaction.
+          </div>
+        }
+        @for (row of linkForceRows(); track row.jointId) {
+          <app-analysis-graph-section
+            label="Force at Joint {{ row.jointName }}"
+            help="The reaction this link carries at that joint"
+            analysis="force"
+            [analysisType]="forceAnalysisMode()"
+            mechProp="Joint Forces"
+            mechPart="{{ row.jointId }}"
+            [reactionLinkId]="row.linkId"
+            [expanded]="graphExpanded['LForce_' + row.jointId]"
+            (expandedChange)="graphExpanded['LForce_' + row.jointId] = $event"
+          ></app-analysis-graph-section>
+        }
       }
     </panel-section>
   }
@@ -536,7 +310,7 @@
   @if (validMechanisms() && this.activeSrv.objType == 'Force') {
     <panel-section id="analysis-panel">
       <title-block description="There are no analysis graphs for forces.">
-        Analysis for Force {{ this.activeSrv.selectedForce.name }}
+        {{ modeLabel }} for Force {{ this.activeSrv.selectedForce.name }}
       </title-block>
     </panel-section>
   }

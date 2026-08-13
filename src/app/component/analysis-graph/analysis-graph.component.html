@@ -1,73 +1,17 @@
 @if (analysisDiagnostic) {
   <div class="analysis-diagnostic" role="status">{{ analysisDiagnostic }}</div>
 } @else {
-  @if (numberOfSeries === 3) {
-    <div
-      id="graph-checkbox-list-three"
-      [formGroup]="seriesCheckboxForm"
-      role="group"
-      [attr.aria-label]="'Series shown in ' + graphLabel"
-    >
-      <mat-checkbox class="series-z" formControlName="z" (change)="applySeriesVisibility()"
-        >Magnitude</mat-checkbox
-      >
-      <mat-checkbox
-        class="series-x"
-        formControlName="x"
-        color="primary"
-        (change)="applySeriesVisibility()"
-        >X</mat-checkbox
-      >
-      <mat-checkbox
-        class="series-y"
-        formControlName="y"
-        color="warn"
-        (change)="applySeriesVisibility()"
-        >Y</mat-checkbox
-      >
+  <!-- In place of the chart rather than over it: these used to be fixed-height
+       overlays pinned 100px down the card, which on a short graph covered the
+       card below and on a tall one floated in the middle of nothing. -->
+  @if (noDataSelected || loading) {
+    <div class="graphPlaceholder" role="status">
+      {{ noDataSelected ? 'No series shown. Pick one above.' : 'Graph paused while dragging.' }}
     </div>
   }
-  @if (numberOfSeries === 2) {
-    <div
-      id="graph-checkbox-list-two"
-      [formGroup]="seriesCheckboxForm"
-      role="group"
-      [attr.aria-label]="'Series shown in ' + graphLabel"
-    >
-      <mat-checkbox
-        class="series-x"
-        formControlName="x"
-        color="primary"
-        (change)="applySeriesVisibility()"
-        >X</mat-checkbox
-      >
-      <mat-checkbox
-        class="series-y"
-        formControlName="y"
-        color="warn"
-        (change)="applySeriesVisibility()"
-        >Y</mat-checkbox
-      >
-    </div>
-  }
-  <div
-    [@showHide]="noDataSelected ? 'graphHidden' : 'graphShown'"
-    [class.compact-single-series]="compactSingleSeries"
-    id="graphNoSeries"
-    role="status"
-  >
-    Please select at least one data series.
-  </div>
-  <div
-    [@showHide]="loading ? 'graphHidden' : 'graphShown'"
-    [class.compact-single-series]="compactSingleSeries"
-    id="graphDragging"
-    role="status"
-  >
-    Graph unavailable while dragging.
-  </div>
   <app-analysis-apex-chart
     #chart
+    [class.hidden]="noDataSelected || loading"
     role="img"
     [attr.aria-label]="graphSummary"
     [class.compact-single-series]="compactSingleSeries"
@@ -86,14 +30,4 @@
   >
   </app-analysis-apex-chart>
 
-  <button
-    id="csvDownload"
-    (click)="downloadCSV()"
-    mat-stroked-button
-    color="primary"
-    [attr.aria-label]="'Download ' + graphLabel + ' data as CSV'"
-  >
-    <mat-icon>download</mat-icon>
-    Download Data (CSV)
-  </button>
 }

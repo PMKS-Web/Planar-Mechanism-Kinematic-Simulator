@@ -62,3 +62,27 @@
   background: #f4f5fb;
   line-height: 1.4;
 }
+
+// Names the group of graphs under it. It used to be a subtitle-block nudged
+// down 20px, which read as a stray line of text between two cards rather than
+// as a heading for the ones below it.
+#analysisWrapper .graphGroupHeading {
+  // On the cards' own gutter, and weighted to carry the group under it rather
+  // than to be the quietest thing on the page.
+  margin: 16px 0 10px;
+  padding: 14px 15px 0;
+  border-top: 1px solid #eceef5;
+  font-size: 15px;
+  font-weight: 500;
+  color: #2c2c2c;
+  cursor: default;
+}
+
+// The mode the reactions below are computed for, set off from them the same way
+// the centre-of-mass heading is set off from its graphs. It used to sit flush
+// against the first reaction card, so the two read as one control.
+#analysisWrapper .forceModeRow {
+  margin: 0 0 12px;
+  padding: 0 15px 12px;
+  border-bottom: 1px solid #eceef5;
+}

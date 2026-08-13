@@ -23,17 +23,18 @@ import {
   ApexYAxis,
 } from 'apexcharts';
 import { KinematicsSolver } from 'src/app/model/mechanism/kinematic-solver';
+import { ANALYSIS_SERIES_COLORS } from 'src/app/model/analysis-series';
+export { ANALYSIS_SERIES_COLORS };
 import { ForceAnalysisMode } from 'src/app/model/mechanism/force-solver';
 import { Mechanism } from 'src/app/model/mechanism/mechanism';
-import { AngleUnit, ForceUnit, LengthUnit, roundNumber } from '../../model/utils';
-import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../../model/unit-conversions';
-import { MODEL_SCALE } from '../../model/render-scale';
+import { AngleUnit, ForceUnit, LengthUnit } from '../../model/utils';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { FormBuilder } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { ActiveObjService } from '../../services/active-obj.service';
+import { AnalysisSampleService } from '../../services/analysis-sample.service';
 import { skip, Subscription } from 'rxjs';
 import { AnalysisApexChartComponent } from './analysis-apex-chart.component';
 
@@ -55,12 +56,6 @@ export type ChartOptions = {
   legend: ApexLegend;
 };
 
-export const ANALYSIS_SERIES_COLORS = {
-  X: '#313aa7',
-  Y: '#ea2b29',
-  Z: '#fdb50e',
-} as const;
-
 /**
  * Time axis labels: a typical cycle runs 0-3 s, where "3.000" is noise. Cap at
  * three decimals and drop the ones that carry no information.
@@ -69,6 +64,18 @@ export function formatTimeLabel(value: number): string {
   const rounded = Number(value);
   if (!Number.isFinite(rounded)) return '';
   return Number(rounded.toFixed(3)).toString();
+}
+
+/**
+ * The two ends of the time axis, to one decimal.
+ *
+ * They read beside the y axis, which is also one decimal, and "0" against
+ * "6.0" looks like two different kinds of number.
+ */
+export function formatAxisEnd(value: number): string {
+  const rounded = Number(value);
+  if (!Number.isFinite(rounded)) return '';
+  return rounded.toFixed(1);
 }
 
 @Component({
@@ -149,8 +156,8 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       position: 'back',
       show: true,
       padding: {
-        top: 0,
-        bottom: 12,
+        top: -14,
+        bottom: -8,
       },
       xaxis: {
         lines: {
@@ -165,8 +172,10 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     },
     xaxis: {
       type: 'numeric',
-      position: 'top',
-      offsetY: 15,
+      // Under the plot, where a time axis reads. It sat on top because the
+      // legend used to want the room below it, and the legend has gone.
+      position: 'bottom',
+      offsetY: 0,
       // floating: true,
       // categories: categories,
       labels: {
@@ -176,17 +185,25 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
         // the space actually free at the two ends of this axis.
         trim: false,
         hideOverlappingLabels: false,
-        offsetY: 0,
+        // Clear of the plot's own frame, which they used to sit against.
+        offsetY: 4,
+        style: {
+          fontSize: '12px',
+          fontWeight: 400,
+          colors: ['#373d3f', '#373d3f'],
+        },
         formatter: function (val) {
-          return formatTimeLabel(Number(val));
+          return formatAxisEnd(Number(val));
         },
       },
       tickAmount: 1,
       title: {
         text: 'Time (seconds)',
-        // small nudge to sit on the same baseline as the tick labels
-        offsetY: 6,
-        offsetX: 0,
+        // Up beside the two ends rather than on a line of its own below them,
+        // and centred between them: Apex centres it on the whole canvas, which
+        // the y axis's own labels make eight pixels wider on the left.
+        offsetY: -20,
+        offsetX: -8,
       },
       tooltip: {
         enabled: false,
@@ -195,6 +212,15 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     yaxis: {
       showForNullSeries: false,
       forceNiceScale: true,
+      // The same size and weight as the time axis. Apex defaults the two axes
+      // to 11px and the x axis was set to 12px on its own, so the two ends of
+      // one plot were lettered differently.
+      labels: {
+        style: {
+          fontSize: '12px',
+          fontWeight: 400,
+        },
+      },
       min: function (min) {
         return Math.floor(min);
       },
@@ -203,6 +229,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       },
       title: {
         text: 'setLater',
+        style: {
+          fontSize: '12px',
+        },
       },
       // tickAmount: 1,
       decimalsInFloat: 1,
@@ -273,7 +302,8 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     private mechanismService: MechanismService,
     public settingsService: SettingsService,
     private nup: NumberUnitParserService,
-    private activeSrv: ActiveObjService
+    private activeSrv: ActiveObjService,
+    private samples: AnalysisSampleService
   ) {}
 
   seriesCheckboxForm = this.fb.group(
@@ -366,6 +396,38 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     }, 1);
   }
 
+  /**
+   * Which series this graph has, in the order it plots them.
+   *
+   * Two means X and Y; three means either X, Y and a magnitude, or the three
+   * components of a force -- `seriesLabel` is what knows the difference.
+   */
+  get seriesKeys(): ('x' | 'y' | 'z')[] {
+    if (this.numberOfSeries === 3) return ['z', 'x', 'y'];
+    if (this.numberOfSeries === 2) return ['x', 'y'];
+    return [];
+  }
+
+  seriesLabel(key: 'x' | 'y' | 'z'): string {
+    if (key !== 'z') return key.toUpperCase();
+    // The third series is the magnitude of the other two, except in force
+    // analysis, where it is a component of its own.
+    return this.analysis === 'force' ? 'Z' : 'Magnitude';
+  }
+
+  isSeriesShown(key: 'x' | 'y' | 'z'): boolean {
+    return !!this.seriesCheckboxForm.value[key];
+  }
+
+  /** The legend is the switch. Showing none of them is allowed; the graph says so. */
+  toggleSeries(key: 'x' | 'y' | 'z'): void {
+    this.seriesCheckboxForm.patchValue({ [key]: !this.isSeriesShown(key) });
+  }
+
+  colorForSeriesKey(key: 'x' | 'y' | 'z'): string {
+    return this.colorForSeries(this.seriesLabel(key) === 'Magnitude' ? 'Z' : key.toUpperCase());
+  }
+
   applySeriesVisibility(): void {
     const data = this.seriesCheckboxForm.getRawValue();
     const selectedNames = new Set<string>();
@@ -405,10 +467,16 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
         {
           x: timeSeconds,
           borderColor: '#000000',
+          // Under the line rather than over it. Above, it was pushed past the
+          // top of the plot and clipped by the card, which left a white box
+          // with half a label in it hanging over the chart.
           label: {
-            text: 'T= ' + formatTimeLabel(timeSeconds),
+            // One decimal, like the two ends of the axis it sits on: "T= 1"
+            // beside "0.0" and "3.0" is the same number written two ways.
+            text: 'T= ' + formatAxisEnd(timeSeconds),
             orientation: 'horizontal',
-            offsetY: -20,
+            position: 'bottom',
+            offsetY: 4,
           },
         },
         false
@@ -852,70 +920,30 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     const datum_X: number[] = [];
     const datum_Y: number[] = [];
     const datum_Z: number[] = [];
-    let x = 0;
-    let y = 0;
-    let z = 0;
     const categories: string[] = [];
     const mechanism = this.mechanismFor(mechPart);
     // A loose joint, or a chain that never reaches ground, is in no mechanism
     // and so has nothing solved to plot.
     if (!mechanism) return [[datum_X, datum_Y, datum_Z], categories];
+
+    const series = [datum_X, datum_Y, datum_Z];
+    /** One solved sample, spread across the series in the order plotted. */
+    const collect = (index: number): void => {
+      this.samples
+        .sampleAt(mechanism, index, analysis, analysisType, mechProp, mechPart, this.reactionLinkId)
+        .forEach((value, position) => series[position].push(value));
+    };
+
     if (analysis === 'force') {
       const mode: ForceAnalysisMode = analysisType === 'dynamic' ? 'dynamic' : 'static';
       const result = mechanism.getForceAnalysis(mode);
-      const forceConversion =
-        this.settingsService.forceUnit.value === ForceUnit.LBF ? LBF_PER_NEWTON : 1;
-      const torqueConversion =
-        this.settingsService.forceUnit.value === ForceUnit.LBF ? LBF_IN_PER_NEWTON_METER : 1;
-
-      for (const frame of result.frames) {
+      result.frames.forEach((frame, index) => {
         categories.push(frame.timeSeconds.toString());
-        if (frame.status !== 'ok') {
-          datum_X.push(Number.NaN);
-          if (mechProp === 'Joint Forces') {
-            datum_Y.push(Number.NaN);
-            datum_Z.push(Number.NaN);
-          }
-          continue;
-        }
+        collect(index);
+      });
 
-        if (mechProp === 'Input Torque' || mechProp === 'Input Effort') {
-          // A torque's moment arms are internal model lengths (MODEL_SCALE
-          // times the user's unit), so the solved value divides back down for
-          // display. An input *force* has no length in it and is invariant.
-          datum_X.push(
-            frame.inputEffort
-              ? roundNumber(
-                  (frame.inputEffort.valueSI *
-                    (frame.inputEffort.kind === 'force' ? forceConversion : torqueConversion)) /
-                    (frame.inputEffort.kind === 'force' ? 1 : MODEL_SCALE),
-                  3
-                )
-              : Number.NaN
-          );
-          continue;
-        }
-
-        const byLink = frame.jointReactionsByLink.get(mechPart);
-        const reaction = this.reactionLinkId
-          ? byLink?.get(this.reactionLinkId)
-          : frame.jointReactions.get(mechPart);
-        if (!reaction) {
-          datum_X.push(Number.NaN);
-          datum_Y.push(Number.NaN);
-          datum_Z.push(Number.NaN);
-          continue;
-        }
-        x = reaction[0] * forceConversion;
-        y = reaction[1] * forceConversion;
-        z = Math.hypot(x, y);
-        datum_X.push(roundNumber(x, 3));
-        datum_Y.push(roundNumber(y, 3));
-        datum_Z.push(roundNumber(z, 3));
-      }
-
-      const hasFiniteData = [datum_X, datum_Y, datum_Z].some((series) =>
-        series.some(Number.isFinite)
+      const hasFiniteData = [datum_X, datum_Y, datum_Z].some((values) =>
+        values.some(Number.isFinite)
       );
       this.analysisDiagnostic = hasFiniteData
         ? null
@@ -926,121 +954,13 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       return [[datum_X, datum_Y, datum_Z], categories];
     }
 
+    // The solver keeps its answers in statics, and starts each graph from a
+    // clean set of them rather than from the last mechanism graphed.
     KinematicsSolver.resetVariables();
     KinematicsSolver.requiredLoops = mechanism.requiredLoops;
     mechanism.joints.forEach((_, index) => {
       categories.push(mechanism.timeNum[index]?.toString() ?? index.toString());
-      const vector = (value: [number, number] | undefined): [number, number] =>
-        value ?? [Number.NaN, Number.NaN];
-      switch (mechProp) {
-        // Positions, velocities and accelerations are linear in length, so
-        // each internal model value divides by MODEL_SCALE for display in the
-        // user's unit. Angular series carry no length and pass through.
-        case 'Linear Joint Pos':
-          const jt = mechanism.joints[index].find((j) => j.id === mechPart);
-          x = (jt?.x ?? Number.NaN) / MODEL_SCALE;
-          y = (jt?.y ?? Number.NaN) / MODEL_SCALE;
-          datum_X.push(roundNumber(x, 3));
-          datum_Y.push(roundNumber(y, 3));
-          break;
-        case 'Linear Joint Vel':
-          KinematicsSolver.determineKinematics(
-            mechanism.joints[index],
-            mechanism.links[index],
-            mechanism.inputAngularVelocities[index]
-          );
-          [x, y] = vector(KinematicsSolver.jointVelMap.get(mechPart));
-          x /= MODEL_SCALE;
-          y /= MODEL_SCALE;
-          z = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
-          datum_X.push(roundNumber(x, 3));
-          datum_Y.push(roundNumber(y, 3));
-          datum_Z.push(roundNumber(z, 3));
-          break;
-        case 'Linear Joint Acc':
-          KinematicsSolver.determineKinematics(
-            mechanism.joints[index],
-            mechanism.links[index],
-            mechanism.inputAngularVelocities[index]
-          );
-          [x, y] = vector(KinematicsSolver.jointAccMap.get(mechPart));
-          x /= MODEL_SCALE;
-          y /= MODEL_SCALE;
-          z = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
-          datum_X.push(roundNumber(x, 3));
-          datum_Y.push(roundNumber(y, 3));
-          datum_Z.push(roundNumber(z, 3));
-          break;
-        case "Linear Link's CoM Pos":
-          KinematicsSolver.determineKinematics(
-            mechanism.joints[index],
-            mechanism.links[index],
-            mechanism.inputAngularVelocities[index]
-          );
-          [x, y] = vector(KinematicsSolver.linkCoMMap.get(mechPart));
-          x /= MODEL_SCALE;
-          y /= MODEL_SCALE;
-          datum_X.push(roundNumber(x, 3));
-          datum_Y.push(roundNumber(y, 3));
-          break;
-        case "Linear Link's CoM Vel":
-          KinematicsSolver.determineKinematics(
-            mechanism.joints[index],
-            mechanism.links[index],
-            mechanism.inputAngularVelocities[index]
-          );
-          [x, y] = vector(KinematicsSolver.linkVelMap.get(mechPart));
-          x /= MODEL_SCALE;
-          y /= MODEL_SCALE;
-          z = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
-          datum_X.push(roundNumber(x, 3));
-          datum_Y.push(roundNumber(y, 3));
-          datum_Z.push(roundNumber(z, 3));
-          break;
-        case "Linear Link's CoM Acc":
-          KinematicsSolver.determineKinematics(
-            mechanism.joints[index],
-            mechanism.links[index],
-            mechanism.inputAngularVelocities[index]
-          );
-          [x, y] = vector(KinematicsSolver.linkAccMap.get(mechPart));
-          x /= MODEL_SCALE;
-          y /= MODEL_SCALE;
-          z = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
-          datum_X.push(roundNumber(x, 3));
-          datum_Y.push(roundNumber(y, 3));
-          datum_Z.push(roundNumber(z, 3));
-          break;
-        case 'Angular Link Pos':
-          KinematicsSolver.determineKinematics(
-            mechanism.joints[index],
-            mechanism.links[index],
-            mechanism.inputAngularVelocities[index]
-          );
-          x = KinematicsSolver.linkAngPosMap.get(mechPart) ?? Number.NaN;
-          datum_X.push(roundNumber(x, 3));
-          break;
-        case 'Angular Link Vel':
-          KinematicsSolver.determineKinematics(
-            mechanism.joints[index],
-            mechanism.links[index],
-            mechanism.inputAngularVelocities[index]
-          );
-          x = KinematicsSolver.linkAngVelMap.get(mechPart) ?? Number.NaN;
-          datum_X.push(roundNumber(x, 3));
-          break;
-        case 'Angular Link Acc':
-          KinematicsSolver.determineKinematics(
-            mechanism.joints[index],
-            mechanism.links[index],
-            mechanism.inputAngularVelocities[index]
-          );
-          x = KinematicsSolver.linkAngAccMap.get(mechPart) ?? Number.NaN;
-          datum_X.push(roundNumber(x, 3));
-          break;
-        case 'ic':
-          break;
-      }
+      collect(index);
     });
     return [[datum_X, datum_Y, datum_Z], categories];
   }

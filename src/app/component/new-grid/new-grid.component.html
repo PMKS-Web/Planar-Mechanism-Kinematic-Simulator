@@ -1133,39 +1133,41 @@
       </svg>
     }
   </g>
-  @if (settings.isShowCOM.value) {
+  @if (settings.isShowCOM.value || settings.previewCoMLinkId) {
     <g id="comTagHolder" style="transform: scaleY(-1); pointer-events: none">
       @for (link of mechanismSrv.getLinks(); track link) {
-        <svg style="overflow: visible">
-          <path
-            stroke-width="2"
-            stroke-linejoin="round"
-            fill="black"
-            opacity="1.0"
-            [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d1')"
-          ></path>
-          <path
-            stroke-width="2"
-            stroke-linejoin="round"
-            fill="white"
-            opacity="1.0"
-            [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d2')"
-          ></path>
-          <path
-            stroke-width="2"
-            stroke-linejoin="round"
-            fill="black"
-            opacity="1.0"
-            [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d3')"
-          ></path>
-          <path
-            stroke-width="2"
-            stroke-linejoin="round"
-            fill="white"
-            opacity="1.0"
-            [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d4')"
-          ></path>
-        </svg>
+        @if (settings.isShowCOM.value || settings.previewCoMLinkId === link.id) {
+          <svg style="overflow: visible">
+            <path
+              stroke-width="2"
+              stroke-linejoin="round"
+              fill="black"
+              opacity="1.0"
+              [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d1')"
+            ></path>
+            <path
+              stroke-width="2"
+              stroke-linejoin="round"
+              fill="white"
+              opacity="1.0"
+              [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d2')"
+            ></path>
+            <path
+              stroke-width="2"
+              stroke-linejoin="round"
+              fill="black"
+              opacity="1.0"
+              [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d3')"
+            ></path>
+            <path
+              stroke-width="2"
+              stroke-linejoin="round"
+              fill="white"
+              opacity="1.0"
+              [attr.d]="mechanismSrv.getLinkProp(link, 'CoM_d4')"
+            ></path>
+          </svg>
+        }
       }
     </g>
   }

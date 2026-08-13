@@ -1,0 +1,149 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+
+@mixin css($theme) {
+  $color-config: mat.m2-get-color-config($theme);
+  $primary-palette: map.get($color-config, 'primary');
+
+  // A card per quantity, as the mock has it: name and value on the left, a
+  // chevron on the right, and the graph underneath once it is opened.
+  .graphSection {
+    position: relative;
+    border: 1px solid #eceef5;
+    border-radius: var(--border-radius);
+    background: var(--card-surface);
+    // On the panel's own text gutter, so the card's edges line up with the
+    // paragraph above it rather than running the full width of the panel.
+    margin: 0 15px 8px;
+    overflow: hidden;
+
+    &.closed {
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.02);
+      }
+    }
+  }
+
+  // The title and its chevron, in a band with the same air above and below --
+  // it was 9px over and 3px under, which read as the title sitting high in its
+  // own highlight.
+  .graphHeader {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 38px;
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+
+    .graphSection.open &:hover {
+      background: rgba(0, 0, 0, 0.02);
+    }
+  }
+
+  .graphTitle {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: #2c2c2c;
+  }
+
+  .graphPreview {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 12px;
+    padding: 0 12px 8px;
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .previewSeries {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    padding: 0;
+  }
+
+  // Open, each entry is the switch for its own line.
+  .graphPreview.interactive .previewSeries {
+    cursor: pointer;
+    padding: 1px 4px;
+    margin: -1px -4px;
+    border-radius: 4px;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    // Off, not gone: the reader has to be able to find it again.
+    &.off {
+      color: rgba(0, 0, 0, 0.3);
+
+      .previewRule {
+        opacity: 0.3;
+      }
+    }
+  }
+
+  .previewRule {
+    width: 14px;
+    height: 2.5px;
+    border-radius: 2px;
+    flex: 0 0 auto;
+  }
+
+  .graphHeader .graphChevron {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    font-size: 20px;
+    line-height: 1;
+    color: mat.m2-get-color-from-palette($primary-palette, 500);
+  }
+
+  // Over the header's right end, before the chevron: a question about the
+  // quantity, not a control of the card. Centred on the title's line, with the
+  // chevron -- the three of them used to sit at three heights.
+  // Material gives mat-icon a 24px box whatever the glyph inside it is, so a
+  // 17px glyph with a 17px line-height sat at the top of it. Centre the glyph
+  // in the box the box actually is.
+  .graphHeader .graphHelp {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    font-size: 17px;
+    line-height: 1;
+    color: rgba(0, 0, 0, 0.3);
+    pointer-events: auto;
+  }
+
+  // The same gutter the title and the values sit on, so the plot's frame lines
+  // up with the text above it rather than running wider than the card's own
+  // margin.
+  .graphBody {
+    padding: 0 12px 8px;
+    overflow: hidden;
+  }
+}
