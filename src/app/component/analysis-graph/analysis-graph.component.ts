@@ -467,10 +467,16 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
         {
           x: timeSeconds,
           borderColor: '#000000',
+          // Under the line rather than over it. Above, it was pushed past the
+          // top of the plot and clipped by the card, which left a white box
+          // with half a label in it hanging over the chart.
           label: {
-            text: 'T= ' + formatTimeLabel(timeSeconds),
+            // One decimal, like the two ends of the axis it sits on: "T= 1"
+            // beside "0.0" and "3.0" is the same number written two ways.
+            text: 'T= ' + formatAxisEnd(timeSeconds),
             orientation: 'horizontal',
-            offsetY: -20,
+            position: 'bottom',
+            offsetY: 4,
           },
         },
         false
