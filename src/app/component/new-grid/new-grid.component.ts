@@ -1140,7 +1140,11 @@ export class NewGridComponent implements OnDestroy {
           // does not drag one and deform the other.
           const wanted = this.snapTargetJoint
             ? new Coord(this.snapTargetJoint.x, this.snapTargetJoint.y)
-            : this.mountAxisSnap(draggedCylinders[0], mousePosInSvg);
+            : this.mountAxisSnap(
+                draggedCylinders[0],
+                this.activeObjService.selectedJoint,
+                mousePosInSvg
+              );
           // Through dragJoint rather than straight at dragCylinderMount, so a
           // mount two rams share is agreed between them before either moves.
           this.gridUtils.dragJoint(this.activeObjService.selectedJoint, wanted);
@@ -1546,12 +1550,20 @@ export class NewGridComponent implements OnDestroy {
    * they move with the drag, so squaring the mount against them would be the
    * drag chasing its own tail. Every other joint's H/V guides still work.
    */
-  private mountAxisSnap(sealed: Cylinder, wanted: Coord): Coord {
+  private mountAxisSnap(sealed: Cylinder, dragged: Joint | undefined, wanted: Coord): Coord {
     if (!this.alignmentAllowed()) {
       this.axisSnapGuides = [];
       return wanted;
     }
     const memberIds = new Set(cylinderJoints(sealed).map((joint) => joint.id));
+    // All but the mount at the other end. That one does not move when this one
+    // is dragged, so it is exactly the thing to square up against -- and
+    // squaring a ram against its own far mount is what stands it at 0, 90 or
+    // 180, which is what a bar has always been able to do against its own far
+    // joint. The rest of the assembly travels with the drag, and squaring
+    // against those is the drag chasing its own tail.
+    const opposite = dragged?.id === sealed.barrelFar.id ? sealed.rodFar : sealed.barrelFar;
+    memberIds.delete(opposite.id);
     const others = this.mechanismSrv
       .getJoints()
       .filter((other) => !memberIds.has(other.id) && !(other instanceof PrisJoint));

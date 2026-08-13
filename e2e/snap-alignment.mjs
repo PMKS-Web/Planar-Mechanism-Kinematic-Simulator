@@ -152,6 +152,69 @@ await load(payloads['Cylinder_Boom']);
 const ramFree = await dragBodyToward('.cylinder-barrel', 'G', 'O', 'y', { holdOption: true });
 record('which Option suspends as well', ramFree.guides === 0 && ramFree.off > 1e-6, ramFree);
 
+// --- a ram squared against its own far mount --------------------------------
+/**
+ * Drag one mount of a ram to a whisker off level with the other.
+ *
+ * This is what puts a ram at 0, 90 or 180, and it is what a bar has always
+ * been able to do against its own far joint. The ram's other joints travel
+ * with the drag and are rightly ignored; the far mount does not, and was being
+ * ignored with them.
+ */
+const squareTheRam = async ({ holdOption } = {}) => {
+  await load(payloads['Cylinder_Boom']);
+  const mounts = await page.evaluate(() => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const ram = srv.cylinderAt(srv.links.find((link) => srv.cylinderAt(link)));
+    return {
+      dragged: ram.barrelFar.id,
+      fixed: ram.rodFar.id,
+      draggedAt: { x: ram.barrelFar.x, y: ram.barrelFar.y },
+      fixedAt: { x: ram.rodFar.x, y: ram.rodFar.y },
+    };
+  });
+  const scale = await perUnit();
+  const box = await page.locator(`#joint_${mounts.dragged}`).boundingBox();
+  const dy = -(mounts.fixedAt.y - 4 - mounts.draggedAt.y) * scale;
+
+  if (holdOption) await page.keyboard.down('Alt');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  let guides = 0;
+  for (let step = 1; step <= 12; step++) {
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + (dy * step) / 12);
+    await page.waitForTimeout(35);
+    guides = Math.max(
+      guides,
+      await page.evaluate(
+        () => ng.getComponent(document.querySelector('app-new-grid')).axisSnapGuides.length
+      )
+    );
+  }
+  await page.mouse.up();
+  if (holdOption) await page.keyboard.up('Alt');
+  await page.waitForTimeout(400);
+  const after = await joints();
+  const a = after[mounts.dragged];
+  const b = after[mounts.fixed];
+  return {
+    guides,
+    outOfLevel: Math.abs(a.y - b.y),
+    angle: +Math.abs((Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI).toFixed(3),
+  };
+};
+
+const squared = await squareTheRam();
+record('a ram squares up against its own far mount', squared.guides > 0, squared);
+record(
+  'and stands at exactly 0, 90 or 180 rather than near it',
+  squared.outOfLevel < 1e-4 && [0, 90, 180].some((right) => Math.abs(squared.angle - right) < 1e-3),
+  squared
+);
+
+const ramLoose = await squareTheRam({ holdOption: true });
+record('unless Option is held', ramLoose.guides === 0 && ramLoose.outOfLevel > 1e-4, ramLoose);
+
 // --- turned off entirely -----------------------------------------------------
 await load(payloads['4-Bar']);
 await setOption('snapToAlignment', false);
