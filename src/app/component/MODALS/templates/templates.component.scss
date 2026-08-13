@@ -110,16 +110,31 @@
 }
 
 // The dev section's heading and its cards, which have no artwork to show.
+// Lined up with the cards under it, which carry the grid's own left inset.
 .section-heading {
   margin: 4px 0 10px;
+  padding-left: 10px;
   font-size: 15px;
   font-weight: 500;
   color: rgba(0, 0, 0, 0.55);
 }
 
+// A dev card has one still image and a line about it, in flow -- no animated
+// variant to cross-fade to, and so no absolutely-positioned copy landing on
+// top of the words. The bottom padding is the Open button's room.
 .dev-note {
-  margin: 8px 0 4px;
+  margin: 8px 0 0;
+  // Clear of the Open button, which is positioned against the card's bottom
+  // right corner -- text flowing under it is text the button cuts in half.
+  padding-bottom: 52px;
   font-size: 12px;
   line-height: 17px;
   color: rgba(0, 0, 0, 0.55);
+}
+
+.devGrid panel-section img {
+  position: static;
+  width: 100%;
+  height: auto;
+  display: block;
 }

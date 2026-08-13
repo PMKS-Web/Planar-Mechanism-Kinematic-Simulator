@@ -10,12 +10,11 @@
     <!-- Drawings for working on the app rather than for learning a linkage.
          First, because that is where whoever wants them is looking. -->
     @if (isDevMode()) {
-      <h2 class="section-heading">Dev</h2>
+      <h2 class="section-heading">For Development</h2>
       <div class="linkage-grid devGrid">
         <panel-section (click)="openLinkage('Dev_All_Mechanism_Types')">
           <title-block>Every Kind of Machine</title-block>
           <img src="assets/gifs/dev-all-machines.png" alt="Every Kind of Machine" />
-          <img class="static" src="assets/gifs/dev-all-machines.png" alt="Every Kind of Machine" />
           <p class="dev-note">
             A crank, a ram, a slider and a chain that never reaches ground — every readiness state
             and every playback row at once.
@@ -26,9 +25,9 @@
         <panel-section (click)="openLinkage('Dev_Object_Gallery')">
           <title-block>Object Gallery</title-block>
           <img src="assets/gifs/dev-object-gallery.png" alt="Object Gallery" />
-          <img class="static" src="assets/gifs/dev-object-gallery.png" alt="Object Gallery" />
           <p class="dev-note">
-            One of everything the canvas draws, laid out in rows. Deliberately not simulatable.
+            Every kind of pin, block, weld, slot and cylinder, with forces. Deliberately not
+            simulatable.
           </p>
           <button mat-flat-button color="primary">Open</button>
         </panel-section>
@@ -36,10 +35,9 @@
         <panel-section (click)="openLinkage('Dev_Render_Stress')">
           <title-block>Render Stress Test</title-block>
           <img src="assets/gifs/dev-render-stress.png" alt="Render Stress Test" />
-          <img class="static" src="assets/gifs/dev-render-stress.png" alt="Render Stress Test" />
           <p class="dev-note">
-            Twenty joints and thirteen links on one degree of freedom, every moving joint tracing
-            its path.
+            Ross McSweeney's Running Horse Automata, from MotionGen: forty-five joints and
+            twenty-seven links on one degree of freedom, tracing both hooves.
           </p>
           <button mat-flat-button color="primary">Open</button>
         </panel-section>
