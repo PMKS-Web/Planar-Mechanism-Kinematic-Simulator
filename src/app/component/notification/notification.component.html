@@ -8,11 +8,11 @@
     >
       <mat-icon class="notificationIcon">{{ iconFor(one) }}</mat-icon>
       <span class="notificationText">{{ one.text }}</span>
-      <!-- Where there is one obvious thing to do about it, the message does it,
+      <!-- Where there is an obvious thing to do about it, the message does it,
            rather than naming a control elsewhere for the reader to go and find. -->
-      @if (one.action) {
-        <button class="notificationAction" type="button" (click)="notifications.act(one)">
-          {{ one.action.label }}
+      @for (action of one.actions; track action.label) {
+        <button class="notificationAction" type="button" (click)="notifications.act(one, action)">
+          {{ action.label }}
         </button>
       }
       <!-- On every kind, not only the ones that wait. A message that has been

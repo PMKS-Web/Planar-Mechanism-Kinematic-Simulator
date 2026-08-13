@@ -33,9 +33,13 @@ $accent: 5px;
     pointer-events: none;
   }
 
+  // Everything on one centre line. The glyph, the sentence, the buttons and the
+  // close were each aligned by a different rule -- flex-start plus a 1px nudge,
+  // align-self: center, and a -2px margin -- so no two of them agreed on where
+  // the middle was. One rule for the row, and nothing overriding it.
   .notification {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 10px;
     padding: 11px 8px 11px 13px;
     background: var(--card-surface);
@@ -53,18 +57,18 @@ $accent: 5px;
     border-radius: $accent;
   }
 
+  // Material gives mat-icon a 24px box whatever the glyph inside it is, so the
+  // glyph has to be centred in the box the box actually is, not left to sit at
+  // the top of it.
   .notificationIcon {
     flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 20px;
     height: 20px;
     font-size: 20px;
     line-height: 1;
-    // Material gives mat-icon a 24px box whatever the glyph is, so a 20px
-    // glyph would otherwise sit high in it against a 20px line of text.
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 1px;
   }
 
   .notificationText {
@@ -75,12 +79,22 @@ $accent: 5px;
     letter-spacing: 0.15px;
   }
 
+  // A second action sits next to the first rather than a full gap away: the two
+  // are one choice, and the sentence is what they are both about.
+  .notificationAction + .notificationAction,
+  .notificationAction + .notificationClose {
+    margin-left: -6px;
+  }
+
   // Reads as the message's own verb, so it takes the message's own colour.
   .notificationAction {
     flex: 0 0 auto;
-    align-self: center;
-    margin: -4px 0;
-    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    // The same height as the close button beside it, so a row of one button and
+    // a row of two sit at the same height and their hover fills line up.
+    height: 24px;
+    padding: 0 8px;
     border: none;
     border-radius: 4px;
     background: transparent;
@@ -104,7 +118,6 @@ $accent: 5px;
     justify-content: center;
     width: 24px;
     height: 24px;
-    margin: -2px 0 0;
     padding: 0;
     border: none;
     border-radius: 4px;

@@ -13,11 +13,17 @@ import { Injectable } from '@angular/core';
 export type NotificationKind = 'success' | 'refusal' | 'warning' | 'failure';
 
 /**
- * The thing to do about it, when there is one obvious thing.
+ * Something to do about it, offered on the message itself.
  *
  * A message that says "set the object scale in Settings" is asking the reader
  * to go and find a control in order to carry out an instruction the app could
  * simply follow. Where the fix is unambiguous, it goes on the message.
+ *
+ * More than one is allowed, because "unambiguous" is not the same as "single":
+ * a drawing at the wrong size can be fixed by resizing the drawing or by
+ * moving the view, and which of those somebody wants depends on what they were
+ * doing. Two is the sensible limit — a third is a menu, and a menu on a message
+ * that may take itself away in four seconds is a trap.
  */
 export interface NotificationAction {
   label: string;
@@ -27,7 +33,7 @@ export interface NotificationAction {
 export interface NotificationOptions {
   /** How long this message stays quiet after saying itself, in ms. */
   cooldownMs?: number;
-  action?: NotificationAction;
+  actions?: NotificationAction[];
 }
 
 /** One message, while it is on screen. */
@@ -37,7 +43,7 @@ export interface LiveNotification {
   id: string;
   kind: NotificationKind;
   text: string;
-  action?: NotificationAction;
+  actions: NotificationAction[];
 }
 
 /** How long each kind stays, in ms. `undefined` means until it is dismissed. */
@@ -124,8 +130,8 @@ export class NotificationService {
   }
 
   /** Do what the message offers, and take the message away. */
-  act(one: LiveNotification): void {
-    one.action?.run();
+  act(one: LiveNotification, action: NotificationAction): void {
+    action.run();
     this.dismiss(one.key);
   }
 
@@ -133,7 +139,7 @@ export class NotificationService {
     kind: NotificationKind,
     id: string,
     text: string,
-    { cooldownMs = DEFAULT_COOLDOWN, action }: NotificationOptions = {}
+    { cooldownMs = DEFAULT_COOLDOWN, actions = [] }: NotificationOptions = {}
   ): void {
     // Already on screen. Saying it again would stack the same sentence twice --
     // which is exactly what a reader holding a key down or dragging against a
@@ -144,7 +150,7 @@ export class NotificationService {
     if (last !== undefined && last + cooldownMs > Date.now()) return;
     this.lastSaid.set(id, Date.now());
 
-    const one: LiveNotification = { key: this.nextKey++, id, kind, text, action };
+    const one: LiveNotification = { key: this.nextKey++, id, kind, text, actions };
     this.live.push(one);
     this.makeRoom();
 
