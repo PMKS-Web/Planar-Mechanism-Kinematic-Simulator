@@ -394,6 +394,31 @@ export class SvgGridService {
   }
 
   /**
+   * The spacing of the smallest square drawn on the grid.
+   *
+   * What "snap to grid" snaps to: the lines a reader can actually see, so a
+   * joint lands where they are aiming rather than on a lattice the app knows
+   * about and they do not.
+   */
+  get minorCellSize(): number {
+    return this.cellSize / MINOR_DIVISIONS;
+  }
+
+  /**
+   * The nearest corner of the drawn grid, if snapping is on.
+   *
+   * Off, or with no grid to snap to, the point is returned as it came --
+   * callers can use this unconditionally.
+   */
+  snapToGrid(coord: Coord): Coord {
+    const cell = this.minorCellSize;
+    if (!this.settingsService.isSnapToGrid.value || !(cell > 0)) {
+      return coord;
+    }
+    return new Coord(Math.round(coord.x / cell) * cell, Math.round(coord.y / cell) * cell);
+  }
+
+  /**
    * How far apart the labelled lines go at this zoom.
    *
    * One, two or five of whatever decade fits, which is the ladder every graph

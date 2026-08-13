@@ -43,6 +43,13 @@
           Minor Gridlines
         </toggle-block>
       }
+      <toggle-block
+        [formGroup]="this.settingsForm"
+        _formControl="snapToGrid"
+        tooltip="Dragging a joint or a link lands it on the nearest grid square."
+      >
+        Snap to Grid
+      </toggle-block>
       <input-block
         type="number"
         [formGroup]="this.settingsForm"

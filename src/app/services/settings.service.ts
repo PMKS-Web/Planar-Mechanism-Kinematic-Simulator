@@ -9,6 +9,23 @@ import {
 } from '../model/unit-enums';
 import type { ForceAnalysisMode } from '../model/mechanism/force-solver';
 import { MODEL_SCALE } from '../model/render-scale';
+import { local_storage_available } from '../model/utils';
+
+/**
+ * A preference remembered on this machine.
+ *
+ * Storage can be missing or refused -- private windows, an embedded frame --
+ * and a setting that cannot be remembered is not worth failing over.
+ */
+function readStoredFlag(key: string, fallback: boolean): boolean {
+  if (!local_storage_available()) return fallback;
+  const stored = localStorage.getItem(key);
+  return stored === null ? fallback : stored === 'true';
+}
+
+export function writeStoredFlag(key: string, value: boolean): void {
+  if (local_storage_available()) localStorage.setItem(key, String(value));
+}
 
 @Injectable({
   providedIn: 'root',
@@ -50,6 +67,18 @@ export class SettingsService {
   animating = new BehaviorSubject(false);
   isShowMajorGrid = new BehaviorSubject(true);
   isShowMinorGrid = new BehaviorSubject(true);
+  /**
+   * Whether dragging lands on the grid.
+   *
+   * The reader's own editing preference, kept on their machine rather than in
+   * the URL: a shared link says what the mechanism is, and how someone else's
+   * cursor behaves while they edit their copy of it is not part of that.
+   *
+   * Off until asked for. Dragging has always put a joint exactly where the
+   * cursor let go, and a drawing where a joint cannot sit at 3.7 unless it is
+   * told otherwise is a different app from the one everyone already has.
+   */
+  isSnapToGrid = new BehaviorSubject(readStoredFlag('snapToGrid', false));
 
   isShowID = new BehaviorSubject(false);
   isShowCOM = new BehaviorSubject(false);

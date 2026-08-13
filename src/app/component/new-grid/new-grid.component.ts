@@ -1168,7 +1168,13 @@ export class NewGridComponent implements OnDestroy {
             ? new Coord(this.snapTargetJoint.x, this.snapTargetJoint.y)
             : this.slotCandidate
               ? new Coord(this.slotCandidate.x, this.slotCandidate.y)
-              : this.alongItsSlot(this.activeObjService.selectedJoint, mousePosInSvg)
+              : this.alongItsSlot(
+                  this.activeObjService.selectedJoint,
+                  // Last, and only here: a capture is a target the reader
+                  // picked, and a joint on a slot has a line to stay on. The
+                  // grid gets the position nothing else has a claim on.
+                  this.svgGrid.snapToGrid(mousePosInSvg)
+                )
         );
         this.dragState.noteMechanismModified();
         //So that the panel values update continously
@@ -1198,11 +1204,28 @@ export class NewGridComponent implements OnDestroy {
             mousePosInSvg.y - this.linkDragAnchor.y
           );
         } else {
+          // A rigid body cannot put every joint on the grid -- its lengths are
+          // what they are -- so one of them is the one that lands, and the
+          // rest keep their places around it. The first joint, which is the
+          // one the link is named from.
+          const reference = this.activeObjService.selectedLink.joints[0];
+          const wantedX = mousePosInSvg.x - this.linkDragAnchor.x;
+          const wantedY = mousePosInSvg.y - this.linkDragAnchor.y;
+          const landed = this.svgGrid.snapToGrid(
+            new Coord(reference.x + wantedX, reference.y + wantedY)
+          );
           this.gridUtils.dragLink(
             this.activeObjService.selectedLink,
-            mousePosInSvg.x - this.linkDragAnchor.x,
-            mousePosInSvg.y - this.linkDragAnchor.y
+            landed.x - reference.x,
+            landed.y - reference.y
           );
+          // The cursor's own position, so the body does not drift away from it
+          // as the rounding is applied over and over.
+          this.linkDragAnchor = mousePosInSvg;
+          this.dragState.noteMechanismModified();
+          this.activeObjService.updateSelectedObj(this.activeObjService.selectedLink);
+          this.showPathWhileDragging();
+          break;
         }
         this.linkDragAnchor = mousePosInSvg;
         this.dragState.noteMechanismModified();

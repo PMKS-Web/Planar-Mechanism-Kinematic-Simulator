@@ -46,6 +46,10 @@ async function configureGridTestBed() {
     // call used to be a second behind a timer, so it threw after the test had
     // finished, into nothing. It happens inline now.
     scaleToFitLinkage: vi.fn(),
+    // These tests are about what a drag does, not about snapping, so the grid
+    // here has no squares to snap to and hands every point back as it came.
+    minorCellSize: 0,
+    snapToGrid: (coord: { x: number; y: number }) => coord,
   };
   await TestBed.configureTestingModule({ imports: [AppModule] })
     .overrideProvider(SvgGridService, { useValue: svgGridStub })
