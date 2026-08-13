@@ -1,8 +1,8 @@
 import { Component, Input, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder } from '@angular/forms';
-import { NewGridComponent } from '../../new-grid/new-grid.component';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { MechanismService } from 'src/app/services/mechanism.service';
+import { NotificationService } from '../../../services/notification.service';
 
 @Component({
   selector: 'editable-title-block',
@@ -22,7 +22,8 @@ export class EditableTitleComponent {
   constructor(
     private fb: FormBuilder,
     public activeObjService: ActiveObjService,
-    private mechanismService: MechanismService
+    private mechanismService: MechanismService,
+    private notify: NotificationService
   ) {}
 
   newIDForm = this.fb.group({ newID: [''] });
@@ -58,7 +59,7 @@ export class EditableTitleComponent {
     // If the new ID is not valid, send error notif and do not update to new id
     let error = this.validateNewID(newID);
     if (error !== '') {
-      NewGridComponent.sendNotification(error);
+      this.notify.refusal('rename.invalid', error);
       this.editMode = false;
       return;
     }

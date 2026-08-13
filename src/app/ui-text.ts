@@ -13,39 +13,23 @@
  */
 
 /**
- * Why an edit cannot happen right now.
- *
- * One situation, one sentence, wherever it is reached from — the same refusal
- * used to have three wordings depending on whether it came from a drag, a
- * context menu or a panel, and one of them called the animation a "simulation".
- *
- * Mode-first where the mode is the reason. Edit and Analyze are becoming more
- * distinctly separate, so a user stopped by one of them should be told which
- * room they are in rather than which button to press.
- */
-export const CANNOT_EDIT = {
-  analyzeMode: 'Switch to Edit mode to change the mechanism.',
-  synthesizeMode: 'Switch to Edit mode to change the mechanism.',
-  animating: 'Cannot edit while the animation is running.',
-  awayFromStart: 'Step back to the start to edit.',
-} as const;
-
-/**
  * What to say when a typed value will not parse.
  *
  * By the *kind* of value, not by the field. There were eleven of these, one per
  * cell of the linkage table, and they differed only in naming a field that is
  * already on screen, highlighted, under the cursor — while saying nothing about
  * what would have been accepted.
+ *
+ * Each one names the units its field will take. Every numeric field in the app
+ * accepts "2 cm" and "0.75 in" as readily as "2", and nothing on screen says
+ * so; a rejected value is the moment somebody is most willing to be told.
  */
 export const NOT_A = {
   length: 'That is not a length. Type a number, with or without a unit — 2, 2 cm, 0.75 in.',
-  angle: 'That is not an angle. Type a number of degrees.',
-  mass: 'That is not a mass. Type a number.',
-  momentOfInertia: 'That is not a moment of inertia. Type a number.',
-  force: 'That is not a force. Type a number.',
+  angle: 'That is not an angle. Type a number, with or without a unit — 90, 90 deg, 1.5 rad.',
+  mass: 'That is not a mass. Type a number, with or without a unit — 5, 5 g, 0.2 lb.',
+  momentOfInertia:
+    'That is not a moment of inertia. Type a number, with or without a unit — 4, 4 kg·cm².',
+  force: 'That is not a force. Type a number, with or without a unit — 10, 10 N, 2.5 lb.',
   name: 'A name has to be letters or numbers, and cannot be one already in use.',
 } as const;
-
-/** Features that exist as a button and nothing else yet. */
-export const NOT_BUILT_YET = 'Not built yet.';

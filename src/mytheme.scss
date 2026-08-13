@@ -35,6 +35,7 @@
 @use 'src/app/component/MODALS/templates/templates.component.scss' as templates;
 @use 'src/app/component/not-ready-warning/not-ready-warning.component.scss' as not-ready-warning;
 @use 'src/app/component/bottombar/bottombar.component.scss' as bottombar;
+@use 'src/app/component/notification/notification.component.scss' as notification;
 
 @include mat.elevation-classes();
 @include mat.app-background();
@@ -99,6 +100,7 @@ $my-theme: mat.m2-define-light-theme(
 @include equation-panel.css($my-theme);
 @include not-ready-warning.css($my-theme);
 @include bottombar.css($my-theme);
+@include notification.css($my-theme);
 
 @include blocks-common.css($my-theme);
 @include panel-section.css($my-theme);

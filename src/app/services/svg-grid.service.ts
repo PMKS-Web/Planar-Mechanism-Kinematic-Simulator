@@ -6,6 +6,7 @@ import { Coord } from '../model/coord';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
 import { SettingsService } from './settings.service';
 import { DragStateService } from './drag-state.service';
+import { NotificationService } from './notification.service';
 import Hammer from 'hammerjs';
 import { MODEL_SCALE } from '../model/render-scale';
 
@@ -66,7 +67,8 @@ export class SvgGridService {
   constructor(
     private settingsService: SettingsService,
     private dragState: DragStateService,
-    private injector: Injector
+    private injector: Injector,
+    private notify: NotificationService
   ) {}
 
   setNewElement(root: HTMLElement) {
@@ -379,16 +381,33 @@ export class SvgGridService {
     // console.log(this.getZoom());
     this.cellSize = this.cellSizeFor(this.getZoom());
     this.handlePan();
-    if (this.getZoom() * this.settingsService.objectScale < 5) {
-      NewGridComponent.sendNotification(
-        'The visual size of the links might be too small. Try using the "Update Object Scale" button in the settings menu or use the "Reset View" button on the bottom right.',
-        20000
+    // Zooming is continuous, so these have a much longer quiet period than
+    // anything else -- but their own, now. They used to share one timer with
+    // every other message in the app, which meant they were silent for the
+    // first twenty seconds of a session and for twenty seconds after any
+    // unrelated message: the whole of the time somebody is finding their zoom.
+    const drawnAt = this.getZoom() * this.settingsService.objectScale;
+    // Both fixes are in this service, and the message used to name neither of
+    // the buttons that hold them without offering either. Which one somebody
+    // wants depends on which they think is wrong: "Fit to zoom" keeps the view
+    // and resizes the drawing to suit it; "Reset view" keeps the drawing and
+    // moves the view back to it.
+    const fixes = [
+      { label: 'Fit to zoom', run: () => this.updateObjectScale() },
+      { label: 'Reset view', run: () => this.scaleToFitLinkage() },
+    ];
+    if (drawnAt < 5) {
+      this.notify.warning(
+        'zoom.links-tiny',
+        'The links are drawn far smaller than the grid at this zoom.',
+        { cooldownMs: 60000, actions: fixes }
       );
     }
-    if (this.getZoom() * this.settingsService.objectScale > 200) {
-      NewGridComponent.sendNotification(
-        'The visual size of the links might be too large. Try using the "Update Object Scale" button in the settings menu.',
-        20000
+    if (drawnAt > 200) {
+      this.notify.warning(
+        'zoom.links-huge',
+        'The links are drawn far larger than the grid at this zoom.',
+        { cooldownMs: 60000, actions: fixes }
       );
     }
   }

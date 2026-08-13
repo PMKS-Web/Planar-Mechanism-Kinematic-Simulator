@@ -55,6 +55,7 @@ import { GridUtilsService } from './grid-utils.service';
 import { ActiveObjService } from './active-obj.service';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
 import { canDrive, describeActuator } from '../model/actuator';
+import { NotificationService } from './notification.service';
 import { SettingsService } from './settings.service';
 import { slotHalfLength } from '../model/joint-marks';
 import { DragStateService } from './drag-state.service';
@@ -180,7 +181,8 @@ export class MechanismService {
     public activeObjService: ActiveObjService,
     private injector: Injector,
     private settingsService: SettingsService,
-    private nup: NumberUnitParserService
+    private nup: NumberUnitParserService,
+    private notify: NotificationService
   ) {}
 
   /**
@@ -2165,7 +2167,8 @@ export class MechanismService {
     // the item out; this is the same rule where the edit actually happens, so
     // no other caller can get round it.
     if (mountAt?.isWelded) {
-      NewGridComponent.sendNotification(
+      this.notify.refusal(
+        'cylinder.welded-mount',
         'This joint is welded, so a cylinder mounted on it would be a third body inside one rigid one. Unweld it, or attach the cylinder to the link instead.'
       );
       return;
@@ -2389,7 +2392,12 @@ export class MechanismService {
     if (!jointToToggleInput.input) {
       const refusal = describeActuator(jointToToggleInput);
       if (typeof refusal === 'string') {
-        NewGridComponent.sendNotification(refusal);
+        // Silently: this is unreachable from either surface. Both the menu item
+        // and the panel's button are disabled on `canToggleInput`, which is
+        // `input || canDrive` -- and `canDrive` is exactly "describeActuator
+        // did not refuse", asked of this same joint. Checked across all 25
+        // templates: 147 presses of every enabled control, no refusal. Kept as
+        // a guard so a third caller cannot drive what the model will not.
         return;
       }
       // One input per mechanism, so the joint taking the job displaces the old
@@ -2588,7 +2596,8 @@ export class MechanismService {
     // the cylinder (§ cylinder 4). The panel and menu grey the control on the
     // mounts; this is the rule they are both fronting.
     if (this.cylinderAt(this.activeObjService.selectedJoint)) {
-      NewGridComponent.sendNotification(
+      this.notify.refusal(
+        'cylinder.sealed-slider',
         'A cylinder is one sealed part — delete the cylinder instead of editing its slider.'
       );
       return;
@@ -3696,7 +3705,8 @@ export class MechanismService {
 
     if (!this.weldTopology(joint)) return;
     if (created) {
-      NewGridComponent.sendNotification(
+      this.notify.warning(
+        'weld.pinned-twice',
         `${created[0]} and ${created[1]} are now pinned together twice. The linkage still ` +
           'moves, but its forces have no unique solution.'
       );

@@ -13,6 +13,7 @@ import { SettingsService } from './settings.service';
 import { SvgGridService } from './svg-grid.service';
 import { DragStateService } from './drag-state.service';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
+import { silentNotifications } from '../../test-utils/notification-stub';
 
 function createHarness() {
   if (!ColorService.instance) new ColorService();
@@ -23,13 +24,18 @@ function createHarness() {
   let service!: MechanismService;
   const grid = new GridUtilsService(
     new SynthesisBuilderService(parser, settings),
-    new SvgGridService(settings, new DragStateService(), {} as unknown as Injector),
+    new SvgGridService(
+      settings,
+      new DragStateService(),
+      {} as unknown as Injector,
+      silentNotifications()
+    ),
     { get: () => service } as unknown as Injector
   );
   const active = new ActiveObjService();
   let saves = 0;
   const injector = { get: () => ({ save: () => saves++ }) } as unknown as Injector;
-  service = new MechanismService(grid, active, injector, settings, parser);
+  service = new MechanismService(grid, active, injector, settings, parser, silentNotifications());
   return { service, grid, active, settings, saveCount: () => saves };
 }
 

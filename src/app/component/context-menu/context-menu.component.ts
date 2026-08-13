@@ -2,7 +2,6 @@ import { Component, Inject, Input, ChangeDetectionStrategy } from '@angular/core
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { MechanismService } from '../../services/mechanism.service';
 import { NewGridComponent } from '../new-grid/new-grid.component';
-import { CANNOT_EDIT } from '../../ui-text';
 
 export class cMenuItem {
   public label: string = 'none';
@@ -20,8 +19,11 @@ export class cMenuItem {
   }
 
   actionWrapper() {
+    // Silently, like every other guard on editing away from the start pose: the
+    // transport says where the mechanism is parked, and it said the wrong thing
+    // anyway -- the test here is the timestep, and the message it showed was
+    // the one about the animation running, which it need not be.
     if (NewGridComponent.instance.mechanismSrv.mechanismTimeStep !== 0) {
-      NewGridComponent.sendNotification(CANNOT_EDIT.animating);
       return;
     }
     this.action();

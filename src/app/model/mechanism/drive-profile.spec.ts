@@ -12,6 +12,7 @@ import { SynthesisBuilderService } from '../../services/synthesis/synthesis-buil
 import { MechanismBuilder } from '../../services/transcoding/mechanism-builder';
 import { StringTranscoder } from '../../services/transcoding/string-transcoder';
 import { TemplateID, TEMPLATE_LINKAGES } from '../../component/MODALS/templates/template-linkages';
+import { silentNotifications } from '../../../test-utils/notification-stub';
 
 /** The solved first mechanism of a template, and what its input does. */
 function profileOf(template: TemplateID): DriveProfile {
@@ -21,7 +22,12 @@ function profileOf(template: TemplateID): DriveProfile {
   let service!: MechanismService;
   const grid = new GridUtilsService(
     new SynthesisBuilderService(parser, settings),
-    new SvgGridService(settings, new DragStateService(), {} as unknown as Injector),
+    new SvgGridService(
+      settings,
+      new DragStateService(),
+      {} as unknown as Injector,
+      silentNotifications()
+    ),
     { get: () => service } as unknown as Injector
   );
   const active = new ActiveObjService();
@@ -30,7 +36,8 @@ function profileOf(template: TemplateID): DriveProfile {
     active,
     { get: () => ({ save: () => undefined }) } as unknown as Injector,
     settings,
-    parser
+    parser,
+    silentNotifications()
   );
 
   const decoder = new StringTranscoder();

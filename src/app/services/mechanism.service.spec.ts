@@ -18,6 +18,8 @@ import { MechanismBuilder } from './transcoding/mechanism-builder';
 import { StringTranscoder } from './transcoding/string-transcoder';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
+import { NotificationService } from './notification.service';
+import { silentNotifications } from '../../test-utils/notification-stub';
 
 interface Harness {
   service: MechanismService;
@@ -31,7 +33,12 @@ function createHarness(): Harness {
   if (!ColorService.instance) new ColorService();
   const settings = new SettingsService();
   const parser = new NumberUnitParserService();
-  const svg = new SvgGridService(settings, new DragStateService(), {} as unknown as Injector);
+  const svg = new SvgGridService(
+    settings,
+    new DragStateService(),
+    {} as unknown as Injector,
+    silentNotifications()
+  );
   const synthesis = new SynthesisBuilderService(parser, settings);
   // GridUtilsService resolves MechanismService at call time, so it has to be
   // handed an injector that reads the binding below rather than a finished one.
@@ -42,7 +49,7 @@ function createHarness(): Harness {
   const active = new ActiveObjService();
   let saves = 0;
   const injector = { get: () => ({ save: () => saves++ }) } as unknown as Injector;
-  service = new MechanismService(grid, active, injector, settings, parser);
+  service = new MechanismService(grid, active, injector, settings, parser, silentNotifications());
   return { service, active, settings, grid, saveCount: () => saves };
 }
 
@@ -603,12 +610,13 @@ describe('MechanismService declining a weld that pins a pair twice', () => {
 
   it('names the pair it just pinned twice', () => {
     const scene = triangle();
-    const notify = vi.spyOn(NewGridComponent, 'sendNotification').mockImplementation(() => {});
+    const notify = vi.spyOn(NotificationService.prototype, 'warning').mockImplementation(() => {});
 
     scene.service.weldJoint(scene.b);
 
     expect(notify).toHaveBeenCalledTimes(1);
-    expect(notify.mock.calls[0][0]).toMatch(/\bA and C\b/);
+    // The id is first now, the sentence second.
+    expect(notify.mock.calls[0][1]).toMatch(/\bA and C\b/);
     notify.mockRestore();
   });
 
@@ -636,7 +644,7 @@ describe('MechanismService declining a weld that pins a pair twice', () => {
       wire('XY', [x, y]),
       wire('YZ', [y, z]),
     ];
-    const notify = vi.spyOn(NewGridComponent, 'sendNotification').mockImplementation(() => {});
+    const notify = vi.spyOn(NotificationService.prototype, 'warning').mockImplementation(() => {});
 
     harness.service.weldJoint(y);
 

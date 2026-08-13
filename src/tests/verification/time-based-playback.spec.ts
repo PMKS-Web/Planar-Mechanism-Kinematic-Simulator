@@ -12,6 +12,7 @@ import { MechanismBuilder } from '../../app/services/transcoding/mechanism-build
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
 import { TEMPLATE_LINKAGES } from '../../app/component/MODALS/templates/template-linkages';
 import { LEGACY_FORCE_MECHANISM } from '../fixtures/mechanism-fixtures';
+import { silentNotifications } from '../../test-utils/notification-stub';
 
 /** A real MechanismService (not a stub) loaded with the fully rotating four-bar template. */
 function createLoadedService(payload: string = TEMPLATE_LINKAGES['4-Bar']) {
@@ -25,12 +26,17 @@ function createLoadedService(payload: string = TEMPLATE_LINKAGES['4-Bar']) {
     new SynthesisBuilderService(parser, settings),
     // The injector is only reached when something asks the canvas to re-frame
     // itself, which nothing here does — there is no canvas in this test.
-    new SvgGridService(settings, new DragStateService(), {} as unknown as Injector),
+    new SvgGridService(
+      settings,
+      new DragStateService(),
+      {} as unknown as Injector,
+      silentNotifications()
+    ),
     { get: () => service } as unknown as Injector
   );
   const active = new ActiveObjService();
   const injector = { get: () => ({ save: () => {} }) } as unknown as Injector;
-  service = new MechanismService(grid, active, injector, settings, parser);
+  service = new MechanismService(grid, active, injector, settings, parser, silentNotifications());
 
   const decoder = new StringTranscoder();
   decoder.decodeURL(payload);

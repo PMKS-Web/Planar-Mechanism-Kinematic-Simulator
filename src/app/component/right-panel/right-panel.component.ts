@@ -30,6 +30,7 @@ import { Coord } from '../../model/coord';
 import { SvgGridService } from '../../services/svg-grid.service';
 import introJs from 'intro.js';
 import { UrlGenerationService } from 'src/app/services/url-generation.service';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'app-right-panel',
@@ -109,7 +110,8 @@ export class RightPanelComponent implements DoCheck {
     public settingsService: SettingsService,
     public svgService: SvgGridService,
     public urlGenerationService: UrlGenerationService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private notify: NotificationService
   ) {}
 
   /**
@@ -382,7 +384,6 @@ export class RightPanelComponent implements DoCheck {
 
   sendNotReady() {
     introJs().start();
-    // NewGridComponent.sendNotification('Sorry, the tutorial is not ready yet.');
     // this.analytics.logEvent('tutorial_not_ready');
   }
 
@@ -430,7 +431,7 @@ export class RightPanelComponent implements DoCheck {
   async sendCommentEmail() {
     this.sendingEmail = true;
     if (this.commentForm.invalid) {
-      NewGridComponent.sendNotification('Please fill out the form correctly.');
+      this.notify.refusal('feedback.incomplete', 'Fill in the form before sending it.');
       this.sendingEmail = false;
       return;
     } else {
@@ -442,7 +443,8 @@ export class RightPanelComponent implements DoCheck {
         emailJSKey = res.apiKey;
       } catch (err) {
         console.log(err);
-        NewGridComponent.sendNotification(
+        this.notify.failure(
+          'feedback.no-key',
           'It looks like you are in a development environment. If this is not the case, please try again later or contact us directly at: gr-pmksplus@wpi.edu'
         );
         this.sendingEmail = false;
@@ -486,13 +488,14 @@ export class RightPanelComponent implements DoCheck {
       emailjs
         .send('service_pg2k647', 'template_kfwdx5c', params)
         .then(() => {
-          NewGridComponent.sendNotification('Message sent. Thank you for your feedback!');
+          this.notify.success('feedback.sent', 'Message sent. Thank you for your feedback!');
           this.sendingEmail = false;
           this.commentForm.reset();
         })
         .catch((error: any) => {
           console.log(error);
-          NewGridComponent.sendNotification(
+          this.notify.failure(
+            'feedback.send-failed',
             'Message failed to send. Please try again later or contact us directly at: gr-pmksplus@wpi.edu'
           );
           this.sendingEmail = false;
