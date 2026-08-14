@@ -6,7 +6,7 @@ import {
   OnDestroy,
 } from '@angular/core';
 import { MechanismService } from '../../services/mechanism.service';
-import { SettingsService } from '../../services/settings.service';
+import { SettingsService, writeStoredFlag } from '../../services/settings.service';
 import { SvgGridService } from '../../services/svg-grid.service';
 
 /**
@@ -107,7 +107,11 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   }
 
   showCenterOfMass(): void {
-    this.settingsService.isShowCOM.next(!this.settingsService.isShowCOM.value);
+    const on = !this.settingsService.isShowCOM.value;
+    this.settingsService.isShowCOM.next(on);
+    // A display preference, remembered on this machine rather than in the URL
+    // (see SettingsService.isShowCOM).
+    writeStoredFlag('showCoM', on);
   }
 
   comIconName(): string {

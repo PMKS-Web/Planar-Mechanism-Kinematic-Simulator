@@ -47,7 +47,13 @@
       <button class="sectionHeader" (click)="forceOpen = !forceOpen">
         <span class="sectionName">
           Force analysis
-          <span class="chip warning">{{ forceOutstanding }} to set</span>
+          @if (forceOutstanding > 0) {
+            <span class="chip warning">{{ forceOutstanding }} to set</span>
+          } @else if (forceWarnings > 0) {
+            <span class="chip">{{ forceWarnings }} worth a look</span>
+          } @else {
+            <span class="chip ready">Ready</span>
+          }
         </span>
         <mat-icon>{{ forceOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>
@@ -57,7 +63,9 @@
           @for (requirement of forceRequirements; track requirement.title) {
             @if (!requirement.met) {
               <div class="check">
-                <mat-icon class="checkIcon warning">radio_button_unchecked</mat-icon>
+                <mat-icon class="checkIcon warning">{{
+                  requirement.warning ? 'warning_amber' : 'radio_button_unchecked'
+                }}</mat-icon>
                 <div class="checkBody">
                   <div class="checkTitle">{{ requirement.title }}</div>
                   <p class="checkText">{{ requirement.body }}</p>

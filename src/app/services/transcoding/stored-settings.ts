@@ -28,6 +28,12 @@ export enum DecimalSetting {
 
 export enum BoolSetting {
   IS_INPUT_CW,
+  /**
+   * Dead slot. Written in an early era, then ignored once gravity was
+   * hardcoded on, so the bit in circulating URLs carries whatever that era
+   * wrote. Gravity lives in GRAVITY_OFF below — do not revive this slot, and
+   * do not reorder it away: the flags are packed by position.
+   */
   IS_GRAVITY,
   ANIMATING,
   IS_SHOW_MAJOR_GRID,
@@ -35,4 +41,11 @@ export enum BoolSetting {
   IS_SHOW_ID,
   IS_SHOW_COM,
   IS_FORCES,
+  /**
+   * Appended, and inverted on purpose: every URL written before this flag
+   * existed unpacks it as false, and false has to keep meaning what those URLs
+   * have always meant — gravity on. Turning gravity *off* is the choice worth
+   * recording.
+   */
+  GRAVITY_OFF,
 }

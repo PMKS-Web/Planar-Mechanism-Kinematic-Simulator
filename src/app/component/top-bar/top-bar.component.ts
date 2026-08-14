@@ -316,7 +316,10 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
 
   statusOf(tab: TabID): TabStatus {
     if (tab === TabID.FORCE) {
-      const missing = this.mechanism.forceAnalysisRequirements().filter((r) => !r.met).length;
+      // Warnings do not count: they do not stop the analysis running.
+      const missing = this.mechanism
+        .forceAnalysisRequirements()
+        .filter((r) => !r.met && !r.warning).length;
       return missing === 0
         ? { text: 'Ready', ready: true }
         : { text: `${missing} to set`, ready: false };

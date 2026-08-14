@@ -58,6 +58,7 @@ export class SettingsPanelComponent implements OnDestroy {
       showMinorGrid: this.settingsService.isShowMinorGrid.value,
       snapToGrid: this.settingsService.isSnapToGrid.value,
       snapToAlignment: this.settingsService.isSnapToAlignment.value,
+      gravity: this.settingsService.isGravity.value,
     });
 
     this.settingsSubscriptions.add(
@@ -96,7 +97,8 @@ export class SettingsPanelComponent implements OnDestroy {
         this.settingsService.globalUnit,
         this.settingsService.isShowMajorGrid,
         this.settingsService.isShowMinorGrid,
-      ]).subscribe(([length, angle, force, global, showMajorGrid, showMinorGrid]) => {
+        this.settingsService.isGravity,
+      ]).subscribe(([length, angle, force, global, showMajorGrid, showMinorGrid, gravity]) => {
         this.currentLengthUnit = length;
         this.currentAngleUnit = angle;
         this.currentForceUnit = force;
@@ -108,6 +110,7 @@ export class SettingsPanelComponent implements OnDestroy {
             globalunit: (global - 30).toString(),
             showMajorGrid,
             showMinorGrid,
+            gravity,
           },
           { emitEvent: false }
         );
@@ -184,6 +187,17 @@ export class SettingsPanelComponent implements OnDestroy {
       this.settingsService.isShowMinorGrid.next(Boolean(val));
       this.mechanismSrv.updateMechanism();
     });
+    // Gravity changes what the force analysis means, so it is an edit: the
+    // mechanisms are rebuilt with the new flag and the change is undoable.
+    this.settingsForm.controls['gravity'].valueChanges.subscribe((val) => {
+      const on = val === true;
+      if (on === this.settingsService.isGravity.value) return;
+      this.settingsService.isGravity.next(on);
+      this.mechanismSrv.updateMechanism(true);
+      // An open force graph is plotting the old gravity; ask for a redraw the
+      // same way a unit change does.
+      this.mechanismSrv.onMechUpdateState.next(2);
+    });
     // this.settingsForm.controls['torqueunit'].valueChanges.subscribe(() => {
     //   this.settingsService.inputTorque.next(this.currentTorqueUnit);
     // });
@@ -259,6 +273,7 @@ export class SettingsPanelComponent implements OnDestroy {
       showMajorGrid: [true, { updateOn: 'change' }],
       snapToGrid: [false, { updateOn: 'change' }],
       snapToAlignment: [true, { updateOn: 'change' }],
+      gravity: [true, { updateOn: 'change' }],
     },
     { updateOn: 'blur' }
   );

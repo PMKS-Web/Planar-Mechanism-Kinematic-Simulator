@@ -12,6 +12,7 @@ import { KinematicsSolver } from './kinematic-solver';
 import { ForceAnalysisMode, ForceAnalysisSeries, ForceSolver } from './force-solver';
 import { roundNumber } from '../utils';
 import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../unit-conversions';
+import { MODEL_SCALE } from '../render-scale';
 
 /**
  * Why a mechanism will not run. One of these, not a boolean, because the ways a
@@ -29,6 +30,14 @@ export type MechanismFailure =
 export class Mechanism {
   private _failure: MechanismFailure | undefined;
   private _unusableCylinder: string | undefined;
+  /** Joints the position ordering never reached, captured at the failure. */
+  private _unreachableJoints: string[] = [];
+  /**
+   * How near the cycle came to closing before the solver gave up, in user
+   * units. Captured at the failure so the panel can say whether the loop only
+   * just misses or wanders wide.
+   */
+  private _cycleGap: number | undefined;
   private _joints: Joint[][] = [[]];
   private _links: Link[][] = [[]];
   private _forces: Force[][] = [[]];
@@ -406,6 +415,7 @@ export class Mechanism {
       // move. Returning quietly left it *reporting itself valid* with a single
       // frame: the play button enabled, nothing happening, and the panel with
       // nothing to say about why.
+      this._unreachableJoints = [...PositionSolver.unsolvableJoints];
       this.setMechanismInvalid('nothing-can-move');
       return;
     }
@@ -597,6 +607,19 @@ export class Mechanism {
         startingPositionY - roundNumber(this._joints[currentTimeStamp][desiredJointIndex].y, 2)
       );
       if (currentTimeStamp === 750) {
+        // How close it ever came to its starting pose, skipping the first few
+        // frames where it is trivially still there. setMechanismInvalid wipes
+        // the frames, so this is the last chance to measure.
+        let nearest = Infinity;
+        for (let frame = 30; frame < this._joints.length; frame++) {
+          const joint = this._joints[frame]?.[desiredJointIndex];
+          if (!joint) continue;
+          nearest = Math.min(
+            nearest,
+            Math.hypot(joint.x - startingPositionX, joint.y - startingPositionY)
+          );
+        }
+        this._cycleGap = Number.isFinite(nearest) ? nearest / MODEL_SCALE : undefined;
         this.setMechanismInvalid('cycle-never-closes');
         return;
       }
@@ -660,6 +683,16 @@ export class Mechanism {
    */
   get unusableCylinder(): string | undefined {
     return this._unusableCylinder;
+  }
+
+  /** Joints the position ordering never reached, when nothing-can-move. */
+  get unreachableJoints(): string[] {
+    return this._unreachableJoints;
+  }
+
+  /** Nearest return to the starting pose in user units, when the cycle never closes. */
+  get cycleGap(): number | undefined {
+    return this._cycleGap;
   }
 
   get internalTriangleSimLinkMap(): Map<string, number[]> {
