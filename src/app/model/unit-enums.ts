@@ -35,6 +35,13 @@ export enum InertiaUnit {
   KG_CM2 = 51,
   KG_M2 = 52,
   NULL = 53,
+  /**
+   * The metric *display* unit: g pairs with g·cm², where g beside kg·cm² read
+   * as two different systems in one panel. Storage stays KG_CM2 — the solver's
+   * unit factors and every URL in circulation are written against it — so this
+   * unit exists only at the input/label boundary.
+   */
+  G_CM2 = 54,
 }
 
 export enum TimeUnit {

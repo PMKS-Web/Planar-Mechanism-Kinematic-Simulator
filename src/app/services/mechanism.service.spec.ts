@@ -68,6 +68,11 @@ describe('MechanismService welded links and force ownership', () => {
     harness.links[1].mass = 1;
     harness.links[1].massMoI = 4;
     harness.links[1].CoM = new Coord(1.5, 0);
+    // Chosen values, so the auto pass leaves them alone — as the panel flags.
+    for (const link of [harness.links[0], harness.links[1]]) {
+      (link as RealLink).moiIsCustom = true;
+      (link as RealLink).comIsCustom = true;
+    }
     const force = attachForce(harness.service, harness.links[0], 'F1', 0.25);
 
     harness.service.weldJoint(harness.joints[1]);
@@ -184,6 +189,8 @@ describe('MechanismService welded links and force ownership', () => {
     link.mass = 2;
     link.massMoI = 3;
     link.CoM = new Coord(0.5, 0);
+    link.moiIsCustom = true;
+    link.comIsCustom = true;
     const force = attachForce(harness.service, link, 'F1', 0.25);
 
     harness.settings.lengthUnit.next(LengthUnit.METER);
@@ -217,6 +224,8 @@ describe('MechanismService welded links and force ownership', () => {
     link.mass = 2;
     link.massMoI = 3;
     link.CoM = new Coord(0.5, 0);
+    link.moiIsCustom = true;
+    link.comIsCustom = true;
     const force = attachForce(harness.service, link, 'F1', 0.25);
     const original = {
       x: harness.joints[1].x,

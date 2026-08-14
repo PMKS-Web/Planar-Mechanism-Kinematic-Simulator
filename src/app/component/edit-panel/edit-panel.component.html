@@ -365,25 +365,53 @@
         <input-block
           [formGroup]="linkForm"
           _formControl="mass"
-          tooltip="The mass used by force analysis."
+          tooltip="The mass used by force analysis. Zero is an idealized massless bar: gravity and inertia skip it."
           >Link Mass</input-block
         >
-        <input-block
-          stacked
-          [formGroup]="linkForm"
-          _formControl="massMoI"
-          tooltip="The mass moment of inertia about the link's physical center of mass."
-          >Mass Moment of Inertia</input-block
-        >
-        <dual-input-block
-          label1="X"
-          label2="Y"
-          formControl1="comX"
-          formControl2="comY"
-          [formGroup]="linkForm"
-          tooltip="The physical center of mass used by force analysis."
-          >Center of Mass Position</dual-input-block
-        >
+        <!-- A massless bar has no inertia and no centre of mass worth a field:
+             everything below only exists once the link weighs something. -->
+        @if (activeSrv.selectedLink.mass > 0) {
+          <input-block
+            stacked
+            [formGroup]="linkForm"
+            _formControl="massMoI"
+            tooltip="The mass moment of inertia about the link's center of mass. Derived from the shape as a uniform body until a value is typed."
+            >Mass Moment of Inertia</input-block
+          >
+          <subtitle-block
+            [icon]="activeSrv.selectedLink.moiIsCustom ? 'auto_fix_normal' : undefined"
+            [buttonLabel]="activeSrv.selectedLink.moiIsCustom ? 'Derive From Shape' : undefined"
+            [description]="
+              activeSrv.selectedLink.moiIsCustom
+                ? 'A value you set; the shape no longer updates it.'
+                : 'Follows the link’s shape as a uniform body.'
+            "
+            [click]="useUniformBodyMoI.bind(this)"
+          ></subtitle-block>
+          <dual-input-block
+            label1="X"
+            label2="Y"
+            formControl1="comX"
+            formControl2="comY"
+            [formGroup]="linkForm"
+            tooltip="The physical center of mass used by force analysis. Derived from the shape as a uniform body until a value is typed."
+            >Center of Mass Position</dual-input-block
+          >
+          <subtitle-block
+            [icon]="activeSrv.selectedLink.comIsCustom ? 'auto_fix_normal' : undefined"
+            [buttonLabel]="activeSrv.selectedLink.comIsCustom ? 'Derive From Shape' : undefined"
+            [description]="
+              activeSrv.selectedLink.comIsCustom
+                ? 'A point you placed; the shape no longer moves it.'
+                : 'Follows the link’s shape as a uniform body.'
+            "
+            [click]="useUniformBodyCoM.bind(this)"
+          ></subtitle-block>
+        } @else {
+          <subtitle-block
+            description="This link is an idealized massless bar. Give it mass and its moment of inertia and center of mass appear, derived from its shape."
+          ></subtitle-block>
+        }
       </collapsible-subseciton>
       @if (activeSrv.selectedLink.isCompound) {
         <collapsible-subseciton

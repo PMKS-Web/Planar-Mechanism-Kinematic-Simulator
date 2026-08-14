@@ -70,6 +70,8 @@ describe('GridUtilsService.dragLink', () => {
   it('carries a hand-placed centre of mass along instead of recomputing it', () => {
     const scene = createFourBar();
     scene.bc.CoM = new Coord(1, 2.9);
+    // Placing it by hand is exactly what the custom flag records.
+    scene.bc.comIsCustom = true;
 
     scene.grid.dragLink(scene.bc, 1.5, -0.5);
 

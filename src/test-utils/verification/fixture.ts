@@ -167,6 +167,10 @@ function buildMechanismNow(fixture: MechanismFixture): BuiltMechanism {
     const com = spec.com ? new Coord(spec.com[0], spec.com[1]) : undefined;
     const subset = spec.subset?.map(buildFixtureLink);
     const link = new RealLink(spec.joints, linkJoints, spec.mass ?? 1, spec.moi ?? 1, com, subset);
+    // A fixture's numbers are chosen, MATLAB-parity data — never re-derived.
+    // Custom keeps the published URLs byte-identical too.
+    link.moiIsCustom = true;
+    link.comIsCustom = true;
     link.fill = spec.fill ?? ColorService.instance.getNextLinkColor();
     restoreFixtureLinkState(spec, link);
     return link;

@@ -144,6 +144,15 @@ export class RealLink extends Link {
 
   public static debugDesiredJointsIDs: unknown;
   public lastSelectedSublink: Link | null = null;
+  /**
+   * Whether the author chose this link's moment of inertia / centre of mass,
+   * or left them to follow the geometry (a uniform body over the joints,
+   * re-derived at every update). Custom values hold still; auto values move
+   * with the mechanism. Old URLs decode as custom-everything, which preserves
+   * exactly what they have always meant.
+   */
+  public moiIsCustom = false;
+  public comIsCustom = false;
 
   constructor(
     id: string,

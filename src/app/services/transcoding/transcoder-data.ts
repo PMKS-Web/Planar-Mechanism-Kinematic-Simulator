@@ -77,7 +77,15 @@ export class LinkData {
     public yCoM: number = 0,
     public color: string = '',
     public jointIDs: string[] = [],
-    public subsetLinkIDs: string[] = []
+    public subsetLinkIDs: string[] = [],
+    /**
+     * Whether the author chose these values (legacy URLs always did — the
+     * whole format predates auto-derived properties). Carried in the record's
+     * leading character, not in a new field: the tail of a link record is
+     * variable-length, so there is nowhere behind it to append to.
+     */
+    public moiIsCustom: boolean = true,
+    public comIsCustom: boolean = true
   ) {}
 }
 

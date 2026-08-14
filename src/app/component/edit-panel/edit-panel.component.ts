@@ -1201,25 +1201,36 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           { mass: this.nup.formatValueAndUnit(value, units) },
           { emitEvent: false }
         );
+        // An auto moment of inertia follows the mass it belongs to; show what
+        // the rebuild just derived rather than the number from before it.
+        this.refreshDerivedMassFields();
       })
     );
 
     this.onDestroySubscriptions.push(
       this.linkForm.controls['massMoI'].valueChanges.subscribe((val) => {
-        const units = this.momentOfInertiaUnit();
-        const [success, value] = this.nup.parseInertiaString(val ?? '', units);
+        // Typed in the display unit (g·cm² for metric), stored in the unit the
+        // solver and every URL are written against (kg·cm²).
+        const length = this.settingsService.lengthUnit.getValue();
+        const display = this.nup.displayInertiaUnit(length);
+        const [success, value] = this.nup.parseInertiaString(val ?? '', display);
         if (!success || value < 0) {
           this.linkForm.patchValue(
-            { massMoI: this.nup.formatValueAndUnit(this.activeSrv.selectedLink.massMoI, units) },
+            { massMoI: this.nup.formatStoredInertia(this.activeSrv.selectedLink.massMoI, length) },
             { emitEvent: false }
           );
           return;
         }
-        this.activeSrv.selectedLink.massMoI = value;
+        this.activeSrv.selectedLink.massMoI = this.nup.convertInertia(
+          value,
+          display,
+          this.nup.storedInertiaUnit(length)
+        );
+        this.activeSrv.selectedLink.moiIsCustom = true;
         this.mechanismService.updateMechanism(true);
         this.mechanismService.onMechUpdateState.next(2);
         this.linkForm.patchValue(
-          { massMoI: this.nup.formatValueAndUnit(value, units) },
+          { massMoI: this.nup.formatValueAndUnit(value, display) },
           { emitEvent: false }
         );
       })
@@ -1432,9 +1443,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
                 this.settingsService.angleUnit.getValue()
               ),
               mass: this.nup.formatValueAndUnit(this.activeSrv.selectedLink.mass, this.massUnit()),
-              massMoI: this.nup.formatValueAndUnit(
+              massMoI: this.nup.formatStoredInertia(
                 this.activeSrv.selectedLink.massMoI,
-                this.momentOfInertiaUnit()
+                this.settingsService.lengthUnit.getValue()
               ),
               comX: this.nup.formatModelLength(
                 this.activeSrv.selectedLink.CoM.x,
@@ -1507,20 +1518,44 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     }
 
     link.CoM[axis] = value;
+    link.comIsCustom = true;
     link.updateCoMDs();
     this.mechanismService.updateMechanism(true);
     this.mechanismService.onMechUpdateState.next(2);
   }
 
+  /** Hand a field back to the uniform body, and show what it derives. */
+  useUniformBodyMoI(): void {
+    this.activeSrv.selectedLink.moiIsCustom = false;
+    this.mechanismService.updateMechanism(true);
+    this.mechanismService.onMechUpdateState.next(2);
+    this.refreshDerivedMassFields();
+  }
+
+  useUniformBodyCoM(): void {
+    this.activeSrv.selectedLink.comIsCustom = false;
+    this.mechanismService.updateMechanism(true);
+    this.mechanismService.onMechUpdateState.next(2);
+    this.refreshDerivedMassFields();
+  }
+
+  /** Re-read MoI and CoM from the link after a rebuild may have re-derived them. */
+  private refreshDerivedMassFields(): void {
+    const link = this.activeSrv.selectedLink;
+    if (!link) return;
+    const length = this.settingsService.lengthUnit.getValue();
+    this.linkForm.patchValue(
+      {
+        massMoI: this.nup.formatStoredInertia(link.massMoI, length),
+        comX: this.nup.formatModelLength(link.CoM.x, length),
+        comY: this.nup.formatModelLength(link.CoM.y, length),
+      },
+      { emitEvent: false }
+    );
+  }
+
   momentOfInertiaUnit(): InertiaUnit {
-    switch (this.settingsService.lengthUnit.value) {
-      case LengthUnit.INCH:
-        return InertiaUnit.LBM_IN2;
-      case LengthUnit.METER:
-        return InertiaUnit.KG_M2;
-      default:
-        return InertiaUnit.KG_CM2;
-    }
+    return this.nup.displayInertiaUnit(this.settingsService.lengthUnit.value);
   }
 
   massUnit(): MassUnit {

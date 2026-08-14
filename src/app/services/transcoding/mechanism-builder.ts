@@ -96,6 +96,8 @@ export class MechanismBuilder {
     if (linkData.type === LINK_TYPE.REAL) {
       let CoM: Coord = new Coord(linkData.xCoM * MODEL_SCALE, linkData.yCoM * MODEL_SCALE);
       link = new RealLink(linkData.id, jointsOnLink, linkData.mass, linkData.massMoI, CoM);
+      link.moiIsCustom = linkData.moiIsCustom;
+      link.comIsCustom = linkData.comIsCustom;
       link.fill = linkData.color;
     } else {
       link = new SliderBlock(linkData.id, jointsOnLink, linkData.mass);

@@ -50,6 +50,8 @@ import { describeActuator } from '../model/actuator';
 import { NotificationService } from './notification.service';
 import { SettingsService } from './settings.service';
 import { slotHalfLength } from '../model/joint-marks';
+import { uniformBodyOf } from '../model/uniform-body';
+import { siUnitFactors } from '../model/unit-conversions';
 import { DragStateService } from './drag-state.service';
 import { Coord } from '../model/coord';
 import { SelectedTabService, TabID } from '../selected-tab.service';
@@ -287,6 +289,8 @@ export class MechanismService {
         unitStr = 'm';
         break;
     }
+
+    this.applyUniformBodyProperties(unitStr);
 
     // One machine per grounded component of the drawing. Each is solved on its
     // own -- its own mobility, its own input, its own cycle -- so a half-built
@@ -557,8 +561,10 @@ export class MechanismService {
       for (const link of this.links) {
         if (!(link instanceof RealLink)) continue;
         if (!link.joints.some((joint) => movedIds.has(joint.id))) continue;
-        link.CoM = RealLink.determineCenterOfMass(link.joints);
-        link.updateCoMDs();
+        if (!link.comIsCustom) {
+          link.CoM = RealLink.determineCenterOfMass(link.joints);
+          link.updateCoMDs();
+        }
         link.updateLengthAndAngle();
       }
     }
@@ -991,6 +997,11 @@ export class MechanismService {
     );
 
     const newLink = new RealLink(id, newLinkJoints, totalMass, massMoI, CoM, leaves);
+    // The parallel-axis sum above is worth keeping exactly when a part's
+    // numbers were chosen by a person; parts that all followed their geometry
+    // leave the compound following its geometry too.
+    newLink.moiIsCustom = leaves.some((leaf) => leaf instanceof RealLink && leaf.moiIsCustom);
+    newLink.comIsCustom = leaves.some((leaf) => leaf instanceof RealLink && leaf.comIsCustom);
     newLink.fill = leaves[0]?.fill ?? ColorService.instance?.getNextLinkColor() ?? '#555555';
     return newLink;
   }
@@ -1305,7 +1316,9 @@ export class MechanismService {
     }
 
     if (link instanceof RealLink) {
-      link.CoM = RealLink.determineCenterOfMass(link.joints);
+      if (!link.comIsCustom) {
+        link.CoM = RealLink.determineCenterOfMass(link.joints);
+      }
       link.reComputeDPath();
     }
   }
@@ -1993,6 +2006,36 @@ export class MechanismService {
    * drift from the first, and the drift would show as a tab that says Ready
    * above a panel that says it cannot solve.
    */
+  /**
+   * Re-derive every auto link's mass properties from its own skeleton.
+   *
+   * Runs at the one funnel every mutation passes through, for the same reason
+   * the cylinder invariant does: whatever moved a joint — a drag, a panel
+   * field, an undo — an auto link's centroid and moment of inertia follow the
+   * geometry, and a custom one holds whatever its author typed.
+   *
+   * MoI = mass × k², with k² from the skeleton in model units. The unit
+   * factor converts (stored-mass × user-length²) into the stored inertia unit
+   * exactly — derived from the same siUnitFactors the solver converts with,
+   * so the identity survives every unit system rather than being tuned to one.
+   */
+  private applyUniformBodyProperties(unitStr: string): void {
+    const units = siUnitFactors(unitStr);
+    const moiFactor = (units.massToKg * units.distanceToM ** 2) / units.inertiaToKgM2;
+    for (const link of this.links) {
+      if (!(link instanceof RealLink)) continue;
+      if (link.moiIsCustom && link.comIsCustom) continue;
+      const body = uniformBodyOf(link.joints);
+      if (!link.comIsCustom) {
+        link.CoM = new Coord(body.centroid.x, body.centroid.y);
+        link.updateCoMDs();
+      }
+      if (!link.moiIsCustom) {
+        link.massMoI = link.mass * (body.gyrationSq / MODEL_SCALE ** 2) * moiFactor;
+      }
+    }
+  }
+
   forceAnalysisRequirements(): ForceRequirement[] {
     const requirements: ForceRequirement[] = [];
 

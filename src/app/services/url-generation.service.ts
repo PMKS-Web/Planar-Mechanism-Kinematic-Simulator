@@ -98,7 +98,9 @@ export class UrlGenerationService {
           link.CoM.y / MODEL_SCALE,
           link.fill,
           link.joints.map((joint) => joint.id),
-          link.subset.map((subset) => subset.id)
+          link.subset.map((subset) => subset.id),
+          link.moiIsCustom,
+          link.comIsCustom
         )
       );
     } else if (link instanceof SliderBlock) {
