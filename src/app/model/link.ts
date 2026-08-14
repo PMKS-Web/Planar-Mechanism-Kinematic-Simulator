@@ -157,27 +157,15 @@ export class RealLink extends Link {
   ) {
     super(id, joints, mass);
 
-    // SettingsService.objectScale.subscribe((value) => {
-    //   this._d = RealLink.getD(this.joints);
-    //   //TODO: Unsubsribe from this when link gets deleted
-    // });
-    // console.log('new subscription');
     // Zero, like the mass above it: a link that arrives with a moment of
     // inertia of 1 resists angular acceleration in every dynamic analysis of a
     // drawing whose author never chose a number — and it made "massless links
     // are skipped by inertia" a lie. URLs carry each link's stored value, so
     // only freshly drawn links land here.
     this._massMoI = massMoI !== undefined ? massMoI : 0;
-    // this._shape = shape !== undefined ? shape : Shape.line;
-    // this._fill = '#' + (0x1000000 + Math.random() * 0xffffff).toString(16).substr(1, 6);
-    // this._fill = RealLink.colorOptions[Math.floor(Math.random() * RealLink.colorOptions.length)];
-    // setTimeout(() => {
-    // this._fill = ColorService.instance.getNextLinkColor();
-    // });
     this._fill = '#555555'; //Set later
 
     if (subSet === undefined || subSet.length === 0) {
-      // this.subset = [];
     } else {
       this.subset = subSet;
     }
@@ -272,7 +260,6 @@ export class RealLink extends Link {
   updateLengthAndAngle() {
     this._length = getDistance(this.joints[0], this.joints[1]);
     this._angle = getAngle(this.joints[0], this.joints[1]);
-    // console.warn(this._length, this._angle);
   }
 
   getCompoundPathString(): string {
@@ -471,7 +458,6 @@ export class RealLink extends Link {
     this.externalLines.push(new Arc(lastPos, startPos, finalJoint));
 
     if (!RealLink.isClockwise(this.externalLines[0], this.CoM)) {
-      // console.log('Link is not clockwise');
       this.externalLines.reverse();
       //If the link is not clockwise, reverse the order of the external lines
       for (let i = 0; i < this.externalLines.length; i++) {
@@ -607,23 +593,6 @@ export class RealLink extends Link {
 
     return crossProduct > 0;
   }
-
-  // static getLineIntersection(thisLine: Line, nextLine: Line): Coord | null {
-  //   const [x, y] = line_intersect(
-  //     thisLine.startPosition.x,
-  //     thisLine.startPosition.y,
-  //     thisLine.endPosition.x,
-  //     thisLine.endPosition.y,
-  //     nextLine.startPosition.x,
-  //     nextLine.startPosition.y,
-  //     nextLine.endPosition.x,
-  //     nextLine.endPosition.y
-  //   );
-  //   if (x === null || y === null) {
-  //     return null;
-  //   }
-  //   return new Coord(x, y);
-  // }
 
   static determineCenterOfMass(joints: Joint[]) {
     let com_x = 0;

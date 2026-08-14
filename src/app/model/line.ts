@@ -98,7 +98,6 @@ export class Line {
 
   splitAt(coord: Coord): Line | undefined {
     if (this.startPosition.equals(coord) || this.endPosition.equals(coord)) {
-      // console.log('Cannot split at start or end position', coord, this);
       return;
     } else {
       let newLine = new Line(coord, this.endPosition);
@@ -199,7 +198,6 @@ export class Arc extends Line {
 
   override splitAt(coord: Coord): Line | undefined {
     if (this.startPosition.equals(coord) || this.endPosition.equals(coord)) {
-      // console.log('Cannot split at start or end position', coord, this);
       return;
     } else {
       let newArc = new Arc(coord, this.endPosition, this.center);

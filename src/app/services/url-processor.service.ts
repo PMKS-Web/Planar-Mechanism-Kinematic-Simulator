@@ -29,10 +29,6 @@ export class UrlProcessorService {
 
     // update the mechanism from the url
     this.updateFromURL(url, true, true, true);
-
-    // initial save
-    // this causes a circular dependency
-    // this.mechanismSrv.save();
   }
 
   // From the full url string, extract the substring after the '?'. If does not exist, return null

@@ -668,26 +668,6 @@ export class MechanismService {
     });
 
     this.updateMechanism(true);
-    // this.settingsService.lengthUnit.subscribe((val) => {
-    //For each jo
-    // let unit = this.settingsService.lengthUnit.value;
-    // if (unit !== this.lengthUnit) {
-    //   this.mechanismService.joints.forEach((joint) => {
-    //     this.activeSrv.updateSelectedObj(joint);
-    //     this.activeSrv.fakeUpdateSelectedObj();
-    //     this.gridUtils.dragJoint(
-    //       this.activeSrv.selectedJoint,
-    //       new Coord(
-    //         this.nup.convertLength(joint.x, this.lengthUnit, unit),
-    //         this.nup.convertLength(joint.y, this.lengthUnit, unit)
-    //       )
-    //     );
-    //     this.jointForm.controls['input'].patchValue(wasInput);
-    //   });
-    //   this.lengthUnit = this.settingsService.lengthUnit.value;
-    //   this.activeSrv.fakeUpdateSelectedObj();
-    // }
-    // });
   }
 
   getLinkProp(l: Link, propType: string) {
@@ -1432,7 +1412,6 @@ export class MechanismService {
                     childJoint.connectedJoints.push(jt);
                   });
                 });
-                // childSub.link.forEach(jt => childJoint.connectedJoints.push(jt));
               });
               this.links.push(sub);
               // This is an orphaned joint
@@ -1649,9 +1628,6 @@ export class MechanismService {
       });
     }
     this.joints.splice(jointIndex, 1);
-    // if (this.activeObjService.selectedLink !== undefined) {
-    //   this.activeObjService.selectedLink.d = this.activeObjService.selectedLink.getPathString();
-    // }
     // Through the shared path, so a slot whose defining joint was just deleted
     // gets reconciled. Deleting a joint by itself is the one way to strand a
     // slot that does not go through mergeJoints or deleteLink.
@@ -2656,14 +2632,6 @@ export class MechanismService {
       const prismaticJointId = this.determineNextLetter();
       const inputJointIndex = this.findInputJointIndex();
       const connectedJoints: Joint[] = [this.activeObjService.selectedJoint];
-      // this.joints.forEach((j) => {
-      //   if (!(j instanceof RealJoint)) {
-      //     return;
-      //   }
-      //   if (j.ground) {
-      //     connectedJoints.push(j);
-      //   }
-      // });
       // Born dangling on an ungrounded pin: a floating slot needs a carrier,
       // which is geometry the drop gesture supplies and no toggle can invent.
       // A slider with a stash gets its old slot back instead, which is what
@@ -3558,7 +3526,6 @@ export class MechanismService {
   }
 
   getJointCSSClass(joint: Joint) {
-    // const j = joint as RealJoint;
     if (
       NewGridComponent.debugGetJointState() == jointStates.dragging &&
       joint.id === this.activeObjService.selectedJoint.id

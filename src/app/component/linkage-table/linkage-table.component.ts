@@ -324,6 +324,5 @@ export class LinkageTableComponent implements OnInit {
   getUnit() {
     // TODO: Should return this.settingService.globalUnit.value
     return 'cm'; // :P
-    // return ToolbarComponent.unit;
   }
 }

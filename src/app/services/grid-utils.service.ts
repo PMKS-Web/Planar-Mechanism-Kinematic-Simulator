@@ -239,7 +239,6 @@ export class GridUtilsService {
   }
 
   dragJoint(selectedJoint: RealJoint, trueCoord: Coord) {
-    // console.error('new drag Joint cycle');
     // TODO: have the round Number be integrated within function for determining trueCoord
 
     // A cylinder mount never free-moves, whoever asks — canvas drag, the
@@ -878,15 +877,11 @@ export class GridUtilsService {
     //First convert the screen coordinates to true coordinates
     let trueCoords = this.svgGrid.screenToSVG(new Coord(mouseEvent.offsetX, mouseEvent.offsetY));
 
-    // console.log(trueCoords.x, trueCoords.y);
-
     clickedObj.lastSelectedSublink = null;
 
     clickedObj.subset.forEach((link) => {
       if (this.isPointInsideLink(trueCoords, link as RealLink)) {
         clickedObj.lastSelectedSublink = link;
-        // console.log('Found a link');
-        // console.log(link);
       }
     });
   }

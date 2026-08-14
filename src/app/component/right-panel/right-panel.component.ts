@@ -145,8 +145,6 @@ export class RightPanelComponent implements DoCheck {
         this.openTab = tabID;
       }
     }
-    // console.warn(this.openTab);
-    // console.warn(this.isOpen);
   }
 
   /**
@@ -384,7 +382,6 @@ export class RightPanelComponent implements DoCheck {
 
   sendNotReady() {
     introJs().start();
-    // this.analytics.logEvent('tutorial_not_ready');
   }
 
   getBrowserName() {

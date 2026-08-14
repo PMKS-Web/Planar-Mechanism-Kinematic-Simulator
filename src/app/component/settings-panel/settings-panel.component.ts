@@ -198,9 +198,6 @@ export class SettingsPanelComponent implements OnDestroy {
       // same way a unit change does.
       this.mechanismSrv.onMechUpdateState.next(2);
     });
-    // this.settingsForm.controls['torqueunit'].valueChanges.subscribe(() => {
-    //   this.settingsService.inputTorque.next(this.currentTorqueUnit);
-    // });
   }
 
   /**

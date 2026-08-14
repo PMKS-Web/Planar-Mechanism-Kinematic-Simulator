@@ -42,9 +42,6 @@ export class ColorPickerComponent implements OnInit, OnChanges {
         }
         break;
       case 'joint':
-        if (this.joint) {
-          // this.joint.fill = this.colorService.getJointColorFromIndex(index);
-        }
         break;
     }
   }

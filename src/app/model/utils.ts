@@ -2,7 +2,6 @@ import { Joint, PrisJoint, RealJoint, RevJoint } from './joint';
 import { Coord } from './coord';
 import { Shape } from './link';
 import { Pose } from './pose';
-import { ConstrucLines } from './constructionlines_syn';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
 
 export class Utils {}
@@ -76,34 +75,12 @@ export function vecMake(n: number, val: number) {
   return result;
 }
 
-export function vecInit(s: string) {
-  let vals = s.split(',');
-  let result = [];
-  for (let i = 0; i < vals.length; ++i) {
-    result[i] = parseFloat(vals[i]);
-  }
-  return result;
-}
-
 export function matMake(rows: number, cols: number, val: number) {
   let result: Array<Array<number>> = [];
   for (let i = 0; i < rows; ++i) {
     result[i] = [];
     for (let j = 0; j < cols; ++j) {
       result[i][j] = val;
-    }
-  }
-  return result;
-}
-
-export function matInit(rows: number, cols: number, s: string) {
-  // ex: let m = matInit(2, 3, "1,2,3, 4,5,6");
-  let result = matMake(rows, cols, 0.0);
-  let vals = s.split(',');
-  let k = 0;
-  for (let i = 0; i < rows; ++i) {
-    for (let j = 0; j < cols; ++j) {
-      result[i][j] = parseFloat(vals[k++]);
     }
   }
   return result;
@@ -134,6 +111,34 @@ export function matProduct(ma: Array<Array<number>>, mb: Array<Array<number>>) {
   return result;
 }
 
+export function reduce(lum: Array<Array<number>>, b: Array<number>) {
+  // helper
+  let n = lum.length;
+  let x = vecMake(n, 0.0);
+  for (let i = 0; i < n; ++i) {
+    x[i] = b[i];
+  }
+
+  for (let i = 1; i < n; ++i) {
+    let sum = x[i];
+    for (let j = 0; j < i; ++j) {
+      sum -= lum[i][j] * x[j];
+    }
+    x[i] = sum;
+  }
+
+  x[n - 1] /= lum[n - 1][n - 1];
+  for (let i = n - 2; i >= 0; --i) {
+    let sum = x[i];
+    for (let j = i + 1; j < n; ++j) {
+      sum -= lum[i][j] * x[j];
+    }
+    x[i] = sum / lum[i][i];
+  }
+
+  return x;
+} // reduce
+
 export function matInverse(m: Array<Array<number>>) {
   // assumes determinant is not 0
   // that is, the matrix does have an inverse
@@ -159,15 +164,6 @@ export function matInverse(m: Array<Array<number>>) {
     let x = reduce(lum, b); //
     for (let j = 0; j < n; ++j) result[j][i] = x[j];
   }
-  return result;
-}
-
-export function matDeterminant(m: Array<Array<number>>) {
-  let n = m.length;
-  let lum = matMake(n, n, 0.0);
-  let perm = vecMake(n, 0.0);
-  let result = matDecompose(m, lum, perm); // -1 or +1
-  for (let i = 0; i < n; ++i) result *= lum[i][i];
   return result;
 }
 
@@ -240,34 +236,6 @@ export function matDecompose(
   return toggle; // for determinant
 } // matDecompose
 
-export function reduce(lum: Array<Array<number>>, b: Array<number>) {
-  // helper
-  let n = lum.length;
-  let x = vecMake(n, 0.0);
-  for (let i = 0; i < n; ++i) {
-    x[i] = b[i];
-  }
-
-  for (let i = 1; i < n; ++i) {
-    let sum = x[i];
-    for (let j = 0; j < i; ++j) {
-      sum -= lum[i][j] * x[j];
-    }
-    x[i] = sum;
-  }
-
-  x[n - 1] /= lum[n - 1][n - 1];
-  for (let i = n - 2; i >= 0; --i) {
-    let sum = x[i];
-    for (let j = i + 1; j < n; ++j) {
-      sum -= lum[i][j] * x[j];
-    }
-    x[i] = sum / lum[i][i];
-  }
-
-  return x;
-} // reduce
-
 export function matLinearSystem(A: Array<Array<number>>, B: Array<Array<number>>) {
   const inv_A = matInverse(A);
   return matProduct(inv_A, B);
@@ -303,14 +271,6 @@ export function radToDeg(rad: number) {
 
 export function degToRad(deg: number) {
   return (deg * Math.PI) / 180.0;
-}
-
-export function getXDistance(r: number, theta: number) {
-  return Math.cos(theta) * r;
-}
-
-export function getYDistance(r: number, theta: number) {
-  return Math.sin(theta) * r;
 }
 
 export function determineSlope(x1: number, y1: number, x2: number, y2: number) {
@@ -375,14 +335,6 @@ export function stringToShape(str: string) {
       return Shape.lShape;
     default:
       return Shape.line;
-    // case Shape.horizontalLine:
-    // case Shape.verticalLine:
-    // case Shape.slantedLineForward:
-    // case Shape.slantedLineBackward:
-    // case Shape.beanShape:
-    // case Shape.infinityShape:
-    // case Shape.eightShape:
-    // case Shape.customShape:
   }
 }
 
@@ -452,192 +404,6 @@ export function euclideanDistance(x1: number, y1: number, x2: number, y2: number
   return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
 }
 
-export function findBiggestAngle(joint: RealJoint, allJoints: RealJoint[]) {
-  // TODO: check for condition that first condition is not met... (with imagJoints)
-  if (allJoints.length === 2) {
-    return [allJoints[0], allJoints[1]];
-  }
-  const curJoint = allJoints.find((j) => joint.id === j.id) as RealJoint;
-  let biggestAngle = 0;
-  // TODO: Change this where desiredJoint1 and desiredJoint2 are not same
-  let desiredJoint1: Joint = curJoint;
-  let desiredJoint2: Joint = curJoint;
-
-  const curJointIndex = allJoints.findIndex((j) => j.id === joint.id);
-  for (let i = 0; i < allJoints.length; i++) {
-    // console.log('Outer loop: ' + i);
-    if (i === curJointIndex) {
-      // console.log('Skipped');
-      continue;
-    }
-    const joint1 = allJoints[i];
-    for (let j = i + 1; j < allJoints.length; j++) {
-      // console.log('Inner loop: ' + j);
-      if (j === curJointIndex) {
-        // console.log('Skipped');
-        continue;
-      }
-      const joint2 = allJoints[j];
-      const angle = find_angle(allJoints[curJointIndex], joint1, joint2);
-      // console.log(angle);
-      if (angle > biggestAngle) {
-        // if (biggestAngle === 0 || angle > biggestAngle) {
-        biggestAngle = angle;
-        desiredJoint1 = joint1;
-        desiredJoint2 = joint2;
-      }
-    }
-  }
-  return [desiredJoint1, desiredJoint2];
-}
-
-// https://stackoverflow.com/questions/17763392/how-to-calculate-in-javascript-angle-between-3-points (wrong)
-// http://phrogz.net/angle-between-three-points
-export function find_angle(B: Coord, A: Coord, C: Coord) {
-  let AB = Math.sqrt(Math.pow(B.x - A.x, 2) + Math.pow(B.y - A.y, 2));
-  let BC = Math.sqrt(Math.pow(B.x - C.x, 2) + Math.pow(B.y - C.y, 2));
-  let AC = Math.sqrt(Math.pow(C.x - A.x, 2) + Math.pow(C.y - A.y, 2));
-  return Math.acos((BC * BC + AB * AB - AC * AC) / (2 * BC * AB));
-  // const a = Math.pow(p1.x-p0.x,2) + Math.pow(p1.y-p0.y,2),
-  //     b = Math.pow(p1.x-p2.x,2) + Math.pow(p1.y-p2.y,2),
-  //     c = Math.pow(p2.x-p0.x,2) + Math.pow(p2.y-p0.y,2);
-  // return Math.acos( (a+b-c) / Math.sqrt(4*a*b) ) * 180 / Math.PI;
-}
-
-//added by Pradeep Mar 25th 2023
-//determine the end point of each pose
-//we pass coord, length and angle of each pose to this function and store the end point under each pose
-export function getCoordofeachPose(pose1: Pose) {
-  if (pose1.angle == 0) {
-    pose1.coord1.x = pose1.midpoint.x - 0.5 * length * Math.cos(degToRad(pose1.angle));
-    pose1.coord1.y = pose1.midpoint.y - 0.5 * length * Math.sin(degToRad(pose1.angle));
-
-    pose1.coord2.x = pose1.midpoint.x + 0.5 * length * Math.cos(degToRad(pose1.angle));
-    pose1.coord2.y = pose1.midpoint.y + 0.5 * length * Math.sin(degToRad(pose1.angle));
-  } else if (pose1.angle > 0 && pose1.angle < 90) {
-    pose1.coord1.x = pose1.midpoint.x - 0.5 * length * Math.cos(degToRad(pose1.angle + 180));
-    pose1.coord1.y = pose1.midpoint.y - 0.5 * length * Math.sin(degToRad(pose1.angle + 180));
-
-    pose1.coord2.x = pose1.midpoint.x + 0.5 * length * Math.cos(degToRad(pose1.angle));
-    pose1.coord2.y = pose1.midpoint.y + 0.5 * length * Math.sin(degToRad(pose1.angle));
-  } else if (pose1.angle < 0 && pose1.angle < -90) {
-    pose1.coord1.x = pose1.midpoint.x - 0.5 * length * Math.cos(degToRad(pose1.angle + 180));
-    pose1.coord1.y = pose1.midpoint.y - 0.5 * length * Math.sin(degToRad(pose1.angle + 180));
-
-    pose1.coord2.x = pose1.midpoint.x + 0.5 * length * Math.cos(degToRad(pose1.angle));
-    pose1.coord2.y = pose1.midpoint.y + 0.5 * length * Math.sin(degToRad(pose1.angle));
-  }
-}
-
-//added by Pradeep Mar 25th 2023
-//obtain end points of lines. This will help draw the construction lines
-export function ConstructionLine_1(pose1: Pose, pose2: Pose) {
-  return new ConstrucLines(pose1.coord1, pose2.coord1);
-}
-
-export function ConstructionLine_2(pose2: Pose, pose3: Pose) {
-  return new ConstrucLines(pose2.coord1, pose3.coord1);
-}
-
-export function ConstructionLine_3(pose1: Pose, pose2: Pose) {
-  return new ConstrucLines(pose1.coord2, pose2.coord2);
-}
-
-export function ConstructionLine_4(pose2: Pose, pose3: Pose) {
-  return new ConstrucLines(pose2.coord2, pose3.coord2);
-}
-
-//added by Pradeep Mar 25th 2023
-//obtain the coordinates of intersection point
-//return one intersection point
-export function intersectionPoint_1(pose1: Pose, pose2: Pose, pose3: Pose) {
-  //slope of line 1
-  //var slope1 = 1 / ((Pos2_end1(2) - Pos1_end1(2)) / (Pos2_end1(1) - Pos1_end1(1)));
-  //slope of line 2
-  //slope2 = 1 / ((Pos3_end1(2) - Pos2_end1(2)) / (Pos3_end1(1) - Pos2_end1(1)));
-  //midpoints
-  //midpoint_line1 = (Pos1_end1 + Pos2_end1) / 2;
-  //midpoint_line2 = (Pos2_end1 + Pos3_end1) / 2;
-  //intercept
-  //c1 = midpoint_line1(2) + slope1 * midpoint_line1(1);
-  //c2 = midpoint_line2(2) + slope2 * midpoint_line2(1);
-  var slope1 = 1 / ((pose2.coord1.y - pose1.coord1.y) / (pose2.coord1.x - pose1.coord1.x));
-  //slope of line 2
-  var slope2 = 1 / ((pose3.coord1.y - pose2.coord1.y) / (pose3.coord1.x - pose2.coord1.x));
-
-  //midpoints of the above two lines
-  var midpoint_line1 = new Coord(
-    (pose1.coord1.x + pose2.coord1.x) / 2,
-    (pose1.coord1.y + pose2.coord1.y) / 2
-  );
-  var midpoint_line2 = new Coord(
-    (pose3.coord1.x + pose2.coord1.x) / 2,
-    (pose3.coord1.y + pose2.coord1.y) / 2
-  );
-
-  //intercept
-  var c1 = midpoint_line1.y + slope1 * midpoint_line1.x;
-  var c2 = midpoint_line2.y + slope2 * midpoint_line2.x;
-
-  //intersection point
-  var x1 = (c1 - c2) / (-slope2 + slope1);
-  var y1 = -slope1 * x1 + c1;
-
-  return new Coord(x1, y1);
-}
-
-//return second intersection point
-export function intersectionPoint_2(pose1: Pose, pose2: Pose, pose3: Pose) {
-  //slope of line 3
-  //slope3 = 1 / ((Pos2_end2(2) - Pos1_end2(2)) / (Pos2_end2(1) - Pos1_end2(1)));
-  //slope of line 4
-  //slope4 = 1 / ((Pos3_end2(2) - Pos2_end2(2)) / (Pos3_end2(1) - Pos2_end2(1)));
-  //midpoints
-  // midpoint_line3 = (Pos1_end2 + Pos2_end2) / 2;
-  // midpoint_line4 = (Pos2_end2 + Pos3_end2) / 2;
-  //intercept
-  //  c3 = midpoint_line3(2) + slope3 * midpoint_line3(1);
-  //   c4 = midpoint_line4(2) + slope4 * midpoint_line4(1);
-
-  //intersection point
-  //x2 = (c3 - c4) / (-slope4 + slope3);
-  //y2 = -slope3 * x2 + c3;
-
-  var slope1 = 1 / ((pose2.coord2.y - pose1.coord2.y) / (pose2.coord2.x - pose1.coord2.x));
-  //slope of line 2
-  var slope2 = 1 / ((pose3.coord2.y - pose2.coord2.y) / (pose3.coord2.x - pose2.coord2.x));
-
-  //midpoints of the above two lines
-  var midpoint_line1 = new Coord(
-    (pose1.coord2.x + pose2.coord2.x) / 2,
-    (pose1.coord2.y + pose2.coord2.y) / 2
-  );
-  var midpoint_line2 = new Coord(
-    (pose3.coord2.x + pose2.coord2.x) / 2,
-    (pose3.coord2.y + pose2.coord2.y) / 2
-  );
-
-  //intercept
-  var c1 = midpoint_line1.y + slope1 * midpoint_line1.x;
-  var c2 = midpoint_line2.y + slope2 * midpoint_line2.x;
-
-  //intersection point
-  var x1 = (c1 - c2) / (-slope2 + slope1);
-  var y1 = -slope1 * x1 + c1;
-
-  return new Coord(x1, y1);
-}
-
-//organize the four coordinates
-export function fourCoordinates(pose1: Pose, pose2: Pose, pose3: Pose) {
-  var coord_A = intersectionPoint_1(pose1, pose2, pose3);
-  var coord_B = pose1.coord1;
-  var coord_C = pose1.coord2;
-  var coord_D = intersectionPoint_1(pose1, pose2, pose3);
-
-  //we have the four coordinates that make up the
-}
-
 // TODO: Should put this all over the code...
 export function find_slope(point1: Coord, point2: Coord) {
   return (point1.y - point2.y) / (point1.x - point2.x);
@@ -646,21 +412,6 @@ export function find_slope(point1: Coord, point2: Coord) {
 // TODO: Should put this all over the code...
 export function find_y_intercept(point1: Coord, slope: number) {
   return point1.y - slope * point1.x;
-}
-
-// https://stackoverflow.com/questions/14480345/how-to-get-the-nth-occurrence-in-a-string
-export function getPosition(string: string, subString: string, index: number) {
-  return string.split(subString, index).join(subString).length;
-}
-
-// https://stackoverflow.com/questions/4364881/inserting-string-at-position-x-of-another-string
-export function insertStringWithinString(a: string, index: number, b: string) {
-  return [a.slice(0, index), b, a.slice(index)].join('');
-}
-
-// https://www.tutorialspoint.com/typescript/typescript_string_substr.htm
-export function pullStringWithinString(a: string, firstIndex: number, secondIndex: number) {
-  return a.substring(firstIndex, secondIndex);
 }
 
 // https://stackoverflow.com/questions/13937782/calculating-the-point-of-intersection-of-two-lines
@@ -750,7 +501,6 @@ function circle_circle_intersect(
 
   // Circles are coincident
   if (d === 0 && radius === radius2) {
-    // console.log('Circles are coincident');
     return [undefined, true];
   }
 
@@ -764,62 +514,6 @@ function circle_circle_intersect(
   let y5 = y3 + (h * dx) / d;
 
   return [[new Coord(x4, y4), new Coord(x5, y5)], false];
-}
-
-export function determineCenter(
-  startPoint: Coord,
-  endPoint: Coord,
-  radius: number,
-  cw: string
-): Coord {
-  // Find the center of the circle that the arc revolves around.
-  // The center will be 'radius' distance from the startPoint and endPoint.
-
-  // Find the midpoint of the line segment
-  let mid = new Coord((startPoint.x + endPoint.x) / 2, (startPoint.y + endPoint.y) / 2);
-  // Find the vector from startPoint to endPoint
-  let vec = new Coord(endPoint.x - startPoint.x, endPoint.y - startPoint.y);
-  // Find the length of vec
-  let len = Math.sqrt(vec.x * vec.x + vec.y * vec.y);
-  // Check if len is zero
-  if (len === 0) {
-    // Return null or throw an error
-    throw new Error('len is zero');
-  }
-  // Find the perpendicular vector to vec
-  let perp = new Coord(-vec.y / len, vec.x / len);
-  // Check if radius is too small
-  if (radius < len / 2) {
-    // Return null or throw an error
-    throw new Error('radius is too small');
-  }
-  // Find the parameter t that satisfies the equation (c - mid)^2 = r^2
-  let t = Math.sqrt(radius * radius - (len * len) / 4);
-  // Check if t is negative
-  if (t < 0) {
-    // Return null or throw an error
-    throw new Error('t is negative');
-  }
-  // Find the center point c by adding mid and perp * t
-  let c = new Coord(mid.x + perp.x * t, mid.y + perp.y * t);
-  // Check if c is NaN
-  if (isNaN(c.x) || isNaN(c.y)) {
-    // Return null or throw an error
-    throw new Error('c is NaN');
-  }
-  // Check if cw is '0' or '1'
-  if (cw === '0') {
-    // Reverse the direction of perp
-    c = new Coord(mid.x - perp.x * t, mid.y - perp.y * t);
-  } else if (cw === '1') {
-    // Keep the direction of perp
-    c = new Coord(mid.x + perp.x * t, mid.y + perp.y * t);
-  } else {
-    // Return null or throw an error
-    throw new Error('cw must be "0" or "1"');
-  }
-
-  return c;
 }
 
 export function arc_arc_intersect(
@@ -854,11 +548,6 @@ export function arc_arc_intersect(
     if (isPointInArc(endPosition2, startPosition, endPosition, center)) {
       allImportantIntersections.push(endPosition2);
     }
-
-    // console.log(
-    //   'Circles are coicident, here are all the endpoints that overalp',
-    //   allImportantIntersections
-    // );
 
     //If there are no intersections, then the arcs do not intersect.
     if (allImportantIntersections.length === 0) {
@@ -1041,17 +730,14 @@ function line_circle_intersect(
     const tolerance = 0.00001;
     if (discriminant < -tolerance) {
       // line doesn't touch circle
-      // console.log("line doesn't touch circle");
       return;
     } else if (discriminant < tolerance) {
-      // console.log('line is tangent to circle');
       // line is tangent to circle
       let x = -b / (2 * a);
       let y = slope * x + y_intercept;
       intersections.push(new Coord(x, y));
       return intersections;
     } else {
-      // console.log('line intersects circle in two places');
       // line intersects circle in two places
       let x1 = (-b + Math.sqrt(discriminant)) / (2 * a);
       let y1 = slope * x1 + y_intercept;
@@ -1090,31 +776,6 @@ function isPointInArc(
   }
 }
 
-// returns true if the line from (a,b)->(c,d) intersects with (p,q)->(r,s)
-// function intersects(a,b,c,d,p,q,r,s) {
-//   var det, gamma, lambda;
-//   det = (c - a) * (s - q) - (r - p) * (d - b);
-//   if (det === 0) {
-//     return false;
-//   } else {
-//     lambda = ((s - q) * (r - a) + (p - r) * (s - b)) / det;
-//     gamma = ((b - d) * (r - a) + (c - a) * (s - b)) / det;
-//     return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
-//   }
-// };
-
-export function wrapAngle(angle: number) {
-  //Wrap between -pi and pi
-  angle = angle % (2 * Math.PI);
-  if (angle > Math.PI) {
-    angle -= 2 * Math.PI;
-  }
-  if (angle < -Math.PI) {
-    angle += 2 * Math.PI;
-  }
-  return angle;
-}
-
 export function is_touch_enabled() {
   return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 }
@@ -1148,13 +809,9 @@ export function circleCircleIntersection(
     return false;
   }
 
-  // const TOLERANCE = 0.001;
   if (d <= 0.001) {
     return false;
   }
-  // if (d === 0) {
-  //   return false;
-  // }
 
   dx /= d;
   dy /= d;
@@ -1220,40 +877,6 @@ export function circleLineIntersection(
   );
 }
 
-// https://dirask.com/posts/JavaScript-calculate-intersection-point-of-two-lines-for-given-4-points-VjvnAj
-export function lineLineIntersection(
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  x3: number,
-  y3: number,
-  x4: number,
-  y4: number
-) {
-  const c2x = x3 - x4; // (x3 - x4)
-  const c3x = x1 - x2; // (x1 - x2)
-  const c2y = y3 - y4; // (y3 - y4)
-  const c3y = y1 - y2; // (y1 - y2)
-
-  // down part of intersection point formula
-  const d = c3x * c2y - c3y * c2x;
-
-  if (d == 0) {
-    throw new Error('Number of intersection points is zero or infinity.');
-  }
-
-  // upper part of intersection point formula
-  const u1 = x1 * y2 - y1 * x2; // (x1 * y2 - y1 * x2)
-  const u4 = x3 * y4 - y3 * x4; // (x3 * y4 - y3 * x4)
-
-  // intersection point formula
-
-  const px = (u1 * c2x - c3x * u4) / d;
-  const py = (u1 * c2y - c3y * u4) / d;
-
-  return new Coord(px, py);
-}
 export function has_mouse_pointer() {
   return matchMedia('(pointer:fine)').matches;
 }
@@ -1261,11 +884,6 @@ export function has_mouse_pointer() {
 // Whether HTML5's local storage is available
 export function local_storage_available() {
   return typeof Storage !== 'undefined';
-}
-
-// https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
-export function isLeft(a: Coord, b: Coord, c: Coord) {
-  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) > 0;
 }
 
 // Vector projection algorithm

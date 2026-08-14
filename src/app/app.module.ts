@@ -9,9 +9,7 @@ import { AnalysisSetupComponent } from './component/analysis-setup/analysis-setu
 import { PlaybackBarComponent } from './component/playback-bar/playback-bar.component';
 import { MechanismPanelComponent } from './component/mechanism-panel/mechanism-panel.component';
 import { ViewControlsComponent } from './component/view-controls/view-controls.component';
-import { ShapeSelectorComponent } from './component/shape-selector/shape-selector.component';
 import { FormsModule } from '@angular/forms';
-// import { TemplatesPopupComponent } from './component/templates-popup/templates-popup.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 import { MaterialModule } from './material/material.module';
@@ -46,12 +44,10 @@ import { NotReadyWarningComponent } from './component/not-ready-warning/not-read
 import { TemplatesComponent } from './component/MODALS/templates/templates.component';
 import { MechanismService } from './services/mechanism.service';
 import { GridUtilsService } from './services/grid-utils.service';
-import { SynthesisWarningComponent } from './component/MODALS/synthesis-warning/synthesis-warning.component';
 import { SvgArrowComponent } from './component/svg-arrow/svg-arrow.component';
 import { CollapsibleSubsecitonComponent } from './component/BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
 import { DualButtonComponent } from './component/BLOCKS/dual-button/dual-button.component';
 import { ColorPickerComponent } from './component/BLOCKS/color-picker/color-picker.component';
-import { TriButtonComponent } from './component/BLOCKS/tri-button/tri-button.component';
 import { BottombarComponent } from './component/bottombar/bottombar.component';
 import { NotificationComponent } from './component/notification/notification.component';
 
@@ -65,7 +61,6 @@ import { NotificationComponent } from './component/notification/notification.com
     PlaybackBarComponent,
     MechanismPanelComponent,
     ViewControlsComponent,
-    ShapeSelectorComponent,
     LeftTabsComponent,
     TitleBlock,
     EditPanelComponent,
@@ -92,12 +87,10 @@ import { NotificationComponent } from './component/notification/notification.com
     EquationPanelComponent,
     NotReadyWarningComponent,
     TemplatesComponent,
-    SynthesisWarningComponent,
     SvgArrowComponent,
     CollapsibleSubsecitonComponent,
     DualButtonComponent,
     ColorPickerComponent,
-    TriButtonComponent,
     BottombarComponent,
   ],
   bootstrap: [AppComponent],

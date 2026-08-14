@@ -82,11 +82,6 @@
       opacity="0.5"
     ></rect>
   }
-  <!--      <rect *ngIf='mechanismSrv.joints.length == 0'-->
-  <!--            [attr.x]='-100' [attr.y]='100'-->
-  <!--            [attr.width]='200'-->
-  <!--            [attr.height]='20' fill='#ffffff' stroke='#00000000'>-->
-  <!--      </rect>-->
 
   <!-- This is a strucrially intergral rect and should not be removed! -->
   <rect x="-1px" y="-1px" width="2px" height="2px" fill="white"></rect>
@@ -1472,14 +1467,8 @@
   </div>
 }
 
-<!--<div id='coordinateFrame' style='pointer-events: none'>-->
-<!--  <div style='position: relative;display: flex; flex-direction: column; align-items: end'>-->
 <!--    {{humanReadableString(settings.globalUnit.getValue())}}-->
-<!--    <img src='assets/coords.svg' style='width: 80px; margin-top: -20px'>-->
-<!--  </div>-->
-<!--</div>-->
 <ng-template #context_menu>
   <app-context-menu [menuItems]="cMenuItems"> </app-context-menu>
 </ng-template>
 
-<!--<div cdkContextMenuTriggerFor="context_menu" #trigger>Right click me</div>-->

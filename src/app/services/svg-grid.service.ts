@@ -234,9 +234,6 @@ export class SvgGridService {
     this.viewBoxMinY = visibleY;
     this.viewBoxMaxY = visibleY + visibleHeight;
     // this.panZoomObject.updateBBox(); // Update viewport bounding box
-    // console.log(viewBox);
-    // console.log(this.viewBoxMinX, this.viewBoxMaxX);
-    // console.log(this.viewBoxMinY, this.viewBoxMaxY);
   }
 
   /**
@@ -352,16 +349,10 @@ export class SvgGridService {
     this.horizontalLinesMinor = this.horizontalLinesMinor.map((line) => {
       return Math.round(line * 10000) / 10000;
     });
-
-    // console.log(this.verticalLines);
-    // console.log(this.verticalLinesMinor);
   }
 
   handleBeforeZoom(oldZoom: any, newZoom: any) {
     let isZoomingIn = newZoom > oldZoom;
-    // console.log('handleBeforeZoom');
-    // console.log(oldZoom, newZoom);
-    // console.log(this.getZoom());
     if (isZoomingIn && this.getZoom() > this.MAX_ZOOM) {
       this.panLockOut = true;
       return false;
@@ -370,16 +361,9 @@ export class SvgGridService {
       return false;
     }
     return;
-    // if (this.getZoom() < 0.4 || this.getZoom() > 330) {
-    //   // this.panLockOut = true;
-    //   return false;
-    // } else {
-    //   return true;
-    // }
   }
 
   handleZoom(zoomLevel: number) {
-    // console.log(this.getZoom());
     this.cellSize = this.cellSizeFor(this.getZoom());
     this.handlePan();
     // Zooming is continuous, so these have a much longer quiet period than

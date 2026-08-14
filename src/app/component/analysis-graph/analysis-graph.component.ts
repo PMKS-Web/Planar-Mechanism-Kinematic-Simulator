@@ -407,7 +407,6 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     //"Angular Link Pos","Angular Link Vel",Angular Link Acc"
 
     //Param 4: mechPart: If Joint 'a','b','c'... If Link 'ab','bc','cd'...
-    // console.log(this.analysis, this.analysisType, this.mechProp, this.mechPart);
     this.determineChart(this.analysis, this.analysisType, this.mechProp, this.mechPart);
 
     this.subscriptions.add(
@@ -729,15 +728,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     let velLinUnit = '(' + this.getUnitStr(this.settingsService.lengthUnit.value) + '/s)';
     let accLinUnit = '(' + this.getUnitStr(this.settingsService.lengthUnit.value) + '/s²)';
     const posAngUnit = '(' + this.getUnitStr(this.settingsService.angleUnit.value) + ')';
-    // const posAngUnit = '(rad)';
     const velAngUnit = '(' + this.getUnitStr(this.settingsService.angleUnit.value) + '/s)';
     const accAngUnit = '(' + this.getUnitStr(this.settingsService.angleUnit.value) + '/s²)';
     this.analysisDiagnostic = null;
-    // if (this.settingsService.globalUnit.value === GlobalUnit.METRIC) {
-    //   posLinUnit = '(m)';
-    //   velLinUnit = '(m/s)';
-    //   accLinUnit = '(m/s²)';
-    // }
     switch (analysis) {
       case 'force':
         switch (mechProp) {

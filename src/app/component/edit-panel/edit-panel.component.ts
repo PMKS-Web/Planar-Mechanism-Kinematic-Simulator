@@ -301,14 +301,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     this.mechanismService.updateMechanism();
   }
 
-  disableDelete(): void {
-    // this.mechanismService.canDelete = false;
-  }
-
   ngOnInit(): void {
-    // console.log(this.jointForm);
-    // console.log(this.activeSrv);
-    // console.log(this.profileForm);
     this.onChanges();
     this.disableAndEnableJointFields();
   }
@@ -1259,7 +1252,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         if (this.hideEditPanel()) {
           return;
         }
-        // this.activeSrv.selectedForce.local = val == '0' ? true : false;
         this.mechanismService.changeForceLocal();
       })
     );
@@ -1280,7 +1272,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
           this.listOfOtherJoints.forEach((joint, i) => {
             this.setFormDistAndAngle(this.activeSrv.selectedJoint, joint, i);
-            // console.log('set form dist and angle');
           });
           this.currentlyOpenJointID = this.activeSrv.selectedJoint.id;
 
@@ -1611,7 +1602,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   private reloadOtherJointForm() {
     this.listOfOtherJoints = this.getOtherJointsInLink(this.activeSrv.selectedJoint);
     this.jointForm.controls['otherJoints'] = this.fb.array([]);
-    // console.log('killed all subscriptions to other joints');
     this.otherJoitnsSubscriptions.forEach((subscription) => subscription.unsubscribe());
     this.otherJoitnsSubscriptions = [];
 
@@ -1632,7 +1622,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
               )
             );
           } else {
-            // this.activeSrv.selectedLink.length = value;
             this.updateDistanceBetweenJoints(this.activeSrv.selectedJoint, joint, value);
             this.mechanismService.onMechUpdateState.next(2);
             this.otherJoints.controls[i * 2].patchValue(
@@ -1687,8 +1676,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     otherJoint: RealJoint,
     otherJointID: number
   ) {
-    // console.log('setFormDistAndAngle', otherJointID);
-    // console.log(this.otherJoints);
     let distance = this.getDistanceBetweenJoints(currentJoint, otherJoint);
     let angle = this.getAngleBetweenJoints(currentJoint, otherJoint);
 

@@ -672,7 +672,6 @@ export class KinematicsSolver {
         X = matLinearSystem(this.A_matrix_AngAcc, this.B_matrix_AngAcc);
         break;
     }
-    // const X = lusolve(this.A_matrix_AngVel, this.B_matrix_AngVel);
     // 3rd, store unknown values to respected links
     for (let i = 0; i < X.length; i++) {
       const linkOrJoint = unknownLinks[i];
@@ -720,7 +719,6 @@ export class KinematicsSolver {
   }
 
   private static determineLin(simJoints: Joint[], simLinks: Link[]) {
-    // this.setUpLinkAndJointIndexMap(simJoints, simLinks, requiredLoops);
     const desired_links_used: Array<string> = [];
     this.requiredLoops.forEach((loop) => {
       for (const edge of loop.edges) {
@@ -1068,12 +1066,8 @@ export class KinematicsSolver {
                   break;
                 case SliderBlock:
                   const realJoint = simJoints[this.realJointIndexMap.get(link.id)!];
-                  // if (!(realJoint instanceof PrisJoint)) {
-                  //   return;
-                  // }
                   const desiredAngle = this.desiredAngleMap.get(realJoint.id)!;
                   arr = [-Math.cos(desiredAngle), -Math.sin(desiredAngle), 0];
-                  // arr = [-Math.cos(realJoint.slotAngle), -Math.sin(realJoint.slotAngle), 0];
                   colIndex = this.unknownLinkIndexMap.get(realJoint.id)!;
                   break;
                 default:
@@ -1141,11 +1135,7 @@ export class KinematicsSolver {
                   break;
                 case SliderBlock:
                   const realJoint = simJoints[this.realJointIndexMap.get(link.id)!];
-                  // if (!(realJoint instanceof PrisJoint)) {
-                  //   return;
-                  // }
                   const desiredAngle = this.desiredAngleMap.get(realJoint.id)!;
-                  // arr = [-Math.cos(desiredAngle), -Math.sin(desiredAngle), 0];
                   sol = [-Math.cos(desiredAngle), -Math.sin(desiredAngle)];
                   colIndex = this.unknownLinkIndexMap.get(realJoint.id)!;
                   break;
