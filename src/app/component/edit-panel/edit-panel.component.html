@@ -330,6 +330,14 @@
           tooltip="The piston head's mass, concentrated at the pin — the reciprocating mass."
           >Piston Head Mass</input-block
         >
+        @if (cylinderHasCustomInertia()) {
+          <subtitle-block
+            icon="auto_fix_normal"
+            buttonLabel="Derive From Shape"
+            description="This cylinder's parts carry inertia values set by hand (or by an older file). Derive re-computes them from each part's own shape and keeps them current."
+            [click]="deriveCylinderInertiaFromShape.bind(this)"
+          ></subtitle-block>
+        }
       </collapsible-subseciton>
       <collapsible-subseciton
         titleLabel="Visual Settings"
@@ -398,8 +406,11 @@
           >Link Mass</input-block
         >
         <!-- A massless bar has no inertia and no centre of mass worth a field:
-             everything below only exists once the link weighs something. -->
-        @if (activeSrv.selectedLink.mass > 0) {
+             everything below only exists once the link weighs something. One
+             exception keeps the panel honest: a hand-set moment of inertia
+             acts in dynamics even at zero mass, so it stays on screen — and
+             resettable — rather than hiding while it still steers the answer. -->
+        @if (activeSrv.selectedLink.mass > 0 || activeSrv.selectedLink.massMoI > 0) {
           <input-block
             stacked
             [formGroup]="linkForm"
@@ -412,7 +423,9 @@
             [buttonLabel]="activeSrv.selectedLink.moiIsCustom ? 'Derive From Shape' : undefined"
             [description]="
               activeSrv.selectedLink.moiIsCustom
-                ? 'A value you set; the shape no longer updates it.'
+                ? activeSrv.selectedLink.mass > 0
+                  ? 'A value you set; the shape no longer updates it.'
+                  : 'A value you set — this massless link still resists turning. Derive From Shape zeroes it.'
                 : 'Follows the link’s shape as a uniform body.'
             "
             [click]="useUniformBodyMoI.bind(this)"

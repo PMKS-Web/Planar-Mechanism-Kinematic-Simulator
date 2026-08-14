@@ -83,7 +83,9 @@ export class LinkageTableComponent implements OnInit {
           const jointIndex = l.joints.findIndex((jt) => jt.id === joint.id);
           l.joints[jointIndex].x = roundNumber(joint.x, 3);
           l.joints[jointIndex].y = roundNumber(joint.y, 3);
-          l.CoM = RealLink.determineCenterOfMass(l.joints);
+          if (!l.comIsCustom) {
+            l.CoM = RealLink.determineCenterOfMass(l.joints);
+          }
           // l.bound = RealLink.getBounds(new Coord(l.joints[0].x, l.joints[0].y), new Coord(l.joints[1].x, l.joints[1].y), Shape.line);
           // l.d = RealLink.getPointsFromBounds(l.bound, l.shape);
           l.d = l.getPathString();
@@ -152,18 +154,21 @@ export class LinkageTableComponent implements OnInit {
           return this.notify.refusal('value.momentOfInertia', NOT_A.momentOfInertia);
         }
         link.massMoI = Number(($event.target as HTMLInputElement).value);
+        link.moiIsCustom = true;
         break;
       case 'CoMX':
         if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
         link.CoM.x = Number(($event.target as HTMLInputElement).value) * MODEL_SCALE;
+        link.comIsCustom = true;
         break;
       case 'CoMY':
         if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
         link.CoM.y = Number(($event.target as HTMLInputElement).value) * MODEL_SCALE;
+        link.comIsCustom = true;
         break;
     }
     this.mechanismService.updateMechanism(true);

@@ -1,6 +1,7 @@
 import '../model/joint';
 import { NotificationService } from './notification.service';
 import { Coord } from '../model/coord';
+import { MODEL_SCALE } from '../model/render-scale';
 import { Force } from '../model/force';
 import { SliderBlock, RealLink } from '../model/link';
 import { PrisJoint, RealJoint, RevJoint } from '../model/joint';
@@ -85,7 +86,16 @@ describe('MechanismService welded links and force ownership', () => {
     expect(compound.mass).toBe(3);
     expect(compound.CoM.x).toBeCloseTo(5 / 6, 12);
     expect(compound.CoM.y).toBe(0);
-    expect(compound.massMoI).toBeCloseTo(23 / 3, 12);
+    // Parallel axis in *stored* units: distances here are model coordinates
+    // (MODEL_SCALE user units) and the metric store is kg·cm² against gram
+    // masses, so each m·d² term carries 0.001 / MODEL_SCALE². The old
+    // expectation (23/3) baked in the unconverted sum — the bug that welded
+    // two 1 g bars into tens of thousands of kg·cm².
+    const parallelAxis = 0.001 / MODEL_SCALE ** 2;
+    expect(compound.massMoI).toBeCloseTo(
+      3 + 4 + (2 * (0.5 - 5 / 6) ** 2 + 1 * (1.5 - 5 / 6) ** 2) * parallelAxis,
+      12
+    );
     compound.reComputeDPath();
     expect(compound.CoM.x).toBeCloseTo(5 / 6, 12);
     expect(force.link).toBe(compound);

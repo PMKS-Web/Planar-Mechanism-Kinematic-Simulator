@@ -988,11 +988,18 @@ export class MechanismService {
             leaves.reduce((sum, link) => sum + link.CoM.x, 0) / Math.max(1, leaves.length),
             leaves.reduce((sum, link) => sum + link.CoM.y, 0) / Math.max(1, leaves.length)
           );
+    // The parallel-axis term measures distances in model coordinates, which
+    // are MODEL_SCALE user units, and mass and inertia live in different
+    // prefixes per unit system. Unconverted, welding two 1 g bars produced
+    // tens of thousands of kg·cm² — off by MODEL_SCALE² times the unit ratio.
+    const parallelAxis = this.storedMoiFactor(this.currentUnitStr());
     const massMoI = leaves.reduce(
       (sum, link) =>
         sum +
         link.massMoI +
-        link.mass * (Math.pow(link.CoM.x - CoM.x, 2) + Math.pow(link.CoM.y - CoM.y, 2)),
+        link.mass *
+          (Math.pow(link.CoM.x - CoM.x, 2) + Math.pow(link.CoM.y - CoM.y, 2)) *
+          parallelAxis,
       0
     );
 
@@ -1083,6 +1090,32 @@ export class MechanismService {
    * compound keeps existing as a member of that compound's subset, so the
    * pointer stays valid while no longer naming a body any solver iterates.
    */
+  /**
+   * The one door for writing a body's mass, wherever the field lives.
+   *
+   * A compound and its members must keep telling one story: edit a member and
+   * the compound's aggregate moves by the same amount; edit the compound and
+   * the members scale to match, so unwelding later restores what the sum
+   * really was. Without this, the mass table and the cylinder fields were two
+   * sources of truth that only agreed until the first unweld.
+   */
+  assignBodyMass(body: Link, value: number): void {
+    if (!(value >= 0)) return;
+    if (body instanceof RealLink && body.subset.length > 0) {
+      const members = body.subset;
+      const total = members.reduce((sum, member) => sum + member.mass, 0);
+      for (const member of members) {
+        member.mass = total > 0 ? (member.mass / total) * value : value / members.length;
+      }
+    } else {
+      const root = this.rootLinkOwning(body);
+      if (root && root !== body) {
+        root.mass += value - body.mass;
+      }
+    }
+    body.mass = value;
+  }
+
   /** Public: the cylinder panel writes part masses and must keep a welded
    * compound's aggregate true. */
   rootLinkOwning(link: Link): Link | undefined {
@@ -2022,20 +2055,89 @@ export class MechanismService {
    * so the identity survives every unit system rather than being tuned to one.
    */
   private applyUniformBodyProperties(unitStr: string): void {
-    const units = siUnitFactors(unitStr);
-    const moiFactor = (units.massToKg * units.distanceToM ** 2) / units.inertiaToKgM2;
+    const factor = this.storedMoiFactor(unitStr);
     for (const link of this.links) {
       if (!(link instanceof RealLink)) continue;
       if (link.moiIsCustom && link.comIsCustom) continue;
-      const body = uniformBodyOf(link.joints);
+      const derived = this.uniformBodyFor(link, factor);
       if (!link.comIsCustom) {
-        link.CoM = new Coord(body.centroid.x, body.centroid.y);
+        link.CoM = new Coord(derived.com.x, derived.com.y);
         link.updateCoMDs();
       }
       if (!link.moiIsCustom) {
-        link.massMoI = link.mass * (body.gyrationSq / MODEL_SCALE ** 2) * moiFactor;
+        link.massMoI = derived.moi;
       }
     }
+  }
+
+  /**
+   * Converts mass × (model length)² into the stored inertia unit, exactly:
+   * derived from the same siUnitFactors the force solver converts with, so
+   * MoI = m·k² survives every unit system instead of being tuned to one.
+   */
+  private storedMoiFactor(unitStr: string): number {
+    const units = siUnitFactors(unitStr);
+    return (
+      ((units.massToKg * units.distanceToM ** 2) / units.inertiaToKgM2) / MODEL_SCALE ** 2
+    );
+  }
+
+  private currentUnitStr(): string {
+    switch (this.settingsService.lengthUnit.value) {
+      case LengthUnit.INCH:
+        return 'in';
+      case LengthUnit.METER:
+        return 'm';
+      default:
+        return 'cm';
+    }
+  }
+
+  /**
+   * The uniform body a link derives its auto properties from.
+   *
+   * A plain link is a rod or a hull plate over its own joints. A compound is
+   * the *sum of its parts* — each member as its own body, combined by the
+   * parallel-axis theorem — never a plate over the whole hull: a V-shaped
+   * weld is two bars, and a plate spanning the crook would weigh material
+   * that is not there. Members somebody typed at contribute the numbers they
+   * were given.
+   */
+  private uniformBodyFor(link: RealLink, factor: number): { com: Coord; moi: number } {
+    if (link.subset.length === 0) {
+      const body = uniformBodyOf(link.joints);
+      return {
+        com: new Coord(body.centroid.x, body.centroid.y),
+        moi: link.mass * body.gyrationSq * factor,
+      };
+    }
+    const parts = link.subset
+      .filter((member): member is RealLink => member instanceof RealLink)
+      .map((member) => {
+        const own = this.uniformBodyFor(member, factor);
+        return {
+          mass: member.mass,
+          com: member.comIsCustom ? new Coord(member.CoM.x, member.CoM.y) : own.com,
+          moi: member.moiIsCustom ? member.massMoI : own.moi,
+        };
+      });
+    const totalMass = parts.reduce((sum, part) => sum + part.mass, 0);
+    const com =
+      totalMass > 0
+        ? new Coord(
+            parts.reduce((sum, part) => sum + part.mass * part.com.x, 0) / totalMass,
+            parts.reduce((sum, part) => sum + part.mass * part.com.y, 0) / totalMass
+          )
+        : new Coord(
+            parts.reduce((sum, part) => sum + part.com.x, 0) / Math.max(1, parts.length),
+            parts.reduce((sum, part) => sum + part.com.y, 0) / Math.max(1, parts.length)
+          );
+    const moi = parts.reduce(
+      (sum, part) =>
+        sum + part.moi + part.mass * ((part.com.x - com.x) ** 2 + (part.com.y - com.y) ** 2) * factor,
+      0
+    );
+    return { com, moi };
   }
 
   forceAnalysisRequirements(): ForceRequirement[] {

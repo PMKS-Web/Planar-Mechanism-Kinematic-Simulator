@@ -347,8 +347,12 @@ export class GridUtilsService {
           if (l.subset.length > 0) {
             l.subset.forEach((slink) => {
               let subLink = slink as RealLink;
-              subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
-              subLink.updateCoMDs();
+              // Same rule as the root: a member's hand-placed centre survives
+              // for the unweld that will one day restore it.
+              if (!subLink.comIsCustom) {
+                subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+                subLink.updateCoMDs();
+              }
               subLink.updateLengthAndAngle();
             });
           }
@@ -541,7 +545,14 @@ export class GridUtilsService {
       link.updateLengthAndAngle();
       link.subset.forEach((sub) => {
         const subLink = sub as RealLink;
-        subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+        if (subLink.comIsCustom) {
+          if (from.length === 2 && start && end) {
+            const [subX, subY] = pointThroughFrame(subLink.CoM, from[0], from[1], start, end);
+            subLink.CoM = new Coord(subX, subY);
+          }
+        } else {
+          subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+        }
         subLink.updateCoMDs();
         subLink.updateLengthAndAngle();
       });
@@ -800,7 +811,14 @@ export class GridUtilsService {
       link.updateLengthAndAngle();
       link.subset.forEach((sub) => {
         const subLink = sub as RealLink;
-        subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+        if (subLink.comIsCustom) {
+          if (from.length === 2 && start && end) {
+            const [subX, subY] = pointThroughFrame(subLink.CoM, from[0], from[1], start, end);
+            subLink.CoM = new Coord(subX, subY);
+          }
+        } else {
+          subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+        }
         subLink.updateCoMDs();
         subLink.updateLengthAndAngle();
       });

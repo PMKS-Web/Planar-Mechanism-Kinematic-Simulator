@@ -191,12 +191,21 @@ export class AnalysisSetupComponent {
       .filter((link) => link instanceof RealLink || link instanceof SliderBlock)
       .map((body) => {
         const cylinder = this.mechanism.cylinderAt(body);
-        if (cylinder) {
+        // By identity, with no catch-all: a compound that merely *contains* a
+        // cylinder part is a welded body of its own, not another Piston.
+        const role = !cylinder
+          ? undefined
+          : body === cylinder.block
+            ? 'Piston'
+            : body === cylinder.barrel
+              ? 'Barrel'
+              : body === cylinder.rod
+                ? 'Rod'
+                : undefined;
+        if (cylinder && role) {
           const name =
             (cylinder.barrelFar.name || cylinder.barrelFar.id) +
             (cylinder.rodFar.name || cylinder.rodFar.id);
-          const role =
-            body === cylinder.barrel ? 'Barrel' : body === cylinder.rod ? 'Rod' : 'Piston';
           return { body, label: `${role} ${name}`, isBlock: body instanceof SliderBlock };
         }
         if (body instanceof SliderBlock) {
@@ -230,7 +239,7 @@ export class AnalysisSetupComponent {
       input.value = this.massText(row);
       return;
     }
-    row.body.mass = value;
+    this.mechanism.assignBodyMass(row.body, value);
     this.mechanism.updateMechanism(true);
     this.mechanism.onMechUpdateState.next(2);
     input.value = this.massText(row);

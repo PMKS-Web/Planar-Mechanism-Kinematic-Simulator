@@ -660,19 +660,45 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       );
       return;
     }
-    // A mount weld can fold the barrel or rod into a compound; the solver
-    // reads the compound, so its aggregate keeps the sum true.
-    const root = this.mechanismService.rootLinkOwning(body);
-    if (root && root !== body) {
-      root.mass += value - body.mass;
-    }
-    body.mass = value;
+    // Through the one door: a mount weld can fold the barrel or rod into a
+    // compound, and the aggregate has to keep telling the same story.
+    this.mechanismService.assignBodyMass(body, value);
     this.mechanismService.updateMechanism(true);
     this.mechanismService.onMechUpdateState.next(2);
     this.cylinderForm.patchValue(
       { [control]: this.nup.formatValueAndUnit(value, units) },
       { emitEvent: false }
     );
+  }
+
+  /** Whether either visible cylinder body still carries typed inertia values. */
+  cylinderHasCustomInertia(): boolean {
+    const sealed = this.selectedCylinder;
+    if (!sealed) return false;
+    return [sealed.barrel, sealed.rod].some(
+      (part) => part instanceof RealLink && (part.moiIsCustom || part.comIsCustom)
+    );
+  }
+
+  /**
+   * Hand every part of the cylinder back to the uniform body.
+   *
+   * Template cylinders arrive from legacy URLs with frozen custom values and
+   * no other door to them: the cylinder panel replaces the link panel, so the
+   * per-field Derive buttons are unreachable for these bodies.
+   */
+  deriveCylinderInertiaFromShape(): void {
+    const sealed = this.selectedCylinder;
+    if (!sealed) return;
+    for (const part of [sealed.barrel, sealed.rod]) {
+      if (part instanceof RealLink) {
+        part.moiIsCustom = false;
+        part.comIsCustom = false;
+      }
+    }
+    this.mechanismService.updateMechanism(true);
+    this.mechanismService.onMechUpdateState.next(2);
+    this.patchCylinderForm();
   }
 
   /** Drive (or stop driving) the selected cylinder's hidden prismatic pin. */
@@ -1256,7 +1282,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           );
           return;
         }
-        this.activeSrv.selectedLink.mass = value;
+        this.mechanismService.assignBodyMass(this.activeSrv.selectedLink, value);
         this.syncMassDependents();
         this.mechanismService.updateMechanism(true);
         this.mechanismService.onMechUpdateState.next(2);

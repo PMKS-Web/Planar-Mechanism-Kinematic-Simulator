@@ -75,7 +75,13 @@ function rod(points: { x: number; y: number }[]): UniformBody {
  * shoelace second-moment formulas. Returns undefined for a degenerate area,
  * so the caller can fall back to the rod.
  */
-function platedPolygon(hull: { x: number; y: number }[]): UniformBody | undefined {
+function platedPolygon(points: { x: number; y: number }[]): UniformBody | undefined {
+  // In the first vertex's frame, not the world's: the polar terms below grow
+  // with distance⁴ from the origin, and a small link far from (0,0) loses its
+  // own second moment to cancellation. Translation changes neither area, nor
+  // centroid (shifted back at the end), nor the centroidal moment.
+  const origin = points[0];
+  const hull = points.map((p) => ({ x: p.x - origin.x, y: p.y - origin.y }));
   let area2 = 0;
   let cx = 0;
   let cy = 0;
@@ -103,7 +109,10 @@ function platedPolygon(hull: { x: number; y: number }[]): UniformBody | undefine
   // centroid by the parallel-axis theorem.
   const polarOverMass = inertia / (6 * area2);
   const gyrationSq = polarOverMass - (centroidX * centroidX + centroidY * centroidY);
-  return { centroid: new Coord(centroidX, centroidY), gyrationSq: Math.max(gyrationSq, 0) };
+  return {
+    centroid: new Coord(centroidX + origin.x, centroidY + origin.y),
+    gyrationSq: Math.max(gyrationSq, 0),
+  };
 }
 
 /** Andrew's monotone chain; returns the hull counterclockwise. */

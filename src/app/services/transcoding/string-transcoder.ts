@@ -237,11 +237,13 @@ export class StringTranscoder extends GenericTranscoder {
     const sd = new StringDisassembler(linkString);
 
     const flagChar = sd.nextCharacter();
-    const [isRoot, moiIsCustom, comIsCustom] = StringTranscoder.LINK_FLAG_CHARS[flagChar] ?? [
-      false,
-      true,
-      true,
-    ];
+    const flags = StringTranscoder.LINK_FLAG_CHARS[flagChar];
+    if (!flags) {
+      // Fail closed: a character from some future format must reject the URL,
+      // not quietly demote the link to a non-root nobody solves.
+      throw new Error(`Unknown link flag character '${flagChar}'`);
+    }
+    const [isRoot, moiIsCustom, comIsCustom] = flags;
     let type = sd.nextCharacter() === 'R' ? LINK_TYPE.REAL : LINK_TYPE.PISTON;
     let id = sd.nextToken();
     let name = sd.nextToken();
