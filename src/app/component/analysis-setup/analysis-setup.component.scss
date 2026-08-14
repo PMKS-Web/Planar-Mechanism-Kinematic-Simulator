@@ -207,6 +207,57 @@
     }
   }
 
+  .sectionHeader.static {
+    cursor: default;
+  }
+
+  .massTable {
+    padding: 4px 16px 12px;
+  }
+
+  .massRow {
+    display: grid;
+    grid-template-columns: minmax(72px, 1fr) 96px minmax(90px, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 13px;
+  }
+
+  .massName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.muted {
+      color: rgba(0, 0, 0, 0.45);
+    }
+  }
+
+  .massField {
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    font: inherit;
+    font-size: 13px;
+    min-width: 0;
+
+    &:disabled {
+      background: rgba(0, 0, 0, 0.04);
+      color: rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  .massMoI {
+    color: rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+
+    .chip {
+      margin-left: 4px;
+    }
+  }
+
   .actionButton {
     margin-top: 10px;
     height: 32px;

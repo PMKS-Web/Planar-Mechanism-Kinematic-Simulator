@@ -1083,7 +1083,9 @@ export class MechanismService {
    * compound keeps existing as a member of that compound's subset, so the
    * pointer stays valid while no longer naming a body any solver iterates.
    */
-  private rootLinkOwning(link: Link): Link | undefined {
+  /** Public: the cylinder panel writes part masses and must keep a welded
+   * compound's aggregate true. */
+  rootLinkOwning(link: Link): Link | undefined {
     const contains = (candidate: Link): boolean =>
       candidate.id === link.id ||
       (candidate instanceof RealLink && candidate.subset.some(contains));

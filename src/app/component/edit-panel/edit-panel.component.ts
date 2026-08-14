@@ -31,7 +31,7 @@ import { NumberUnitParserService } from 'src/app/services/number-unit-parser.ser
 import { SettingsService } from '../../services/settings.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
-import { RealLink } from '../../model/link';
+import { Link, RealLink } from '../../model/link';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 import {
   cylinderSpanLayoutFrom,
@@ -293,6 +293,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       start: [''],
       startUnit: ['pct', { updateOn: 'change' }],
       angle: [''],
+      barrelMass: [''],
+      rodMass: [''],
+      headMass: [''],
     },
     { updateOn: 'blur' }
   );
@@ -617,12 +620,57 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   patchCylinderForm(): void {
     const sealed = this.selectedCylinder;
     if (!sealed) return;
+    const massUnits = this.massUnit();
     this.cylinderForm.patchValue(
       {
         travel: this.cylinderTravelLabel(sealed),
         start: this.cylinderStartLabel(sealed),
         angle: this.cylinderAngleLabel(sealed),
+        barrelMass: this.nup.formatValueAndUnit(sealed.barrel.mass, massUnits),
+        rodMass: this.nup.formatValueAndUnit(sealed.rod.mass, massUnits),
+        headMass: this.nup.formatValueAndUnit(sealed.block.mass, massUnits),
       },
+      { emitEvent: false }
+    );
+  }
+
+  /**
+   * One handler for the three bodies a sealed cylinder weighs in as.
+   *
+   * The rod and head are welded rigid, but rigidity says how they move, not
+   * where their mass sits: the rod's is spread along its length, the head's
+   * is concentrated at the pin — which is the number that matters in a
+   * reciprocating machine. The solver already carries all three bodies, so
+   * these fields are the first door to numbers that were always there.
+   */
+  private cylinderMassEdit(
+    control: 'barrelMass' | 'rodMass' | 'headMass',
+    part: (sealed: NonNullable<EditPanelComponent['selectedCylinder']>) => Link,
+    raw: string | null
+  ): void {
+    const sealed = this.selectedCylinder;
+    if (!sealed) return;
+    const units = this.massUnit();
+    const body = part(sealed);
+    const [success, value] = this.nup.parseMassString(raw ?? '', units);
+    if (!success || value < 0) {
+      this.cylinderForm.patchValue(
+        { [control]: this.nup.formatValueAndUnit(body.mass, units) },
+        { emitEvent: false }
+      );
+      return;
+    }
+    // A mount weld can fold the barrel or rod into a compound; the solver
+    // reads the compound, so its aggregate keeps the sum true.
+    const root = this.mechanismService.rootLinkOwning(body);
+    if (root && root !== body) {
+      root.mass += value - body.mass;
+    }
+    body.mass = value;
+    this.mechanismService.updateMechanism(true);
+    this.mechanismService.onMechUpdateState.next(2);
+    this.cylinderForm.patchValue(
+      { [control]: this.nup.formatValueAndUnit(value, units) },
       { emitEvent: false }
     );
   }
@@ -1077,6 +1125,21 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     );
     this.onDestroySubscriptions.push(
       this.cylinderForm.controls['startUnit'].valueChanges.subscribe(() => this.patchCylinderForm())
+    );
+    this.onDestroySubscriptions.push(
+      this.cylinderForm.controls['barrelMass'].valueChanges.subscribe((val) =>
+        this.cylinderMassEdit('barrelMass', (sealed) => sealed.barrel, val)
+      )
+    );
+    this.onDestroySubscriptions.push(
+      this.cylinderForm.controls['rodMass'].valueChanges.subscribe((val) =>
+        this.cylinderMassEdit('rodMass', (sealed) => sealed.rod, val)
+      )
+    );
+    this.onDestroySubscriptions.push(
+      this.cylinderForm.controls['headMass'].valueChanges.subscribe((val) =>
+        this.cylinderMassEdit('headMass', (sealed) => sealed.block, val)
+      )
     );
 
     this.onDestroySubscriptions.push(

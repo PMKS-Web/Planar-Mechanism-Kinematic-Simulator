@@ -76,6 +76,47 @@
         </div>
       }
     </div>
+
+    @if (massRows().length > 0) {
+      <div class="mechBlock">
+        <div class="sectionHeader static">
+          <span class="sectionName">Masses</span>
+        </div>
+        <div class="massTable">
+          <!-- The same numbers the per-link panel edits, one row per body, so
+               setting up an analysis is one visit instead of eight. Mass is
+               the column a person types; inertia follows it (auto) or shows
+               what they typed elsewhere. -->
+          @for (row of massRows(); track row.body.id) {
+            <div class="massRow">
+              <span class="massName" [class.muted]="!(row.body.mass > 0)">{{ row.label }}</span>
+              <input
+                class="massField"
+                [value]="massText(row)"
+                [disabled]="!massEditable()"
+                [title]="massEditable() ? '' : 'Pause the animation to edit masses.'"
+                (change)="onMassEdit(row, $any($event.target))"
+              />
+              <span class="massMoI">
+                {{ moiText(row) }}
+                @if (moiIsAuto(row) && row.body.mass > 0) {
+                  <span class="chip">auto</span>
+                }
+              </span>
+              @if (!(row.body.mass > 0)) {
+                <span class="chip">massless</span>
+              } @else {
+                <span></span>
+              }
+            </div>
+          }
+          <p class="checkText note">
+            Massless bodies are skipped by gravity and inertia — fine as an idealization. Moment
+            of inertia and center of mass are edited on the link itself, in Edit mode.
+          </p>
+        </div>
+      </div>
+    }
   }
 
   @if (mode() === 'kinematic' && unassigned.length > 0) {

@@ -1,11 +1,20 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { Joint, RealJoint } from '../../model/joint';
-import { Link, RealLink } from '../../model/link';
+import { Link, RealLink, SliderBlock } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
 import { ActiveObjService } from '../../services/active-obj.service';
+import { NumberUnitParserService } from '../../services/number-unit-parser.service';
+import { SettingsService } from '../../services/settings.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { MechanismReadiness, ReadinessCheck } from '../../model/mechanism/readiness';
 import { MatIcon } from '@angular/material/icon';
+
+/** One editable row of the mass table: a body, and what to call it. */
+export interface MassRow {
+  body: Link;
+  label: string;
+  isBlock: boolean;
+}
 
 /**
  * What stands between this drawing and its animation, mechanism by mechanism.
@@ -31,6 +40,8 @@ export class AnalysisSetupComponent {
   mechanism = inject(MechanismService);
   activeObj = inject(ActiveObjService);
   private tabs = inject(SelectedTabService);
+  nup = inject(NumberUnitParserService);
+  settings = inject(SettingsService);
 
   /**
    * Which question this drawer is answering.
@@ -164,6 +175,69 @@ export class AnalysisSetupComponent {
 
   iconFor(check: ReadinessCheck): string {
     return check.state === 'blocker' ? 'error_outline' : 'warning_amber';
+  }
+
+  /**
+   * Every body force analysis will weigh, one editable row each.
+   *
+   * Setting up an analysis is mostly this: eight links, eight masses, and a
+   * panel that needs eight selections to reach them. The table is the same
+   * numbers in one place — and the place the massless warning points at.
+   * Cylinder parts appear under the part's own name, which is the first home
+   * their masses have had.
+   */
+  massRows(): MassRow[] {
+    return this.mechanism.links
+      .filter((link) => link instanceof RealLink || link instanceof SliderBlock)
+      .map((body) => {
+        const cylinder = this.mechanism.cylinderAt(body);
+        if (cylinder) {
+          const name =
+            (cylinder.barrelFar.name || cylinder.barrelFar.id) +
+            (cylinder.rodFar.name || cylinder.rodFar.id);
+          const role =
+            body === cylinder.barrel ? 'Barrel' : body === cylinder.rod ? 'Rod' : 'Piston';
+          return { body, label: `${role} ${name}`, isBlock: body instanceof SliderBlock };
+        }
+        if (body instanceof SliderBlock) {
+          return { body, label: `Block ${body.id}`, isBlock: true };
+        }
+        return { body, label: body.name || body.id, isBlock: false };
+      });
+  }
+
+  massText(row: MassRow): string {
+    return this.nup.formatValueAndUnit(row.body.mass, this.massUnit());
+  }
+
+  moiText(row: MassRow): string {
+    if (row.isBlock || !(row.body instanceof RealLink)) return '—';
+    return this.nup.formatStoredInertia(row.body.massMoI, this.settings.lengthUnit.value);
+  }
+
+  moiIsAuto(row: MassRow): boolean {
+    return row.body instanceof RealLink && !row.body.moiIsCustom;
+  }
+
+  /** Rebuilds mid-play would fight the animation; a pause is one click away. */
+  massEditable(): boolean {
+    return !this.mechanism.isPlaying;
+  }
+
+  onMassEdit(row: MassRow, input: HTMLInputElement): void {
+    const [success, value] = this.nup.parseMassString(input.value, this.massUnit());
+    if (!success || value < 0 || !this.massEditable()) {
+      input.value = this.massText(row);
+      return;
+    }
+    row.body.mass = value;
+    this.mechanism.updateMechanism(true);
+    this.mechanism.onMechUpdateState.next(2);
+    input.value = this.massText(row);
+  }
+
+  private massUnit() {
+    return this.nup.massUnitFor(this.settings.lengthUnit.value);
   }
 
   /**

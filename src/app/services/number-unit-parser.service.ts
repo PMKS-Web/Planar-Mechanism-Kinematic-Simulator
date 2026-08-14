@@ -292,6 +292,18 @@ export class NumberUnitParserService {
     }
   }
 
+  /** The mass unit that pairs with a length system: g / kg / lbm. */
+  public massUnitFor(length: LengthUnit): MassUnit {
+    switch (length) {
+      case LengthUnit.INCH:
+        return MassUnit.LBM;
+      case LengthUnit.METER:
+        return MassUnit.KG;
+      default:
+        return MassUnit.GRAM;
+    }
+  }
+
   /**
    * The unit an inertia field shows beside its number, per length system:
    * g·cm² / kg·m² / lbm·in², each coherent with the mass unit beside it.
