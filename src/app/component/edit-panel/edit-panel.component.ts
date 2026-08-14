@@ -1,6 +1,5 @@
 import {
   AfterContentInit,
-  ChangeDetectorRef,
   Component,
   OnDestroy,
   OnInit,
@@ -169,7 +168,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     protected settingsService: SettingsService,
     private fb: FormBuilder,
     private nup: NumberUnitParserService,
-    private cd: ChangeDetectorRef,
     public mechanismService: MechanismService,
     public gridUtils: GridUtilsService,
     private notify: NotificationService

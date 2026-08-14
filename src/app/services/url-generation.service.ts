@@ -21,7 +21,6 @@ import {
   ACTIVE_TYPE,
 } from './transcoding/transcoder-data';
 import { SettingsService } from './settings.service';
-import { ActiveObjService } from './active-obj.service';
 import { MODEL_SCALE } from '../model/render-scale';
 
 /*
@@ -40,8 +39,7 @@ import { MODEL_SCALE } from '../model/render-scale';
 export class UrlGenerationService {
   constructor(
     private mechanism: MechanismService,
-    private settings: SettingsService,
-    private activeObj: ActiveObjService
+    private settings: SettingsService
   ) {}
 
   _addJointToEncoder(encoder: StringTranscoder, joint: Joint) {

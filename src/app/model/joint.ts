@@ -1,10 +1,8 @@
-import { AppConstants } from './app-constants';
 // Type-only: a runtime import here closes the joint -> link -> joint module
 // cycle, which breaks class initialization when a test entry point loads the
 // model modules in a different order than the app does.
 import type { Link } from './link';
 import { Coord } from './coord';
-import { SettingsService } from '../services/settings.service';
 
 export class Joint extends Coord {
   private _id: string;

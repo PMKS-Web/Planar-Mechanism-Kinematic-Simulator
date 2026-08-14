@@ -1,5 +1,5 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../joint';
-import { Link, SliderBlock, RealLink, Shape } from '../link';
+import { Link, SliderBlock, RealLink } from '../link';
 import { assignBodies, WORLD } from './bodies';
 import { Force } from '../force';
 import { PositionSolver, PositionSolverDriveState, PRISMATIC_INPUT_STEP } from './position-solver';

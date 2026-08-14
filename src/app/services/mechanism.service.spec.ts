@@ -392,11 +392,7 @@ describe('MechanismService joint merging', () => {
     const scene = createOpenFourBar();
     scene.service.mergeJoints(scene.e, scene.c);
 
-    const encoded = new UrlGenerationService(
-      scene.service,
-      scene.settings,
-      scene.active
-    ).generateUrlQuery();
+    const encoded = new UrlGenerationService(scene.service, scene.settings).generateUrlQuery();
     const decoder = new StringTranscoder();
     decoder.decodeURL(encoded);
     const restored = {

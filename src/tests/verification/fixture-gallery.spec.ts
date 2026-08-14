@@ -39,11 +39,7 @@ function rebuild(payload: string): MechanismService {
 }
 
 function encode(mechanism: MechanismService): string {
-  return new UrlGenerationService(
-    mechanism,
-    new SettingsService(),
-    new ActiveObjService()
-  ).generateUrlQuery();
+  return new UrlGenerationService(mechanism, new SettingsService()).generateUrlQuery();
 }
 
 /**

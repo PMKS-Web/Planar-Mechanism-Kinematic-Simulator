@@ -61,8 +61,7 @@ function invertedSliderCrank() {
 function encode(source: { joints: unknown; links: unknown; forces: unknown }): string {
   return new UrlGenerationService(
     { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
-    new SettingsService(),
-    new ActiveObjService()
+    new SettingsService()
   ).generateUrlQuery();
 }
 

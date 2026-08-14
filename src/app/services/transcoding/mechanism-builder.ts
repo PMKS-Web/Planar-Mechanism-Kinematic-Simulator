@@ -4,14 +4,7 @@ import { Link, SliderBlock, RealLink } from 'src/app/model/link';
 import { Force } from 'src/app/model/force';
 import { Coord } from 'src/app/model/coord';
 import { GenericTranscoder } from './transcoder-interface';
-import {
-  ACTIVE_TYPE,
-  ForceData,
-  JOINT_TYPE,
-  JointData,
-  LINK_TYPE,
-  LinkData,
-} from './transcoder-data';
+import { ForceData, JOINT_TYPE, JointData, LINK_TYPE, LinkData } from './transcoder-data';
 import { SettingsService } from '../settings.service';
 import { AngleUnit, ForceUnit, GlobalUnit, LengthUnit } from 'src/app/model/utils';
 import { BoolSetting, DecimalSetting, EnumSetting, IntSetting } from './stored-settings';

@@ -93,8 +93,7 @@ function sealedSource(options: { sealed?: boolean; angle?: number } = {}) {
 function encode(source: ReturnType<typeof sealedSource>): string {
   return new UrlGenerationService(
     { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
-    new SettingsService(),
-    new ActiveObjService()
+    new SettingsService()
   ).generateUrlQuery();
 }
 

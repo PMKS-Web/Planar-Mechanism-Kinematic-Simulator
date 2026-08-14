@@ -90,8 +90,7 @@ function readState(joints: unknown[]): MarkState {
 function roundTrip(harness: ReturnType<typeof createMechanismHarness>): MarkState {
   const payload = new UrlGenerationService(
     harness.service,
-    new SettingsService(),
-    new ActiveObjService()
+    new SettingsService()
   ).generateUrlQuery();
 
   const decoder = new StringTranscoder();

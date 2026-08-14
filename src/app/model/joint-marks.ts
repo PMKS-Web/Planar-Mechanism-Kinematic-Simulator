@@ -709,20 +709,11 @@ export function straightArrowPaths(
   });
 }
 
-/** A filled triangular head, tip at (x, y), pointing along `angle`. */
-function arrowHead(r: number, x: number, y: number, angle: number): string {
-  return arrowHeadAt(x, y, angle, MARK.arrowHeadLength * r, MARK.arrowHeadHalf * r);
-}
-
 function arrowHeadAt(x: number, y: number, angle: number, back: number, half: number): string {
   const c = Math.cos(angle);
   const s = Math.sin(angle);
   const at = (dx: number, dy: number) => `${x + dx * c - dy * s} ${y + dx * s + dy * c}`;
   return `M ${at(0, 0)} L ${at(-back, -half)} L ${at(-back, half)} Z`;
-}
-
-function angleOnCircle(radius: number, angle: number): { x: number; y: number } {
-  return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) };
 }
 
 function roundedRect(x: number, y: number, w: number, h: number, k: number): string {

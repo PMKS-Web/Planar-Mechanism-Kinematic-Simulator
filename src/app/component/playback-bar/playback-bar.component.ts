@@ -15,7 +15,6 @@ import { ActiveObjService } from '../../services/active-obj.service';
 import { SelectedTabService } from '../../selected-tab.service';
 import { TimeUnit } from '../../model/utils';
 import { Mechanism } from '../../model/mechanism/mechanism';
-import { RealJoint } from '../../model/joint';
 import { MODEL_SCALE } from '../../model/render-scale';
 
 /** How far the cluster floats above the status strip, matching its own CSS. */
@@ -93,7 +92,6 @@ export interface PlaybackRow {
 })
 export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   private positionSub?: Subscription;
-  private dragging = false;
   private wasAnimating = false;
   private wasRowAnimating = false;
 
@@ -392,7 +390,6 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    * everything to scrub one of them threw that away.
    */
   onScrubDown(row?: PlaybackRow): void {
-    this.dragging = true;
     if (row && row.ownPlay && row.index >= 0) {
       this.wasRowAnimating = this.mechanism.isMechanismPlaying(row.index);
       if (this.wasRowAnimating) this.mechanism.toggleMechanismPlaying(row.index);
@@ -403,7 +400,6 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onScrubUp(row?: PlaybackRow): void {
-    this.dragging = false;
     if (row && row.ownPlay && row.index >= 0) {
       if (this.wasRowAnimating && !this.mechanism.isMechanismPlaying(row.index)) {
         this.mechanism.toggleMechanismPlaying(row.index);

@@ -5,7 +5,6 @@ import { SettingsService, writeStoredFlag } from 'src/app/services/settings.serv
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
-import { Link, RealLink } from '../../model/link';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { Coord } from '../../model/coord';

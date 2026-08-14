@@ -1,13 +1,9 @@
 import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { FormBuilder, FormControl, FormGroup } from '@angular/forms';
-import { Pose } from '../../model/pose';
+import { FormBuilder } from '@angular/forms';
 import { Coord } from '../../model/coord';
-import { Joint, RealJoint, RevJoint } from '../../model/joint';
-import { GridUtilsService } from '../../services/grid-utils.service';
+import { Joint, RevJoint } from '../../model/joint';
 import { MechanismService } from '../../services/mechanism.service';
-import { MechanismBuilder } from '../../services/transcoding/mechanism-builder';
-import { Mechanism } from '../../model/mechanism/mechanism';
-import { Link, RealLink } from '../../model/link';
+import { RealLink } from '../../model/link';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
 import { NumberUnitParserService } from 'src/app/services/number-unit-parser.service';
 import { SettingsService } from 'src/app/services/settings.service';
@@ -105,7 +101,7 @@ export class SynthesisPanelComponent implements OnInit {
 
       this._alreadyHandlingPoseChange = true;
 
-      let valid = this.synthesisBuilder.updatePosesFromForm(value);
+      this.synthesisBuilder.updatePosesFromForm(value);
       this.updateFormFromModel();
 
       if (this.synthesisBuilder.isFullyDefined()) {
@@ -355,7 +351,7 @@ export class SynthesisPanelComponent implements OnInit {
 
     //now check if there is 999 in the quality. Count 999 and say which position matches
 
-    let whichPositionMatches = this.checkQuality(quality);
+    this.checkQuality(quality);
 
     //   'Position Matches:' +
     //     whichPositionMatches[0] +

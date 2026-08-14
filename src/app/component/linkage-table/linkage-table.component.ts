@@ -1,18 +1,9 @@
-import {
-  Component,
-  EventEmitter,
-  Input,
-  OnInit,
-  Output,
-  ChangeDetectionStrategy,
-} from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { Force } from '../../model/force';
-import { SliderBlock, Link, RealLink, Shape } from '../../model/link';
+import { SliderBlock, Link, RealLink } from '../../model/link';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Coord } from '../../model/coord';
 import { roundNumber } from '../../model/utils';
-import { Mechanism } from '../../model/mechanism/mechanism';
-import { InstantCenter } from '../../model/instant-center';
 import { MechanismService } from '../../services/mechanism.service';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { NOT_A } from '../../ui-text';
@@ -27,9 +18,6 @@ import { NotificationService } from '../../services/notification.service';
 })
 export class LinkageTableComponent implements OnInit {
   private static linkageTable: SVGElement;
-  private static jointButton: SVGElement;
-  private static linkButton: SVGElement;
-  private static forceButton: SVGElement;
   private static showLinkageTableButton: SVGElement;
 
   constructor(
@@ -48,15 +36,6 @@ export class LinkageTableComponent implements OnInit {
   ngAfterViewInit() {
     LinkageTableComponent.linkageTable = document.getElementById(
       'linkageTable'
-    ) as unknown as SVGElement;
-    LinkageTableComponent.jointButton = document.getElementById(
-      'jointButton'
-    ) as unknown as SVGElement;
-    LinkageTableComponent.linkButton = document.getElementById(
-      'linkButton'
-    ) as unknown as SVGElement;
-    LinkageTableComponent.forceButton = document.getElementById(
-      'forceButton'
     ) as unknown as SVGElement;
     LinkageTableComponent.showLinkageTableButton = document.getElementById(
       'showTable'

@@ -1,14 +1,11 @@
-import { Joint, PrisJoint, RealJoint, RevJoint } from './joint';
+import { Joint } from './joint';
 import { Coord } from './coord';
 import { Shape } from './link';
-import { Pose } from './pose';
-import { NewGridComponent } from '../component/new-grid/new-grid.component';
 
 export class Utils {}
 
 // radToDeg
 export * from './unit-enums';
-import { AngleUnit, ForceUnit, GlobalUnit, LengthUnit } from './unit-enums';
 
 // The possible states the program could be in.
 export enum gridStates {
@@ -1037,10 +1034,8 @@ export function splitSegments(polygon: any) {
       var num = toFloat(s);
       polygon = polygon.substring(end);
       if (polygon.length && polygon[0].toLowerCase() === 'e') {
-        var f = 1;
         var expEnd = 0;
         if (polygon.length > 1 && polygon[1] === '-') {
-          f = -1;
           expEnd = readCharSeq(2);
         } else {
           expEnd = readCharSeq(1);

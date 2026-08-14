@@ -1,6 +1,5 @@
 import { SvgGridService } from '../../services/svg-grid.service';
 import {
-  AfterViewInit,
   OnDestroy,
   Component,
   HostListener,
@@ -8,7 +7,6 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { fromEvent } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
 import { MechanismService } from '../../services/mechanism.service';
 import { UrlProcessorService } from '../../services/url-processor.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
@@ -21,28 +19,20 @@ import { Coord } from '../../model/coord';
 import {
   forceStates,
   gridStates,
-  is_touch_enabled,
   has_mouse_pointer,
   jointStates,
-  line_line_intersect,
   linkStates,
   local_storage_available,
-  isInside,
   getDistance,
   AngleUnit,
   radToDeg,
-  GlobalUnit,
   point_on_line_segment_closest_to_point,
 } from '../../model/utils';
 import { Force } from '../../model/force';
-import { PositionSolver } from '../../model/mechanism/position-solver';
 import { NotificationService } from '../../services/notification.service';
-import { animate, style, transition, trigger } from '@angular/animations';
-import { MatMenuTrigger } from '@angular/material/menu';
-import { CdkContextMenuTrigger, Menu } from '@angular/cdk/menu';
+import { CdkContextMenuTrigger } from '@angular/cdk/menu';
 import { MatDialog } from '@angular/material/dialog';
 import { TouchscreenWarningComponent } from '../MODALS/touchscreen-warning/touchscreen-warning.component';
-import * as util from 'util';
 import { Line } from '../../model/line';
 import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
@@ -534,11 +524,6 @@ export class NewGridComponent implements OnDestroy {
           );
           break;
         }
-        // Its own machine: a path can be drawn for a joint whose linkage
-        // solves, whatever the state of any other linkage in the drawing.
-        let canTogglePath =
-          !(this.lastRightClick as RealJoint).ground &&
-          this.mechanismSrv.isPartSimulatable(this.lastRightClick as RealJoint);
 
         this.cMenuItems.push(
           new cMenuItem(

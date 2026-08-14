@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
-import { FormBuilder } from '@angular/forms';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { Subject } from 'rxjs';
 import { COR, SynthesisPose } from './synthesis-util';
 import { Coord } from 'src/app/model/coord';
 import { SynthesisClickMode, SynthesisConstants } from './synthesis-constants';

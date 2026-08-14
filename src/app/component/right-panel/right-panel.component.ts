@@ -2,28 +2,15 @@ import { TabID } from '../../selected-tab.service';
 import { Component, inject, ChangeDetectionStrategy, DoCheck } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NewGridComponent } from '../new-grid/new-grid.component';
-import {
-  gridStates,
-  jointStates,
-  linkStates,
-  forceStates,
-  shapeEditModes,
-  createModes,
-  moveModes,
-  roundNumber,
-  determineSlope,
-  determineYIntersect,
-  determineX,
-  determineY,
-} from '../../model/utils';
+import { gridStates, jointStates, linkStates, forceStates } from '../../model/utils';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { MechanismService } from '../../services/mechanism.service';
-import { Link, RealLink } from '../../model/link';
+import { RealLink } from '../../model/link';
 import { AnalyticsService } from '../../services/analytics.service';
 import { FormBuilder, FormControl, FormGroupDirective, NgForm, Validators } from '@angular/forms';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { environment } from '../../../environments/environment';
-import emailjs, { EmailJSResponseStatus } from '@emailjs/browser';
+import emailjs from '@emailjs/browser';
 import { SettingsService } from '../../services/settings.service';
 import { Arc, Line } from '../../model/line';
 import { Coord } from '../../model/coord';

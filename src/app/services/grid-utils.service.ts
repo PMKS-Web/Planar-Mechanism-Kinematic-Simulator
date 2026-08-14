@@ -1,17 +1,6 @@
 import { Injectable, Injector } from '@angular/core';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
-import {
-  gridStates,
-  jointStates,
-  linkStates,
-  forceStates,
-  shapeEditModes,
-  createModes,
-  moveModes,
-  roundNumber,
-  getDistance,
-  point_on_line_segment_closest_to_point,
-} from '../model/utils';
+import { roundNumber, point_on_line_segment_closest_to_point } from '../model/utils';
 import { Link, SliderBlock, RealLink } from '../model/link';
 import {
   Cylinder,
@@ -24,7 +13,6 @@ import {
 import { SettingsService } from './settings.service';
 import { MechanismService } from './mechanism.service';
 import { canDrive } from '../model/actuator';
-import { Mechanism } from '../model/mechanism/mechanism';
 import { Coord } from '../model/coord';
 import { PositionSolver } from '../model/mechanism/position-solver';
 import { Force } from '../model/force';

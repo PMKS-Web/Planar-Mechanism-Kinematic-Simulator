@@ -1,7 +1,6 @@
 import { Component, Input, OnChanges, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { ColorService } from '../../../services/color.service';
 import { RealLink } from '../../../model/link';
-import { link } from 'fs';
 import { RealJoint } from '../../../model/joint';
 import { Force } from '../../../model/force';
 

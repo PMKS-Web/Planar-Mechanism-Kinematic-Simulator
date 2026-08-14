@@ -27,7 +27,6 @@ export class ActiveObjService {
    * something that no longer exists.
    */
   selectedMechanismIndex: number = -1;
-  private skipThisSeleciton: boolean = false;
 
   constructor() {}
 

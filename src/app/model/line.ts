@@ -1,9 +1,7 @@
-import { Joint, RealJoint } from './joint';
+import { Joint } from './joint';
 import { Coord } from './coord';
 import { arc_arc_intersect, line_arc_intersect, line_line_intersect } from './utils';
 import { RealLink } from './link';
-import { SettingsService } from '../services/settings.service';
-import { center } from 'svg-pan-zoom';
 
 export class Line {
   startPosition: Coord;

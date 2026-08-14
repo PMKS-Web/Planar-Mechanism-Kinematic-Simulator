@@ -1,6 +1,5 @@
 import { Joint, PrisJoint, RealJoint } from './joint';
 import { Coord } from './coord';
-import { AppConstants } from './app-constants';
 import { Force } from './force';
 import { degToRad, determineSlope, getAngle, getDistance, radToDeg } from './utils';
 import hull from 'hull.js';
@@ -434,8 +433,6 @@ export class RealLink extends Link {
         this.externalLines = this.externalLines.concat(newLines);
       }
     }
-
-    const splitPath = d.split(' ');
 
     //Get the final joint
     const finalJoint = allJoints[jointIDtoIndex.get(desiredJointsIDs[j!])!];

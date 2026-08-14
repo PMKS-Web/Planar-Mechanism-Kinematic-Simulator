@@ -10,7 +10,6 @@ import {
 import { Force } from '../force';
 import { Coord } from '../coord';
 import { assemblyBodyIds, SlideAssembly, slideAssemblies, slotOffset } from '../slide-assembly';
-import { core } from '@angular/compiler';
 import { MODEL_SCALE } from '../render-scale';
 import {
   Cylinder,

@@ -479,8 +479,7 @@ export function fixturePayload(
         forces: built.forces,
         mechanismTimeStep: 0,
       } as unknown as MechanismService,
-      settings,
-      new ActiveObjService()
+      settings
     ).generateUrlQuery();
   } finally {
     ColorService.instance = previousColors;

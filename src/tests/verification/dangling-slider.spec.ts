@@ -144,11 +144,7 @@ describe('a dangling slider through the URL', () => {
     const first = buildMechanismFixture(fixturePayload(invertedSliderCrankFixture()));
     sliderIn(first.service.joints, 'P').detach();
 
-    const payload = new UrlGenerationService(
-      first.service,
-      first.settings,
-      new ActiveObjService()
-    ).generateUrlQuery();
+    const payload = new UrlGenerationService(first.service, first.settings).generateUrlQuery();
     const restored = sliderIn(buildMechanismFixture(payload).service.joints, 'P');
 
     expect(restored.isDangling, 'still dangling after a round trip').toBe(true);
@@ -163,11 +159,7 @@ describe('a dangling slider through the URL', () => {
     slider.groundAt(angle);
     slider.detach();
 
-    const payload = new UrlGenerationService(
-      first.service,
-      first.settings,
-      new ActiveObjService()
-    ).generateUrlQuery();
+    const payload = new UrlGenerationService(first.service, first.settings).generateUrlQuery();
     const restored = sliderIn(buildMechanismFixture(payload).service.joints, 'P');
     restored.groundAt(restored.slotAngle);
 

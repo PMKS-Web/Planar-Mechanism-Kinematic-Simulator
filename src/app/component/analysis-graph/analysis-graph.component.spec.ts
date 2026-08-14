@@ -83,7 +83,6 @@ function createComponent(fixture: MechanismFixture): AnalysisGraphComponent {
     fixture.service,
     fixture.settings,
     new NumberUnitParserService(),
-    fixture.active,
     new AnalysisSampleService(fixture.settings)
   );
 }

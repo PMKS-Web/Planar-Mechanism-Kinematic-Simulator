@@ -1,5 +1,4 @@
 import { RightPanelComponent } from './component/right-panel/right-panel.component';
-import { T } from '@angular/cdk/keycodes';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { MechanismService } from './services/mechanism.service';

@@ -35,7 +35,6 @@ import { FormBuilder } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
-import { ActiveObjService } from '../../services/active-obj.service';
 import { AnalysisSampleService } from '../../services/analysis-sample.service';
 import { skip, Subscription } from 'rxjs';
 import { AnalysisApexChartComponent } from './analysis-apex-chart.component';
@@ -364,7 +363,6 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     private mechanismService: MechanismService,
     public settingsService: SettingsService,
     private nup: NumberUnitParserService,
-    private activeSrv: ActiveObjService,
     private samples: AnalysisSampleService
   ) {}
 
@@ -715,14 +713,8 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     mechPart: string
   ): void {
     const mechanism = this.mechanismFor(mechPart);
-    let data1Title = '';
-    let data2Title = '';
-    let data3Title = '';
-    let chartTitle = '';
-    const xAxisTitle = 'Time-steps';
     let yAxisTitle = '';
     let datum: number[][] = [];
-    let categories: string[] = [];
     const seriesData = [];
     let posLinUnit = '(' + this.getUnitStr(this.settingsService.lengthUnit.value) + ')';
     let velLinUnit = '(' + this.getUnitStr(this.settingsService.lengthUnit.value) + '/s)';
@@ -749,12 +741,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
                 : this.settingsService.forceUnit.value === ForceUnit.LBF
                   ? 'Torque (lbf·in)'
                   : 'Torque (N·m)';
-            [datum, categories] = this.determineAnalysis(
-              analysis,
-              analysisType,
-              mechProp,
-              mechPart
-            );
+            [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             seriesData.push({ name: 'Z', type: 'line', data: datum[0] });
             this.numberOfSeries = 1;
             break;
@@ -762,12 +749,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           case 'Joint Forces':
             yAxisTitle =
               this.settingsService.forceUnit.value === ForceUnit.LBF ? 'Force (lbf)' : 'Force (N)';
-            [datum, categories] = this.determineAnalysis(
-              analysis,
-              analysisType,
-              mechProp,
-              mechPart
-            );
+            [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
             seriesData.push({ name: 'Z', type: 'line', data: datum[2] });
@@ -781,24 +763,14 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
         switch (mechProp) {
           case 'Linear Joint Pos':
             yAxisTitle = 'Position ' + posLinUnit;
-            [datum, categories] = this.determineAnalysis(
-              analysis,
-              analysisType,
-              mechProp,
-              mechPart
-            );
+            [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
             this.numberOfSeries = 2;
             break;
           case 'Linear Joint Vel':
             yAxisTitle = 'Velocity ' + velLinUnit;
-            [datum, categories] = this.determineAnalysis(
-              analysis,
-              analysisType,
-              mechProp,
-              mechPart
-            );
+            [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
             seriesData.push({ name: 'Z', type: 'line', data: datum[2] });
@@ -806,12 +778,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             break;
           case 'Linear Joint Acc':
             yAxisTitle = 'Acceleration ' + accLinUnit;
-            [datum, categories] = this.determineAnalysis(
-              analysis,
-              analysisType,
-              mechProp,
-              mechPart
-            );
+            [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
             seriesData.push({ name: 'Z', type: 'line', data: datum[2] });
@@ -819,24 +786,14 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             break;
           case "Linear Link's CoM Pos":
             yAxisTitle = 'Position (CoM) ' + posLinUnit;
-            [datum, categories] = this.determineAnalysis(
-              analysis,
-              analysisType,
-              mechProp,
-              mechPart
-            );
+            [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
             this.numberOfSeries = 2;
             break;
           case "Linear Link's CoM Vel":
             yAxisTitle = 'Velocity ' + velLinUnit;
-            [datum, categories] = this.determineAnalysis(
-              analysis,
-              analysisType,
-              mechProp,
-              mechPart
-            );
+            [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
             seriesData.push({ name: 'Z', type: 'line', data: datum[2] });
@@ -844,12 +801,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             break;
           case "Linear Link's CoM Acc":
             yAxisTitle = 'Acceleration ' + accLinUnit;
-            [datum, categories] = this.determineAnalysis(
-              analysis,
-              analysisType,
-              mechProp,
-              mechPart
-            );
+            [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });
             seriesData.push({ name: 'Z', type: 'line', data: datum[2] });
@@ -857,12 +809,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             break;
           case 'Angular Link Pos':
             yAxisTitle = 'Position ' + posAngUnit;
-            [datum, categories] = this.determineAnalysis(
-              analysis,
-              analysisType,
-              mechProp,
-              mechPart
-            );
+            [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             var series: number[] = datum[0];
             if (this.settingsService.angleUnit.getValue() == AngleUnit.RADIAN) {
               for (let i = 0; i < series.length; i++) {
@@ -876,12 +823,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             break;
           case 'Angular Link Vel':
             yAxisTitle = 'Velocity ' + velAngUnit;
-            [datum, categories] = this.determineAnalysis(
-              analysis,
-              analysisType,
-              mechProp,
-              mechPart
-            );
+            [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             var series: number[] = datum[0];
             if (this.settingsService.angleUnit.getValue() == AngleUnit.DEGREE) {
               for (let i = 0; i < series.length; i++) {
@@ -895,12 +837,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
             break;
           case 'Angular Link Acc':
             yAxisTitle = 'Acceleration ' + accAngUnit;
-            [datum, categories] = this.determineAnalysis(
-              analysis,
-              analysisType,
-              mechProp,
-              mechPart
-            );
+            [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             var series: number[] = datum[0];
             if (this.settingsService.angleUnit.getValue() == AngleUnit.DEGREE) {
               for (let i = 0; i < series.length; i++) {

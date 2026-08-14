@@ -1,9 +1,4 @@
 import { Injectable, Injector } from '@angular/core';
-import { stringToBoolean, stringToFloat, stringToShape } from '../model/utils';
-import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
-import { Bound, Link, SliderBlock, RealLink } from '../model/link';
-import { Coord } from '../model/coord';
-import { Force } from '../model/force';
 import { MechanismService } from './mechanism.service';
 import { StringTranscoder } from './transcoding/string-transcoder';
 import { SettingsService } from './settings.service';

@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder } from '@angular/forms';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { MechanismService } from 'src/app/services/mechanism.service';

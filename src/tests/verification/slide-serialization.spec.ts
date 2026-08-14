@@ -73,8 +73,7 @@ describe('every cell of the 2x2', () => {
 
       const reencoded = new UrlGenerationService(
         rebuilt.service,
-        rebuilt.settings,
-        new ActiveObjService()
+        rebuilt.settings
       ).generateUrlQuery();
       expect(mechanismSection(reencoded), `${cell.name}`).toBe(mechanismSection(first));
     }

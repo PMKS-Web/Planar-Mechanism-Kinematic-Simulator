@@ -71,7 +71,7 @@ describe('welded force URL compatibility', () => {
     settings.globalUnit.next(GlobalUnit.SI);
     const active = new ActiveObjService();
     active.updateSelectedObj(source.force);
-    const encoded = new UrlGenerationService(sourceService, settings, active).generateUrlQuery();
+    const encoded = new UrlGenerationService(sourceService, settings).generateUrlQuery();
 
     const decoder = new StringTranscoder();
     decoder.decodeURL(encoded);
@@ -109,8 +109,7 @@ describe('welded force URL compatibility', () => {
     const active = new ActiveObjService();
     const encoded = new UrlGenerationService(
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
-      settings,
-      active
+      settings
     ).generateUrlQuery();
     const raw = encoded.slice(0, -1).replace('F1,ABC,', 'F1,AB,');
     const decoder = new StringTranscoder();
@@ -127,8 +126,7 @@ describe('welded force URL compatibility', () => {
     const source = weldedSource();
     const encoded = new UrlGenerationService(
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
-      new SettingsService(),
-      new ActiveObjService()
+      new SettingsService()
     ).generateUrlQuery();
     let raw = encoded.slice(0, -1);
     raw = raw.slice(0, raw.lastIndexOf('.'));
@@ -151,8 +149,7 @@ describe('welded force URL compatibility', () => {
     const source = weldedSource();
     const encoded = new UrlGenerationService(
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
-      new SettingsService(),
-      new ActiveObjService()
+      new SettingsService()
     ).generateUrlQuery();
     const sections = encoded.slice(0, -1).split('.');
     expect(sections[3]).toHaveLength(4);
@@ -171,8 +168,7 @@ describe('welded force URL compatibility', () => {
     const source = weldedSource();
     const encoded = new UrlGenerationService(
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
-      new SettingsService(),
-      new ActiveObjService()
+      new SettingsService()
     ).generateUrlQuery();
     const sections = encoded.slice(0, -1).split('.');
     sections[3] = '1002'; // centimeter, degrees, lbf, SI

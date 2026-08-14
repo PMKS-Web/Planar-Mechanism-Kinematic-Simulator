@@ -36,8 +36,7 @@ function source(driveSpeed = 0) {
 function encode(driveSpeed: number, settings = new SettingsService()): string {
   return new UrlGenerationService(
     { ...source(driveSpeed), mechanismTimeStep: 0 } as unknown as MechanismService,
-    settings,
-    new ActiveObjService()
+    settings
   ).generateUrlQuery();
 }
 

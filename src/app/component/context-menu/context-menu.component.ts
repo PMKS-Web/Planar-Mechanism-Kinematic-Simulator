@@ -1,6 +1,5 @@
-import { Component, Inject, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
-import { MechanismService } from '../../services/mechanism.service';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 
 export class cMenuItem {
@@ -61,11 +60,10 @@ export class ContextMenuComponent {
   @Input() menuItems: cMenuItem[] = [];
   private contextMenu!: HTMLElement;
 
-  constructor(private mechanismSrv: MechanismService) {}
+  constructor() {}
 
   ngAfterViewInit() {
     this.contextMenu = document.querySelector('#contextMenu') as HTMLElement;
-    console.log(this.contextMenu);
     setTimeout(() => {
       this.contextMenu.classList.add('show');
     }, 1);

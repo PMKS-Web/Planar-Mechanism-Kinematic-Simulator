@@ -31,8 +31,7 @@ function source() {
 function encodeWith(settings: SettingsService): string {
   return new UrlGenerationService(
     { ...source(), mechanismTimeStep: 0 } as unknown as MechanismService,
-    settings,
-    new ActiveObjService()
+    settings
   ).generateUrlQuery();
 }
 
