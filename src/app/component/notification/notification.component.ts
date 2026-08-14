@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
 import {
   LiveNotification,
@@ -51,7 +51,7 @@ const ICONS: Record<NotificationKind, string> = {
   standalone: false,
 })
 export class NotificationComponent {
-  constructor(public notifications: NotificationService) {}
+  notifications = inject(NotificationService);
 
   iconFor(one: LiveNotification): string {
     return ICONS[one.kind];

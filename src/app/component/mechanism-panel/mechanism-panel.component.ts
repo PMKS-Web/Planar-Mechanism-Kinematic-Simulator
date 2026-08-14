@@ -1,7 +1,7 @@
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { MODEL_SCALE } from '../../model/render-scale';
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, inject } from '@angular/core';
 import { RealJoint } from '../../model/joint';
 import { RealLink } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
@@ -32,18 +32,16 @@ interface LinkRow {
   standalone: false,
 })
 export class MechanismPanelComponent {
+  mechanism = inject(MechanismService);
+  activeObj = inject(ActiveObjService);
+  private settings = inject(SettingsService);
+  private nup = inject(NumberUnitParserService);
+
   /** Edit offers to rename and delete; analysis only reports. */
   @Input() editable = false;
 
   overviewOpen = true;
   linksOpen = true;
-
-  constructor(
-    public mechanism: MechanismService,
-    public activeObj: ActiveObjService,
-    private settings: SettingsService,
-    private nup: NumberUnitParserService
-  ) {}
 
   get index(): number {
     return this.activeObj.selectedMechanismIndex;

@@ -1,11 +1,15 @@
-import { Directive, ElementRef, OnInit } from '@angular/core';
+import { Directive, ElementRef, OnInit, inject } from '@angular/core';
 
 @Directive({
   selector: '[appPrefixFocusAndSelect]',
   standalone: false,
 })
 export class FocusOnShowDirective implements OnInit {
-  constructor(private el: ElementRef) {
+  private el = inject(ElementRef);
+
+  constructor() {
+    const el = this.el;
+
     if (!el.nativeElement['focus']) {
       throw new Error('Element does not accept focus.');
     }

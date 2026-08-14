@@ -1,5 +1,5 @@
 import { RightPanelComponent } from './component/right-panel/right-panel.component';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { MechanismService } from './services/mechanism.service';
 import { SynthesisBuilderService } from './services/synthesis/synthesis-builder.service';
@@ -19,15 +19,15 @@ export enum TabID {
   providedIn: 'root',
 })
 export class SelectedTabService {
+  private synthesis = inject(SynthesisBuilderService);
+  private mechanism = inject(MechanismService);
+  private activeObjService = inject(ActiveObjService);
+  private settings = inject(SettingsService);
+
   private _tabNum: BehaviorSubject<TabID>;
   private _tabVisible: BehaviorSubject<boolean>;
 
-  constructor(
-    private synthesis: SynthesisBuilderService,
-    private mechanism: MechanismService,
-    private activeObjService: ActiveObjService,
-    private settings: SettingsService
-  ) {
+  constructor() {
     this._tabNum = new BehaviorSubject<TabID>(TabID.EDIT);
     this._tabVisible = new BehaviorSubject<boolean>(true);
   }

@@ -2,9 +2,9 @@ import {
   Component,
   ChangeDetectionStrategy,
   isDevMode,
-  Optional,
   TemplateRef,
   ViewChild,
+  inject,
 } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MechanismService } from 'src/app/services/mechanism.service';
@@ -20,16 +20,16 @@ import { TemplateID, TEMPLATE_LINKAGES } from './template-linkages';
   standalone: false,
 })
 export class TemplatesComponent {
+  private dialogRef = inject<MatDialogRef<TemplatesComponent> | null>(
+    MatDialogRef<TemplatesComponent>,
+    { optional: true }
+  );
+  private dialog = inject(MatDialog);
+  private mechanismSrv = inject(MechanismService);
+  private urlProcessor = inject(UrlProcessorService);
+
   /** Asks whether to replace the linkage already on the grid or open a new tab. */
   @ViewChild('openChoiceDialog') openChoiceDialog!: TemplateRef<unknown>;
-
-  constructor(
-    // Optional so the component can also render outside a dialog (tests do).
-    @Optional() private dialogRef: MatDialogRef<TemplatesComponent> | null,
-    private dialog: MatDialog,
-    private mechanismSrv: MechanismService,
-    private urlProcessor: UrlProcessorService
-  ) {}
 
   /** Only a development build offers the drawings that exercise the app. */
   isDevMode(): boolean {

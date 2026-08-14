@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 
 @Component({
@@ -9,7 +9,7 @@ import { MatDialogRef } from '@angular/material/dialog';
   standalone: false,
 })
 export class TouchscreenWarningComponent {
-  constructor(public dialogRef: MatDialogRef<TouchscreenWarningComponent>) {}
+  dialogRef = inject<MatDialogRef<TouchscreenWarningComponent>>(MatDialogRef);
 
   onNoClick(): void {
     this.dialogRef.close();

@@ -5,7 +5,7 @@ import { PrisJoint, RealJoint } from '../../app/model/joint';
 import { RealLink, SliderBlock } from '../../app/model/link';
 import { slideAssemblyAt } from '../../app/model/slide-assembly';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
-import { UrlGenerationService } from '../../app/services/url-generation.service';
+import { urlGeneratorFor } from '../../test-utils/url-encoding';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { buildMechanismFixture } from '../fixtures/mechanism-fixtures';
 import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
@@ -71,10 +71,7 @@ describe('every cell of the 2x2', () => {
       const first = fixturePayload(cell.fixture);
       const rebuilt = buildMechanismFixture(first);
 
-      const reencoded = new UrlGenerationService(
-        rebuilt.service,
-        rebuilt.settings
-      ).generateUrlQuery();
+      const reencoded = urlGeneratorFor(rebuilt.service, rebuilt.settings).generateUrlQuery();
       expect(mechanismSection(reencoded), `${cell.name}`).toBe(mechanismSection(first));
     }
   });

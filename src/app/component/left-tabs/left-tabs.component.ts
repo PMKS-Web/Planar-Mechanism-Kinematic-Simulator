@@ -1,5 +1,5 @@
 import { RightPanelComponent } from '../right-panel/right-panel.component';
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 
@@ -51,7 +51,7 @@ import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
  * is why it is still a component rather than a bare @if in the shell.
  */
 export class LeftTabsComponent {
-  constructor(public tabs: SelectedTabService) {}
+  tabs = inject(SelectedTabService);
 
   public get TabID(): typeof TabID {
     return TabID;

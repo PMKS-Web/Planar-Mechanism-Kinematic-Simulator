@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, inject } from '@angular/core';
 import { Joint, RealJoint } from '../../model/joint';
 import { Link, RealLink } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
@@ -27,6 +27,10 @@ import { MechanismReadiness, ReadinessCheck } from '../../model/mechanism/readin
   standalone: false,
 })
 export class AnalysisSetupComponent {
+  mechanism = inject(MechanismService);
+  activeObj = inject(ActiveObjService);
+  private tabs = inject(SelectedTabService);
+
   /**
    * Which question this drawer is answering.
    *
@@ -40,12 +44,6 @@ export class AnalysisSetupComponent {
   private collapsed = new Set<string>();
   unassignedOpen = false;
   forceOpen = true;
-
-  constructor(
-    public mechanism: MechanismService,
-    public activeObj: ActiveObjService,
-    private tabs: SelectedTabService
-  ) {}
 
   get readiness(): MechanismReadiness[] {
     return this.mechanism.readinessOfEachMechanism();

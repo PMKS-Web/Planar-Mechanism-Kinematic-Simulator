@@ -32,6 +32,7 @@ import {
   AnalysisGraphComponent,
   formatTimeLabel,
 } from './analysis-graph.component';
+import { withTestInjector } from '../../../test-utils/mechanism-harness';
 
 @Component({
   selector: 'app-analysis-apex-chart',
@@ -78,12 +79,15 @@ const PRODUCTION_FIXTURES = [
 ];
 
 function createComponent(fixture: MechanismFixture): AnalysisGraphComponent {
-  return new AnalysisGraphComponent(
-    new FormBuilder(),
-    fixture.service,
-    fixture.settings,
-    new NumberUnitParserService(),
-    new AnalysisSampleService(fixture.settings)
+  return withTestInjector(
+    [
+      { provide: FormBuilder, deps: [] },
+      { provide: MechanismService, useValue: fixture.service },
+      { provide: SettingsService, useValue: fixture.settings },
+      { provide: NumberUnitParserService, deps: [] },
+      { provide: AnalysisSampleService, deps: [] },
+    ],
+    () => new AnalysisGraphComponent()
   );
 }
 

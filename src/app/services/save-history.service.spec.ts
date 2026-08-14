@@ -1,5 +1,5 @@
-import { Injector } from '@angular/core';
 import { SaveHistoryService } from './save-history.service';
+import { withTestInjector } from '../../test-utils/mechanism-harness';
 import { UrlGenerationService } from './url-generation.service';
 import { UrlProcessorService } from './url-processor.service';
 
@@ -13,10 +13,13 @@ describe('SaveHistoryService', () => {
     const processor = {
       updateFromURL: (...args: unknown[]) => restores.push(args),
     } as unknown as UrlProcessorService;
-    const injector = {
-      get: () => processor,
-    } as unknown as Injector;
-    const history = new SaveHistoryService(generator, injector);
+    const history = withTestInjector(
+      [
+        { provide: UrlGenerationService, useValue: generator },
+        { provide: UrlProcessorService, useValue: processor },
+      ],
+      () => new SaveHistoryService()
+    );
 
     history.save();
     history.save();

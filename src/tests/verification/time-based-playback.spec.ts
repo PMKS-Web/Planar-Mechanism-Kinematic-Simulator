@@ -1,4 +1,5 @@
 import { Injector } from '@angular/core';
+import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { ColorService } from '../../app/services/color.service';
 import { GridUtilsService } from '../../app/services/grid-utils.service';
@@ -16,27 +17,7 @@ import { silentNotifications } from '../../test-utils/notification-stub';
 
 /** A real MechanismService (not a stub) loaded with the fully rotating four-bar template. */
 function createLoadedService(payload: string = TEMPLATE_LINKAGES['4-Bar']) {
-  if (!ColorService.instance) new ColorService();
-  const settings = new SettingsService();
-  const parser = new NumberUnitParserService();
-  // GridUtilsService resolves MechanismService at call time, so it has to be
-  // handed an injector that reads the binding below rather than a finished one.
-  let service!: MechanismService;
-  const grid = new GridUtilsService(
-    new SynthesisBuilderService(parser, settings),
-    // The injector is only reached when something asks the canvas to re-frame
-    // itself, which nothing here does — there is no canvas in this test.
-    new SvgGridService(
-      settings,
-      new DragStateService(),
-      {} as unknown as Injector,
-      silentNotifications()
-    ),
-    { get: () => service } as unknown as Injector
-  );
-  const active = new ActiveObjService();
-  const injector = { get: () => ({ save: () => {} }) } as unknown as Injector;
-  service = new MechanismService(grid, active, injector, settings, parser, silentNotifications());
+  const { service, settings, active } = createMechanismHarness();
 
   const decoder = new StringTranscoder();
   decoder.decodeURL(payload);

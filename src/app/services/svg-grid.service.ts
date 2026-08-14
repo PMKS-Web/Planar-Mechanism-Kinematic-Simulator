@@ -1,4 +1,4 @@
-import { afterNextRender, Injectable, Injector } from '@angular/core';
+import { afterNextRender, Injectable, Injector, inject } from '@angular/core';
 // TS 6 no longer allows calling/constructing `import * as` namespaces of
 // CommonJS (export =) modules - use default imports for these two.
 import svgPanZoom from 'svg-pan-zoom';
@@ -33,6 +33,11 @@ const LENGTH_IN_CM: Record<LengthUnit, number> = {
   providedIn: 'root',
 })
 export class SvgGridService {
+  private settingsService = inject(SettingsService);
+  private dragState = inject(DragStateService);
+  private injector = inject(Injector);
+  private notify = inject(NotificationService);
+
   /**
    * Where the cursor last was, in model units.
    *
@@ -64,13 +69,6 @@ export class SvgGridService {
   // can never be zoomed into again.
   private MAX_ZOOM: number = 16.5;
   private MIN_ZOOM: number = 0.0002;
-
-  constructor(
-    private settingsService: SettingsService,
-    private dragState: DragStateService,
-    private injector: Injector,
-    private notify: NotificationService
-  ) {}
 
   setNewElement(root: HTMLElement) {
     var eventsHandler;

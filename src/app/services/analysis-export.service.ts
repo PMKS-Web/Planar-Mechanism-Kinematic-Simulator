@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../model/joint';
 import { Link } from '../model/link';
 import { Mechanism } from '../model/mechanism/mechanism';
@@ -30,13 +30,11 @@ interface Quantity {
  */
 @Injectable({ providedIn: 'root' })
 export class AnalysisExportService {
-  constructor(
-    private mechanismService: MechanismService,
-    private activeObj: ActiveObjService,
-    private settings: SettingsService,
-    private samples: AnalysisSampleService,
-    private tabs: SelectedTabService
-  ) {}
+  private mechanismService = inject(MechanismService);
+  private activeObj = inject(ActiveObjService);
+  private settings = inject(SettingsService);
+  private samples = inject(AnalysisSampleService);
+  private tabs = inject(SelectedTabService);
 
   /** Whether there is a selection with solved numbers behind it. */
   canExport(): boolean {

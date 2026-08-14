@@ -1,4 +1,4 @@
-import { Injectable, Injector } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 import { UrlGenerationService } from './url-generation.service';
 import { UrlProcessorService } from './url-processor.service';
 
@@ -12,15 +12,13 @@ import { UrlProcessorService } from './url-processor.service';
   providedIn: 'root',
 })
 export class SaveHistoryService {
+  private urlGenerationService = inject(UrlGenerationService);
+  private injector = inject(Injector);
+
   private history: string[] = [];
 
   // index of the current state in the history
   private index: number = -1;
-
-  constructor(
-    private urlGenerationService: UrlGenerationService,
-    private injector: Injector
-  ) {}
 
   /*
    * Add a new state to the history.

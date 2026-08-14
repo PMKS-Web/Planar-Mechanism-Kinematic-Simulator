@@ -1,4 +1,4 @@
-import { Injectable, Injector } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 import { MechanismService } from './mechanism.service';
 import { StringTranscoder } from './transcoding/string-transcoder';
 import { SettingsService } from './settings.service';
@@ -12,13 +12,13 @@ import { SelectedTabService, TabID } from '../selected-tab.service';
   providedIn: 'root',
 })
 export class UrlProcessorService {
-  constructor(
-    private injector: Injector,
-    private settingsSrv: SettingsService,
-    private svgGrid: SvgGridService,
-    private activeObj: ActiveObjService,
-    private notify: NotificationService
-  ) {
+  private injector = inject(Injector);
+  private settingsSrv = inject(SettingsService);
+  private svgGrid = inject(SvgGridService);
+  private activeObj = inject(ActiveObjService);
+  private notify = inject(NotificationService);
+
+  constructor() {
     // the content part of the url (the part after the ?)
     const url = this.getURLContent();
 

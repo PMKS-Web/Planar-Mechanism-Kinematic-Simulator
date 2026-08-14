@@ -10,6 +10,7 @@ import {
   SimpleChanges,
   ViewChild,
   ChangeDetectionStrategy,
+  inject,
 } from '@angular/core';
 import {
   ApexAnnotations,
@@ -157,6 +158,12 @@ export function defaultSeriesSelection(count: number, analysis: string): SeriesS
   standalone: false,
 })
 export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
+  private fb = inject(FormBuilder);
+  private mechanismService = inject(MechanismService);
+  settingsService = inject(SettingsService);
+  private nup = inject(NumberUnitParserService);
+  private samples = inject(AnalysisSampleService);
+
   public chartOptions: Partial<ChartOptions> = {
     annotations: {
       xaxis: [],
@@ -357,14 +364,6 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   private subscriptions = new Subscription();
   private chartSyncTimer?: ReturnType<typeof setTimeout>;
   private destroyed = false;
-
-  constructor(
-    private fb: FormBuilder,
-    private mechanismService: MechanismService,
-    public settingsService: SettingsService,
-    private nup: NumberUnitParserService,
-    private samples: AnalysisSampleService
-  ) {}
 
   seriesCheckboxForm = this.fb.group(
     {

@@ -1,4 +1,4 @@
-import { Injectable, Injector } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { Link, SliderBlock, RealLink } from '../model/link';
 import { isSlideCandidate, slideAssemblyAt } from '../model/slide-assembly';
@@ -83,6 +83,13 @@ function blendAngle(from: number, to: number, blend: number): number {
   providedIn: 'root',
 })
 export class MechanismService {
+  gridUtils = inject(GridUtilsService);
+  activeObjService = inject(ActiveObjService);
+  private injector = inject(Injector);
+  private settingsService = inject(SettingsService);
+  private nup = inject(NumberUnitParserService);
+  private notify = inject(NotificationService);
+
   public mechanismTimeStep: number = 0;
   /**
    * Is the animation running?
@@ -166,15 +173,6 @@ export class MechanismService {
   private advancingPlayback = false;
   /** Set while one row is being seeked, so the seek does not spread. */
   private seekingOneMechanism = false;
-
-  constructor(
-    public gridUtils: GridUtilsService,
-    public activeObjService: ActiveObjService,
-    private injector: Injector,
-    private settingsService: SettingsService,
-    private nup: NumberUnitParserService,
-    private notify: NotificationService
-  ) {}
 
   /**
    * Recompute every link outline after the object scale changed.

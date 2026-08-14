@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { MechanismService } from './mechanism.service';
 import { Link, SliderBlock, RealLink } from '../model/link';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from '../model/utils';
@@ -37,10 +37,8 @@ import { MODEL_SCALE } from '../model/render-scale';
   providedIn: 'root',
 })
 export class UrlGenerationService {
-  constructor(
-    private mechanism: MechanismService,
-    private settings: SettingsService
-  ) {}
+  private mechanism = inject(MechanismService);
+  private settings = inject(SettingsService);
 
   _addJointToEncoder(encoder: StringTranscoder, joint: Joint) {
     if (joint instanceof RevJoint) {

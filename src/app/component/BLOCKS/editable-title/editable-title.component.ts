@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, inject } from '@angular/core';
 import { FormBuilder } from '@angular/forms';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { MechanismService } from 'src/app/services/mechanism.service';
@@ -12,19 +12,17 @@ import { NotificationService } from '../../../services/notification.service';
   standalone: false,
 })
 export class EditableTitleComponent {
+  private fb = inject(FormBuilder);
+  activeObjService = inject(ActiveObjService);
+  private mechanismService = inject(MechanismService);
+  private notify = inject(NotificationService);
+
   @Input() showActionButtons: boolean = false;
   /** Shown instead of the object's own name — a cylinder displays its mounts. */
   @Input() displayName?: string;
   @Input() deleteAction!: () => void;
 
   editMode = false;
-
-  constructor(
-    private fb: FormBuilder,
-    public activeObjService: ActiveObjService,
-    private mechanismService: MechanismService,
-    private notify: NotificationService
-  ) {}
 
   newIDForm = this.fb.group({ newID: [''] });
 

@@ -4,6 +4,7 @@ import {
   OnDestroy,
   OnInit,
   ChangeDetectionStrategy,
+  inject,
 } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { PrisJoint, RealJoint, RevJoint } from 'src/app/model/joint';
@@ -54,6 +55,14 @@ const INPUT_SPEED_UNITS = [
   standalone: false,
 })
 export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
+  activeSrv = inject(ActiveObjService);
+  protected settingsService = inject(SettingsService);
+  private fb = inject(FormBuilder);
+  private nup = inject(NumberUnitParserService);
+  mechanismService = inject(MechanismService);
+  gridUtils = inject(GridUtilsService);
+  private notify = inject(NotificationService);
+
   listOfOtherJoints: RealJoint[] = [];
   private currentlyOpenJointID: string = '';
 
@@ -163,15 +172,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     this.patchInputSpeedField();
   }
 
-  constructor(
-    public activeSrv: ActiveObjService,
-    protected settingsService: SettingsService,
-    private fb: FormBuilder,
-    private nup: NumberUnitParserService,
-    public mechanismService: MechanismService,
-    public gridUtils: GridUtilsService,
-    private notify: NotificationService
-  ) {
+  constructor() {
     //Set the instance to this
     EditPanelComponent.instance = this;
   }

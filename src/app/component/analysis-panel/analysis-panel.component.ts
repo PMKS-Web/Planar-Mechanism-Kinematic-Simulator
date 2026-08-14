@@ -1,5 +1,5 @@
 import { SelectedTabService, TabID } from '../../selected-tab.service';
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ForceAnalysisMode, ForceReactionIndex } from 'src/app/model/mechanism/force-solver';
 import { Mechanism } from 'src/app/model/mechanism/mechanism';
 import { PrisJoint, RealJoint } from 'src/app/model/joint';
@@ -27,6 +27,12 @@ export interface ForceAnalysisRow {
   standalone: false,
 })
 export class AnalysisPanelComponent {
+  activeSrv = inject(ActiveObjService);
+  private fb = inject(FormBuilder);
+  mechanismService = inject(MechanismService);
+  settingsService = inject(SettingsService);
+  private tabs = inject(SelectedTabService);
+
   /**
    * Which half of the analysis this mode is asking for.
    *
@@ -148,13 +154,7 @@ export class AnalysisPanelComponent {
     return unit === LengthUnit.INCH ? 'in/s' : unit === LengthUnit.METER ? 'm/s' : 'cm/s';
   }
 
-  constructor(
-    public activeSrv: ActiveObjService,
-    private fb: FormBuilder,
-    public mechanismService: MechanismService,
-    public settingsService: SettingsService,
-    private tabs: SelectedTabService
-  ) {
+  constructor() {
     this.forceAnalysisFormGroup.patchValue(
       { mode: this.settingsService.forceAnalysisMode.value === 'dynamic' ? '1' : '0' },
       { emitEvent: false }

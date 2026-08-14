@@ -10,6 +10,7 @@ import {
   OnDestroy,
   SimpleChanges,
   ViewChild,
+  inject,
 } from '@angular/core';
 import ApexCharts, {
   ApexAnnotations,
@@ -50,6 +51,9 @@ declare global {
   standalone: false,
 })
 export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnDestroy {
+  private zone = inject(NgZone);
+  private changeDetector = inject(ChangeDetectorRef);
+
   @Input() annotations?: ApexAnnotations;
   @Input() chart?: ApexChart;
   @Input() colors?: string[];
@@ -71,11 +75,6 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
   private viewInitialized = false;
   private destroyed = false;
   private updateGeneration = 0;
-
-  constructor(
-    private zone: NgZone,
-    private changeDetector: ChangeDetectorRef
-  ) {}
 
   ngOnChanges(_changes: SimpleChanges): void {
     this.scheduleUpdate();

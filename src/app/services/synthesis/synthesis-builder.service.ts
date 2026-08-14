@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { COR, SynthesisPose } from './synthesis-util';
 import { Coord } from 'src/app/model/coord';
@@ -16,6 +16,9 @@ into fourbars. Relevant to the Synthesis tab of the app.
   providedIn: 'root',
 })
 export class SynthesisBuilderService {
+  private nup = inject(NumberUnitParserService);
+  private settings = inject(SettingsService);
+
   public valueChanges: Subject<any>;
 
   public constants: SynthesisConstants;
@@ -41,10 +44,7 @@ export class SynthesisBuilderService {
 
   poses: { [key: number]: SynthesisPose }; // a dictionary of poses, but including each pose is optional
 
-  constructor(
-    private nup: NumberUnitParserService,
-    private settings: SettingsService
-  ) {
+  constructor() {
     this.valueChanges = new Subject<any>();
     this.constants = new SynthesisConstants();
 

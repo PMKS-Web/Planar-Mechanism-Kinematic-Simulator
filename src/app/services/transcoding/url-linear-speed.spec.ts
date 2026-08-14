@@ -4,7 +4,7 @@ import { RealLink } from '../../model/link';
 import { ActiveObjService } from '../active-obj.service';
 import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
-import { UrlGenerationService } from '../url-generation.service';
+import { urlGeneratorFor } from '../../../test-utils/url-encoding';
 import { MechanismBuilder } from './mechanism-builder';
 import { StringTranscoder } from './string-transcoder';
 import { Checksum } from './checksum';
@@ -29,7 +29,7 @@ function source() {
 }
 
 function encodeWith(settings: SettingsService): string {
-  return new UrlGenerationService(
+  return urlGeneratorFor(
     { ...source(), mechanismTimeStep: 0 } as unknown as MechanismService,
     settings
   ).generateUrlQuery();

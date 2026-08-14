@@ -7,7 +7,7 @@ import { ActiveObjService } from '../../app/services/active-obj.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
-import { UrlGenerationService } from '../../app/services/url-generation.service';
+import { urlGeneratorFor } from '../../test-utils/url-encoding';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 
 // Gate 4, third condition: every state the marks can draw survives the URL.
@@ -88,10 +88,7 @@ function readState(joints: unknown[]): MarkState {
 }
 
 function roundTrip(harness: ReturnType<typeof createMechanismHarness>): MarkState {
-  const payload = new UrlGenerationService(
-    harness.service,
-    new SettingsService()
-  ).generateUrlQuery();
+  const payload = urlGeneratorFor(harness.service, new SettingsService()).generateUrlQuery();
 
   const decoder = new StringTranscoder();
   decoder.decodeURL(payload.replace(/^\?/, ''));

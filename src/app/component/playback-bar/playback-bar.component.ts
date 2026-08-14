@@ -5,6 +5,7 @@ import {
   ElementRef,
   OnDestroy,
   OnInit,
+  inject,
 } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { Subscription } from 'rxjs';
@@ -91,18 +92,16 @@ export interface PlaybackRow {
   standalone: false,
 })
 export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
+  mechanism = inject(MechanismService);
+  settings = inject(SettingsService);
+  activeObj = inject(ActiveObjService);
+  tabs = inject(SelectedTabService);
+  private nup = inject(NumberUnitParserService);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+
   private positionSub?: Subscription;
   private wasAnimating = false;
   private wasRowAnimating = false;
-
-  constructor(
-    public mechanism: MechanismService,
-    public settings: SettingsService,
-    public activeObj: ActiveObjService,
-    public tabs: SelectedTabService,
-    private nup: NumberUnitParserService,
-    private host: ElementRef<HTMLElement>
-  ) {}
 
   ngOnInit(): void {
     // The rows are rebuilt from the service on every change detection, and the

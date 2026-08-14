@@ -1,4 +1,4 @@
-import { Injectable, Injector } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { roundNumber, point_on_line_segment_closest_to_point } from '../model/utils';
 import { Link, SliderBlock, RealLink } from '../model/link';
@@ -62,11 +62,9 @@ function pointThroughFrame(
   providedIn: 'root',
 })
 export class GridUtilsService {
-  constructor(
-    private synthesisBuilder: SynthesisBuilderService,
-    public svgGrid: SvgGridService,
-    private injector: Injector
-  ) {}
+  private synthesisBuilder = inject(SynthesisBuilderService);
+  svgGrid = inject(SvgGridService);
+  private injector = inject(Injector);
 
   /**
    * MechanismService injects this service, so it can only be resolved at call

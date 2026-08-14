@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, inject } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 
 @Component({
@@ -9,7 +9,7 @@ import { ActiveObjService } from 'src/app/services/active-obj.service';
   standalone: false,
 })
 export class ButtonComponent {
-  constructor(public activeSrv: ActiveObjService) {}
+  activeSrv = inject(ActiveObjService);
 
   @Input() icon: string | undefined;
   @Input() click!: () => void;

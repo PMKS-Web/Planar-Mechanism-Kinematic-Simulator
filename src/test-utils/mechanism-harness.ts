@@ -1,11 +1,14 @@
-import { Injector } from '@angular/core';
+import { Injector, runInInjectionContext } from '@angular/core';
 import { PrisJoint, RealJoint, RevJoint } from '../app/model/joint';
 import { ActiveObjService } from '../app/services/active-obj.service';
 import { ColorService } from '../app/services/color.service';
 import { DragStateService } from '../app/services/drag-state.service';
 import { GridUtilsService } from '../app/services/grid-utils.service';
 import { MechanismService } from '../app/services/mechanism.service';
+import { NotificationService } from '../app/services/notification.service';
 import { NumberUnitParserService } from '../app/services/number-unit-parser.service';
+import { SaveHistoryService } from '../app/services/save-history.service';
+import { SelectedTabService } from '../app/selected-tab.service';
 import { SettingsService } from '../app/services/settings.service';
 import { SvgGridService } from '../app/services/svg-grid.service';
 import { SynthesisBuilderService } from '../app/services/synthesis/synthesis-builder.service';
@@ -21,6 +24,8 @@ import { silentNotifications } from './notification-stub';
  */
 export interface MechanismHarness {
   service: MechanismService;
+  /** The harness's own injector, for specs that need a sibling service. */
+  injector: Injector;
   active: ActiveObjService;
   /** The service's own settings, for specs that flip gravity or units. */
   settings: SettingsService;
@@ -36,36 +41,47 @@ export interface MechanismHarness {
 
 export function createMechanismHarness(): MechanismHarness {
   if (!ColorService.instance) new ColorService();
-  const settings = new SettingsService();
-  const parser = new NumberUnitParserService();
-  const svg = new SvgGridService(
-    settings,
-    new DragStateService(),
-    {} as unknown as Injector,
-    silentNotifications()
-  );
-  const synthesis = new SynthesisBuilderService(parser, settings);
-  let service!: MechanismService;
-  const grid = new GridUtilsService(synthesis, svg, {
-    get: () => service,
-  } as unknown as Injector);
-  const active = new ActiveObjService();
   let saves = 0;
-  // Resolved by token rather than one catch-all object: MechanismService pulls
-  // several services out of the injector to break dependency cycles, and a stub
-  // that answers every token with the same shape makes a missing one look like
-  // a working one until it is called.
-  const dragState = new DragStateService();
+  // A real injector with every token listed explicitly: the services resolve
+  // their dependencies with inject(), and a missing provider fails loudly at
+  // the get() instead of a catch-all stub making a missing service look like a
+  // working one until it is called.
   const history = {
     save: () => {
       saves += 1;
     },
   };
-  const injector = {
-    get: (token: unknown) => (token === DragStateService ? dragState : history),
-  } as unknown as Injector;
-  service = new MechanismService(grid, active, injector, settings, parser, silentNotifications());
-  return { service, active, settings, saveCount: () => saves };
+  const injector = Injector.create({
+    providers: [
+      { provide: SettingsService, deps: [] },
+      { provide: NumberUnitParserService, deps: [] },
+      { provide: ActiveObjService, deps: [] },
+      { provide: DragStateService, deps: [] },
+      { provide: SelectedTabService, deps: [] },
+      { provide: NotificationService, useFactory: silentNotifications, deps: [] },
+      { provide: SaveHistoryService, useValue: history },
+      { provide: SynthesisBuilderService, deps: [] },
+      { provide: SvgGridService, deps: [] },
+      { provide: GridUtilsService, deps: [] },
+      { provide: MechanismService, deps: [] },
+    ],
+  });
+  const service = injector.get(MechanismService);
+  return {
+    service,
+    injector,
+    active: injector.get(ActiveObjService),
+    settings: injector.get(SettingsService),
+    saveCount: () => saves,
+  };
+}
+
+/** Run `factory` with the harness-style injector active, for classes that inject(). */
+export function withTestInjector<T>(
+  providers: Parameters<typeof Injector.create>[0]['providers'],
+  factory: () => T
+): T {
+  return runInInjectionContext(Injector.create({ providers }), factory);
 }
 
 /**

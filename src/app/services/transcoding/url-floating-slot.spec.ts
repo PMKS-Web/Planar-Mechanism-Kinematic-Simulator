@@ -5,7 +5,7 @@ import { RealLink, SliderBlock } from '../../model/link';
 import { ActiveObjService } from '../active-obj.service';
 import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
-import { UrlGenerationService } from '../url-generation.service';
+import { urlGeneratorFor } from '../../../test-utils/url-encoding';
 import { Checksum } from './checksum';
 import { MechanismBuilder } from './mechanism-builder';
 import { StringTranscoder } from './string-transcoder';
@@ -59,7 +59,7 @@ function invertedSliderCrank() {
 }
 
 function encode(source: { joints: unknown; links: unknown; forces: unknown }): string {
-  return new UrlGenerationService(
+  return urlGeneratorFor(
     { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
     new SettingsService()
   ).generateUrlQuery();

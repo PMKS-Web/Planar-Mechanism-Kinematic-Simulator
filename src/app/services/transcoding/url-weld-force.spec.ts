@@ -7,7 +7,7 @@ import { ForceUnit, GlobalUnit, LengthUnit } from '../../model/unit-enums';
 import { ActiveObjService } from '../active-obj.service';
 import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
-import { UrlGenerationService } from '../url-generation.service';
+import { urlGeneratorFor } from '../../../test-utils/url-encoding';
 import { Checksum } from './checksum';
 import { FlagPacker } from './flag-packer';
 import { MechanismBuilder } from './mechanism-builder';
@@ -71,7 +71,7 @@ describe('welded force URL compatibility', () => {
     settings.globalUnit.next(GlobalUnit.SI);
     const active = new ActiveObjService();
     active.updateSelectedObj(source.force);
-    const encoded = new UrlGenerationService(sourceService, settings).generateUrlQuery();
+    const encoded = urlGeneratorFor(sourceService, settings).generateUrlQuery();
 
     const decoder = new StringTranscoder();
     decoder.decodeURL(encoded);
@@ -107,7 +107,7 @@ describe('welded force URL compatibility', () => {
     const source = weldedSource();
     const settings = new SettingsService();
     const active = new ActiveObjService();
-    const encoded = new UrlGenerationService(
+    const encoded = urlGeneratorFor(
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
       settings
     ).generateUrlQuery();
@@ -124,7 +124,7 @@ describe('welded force URL compatibility', () => {
 
   it('loads URLs without an active-object section and ignores the legacy force-disable bit', () => {
     const source = weldedSource();
-    const encoded = new UrlGenerationService(
+    const encoded = urlGeneratorFor(
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
       new SettingsService()
     ).generateUrlQuery();
@@ -147,7 +147,7 @@ describe('welded force URL compatibility', () => {
 
   it('derives Metric/Newton settings from a legacy three-enum URL', () => {
     const source = weldedSource();
-    const encoded = new UrlGenerationService(
+    const encoded = urlGeneratorFor(
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
       new SettingsService()
     ).generateUrlQuery();
@@ -166,7 +166,7 @@ describe('welded force URL compatibility', () => {
 
   it('normalizes contradictory four-enum settings from the encoded length unit', () => {
     const source = weldedSource();
-    const encoded = new UrlGenerationService(
+    const encoded = urlGeneratorFor(
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
       new SettingsService()
     ).generateUrlQuery();

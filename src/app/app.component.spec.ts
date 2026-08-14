@@ -1,4 +1,5 @@
 import { Injector } from '@angular/core';
+import { createMechanismHarness } from '../test-utils/mechanism-harness';
 import { Joint } from './model/joint';
 import { Link } from './model/link';
 import { Force } from './model/force';
@@ -25,36 +26,9 @@ describe('SixbarService', () => {
   const forces: Force[] = [];
   const ics: InstantCenter[] = [];
   const mechanisms: Mechanism[] = [];
-  // ColorService registers itself as a static singleton that createRealLink depends on.
-  new ColorService();
-  const settingsService: SettingsService = new SettingsService();
-  const nup: NumberUnitParserService = new NumberUnitParserService();
-  const svgGridService: SvgGridService = new SvgGridService(
-    settingsService,
-    new DragStateService(),
-    {} as unknown as Injector,
-    silentNotifications()
-  );
-  const synthesisBuilder: SynthesisBuilderService = new SynthesisBuilderService(
-    nup,
-    settingsService
-  );
-  // GridUtilsService resolves MechanismService at call time, so it has to be
-  // handed an injector that reads the binding below rather than a finished one.
-  let mechanismSrv!: MechanismService;
-  const gridUtilService: GridUtilsService = new GridUtilsService(synthesisBuilder, svgGridService, {
-    get: () => mechanismSrv,
-  } as unknown as Injector);
-  const activeObjService: ActiveObjService = new ActiveObjService();
-  // The injector is only consulted when saving undo history, which these solver tests never do.
-  mechanismSrv = new MechanismService(
-    gridUtilService,
-    activeObjService,
-    Injector.create({ providers: [] }),
-    settingsService,
-    nup,
-    silentNotifications()
-  );
+  const harness = createMechanismHarness();
+  const mechanismSrv = harness.service;
+  const gridUtilService = harness.injector.get(GridUtilsService);
 
   // Link AB
   const JointA = mechanismSrv.createRevJoint('-3.74', '-2.41');

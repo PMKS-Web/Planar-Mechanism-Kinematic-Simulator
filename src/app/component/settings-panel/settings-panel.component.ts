@@ -1,6 +1,6 @@
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { environment } from '../../../environments/environment';
-import { Component, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnDestroy, inject } from '@angular/core';
 import { SettingsService, writeStoredFlag } from 'src/app/services/settings.service';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
 import { FormBuilder, Validators } from '@angular/forms';
@@ -19,16 +19,14 @@ import { MODEL_SCALE } from '../../model/render-scale';
   standalone: false,
 })
 export class SettingsPanelComponent implements OnDestroy {
-  readonly appVersion = environment.appVersion;
+  settingsService = inject(SettingsService);
+  private fb = inject(FormBuilder);
+  mechanismSrv = inject(MechanismService);
+  private svgGrid = inject(SvgGridService);
+  private nup = inject(NumberUnitParserService);
+  private tabs = inject(SelectedTabService);
 
-  constructor(
-    public settingsService: SettingsService,
-    private fb: FormBuilder,
-    public mechanismSrv: MechanismService,
-    private svgGrid: SvgGridService,
-    private nup: NumberUnitParserService,
-    private tabs: SelectedTabService
-  ) {}
+  readonly appVersion = environment.appVersion;
 
   currentLengthUnit!: LengthUnit;
   currentForceUnit!: ForceUnit;

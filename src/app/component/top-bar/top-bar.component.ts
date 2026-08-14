@@ -83,6 +83,17 @@ interface TabStatus {
   standalone: false,
 })
 export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestroy {
+  tabs = inject(SelectedTabService);
+  mechanism = inject(MechanismService);
+  private history = inject(SaveHistoryService);
+  private urlGeneration = inject(UrlGenerationService);
+  private urlProcessor = inject(UrlProcessorService);
+  private dialog = inject(MatDialog);
+  private zone = inject(NgZone);
+  private changes = inject(ChangeDetectorRef);
+  private exports = inject(AnalysisExportService);
+  private notify = inject(NotificationService);
+
   TabID = TabID;
   menuOpen = false;
 
@@ -110,19 +121,6 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * width they need.
    */
   private lastFit = '';
-
-  constructor(
-    public tabs: SelectedTabService,
-    public mechanism: MechanismService,
-    private history: SaveHistoryService,
-    private urlGeneration: UrlGenerationService,
-    private urlProcessor: UrlProcessorService,
-    private dialog: MatDialog,
-    private zone: NgZone,
-    private changes: ChangeDetectorRef,
-    private exports: AnalysisExportService,
-    private notify: NotificationService
-  ) {}
 
   isDevMode(): boolean {
     return isDevMode();

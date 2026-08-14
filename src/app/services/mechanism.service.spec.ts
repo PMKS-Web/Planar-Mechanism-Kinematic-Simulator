@@ -1,5 +1,5 @@
 import '../model/joint';
-import { Injector } from '@angular/core';
+import { NotificationService } from './notification.service';
 import { Coord } from '../model/coord';
 import { Force } from '../model/force';
 import { SliderBlock, RealLink } from '../model/link';
@@ -11,15 +11,12 @@ import { GridUtilsService } from './grid-utils.service';
 import { MechanismService } from './mechanism.service';
 import { NumberUnitParserService } from './number-unit-parser.service';
 import { SettingsService } from './settings.service';
-import { SvgGridService } from './svg-grid.service';
-import { DragStateService } from './drag-state.service';
 import { UrlGenerationService } from './url-generation.service';
 import { MechanismBuilder } from './transcoding/mechanism-builder';
 import { StringTranscoder } from './transcoding/string-transcoder';
-import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
-import { NotificationService } from './notification.service';
-import { silentNotifications } from '../../test-utils/notification-stub';
+import { createMechanismHarness } from '../../test-utils/mechanism-harness';
+import { encodeUrlOf } from '../../test-utils/url-encoding';
 
 interface Harness {
   service: MechanismService;
@@ -30,27 +27,8 @@ interface Harness {
 }
 
 function createHarness(): Harness {
-  if (!ColorService.instance) new ColorService();
-  const settings = new SettingsService();
-  const parser = new NumberUnitParserService();
-  const svg = new SvgGridService(
-    settings,
-    new DragStateService(),
-    {} as unknown as Injector,
-    silentNotifications()
-  );
-  const synthesis = new SynthesisBuilderService(parser, settings);
-  // GridUtilsService resolves MechanismService at call time, so it has to be
-  // handed an injector that reads the binding below rather than a finished one.
-  let service!: MechanismService;
-  const grid = new GridUtilsService(synthesis, svg, {
-    get: () => service,
-  } as unknown as Injector);
-  const active = new ActiveObjService();
-  let saves = 0;
-  const injector = { get: () => ({ save: () => saves++ }) } as unknown as Injector;
-  service = new MechanismService(grid, active, injector, settings, parser, silentNotifications());
-  return { service, active, settings, grid, saveCount: () => saves };
+  const harness = createMechanismHarness();
+  return { ...harness, grid: harness.injector.get(GridUtilsService) };
 }
 
 function createChain(jointCount = 3) {
@@ -392,7 +370,7 @@ describe('MechanismService joint merging', () => {
     const scene = createOpenFourBar();
     scene.service.mergeJoints(scene.e, scene.c);
 
-    const encoded = new UrlGenerationService(scene.service, scene.settings).generateUrlQuery();
+    const encoded = encodeUrlOf(scene.service, scene.settings);
     const decoder = new StringTranscoder();
     decoder.decodeURL(encoded);
     const restored = {

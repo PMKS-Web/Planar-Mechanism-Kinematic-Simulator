@@ -1,4 +1,5 @@
 import '../model/joint';
+import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { Injector } from '@angular/core';
 import { Coord } from '../model/coord';
 import { Force } from '../model/force';
@@ -16,27 +17,8 @@ import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { silentNotifications } from '../../test-utils/notification-stub';
 
 function createHarness() {
-  if (!ColorService.instance) new ColorService();
-  const settings = new SettingsService();
-  const parser = new NumberUnitParserService();
-  // GridUtilsService resolves MechanismService at call time, so it has to be
-  // handed an injector that reads the binding below rather than a finished one.
-  let service!: MechanismService;
-  const grid = new GridUtilsService(
-    new SynthesisBuilderService(parser, settings),
-    new SvgGridService(
-      settings,
-      new DragStateService(),
-      {} as unknown as Injector,
-      silentNotifications()
-    ),
-    { get: () => service } as unknown as Injector
-  );
-  const active = new ActiveObjService();
-  let saves = 0;
-  const injector = { get: () => ({ save: () => saves++ }) } as unknown as Injector;
-  service = new MechanismService(grid, active, injector, settings, parser, silentNotifications());
-  return { service, grid, active, settings, saveCount: () => saves };
+  const harness = createMechanismHarness();
+  return { ...harness, grid: harness.injector.get(GridUtilsService) };
 }
 
 function wire(id: string, joints: RevJoint[]): RealLink {

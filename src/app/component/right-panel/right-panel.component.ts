@@ -58,6 +58,14 @@ import { NotificationService } from '../../services/notification.service';
   standalone: false,
 })
 export class RightPanelComponent implements DoCheck {
+  activeObjService = inject(ActiveObjService);
+  mechanismService = inject(MechanismService);
+  settingsService = inject(SettingsService);
+  svgService = inject(SvgGridService);
+  urlGenerationService = inject(UrlGenerationService);
+  private fb = inject(FormBuilder);
+  private notify = inject(NotificationService);
+
   private analytics: AnalyticsService = inject(AnalyticsService);
 
   public sendingEmail: boolean = false;
@@ -90,16 +98,6 @@ export class RightPanelComponent implements DoCheck {
   turnOnDebugger() {
     this.settingsService.isGridDebugOn = !this.settingsService.isGridDebugOn;
   }
-
-  constructor(
-    public activeObjService: ActiveObjService,
-    public mechanismService: MechanismService,
-    public settingsService: SettingsService,
-    public svgService: SvgGridService,
-    public urlGenerationService: UrlGenerationService,
-    private fb: FormBuilder,
-    private notify: NotificationService
-  ) {}
 
   /**
    * Bumped when a drawer is asked for that is already showing.

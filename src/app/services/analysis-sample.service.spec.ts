@@ -3,6 +3,8 @@ import { MODEL_SCALE } from '../model/render-scale';
 import { TEMPLATE_LINKAGES } from '../component/MODALS/templates/template-linkages';
 import { buildMechanismFixture, MechanismFixture } from '../../tests/fixtures/mechanism-fixtures';
 import { AnalysisSampleService } from './analysis-sample.service';
+import { SettingsService } from './settings.service';
+import { withTestInjector } from '../../test-utils/mechanism-harness';
 
 /**
  * The numbers here are the ones the graphs plotted before this arithmetic moved
@@ -33,7 +35,10 @@ describe('AnalysisSampleService', () => {
   describe('a four-bar driven at its crank', () => {
     beforeEach(() => {
       fixture = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
-      service = new AnalysisSampleService(fixture.settings);
+      service = withTestInjector(
+        [{ provide: SettingsService, useValue: fixture.settings }],
+        () => new AnalysisSampleService()
+      );
     });
 
     /** The crank A→B at the pose given, in internal model units. */
@@ -136,7 +141,10 @@ describe('AnalysisSampleService', () => {
   describe('a cylinder-driven boom', () => {
     beforeEach(() => {
       fixture = buildMechanismFixture(TEMPLATE_LINKAGES['Cylinder_Boom']);
-      service = new AnalysisSampleService(fixture.settings);
+      service = withTestInjector(
+        [{ provide: SettingsService, useValue: fixture.settings }],
+        () => new AnalysisSampleService()
+      );
     });
 
     it('plots the boom rising, and the piston angle as a gap rather than a number', () => {

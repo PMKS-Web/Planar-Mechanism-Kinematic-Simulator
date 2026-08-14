@@ -5,6 +5,10 @@ import { AnalysisExportService } from './analysis-export.service';
 import { AnalysisSampleService } from './analysis-sample.service';
 import { buildMechanismFixture, MechanismFixture } from '../../tests/fixtures/mechanism-fixtures';
 import { TEMPLATE_LINKAGES } from '../component/MODALS/templates/template-linkages';
+import { ActiveObjService } from './active-obj.service';
+import { MechanismService } from './mechanism.service';
+import { SettingsService } from './settings.service';
+import { withTestInjector } from '../../test-utils/mechanism-harness';
 
 /** The tab service, reduced to the one question the exporter asks of it. */
 function tabsOn(tab: TabID): SelectedTabService {
@@ -15,12 +19,15 @@ function tabsOn(tab: TabID): SelectedTabService {
 }
 
 function exporterFor(fixture: MechanismFixture, tab: TabID): AnalysisExportService {
-  return new AnalysisExportService(
-    fixture.service,
-    fixture.active,
-    fixture.settings,
-    new AnalysisSampleService(fixture.settings),
-    tabsOn(tab)
+  return withTestInjector(
+    [
+      { provide: MechanismService, useValue: fixture.service },
+      { provide: ActiveObjService, useValue: fixture.active },
+      { provide: SettingsService, useValue: fixture.settings },
+      { provide: AnalysisSampleService, deps: [] },
+      { provide: SelectedTabService, useValue: tabsOn(tab) },
+    ],
+    () => new AnalysisExportService()
   );
 }
 

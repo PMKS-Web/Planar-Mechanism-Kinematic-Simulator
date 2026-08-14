@@ -5,6 +5,7 @@ import {
   Input,
   Output,
   ViewChild,
+  inject,
 } from '@angular/core';
 import { animate, AUTO_STYLE, state, style, transition, trigger } from '@angular/animations';
 import {
@@ -52,6 +53,10 @@ export interface SeriesPreview {
   standalone: false,
 })
 export class AnalysisGraphSectionComponent {
+  private mechanismService = inject(MechanismService);
+  private settings = inject(SettingsService);
+  private samples = inject(AnalysisSampleService);
+
   @Input() label = '';
   @Input() help = '';
   @Input() analysis = '';
@@ -62,12 +67,6 @@ export class AnalysisGraphSectionComponent {
   @Input() expanded = false;
   @Output() expandedChange = new EventEmitter<boolean>();
   @ViewChild('graph') graph?: AnalysisGraphComponent;
-
-  constructor(
-    private mechanismService: MechanismService,
-    private settings: SettingsService,
-    private samples: AnalysisSampleService
-  ) {}
 
   /**
    * What this quantity reads at the pose on screen.

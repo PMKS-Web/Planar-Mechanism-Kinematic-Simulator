@@ -1,4 +1,11 @@
-import { Component, Input, OnChanges, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  Input,
+  OnChanges,
+  OnInit,
+  ChangeDetectionStrategy,
+  inject,
+} from '@angular/core';
 import { ColorService } from '../../../services/color.service';
 import { RealLink } from '../../../model/link';
 import { RealJoint } from '../../../model/joint';
@@ -12,13 +19,13 @@ import { Force } from '../../../model/force';
   standalone: false,
 })
 export class ColorPickerComponent implements OnInit, OnChanges {
+  colorService = inject(ColorService);
+
   @Input() link: RealLink | undefined;
   @Input() joint: RealJoint | undefined;
   @Input() force: Force | undefined;
   @Input() tooltip: string | undefined;
   @Input() type: string | undefined;
-
-  constructor(public colorService: ColorService) {}
 
   ngOnChanges(): void {
     if (this.link) {

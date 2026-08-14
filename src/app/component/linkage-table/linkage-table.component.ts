@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
 import { Force } from '../../model/force';
 import { SliderBlock, Link, RealLink } from '../../model/link';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
@@ -17,13 +17,11 @@ import { NotificationService } from '../../services/notification.service';
   standalone: false,
 })
 export class LinkageTableComponent implements OnInit {
+  private mechanismService = inject(MechanismService);
+  private notify = inject(NotificationService);
+
   private static linkageTable: SVGElement;
   private static showLinkageTableButton: SVGElement;
-
-  constructor(
-    private mechanismService: MechanismService,
-    private notify: NotificationService
-  ) {}
 
   // The table's cells speak the user's units; the model is MODEL_SCALE times
   // larger (render-scale.ts), so every length converts at this boundary.

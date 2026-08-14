@@ -5,6 +5,7 @@ import {
   HostListener,
   ViewChild,
   ChangeDetectionStrategy,
+  inject,
 } from '@angular/core';
 import { fromEvent } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
@@ -115,6 +116,22 @@ import introJs from 'intro.js';
   standalone: false,
 })
 export class NewGridComponent implements OnDestroy {
+  svgGrid = inject(SvgGridService);
+  mechanismSrv = inject(MechanismService);
+  private urlParser = inject(UrlProcessorService);
+  gridUtils = inject(GridUtilsService);
+  settings = inject(SettingsService);
+  activeObjService = inject(ActiveObjService);
+  private tabService = inject(SelectedTabService);
+  synthesisBuilder = inject(SynthesisBuilderService);
+  notify = inject(NotificationService);
+  dialog = inject(MatDialog);
+  saveHistoryService = inject(SaveHistoryService);
+  private colorService = inject(ColorService);
+  nup = inject(NumberUnitParserService);
+  dragState = inject(DragStateService);
+  sliderMarks = inject(SliderMarkService);
+
   public static debugValue: any;
   static debugPoints: Coord[] = [];
   public static debugLines: Line[] = [];
@@ -122,25 +139,7 @@ export class NewGridComponent implements OnDestroy {
   public originInScreen: Coord = new Coord(0, 0);
   private timeMouseDown: number = 0;
 
-  constructor(
-    public svgGrid: SvgGridService,
-    public mechanismSrv: MechanismService,
-    private urlParser: UrlProcessorService,
-    public gridUtils: GridUtilsService,
-    public settings: SettingsService,
-    public activeObjService: ActiveObjService,
-    private tabService: SelectedTabService,
-    public synthesisBuilder: SynthesisBuilderService,
-    // Public because `cMenuItem` is a plain class with no injector and reaches
-    // the canvas for its guards, exactly as it already does for the mechanism.
-    public notify: NotificationService,
-    public dialog: MatDialog,
-    public saveHistoryService: SaveHistoryService,
-    private colorService: ColorService,
-    public nup: NumberUnitParserService,
-    public dragState: DragStateService,
-    public sliderMarks: SliderMarkService
-  ) {
+  constructor() {
     //This is for debug purposes, do not make anything else static!
     NewGridComponent.instance = this;
   }

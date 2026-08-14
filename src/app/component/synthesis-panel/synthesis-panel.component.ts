@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
 import { FormBuilder } from '@angular/forms';
 import { Coord } from '../../model/coord';
 import { Joint, RevJoint } from '../../model/joint';
@@ -19,19 +19,17 @@ import { ColorService } from '../../services/color.service';
   standalone: false,
 })
 export class SynthesisPanelComponent implements OnInit {
+  private fb = inject(FormBuilder);
+  mechanismSrv = inject(MechanismService);
+  synthesisBuilder = inject(SynthesisBuilderService);
+  private nup = inject(NumberUnitParserService);
+  private settings = inject(SettingsService);
+  svgGrid = inject(SvgGridService);
+  private colorService = inject(ColorService);
+
   PoseID: any;
 
   private _alreadyHandlingPoseChange: boolean = false;
-
-  constructor(
-    private fb: FormBuilder,
-    public mechanismSrv: MechanismService,
-    public synthesisBuilder: SynthesisBuilderService,
-    private nup: NumberUnitParserService,
-    private settings: SettingsService,
-    public svgGrid: SvgGridService,
-    private colorService: ColorService
-  ) {}
 
   ngOnInit() {
     //Set initial values
