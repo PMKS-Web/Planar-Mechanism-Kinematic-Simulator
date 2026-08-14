@@ -125,7 +125,22 @@ const floored = await drag(
   'onto-the-floor'
 );
 
-const report = { resting, posed, shrunk, grown, floored, errors };
+// The floor, read off the ram itself. The panel is no help here: this drag
+// starts from a freshly loaded template and ends with the mount somewhere the
+// re-selecting click does not find the skin, so every field comes back null --
+// which is why the only thing the old check could look at was the notice.
+const atFloor = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const sealed = grid.mechanismSrv.sealedStructures()[0];
+  if (!sealed) return null;
+  const span = Math.hypot(
+    sealed.barrelFar.x - sealed.rodFar.x,
+    sealed.barrelFar.y - sealed.rodFar.y
+  );
+  return { span, floor: grid.mechanismSrv.minimumCylinderSpan?.() ?? null };
+});
+
+const report = { resting, posed, shrunk, grown, floored, atFloor, errors };
 writeFileSync('artifacts/cylinder-drag/report.json', JSON.stringify(report, null, 2));
 console.log(JSON.stringify(report, null, 2));
 
@@ -135,9 +150,14 @@ const checks = [
   ['pushing past the retracted stop shrinks the ram', strokeOf(shrunk) < strokeOf(resting)],
   ['pulling past the extended stop grows it again', strokeOf(grown) > strokeOf(shrunk)],
   [
-    'the drag says so when it stops at the shortest cylinder',
-    /shortest cylinder/.test(floored.notice ?? ''),
+    // Silently, now: a mount that stops following your hand has already said
+    // it, and a notice saying it as well was noise. What has to stay true is
+    // that it stops -- the ram keeps a length rather than collapsing onto its
+    // own mount, which is what the drag was aimed at doing.
+    'the drag stops short rather than collapsing the ram onto its mount',
+    !!atFloor && atFloor.span > 1,
   ],
+  ['and says nothing about it', !/shortest cylinder/.test(floored.notice ?? '')],
   ['nothing threw', errors.length === 0],
 ];
 for (const [what, ok] of checks) console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}`);

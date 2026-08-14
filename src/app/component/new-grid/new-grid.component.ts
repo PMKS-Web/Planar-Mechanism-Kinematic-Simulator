@@ -84,7 +84,6 @@ import {
   cylinderHeadHalf,
   cylinderSizeOf,
   cylinderSpanRange,
-  cylinderMinimumSpan,
   cylinderJoints,
   isCylinderInterior as isCylinderInteriorOf,
 } from '../../model/cylinder';
@@ -162,7 +161,6 @@ export class NewGridComponent implements OnDestroy {
    * Whether this gesture has already said it reached the ram's floor. Reset
    * when a drag begins, so the message is per-gesture and not per-frame.
    */
-  private cylinderFloorReported = false;
 
   /**
    * A joint in range that will not take the merge, kept with its reason so the
@@ -1105,27 +1103,9 @@ export class NewGridComponent implements OnDestroy {
           // Through dragJoint rather than straight at dragCylinderMount, so a
           // mount two rams share is agreed between them before either moves.
           this.gridUtils.dragJoint(this.activeObjService.selectedJoint, wanted);
-          const atMinimum = draggedCylinders.some(
-            (draggedCylinder) =>
-              this.gridUtils.getPointDistance(
-                draggedCylinder.barrelFar.x,
-                draggedCylinder.barrelFar.y,
-                draggedCylinder.rodFar.x,
-                draggedCylinder.rodFar.y
-              ) <=
-              cylinderMinimumSpan(0.15 * this.settings.objectScale) + 1e-6
-          );
-          // The mount stops following the cursor at the shortest ram there is,
-          // and a gesture that stops should say why. Once per drag: this runs
-          // on every pointermove, and a message repeated sixty times a second
-          // is noise rather than an explanation.
-          if (atMinimum && !this.cylinderFloorReported) {
-            this.cylinderFloorReported = true;
-            this.notify.refusal(
-              'cylinder.at-minimum',
-              'That is the shortest cylinder there is — any less and the barrel has no room to slide in.'
-            );
-          }
+          // Not announced. The mount stops following the cursor at the
+          // shortest ram there is, and a part that stops moving under your own
+          // hand has already said so.
           this.dragState.noteMechanismModified();
           this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
           this.showPathWhileDragging();
@@ -1673,8 +1653,6 @@ export class NewGridComponent implements OnDestroy {
     this.synthesisClickMode = SynthesisClickMode.NORMAL;
     // The alignment guides belong to the drag that made them.
     this.axisSnapGuides = [];
-    // As does the floor message: the next gesture gets to say it again.
-    this.cylinderFloorReported = false;
 
     // Resolve the drop before releasing: the snap target is only meaningful
     // while the drag it belongs to is still in flight.

@@ -785,6 +785,28 @@ export class MechanismService {
     return 'A';
   }
 
+  /**
+   * Names for the joints inside a part, which nothing ever shows.
+   *
+   * Hung off the letter of the part's own mount and numbered -- A1, A2, A3 --
+   * so they read as belonging to it, and so `determineNextLetter` walks past
+   * them: it ranks ids by their place in the alphabet, and one of these has no
+   * place in it, which is exactly the point. They still have to be unique,
+   * because two rams can share a mount and would otherwise ask for the same
+   * three names.
+   */
+  private determineInteriorNames(base: string, count: number): string[] {
+    const taken = new Set(this.joints.map((joint) => joint.id));
+    const names: string[] = [];
+    for (let index = 1; names.length < count; index++) {
+      const candidate = `${base}${index}`;
+      if (taken.has(candidate)) continue;
+      taken.add(candidate);
+      names.push(candidate);
+    }
+    return names;
+  }
+
   createRevJoint(x: string, y: string, prevID?: string) {
     const x_num = roundNumber(Number(x), 3);
     const y_num = roundNumber(Number(y), 3);
@@ -2162,12 +2184,17 @@ export class MechanismService {
     }
     const creation = cylinderCreationLayout(start, end, this.settingsService.objectScale);
 
-    const taken = mountAt ? [mountAt.id] : [];
+    // A ram is five joints and shows two of them. The mounts are what the
+    // reader points at, names and reads back out of a panel, so they take
+    // letters; the barrel's near end, the pin and the slider are inside the
+    // part and are never drawn, labelled or listed. Spending a letter on each
+    // of those ran a drawing through the alphabet three times faster than the
+    // joints anyone could see, and it was the hidden ones that pushed the
+    // visible ones into punctuation.
     const aId = mountAt ? mountAt.id : this.determineNextLetter();
-    const bId = this.determineNextLetter(taken.concat(aId));
-    const cId = this.determineNextLetter([bId]);
-    const dId = this.determineNextLetter([cId]);
-    const pId = this.determineNextLetter([dId]);
+    const dId = this.determineNextLetter([aId]);
+    const insideNames = this.determineInteriorNames(aId, 3);
+    const [bId, cId, pId] = insideNames;
 
     const place = (at: { x: number; y: number }): [number, number] => [
       roundNumber(at.x, 3),
