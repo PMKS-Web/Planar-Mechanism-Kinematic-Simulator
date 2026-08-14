@@ -32,7 +32,6 @@ export class EditableTitleComponent {
   private mechanismService = inject(MechanismService);
   private notify = inject(NotificationService);
 
-  readonly showActionButtons = input<boolean>(false);
   /** Shown instead of the object's own name — a cylinder displays its mounts. */
   readonly displayName = input<string>();
   readonly deleteAction = input.required<() => void>();

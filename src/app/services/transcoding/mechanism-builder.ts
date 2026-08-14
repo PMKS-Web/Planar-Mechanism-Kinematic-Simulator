@@ -283,7 +283,7 @@ export class MechanismBuilder {
       const decodedLength = this.transcoder.getEnumSetting(
         EnumSetting.LENGTH_UNIT,
         LengthUnit
-      ) as LengthUnit;
+      )! as LengthUnit;
       // Length is the authoritative legacy field. Older URLs omitted the
       // global enum, and some four-enum URLs encoded a contradictory global
       // value; normalize the trio before any mechanism is constructed.
@@ -297,7 +297,8 @@ export class MechanismBuilder {
         normalizedGlobal === GlobalUnit.ENGLISH ? ForceUnit.LBF : ForceUnit.NEWTON;
       this.settings.lengthUnit.next(decodedLength);
       this.settings.angleUnit.next(
-        this.transcoder.getEnumSetting(EnumSetting.ANGLE_UNIT, AngleUnit)
+        // The checksum admits no URL without this enum, so it is always present.
+        this.transcoder.getEnumSetting(EnumSetting.ANGLE_UNIT, AngleUnit)!
       );
       this.settings.forceUnit.next(normalizedForce);
       this.settings.globalUnit.next(normalizedGlobal);

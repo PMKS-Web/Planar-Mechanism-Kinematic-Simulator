@@ -99,15 +99,17 @@ export abstract class GenericTranscoder {
     return this.forces;
   }
 
-  private getEnumValueByIndex<T extends object>(enumType: T, index: number): T[keyof T] {
+  private getEnumValueByIndex<T extends object>(
+    enumType: T,
+    index: number
+  ): T[keyof T] | undefined {
     const enumKeys = Object.keys(enumType).filter((k) => isNaN(Number(k)));
-    // An out-of-range index has always come back undefined; the cast keeps the
-    // historical contract where callers treat the value as present.
-    return enumType[enumKeys[index] as keyof T];
+    const enumKey = enumKeys[index];
+    return enumKey !== undefined ? enumType[enumKey as keyof T] : undefined;
   }
 
   // Returns the enum value linked with the setting.
-  getEnumSetting<T extends object>(setting: EnumSetting, enumType: T): T[keyof T] {
+  getEnumSetting<T extends object>(setting: EnumSetting, enumType: T): T[keyof T] | undefined {
     const settingIndex = this.getEnumIndexByValue(EnumSetting, setting) as number;
     const enumIndex = this.enumData[settingIndex];
     return this.getEnumValueByIndex(enumType, enumIndex);

@@ -14,7 +14,6 @@ import { MatInput } from '@angular/material/input';
 })
 export class DualInputComponent {
   readonly tooltip = input.required<string>();
-  readonly unit = input<string | undefined>(undefined);
   readonly formControl1 = input.required<string>();
   readonly label1 = input<string>('X');
   readonly label2 = input<string>('Y');

@@ -147,10 +147,10 @@ export class NewGridComponent implements OnDestroy {
 
   private svgGridElement!: HTMLElement;
   public cMenuItems: cMenuItem[] = [];
-  public lastRightClick: Joint | Link | Force | String = '';
+  public lastRightClick: Joint | Link | Force | string = '';
   public lastRightClickCoord: Coord = new Coord(0, 0);
 
-  public lastLeftClick: Joint | Link | Force | String | SynthesisPose = '';
+  public lastLeftClick: Joint | Link | Force | string | SynthesisPose = '';
   lastLeftClickType: string = 'Nothing';
 
   /**
@@ -360,7 +360,7 @@ export class NewGridComponent implements OnDestroy {
     return this.instance.objectKind(this.instance.lastLeftClick);
   }
 
-  private objectKind(value: Joint | Link | String | Force | SynthesisPose): string {
+  private objectKind(value: Joint | Link | string | Force | SynthesisPose): string {
     if (value instanceof Force) return 'Force';
     if (value instanceof RealLink) return 'RealLink';
     if (value instanceof PrisJoint) return 'PrisJoint';
@@ -718,7 +718,7 @@ export class NewGridComponent implements OnDestroy {
     this.mechanismSrv.createCylinderFrom(start, end, mountOn, mountAt);
   }
 
-  setLastRightClick(clickedObj: Joint | Link | String | Force, event?: MouseEvent) {
+  setLastRightClick(clickedObj: Joint | Link | string | Force, event?: MouseEvent) {
     this.lastRightClick = clickedObj;
     // The edit context menu acts on the selected object, so in Edit mode a
     // right-click selects what it will target. In Analyze/Synthesis mode a
@@ -756,7 +756,7 @@ export class NewGridComponent implements OnDestroy {
       Math.atan2(this.mouseLocation.y - pose.position.y, this.mouseLocation.x - pose.position.x);
   }
 
-  setLastLeftClick(clickedObj: Joint | Link | String | Force | SynthesisPose, event?: MouseEvent) {
+  setLastLeftClick(clickedObj: Joint | Link | string | Force | SynthesisPose, event?: MouseEvent) {
     // Scenery in the analysis modes takes no clicks: every panel behind a
     // selection is about a machine that runs, and this geometry is not in one.
     if (

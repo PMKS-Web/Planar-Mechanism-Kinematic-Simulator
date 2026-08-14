@@ -65,7 +65,7 @@ export class ActiveObjService {
     // The grid canvas hands its empty-string sentinel through here for a
     // background click, and a force's endpoint Coord for an endpoint drag, so
     // both are part of the contract.
-    newActiveObj: Joint | Link | Force | Coord | SynthesisPose | String | undefined | null,
+    newActiveObj: Joint | Link | Force | Coord | SynthesisPose | string | undefined | null,
     forceParent: Force | null = null
   ) {
     this.prevSelectedJoint = this.selectedJoint;
