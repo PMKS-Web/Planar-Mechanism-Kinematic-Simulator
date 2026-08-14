@@ -51,6 +51,13 @@ async function open(payload) {
 
 // --- a mechanism that runs says so, and stays out of the way ----------------
 await open(payloads['4-Bar']);
+// Weight is a load now: gravity hanging on links that have mass is a complete
+// static problem, so the four-bar as it arrives is ready for force analysis.
+// Turning gravity off is what makes this drawing genuinely unloaded, which is
+// the refusal these three checks are about.
+await page.evaluate(() => {
+  ng.getComponent(document.querySelector('app-new-grid')).settings.isGravity.next(false);
+});
 await tab('Force').click();
 await page.waitForTimeout(600);
 let text = await drawerText();

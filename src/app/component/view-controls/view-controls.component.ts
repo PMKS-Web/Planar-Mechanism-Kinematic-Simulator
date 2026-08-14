@@ -12,6 +12,9 @@ import { SvgGridService } from '../../services/svg-grid.service';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
 
+/** The one gap a card keeps from its neighbour (left-tabs.vars.scss). */
+const CARD_GAP = 12;
+
 /**
  * View toggles that apply in every mode, so they sit at the foot of the nav
  * rail rather than inside a mode's own section.
@@ -30,41 +33,60 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /**
-   * Publish how wide this card is, for the drawer that stands over it.
+   * Publish where this card is, for the drawer that stands over it.
    *
-   * The setup drawer is meant to line up with these controls, and this card's
-   * width is the number of buttons it happens to carry -- so it is measured
-   * here rather than written down twice and left to drift the next time a
-   * button is added.
+   * The setup drawer is meant to line up with these controls and stop one gap
+   * above them, and both numbers are this card's own -- its width is however
+   * many buttons it ends up carrying, and its top edge is where the drawer has
+   * to stop. Measured here rather than written down twice and left to drift.
+   *
+   * The drawer used to measure the whole transport row instead, which grows a
+   * row per machine while unsynced: three machines pushed the drawer 92px up
+   * the window, away from controls that had not moved.
    */
   ngAfterViewInit(): void {
     const card = this.host.nativeElement.querySelector('.viewControls') as HTMLElement | null;
     if (!card || typeof ResizeObserver === 'undefined') return;
-    this.publishWidth(card);
-    this.widthWatch = new ResizeObserver(() => this.publishWidth(card));
-    this.widthWatch.observe(card);
+    this.publishGeometry(card);
+    this.geometryWatch = new ResizeObserver(() => this.publishGeometry(card));
+    this.geometryWatch.observe(card);
+    // The card is anchored to the bottom of the window, so a resize moves it
+    // without changing its size -- which a ResizeObserver alone would miss.
+    this.onWindowResize = () => this.publishGeometry(card);
+    window.addEventListener('resize', this.onWindowResize);
   }
 
-  private widthWatch?: ResizeObserver;
+  private geometryWatch?: ResizeObserver;
+  private onWindowResize?: () => void;
 
-  private publishWidth(card: HTMLElement): void {
-    const width = Math.round(card.getBoundingClientRect().width);
-    if (width > 0) {
-      document.documentElement.style.setProperty('--view-controls-width', `${width}px`);
+  private publishGeometry(card: HTMLElement): void {
+    const box = card.getBoundingClientRect();
+    const style = document.documentElement.style;
+    if (box.width > 0) {
+      style.setProperty('--view-controls-width', `${Math.round(box.width)}px`);
+    }
+    if (box.height > 0) {
+      // From the bottom of the window to the top of this card, plus the gap a
+      // card keeps from its neighbour.
+      const clearance = Math.round(window.innerHeight - box.top) + CARD_GAP;
+      style.setProperty('--view-controls-clearance', `${clearance}px`);
     }
   }
 
   ngOnDestroy(): void {
-    this.widthWatch?.disconnect();
+    this.geometryWatch?.disconnect();
+    if (this.onWindowResize) window.removeEventListener('resize', this.onWindowResize);
     document.documentElement.style.removeProperty('--view-controls-width');
+    document.documentElement.style.removeProperty('--view-controls-clearance');
   }
 
   /**
-   * Whether the thing this button switches on is currently on.
+   * Whether the thing this button switches on is on screen right now.
    *
-   * The icon already swaps between an on and an off glyph; the button also
-   * carries the state as a tint now that the words have gone, because an icon
-   * alone is a weaker signal than an icon beside the word it stands for.
+   * The three switches say it the same way: a tint behind the button for on,
+   * and a glyph that draws what is on the grid — crossed out only when the
+   * thing is not there. The glyph used to offer the *other* state, so a switch
+   * that was on wore the icon for off and the tint for on at the same time.
    */
   isShowingCoM(): boolean {
     return this.settingsService.isShowCOM.value;
@@ -74,37 +96,35 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
     return this.settingsService.isShowID.value;
   }
 
-  noJointExists(): boolean {
-    return this.mechanismService.joints.length === 0;
-  }
-
   isShowingTraces(): boolean {
     return this.settingsService.isShowTraces.value;
   }
 
   /**
-   * Nothing traces its path, so there is nothing for this switch to do.
+   * Nothing on the grid would change, so the switch is greyed.
    *
-   * Greyed rather than hidden: a control that comes and goes as joints are
-   * asked to trace is a control nobody learns the position of.
+   * Greyed rather than hidden: a control that comes and goes as the drawing
+   * does is a control nobody learns the position of. Each button asks about
+   * exactly what its own toggle draws — labels want a joint to name, the
+   * centre-of-mass mark wants a link with a mass to have a centre of, and a
+   * path wants a joint that has been asked to trace one.
    */
+  noJointExists(): boolean {
+    return this.mechanismService.joints.length === 0;
+  }
+
+  noMassiveLink(): boolean {
+    return !this.mechanismService.getLinks().some((link) => link.mass > 0);
+  }
+
   noTracedJoint(): boolean {
     return !this.mechanismService.joints.some(
       (joint) => (joint as { showCurve?: boolean }).showCurve
     );
   }
 
-  /** The glyph offers the other state, as the centre-of-mass button does. */
-  traceIconName(): string {
-    return this.settingsService.isShowTraces.value ? 'hide_path' : 'show_path';
-  }
-
   onShowTracesPressed(): void {
     this.settingsService.isShowTraces.next(!this.settingsService.isShowTraces.value);
-  }
-
-  noLinkExists(): boolean {
-    return this.mechanismService.links.length === 0;
   }
 
   showCenterOfMass(): void {
@@ -116,11 +136,15 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   }
 
   comIconName(): string {
-    return this.settingsService.isShowCOM.value ? 'com_off' : 'com';
+    return this.settingsService.isShowCOM.value ? 'com' : 'com_off';
   }
 
   idLabelIconName(): string {
-    return this.settingsService.isShowID.value ? 'abc_off' : 'abc';
+    return this.settingsService.isShowID.value ? 'abc' : 'abc_off';
+  }
+
+  traceIconName(): string {
+    return this.settingsService.isShowTraces.value ? 'show_path' : 'hide_path';
   }
 
   onShowIDPressed(): void {

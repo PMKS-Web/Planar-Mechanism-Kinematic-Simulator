@@ -15,10 +15,12 @@
   .setup {
     display: flex;
     flex-direction: column;
-    // Fills the drawer rather than stopping under its last section: the list
-    // grows with the drawing, so a card sized to its content ends somewhere
-    // different every time and reads as one that has been cut off.
-    height: 100%;
+    // Ends under its last section, and only runs on when there is more list
+    // than room -- at which point the drawer's own cap stops it a gap above
+    // the view controls and this card takes over the scrolling. A card held
+    // open to the full height of the window on a drawing with one short list
+    // in it is mostly empty white.
+    height: auto;
     max-height: 100%;
     overflow-y: auto;
     overflow-x: hidden;

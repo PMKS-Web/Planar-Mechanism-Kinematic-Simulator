@@ -447,6 +447,115 @@ record(
   { inEdit, inAnalysis }
 );
 
+// --- the three view switches say their state the same way -------------------
+const switches = () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.viewControls .viewButton')].slice(0, 3).map((button) => {
+      const icon = button.querySelector('mat-icon');
+      return {
+        name: button.getAttribute('aria-label'),
+        glyph: icon?.getAttribute('data-mat-icon-name') ?? '',
+        on: button.classList.contains('on'),
+        disabled: button.disabled,
+        tinted: getComputedStyle(button).backgroundColor !== 'rgba(0, 0, 0, 0)',
+        ink: getComputedStyle(icon).color,
+      };
+    })
+  );
+
+await load(payloads['4-Bar']);
+await page.evaluate(() => {
+  // One joint tracing, so all three switches have something to act on.
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.mechanismSrv.joints[1].showCurve = true;
+  grid.mechanismSrv.updateMechanism();
+});
+await page.waitForTimeout(700);
+const asDrawn = await switches();
+record(
+  'the switches arrive with marks and paths on and labels off',
+  asDrawn[0].on && !asDrawn[1].on && asDrawn[2].on,
+  asDrawn.map((s) => `${s.name}=${s.on}`)
+);
+// The glyph draws what is on the grid, so the crossed-out one means hidden.
+// The two icon families spell that differently: com/com_off beside
+// show_path/hide_path.
+const crossedOut = (glyph) => glyph.endsWith('_off') || glyph.startsWith('hide');
+record(
+  'each glyph draws the state the grid is in, not the one on offer',
+  asDrawn.every((s) => s.on === !crossedOut(s.glyph)),
+  asDrawn.map((s) => `${s.glyph}:${s.on}`)
+);
+record(
+  'and the tint alone carries it -- every glyph is the same grey',
+  asDrawn.every((s) => s.tinted === s.on) && new Set(asDrawn.map((s) => s.ink)).size === 1,
+  asDrawn.map((s) => `${s.name} tint=${s.tinted} ink=${s.ink}`)
+);
+
+// Nothing left for any of them to do: no mass to mark, no path being traced,
+// and on an empty grid no joint to label either.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.mechanismSrv.links.forEach((link) => (link.mass = 0));
+  grid.mechanismSrv.joints.forEach((joint) => (joint.showCurve = false));
+  grid.mechanismSrv.updateMechanism();
+});
+await page.waitForTimeout(700);
+const idle = await switches();
+record(
+  'a switch that would change nothing is greyed',
+  idle[0].disabled && idle[2].disabled && !idle[1].disabled,
+  idle.map((s) => `${s.name}=${s.disabled}`)
+);
+
+// --- the setup drawer keeps one gap all round, whatever the transport does --
+const drawerGaps = () =>
+  page.evaluate(() => {
+    const card = document.querySelector('app-analysis-setup .setup')?.getBoundingClientRect();
+    const controls = document.querySelector('.viewControls').getBoundingClientRect();
+    const strip = document.querySelector('.historyCard').getBoundingClientRect();
+    if (!card) return null;
+    return {
+      above: Math.round(card.top - strip.bottom),
+      below: Math.round(controls.top - card.bottom),
+      height: Math.round(card.height),
+    };
+  });
+
+await load(THREE_MACHINES);
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click({ force: true });
+await page.waitForTimeout(900);
+await page.evaluate(() => ng.getComponent(document.querySelector('app-top-bar')).openSetup());
+await page.waitForTimeout(900);
+// A window too short for the list, so the drawer is at its full extent and the
+// gap below it is the one being kept rather than wherever the content ended.
+await page.setViewportSize({ width: 1500, height: 700 });
+await page.evaluate(() =>
+  document.querySelectorAll('app-analysis-setup .sectionHeader').forEach((head) => head.click())
+);
+await page.waitForTimeout(800);
+const gapsSynced = await drawerGaps();
+record(
+  'the gap under the setup drawer matches the gap over it',
+  gapsSynced && gapsSynced.above === gapsSynced.below,
+  gapsSynced
+);
+
+await page.evaluate(() => {
+  const bar = ng.getComponent(document.querySelector('app-playback-bar'));
+  if (typeof bar.toggleSync === 'function') bar.toggleSync();
+});
+await page.waitForTimeout(1000);
+const gapsUnsynced = await drawerGaps();
+record(
+  'and a transport that grows a row per machine does not push it up',
+  gapsUnsynced &&
+    gapsUnsynced.below === gapsSynced.below &&
+    gapsUnsynced.height === gapsSynced.height,
+  { gapsSynced, gapsUnsynced }
+);
+await page.setViewportSize({ width: 1500, height: 950 });
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 await browser.close();
 

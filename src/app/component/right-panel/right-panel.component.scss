@@ -88,11 +88,21 @@
     box-sizing: border-box;
     overflow-x: hidden;
     overflow-y: auto;
-    // The transport is measured rather than assumed: unsynced it carries a row
-    // per machine, and a drawer capped for a one-row transport came down
-    // through a three-row one.
+    // Down to one gap above the view controls, and no further -- measured off
+    // that card, which the view controls publish.
+    //
+    // The transport is deliberately not part of this. It stands to the left of
+    // the drawer and grows a row per machine while unsynced, and taking its
+    // height into account walked the drawer up the window as machines were
+    // unsynced, away from controls that had not moved. Where the two do meet,
+    // the drawer is in front.
+    //
+    // Plus the shadow room, because that clearance is measured to where the
+    // *card* stops and this frame holds the card that much inside it.
     max-height: calc(
-      100% - #{nav.$top-strip-height} - var(--playback-clearance, #{nav.$playback-clearance})
+      100% -
+        #{nav.$top-strip-height} - var(--view-controls-clearance, #{nav.$view-controls-clearance}) +
+        #{nav.$shadow-room}
     );
     display: flex;
     z-index: 9;
@@ -106,15 +116,6 @@
 
     &.wide {
       width: calc(500px + #{nav.$shadow-room} + #{nav.$card-inset});
-    }
-
-    // The setup drawer runs to the bottom rather than stopping under its last
-    // section: it is a list that grows as a drawing does, and a card that ends
-    // half way reads as a card that has been cut off.
-    &.fullHeight {
-      height: calc(
-        100% - #{nav.$top-strip-height} - var(--playback-clearance, #{nav.$playback-clearance})
-      );
     }
 
     animation-duration: 4s;

@@ -52,9 +52,12 @@
         background: rgba(0, 0, 0, 0.04);
       }
 
+      // On means a tint behind the glyph, and nothing else. The glyph itself
+      // stays the same grey in both states: it is drawing what is on the grid,
+      // so having it change colour as well made two signals out of one, and
+      // the three switches disagreed about which of them carried the state.
       &.on {
         background: #eef1fc;
-        color: #3f51b5;
       }
 
       &:disabled {

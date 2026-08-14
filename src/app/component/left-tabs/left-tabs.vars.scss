@@ -37,6 +37,16 @@ $top-strip-height: $panel-top;
 $playback-clearance: 110px;
 
 /**
+ * Room kept at the bottom for the view-controls card and the status strip.
+ *
+ * The same 110px as above only because that card is 60px tall today: it is the
+ * card's own height plus the 38px the cluster floats above the status strip
+ * plus the one gap. The view controls measure themselves and publish
+ * `--view-controls-clearance`; this is the fallback for before that lands.
+ */
+$view-controls-clearance: 110px;
+
+/**
  * Where the playback cluster can stand clear of the analysis panel.
  *
  * The panel is 420px wide in the analysis modes and the cluster about 880, so

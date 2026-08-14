@@ -225,21 +225,6 @@ export class RightPanelComponent implements DoCheck {
     return this.getOpenTab() === 2 || this.getOpenTab() === 4;
   }
 
-  /**
-   * The setup lists run to the bottom of the window.
-   *
-   * They grow with the drawing -- a mechanism per section, a check per blocker
-   * -- so a card sized to its content ends somewhere different every time and
-   * reads as having been cut off. The other pages are fixed lists and stop
-   * where they stop.
-   */
-  isSetupPage(): boolean {
-    return (
-      this.getOpenTab() === RightPanelComponent.KINEMATIC_SETUP_TAB ||
-      this.getOpenTab() === RightPanelComponent.FORCE_SETUP_TAB
-    );
-  }
-
   getIsOpen() {
     return RightPanelComponent.isOpen;
   }
