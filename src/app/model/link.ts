@@ -142,7 +142,7 @@ export class RealLink extends Link {
 
   // TODO: Have an optional argument of forces
 
-  public static debugDesiredJointsIDs: any;
+  public static debugDesiredJointsIDs: unknown;
   public lastSelectedSublink: Link | null = null;
 
   constructor(
@@ -318,7 +318,7 @@ export class RealLink extends Link {
     const hullPoints = hull(points, Infinity) as number[][];
 
     let hullContainsPoint = false;
-    hullPoints.forEach((point: any) => {
+    hullPoints.forEach((point: number[]) => {
       if (point[0] === x && point[1] === y) {
         hullContainsPoint = true;
       }
@@ -374,7 +374,7 @@ export class RealLink extends Link {
 
     //Match resuling x,y points to joints
     let desiredJointsIDs: string = '';
-    hullPoints.forEach((point: any) => {
+    hullPoints.forEach((point: number[]) => {
       const joint = allJoints.find((j) => j.x === point[0] && j.y === point[1]);
       if (joint) desiredJointsIDs += joint.id;
     });

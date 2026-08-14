@@ -48,8 +48,6 @@ export class SynthesisPanelComponent implements OnInit {
   svgGrid = inject(SvgGridService);
   private colorService = inject(ColorService);
 
-  PoseID: any;
-
   private _alreadyHandlingPoseChange: boolean = false;
 
   ngOnInit() {

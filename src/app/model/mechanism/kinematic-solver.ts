@@ -930,8 +930,8 @@ export class KinematicsSolver {
     simJoints: Joint[],
     simLinks: Link[],
     analysisType: string
-  ): any[] {
-    const unknownLinksOrJoints: Array<any> = [];
+  ): Array<Link | Joint> {
+    const unknownLinksOrJoints: Array<Link | Joint> = [];
     // first, determine variable locations (X)
     this.requiredLoops.forEach((loop) => {
       for (const edge of loop.edges) {
@@ -1186,7 +1186,7 @@ export class KinematicsSolver {
     return rate ? [-rate[0], -rate[1], 0] : [Number.NaN, Number.NaN, 0];
   }
 
-  private static addTwoArrays(first_array: any, second_array: any) {
+  private static addTwoArrays(first_array: number[], second_array: number[]) {
     return first_array.map(function (num: number, idx: number) {
       // may have to caste num and second_array[idx]
       return num + second_array[idx];

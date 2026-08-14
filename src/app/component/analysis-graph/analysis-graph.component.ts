@@ -15,6 +15,8 @@ import {
 import {
   ApexAnnotations,
   ApexAxisChartSeries,
+  ApexChart,
+  ApexGrid,
   ApexDataLabels,
   ApexFill,
   ApexLegend,
@@ -43,7 +45,7 @@ import { AnalysisApexChartComponent } from './analysis-apex-chart.component';
 export type ChartOptions = {
   annotations: ApexAnnotations;
   series: ApexAxisChartSeries;
-  chart: any; //ApexChart;
+  chart: ApexChart;
   dataLabels: ApexDataLabels;
   markers: ApexMarkers;
   title: ApexTitleSubtitle;
@@ -52,9 +54,8 @@ export type ChartOptions = {
   xaxis: ApexXAxis;
   tooltip: ApexTooltip;
   stroke: ApexStroke;
-  grid: any; //ApexGrid;
-  colors: any;
-  toolbar: any;
+  grid: ApexGrid;
+  colors: string[];
   legend: ApexLegend;
 };
 
@@ -170,7 +171,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       points: [],
     },
     chart: {
-      objectScale: '100%', //380
+      width: '100%',
       height: '250px', //300
       animations: {
         // enabled: false,

@@ -49,7 +49,7 @@ export abstract class GenericTranscoder {
 
   // Returns the index of the given enum value within the specified enum type.
   // Example usage: getEnumIndex(Color, Color.RED)
-  private getEnumIndexByValue(enumType: object, enumValue: any): number | undefined {
+  private getEnumIndexByValue(enumType: object, enumValue: number | string): number | undefined {
     const enumKeys = Object.keys(enumType).filter((k) => isNaN(Number(k)));
     const index = enumKeys.findIndex((k) => enumType[k as keyof typeof enumType] === enumValue);
     return index !== -1 ? index : undefined;
@@ -57,7 +57,7 @@ export abstract class GenericTranscoder {
 
   // Stores a global setting of type enum in the enumData dictionary.
   // Example usage: addEnumSetting("theme", Color, Color.RED)
-  addEnumSetting(setting: EnumSetting, enumType: object, enumValue: any): void {
+  addEnumSetting(setting: EnumSetting, enumType: object, enumValue: number | string): void {
     const settingIndex = this.getEnumIndexByValue(EnumSetting, setting) as number;
     const index = this.getEnumIndexByValue(enumType, enumValue);
     if (index !== undefined) {
@@ -99,14 +99,15 @@ export abstract class GenericTranscoder {
     return this.forces;
   }
 
-  private getEnumValueByIndex(enumType: object, index: number): any | undefined {
+  private getEnumValueByIndex<T extends object>(enumType: T, index: number): T[keyof T] {
     const enumKeys = Object.keys(enumType).filter((k) => isNaN(Number(k)));
-    const enumKey = enumKeys[index];
-    return enumKey !== undefined ? enumType[enumKey as keyof typeof enumType] : undefined;
+    // An out-of-range index has always come back undefined; the cast keeps the
+    // historical contract where callers treat the value as present.
+    return enumType[enumKeys[index] as keyof T];
   }
 
   // Returns the enum value linked with the setting.
-  getEnumSetting(setting: EnumSetting, enumType: object): any {
+  getEnumSetting<T extends object>(setting: EnumSetting, enumType: T): T[keyof T] {
     const settingIndex = this.getEnumIndexByValue(EnumSetting, setting) as number;
     const enumIndex = this.enumData[settingIndex];
     return this.getEnumValueByIndex(enumType, enumIndex);

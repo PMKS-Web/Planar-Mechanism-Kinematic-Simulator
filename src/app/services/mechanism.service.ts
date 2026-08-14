@@ -118,7 +118,6 @@ export class MechanismService {
   public unassigned: UnassignedGeometry = { floatingChains: [], looseJoints: [], fixedLinks: [] };
   public showPathHolder: boolean = true;
 
-  // private moveModes: moveModes = moveModes;
   // private selectedJoint!: RealJoint;
 
   // This is the state of the mechanism

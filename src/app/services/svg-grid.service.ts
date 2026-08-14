@@ -46,7 +46,7 @@ export class SvgGridService {
    * and the grid being rebuilt independently.
    */
   public cursorAt: { x: number; y: number } | null = null;
-  public panZoomObject: any;
+  public panZoomObject!: SvgPanZoom.Instance;
   public CTM!: SVGMatrix;
   public viewBoxMinX: number = 0;
   public viewBoxMaxX: number = 0;
@@ -76,7 +76,7 @@ export class SvgGridService {
 
     eventsHandler = {
       haltEventListeners: ['touchstart', 'touchend', 'touchmove', 'touchleave', 'touchcancel'],
-      init: function (options: any) {
+      init: function (options: SvgPanZoom.CustomEventOptions) {
         var instance = options.instance,
           initialScale = 1,
           pannedX = 0,
@@ -92,17 +92,17 @@ export class SvgGridService {
         this.hammer.get('pinch').set({ enable: true });
 
         // Handle double tap
-        this.hammer.on('doubletap', function (ev: any) {
+        this.hammer.on('doubletap', function (ev: HammerInput) {
           // instance.zoomIn();
         });
 
         // Handle tap (click) and no drag.
-        this.hammer.on('tap', function (ev: any) {
+        this.hammer.on('tap', function (ev: HammerInput) {
           NewGridComponent.instance.handleTap();
         });
 
         // Handle pan
-        this.hammer.on('panstart panmove', function (ev: any) {
+        this.hammer.on('panstart panmove', function (ev: HammerInput) {
           // The canvas may only pan while a pointer is genuinely down. Hammer
           // tracks that from events on the element it is bound to, and a
           // gesture whose target is destroyed mid-drag — a joint merged into
@@ -128,7 +128,7 @@ export class SvgGridService {
         });
 
         // Handle pinch
-        this.hammer.on('pinchstart pinchmove', function (ev: any) {
+        this.hammer.on('pinchstart pinchmove', function (ev: HammerInput) {
           // On pinch start remember initial zoom
           if (ev.type === 'pinchstart') {
             initialScale = instance.getZoom();
@@ -137,10 +137,6 @@ export class SvgGridService {
 
           instance.zoomAtPoint(initialScale * ev.scale, { x: ev.center.x, y: ev.center.y });
         });
-
-        // this.hammer.on('press', function (ev: any) {
-        //   NewGridComponent.onContextMenu(ev.center.x, ev.center.y);
-        // });
 
         // Prevent moving the page on some devices when panning over SVG
         options.svgElement.addEventListener('touchmove', function (e: TouchEvent) {
@@ -275,7 +271,7 @@ export class SvgGridService {
     );
   }
 
-  handleBeforePan(oldPan: any, newPan: any) {
+  handleBeforePan(oldPan: SvgPanZoom.Point, newPan: SvgPanZoom.Point) {
     if (this.panLockOut) {
       this.panLockOut = false;
       return oldPan;
@@ -349,7 +345,7 @@ export class SvgGridService {
     });
   }
 
-  handleBeforeZoom(oldZoom: any, newZoom: any) {
+  handleBeforeZoom(oldZoom: number, newZoom: number) {
     let isZoomingIn = newZoom > oldZoom;
     if (isZoomingIn && this.getZoom() > this.MAX_ZOOM) {
       this.panLockOut = true;

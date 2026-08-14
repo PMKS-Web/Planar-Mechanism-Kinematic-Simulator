@@ -1,3 +1,4 @@
+import { Subscription } from 'rxjs';
 import {
   AfterContentInit,
   Component,
@@ -212,9 +213,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   static instance: EditPanelComponent;
 
   //maintain a list of subcriptions to unsubscribe later
-  onDestroySubscriptions: any[] = [];
+  onDestroySubscriptions: Subscription[] = [];
   //dynamic form array subscriptions
-  otherJoitnsSubscriptions: any[] = [];
+  otherJoitnsSubscriptions: Subscription[] = [];
   /**
    * The pending re-enable pass scheduled by a selection change. It has to be
    * cancellable: the pass asks the mechanism what the joint may do, and a

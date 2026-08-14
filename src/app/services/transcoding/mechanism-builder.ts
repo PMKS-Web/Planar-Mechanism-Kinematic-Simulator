@@ -263,7 +263,7 @@ export class MechanismBuilder {
     const previousId = ['Joint', 'Link', 'Force'].includes(selectedType)
       ? this.activeObj.getSelectedObj().id
       : undefined;
-    let activeObj: any = null;
+    let activeObj: Joint | Link | Force | null = null;
     if (previousId) {
       activeObj =
         this.getJointByID(joints, previousId) ??

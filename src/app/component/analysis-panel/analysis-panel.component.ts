@@ -107,7 +107,7 @@ export class AnalysisPanelComponent {
     JInputForce: false,
   };
 
-  mechStateSub: any;
+  mechStateSub?: Subscription;
   private subscriptions = new Subscription();
   private rowCache?: { key: string; mechanism: unknown; rows: ForceAnalysisRow[] };
 

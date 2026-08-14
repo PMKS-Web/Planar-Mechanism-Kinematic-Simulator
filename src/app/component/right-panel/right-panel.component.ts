@@ -413,9 +413,10 @@ export class RightPanelComponent implements DoCheck {
     switch (true) {
       case agent.indexOf('edge') > -1:
         return 'Edge';
-      case agent.indexOf('opr') > -1 && !!(<any>window).opr:
+      case agent.indexOf('opr') > -1 && !!(window as unknown as Record<string, unknown>)['opr']:
         return 'Opera';
-      case agent.indexOf('chrome') > -1 && !!(<any>window).chrome:
+      case agent.indexOf('chrome') > -1 &&
+        !!(window as unknown as Record<string, unknown>)['chrome']:
         return 'Chrome';
       case agent.indexOf('trident') > -1:
         return 'Internet Explorer';
@@ -513,7 +514,7 @@ export class RightPanelComponent implements DoCheck {
           this.sendingEmail = false;
           this.commentForm.reset();
         })
-        .catch((error: any) => {
+        .catch((error: unknown) => {
           console.log(error);
           this.notify.failure(
             'feedback.send-failed',

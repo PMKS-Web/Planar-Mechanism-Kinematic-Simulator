@@ -134,7 +134,7 @@ export class NewGridComponent implements OnDestroy {
   dragState = inject(DragStateService);
   sliderMarks = inject(SliderMarkService);
 
-  public static debugValue: any;
+  public static debugValue: unknown;
   static debugPoints: Coord[] = [];
   public static debugLines: Line[] = [];
 
