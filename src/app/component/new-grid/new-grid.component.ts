@@ -108,14 +108,13 @@ export interface SlotStackItem {
 }
 import introJs from 'intro.js';
 import { SvgArrowComponent } from '../svg-arrow/svg-arrow.component';
-import { NotificationComponent } from '../notification/notification.component';
 
 @Component({
   selector: 'app-new-grid',
   templateUrl: './new-grid.component.html',
   styleUrls: ['./new-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CdkContextMenuTrigger, SvgArrowComponent, ContextMenuComponent, NotificationComponent],
+  imports: [CdkContextMenuTrigger, SvgArrowComponent, ContextMenuComponent],
 })
 export class NewGridComponent implements OnDestroy {
   svgGrid = inject(SvgGridService);
