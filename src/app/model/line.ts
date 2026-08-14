@@ -1,9 +1,7 @@
-import { Joint, RealJoint } from './joint';
+import { Joint } from './joint';
 import { Coord } from './coord';
 import { arc_arc_intersect, line_arc_intersect, line_line_intersect } from './utils';
 import { RealLink } from './link';
-import { SettingsService } from '../services/settings.service';
-import { center } from 'svg-pan-zoom';
 
 export class Line {
   startPosition: Coord;
@@ -98,7 +96,6 @@ export class Line {
 
   splitAt(coord: Coord): Line | undefined {
     if (this.startPosition.equals(coord) || this.endPosition.equals(coord)) {
-      // console.log('Cannot split at start or end position', coord, this);
       return;
     } else {
       let newLine = new Line(coord, this.endPosition);
@@ -199,7 +196,6 @@ export class Arc extends Line {
 
   override splitAt(coord: Coord): Line | undefined {
     if (this.startPosition.equals(coord) || this.endPosition.equals(coord)) {
-      // console.log('Cannot split at start or end position', coord, this);
       return;
     } else {
       let newArc = new Arc(coord, this.endPosition, this.center);

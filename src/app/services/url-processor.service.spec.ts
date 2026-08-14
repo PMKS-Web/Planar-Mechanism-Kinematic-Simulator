@@ -1,5 +1,4 @@
 import { TestBed } from '@angular/core/testing';
-import { AppModule } from '../app.module';
 import { MechanismService } from './mechanism.service';
 import { UrlProcessorService } from './url-processor.service';
 import { TEMPLATE_LINKAGES } from '../component/MODALS/templates/template-linkages';
@@ -30,7 +29,7 @@ describe('opening a linkage while another is animating', () => {
   const pose = () => mechanism.joints.map((joint) => ({ id: joint.id, x: joint.x, y: joint.y }));
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     mechanism = TestBed.inject(MechanismService);
     urls = TestBed.inject(UrlProcessorService);
   });

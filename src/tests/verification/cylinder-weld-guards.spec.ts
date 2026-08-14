@@ -2,7 +2,6 @@
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
 import { TestBed } from '@angular/core/testing';
-import { AppModule } from '../../app/app.module';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { UrlProcessorService } from '../../app/services/url-processor.service';
 import { GridUtilsService } from '../../app/services/grid-utils.service';
@@ -52,7 +51,7 @@ describe('keeping a cylinder out of a welded compound', () => {
   let grid: GridUtilsService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     mechanism = TestBed.inject(MechanismService);
     grid = TestBed.inject(GridUtilsService);
     TestBed.inject(UrlProcessorService).updateFromURL(

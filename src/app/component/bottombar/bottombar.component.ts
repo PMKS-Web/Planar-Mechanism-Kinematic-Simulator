@@ -1,7 +1,7 @@
 import { SvgGridService } from '../../services/svg-grid.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { MODEL_SCALE } from '../../model/render-scale';
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { AngleUnit, GlobalUnit } from '../../model/utils';
 import { SettingsService } from '../../services/settings.service';
 import { MechanismService } from '../../services/mechanism.service';
@@ -13,16 +13,13 @@ import { SelectedTabService, TabID } from '../../selected-tab.service';
   templateUrl: './bottombar.component.html',
   styleUrls: ['./bottombar.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
 })
 export class BottombarComponent {
-  constructor(
-    public settings: SettingsService,
-    public mechanismSrv: MechanismService,
-    private tabs: SelectedTabService,
-    private svgGrid: SvgGridService,
-    private nup: NumberUnitParserService
-  ) {}
+  settings = inject(SettingsService);
+  mechanismSrv = inject(MechanismService);
+  private tabs = inject(SelectedTabService);
+  private svgGrid = inject(SvgGridService);
+  private nup = inject(NumberUnitParserService);
 
   /**
    * Which mode the app is in, spelled the way the tabs spell it.

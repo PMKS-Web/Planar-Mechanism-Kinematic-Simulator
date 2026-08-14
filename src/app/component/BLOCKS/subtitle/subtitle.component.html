@@ -2,7 +2,7 @@
   <div class="row">
     <ng-content></ng-content>
     @if (buttonLabel && icon) {
-      <button id="title-button" mat-flat-button color="primary" (click)="click()">
+      <button id="title-button" mat-flat-button color="primary" (click)="click()?.()">
         @if (icon) {
           <mat-icon>{{ icon }}</mat-icon>
         }

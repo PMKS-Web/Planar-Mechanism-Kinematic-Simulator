@@ -5,6 +5,5 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
   templateUrl: './not-ready-warning.component.html',
   styleUrls: ['./not-ready-warning.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
 })
 export class NotReadyWarningComponent {}

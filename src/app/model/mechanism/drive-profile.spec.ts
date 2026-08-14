@@ -1,4 +1,5 @@
 import { Injector } from '@angular/core';
+import { createMechanismHarness } from '../../../test-utils/mechanism-harness';
 import { DriveProfile, driveProfileOf, fractionalSampleAlong, sampleAlong } from './drive-profile';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { ColorService } from '../../services/color.service';
@@ -16,29 +17,7 @@ import { silentNotifications } from '../../../test-utils/notification-stub';
 
 /** The solved first mechanism of a template, and what its input does. */
 function profileOf(template: TemplateID): DriveProfile {
-  if (!ColorService.instance) new ColorService();
-  const settings = new SettingsService();
-  const parser = new NumberUnitParserService();
-  let service!: MechanismService;
-  const grid = new GridUtilsService(
-    new SynthesisBuilderService(parser, settings),
-    new SvgGridService(
-      settings,
-      new DragStateService(),
-      {} as unknown as Injector,
-      silentNotifications()
-    ),
-    { get: () => service } as unknown as Injector
-  );
-  const active = new ActiveObjService();
-  service = new MechanismService(
-    grid,
-    active,
-    { get: () => ({ save: () => undefined }) } as unknown as Injector,
-    settings,
-    parser,
-    silentNotifications()
-  );
+  const { service, settings, active } = createMechanismHarness();
 
   const decoder = new StringTranscoder();
   decoder.decodeURL(TEMPLATE_LINKAGES[template]);

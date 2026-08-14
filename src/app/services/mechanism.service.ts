@@ -1,4 +1,4 @@
-import { Injectable, Injector } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { Link, SliderBlock, RealLink } from '../model/link';
 import { isSlideCandidate, slideAssemblyAt } from '../model/slide-assembly';
@@ -7,9 +7,7 @@ import {
   cylinderCreationLayout,
   cylinderJoints,
   cylinderStrokeAlong,
-  cylinderOfJoint,
   cylinderOfJointIn,
-  cylinderOfLink,
   cylinderOfLinkIn,
   isCylinderInterior,
   normalizedCylinderPose,
@@ -37,30 +35,23 @@ import {
 } from '../model/mechanism/readiness';
 import { InstantCenter } from '../model/instant-center';
 import {
-  gridStates,
   jointStates,
-  linkStates,
-  forceStates,
-  shapeEditModes,
-  createModes,
-  moveModes,
   roundNumber,
   LengthUnit,
   point_on_line_segment_closest_to_point,
   getDistance,
   distance_points,
 } from '../model/utils';
-import { BehaviorSubject, connect, Subject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { GridUtilsService } from './grid-utils.service';
 import { ActiveObjService } from './active-obj.service';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
-import { canDrive, describeActuator } from '../model/actuator';
+import { describeActuator } from '../model/actuator';
 import { NotificationService } from './notification.service';
 import { SettingsService } from './settings.service';
 import { slotHalfLength } from '../model/joint-marks';
 import { DragStateService } from './drag-state.service';
 import { Coord } from '../model/coord';
-import { Line } from '../model/line';
 import { SelectedTabService } from '../selected-tab.service';
 import { SaveHistoryService } from './save-history.service';
 import { NumberUnitParserService } from './number-unit-parser.service';
@@ -92,6 +83,13 @@ function blendAngle(from: number, to: number, blend: number): number {
   providedIn: 'root',
 })
 export class MechanismService {
+  gridUtils = inject(GridUtilsService);
+  activeObjService = inject(ActiveObjService);
+  private injector = inject(Injector);
+  private settingsService = inject(SettingsService);
+  private nup = inject(NumberUnitParserService);
+  private notify = inject(NotificationService);
+
   public mechanismTimeStep: number = 0;
   /**
    * Is the animation running?
@@ -120,7 +118,6 @@ export class MechanismService {
   public unassigned: UnassignedGeometry = { floatingChains: [], looseJoints: [], fixedLinks: [] };
   public showPathHolder: boolean = true;
 
-  // private moveModes: moveModes = moveModes;
   // private selectedJoint!: RealJoint;
 
   // This is the state of the mechanism
@@ -175,15 +172,6 @@ export class MechanismService {
   private advancingPlayback = false;
   /** Set while one row is being seeked, so the seek does not spread. */
   private seekingOneMechanism = false;
-
-  constructor(
-    public gridUtils: GridUtilsService,
-    public activeObjService: ActiveObjService,
-    private injector: Injector,
-    private settingsService: SettingsService,
-    private nup: NumberUnitParserService,
-    private notify: NotificationService
-  ) {}
 
   /**
    * Recompute every link outline after the object scale changed.
@@ -590,7 +578,7 @@ export class MechanismService {
       if (!was || !(period > 0) || !(was.seconds > 0)) return;
       this.ownSeconds[index] = ((was.seconds % period) + period) % period;
     });
-    this.applyPose(this.mechanismTimeStep, 0);
+    this.applyPose();
   }
 
   /**
@@ -668,26 +656,6 @@ export class MechanismService {
     });
 
     this.updateMechanism(true);
-    // this.settingsService.lengthUnit.subscribe((val) => {
-    //For each jo
-    // let unit = this.settingsService.lengthUnit.value;
-    // if (unit !== this.lengthUnit) {
-    //   this.mechanismService.joints.forEach((joint) => {
-    //     this.activeSrv.updateSelectedObj(joint);
-    //     this.activeSrv.fakeUpdateSelectedObj();
-    //     this.gridUtils.dragJoint(
-    //       this.activeSrv.selectedJoint,
-    //       new Coord(
-    //         this.nup.convertLength(joint.x, this.lengthUnit, unit),
-    //         this.nup.convertLength(joint.y, this.lengthUnit, unit)
-    //       )
-    //     );
-    //     this.jointForm.controls['input'].patchValue(wasInput);
-    //   });
-    //   this.lengthUnit = this.settingsService.lengthUnit.value;
-    //   this.activeSrv.fakeUpdateSelectedObj();
-    // }
-    // });
   }
 
   getLinkProp(l: Link, propType: string) {
@@ -1432,7 +1400,6 @@ export class MechanismService {
                     childJoint.connectedJoints.push(jt);
                   });
                 });
-                // childSub.link.forEach(jt => childJoint.connectedJoints.push(jt));
               });
               this.links.push(sub);
               // This is an orphaned joint
@@ -1649,9 +1616,6 @@ export class MechanismService {
       });
     }
     this.joints.splice(jointIndex, 1);
-    // if (this.activeObjService.selectedLink !== undefined) {
-    //   this.activeObjService.selectedLink.d = this.activeObjService.selectedLink.getPathString();
-    // }
     // Through the shared path, so a slot whose defining joint was just deleted
     // gets reconciled. Deleting a joint by itself is the one way to strand a
     // slot that does not go through mergeJoints or deleteLink.
@@ -2654,16 +2618,7 @@ export class MechanismService {
       this.activeObjService.selectedJoint.input = false;
       this.activeObjService.selectedJoint.ground = false;
       const prismaticJointId = this.determineNextLetter();
-      const inputJointIndex = this.findInputJointIndex();
       const connectedJoints: Joint[] = [this.activeObjService.selectedJoint];
-      // this.joints.forEach((j) => {
-      //   if (!(j instanceof RealJoint)) {
-      //     return;
-      //   }
-      //   if (j.ground) {
-      //     connectedJoints.push(j);
-      //   }
-      // });
       // Born dangling on an ungrounded pin: a floating slot needs a carrier,
       // which is geometry the drop gesture supplies and no toggle can invent.
       // A slider with a stash gets its old slot back instead, which is what
@@ -2865,11 +2820,7 @@ export class MechanismService {
       return;
     }
 
-    // Samples are one degree of crank rotation apart, so at a low input speed a
-    // sample can span a tenth of a second and stepping between them reads as
-    // stutter. Blend toward the next sample by where playback actually sits
-    // between the two.
-    this.applyPose(progress, this.blendToNextSample(progress));
+    this.applyPose();
 
     if (!this.isPlaying) {
       this.playbackClockMs = null;
@@ -2896,17 +2847,14 @@ export class MechanismService {
    * blended toward the next sample. These objects are what the grid renders — and
    * also what a rebuild treats as t = 0, so see restoreStartPose.
    */
-  private applyPose(step: number, blend: number) {
+  private applyPose() {
     // This is the one place a solved sample becomes the drawn pose, so it is
     // where anything cached against the pose has to be let go of.
     this.poseRevision++;
 
-    // The step and blend arrive measured against the shared clock, which runs
-    // on the longest cycle in the drawing. Turn them into a time, and let each
-    // machine find that time among its own samples: a mechanism with a shorter
-    // cycle wraps inside the master one rather than running out.
-    const seconds =
-      this.timeAtStep(step) + blend * (this.timeAtStep(step + 1) - this.timeAtStep(step));
+    // Each machine finds its own clock's time among its own samples, so a
+    // mechanism with a shorter cycle wraps inside the master one rather than
+    // running out (applyMechanismPose interpolates between samples by time).
     this.mechanisms.forEach((frames, index) => {
       this.applyMechanismPose(frames, this.partitions[index], this.ownSeconds[index] ?? 0);
     });
@@ -3149,27 +3097,6 @@ export class MechanismService {
     } finally {
       this.seekingOneMechanism = false;
     }
-  }
-
-  /**
-   * How far playback sits past sample `step`, as a 0..1 fraction of the way to the
-   * next one. Zero for any seek and at the last sample, where there is nothing to
-   * blend toward.
-   */
-  private blendToNextSample(step: number): number {
-    if (!this.advancingPlayback) {
-      return 0;
-    }
-    const times = this.sampleTimes();
-    if (step + 1 >= times.length) {
-      return 0;
-    }
-    const span = times[step + 1] - times[step];
-    if (!(span > 0)) {
-      return 0;
-    }
-    const fraction = (this.playbackTimeSeconds - times[step]) / span;
-    return Math.min(Math.max(fraction, 0), 1);
   }
 
   /**
@@ -3558,7 +3485,6 @@ export class MechanismService {
   }
 
   getJointCSSClass(joint: Joint) {
-    // const j = joint as RealJoint;
     if (
       NewGridComponent.debugGetJointState() == jointStates.dragging &&
       joint.id === this.activeObjService.selectedJoint.id

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { MechanismService } from './mechanism.service';
 import { Link, SliderBlock, RealLink } from '../model/link';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from '../model/utils';
@@ -21,7 +21,6 @@ import {
   ACTIVE_TYPE,
 } from './transcoding/transcoder-data';
 import { SettingsService } from './settings.service';
-import { ActiveObjService } from './active-obj.service';
 import { MODEL_SCALE } from '../model/render-scale';
 
 /*
@@ -38,11 +37,8 @@ import { MODEL_SCALE } from '../model/render-scale';
   providedIn: 'root',
 })
 export class UrlGenerationService {
-  constructor(
-    private mechanism: MechanismService,
-    private settings: SettingsService,
-    private activeObj: ActiveObjService
-  ) {}
+  private mechanism = inject(MechanismService);
+  private settings = inject(SettingsService);
 
   _addJointToEncoder(encoder: StringTranscoder, joint: Joint) {
     if (joint instanceof RevJoint) {

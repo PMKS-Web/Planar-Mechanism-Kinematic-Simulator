@@ -4,14 +4,7 @@ import { Link, SliderBlock, RealLink } from 'src/app/model/link';
 import { Force } from 'src/app/model/force';
 import { Coord } from 'src/app/model/coord';
 import { GenericTranscoder } from './transcoder-interface';
-import {
-  ACTIVE_TYPE,
-  ForceData,
-  JOINT_TYPE,
-  JointData,
-  LINK_TYPE,
-  LinkData,
-} from './transcoder-data';
+import { ForceData, JOINT_TYPE, JointData, LINK_TYPE, LinkData } from './transcoder-data';
 import { SettingsService } from '../settings.service';
 import { AngleUnit, ForceUnit, GlobalUnit, LengthUnit } from 'src/app/model/utils';
 import { BoolSetting, DecimalSetting, EnumSetting, IntSetting } from './stored-settings';
@@ -270,7 +263,7 @@ export class MechanismBuilder {
     const previousId = ['Joint', 'Link', 'Force'].includes(selectedType)
       ? this.activeObj.getSelectedObj().id
       : undefined;
-    let activeObj: any = null;
+    let activeObj: Joint | Link | Force | null = null;
     if (previousId) {
       activeObj =
         this.getJointByID(joints, previousId) ??
@@ -290,7 +283,7 @@ export class MechanismBuilder {
       const decodedLength = this.transcoder.getEnumSetting(
         EnumSetting.LENGTH_UNIT,
         LengthUnit
-      ) as LengthUnit;
+      )! as LengthUnit;
       // Length is the authoritative legacy field. Older URLs omitted the
       // global enum, and some four-enum URLs encoded a contradictory global
       // value; normalize the trio before any mechanism is constructed.
@@ -304,7 +297,8 @@ export class MechanismBuilder {
         normalizedGlobal === GlobalUnit.ENGLISH ? ForceUnit.LBF : ForceUnit.NEWTON;
       this.settings.lengthUnit.next(decodedLength);
       this.settings.angleUnit.next(
-        this.transcoder.getEnumSetting(EnumSetting.ANGLE_UNIT, AngleUnit)
+        // The checksum admits no URL without this enum, so it is always present.
+        this.transcoder.getEnumSetting(EnumSetting.ANGLE_UNIT, AngleUnit)!
       );
       this.settings.forceUnit.next(normalizedForce);
       this.settings.globalUnit.next(normalizedGlobal);

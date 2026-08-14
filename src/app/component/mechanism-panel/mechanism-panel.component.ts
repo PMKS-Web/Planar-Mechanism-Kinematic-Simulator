@@ -1,13 +1,14 @@
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { MODEL_SCALE } from '../../model/render-scale';
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { RealJoint } from '../../model/joint';
 import { RealLink } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { MechanismFact } from '../../model/mechanism/readiness';
+import { MatIcon } from '@angular/material/icon';
 
 /** One line of the Links section: what a link is, and how long. */
 interface LinkRow {
@@ -29,21 +30,19 @@ interface LinkRow {
   templateUrl: './mechanism-panel.component.html',
   styleUrls: ['./mechanism-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon],
 })
 export class MechanismPanelComponent {
+  mechanism = inject(MechanismService);
+  activeObj = inject(ActiveObjService);
+  private settings = inject(SettingsService);
+  private nup = inject(NumberUnitParserService);
+
   /** Edit offers to rename and delete; analysis only reports. */
-  @Input() editable = false;
+  readonly editable = input(false);
 
   overviewOpen = true;
   linksOpen = true;
-
-  constructor(
-    public mechanism: MechanismService,
-    public activeObj: ActiveObjService,
-    private settings: SettingsService,
-    private nup: NumberUnitParserService
-  ) {}
 
   get index(): number {
     return this.activeObj.selectedMechanismIndex;

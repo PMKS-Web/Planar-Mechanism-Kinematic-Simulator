@@ -1,48 +1,39 @@
 import { SvgGridService } from '../../services/svg-grid.service';
 import {
-  AfterViewInit,
   OnDestroy,
   Component,
   HostListener,
-  ViewChild,
   ChangeDetectionStrategy,
+  inject,
+  viewChild,
 } from '@angular/core';
 import { fromEvent } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
 import { MechanismService } from '../../services/mechanism.service';
 import { UrlProcessorService } from '../../services/url-processor.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { SettingsService } from '../../services/settings.service';
 import { ActiveObjService } from '../../services/active-obj.service';
-import { cMenuItem } from '../context-menu/context-menu.component';
+import { cMenuItem, ContextMenuComponent } from '../context-menu/context-menu.component';
 import { Link, RealLink } from '../../model/link';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Coord } from '../../model/coord';
 import {
   forceStates,
   gridStates,
-  is_touch_enabled,
   has_mouse_pointer,
   jointStates,
-  line_line_intersect,
   linkStates,
   local_storage_available,
-  isInside,
   getDistance,
   AngleUnit,
   radToDeg,
-  GlobalUnit,
   point_on_line_segment_closest_to_point,
 } from '../../model/utils';
 import { Force } from '../../model/force';
-import { PositionSolver } from '../../model/mechanism/position-solver';
 import { NotificationService } from '../../services/notification.service';
-import { animate, style, transition, trigger } from '@angular/animations';
-import { MatMenuTrigger } from '@angular/material/menu';
-import { CdkContextMenuTrigger, Menu } from '@angular/cdk/menu';
+import { CdkContextMenuTrigger } from '@angular/cdk/menu';
 import { MatDialog } from '@angular/material/dialog';
 import { TouchscreenWarningComponent } from '../MODALS/touchscreen-warning/touchscreen-warning.component';
-import * as util from 'util';
 import { Line } from '../../model/line';
 import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
@@ -116,51 +107,50 @@ export interface SlotStackItem {
   plate?: WeldPlate;
 }
 import introJs from 'intro.js';
+import { SvgArrowComponent } from '../svg-arrow/svg-arrow.component';
 
 @Component({
   selector: 'app-new-grid',
   templateUrl: './new-grid.component.html',
   styleUrls: ['./new-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [CdkContextMenuTrigger, SvgArrowComponent, ContextMenuComponent],
 })
 export class NewGridComponent implements OnDestroy {
-  public static debugValue: any;
+  svgGrid = inject(SvgGridService);
+  mechanismSrv = inject(MechanismService);
+  private urlParser = inject(UrlProcessorService);
+  gridUtils = inject(GridUtilsService);
+  settings = inject(SettingsService);
+  activeObjService = inject(ActiveObjService);
+  private tabService = inject(SelectedTabService);
+  synthesisBuilder = inject(SynthesisBuilderService);
+  notify = inject(NotificationService);
+  dialog = inject(MatDialog);
+  saveHistoryService = inject(SaveHistoryService);
+  private colorService = inject(ColorService);
+  nup = inject(NumberUnitParserService);
+  dragState = inject(DragStateService);
+  sliderMarks = inject(SliderMarkService);
+
+  public static debugValue: unknown;
   static debugPoints: Coord[] = [];
   public static debugLines: Line[] = [];
 
   public originInScreen: Coord = new Coord(0, 0);
   private timeMouseDown: number = 0;
 
-  constructor(
-    public svgGrid: SvgGridService,
-    public mechanismSrv: MechanismService,
-    private urlParser: UrlProcessorService,
-    public gridUtils: GridUtilsService,
-    public settings: SettingsService,
-    public activeObjService: ActiveObjService,
-    private tabService: SelectedTabService,
-    public synthesisBuilder: SynthesisBuilderService,
-    // Public because `cMenuItem` is a plain class with no injector and reaches
-    // the canvas for its guards, exactly as it already does for the mechanism.
-    public notify: NotificationService,
-    public dialog: MatDialog,
-    public saveHistoryService: SaveHistoryService,
-    private colorService: ColorService,
-    public nup: NumberUnitParserService,
-    public dragState: DragStateService,
-    public sliderMarks: SliderMarkService
-  ) {
+  constructor() {
     //This is for debug purposes, do not make anything else static!
     NewGridComponent.instance = this;
   }
 
   private svgGridElement!: HTMLElement;
   public cMenuItems: cMenuItem[] = [];
-  public lastRightClick: Joint | Link | Force | String = '';
+  public lastRightClick: Joint | Link | Force | string = '';
   public lastRightClickCoord: Coord = new Coord(0, 0);
 
-  public lastLeftClick: Joint | Link | Force | String | SynthesisPose = '';
+  public lastLeftClick: Joint | Link | Force | string | SynthesisPose = '';
   lastLeftClickType: string = 'Nothing';
 
   /**
@@ -239,7 +229,7 @@ export class NewGridComponent implements OnDestroy {
     return Math.round((line / MODEL_SCALE) * 1e6) / 1e6;
   }
 
-  @ViewChild('trigger') contextMenu!: CdkContextMenuTrigger;
+  readonly contextMenu = viewChild.required<CdkContextMenuTrigger>('trigger');
 
   ngOnInit() {
     const svgElement = document.getElementById('canvas') as HTMLElement;
@@ -301,15 +291,8 @@ export class NewGridComponent implements OnDestroy {
     }
 
     fromEvent(window, 'resize').subscribe((event) => {
-      // console.log('resize');
       this.svgGrid.panZoomObject.resize();
-      // this.svgGrid.panZoomObject.fit();
-      // this.svgGrid.panZoomObject.center();
-      // this.svgGrid.panZoomObject.resize();
       this.svgGrid.handlePan();
-      // console.log(this.svgGrid.getZoom());
-      // this.svgGrid.panZoomObject.updateBBox();
-      // this.svgGrid.scaleToFitLinkage();
     });
 
     this.activeObjService.onActiveObjChange.subscribe((obj) => {
@@ -377,7 +360,7 @@ export class NewGridComponent implements OnDestroy {
     return this.instance.objectKind(this.instance.lastLeftClick);
   }
 
-  private objectKind(value: Joint | Link | String | Force | SynthesisPose): string {
+  private objectKind(value: Joint | Link | string | Force | SynthesisPose): string {
     if (value instanceof Force) return 'Force';
     if (value instanceof RealLink) return 'RealLink';
     if (value instanceof PrisJoint) return 'PrisJoint';
@@ -541,11 +524,6 @@ export class NewGridComponent implements OnDestroy {
           );
           break;
         }
-        // Its own machine: a path can be drawn for a joint whose linkage
-        // solves, whatever the state of any other linkage in the drawing.
-        let canTogglePath =
-          !(this.lastRightClick as RealJoint).ground &&
-          this.mechanismSrv.isPartSimulatable(this.lastRightClick as RealJoint);
 
         this.cMenuItems.push(
           new cMenuItem(
@@ -640,16 +618,6 @@ export class NewGridComponent implements OnDestroy {
           )
         ); //Rev Joint - the service explains a refusal, as the panel's toggle does
 
-        // this.cMenuItems.push(
-        //   new cMenuItem(
-        //     (this.lastRightClick as RealJoint).showCurve ? 'Hide Path' : 'Show Path',
-        //     () => {
-        //       this.gridUtils.toggleCurve(this.lastRightClick);
-        //     },
-        //     (this.lastRightClick as RealJoint).showCurve ? 'hide_path' : 'show_path',
-        //     !canTogglePath
-        //   )
-        // ); //Rev Joint - Not Ground and at least one valid mechanism exists
         break;
       }
 
@@ -750,7 +718,7 @@ export class NewGridComponent implements OnDestroy {
     this.mechanismSrv.createCylinderFrom(start, end, mountOn, mountAt);
   }
 
-  setLastRightClick(clickedObj: Joint | Link | String | Force, event?: MouseEvent) {
+  setLastRightClick(clickedObj: Joint | Link | string | Force, event?: MouseEvent) {
     this.lastRightClick = clickedObj;
     // The edit context menu acts on the selected object, so in Edit mode a
     // right-click selects what it will target. In Analyze/Synthesis mode a
@@ -788,7 +756,7 @@ export class NewGridComponent implements OnDestroy {
       Math.atan2(this.mouseLocation.y - pose.position.y, this.mouseLocation.x - pose.position.x);
   }
 
-  setLastLeftClick(clickedObj: Joint | Link | String | Force | SynthesisPose, event?: MouseEvent) {
+  setLastLeftClick(clickedObj: Joint | Link | string | Force | SynthesisPose, event?: MouseEvent) {
     // Scenery in the analysis modes takes no clicks: every panel behind a
     // selection is about a machine that runs, and this geometry is not in one.
     if (
@@ -798,7 +766,6 @@ export class NewGridComponent implements OnDestroy {
       return;
     }
     this.lastLeftClick = clickedObj;
-    // console.warn('Last Left Click: ');
     switch (this.objectKind(clickedObj)) {
       case 'Force':
         this.lastLeftClickType = 'Force';
@@ -828,9 +795,6 @@ export class NewGridComponent implements OnDestroy {
   }
 
   addJoint() {
-    // const newJoint = this.createRevJoint()
-    // const screenX = Number(GridComponent.contextMenuAddTracerPoint.children[0].getAttribute('x'));
-    // const screenY = Number(GridComponent.contextMenuAddTracerPoint.children[0].getAttribute('y'));
     // TODO: Make sure you add logic within here so that joint is part of fixedLocations for respective link subset
     const coord = this.svgGrid.screenToSVGfromXY(
       this.lastRightClickCoord.x,
@@ -1073,16 +1037,7 @@ export class NewGridComponent implements OnDestroy {
       default:
         return;
     }
-    // const mouseRawPos = this.getMousePosition($event);
-    // if (mouseRawPos === undefined) {
-    //   return;
-    // }
-    // const mousePos = this.screenToGrid(mouseRawPos.x, mouseRawPos.y * -1);
-    // // TODO: Within future, create a tempJoint and temp Link and set those values as these values in order to avoid
-    // // TODO: having to call setAttribute and have HTML update for you automatically
-    // console.log(startCoord);
     this.linkCreateStart = startCoord;
-    // this.onMechUpdateState.next(3);
   }
 
   mouseMove($event: MouseEvent) {
@@ -1705,8 +1660,6 @@ export class NewGridComponent implements OnDestroy {
     if (this.mechanismSrv.mechanismTimeStep !== 0) {
       this.cMenuItems = [];
       //Close the MatContextMenu
-      // console.log(this.contextMenu);
-      // this.contextMenu.close();
       return;
     }
     this.lastRightClickCoord.x = $event.clientX;
@@ -1808,16 +1761,9 @@ export class NewGridComponent implements OnDestroy {
   mouseDown($event: MouseEvent) {
     // Log the time that the mouse was clicked
     this.timeMouseDown = new Date().getTime();
-    // console.warn('mouseDown');
-    // console.log(typeChosen);
-    // console.log(thing);
-    // $event.preventDefault();
-    // $event.stopPropagation();
-    // this.disappearContext();
     this.dragState.press();
     this.startX = $event.pageX;
     this.startY = $event.pageY;
-    // console.log(this.startX, this.startY);
     let joint1: RevJoint;
     let joint2: RevJoint;
     let link: RealLink;
@@ -1840,11 +1786,6 @@ export class NewGridComponent implements OnDestroy {
           this.commitCylinderCreation(mousePosInSvg);
           break;
         }
-        // let clickPos = new Coord($event.pageX, $event.pageY);
-        // let mousePosInSvg = this.svgGrid.screenToSVG(clickPos);
-        // console.warn('Mouse down: ');
-        // console.log(NewGridComponent.isInsideLink(this.mechanismSrv.links[0], mousePosInSvg));
-        // console.warn(this.activeObjService.objType);
         switch (this.lastLeftClickType) {
           case 'Grid':
             switch (this.dragState.grid) {
@@ -1892,7 +1833,6 @@ export class NewGridComponent implements OnDestroy {
                 this.linkCreateStart = undefined;
                 break;
               case gridStates.createJointFromLink:
-                // console.warn('reset position');
                 //This is werid bug, ensures that when you use a context menu it always counts as a real click instead of a mis-drag
                 this.startY = 9999999;
                 this.startX = 9999999;
@@ -1947,7 +1887,6 @@ export class NewGridComponent implements OnDestroy {
                 break;
               case gridStates.createForce:
                 const startCoord = this.svgGrid.screenToSVG(this.lastRightClickCoord);
-                // const endCoordRaw = this.getMousePosition($event);
                 const endCoord = this.svgGrid.screenToSVG(
                   new Coord($event.clientX, $event.clientY)
                 );
@@ -1958,8 +1897,6 @@ export class NewGridComponent implements OnDestroy {
             }
             break;
           case 'Joint':
-            // this.jointXatMouseDown = thing.x;
-            // this.jointYatMouseDown = thing.y;
             // Get the joint that was clicked on and top left of the rectangualr bounds
             switch (this.dragState.grid) {
               case gridStates.waiting:
@@ -2071,7 +2008,6 @@ export class NewGridComponent implements OnDestroy {
             switch (this.dragState.joint) {
               case jointStates.waiting:
                 this.dragState.beginDraggingJoint();
-                // this.selectedJoint = thing;
                 break;
             }
             break;
@@ -2168,12 +2104,6 @@ export class NewGridComponent implements OnDestroy {
 
   get sliderMarkList(): SliderMark[] {
     const marks = this.freshMarks().marks;
-    // A slider dragged over a valid slot previews the accepted state: the block
-    // turns to the slot's own angle and the red nowhere-to-slide highlight goes
-    // out while the drop would land. Without this the preview showed the cut
-    // opening in the bar while the block stayed unturned and red — the channel
-    // said yes and the block said no about the same release. Presentation only:
-    // the joint itself is not reseated until the drop commits (cutSlotOn).
     const slot = this.slotCandidate;
     if (!slot || this.dragState.joint !== jointStates.dragging) return marks;
     const pinID = this.activeObjService.selectedJoint?.id;

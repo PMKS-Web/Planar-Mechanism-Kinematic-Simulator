@@ -2,7 +2,6 @@
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
 import { TestBed } from '@angular/core/testing';
-import { AppModule } from '../../app/app.module';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { UrlProcessorService } from '../../app/services/url-processor.service';
 import { SettingsService } from '../../app/services/settings.service';
@@ -110,7 +109,7 @@ describe('a cylinder with no travel', () => {
     // take any driven PrisJoint at all. It would have commanded this pin along
     // its slot with no stroke bound -- animating the ram by telescoping the rod
     // out of its own barrel, which is the one thing sealing it forbids.
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     const mechanism = TestBed.inject(MechanismService);
     const urls = TestBed.inject(UrlProcessorService);
 
@@ -130,7 +129,7 @@ describe('the drawn barrel', () => {
     // from the piston back to the anchor, so the one rigid part of the
     // assembly was the one part visibly changing length -- and the stroke was
     // invisible, because nothing marked where the bore ended.
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     const mechanism = TestBed.inject(MechanismService);
     const urls = TestBed.inject(UrlProcessorService);
     const marks = new SliderMarkService();
@@ -209,7 +208,7 @@ describe('object scale, which changes R under a mechanism nobody touched', () =>
     // fall under it. Snapping the piston to the collapsed interval would move a
     // joint with no undo entry and destroy the geometry that scaling back down
     // would otherwise restore.
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     const mechanism = TestBed.inject(MechanismService);
     const urls = TestBed.inject(UrlProcessorService);
     const original = SettingsService.objectScale;
@@ -239,7 +238,7 @@ describe('a mount two rams share', () => {
     // wrong for "what has to move". The second ram was left to the normalizer,
     // which holds the mounts and can only repair the interior -- so it absorbed
     // a drag meant for the first by quietly changing its own size.
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     const mechanism = TestBed.inject(MechanismService);
     const urls = TestBed.inject(UrlProcessorService);
     const grid = TestBed.inject(GridUtilsService);
@@ -279,7 +278,7 @@ describe('two rams a single link carries', () => {
     // Not the same case as a shared mount: here the two rams have separate
     // mounts that happen to sit on one bar, so a drag of the bar carries both
     // and each has to be re-posed about the mount that did not ride along.
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     const mechanism = TestBed.inject(MechanismService);
     const urls = TestBed.inject(UrlProcessorService);
     const grid = TestBed.inject(GridUtilsService);
@@ -312,7 +311,7 @@ describe('two rams a single link carries', () => {
 
 describe('a ram bigger than the machine it drives', () => {
   it('says how much of its stroke the linkage can actually use', () => {
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     const mechanism = TestBed.inject(MechanismService);
     const urls = TestBed.inject(UrlProcessorService);
 
@@ -420,7 +419,7 @@ describe('merging a cylinder mount onto another joint', () => {
     // and rebuilds connectivity, but the slot on the barrel still named the
     // joint that no longer exists — so the slider stopped being well formed,
     // stopped resolving, and the skin vanished with no message at all.
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     const mechanism = TestBed.inject(MechanismService);
     const urls = TestBed.inject(UrlProcessorService);
     urls.updateFromURL(fixturePayload(cylinderBoomFixture()), false, true, false);

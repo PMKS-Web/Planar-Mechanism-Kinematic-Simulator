@@ -12,7 +12,6 @@ describe('InputComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [InputComponent],
       imports: [
         ReactiveFormsModule,
         MatFormFieldModule,
@@ -20,6 +19,7 @@ describe('InputComponent', () => {
         MatInputModule,
         MatTooltipModule,
         NoopAnimationsModule,
+        InputComponent,
       ],
     }).compileComponents();
 

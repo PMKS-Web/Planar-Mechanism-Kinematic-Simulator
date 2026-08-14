@@ -1,5 +1,3 @@
-import { SettingsService } from '../settings.service';
-
 export enum SynthesisStatus {
   DISABLED = 'DISABLED',
   INVALID = 'INVALID',

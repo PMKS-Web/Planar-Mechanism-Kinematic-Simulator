@@ -1,18 +1,18 @@
-<div id="dual-input-block" style="{{ disabled ? 'cursor: default' : '' }}">
+<div id="dual-input-block" style="{{ disabled() ? 'cursor: default' : '' }}">
   <div class="row">
-    <span class="label {{ disabled ? 'disabled' : '' }}"><ng-content></ng-content></span>
+    <span class="label {{ disabled() ? 'disabled' : '' }}"><ng-content></ng-content></span>
     <mat-icon
-      matTooltip="{{ this.tooltip }}"
+      matTooltip="{{ this.tooltip() }}"
       [matTooltipShowDelay]="1000"
       class="label-help"
-      [matTooltipDisabled]="disabled"
+      [matTooltipDisabled]="disabled()"
       >help_outline
     </mat-icon>
     <div class="spacer"></div>
   </div>
-  <div class="row" [formGroup]="formGroup" style="gap: 5px">
+  <div class="row" [formGroup]="formGroup()" style="gap: 5px">
     @if (formSubGroup) {
-      <span class="label {{ disabled ? 'disabled' : '' }}">{{ label1 }}</span>
+      <span class="label {{ disabled() ? 'disabled' : '' }}">{{ label1() }}</span>
       <mat-form-field
         class="customInputForm"
         formGroupName="{{ formSubGroup }}"
@@ -28,13 +28,15 @@
           type="text"
           #field1
           (keyup.enter)="field1.blur()"
-          [formControlName]="this.formControl1"
+          [formControlName]="this.formControl1()"
         />
       </mat-form-field>
       <div class="spacer"></div>
-      <span class="label {{ disabled ? 'disabled' : '' }}" [class.angle-label]="label2 === '⊾'">{{
-        label2
-      }}</span>
+      <span
+        class="label {{ disabled() ? 'disabled' : '' }}"
+        [class.angle-label]="label2() === '⊾'"
+        >{{ label2() }}</span
+      >
       <mat-form-field
         class="customInputForm"
         formGroupName="{{ formSubGroup }}"
@@ -50,12 +52,12 @@
           type="text"
           #field2
           (keyup.enter)="field2.blur()"
-          [formControlName]="this.formControl2"
+          [formControlName]="this.formControl2()"
         />
       </mat-form-field>
     }
     @if (!formSubGroup) {
-      <span class="label {{ disabled ? 'disabled' : '' }}">{{ label1 }}</span>
+      <span class="label {{ disabled() ? 'disabled' : '' }}">{{ label1() }}</span>
       <mat-form-field
         class="customInputForm"
         (click)="field1.select()"
@@ -70,13 +72,15 @@
           type="text"
           #field1
           (keyup.enter)="field1.blur()"
-          [formControlName]="this.formControl1"
+          [formControlName]="this.formControl1()"
         />
       </mat-form-field>
       <div class="spacer"></div>
-      <span class="label {{ disabled ? 'disabled' : '' }}" [class.angle-label]="label2 === '⊾'">{{
-        label2
-      }}</span>
+      <span
+        class="label {{ disabled() ? 'disabled' : '' }}"
+        [class.angle-label]="label2() === '⊾'"
+        >{{ label2() }}</span
+      >
       <mat-form-field
         class="customInputForm"
         (click)="field2.select()"
@@ -91,7 +95,7 @@
           type="text"
           #field2
           (keyup.enter)="field2.blur()"
-          [formControlName]="this.formControl2"
+          [formControlName]="this.formControl2()"
         />
       </mat-form-field>
     }

@@ -1,14 +1,15 @@
+import { Subscription } from 'rxjs';
 import {
   AfterContentInit,
-  ChangeDetectorRef,
   Component,
   OnDestroy,
   OnInit,
   ChangeDetectionStrategy,
+  inject,
 } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { PrisJoint, RealJoint, RevJoint } from 'src/app/model/joint';
-import { FormArray, FormBuilder } from '@angular/forms';
+import { FormArray, FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Coord } from 'src/app/model/coord';
 import {
   AngleUnit,
@@ -36,6 +37,20 @@ import {
 } from '../../model/cylinder';
 import { NotificationService } from 'src/app/services/notification.service';
 import { NOT_A } from 'src/app/ui-text';
+import { PanelSectionCollapsibleComponent } from '../BLOCKS/panel-section-collapsible/panel-section-collapsible.component';
+import { TitleBlock } from '../BLOCKS/title/title.component';
+import { MatIcon } from '@angular/material/icon';
+import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.component';
+import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
+import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.component';
+import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
+import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
+import { InputComponent } from '../BLOCKS/input/input.component';
+import { ColorPickerComponent } from '../BLOCKS/color-picker/color-picker.component';
+import { DualButtonComponent } from '../BLOCKS/dual-button/dual-button.component';
+import { RadioComponent } from '../BLOCKS/radio/radio.component';
 
 /**
  * Input Settings unit choices, in the order the picker shows them. The labels
@@ -52,9 +67,34 @@ const INPUT_SPEED_UNITS = [
   templateUrl: './edit-panel.component.html',
   styleUrls: ['./edit-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    PanelSectionCollapsibleComponent,
+    TitleBlock,
+    MatIcon,
+    MechanismPanelComponent,
+    PanelSectionComponent,
+    EditableTitleComponent,
+    CollapsibleSubsecitonComponent,
+    DualInputComponent,
+    FormsModule,
+    ReactiveFormsModule,
+    ToggleComponent,
+    ButtonComponent,
+    InputComponent,
+    ColorPickerComponent,
+    DualButtonComponent,
+    RadioComponent,
+  ],
 })
 export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
+  activeSrv = inject(ActiveObjService);
+  protected settingsService = inject(SettingsService);
+  private fb = inject(FormBuilder);
+  private nup = inject(NumberUnitParserService);
+  mechanismService = inject(MechanismService);
+  gridUtils = inject(GridUtilsService);
+  private notify = inject(NotificationService);
+
   listOfOtherJoints: RealJoint[] = [];
   private currentlyOpenJointID: string = '';
 
@@ -164,16 +204,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     this.patchInputSpeedField();
   }
 
-  constructor(
-    public activeSrv: ActiveObjService,
-    protected settingsService: SettingsService,
-    private fb: FormBuilder,
-    private nup: NumberUnitParserService,
-    private cd: ChangeDetectorRef,
-    public mechanismService: MechanismService,
-    public gridUtils: GridUtilsService,
-    private notify: NotificationService
-  ) {
+  constructor() {
     //Set the instance to this
     EditPanelComponent.instance = this;
   }
@@ -182,9 +213,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   static instance: EditPanelComponent;
 
   //maintain a list of subcriptions to unsubscribe later
-  onDestroySubscriptions: any[] = [];
+  onDestroySubscriptions: Subscription[] = [];
   //dynamic form array subscriptions
-  otherJoitnsSubscriptions: any[] = [];
+  otherJoitnsSubscriptions: Subscription[] = [];
   /**
    * The pending re-enable pass scheduled by a selection change. It has to be
    * cancellable: the pass asks the mechanism what the joint may do, and a
@@ -301,14 +332,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     this.mechanismService.updateMechanism();
   }
 
-  disableDelete(): void {
-    // this.mechanismService.canDelete = false;
-  }
-
   ngOnInit(): void {
-    // console.log(this.jointForm);
-    // console.log(this.activeSrv);
-    // console.log(this.profileForm);
     this.onChanges();
     this.disableAndEnableJointFields();
   }
@@ -1259,7 +1283,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         if (this.hideEditPanel()) {
           return;
         }
-        // this.activeSrv.selectedForce.local = val == '0' ? true : false;
         this.mechanismService.changeForceLocal();
       })
     );
@@ -1280,7 +1303,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
           this.listOfOtherJoints.forEach((joint, i) => {
             this.setFormDistAndAngle(this.activeSrv.selectedJoint, joint, i);
-            // console.log('set form dist and angle');
           });
           this.currentlyOpenJointID = this.activeSrv.selectedJoint.id;
 
@@ -1611,7 +1633,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   private reloadOtherJointForm() {
     this.listOfOtherJoints = this.getOtherJointsInLink(this.activeSrv.selectedJoint);
     this.jointForm.controls['otherJoints'] = this.fb.array([]);
-    // console.log('killed all subscriptions to other joints');
     this.otherJoitnsSubscriptions.forEach((subscription) => subscription.unsubscribe());
     this.otherJoitnsSubscriptions = [];
 
@@ -1632,7 +1653,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
               )
             );
           } else {
-            // this.activeSrv.selectedLink.length = value;
             this.updateDistanceBetweenJoints(this.activeSrv.selectedJoint, joint, value);
             this.mechanismService.onMechUpdateState.next(2);
             this.otherJoints.controls[i * 2].patchValue(
@@ -1687,8 +1707,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     otherJoint: RealJoint,
     otherJointID: number
   ) {
-    // console.log('setFormDistAndAngle', otherJointID);
-    // console.log(this.otherJoints);
     let distance = this.getDistanceBetweenJoints(currentJoint, otherJoint);
     let angle = this.getAngleBetweenJoints(currentJoint, otherJoint);
 

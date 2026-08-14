@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { ForceAnalysisMode } from '../model/mechanism/force-solver';
 import { KinematicsSolver } from '../model/mechanism/kinematic-solver';
 import { Mechanism } from '../model/mechanism/mechanism';
@@ -19,6 +19,8 @@ import { SettingsService } from './settings.service';
  */
 @Injectable({ providedIn: 'root' })
 export class AnalysisSampleService {
+  private settingsService = inject(SettingsService);
+
   /**
    * The mechanism the solver's static state was last prepared for.
    *
@@ -29,8 +31,6 @@ export class AnalysisSampleService {
    * once per mechanism — the same granularity the plotting loop always used.
    */
   private preparedFor: Mechanism | undefined;
-
-  constructor(private settingsService: SettingsService) {}
 
   /**
    * The values a graph plots, for one solved sample.

@@ -104,7 +104,7 @@ Animation (`animate()`) steps through the precomputed timesteps on a ~16 ms setT
 
 ### Solvers (`src/app/model/mechanism/`)
 
-Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), `position-solver`, `kinematic-solver` (velocity/acceleration), `force-solver`, `ic-solver` (instant centers). `app.component.spec.ts` numerically verifies these against MATLAB results (`SixBarVerification.m`) for a sixbar linkage — treat it as the regression test for solver changes.
+Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), `position-solver`, `kinematic-solver` (velocity/acceleration), `force-solver`. `app.component.spec.ts` numerically verifies these against MATLAB results (`SixBarVerification.m`) for a sixbar linkage — treat it as the regression test for solver changes.
 
 ### Model classes (`src/app/model/`)
 

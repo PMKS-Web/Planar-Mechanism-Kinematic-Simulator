@@ -316,17 +316,6 @@ export class StringTranscoder extends GenericTranscoder {
     );
   }
 
-  private decodeLinkIDs(encodedString: string): Map<string, string> {
-    const sd = new StringDisassembler(encodedString);
-    let map = new Map<string, string>();
-    while (!sd.isEmpty()) {
-      let oldID = sd.nextToken();
-      let newID = sd.nextToken();
-      map.set(oldID, newID);
-    }
-    return map;
-  }
-
   /* 
     URL encoding is defined as 
     [Bool settings].[Decimal settings].[Int settings,].[Enum settings,].[custom link ids].[Joints.].[Links.].[Forces.]

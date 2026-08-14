@@ -200,7 +200,8 @@ const legend = await page.evaluate(() => {
     node.querySelector('.graphSection.open')
   );
   const component = ng.getComponent(section);
-  const graph = component.graph;
+  // viewChild is a signal now: the child is behind a call.
+  const graph = typeof component.graph === 'function' ? component.graph() : component.graph;
   const lit = [...section.querySelectorAll('.previewSeries')].map(
     (node) => !node.classList.contains('off')
   );

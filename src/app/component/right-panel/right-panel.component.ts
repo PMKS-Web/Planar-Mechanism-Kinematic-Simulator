@@ -2,28 +2,23 @@ import { TabID } from '../../selected-tab.service';
 import { Component, inject, ChangeDetectionStrategy, DoCheck } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NewGridComponent } from '../new-grid/new-grid.component';
-import {
-  gridStates,
-  jointStates,
-  linkStates,
-  forceStates,
-  shapeEditModes,
-  createModes,
-  moveModes,
-  roundNumber,
-  determineSlope,
-  determineYIntersect,
-  determineX,
-  determineY,
-} from '../../model/utils';
+import { gridStates, jointStates, linkStates, forceStates } from '../../model/utils';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { MechanismService } from '../../services/mechanism.service';
-import { Link, RealLink } from '../../model/link';
+import { RealLink } from '../../model/link';
 import { AnalyticsService } from '../../services/analytics.service';
-import { FormBuilder, FormControl, FormGroupDirective, NgForm, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormControl,
+  FormGroupDirective,
+  NgForm,
+  Validators,
+  FormsModule,
+  ReactiveFormsModule,
+} from '@angular/forms';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { environment } from '../../../environments/environment';
-import emailjs, { EmailJSResponseStatus } from '@emailjs/browser';
+import emailjs from '@emailjs/browser';
 import { SettingsService } from '../../services/settings.service';
 import { Arc, Line } from '../../model/line';
 import { Coord } from '../../model/coord';
@@ -31,6 +26,19 @@ import { SvgGridService } from '../../services/svg-grid.service';
 import introJs from 'intro.js';
 import { UrlGenerationService } from 'src/app/services/url-generation.service';
 import { NotificationService } from '../../services/notification.service';
+import { AnalysisSetupComponent } from '../analysis-setup/analysis-setup.component';
+import { SettingsPanelComponent } from '../settings-panel/settings-panel.component';
+import { EquationPanelComponent } from '../equation-panel/equation-panel.component';
+import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
+import { TitleBlock } from '../BLOCKS/title/title.component';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
+import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
+import { MatFormField, MatLabel, MatError } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
+import { MatCheckbox } from '@angular/material/checkbox';
+import { LinkageTableComponent } from '../linkage-table/linkage-table.component';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
   selector: 'app-right-panel',
@@ -68,9 +76,35 @@ import { NotificationService } from '../../services/notification.service';
     ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    AnalysisSetupComponent,
+    SettingsPanelComponent,
+    EquationPanelComponent,
+    PanelSectionComponent,
+    TitleBlock,
+    ButtonComponent,
+    SubtitleComponent,
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormField,
+    MatLabel,
+    MatInput,
+    MatError,
+    MatCheckbox,
+    LinkageTableComponent,
+    MatTooltip,
+    MatIcon,
+  ],
 })
 export class RightPanelComponent implements DoCheck {
+  activeObjService = inject(ActiveObjService);
+  mechanismService = inject(MechanismService);
+  settingsService = inject(SettingsService);
+  svgService = inject(SvgGridService);
+  urlGenerationService = inject(UrlGenerationService);
+  private fb = inject(FormBuilder);
+  private notify = inject(NotificationService);
+
   private analytics: AnalyticsService = inject(AnalyticsService);
 
   public sendingEmail: boolean = false;
@@ -104,16 +138,6 @@ export class RightPanelComponent implements DoCheck {
     this.settingsService.isGridDebugOn = !this.settingsService.isGridDebugOn;
   }
 
-  constructor(
-    public activeObjService: ActiveObjService,
-    public mechanismService: MechanismService,
-    public settingsService: SettingsService,
-    public svgService: SvgGridService,
-    public urlGenerationService: UrlGenerationService,
-    private fb: FormBuilder,
-    private notify: NotificationService
-  ) {}
-
   /**
    * Bumped when a drawer is asked for that is already showing.
    *
@@ -145,8 +169,6 @@ export class RightPanelComponent implements DoCheck {
         this.openTab = tabID;
       }
     }
-    // console.warn(this.openTab);
-    // console.warn(this.isOpen);
   }
 
   /**
@@ -384,7 +406,6 @@ export class RightPanelComponent implements DoCheck {
 
   sendNotReady() {
     introJs().start();
-    // this.analytics.logEvent('tutorial_not_ready');
   }
 
   getBrowserName() {
@@ -392,9 +413,10 @@ export class RightPanelComponent implements DoCheck {
     switch (true) {
       case agent.indexOf('edge') > -1:
         return 'Edge';
-      case agent.indexOf('opr') > -1 && !!(<any>window).opr:
+      case agent.indexOf('opr') > -1 && !!(window as unknown as Record<string, unknown>)['opr']:
         return 'Opera';
-      case agent.indexOf('chrome') > -1 && !!(<any>window).chrome:
+      case agent.indexOf('chrome') > -1 &&
+        !!(window as unknown as Record<string, unknown>)['chrome']:
         return 'Chrome';
       case agent.indexOf('trident') > -1:
         return 'Internet Explorer';
@@ -492,7 +514,7 @@ export class RightPanelComponent implements DoCheck {
           this.sendingEmail = false;
           this.commentForm.reset();
         })
-        .catch((error: any) => {
+        .catch((error: unknown) => {
           console.log(error);
           this.notify.failure(
             'feedback.send-failed',

@@ -1,7 +1,8 @@
-import { Component, Inject, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
-import { MechanismService } from '../../services/mechanism.service';
 import { NewGridComponent } from '../new-grid/new-grid.component';
+import { CdkMenu, CdkMenuItem } from '@angular/cdk/menu';
+import { MatIcon } from '@angular/material/icon';
 
 export class cMenuItem {
   public label: string = 'none';
@@ -55,17 +56,16 @@ export class cMenuItem {
   templateUrl: './context-menu.component.html',
   styleUrls: ['./context-menu.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [CdkMenu, CdkMenuItem, MatIcon],
 })
 export class ContextMenuComponent {
-  @Input() menuItems: cMenuItem[] = [];
+  readonly menuItems = input<cMenuItem[]>([]);
   private contextMenu!: HTMLElement;
 
-  constructor(private mechanismSrv: MechanismService) {}
+  constructor() {}
 
   ngAfterViewInit() {
     this.contextMenu = document.querySelector('#contextMenu') as HTMLElement;
-    console.log(this.contextMenu);
     setTimeout(() => {
       this.contextMenu.classList.add('show');
     }, 1);

@@ -49,7 +49,7 @@ import { MechanismService } from '../../app/services/mechanism.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { ColorService } from '../../app/services/color.service';
-import { UrlGenerationService } from '../../app/services/url-generation.service';
+import { urlGeneratorFor } from '../url-encoding';
 import { Link, RealLink } from '../../app/model/link';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 
@@ -472,15 +472,14 @@ export function fixturePayload(
     const settings = new SettingsService();
     if (speed.rpm !== undefined) settings.inputSpeed.next(speed.rpm);
     if (speed.unitsPerSecond !== undefined) settings.linearInputSpeed.next(speed.unitsPerSecond);
-    return new UrlGenerationService(
+    return urlGeneratorFor(
       {
         joints: built.joints,
         links: built.links,
         forces: built.forces,
         mechanismTimeStep: 0,
       } as unknown as MechanismService,
-      settings,
-      new ActiveObjService()
+      settings
     ).generateUrlQuery();
   } finally {
     ColorService.instance = previousColors;

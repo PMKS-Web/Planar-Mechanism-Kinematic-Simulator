@@ -1,15 +1,15 @@
 import {
   AfterContentInit,
   Component,
-  ContentChildren,
-  EventEmitter,
   Input,
-  Output,
-  QueryList,
   ChangeDetectionStrategy,
+  input,
+  output,
+  contentChildren,
 } from '@angular/core';
 import { TitleBlock } from '../title/title.component';
 import { animate, state, style, transition, trigger } from '@angular/animations';
+import { NgClass } from '@angular/common';
 
 @Component({
   selector: 'panel-section-collapsible',
@@ -36,21 +36,23 @@ import { animate, state, style, transition, trigger } from '@angular/animations'
   templateUrl: './panel-section-collapsible.component.html',
   styleUrls: ['./panel-section-collapsible.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [NgClass],
 })
 export class PanelSectionCollapsibleComponent implements AfterContentInit {
   @Input() expanded: boolean = true;
-  @Input() warning: boolean = false;
+  readonly warning = input<boolean>(false);
 
   public isLoaded: boolean = false;
 
-  @ContentChildren(TitleBlock) titleBlock?: QueryList<TitleBlock>;
+  readonly titleBlock = contentChildren(TitleBlock);
 
-  @Output() closed: EventEmitter<boolean> = new EventEmitter<boolean>();
-  @Output() opened: EventEmitter<boolean> = new EventEmitter<boolean>();
+  readonly closed = output<boolean>();
+  readonly opened = output<boolean>();
 
   ngAfterContentInit() {
-    this.titleBlock?.first.nestedComponentChange.subscribe(() => this.toggleExpand());
+    this.titleBlock()
+      ?.at(0)!
+      .nestedComponentChange.subscribe(() => this.toggleExpand());
     setTimeout(() => {
       this.isLoaded = true;
     });

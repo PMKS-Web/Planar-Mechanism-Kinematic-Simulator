@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { Joint, RealJoint } from '../../model/joint';
 import { Link, RealLink } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { MechanismReadiness, ReadinessCheck } from '../../model/mechanism/readiness';
+import { MatIcon } from '@angular/material/icon';
 
 /**
  * What stands between this drawing and its animation, mechanism by mechanism.
@@ -24,9 +25,13 @@ import { MechanismReadiness, ReadinessCheck } from '../../model/mechanism/readin
   templateUrl: './analysis-setup.component.html',
   styleUrls: ['./analysis-setup.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon],
 })
 export class AnalysisSetupComponent {
+  mechanism = inject(MechanismService);
+  activeObj = inject(ActiveObjService);
+  private tabs = inject(SelectedTabService);
+
   /**
    * Which question this drawer is answering.
    *
@@ -35,17 +40,11 @@ export class AnalysisSetupComponent {
    * against are not the same problem, and a reader refused by one mode should
    * not have to read past the other's list to find out why.
    */
-  @Input() mode: 'kinematic' | 'force' = 'kinematic';
+  readonly mode = input<'kinematic' | 'force'>('kinematic');
   /** Which mechanisms the reader has folded away, by id. */
   private collapsed = new Set<string>();
   unassignedOpen = false;
   forceOpen = true;
-
-  constructor(
-    public mechanism: MechanismService,
-    public activeObj: ActiveObjService,
-    private tabs: SelectedTabService
-  ) {}
 
   get readiness(): MechanismReadiness[] {
     return this.mechanism.readinessOfEachMechanism();
@@ -84,11 +83,11 @@ export class AnalysisSetupComponent {
    * Counted rather than listed, because the list is right underneath it.
    */
   get title(): string {
-    return this.mode === 'force' ? 'Force analysis setup' : 'Analysis setup';
+    return this.mode() === 'force' ? 'Force analysis setup' : 'Analysis setup';
   }
 
   get summary(): string {
-    if (this.mode === 'force') {
+    if (this.mode() === 'force') {
       const outstanding = this.forceOutstanding;
       if (outstanding > 0) {
         return `${outstanding} ${outstanding === 1 ? 'thing has' : 'things have'} to be set before forces can be solved.`;

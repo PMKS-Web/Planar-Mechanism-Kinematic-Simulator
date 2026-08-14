@@ -1,41 +1,54 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { FormBuilder, FormControl, FormGroup } from '@angular/forms';
-import { Pose } from '../../model/pose';
+import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
+import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Coord } from '../../model/coord';
-import { Joint, RealJoint, RevJoint } from '../../model/joint';
-import { GridUtilsService } from '../../services/grid-utils.service';
+import { Joint, RevJoint } from '../../model/joint';
 import { MechanismService } from '../../services/mechanism.service';
-import { MechanismBuilder } from '../../services/transcoding/mechanism-builder';
-import { Mechanism } from '../../model/mechanism/mechanism';
-import { Link, RealLink } from '../../model/link';
+import { RealLink } from '../../model/link';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
 import { NumberUnitParserService } from 'src/app/services/number-unit-parser.service';
 import { SettingsService } from 'src/app/services/settings.service';
 import { SynthesisStatus } from 'src/app/services/synthesis/synthesis-constants';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { ColorService } from '../../services/color.service';
+import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
+import { TitleBlock } from '../BLOCKS/title/title.component';
+import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
+import { InputComponent } from '../BLOCKS/input/input.component';
+import { RadioComponent } from '../BLOCKS/radio/radio.component';
+import { MatDivider } from '@angular/material/divider';
+import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
 
 @Component({
   selector: 'app-synthesis-panel',
   templateUrl: './synthesis-panel.component.html',
   styleUrls: ['./synthesis-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    PanelSectionComponent,
+    TitleBlock,
+    CollapsibleSubsecitonComponent,
+    SubtitleComponent,
+    InputComponent,
+    FormsModule,
+    ReactiveFormsModule,
+    RadioComponent,
+    MatDivider,
+    DualInputComponent,
+    ButtonComponent,
+  ],
 })
 export class SynthesisPanelComponent implements OnInit {
-  PoseID: any;
+  private fb = inject(FormBuilder);
+  mechanismSrv = inject(MechanismService);
+  synthesisBuilder = inject(SynthesisBuilderService);
+  private nup = inject(NumberUnitParserService);
+  private settings = inject(SettingsService);
+  svgGrid = inject(SvgGridService);
+  private colorService = inject(ColorService);
 
   private _alreadyHandlingPoseChange: boolean = false;
-
-  constructor(
-    private fb: FormBuilder,
-    public mechanismSrv: MechanismService,
-    public synthesisBuilder: SynthesisBuilderService,
-    private nup: NumberUnitParserService,
-    private settings: SettingsService,
-    public svgGrid: SvgGridService,
-    private colorService: ColorService
-  ) {}
 
   ngOnInit() {
     //Set initial values
@@ -105,7 +118,7 @@ export class SynthesisPanelComponent implements OnInit {
 
       this._alreadyHandlingPoseChange = true;
 
-      let valid = this.synthesisBuilder.updatePosesFromForm(value);
+      this.synthesisBuilder.updatePosesFromForm(value);
       this.updateFormFromModel();
 
       if (this.synthesisBuilder.isFullyDefined()) {
@@ -355,7 +368,7 @@ export class SynthesisPanelComponent implements OnInit {
 
     //now check if there is 999 in the quality. Count 999 and say which position matches
 
-    let whichPositionMatches = this.checkQuality(quality);
+    this.checkQuality(quality);
 
     //   'Position Matches:' +
     //     whichPositionMatches[0] +

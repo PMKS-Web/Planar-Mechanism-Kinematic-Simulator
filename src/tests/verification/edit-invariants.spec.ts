@@ -2,7 +2,6 @@
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
 import { TestBed } from '@angular/core/testing';
-import { AppModule } from '../../app/app.module';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { UrlProcessorService } from '../../app/services/url-processor.service';
 import { ActiveObjService } from '../../app/services/active-obj.service';
@@ -47,7 +46,7 @@ describe('a joint is welded or it is not', () => {
   let mechanism: MechanismService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     mechanism = TestBed.inject(MechanismService);
     TestBed.inject(UrlProcessorService).updateFromURL(STRESS, false, true, false);
   });
@@ -89,7 +88,7 @@ describe('Un-weld All, on a link that has its own Compound Link Settings', () =>
     // always meant "all of this one". It was reading as "all in the mechanism":
     // pressing it on a two-leaf compound dissolved every other compound on the
     // grid — a large, silent, unrelated edit.
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     const mechanism = TestBed.inject(MechanismService);
     const active = TestBed.inject(ActiveObjService);
     TestBed.inject(UrlProcessorService).updateFromURL(STRESS, false, true, false);
@@ -181,7 +180,7 @@ describe('undo', () => {
     //
     // Selecting something is not an edit. It earns no history entry, so it
     // should not be undone by one.
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     const mechanism = TestBed.inject(MechanismService);
     const active = TestBed.inject(ActiveObjService);
     const history = TestBed.inject(SaveHistoryService);
@@ -215,7 +214,7 @@ describe('undo', () => {
     //
     // It was invisible for as long as it was, because the same deletion routed
     // through the cylinder branch *did* save, as does `deleteLink`.
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({});
     const mechanism = TestBed.inject(MechanismService);
     const active = TestBed.inject(ActiveObjService);
     const history = TestBed.inject(SaveHistoryService);

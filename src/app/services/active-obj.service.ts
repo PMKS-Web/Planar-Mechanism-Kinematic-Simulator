@@ -1,7 +1,7 @@
 import { Injectable, EventEmitter } from '@angular/core';
 import { Force } from '../model/force';
-import { RealJoint } from '../model/joint';
-import { RealLink } from '../model/link';
+import { Joint, RealJoint } from '../model/joint';
+import { Link, RealLink } from '../model/link';
 import { Coord } from '../model/coord';
 import { SynthesisPose } from './synthesis/synthesis-util';
 
@@ -27,7 +27,6 @@ export class ActiveObjService {
    * something that no longer exists.
    */
   selectedMechanismIndex: number = -1;
-  private skipThisSeleciton: boolean = false;
 
   constructor() {}
 
@@ -62,7 +61,13 @@ export class ActiveObjService {
     this.onActiveObjChange.emit(this.objType);
   }
 
-  updateSelectedObj(newActiveObj: any, forceParent: Force | null = null) {
+  updateSelectedObj(
+    // The grid canvas hands its empty-string sentinel through here for a
+    // background click, and a force's endpoint Coord for an endpoint drag, so
+    // both are part of the contract.
+    newActiveObj: Joint | Link | Force | Coord | SynthesisPose | string | undefined | null,
+    forceParent: Force | null = null
+  ) {
     this.prevSelectedJoint = this.selectedJoint;
     this.selectedMechanismIndex = -1;
     if (newActiveObj === undefined || newActiveObj === null) {

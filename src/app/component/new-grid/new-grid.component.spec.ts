@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { AppModule } from '../../app.module';
+import { provideAnimations } from '@angular/platform-browser/animations';
 import { RevJoint } from '../../model/joint';
 import { RealLink } from '../../model/link';
 import { ActiveObjService } from '../../services/active-obj.service';
@@ -51,7 +51,10 @@ async function configureGridTestBed() {
     minorCellSize: 0,
     snapToGrid: (coord: { x: number; y: number }) => coord,
   };
-  await TestBed.configureTestingModule({ imports: [AppModule] })
+  await TestBed.configureTestingModule({
+    imports: [NewGridComponent],
+    providers: [provideAnimations()],
+  })
     .overrideProvider(SvgGridService, { useValue: svgGridStub })
     .compileComponents();
 }

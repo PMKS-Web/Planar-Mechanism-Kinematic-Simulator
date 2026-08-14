@@ -1,4 +1,4 @@
-import { afterNextRender, Injectable, Injector } from '@angular/core';
+import { afterNextRender, Injectable, Injector, inject } from '@angular/core';
 // TS 6 no longer allows calling/constructing `import * as` namespaces of
 // CommonJS (export =) modules - use default imports for these two.
 import svgPanZoom from 'svg-pan-zoom';
@@ -33,6 +33,11 @@ const LENGTH_IN_CM: Record<LengthUnit, number> = {
   providedIn: 'root',
 })
 export class SvgGridService {
+  private settingsService = inject(SettingsService);
+  private dragState = inject(DragStateService);
+  private injector = inject(Injector);
+  private notify = inject(NotificationService);
+
   /**
    * Where the cursor last was, in model units.
    *
@@ -41,7 +46,7 @@ export class SvgGridService {
    * and the grid being rebuilt independently.
    */
   public cursorAt: { x: number; y: number } | null = null;
-  public panZoomObject: any;
+  public panZoomObject!: SvgPanZoom.Instance;
   public CTM!: SVGMatrix;
   public viewBoxMinX: number = 0;
   public viewBoxMaxX: number = 0;
@@ -65,20 +70,13 @@ export class SvgGridService {
   private MAX_ZOOM: number = 16.5;
   private MIN_ZOOM: number = 0.0002;
 
-  constructor(
-    private settingsService: SettingsService,
-    private dragState: DragStateService,
-    private injector: Injector,
-    private notify: NotificationService
-  ) {}
-
   setNewElement(root: HTMLElement) {
     var eventsHandler;
     const dragState = this.dragState;
 
     eventsHandler = {
       haltEventListeners: ['touchstart', 'touchend', 'touchmove', 'touchleave', 'touchcancel'],
-      init: function (options: any) {
+      init: function (options: SvgPanZoom.CustomEventOptions) {
         var instance = options.instance,
           initialScale = 1,
           pannedX = 0,
@@ -94,17 +92,17 @@ export class SvgGridService {
         this.hammer.get('pinch').set({ enable: true });
 
         // Handle double tap
-        this.hammer.on('doubletap', function (ev: any) {
+        this.hammer.on('doubletap', function (ev: HammerInput) {
           // instance.zoomIn();
         });
 
         // Handle tap (click) and no drag.
-        this.hammer.on('tap', function (ev: any) {
+        this.hammer.on('tap', function (ev: HammerInput) {
           NewGridComponent.instance.handleTap();
         });
 
         // Handle pan
-        this.hammer.on('panstart panmove', function (ev: any) {
+        this.hammer.on('panstart panmove', function (ev: HammerInput) {
           // The canvas may only pan while a pointer is genuinely down. Hammer
           // tracks that from events on the element it is bound to, and a
           // gesture whose target is destroyed mid-drag — a joint merged into
@@ -130,7 +128,7 @@ export class SvgGridService {
         });
 
         // Handle pinch
-        this.hammer.on('pinchstart pinchmove', function (ev: any) {
+        this.hammer.on('pinchstart pinchmove', function (ev: HammerInput) {
           // On pinch start remember initial zoom
           if (ev.type === 'pinchstart') {
             initialScale = instance.getZoom();
@@ -139,10 +137,6 @@ export class SvgGridService {
 
           instance.zoomAtPoint(initialScale * ev.scale, { x: ev.center.x, y: ev.center.y });
         });
-
-        // this.hammer.on('press', function (ev: any) {
-        //   NewGridComponent.onContextMenu(ev.center.x, ev.center.y);
-        // });
 
         // Prevent moving the page on some devices when panning over SVG
         options.svgElement.addEventListener('touchmove', function (e: TouchEvent) {
@@ -234,9 +228,6 @@ export class SvgGridService {
     this.viewBoxMinY = visibleY;
     this.viewBoxMaxY = visibleY + visibleHeight;
     // this.panZoomObject.updateBBox(); // Update viewport bounding box
-    // console.log(viewBox);
-    // console.log(this.viewBoxMinX, this.viewBoxMaxX);
-    // console.log(this.viewBoxMinY, this.viewBoxMaxY);
   }
 
   /**
@@ -280,7 +271,7 @@ export class SvgGridService {
     );
   }
 
-  handleBeforePan(oldPan: any, newPan: any) {
+  handleBeforePan(oldPan: SvgPanZoom.Point, newPan: SvgPanZoom.Point) {
     if (this.panLockOut) {
       this.panLockOut = false;
       return oldPan;
@@ -352,16 +343,10 @@ export class SvgGridService {
     this.horizontalLinesMinor = this.horizontalLinesMinor.map((line) => {
       return Math.round(line * 10000) / 10000;
     });
-
-    // console.log(this.verticalLines);
-    // console.log(this.verticalLinesMinor);
   }
 
-  handleBeforeZoom(oldZoom: any, newZoom: any) {
+  handleBeforeZoom(oldZoom: number, newZoom: number) {
     let isZoomingIn = newZoom > oldZoom;
-    // console.log('handleBeforeZoom');
-    // console.log(oldZoom, newZoom);
-    // console.log(this.getZoom());
     if (isZoomingIn && this.getZoom() > this.MAX_ZOOM) {
       this.panLockOut = true;
       return false;
@@ -370,16 +355,9 @@ export class SvgGridService {
       return false;
     }
     return;
-    // if (this.getZoom() < 0.4 || this.getZoom() > 330) {
-    //   // this.panLockOut = true;
-    //   return false;
-    // } else {
-    //   return true;
-    // }
   }
 
   handleZoom(zoomLevel: number) {
-    // console.log(this.getZoom());
     this.cellSize = this.cellSizeFor(this.getZoom());
     this.handlePan();
     // Zooming is continuous, so these have a much longer quiet period than

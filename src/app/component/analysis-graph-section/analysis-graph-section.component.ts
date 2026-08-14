@@ -1,10 +1,11 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  EventEmitter,
   Input,
-  Output,
-  ViewChild,
+  inject,
+  input,
+  output,
+  viewChild,
 } from '@angular/core';
 import { animate, AUTO_STYLE, state, style, transition, trigger } from '@angular/animations';
 import {
@@ -18,6 +19,8 @@ import { AnalysisSampleService } from '../../services/analysis-sample.service';
 import { AngleUnit, LengthUnit } from '../../model/unit-enums';
 import { ANALYSIS_SERIES_COLORS } from '../../model/analysis-series';
 import { roundNumber } from '../../model/utils';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
 
 /** One value of one series, as the collapsed header shows it. */
 export interface SeriesPreview {
@@ -49,25 +52,23 @@ export interface SeriesPreview {
   templateUrl: './analysis-graph-section.component.html',
   styleUrls: ['./analysis-graph-section.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon, MatTooltip, AnalysisGraphComponent],
 })
 export class AnalysisGraphSectionComponent {
-  @Input() label = '';
-  @Input() help = '';
-  @Input() analysis = '';
-  @Input() analysisType = '';
-  @Input() mechProp = '';
-  @Input() mechPart = '';
-  @Input() reactionLinkId = '';
-  @Input() expanded = false;
-  @Output() expandedChange = new EventEmitter<boolean>();
-  @ViewChild('graph') graph?: AnalysisGraphComponent;
+  private mechanismService = inject(MechanismService);
+  private settings = inject(SettingsService);
+  private samples = inject(AnalysisSampleService);
 
-  constructor(
-    private mechanismService: MechanismService,
-    private settings: SettingsService,
-    private samples: AnalysisSampleService
-  ) {}
+  readonly label = input('');
+  @Input() help = '';
+  readonly analysis = input('');
+  readonly analysisType = input('');
+  readonly mechProp = input('');
+  readonly mechPart = input('');
+  readonly reactionLinkId = input('');
+  readonly expanded = input(false);
+  readonly expandedChange = output<boolean>();
+  readonly graph = viewChild<AnalysisGraphComponent>('graph');
 
   /**
    * What this quantity reads at the pose on screen.
@@ -103,11 +104,11 @@ export class AnalysisGraphSectionComponent {
       this.settings.lengthUnit.value,
       this.settings.angleUnit.value,
       this.settings.forceUnit.value,
-      this.analysis,
-      this.analysisType,
-      this.mechProp,
-      this.mechPart,
-      this.reactionLinkId,
+      this.analysis(),
+      this.analysisType(),
+      this.mechProp(),
+      this.mechPart(),
+      this.reactionLinkId(),
     ].join('|');
     if (this.previewCache?.key === key && this.previewCache.mechanism === mechanism) {
       return this.previewCache.series;
@@ -115,11 +116,11 @@ export class AnalysisGraphSectionComponent {
     const values = this.samples.sampleAt(
       mechanism,
       Math.max(step, 0),
-      this.analysis,
-      this.analysisType,
-      this.mechProp,
-      this.mechPart,
-      this.reactionLinkId
+      this.analysis(),
+      this.analysisType(),
+      this.mechProp(),
+      this.mechPart(),
+      this.reactionLinkId()
     );
     const names = this.seriesNames(values.length);
     const keys: ('x' | 'y' | 'z')[] = ['x', 'y', 'z'];
@@ -166,7 +167,7 @@ export class AnalysisGraphSectionComponent {
     const count = this.preview.length;
     if (count !== this.fallbackFor) {
       this.fallbackFor = count;
-      this.fallback = defaultSeriesSelection(count, this.analysis);
+      this.fallback = defaultSeriesSelection(count, this.analysis());
     }
     return this.fallback;
   }
@@ -191,7 +192,7 @@ export class AnalysisGraphSectionComponent {
   toggleSeries(key: 'x' | 'y' | 'z'): void {
     const next = { ...this.shownSeries, [key]: !this.isShown(key) };
     this.chosen = next;
-    this.graph?.toggleSeries(key);
+    this.graph()?.toggleSeries(key);
   }
 
   /**
@@ -204,13 +205,13 @@ export class AnalysisGraphSectionComponent {
    * own open/closed class.
    */
   toggle(): void {
-    this.expandedChange.emit(!this.expanded);
+    this.expandedChange.emit(!this.expanded());
   }
 
   private mechanismFor() {
     const part =
-      this.mechanismService.joints.find((joint) => joint.id === this.mechPart) ??
-      this.mechanismService.links.find((link) => link.id === this.mechPart);
+      this.mechanismService.joints.find((joint) => joint.id === this.mechPart()) ??
+      this.mechanismService.links.find((link) => link.id === this.mechPart());
     return part ? this.mechanismService.mechanismContaining(part) : undefined;
   }
 
@@ -223,7 +224,7 @@ export class AnalysisGraphSectionComponent {
   private seriesNames(count: number): string[] {
     if (count === 1) return [''];
     if (count === 2) return ['X', 'Y'];
-    return this.analysis === 'force' ? ['X', 'Y', 'Z'] : ['X', 'Y', 'Mag'];
+    return this.analysis() === 'force' ? ['X', 'Y', 'Z'] : ['X', 'Y', 'Mag'];
   }
 
   private colorFor(name: string): string {
@@ -236,14 +237,15 @@ export class AnalysisGraphSectionComponent {
   private unitFor(): string {
     const length = this.unitStr(this.settings.lengthUnit.value);
     const angle = this.unitStr(this.settings.angleUnit.value);
-    if (this.mechProp.includes('Angular')) {
-      if (this.mechProp.includes('Acc')) return `${angle}/s²`;
-      if (this.mechProp.includes('Vel')) return `${angle}/s`;
+    const mechProp = this.mechProp();
+    if (mechProp.includes('Angular')) {
+      if (mechProp.includes('Acc')) return `${angle}/s²`;
+      if (mechProp.includes('Vel')) return `${angle}/s`;
       return angle;
     }
-    if (this.analysis === 'force') return 'N';
-    if (this.mechProp.includes('Acc')) return `${length}/s²`;
-    if (this.mechProp.includes('Vel')) return `${length}/s`;
+    if (this.analysis() === 'force') return 'N';
+    if (mechProp.includes('Acc')) return `${length}/s²`;
+    if (mechProp.includes('Vel')) return `${length}/s`;
     return length;
   }
 

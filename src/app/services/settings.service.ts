@@ -9,6 +9,7 @@ import {
 } from '../model/unit-enums';
 import type { ForceAnalysisMode } from '../model/mechanism/force-solver';
 import { MODEL_SCALE } from '../model/render-scale';
+import { OBJECT_SCALE } from '../model/object-scale';
 import { local_storage_available } from '../model/utils';
 
 /**
@@ -129,12 +130,10 @@ export class SettingsService {
   // In user units; the internal world is MODEL_SCALE times larger, and every
   // visual size in the mark system is a multiple of this number.
   //
-  // 0.7 rather than 1: joints, blocks and cylinder heads at full size crowd a
-  // linkage of ordinary proportions, and the first thing most people did was
-  // turn it down. A mechanism arriving from a URL carries its own scale, so
-  // this is what a new project starts at and what an older URL without the
-  // setting falls back to.
-  static _objectScale = new BehaviorSubject(0.7 * MODEL_SCALE);
+  // The subject itself lives in model/object-scale.ts — a leaf module — so
+  // that Coord's closeness thresholds can read it without importing this
+  // service and closing a module cycle. This static is its public face.
+  static _objectScale = OBJECT_SCALE;
 
   static get objectScale(): number {
     return SettingsService._objectScale.value;

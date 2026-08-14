@@ -1,12 +1,9 @@
-<!--<button-->
 <!--  class="secondaryButtons"-->
 <!--  id="showTable"-->
 <!--  style="position: absolute; top: 95px; left: 10px; z-index: 1000; font-size: 17px; width: 8em; cursor: pointer"-->
 <!--  (click)="getLinkageVisibility()"-->
 <!--&gt;-->
 <!--  Hide table-->
-<!--</button>-->
-<!--<body id="linkageTable" class="linkageTable" style="visibility: visible">-->
 
 <div class="linkageTabs" id="linkageTable" style="visibility: visible">
   <input type="radio" id="tabJoint" name="linkageTabs" checked="checked" />
@@ -15,18 +12,7 @@
     <thead>
       <tr>
         <th>ID</th>
-        <!--          <th>Type</th>-->
         <th>Linked To</th>
-        <!--        <div *ngIf="getUnit() === 'cm'">-->
-        <!--          <th>Dist From Joint (cm)</th>-->
-        <!--          <th>x (cm)</th>-->
-        <!--          <th>y (cm)</th>-->
-        <!--        </div>-->
-        <!--        <div *ngIf="getUnit() === 'm'">-->
-        <!--          <th>Dist From Joint (m)</th>-->
-        <!--          <th>x (m)</th>-->
-        <!--          <th>y (m)</th>-->
-        <!--        </div>-->
         @if (getUnit() === 'cm') {
           <th>Dist From Joint (cm)</th>
         }
@@ -59,12 +45,8 @@
               (change)="changeJointProp($event, joint, 'id')"
             />
           </td>
-          <!--                <td class="joint-table-item">{{row[0]}}</td> &lt;!&ndash; joint id&ndash;&gt;-->
-          <!-- <td>{{row[1]}}</td>  -->
           <!-- joint type -->
-          <!--          <td>-->
           <!--            {{joint.type}}-->
-          <!--          </td>-->
           <td>
             @for (conJoints of connectedJoints(joint); track conJoints) {
               <table>

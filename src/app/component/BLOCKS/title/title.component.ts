@@ -1,25 +1,20 @@
-import {
-  Component,
-  OnInit,
-  Input,
-  Output,
-  EventEmitter,
-  ChangeDetectionStrategy,
-} from '@angular/core';
+import { Component, OnInit, Input, ChangeDetectionStrategy, output } from '@angular/core';
+import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
   selector: 'title-block',
   templateUrl: './title.component.html',
   styleUrls: ['./title.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatButton, MatIcon, MatIconButton],
 })
 export class TitleBlock implements OnInit {
   @Input() icon: string | undefined;
   @Input() buttonLabel: string | undefined;
   @Input() description: string | undefined;
 
-  @Output() nestedComponentChange: EventEmitter<number> = new EventEmitter<number>();
+  readonly nestedComponentChange = output<number>();
 
   defaultIcon: string | undefined;
   altIcon: string | undefined;

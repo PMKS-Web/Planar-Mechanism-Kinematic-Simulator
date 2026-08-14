@@ -7,7 +7,7 @@ import { ForceUnit, GlobalUnit, LengthUnit } from '../../model/unit-enums';
 import { ActiveObjService } from '../active-obj.service';
 import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
-import { UrlGenerationService } from '../url-generation.service';
+import { urlGeneratorFor } from '../../../test-utils/url-encoding';
 import { Checksum } from './checksum';
 import { FlagPacker } from './flag-packer';
 import { MechanismBuilder } from './mechanism-builder';
@@ -71,7 +71,7 @@ describe('welded force URL compatibility', () => {
     settings.globalUnit.next(GlobalUnit.SI);
     const active = new ActiveObjService();
     active.updateSelectedObj(source.force);
-    const encoded = new UrlGenerationService(sourceService, settings, active).generateUrlQuery();
+    const encoded = urlGeneratorFor(sourceService, settings).generateUrlQuery();
 
     const decoder = new StringTranscoder();
     decoder.decodeURL(encoded);
@@ -107,10 +107,9 @@ describe('welded force URL compatibility', () => {
     const source = weldedSource();
     const settings = new SettingsService();
     const active = new ActiveObjService();
-    const encoded = new UrlGenerationService(
+    const encoded = urlGeneratorFor(
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
-      settings,
-      active
+      settings
     ).generateUrlQuery();
     const raw = encoded.slice(0, -1).replace('F1,ABC,', 'F1,AB,');
     const decoder = new StringTranscoder();
@@ -125,10 +124,9 @@ describe('welded force URL compatibility', () => {
 
   it('loads URLs without an active-object section and ignores the legacy force-disable bit', () => {
     const source = weldedSource();
-    const encoded = new UrlGenerationService(
+    const encoded = urlGeneratorFor(
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
-      new SettingsService(),
-      new ActiveObjService()
+      new SettingsService()
     ).generateUrlQuery();
     let raw = encoded.slice(0, -1);
     raw = raw.slice(0, raw.lastIndexOf('.'));
@@ -149,10 +147,9 @@ describe('welded force URL compatibility', () => {
 
   it('derives Metric/Newton settings from a legacy three-enum URL', () => {
     const source = weldedSource();
-    const encoded = new UrlGenerationService(
+    const encoded = urlGeneratorFor(
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
-      new SettingsService(),
-      new ActiveObjService()
+      new SettingsService()
     ).generateUrlQuery();
     const sections = encoded.slice(0, -1).split('.');
     expect(sections[3]).toHaveLength(4);
@@ -169,10 +166,9 @@ describe('welded force URL compatibility', () => {
 
   it('normalizes contradictory four-enum settings from the encoded length unit', () => {
     const source = weldedSource();
-    const encoded = new UrlGenerationService(
+    const encoded = urlGeneratorFor(
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
-      new SettingsService(),
-      new ActiveObjService()
+      new SettingsService()
     ).generateUrlQuery();
     const sections = encoded.slice(0, -1).split('.');
     sections[3] = '1002'; // centimeter, degrees, lbf, SI

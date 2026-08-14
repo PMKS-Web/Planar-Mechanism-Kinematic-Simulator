@@ -5,6 +5,5 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
   templateUrl: './panel-section.component.html',
   styleUrls: ['./panel-section.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
 })
 export class PanelSectionComponent {}

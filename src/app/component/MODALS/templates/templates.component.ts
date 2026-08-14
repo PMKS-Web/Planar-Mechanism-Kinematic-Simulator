@@ -2,34 +2,57 @@ import {
   Component,
   ChangeDetectionStrategy,
   isDevMode,
-  Optional,
   TemplateRef,
-  ViewChild,
+  inject,
+  viewChild,
 } from '@angular/core';
-import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import {
+  MatDialog,
+  MatDialogRef,
+  MatDialogClose,
+  MatDialogContent,
+  MatDialogTitle,
+  MatDialogActions,
+} from '@angular/material/dialog';
 import { MechanismService } from 'src/app/services/mechanism.service';
 import { UrlProcessorService } from 'src/app/services/url-processor.service';
 import { DEV_TEMPLATES, DevTemplateID } from './dev-templates';
 import { TemplateID, TEMPLATE_LINKAGES } from './template-linkages';
+import { MatIconButton, MatButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { CdkScrollable } from '@angular/cdk/scrolling';
+import { PanelSectionComponent } from '../../BLOCKS/panel-section/panel-section.component';
+import { TitleBlock } from '../../BLOCKS/title/title.component';
 
 @Component({
   selector: 'app-templates',
   templateUrl: './templates.component.html',
   styleUrls: ['./templates.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    MatIconButton,
+    MatDialogClose,
+    MatIcon,
+    CdkScrollable,
+    MatDialogContent,
+    PanelSectionComponent,
+    TitleBlock,
+    MatButton,
+    MatDialogTitle,
+    MatDialogActions,
+  ],
 })
 export class TemplatesComponent {
-  /** Asks whether to replace the linkage already on the grid or open a new tab. */
-  @ViewChild('openChoiceDialog') openChoiceDialog!: TemplateRef<unknown>;
+  private dialogRef = inject<MatDialogRef<TemplatesComponent> | null>(
+    MatDialogRef<TemplatesComponent>,
+    { optional: true }
+  );
+  private dialog = inject(MatDialog);
+  private mechanismSrv = inject(MechanismService);
+  private urlProcessor = inject(UrlProcessorService);
 
-  constructor(
-    // Optional so the component can also render outside a dialog (tests do).
-    @Optional() private dialogRef: MatDialogRef<TemplatesComponent> | null,
-    private dialog: MatDialog,
-    private mechanismSrv: MechanismService,
-    private urlProcessor: UrlProcessorService
-  ) {}
+  /** Asks whether to replace the linkage already on the grid or open a new tab. */
+  readonly openChoiceDialog = viewChild.required<TemplateRef<unknown>>('openChoiceDialog');
 
   /** Only a development build offers the drawings that exercise the app. */
   isDevMode(): boolean {
@@ -50,7 +73,7 @@ export class TemplatesComponent {
     }
 
     this.dialog
-      .open(this.openChoiceDialog)
+      .open(this.openChoiceDialog())
       .afterClosed()
       .subscribe((choice) => {
         if (choice === 'replace') {

@@ -10,7 +10,6 @@ import {
 import { Force } from '../force';
 import { Coord } from '../coord';
 import { assemblyBodyIds, SlideAssembly, slideAssemblies, slotOffset } from '../slide-assembly';
-import { core } from '@angular/compiler';
 import { MODEL_SCALE } from '../render-scale';
 import {
   Cylinder,
@@ -558,13 +557,9 @@ export class PositionSolver {
       if (!driven.has(j.id)) {
         return;
       }
-      // if (j.ground && j.constructor !== PrisJoint) {
-      //   return;
-      // }
       // store the solved number
       this.jointNumOrderSolverMap.set(orderNum++, [j.id]);
       // store desired joints as input joint and current_joint
-      // const currentJointIndex = simJoints.findIndex(jt => jt.id === current_joint.id);
       this.desiredConnectedJointIndicesMap.set(j.id, [inputJointIndex]);
       // store the solve type from the input solver
       switch (inputJoint.constructor) {
@@ -2214,12 +2209,9 @@ export class PositionSolver {
             return;
           }
           // tracer joint is not connected on the same link as prev joint and curr joint
-          // if (tracer_joint.connectedLinks.findIndex(ll => ll.id === desired_link.id) !== -1) {
           if (tracer_joint.links.findIndex((ll) => ll.id === desired_link.id) === -1) {
             return;
           }
-          // const tracer_joint_index = 0;
-          // this.desiredConnectedJointIndicesMap.set(tracer_joint.id, [cur_joint_index, known_joint_index]);
           this.desiredConnectedJointIndicesMap.set(tracer_joint.id, [
             prev_joint_index,
             cur_joint_index,
@@ -2253,7 +2245,6 @@ export class PositionSolver {
     return joint.connectedJoints.find((jt) => {
       const knownJointIndex = knownJointArray.findIndex((j_id) => j_id === jt.id);
       return knownJointIndex !== -1 && jt.id !== prev_joint.id;
-      // return knownJointArray.findIndex(j_id => j_id === jt.id) !== -1 && jt.id !== prev_joint.id;
     });
   }
 

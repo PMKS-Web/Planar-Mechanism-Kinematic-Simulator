@@ -13,7 +13,7 @@ import {
 import { ActiveObjService } from '../active-obj.service';
 import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
-import { UrlGenerationService } from '../url-generation.service';
+import { urlGeneratorFor } from '../../../test-utils/url-encoding';
 import { MechanismBuilder } from './mechanism-builder';
 import { StringTranscoder } from './string-transcoder';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -91,10 +91,9 @@ function sealedSource(options: { sealed?: boolean; angle?: number } = {}) {
 }
 
 function encode(source: ReturnType<typeof sealedSource>): string {
-  return new UrlGenerationService(
+  return urlGeneratorFor(
     { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
-    new SettingsService(),
-    new ActiveObjService()
+    new SettingsService()
   ).generateUrlQuery();
 }
 

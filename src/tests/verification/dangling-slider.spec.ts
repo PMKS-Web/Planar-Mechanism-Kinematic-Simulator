@@ -8,7 +8,7 @@ import { SettingsService } from '../../app/services/settings.service';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
-import { UrlGenerationService } from '../../app/services/url-generation.service';
+import { urlGeneratorFor } from '../../test-utils/url-encoding';
 import { buildMechanismFixture } from '../fixtures/mechanism-fixtures';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { buildMechanism } from '../../test-utils/verification/fixture';
@@ -144,11 +144,7 @@ describe('a dangling slider through the URL', () => {
     const first = buildMechanismFixture(fixturePayload(invertedSliderCrankFixture()));
     sliderIn(first.service.joints, 'P').detach();
 
-    const payload = new UrlGenerationService(
-      first.service,
-      first.settings,
-      new ActiveObjService()
-    ).generateUrlQuery();
+    const payload = urlGeneratorFor(first.service, first.settings).generateUrlQuery();
     const restored = sliderIn(buildMechanismFixture(payload).service.joints, 'P');
 
     expect(restored.isDangling, 'still dangling after a round trip').toBe(true);
@@ -163,11 +159,7 @@ describe('a dangling slider through the URL', () => {
     slider.groundAt(angle);
     slider.detach();
 
-    const payload = new UrlGenerationService(
-      first.service,
-      first.settings,
-      new ActiveObjService()
-    ).generateUrlQuery();
+    const payload = urlGeneratorFor(first.service, first.settings).generateUrlQuery();
     const restored = sliderIn(buildMechanismFixture(payload).service.joints, 'P');
     restored.groundAt(restored.slotAngle);
 

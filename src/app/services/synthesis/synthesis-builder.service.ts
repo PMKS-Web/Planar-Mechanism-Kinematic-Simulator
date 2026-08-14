@@ -1,6 +1,5 @@
-import { Injectable } from '@angular/core';
-import { FormBuilder } from '@angular/forms';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { Subject } from 'rxjs';
 import { COR, SynthesisPose } from './synthesis-util';
 import { Coord } from 'src/app/model/coord';
 import { SynthesisClickMode, SynthesisConstants } from './synthesis-constants';
@@ -17,7 +16,10 @@ into fourbars. Relevant to the Synthesis tab of the app.
   providedIn: 'root',
 })
 export class SynthesisBuilderService {
-  public valueChanges: Subject<any>;
+  private nup = inject(NumberUnitParserService);
+  private settings = inject(SettingsService);
+
+  public valueChanges: Subject<boolean>;
 
   public constants: SynthesisConstants;
 
@@ -42,11 +44,8 @@ export class SynthesisBuilderService {
 
   poses: { [key: number]: SynthesisPose }; // a dictionary of poses, but including each pose is optional
 
-  constructor(
-    private nup: NumberUnitParserService,
-    private settings: SettingsService
-  ) {
-    this.valueChanges = new Subject<any>();
+  constructor() {
+    this.valueChanges = new Subject<boolean>();
     this.constants = new SynthesisConstants();
 
     // start with a length of 5 user units, held in model units
@@ -162,14 +161,14 @@ export class SynthesisBuilderService {
 
   // given form, update poses
   // if form is invalid, return false to revert form
-  updatePosesFromForm(form: { [key: string]: any }): boolean {
+  updatePosesFromForm(form: { [key: string]: string | null | undefined }): boolean {
     if (form['cor'] === '0') this._COR = COR.BACK;
     else if (form['cor'] === '1') this._COR = COR.CENTER;
     else this._COR = COR.FRONT;
 
     // if length is a number and positive, update length
     const [success, maybeLength] = this.nup.parseModelLengthString(
-      form['length'],
+      form['length']!,
       this.settings.lengthUnit.getValue()
     );
     if (!success) {
@@ -183,11 +182,11 @@ export class SynthesisBuilderService {
 
       // if x and y are numbers, update position
       const [successX, maybeX] = this.nup.parseModelLengthString(
-        form[`p${i}x`],
+        form[`p${i}x`]!,
         this.settings.lengthUnit.getValue()
       );
       const [successY, maybeY] = this.nup.parseModelLengthString(
-        form[`p${i}y`],
+        form[`p${i}y`]!,
         this.settings.lengthUnit.getValue()
       );
       if (!successX || !successY) {
@@ -198,7 +197,7 @@ export class SynthesisBuilderService {
 
       // if theta is a number, update theta
       const [successTheta, maybeTheta] = this.nup.parseAngleString(
-        form[`p${i}theta`],
+        form[`p${i}theta`]!,
         this.settings.angleUnit.getValue()
       );
       if (!successTheta) {

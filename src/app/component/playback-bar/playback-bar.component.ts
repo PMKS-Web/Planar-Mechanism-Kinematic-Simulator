@@ -5,6 +5,7 @@ import {
   ElementRef,
   OnDestroy,
   OnInit,
+  inject,
 } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { Subscription } from 'rxjs';
@@ -15,8 +16,9 @@ import { ActiveObjService } from '../../services/active-obj.service';
 import { SelectedTabService } from '../../selected-tab.service';
 import { TimeUnit } from '../../model/utils';
 import { Mechanism } from '../../model/mechanism/mechanism';
-import { RealJoint } from '../../model/joint';
 import { MODEL_SCALE } from '../../model/render-scale';
+import { MatIcon } from '@angular/material/icon';
+import { ViewControlsComponent } from '../view-controls/view-controls.component';
 
 /** How far the cluster floats above the status strip, matching its own CSS. */
 const BOTTOM_OFFSET = 38;
@@ -89,22 +91,19 @@ export interface PlaybackRow {
     ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon, ViewControlsComponent],
 })
 export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
+  mechanism = inject(MechanismService);
+  settings = inject(SettingsService);
+  activeObj = inject(ActiveObjService);
+  tabs = inject(SelectedTabService);
+  private nup = inject(NumberUnitParserService);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+
   private positionSub?: Subscription;
-  private dragging = false;
   private wasAnimating = false;
   private wasRowAnimating = false;
-
-  constructor(
-    public mechanism: MechanismService,
-    public settings: SettingsService,
-    public activeObj: ActiveObjService,
-    public tabs: SelectedTabService,
-    private nup: NumberUnitParserService,
-    private host: ElementRef<HTMLElement>
-  ) {}
 
   ngOnInit(): void {
     // The rows are rebuilt from the service on every change detection, and the
@@ -392,7 +391,6 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    * everything to scrub one of them threw that away.
    */
   onScrubDown(row?: PlaybackRow): void {
-    this.dragging = true;
     if (row && row.ownPlay && row.index >= 0) {
       this.wasRowAnimating = this.mechanism.isMechanismPlaying(row.index);
       if (this.wasRowAnimating) this.mechanism.toggleMechanismPlaying(row.index);
@@ -403,7 +401,6 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onScrubUp(row?: PlaybackRow): void {
-    this.dragging = false;
     if (row && row.ownPlay && row.index >= 0) {
       if (this.wasRowAnimating && !this.mechanism.isMechanismPlaying(row.index)) {
         this.mechanism.toggleMechanismPlaying(row.index);

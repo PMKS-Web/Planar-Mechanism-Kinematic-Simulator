@@ -1,9 +1,4 @@
-import { Injectable, Injector } from '@angular/core';
-import { stringToBoolean, stringToFloat, stringToShape } from '../model/utils';
-import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
-import { Bound, Link, SliderBlock, RealLink } from '../model/link';
-import { Coord } from '../model/coord';
-import { Force } from '../model/force';
+import { Injectable, Injector, inject } from '@angular/core';
 import { MechanismService } from './mechanism.service';
 import { StringTranscoder } from './transcoding/string-transcoder';
 import { SettingsService } from './settings.service';
@@ -17,22 +12,18 @@ import { SelectedTabService, TabID } from '../selected-tab.service';
   providedIn: 'root',
 })
 export class UrlProcessorService {
-  constructor(
-    private injector: Injector,
-    private settingsSrv: SettingsService,
-    private svgGrid: SvgGridService,
-    private activeObj: ActiveObjService,
-    private notify: NotificationService
-  ) {
+  private injector = inject(Injector);
+  private settingsSrv = inject(SettingsService);
+  private svgGrid = inject(SvgGridService);
+  private activeObj = inject(ActiveObjService);
+  private notify = inject(NotificationService);
+
+  constructor() {
     // the content part of the url (the part after the ?)
     const url = this.getURLContent();
 
     // update the mechanism from the url
     this.updateFromURL(url, true, true, true);
-
-    // initial save
-    // this causes a circular dependency
-    // this.mechanismSrv.save();
   }
 
   // From the full url string, extract the substring after the '?'. If does not exist, return null

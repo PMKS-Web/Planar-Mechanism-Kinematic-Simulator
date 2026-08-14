@@ -1,19 +1,21 @@
-import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, input } from '@angular/core';
+import { MatButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
   selector: 'dual-button',
   templateUrl: './dual-button.component.html',
   styleUrls: ['./dual-button.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatButton, MatIcon],
 })
 export class DualButtonComponent {
-  @Input() but1Text: string | undefined;
-  @Input() but1Icon: string | undefined;
-  @Input() but1Action!: () => void;
+  readonly but1Text = input<string>();
+  readonly but1Icon = input<string>();
+  readonly but1Action = input.required<() => void>();
 
   @Input() but2Text: string | undefined;
-  @Input() but2Icon: string | undefined;
-  @Input() but2Action!: () => void;
-  @Input() btn2Disabled: boolean = false;
+  readonly but2Icon = input<string>();
+  readonly but2Action = input<(() => void) | undefined>(undefined);
+  readonly btn2Disabled = input<boolean>(false);
 }

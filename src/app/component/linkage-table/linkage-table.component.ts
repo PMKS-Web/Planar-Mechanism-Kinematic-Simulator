@@ -1,18 +1,9 @@
-import {
-  Component,
-  EventEmitter,
-  Input,
-  OnInit,
-  Output,
-  ChangeDetectionStrategy,
-} from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
 import { Force } from '../../model/force';
-import { SliderBlock, Link, RealLink, Shape } from '../../model/link';
+import { SliderBlock, Link, RealLink } from '../../model/link';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Coord } from '../../model/coord';
 import { roundNumber } from '../../model/utils';
-import { Mechanism } from '../../model/mechanism/mechanism';
-import { InstantCenter } from '../../model/instant-center';
 import { MechanismService } from '../../services/mechanism.service';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { NOT_A } from '../../ui-text';
@@ -23,19 +14,13 @@ import { NotificationService } from '../../services/notification.service';
   templateUrl: './linkage-table.component.html',
   styleUrls: ['./linkage-table.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
 })
 export class LinkageTableComponent implements OnInit {
-  private static linkageTable: SVGElement;
-  private static jointButton: SVGElement;
-  private static linkButton: SVGElement;
-  private static forceButton: SVGElement;
-  private static showLinkageTableButton: SVGElement;
+  private mechanismService = inject(MechanismService);
+  private notify = inject(NotificationService);
 
-  constructor(
-    private mechanismService: MechanismService,
-    private notify: NotificationService
-  ) {}
+  private static linkageTable: SVGElement;
+  private static showLinkageTableButton: SVGElement;
 
   // The table's cells speak the user's units; the model is MODEL_SCALE times
   // larger (render-scale.ts), so every length converts at this boundary.
@@ -49,15 +34,6 @@ export class LinkageTableComponent implements OnInit {
     LinkageTableComponent.linkageTable = document.getElementById(
       'linkageTable'
     ) as unknown as SVGElement;
-    LinkageTableComponent.jointButton = document.getElementById(
-      'jointButton'
-    ) as unknown as SVGElement;
-    LinkageTableComponent.linkButton = document.getElementById(
-      'linkButton'
-    ) as unknown as SVGElement;
-    LinkageTableComponent.forceButton = document.getElementById(
-      'forceButton'
-    ) as unknown as SVGElement;
     LinkageTableComponent.showLinkageTableButton = document.getElementById(
       'showTable'
     ) as unknown as SVGElement;
@@ -70,7 +46,7 @@ export class LinkageTableComponent implements OnInit {
     );
   }
 
-  changeJointProp($event: any, joint: Joint, jointProp: string) {
+  changeJointProp($event: Event, joint: Joint, jointProp: string) {
     if (!(joint instanceof RealJoint)) {
       return;
     }
@@ -78,10 +54,10 @@ export class LinkageTableComponent implements OnInit {
     // assembly re-poses about the other mount, exactly as the drag does.
     const sealed = this.mechanismService.cylinderAt(joint);
     if (sealed && (jointProp === 'x' || jointProp === 'y')) {
-      if (isNaN(Number($event.target.value))) {
+      if (isNaN(Number(($event.target as HTMLInputElement).value))) {
         return this.notify.refusal('value.length', NOT_A.length);
       }
-      const value = Number($event.target.value) * MODEL_SCALE;
+      const value = Number(($event.target as HTMLInputElement).value) * MODEL_SCALE;
       const wanted = new Coord(
         jointProp === 'x' ? value : joint.x,
         jointProp === 'y' ? value : joint.y
@@ -95,10 +71,10 @@ export class LinkageTableComponent implements OnInit {
     switch (jointProp) {
       // TODO: When changing the joint positions, be sure to also change the ('d') path of the link
       case 'x':
-        if (isNaN(Number($event.target.value))) {
+        if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
-        joint.x = Number($event.target.value) * MODEL_SCALE;
+        joint.x = Number(($event.target as HTMLInputElement).value) * MODEL_SCALE;
         joint.links.forEach((l) => {
           if (!(l instanceof RealLink)) {
             return;
@@ -117,10 +93,10 @@ export class LinkageTableComponent implements OnInit {
         });
         break;
       case 'y':
-        if (isNaN(Number($event.target.value))) {
+        if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
-        joint.y = Number($event.target.value) * MODEL_SCALE;
+        joint.y = Number(($event.target as HTMLInputElement).value) * MODEL_SCALE;
         joint.links.forEach((l) => {
           if (!(l instanceof RealLink)) {
             return;
@@ -137,22 +113,22 @@ export class LinkageTableComponent implements OnInit {
         });
         break;
       case 'id':
-        if (!(typeof $event.target.value === 'string')) {
+        if (!(typeof ($event.target as HTMLInputElement).value === 'string')) {
           return this.notify.refusal('value.name', NOT_A.name);
         }
         joint.links.forEach((l) => {
-          l.id = l.id.replace(joint.id, $event.target.value);
+          l.id = l.id.replace(joint.id, ($event.target as HTMLInputElement).value);
         });
-        joint.id = $event.target.value;
+        joint.id = ($event.target as HTMLInputElement).value;
         break;
       case 'angle':
-        if (isNaN(Number($event.target.value))) {
+        if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.angle', NOT_A.angle);
         }
         if (!(joint instanceof PrisJoint)) {
           return;
         }
-        joint.angle_rad = (Number($event.target.value) * Math.PI) / 180;
+        joint.angle_rad = (Number(($event.target as HTMLInputElement).value) * Math.PI) / 180;
     }
     // `true`, because a value typed into a cell is a discrete edit and should
     // be one undo step -- the same rule the panel follows. Without it, Undo
@@ -160,34 +136,34 @@ export class LinkageTableComponent implements OnInit {
     this.mechanismService.updateMechanism(true);
   }
 
-  changeLinkProp($event: any, link: Link, linkProp: string) {
+  changeLinkProp($event: Event, link: Link, linkProp: string) {
     if (!(link instanceof RealLink)) {
       return;
     }
     switch (linkProp) {
       case 'mass':
-        if (isNaN(Number($event.target.value))) {
+        if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.mass', NOT_A.mass);
         }
-        link.mass = Number($event.target.value);
+        link.mass = Number(($event.target as HTMLInputElement).value);
         break;
       case 'massMoI':
-        if (isNaN(Number($event.target.value))) {
+        if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.momentOfInertia', NOT_A.momentOfInertia);
         }
-        link.massMoI = Number($event.target.value);
+        link.massMoI = Number(($event.target as HTMLInputElement).value);
         break;
       case 'CoMX':
-        if (isNaN(Number($event.target.value))) {
+        if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
-        link.CoM.x = Number($event.target.value) * MODEL_SCALE;
+        link.CoM.x = Number(($event.target as HTMLInputElement).value) * MODEL_SCALE;
         break;
       case 'CoMY':
-        if (isNaN(Number($event.target.value))) {
+        if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
-        link.CoM.y = Number($event.target.value) * MODEL_SCALE;
+        link.CoM.y = Number(($event.target as HTMLInputElement).value) * MODEL_SCALE;
         break;
     }
     this.mechanismService.updateMechanism(true);
@@ -197,37 +173,49 @@ export class LinkageTableComponent implements OnInit {
     return force.angleRad * (180 / Math.PI);
   }
 
-  changeForceProp($event: any, force: Force, forceProp: string) {
+  changeForceProp($event: Event, force: Force, forceProp: string) {
     switch (forceProp) {
       case 'id':
-        if (!(typeof $event.target.value === 'string')) {
+        if (!(typeof ($event.target as HTMLInputElement).value === 'string')) {
           return this.notify.refusal('value.name', NOT_A.name);
         }
-        force.id = $event.target.value;
+        force.id = ($event.target as HTMLInputElement).value;
         break;
       case 'xPos':
-        if (isNaN(Number($event.target.value))) {
+        if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
-        force.moveAnchor(new Coord(Number($event.target.value) * MODEL_SCALE, force.startCoord.y));
+        force.moveAnchor(
+          new Coord(
+            Number(($event.target as HTMLInputElement).value) * MODEL_SCALE,
+            force.startCoord.y
+          )
+        );
         break;
       case 'yPos':
-        if (isNaN(Number($event.target.value))) {
+        if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
-        force.moveAnchor(new Coord(force.startCoord.x, Number($event.target.value) * MODEL_SCALE));
+        force.moveAnchor(
+          new Coord(
+            force.startCoord.x,
+            Number(($event.target as HTMLInputElement).value) * MODEL_SCALE
+          )
+        );
         break;
       case 'mag':
-        if (isNaN(Number($event.target.value))) {
+        if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.force', NOT_A.force);
         }
-        force.setMagnitude(Number($event.target.value));
+        force.setMagnitude(Number(($event.target as HTMLInputElement).value));
         break;
       case 'angle':
-        if (isNaN(Number($event.target.value))) {
+        if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.angle', NOT_A.angle);
         }
-        force.setDirectionRadians(Number($event.target.value) * (Math.PI / 180));
+        force.setDirectionRadians(
+          Number(($event.target as HTMLInputElement).value) * (Math.PI / 180)
+        );
         break;
     }
     this.mechanismService.updateMechanism(true);
@@ -324,6 +312,5 @@ export class LinkageTableComponent implements OnInit {
   getUnit() {
     // TODO: Should return this.settingService.globalUnit.value
     return 'cm'; // :P
-    // return ToolbarComponent.unit;
   }
 }

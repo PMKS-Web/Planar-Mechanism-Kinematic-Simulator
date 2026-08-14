@@ -1,7 +1,7 @@
 <div class="collapsibleSubsection">
-  @if (!hideHeader) {
+  @if (!hideHeader()) {
     <button class="panel-header" (click)="toggleExpand()">
-      {{ titleLabel }}
+      {{ titleLabel() }}
       <mat-icon class="{{ expanded ? 'rotate180' : '' }}"> expand_more </mat-icon>
     </button>
   }

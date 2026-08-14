@@ -4,7 +4,7 @@ import { RealLink } from '../../model/link';
 import { ActiveObjService } from '../active-obj.service';
 import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
-import { UrlGenerationService } from '../url-generation.service';
+import { urlGeneratorFor } from '../../../test-utils/url-encoding';
 import { MechanismBuilder } from './mechanism-builder';
 import { StringTranscoder } from './string-transcoder';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -34,10 +34,9 @@ function source(driveSpeed = 0) {
 }
 
 function encode(driveSpeed: number, settings = new SettingsService()): string {
-  return new UrlGenerationService(
+  return urlGeneratorFor(
     { ...source(driveSpeed), mechanismTimeStep: 0 } as unknown as MechanismService,
-    settings,
-    new ActiveObjService()
+    settings
   ).generateUrlQuery();
 }
 

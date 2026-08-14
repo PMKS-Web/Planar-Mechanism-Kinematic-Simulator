@@ -1,29 +1,38 @@
-import { Component, Input, OnChanges, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  OnChanges,
+  OnInit,
+  ChangeDetectionStrategy,
+  inject,
+  input,
+} from '@angular/core';
 import { ColorService } from '../../../services/color.service';
 import { RealLink } from '../../../model/link';
-import { link } from 'fs';
 import { RealJoint } from '../../../model/joint';
 import { Force } from '../../../model/force';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
 
 @Component({
   selector: 'color-picker',
   templateUrl: './color-picker.component.html',
   styleUrls: ['./color-picker.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon, MatTooltip],
 })
 export class ColorPickerComponent implements OnInit, OnChanges {
-  @Input() link: RealLink | undefined;
-  @Input() joint: RealJoint | undefined;
-  @Input() force: Force | undefined;
-  @Input() tooltip: string | undefined;
-  @Input() type: string | undefined;
+  colorService = inject(ColorService);
 
-  constructor(public colorService: ColorService) {}
+  readonly link = input<RealLink>();
+  readonly joint = input<RealJoint>();
+  readonly force = input<Force>();
+  readonly tooltip = input<string>();
+  readonly type = input<string>();
 
   ngOnChanges(): void {
-    if (this.link) {
-      this.selectColor(this.colorService.getIndexFromLinkColor(this.link.fill));
+    const link = this.link();
+    if (link) {
+      this.selectColor(this.colorService.getIndexFromLinkColor(link.fill));
     }
   }
 
@@ -35,22 +44,20 @@ export class ColorPickerComponent implements OnInit, OnChanges {
   // A method that handles the click event on a color swatch
   selectColor(index: number) {
     this.selectedIndex = index;
-    switch (this.type) {
+    const link = this.link();
+    switch (this.type()) {
       case 'link':
-        if (this.link) {
-          this.link.fill = this.colorService.getLinkColorFromIndex(index);
+        if (link) {
+          link.fill = this.colorService.getLinkColorFromIndex(index);
         }
         break;
       case 'joint':
-        if (this.joint) {
-          // this.joint.fill = this.colorService.getJointColorFromIndex(index);
-        }
         break;
     }
   }
 
   getCorrectColors(): string[] {
-    switch (this.type) {
+    switch (this.type()) {
       case 'link':
         return this.colorService.getLinkColorOptions();
       case 'joint':

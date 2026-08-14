@@ -3,10 +3,6 @@
     <title-block description="Automatically create a 4-bar linkage based on 3 coupler poses.">
       3 Position Synthesis
     </title-block>
-    <!--    <subtitle-block>PMKS+ will create a 4-bar linkage based on 3 poses.</subtitle-block>-->
-    <!--    <input-block unit='cm'>Length</input-block>-->
-    <!--    <app-not-ready-warning></app-not-ready-warning>-->
-    <!-- <img src='assets/temp3pos.png'> -->
 
     <collapsible-subseciton [expanded]="true" [hideHeader]="true">
       <subtitle-block>End-Effector Link (Coupler)</subtitle-block>
@@ -36,7 +32,6 @@
           <div>
             <subtitle-block class="poseHeader">
               <p>Pose {{ i }}</p>
-              <!-- <button-block class = "poseEdit" *ngIf="getCurrentPose() !== i && synthesisBuilder.isPoseDefined(i)"  icon="edit" (click)="setCurrentPose(i)">Edit</button-block> -->
             </subtitle-block>
           </div>
           <!-- display editable pose configuration if pose is both created AND selected -->
@@ -74,9 +69,7 @@
 
       <mat-divider></mat-divider>
 
-      <!--      <button-block icon='add' [disabled]='!synthesisBuilder.isFullyDefined()' (click)='synthesisFunction()'>-->
       <!--        Generate Linkage-->
-      <!--      </button-block>-->
 
       <button-block
         [disabled]="synthesisBuilder.getAllPoses().length === 0"
@@ -88,22 +81,4 @@
       </button-block>
     </collapsible-subseciton>
   </panel-section>
-  <!--  <panel-section-collapsible [expanded]='true'>-->
-  <!--    <subtitle-block buttonLabel='Edit Pose' icon='edit' alwaysShown>Pose 1</subtitle-block>-->
-  <!--    <dual-input-block>Pose 1 Position</dual-input-block>-->
-  <!--    <input-block>Pose 1 Angle</input-block>-->
-  <!--    <button-block icon='arrow_forward'>Next Pose</button-block>-->
-  <!--  </panel-section-collapsible>-->
-  <!--  <panel-section-collapsible [expanded]='false'>-->
-  <!--    <subtitle-block buttonLabel='Edit Pose' icon='edit' alwaysShown>Pose 2</subtitle-block>-->
-  <!--    <dual-input-block>Pose 2 Position</dual-input-block>-->
-  <!--    <input-block>Pose 2 Angle</input-block>-->
-  <!--    <button-block icon='arrow_forward'>Next Pose</button-block>-->
-  <!--  </panel-section-collapsible>-->
-  <!--  <panel-section-collapsible [expanded]='false'>-->
-  <!--    <subtitle-block buttonLabel='Edit Pose' icon='edit' alwaysShown>Pose 3</subtitle-block>-->
-  <!--    <dual-input-block>Pose 3 Position</dual-input-block>-->
-  <!--    <input-block>Pose 3 Angle</input-block>-->
-  <!--    <button-block icon='auto_fix_normal'>Generate</button-block>-->
-  <!--  </panel-section-collapsible>-->
 </div>

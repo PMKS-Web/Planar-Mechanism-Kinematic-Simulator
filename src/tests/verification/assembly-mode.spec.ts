@@ -1,4 +1,5 @@
 // joint.ts first: the model modules form an import cycle that only
+import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
 import { Injector } from '@angular/core';
@@ -32,25 +33,7 @@ const SQUARE_FOUR_BAR =
   '2P.SI.K,2q.1011.MA,A,0,0,0.GB,B,0,1E8,0.GC,C,1E8,1E8,0.KD,D,1E8,0,0..YRAB,AB,Fe,Fe,0,d4,c5cae9,A,B,,.YRBC,BC,Fe,Fe,d4,1E8,303e9f,B,C,,.YRCD,CD,Fe,Fe,1E8,d4,c5cae9,C,D,,...JDn';
 
 function loadMechanism(payload: string) {
-  if (!ColorService.instance) new ColorService();
-  const settings = new SettingsService();
-  const parser = new NumberUnitParserService();
-  // GridUtilsService resolves MechanismService at call time, so it has to be
-  // handed an injector that reads the binding below rather than a finished one.
-  let service!: MechanismService;
-  const grid = new GridUtilsService(
-    new SynthesisBuilderService(parser, settings),
-    new SvgGridService(
-      settings,
-      new DragStateService(),
-      {} as unknown as Injector,
-      silentNotifications()
-    ),
-    { get: () => service } as unknown as Injector
-  );
-  const active = new ActiveObjService();
-  const injector = { get: () => ({ save: () => {} }) } as unknown as Injector;
-  service = new MechanismService(grid, active, injector, settings, parser, silentNotifications());
+  const { service, settings, active } = createMechanismHarness();
 
   const decoder = new StringTranscoder();
   decoder.decodeURL(payload);

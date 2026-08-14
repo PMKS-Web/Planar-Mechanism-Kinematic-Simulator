@@ -1,4 +1,5 @@
 import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { AnalysisGraphSectionComponent } from '../analysis-graph-section/analysis-graph-section.component';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -27,8 +28,7 @@ async function createPanel(payload: string, selectedId: string, mode: TabID = Ta
   const tabs = { getCurrentTab: () => mode } as unknown as SelectedTabService;
 
   await TestBed.configureTestingModule({
-    declarations: [AnalysisPanelComponent],
-    imports: [ReactiveFormsModule, MatFormFieldModule, NoopAnimationsModule],
+    imports: [ReactiveFormsModule, MatFormFieldModule, NoopAnimationsModule, AnalysisPanelComponent],
     providers: [
       { provide: ActiveObjService, useValue: fixtureData.active },
       { provide: MechanismService, useValue: fixtureData.service },
@@ -36,7 +36,16 @@ async function createPanel(payload: string, selectedId: string, mode: TabID = Ta
       { provide: SelectedTabService, useValue: tabs },
     ],
     schemas: [NO_ERRORS_SCHEMA],
-  }).compileComponents();
+  })
+    // The panel renders its graph sections as inert unknown elements — these
+    // tests read the section labels, not the graphs inside them. As a
+    // standalone component the panel brings the real section along, so it is
+    // removed here to keep the label an attribute the specs can read.
+    .overrideComponent(AnalysisPanelComponent, {
+      remove: { imports: [AnalysisGraphSectionComponent] },
+      add: { schemas: [NO_ERRORS_SCHEMA] },
+    })
+    .compileComponents();
 
   const fixture: ComponentFixture<AnalysisPanelComponent> =
     TestBed.createComponent(AnalysisPanelComponent);

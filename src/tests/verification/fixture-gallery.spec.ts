@@ -10,7 +10,7 @@ import {
 } from '../../test-utils/verification/fixture-gallery';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
 import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
-import { UrlGenerationService } from '../../app/services/url-generation.service';
+import { urlGeneratorFor } from '../../test-utils/url-encoding';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { ActiveObjService } from '../../app/services/active-obj.service';
@@ -39,11 +39,7 @@ function rebuild(payload: string): MechanismService {
 }
 
 function encode(mechanism: MechanismService): string {
-  return new UrlGenerationService(
-    mechanism,
-    new SettingsService(),
-    new ActiveObjService()
-  ).generateUrlQuery();
+  return urlGeneratorFor(mechanism, new SettingsService()).generateUrlQuery();
 }
 
 /**

@@ -1,7 +1,13 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
-import { trigger, state, style, animate, transition } from '@angular/animations';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
+import { NewGridComponent } from './component/new-grid/new-grid.component';
+import { TopBarComponent } from './component/top-bar/top-bar.component';
+import { BottombarComponent } from './component/bottombar/bottombar.component';
+import { LeftTabsComponent } from './component/left-tabs/left-tabs.component';
+import { PlaybackBarComponent } from './component/playback-bar/playback-bar.component';
+import { RightPanelComponent } from './component/right-panel/right-panel.component';
+import { NotificationComponent } from './component/notification/notification.component';
 
 @Component({
   selector: 'app-root',
@@ -11,13 +17,21 @@ import { DomSanitizer } from '@angular/platform-browser';
     // animation triggers go here
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    NewGridComponent,
+    TopBarComponent,
+    BottombarComponent,
+    LeftTabsComponent,
+    PlaybackBarComponent,
+    RightPanelComponent,
+    NotificationComponent,
+  ],
 })
 export class AppComponent {
-  constructor(
-    private matIconRegistry: MatIconRegistry,
-    private domSanitizer: DomSanitizer
-  ) {
+  private matIconRegistry = inject(MatIconRegistry);
+  private domSanitizer = inject(DomSanitizer);
+
+  constructor() {
     this.matIconRegistry.addSvgIcon(
       'com',
       this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/com.svg')

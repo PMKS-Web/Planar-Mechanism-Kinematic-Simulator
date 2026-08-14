@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
 import {
   LiveNotification,
   NotificationKind,
   NotificationService,
 } from '../../services/notification.service';
+import { MatIcon } from '@angular/material/icon';
 
 /**
  * The glyph that says which of the four this is before the sentence is read.
@@ -48,10 +49,10 @@ const ICONS: Record<NotificationKind, string> = {
   templateUrl: './notification.component.html',
   styleUrls: ['./notification.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon],
 })
 export class NotificationComponent {
-  constructor(public notifications: NotificationService) {}
+  notifications = inject(NotificationService);
 
   iconFor(one: LiveNotification): string {
     return ICONS[one.kind];

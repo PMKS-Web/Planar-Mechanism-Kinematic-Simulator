@@ -2,11 +2,8 @@
   @if (!editMode) {
     <div class="editModeRow">
       <ng-container *ngTemplateOutlet="contentTpl"></ng-container>
-      {{ displayName ?? activeObjService.getSelectedObj().name }}
-      <!--    <button id='title-icon-button' mat-icon-button (click)='gotoEditMode()' matTooltip='Edit the name of this object.'-->
+      {{ displayName() ?? activeObjService.getSelectedObj().name }}
       <!--            [matTooltipShowDelay]='1000' matTooltipPosition='above'>-->
-      <!--      <mat-icon>edit</mat-icon>-->
-      <!--    </button>-->
     </div>
   }
   @if (editMode) {
@@ -25,13 +22,8 @@
           appPrefixFocusAndSelect
         />
       </mat-form-field>
-      <!--    <input id='title-input-box' type='text' formControlName='newID' (keyup.enter)='saveNewID()'-->
-      <!--           (keyup.escape)='exitEditModeWithoutSaving()' appPrefixFocusAndSelect />-->
-      <!--    <button id='title-icon-button' mat-icon-button color='primary' (click)='saveNewID()'-->
       <!--            matTooltip='Save this name. Escape to cancel.'-->
       <!--            [matTooltipShowDelay]='1000' matTooltipPosition='above'>-->
-      <!--      <mat-icon>check</mat-icon>-->
-      <!--    </button>-->
     </div>
   }
   <div class="row">
@@ -47,7 +39,7 @@
         Save Name
       </button>
     }
-    <button class="mini-buttons red" mat-stroked-button color="warn" (click)="deleteAction()">
+    <button class="mini-buttons red" mat-stroked-button color="warn" (click)="deleteAction()()">
       <mat-icon svgIcon="remove"></mat-icon>
       Delete
     </button>
