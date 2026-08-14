@@ -96,7 +96,11 @@ record('nor has the handle', Math.abs(after.scrub[0] - before.scrub[0]) < 30, {
   before: before.scrub,
   after: after.scrub,
 });
-record('only the clock, which is allowed to', after.seconds !== before.seconds, {
+// Nothing moves at all now, the clock included. Reversing used to mirror the
+// cycle, which put the pose that was at time t at period - t and made the clock
+// jump to follow it. The cycle is left alone instead and the machine turns
+// round on it, so there is nothing for the clock to catch up with.
+record('and neither has the clock', after.seconds === before.seconds, {
   before: before.seconds,
   after: after.seconds,
 });

@@ -51,6 +51,15 @@ export class Mechanism {
   private _requiredLoops: Loop[] = [];
   private _driveState?: PositionSolverDriveState;
   private mechanismValid = true;
+  /**
+   * Whether the drive now runs against the order the frames were solved in.
+   *
+   * Set by `withReversedDrive`, which turns the drive round without touching
+   * the frames. Anything reading a direction has to know: the frames still
+   * climb the way they always did, so a crank angle taken off them is the same
+   * angle, while the machine walking them is now going the other way.
+   */
+  private _framesRunBackwards = false;
 
   constructor(
     joints: Joint[],
@@ -674,42 +683,47 @@ export class Mechanism {
   }
 
   /**
-   * The same cycle, driven the other way.
+   * The same cycle, driven the other way round it.
    *
    * A fully rotating input traverses one closed loop of poses, so reversing it
-   * visits exactly those poses in the opposite order -- there is nothing left
-   * to solve, and solving it again is the single most expensive thing the app
-   * does (three seconds on a 45-joint drawing, where a reader expects a button
-   * press). Measured against a real re-solve, the poses agree to 7e-4 internal
-   * units, which is the rounding the solver already applies per sample.
+   * changes nothing about the loop -- only which way the machine walks it, and
+   * how fast each part is going as it does. So the frames are kept exactly as
+   * they are and only the signed input speed is turned round.
    *
-   * Only the frames are turned round. Rates are not stored: every velocity and
-   * acceleration is derived per sample from the pose and the signed input speed
-   * below, so negating that one array is what turns the whole analysis round --
-   * velocities change sign, accelerations do not, and the force solver follows
-   * without knowing anything about direction.
+   * That is what keeps a reader's place. Re-solving, or even mirroring the
+   * frames, moves every pose to a different time and the whole curve slides
+   * end for end under the playhead: the peak someone was reading jumps to the
+   * other side of the chart for a machine that has not moved. Here the curve
+   * stays where it is and the playhead turns round, which is what actually
+   * happened.
    *
-   * Undefined for a mechanism whose input does not go all the way round: a
-   * rocking cycle already contains both directions, and reversing it is a
-   * matter of which way playback walks rather than of a different solution.
+   * Rates are not stored per frame. Every velocity and acceleration is derived
+   * from the pose and this one signed number, so negating it is the whole of
+   * the change: velocities turn round, accelerations do not (they go as the
+   * square of the speed), and the force analysis is untouched at every pose --
+   * which is right, because what a part has to carry at a pose does not depend
+   * on which way it arrived there.
    */
-  reversedCycle(): Mechanism | undefined {
+  withReversedDrive(): Mechanism | undefined {
     if (!this.mechanismValid || this._joints.length < 2) return undefined;
     const reversed: Mechanism = Object.create(Mechanism.prototype);
     Object.assign(reversed, this);
-    reversed._joints = [...this._joints].reverse();
-    reversed._links = [...this._links].reverse();
-    reversed._forces = [...this._forces].reverse();
-    reversed._ics = [...this._ics].reverse();
-    // Time still runs forward through the new cycle, at the same spacing: it is
-    // the same journey, begun from the other end.
-    reversed._timeNum = [...this._timeNum];
-    reversed._inputAngularVelocities = [...this._inputAngularVelocities]
-      .reverse()
-      .map((velocity) => -velocity);
-    // Solved against the old direction, and cheap to redo on demand.
+    reversed._inputAngularVelocities = this._inputAngularVelocities.map((speed) => -speed);
+    reversed._framesRunBackwards = !this._framesRunBackwards;
+    // A new object rather than a mutation: the panels and graphs cache what
+    // they have drawn against the mechanism they drew it from, and identity is
+    // how they know to look again.
+    //
+    // The cache holds the same answers -- reversing changes no force at any
+    // pose -- but it is keyed by nothing else, so it is cleared rather than
+    // carried into an object claiming a different drive.
     reversed.forceAnalysisCache = new Map();
     return reversed;
+  }
+
+  /** See `_framesRunBackwards`. */
+  get framesRunBackwards(): boolean {
+    return this._framesRunBackwards;
   }
 
   get requiredLoops(): Loop[] {
