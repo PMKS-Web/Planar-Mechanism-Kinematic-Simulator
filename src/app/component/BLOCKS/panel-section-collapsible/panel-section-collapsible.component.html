@@ -1,4 +1,4 @@
-<div id="collapsibleContainer" [ngClass]="warning ? 'warning-color' : 'normal-color'">
+<div id="collapsibleContainer" [ngClass]="warning() ? 'warning-color' : 'normal-color'">
   <ng-content select="[alwaysShown]"></ng-content>
   @if (isLoaded) {
     <div [@openClose]="expanded ? 'open' : 'closed'" id="expnandingContainer">

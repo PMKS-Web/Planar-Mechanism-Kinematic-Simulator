@@ -7,9 +7,9 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   NgZone,
-  ViewChild,
   inject,
   isDevMode,
+  viewChild,
 } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { MatDialog } from '@angular/material/dialog';
@@ -101,8 +101,8 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
 
   private analytics: AnalyticsService = inject(AnalyticsService);
 
-  @ViewChild('tabStrip') tabStrip?: ElementRef<HTMLElement>;
-  @ViewChild('strip') strip?: ElementRef<HTMLElement>;
+  readonly tabStrip = viewChild<ElementRef<HTMLElement>>('tabStrip');
+  readonly strip = viewChild<ElementRef<HTMLElement>>('strip');
 
   /**
    * How much of each label the strip has room for: 2 full, 1 short, 0 icons.
@@ -175,7 +175,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * space available, which is cheap enough to do on every checked pass.
    */
   private fitLabels(): void {
-    const strip = this.strip?.nativeElement;
+    const strip = this.strip()?.nativeElement;
     if (!strip || strip.clientWidth === 0) return;
 
     // Re-fit when the question changes, not on every pass: four class toggles
@@ -233,7 +233,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * one the reader sees as clipped text.
    */
   private watchCard(): void {
-    const card = this.strip?.nativeElement;
+    const card = this.strip()?.nativeElement;
     if (!card || this.cardWatch || typeof ResizeObserver === 'undefined') return;
     this.cardWatch = new ResizeObserver(() =>
       this.zone.run(() => {
@@ -252,7 +252,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     if (this.pendingFrame) return;
     this.pendingFrame = requestAnimationFrame(() => {
       this.pendingFrame = 0;
-      const active = this.tabStrip?.nativeElement.querySelector<HTMLElement>('.tabButton.active');
+      const active = this.tabStrip()?.nativeElement.querySelector<HTMLElement>('.tabButton.active');
       const next = active
         ? { left: active.offsetLeft, width: active.offsetWidth, visible: this.tabs.isTabVisible() }
         : { ...this.highlight, visible: false };

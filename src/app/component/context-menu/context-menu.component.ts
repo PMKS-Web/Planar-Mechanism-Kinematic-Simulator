@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 import { CdkMenu, CdkMenuItem } from '@angular/cdk/menu';
@@ -59,7 +59,7 @@ export class cMenuItem {
   imports: [CdkMenu, CdkMenuItem, MatIcon],
 })
 export class ContextMenuComponent {
-  @Input() menuItems: cMenuItem[] = [];
+  readonly menuItems = input<cMenuItem[]>([]);
   private contextMenu!: HTMLElement;
 
   constructor() {}

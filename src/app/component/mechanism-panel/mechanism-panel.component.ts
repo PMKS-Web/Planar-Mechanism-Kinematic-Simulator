@@ -1,7 +1,7 @@
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { MODEL_SCALE } from '../../model/render-scale';
-import { ChangeDetectionStrategy, Component, Input, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { RealJoint } from '../../model/joint';
 import { RealLink } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
@@ -39,7 +39,7 @@ export class MechanismPanelComponent {
   private nup = inject(NumberUnitParserService);
 
   /** Edit offers to rename and delete; analysis only reports. */
-  @Input() editable = false;
+  readonly editable = input(false);
 
   overviewOpen = true;
   linksOpen = true;

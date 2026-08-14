@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, input } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { MechanismService } from 'src/app/services/mechanism.service';
@@ -32,10 +32,10 @@ export class EditableTitleComponent {
   private mechanismService = inject(MechanismService);
   private notify = inject(NotificationService);
 
-  @Input() showActionButtons: boolean = false;
+  readonly showActionButtons = input<boolean>(false);
   /** Shown instead of the object's own name — a cylinder displays its mounts. */
-  @Input() displayName?: string;
-  @Input() deleteAction!: () => void;
+  readonly displayName = input<string>();
+  readonly deleteAction = input.required<() => void>();
 
   editMode = false;
 

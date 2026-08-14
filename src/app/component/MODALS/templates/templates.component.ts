@@ -3,8 +3,8 @@ import {
   ChangeDetectionStrategy,
   isDevMode,
   TemplateRef,
-  ViewChild,
   inject,
+  viewChild,
 } from '@angular/core';
 import {
   MatDialog,
@@ -52,7 +52,7 @@ export class TemplatesComponent {
   private urlProcessor = inject(UrlProcessorService);
 
   /** Asks whether to replace the linkage already on the grid or open a new tab. */
-  @ViewChild('openChoiceDialog') openChoiceDialog!: TemplateRef<unknown>;
+  readonly openChoiceDialog = viewChild.required<TemplateRef<unknown>>('openChoiceDialog');
 
   /** Only a development build offers the drawings that exercise the app. */
   isDevMode(): boolean {
@@ -73,7 +73,7 @@ export class TemplatesComponent {
     }
 
     this.dialog
-      .open(this.openChoiceDialog)
+      .open(this.openChoiceDialog())
       .afterClosed()
       .subscribe((choice) => {
         if (choice === 'replace') {

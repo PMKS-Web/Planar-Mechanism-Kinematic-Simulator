@@ -4,7 +4,7 @@
     <p class="setupSummary">{{ summary }}</p>
   </div>
 
-  @if (mode === 'kinematic') {
+  @if (mode() === 'kinematic') {
     @for (item of readiness; track item.id) {
       <div class="mechBlock">
         <button class="sectionHeader" (click)="toggle(item)">
@@ -42,7 +42,7 @@
     }
   }
 
-  @if (mode === 'force') {
+  @if (mode() === 'force') {
     <div class="mechBlock">
       <button class="sectionHeader" (click)="forceOpen = !forceOpen">
         <span class="sectionName">
@@ -78,7 +78,7 @@
     </div>
   }
 
-  @if (mode === 'kinematic' && unassigned.length > 0) {
+  @if (mode() === 'kinematic' && unassigned.length > 0) {
     <div class="mechBlock">
       <button class="sectionHeader muted" (click)="unassignedOpen = !unassignedOpen">
         <span class="sectionName">

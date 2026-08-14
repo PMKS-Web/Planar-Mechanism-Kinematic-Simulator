@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, input } from '@angular/core';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -19,11 +19,11 @@ import { MatButtonToggleGroup, MatButtonToggle } from '@angular/material/button-
   ],
 })
 export class RadioComponent {
-  @Input() tooltip: string | undefined;
-  @Input() option1: string | undefined;
-  @Input() option2: string | undefined;
+  readonly tooltip = input<string>();
+  readonly option1 = input<string>();
+  readonly option2 = input<string>();
   @Input() option3: string | undefined;
-  @Input() _formControl!: string;
-  @Input() formGroup!: FormGroup;
-  @Input() disabled: boolean = false;
+  readonly _formControl = input.required<string>();
+  readonly formGroup = input.required<FormGroup>();
+  readonly disabled = input<boolean>(false);
 }

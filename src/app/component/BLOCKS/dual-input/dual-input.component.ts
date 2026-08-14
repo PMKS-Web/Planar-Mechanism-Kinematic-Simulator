@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, input, output } from '@angular/core';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -13,18 +13,18 @@ import { MatInput } from '@angular/material/input';
   imports: [MatIcon, MatTooltip, FormsModule, ReactiveFormsModule, MatFormField, MatInput],
 })
 export class DualInputComponent {
-  @Input() tooltip!: string;
-  @Input() unit!: string;
-  @Input() formControl1!: string;
-  @Input() label1: string = 'X';
-  @Input() label2: string = 'Y';
-  @Input() formControl2!: string;
-  @Input() formGroup!: FormGroup;
+  readonly tooltip = input.required<string>();
+  readonly unit = input<string | undefined>(undefined);
+  readonly formControl1 = input.required<string>();
+  readonly label1 = input<string>('X');
+  readonly label2 = input<string>('Y');
+  readonly formControl2 = input.required<string>();
+  readonly formGroup = input.required<FormGroup>();
   @Input() formSubGroup: string | undefined;
-  @Input() disabled: boolean = false;
-  @Output() field1Entry: EventEmitter<number> = new EventEmitter();
-  @Output() field2Entry: EventEmitter<number> = new EventEmitter();
-  @Input() emitterOutputID: number = -2;
+  readonly disabled = input<boolean>(false);
+  readonly field1Entry = output<number>();
+  readonly field2Entry = output<number>();
+  readonly emitterOutputID = input<number>(-2);
 
   isField1MouseOver: boolean = false;
   isField1Focused: boolean = false;
@@ -37,16 +37,17 @@ export class DualInputComponent {
   lastShowField2Overlay: boolean = false;
 
   updateOverlay() {
-    if (this.disabled) {
+    if (this.disabled()) {
       this.showField1Overlay = false;
       this.showField2Overlay = false;
       return;
     }
 
     this.showField1Overlay = this.isField1MouseOver || this.isField1Focused;
+    const emitterOutputID = this.emitterOutputID();
     if (this.lastShowField1Overlay != this.showField1Overlay) {
       if (this.showField1Overlay) {
-        this.field1Entry.emit(this.emitterOutputID);
+        this.field1Entry.emit(emitterOutputID);
       } else {
         this.field1Entry.emit(-2);
       }
@@ -56,7 +57,7 @@ export class DualInputComponent {
     this.showField2Overlay = this.isField2MouseOver || this.isField2Focused;
     if (this.lastShowField2Overlay != this.showField2Overlay) {
       if (this.showField2Overlay) {
-        this.field2Entry.emit(this.emitterOutputID);
+        this.field2Entry.emit(emitterOutputID);
       } else {
         this.field2Entry.emit(-2);
       }

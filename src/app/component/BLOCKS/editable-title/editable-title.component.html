@@ -2,7 +2,7 @@
   @if (!editMode) {
     <div class="editModeRow">
       <ng-container *ngTemplateOutlet="contentTpl"></ng-container>
-      {{ displayName ?? activeObjService.getSelectedObj().name }}
+      {{ displayName() ?? activeObjService.getSelectedObj().name }}
       <!--            [matTooltipShowDelay]='1000' matTooltipPosition='above'>-->
     </div>
   }
@@ -39,7 +39,7 @@
         Save Name
       </button>
     }
-    <button class="mini-buttons red" mat-stroked-button color="warn" (click)="deleteAction()">
+    <button class="mini-buttons red" mat-stroked-button color="warn" (click)="deleteAction()()">
       <mat-icon svgIcon="remove"></mat-icon>
       Delete
     </button>

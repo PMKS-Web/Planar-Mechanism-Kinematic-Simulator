@@ -1,7 +1,7 @@
-<div id="input-block" [class.stacked]="stacked">
+<div id="input-block" [class.stacked]="stacked()">
   <div class="row" [formGroup]="formGroup">
     <span class="label"><ng-content></ng-content></span>
-    <mat-icon matTooltip="{{ this.tooltip }}" [matTooltipShowDelay]="1000" class="label-help">
+    <mat-icon matTooltip="{{ this.tooltip() }}" [matTooltipShowDelay]="1000" class="label-help">
       help_outline
     </mat-icon>
     <div class="spacer"></div>
@@ -34,10 +34,10 @@
         <select
           matTextSuffix
           class="unit-select"
-          [formControlName]="unitFormControl!"
+          [formControlName]="unitFormControl()!"
           (click)="$event.stopPropagation()"
         >
-          @for (option of unitOptions; track option.value) {
+          @for (option of unitOptions(); track option.value) {
             <option [value]="option.value">{{ option.label }}</option>
           }
         </select>

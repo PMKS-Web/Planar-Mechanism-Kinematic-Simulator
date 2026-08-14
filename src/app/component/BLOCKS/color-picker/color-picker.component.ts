@@ -1,10 +1,10 @@
 import {
   Component,
-  Input,
   OnChanges,
   OnInit,
   ChangeDetectionStrategy,
   inject,
+  input,
 } from '@angular/core';
 import { ColorService } from '../../../services/color.service';
 import { RealLink } from '../../../model/link';
@@ -23,15 +23,16 @@ import { MatTooltip } from '@angular/material/tooltip';
 export class ColorPickerComponent implements OnInit, OnChanges {
   colorService = inject(ColorService);
 
-  @Input() link: RealLink | undefined;
-  @Input() joint: RealJoint | undefined;
-  @Input() force: Force | undefined;
-  @Input() tooltip: string | undefined;
-  @Input() type: string | undefined;
+  readonly link = input<RealLink>();
+  readonly joint = input<RealJoint>();
+  readonly force = input<Force>();
+  readonly tooltip = input<string>();
+  readonly type = input<string>();
 
   ngOnChanges(): void {
-    if (this.link) {
-      this.selectColor(this.colorService.getIndexFromLinkColor(this.link.fill));
+    const link = this.link();
+    if (link) {
+      this.selectColor(this.colorService.getIndexFromLinkColor(link.fill));
     }
   }
 
@@ -43,10 +44,11 @@ export class ColorPickerComponent implements OnInit, OnChanges {
   // A method that handles the click event on a color swatch
   selectColor(index: number) {
     this.selectedIndex = index;
-    switch (this.type) {
+    const link = this.link();
+    switch (this.type()) {
       case 'link':
-        if (this.link) {
-          this.link.fill = this.colorService.getLinkColorFromIndex(index);
+        if (link) {
+          link.fill = this.colorService.getLinkColorFromIndex(index);
         }
         break;
       case 'joint':
@@ -55,7 +57,7 @@ export class ColorPickerComponent implements OnInit, OnChanges {
   }
 
   getCorrectColors(): string[] {
-    switch (this.type) {
+    switch (this.type()) {
       case 'link':
         return this.colorService.getLinkColorOptions();
       case 'joint':

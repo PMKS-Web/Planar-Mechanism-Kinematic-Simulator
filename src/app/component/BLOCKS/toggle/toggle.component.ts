@@ -1,11 +1,10 @@
 import {
   Component,
   ElementRef,
-  EventEmitter,
-  Input,
-  Output,
-  ViewChild,
   ChangeDetectionStrategy,
+  input,
+  output,
+  viewChild,
 } from '@angular/core';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
@@ -30,13 +29,13 @@ import { MatSlideToggle } from '@angular/material/slide-toggle';
   ],
 })
 export class ToggleComponent {
-  @Input() tooltip: string | undefined;
-  @Input() formGroup!: FormGroup;
-  @Input() _formControl!: string;
+  readonly tooltip = input<string>();
+  readonly formGroup = input.required<FormGroup>();
+  readonly _formControl = input.required<string>();
 
-  @Input() addInput: boolean = false;
-  @Input() _formControlForInput!: string;
-  @Input() disableInput: boolean = false;
+  readonly addInput = input<boolean>(false);
+  readonly _formControlForInput = input<string | undefined>(undefined);
+  readonly disableInput = input<boolean>(false);
 
   /**
    * Pointed at or typed in, for a caller that draws the field's meaning on the
@@ -50,7 +49,7 @@ export class ToggleComponent {
    * gets "nothing" on the way in and "nothing" on the way out, and no overlay
    * ever appears. This control has one field. It can just say so.
    */
-  @Output() fieldEntry: EventEmitter<boolean> = new EventEmitter();
+  readonly fieldEntry = output<boolean>();
 
   private mouseOver = false;
   private focused = false;
@@ -73,7 +72,7 @@ export class ToggleComponent {
     this.fieldEntry.emit(wants);
   }
 
-  @ViewChild('field', { static: false }) field!: ElementRef;
+  readonly field = viewChild.required<ElementRef>('field');
 
   // ngOnChanges() {
   //   //Get the #field input element

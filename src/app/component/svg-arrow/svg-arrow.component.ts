@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 
 @Component({
   selector: '[app-svg-arrow]',
@@ -7,31 +7,31 @@ import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.Eager,
 })
 export class SvgArrowComponent {
-  @Input() x: number = 0;
-  @Input() y: number = 0;
-  @Input() magnitude: number = 0;
-  @Input() direction: number = 0;
-  @Input() width: number = 0.1;
-  @Input() color: string = 'black';
+  readonly x = input<number>(0);
+  readonly y = input<number>(0);
+  readonly magnitude = input<number>(0);
+  readonly direction = input<number>(0);
+  readonly width = input<number>(0.1);
+  readonly color = input<string>('black');
 
   readonly SCALAR: number = 0.2;
 
   constructor() {}
 
   get x2(): number {
-    return this.x + this.magnitude * Math.cos(this.directionRadians);
+    return this.x() + this.magnitude() * Math.cos(this.directionRadians);
   }
 
   get y2(): number {
-    return this.y + this.magnitude * Math.sin(this.directionRadians);
+    return this.y() + this.magnitude() * Math.sin(this.directionRadians);
   }
 
   get delta(): number {
-    return this.magnitude * this.SCALAR;
+    return this.magnitude() * this.SCALAR;
   }
 
   get directionRadians(): number {
-    return (this.direction * Math.PI) / 180;
+    return (this.direction() * Math.PI) / 180;
   }
 
   // arrow point A
@@ -60,6 +60,6 @@ export class SvgArrowComponent {
   }
 
   getPath() {
-    return `M ${this.x} ${this.y} L ${this.x2} ${this.y2} M ${this.ax1} ${this.ay1} L ${this.x2} ${this.y2} M ${this.ax2} ${this.ay2} L ${this.x2} ${this.y2}`;
+    return `M ${this.x()} ${this.y()} L ${this.x2} ${this.y2} M ${this.ax1} ${this.ay1} L ${this.x2} ${this.y2} M ${this.ax2} ${this.ay2} L ${this.x2} ${this.y2}`;
   }
 }

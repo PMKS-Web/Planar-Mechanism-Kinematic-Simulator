@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, inject, input } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
@@ -14,9 +14,9 @@ export class ButtonComponent {
   activeSrv = inject(ActiveObjService);
 
   @Input() icon: string | undefined;
-  @Input() click!: () => void;
-  @Input() color: string = 'primary';
+  readonly click = input<(() => void) | undefined>(undefined);
+  readonly color = input<string>('primary');
 
   @Input() customIcon: string | undefined;
-  @Input() disabled: boolean = false;
+  readonly disabled = input<boolean>(false);
 }

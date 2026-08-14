@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Input, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { Joint, RealJoint } from '../../model/joint';
 import { Link, RealLink } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
@@ -40,7 +40,7 @@ export class AnalysisSetupComponent {
    * against are not the same problem, and a reader refused by one mode should
    * not have to read past the other's list to find out why.
    */
-  @Input() mode: 'kinematic' | 'force' = 'kinematic';
+  readonly mode = input<'kinematic' | 'force'>('kinematic');
   /** Which mechanisms the reader has folded away, by id. */
   private collapsed = new Set<string>();
   unassignedOpen = false;
@@ -83,11 +83,11 @@ export class AnalysisSetupComponent {
    * Counted rather than listed, because the list is right underneath it.
    */
   get title(): string {
-    return this.mode === 'force' ? 'Force analysis setup' : 'Analysis setup';
+    return this.mode() === 'force' ? 'Force analysis setup' : 'Analysis setup';
   }
 
   get summary(): string {
-    if (this.mode === 'force') {
+    if (this.mode() === 'force') {
       const outstanding = this.forceOutstanding;
       if (outstanding > 0) {
         return `${outstanding} ${outstanding === 1 ? 'thing has' : 'things have'} to be set before forces can be solved.`;

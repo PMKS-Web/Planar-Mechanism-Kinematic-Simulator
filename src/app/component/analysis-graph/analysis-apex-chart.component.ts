@@ -4,13 +4,13 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  Input,
   NgZone,
   OnChanges,
   OnDestroy,
   SimpleChanges,
-  ViewChild,
   inject,
+  input,
+  viewChild,
 } from '@angular/core';
 import ApexCharts, {
   ApexAnnotations,
@@ -53,20 +53,20 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
   private zone = inject(NgZone);
   private changeDetector = inject(ChangeDetectorRef);
 
-  @Input() annotations?: ApexAnnotations;
-  @Input() chart?: ApexChart;
-  @Input() colors?: string[];
-  @Input() dataLabels?: ApexDataLabels;
-  @Input() grid?: ApexGrid;
-  @Input() legend?: ApexLegend;
-  @Input() markers?: ApexMarkers;
-  @Input() series: ApexAxisChartSeries = [];
-  @Input() stroke?: ApexStroke;
-  @Input() tooltip?: ApexTooltip;
-  @Input() xaxis?: ApexXAxis;
-  @Input() yaxis?: ApexYAxis;
+  readonly annotations = input<ApexAnnotations>();
+  readonly chart = input<ApexChart>();
+  readonly colors = input<string[]>();
+  readonly dataLabels = input<ApexDataLabels>();
+  readonly grid = input<ApexGrid>();
+  readonly legend = input<ApexLegend>();
+  readonly markers = input<ApexMarkers>();
+  readonly series = input<ApexAxisChartSeries>([]);
+  readonly stroke = input<ApexStroke>();
+  readonly tooltip = input<ApexTooltip>();
+  readonly xaxis = input<ApexXAxis>();
+  readonly yaxis = input<ApexYAxis>();
 
-  @ViewChild('chartHost', { static: true }) chartHost!: ElementRef<HTMLElement>;
+  readonly chartHost = viewChild.required<ElementRef<HTMLElement>>('chartHost');
 
   renderError: string | null = null;
   chartInstance?: ApexCharts;
@@ -107,7 +107,7 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
    * made this look like a rendering bug rather than a measuring one.
    */
   private watchWidth(): void {
-    const host = this.chartHost?.nativeElement;
+    const host = this.chartHost()?.nativeElement;
     if (!host || typeof ResizeObserver === 'undefined') return;
     this.renderedWidth = host.clientWidth;
     this.widthWatch = new ResizeObserver(() => {
@@ -164,7 +164,7 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
           throw new Error('The chart renderer did not load.');
         }
         this.chartInstance = this.zone.runOutsideAngular(
-          () => new ApexChartsConstructor(this.chartHost.nativeElement, options)
+          () => new ApexChartsConstructor(this.chartHost().nativeElement, options)
         );
         await this.zone.runOutsideAngular(() => this.chartInstance!.render());
       }
@@ -183,18 +183,18 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
 
   private options(): ApexCharts.ApexOptions {
     const options: ApexCharts.ApexOptions = {
-      annotations: this.annotations,
-      chart: this.chart,
-      colors: this.colors,
-      dataLabels: this.dataLabels,
-      grid: this.grid,
-      legend: this.legend,
-      markers: this.markers,
-      series: this.series,
-      stroke: this.stroke,
-      tooltip: this.tooltip,
-      xaxis: this.xaxis,
-      yaxis: this.yaxis,
+      annotations: this.annotations(),
+      chart: this.chart(),
+      colors: this.colors(),
+      dataLabels: this.dataLabels(),
+      grid: this.grid(),
+      legend: this.legend(),
+      markers: this.markers(),
+      series: this.series(),
+      stroke: this.stroke(),
+      tooltip: this.tooltip(),
+      xaxis: this.xaxis(),
+      yaxis: this.yaxis(),
     };
     // ApexCharts treats an explicitly present `undefined` as an override of its default. Safari
     // then fails inside configuration reads such as `markers.size`. Match ng-apexcharts' contract

@@ -1,4 +1,4 @@
-import { Component, Input, NO_ERRORS_SCHEMA } from '@angular/core';
+import { Component, NO_ERRORS_SCHEMA, input } from '@angular/core';
 import { AnalysisApexChartComponent } from './analysis-apex-chart.component';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
@@ -40,18 +40,18 @@ import { withTestInjector } from '../../../test-utils/mechanism-harness';
   template: '',
 })
 class ApexChartStubComponent {
-  @Input() series: ApexAxisChartSeries = [];
-  @Input() annotations: unknown;
-  @Input() chart: unknown;
-  @Input() colors: unknown;
-  @Input() yaxis: unknown;
-  @Input() dataLabels: unknown;
-  @Input() markers: unknown;
-  @Input() stroke: unknown;
-  @Input() grid: unknown;
-  @Input() xaxis: unknown;
-  @Input() tooltip: unknown;
-  @Input() legend: unknown;
+  readonly series = input<ApexAxisChartSeries>([]);
+  readonly annotations = input<unknown>();
+  readonly chart = input<unknown>();
+  readonly colors = input<unknown>();
+  readonly yaxis = input<unknown>();
+  readonly dataLabels = input<unknown>();
+  readonly markers = input<unknown>();
+  readonly stroke = input<unknown>();
+  readonly grid = input<unknown>();
+  readonly xaxis = input<unknown>();
+  readonly tooltip = input<unknown>();
+  readonly legend = input<unknown>();
 
   addPointAnnotation = vi.fn();
   addXaxisAnnotation = vi.fn();

@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, input } from '@angular/core';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 
@@ -14,5 +14,5 @@ export class SubtitleComponent {
   @Input() buttonLabel: string | undefined;
   @Input() description: string | undefined;
 
-  @Input() click!: () => void;
+  readonly click = input<(() => void) | undefined>(undefined);
 }

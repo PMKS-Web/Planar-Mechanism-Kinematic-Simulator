@@ -1,10 +1,10 @@
 import {
   booleanAttribute,
   Component,
-  EventEmitter,
   Input,
-  Output,
   ChangeDetectionStrategy,
+  input,
+  output,
 } from '@angular/core';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
@@ -39,19 +39,24 @@ export class InputComponent {
    * of the two gets crushed. The panel already reads this way for Joint
    * Position and Center of Mass.
    */
-  @Input({ transform: booleanAttribute }) stacked: boolean = false;
-  @Input() tooltip: string | undefined;
+  readonly stacked = input<boolean, unknown>(false, { transform: booleanAttribute });
+  readonly tooltip = input<string>();
   @Input() _formControl!: string;
   @Input() formGroup!: FormGroup;
   /**
    * Turns the static unit suffix into a picker sharing the field's fill, for
    * values whose unit the user chooses rather than types. Needs unitFormControl.
    */
-  @Input() unitOptions: { value: string; label: string }[] | undefined;
-  @Input() unitFormControl: string | undefined;
+  readonly unitOptions = input<
+    {
+      value: string;
+      label: string;
+    }[]
+  >();
+  readonly unitFormControl = input<string>();
 
   get hasUnitSelect(): boolean {
-    return !!this.unitOptions?.length && !!this.unitFormControl;
+    return !!this.unitOptions()?.length && !!this.unitFormControl();
   }
 
   /**
@@ -65,8 +70,8 @@ export class InputComponent {
    * Silent unless a caller supplies an id, so every other `input-block` in the
    * app is untouched.
    */
-  @Output() fieldEntry: EventEmitter<number> = new EventEmitter();
-  @Input() emitterOutputID: number = -2;
+  readonly fieldEntry = output<number>();
+  readonly emitterOutputID = input<number>(-2);
 
   private mouseOver = false;
   private focused = false;
@@ -76,7 +81,7 @@ export class InputComponent {
     const wants = this.mouseOver || this.focused;
     if (wants === this.showing) return;
     this.showing = wants;
-    this.fieldEntry.emit(wants ? this.emitterOutputID : -2);
+    this.fieldEntry.emit(wants ? this.emitterOutputID() : -2);
   }
 
   setMouseOver(over: boolean): void {

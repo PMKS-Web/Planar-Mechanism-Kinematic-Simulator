@@ -3,9 +3,9 @@ import {
   OnDestroy,
   Component,
   HostListener,
-  ViewChild,
   ChangeDetectionStrategy,
   inject,
+  viewChild,
 } from '@angular/core';
 import { fromEvent } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
@@ -230,7 +230,7 @@ export class NewGridComponent implements OnDestroy {
     return Math.round((line / MODEL_SCALE) * 1e6) / 1e6;
   }
 
-  @ViewChild('trigger') contextMenu!: CdkContextMenuTrigger;
+  readonly contextMenu = viewChild.required<CdkContextMenuTrigger>('trigger');
 
   ngOnInit() {
     const svgElement = document.getElementById('canvas') as HTMLElement;

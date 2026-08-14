@@ -1,9 +1,7 @@
 import {
   AfterViewInit,
   Component,
-  EventEmitter,
   Input,
-  Output,
   OnChanges,
   OnDestroy,
   OnInit,
@@ -11,6 +9,7 @@ import {
   ViewChild,
   ChangeDetectionStrategy,
   inject,
+  output,
 } from '@angular/core';
 import {
   ApexAnnotations,
@@ -323,7 +322,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   @Input() initialSeries?: SeriesSelection;
 
   /** What this graph is actually drawing, whenever that changes. */
-  @Output() shownSeriesChange = new EventEmitter<SeriesSelection>();
+  readonly shownSeriesChange = output<SeriesSelection>();
 
   //Get the child element in the template with "#chart"
   @ViewChild('chart', { static: false }) chart!: AnalysisApexChartComponent;

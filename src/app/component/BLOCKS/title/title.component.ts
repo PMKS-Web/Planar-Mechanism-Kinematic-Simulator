@@ -1,11 +1,4 @@
-import {
-  Component,
-  OnInit,
-  Input,
-  Output,
-  EventEmitter,
-  ChangeDetectionStrategy,
-} from '@angular/core';
+import { Component, OnInit, Input, ChangeDetectionStrategy, output } from '@angular/core';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 
@@ -21,7 +14,7 @@ export class TitleBlock implements OnInit {
   @Input() buttonLabel: string | undefined;
   @Input() description: string | undefined;
 
-  @Output() nestedComponentChange: EventEmitter<number> = new EventEmitter<number>();
+  readonly nestedComponentChange = output<number>();
 
   defaultIcon: string | undefined;
   altIcon: string | undefined;

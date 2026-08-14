@@ -1,11 +1,11 @@
 @if (exists) {
   <div class="mechanismPanel">
     <div class="mechHead">
-      <div class="mechTitle">{{ editable ? 'Edit' : 'Analysis for' }} Mechanism {{ id }}</div>
+      <div class="mechTitle">{{ editable() ? 'Edit' : 'Analysis for' }} Mechanism {{ id }}</div>
       <div class="mechStatusRow">
         <span class="mechStatus" [class.ready]="ready" (click)="openSetup()">{{ statusText }}</span>
       </div>
-      @if (editable) {
+      @if (editable()) {
         <div class="mechActions">
           <button class="mechButton danger" (click)="deleteMechanism()">
             <mat-icon>delete_outline</mat-icon>
@@ -50,7 +50,7 @@
     <div class="mechFooter">
       <p>
         {{
-          editable
+          editable()
             ? 'Select one of its joints or links on the grid to edit that part.'
             : 'Select a joint or link on the grid for its position, velocity and acceleration graphs.'
         }}
