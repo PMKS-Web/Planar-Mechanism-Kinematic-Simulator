@@ -3214,11 +3214,22 @@ export class MechanismService {
     // The input itself has turned round, so time runs forward through the new
     // cycle again.
     this.playbackDirection[index] = 1;
-    // Not saved. Reversing is done from the transport, which is a way of
-    // watching the drawing rather than of changing it, and nothing else a
-    // reader does in an analysis mode lands in the undo history either. The
-    // drive still carries its new sign, so the next real edit writes it out.
-    this.updateMechanism(false);
+    // The answer is already in hand, backwards: a fully rotating input walks
+    // one closed loop of poses, and turning it round walks the same loop the
+    // other way (Mechanism.reversedCycle). Solving it again from the drive up
+    // is what a reversal used to cost, and on a 45-joint drawing that is three
+    // seconds of frozen window for a result the app is already holding.
+    //
+    // Not saved either way. Reversing is done from the transport, which is a
+    // way of watching the drawing rather than of changing it, and nothing else
+    // a reader does in an analysis mode lands in the undo history. The drive
+    // still carries its new sign, so the next real edit writes it out.
+    const mirrored = this.mechanisms[index]?.reversedCycle();
+    if (mirrored) {
+      this.mechanisms[index] = mirrored;
+    } else {
+      this.updateMechanism(false);
+    }
 
     if (period > 0) {
       // The pose that was at time t sits at period - t in the mirrored cycle.
