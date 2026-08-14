@@ -25,46 +25,5 @@
     z-index: 8;
     box-sizing: border-box;
     box-shadow: var(--card-shadow);
-
-    .viewButton {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 40px;
-      height: 40px;
-      flex: 0 0 auto;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      color: #5f6368;
-      cursor: pointer;
-      padding: 0;
-
-      mat-icon {
-        width: 22px;
-        height: 22px;
-        font-size: 22px;
-        line-height: 22px;
-        margin: 0;
-      }
-
-      &:hover {
-        background: rgba(0, 0, 0, 0.04);
-      }
-
-      // On means a tint behind the glyph, and nothing else. The glyph itself
-      // stays the same grey in both states: it is drawing what is on the grid,
-      // so having it change colour as well made two signals out of one, and
-      // the three switches disagreed about which of them carried the state.
-      &.on {
-        background: #eef1fc;
-      }
-
-      &:disabled {
-        color: #c4c7d0;
-        cursor: default;
-        background: transparent;
-      }
-    }
   }
 }

@@ -448,20 +448,29 @@ record(
 );
 
 // --- the three view switches say their state the same way -------------------
-const switches = () =>
+const buttons = () =>
   page.evaluate(() =>
-    [...document.querySelectorAll('.viewControls .viewButton')].slice(0, 3).map((button) => {
+    [...document.querySelectorAll('.viewControls .viewButton')].map((button) => {
       const icon = button.querySelector('mat-icon');
       return {
         name: button.getAttribute('aria-label'),
-        glyph: icon?.getAttribute('data-mat-icon-name') ?? '',
+        glyph: icon?.getAttribute('data-mat-icon-name') ?? icon?.textContent.trim() ?? '',
         on: button.classList.contains('on'),
         disabled: button.disabled,
         tinted: getComputedStyle(button).backgroundColor !== 'rgba(0, 0, 0, 0)',
         ink: getComputedStyle(icon).color,
+        // A glyph that names its own colour ignores the button's, which is how
+        // the traced-paths switch stayed black in a row that had greyed out.
+        selfPainted: [...(icon?.querySelectorAll('svg *') ?? [])].some((node) =>
+          ['fill', 'stroke'].some((attribute) => {
+            const value = node.getAttribute(attribute);
+            return value !== null && value !== 'none' && value !== 'currentColor';
+          })
+        ),
       };
     })
   );
+const switches = async () => (await buttons()).slice(0, 3);
 
 await load(payloads['4-Bar']);
 await page.evaluate(() => {
@@ -506,6 +515,24 @@ record(
   'a switch that would change nothing is greyed',
   idle[0].disabled && idle[2].disabled && !idle[1].disabled,
   idle.map((s) => `${s.name}=${s.disabled}`)
+);
+
+// --- an empty grid: nothing for any of the three to act on ------------------
+await load();
+const onEmpty = await buttons();
+record(
+  'with nothing drawn, all three switches are greyed and the view actions are not',
+  onEmpty.slice(0, 3).every((b) => b.disabled) && onEmpty.slice(3).every((b) => !b.disabled),
+  onEmpty.map((b) => `${b.name}=${b.disabled}`)
+);
+// The check above passes on colour alone; this is the one that catches a glyph
+// painting itself, which no computed style on the button would show.
+record(
+  'and every glyph takes the button ink rather than naming its own colour',
+  onEmpty.every((b) => !b.selfPainted) &&
+    new Set(onEmpty.slice(0, 3).map((b) => b.ink)).size === 1 &&
+    new Set(onEmpty.slice(3).map((b) => b.ink)).size === 1,
+  onEmpty.map((b) => `${b.glyph} ink=${b.ink} own=${b.selfPainted}`)
 );
 
 // --- the setup drawer keeps one gap all round, whatever the transport does --

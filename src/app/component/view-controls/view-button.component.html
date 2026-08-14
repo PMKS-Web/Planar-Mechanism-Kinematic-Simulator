@@ -1,0 +1,16 @@
+<button
+  class="viewButton"
+  [class.on]="shown()"
+  [disabled]="disabled()"
+  (click)="pressed.emit()"
+  [matTooltip]="tip()"
+  matTooltipPosition="above"
+  [matTooltipShowDelay]="600"
+  [attr.aria-label]="label()"
+>
+  @if (icon(); as ligature) {
+    <mat-icon>{{ ligature }}</mat-icon>
+  } @else {
+    <mat-icon [svgIcon]="glyph()"></mat-icon>
+  }
+</button>

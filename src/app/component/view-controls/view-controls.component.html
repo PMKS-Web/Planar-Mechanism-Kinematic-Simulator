@@ -1,70 +1,35 @@
 <div class="viewControls">
-  <button
-    class="viewButton"
-    [class.on]="isShowingCoM()"
+  <!-- The switches. Each says what it is about; how a switch looks and reads
+       is view-button's business, so the three cannot drift apart again. -->
+  <view-button
+    noun="Center of Mass"
+    shownIcon="com"
+    hiddenIcon="com_off"
+    [shown]="isShowingCoM()"
     [disabled]="noMassiveLink()"
-    (click)="showCenterOfMass()"
-    [matTooltip]="isShowingCoM() ? 'Hide Center of Mass' : 'Show Center of Mass'"
-    matTooltipPosition="above"
-    [matTooltipShowDelay]="600"
-    aria-label="Show Center of Mass"
-  >
-    <mat-icon svgIcon="{{ comIconName() }}"></mat-icon>
-  </button>
-  <button
-    class="viewButton"
-    [class.on]="isShowingIDs()"
+    (pressed)="showCenterOfMass()"
+  />
+  <view-button
+    noun="joint IDs"
+    shownIcon="abc"
+    hiddenIcon="abc_off"
+    [shown]="isShowingIDs()"
     [disabled]="noJointExists()"
-    (click)="onShowIDPressed()"
-    [matTooltip]="isShowingIDs() ? 'Hide joint IDs' : 'Show joint IDs'"
-    matTooltipPosition="above"
-    [matTooltipShowDelay]="600"
-    aria-label="Show joint IDs"
-  >
-    <mat-icon svgIcon="{{ idLabelIconName() }}"></mat-icon>
-  </button>
-  <button
-    class="viewButton"
-    [class.on]="isShowingTraces()"
+    (pressed)="onShowIDPressed()"
+  />
+  <!-- The app's own curve glyph, which is a traced point with its path behind
+       it. A line chart reads as another kind of analysis. -->
+  <view-button
+    noun="traced paths"
+    shownIcon="show_path"
+    hiddenIcon="hide_path"
+    [shown]="isShowingTraces()"
     [disabled]="noTracedJoint()"
-    (click)="onShowTracesPressed()"
-    [matTooltip]="isShowingTraces() ? 'Hide traced paths' : 'Show traced paths'"
-    matTooltipPosition="above"
-    [matTooltipShowDelay]="600"
-    aria-label="Show traced paths"
-  >
-    <!-- The app's own curve glyph, which is a traced point with its path behind
-         it. A line chart reads as another kind of analysis. -->
-    <mat-icon svgIcon="{{ traceIconName() }}"></mat-icon>
-  </button>
-  <button
-    class="viewButton"
-    (click)="onZoomOutPressed()"
-    matTooltip="Zoom Out"
-    matTooltipPosition="above"
-    [matTooltipShowDelay]="600"
-    aria-label="Zoom Out"
-  >
-    <mat-icon>zoom_out</mat-icon>
-  </button>
-  <button
-    class="viewButton"
-    (click)="onZoomInPressed()"
-    matTooltip="Zoom In"
-    matTooltipPosition="above"
-    [matTooltipShowDelay]="600"
-    aria-label="Zoom In"
-  >
-    <mat-icon>zoom_in</mat-icon>
-  </button>
-  <button
-    class="viewButton"
-    (click)="onReframePressed()"
-    matTooltip="Reset View"
-    matTooltipPosition="above"
-    [matTooltipShowDelay]="600"
-    aria-label="Reset View"
-  >
-    <mat-icon>crop_free</mat-icon>
-  </button>
+    (pressed)="onShowTracesPressed()"
+  />
+  <!-- The actions, which are always available: there is a view to zoom
+       whether or not there is anything drawn in it. -->
+  <view-button icon="zoom_out" tooltip="Zoom Out" (pressed)="onZoomOutPressed()" />
+  <view-button icon="zoom_in" tooltip="Zoom In" (pressed)="onZoomInPressed()" />
+  <view-button icon="crop_free" tooltip="Reset View" (pressed)="onReframePressed()" />
 </div>

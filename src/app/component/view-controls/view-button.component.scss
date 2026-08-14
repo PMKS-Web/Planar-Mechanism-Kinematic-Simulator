@@ -1,0 +1,56 @@
+@mixin css($theme) {
+  // The host is only a wrapper; the button is what the row lays out.
+  view-button {
+    display: flex;
+    flex: 0 0 auto;
+  }
+
+  .viewButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #5f6368;
+    cursor: pointer;
+    padding: 0;
+
+    mat-icon {
+      width: 22px;
+      height: 22px;
+      font-size: 22px;
+      line-height: 22px;
+      margin: 0;
+      // Every glyph takes the button's ink, whether it is a Material ligature
+      // or one of the app's own SVGs. Two of those SVGs used to paint
+      // themselves black, so they stayed black while the button around them
+      // greyed out -- one switch in a row of three that would not go quiet.
+      color: inherit;
+      fill: currentColor;
+    }
+
+    &:hover:not(:disabled) {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    // On means a tint behind the glyph, and nothing else. The glyph itself
+    // stays the same grey in both states: it is drawing what is on the grid,
+    // so having it change colour as well made two signals out of one, and the
+    // three switches disagreed about which of them carried the state.
+    &.on {
+      background: #eef1fc;
+    }
+
+    // Last, so it beats the tint: a switch with nothing to act on is not an
+    // on switch, whatever its setting says.
+    &:disabled {
+      color: #c4c7d0;
+      cursor: default;
+      background: transparent;
+    }
+  }
+}

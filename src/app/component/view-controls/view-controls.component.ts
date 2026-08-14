@@ -9,8 +9,7 @@ import {
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService, writeStoredFlag } from '../../services/settings.service';
 import { SvgGridService } from '../../services/svg-grid.service';
-import { MatTooltip } from '@angular/material/tooltip';
-import { MatIcon } from '@angular/material/icon';
+import { ViewButtonComponent } from './view-button.component';
 
 /** The one gap a card keeps from its neighbour (left-tabs.vars.scss). */
 const CARD_GAP = 12;
@@ -24,7 +23,7 @@ const CARD_GAP = 12;
   templateUrl: './view-controls.component.html',
   styleUrls: ['./view-controls.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatTooltip, MatIcon],
+  imports: [ViewButtonComponent],
 })
 export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   svgGrid = inject(SvgGridService);
@@ -133,18 +132,6 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
     // A display preference, remembered on this machine rather than in the URL
     // (see SettingsService.isShowCOM).
     writeStoredFlag('showCoM', on);
-  }
-
-  comIconName(): string {
-    return this.settingsService.isShowCOM.value ? 'com' : 'com_off';
-  }
-
-  idLabelIconName(): string {
-    return this.settingsService.isShowID.value ? 'abc' : 'abc_off';
-  }
-
-  traceIconName(): string {
-    return this.settingsService.isShowTraces.value ? 'show_path' : 'hide_path';
   }
 
   onShowIDPressed(): void {

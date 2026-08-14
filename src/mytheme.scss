@@ -5,6 +5,7 @@
 @use 'src/app/component/mechanism-panel/mechanism-panel.component.scss' as mechanism-panel;
 @use 'src/app/component/left-tabs/left-tabs.component.scss' as left-tabs;
 @use 'src/app/component/view-controls/view-controls.component.scss' as view-controls;
+@use 'src/app/component/view-controls/view-button.component.scss' as view-button;
 @use 'app/component/BLOCKS/title/title.component.scss' as title-block;
 @use 'src/app/component/edit-panel/edit-panel.component.scss' as edit-panel;
 @use 'app/component/BLOCKS/button/button.component.scss' as button-block;
@@ -87,6 +88,7 @@ $my-theme: mat.m2-define-light-theme(
 @include mechanism-panel.css($my-theme);
 @include left-tabs.css($my-theme);
 @include view-controls.css($my-theme);
+@include view-button.css($my-theme);
 @include edit-panel.css($my-theme);
 @include analysis-panel.css($my-theme);
 @include analysis-graph.css($my-theme);
