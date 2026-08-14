@@ -162,8 +162,12 @@ export class RealLink extends Link {
     //   //TODO: Unsubsribe from this when link gets deleted
     // });
     // console.log('new subscription');
-    // this._mass = mass !== undefined ? mass : 1;
-    this._massMoI = massMoI !== undefined ? massMoI : 1;
+    // Zero, like the mass above it: a link that arrives with a moment of
+    // inertia of 1 resists angular acceleration in every dynamic analysis of a
+    // drawing whose author never chose a number — and it made "massless links
+    // are skipped by inertia" a lie. URLs carry each link's stored value, so
+    // only freshly drawn links land here.
+    this._massMoI = massMoI !== undefined ? massMoI : 0;
     // this._shape = shape !== undefined ? shape : Shape.line;
     // this._fill = '#' + (0x1000000 + Math.random() * 0xffffff).toString(16).substr(1, 6);
     // this._fill = RealLink.colorOptions[Math.floor(Math.random() * RealLink.colorOptions.length)];

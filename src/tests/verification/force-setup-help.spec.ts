@@ -123,6 +123,34 @@ describe('force analysis setup, as a fresh drawing meets it', () => {
   });
 });
 
+describe('what a fresh link weighs', () => {
+  it('starts with no mass and no moment of inertia', () => {
+    // MoI used to default to 1 while mass defaulted to 0, so a "massless" link
+    // still resisted angular acceleration — every dynamic analysis of a fresh
+    // drawing quietly carried unit inertia on every link.
+    const link = new RealLink('AB', [new RevJoint('A', 0, 0), new RevJoint('B', 1, 0)]);
+    expect(link.mass).toBe(0);
+    expect(link.massMoI).toBe(0);
+  });
+
+  it('so a fully massless mechanism takes no torque to drive', () => {
+    // No mass, no inertia, no gravity, no load: the drive has nothing to work
+    // against, and the dynamic input effort has to come out zero everywhere.
+    const harness = createMechanismHarness();
+    fourBar(harness);
+    harness.settings.isGravity.next(false);
+    harness.service.updateMechanism();
+
+    const series = harness.service.mechanisms[0].getForceAnalysis('dynamic');
+    expect(series.successfulFrames).toBeGreaterThan(0);
+    series.frames
+      .filter((frame) => frame.status === 'ok')
+      .forEach((frame) => {
+        expect(Math.abs(frame.inputEffort!.valueSI)).toBeLessThan(1e-9);
+      });
+  });
+});
+
 describe('mass on a slider block', () => {
   it('counts as weight, the same as the solver counts it', () => {
     // A slider-crank whose only mass is the piston itself: the solver hangs
