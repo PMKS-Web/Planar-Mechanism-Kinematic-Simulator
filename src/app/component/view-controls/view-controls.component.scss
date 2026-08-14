@@ -26,4 +26,18 @@
     box-sizing: border-box;
     box-shadow: var(--card-shadow);
   }
+
+  // Between the switches and the actions. Shorter than the buttons, so it
+  // reads as a seam in the row rather than as a wall across the card, and it
+  // takes the row's own gap on each side rather than adding one of its own.
+  .viewDivider {
+    flex: 0 0 auto;
+    width: 1px;
+    height: 24px;
+    background: rgba(0, 0, 0, 0.12);
+
+    @media (max-width: 720px) {
+      height: 20px;
+    }
+  }
 }

@@ -517,6 +517,18 @@ record(
   idle.map((s) => `${s.name}=${s.disabled}`)
 );
 
+// The row carries two kinds of button, and says where one kind ends.
+const split = await page.evaluate(() => {
+  const kids = [...document.querySelector('.viewControls').children];
+  const divider = kids.findIndex((node) => node.classList.contains('viewDivider'));
+  return { divider, count: kids.length };
+});
+record(
+  'a divider splits the three switches from the three view actions',
+  split.divider === 3 && split.count === 7,
+  split
+);
+
 // --- an empty grid: nothing for any of the three to act on ------------------
 await load();
 const onEmpty = await buttons();
@@ -546,6 +558,7 @@ const drawerGaps = () =>
       above: Math.round(card.top - strip.bottom),
       below: Math.round(controls.top - card.bottom),
       height: Math.round(card.height),
+      edges: [Math.round(card.left - controls.left), Math.round(card.right - controls.right)],
     };
   });
 
@@ -566,6 +579,13 @@ record(
   'the gap under the setup drawer matches the gap over it',
   gapsSynced && gapsSynced.above === gapsSynced.below,
   gapsSynced
+);
+// The drawer takes its width from the view-controls card it stands over, so
+// adding a button or the divider between them cannot knock the two out of line.
+record(
+  'and the drawer stands exactly over the view controls',
+  gapsSynced && gapsSynced.edges[0] === 0 && gapsSynced.edges[1] === 0,
+  gapsSynced?.edges
 );
 
 await page.evaluate(() => {

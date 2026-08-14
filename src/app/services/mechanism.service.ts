@@ -3220,12 +3220,19 @@ export class MechanismService {
     // drive still carries its new sign, so the next real edit writes it out.
     this.updateMechanism(false);
 
-    if (!(period > 0)) return true;
-    // The pose that was at time t sits at period - t in the mirrored cycle.
-    // This machine goes there and the others stay where they are: they are on
-    // a shared wall clock, not a shared position, and this one turning round
-    // is no reason for them to move.
-    this.seekMechanism(index, this.wrapTime(period - was));
+    if (period > 0) {
+      // The pose that was at time t sits at period - t in the mirrored cycle.
+      // This machine goes there and the others stay where they are: they are on
+      // a shared wall clock, not a shared position, and this one turning round
+      // is no reason for them to move.
+      this.seekMechanism(index, this.wrapTime(period - was));
+    }
+    // The cycle has been solved again, the other way round, so every open graph
+    // is drawing the solution to the old one -- the same curves with the sign
+    // of every velocity and acceleration now wrong. Geometry is locked in the
+    // analysis modes, which makes this the one thing a reader can do there that
+    // re-solves the mechanism, and so the one place that has to say so.
+    this.onMechUpdateState.next(2);
     return true;
   }
 

@@ -27,6 +27,10 @@
     [disabled]="noTracedJoint()"
     (pressed)="onShowTracesPressed()"
   />
+  <!-- The switches above say what the drawing shows and stay pressed; the
+       actions below do something once and come back up. Two kinds of button
+       in one row, so the row says where one kind ends. -->
+  <div class="viewDivider" aria-hidden="true"></div>
   <!-- The actions, which are always available: there is a view to zoom
        whether or not there is anything drawn in it. -->
   <view-button icon="zoom_out" tooltip="Zoom Out" (pressed)="onZoomOutPressed()" />
