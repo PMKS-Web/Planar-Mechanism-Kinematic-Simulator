@@ -6,14 +6,26 @@ import {
   Output,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { FormGroup } from '@angular/forms';
+import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatFormField, MatSuffix } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
 
 @Component({
   selector: 'input-block',
   templateUrl: './input.component.html',
   styleUrls: ['./input.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatIcon,
+    MatTooltip,
+    MatFormField,
+    MatInput,
+    MatSuffix,
+  ],
 })
 export class InputComponent {
   @Input() unit: string | undefined;

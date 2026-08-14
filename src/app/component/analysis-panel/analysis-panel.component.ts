@@ -6,10 +6,18 @@ import { PrisJoint, RealJoint } from 'src/app/model/joint';
 import { Cylinder, isCylinderInterior } from 'src/app/model/cylinder';
 import { LengthUnit } from 'src/app/model/unit-enums';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
-import { FormBuilder } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
+import { PanelSectionCollapsibleComponent } from '../BLOCKS/panel-section-collapsible/panel-section-collapsible.component';
+import { TitleBlock } from '../BLOCKS/title/title.component';
+import { MatList, MatListItem, MatListItemTitle } from '@angular/material/list';
+import { MatIcon } from '@angular/material/icon';
+import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.component';
+import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
+import { AnalysisGraphSectionComponent } from '../analysis-graph-section/analysis-graph-section.component';
+import { RadioComponent } from '../BLOCKS/radio/radio.component';
 
 /** One expandable force graph: the reaction between `linkId` and `jointId`. */
 export interface ForceAnalysisRow {
@@ -24,7 +32,20 @@ export interface ForceAnalysisRow {
   templateUrl: './analysis-panel.component.html',
   styleUrls: ['./analysis-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    PanelSectionCollapsibleComponent,
+    TitleBlock,
+    MatList,
+    MatListItem,
+    MatListItemTitle,
+    MatIcon,
+    MechanismPanelComponent,
+    PanelSectionComponent,
+    AnalysisGraphSectionComponent,
+    RadioComponent,
+    FormsModule,
+    ReactiveFormsModule,
+  ],
 })
 export class AnalysisPanelComponent {
   activeSrv = inject(ActiveObjService);

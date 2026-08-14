@@ -3,20 +3,37 @@ import { environment } from '../../../environments/environment';
 import { Component, ChangeDetectionStrategy, OnDestroy, inject } from '@angular/core';
 import { SettingsService, writeStoredFlag } from 'src/app/services/settings.service';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
-import { FormBuilder, Validators } from '@angular/forms';
+import { FormBuilder, Validators, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { Coord } from '../../model/coord';
 import { combineLatest, skip, Subscription } from 'rxjs';
 import { MODEL_SCALE } from '../../model/render-scale';
+import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
+import { TitleBlock } from '../BLOCKS/title/title.component';
+import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { RadioComponent } from '../BLOCKS/radio/radio.component';
+import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
+import { InputComponent } from '../BLOCKS/input/input.component';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
 
 @Component({
   selector: 'app-settings-panel',
   templateUrl: './settings-panel.component.html',
   styleUrls: ['./settings-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    PanelSectionComponent,
+    TitleBlock,
+    CollapsibleSubsecitonComponent,
+    RadioComponent,
+    FormsModule,
+    ReactiveFormsModule,
+    ToggleComponent,
+    InputComponent,
+    ButtonComponent,
+  ],
 })
 export class SettingsPanelComponent implements OnDestroy {
   settingsService = inject(SettingsService);

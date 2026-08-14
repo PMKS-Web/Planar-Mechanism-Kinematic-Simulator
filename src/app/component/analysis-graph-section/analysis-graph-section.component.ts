@@ -19,6 +19,8 @@ import { AnalysisSampleService } from '../../services/analysis-sample.service';
 import { AngleUnit, LengthUnit } from '../../model/unit-enums';
 import { ANALYSIS_SERIES_COLORS } from '../../model/analysis-series';
 import { roundNumber } from '../../model/utils';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
 
 /** One value of one series, as the collapsed header shows it. */
 export interface SeriesPreview {
@@ -50,7 +52,7 @@ export interface SeriesPreview {
   templateUrl: './analysis-graph-section.component.html',
   styleUrls: ['./analysis-graph-section.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon, MatTooltip, AnalysisGraphComponent],
 })
 export class AnalysisGraphSectionComponent {
   private mechanismService = inject(MechanismService);

@@ -14,7 +14,6 @@ import { NotificationService } from '../../services/notification.service';
   templateUrl: './linkage-table.component.html',
   styleUrls: ['./linkage-table.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
 })
 export class LinkageTableComponent implements OnInit {
   private mechanismService = inject(MechanismService);

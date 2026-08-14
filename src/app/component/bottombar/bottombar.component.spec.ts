@@ -1,6 +1,5 @@
 import { TestBed } from '@angular/core/testing';
 import { BottombarComponent } from './bottombar.component';
-import { AppModule } from '../../app.module';
 import { MechanismService } from '../../services/mechanism.service';
 
 // Found by building a linkage with a real mouse rather than with dispatched
@@ -12,7 +11,7 @@ describe('the mobility readout', () => {
   let mechanism: MechanismService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ imports: [AppModule] });
+    TestBed.configureTestingModule({ imports: [BottombarComponent] });
     component = TestBed.createComponent(BottombarComponent).componentInstance;
     mechanism = TestBed.inject(MechanismService);
   });

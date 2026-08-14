@@ -23,6 +23,8 @@ import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { TemplatesComponent } from '../MODALS/templates/templates.component';
 import { AnalysisExportService } from '../../services/analysis-export.service';
 import { NotificationService } from '../../services/notification.service';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatIcon } from '@angular/material/icon';
 
 /** A mode's chip: whether that analysis can be entered, and what is missing. */
 interface TabStatus {
@@ -80,7 +82,7 @@ interface TabStatus {
       ]),
     ]),
   ],
-  standalone: false,
+  imports: [MatTooltip, MatIcon],
 })
 export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestroy {
   tabs = inject(SelectedTabService);

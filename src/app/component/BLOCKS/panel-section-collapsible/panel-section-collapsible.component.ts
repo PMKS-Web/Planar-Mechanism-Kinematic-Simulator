@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { TitleBlock } from '../title/title.component';
 import { animate, state, style, transition, trigger } from '@angular/animations';
+import { NgClass } from '@angular/common';
 
 @Component({
   selector: 'panel-section-collapsible',
@@ -36,7 +37,7 @@ import { animate, state, style, transition, trigger } from '@angular/animations'
   templateUrl: './panel-section-collapsible.component.html',
   styleUrls: ['./panel-section-collapsible.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [NgClass],
 })
 export class PanelSectionCollapsibleComponent implements AfterContentInit {
   @Input() expanded: boolean = true;

@@ -1,4 +1,5 @@
 import { Component, Input, NO_ERRORS_SCHEMA } from '@angular/core';
+import { AnalysisApexChartComponent } from './analysis-apex-chart.component';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
@@ -37,7 +38,6 @@ import { withTestInjector } from '../../../test-utils/mechanism-harness';
 @Component({
   selector: 'app-analysis-apex-chart',
   template: '',
-  standalone: false,
 })
 class ApexChartStubComponent {
   @Input() series: ApexAxisChartSeries = [];
@@ -438,13 +438,14 @@ describe('AnalysisGraphComponent rendered controls', () => {
   it('updates the rendered chart series when a series is switched off and on', async () => {
     const fixtureData = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
     await TestBed.configureTestingModule({
-      declarations: [AnalysisGraphComponent, ApexChartStubComponent],
       imports: [
         ReactiveFormsModule,
         MatButtonModule,
         MatCheckboxModule,
         MatIconModule,
         NoopAnimationsModule,
+        AnalysisGraphComponent,
+        ApexChartStubComponent,
       ],
       providers: [
         { provide: MechanismService, useValue: fixtureData.service },
@@ -453,7 +454,14 @@ describe('AnalysisGraphComponent rendered controls', () => {
         { provide: ActiveObjService, useValue: fixtureData.active },
       ],
       schemas: [NO_ERRORS_SCHEMA],
-    }).compileComponents();
+    })
+      // The standalone graph brings the real apex chart; these tests assert on
+      // the stub's recorded inputs, so it takes the chart's place.
+      .overrideComponent(AnalysisGraphComponent, {
+        remove: { imports: [AnalysisApexChartComponent] },
+        add: { imports: [ApexChartStubComponent] },
+      })
+      .compileComponents();
 
     const fixture: ComponentFixture<AnalysisGraphComponent> =
       TestBed.createComponent(AnalysisGraphComponent);

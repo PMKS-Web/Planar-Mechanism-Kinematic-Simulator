@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { AppModule } from '../app.module';
+import { provideAnimations } from '@angular/platform-browser/animations';
 import { Coord } from '../model/coord';
 import { Force } from '../model/force';
 import { RevJoint } from '../model/joint';
@@ -13,7 +13,10 @@ import { TEMPLATE_IDS } from './MODALS/templates/template-linkages';
 
 describe('always-on force and weld UI', () => {
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [AppModule] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [SettingsPanelComponent, TopBarComponent, EditPanelComponent, TemplatesComponent],
+      providers: [provideAnimations()],
+    }).compileComponents();
   });
 
   it('does not expose experimental enablement or loop equations actions', () => {

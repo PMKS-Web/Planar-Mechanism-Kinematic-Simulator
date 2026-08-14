@@ -13,7 +13,7 @@ import { UrlProcessorService } from '../../services/url-processor.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { SettingsService } from '../../services/settings.service';
 import { ActiveObjService } from '../../services/active-obj.service';
-import { cMenuItem } from '../context-menu/context-menu.component';
+import { cMenuItem, ContextMenuComponent } from '../context-menu/context-menu.component';
 import { Link, RealLink } from '../../model/link';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Coord } from '../../model/coord';
@@ -107,13 +107,15 @@ export interface SlotStackItem {
   plate?: WeldPlate;
 }
 import introJs from 'intro.js';
+import { SvgArrowComponent } from '../svg-arrow/svg-arrow.component';
+import { NotificationComponent } from '../notification/notification.component';
 
 @Component({
   selector: 'app-new-grid',
   templateUrl: './new-grid.component.html',
   styleUrls: ['./new-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [CdkContextMenuTrigger, SvgArrowComponent, ContextMenuComponent, NotificationComponent],
 })
 export class NewGridComponent implements OnDestroy {
   svgGrid = inject(SvgGridService);

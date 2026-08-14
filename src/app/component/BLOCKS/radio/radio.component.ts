@@ -1,12 +1,22 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
-import { FormGroup } from '@angular/forms';
+import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatButtonToggleGroup, MatButtonToggle } from '@angular/material/button-toggle';
 
 @Component({
   selector: 'radio-block',
   templateUrl: './radio.component.html',
   styleUrls: ['./radio.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    MatIcon,
+    MatTooltip,
+    FormsModule,
+    ReactiveFormsModule,
+    MatButtonToggleGroup,
+    MatButtonToggle,
+  ],
 })
 export class RadioComponent {
   @Input() tooltip: string | undefined;

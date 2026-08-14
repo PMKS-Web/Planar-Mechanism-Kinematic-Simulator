@@ -155,7 +155,7 @@ export function defaultSeriesSelection(count: number, analysis: string): SeriesS
     ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [AnalysisApexChartComponent],
 })
 export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
   private fb = inject(FormBuilder);

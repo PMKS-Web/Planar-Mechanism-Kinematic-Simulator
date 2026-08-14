@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { PrisJoint, RealJoint, RevJoint } from 'src/app/model/joint';
-import { FormArray, FormBuilder } from '@angular/forms';
+import { FormArray, FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Coord } from 'src/app/model/coord';
 import {
   AngleUnit,
@@ -36,6 +36,20 @@ import {
 } from '../../model/cylinder';
 import { NotificationService } from 'src/app/services/notification.service';
 import { NOT_A } from 'src/app/ui-text';
+import { PanelSectionCollapsibleComponent } from '../BLOCKS/panel-section-collapsible/panel-section-collapsible.component';
+import { TitleBlock } from '../BLOCKS/title/title.component';
+import { MatIcon } from '@angular/material/icon';
+import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.component';
+import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
+import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.component';
+import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
+import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
+import { InputComponent } from '../BLOCKS/input/input.component';
+import { ColorPickerComponent } from '../BLOCKS/color-picker/color-picker.component';
+import { DualButtonComponent } from '../BLOCKS/dual-button/dual-button.component';
+import { RadioComponent } from '../BLOCKS/radio/radio.component';
 
 /**
  * Input Settings unit choices, in the order the picker shows them. The labels
@@ -52,7 +66,24 @@ const INPUT_SPEED_UNITS = [
   templateUrl: './edit-panel.component.html',
   styleUrls: ['./edit-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    PanelSectionCollapsibleComponent,
+    TitleBlock,
+    MatIcon,
+    MechanismPanelComponent,
+    PanelSectionComponent,
+    EditableTitleComponent,
+    CollapsibleSubsecitonComponent,
+    DualInputComponent,
+    FormsModule,
+    ReactiveFormsModule,
+    ToggleComponent,
+    ButtonComponent,
+    InputComponent,
+    ColorPickerComponent,
+    DualButtonComponent,
+    RadioComponent,
+  ],
 })
 export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   activeSrv = inject(ActiveObjService);

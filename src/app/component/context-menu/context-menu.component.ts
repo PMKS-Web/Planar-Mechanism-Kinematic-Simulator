@@ -1,6 +1,8 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NewGridComponent } from '../new-grid/new-grid.component';
+import { CdkMenu, CdkMenuItem } from '@angular/cdk/menu';
+import { MatIcon } from '@angular/material/icon';
 
 export class cMenuItem {
   public label: string = 'none';
@@ -54,7 +56,7 @@ export class cMenuItem {
   templateUrl: './context-menu.component.html',
   styleUrls: ['./context-menu.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [CdkMenu, CdkMenuItem, MatIcon],
 })
 export class ContextMenuComponent {
   @Input() menuItems: cMenuItem[] = [];

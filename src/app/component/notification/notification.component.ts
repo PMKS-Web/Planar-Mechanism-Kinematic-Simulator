@@ -5,6 +5,7 @@ import {
   NotificationKind,
   NotificationService,
 } from '../../services/notification.service';
+import { MatIcon } from '@angular/material/icon';
 
 /**
  * The glyph that says which of the four this is before the sentence is read.
@@ -48,7 +49,7 @@ const ICONS: Record<NotificationKind, string> = {
   templateUrl: './notification.component.html',
   styleUrls: ['./notification.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon],
 })
 export class NotificationComponent {
   notifications = inject(NotificationService);

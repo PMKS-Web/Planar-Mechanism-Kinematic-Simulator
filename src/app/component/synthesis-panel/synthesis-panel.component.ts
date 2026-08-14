@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
-import { FormBuilder } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Coord } from '../../model/coord';
 import { Joint, RevJoint } from '../../model/joint';
 import { MechanismService } from '../../services/mechanism.service';
@@ -10,13 +10,34 @@ import { SettingsService } from 'src/app/services/settings.service';
 import { SynthesisStatus } from 'src/app/services/synthesis/synthesis-constants';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { ColorService } from '../../services/color.service';
+import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
+import { TitleBlock } from '../BLOCKS/title/title.component';
+import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
+import { InputComponent } from '../BLOCKS/input/input.component';
+import { RadioComponent } from '../BLOCKS/radio/radio.component';
+import { MatDivider } from '@angular/material/divider';
+import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
 
 @Component({
   selector: 'app-synthesis-panel',
   templateUrl: './synthesis-panel.component.html',
   styleUrls: ['./synthesis-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    PanelSectionComponent,
+    TitleBlock,
+    CollapsibleSubsecitonComponent,
+    SubtitleComponent,
+    InputComponent,
+    FormsModule,
+    ReactiveFormsModule,
+    RadioComponent,
+    MatDivider,
+    DualInputComponent,
+    ButtonComponent,
+  ],
 })
 export class SynthesisPanelComponent implements OnInit {
   private fb = inject(FormBuilder);

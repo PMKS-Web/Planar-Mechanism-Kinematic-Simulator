@@ -8,6 +8,7 @@ import { MechanismService } from '../../services/mechanism.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { MechanismFact } from '../../model/mechanism/readiness';
+import { MatIcon } from '@angular/material/icon';
 
 /** One line of the Links section: what a link is, and how long. */
 interface LinkRow {
@@ -29,7 +30,7 @@ interface LinkRow {
   templateUrl: './mechanism-panel.component.html',
   styleUrls: ['./mechanism-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon],
 })
 export class MechanismPanelComponent {
   mechanism = inject(MechanismService);

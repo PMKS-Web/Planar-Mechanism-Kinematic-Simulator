@@ -48,7 +48,6 @@ declare global {
     <div #chartHost></div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: false,
 })
 export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnDestroy {
   private zone = inject(NgZone);

@@ -13,7 +13,6 @@ import { SelectedTabService, TabID } from '../../selected-tab.service';
   templateUrl: './bottombar.component.html',
   styleUrls: ['./bottombar.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
 })
 export class BottombarComponent {
   settings = inject(SettingsService);

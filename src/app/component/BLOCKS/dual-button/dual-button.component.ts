@@ -1,11 +1,13 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { MatButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
   selector: 'dual-button',
   templateUrl: './dual-button.component.html',
   styleUrls: ['./dual-button.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatButton, MatIcon],
 })
 export class DualButtonComponent {
   @Input() but1Text: string | undefined;

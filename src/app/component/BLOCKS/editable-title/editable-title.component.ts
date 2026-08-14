@@ -1,15 +1,30 @@
 import { Component, Input, ChangeDetectionStrategy, inject } from '@angular/core';
-import { FormBuilder } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { MechanismService } from 'src/app/services/mechanism.service';
 import { NotificationService } from '../../../services/notification.service';
+import { NgTemplateOutlet } from '@angular/common';
+import { MatFormField } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
+import { FocusOnShowDirective } from '../../../focus-on-show.directive';
+import { MatButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
   selector: 'editable-title-block',
   templateUrl: './editable-title.component.html',
   styleUrls: ['./editable-title.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    NgTemplateOutlet,
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormField,
+    MatInput,
+    FocusOnShowDirective,
+    MatButton,
+    MatIcon,
+  ],
 })
 export class EditableTitleComponent {
   private fb = inject(FormBuilder);

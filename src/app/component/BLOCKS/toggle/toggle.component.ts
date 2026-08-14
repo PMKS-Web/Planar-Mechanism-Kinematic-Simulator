@@ -7,14 +7,27 @@ import {
   ViewChild,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { FormGroup } from '@angular/forms';
+import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatFormField } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 
 @Component({
   selector: 'toggle-block',
   templateUrl: './toggle.component.html',
   styleUrls: ['./toggle.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatIcon,
+    MatTooltip,
+    MatFormField,
+    MatInput,
+    MatSlideToggle,
+  ],
 })
 export class ToggleComponent {
   @Input() tooltip: string | undefined;

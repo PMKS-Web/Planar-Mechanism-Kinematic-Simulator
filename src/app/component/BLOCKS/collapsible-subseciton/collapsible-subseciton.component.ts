@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { animate, AUTO_STYLE, state, style, transition, trigger } from '@angular/animations';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
   selector: 'collapsible-subseciton',
@@ -31,7 +32,7 @@ import { animate, AUTO_STYLE, state, style, transition, trigger } from '@angular
   templateUrl: './collapsible-subseciton.component.html',
   styleUrls: ['./collapsible-subseciton.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon],
 })
 export class CollapsibleSubsecitonComponent {
   @Input() hideHeader: boolean = false; //If this is true the content cannot be expanded

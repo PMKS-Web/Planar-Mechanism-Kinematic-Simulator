@@ -30,7 +30,7 @@ describe('AnalysisApexChartComponent', () => {
     FakeApexCharts.instances = [];
     chartWindow.ApexCharts = FakeApexCharts as unknown as typeof ApexCharts;
     await TestBed.configureTestingModule({
-      declarations: [AnalysisApexChartComponent],
+      imports: [AnalysisApexChartComponent],
     }).compileComponents();
     fixture = TestBed.createComponent(AnalysisApexChartComponent);
   });

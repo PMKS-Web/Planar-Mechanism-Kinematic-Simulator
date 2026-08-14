@@ -9,6 +9,8 @@ import {
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService, writeStoredFlag } from '../../services/settings.service';
 import { SvgGridService } from '../../services/svg-grid.service';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatIcon } from '@angular/material/icon';
 
 /**
  * View toggles that apply in every mode, so they sit at the foot of the nav
@@ -19,7 +21,7 @@ import { SvgGridService } from '../../services/svg-grid.service';
   templateUrl: './view-controls.component.html',
   styleUrls: ['./view-controls.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatTooltip, MatIcon],
 })
 export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   svgGrid = inject(SvgGridService);

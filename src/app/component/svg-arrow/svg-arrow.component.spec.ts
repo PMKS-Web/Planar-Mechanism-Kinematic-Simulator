@@ -8,7 +8,7 @@ describe('SvgArrowComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [SvgArrowComponent],
+      imports: [SvgArrowComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SvgArrowComponent);

@@ -6,18 +6,41 @@ import {
   ViewChild,
   inject,
 } from '@angular/core';
-import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import {
+  MatDialog,
+  MatDialogRef,
+  MatDialogClose,
+  MatDialogContent,
+  MatDialogTitle,
+  MatDialogActions,
+} from '@angular/material/dialog';
 import { MechanismService } from 'src/app/services/mechanism.service';
 import { UrlProcessorService } from 'src/app/services/url-processor.service';
 import { DEV_TEMPLATES, DevTemplateID } from './dev-templates';
 import { TemplateID, TEMPLATE_LINKAGES } from './template-linkages';
+import { MatIconButton, MatButton } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
+import { CdkScrollable } from '@angular/cdk/scrolling';
+import { PanelSectionComponent } from '../../BLOCKS/panel-section/panel-section.component';
+import { TitleBlock } from '../../BLOCKS/title/title.component';
 
 @Component({
   selector: 'app-templates',
   templateUrl: './templates.component.html',
   styleUrls: ['./templates.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    MatIconButton,
+    MatDialogClose,
+    MatIcon,
+    CdkScrollable,
+    MatDialogContent,
+    PanelSectionComponent,
+    TitleBlock,
+    MatButton,
+    MatDialogTitle,
+    MatDialogActions,
+  ],
 })
 export class TemplatesComponent {
   private dialogRef = inject<MatDialogRef<TemplatesComponent> | null>(

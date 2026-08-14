@@ -10,13 +10,15 @@ import { ColorService } from '../../../services/color.service';
 import { RealLink } from '../../../model/link';
 import { RealJoint } from '../../../model/joint';
 import { Force } from '../../../model/force';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
 
 @Component({
   selector: 'color-picker',
   templateUrl: './color-picker.component.html',
   styleUrls: ['./color-picker.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon, MatTooltip],
 })
 export class ColorPickerComponent implements OnInit, OnChanges {
   colorService = inject(ColorService);

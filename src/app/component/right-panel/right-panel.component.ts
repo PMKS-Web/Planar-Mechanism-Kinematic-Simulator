@@ -7,7 +7,15 @@ import { ActiveObjService } from '../../services/active-obj.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { RealLink } from '../../model/link';
 import { AnalyticsService } from '../../services/analytics.service';
-import { FormBuilder, FormControl, FormGroupDirective, NgForm, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormControl,
+  FormGroupDirective,
+  NgForm,
+  Validators,
+  FormsModule,
+  ReactiveFormsModule,
+} from '@angular/forms';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { environment } from '../../../environments/environment';
 import emailjs from '@emailjs/browser';
@@ -18,6 +26,19 @@ import { SvgGridService } from '../../services/svg-grid.service';
 import introJs from 'intro.js';
 import { UrlGenerationService } from 'src/app/services/url-generation.service';
 import { NotificationService } from '../../services/notification.service';
+import { AnalysisSetupComponent } from '../analysis-setup/analysis-setup.component';
+import { SettingsPanelComponent } from '../settings-panel/settings-panel.component';
+import { EquationPanelComponent } from '../equation-panel/equation-panel.component';
+import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
+import { TitleBlock } from '../BLOCKS/title/title.component';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
+import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
+import { MatFormField, MatLabel, MatError } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
+import { MatCheckbox } from '@angular/material/checkbox';
+import { LinkageTableComponent } from '../linkage-table/linkage-table.component';
+import { MatTooltip } from '@angular/material/tooltip';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
   selector: 'app-right-panel',
@@ -55,7 +76,25 @@ import { NotificationService } from '../../services/notification.service';
     ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [
+    AnalysisSetupComponent,
+    SettingsPanelComponent,
+    EquationPanelComponent,
+    PanelSectionComponent,
+    TitleBlock,
+    ButtonComponent,
+    SubtitleComponent,
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormField,
+    MatLabel,
+    MatInput,
+    MatError,
+    MatCheckbox,
+    LinkageTableComponent,
+    MatTooltip,
+    MatIcon,
+  ],
 })
 export class RightPanelComponent implements DoCheck {
   activeObjService = inject(ActiveObjService);

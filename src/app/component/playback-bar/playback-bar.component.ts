@@ -17,6 +17,8 @@ import { SelectedTabService } from '../../selected-tab.service';
 import { TimeUnit } from '../../model/utils';
 import { Mechanism } from '../../model/mechanism/mechanism';
 import { MODEL_SCALE } from '../../model/render-scale';
+import { MatIcon } from '@angular/material/icon';
+import { ViewControlsComponent } from '../view-controls/view-controls.component';
 
 /** How far the cluster floats above the status strip, matching its own CSS. */
 const BOTTOM_OFFSET = 38;
@@ -89,7 +91,7 @@ export interface PlaybackRow {
     ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon, ViewControlsComponent],
 })
 export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   mechanism = inject(MechanismService);

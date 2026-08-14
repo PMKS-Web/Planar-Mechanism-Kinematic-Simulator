@@ -5,6 +5,7 @@ import { MechanismService } from '../../services/mechanism.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { MechanismReadiness, ReadinessCheck } from '../../model/mechanism/readiness';
+import { MatIcon } from '@angular/material/icon';
 
 /**
  * What stands between this drawing and its animation, mechanism by mechanism.
@@ -24,7 +25,7 @@ import { MechanismReadiness, ReadinessCheck } from '../../model/mechanism/readin
   templateUrl: './analysis-setup.component.html',
   styleUrls: ['./analysis-setup.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [MatIcon],
 })
 export class AnalysisSetupComponent {
   mechanism = inject(MechanismService);

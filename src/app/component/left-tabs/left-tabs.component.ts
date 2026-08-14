@@ -2,6 +2,9 @@ import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
+import { SynthesisPanelComponent } from '../synthesis-panel/synthesis-panel.component';
+import { EditPanelComponent } from '../edit-panel/edit-panel.component';
+import { AnalysisPanelComponent } from '../analysis-panel/analysis-panel.component';
 
 @Component({
   selector: 'app-left-tabs',
@@ -40,7 +43,7 @@ import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
     ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  standalone: false,
+  imports: [SynthesisPanelComponent, EditPanelComponent, AnalysisPanelComponent],
 })
 /**
  * The panel down the left: whatever the current mode has to say about the

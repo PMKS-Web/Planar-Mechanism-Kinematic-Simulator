@@ -1,6 +1,6 @@
 // A class to represent an X and Y coordinate
 
-import { SettingsService } from '../services/settings.service';
+import { OBJECT_SCALE } from './object-scale';
 
 export class Coord {
   private _x: number;
@@ -42,11 +42,11 @@ export class Coord {
   }
 
   equals(coord: Coord) {
-    return this.getDistanceTo(coord) < 0.0001 * SettingsService.objectScale;
+    return this.getDistanceTo(coord) < 0.0001 * OBJECT_SCALE.value;
   }
 
   looselyEquals(coord: Coord) {
-    return this.getDistanceTo(coord) < 0.04 * SettingsService.objectScale;
+    return this.getDistanceTo(coord) < 0.04 * OBJECT_SCALE.value;
   }
 
   add(vector: Coord) {
