@@ -151,8 +151,9 @@ try {
   record('the Kinematic chip reads Ready for a four-bar that runs', kinematicChip === 'Ready', {
     kinematicChip,
   });
-  // The four-bar carries no load, so force analysis has exactly one thing left.
-  record('the Force chip counts what is still missing', forceChip === '1 to set', { forceChip });
+  // Weight counts as a load now: gravity is on by default and the four-bar's
+  // links carry mass, so force analysis is ready without a drawn arrow.
+  record('the Force chip reads Ready — weight is a load', forceChip === 'Ready', { forceChip });
 
   // --- Kinematic mode --------------------------------------------------------
   await tab('Kinematic').click();
@@ -203,6 +204,13 @@ try {
   record('the floating controls stay inside the window', spill === false);
 
   // --- pressing a mode that cannot be entered -------------------------------
+  // Gravity hanging the links' own weight is a load, so the four-bar as it
+  // arrives no longer trips the gate. Turn gravity off and the drawing is
+  // genuinely unloaded — the refusal has to come back.
+  await page.evaluate(() => {
+    const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    grid.settings.isGravity.next(false);
+  });
   await tab('Force').click();
   await page.waitForTimeout(800);
   await shot('03-force-refused.png');
@@ -215,6 +223,10 @@ try {
     'and answers with the setup list instead of nothing',
     (await page.locator('app-analysis-setup').count()) === 1
   );
+  await page.evaluate(() => {
+    const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    grid.settings.isGravity.next(true);
+  });
 
   // --- play, then leave: the mechanism must rewind ---------------------------
   await tab('Kinematic').click();
@@ -274,14 +286,29 @@ try {
   // Icon-only squares now, so they are addressed by what they are for rather
   // than by a word that is no longer printed on them.
   const comButton = page.locator('.viewControls .viewButton[aria-label="Show Center of Mass"]');
+  // The view defaults to showing centres of mass, but a mark only appears on a
+  // link that has mass: take the weight away and the mark goes with it, give
+  // it back and the toggle governs it from there.
+  const setMasses = (value) =>
+    page.evaluate((mass) => {
+      const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+      grid.mechanismSrv.links.forEach((link) => (link.mass = mass));
+      grid.mechanismSrv.updateMechanism(false);
+    }, value);
   const comBefore = await comMarks();
+  await setMasses(0);
+  await page.waitForTimeout(400);
+  const comMassless = await comMarks();
+  await setMasses(5);
+  await page.waitForTimeout(400);
   await comButton.click();
   await page.waitForTimeout(500);
   const comAfter = await comMarks();
-  record('the CoM toggle acts on the drawing', comBefore === 0 && comAfter > 0, {
-    comBefore,
-    comAfter,
-  });
+  record(
+    'the CoM mark shows by default, waits for mass, and the toggle removes it',
+    comBefore > 0 && comMassless === 0 && comAfter === 0,
+    { comBefore, comMassless, comAfter }
+  );
   await comButton.click();
   await page.waitForTimeout(300);
   await restCursor();
@@ -290,7 +317,7 @@ try {
   await restCursor();
   await page.locator('.viewControls .viewButton[aria-label="Zoom In"]').click();
   await page.waitForTimeout(400);
-  record('the CoM marks come off again', (await comMarks()) === 0);
+  record('and the marks come back on again', (await comMarks()) > 0);
   await shot('05-view-controls.png');
 
   // --- the status strip reports the mode rather than acting on it ------------
