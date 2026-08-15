@@ -72,7 +72,11 @@
         width: 18px;
         height: 18px;
         font-size: 18px;
-        margin-right: 4px;
+        // Material gives outlined-button icons a -4px left margin on the
+        // assumption a label follows; in this tight row it just shoves every
+        // icon into the border. Zeroed, and the gap to the label set here.
+        margin-left: 0;
+        margin-right: 5px;
       }
     }
 
@@ -84,7 +88,7 @@
       padding: 0;
 
       .mat-icon {
-        margin-right: 0;
+        margin: 0;
       }
     }
   }

@@ -770,13 +770,13 @@
             @if (mechanismSrv.isJointLockedVisual(joint)) {
               <g class="lockBadge" pointer-events="none" [attr.transform]="lockBadgeTransform()">
                 <circle
-                  [attr.r]="0.11 * settings.objectScale"
-                  fill="#ffffff"
-                  stroke="#26323855"
-                  [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+                  [attr.r]="0.14 * settings.objectScale"
+                  fill="#263238"
+                  stroke="#ffffffcc"
+                  [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
                 />
                 <g [attr.transform]="lockGlyphTransform()">
-                  <path [attr.d]="lockGlyphPath" fill="#263238" fill-rule="evenodd" />
+                  <path [attr.d]="lockGlyphPath" fill="#ffffff" fill-rule="evenodd" />
                 </g>
               </g>
             }
@@ -1075,13 +1075,13 @@
           @if (force.locked && mechanismSrv.lockVisualsOn()) {
             <g class="lockBadge" pointer-events="none" [attr.transform]="lockBadgeTransform()">
               <circle
-                [attr.r]="0.11 * settings.objectScale"
-                fill="#ffffff"
-                stroke="#26323855"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+                [attr.r]="0.14 * settings.objectScale"
+                fill="#263238"
+                stroke="#ffffffcc"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
               />
               <g [attr.transform]="lockGlyphTransform()">
-                <path [attr.d]="lockGlyphPath" fill="#263238" fill-rule="evenodd" />
+                <path [attr.d]="lockGlyphPath" fill="#ffffff" fill-rule="evenodd" />
               </g>
             </g>
           }

@@ -1349,13 +1349,13 @@ export class NewGridComponent implements OnDestroy {
    * back to keep the padlock upright.
    */
   lockBadgeTransform(): string {
-    const offset = 0.17 * this.settings.objectScale;
+    const offset = 0.19 * this.settings.objectScale;
     return `translate(${offset}, ${offset}) scale(1,-1)`;
   }
 
   /** Centre the 24-unit glyph inside the badge chip, sized to the drawing. */
   lockGlyphTransform(): string {
-    const scale = (0.15 * this.settings.objectScale) / 24;
+    const scale = (0.19 * this.settings.objectScale) / 24;
     return `scale(${scale}) translate(-12, -13.5)`;
   }
 
