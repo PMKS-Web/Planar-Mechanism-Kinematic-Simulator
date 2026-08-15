@@ -41,6 +41,11 @@ export class ViewButtonComponent {
    * The control's own name, which does not change with its state -- a reader
    * looking for the traced-paths switch is looking for the same button whether
    * or not paths are showing, and so is a test.
+   *
+   * A switch also carries `aria-pressed`, so the state a sighted reader gets
+   * from the tint reaches everyone else: the label alone always says "Show",
+   * which left a screen reader with no way to tell an on switch from an off
+   * one. The plain actions have no state and no such attribute.
    */
   readonly label = computed(() => this.tooltip() ?? `Show ${this.noun()}`);
 

@@ -746,10 +746,17 @@ export class KinematicsSolver {
         }
         const firstJoint = simJoints[this.jointIndexMap.get(edge.fromId)!];
         // determine the velocity/accel of each link's joint that is not the first joint
-        for (let index = 0; index < desiredLink.id.length; index++) {
-          const joint_id = desiredLink.id[index];
+        //
+        // Over the link's own joints, not over the characters of its id. A link
+        // id is its joints' names run together, so reading it back a character
+        // at a time asked for a joint called "A" and one called "1" where the
+        // link holds "A1" -- and then dereferenced whatever came back. Every id
+        // longer than a character reaches this: the ones inside a cylinder, and
+        // the two-letter names a drawing is given past its fifty-second joint.
+        for (const linkJoint of desiredLink.joints) {
+          const joint_id = linkJoint.id;
           const desiredJoint = simJoints[this.jointIndexMap.get(joint_id)!];
-          if (joint_id === firstJoint.id) {
+          if (joint_id === firstJoint.id || !desiredJoint) {
             continue;
           }
           // determine the distance for the left side of the equation

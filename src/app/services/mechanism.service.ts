@@ -251,6 +251,19 @@ export class MechanismService {
       id: partition.id,
       seconds: this.ownSeconds[index] ?? 0,
     }));
+    // Which machines are only running backwards because their drive was turned
+    // round without re-solving them.
+    //
+    // `reverseDrive` leaves the frames alone and walks them backwards instead,
+    // which is what keeps a reader's place on the chart. The rebuild below
+    // solves fresh frames *from the drive's new sign*, so they already run the
+    // new way and that compensation becomes a second reversal: the machine
+    // went back to turning the way it originally did while the stored speed
+    // said the opposite.
+    const heldCompensation = this.partitions.map((partition, index) => ({
+      id: partition.id,
+      compensating: this.mechanisms[index]?.framesRunBackwards === true,
+    }));
     this.restoreStartPose();
 
     // The sealed-cylinder invariant is enforced HERE, at the one funnel every
@@ -296,6 +309,16 @@ export class MechanismService {
           this.inputVelocityFor(partition)
         )
     );
+    // The frames are new and run the drive's way, so anything that was walking
+    // the old ones backwards to make up for a reversal stops. A machine whose
+    // playback the reader turned round themselves -- a rocking one, which
+    // reverses by playback alone -- was never compensating and is left as it is.
+    this.partitions.forEach((partition, index) => {
+      const was = heldCompensation.find((entry) => entry.id === partition.id);
+      if (was?.compensating) {
+        this.playbackDirection[index] = this.directionOf(index) < 0 ? 1 : -1;
+      }
+    });
     this.activeObjService.fakeUpdateSelectedObj();
     this.reseekToTime(heldTime);
     this.restoreOwnTimes(heldEach);
@@ -1452,7 +1475,10 @@ export class MechanismService {
         if (!(l instanceof RealLink)) {
           return;
         }
-        const subsetNum = l.subset.length;
+        // Captured as a const so the narrowing to RealLink survives into the
+        // closures below.
+        const subsets = l.subset;
+        const subsetNum = subsets.length;
         if (subsetNum === 0) {
           return;
         }
@@ -1487,9 +1513,19 @@ export class MechanismService {
           const selectedJoint = this.activeObjService.selectedJoint;
           deleteJointFromLink(l, selectedJoint);
           deleteJointFromLink(sub, selectedJoint);
-          const tempIdSubs = idSubs.filter((str) => str !== sub.id);
-          // sub contains id that is not shared with any other subset
-          if (!sub.id.split('').some((char) => tempIdSubs.some((str) => str.includes(char)))) {
+          // Whether this subset still shares a joint with another one, asked of
+          // the joints rather than of the letters in their ids. A link id is
+          // its joints' names run together, so comparing characters says AA1
+          // and A2B share something because both contain an "A" -- and a
+          // cylinder's interior joints, or any drawing past its fifty-second,
+          // have ids longer than a character.
+          const sharesAJoint = sub.joints.some((joint) =>
+            subsets.some(
+              (other) =>
+                other !== sub && other.joints.some((candidate) => candidate.id === joint.id)
+            )
+          );
+          if (!sharesAJoint) {
             // This link will be pushed to this.links
             if (sub.joints.length > 1) {
               sub.joints.forEach((childJoint) => {
@@ -1600,8 +1636,10 @@ export class MechanismService {
               }
             });
             l_subset_index = l_subset_index - 1;
-          } else if (sub.id.length === 1) {
-            // special case, can slice this subset
+          } else if (sub.joints.length === 1) {
+            // special case, can slice this subset: one joint left, counted
+            // rather than read off the length of a name that may not be one
+            // character per joint.
             l.subset.splice(l_subset_index, 1);
             l_subset_index = l_subset_index - 1;
           }

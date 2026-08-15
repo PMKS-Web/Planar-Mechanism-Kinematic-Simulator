@@ -241,6 +241,36 @@ describe('Reversing a drive', () => {
     expect(service.travellingForward(0)).toBe(forwardWas);
   });
 
+  it('stays reversed through an ordinary edit, rather than turning back', () => {
+    // The quick reversal keeps the solved frames and walks them backwards. An
+    // ordinary edit solves fresh frames from the drive's new sign, so those
+    // already run the new way -- and walking them backwards as well turned the
+    // machine back to its original direction while the stored speed said the
+    // opposite.
+    const { service } = load(TEMPLATE_LINKAGES['4-Bar']);
+    const drivenSpeed = () =>
+      service.driveSpeedOf(
+        service.joints.find(
+          (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+        )!
+      );
+    const wasForward = service.travellingForward(0);
+    const wasSpeed = drivenSpeed();
+
+    service.reverseDrive(0);
+    expect(service.travellingForward(0)).toBe(!wasForward);
+    expect(Math.sign(drivenSpeed())).toBe(-Math.sign(wasSpeed));
+
+    // Any edit at all: this is the funnel every one of them goes through.
+    service.updateMechanism(false);
+
+    // Still reversed, and the drive and the motion still agree with each other.
+    expect(Math.sign(drivenSpeed())).toBe(-Math.sign(wasSpeed));
+    expect(service.travellingForward(0)).toBe(!wasForward);
+    expect(service.mechanisms[0].framesRunBackwards).toBe(false);
+    expect(service.directionOf(0)).toBe(1);
+  });
+
   it('declines when there is no solved cycle to turn round', () => {
     const harness = createMechanismHarness();
     expect(harness.service.mechanisms[0]?.withReversedDrive()).toBeUndefined();

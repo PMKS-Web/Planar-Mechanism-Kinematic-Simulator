@@ -516,10 +516,54 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(700);
 const idle = await switches();
+// A slider block has a mass and no centre-of-mass mark, so it must not make
+// the switch look useful.
+await load(payloads['4-Bar']);
+const blockOnly = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const srv = grid.mechanismSrv;
+  srv.links.forEach((link) => (link.mass = 0));
+  const block = srv.links.find((link) => link.constructor.name === 'SliderBlock');
+  if (block) block.mass = 5;
+  srv.updateMechanism(false);
+  const button = [...document.querySelectorAll('.viewControls .viewButton')][0];
+  return { hasBlock: !!block, disabled: button.disabled };
+});
+record(
+  'a mass on a slider block does not make the centre-of-mass switch look useful',
+  !blockOnly.hasBlock || blockOnly.disabled,
+  blockOnly
+);
+
+// The state a sighted reader gets from the tint has to reach everyone else.
+await load(payloads['4-Bar']);
+const pressedState = await page.evaluate(() =>
+  [...document.querySelectorAll('.viewControls .viewButton')].map((button) => ({
+    name: button.getAttribute('aria-label'),
+    pressed: button.getAttribute('aria-pressed'),
+    on: button.classList.contains('on'),
+  }))
+);
+record(
+  'each switch says whether it is on, and the plain actions say nothing',
+  pressedState.slice(0, 3).every((b) => b.pressed === String(b.on)) &&
+    pressedState.slice(3).every((b) => b.pressed === null),
+  pressedState
+);
+
+await load(payloads['4-Bar']);
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.mechanismSrv.links.forEach((link) => (link.mass = 0));
+  grid.mechanismSrv.joints.forEach((joint) => (joint.showCurve = false));
+  grid.mechanismSrv.updateMechanism();
+});
+await page.waitForTimeout(700);
+const idleAgain = await switches();
 record(
   'a switch that would change nothing is greyed',
-  idle[0].disabled && idle[2].disabled && !idle[1].disabled,
-  idle.map((s) => `${s.name}=${s.disabled}`)
+  idleAgain[0].disabled && idleAgain[2].disabled && !idleAgain[1].disabled,
+  idleAgain.map((s) => `${s.name}=${s.disabled}`)
 );
 
 // The row carries two kinds of button, and says where one kind ends.

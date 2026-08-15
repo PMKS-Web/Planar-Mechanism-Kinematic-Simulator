@@ -2863,7 +2863,11 @@ export class NewGridComponent implements OnDestroy {
    */
   showsCoM(link: Link): boolean {
     if (this.settings.previewCoMLinkId === link.id) return true;
-    return this.settings.isShowCOM.value && link.mass > 0;
+    // A slider block carries mass but has no centre-of-mass mark to draw --
+    // getLinkProp declines it -- so asking for one drew four undefined
+    // quarters. The rule is a body with a mass, and a block is not one of the
+    // bodies this mark is about.
+    return this.settings.isShowCOM.value && link instanceof RealLink && link.mass > 0;
   }
 
   /**
