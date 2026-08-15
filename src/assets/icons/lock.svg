@@ -4,7 +4,7 @@
        Closed shackle arch (hollow), hollow body. -->
   <path
     fill-rule="evenodd"
-    fill="#000000"
+    fill="currentColor"
     d="M7 10V7a5 5 0 0 1 10 0v3h2.5v11h-15V10H7Zm2 0h6V7a3 3 0 0 0-6 0v3ZM6.5 12v7h11v-7h-11Z"
   />
 </svg>

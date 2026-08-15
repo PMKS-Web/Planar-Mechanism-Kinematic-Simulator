@@ -3,7 +3,7 @@
        the body, which is what "open" looks like at 18 pixels. -->
   <path
     fill-rule="evenodd"
-    fill="#000000"
+    fill="currentColor"
     d="M7 10V7a5 5 0 0 1 10 0v1.5h-2V7a3 3 0 0 0-6 0v3H7Zm-2.5 0h15v11h-15V10Zm2 2v7h11v-7h-11Z"
   />
 </svg>
