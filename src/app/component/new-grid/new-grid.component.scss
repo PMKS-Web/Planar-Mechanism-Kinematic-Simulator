@@ -138,6 +138,25 @@
     cursor: pointer;
   }
 
+  // Held in place while editing. Black is the convention CAD sketchers use for
+  // fixed geometry, so the students most likely to meet these marks have seen
+  // them before. After the selection classes on purpose: a locked selected
+  // body still reads as locked — the stillness matters more than the accent.
+  .joint-locked {
+    stroke: #1a1a1a;
+  }
+
+  .link-locked {
+    stroke: #1a1a1a;
+  }
+
+  .force-locked {
+    .forceAnchor {
+      stroke: #1a1a1a;
+      fill: #1a1a1a;
+    }
+  }
+
   #mouseLocation {
     position: absolute;
     top: 35px;

@@ -9,7 +9,13 @@ import {
 } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { PrisJoint, RealJoint, RevJoint } from 'src/app/model/joint';
-import { FormArray, FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormsModule,
+  ReactiveFormsModule,
+} from '@angular/forms';
 import { Coord } from 'src/app/model/coord';
 import {
   AngleUnit,
@@ -389,6 +395,57 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     const sliderControl = this.jointForm.get('slider');
     if (!sealedMount && sliderControl?.disabled) sliderControl.enable({ emitEvent: false });
     if (sealedMount && sliderControl?.enabled) sliderControl.disable({ emitEvent: false });
+
+    this.syncLockDisabledFields();
+  }
+
+  /**
+   * The fields that move geometry go quiet while a Lock holds it — the same
+   * statement the canvas makes by refusing the drag, made in the panel's own
+   * language. Everything else (ground, weld, mass, colour, rename) stays
+   * live: a lock pins position, it does not embalm the object.
+   */
+  private syncLockDisabledFields(): void {
+    const setEnabled = (control: AbstractControl | null, on: boolean) => {
+      if (!control) return;
+      if (on && control.disabled) control.enable({ emitEvent: false });
+      if (!on && control.enabled) control.disable({ emitEvent: false });
+    };
+    if (this.activeSrv.objType === 'Joint' && this.activeSrv.selectedJoint) {
+      const held = this.gridUtils.isJointFrozen(this.activeSrv.selectedJoint);
+      setEnabled(this.jointForm.get('xPos'), !held);
+      setEnabled(this.jointForm.get('yPos'), !held);
+      setEnabled(this.jointForm.get('otherJoints'), !held);
+    } else if (this.activeSrv.objType === 'Link' && this.activeSrv.selectedLink) {
+      const frozenIds = this.gridUtils.frozenJointIds();
+      const sealed = this.mechanismService.cylinderAt(this.activeSrv.selectedLink);
+      if (sealed) {
+        // Travel, Starts-at and Axis all hold the barrel mount and move the
+        // rest of the part, so a held barrel mount alone leaves them live.
+        const movable = [sealed.rodFar, sealed.pin, sealed.slider, sealed.barrelNear].every(
+          (joint) => !frozenIds.has(joint.id)
+        );
+        setEnabled(this.cylinderForm.get('travel'), movable);
+        setEnabled(this.cylinderForm.get('start'), movable);
+        setEnabled(this.cylinderForm.get('angle'), movable);
+      } else {
+        // On top of the >2-joint rule disableAndEnableLinkFields applies: a
+        // length or angle edit moves the link's joints about an anchor of its
+        // own choosing, which no held joint can be trusted to survive.
+        const anyHeld = this.activeSrv.selectedLink.joints.some((joint) => frozenIds.has(joint.id));
+        if (anyHeld) {
+          setEnabled(this.linkForm.get('length'), false);
+          setEnabled(this.linkForm.get('angle'), false);
+        }
+      }
+    } else if (this.activeSrv.objType === 'Force' && this.activeSrv.selectedForce) {
+      // Direction is what the drag handles edit, so the lock covers it;
+      // magnitude is not a position and stays live.
+      const held = this.activeSrv.selectedForce.locked;
+      setEnabled(this.forceForm.get('angle'), !held);
+      setEnabled(this.forceForm.get('xComp'), !held);
+      setEnabled(this.forceForm.get('yComp'), !held);
+    }
   }
 
   /** Whether the selected joint is a mount of a sealed cylinder. */

@@ -14,7 +14,8 @@ import { GridUtilsService } from '../../services/grid-utils.service';
 import { SettingsService } from '../../services/settings.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { cMenuItem, ContextMenuComponent } from '../context-menu/context-menu.component';
-import { Link, RealLink } from '../../model/link';
+import { Link, RealLink, SliderBlock } from '../../model/link';
+import { Lockable } from '../../model/lock-set';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Coord } from '../../model/coord';
 import {
@@ -397,6 +398,7 @@ export class NewGridComponent implements OnDestroy {
             'switch_force_dir'
           )
         );
+        this.cMenuItems.push(this.lockMenuItem(this.lastRightClick as Force, 'Force'));
         break;
       case 'RealLink': {
         // The BODY of a sealed cylinder: barrel, rod or the skin itself. Two
@@ -419,6 +421,7 @@ export class NewGridComponent implements OnDestroy {
               bodyCylinder.slider.input ? 'remove_input' : 'add_input'
             )
           );
+          this.cMenuItems.push(this.lockMenuItem(this.lastRightClick as RealLink, 'Cylinder'));
           break;
         }
         //Delete Link, Attach Link, Attach Tracer Point, Attach Joint
@@ -469,6 +472,7 @@ export class NewGridComponent implements OnDestroy {
             weldedLinkFilletSelected
           )
         );
+        this.cMenuItems.push(this.lockMenuItem(this.lastRightClick as RealLink, 'Link'));
         break;
       }
       case 'RevJoint': {
@@ -522,6 +526,10 @@ export class NewGridComponent implements OnDestroy {
               !this.gridUtils.canToggleWeld(this.lastRightClick as RealJoint)
             )
           );
+          // The joint, not the part: a locked mount is a pinned attachment
+          // point the ram can still re-pose and swing about. Locking the
+          // whole cylinder lives on its body's menu.
+          this.cMenuItems.push(this.lockMenuItem(this.lastRightClick as RealJoint, 'Joint'));
           break;
         }
 
@@ -618,6 +626,7 @@ export class NewGridComponent implements OnDestroy {
           )
         ); //Rev Joint - the service explains a refusal, as the panel's toggle does
 
+        this.cMenuItems.push(this.lockMenuItem(this.lastRightClick as RealJoint, 'Joint'));
         break;
       }
 
@@ -628,7 +637,36 @@ export class NewGridComponent implements OnDestroy {
         this.cMenuItems.push(
           new cMenuItem('Add Cylinder', this.startCreatingCylinder.bind(this), 'add_cylinder')
         );
+        // Lock everything, unlock one handle, drag: the posing workflow. On
+        // the canvas menu because this is where the locking gesture lives —
+        // and greyed rather than hidden when there is nothing to act on.
+        this.cMenuItems.push(
+          new cMenuItem(
+            'Lock All',
+            () => this.mechanismSrv.setAllLocks(true),
+            'lock',
+            this.mechanismSrv.links.length === 0 && this.mechanismSrv.forces.length === 0
+          )
+        );
+        this.cMenuItems.push(
+          new cMenuItem(
+            'Unlock All',
+            () => this.mechanismSrv.setAllLocks(false),
+            'unlock',
+            !this.mechanismSrv.anythingLocked()
+          )
+        );
     }
+  }
+
+  /** The Lock/Unlock item every object menu carries, phrased for its kind. */
+  private lockMenuItem(target: RealJoint | RealLink | Force, kind: string): cMenuItem {
+    const locked = this.mechanismSrv.isLockedTarget(target);
+    return new cMenuItem(
+      locked ? `Unlock ${kind}` : `Lock ${kind}`,
+      () => this.mechanismSrv.toggleLock(target),
+      locked ? 'unlock' : 'lock'
+    );
   }
 
   /** Where the two-point cylinder gesture started: the barrel-side mount. */
@@ -1167,6 +1205,26 @@ export class NewGridComponent implements OnDestroy {
         if (!this.canEditNow() || !this.pastDragThreshold($event)) {
           return;
         }
+        // One carried joint is locked: the drag is a swing about it. The body
+        // turns by however far the cursor's bearing from the pivot changed
+        // since the last move, so the grabbed point tracks the cursor's angle
+        // without ever leaving its own radius.
+        if (this.linkRotationPivot) {
+          const pivot = this.linkRotationPivot;
+          const bearing = Math.atan2(mousePosInSvg.y - pivot.y, mousePosInSvg.x - pivot.x);
+          const theta = bearing - this.linkRotationGrabAngle;
+          this.linkRotationGrabAngle = bearing;
+          const swungCylinder = this.mechanismSrv.cylinderAt(this.activeObjService.selectedLink);
+          if (swungCylinder) {
+            this.gridUtils.rotateCylinder(swungCylinder, pivot, theta);
+          } else {
+            this.gridUtils.rotateLink(this.activeObjService.selectedLink, pivot, theta);
+          }
+          this.dragState.noteMechanismModified();
+          this.activeObjService.updateSelectedObj(this.activeObjService.selectedLink);
+          this.showPathWhileDragging();
+          break;
+        }
         // Measured from where the body was last placed, not from the previous
         // pointer event: the moves held back below the click threshold would
         // otherwise be lost motion, leaving the link trailing the cursor by
@@ -1273,6 +1331,89 @@ export class NewGridComponent implements OnDestroy {
    * animation is running is the thing they are watching. A message for it was
    * a fifth place saying the same word.
    */
+  /**
+   * The pivot of the current link drag, when one carried joint is locked.
+   * Set at the grab and read per pointer move; a drag with no locked joint
+   * clears it, so a stale pivot cannot outlive its gesture.
+   */
+  private linkRotationPivot?: Coord;
+  private linkRotationGrabAngle = 0;
+
+  /**
+   * The joints a drag of this link would carry, filtered to the ones the
+   * current Lock marks hold still. Carried means moved *as a body*: the
+   * link's own joints, the coincident block joints riding them, a sealed
+   * cylinder's five, and any floating slider that would be reseated onto
+   * this link after the move.
+   */
+  private frozenCarriedJoints(link: Link): Joint[] {
+    const carried = new Map<string, Joint>();
+    const add = (joint: Joint) => carried.set(joint.id, joint);
+    const bodyCylinder = this.mechanismSrv.cylinderAt(link);
+    if (bodyCylinder) {
+      cylinderJoints(bodyCylinder).forEach(add);
+    } else {
+      link.joints.forEach((joint) => {
+        add(joint);
+        if (!(joint instanceof RealJoint)) return;
+        joint.links.forEach((other) => {
+          if (other instanceof SliderBlock) other.joints.forEach(add);
+        });
+      });
+      this.mechanismSrv.joints.forEach((joint) => {
+        if (joint instanceof PrisJoint && joint.carrier?.id === link.id) add(joint);
+      });
+    }
+    const frozen = this.gridUtils.frozenJointIds();
+    return [...carried.values()].filter((joint) => frozen.has(joint.id));
+  }
+
+  /** Refuse a joint drag because the joint is held, naming what holds it. */
+  private refuseLockedJoint(joint: RealJoint): boolean {
+    if (!this.gridUtils.isJointFrozen(joint)) return false;
+    const holds = this.gridUtils.locksHolding(joint);
+    const heldByItself = holds.some((lock) => lock instanceof RealJoint && lock.id === joint.id);
+    const text = heldByItself
+      ? `Joint ${joint.name} is locked.`
+      : `Joint ${joint.name} is on a locked ${this.lockNoun(holds)}.`;
+    this.refuseWithUnlock('lock.joint', text, holds);
+    return true;
+  }
+
+  private refuseHeldLink(link: Link, held: Joint[]): void {
+    const holds = this.uniqueLocks(held.flatMap((joint) => this.gridUtils.locksHolding(joint)));
+    const text = this.mechanismSrv.isLockedTarget(link)
+      ? this.mechanismSrv.cylinderAt(link)
+        ? 'This cylinder is locked.'
+        : `Link ${link.name} is locked.`
+      : 'Two of the joints this drag would carry are locked. Unlock one to swing the body about the other.';
+    this.refuseWithUnlock('lock.link', text, holds);
+  }
+
+  private refuseLockedForce(force: Force): void {
+    this.refuseWithUnlock('lock.force', `Force ${force.name} is locked.`, [force]);
+  }
+
+  /** One refusal, carrying its own way out. */
+  private refuseWithUnlock(id: string, text: string, holds: Lockable[]): void {
+    this.notify.refusal(id, text, {
+      actions:
+        holds.length > 0 ? [{ label: 'Unlock', run: () => this.mechanismSrv.unlock(holds) }] : [],
+    });
+  }
+
+  private uniqueLocks(locks: Lockable[]): Lockable[] {
+    return locks.filter((lock, index) => locks.indexOf(lock) === index);
+  }
+
+  private lockNoun(holds: Lockable[]): string {
+    const link = holds.find((lock): lock is Link => lock instanceof Link);
+    if (link) return `link ${link.name}`;
+    const joint = holds.find((lock): lock is RealJoint => lock instanceof RealJoint);
+    if (joint && this.mechanismSrv.cylinderAt(joint)) return 'cylinder';
+    return joint ? `joint ${joint.name}` : 'object';
+  }
+
   private canEditNow(): boolean {
     if (this.mechanismSrv.isPlaying) {
       return false;
@@ -2007,6 +2148,10 @@ export class NewGridComponent implements OnDestroy {
             }
             switch (this.dragState.joint) {
               case jointStates.waiting:
+                // Decided at the grab, not per pointer move: a locked joint
+                // never enters the dragging state, so nothing downstream has
+                // to remember to hold it still.
+                if (this.refuseLockedJoint(this.activeObjService.selectedJoint)) break;
                 this.dragState.beginDraggingJoint();
                 break;
             }
@@ -2022,6 +2167,24 @@ export class NewGridComponent implements OnDestroy {
               break;
             }
             if (this.dragState.link === linkStates.waiting) {
+              // Of the joints this drag would carry: none locked moves freely,
+              // exactly one turns the drag into a swing about that joint —
+              // the only motion the linkage would allow if the pin were
+              // bolted down — and two or more leave the body nowhere to go.
+              const held = this.frozenCarriedJoints(this.activeObjService.selectedLink);
+              if (held.length >= 2) {
+                this.refuseHeldLink(this.activeObjService.selectedLink, held);
+                break;
+              }
+              if (held.length === 1) {
+                this.linkRotationPivot = new Coord(held[0].x, held[0].y);
+                this.linkRotationGrabAngle = Math.atan2(
+                  mousePosInSvg.y - held[0].y,
+                  mousePosInSvg.x - held[0].x
+                );
+              } else {
+                this.linkRotationPivot = undefined;
+              }
               this.dragState.beginDraggingLink();
             }
             break;
@@ -2029,6 +2192,10 @@ export class NewGridComponent implements OnDestroy {
             console.log('force is last left click');
             switch (this.dragState.force) {
               case forceStates.waiting:
+                if (this.activeObjService.selectedForce.locked) {
+                  this.refuseLockedForce(this.activeObjService.selectedForce);
+                  break;
+                }
                 if (this.activeObjService.selectedForce.isStartSelected) {
                   this.dragState.beginDraggingForceStart();
                 } else if (this.activeObjService.selectedForce.isEndSelected) {

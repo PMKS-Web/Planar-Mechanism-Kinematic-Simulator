@@ -397,6 +397,7 @@
             (pointerout)="link.showHighlight = false"
             (pointerdown)="setLastLeftClick(link, $event)"
             (contextmenu)="setLastRightClick(link, $event)"
+            [attr.cursor]="mechanismSrv.isLinkLockedVisual(link) ? 'not-allowed' : null"
             [attr.d]="linkPathWithChannels(link)"
             [attr.id]="link.id"
             [attr.data-channels]="channelCountOn(link)"
@@ -576,7 +577,7 @@
         <path
           class="cylinder-barrel"
           [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
-          cursor="move"
+          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.body) ? 'not-allowed' : 'move'"
           (pointerover)="cyl.body.showHighlight = true"
           (pointerout)="cyl.body.showHighlight = false"
           (pointerdown)="setLastLeftClick(cyl.body, $event)"
@@ -592,7 +593,7 @@
              and the silhouette says where the travel ends by itself. -->
         <path
           [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
-          cursor="move"
+          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.body) ? 'not-allowed' : 'move'"
           (pointerdown)="setLastLeftClick(cyl.body, $event)"
           (contextmenu)="setLastRightClick(cyl.body, $event)"
           [attr.d]="cyl.block"
@@ -602,7 +603,7 @@
         <path
           class="cylinder-rod"
           [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
-          cursor="move"
+          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.body) ? 'not-allowed' : 'move'"
           (pointerover)="cyl.body.showHighlight = true"
           (pointerout)="cyl.body.showHighlight = false"
           (pointerdown)="setLastLeftClick(cyl.body, $event)"
@@ -639,6 +640,17 @@
             class="cylinder-selected"
             [class.link-selected]="isBodySelected(cyl)"
             [class.link-hovered]="!isBodySelected(cyl)"
+            pointer-events="none"
+            [attr.d]="cylinderSilhouette(cyl)"
+            fill="none"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          />
+        }
+        <!-- Locked: the same whole-part silhouette the selection wears, in the
+             lock's black — the part is one body, so it is outlined as one. -->
+        @if (mechanismSrv.isLinkLockedVisual(cyl.body)) {
+          <path
+            class="link-locked"
             pointer-events="none"
             [attr.d]="cylinderSilhouette(cyl)"
             fill="none"
@@ -732,7 +744,7 @@
           width="20"
           height="20"
           style="overflow: visible"
-          cursor="move"
+          [attr.cursor]="mechanismSrv.isJointLockedVisual(joint) ? 'not-allowed' : 'move'"
         >
           <!-- Grouped so a refused or completed drop can animate the whole joint -->
           <g [class]="jointEffectClass(joint)">
@@ -748,6 +760,7 @@
                 [attr.r]="settings.objectScale * gridUtils.getJointR(joint)"
                 [attr.cx]="0"
                 [attr.cy]="0"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
                 [class]="mechanismSrv.getJointCSSClass(joint)"
               />
             }
@@ -758,6 +771,7 @@
               <path
                 [attr.id]="'joint_' + joint.id"
                 [class]="mechanismSrv.getJointCSSClass(joint)"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
                 [attr.d]="weldMarkerPath"
               ></path>
             }
@@ -1016,8 +1030,11 @@
          the rest of an unanalysable machine does. -->
     <g
       id="forcesHolder"
-      cursor="move"
+      [attr.cursor]="
+        force.locked && mechanismSrv.lockVisualsOn() ? 'not-allowed' : 'move'
+      "
       [class.force-inert]="mechanismSrv.isPartInert(force.link)"
+      [class.force-locked]="force.locked && mechanismSrv.lockVisualsOn()"
       [attr.pointer-events]="geometryLocked ? 'none' : null"
       style="transform: scaleY(-1)"
       (contextmenu)="setLastRightClick(force)"

@@ -55,6 +55,12 @@ export interface MechanismFixture {
   detach?: string[];
   /** Constant global force applied to a point that rides on `onLink`. */
   load?: { onLink: string; at: [number, number]; vector: [number, number] };
+  /**
+   * Objects that open with a Lock mark: joint letters and link ids. This is
+   * how a published teaching mechanism pins everything except the one handle
+   * a class is meant to drag — the marks ride the URL like every other state.
+   */
+  locks?: { joints?: string[]; links?: string[] };
   /** Input speed in rad/s, using the v1 manifest's exact rpm*pi/30 conversion. */
   inputAngVel: number;
   gravity?: boolean;
@@ -216,6 +222,15 @@ function buildMechanismNow(fixture: MechanismFixture): BuiltMechanism {
   // joint list built.
   fixture.detach?.forEach((id) => {
     (joints.find((joint) => joint.id === id) as PrisJoint).detach();
+  });
+
+  // In `joints`, not `jointById`, for the same reason detach looks there: a
+  // slider's own PrisJoint can carry a mark too.
+  fixture.locks?.joints?.forEach((id) => {
+    (joints.find((joint) => joint.id === id) as RevJoint).locked = true;
+  });
+  fixture.locks?.links?.forEach((id) => {
+    links.find((link) => link.id === id)!.locked = true;
   });
 
   const forces: Force[] = [];

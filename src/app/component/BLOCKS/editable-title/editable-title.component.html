@@ -26,17 +26,24 @@
       <!--            [matTooltipShowDelay]='1000' matTooltipPosition='above'>-->
     </div>
   }
+  <!-- Three actions in the row now, so the rename labels are the short ones. -->
   <div class="row">
     @if (!editMode) {
       <button class="mini-buttons blue" mat-stroked-button color="primary" (click)="gotoEditMode()">
         <mat-icon svgIcon="edit_outline"></mat-icon>
-        Edit Name
+        Rename
       </button>
     }
     @if (editMode) {
       <button class="mini-buttons blue" mat-stroked-button color="primary" (click)="saveNewID()">
         <mat-icon>check</mat-icon>
-        Save Name
+        Save
+      </button>
+    }
+    @if (lockTarget()) {
+      <button class="mini-buttons blue" mat-stroked-button color="primary" (click)="toggleLock()">
+        <mat-icon svgIcon="{{ isLocked() ? 'unlock' : 'lock' }}"></mat-icon>
+        {{ isLocked() ? 'Unlock' : 'Lock' }}
       </button>
     }
     <button class="mini-buttons red" mat-stroked-button color="warn" (click)="deleteAction()()">

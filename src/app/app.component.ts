@@ -132,5 +132,13 @@ export class AppComponent {
       'synthesis',
       this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/synthesis.svg')
     );
+    this.matIconRegistry.addSvgIcon(
+      'lock',
+      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/lock.svg')
+    );
+    this.matIconRegistry.addSvgIcon(
+      'unlock',
+      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/unlock.svg')
+    );
   }
 }

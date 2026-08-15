@@ -52,6 +52,13 @@ export class RealJoint extends Joint {
   public showCurve: boolean;
   public isWelded: boolean = false;
   /**
+   * Locked in place while editing: no drag, direct or carried, may move this
+   * joint. An editing constraint only — the solvers never read it, so a locked
+   * coupler still animates. Ground is the simulation-time cousin; the two are
+   * deliberately independent axes.
+   */
+  public locked: boolean = false;
+  /**
    * How fast this joint drives its own mechanism, signed for direction, in the
    * units its kind of drive is measured in: rpm for a pin, length per second
    * for a slider.

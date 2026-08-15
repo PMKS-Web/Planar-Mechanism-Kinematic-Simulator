@@ -411,6 +411,16 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     fixture: teachingLabFourBarFixture(),
   },
   {
+    name: 'TeachingLab four-bar, locked except the crank',
+    purpose: 'Lock marks ride the URL: only the crank end drags, the rest is pinned black',
+    spec: 'url-locking.spec.ts',
+    floatingSlot: false,
+    fixture: {
+      ...teachingLabFourBarFixture(),
+      locks: { links: ['BCFG', 'CDEI'] },
+    },
+  },
+  {
     name: 'TeachingLab slider-crank',
     purpose: 'The grounded-guide path this phase had to leave byte-identical',
     spec: 'teaching-lab-slider-crank.spec.ts',
