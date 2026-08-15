@@ -8,6 +8,8 @@ import { SettingsService } from '../../services/settings.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { MechanismReadiness, ReadinessCheck } from '../../model/mechanism/readiness';
 import { MatIcon } from '@angular/material/icon';
+import { NewGridComponent } from '../new-grid/new-grid.component';
+import { NOT_A } from '../../ui-text';
 
 /** One editable row of the mass table: a body, and what to call it. */
 export interface MassRow {
@@ -99,11 +101,14 @@ export class AnalysisSetupComponent {
 
   get summary(): string {
     if (this.mode() === 'force') {
-      const outstanding = this.forceOutstanding;
-      if (outstanding > 0) {
-        return `${outstanding} ${outstanding === 1 ? 'thing has' : 'things have'} to be set before forces can be solved.`;
-      }
+      const blockers = this.forceOutstanding;
       const warnings = this.forceWarnings;
+      if (blockers > 0) {
+        const blockerText = blockers === 1 ? 'One blocker' : `${blockers} blockers`;
+        return warnings > 0
+          ? `${blockerText}, ${warnings === 1 ? 'one thing' : `${warnings} things`} worth a look.`
+          : `${blockerText} before forces can be solved.`;
+      }
       return warnings > 0
         ? `Force analysis runs. ${warnings === 1 ? 'One thing below is' : `${warnings} things below are`} worth a look before trusting the numbers.`
         : 'Force analysis is ready to run.';
@@ -216,26 +221,93 @@ export class AnalysisSetupComponent {
   }
 
   massText(row: MassRow): string {
-    return this.nup.formatValueAndUnit(row.body.mass, this.massUnit());
+    // Value only: the unit lives in the column header, never on the number.
+    return row.body.mass.toFixed(2);
   }
 
   moiText(row: MassRow): string {
     if (row.isBlock || !(row.body instanceof RealLink)) return '—';
-    return this.nup.formatStoredInertia(row.body.massMoI, this.settings.lengthUnit.value);
+    const length = this.settings.lengthUnit.value;
+    return this.nup
+      .convertInertia(
+        row.body.massMoI,
+        this.nup.storedInertiaUnit(length),
+        this.nup.displayInertiaUnit(length)
+      )
+      .toFixed(2);
   }
 
   moiIsAuto(row: MassRow): boolean {
     return row.body instanceof RealLink && !row.body.moiIsCustom;
   }
 
-  /** Rebuilds mid-play would fight the animation; a pause is one click away. */
+  /**
+   * Whether this row's inertia can be typed at. A block is a point mass with
+   * no inertia of its own, and a sealed cylinder's parts always follow their
+   * own shapes — which is what lets the cylinder card promise exactly that.
+   */
+  moiEditable(row: MassRow): boolean {
+    if (row.isBlock || !(row.body instanceof RealLink)) return false;
+    if (!(row.body.mass > 0)) return false;
+    return !this.mechanism.cylinderAt(row.body);
+  }
+
+  massUnitLabel(): string {
+    return this.nup.unitLabel(this.nup.massUnitFor(this.settings.lengthUnit.value));
+  }
+
+  inertiaUnitLabel(): string {
+    return this.nup.unitLabel(this.nup.displayInertiaUnit(this.settings.lengthUnit.value));
+  }
+
+  /**
+   * Editing is an Edit-mode thing, as everywhere else in the app: the
+   * analysis modes read a solved cycle and hold it still. The header offers
+   * the mode switch, so the read-only state is one click from the editable
+   * one — with the drawer staying open across it.
+   */
   massEditable(): boolean {
-    return !this.mechanism.isPlaying;
+    return this.tabs.getCurrentTab() === TabID.EDIT && !this.mechanism.isPlaying;
+  }
+
+  inEditMode(): boolean {
+    return this.tabs.getCurrentTab() === TabID.EDIT;
+  }
+
+  switchToEdit(): void {
+    this.tabs.setTab(TabID.EDIT);
+  }
+
+  anyBodyIsCustom(): boolean {
+    return this.mechanism.links.some(
+      (link) => link instanceof RealLink && (link.moiIsCustom || link.comIsCustom)
+    );
+  }
+
+  resetAllBodies(): void {
+    if (!this.massEditable()) return;
+    for (const link of this.mechanism.links) {
+      if (link instanceof RealLink) {
+        link.moiIsCustom = false;
+        link.comIsCustom = false;
+        link.comOffset = undefined;
+      }
+    }
+    this.mechanism.updateMechanism(true);
+    this.mechanism.onMechUpdateState.next(2);
   }
 
   onMassEdit(row: MassRow, input: HTMLInputElement): void {
-    const [success, value] = this.nup.parseMassString(input.value, this.massUnit());
-    if (!success || value < 0 || !this.massEditable()) {
+    if (!this.massEditable()) {
+      input.value = this.massText(row);
+      return;
+    }
+    const [success, value] = this.nup.parseMassString(
+      input.value,
+      this.nup.massUnitFor(this.settings.lengthUnit.value)
+    );
+    if (!success || value < 0) {
+      NewGridComponent.sendNotification(NOT_A.mass);
       input.value = this.massText(row);
       return;
     }
@@ -245,8 +317,24 @@ export class AnalysisSetupComponent {
     input.value = this.massText(row);
   }
 
-  private massUnit() {
-    return this.nup.massUnitFor(this.settings.lengthUnit.value);
+  onInertiaEdit(row: MassRow, input: HTMLInputElement): void {
+    if (!this.massEditable() || !this.moiEditable(row) || !(row.body instanceof RealLink)) {
+      input.value = this.moiText(row);
+      return;
+    }
+    const length = this.settings.lengthUnit.value;
+    const display = this.nup.displayInertiaUnit(length);
+    const [success, value] = this.nup.parseInertiaString(input.value, display);
+    if (!success || value < 0) {
+      NewGridComponent.sendNotification(NOT_A.momentOfInertia);
+      input.value = this.moiText(row);
+      return;
+    }
+    row.body.massMoI = this.nup.convertInertia(value, display, this.nup.storedInertiaUnit(length));
+    row.body.moiIsCustom = true;
+    this.mechanism.updateMechanism(true);
+    this.mechanism.onMechUpdateState.next(2);
+    input.value = this.moiText(row);
   }
 
   /**

@@ -160,15 +160,19 @@ export class LinkageTableComponent implements OnInit {
         if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
-        link.CoM.x = Number(($event.target as HTMLInputElement).value) * MODEL_SCALE;
-        link.comIsCustom = true;
+        link.placeCustomCoM({
+          x: Number(($event.target as HTMLInputElement).value) * MODEL_SCALE,
+          y: link.CoM.y,
+        });
         break;
       case 'CoMY':
         if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
-        link.CoM.y = Number(($event.target as HTMLInputElement).value) * MODEL_SCALE;
-        link.comIsCustom = true;
+        link.placeCustomCoM({
+          x: link.CoM.x,
+          y: Number(($event.target as HTMLInputElement).value) * MODEL_SCALE,
+        });
         break;
     }
     this.mechanismService.updateMechanism(true);

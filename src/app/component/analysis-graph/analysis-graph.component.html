@@ -1,3 +1,14 @@
+@if (analysisGap; as gap) {
+  <div
+    class="analysis-gap"
+    role="status"
+    title="Those are toggle positions: reactions grow without bound as the mechanism approaches them, and the chart leaves a gap rather than inventing a number."
+  >
+    <mat-icon class="gapIcon">warning_amber</mat-icon>
+    <span>No solution at {{ gap.failed }} of {{ gap.total }} positions</span>
+    <button class="gapShow" (click)="showGapPosition()">Show them</button>
+  </div>
+}
 @if (analysisDiagnostic) {
   <div class="analysis-diagnostic" role="status">{{ analysisDiagnostic }}</div>
 } @else {

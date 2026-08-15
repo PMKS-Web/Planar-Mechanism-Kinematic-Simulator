@@ -402,58 +402,73 @@
         <input-block
           [formGroup]="linkForm"
           _formControl="mass"
-          tooltip="The mass used by force analysis. Zero is an idealized massless bar: gravity and inertia skip it."
-          >Link Mass</input-block
+          tooltip="The mass used by force analysis. Zero is an idealized massless bar: gravity and inertia skip it, and rotational inertia reads zero."
+          >Mass</input-block
         >
-        <!-- A massless bar has no inertia and no centre of mass worth a field:
-             everything below only exists once the link weighs something. One
-             exception keeps the panel honest: a hand-set moment of inertia
-             acts in dynamics even at zero mass, so it stays on screen — and
-             resettable — rather than hiding while it still steers the answer. -->
-        @if (activeSrv.selectedLink.mass > 0 || activeSrv.selectedLink.massMoI > 0) {
-          <input-block
-            stacked
-            [formGroup]="linkForm"
-            _formControl="massMoI"
-            tooltip="The mass moment of inertia about the link's center of mass. Derived from the shape as a uniform body until a value is typed."
-            >Mass Moment of Inertia</input-block
+        <!-- One legend for the two derived fields below. It sits under Mass —
+             which is always typed — so it introduces exactly the fields it
+             governs: grey behind a hollow dot follows the shape, ink behind a
+             filled one was set by hand and carries a ✕ to hand it back. -->
+        <div class="dotLegend" [formGroup]="linkForm">
+          <span class="dot"></span> from shape
+          <span class="dot filled"></span> set by you
+          <button
+            type="button"
+            class="resetAll"
+            [disabled]="!activeSrv.selectedLink.moiIsCustom && !activeSrv.selectedLink.comIsCustom"
+            (click)="useUniformBody()"
           >
-          <subtitle-block
-            [icon]="activeSrv.selectedLink.moiIsCustom ? 'auto_fix_normal' : undefined"
-            [buttonLabel]="activeSrv.selectedLink.moiIsCustom ? 'Derive From Shape' : undefined"
-            [description]="
-              activeSrv.selectedLink.moiIsCustom
-                ? activeSrv.selectedLink.mass > 0
-                  ? 'A value you set; the shape no longer updates it.'
-                  : 'A value you set — this massless link still resists turning. Derive From Shape zeroes it.'
-                : 'Follows the link’s shape as a uniform body.'
-            "
-            [click]="useUniformBodyMoI.bind(this)"
-          ></subtitle-block>
-          <dual-input-block
-            label1="X"
-            label2="Y"
-            formControl1="comX"
-            formControl2="comY"
-            [formGroup]="linkForm"
-            tooltip="The physical center of mass used by force analysis. Derived from the shape as a uniform body until a value is typed."
-            >Center of Mass Position</dual-input-block
+            Reset all
+          </button>
+        </div>
+        <div class="dotRow" [formGroup]="linkForm">
+          <span class="dotRowLabel">Center of Mass</span>
+          <select
+            class="comFrameSelect"
+            [value]="comFrame"
+            (change)="setComFrame($any($event.target).value)"
+            title="The frame the two numbers below are typed and read in. Stored against the link, whichever you pick."
           >
-          <subtitle-block
-            [icon]="activeSrv.selectedLink.comIsCustom ? 'auto_fix_normal' : undefined"
-            [buttonLabel]="activeSrv.selectedLink.comIsCustom ? 'Derive From Shape' : undefined"
-            [description]="
-              activeSrv.selectedLink.comIsCustom
-                ? 'A point you placed; the shape no longer moves it.'
-                : 'Follows the link’s shape as a uniform body.'
-            "
-            [click]="useUniformBodyCoM.bind(this)"
-          ></subtitle-block>
-        } @else {
-          <subtitle-block
-            description="This link is an idealized massless bar. Give it mass and its moment of inertia and center of mass appear, derived from its shape."
-          ></subtitle-block>
-        }
+            <option value="centroid">Centroid</option>
+            <option value="grid">Global grid</option>
+            @for (joint of activeSrv.selectedLink.joints; track joint.id) {
+              <option [value]="'joint:' + joint.id">Joint {{ joint.name || joint.id }}</option>
+            }
+          </select>
+        </div>
+        <div class="dotRow fields" [formGroup]="linkForm">
+          <span class="dotField" [class.custom]="activeSrv.selectedLink.comIsCustom">
+            <span class="dot" [class.filled]="activeSrv.selectedLink.comIsCustom"></span>
+            <span class="axisTag">X</span>
+            <input formControlName="comX" />
+            @if (activeSrv.selectedLink.comIsCustom) {
+              <button type="button" class="clearDot" title="Back to the shape's centroid" (click)="useUniformBodyCoM()">&#10005;</button>
+            }
+          </span>
+          <span class="dotField" [class.custom]="activeSrv.selectedLink.comIsCustom">
+            <span class="dot" [class.filled]="activeSrv.selectedLink.comIsCustom"></span>
+            <span class="axisTag">Y</span>
+            <input formControlName="comY" />
+            @if (activeSrv.selectedLink.comIsCustom) {
+              <button type="button" class="clearDot" title="Back to the shape's centroid" (click)="useUniformBodyCoM()">&#10005;</button>
+            }
+          </span>
+        </div>
+        <div class="dotRow" [formGroup]="linkForm">
+          <span class="dotRowLabel">Rotational Inertia</span>
+          <span
+            class="dotField wide"
+            [class.custom]="activeSrv.selectedLink.moiIsCustom"
+            [class.off]="!(activeSrv.selectedLink.mass > 0)"
+          >
+            <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
+            <input formControlName="massMoI" />
+            <span class="unitTag">{{ inertiaUnitLabel() }}</span>
+            @if (activeSrv.selectedLink.moiIsCustom) {
+              <button type="button" class="clearDot" title="Back to the shape's own inertia" (click)="useUniformBodyMoI()">&#10005;</button>
+            }
+          </span>
+        </div>
       </collapsible-subseciton>
       @if (activeSrv.selectedLink.isCompound) {
         <collapsible-subseciton

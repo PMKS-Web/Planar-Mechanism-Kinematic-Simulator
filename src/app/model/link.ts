@@ -1,4 +1,5 @@
 import { Joint, PrisJoint, RealJoint } from './joint';
+import { uniformBodyOf } from './uniform-body';
 import { Coord } from './coord';
 import { Force } from './force';
 import { degToRad, determineSlope, getAngle, getDistance, radToDeg } from './utils';
@@ -153,6 +154,56 @@ export class RealLink extends Link {
    */
   public moiIsCustom = false;
   public comIsCustom = false;
+  /**
+   * A hand-placed centre of mass, held against the link's own frame: along
+   * and across the unit direction joints[0]→joints[1], measured from the
+   * uniform-body centroid. "Stored against the centroid" is what lets a
+   * placed point ride the link through drags, rotations and deformations —
+   * a world coordinate goes stale the moment the mechanism moves. The URL
+   * still carries the global coordinate; this is re-captured at decode.
+   */
+  public comOffset?: { along: number; across: number };
+
+  /** The link's own frame: origin at the uniform centroid, x̂ along joints[0]→joints[1]. */
+  private comFrame(): { origin: Coord; ux: number; uy: number } {
+    const origin = uniformBodyOf(this.joints).centroid;
+    const a = this.joints[0];
+    const b = this.joints[1];
+    const span = a && b ? Math.hypot(b.x - a.x, b.y - a.y) : 0;
+    // A degenerate frame (one joint, or two on top of each other) falls back
+    // to the world axes, which at least keeps the offset well-defined.
+    if (!(span > 1e-9)) return { origin, ux: 1, uy: 0 };
+    return { origin, ux: (b.x - a.x) / span, uy: (b.y - a.y) / span };
+  }
+
+  /** Place the centre of mass by hand: flags it custom and captures the offset. */
+  placeCustomCoM(point: { x: number; y: number }): void {
+    this.comIsCustom = true;
+    this._CoM = new Coord(point.x, point.y);
+    this.captureComOffset();
+    this.updateCoMDs();
+  }
+
+  /** Re-read the local offset from wherever the CoM currently is. */
+  captureComOffset(): void {
+    const frame = this.comFrame();
+    const dx = this._CoM.x - frame.origin.x;
+    const dy = this._CoM.y - frame.origin.y;
+    this.comOffset = {
+      along: dx * frame.ux + dy * frame.uy,
+      across: -dx * frame.uy + dy * frame.ux,
+    };
+  }
+
+  /** Where the captured offset lands in today's geometry. */
+  customCoMFromOffset(): Coord | undefined {
+    if (!this.comOffset) return undefined;
+    const frame = this.comFrame();
+    return new Coord(
+      frame.origin.x + this.comOffset.along * frame.ux - this.comOffset.across * frame.uy,
+      frame.origin.y + this.comOffset.along * frame.uy + this.comOffset.across * frame.ux
+    );
+  }
 
   constructor(
     id: string,

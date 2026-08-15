@@ -217,45 +217,113 @@
 
   .massRow {
     display: grid;
-    grid-template-columns: minmax(72px, 1fr) 96px minmax(90px, 1fr) auto;
+    grid-template-columns: minmax(64px, 1fr) 84px minmax(96px, 1fr) 26px;
     gap: 8px;
     align-items: center;
-    padding: 4px 0;
+    padding: 3px 0;
     font-size: 13px;
+
+    &.head {
+      font-size: 10.5px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(0, 0, 0, 0.5);
+      font-weight: 600;
+      padding-bottom: 6px;
+    }
   }
+
+  .num { text-align: right; }
 
   .massName {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-
-    &.muted {
-      color: rgba(0, 0, 0, 0.45);
-    }
   }
 
-  .massField {
+  .massMoI { color: rgba(0, 0, 0, 0.6); }
+
+  /* The dot anatomy, shared in spirit with the Edit panel's Mass Settings:
+     grey behind a hollow dot follows the shape, ink behind a filled one was
+     typed. */
+  .dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(0, 0, 0, 0.4);
+    background: transparent;
+    flex: none;
+  }
+
+  .dot.filled { background: #3f51b5; border-color: #3f51b5; }
+
+  .dotField {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     height: 28px;
-    padding: 0 8px;
-    border: 1px solid rgba(0, 0, 0, 0.2);
+    padding: 0 7px;
     border-radius: 4px;
-    font: inherit;
-    font-size: 13px;
+    background: rgba(0, 0, 0, 0.05);
     min-width: 0;
 
-    &:disabled {
-      background: rgba(0, 0, 0, 0.04);
-      color: rgba(0, 0, 0, 0.4);
+    input {
+      border: none;
+      background: none;
+      font: inherit;
+      font-size: 13px;
+      text-align: right;
+      width: 100%;
+      min-width: 0;
+      color: rgba(0, 0, 0, 0.5);
+
+      &:focus { outline: none; }
+      &:disabled { color: rgba(0, 0, 0, 0.4); }
+    }
+
+    &.custom input { color: rgba(0, 0, 0, 0.87); }
+  }
+
+  .dotLegend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0 0;
+    font-size: 11.5px;
+    color: rgba(0, 0, 0, 0.55);
+
+    .resetAll {
+      margin-left: auto;
+      border: none;
+      background: none;
+      color: #3f51b5;
+      font: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 0;
+
+      &:disabled { color: rgba(0, 0, 0, 0.3); cursor: default; }
     }
   }
 
-  .massMoI {
-    color: rgba(0, 0, 0, 0.6);
-    white-space: nowrap;
+  .rowJump {
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    color: rgba(0, 0, 0, 0.4);
+    display: inline-flex;
 
-    .chip {
-      margin-left: 4px;
-    }
+    mat-icon { font-size: 16px; width: 16px; height: 16px; }
+    &:hover { color: #3f51b5; }
+  }
+
+  .sectionHeader .actionButton.slim {
+    margin: 0;
+    height: 26px;
+    padding: 0 10px;
+    font-size: 12px;
   }
 
   .actionButton {
@@ -275,3 +343,16 @@
     }
   }
 }
+
+  .checkIcon.blocker { color: #b3261e; }
+
+  .sevTag {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #b3261e;
+    margin-left: 6px;
+
+    &.warn { color: #9a6a00; }
+  }

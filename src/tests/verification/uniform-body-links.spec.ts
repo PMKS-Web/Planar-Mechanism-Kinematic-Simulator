@@ -8,6 +8,7 @@ import { LengthUnit } from '../../app/model/utils';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
 import { LinkData, LINK_TYPE } from '../../app/services/transcoding/transcoder-data';
 import { createMechanismHarness, MechanismHarness } from '../../test-utils/mechanism-harness';
+import { uniformBodyOf } from '../../app/model/uniform-body';
 
 // Auto-derived mass properties, end to end: a link left in auto follows its
 // own geometry through every edit, a link somebody typed at holds still, and
@@ -93,6 +94,76 @@ describe('auto mass properties on the editable mechanism', () => {
 
     // A 5 m rod of 12 kg: I = 12·25/12 = 25 kg·m².
     expect(ab.massMoI).toBeCloseTo(25, 9);
+  });
+});
+
+describe('a placed centre of mass rides the link', () => {
+  it('keeps its offset through a translation of the whole link', () => {
+    const harness = createMechanismHarness();
+    const [ab] = twoBarChain(harness);
+    ab.mass = 12;
+    // Place it 0.5 user units past the midpoint, along the bar.
+    ab.placeCustomCoM({ x: 1.8 * MODEL_SCALE, y: 2.4 * MODEL_SCALE });
+    harness.service.updateMechanism();
+
+    const a = harness.service.joints.find((joint) => joint.id === 'A')!;
+    const b = harness.service.joints.find((joint) => joint.id === 'B')!;
+    a.x += 2 * MODEL_SCALE;
+    b.x += 2 * MODEL_SCALE;
+    harness.service.updateMechanism();
+
+    // Stored against the link, so it moved with it — not left in the world.
+    expect(ab.CoM.x).toBeCloseTo(3.8 * MODEL_SCALE, 6);
+    expect(ab.CoM.y).toBeCloseTo(2.4 * MODEL_SCALE, 6);
+  });
+
+  it('turns with the link when its direction changes', () => {
+    const harness = createMechanismHarness();
+    const [ab] = twoBarChain(harness);
+    ab.mass = 12;
+    // Half a unit off-axis from the centroid of the bar A(0,0)->B(3,4).
+    const centroid = { x: 1.5 * MODEL_SCALE, y: 2 * MODEL_SCALE };
+    ab.placeCustomCoM({ x: centroid.x + 0.4 * MODEL_SCALE, y: centroid.y - 0.3 * MODEL_SCALE });
+    harness.service.updateMechanism();
+    const before = { along: ab.comOffset!.along, across: ab.comOffset!.across };
+
+    // Swing B so the bar points somewhere new; the offset decomposition
+    // against the bar's own frame must be what holds still.
+    const b = harness.service.joints.find((joint) => joint.id === 'B')!;
+    b.x = -4 * MODEL_SCALE;
+    b.y = 3 * MODEL_SCALE;
+    harness.service.updateMechanism();
+
+    expect(ab.comOffset!.along).toBeCloseTo(before.along, 6);
+    expect(ab.comOffset!.across).toBeCloseTo(before.across, 6);
+    const frameNow = uniformBodyOf(ab.joints).centroid;
+    const distance = Math.hypot(ab.CoM.x - frameNow.x, ab.CoM.y - frameNow.y);
+    expect(distance).toBeCloseTo(0.5 * MODEL_SCALE, 6);
+  });
+});
+
+describe('a weightless body cannot keep a moment of inertia', () => {
+  it('zeroes and re-derives the inertia when the mass goes to zero', () => {
+    // The solver applies I·α whether or not there is mass, so the state
+    // "weightless but resists turning" must be unrepresentable — zeroing the
+    // mass zeroes the inertia and hands the field back to the shape.
+    const harness = createMechanismHarness();
+    const [ab] = twoBarChain(harness);
+    ab.mass = 12;
+    ab.massMoI = 7;
+    ab.moiIsCustom = true;
+    harness.service.updateMechanism();
+    expect(ab.massMoI).toBe(7);
+
+    ab.mass = 0;
+    harness.service.updateMechanism();
+    expect(ab.massMoI).toBe(0);
+    expect(ab.moiIsCustom).toBe(false);
+
+    // Mass returned: the inertia comes back derived, not as a stale 7.
+    ab.mass = 12;
+    harness.service.updateMechanism();
+    expect(ab.massMoI).toBeCloseTo(0.025, 9);
   });
 });
 

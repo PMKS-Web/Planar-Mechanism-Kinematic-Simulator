@@ -202,16 +202,23 @@ export class RightPanelComponent implements DoCheck {
     if (!this.isOpen) {
       return;
     }
+    // The force drawer holds the mass table, whose own header offers "Switch
+    // to Edit mode" — a switch that must not close the thing that offered it.
+    // So it survives Edit as well as Force, and only leaves for Synthesis.
+    const forceDrawerBelongs = tab === TabID.FORCE || tab === TabID.EDIT;
     const wanted =
       tab === TabID.FORCE
         ? RightPanelComponent.FORCE_SETUP_TAB
         : tab === TabID.ANALYZE
           ? RightPanelComponent.KINEMATIC_SETUP_TAB
           : -1;
-    const showingSetup =
-      this.openTab === RightPanelComponent.KINEMATIC_SETUP_TAB ||
-      this.openTab === RightPanelComponent.FORCE_SETUP_TAB;
-    if (showingSetup && this.openTab !== wanted) {
+    if (this.openTab === RightPanelComponent.FORCE_SETUP_TAB) {
+      if (!forceDrawerBelongs) {
+        this.isOpen = false;
+      }
+      return;
+    }
+    if (this.openTab === RightPanelComponent.KINEMATIC_SETUP_TAB && this.openTab !== wanted) {
       this.isOpen = false;
     }
   }

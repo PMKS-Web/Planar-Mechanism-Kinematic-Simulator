@@ -63,11 +63,16 @@
           @for (requirement of forceRequirements; track requirement.title) {
             @if (!requirement.met) {
               <div class="check">
-                <mat-icon class="checkIcon warning">{{
-                  requirement.warning ? 'warning_amber' : 'radio_button_unchecked'
+                <mat-icon class="checkIcon" [class]="requirement.warning ? 'warning' : 'blocker'">{{
+                  requirement.warning ? 'warning_amber' : 'error_outline'
                 }}</mat-icon>
                 <div class="checkBody">
-                  <div class="checkTitle">{{ requirement.title }}</div>
+                  <div class="checkTitle">
+                    {{ requirement.title }}
+                    <span class="sevTag" [class.warn]="requirement.warning">{{
+                      requirement.warning ? 'Worth a look' : 'Needed'
+                    }}</span>
+                  </div>
                   <p class="checkText">{{ requirement.body }}</p>
                 </div>
               </div>
@@ -81,41 +86,63 @@
       <div class="mechBlock">
         <div class="sectionHeader static">
           <span class="sectionName">Masses</span>
+          @if (!inEditMode()) {
+            <button class="actionButton slim" (click)="switchToEdit()">Switch to Edit mode</button>
+          }
         </div>
         <div class="massTable">
-          <!-- The same numbers the per-link panel edits, one row per body, so
-               setting up an analysis is one visit instead of eight. Mass is
-               the column a person types; inertia follows it (auto) or shows
-               what they typed elsewhere. -->
+          <div class="massRow head">
+            <span>Body</span>
+            <span class="num">Mass ({{ massUnitLabel() }})</span>
+            <span class="num">Rot. inertia ({{ inertiaUnitLabel() }})</span>
+            <span></span>
+          </div>
           @for (row of massRows(); track row.body.id) {
             <div class="massRow">
-              <span class="massName" [class.muted]="!(row.body.mass > 0)">{{ row.label }}</span>
-              <input
-                class="massField"
-                [value]="massText(row)"
-                [disabled]="!massEditable()"
-                [title]="massEditable() ? '' : 'Pause the animation to edit masses.'"
-                (change)="onMassEdit(row, $any($event.target))"
-              />
-              <span class="massMoI">
-                {{ moiText(row) }}
-                @if (moiIsAuto(row) && row.body.mass > 0) {
-                  <span class="chip">auto</span>
-                }
+              <span class="massName">{{ row.label }}</span>
+              <span class="dotField">
+                <input
+                  [value]="massText(row)"
+                  [disabled]="!massEditable()"
+                  (change)="onMassEdit(row, $any($event.target))"
+                />
               </span>
-              @if (!(row.body.mass > 0)) {
-                <span class="chip">massless</span>
+              @if (row.isBlock) {
+                <span class="massMoI num">—</span>
               } @else {
-                <span></span>
+                <span class="dotField" [class.custom]="!moiIsAuto(row)">
+                  <span class="dot" [class.filled]="!moiIsAuto(row)"></span>
+                  <input
+                    [value]="moiText(row)"
+                    [disabled]="!massEditable() || !moiEditable(row)"
+                    (change)="onInertiaEdit(row, $any($event.target))"
+                  />
+                </span>
               }
+              <button
+                class="rowJump"
+                title="Open this link in Edit mode"
+                (click)="goTo(row.body)"
+              >
+                <mat-icon>arrow_outward</mat-icon>
+              </button>
             </div>
           }
-          <p class="checkText note">
-            Massless bodies weigh nothing and, unless a moment of inertia was set by hand, carry
-            no inertia — fine as an idealization. Moment of inertia and center of mass are edited
-            on the link in Edit mode; a cylinder's follow its parts automatically once derived
-            from shape in Edit Cylinder.
-          </p>
+          @if (massEditable()) {
+            <div class="dotLegend">
+              <span class="dot"></span> from shape
+              <span class="dot filled"></span> set by you
+              <button class="resetAll" [disabled]="!anyBodyIsCustom()" (click)="resetAllBodies()">
+                Reset all
+              </button>
+            </div>
+            <p class="checkText note">
+              A body left at zero mass is skipped by gravity and inertia. Open a link to place its
+              center of mass.
+            </p>
+          } @else {
+            <p class="checkText note">Masses are read-only while forces are being analysed.</p>
+          }
         </div>
       </div>
     }

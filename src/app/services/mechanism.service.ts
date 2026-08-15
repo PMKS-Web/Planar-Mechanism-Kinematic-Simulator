@@ -1009,6 +1009,7 @@ export class MechanismService {
     // leave the compound following its geometry too.
     newLink.moiIsCustom = leaves.some((leaf) => leaf instanceof RealLink && leaf.moiIsCustom);
     newLink.comIsCustom = leaves.some((leaf) => leaf instanceof RealLink && leaf.comIsCustom);
+    if (newLink.comIsCustom) newLink.captureComOffset();
     newLink.fill = leaves[0]?.fill ?? ColorService.instance?.getNextLinkColor() ?? '#555555';
     return newLink;
   }
@@ -2058,6 +2059,28 @@ export class MechanismService {
     const factor = this.storedMoiFactor(unitStr);
     for (const link of this.links) {
       if (!(link instanceof RealLink)) continue;
+      // A body with no mass has no moment of inertia, full stop: the solver
+      // applies I·α regardless of mass, so a leftover typed inertia on a
+      // weightless bar would quietly steer every dynamic answer. Zeroing the
+      // mass zeroes the inertia and hands the field back to the shape, which
+      // is also what the panel shows (the field disables and reads 0).
+      if (!(link.mass > 0) && (link.massMoI !== 0 || link.moiIsCustom)) {
+        link.massMoI = 0;
+        link.moiIsCustom = false;
+      }
+      if (link.comIsCustom) {
+        // A placed point rides the link: re-derived from its stored offset
+        // against the centroid, so drags, turns and deformations carry it.
+        const placed = link.customCoMFromOffset();
+        if (placed) {
+          link.CoM = placed;
+          link.updateCoMDs();
+        } else {
+          // Decoded from a URL that only carries the world coordinate:
+          // capture the offset once, against today's geometry.
+          link.captureComOffset();
+        }
+      }
       if (link.moiIsCustom && link.comIsCustom) continue;
       const derived = this.uniformBodyFor(link, factor);
       if (!link.comIsCustom) {
@@ -2196,7 +2219,7 @@ export class MechanismService {
               .map((link) => link.name || link.id)
               .join(
                 ', '
-              )} ${massless.length === 1 ? 'weighs' : 'weigh'} nothing, so gravity and inertia pass ${massless.length === 1 ? 'it' : 'them'} by. Fine for an idealized bar — set Link Mass in Mass Settings to include ${massless.length === 1 ? 'it' : 'them'}.`,
+              )} ${massless.length === 1 ? 'weighs' : 'weigh'} nothing, so gravity and inertia pass ${massless.length === 1 ? 'it' : 'them'} by. Fine for an idealized bar — type a mass in the table below to include ${massless.length === 1 ? 'it' : 'them'}.`,
     });
 
     // Something has to load the linkage, but weight counts: with gravity on,
