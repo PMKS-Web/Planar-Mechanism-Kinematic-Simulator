@@ -23,6 +23,8 @@ export class Force {
   private _angleRad: number;
 
   private _showHighlight: boolean = false;
+  /** Locked in place while editing: neither handle nor the body may be dragged. */
+  public locked: boolean = false;
   isEndSelected: boolean = false;
   isStartSelected: boolean = false;
   visualWidth: number = Force.DEFAULT_VISUAL_WIDTH;

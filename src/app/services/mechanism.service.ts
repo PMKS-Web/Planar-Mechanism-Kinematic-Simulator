@@ -52,7 +52,8 @@ import { SettingsService } from './settings.service';
 import { slotHalfLength } from '../model/joint-marks';
 import { DragStateService } from './drag-state.service';
 import { Coord } from '../model/coord';
-import { SelectedTabService } from '../selected-tab.service';
+import { SelectedTabService, TabID } from '../selected-tab.service';
+import { frozenJointIds } from '../model/lock-set';
 import { SaveHistoryService } from './save-history.service';
 import { NumberUnitParserService } from './number-unit-parser.service';
 import { PositionSolver, SAMPLES_PER_STROKE } from '../model/mechanism/position-solver';
@@ -817,6 +818,98 @@ export class MechanismService {
       id = this.determineNextLetter([prevID]);
     }
     return new RevJoint(id, x_num, y_num);
+  }
+
+  /**
+   * Toggle the Lock mark on a joint, link, or force.
+   *
+   * A lock is an edit: it enters the URL, so it survives undo and travels in a
+   * shared link — an instructor can lock everything but the one joint a class
+   * is meant to drag. Geometry is untouched, so the rebuild is cheap and the
+   * undo entry is the mark itself.
+   */
+  toggleLock(target: RealJoint | Link | Force): void {
+    const wasLocked = this.isLockedTarget(target);
+    // One kind of lock: a mark on a joint (a force, having none, marks
+    // itself). Locking a link is a shortcut that marks all of its joints, so
+    // unlocking one of those joints afterwards frees exactly that joint —
+    // there is no second, link-level ledger to keep in agreement.
+    this.lockMarksOf(target).forEach((mark) => (mark.locked = !wasLocked));
+    this.updateMechanism(true);
+    // The panel's position fields grey out against the frozen set, and that
+    // set just changed under the same selection — re-announce it so they ask.
+    this.activeObjService.fakeUpdateSelectedObj();
+  }
+
+  /** The joint (or force) marks a Lock on this target sets and clears. */
+  private lockMarksOf(target: RealJoint | Link | Force): (RealJoint | Force)[] {
+    if (target instanceof Force) return [target];
+    const sealed = this.sealedPartOf(target);
+    if (sealed) {
+      // One sealed part, one mark: the prismatic pin, where the assembly's
+      // other permanent bit (isSealed) already lives, and whose hold the
+      // closure spreads to all five joints.
+      return [sealed.slider];
+    }
+    if (target instanceof RealJoint) return [target];
+    return target.joints.filter((joint): joint is RealJoint => joint instanceof RealJoint);
+  }
+
+  /**
+   * The sealed cylinder a Lock on this target should mark — its body or an
+   * interior joint. A *mount* is deliberately not the part: locking a mount
+   * pins that one point and leaves the ram free to re-pose and swing about
+   * it, which is the useful thing a locked attachment point means.
+   */
+  private sealedPartOf(target: RealJoint | Link | Force): Cylinder | undefined {
+    if (target instanceof Force) return undefined;
+    const sealed = this.cylinderAt(target);
+    if (!sealed) return undefined;
+    const isMount =
+      target instanceof RealJoint &&
+      (target.id === sealed.barrelFar.id || target.id === sealed.rodFar.id);
+    return isMount ? undefined : sealed;
+  }
+
+  /**
+   * Clear a specific set of Lock marks — what the refusal's Unlock button
+   * carries: exactly the marks that held the refused gesture, nothing else.
+   */
+  unlock(marks: (RealJoint | Force)[]): void {
+    if (marks.length === 0) return;
+    marks.forEach((mark) => (mark.locked = false));
+    this.updateMechanism(true);
+    this.activeObjService.fakeUpdateSelectedObj();
+  }
+
+  /** Whether the Lock item for this object should read as "on". */
+  isLockedTarget(target: RealJoint | Link | Force): boolean {
+    const marks = this.lockMarksOf(target);
+    return marks.length > 0 && marks.every((mark) => mark.locked);
+  }
+
+  /**
+   * Lock the whole drawing, or let all of it go.
+   *
+   * Marks land on every joint and every force — the same marks the per-object
+   * controls set — so Unlock on any one object, or on any one joint, frees
+   * exactly that much and no bookkeeping disagrees about the rest.
+   */
+  setAllLocks(locked: boolean): void {
+    this.joints.forEach((joint) => {
+      if (joint instanceof RealJoint) joint.locked = locked;
+    });
+    this.forces.forEach((force) => (force.locked = locked));
+    this.updateMechanism(true);
+    this.activeObjService.fakeUpdateSelectedObj();
+  }
+
+  /** Whether any Lock mark is set at all — what enables Unlock All. */
+  anythingLocked(): boolean {
+    return (
+      this.joints.some((joint) => joint instanceof RealJoint && joint.locked) ||
+      this.forces.some((force) => force.locked)
+    );
   }
 
   toggleWeldedJoint() {
@@ -3521,7 +3614,34 @@ export class MechanismService {
     this.drawOwnClocks(this.isPlaying);
   }
 
+  /**
+   * Whether lock styling paints right now. A lock is an editing affordance,
+   * so the mark shows only where it means something: the Edit tab, standing
+   * still. Analysis reads clean, and a locked coupler mid-animation does not
+   * look pinned while visibly moving.
+   */
+  lockVisualsOn(): boolean {
+    return this.tabs.getCurrentTab() === TabID.EDIT && !this.isPlaying;
+  }
+
+  /** Painted as held: the joint itself, wherever its stillness comes from. */
+  isJointLockedVisual(joint: Joint): boolean {
+    return this.lockVisualsOn() && frozenJointIds(this.joints, this.links).has(joint.id);
+  }
+
+  /** Painted as held: a body whose whole pose is frozen, not one merely touched. */
+  isLinkLockedVisual(link: Link): boolean {
+    if (!this.lockVisualsOn()) return false;
+    const frozen = frozenJointIds(this.joints, this.links);
+    return link.joints.length > 0 && link.joints.every((joint) => frozen.has(joint.id));
+  }
+
   getJointCSSClass(joint: Joint) {
+    const lockSuffix = this.isJointLockedVisual(joint) ? ' joint-locked' : '';
+    return this.jointStateClass(joint) + lockSuffix;
+  }
+
+  private jointStateClass(joint: Joint) {
     if (
       NewGridComponent.debugGetJointState() == jointStates.dragging &&
       joint.id === this.activeObjService.selectedJoint.id
@@ -3624,6 +3744,11 @@ export class MechanismService {
   }
 
   getLinkCSSClass(link: Link) {
+    const lockSuffix = this.isLinkLockedVisual(link) ? ' link-locked' : '';
+    return this.linkStateClass(link) + lockSuffix;
+  }
+
+  private linkStateClass(link: Link) {
     if (this.isPartInert(link)) {
       return 'link-inert';
     }

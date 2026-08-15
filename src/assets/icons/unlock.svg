@@ -1,0 +1,9 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <!-- Same construction as lock.svg; the shackle's right leg stops short of
+       the body, which is what "open" looks like at 18 pixels. -->
+  <path
+    fill-rule="evenodd"
+    fill="#000000"
+    d="M7 10V7a5 5 0 0 1 10 0v1.5h-2V7a3 3 0 0 0-6 0v3H7Zm-2.5 0h15v11h-15V10Zm2 2v7h11v-7h-11Z"
+  />
+</svg>

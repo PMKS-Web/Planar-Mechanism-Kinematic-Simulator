@@ -391,6 +391,13 @@ export class StringTranscoder extends GenericTranscoder {
       '.' +
       activeObjString;
 
+    // Written only when something is locked, so a lock-free URL stays
+    // byte-identical to one written before locks existed — the same bargain
+    // the slot triple and the per-joint drive speed struck.
+    if (this.lockedIds.length > 0) {
+      fullString += '.' + this.lockedIds.join(',');
+    }
+
     // add checksum character in the end
     let checksum = new Checksum();
     let checkSumChar = checksum.generateChecksum(fullString.length);
@@ -492,9 +499,18 @@ export class StringTranscoder extends GenericTranscoder {
       sd.nextCharacter(); // delete the . and move on to active object
     }
 
-    // Decode active object. Next char is type, rest is id
+    // Decode active object. Next char is type, rest is id.
+    // The id stops at '.' because the optional lock section follows it; a URL
+    // without that section reads to the end exactly as it always did.
     let activeType = sd.isEmpty() ? 'N' : sd.nextCharacter();
-    let activeID = sd.isEmpty() ? '' : sd.nextToken();
+    let activeID = sd.isEmpty() ? '' : sd.nextToken('.');
+
+    // The lock section: type-tagged ids, absent on every URL written before
+    // locks existed — and "absent" simply means the disassembler is empty.
+    while (!sd.isEmpty()) {
+      let lockedId = sd.nextToken(',');
+      if (lockedId !== '') this.lockedIds.push(lockedId);
+    }
 
     let typeEnum;
     if (activeType === 'J') typeEnum = ACTIVE_TYPE.JOINT;
@@ -529,6 +545,7 @@ export class StringTranscoder extends GenericTranscoder {
       }
     });
     this.validateDecodedSlotCarriers();
+    this.validateDecodedLocks(jointIDs, linkIDs);
     this.forces.forEach((force) => {
       if (
         !force.id ||
@@ -578,6 +595,26 @@ export class StringTranscoder extends GenericTranscoder {
       }
       if (!jointIDs.has(joint.slotJointAID) || !jointIDs.has(joint.slotJointBID)) {
         throw new Error('URL contains a slot whose defining joints are missing');
+      }
+    });
+  }
+
+  /*
+    Every lock reference must name an object this URL actually carries. No
+    legacy URL has the section at all, so strictness costs nothing and catches
+    hand-edits — the same bargain the sealed bit strikes.
+    */
+  private validateDecodedLocks(jointIDs: Set<string>, linkIDs: Set<string>): void {
+    const forceIDs = new Set(this.forces.map((force) => force.id));
+    this.lockedIds.forEach((lockedId) => {
+      const tag = lockedId.charAt(0);
+      const id = lockedId.substring(1);
+      const resolves =
+        (tag === 'J' && jointIDs.has(id)) ||
+        (tag === 'L' && linkIDs.has(id)) ||
+        (tag === 'F' && forceIDs.has(id));
+      if (!resolves) {
+        throw new Error('URL locks an object it does not contain');
       }
     });
   }

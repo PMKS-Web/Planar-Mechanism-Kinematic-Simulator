@@ -13,6 +13,7 @@ import {
 import { SettingsService } from './settings.service';
 import { MechanismService } from './mechanism.service';
 import { canDrive } from '../model/actuator';
+import { Lockable, frozenJointIds, locksHolding } from '../model/lock-set';
 import { Coord } from '../model/coord';
 import { PositionSolver } from '../model/mechanism/position-solver';
 import { Force } from '../model/force';
@@ -224,7 +225,34 @@ export class GridUtilsService {
     return joint.isWelded || joint.links.length >= 2;
   }
 
+  /**
+   * The joints the current Lock marks hold still. Derived fresh each time —
+   * the mechanism is small and the closure is cheap — so every asker (the
+   * drag gates, the canvas paint, the panel) reads the same answer with no
+   * cache to invalidate.
+   */
+  frozenJointIds(): Set<string> {
+    return frozenJointIds(this.mechanismSrv.joints, this.mechanismSrv.links);
+  }
+
+  isJointFrozen(joint: Joint): boolean {
+    return this.frozenJointIds().has(joint.id);
+  }
+
+  /** The locked objects an Unlock action has to clear for this joint to move. */
+  locksHolding(joint: Joint): Lockable[] {
+    return locksHolding(joint.id, this.mechanismSrv.joints, this.mechanismSrv.links);
+  }
+
   dragJoint(selectedJoint: RealJoint, trueCoord: Coord) {
+    // The last line of defence, not the first: the canvas refuses at the
+    // grab and the panel greys its fields, but every route to "move this
+    // joint" — distance fields aimed at a neighbour, the linkage table, a
+    // caller not yet written — lands here, and a held joint holds whoever
+    // asks.
+    if (this.frozenJointIds().has(selectedJoint.id)) {
+      return selectedJoint;
+    }
     // TODO: have the round Number be integrated within function for determining trueCoord
 
     // A cylinder mount never free-moves, whoever asks — canvas drag, the
@@ -402,7 +430,33 @@ export class GridUtilsService {
     if (dx === 0 && dy === 0) {
       return selectedLink;
     }
+    return this.moveLinkRigidly(selectedLink, (x, y) => ({ x: x + dx, y: y + dy }));
+  }
 
+  /**
+   * Turn a whole link about a point, carrying everything rigidly attached.
+   *
+   * This is what a link drag becomes when exactly one of the joints it would
+   * carry is locked: the body cannot translate without moving the held joint,
+   * but it can swing about it — which is also the only motion the real linkage
+   * would allow if that pin were bolted down.
+   */
+  rotateLink(selectedLink: Link, pivot: Coord, theta: number) {
+    if (theta === 0) {
+      return selectedLink;
+    }
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+    return this.moveLinkRigidly(selectedLink, (x, y) => ({
+      x: pivot.x + (x - pivot.x) * cos - (y - pivot.y) * sin,
+      y: pivot.y + (x - pivot.x) * sin + (y - pivot.y) * cos,
+    }));
+  }
+
+  private moveLinkRigidly(
+    selectedLink: Link,
+    mapPoint: (x: number, y: number) => { x: number; y: number }
+  ) {
     // A neighbour's forces are placed relative to its own two reference joints,
     // so where they end up depends on where those joints were before the move.
     // Captured up front, because the move is about to overwrite them.
@@ -431,8 +485,9 @@ export class GridUtilsService {
     const moveJoint = (joint: Joint) => {
       if (movedJointIDs.has(joint.id)) return;
       movedJointIDs.add(joint.id);
-      joint.x = roundNumber(joint.x + dx, 6);
-      joint.y = roundNumber(joint.y + dy, 6);
+      const at = mapPoint(joint.x, joint.y);
+      joint.x = roundNumber(at.x, 6);
+      joint.y = roundNumber(at.y, 6);
     };
 
     selectedLink.joints.forEach((joint) => {
@@ -445,9 +500,9 @@ export class GridUtilsService {
       });
     });
 
-    this.translateLinkBody(selectedLink, dx, dy);
+    this.transformLinkBody(selectedLink, mapPoint);
     if (selectedLink instanceof RealLink) {
-      selectedLink.subset.forEach((sub) => this.translateLinkBody(sub, dx, dy));
+      selectedLink.subset.forEach((sub) => this.transformLinkBody(sub, mapPoint));
     }
 
     // Any other link holding one of the moved joints has been deformed, not
@@ -574,6 +629,27 @@ export class GridUtilsService {
       barrelNear: { x: sealed.barrelNear.x + dx, y: sealed.barrelNear.y + dy },
       pin: { x: sealed.pin.x + dx, y: sealed.pin.y + dy },
       rodFar: { x: sealed.rodFar.x + dx, y: sealed.rodFar.y + dy },
+    });
+  }
+
+  /**
+   * Swing the whole assembly about a point — a rotation is rigid, so
+   * collinearity survives and the pose lands as-is. This is a body drag with
+   * one mount locked: the part cannot translate, but it can turn on the mount.
+   */
+  rotateCylinder(sealed: Cylinder, pivot: Coord, theta: number): void {
+    if (theta === 0) return;
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+    const turn = (point: { x: number; y: number }) => ({
+      x: pivot.x + (point.x - pivot.x) * cos - (point.y - pivot.y) * sin,
+      y: pivot.y + (point.x - pivot.x) * sin + (point.y - pivot.y) * cos,
+    });
+    this.applyCylinderPose(sealed, {
+      barrelFar: turn(sealed.barrelFar),
+      barrelNear: turn(sealed.barrelNear),
+      pin: turn(sealed.pin),
+      rodFar: turn(sealed.rodFar),
     });
   }
 
@@ -707,12 +783,22 @@ export class GridUtilsService {
     return movedIds;
   }
 
-  private translateLinkBody(link: Link, dx: number, dy: number) {
-    link.forces.forEach((force) =>
-      force.moveForceTo(force.startCoord.x + dx, force.startCoord.y + dy)
-    );
+  private transformLinkBody(
+    link: Link,
+    mapPoint: (x: number, y: number) => { x: number; y: number }
+  ) {
+    // Both endpoints through the map, not just the anchor: a load is fixed to
+    // the body it acts on, so a body that turns takes the arrow's direction
+    // round with it — under a pure translation this collapses to the old move.
+    link.forces.forEach((force) => {
+      const start = mapPoint(force.startCoord.x, force.startCoord.y);
+      const end = mapPoint(force.endCoord.x, force.endCoord.y);
+      force.moveAnchor(new Coord(start.x, start.y));
+      force.moveDirectionHandle(new Coord(end.x, end.y));
+    });
     if (!(link instanceof RealLink)) return;
-    link.CoM = new Coord(link.CoM.x + dx, link.CoM.y + dy);
+    const centre = mapPoint(link.CoM.x, link.CoM.y);
+    link.CoM = new Coord(centre.x, centre.y);
     link.updateCoMDs();
     link.updateLengthAndAngle();
     PositionSolver.setUpInitialJointLocations(link.joints);

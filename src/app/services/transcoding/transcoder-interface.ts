@@ -21,6 +21,17 @@ export abstract class GenericTranscoder {
 
   protected activeObjData: ActiveObjData = new ActiveObjData(ACTIVE_TYPE.NOTHING, '');
 
+  /**
+   * Type-tagged ids of every object carrying a Lock mark — 'J' + joint id,
+   * 'L' + link id, 'F' + force id. A list of references rather than a flag per
+   * object, because the joint flag character is full (six flags exactly fill
+   * one base-64 character) and a trailing optional section is the extension
+   * pattern this format already uses twice: absent decodes as "nothing
+   * locked", and a lock-free URL is byte-identical to one written before
+   * locks existed.
+   */
+  protected lockedIds: string[] = [];
+
   // Initialize data dictionaries based on settings enums
   constructor() {
     for (let i = 0; i < this.getNumberOfEnums(EnumSetting); i++) this.enumData.push(0);
@@ -85,6 +96,14 @@ export abstract class GenericTranscoder {
 
   setActiveObj(obj: ActiveObjData): void {
     this.activeObjData = obj;
+  }
+
+  setLockedIds(ids: string[]): void {
+    this.lockedIds = ids;
+  }
+
+  getLockedIds(): string[] {
+    return this.lockedIds;
   }
 
   abstract decodeURL(url: string): void;

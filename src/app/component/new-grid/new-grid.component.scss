@@ -138,6 +138,11 @@
     cursor: pointer;
   }
 
+  // Held in place while editing: the cue is the small padlock badge riding
+  // each held joint (and a locked force's anchor) — drawn in the template, so
+  // nothing here restyles strokes and no state can cover another. The classes
+  // below stay as truthful state markers for tests and tooling.
+
   #mouseLocation {
     position: absolute;
     top: 35px;

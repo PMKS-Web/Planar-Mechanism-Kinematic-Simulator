@@ -10,7 +10,7 @@ import {
 } from './transcoding/stored-settings';
 import { StringTranscoder } from './transcoding/string-transcoder';
 import { Force } from '../model/force';
-import { Joint, RevJoint, PrisJoint } from '../model/joint';
+import { Joint, RealJoint, RevJoint, PrisJoint } from '../model/joint';
 import {
   JointData,
   JOINT_TYPE,
@@ -171,6 +171,16 @@ export class UrlGenerationService {
       this.mechanism.forces.forEach((force) => {
         this._addForceToEncoder(encoder, force);
       });
+
+      // Lock marks, as type-tagged references. Only joints and forces carry
+      // marks — locking a link is a shortcut that marks its joints — but the
+      // decoder still honours 'L' references from earlier spellings.
+      encoder.setLockedIds([
+        ...this.mechanism.joints
+          .filter((joint): joint is RealJoint => joint instanceof RealJoint && joint.locked)
+          .map((joint) => 'J' + joint.id),
+        ...this.mechanism.forces.filter((force) => force.locked).map((force) => 'F' + force.id),
+      ]);
 
       // Encode global settings
       encoder.addEnumSetting(

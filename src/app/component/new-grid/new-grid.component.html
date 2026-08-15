@@ -397,6 +397,7 @@
             (pointerout)="link.showHighlight = false"
             (pointerdown)="setLastLeftClick(link, $event)"
             (contextmenu)="setLastRightClick(link, $event)"
+            [attr.cursor]="mechanismSrv.isLinkLockedVisual(link) ? 'not-allowed' : null"
             [attr.d]="linkPathWithChannels(link)"
             [attr.id]="link.id"
             [attr.data-channels]="channelCountOn(link)"
@@ -407,6 +408,7 @@
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
             [class]="mechanismSrv.getLinkCSSClass(link)"
           ></path>
+
         }
         @if (
           gridUtils.typeOfLink(link) == 'R' &&
@@ -576,7 +578,7 @@
         <path
           class="cylinder-barrel"
           [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
-          cursor="move"
+          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.body) ? 'not-allowed' : 'move'"
           (pointerover)="cyl.body.showHighlight = true"
           (pointerout)="cyl.body.showHighlight = false"
           (pointerdown)="setLastLeftClick(cyl.body, $event)"
@@ -592,7 +594,7 @@
              and the silhouette says where the travel ends by itself. -->
         <path
           [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
-          cursor="move"
+          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.body) ? 'not-allowed' : 'move'"
           (pointerdown)="setLastLeftClick(cyl.body, $event)"
           (contextmenu)="setLastRightClick(cyl.body, $event)"
           [attr.d]="cyl.block"
@@ -602,7 +604,7 @@
         <path
           class="cylinder-rod"
           [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
-          cursor="move"
+          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.body) ? 'not-allowed' : 'move'"
           (pointerover)="cyl.body.showHighlight = true"
           (pointerout)="cyl.body.showHighlight = false"
           (pointerdown)="setLastLeftClick(cyl.body, $event)"
@@ -645,6 +647,7 @@
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
         }
+
       </g>
     }
     <!-- The ghost of the two-point creation gesture: the same paths the
@@ -732,7 +735,7 @@
           width="20"
           height="20"
           style="overflow: visible"
-          cursor="move"
+          [attr.cursor]="mechanismSrv.isJointLockedVisual(joint) ? 'not-allowed' : 'move'"
         >
           <!-- Grouped so a refused or completed drop can animate the whole joint -->
           <g [class]="jointEffectClass(joint)">
@@ -760,6 +763,34 @@
                 [class]="mechanismSrv.getJointCSSClass(joint)"
                 [attr.d]="weldMarkerPath"
               ></path>
+            }
+            <!-- The lock cue: a small padlock riding the joint's shoulder.
+                 The joint is what a lock actually holds, so the joint is
+                 where the mark sits — nothing else on the canvas changes. -->
+            @if (mechanismSrv.isJointLockedVisual(joint)) {
+              <g
+                class="lockBadge"
+                pointer-events="none"
+                [attr.transform]="
+                  gridUtils.getWelded(joint) ? offsetLockBadgeTransform() : lockBadgeTransform()
+                "
+              >
+                <!-- A plain joint's cream circle is chip enough, and the glyph
+                     sits dead centre on it. A welded joint's plus-mark is its
+                     own message, so the badge steps aside to the shoulder and
+                     brings a white chip to stand on. -->
+                @if (gridUtils.getWelded(joint)) {
+                  <circle
+                    [attr.r]="0.13 * settings.objectScale"
+                    fill="#ffffff"
+                    stroke="#26323855"
+                    [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+                  />
+                }
+                <g [attr.transform]="lockGlyphTransform()">
+                  <path [attr.d]="lockGlyphPath" fill="#263238" fill-rule="evenodd" />
+                </g>
+              </g>
             }
           </g>
         </svg>
@@ -1016,8 +1047,11 @@
          the rest of an unanalysable machine does. -->
     <g
       id="forcesHolder"
-      cursor="move"
+      [attr.cursor]="
+        force.locked && mechanismSrv.lockVisualsOn() ? 'not-allowed' : 'move'
+      "
       [class.force-inert]="mechanismSrv.isPartInert(force.link)"
+      [class.force-locked]="force.locked && mechanismSrv.lockVisualsOn()"
       [attr.pointer-events]="geometryLocked ? 'none' : null"
       style="transform: scaleY(-1)"
       (contextmenu)="setLastRightClick(force)"
@@ -1047,6 +1081,21 @@
               class="forceAnchor"
               style="transform: rotateZ({{ force.angleRad }}rad)"
             ></path>
+          }
+          <!-- Same badge the joints wear, at the anchor: a force has no joint
+               to carry it, so the mark rides where the load is applied. -->
+          @if (force.locked && mechanismSrv.lockVisualsOn()) {
+            <g class="lockBadge" pointer-events="none" [attr.transform]="offsetLockBadgeTransform()">
+              <circle
+                [attr.r]="0.13 * settings.objectScale"
+                fill="#ffffff"
+                stroke="#26323855"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+              />
+              <g [attr.transform]="lockGlyphTransform()">
+                <path [attr.d]="lockGlyphPath" fill="#263238" fill-rule="evenodd" />
+              </g>
+            </g>
           }
         </svg>
         <!-- Transpent thicker force to increase hitbox for the group for highliting-->

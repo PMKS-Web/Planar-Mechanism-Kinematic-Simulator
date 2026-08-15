@@ -3,12 +3,16 @@ import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { MechanismService } from 'src/app/services/mechanism.service';
 import { NotificationService } from '../../../services/notification.service';
+import { RealJoint } from '../../../model/joint';
+import { Link } from '../../../model/link';
+import { Force } from '../../../model/force';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatFormField } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { FocusOnShowDirective } from '../../../focus-on-show.directive';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
 
 @Component({
   selector: 'editable-title-block',
@@ -24,6 +28,7 @@ import { MatIcon } from '@angular/material/icon';
     FocusOnShowDirective,
     MatButton,
     MatIcon,
+    MatTooltip,
   ],
 })
 export class EditableTitleComponent {
@@ -88,5 +93,26 @@ export class EditableTitleComponent {
 
   exitEditModeWithoutSaving() {
     this.editMode = false;
+  }
+
+  /**
+   * What the Lock button acts on — the selected object, when it is a kind
+   * that can be locked. Self-serve rather than an input, like the rename:
+   * every panel this block heads is about the selected object anyway.
+   */
+  lockTarget(): RealJoint | Link | Force | undefined {
+    const obj = this.activeObjService.getSelectedObj();
+    if (obj instanceof RealJoint || obj instanceof Link || obj instanceof Force) return obj;
+    return undefined;
+  }
+
+  isLocked(): boolean {
+    const target = this.lockTarget();
+    return target !== undefined && this.mechanismService.isLockedTarget(target);
+  }
+
+  toggleLock() {
+    const target = this.lockTarget();
+    if (target) this.mechanismService.toggleLock(target);
   }
 }

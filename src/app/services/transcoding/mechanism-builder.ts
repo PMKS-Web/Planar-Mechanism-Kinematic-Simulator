@@ -248,6 +248,36 @@ export class MechanismBuilder {
 
     this.addAdjacentLinksForJoints();
 
+    // Re-arm the Lock marks. Undo and redo replay URLs, so this line is what
+    // makes a lock survive an undo — the same reason the sealed bit is
+    // re-applied above. The transcoder has already refused any reference that
+    // does not resolve, so a miss here is builder/transcoder skew.
+    //
+    // 'L' is honoured as the shortcut it always was: marks live on joints
+    // only, so a link reference marks each of the link's joints. New URLs
+    // spell those marks out as 'J' references directly.
+    this.transcoder.getLockedIds().forEach((lockedId) => {
+      const tag = lockedId.charAt(0);
+      const id = lockedId.substring(1);
+      if (tag === 'J') {
+        const joint = this.getJointByID(joints, id);
+        if (joint instanceof RealJoint) joint.locked = true;
+      } else if (tag === 'L') {
+        const link =
+          this.getLinkByID(links, id) ??
+          links
+            .filter((candidate): candidate is RealLink => candidate instanceof RealLink)
+            .flatMap((candidate) => candidate.subset)
+            .find((subset) => subset.id === id);
+        link?.joints.forEach((joint) => {
+          if (joint instanceof RealJoint) joint.locked = true;
+        });
+      } else if (tag === 'F') {
+        const force = forces.find((candidate) => candidate.id === id);
+        if (force) force.locked = true;
+      }
+    });
+
     // What was selected before this rebuild, re-found among the new objects.
     //
     // The URL used to carry the selection, which made it two things it should

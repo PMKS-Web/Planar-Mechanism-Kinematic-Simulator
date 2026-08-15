@@ -180,3 +180,69 @@ describe('GridUtilsService.dragLink', () => {
     expect([prismatic.x, prismatic.y]).toEqual([scene.c.x, scene.c.y]);
   });
 });
+
+/**
+ * What a link drag becomes when exactly one of the joints it would carry is
+ * locked: the body swings about that joint. The rigid-body promises are the
+ * same ones dragLink makes — same shape, same passengers — plus the one the
+ * pivot adds: the held joint does not move at all.
+ */
+describe('GridUtilsService.rotateLink', () => {
+  const QUARTER = Math.PI / 2;
+
+  it('holds the pivot exactly still and swings the other joint about it', () => {
+    const scene = createFourBar();
+
+    scene.grid.rotateLink(scene.bc, new Coord(scene.b.x, scene.b.y), QUARTER);
+
+    expect([scene.b.x, scene.b.y]).toEqual([0, 2]);
+    // C was at (4,3), which is (4,1) from B; a quarter turn puts it at (-1,4) from B.
+    expect(scene.c.x).toBeCloseTo(-1, 6);
+    expect(scene.c.y).toBeCloseTo(6, 6);
+  });
+
+  it('preserves the body: lengths survive the turn', () => {
+    const scene = createFourBar();
+    const before = Math.hypot(scene.c.x - scene.b.x, scene.c.y - scene.b.y);
+
+    scene.grid.rotateLink(scene.bc, new Coord(scene.b.x, scene.b.y), 0.37);
+
+    expect(Math.hypot(scene.c.x - scene.b.x, scene.c.y - scene.b.y)).toBeCloseTo(before, 6);
+  });
+
+  it('turns a force on the body with the body, direction included', () => {
+    const scene = createFourBar();
+    const force = new Force('F1', scene.bc, new Coord(2, 2.5), new Coord(3, 2.5), false, true, 10);
+    scene.bc.forces.push(force);
+    scene.service.forces.push(force);
+
+    scene.grid.rotateLink(scene.bc, new Coord(scene.b.x, scene.b.y), QUARTER);
+
+    // (2,2.5) is (2,0.5) from B(0,2); a quarter turn lands it at (-0.5,2) from B.
+    expect(force.startCoord.x).toBeCloseTo(-0.5, 6);
+    expect(force.startCoord.y).toBeCloseTo(4, 6);
+    // The arrow pointed +x along the body; after a quarter turn it points +y.
+    expect(force.endCoord.x - force.startCoord.x).toBeCloseTo(0, 6);
+    expect(force.endCoord.y - force.startCoord.y).toBeCloseTo(1, 6);
+  });
+
+  it('deforms the neighbours rather than carrying them', () => {
+    const scene = createFourBar();
+
+    scene.grid.rotateLink(scene.bc, new Coord(scene.b.x, scene.b.y), QUARTER);
+
+    expect([scene.a.x, scene.a.y]).toEqual([0, 0]);
+    expect([scene.d.x, scene.d.y]).toEqual([5, 0]);
+    expect(scene.cd.length).toBeCloseTo(Math.hypot(scene.c.x - 5, scene.c.y), 6);
+  });
+
+  it('does nothing at all for a zero turn', () => {
+    const scene = createFourBar();
+    const rebuild = vi.spyOn(scene.service, 'updateMechanism');
+
+    scene.grid.rotateLink(scene.bc, new Coord(0, 2), 0);
+
+    expect([scene.c.x, scene.c.y]).toEqual([4, 3]);
+    expect(rebuild).not.toHaveBeenCalled();
+  });
+});
