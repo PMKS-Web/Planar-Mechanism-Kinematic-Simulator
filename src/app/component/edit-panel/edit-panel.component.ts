@@ -629,9 +629,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         travel: this.cylinderTravelLabel(sealed),
         start: this.cylinderStartLabel(sealed),
         angle: this.cylinderAngleLabel(sealed),
-        barrelMass: this.nup.formatValueAndUnit(sealed.barrel.mass, massUnits),
-        rodMass: this.nup.formatValueAndUnit(sealed.rod.mass, massUnits),
-        headMass: this.nup.formatValueAndUnit(sealed.block.mass, massUnits),
+        barrelMass: sealed.barrel.mass.toFixed(2),
+        rodMass: sealed.rod.mass.toFixed(2),
+        headMass: sealed.block.mass.toFixed(2),
       },
       { emitEvent: false }
     );
@@ -657,10 +657,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     const body = part(sealed);
     const [success, value] = this.nup.parseMassString(raw ?? '', units);
     if (!success || value < 0) {
-      this.cylinderForm.patchValue(
-        { [control]: this.nup.formatValueAndUnit(body.mass, units) },
-        { emitEvent: false }
-      );
+      NewGridComponent.sendNotification(NOT_A.mass);
+      this.cylinderForm.patchValue({ [control]: body.mass.toFixed(2) }, { emitEvent: false });
       return;
     }
     // Through the one door: a mount weld can fold the barrel or rod into a
@@ -668,10 +666,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     this.mechanismService.assignBodyMass(body, value);
     this.mechanismService.updateMechanism(true);
     this.mechanismService.onMechUpdateState.next(2);
-    this.cylinderForm.patchValue(
-      { [control]: this.nup.formatValueAndUnit(value, units) },
-      { emitEvent: false }
-    );
+    this.cylinderForm.patchValue({ [control]: value.toFixed(2) }, { emitEvent: false });
   }
 
   /** Whether either visible cylinder body still carries typed inertia values. */
@@ -1279,8 +1274,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         const units = this.massUnit();
         const [success, value] = this.nup.parseMassString(val ?? '', units);
         if (!success || value < 0) {
+          NewGridComponent.sendNotification(NOT_A.mass);
           this.linkForm.patchValue(
-            { mass: this.nup.formatValueAndUnit(this.activeSrv.selectedLink.mass, units) },
+            { mass: this.activeSrv.selectedLink.mass.toFixed(2) },
             { emitEvent: false }
           );
           return;
@@ -1289,10 +1285,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         this.syncMassDependents();
         this.mechanismService.updateMechanism(true);
         this.mechanismService.onMechUpdateState.next(2);
-        this.linkForm.patchValue(
-          { mass: this.nup.formatValueAndUnit(value, units) },
-          { emitEvent: false }
-        );
+        this.linkForm.patchValue({ mass: value.toFixed(2) }, { emitEvent: false });
         // An auto moment of inertia follows the mass it belongs to; show what
         // the rebuild just derived rather than the number from before it.
         this.refreshDerivedMassFields();
@@ -1529,7 +1522,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
                 ),
                 this.settingsService.angleUnit.getValue()
               ),
-              mass: this.nup.formatValueAndUnit(this.activeSrv.selectedLink.mass, this.massUnit()),
+              mass: this.activeSrv.selectedLink.mass.toFixed(2),
             },
             { emitEvent: false }
           );
@@ -1631,6 +1624,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
   inertiaUnitLabel(): string {
     return this.nup.unitLabel(this.nup.displayInertiaUnit(this.settingsService.lengthUnit.value));
+  }
+
+  massUnitTag(): string {
+    return this.nup.unitLabel(this.massUnit());
   }
 
   /** Hand a field back to the uniform body, and show what it derives. */

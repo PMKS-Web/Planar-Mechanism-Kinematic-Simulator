@@ -100,7 +100,7 @@
           @for (row of massRows(); track row.body.id) {
             <div class="massRow">
               <span class="massName">{{ row.label }}</span>
-              <span class="dotField">
+              <span class="dotField typed">
                 <input
                   [value]="massText(row)"
                   [disabled]="!massEditable()"

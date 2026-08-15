@@ -217,19 +217,24 @@
 
   .massRow {
     display: grid;
-    grid-template-columns: minmax(64px, 1fr) 84px minmax(96px, 1fr) 26px;
-    gap: 8px;
+    grid-template-columns: minmax(56px, 1fr) 60px 104px 22px;
+
+    /* Grid items default to min-width auto, so a field's own content forces
+       its column wide and shoves the jump arrows off the drawer. */
+    > * { min-width: 0; }
+    gap: 6px;
     align-items: center;
     padding: 3px 0;
     font-size: 13px;
 
     &.head {
-      font-size: 10.5px;
-      letter-spacing: 0.08em;
+      font-size: 9.5px;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
       color: rgba(0, 0, 0, 0.5);
       font-weight: 600;
       padding-bottom: 6px;
+      white-space: nowrap;
     }
   }
 
@@ -248,10 +253,10 @@
      typed. */
   .dot {
     display: inline-block;
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    border: 1.5px solid rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.38);
     background: transparent;
     flex: none;
   }
@@ -261,9 +266,9 @@
   .dotField {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    height: 28px;
-    padding: 0 7px;
+    gap: 4px;
+    height: 26px;
+    padding: 0 6px;
     border-radius: 4px;
     background: rgba(0, 0, 0, 0.05);
     min-width: 0;
@@ -272,17 +277,23 @@
       border: none;
       background: none;
       font: inherit;
-      font-size: 13px;
+      font-size: 12.5px;
+      font-variant-numeric: tabular-nums;
       text-align: right;
       width: 100%;
       min-width: 0;
       color: rgba(0, 0, 0, 0.5);
 
       &:focus { outline: none; }
-      &:disabled { color: rgba(0, 0, 0, 0.4); }
     }
 
+    /* Mass is always typed, so it always reads in ink — grey is reserved for
+       values that follow the shape. Disabling greys either kind slightly. */
+    &.typed input,
     &.custom input { color: rgba(0, 0, 0, 0.87); }
+    &.typed input:disabled,
+    &.custom input:disabled { color: rgba(0, 0, 0, 0.6); }
+    input:disabled { color: rgba(0, 0, 0, 0.4); }
   }
 
   .dotLegend {
@@ -314,6 +325,8 @@
     cursor: pointer;
     color: rgba(0, 0, 0, 0.4);
     display: inline-flex;
+    justify-content: center;
+    width: 22px;
 
     mat-icon { font-size: 16px; width: 16px; height: 16px; }
     &:hover { color: #3f51b5; }

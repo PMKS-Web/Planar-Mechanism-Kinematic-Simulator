@@ -312,24 +312,27 @@
              rod's mass is spread along its length while the head's rides the
              pin — the number that matters in a reciprocating machine. Inertia
              and centres stay automatic (uniform body per part). -->
-        <input-block
-          [formGroup]="cylinderForm"
-          _formControl="barrelMass"
-          tooltip="The barrel's mass, acting at the barrel's own center."
-          >Barrel Mass</input-block
-        >
-        <input-block
-          [formGroup]="cylinderForm"
-          _formControl="rodMass"
-          tooltip="The rod's mass, spread along the rod."
-          >Rod Mass</input-block
-        >
-        <input-block
-          [formGroup]="cylinderForm"
-          _formControl="headMass"
-          tooltip="The piston head's mass, concentrated at the pin — the reciprocating mass."
-          >Piston Head Mass</input-block
-        >
+        <div class="dotRow" [formGroup]="cylinderForm">
+          <span class="dotRowLabel" title="The barrel's mass, acting at the barrel's own center.">Barrel</span>
+          <span class="dotField typed wide">
+            <input formControlName="barrelMass" />
+            <span class="unitTag">{{ massUnitTag() }}</span>
+          </span>
+        </div>
+        <div class="dotRow" [formGroup]="cylinderForm">
+          <span class="dotRowLabel" title="The rod's mass, spread along the rod.">Rod</span>
+          <span class="dotField typed wide">
+            <input formControlName="rodMass" />
+            <span class="unitTag">{{ massUnitTag() }}</span>
+          </span>
+        </div>
+        <div class="dotRow" [formGroup]="cylinderForm">
+          <span class="dotRowLabel" title="The piston head's mass, concentrated at the pin — the reciprocating mass.">Piston head</span>
+          <span class="dotField typed wide">
+            <input formControlName="headMass" />
+            <span class="unitTag">{{ massUnitTag() }}</span>
+          </span>
+        </div>
         @if (cylinderHasCustomInertia()) {
           <subtitle-block
             icon="auto_fix_normal"
@@ -399,12 +402,17 @@
         (opened)="sectionExpanded['LMass'] = true"
         (closed)="sectionExpanded['LMass'] = false"
       >
-        <input-block
-          [formGroup]="linkForm"
-          _formControl="mass"
-          tooltip="The mass used by force analysis. Zero is an idealized massless bar: gravity and inertia skip it, and rotational inertia reads zero."
-          >Mass</input-block
-        >
+        <div class="dotRow" [formGroup]="linkForm">
+          <span
+            class="dotRowLabel"
+            title="The mass used by force analysis. Zero is an idealized massless bar: gravity and inertia skip it, and rotational inertia reads zero."
+            >Mass</span
+          >
+          <span class="dotField typed wide">
+            <input formControlName="mass" />
+            <span class="unitTag">{{ massUnitTag() }}</span>
+          </span>
+        </div>
         <!-- One legend for the two derived fields below. It sits under Mass —
              which is always typed — so it introduces exactly the fields it
              governs: grey behind a hollow dot follows the shape, ink behind a

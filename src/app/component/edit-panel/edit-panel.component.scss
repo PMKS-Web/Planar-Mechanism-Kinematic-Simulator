@@ -161,10 +161,10 @@
 
 .dot {
   display: inline-block;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  border: 1.5px solid rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 0, 0, 0.38);
   background: transparent;
   flex: none;
 
@@ -180,7 +180,11 @@
   &.fields { justify-content: flex-end; gap: 8px; }
 }
 
-.dotRowLabel { font-size: 14px; flex: 1 1 auto; }
+.dotRowLabel {
+  font-size: 14px;
+  flex: 1 1 auto;
+  color: rgba(0, 0, 0, 0.6);
+}
 
 .comFrameSelect {
   font: inherit;
@@ -208,17 +212,26 @@
     background: none;
     font: inherit;
     font-size: 14px;
+    font-variant-numeric: tabular-nums;
     text-align: right;
-    width: 56px;
+    width: 52px;
     min-width: 0;
     color: rgba(0, 0, 0, 0.5);
 
     &:focus { outline: none; }
   }
 
-  &.wide { flex: 1 1 auto; max-width: 170px; }
-  &.wide input { width: 100%; }
-  &.custom input { color: rgba(0, 0, 0, 0.87); }
+  /* Floor at its own content — dot, a 40px number, the unit, the clear —
+     so a tight row wraps the label instead of squeezing the ✕ out of its
+     own pill. */
+  &.wide { flex: 1 1 auto; min-width: 128px; max-width: 150px; }
+  /* Inside a flex row the input must flex from a real basis: 100% overflows
+     past its neighbours, and basis-auto can collapse to nothing when the row
+     is tight — which is how a field once showed a dot, a unit, a clear, and
+     no number. */
+  &.wide input { flex: 1 1 48px; width: 48px; min-width: 40px; }
+  &.custom input,
+  &.typed input { color: rgba(0, 0, 0, 0.87); }
   &.off { opacity: 0.55; pointer-events: none; }
 
   .axisTag, .unitTag { font-size: 12px; color: rgba(0, 0, 0, 0.45); flex: none; }
