@@ -314,25 +314,26 @@
              and centres stay automatic (uniform body per part). -->
         <div class="dotRow" [formGroup]="cylinderForm">
           <span class="dotRowLabel" title="The barrel's mass, acting at the barrel's own center.">Barrel</span>
-          <span class="dotField typed wide">
+          <span class="dotField typed wide narrow">
             <input formControlName="barrelMass" />
             <span class="unitTag">{{ massUnitTag() }}</span>
           </span>
         </div>
         <div class="dotRow" [formGroup]="cylinderForm">
           <span class="dotRowLabel" title="The rod's mass, spread along the rod.">Rod</span>
-          <span class="dotField typed wide">
+          <span class="dotField typed wide narrow">
             <input formControlName="rodMass" />
             <span class="unitTag">{{ massUnitTag() }}</span>
           </span>
         </div>
         <div class="dotRow" [formGroup]="cylinderForm">
           <span class="dotRowLabel" title="The piston head's mass, concentrated at the pin — the reciprocating mass.">Piston head</span>
-          <span class="dotField typed wide">
+          <span class="dotField typed wide narrow">
             <input formControlName="headMass" />
             <span class="unitTag">{{ massUnitTag() }}</span>
           </span>
         </div>
+        <p class="massNote">Rotational inertia and centers follow each part's own shape.</p>
         @if (cylinderHasCustomInertia()) {
           <subtitle-block
             icon="auto_fix_normal"

@@ -139,9 +139,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 10px 8px;
-  font-size: 11.5px;
+  margin: 0 10px 6px;
+  padding: 2px 0 8px;
+  font-size: 10.5px;
   color: rgba(0, 0, 0, 0.55);
+  /* The pale rule under the legend is what makes it introduce the derived
+     fields below it, instead of floating between Mass and Center of Mass. */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 
   .dot { margin-right: -2px; }
 
@@ -161,10 +165,10 @@
 
 .dot {
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.38);
+  border: 1.5px solid #9fa8da;
   background: transparent;
   flex: none;
 
@@ -181,11 +185,13 @@
 }
 
 .dotRowLabel {
-  font-size: 14px;
+  font-size: 13px;
   flex: 1 1 auto;
   color: rgba(0, 0, 0, 0.6);
 }
 
+/* One right-hand column: the select and every wide field share the same
+   width, so the panel's values align down one edge like the mock's. */
 .comFrameSelect {
   font: inherit;
   font-size: 13px;
@@ -194,7 +200,9 @@
   background: #fff;
   height: 30px;
   padding: 0 4px;
-  max-width: 150px;
+  width: 150px;
+  min-width: 112px;
+  flex: 0 1 150px;
 }
 
 .dotField {
@@ -211,7 +219,7 @@
     border: none;
     background: none;
     font: inherit;
-    font-size: 14px;
+    font-size: 13px;
     font-variant-numeric: tabular-nums;
     text-align: right;
     width: 52px;
@@ -225,6 +233,9 @@
      so a tight row wraps the label instead of squeezing the ✕ out of its
      own pill. */
   &.wide { flex: 1 1 auto; min-width: 128px; max-width: 150px; }
+  /* The cylinder card's three mass rows: a shorter field keeps
+     "Piston head" on one line beside it. */
+  &.narrow { min-width: 96px; max-width: 112px; }
   /* Inside a flex row the input must flex from a real basis: 100% overflows
      past its neighbours, and basis-auto can collapse to nothing when the row
      is tight — which is how a field once showed a dot, a unit, a clear, and
@@ -247,4 +258,11 @@
 
     &:hover { color: rgba(0, 0, 0, 0.8); }
   }
+}
+
+.massNote {
+  margin: 6px 10px 2px;
+  font-size: 11.5px;
+  line-height: 16px;
+  color: rgba(0, 0, 0, 0.55);
 }

@@ -90,7 +90,7 @@
             <button class="actionButton slim" (click)="switchToEdit()">Switch to Edit mode</button>
           }
         </div>
-        <div class="massTable">
+        <div class="massTable" [class.readonly]="!massEditable()">
           <div class="massRow head">
             <span>Body</span>
             <span class="num">Mass ({{ massUnitLabel() }})</span>
@@ -111,7 +111,9 @@
                 <span class="massMoI num">—</span>
               } @else {
                 <span class="dotField" [class.custom]="!moiIsAuto(row)">
-                  <span class="dot" [class.filled]="!moiIsAuto(row)"></span>
+                  @if (massEditable()) {
+                    <span class="dot" [class.filled]="!moiIsAuto(row)"></span>
+                  }
                   <input
                     [value]="moiText(row)"
                     [disabled]="!massEditable() || !moiEditable(row)"
@@ -119,13 +121,17 @@
                   />
                 </span>
               }
-              <button
-                class="rowJump"
-                title="Open this link in Edit mode"
-                (click)="goTo(row.body)"
-              >
-                <mat-icon>arrow_outward</mat-icon>
-              </button>
+              @if (massEditable()) {
+                <button
+                  class="rowJump"
+                  title="Open this link in Edit mode"
+                  (click)="goTo(row.body)"
+                >
+                  <mat-icon>arrow_outward</mat-icon>
+                </button>
+              } @else {
+                <span></span>
+              }
             </div>
           }
           @if (massEditable()) {

@@ -77,7 +77,12 @@ export class AnalysisSetupComponent {
    * requirement is a tick nobody needs to read twice.
    */
   get forceRequirements() {
-    return this.mechanism.forceAnalysisRequirements();
+    // Blockers first: the mock puts the thing that stops the analysis above
+    // the thing merely worth a look, whatever order the service found them.
+    return this.mechanism
+      .forceAnalysisRequirements()
+      .slice()
+      .sort((a, b) => (a.warning ? 1 : 0) - (b.warning ? 1 : 0));
   }
 
   get forceOutstanding(): number {

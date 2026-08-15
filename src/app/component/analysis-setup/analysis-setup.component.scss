@@ -253,10 +253,10 @@
      typed. */
   .dot {
     display: inline-block;
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
     border-radius: 50%;
-    border: 1px solid rgba(0, 0, 0, 0.38);
+    border: 1.5px solid #9fa8da;
     background: transparent;
     flex: none;
   }
@@ -301,7 +301,7 @@
     align-items: center;
     gap: 6px;
     padding: 8px 0 0;
-    font-size: 11.5px;
+    font-size: 10.5px;
     color: rgba(0, 0, 0, 0.55);
 
     .resetAll {
@@ -333,10 +333,23 @@
   }
 
   .sectionHeader .actionButton.slim {
-    margin: 0;
-    height: 26px;
-    padding: 0 10px;
-    font-size: 12px;
+    margin: 0 0 0 auto;
+    height: 24px;
+    padding: 0 8px;
+    font-size: 11.5px;
+    flex: none;
+    white-space: nowrap;
+  }
+
+  /* Read-only: the mock washes the whole table out — names, values, fills —
+     rather than leaving rows that merely cannot be clicked. */
+  .massTable.readonly {
+    .massName { color: rgba(0, 0, 0, 0.45); }
+    .dotField { background: rgba(0, 0, 0, 0.03); }
+    .dotField input:disabled,
+    .dotField.typed input:disabled,
+    .dotField.custom input:disabled { color: rgba(0, 0, 0, 0.45); }
+    .massMoI { color: rgba(0, 0, 0, 0.4); }
   }
 
   .actionButton {
@@ -361,9 +374,9 @@
 
   .sevTag {
     font-size: 10px;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    font-weight: 700;
+    font-weight: 600;
     color: #b3261e;
     margin-left: 6px;
 
