@@ -172,8 +172,15 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     chart: {
       width: '100%',
       height: '250px', //300
+      // Off, both the first draw and the tween between one dataset and the
+      // next. A chart that morphs is drawing values the mechanism never had:
+      // reverse a four-bar and the speed of its crank pin, which is constant,
+      // swelled into a hump and settled back while Apex interpolated its way
+      // from the old series to the new one. These graphs are also redrawn as
+      // the playhead moves, so the tween is between the reader and the answer
+      // rather more often than it is decoration.
       animations: {
-        // enabled: false,
+        enabled: false,
       },
       type: 'line',
       zoom: {

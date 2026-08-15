@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { roundNumber } from '../model/utils';
 import { Joint, PrisJoint, RealJoint } from '../model/joint';
 import { Link } from '../model/link';
 import { Mechanism } from '../model/mechanism/mechanism';
@@ -98,7 +99,10 @@ export class AnalysisExportService {
   }
 
   private cell(value: number | undefined): string {
-    return value === undefined || !Number.isFinite(value) ? '' : String(value);
+    // Rounded here rather than at the source: the graph wants every digit the
+    // solver produced, and a spreadsheet wants a number a person can read
+    // instead of 0.30000000000000004.
+    return value === undefined || !Number.isFinite(value) ? '' : String(roundNumber(value, 6));
   }
 
   /** A column head carries commas and apostrophes; a CSV field has to take them. */

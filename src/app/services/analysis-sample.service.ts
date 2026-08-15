@@ -5,7 +5,6 @@ import { Mechanism } from '../model/mechanism/mechanism';
 import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../model/unit-conversions';
 import { MODEL_SCALE } from '../model/render-scale';
 import { ForceUnit } from '../model/unit-enums';
-import { roundNumber } from '../model/utils';
 import { SettingsService } from './settings.service';
 
 /**
@@ -16,6 +15,14 @@ import { SettingsService } from './settings.service';
  * whole cycle and take one point out of it. A panel header wants exactly one
  * sample, so the arithmetic lives here and both callers share it — the graph by
  * walking every index, the header by asking for the pose on screen.
+ *
+ * Values leave at the precision they were solved at. They used to be rounded to
+ * three decimals, which is a tenth of a millinewton: fine against a load of tens
+ * of newtons and ruinous against a small one. On the four-bar template the
+ * solver produces 360 distinct reactions across the cycle and that rounding left
+ * 49 of them, each step two per cent of the whole curve — so the graph climbed a
+ * visible staircase. Nothing needed it: every place that shows one of these
+ * numbers formats it, the header to two decimals and the CSV at its own edge.
  */
 @Injectable({ providedIn: 'root' })
 export class AnalysisSampleService {
@@ -83,11 +90,8 @@ export class AnalysisSampleService {
       if (!frame.inputEffort) return [Number.NaN];
       const isForce = frame.inputEffort.kind === 'force';
       return [
-        roundNumber(
-          (frame.inputEffort.valueSI * (isForce ? forceConversion : torqueConversion)) /
-            (isForce ? 1 : MODEL_SCALE),
-          3
-        ),
+        (frame.inputEffort.valueSI * (isForce ? forceConversion : torqueConversion)) /
+          (isForce ? 1 : MODEL_SCALE),
       ];
     }
 
@@ -99,7 +103,7 @@ export class AnalysisSampleService {
 
     const x = reaction[0] * forceConversion;
     const y = reaction[1] * forceConversion;
-    return [roundNumber(x, 3), roundNumber(y, 3), roundNumber(Math.hypot(x, y), 3)];
+    return [x, y, Math.hypot(x, y)];
   }
 
   private kinematicSample(
@@ -117,10 +121,7 @@ export class AnalysisSampleService {
     // unit. Angular series carry no length and pass through.
     if (mechProp === 'Linear Joint Pos') {
       const joint = joints.find((candidate) => candidate.id === mechPart);
-      return [
-        roundNumber((joint?.x ?? Number.NaN) / MODEL_SCALE, 3),
-        roundNumber((joint?.y ?? Number.NaN) / MODEL_SCALE, 3),
-      ];
+      return [(joint?.x ?? Number.NaN) / MODEL_SCALE, (joint?.y ?? Number.NaN) / MODEL_SCALE];
     }
 
     switch (mechProp) {
@@ -141,13 +142,13 @@ export class AnalysisSampleService {
         return this.scaledVector(KinematicsSolver.linkAccMap.get(mechPart), true);
       case 'Angular Link Pos':
         this.solve(mechanism, index);
-        return [roundNumber(KinematicsSolver.linkAngPosMap.get(mechPart) ?? Number.NaN, 3)];
+        return [KinematicsSolver.linkAngPosMap.get(mechPart) ?? Number.NaN];
       case 'Angular Link Vel':
         this.solve(mechanism, index);
-        return [roundNumber(KinematicsSolver.linkAngVelMap.get(mechPart) ?? Number.NaN, 3)];
+        return [KinematicsSolver.linkAngVelMap.get(mechPart) ?? Number.NaN];
       case 'Angular Link Acc':
         this.solve(mechanism, index);
-        return [roundNumber(KinematicsSolver.linkAngAccMap.get(mechPart) ?? Number.NaN, 3)];
+        return [KinematicsSolver.linkAngAccMap.get(mechPart) ?? Number.NaN];
       default:
         // 'ic' and anything this service does not know plot nothing.
         return [];
@@ -181,9 +182,9 @@ export class AnalysisSampleService {
     const [rawX, rawY] = value ?? [Number.NaN, Number.NaN];
     const x = rawX / MODEL_SCALE;
     const y = rawY / MODEL_SCALE;
-    const series = [roundNumber(x, 3), roundNumber(y, 3)];
+    const series = [x, y];
     if (withMagnitude) {
-      series.push(roundNumber(Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2)), 3));
+      series.push(Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2)));
     }
     return series;
   }

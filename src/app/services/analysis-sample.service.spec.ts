@@ -13,12 +13,20 @@ import { withTestInjector } from '../../test-utils/mechanism-harness';
  * ωr, its acceleration ω²r toward the pivot, a link's angle an arctangent of its
  * own two ends — it is checked both ways, because a literal alone only says the
  * code still does what it did.
+ *
+ * The literals are written to three decimals and the service now answers at the
+ * precision it solved at, so the two helpers below round to compare. That is a
+ * question about the reading rather than about the arithmetic: the digits below
+ * the third are what stopped a small force from climbing the graph in stairs,
+ * and there is a test at the foot of this file that they are still there.
  */
+const readAt = (values: number[], places = 3) =>
+  values.map((value) => (Number.isFinite(value) ? Number(value.toFixed(places)) + 0 : value));
 describe('AnalysisSampleService', () => {
   let fixture: MechanismFixture;
   let service: AnalysisSampleService;
 
-  const sample = (index: number, prop: string, part: string, reactionLinkId?: string) =>
+  const exactly = (index: number, prop: string, part: string, reactionLinkId?: string) =>
     service.sampleAt(
       fixture.mechanism,
       index,
@@ -29,8 +37,14 @@ describe('AnalysisSampleService', () => {
       reactionLinkId ?? ''
     );
 
-  const force = (index: number, mode: string, prop: string, part: string, link = '') =>
+  const sample = (index: number, prop: string, part: string, reactionLinkId?: string) =>
+    readAt(exactly(index, prop, part, reactionLinkId));
+
+  const exactForce = (index: number, mode: string, prop: string, part: string, link = '') =>
     service.sampleAt(fixture.mechanism, index, 'force', mode, prop, part, link);
+
+  const force = (index: number, mode: string, prop: string, part: string, link = '') =>
+    readAt(exactForce(index, mode, prop, part, link));
 
   describe('a four-bar driven at its crank', () => {
     beforeEach(() => {
@@ -187,7 +201,44 @@ describe('AnalysisSampleService', () => {
       expect(velocity).toHaveLength(3);
       expect(velocity.every(Number.isFinite)).toBe(true);
       // And the same numbers it gives when it is the only machine there.
-      expect(velocity).toEqual(sample(45, 'Linear Joint Vel', 'C'));
+      expect(readAt(velocity)).toEqual(sample(45, 'Linear Joint Vel', 'C'));
+    });
+  });
+
+  /**
+   * The digits below the third are what a graph draws with.
+   *
+   * A four-bar's joint reactions run to a few hundredths of a newton, so
+   * rounding them to a thousandth left about fifty distinct heights across the
+   * cycle and the curve climbed them in steps two per cent of its own range.
+   */
+  describe('the precision a curve is drawn at', () => {
+    beforeEach(() => {
+      fixture = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
+      service = withTestInjector(
+        [{ provide: SettingsService, useValue: fixture.settings }],
+        () => new AnalysisSampleService()
+      );
+    });
+
+    it('keeps a small force smooth rather than stepping it', () => {
+      const along = fixture.mechanism.joints.map(
+        (_, index) => exactForce(index, 'static', 'Joint Forces', 'A')[0]
+      );
+      const solved = along.filter(Number.isFinite);
+      expect(solved.length).toBeGreaterThan(100);
+
+      const span = Math.max(...solved) - Math.min(...solved);
+      expect(span).toBeGreaterThan(0);
+      // Small enough that a thousandth of a newton is a visible fraction of it,
+      // which is the case this is about.
+      expect(span).toBeLessThan(1);
+
+      // Nearly every sample is its own value. Rounded to a thousandth these
+      // collapsed onto about fifty, and the curve inherited the staircase.
+      const distinct = new Set(solved.map((value) => value.toFixed(9))).size;
+      expect(distinct).toBeGreaterThan(solved.length * 0.9);
+      expect(new Set(solved.map((value) => value.toFixed(3))).size).toBeLessThan(distinct / 2);
     });
   });
 });
