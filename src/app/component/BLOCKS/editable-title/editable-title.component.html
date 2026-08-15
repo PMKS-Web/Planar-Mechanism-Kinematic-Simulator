@@ -28,22 +28,36 @@
   }
   <!-- Three actions in the row now, so the rename labels are the short ones. -->
   <div class="row">
-    @if (!editMode) {
-      <button class="mini-buttons blue" mat-stroked-button color="primary" (click)="gotoEditMode()">
-        <mat-icon svgIcon="edit_outline"></mat-icon>
-        Rename
-      </button>
-    }
-    @if (editMode) {
-      <button class="mini-buttons blue" mat-stroked-button color="primary" (click)="saveNewID()">
+    <!-- One button for both halves of the rename gesture, sized by its wider
+         word the same way the lock button is — entering edit mode must not
+         reshuffle the row. -->
+    <button
+      class="mini-buttons blue"
+      mat-stroked-button
+      color="primary"
+      (click)="editMode ? saveNewID() : gotoEditMode()"
+    >
+      @if (editMode) {
         <mat-icon>check</mat-icon>
-        Save
-      </button>
-    }
+      } @else {
+        <mat-icon svgIcon="edit_outline"></mat-icon>
+      }
+      <span class="labelSwap">
+        <span [style.visibility]="editMode ? 'hidden' : 'visible'">Rename</span>
+        <span [style.visibility]="editMode ? 'visible' : 'hidden'">Save</span>
+      </span>
+    </button>
     @if (lockTarget()) {
+      <!-- The icon states, the label acts: a locked object shows the closed
+           padlock beside the word Unlock. Both labels are always in the box,
+           one invisible, so the button is sized by the wider word and nothing
+           shifts when it toggles. -->
       <button class="mini-buttons blue" mat-stroked-button color="primary" (click)="toggleLock()">
-        <mat-icon svgIcon="{{ isLocked() ? 'unlock' : 'lock' }}"></mat-icon>
-        {{ isLocked() ? 'Unlock' : 'Lock' }}
+        <mat-icon svgIcon="{{ isLocked() ? 'lock' : 'unlock' }}"></mat-icon>
+        <span class="labelSwap">
+          <span [style.visibility]="isLocked() ? 'visible' : 'hidden'">Unlock</span>
+          <span [style.visibility]="isLocked() ? 'hidden' : 'visible'">Lock</span>
+        </span>
       </button>
     }
     <!-- Icon only: three labels no longer fit the row, and a red trash can

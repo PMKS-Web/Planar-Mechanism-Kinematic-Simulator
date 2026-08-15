@@ -768,15 +768,27 @@
                  The joint is what a lock actually holds, so the joint is
                  where the mark sits — nothing else on the canvas changes. -->
             @if (mechanismSrv.isJointLockedVisual(joint)) {
-              <g class="lockBadge" pointer-events="none" [attr.transform]="lockBadgeTransform()">
-                <circle
-                  [attr.r]="0.14 * settings.objectScale"
-                  fill="#263238"
-                  stroke="#ffffffcc"
-                  [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
-                />
+              <g
+                class="lockBadge"
+                pointer-events="none"
+                [attr.transform]="
+                  gridUtils.getWelded(joint) ? offsetLockBadgeTransform() : lockBadgeTransform()
+                "
+              >
+                <!-- A plain joint's cream circle is chip enough, and the glyph
+                     sits dead centre on it. A welded joint's plus-mark is its
+                     own message, so the badge steps aside to the shoulder and
+                     brings a white chip to stand on. -->
+                @if (gridUtils.getWelded(joint)) {
+                  <circle
+                    [attr.r]="0.13 * settings.objectScale"
+                    fill="#ffffff"
+                    stroke="#26323855"
+                    [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+                  />
+                }
                 <g [attr.transform]="lockGlyphTransform()">
-                  <path [attr.d]="lockGlyphPath" fill="#ffffff" fill-rule="evenodd" />
+                  <path [attr.d]="lockGlyphPath" fill="#263238" fill-rule="evenodd" />
                 </g>
               </g>
             }
@@ -1073,15 +1085,15 @@
           <!-- Same badge the joints wear, at the anchor: a force has no joint
                to carry it, so the mark rides where the load is applied. -->
           @if (force.locked && mechanismSrv.lockVisualsOn()) {
-            <g class="lockBadge" pointer-events="none" [attr.transform]="lockBadgeTransform()">
+            <g class="lockBadge" pointer-events="none" [attr.transform]="offsetLockBadgeTransform()">
               <circle
-                [attr.r]="0.14 * settings.objectScale"
-                fill="#263238"
-                stroke="#ffffffcc"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+                [attr.r]="0.13 * settings.objectScale"
+                fill="#ffffff"
+                stroke="#26323855"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
               />
               <g [attr.transform]="lockGlyphTransform()">
-                <path [attr.d]="lockGlyphPath" fill="#ffffff" fill-rule="evenodd" />
+                <path [attr.d]="lockGlyphPath" fill="#263238" fill-rule="evenodd" />
               </g>
             </g>
           }

@@ -660,10 +660,11 @@ export class NewGridComponent implements OnDestroy {
   /** The Lock/Unlock item every object menu carries, phrased for its kind. */
   private lockMenuItem(target: RealJoint | RealLink | Force, kind: string): cMenuItem {
     const locked = this.mechanismSrv.isLockedTarget(target);
+    // The icon states, the label acts — the same rule as the panel button.
     return new cMenuItem(
       locked ? `Unlock ${kind}` : `Lock ${kind}`,
       () => this.mechanismSrv.toggleLock(target),
-      locked ? 'unlock' : 'lock'
+      locked ? 'lock' : 'unlock'
     );
   }
 
@@ -1339,23 +1340,37 @@ export class NewGridComponent implements OnDestroy {
    */
   private heldGestureNotice?: () => void;
 
-  /** The padlock the canvas badges wear — lock.svg's own outline, inlined. */
-  readonly lockGlyphPath =
-    'M7 10V7a5 5 0 0 1 10 0v3h2.5v11h-15V10H7Zm2 0h6V7a3 3 0 0 0-6 0v3ZM6.5 12v7h11v-7h-11Z';
+  /**
+   * The padlock the canvas badges wear. Unlike lock.svg's fully hollow
+   * outline, the body here is solid — at joint size the hollow body read as
+   * a thin frame and disappeared, and the badge is a mark, not a control.
+   */
+  readonly lockGlyphPath = 'M7 10V7a5 5 0 0 1 10 0v3h2.5v11h-15V10H7Zm2 0h6V7a3 3 0 0 0-6 0v3Z';
 
   /**
-   * Up-and-right of the joint, unflipped: the joint layer draws in the
-   * y-up model frame (scaleY(-1) on the holder), so the badge flips itself
-   * back to keep the padlock upright.
+   * Dead centre of the joint, unflipped: the joint layer draws in the y-up
+   * model frame (scaleY(-1) on the holder), so the badge flips itself back
+   * to keep the padlock upright. The glyph sits inside the joint's own
+   * circle, so the circle's fill keeps saying what it always says — cream,
+   * amber when selected — behind the mark.
    */
   lockBadgeTransform(): string {
+    return `scale(1,-1)`;
+  }
+
+  /**
+   * The shoulder position, for badges whose centre spot is already taken: a
+   * force's anchor is a small dark disc a centred glyph would vanish into,
+   * and a welded joint's plus-mark is the very thing a centred chip covered.
+   */
+  offsetLockBadgeTransform(): string {
     const offset = 0.19 * this.settings.objectScale;
     return `translate(${offset}, ${offset}) scale(1,-1)`;
   }
 
-  /** Centre the 24-unit glyph inside the badge chip, sized to the drawing. */
+  /** Centre the 24-unit glyph on the badge point, sized to the drawing. */
   lockGlyphTransform(): string {
-    const scale = (0.19 * this.settings.objectScale) / 24;
+    const scale = (0.17 * this.settings.objectScale) / 24;
     return `scale(${scale}) translate(-12, -13.5)`;
   }
 

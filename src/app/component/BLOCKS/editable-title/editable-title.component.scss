@@ -59,7 +59,11 @@
     // The #editable-title-block prefix keeps the border-color specificity intact.
     @include blocks.mini-buttons($theme);
     .mini-buttons {
-      flex-grow: 1;
+      // From natural width, sharing only the slack: equal boxes squeezed the
+      // longer word (Rename) while the shorter ones floated in air. The lock
+      // button stays put on toggle because its content never changes size --
+      // both labels are always present, one invisible (.labelSwap).
+      flex: 1 1 auto;
       // Three actions share the row now, so nothing may overflow its border:
       // buttons clip at their own edge, icons take a fixed 18px, and the
       // labels are the short ones (Rename, Lock).
@@ -72,19 +76,41 @@
         width: 18px;
         height: 18px;
         font-size: 18px;
+        // The ligature icon (Save's check) is text; give it the box's own
+        // line height so it centres like the svg icons do.
+        line-height: 18px;
         // Material gives outlined-button icons a -4px left margin on the
         // assumption a label follows; in this tight row it just shoves every
         // icon into the border. Zeroed, and the gap to the label set here.
         margin-left: 0;
         margin-right: 5px;
+
+        // An inline svg sits on the text baseline, which grows the icon box
+        // by the font's descender and floats every glyph high — and lets a
+        // content change re-evaluate the line box, which is a wobble. A block
+        // box is 18x18, centred, and inert.
+        svg {
+          display: block;
+        }
+      }
+    }
+
+    // Both labels share one grid cell, so the cell is as wide as the wider
+    // word whichever is showing, and the icon beside it never moves.
+    .labelSwap {
+      display: inline-grid;
+      text-align: left;
+
+      > span {
+        grid-area: 1 / 1;
       }
     }
 
     // The trash can carries Delete alone, so it stays a compact square
     // instead of stretching with the labelled two.
     .mini-buttons.iconOnly {
-      flex-grow: 0;
-      min-width: 42px;
+      flex: 0 0 auto;
+      min-width: 34px;
       padding: 0;
 
       .mat-icon {
