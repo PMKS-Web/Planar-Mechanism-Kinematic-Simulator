@@ -229,8 +229,13 @@ function buildMechanismNow(fixture: MechanismFixture): BuiltMechanism {
   fixture.locks?.joints?.forEach((id) => {
     (joints.find((joint) => joint.id === id) as RevJoint).locked = true;
   });
+  // A link entry is the shortcut it is everywhere: marks land on its joints.
   fixture.locks?.links?.forEach((id) => {
-    links.find((link) => link.id === id)!.locked = true;
+    links
+      .find((link) => link.id === id)!
+      .joints.forEach((joint) => {
+        if (joint instanceof RevJoint) joint.locked = true;
+      });
   });
 
   const forces: Force[] = [];

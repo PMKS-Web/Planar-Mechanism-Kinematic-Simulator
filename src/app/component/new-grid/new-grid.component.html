@@ -408,6 +408,20 @@
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
             [class]="mechanismSrv.getLinkCSSClass(link)"
           ></path>
+          <!-- The lock cue is an overlay of dark dashes, not a colour: the
+               stroke underneath keeps saying what it always says (the link's
+               own colour, amber when selected), and the dashes alternate with
+               it — so locked+selected reads as both, in one glance. -->
+          @if (mechanismSrv.isLinkLockedVisual(link)) {
+            <path
+              class="lock-dashes"
+              pointer-events="none"
+              [attr.d]="linkPathWithChannels(link)"
+              fill="none"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+              [attr.stroke-dasharray]="svgGrid.scaleWithZoom(10) + ' ' + svgGrid.scaleWithZoom(7)"
+            ></path>
+          }
         }
         @if (
           gridUtils.typeOfLink(link) == 'R' &&
@@ -646,15 +660,17 @@
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
         }
-        <!-- Locked: the same whole-part silhouette the selection wears, in the
-             lock's black — the part is one body, so it is outlined as one. -->
+        <!-- Locked: the same whole-part silhouette the selection wears, as
+             dark dashes — the part is one body, so it is outlined as one, and
+             the dashes alternate with the selection stroke when both stand. -->
         @if (mechanismSrv.isLinkLockedVisual(cyl.body)) {
           <path
-            class="link-locked"
+            class="lock-dashes"
             pointer-events="none"
             [attr.d]="cylinderSilhouette(cyl)"
             fill="none"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+            [attr.stroke-dasharray]="svgGrid.scaleWithZoom(10) + ' ' + svgGrid.scaleWithZoom(7)"
           />
         }
       </g>
@@ -761,6 +777,11 @@
                 [attr.cx]="0"
                 [attr.cy]="0"
                 [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+                [attr.stroke-dasharray]="
+                  mechanismSrv.isJointLockedVisual(joint)
+                    ? svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)
+                    : null
+                "
                 [class]="mechanismSrv.getJointCSSClass(joint)"
               />
             }
@@ -772,6 +793,11 @@
                 [attr.id]="'joint_' + joint.id"
                 [class]="mechanismSrv.getJointCSSClass(joint)"
                 [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+                [attr.stroke-dasharray]="
+                  mechanismSrv.isJointLockedVisual(joint)
+                    ? svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)
+                    : null
+                "
                 [attr.d]="weldMarkerPath"
               ></path>
             }

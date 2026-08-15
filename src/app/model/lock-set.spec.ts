@@ -76,11 +76,16 @@ describe('what a Lock mark holds still', () => {
     expect(frozenJointIds(joints, links)).toEqual(new Set(['B']));
   });
 
-  it('a locked link holds every joint of the link', () => {
-    const { joints, links, bc } = fourBar();
-    bc.locked = true;
-
+  it('one lock layer: freeing one joint of a marked pair frees exactly it', () => {
+    // Locking a link is a shortcut that marks each of its joints — so this is
+    // what "lock link BC, then unlock joint B" leaves behind.
+    const { joints, links, b, c } = fourBar();
+    b.locked = true;
+    c.locked = true;
     expect(frozenJointIds(joints, links)).toEqual(new Set(['B', 'C']));
+
+    b.locked = false;
+    expect(frozenJointIds(joints, links)).toEqual(new Set(['C']));
   });
 
   it('a slider pin and its block joint hold each other — they are coincident', () => {
@@ -126,25 +131,22 @@ describe('what a Lock mark holds still', () => {
     expect(frozenJointIds(withSlot.joints, withSlot.links)).toEqual(new Set(['A']));
   });
 
-  it('keeps holding through a weld: the mark rides the leaf inside the compound', () => {
-    // Welding restructures the links array — the marked link becomes a subset
-    // leaf of a new compound root. A lock that stopped holding the moment its
-    // owner was hidden would be a lock that lies.
+  it('keeps holding through a weld: marks live on joints, which no weld restructures', () => {
     const { joints, b, c, d, bc, cd } = fourBar();
-    bc.locked = true;
+    b.locked = true;
+    c.locked = true;
     const compound = new RealLink('BCD', [b, c, d], 1, 1, undefined, [bc, cd]);
     const links = [compound];
 
     expect(frozenJointIds(joints, links)).toEqual(new Set(['B', 'C']));
-    expect(locksHolding('B', joints, links)).toEqual([bc]);
   });
 
   it('names the mark that holds a joint, so Unlock can clear exactly it', () => {
-    const { joints, links, bc, b } = fourBar();
-    bc.locked = true;
+    const { joints, links, b, c } = fourBar();
+    b.locked = true;
 
-    expect(locksHolding('C', joints, links)).toEqual([bc]);
+    expect(locksHolding('B', joints, links)).toEqual([b]);
     expect(locksHolding('A', joints, links)).toEqual([]);
-    expect(locksHolding(b.id, joints, links)).toEqual([bc]);
+    expect(locksHolding(c.id, joints, links)).toEqual([]);
   });
 });

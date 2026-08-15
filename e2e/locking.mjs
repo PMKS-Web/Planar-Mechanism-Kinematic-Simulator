@@ -128,15 +128,19 @@ record(
   })
 );
 
-// --- The Unlock button in the message clears exactly that mark -------------
+// --- The Unlock button clears exactly the mark that held the gesture -------
+// One lock layer: "lock link BC" marked joints B and C, and freeing B is all
+// this refusal's Unlock does — C stays held, which is the whole point of the
+// marks living on joints.
 
 await page.locator('.notificationAction', { hasText: 'Unlock' }).first().click();
 await page.waitForTimeout(200);
 record(
-  'Unlock in the message clears the mark',
+  'Unlock frees the refused joint and only it',
   await page.evaluate(() => {
     const c = ng.getComponent(document.querySelector('app-new-grid'));
-    return !c.mechanismSrv.links.find((l) => l.id === 'BC').locked;
+    const joint = (id) => c.mechanismSrv.joints.find((j) => j.id === id);
+    return !joint('B').locked && joint('C').locked;
   })
 );
 await dragBy(await jointOnScreen('B'), 60, -40);
@@ -148,12 +152,18 @@ record('the same drag now moves the joint', bMoved.x !== bBefore.x || bMoved.y !
 
 // --- Undo takes a lock back: the mark rides the URL ------------------------
 
+const cBeforeToggle = await page.evaluate(
+  () =>
+    ng
+      .getComponent(document.querySelector('app-new-grid'))
+      .mechanismSrv.joints.find((j) => j.id === 'C').locked
+);
 await page.evaluate(() => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'C'));
 });
 await page.waitForTimeout(200);
-const lockedNow = await page.evaluate(
+const cAfterToggle = await page.evaluate(
   () =>
     ng
       .getComponent(document.querySelector('app-new-grid'))
@@ -161,21 +171,24 @@ const lockedNow = await page.evaluate(
 );
 await page.keyboard.press('Control+z');
 await page.waitForTimeout(400);
-const lockedAfterUndo = await page.evaluate(
+const cAfterUndo = await page.evaluate(
   () =>
     ng
       .getComponent(document.querySelector('app-new-grid'))
       .mechanismSrv.joints.find((j) => j.id === 'C').locked
 );
-record('Ctrl+Z undoes a lock, so the mark is really in the URL', lockedNow && !lockedAfterUndo, {
-  lockedNow,
-  lockedAfterUndo,
-});
+record(
+  'Ctrl+Z undoes a lock toggle, so the mark is really in the URL',
+  cAfterToggle !== cBeforeToggle && cAfterUndo === cBeforeToggle,
+  { cBeforeToggle, cAfterToggle, cAfterUndo }
+);
 
 // --- One held joint turns a link drag into a swing about it ----------------
+// From a clean slate: exactly one mark, on B.
 
 await page.evaluate(() => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
+  c.mechanismSrv.setAllLocks(false);
   c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'B'));
 });
 await page.waitForTimeout(200);

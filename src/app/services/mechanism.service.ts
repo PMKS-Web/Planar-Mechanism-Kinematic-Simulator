@@ -829,18 +829,30 @@ export class MechanismService {
    * undo entry is the mark itself.
    */
   toggleLock(target: RealJoint | Link | Force): void {
-    const sealed = this.sealedPartOf(target);
-    if (sealed) {
-      // One sealed part, one mark: the prismatic pin, where the assembly's
-      // other permanent bit (isSealed) already lives.
-      sealed.slider.locked = !sealed.slider.locked;
-    } else {
-      target.locked = !target.locked;
-    }
+    const wasLocked = this.isLockedTarget(target);
+    // One kind of lock: a mark on a joint (a force, having none, marks
+    // itself). Locking a link is a shortcut that marks all of its joints, so
+    // unlocking one of those joints afterwards frees exactly that joint —
+    // there is no second, link-level ledger to keep in agreement.
+    this.lockMarksOf(target).forEach((mark) => (mark.locked = !wasLocked));
     this.updateMechanism(true);
     // The panel's position fields grey out against the frozen set, and that
     // set just changed under the same selection — re-announce it so they ask.
     this.activeObjService.fakeUpdateSelectedObj();
+  }
+
+  /** The joint (or force) marks a Lock on this target sets and clears. */
+  private lockMarksOf(target: RealJoint | Link | Force): (RealJoint | Force)[] {
+    if (target instanceof Force) return [target];
+    const sealed = this.sealedPartOf(target);
+    if (sealed) {
+      // One sealed part, one mark: the prismatic pin, where the assembly's
+      // other permanent bit (isSealed) already lives, and whose hold the
+      // closure spreads to all five joints.
+      return [sealed.slider];
+    }
+    if (target instanceof RealJoint) return [target];
+    return target.joints.filter((joint): joint is RealJoint => joint instanceof RealJoint);
   }
 
   /**
@@ -863,7 +875,7 @@ export class MechanismService {
    * Clear a specific set of Lock marks — what the refusal's Unlock button
    * carries: exactly the marks that held the refused gesture, nothing else.
    */
-  unlock(marks: (RealJoint | Link | Force)[]): void {
+  unlock(marks: (RealJoint | Force)[]): void {
     if (marks.length === 0) return;
     marks.forEach((mark) => (mark.locked = false));
     this.updateMechanism(true);
@@ -872,40 +884,22 @@ export class MechanismService {
 
   /** Whether the Lock item for this object should read as "on". */
   isLockedTarget(target: RealJoint | Link | Force): boolean {
-    const sealed = this.sealedPartOf(target);
-    if (sealed) return sealed.slider.locked;
-    return target.locked;
+    const marks = this.lockMarksOf(target);
+    return marks.length > 0 && marks.every((mark) => mark.locked);
   }
 
   /**
    * Lock the whole drawing, or let all of it go.
    *
-   * Locking marks the bodies — every root link, sealed part, and force — not
-   * every joint: a body's joints are held through it, so unlocking one body
-   * later frees exactly its own geometry. Unlocking clears every mark
-   * anywhere, including ones set one object at a time.
+   * Marks land on every joint and every force — the same marks the per-object
+   * controls set — so Unlock on any one object, or on any one joint, frees
+   * exactly that much and no bookkeeping disagrees about the rest.
    */
   setAllLocks(locked: boolean): void {
-    if (locked) {
-      this.links.forEach((link) => {
-        if (this.cylinderAt(link)) return;
-        link.locked = true;
-      });
-      sealedCylinderStructures(this.joints).forEach((sealed) => (sealed.slider.locked = true));
-      this.forces.forEach((force) => (force.locked = true));
-      this.joints.forEach((joint) => {
-        if (joint instanceof RealJoint && joint.links.length === 0) joint.locked = true;
-      });
-    } else {
-      this.joints.forEach((joint) => {
-        if (joint instanceof RealJoint) joint.locked = false;
-      });
-      this.links.forEach((link) => {
-        link.locked = false;
-        if (link instanceof RealLink) link.subset.forEach((sub) => (sub.locked = false));
-      });
-      this.forces.forEach((force) => (force.locked = false));
-    }
+    this.joints.forEach((joint) => {
+      if (joint instanceof RealJoint) joint.locked = locked;
+    });
+    this.forces.forEach((force) => (force.locked = locked));
     this.updateMechanism(true);
     this.activeObjService.fakeUpdateSelectedObj();
   }
@@ -914,9 +908,6 @@ export class MechanismService {
   anythingLocked(): boolean {
     return (
       this.joints.some((joint) => joint instanceof RealJoint && joint.locked) ||
-      this.links.some(
-        (link) => link.locked || (link instanceof RealLink && link.subset.some((sub) => sub.locked))
-      ) ||
       this.forces.some((force) => force.locked)
     );
   }
@@ -3641,7 +3632,6 @@ export class MechanismService {
   /** Painted as held: a body whose whole pose is frozen, not one merely touched. */
   isLinkLockedVisual(link: Link): boolean {
     if (!this.lockVisualsOn()) return false;
-    if (link.locked) return true;
     const frozen = frozenJointIds(this.joints, this.links);
     return link.joints.length > 0 && link.joints.every((joint) => frozen.has(joint.id));
   }

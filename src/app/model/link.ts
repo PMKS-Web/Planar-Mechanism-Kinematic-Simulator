@@ -44,8 +44,6 @@ export class Link {
   private _joints: Joint[];
   private _forces: Force[] = [];
   private _showHighlight: boolean = false;
-  /** Locked in place while editing: every joint of this link is held still. */
-  public locked: boolean = false;
   fixedLocations = [{ id: 'com', label: 'com' }];
   fixedLocation = {
     fixedPoint: 'com',

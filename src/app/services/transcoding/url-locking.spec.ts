@@ -9,6 +9,7 @@ import { SettingsService } from '../settings.service';
 import { urlGeneratorFor } from '../../../test-utils/url-encoding';
 import { MechanismBuilder } from './mechanism-builder';
 import { StringTranscoder } from './string-transcoder';
+import { Checksum } from './checksum';
 import { MODEL_SCALE } from '../../model/render-scale';
 
 /**
@@ -33,7 +34,12 @@ function source(locks: { joint?: boolean; link?: boolean; force?: boolean } = {}
   bar.forces.push(force);
 
   a.locked = locks.joint ?? false;
-  bar.locked = locks.link ?? false;
+  // "Locking a link" is a shortcut that marks each of its joints — the URL
+  // carries the joint marks it leaves behind.
+  if (locks.link) {
+    a.locked = true;
+    b.locked = true;
+  }
   force.locked = locks.force ?? false;
   return { joints: [a, b], links: [bar], forces: [force] };
 }
@@ -64,13 +70,16 @@ function body(encoded: string): string {
 }
 
 describe('lock marks in the URL', () => {
-  it('round-trips a locked joint, link, and force', () => {
-    const opened = decode(encode({ joint: true, link: true, force: true }));
+  it('round-trips locked joints and a locked force', () => {
+    const opened = decode(encode({ link: true, force: true }));
 
     expect((opened.joints.find((j) => j.id === 'A') as RealJoint).locked).toBe(true);
-    expect((opened.joints.find((j) => j.id === 'B') as RealJoint).locked).toBe(false);
-    expect(opened.links.find((l) => l.id === 'AB')!.locked).toBe(true);
+    expect((opened.joints.find((j) => j.id === 'B') as RealJoint).locked).toBe(true);
     expect(opened.forces.find((f) => f.id === 'F1')!.locked).toBe(true);
+
+    const partial = decode(encode({ joint: true }));
+    expect((partial.joints.find((j) => j.id === 'A') as RealJoint).locked).toBe(true);
+    expect((partial.joints.find((j) => j.id === 'B') as RealJoint).locked).toBe(false);
   });
 
   it('writes nothing at all when nothing is locked', () => {
@@ -78,17 +87,26 @@ describe('lock marks in the URL', () => {
     // URL plus one trailing section. Every URL shared before locks existed IS
     // the unlocked spelling, so it decodes exactly as it always did.
     expect(body(encode({ joint: true }))).toBe(body(encode()) + '.JA');
-    expect(body(encode({ joint: true, link: true, force: true }))).toBe(
-      body(encode()) + '.JA,LAB,FF1'
-    );
+    expect(body(encode({ link: true, force: true }))).toBe(body(encode()) + '.JA,JB,FF1');
   });
 
   it('opens a URL written before locks existed with nothing locked', () => {
     const opened = decode(encode());
 
     expect(opened.joints.every((j) => !(j as RealJoint).locked)).toBe(true);
-    expect(opened.links.every((l) => !l.locked)).toBe(true);
     expect(opened.forces.every((f) => !f.locked)).toBe(true);
+  });
+
+  it("honours an 'L' reference from the earlier spelling by marking the link's joints", () => {
+    // Locks briefly encoded as link references. The decoder keeps reading
+    // them — as the shortcut they always were — so any URL shared during
+    // that window still opens held.
+    const legacyBody = body(encode()) + '.LAB';
+    const legacy = legacyBody + new Checksum().generateChecksum(legacyBody.length);
+    const opened = decode(legacy);
+
+    expect((opened.joints.find((j) => j.id === 'A') as RealJoint).locked).toBe(true);
+    expect((opened.joints.find((j) => j.id === 'B') as RealJoint).locked).toBe(true);
   });
 
   it('refuses a lock reference to an object the URL does not contain', () => {

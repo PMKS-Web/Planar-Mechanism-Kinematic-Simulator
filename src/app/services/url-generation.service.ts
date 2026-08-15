@@ -172,17 +172,13 @@ export class UrlGenerationService {
         this._addForceToEncoder(encoder, force);
       });
 
-      // Lock marks, as type-tagged references. Collected across everything
-      // the URL encodes — joints, root links and their subsets, forces — so
-      // whatever object the mark sits on, the reference resolves on decode.
+      // Lock marks, as type-tagged references. Only joints and forces carry
+      // marks — locking a link is a shortcut that marks its joints — but the
+      // decoder still honours 'L' references from earlier spellings.
       encoder.setLockedIds([
         ...this.mechanism.joints
           .filter((joint): joint is RealJoint => joint instanceof RealJoint && joint.locked)
           .map((joint) => 'J' + joint.id),
-        ...this.mechanism.links
-          .flatMap((link) => [link, ...(link instanceof RealLink ? link.subset : [])])
-          .filter((link) => link.locked)
-          .map((link) => 'L' + link.id),
         ...this.mechanism.forces.filter((force) => force.locked).map((force) => 'F' + force.id),
       ]);
 

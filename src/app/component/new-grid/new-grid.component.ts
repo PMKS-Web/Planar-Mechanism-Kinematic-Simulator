@@ -1406,12 +1406,18 @@ export class NewGridComponent implements OnDestroy {
     return locks.filter((lock, index) => locks.indexOf(lock) === index);
   }
 
+  /**
+   * What kind of thing holds this joint, for the refusal's sentence. Marks
+   * live on joints, so the question is what the marked joint *is*: part of a
+   * sealed cylinder, one of a link's fully-marked joints, or just itself.
+   */
   private lockNoun(holds: Lockable[]): string {
-    const link = holds.find((lock): lock is Link => lock instanceof Link);
-    if (link) return `link ${link.name}`;
     const joint = holds.find((lock): lock is RealJoint => lock instanceof RealJoint);
-    if (joint && this.mechanismSrv.cylinderAt(joint)) return 'cylinder';
-    return joint ? `joint ${joint.name}` : 'object';
+    if (!joint) return 'object';
+    if (this.mechanismSrv.cylinderAt(joint)) return 'cylinder';
+    const lockedLink = joint.links.find((link) => this.mechanismSrv.isLockedTarget(link));
+    if (lockedLink) return `link ${lockedLink.name}`;
+    return `joint ${joint.name}`;
   }
 
   private canEditNow(): boolean {

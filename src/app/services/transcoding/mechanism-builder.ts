@@ -252,6 +252,10 @@ export class MechanismBuilder {
     // makes a lock survive an undo — the same reason the sealed bit is
     // re-applied above. The transcoder has already refused any reference that
     // does not resolve, so a miss here is builder/transcoder skew.
+    //
+    // 'L' is honoured as the shortcut it always was: marks live on joints
+    // only, so a link reference marks each of the link's joints. New URLs
+    // spell those marks out as 'J' references directly.
     this.transcoder.getLockedIds().forEach((lockedId) => {
       const tag = lockedId.charAt(0);
       const id = lockedId.substring(1);
@@ -265,7 +269,9 @@ export class MechanismBuilder {
             .filter((candidate): candidate is RealLink => candidate instanceof RealLink)
             .flatMap((candidate) => candidate.subset)
             .find((subset) => subset.id === id);
-        if (link) link.locked = true;
+        link?.joints.forEach((joint) => {
+          if (joint instanceof RealJoint) joint.locked = true;
+        });
       } else if (tag === 'F') {
         const force = forces.find((candidate) => candidate.id === id);
         if (force) force.locked = true;

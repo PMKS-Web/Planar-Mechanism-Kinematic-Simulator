@@ -4,16 +4,18 @@ import { Force } from './force';
 import { cylinderJoints, sealedCylinderStructures } from './cylinder';
 
 /**
- * Which joints a set of Lock marks holds still.
+ * Which joints the current Lock marks hold still.
  *
- * A lock is a mark on an object; what a drag has to respect is a set of
- * *joints* that may not move, because both drag operations bottom out in
- * writing joint coordinates. This module is the one place that translation
- * happens, so the drag gates, the panel, and the canvas paint all agree on
- * what is held.
+ * There is exactly one kind of positional lock: a mark on a *joint*. Locking
+ * a link is a shortcut that marks all of its joints, and unlocking one of
+ * those joints afterwards frees exactly that joint — there is no second,
+ * link-level ledger to keep in agreement with the first. (It also means a
+ * weld can never hide a lock: welding restructures links, and the marks do
+ * not live on links.) Forces carry their own mark, having no joints.
  *
- * The closure is a set of one-way implications, because "held" spreads along
- * *consequence*, not along membership:
+ * What a drag has to respect is still a *set* of held joints, because some
+ * joints travel together whatever the drag asked. The closure is a set of
+ * one-way implications — "held" spreads along consequence, not membership:
  *
  * - A slider's block joint is coincident with its pin, so holding either
  *   holds both — the one symmetric case.
@@ -25,7 +27,7 @@ import { cylinderJoints, sealedCylinderStructures } from './cylinder';
  *   holding the pin means holding the two joints that define the channel —
  *   but holding a channel joint does not pin the slider that rides it.
  */
-export type Lockable = RealJoint | Link | Force;
+export type Lockable = RealJoint | Force;
 
 interface Implication {
   ifAnyOf: string[];
@@ -34,21 +36,11 @@ interface Implication {
 
 /**
  * Every body, welded or free: the roots and the leaves inside each compound.
- * A locked link that is later welded keeps its mark on the leaf, and a mark
- * that stopped holding the moment a weld hid its owner would be a lock that
- * lies — so every asker walks the subsets too.
+ * The closure walks them all so a slider block buried by a weld still binds
+ * its coincident pair.
  */
 function allBodies(links: Link[]): Link[] {
   return links.flatMap((link) => [link, ...(link instanceof RealLink ? link.subset : [])]);
-}
-
-/** Everything with a lock mark set, in canvas paint order: joints, links, forces. */
-export function lockedObjects(joints: Joint[], links: Link[], forces: Force[]): Lockable[] {
-  return [
-    ...joints.filter((joint): joint is RealJoint => joint instanceof RealJoint && joint.locked),
-    ...allBodies(links).filter((link) => link.locked),
-    ...forces.filter((force) => force.locked),
-  ];
 }
 
 /** The ids of every joint the current Lock marks hold still. */
@@ -56,9 +48,6 @@ export function frozenJointIds(joints: Joint[], links: Link[]): Set<string> {
   const frozen = new Set<string>();
   joints.forEach((joint) => {
     if (joint instanceof RealJoint && joint.locked) frozen.add(joint.id);
-  });
-  allBodies(links).forEach((link) => {
-    if (link.locked) link.joints.forEach((joint) => frozen.add(joint.id));
   });
   return closeOverConsequences(frozen, joints, links);
 }
@@ -109,15 +98,12 @@ function closeOverConsequences(frozen: Set<string>, joints: Joint[], links: Link
 }
 
 /**
- * The locked objects that hold this joint still — what an Unlock action has
- * to clear for the joint to move again. Each locked mark is asked alone: the
- * closure of just that mark either reaches the joint or it does not.
+ * The marks that hold this joint still — what an Unlock action has to clear
+ * for the joint to move again. Each marked joint is asked alone: the closure
+ * of just that mark either reaches the joint or it does not.
  */
 export function locksHolding(jointId: string, joints: Joint[], links: Link[]): Lockable[] {
-  return lockedObjects(joints, links, []).filter((locked) => {
-    const seed = new Set<string>();
-    if (locked instanceof RealJoint) seed.add(locked.id);
-    else if (locked instanceof Link) locked.joints.forEach((joint) => seed.add(joint.id));
-    return closeOverConsequences(seed, joints, links).has(jointId);
-  });
+  return joints
+    .filter((joint): joint is RealJoint => joint instanceof RealJoint && joint.locked)
+    .filter((locked) => closeOverConsequences(new Set([locked.id]), joints, links).has(jointId));
 }

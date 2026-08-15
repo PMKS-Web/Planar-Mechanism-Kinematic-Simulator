@@ -138,22 +138,24 @@
     cursor: pointer;
   }
 
-  // Held in place while editing. Black is the convention CAD sketchers use for
-  // fixed geometry, so the students most likely to meet these marks have seen
-  // them before. After the selection classes on purpose: a locked selected
-  // body still reads as locked — the stillness matters more than the accent.
-  .joint-locked {
-    stroke: #1a1a1a;
+  // Held in place while editing. Dark dashes rather than a solid black edge:
+  // the dashes are an overlay, so the stroke underneath keeps saying what it
+  // always says — the link's own colour, amber when selected — and a locked
+  // selected body reads as both at once, the dark and the amber alternating.
+  // Dashed geometry is also the CAD convention for reference lines, which is
+  // the audience these marks borrow from.
+  .lock-dashes {
+    stroke: #263238;
   }
 
-  .link-locked {
-    stroke: #1a1a1a;
+  .joint-locked {
+    stroke: #263238;
   }
 
   .force-locked {
     .forceAnchor {
-      stroke: #1a1a1a;
-      fill: #1a1a1a;
+      stroke: #263238;
+      fill: #263238;
     }
   }
 
