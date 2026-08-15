@@ -668,6 +668,10 @@ export class MechanismService {
         link.massMoI *= inertiaScale;
         link.CoM.x *= lengthScale;
         link.CoM.y *= lengthScale;
+        // The stored along/across offset is in model lengths too; re-read it
+        // from the correctly scaled point, or the next rebuild would derive
+        // the CoM from a stale offset and throw it lengthScale times as far.
+        if (link.comIsCustom) link.captureComOffset();
         link.subset.forEach(updateLink);
         link.updateLengthAndAngle();
         link.updateCoMDs();

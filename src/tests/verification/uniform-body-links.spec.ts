@@ -142,6 +142,28 @@ describe('a placed centre of mass rides the link', () => {
   });
 });
 
+describe('a placed centre of mass survives a unit change', () => {
+  it('scales with the geometry instead of reading a stale offset', () => {
+    // The offset is stored in model lengths; a cm→m conversion rescales the
+    // joints and the point, and the offset has to be re-read from the scaled
+    // point — or the next rebuild derives the CoM from stale numbers and
+    // throws it a hundred times as far as the author put it.
+    const harness = createMechanismHarness();
+    const [ab] = twoBarChain(harness);
+    ab.mass = 12;
+    ab.placeCustomCoM({ x: 1.8 * MODEL_SCALE, y: 2.4 * MODEL_SCALE });
+    harness.service.updateMechanism();
+
+    harness.service.updateLinkageUnits(LengthUnit.CM, LengthUnit.METER);
+    harness.settings.lengthUnit.next(LengthUnit.METER);
+    harness.service.updateMechanism();
+
+    // cm→m divides every coordinate by 100; the placed point rides along.
+    expect(ab.CoM.x).toBeCloseTo((1.8 * MODEL_SCALE) / 100, 6);
+    expect(ab.CoM.y).toBeCloseTo((2.4 * MODEL_SCALE) / 100, 6);
+  });
+});
+
 describe('a weightless body cannot keep a moment of inertia', () => {
   it('zeroes and re-derives the inertia when the mass goes to zero', () => {
     // The solver applies I·α whether or not there is mass, so the state
