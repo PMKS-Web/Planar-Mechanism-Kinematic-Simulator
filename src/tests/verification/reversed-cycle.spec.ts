@@ -11,11 +11,13 @@ import { MechanismService } from '../../app/services/mechanism.service';
 import { RealJoint } from '../../app/model/joint';
 
 /**
- * Reversing a fully rotating drive reuses the cycle instead of solving it
- * again. That is only allowed to be faster — the answer has to be the answer.
+ * Reversing a drive keeps the cycle exactly where it is and turns the machine
+ * round on it, so a reader keeps their place on the chart.
  *
- * So every check here is against a real re-solve: the mechanism is turned
- * round the cheap way and the expensive way, and the two are compared.
+ * That is only allowed to be cheaper and steadier -- never a different answer.
+ * The oracle here is a full re-solve with the drive negated, which walks the
+ * same loop the other way: its sample k is the same pose as our sample N-1-k,
+ * and everything physical has to agree there.
  */
 function load(payload: string) {
   const harness = createMechanismHarness();
@@ -26,7 +28,7 @@ function load(payload: string) {
   return harness;
 }
 
-/** Turn the drive round the way the app used to: solve the whole thing again. */
+/** Turn the drive round the expensive way: solve the whole thing again. */
 function reverseBySolving(service: MechanismService, index: number): void {
   const driven = service.partitions[index]?.joints.find(
     (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
@@ -42,95 +44,205 @@ function samplesOf(settings: SettingsService) {
   );
 }
 
-describe('A reversed cycle is the solved one', () => {
-  // Every template with a rotating input, the slider-crank included: its
-  // slider reciprocates but its crank goes all the way round, which is what
-  // decides whether the cycle closes.
+describe('Reversing a drive', () => {
   for (const id of BUILT_IN_TEMPLATE_IDS) {
-    it(`matches a full re-solve for ${id}`, () => {
-      const cheap = load(TEMPLATE_LINKAGES[id]);
-      const dear = load(TEMPLATE_LINKAGES[id]);
-      // Asserted rather than skipped: a guard that returns quietly is a test
-      // that passes without looking at anything.
-      expect(cheap.service.mechanisms[0]?.isMechanismValid()).toBe(true);
+    it(`agrees with a full re-solve, pose for pose, on ${id}`, () => {
+      const quick = load(TEMPLATE_LINKAGES[id]);
+      const slow = load(TEMPLATE_LINKAGES[id]);
+      expect(quick.service.mechanisms[0]?.isMechanismValid()).toBe(true);
 
-      const mirrored = cheap.service.mechanisms[0].reversedCycle();
-      expect(mirrored).toBeDefined();
-      cheap.service.mechanisms[0] = mirrored!;
-      reverseBySolving(dear.service, 0);
+      const before = quick.service.mechanisms[0];
+      expect(quick.service.reverseDrive(0)).toBe(true);
+      const ours = quick.service.mechanisms[0];
+      reverseBySolving(slow.service, 0);
+      const theirs = slow.service.mechanisms[0];
 
-      const fromMirror = cheap.service.mechanisms[0];
-      const fromSolver = dear.service.mechanisms[0];
-      expect(fromMirror.joints.length).toBe(fromSolver.joints.length);
+      const last = theirs.joints.length - 1;
+      expect(ours.joints.length).toBe(theirs.joints.length);
 
-      // Poses, at every sample of the cycle.
+      // The cycle did not move: our frames are the ones we already had.
+      let worstHeld = 0;
+      for (let frame = 0; frame <= last; frame++) {
+        for (let joint = 0; joint < before.joints[frame].length; joint++) {
+          const a = ours.joints[frame][joint];
+          const b = before.joints[frame][joint];
+          worstHeld = Math.max(worstHeld, Math.hypot(a.x - b.x, a.y - b.y));
+        }
+      }
+      expect(worstHeld).toBe(0);
+
+      // ...and it is the re-solve read from the other end, which is the same
+      // loop walked the other way.
       let worstPose = 0;
-      for (let frame = 0; frame < fromSolver.joints.length; frame++) {
-        for (let joint = 0; joint < fromSolver.joints[frame].length; joint++) {
-          const a = fromMirror.joints[frame][joint];
-          const b = fromSolver.joints[frame][joint];
+      for (let frame = 0; frame <= last; frame++) {
+        for (let joint = 0; joint < theirs.joints[frame].length; joint++) {
+          const a = ours.joints[last - frame][joint];
+          const b = theirs.joints[frame][joint];
           worstPose = Math.max(worstPose, Math.hypot(a.x - b.x, a.y - b.y));
         }
       }
-      // The solver rounds each sample to two decimals, so this is its own noise
-      // rather than a difference of method.
       expect(worstPose).toBeLessThan(0.01);
 
-      // And the quantities a graph would plot, which are derived from the pose
-      // and the signed input speed rather than stored.
-      const jointId = fromSolver.joints[0].find((joint) => joint instanceof RealJoint)!.id;
+      const jointId = theirs.joints[0].find(
+        (joint): joint is RealJoint => joint instanceof RealJoint && !joint.ground
+      )!.id;
+      const at = (
+        mechanism: typeof ours,
+        index: number,
+        property: string,
+        settings: SettingsService
+      ) => samplesOf(settings).sampleAt(mechanism, index, 'kinematic', 'loop', property, jointId);
+
       for (const property of ['Linear Joint Pos', 'Linear Joint Vel', 'Linear Joint Acc']) {
-        for (const at of [0, 37, 180, 300]) {
-          if (at >= fromSolver.joints.length) continue;
-          const mine = samplesOf(cheap.settings).sampleAt(
-            fromMirror,
-            at,
-            'kinematic',
-            'loop',
-            property,
-            jointId
-          );
-          const theirs = samplesOf(dear.settings).sampleAt(
-            fromSolver,
-            at,
-            'kinematic',
-            'loop',
-            property,
-            jointId
-          );
-          expect(mine.length).toBe(theirs.length);
+        for (const frame of [0, 37, 180]) {
+          if (frame > last) continue;
+          const mine = at(ours, last - frame, property, quick.settings);
+          const other = at(theirs, frame, property, slow.settings);
+          expect(mine.length).toBe(other.length);
           expect(mine.length).toBeGreaterThan(0);
           mine.forEach((value, index) => {
-            expect(Math.abs(value - theirs[index])).toBeLessThan(0.02);
+            expect(Math.abs(value - other[index])).toBeLessThan(0.02);
           });
         }
       }
 
-      // Forces too, which is where a reversal would hide a sign error: they are
-      // solved from the pose and the rates, so the cleared cache has to come
-      // back with the same answers the re-solve gets.
+      // The forces too, and dynamic as well as static -- the mode where the
+      // input speed enters the answer at all, through the inertia of the
+      // moving parts. Checked against the re-solve rather than against our own
+      // claim that reversing cannot change them.
       for (const mode of ['static', 'dynamic'] as const) {
-        const mine = fromMirror.getForceAnalysis(mode);
-        const theirs = fromSolver.getForceAnalysis(mode);
-        expect(mine.frames.length).toBe(theirs.frames.length);
-        expect(mine.successfulFrames).toBe(theirs.successfulFrames);
-        for (const at of [0, 37, 180]) {
-          const a = mine.frames[at];
-          const b = theirs.frames[at];
-          if (!a || !b || a.status !== 'ok' || b.status !== 'ok') continue;
-          for (const [joint, force] of a.jointReactions) {
-            const other = b.jointReactions.get(joint);
-            expect(other).toBeDefined();
-            expect(Math.abs(force[0] - other![0])).toBeLessThan(0.05);
-            expect(Math.abs(force[1] - other![1])).toBeLessThan(0.05);
+        const mine = ours.getForceAnalysis(mode);
+        const other = theirs.getForceAnalysis(mode);
+        expect(mine.frames.length).toBe(other.frames.length);
+        expect(mine.successfulFrames).toBe(other.successfulFrames);
+        let compared = 0;
+        for (const frame of [0, 37, 180]) {
+          if (frame > last) continue;
+          const a = mine.frames[last - frame];
+          const b = other.frames[frame];
+          if (!a || !b || b.status !== 'ok') continue;
+          expect(a.status).toBe(b.status);
+          for (const [joint, force] of b.jointReactions) {
+            const ourForce = mine.frames[last - frame].jointReactions.get(joint);
+            expect(ourForce).toBeDefined();
+            expect(Math.abs(ourForce![0] - force[0])).toBeLessThan(0.05);
+            expect(Math.abs(ourForce![1] - force[1])).toBeLessThan(0.05);
+            compared++;
+          }
+          // What the drive has to supply at that pose, which is the quantity a
+          // reversal is most likely to get wrong: power is torque times speed,
+          // and the speed has just changed sign.
+          if (a.inputEffort && b.inputEffort) {
+            expect(Math.abs(a.inputEffort.valueSI - b.inputEffort.valueSI)).toBeLessThan(0.05);
+            compared++;
           }
         }
+        expect(compared).toBeGreaterThan(0);
       }
     });
   }
 
-  it('declines the shortcut when there is no solved cycle to turn round', () => {
+  it('turns every velocity round and leaves the accelerations alone', () => {
+    const { service, settings } = load(TEMPLATE_LINKAGES['4-Bar']);
+    // A joint that actually moves: a grounded one reads zero at every sample,
+    // and "zero turned round is zero" would prove nothing.
+    const jointId = service.mechanisms[0].joints[0].find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && !joint.ground
+    )!.id;
+    const read = (property: string) =>
+      samplesOf(settings).sampleAt(
+        service.mechanisms[0],
+        12,
+        'kinematic',
+        'loop',
+        property,
+        jointId
+      );
+
+    const positionWas = read('Linear Joint Pos');
+    const velocityWas = read('Linear Joint Vel');
+    const accelerationWas = read('Linear Joint Acc');
+    expect(velocityWas.some((value) => Math.abs(value) > 1e-6)).toBe(true);
+
+    service.reverseDrive(0);
+
+    // Same sample, same pose: the reader has not been moved.
+    read('Linear Joint Pos').forEach((value, index) => {
+      expect(value).toBeCloseTo(positionWas[index], 9);
+    });
+    // The joint really is going the other way now. The third series is the
+    // magnitude, which has no direction to turn round.
+    const velocityNow = read('Linear Joint Vel');
+    expect(velocityNow[0]).toBeCloseTo(-velocityWas[0], 9);
+    expect(velocityNow[1]).toBeCloseTo(-velocityWas[1], 9);
+    expect(velocityNow[2]).toBeCloseTo(velocityWas[2], 9);
+    // Acceleration goes as the square of the speed, so it does not.
+    read('Linear Joint Acc').forEach((value, index) => {
+      expect(value).toBeCloseTo(accelerationWas[index], 9);
+    });
+  });
+
+  it('leaves the force analysis alone, statically and dynamically', () => {
+    // What a part has to carry at a pose does not depend on which way it
+    // arrived there: at constant speed the inertial terms go as the square of
+    // the input speed, so they are blind to its sign.
+    const { service } = load(TEMPLATE_LINKAGES['4-Bar']);
+    const before = (['static', 'dynamic'] as const).map((mode) =>
+      service.mechanisms[0].getForceAnalysis(mode)
+    );
+    service.reverseDrive(0);
+    const after = (['static', 'dynamic'] as const).map((mode) =>
+      service.mechanisms[0].getForceAnalysis(mode)
+    );
+
+    before.forEach((was, mode) => {
+      const now = after[mode];
+      expect(now.frames.length).toBe(was.frames.length);
+      expect(now.successfulFrames).toBe(was.successfulFrames);
+      expect(was.successfulFrames).toBeGreaterThan(0);
+      for (const frame of [0, 37, 180]) {
+        const a = now.frames[frame];
+        const b = was.frames[frame];
+        if (!a || !b || b.status !== 'ok') continue;
+        expect(a.status).toBe(b.status);
+        for (const [joint, force] of b.jointReactions) {
+          const mine = a.jointReactions.get(joint);
+          expect(mine).toBeDefined();
+          expect(mine![0]).toBeCloseTo(force[0], 6);
+          expect(mine![1]).toBeCloseTo(force[1], 6);
+        }
+      }
+    });
+  });
+
+  it('leaves the crank where it is, and says it is going the other way', () => {
+    // Two readers used to double-count the reversal. The drive profile builds
+    // the crank angle by walking the samples, so reading the drive's new sign
+    // there mirrored the whole track and threw the transport handle to the far
+    // end of a machine that had not moved; and the direction label XORs the
+    // drive sign with the way playback runs, which cancelled to "unchanged"
+    // once reversing flipped both.
+    const { service } = load(TEMPLATE_LINKAGES['4-Bar']);
+    service.animate(40, false);
+    const travelWas = service.travelOf(0);
+    const forwardWas = service.travellingForward(0);
+    expect(travelWas).toBeDefined();
+
+    expect(service.reverseDrive(0)).toBe(true);
+
+    // The crank is at the same angle: nothing has moved.
+    expect(service.travelOf(0)!).toBeCloseTo(travelWas!, 6);
+    // ...and it is now turning the other way.
+    expect(service.travellingForward(0)).toBe(!forwardWas);
+
+    // Twice round is where it started, in every respect.
+    service.reverseDrive(0);
+    expect(service.travelOf(0)!).toBeCloseTo(travelWas!, 6);
+    expect(service.travellingForward(0)).toBe(forwardWas);
+  });
+
+  it('declines when there is no solved cycle to turn round', () => {
     const harness = createMechanismHarness();
-    expect(harness.service.mechanisms[0]?.reversedCycle()).toBeUndefined();
+    expect(harness.service.mechanisms[0]?.withReversedDrive()).toBeUndefined();
   });
 });

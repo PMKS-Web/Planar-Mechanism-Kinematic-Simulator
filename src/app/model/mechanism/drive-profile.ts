@@ -144,10 +144,18 @@ function turnOf(mechanism: Mechanism): number[] | undefined {
   }
   // Negated, because the app stores a clockwise drive as a negative speed and
   // the reader expects a clockwise input to run the handle left to right.
+  //
+  // Against the frames, not against the drive. This walks the samples adding up
+  // how far the crank has turned between them, so it has to follow the order
+  // the samples are in. Turning the drive round leaves those samples alone --
+  // the crank is at the same angle at each of them -- and reading the drive's
+  // new sign here instead mirrored the whole track, so the handle jumped to the
+  // far end of a machine that had not moved.
+  const sense = mechanism.framesRunBackwards ? -1 : 1;
   let angle = 0;
   return times.map((time, i) => {
     if (i > 0) {
-      angle -= speeds[i - 1] * (time - times[i - 1]);
+      angle -= sense * speeds[i - 1] * (time - times[i - 1]);
     }
     return angle;
   });

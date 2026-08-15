@@ -10,9 +10,12 @@ import { outlineSweepFlag, withoutCollinearVertices } from '../../app/model/outl
 
 const WIDTH = 0.25;
 
+// These fixtures name single-letter joints, so a string spells the ring
+// readably; the outline itself is a list of ids, which is what lets a joint be
+// called something longer than one character.
 function sweepOf(order: string, joints: { id: string; x: number; y: number }[]): string {
   const indexOf = new Map(joints.map((joint, index) => [joint.id, index]));
-  return outlineSweepFlag(order, joints, indexOf, WIDTH);
+  return outlineSweepFlag([...order], joints, indexOf, WIDTH);
 }
 
 /** Twice the signed area: positive when the ring is traced counter-clockwise. */
@@ -26,11 +29,11 @@ function winding(ring: { x: number; y: number }[]): number {
 describe('which joints are corners of the outline', () => {
   const keep = (order: string, joints: { id: string; x: number; y: number }[]) =>
     withoutCollinearVertices(
-      order,
+      [...order],
       joints,
       new Map(joints.map((joint, index) => [joint.id, index])),
       WIDTH
-    );
+    ).join('');
 
   it('drops a joint sitting on the line between its neighbours', () => {
     // Drag any joint of a three-joint link onto the line of the other two and

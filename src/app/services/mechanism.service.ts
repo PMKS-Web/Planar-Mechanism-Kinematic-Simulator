@@ -786,6 +786,28 @@ export class MechanismService {
     return 'A';
   }
 
+  /**
+   * Names for the joints inside a part, which nothing ever shows.
+   *
+   * Hung off the letter of the part's own mount and numbered -- A1, A2, A3 --
+   * so they read as belonging to it, and so `determineNextLetter` walks past
+   * them: it ranks ids by their place in the alphabet, and one of these has no
+   * place in it, which is exactly the point. They still have to be unique,
+   * because two rams can share a mount and would otherwise ask for the same
+   * three names.
+   */
+  private determineInteriorNames(base: string, count: number): string[] {
+    const taken = new Set(this.joints.map((joint) => joint.id));
+    const names: string[] = [];
+    for (let index = 1; names.length < count; index++) {
+      const candidate = `${base}${index}`;
+      if (taken.has(candidate)) continue;
+      taken.add(candidate);
+      names.push(candidate);
+    }
+    return names;
+  }
+
   createRevJoint(x: string, y: string, prevID?: string) {
     const x_num = roundNumber(Number(x), 3);
     const y_num = roundNumber(Number(y), 3);
@@ -2264,12 +2286,17 @@ export class MechanismService {
     }
     const creation = cylinderCreationLayout(start, end, this.settingsService.objectScale);
 
-    const taken = mountAt ? [mountAt.id] : [];
+    // A ram is five joints and shows two of them. The mounts are what the
+    // reader points at, names and reads back out of a panel, so they take
+    // letters; the barrel's near end, the pin and the slider are inside the
+    // part and are never drawn, labelled or listed. Spending a letter on each
+    // of those ran a drawing through the alphabet three times faster than the
+    // joints anyone could see, and it was the hidden ones that pushed the
+    // visible ones into punctuation.
     const aId = mountAt ? mountAt.id : this.determineNextLetter();
-    const bId = this.determineNextLetter(taken.concat(aId));
-    const cId = this.determineNextLetter([bId]);
-    const dId = this.determineNextLetter([cId]);
-    const pId = this.determineNextLetter([dId]);
+    const dId = this.determineNextLetter([aId]);
+    const insideNames = this.determineInteriorNames(aId, 3);
+    const [bId, cId, pId] = insideNames;
 
     const place = (at: { x: number; y: number }): [number, number] => [
       roundNumber(at.x, 3),
@@ -3289,14 +3316,19 @@ export class MechanismService {
   }
 
   /**
-   * Turn one machine's drive round without moving it.
+   * Turn one machine's drive round without moving it, and without moving the
+   * cycle under the reader.
    *
-   * A mirrored cycle passes through the same poses in the opposite order, so
-   * the pose that was at time t sits at `period - t` in the new one. Seeking
-   * there leaves the linkage exactly where it stood and the handle exactly
-   * where it sat -- only the clock jumps, which is the one of the three that
-   * can. Reversing while it runs is meant to look like a machine changing its
-   * mind, not like the drawing being replaced.
+   * Nothing about the loop of poses changes: the machine walks the same loop
+   * the other way. So the frames stay exactly where they are, the pose on
+   * screen stays exactly where it is, the clock is not touched -- and the only
+   * things that change are the sign of the drive, the way the playhead
+   * travels, and the sign of every rate derived from it.
+   *
+   * That is the whole reason this does not re-solve or mirror. Either of those
+   * puts every pose at a different time, so the curve a reader was following
+   * slides end for end and the peak they were reading jumps across the chart,
+   * for a machine that has not moved at all.
    */
   reverseDrive(index: number): boolean {
     const driven = this.partitions[index]?.joints.find(
@@ -3304,8 +3336,6 @@ export class MechanismService {
     );
     if (!driven) return false;
 
-    const period = this.mechanisms[index]?.cyclePeriod ?? 0;
-    const was = this.secondsOf(index);
     // Write every machine's current speed onto its own drive first. Setting one
     // machine's speed also moves the document-wide default, and a machine that
     // has never been given a speed of its own reads that default -- so
@@ -3313,38 +3343,23 @@ export class MechanismService {
     // turned round before.
     this.pinDriveSpeeds();
     this.setDriveSpeed(driven, -this.driveSpeedOf(driven));
-    // The input itself has turned round, so time runs forward through the new
-    // cycle again.
-    this.playbackDirection[index] = 1;
-    // The answer is already in hand, backwards: a fully rotating input walks
-    // one closed loop of poses, and turning it round walks the same loop the
-    // other way (Mechanism.reversedCycle). Solving it again from the drive up
-    // is what a reversal used to cost, and on a 45-joint drawing that is three
-    // seconds of frozen window for a result the app is already holding.
-    //
-    // Not saved either way. Reversing is done from the transport, which is a
-    // way of watching the drawing rather than of changing it, and nothing else
-    // a reader does in an analysis mode lands in the undo history. The drive
+
+    // Not saved. Reversing is done from the transport, which is a way of
+    // watching the drawing rather than of changing it, and nothing else a
+    // reader does in an analysis mode lands in the undo history. The drive
     // still carries its new sign, so the next real edit writes it out.
-    const mirrored = this.mechanisms[index]?.reversedCycle();
-    if (mirrored) {
-      this.mechanisms[index] = mirrored;
+    const reversed = this.mechanisms[index]?.withReversedDrive();
+    if (reversed) {
+      this.mechanisms[index] = reversed;
+      // Through the cycle the other way, from where it stands.
+      this.playbackDirection[index] = this.directionOf(index) < 0 ? 1 : -1;
     } else {
       this.updateMechanism(false);
     }
 
-    if (period > 0) {
-      // The pose that was at time t sits at period - t in the mirrored cycle.
-      // This machine goes there and the others stay where they are: they are on
-      // a shared wall clock, not a shared position, and this one turning round
-      // is no reason for them to move.
-      this.seekMechanism(index, this.wrapTime(period - was));
-    }
-    // The cycle has been solved again, the other way round, so every open graph
-    // is drawing the solution to the old one -- the same curves with the sign
-    // of every velocity and acceleration now wrong. Geometry is locked in the
-    // analysis modes, which makes this the one thing a reader can do there that
-    // re-solves the mechanism, and so the one place that has to say so.
+    // Every rate on screen has just turned round, and a graph only redraws when
+    // it is told. Geometry is locked in the analysis modes, so this is the one
+    // thing a reader can do there that changes what the graphs say.
     this.onMechUpdateState.next(2);
     return true;
   }
@@ -3400,7 +3415,11 @@ export class MechanismService {
     const profile = this.driveProfileOf(index);
     const mechanism = this.mechanisms[index];
     const forwardDrive = (mechanism?.inputAngularVelocities[0] ?? 0) < 0;
-    const rewinding = this.directionOf(index) < 0;
+    // Which way playback runs *through the frames*, which is not the same as
+    // which way it runs through the cycle once the drive has been turned round:
+    // reversing walks the frames backwards precisely so the machine goes
+    // forwards along its new direction, and counting both flips cancelled them.
+    const rewinding = this.directionOf(index) < 0 !== (mechanism?.framesRunBackwards ?? false);
     if (!profile || !mechanism || profile.continuous) {
       return forwardDrive !== rewinding;
     }

@@ -38,11 +38,11 @@ interface PointLike {
  * see is removed on the same grounds as one that is exactly flat.
  */
 export function withoutCollinearVertices(
-  order: string,
+  order: readonly string[],
   joints: PointLike[],
   indexOf: Map<string, number>,
   width: number
-): string {
+): string[] {
   let kept = [...order];
   const flatness = width * 1e-3;
   for (let pass = 0; pass < kept.length && kept.length > 2; pass++) {
@@ -67,16 +67,16 @@ export function withoutCollinearVertices(
     if (index < 0) break;
     kept.splice(index, 1);
   }
-  return kept.join('');
+  return kept;
 }
 
 export function outlineSweepFlag(
-  order: string,
+  order: readonly string[],
   joints: PointLike[],
   indexOf: Map<string, number>,
   width: number
 ): '0' | '1' {
-  const outline = [...order].map((id) => joints[indexOf.get(id)!]).filter(Boolean);
+  const outline = order.map((id) => joints[indexOf.get(id)!]).filter(Boolean);
   if (outline.length < 2) return '1';
   const area = outline.length > 2 ? signedArea(outline) : 0;
   // A hull with no area has no winding to read, and joints do fall exactly on

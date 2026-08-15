@@ -374,15 +374,21 @@ export class RealLink extends Link {
     }
     const hullPoints = hull(points, Infinity) as number[][]; //Hull points find the convex hull (largest fence)
 
-    //Match resuling x,y points to joints
-    let desiredJointsIDs: string = '';
+    // Match resulting x,y points to joints.
+    //
+    // A list rather than one packed string. The ids used to be concatenated and
+    // then read back a character at a time, which quietly required every joint
+    // id to be exactly one character -- so the two-letter names a drawing gets
+    // past its fifty-second joint, and the numbered names inside a cylinder,
+    // both came apart here into characters that name no joint at all.
+    let desiredJointsIDs: string[] = [];
     hullPoints.forEach((point: number[]) => {
       const joint = allJoints.find((j) => j.x === point[0] && j.y === point[1]);
-      if (joint) desiredJointsIDs += joint.id;
+      if (joint) desiredJointsIDs.push(joint.id);
     });
 
     //Cut off the last once since it is the same as the first
-    desiredJointsIDs = desiredJointsIDs.substring(0, desiredJointsIDs.length - 1);
+    desiredJointsIDs = desiredJointsIDs.slice(0, -1);
 
     //This is just for debugging display
     // l.debugDesiredJointsIDs = desiredJointsIDs;
