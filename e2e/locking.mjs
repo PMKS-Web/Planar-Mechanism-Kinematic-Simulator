@@ -91,6 +91,24 @@ record(
   )
 );
 
+// --- A plain click is a selection, not an offence ---------------------------
+
+const bClick = await jointOnScreen('B');
+await page.mouse.click(bClick.x, bClick.y);
+await page.waitForTimeout(400);
+record(
+  'a plain click on a held joint selects it without a scolding',
+  await page.evaluate(() => {
+    const c = ng.getComponent(document.querySelector('app-new-grid'));
+    // The zoom warning may legitimately stand; what must NOT appear is a
+    // lock refusal for a gesture that never tried to move anything.
+    return (
+      c.notify.live.every((one) => !one.id.startsWith('lock.')) &&
+      c.activeObjService.getSelectedObj()?.id === 'B'
+    );
+  })
+);
+
 // --- A drag on a held joint refuses, and the message carries the way out ---
 
 const bBefore = await jointModel('B');

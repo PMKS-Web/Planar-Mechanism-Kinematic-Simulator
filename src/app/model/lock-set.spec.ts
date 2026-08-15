@@ -126,6 +126,19 @@ describe('what a Lock mark holds still', () => {
     expect(frozenJointIds(withSlot.joints, withSlot.links)).toEqual(new Set(['A']));
   });
 
+  it('keeps holding through a weld: the mark rides the leaf inside the compound', () => {
+    // Welding restructures the links array — the marked link becomes a subset
+    // leaf of a new compound root. A lock that stopped holding the moment its
+    // owner was hidden would be a lock that lies.
+    const { joints, b, c, d, bc, cd } = fourBar();
+    bc.locked = true;
+    const compound = new RealLink('BCD', [b, c, d], 1, 1, undefined, [bc, cd]);
+    const links = [compound];
+
+    expect(frozenJointIds(joints, links)).toEqual(new Set(['B', 'C']));
+    expect(locksHolding('B', joints, links)).toEqual([bc]);
+  });
+
   it('names the mark that holds a joint, so Unlock can clear exactly it', () => {
     const { joints, links, bc, b } = fourBar();
     bc.locked = true;

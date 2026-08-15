@@ -1,5 +1,5 @@
 import { Joint, PrisJoint, RealJoint } from './joint';
-import { Link, SliderBlock } from './link';
+import { Link, RealLink, SliderBlock } from './link';
 import { Force } from './force';
 import { cylinderJoints, sealedCylinderStructures } from './cylinder';
 
@@ -32,11 +32,21 @@ interface Implication {
   freeze: string[];
 }
 
+/**
+ * Every body, welded or free: the roots and the leaves inside each compound.
+ * A locked link that is later welded keeps its mark on the leaf, and a mark
+ * that stopped holding the moment a weld hid its owner would be a lock that
+ * lies — so every asker walks the subsets too.
+ */
+function allBodies(links: Link[]): Link[] {
+  return links.flatMap((link) => [link, ...(link instanceof RealLink ? link.subset : [])]);
+}
+
 /** Everything with a lock mark set, in canvas paint order: joints, links, forces. */
 export function lockedObjects(joints: Joint[], links: Link[], forces: Force[]): Lockable[] {
   return [
     ...joints.filter((joint): joint is RealJoint => joint instanceof RealJoint && joint.locked),
-    ...links.filter((link) => link.locked),
+    ...allBodies(links).filter((link) => link.locked),
     ...forces.filter((force) => force.locked),
   ];
 }
@@ -47,7 +57,7 @@ export function frozenJointIds(joints: Joint[], links: Link[]): Set<string> {
   joints.forEach((joint) => {
     if (joint instanceof RealJoint && joint.locked) frozen.add(joint.id);
   });
-  links.forEach((link) => {
+  allBodies(links).forEach((link) => {
     if (link.locked) link.joints.forEach((joint) => frozen.add(joint.id));
   });
   return closeOverConsequences(frozen, joints, links);
@@ -61,7 +71,7 @@ export function frozenJointIds(joints: Joint[], links: Link[]): Set<string> {
 function closeOverConsequences(frozen: Set<string>, joints: Joint[], links: Link[]): Set<string> {
   const rules: Implication[] = [];
 
-  links.forEach((link) => {
+  allBodies(links).forEach((link) => {
     if (!(link instanceof SliderBlock)) return;
     const pair = link.joints.map((joint) => joint.id);
     rules.push({ ifAnyOf: pair, freeze: pair });

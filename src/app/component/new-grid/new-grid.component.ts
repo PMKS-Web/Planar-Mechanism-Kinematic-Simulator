@@ -1091,6 +1091,18 @@ export class NewGridComponent implements OnDestroy {
     let deltaMouseX = this.mouseLocation.x - this.lastMouseLocation.x;
     let deltaMouseY = this.mouseLocation.y - this.lastMouseLocation.y;
 
+    // The press earned a refusal, and the pointer has now actually tried to
+    // move the object: say it, once per gesture.
+    if (
+      this.heldGestureNotice &&
+      this.dragState.isPointerDown &&
+      this.canEditNow() &&
+      this.pastDragThreshold($event)
+    ) {
+      this.heldGestureNotice();
+      this.heldGestureNotice = undefined;
+    }
+
     if (this.dragState.isPointerDown && this.lastLeftClickType === 'SynthesisPose') {
       if (this.synthesisClickMode === SynthesisClickMode.ROTATE) {
         let pose = this.lastLeftClick as SynthesisPose;
@@ -1338,6 +1350,14 @@ export class NewGridComponent implements OnDestroy {
    */
   private linkRotationPivot?: Coord;
   private linkRotationGrabAngle = 0;
+
+  /**
+   * The refusal a press on a held object has earned but not yet been given.
+   * Spoken only when the pointer actually tries to move — a plain click is a
+   * selection, and selecting a locked object is the way to its own Unlock
+   * button, not an offence. Cleared on release.
+   */
+  private heldGestureNotice?: () => void;
 
   /**
    * The joints a drag of this link would carry, filtered to the ones the
@@ -1816,6 +1836,10 @@ export class NewGridComponent implements OnDestroy {
     this.axisSnapGuides = [];
     // As does the floor message: the next gesture gets to say it again.
     this.cylinderFloorReported = false;
+    // A press on a held object that never tried to move it is a click — a
+    // selection, most likely on the way to the panel's own Unlock — and a
+    // click deserves no scolding.
+    this.heldGestureNotice = undefined;
 
     // Resolve the drop before releasing: the snap target is only meaningful
     // while the drag it belongs to is still in flight.
@@ -2147,13 +2171,18 @@ export class NewGridComponent implements OnDestroy {
                 break;
             }
             switch (this.dragState.joint) {
-              case jointStates.waiting:
+              case jointStates.waiting: {
                 // Decided at the grab, not per pointer move: a locked joint
                 // never enters the dragging state, so nothing downstream has
                 // to remember to hold it still.
-                if (this.refuseLockedJoint(this.activeObjService.selectedJoint)) break;
+                const grabbed = this.activeObjService.selectedJoint;
+                if (this.gridUtils.isJointFrozen(grabbed)) {
+                  this.heldGestureNotice = () => this.refuseLockedJoint(grabbed);
+                  break;
+                }
                 this.dragState.beginDraggingJoint();
                 break;
+              }
             }
             break;
           case 'Link':
@@ -2173,7 +2202,8 @@ export class NewGridComponent implements OnDestroy {
               // bolted down — and two or more leave the body nowhere to go.
               const held = this.frozenCarriedJoints(this.activeObjService.selectedLink);
               if (held.length >= 2) {
-                this.refuseHeldLink(this.activeObjService.selectedLink, held);
+                const grabbedLink = this.activeObjService.selectedLink;
+                this.heldGestureNotice = () => this.refuseHeldLink(grabbedLink, held);
                 break;
               }
               if (held.length === 1) {
@@ -2193,7 +2223,8 @@ export class NewGridComponent implements OnDestroy {
             switch (this.dragState.force) {
               case forceStates.waiting:
                 if (this.activeObjService.selectedForce.locked) {
-                  this.refuseLockedForce(this.activeObjService.selectedForce);
+                  const grabbedForce = this.activeObjService.selectedForce;
+                  this.heldGestureNotice = () => this.refuseLockedForce(grabbedForce);
                   break;
                 }
                 if (this.activeObjService.selectedForce.isStartSelected) {
