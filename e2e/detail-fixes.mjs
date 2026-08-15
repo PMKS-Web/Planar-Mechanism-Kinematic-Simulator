@@ -461,12 +461,17 @@ const buttons = () =>
         ink: getComputedStyle(icon).color,
         // A glyph that names its own colour ignores the button's, which is how
         // the traced-paths switch stayed black in a row that had greyed out.
-        selfPainted: [...(icon?.querySelectorAll('svg *') ?? [])].some((node) =>
-          ['fill', 'stroke'].some((attribute) => {
-            const value = node.getAttribute(attribute);
-            return value !== null && value !== 'none' && value !== 'currentColor';
-          })
-        ),
+        // Painted geometry only. A <clipPath> child is used for its shape and
+        // never drawn, and the export tool leaves a fill="white" on it that
+        // means nothing -- counting those would fail an icon that is fine.
+        selfPainted: [...(icon?.querySelectorAll('svg *') ?? [])]
+          .filter((node) => !node.closest('defs, clipPath, mask'))
+          .some((node) =>
+            ['fill', 'stroke'].some((attribute) => {
+              const value = node.getAttribute(attribute);
+              return value !== null && value !== 'none' && value !== 'currentColor';
+            })
+          ),
       };
     })
   );
