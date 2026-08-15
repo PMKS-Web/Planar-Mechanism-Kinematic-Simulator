@@ -245,6 +245,14 @@ export class GridUtilsService {
   }
 
   dragJoint(selectedJoint: RealJoint, trueCoord: Coord) {
+    // The last line of defence, not the first: the canvas refuses at the
+    // grab and the panel greys its fields, but every route to "move this
+    // joint" — distance fields aimed at a neighbour, the linkage table, a
+    // caller not yet written — lands here, and a held joint holds whoever
+    // asks.
+    if (this.frozenJointIds().has(selectedJoint.id)) {
+      return selectedJoint;
+    }
     // TODO: have the round Number be integrated within function for determining trueCoord
 
     // A cylinder mount never free-moves, whoever asks — canvas drag, the

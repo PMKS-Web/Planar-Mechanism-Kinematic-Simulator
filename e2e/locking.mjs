@@ -231,6 +231,26 @@ record(
   { pinned, pinnedAfter }
 );
 
+// --- No back door: dragJoint itself holds a held joint ---------------------
+// The canvas gate and the panel's greyed fields are UI; every route to "move
+// this joint" — a neighbour's distance field, the linkage table — lands on
+// dragJoint, so dragJoint is where the lock has to hold whoever asks.
+
+const cHeld = await jointModel('C');
+await page.evaluate(() => {
+  const c = ng.getComponent(document.querySelector('app-new-grid'));
+  c.gridUtils.dragJoint(
+    c.mechanismSrv.joints.find((j) => j.id === 'C'),
+    { x: 999, y: 999 }
+  );
+});
+const cStill = await jointModel('C');
+record(
+  'dragJoint itself refuses a held joint, whoever calls it',
+  cHeld.x === cStill.x && cHeld.y === cStill.y,
+  { cHeld, cStill }
+);
+
 // --- The marks are an Edit affordance: Analysis paints clean ---------------
 
 await page.evaluate(() => {

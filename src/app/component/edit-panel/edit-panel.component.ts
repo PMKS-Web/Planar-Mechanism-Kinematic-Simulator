@@ -412,10 +412,23 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       if (!on && control.enabled) control.disable({ emitEvent: false });
     };
     if (this.activeSrv.objType === 'Joint' && this.activeSrv.selectedJoint) {
-      const held = this.gridUtils.isJointFrozen(this.activeSrv.selectedJoint);
+      const frozenIds = this.gridUtils.frozenJointIds();
+      const held = frozenIds.has(this.activeSrv.selectedJoint.id);
       setEnabled(this.jointForm.get('xPos'), !held);
       setEnabled(this.jointForm.get('yPos'), !held);
-      setEnabled(this.jointForm.get('otherJoints'), !held);
+      // The guide's direction is part of what a lock on a slider holds; only
+      // the held case is written, because the grounded-guide rule above owns
+      // the enabled side.
+      if (held) setEnabled(this.jointForm.get('prisAngle'), false);
+      // Per row, by the joint the row would MOVE. A distance field
+      // repositions the *other* joint, so a held selected joint may still
+      // edit its distances — and a free selected joint must not be a back
+      // door for moving a held neighbour.
+      this.listOfOtherJoints.forEach((other, i) => {
+        const otherHeld = frozenIds.has(other.id);
+        setEnabled(this.otherJoints.controls[i * 2] ?? null, !otherHeld);
+        setEnabled(this.otherJoints.controls[i * 2 + 1] ?? null, !otherHeld);
+      });
     } else if (this.activeSrv.objType === 'Link' && this.activeSrv.selectedLink) {
       const frozenIds = this.gridUtils.frozenJointIds();
       const sealed = this.mechanismService.cylinderAt(this.activeSrv.selectedLink);
