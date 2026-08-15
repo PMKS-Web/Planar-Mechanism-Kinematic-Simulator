@@ -138,26 +138,10 @@
     cursor: pointer;
   }
 
-  // Held in place while editing. Dark dashes rather than a solid black edge:
-  // the dashes are an overlay, so the stroke underneath keeps saying what it
-  // always says — the link's own colour, amber when selected — and a locked
-  // selected body reads as both at once, the dark and the amber alternating.
-  // Dashed geometry is also the CAD convention for reference lines, which is
-  // the audience these marks borrow from.
-  .lock-dashes {
-    stroke: #263238;
-  }
-
-  .joint-locked {
-    stroke: #263238;
-  }
-
-  .force-locked {
-    .forceAnchor {
-      stroke: #263238;
-      fill: #263238;
-    }
-  }
+  // Held in place while editing: the cue is the small padlock badge riding
+  // each held joint (and a locked force's anchor) — drawn in the template, so
+  // nothing here restyles strokes and no state can cover another. The classes
+  // below stay as truthful state markers for tests and tooling.
 
   #mouseLocation {
     position: absolute;

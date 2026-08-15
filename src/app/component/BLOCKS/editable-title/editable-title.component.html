@@ -46,9 +46,17 @@
         {{ isLocked() ? 'Unlock' : 'Lock' }}
       </button>
     }
-    <button class="mini-buttons red" mat-stroked-button color="warn" (click)="deleteAction()()">
+    <!-- Icon only: three labels no longer fit the row, and a red trash can
+         beside Rename and Lock says everything the word did. -->
+    <button
+      class="mini-buttons red iconOnly"
+      mat-stroked-button
+      color="warn"
+      aria-label="Delete"
+      matTooltip="Delete"
+      (click)="deleteAction()()"
+    >
       <mat-icon svgIcon="remove"></mat-icon>
-      Delete
     </button>
   </div>
 </div>

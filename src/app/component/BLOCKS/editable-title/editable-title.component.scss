@@ -60,6 +60,32 @@
     @include blocks.mini-buttons($theme);
     .mini-buttons {
       flex-grow: 1;
+      // Three actions share the row now, so nothing may overflow its border:
+      // buttons clip at their own edge, icons take a fixed 18px, and the
+      // labels are the short ones (Rename, Lock).
+      min-width: 0;
+      padding: 0 8px;
+      overflow: hidden;
+
+      .mat-icon {
+        flex-shrink: 0;
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+        margin-right: 4px;
+      }
+    }
+
+    // The trash can carries Delete alone, so it stays a compact square
+    // instead of stretching with the labelled two.
+    .mini-buttons.iconOnly {
+      flex-grow: 0;
+      min-width: 42px;
+      padding: 0;
+
+      .mat-icon {
+        margin-right: 0;
+      }
     }
   }
 }

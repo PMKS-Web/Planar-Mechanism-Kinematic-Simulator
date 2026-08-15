@@ -77,13 +77,11 @@ await page.evaluate(() => {
 await page.waitForTimeout(200);
 
 record(
-  'locked link paints black on the canvas',
-  await page.evaluate(() =>
-    document.querySelector('#linkHolder path#BC').classList.contains('link-locked')
-  )
+  'a locked link puts a padlock badge on each of its joints',
+  await page.evaluate(() => document.querySelectorAll('#jointHolder .lockBadge').length === 2)
 );
 record(
-  'its joints paint as held too',
+  'the held joints carry the state class for tooling',
   await page.evaluate(
     () =>
       document.querySelector('#joint_B').classList.contains('joint-locked') &&
@@ -272,8 +270,10 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(300);
 record(
-  'lock styling stands down outside Edit',
-  await page.evaluate(() => document.querySelectorAll('.joint-locked, .link-locked').length === 0)
+  'lock badges stand down outside Edit',
+  await page.evaluate(
+    () => document.querySelectorAll('.lockBadge, .joint-locked, .link-locked').length === 0
+  )
 );
 
 record('no page errors the whole way through', errors.length === 0, errors);

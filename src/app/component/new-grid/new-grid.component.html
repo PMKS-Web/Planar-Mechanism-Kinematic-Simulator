@@ -408,20 +408,7 @@
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
             [class]="mechanismSrv.getLinkCSSClass(link)"
           ></path>
-          <!-- The lock cue is an overlay of dark dashes, not a colour: the
-               stroke underneath keeps saying what it always says (the link's
-               own colour, amber when selected), and the dashes alternate with
-               it — so locked+selected reads as both, in one glance. -->
-          @if (mechanismSrv.isLinkLockedVisual(link)) {
-            <path
-              class="lock-dashes"
-              pointer-events="none"
-              [attr.d]="linkPathWithChannels(link)"
-              fill="none"
-              [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-              [attr.stroke-dasharray]="svgGrid.scaleWithZoom(10) + ' ' + svgGrid.scaleWithZoom(7)"
-            ></path>
-          }
+
         }
         @if (
           gridUtils.typeOfLink(link) == 'R' &&
@@ -660,19 +647,7 @@
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
         }
-        <!-- Locked: the same whole-part silhouette the selection wears, as
-             dark dashes — the part is one body, so it is outlined as one, and
-             the dashes alternate with the selection stroke when both stand. -->
-        @if (mechanismSrv.isLinkLockedVisual(cyl.body)) {
-          <path
-            class="lock-dashes"
-            pointer-events="none"
-            [attr.d]="cylinderSilhouette(cyl)"
-            fill="none"
-            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-            [attr.stroke-dasharray]="svgGrid.scaleWithZoom(10) + ' ' + svgGrid.scaleWithZoom(7)"
-          />
-        }
+
       </g>
     }
     <!-- The ghost of the two-point creation gesture: the same paths the
@@ -776,12 +751,6 @@
                 [attr.r]="settings.objectScale * gridUtils.getJointR(joint)"
                 [attr.cx]="0"
                 [attr.cy]="0"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-                [attr.stroke-dasharray]="
-                  mechanismSrv.isJointLockedVisual(joint)
-                    ? svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)
-                    : null
-                "
                 [class]="mechanismSrv.getJointCSSClass(joint)"
               />
             }
@@ -792,14 +761,24 @@
               <path
                 [attr.id]="'joint_' + joint.id"
                 [class]="mechanismSrv.getJointCSSClass(joint)"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-                [attr.stroke-dasharray]="
-                  mechanismSrv.isJointLockedVisual(joint)
-                    ? svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)
-                    : null
-                "
                 [attr.d]="weldMarkerPath"
               ></path>
+            }
+            <!-- The lock cue: a small padlock riding the joint's shoulder.
+                 The joint is what a lock actually holds, so the joint is
+                 where the mark sits — nothing else on the canvas changes. -->
+            @if (mechanismSrv.isJointLockedVisual(joint)) {
+              <g class="lockBadge" pointer-events="none" [attr.transform]="lockBadgeTransform()">
+                <circle
+                  [attr.r]="0.11 * settings.objectScale"
+                  fill="#ffffff"
+                  stroke="#26323855"
+                  [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+                />
+                <g [attr.transform]="lockGlyphTransform()">
+                  <path [attr.d]="lockGlyphPath" fill="#263238" fill-rule="evenodd" />
+                </g>
+              </g>
             }
           </g>
         </svg>
@@ -1090,6 +1069,21 @@
               class="forceAnchor"
               style="transform: rotateZ({{ force.angleRad }}rad)"
             ></path>
+          }
+          <!-- Same badge the joints wear, at the anchor: a force has no joint
+               to carry it, so the mark rides where the load is applied. -->
+          @if (force.locked && mechanismSrv.lockVisualsOn()) {
+            <g class="lockBadge" pointer-events="none" [attr.transform]="lockBadgeTransform()">
+              <circle
+                [attr.r]="0.11 * settings.objectScale"
+                fill="#ffffff"
+                stroke="#26323855"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+              />
+              <g [attr.transform]="lockGlyphTransform()">
+                <path [attr.d]="lockGlyphPath" fill="#263238" fill-rule="evenodd" />
+              </g>
+            </g>
           }
         </svg>
         <!-- Transpent thicker force to increase hitbox for the group for highliting-->

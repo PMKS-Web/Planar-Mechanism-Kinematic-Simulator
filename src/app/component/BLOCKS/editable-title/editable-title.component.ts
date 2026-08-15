@@ -12,6 +12,7 @@ import { MatInput } from '@angular/material/input';
 import { FocusOnShowDirective } from '../../../focus-on-show.directive';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
 
 @Component({
   selector: 'editable-title-block',
@@ -27,6 +28,7 @@ import { MatIcon } from '@angular/material/icon';
     FocusOnShowDirective,
     MatButton,
     MatIcon,
+    MatTooltip,
   ],
 })
 export class EditableTitleComponent {

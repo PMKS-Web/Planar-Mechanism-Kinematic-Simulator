@@ -1339,6 +1339,26 @@ export class NewGridComponent implements OnDestroy {
    */
   private heldGestureNotice?: () => void;
 
+  /** The padlock the canvas badges wear — lock.svg's own outline, inlined. */
+  readonly lockGlyphPath =
+    'M7 10V7a5 5 0 0 1 10 0v3h2.5v11h-15V10H7Zm2 0h6V7a3 3 0 0 0-6 0v3ZM6.5 12v7h11v-7h-11Z';
+
+  /**
+   * Up-and-right of the joint, unflipped: the joint layer draws in the
+   * y-up model frame (scaleY(-1) on the holder), so the badge flips itself
+   * back to keep the padlock upright.
+   */
+  lockBadgeTransform(): string {
+    const offset = 0.17 * this.settings.objectScale;
+    return `translate(${offset}, ${offset}) scale(1,-1)`;
+  }
+
+  /** Centre the 24-unit glyph inside the badge chip, sized to the drawing. */
+  lockGlyphTransform(): string {
+    const scale = (0.15 * this.settings.objectScale) / 24;
+    return `scale(${scale}) translate(-12, -13.5)`;
+  }
+
   /**
    * The joints a drag of this link would carry, filtered to the ones the
    * current Lock marks hold still. Carried means moved *as a body*: the
