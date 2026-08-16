@@ -1,3 +1,4 @@
+import { MatIcon } from '@angular/material/icon';
 import {
   AfterViewInit,
   Component,
@@ -155,7 +156,7 @@ export function defaultSeriesSelection(count: number, analysis: string): SeriesS
     ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [AnalysisApexChartComponent],
+  imports: [AnalysisApexChartComponent, MatIcon],
 })
 export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
   private fb = inject(FormBuilder);

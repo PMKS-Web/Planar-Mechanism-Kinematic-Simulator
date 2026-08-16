@@ -33,8 +33,8 @@ import { MechanismService } from '../../services/mechanism.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { Link, RealLink } from '../../model/link';
 import { NewGridComponent } from '../new-grid/new-grid.component';
-import { NOT_A } from '../../ui-text';
 import { MODEL_SCALE } from '../../model/render-scale';
+import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
 import { uniformBodyOf } from '../../model/uniform-body';
 import {
   cylinderSpanLayoutFrom,
@@ -80,6 +80,7 @@ const INPUT_SPEED_UNITS = [
     PanelSectionCollapsibleComponent,
     TitleBlock,
     MatIcon,
+    SubtitleComponent,
     MechanismPanelComponent,
     PanelSectionComponent,
     EditableTitleComponent,
@@ -657,7 +658,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     const body = part(sealed);
     const [success, value] = this.nup.parseMassString(raw ?? '', units);
     if (!success || value < 0) {
-      NewGridComponent.sendNotification(NOT_A.mass);
+      this.notify.refusal('value.mass', NOT_A.mass);
       this.cylinderForm.patchValue({ [control]: body.mass.toFixed(2) }, { emitEvent: false });
       return;
     }
@@ -1274,7 +1275,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         const units = this.massUnit();
         const [success, value] = this.nup.parseMassString(val ?? '', units);
         if (!success || value < 0) {
-          NewGridComponent.sendNotification(NOT_A.mass);
+          this.notify.refusal('value.mass', NOT_A.mass);
           this.linkForm.patchValue(
             { mass: this.activeSrv.selectedLink.mass.toFixed(2) },
             { emitEvent: false }
@@ -1300,7 +1301,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         const display = this.nup.displayInertiaUnit(length);
         const [success, value] = this.nup.parseInertiaString(val ?? '', display);
         if (!success || value < 0 || !(this.activeSrv.selectedLink.mass > 0)) {
-          if (!success || value < 0) NewGridComponent.sendNotification(NOT_A.momentOfInertia);
+          if (!success || value < 0) this.notify.refusal('value.inertia', NOT_A.momentOfInertia);
           this.refreshDerivedMassFields();
           return;
         }

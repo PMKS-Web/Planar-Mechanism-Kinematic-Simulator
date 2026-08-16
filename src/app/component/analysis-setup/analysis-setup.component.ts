@@ -8,7 +8,7 @@ import { SettingsService } from '../../services/settings.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { MechanismReadiness, ReadinessCheck } from '../../model/mechanism/readiness';
 import { MatIcon } from '@angular/material/icon';
-import { NewGridComponent } from '../new-grid/new-grid.component';
+import { NotificationService } from '../../services/notification.service';
 import { NOT_A } from '../../ui-text';
 
 /** One editable row of the mass table: a body, and what to call it. */
@@ -44,6 +44,7 @@ export class AnalysisSetupComponent {
   private tabs = inject(SelectedTabService);
   nup = inject(NumberUnitParserService);
   settings = inject(SettingsService);
+  private notify = inject(NotificationService);
 
   /**
    * Which question this drawer is answering.
@@ -312,7 +313,7 @@ export class AnalysisSetupComponent {
       this.nup.massUnitFor(this.settings.lengthUnit.value)
     );
     if (!success || value < 0) {
-      NewGridComponent.sendNotification(NOT_A.mass);
+      this.notify.refusal('value.mass', NOT_A.mass);
       input.value = this.massText(row);
       return;
     }
@@ -331,7 +332,7 @@ export class AnalysisSetupComponent {
     const display = this.nup.displayInertiaUnit(length);
     const [success, value] = this.nup.parseInertiaString(input.value, display);
     if (!success || value < 0) {
-      NewGridComponent.sendNotification(NOT_A.momentOfInertia);
+      this.notify.refusal('value.inertia', NOT_A.momentOfInertia);
       input.value = this.moiText(row);
       return;
     }
