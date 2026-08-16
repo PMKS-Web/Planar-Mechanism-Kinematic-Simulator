@@ -1225,6 +1225,18 @@
                  white used to be, and everything is half opaque. The outline is
                  the same four wedges stroked rather than a circle drawn beside
                  them -- one set of coordinates, so it cannot land anywhere else. -->
+            <!-- The shape's own centre, kept visible while the CoM mark is
+                 placed elsewhere: the custom position is an offset from
+                 exactly this point. -->
+            @if (comCentroidDot(link); as centroid) {
+              <circle
+                [attr.cx]="centroid.x"
+                [attr.cy]="centroid.y"
+                [attr.r]="0.035 * settings.objectScale"
+                fill="black"
+                fill-opacity="0.55"
+              ></circle>
+            }
             <g
               [style.pointer-events]="comDraggable(link) ? 'auto' : 'none'"
               [style.cursor]="comDraggable(link) ? 'move' : null"
@@ -1467,8 +1479,10 @@
           [attr.stroke-dasharray]="0.08 * settings.objectScale"
         ></path>
       }
+      <!-- A vertical measure's label starts clear of its line; centring it
+           there would run the digits through the stroke. -->
       <text
-        text-anchor="middle"
+        [attr.text-anchor]="measure.axis === 'y' ? 'start' : 'middle'"
         style="transform: scaleY(-1)"
         [attr.x]="comMeasureLabelPos(measure).x"
         [attr.y]="-comMeasureLabelPos(measure).y"

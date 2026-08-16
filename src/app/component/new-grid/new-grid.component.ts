@@ -91,6 +91,7 @@ import {
 import { SnapGuide, snapToAxes } from '../../model/axis-snap';
 import { drawDepths } from '../../model/draw-order';
 import { MODEL_SCALE } from '../../model/render-scale';
+import { uniformBodyOf } from '../../model/uniform-body';
 import { buildCompoundPath } from '../../model/compound-link-path';
 
 import { angleReference, GROUND_BODY, resolveActuator } from '../../model/actuator';
@@ -2550,6 +2551,18 @@ export class NewGridComponent implements OnDestroy {
       !this.mechanismSrv.cylinderAt(link) &&
       this.canEditNow()
     );
+  }
+
+  /**
+   * Where the shape's own centre sits, for a link whose CoM was placed
+   * elsewhere: the custom mark is defined as an offset from this point, so
+   * the point deserves to be visible while the mark is off wandering.
+   */
+  comCentroidDot(link: Link): { x: number; y: number } | null {
+    if (!(link instanceof RealLink) || !link.comIsCustom) return null;
+    const centroid = uniformBodyOf(link.joints).centroid;
+    if (Math.hypot(centroid.x - link.CoM.x, centroid.y - link.CoM.y) < 1e-6) return null;
+    return centroid;
   }
 
   /** Live while a CoM mark rides the pointer; the ring stays lit through it. */
