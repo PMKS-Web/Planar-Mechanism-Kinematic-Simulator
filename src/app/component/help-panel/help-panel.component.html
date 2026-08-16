@@ -13,7 +13,7 @@
         Do you want to attach a file? Send us an email at gr-pmksplus&#64;wpi.edu
       </p>
       <form [formGroup]="commentForm">
-        <mat-form-field class="max-width">
+        <mat-form-field class="max-width" subscriptSizing="dynamic">
           <mat-label>Leave a message</mat-label>
           <textarea type="text" matInput formControlName="comment"></textarea>
           @if (commentForm.controls['comment'].hasError('required')) {
@@ -24,7 +24,7 @@
           I would like a response
         </mat-checkbox>
         @if (commentForm.value.response) {
-          <mat-form-field class="max-width">
+          <mat-form-field class="max-width" subscriptSizing="dynamic">
             <mat-label>Email</mat-label>
             <input
               type="email"

@@ -41,6 +41,15 @@
       gap: 10px;
     }
 
+    // A checkbox is drawn as an 18px box inside a 40px touch target, so three
+    // of them in a row sat 32px apart while everything else in the card is 10 --
+    // they read as three separate things rather than one set of options. Cut to
+    // 28, which is Material's own next density step down and still a comfortable
+    // target; the box stays 18px and stays centred in it.
+    mat-checkbox {
+      --mat-checkbox-state-layer-size: 28px;
+    }
+
     .max-width {
       width: 100%;
     }
