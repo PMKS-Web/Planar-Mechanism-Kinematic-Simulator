@@ -272,7 +272,9 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 0;
+  /* One extra bottom pixel: the row above contributes 8px of air, the row
+     below only 7, and the eye catches the difference. Measured, both 8. */
+  padding: 4px 0 5px;
 
   state-input {
     flex: none;

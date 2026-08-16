@@ -2561,7 +2561,10 @@ export class NewGridComponent implements OnDestroy {
     this.draggingCoMLink = link;
     const move = (e: PointerEvent) => {
       const pos = this.svgGrid.screenToSVGfromXY(e.clientX, e.clientY);
-      link.placeCustomCoM({ x: pos.x, y: pos.y });
+      const placed = e.altKey ? pos : this.snapComToJointLines(link, pos);
+      link.placeCustomCoM({ x: placed.x, y: placed.y });
+      // So the panel's X/Y read the drag as it happens, like a force's do.
+      this.activeObjService.fakeUpdateSelectedObj();
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
@@ -2575,6 +2578,35 @@ export class NewGridComponent implements OnDestroy {
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
+  }
+
+  /**
+   * A dragged centre snaps to the lines a reader would put it on: the
+   * centreline of a bar, each side of a triangle — every joint-pair segment
+   * of the link. Alt suspends it, like every other snap on the canvas.
+   */
+  private snapComToJointLines(link: RealLink, pos: Coord): { x: number; y: number } {
+    const joints = link.joints;
+    let best: { x: number; y: number } | undefined;
+    let bestDist = this.svgGrid.scaleWithZoom(12);
+    for (let i = 0; i < joints.length; i++) {
+      for (let j = i + 1; j < joints.length; j++) {
+        const a = joints[i];
+        const b = joints[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const lengthSq = dx * dx + dy * dy;
+        if (!(lengthSq > 0)) continue;
+        const t = Math.max(0, Math.min(1, ((pos.x - a.x) * dx + (pos.y - a.y) * dy) / lengthSq));
+        const proj = { x: a.x + t * dx, y: a.y + t * dy };
+        const dist = Math.hypot(pos.x - proj.x, pos.y - proj.y);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = proj;
+        }
+      }
+    }
+    return best ?? pos;
   }
 
   /** Which cylinder part's mass field is being pointed at in the panel. */
