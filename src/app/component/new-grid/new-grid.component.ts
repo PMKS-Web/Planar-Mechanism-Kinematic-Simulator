@@ -297,6 +297,11 @@ export class NewGridComponent implements OnDestroy {
     this.activeObjService.onActiveObjChange.subscribe((obj) => {
       this.showLinkAngleOverlay = -2;
       this.showLinkLengthOverlay = -2;
+      // The hover previews die with the selection they described: a panel
+      // swap can eat the mouseleave that would have cleared them.
+      this.comMeasure = undefined;
+      this.cylinderPartPreview = undefined;
+      this.settings.previewCoMLinkId = null;
       //Disable focus on any text input when changing active object
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
@@ -2521,14 +2526,38 @@ export class NewGridComponent implements OnDestroy {
     axis: 'x' | 'y';
     origin: { x: number; y: number };
     com: { x: number; y: number };
+    /* 'origin' measures along the frame origin's own line with a dashed run
+       up to the mark; 'axis' (the global-grid frame) measures at the CoM's
+       height straight to the grid's axis line, which needs no connector. */
+    mode: 'origin' | 'axis';
   };
 
   setComMeasureOverlay(measure: NewGridComponent['comMeasure']): void {
     this.comMeasure = measure;
   }
 
+  /** Which cylinder part's mass field is being pointed at in the panel. */
+  cylinderPartPreview?: 'barrel' | 'rod' | 'head';
+
+  setCylinderPartPreview(part: NewGridComponent['cylinderPartPreview']): void {
+    this.cylinderPartPreview = part;
+  }
+
+  /** The pointed-at part's own outline, in the hover accent — barrel and rod
+   *  by their skins, the piston head by the block that draws it. */
+  cylinderPartPreviewPath(cyl: CylinderMark): string | null {
+    if (!this.cylinderPartPreview || !this.isBodySelected(cyl)) return null;
+    if (this.cylinderPartPreview === 'barrel') return cyl.barrel;
+    if (this.cylinderPartPreview === 'rod') return cyl.rod;
+    return cyl.block;
+  }
+
   /** The measured stretch: the frame's zero to the CoM's coordinate on one axis. */
   comMeasureLine(m: NonNullable<NewGridComponent['comMeasure']>) {
+    if (m.mode === 'axis') {
+      const to = m.axis === 'x' ? { x: 0, y: m.com.y } : { x: m.com.x, y: 0 };
+      return { from: { x: m.com.x, y: m.com.y }, to };
+    }
     const to = m.axis === 'x' ? { x: m.com.x, y: m.origin.y } : { x: m.origin.x, y: m.com.y };
     return { from: m.origin, to };
   }
@@ -2544,6 +2573,7 @@ export class NewGridComponent implements OnDestroy {
 
   /** A dashed run from the line's end to the mark it measures to. */
   comMeasureConnector(m: NonNullable<NewGridComponent['comMeasure']>): string {
+    if (m.mode === 'axis') return '';
     const { to } = this.comMeasureLine(m);
     return `M${to.x} ${to.y} L${m.com.x} ${m.com.y}`;
   }

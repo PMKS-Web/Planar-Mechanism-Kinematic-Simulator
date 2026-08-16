@@ -101,6 +101,14 @@
     stroke: mat.m2-get-color-from-palette($accent-palette, 200);
   }
 
+  // The cylinder part whose mass field is being pointed at: a glaze over the
+  // one piece, since the selected body already wears the accent outline.
+  .cylinder-part-preview {
+    fill: mat.m2-get-color-from-palette($accent-palette, 400);
+    fill-opacity: 0.45;
+    stroke: mat.m2-get-color-from-palette($accent-palette, 400);
+  }
+
   // Scenery in the analysis modes: still drawn, so the reader can see it is
   // there, but grey and out of the way of the machine being analysed.
   .link-inert {

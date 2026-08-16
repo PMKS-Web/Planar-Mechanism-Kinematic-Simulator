@@ -1798,9 +1798,19 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     this.settingsService.previewCoMLinkId = showing ? link.id : null;
     NewGridComponent.instance.setComMeasureOverlay(
       showing
-        ? { axis, origin: this.comFrameOrigin(link), com: { x: link.CoM.x, y: link.CoM.y } }
+        ? {
+            axis,
+            origin: this.comFrameOrigin(link),
+            com: { x: link.CoM.x, y: link.CoM.y },
+            mode: this.comFrame === 'grid' ? 'axis' : 'origin',
+          }
         : undefined
     );
+  }
+
+  /** Point at a part's mass field, see that part lit on the ram. */
+  setCylinderPartPreview(part: 'barrel' | 'rod' | 'head' | undefined) {
+    NewGridComponent.instance.setCylinderPartPreview(part);
   }
 
   setShowLinkLengthOverlay($event: number) {

@@ -35,7 +35,10 @@
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
-  margin-top: 8px;
+  /* A fixed band the height and offset of the input's own line, so the
+     content centres whether it is a lone 7px dot or a dot with a 14px ✕. */
+  margin-top: 6px;
+  height: 18px;
 }
 
 .state-clear {

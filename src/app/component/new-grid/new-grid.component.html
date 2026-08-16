@@ -647,6 +647,17 @@
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
         }
+        <!-- Which part a pointed-at mass field means: a glaze over that one
+             piece, because the selected body already wears the outline and a
+             second ring would vanish into it. -->
+        @if (cylinderPartPreviewPath(cyl); as partPath) {
+          <path
+            class="cylinder-part-preview"
+            pointer-events="none"
+            [attr.d]="partPath"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          />
+        }
 
       </g>
     }
@@ -1429,12 +1440,14 @@
         stroke="#000000"
         [attr.stroke-width]="0.02 * settings.objectScale"
       ></path>
-      <path
-        [attr.d]="comMeasureConnector(measure)"
-        stroke="#000000"
-        [attr.stroke-width]="0.02 * settings.objectScale"
-        [attr.stroke-dasharray]="0.08 * settings.objectScale"
-      ></path>
+      @if (comMeasureConnector(measure); as connector) {
+        <path
+          [attr.d]="connector"
+          stroke="#000000"
+          [attr.stroke-width]="0.02 * settings.objectScale"
+          [attr.stroke-dasharray]="0.08 * settings.objectScale"
+        ></path>
+      }
       <text
         text-anchor="middle"
         style="transform: scaleY(-1)"
