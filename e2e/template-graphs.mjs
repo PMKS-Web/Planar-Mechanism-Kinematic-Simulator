@@ -83,9 +83,10 @@ const IDS = ONLY ? TEMPLATE_IDS.filter((id) => ONLY.includes(id)) : TEMPLATE_IDS
 // ---------------------------------------------------------------------------
 // Tolerances
 // ---------------------------------------------------------------------------
-// Series are rounded to 3 decimals before plotting, so a difference quotient
-// over one timestep carries 0.0005/dt of pure rounding noise. Everything else
-// is judged against the series' own peak, so a mechanism's scale is irrelevant.
+// Series reach the plot at the precision the solver left them at; the rounding
+// allowance below is what a three-decimal series used to carry and is kept as
+// slack. Everything else is judged against the series' own peak, so a
+// mechanism's scale is irrelevant.
 const REL_TOL = 0.03; // 3% of the series peak
 const ROUND_HALF = 0.0005;
 // The five-point stencil's coefficients sum to 1.5/dt in absolute value, so it

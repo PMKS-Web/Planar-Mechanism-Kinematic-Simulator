@@ -652,6 +652,112 @@ record(
 );
 await page.setViewportSize({ width: 1500, height: 950 });
 
+// --- the playhead reads a number, not a float -------------------------------
+// The samples leave the solver at full precision, so the label beside the
+// playhead printed all seventeen digits of it -- "2.6179937801901527" hanging
+// off the plot beside a readout of "2.62" for the same instant.
+await load(payloads['4-Bar']);
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click({ force: true });
+await page.waitForTimeout(700);
+await page.locator('#joint_B').first().click({ force: true });
+await page.waitForTimeout(700);
+for (const card of ['Position of Joint B', 'Velocity of Joint B']) {
+  await page.getByText(card).first().click({ force: true });
+  await page.waitForTimeout(1200);
+}
+// Off timestep 0, where there is no playhead to label.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const mech = grid.mechanismSrv;
+  mech.animate?.(Math.floor((mech.mechanisms[0]?.joints.length ?? 100) * 0.3), false);
+});
+await page.waitForTimeout(1500);
+
+const plots = await page.evaluate(() =>
+  [...document.querySelectorAll('app-analysis-graph')].map((node) => {
+    const graph = ng.getComponent(node);
+    return {
+      prop: graph.mechProp,
+      labels: [...node.querySelectorAll('.apexcharts-point-annotation-label')].map((label) =>
+        label.textContent.trim()
+      ),
+      // Every line the plot draws, and how wide a box each occupies. A
+      // constant series is zero high, which is the point -- but it still has
+      // to run the width of the plot.
+      lines: [...node.querySelectorAll('.apexcharts-line-series path.apexcharts-line')].map(
+        (path) => Math.round(path.getBoundingClientRect().width)
+      ),
+      axis: [graph.chartOptions.yaxis?.min, graph.chartOptions.yaxis?.max],
+    };
+  })
+);
+const overlong = plots.flatMap((plot) => plot.labels).filter((text) => /\d\.\d{3,}/.test(text));
+record('a playhead label stops at two decimals', plots.length > 0 && overlong.length === 0, {
+  overlong,
+  labels: plots.map((plot) => plot.labels),
+});
+
+// --- a constant series is still a line ---------------------------------------
+// The speed of a crank pin never changes, and on its own the axis was fitted
+// to what little it does change: a window 1.5e-6 wide in which every label
+// read "6.2" and the line was lost in the floating-point noise.
+const speed = plots.find((plot) => plot.prop === 'Linear Joint Vel');
+record(
+  'a graph showing only a constant still draws it',
+  speed && speed.lines.length === 1 && speed.lines[0] > 50,
+  speed
+);
+record(
+  'and its axis is not fitted to floating-point noise',
+  speed && speed.axis[1] - speed.axis[0] > 0.5,
+  speed?.axis
+);
+
+// --- a drawer's close button does not scroll away ---------------------------
+// It is positioned against the drawer frame, so a frame that scrolls carries
+// it off its own top edge -- gone from the corner while the half of it still
+// showing went on taking the click. The card inside is what scrolls.
+await page.setViewportSize({ width: 1400, height: 560 });
+await page.waitForTimeout(400);
+for (const [tab, name] of [
+  [1, 'Settings'],
+  [3, 'Help'],
+  [4, 'Debug'],
+]) {
+  await page.evaluate((tab) => {
+    const panel = ng.getComponent(document.querySelector('app-right-panel'));
+    panel.constructor.openTab = tab;
+    panel.constructor.isOpen = true;
+  }, tab);
+  await page.waitForTimeout(700);
+  const frame = await page.locator('#rightPanel').boundingBox();
+  if (frame) {
+    await page.mouse.move(frame.x + frame.width / 2, frame.y + frame.height / 2);
+    await page.mouse.wheel(0, 600);
+    await page.waitForTimeout(500);
+  }
+  const corner = await page.evaluate(() => {
+    const button = document.querySelector('.closeDrawer');
+    const panel = document.querySelector('#rightPanel');
+    if (!button || !panel) return { missing: true };
+    const b = button.getBoundingClientRect();
+    const f = panel.getBoundingClientRect();
+    return {
+      inside: b.top >= f.top - 1 && b.bottom <= f.bottom + 1,
+      takesTheClick: button.contains(
+        document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)
+      ),
+      frameScrolled: panel.scrollTop,
+    };
+  });
+  record(
+    `the ${name} drawer keeps its close button in the corner`,
+    corner.inside && corner.takesTheClick && corner.frameScrolled === 0,
+    corner
+  );
+}
+await page.setViewportSize({ width: 1500, height: 950 });
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 await browser.close();
 

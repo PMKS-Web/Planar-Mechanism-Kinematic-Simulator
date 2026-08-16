@@ -17,8 +17,7 @@ import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { AnalysisSampleService } from '../../services/analysis-sample.service';
 import { AngleUnit, LengthUnit } from '../../model/unit-enums';
-import { ANALYSIS_SERIES_COLORS } from '../../model/analysis-series';
-import { roundNumber } from '../../model/utils';
+import { ANALYSIS_SERIES_COLORS, formatAnalysisValue } from '../../model/analysis-series';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 
@@ -129,7 +128,7 @@ export class AnalysisGraphSectionComponent {
       key: keys[index],
       name: names[index],
       color: this.colorFor(names[index]),
-      text: Number.isFinite(value) ? `${roundNumber(value, 2).toFixed(2)} ${unit}`.trim() : '—',
+      text: Number.isFinite(value) ? `${formatAnalysisValue(value)} ${unit}`.trim() : '—',
     }));
     this.previewCache = { key, mechanism, series };
     return series;

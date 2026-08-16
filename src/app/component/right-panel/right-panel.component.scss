@@ -145,15 +145,33 @@
     min-height: 0;
   }
 
-  // Hand the drawer's height down to the setup card, which is what scrolls --
-  // the same chain the left-hand panels use to keep their own title in place.
-  // Each step needs `min-height: 0`, or a flex item refuses to shrink below its
+  // Hand the drawer's height down to the card, which is what scrolls -- the
+  // same chain the left-hand panels use to keep their own title in place. Each
+  // step needs `min-height: 0`, or a flex item refuses to shrink below its
   // content and the cap never reaches the card.
-  app-analysis-setup {
+  //
+  // The frame must not be the one that scrolls. The close button is positioned
+  // against the frame, so a frame that scrolls carries the button up off its
+  // own top edge: on a short window the Settings drawer overflowed, and the
+  // button went with the content -- gone from the corner while the half of it
+  // still showing went on taking the click.
+  app-analysis-setup,
+  app-settings-panel {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
     min-height: 0;
+  }
+
+  // These two pages hold several cards rather than one, so there is no single
+  // card to hand the height to and the page itself has to scroll. It takes the
+  // inset over from the page around it: an overflow box drawn at the cards'
+  // own edge would clip their shadows, and an inset outside the scrolling box
+  // is an inset that scrolls away.
+  #rightPanel > .page3,
+  #rightPanel > .page4 {
+    padding: 0;
+    overflow: hidden;
   }
 
   #debugWrapper,
@@ -161,6 +179,12 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: nav.$shadow-room;
+    padding-right: nav.$card-inset;
   }
 
   .max-width {

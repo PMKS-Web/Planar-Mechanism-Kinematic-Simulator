@@ -47,7 +47,10 @@
     }
 
     .panel-content {
-      padding: 10px 15px;
+      // Tighter under the header than above the next one: a section's contents
+      // belong to the title above them, and an equal gap on both sides left
+      // them floating between the two.
+      padding: 4px 15px 10px;
       gap: 10px;
       display: flex;
       flex-direction: column;

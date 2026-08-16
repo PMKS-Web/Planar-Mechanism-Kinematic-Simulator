@@ -12,7 +12,10 @@
   $foreground: map.get($theme, foreground);
 
   #title-block {
-    padding: 10px 15px;
+    // Less below the title than above it, for the same reason: what follows a
+    // title is that title's, and wants to sit closer to it than to whatever
+    // came before.
+    padding: 10px 15px 5px;
 
     .row {
       display: flex;

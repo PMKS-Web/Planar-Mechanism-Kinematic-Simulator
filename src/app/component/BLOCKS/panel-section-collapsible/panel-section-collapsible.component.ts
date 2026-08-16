@@ -60,7 +60,6 @@ export class PanelSectionCollapsibleComponent implements AfterContentInit {
 
   toggleExpand() {
     this.expanded = !this.expanded;
-    console.log(this.expanded);
     if (this.expanded) {
       this.opened.emit(true);
     } else {

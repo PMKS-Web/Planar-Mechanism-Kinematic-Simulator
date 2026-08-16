@@ -32,7 +32,9 @@ import {
   ANALYSIS_SERIES_COLORS,
   AnalysisGraphComponent,
   formatTimeLabel,
+  niceAxisScale,
 } from './analysis-graph.component';
+import { formatAnalysisValue } from '../../model/analysis-series';
 import { withTestInjector } from '../../../test-utils/mechanism-harness';
 
 @Component({
@@ -526,5 +528,59 @@ describe('formatTimeLabel', () => {
   it('renders nothing for a non-finite time', () => {
     expect(formatTimeLabel(Number.NaN)).toBe('');
     expect(formatTimeLabel(Number.POSITIVE_INFINITY)).toBe('');
+  });
+});
+
+describe('formatAnalysisValue', () => {
+  it('prints two decimals, not the seventeen the solver hands over', () => {
+    expect(formatAnalysisValue(2.6179937801901527)).toBe('2.62');
+    expect(formatAnalysisValue(-2.616398996121022)).toBe('-2.62');
+    expect(formatAnalysisValue(5)).toBe('5.00');
+    expect(formatAnalysisValue(0)).toBe('0.00');
+  });
+
+  it('keeps a small value from reading as zero', () => {
+    expect(formatAnalysisValue(0.0009136589194680075)).toBe('0.00091');
+    expect(formatAnalysisValue(-0.0012)).toBe('-0.0012');
+  });
+
+  it('renders nothing for a value that has none', () => {
+    expect(formatAnalysisValue(Number.NaN)).toBe('');
+    expect(formatAnalysisValue(Number.POSITIVE_INFINITY)).toBe('');
+  });
+});
+
+describe('niceAxisScale', () => {
+  it('puts every gridline on a round number, zero among them', () => {
+    const scale = niceAxisScale(-1.1, 2.0)!;
+    const step = (scale.max - scale.min) / scale.tickAmount;
+    // Zero is a whole number of steps from the bottom, so it is a gridline.
+    expect(Math.abs(-scale.min / step - Math.round(-scale.min / step))).toBeLessThan(1e-9);
+    expect(scale.min).toBeLessThanOrEqual(-1.1);
+    expect(scale.max).toBeGreaterThanOrEqual(2.0);
+  });
+
+  it('gives a constant series a range to be constant in', () => {
+    // The speed of a four-bar's crank pin, which never changes. Fitted to its
+    // own spread the axis was 1.5e-6 wide and the line was lost in the noise.
+    const scale = niceAxisScale(6.19888, 6.198882)!;
+    expect(scale.min).toBe(0);
+    expect(scale.max).toBeGreaterThanOrEqual(6.198882);
+    expect(scale.max - scale.min).toBeGreaterThan(1);
+  });
+
+  it('does the same for a constant below zero', () => {
+    const scale = niceAxisScale(-3.4, -3.4)!;
+    expect(scale.max).toBe(0);
+    expect(scale.min).toBeLessThanOrEqual(-3.4);
+  });
+
+  it('gives a series that is flat at zero a range of its own', () => {
+    expect(niceAxisScale(0, 0)).toEqual({ min: -1, max: 1, tickAmount: 2 });
+  });
+
+  it('declines an axis it cannot compute', () => {
+    expect(niceAxisScale(Number.NaN, 1)).toBeUndefined();
+    expect(niceAxisScale(2, 1)).toBeUndefined();
   });
 });

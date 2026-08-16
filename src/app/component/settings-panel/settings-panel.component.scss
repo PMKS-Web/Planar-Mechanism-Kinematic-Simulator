@@ -11,10 +11,23 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
+  // The drawer hands its height down to here, and this hands it to the card,
+  // which is what scrolls. Without the chain the card grew as tall as its
+  // settings and the drawer frame scrolled instead -- taking the close button,
+  // which is positioned against that frame, off the top of it.
   #settingsWrapper {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex: 1 1 auto;
+    min-height: 0;
+
+    panel-section {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
   }
 
   // The panel stretches its children to its own width, which is a content-box

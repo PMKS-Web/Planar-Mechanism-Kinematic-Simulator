@@ -27,7 +27,7 @@ import {
   ApexYAxis,
 } from 'apexcharts';
 import { KinematicsSolver } from 'src/app/model/mechanism/kinematic-solver';
-import { ANALYSIS_SERIES_COLORS } from 'src/app/model/analysis-series';
+import { ANALYSIS_SERIES_COLORS, formatAnalysisValue } from 'src/app/model/analysis-series';
 export { ANALYSIS_SERIES_COLORS };
 import { ForceAnalysisMode } from 'src/app/model/mechanism/force-solver';
 import { Mechanism } from 'src/app/model/mechanism/mechanism';
@@ -88,14 +88,26 @@ export const CEIL_OF = (max: number) => Math.ceil(max);
  * A y axis whose gridlines land on round numbers -- zero among them.
  *
  * Both limits are whole multiples of one step, so every line between them is
- * too. Undefined for a flat series, where there is no range to divide and
- * Apex's own choice is as good as any.
+ * too.
+ *
+ * A series that never changes gets the range from zero to its own value. It has
+ * no range of its own to divide, and what little it has is floating-point
+ * noise: the speed of a four-bar's crank pin is constant, and fitting the axis
+ * to it gave a window 1.5e-6 wide, in which every label read "6.2" and the line
+ * wandered across the full height of the plot as rounding error. Against zero
+ * it reads as what it is -- a constant, at a height the axis can be read off --
+ * and zero is the comparison a reader wants of a constant anyway.
  */
 export function niceAxisScale(
   low: number,
   high: number
 ): { min: number; max: number; tickAmount: number } | undefined {
-  if (!Number.isFinite(low) || !Number.isFinite(high) || high <= low) return undefined;
+  if (!Number.isFinite(low) || !Number.isFinite(high) || high < low) return undefined;
+  if (high - low <= 1e-6 * Math.max(Math.abs(low), Math.abs(high))) {
+    // Nothing to plot against but zero, and a series at zero has not even that.
+    if (low === 0 && high === 0) return { min: -1, max: 1, tickAmount: 2 };
+    return niceAxisScale(Math.min(0, low), Math.max(0, high));
+  }
   const magnitude = Math.pow(10, Math.floor(Math.log10((high - low) / 4)));
   const step =
     [1, 2, 2.5, 5, 10]
@@ -636,7 +648,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
           borderColor: color,
           fillColor: '#000000',
           orientation: 'horizontal',
-          text: String(value),
+          text: formatAnalysisValue(value),
         },
       },
       false
