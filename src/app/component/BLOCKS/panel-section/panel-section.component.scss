@@ -52,6 +52,20 @@
       top: 0;
       z-index: 2;
       background: var(--card-surface);
+      // Nothing under it yet, so nothing to cast onto -- but declared here so
+      // the shadow fades in rather than appearing the instant a card moves.
+      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0);
+      transition: box-shadow 0.15s ease-in-out;
+    }
+
+    // Something above, out of sight. The card scrolls under its own title, so
+    // scrolled off its top it read as a card that simply started there: the
+    // first setting ran up beneath the title and was gone, leaving white space
+    // that looked like the top of the panel. The title now casts a shadow onto
+    // whatever is passing under it.
+    &.scrolled > title-block:first-child,
+    &.scrolled > editable-title-block:first-child {
+      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0.35);
     }
   }
 }

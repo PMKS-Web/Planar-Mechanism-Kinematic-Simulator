@@ -24,7 +24,11 @@
     position: absolute;
     top: 25px;
     right: 18px;
-    z-index: 2;
+    // Above the sticky heads it shares a line with, which are also 2. A tie
+    // leaves the winner to document order, and document order is the weakest
+    // thing to rest on: the heads are the ones that get promoted to a layer of
+    // their own the moment a card is scrolled.
+    z-index: 3;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -119,8 +123,6 @@
     &.wide {
       width: calc(500px + #{nav.$shadow-room} + #{nav.$card-inset});
     }
-
-    animation-duration: 4s;
   }
 
   // One inset and one gap for every drawer page. The two setup drawers had

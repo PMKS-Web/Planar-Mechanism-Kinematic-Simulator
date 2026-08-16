@@ -758,6 +758,39 @@ for (const [tab, name] of [
 }
 await page.setViewportSize({ width: 1500, height: 950 });
 
+// --- a scrolled panel says there is something above it ----------------------
+// The title stays put while the card scrolls under it, so a card scrolled off
+// its own top read as a card that simply started there.
+await load(payloads['4-Bar']);
+await page.setViewportSize({ width: 1400, height: 560 });
+await page.waitForTimeout(400);
+await page.locator('#joint_B').first().click({ force: true });
+await page.waitForTimeout(900);
+const headShadow = () =>
+  page.evaluate(() => {
+    const card = document.querySelector('app-edit-panel #normalPanel');
+    const head = card?.querySelector(':scope > editable-title-block, :scope > title-block');
+    if (!card || !head) return null;
+    const shadow = getComputedStyle(head).boxShadow;
+    // "rgba(0, 0, 0, 0)" is the resting state: declared, so it fades in.
+    return { cast: !/rgba\(0, 0, 0, 0\)/.test(shadow), scrollTop: card.scrollTop, shadow };
+  });
+const atTop = await headShadow();
+record('a card resting at its top casts no shadow', atTop && !atTop.cast, atTop);
+const card = await page.locator('app-edit-panel #normalPanel').boundingBox();
+if (card) {
+  await page.mouse.move(card.x + card.width / 2, card.y + card.height / 2);
+  await page.mouse.wheel(0, 350);
+  await page.waitForTimeout(700);
+}
+const scrolled = await headShadow();
+record(
+  'and once it has scrolled, its title shadows what is passing under it',
+  scrolled && scrolled.cast && scrolled.scrollTop > 0,
+  scrolled
+);
+await page.setViewportSize({ width: 1500, height: 950 });
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 await browser.close();
 
