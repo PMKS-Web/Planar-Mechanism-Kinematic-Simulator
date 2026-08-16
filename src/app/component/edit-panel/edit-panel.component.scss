@@ -189,15 +189,15 @@
 
 .massArea .comFrameSelect {
   font: inherit;
-  font-size: 13px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  font-size: 14px;
+  border: none;
   border-radius: 4px;
-  background: #fff;
+  background: #f0f1f5;
   height: 30px;
-  padding: 0 4px;
-  width: 150px;
+  padding: 0 8px;
+  width: 160px;
   min-width: 112px;
-  flex: 0 1 150px;
+  flex: 0 1 160px;
 }
 
 .massArea .stateSuffix {
@@ -232,17 +232,46 @@
   color: rgba(0, 0, 0, 0.55);
 }
 
-/* The inertia field needs room for value, unit, dot and clear together.
-   The id keeps this ahead of the base #input-block width. */
-.massArea #input-block .customInputForm.wide .mat-mdc-text-field-wrapper {
-  width: 150px;
-  max-width: 100%;
-}
+
 
 .massArea .comPairRow {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 4px 10px;
 
-  dual-input-block { flex: 1 1 auto; min-width: 0; }
+  state-input {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+/* Grey means derived, in the pair too. */
+.massArea .comPairRow.derived .customInput {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* The mock's one right-hand column: Mass, the frame select and Rotational
+   Inertia all share a width and a right edge. The id out-ranks the base
+   #input-block width. */
+.massArea #input-block .customInputForm .mat-mdc-text-field-wrapper {
+  width: 160px;
+  max-width: 100%;
+}
+
+/* A long label wraps; the field does not shrink below its own value. The
+   base rule pins labels to one line, which squeezed Rotational Inertia's
+   field to a third of its number. Scoped off the X/Y pair, which splits its
+   row by design. */
+.massArea #input-block:not(.state-input-host) .label {
+  white-space: normal;
+}
+
+.massArea #input-block:not(.state-input-host) .customInputForm {
+  min-width: 150px;
+}
+
+/* The X/Y pair splits its row instead of taking the column width. */
+.massArea #input-block.state-input-host .customInputForm .mat-mdc-text-field-wrapper {
+  width: 100%;
 }

@@ -431,28 +431,26 @@
             }
           </select>
         </div>
-        <!-- The pair carries one flag, so one marker speaks for both fields. -->
-        <div class="comPairRow">
-          <dual-input-block
-            noHeader
-            label1="X"
-            label2="Y"
-            formControl1="comX"
-            formControl2="comY"
+        <!-- Each field wears the pair's state, as the mock draws it. -->
+        <div class="comPairRow" [class.derived]="!activeSrv.selectedLink.comIsCustom">
+          <span class="axisTag">X</span>
+          <state-input
             [formGroup]="linkForm"
-            tooltip="The physical center of mass used by force analysis, in the frame chosen above."
-            [class.derived]="!activeSrv.selectedLink.comIsCustom"
-          >
-          </dual-input-block>
-          <span class="stateSuffix">
-            <span class="dot" [class.filled]="activeSrv.selectedLink.comIsCustom"></span>
-            @if (activeSrv.selectedLink.comIsCustom) {
-              <button type="button" class="clearDot" title="Back to the shape's centroid" (click)="useUniformBodyCoM()">&#10005;</button>
-            }
-          </span>
+            _formControl="comX"
+            [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
+            clearTitle="Back to the shape's centroid"
+            (cleared)="useUniformBodyCoM()"
+          />
+          <span class="axisTag">Y</span>
+          <state-input
+            [formGroup]="linkForm"
+            _formControl="comY"
+            [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
+            clearTitle="Back to the shape's centroid"
+            (cleared)="useUniformBodyCoM()"
+          />
         </div>
         <input-block
-          wide
           [formGroup]="linkForm"
           _formControl="massMoI"
           tooltip="The mass moment of inertia about the link's center of mass. Derived from the shape as a uniform body until a value is typed."

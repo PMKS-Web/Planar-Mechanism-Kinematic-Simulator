@@ -35,6 +35,7 @@ import { Link, RealLink } from '../../model/link';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
+import { StateInputComponent } from '../BLOCKS/state-input/state-input.component';
 import { uniformBodyOf } from '../../model/uniform-body';
 import {
   cylinderSpanLayoutFrom,
@@ -81,6 +82,7 @@ const INPUT_SPEED_UNITS = [
     TitleBlock,
     MatIcon,
     SubtitleComponent,
+    StateInputComponent,
     MechanismPanelComponent,
     PanelSectionComponent,
     EditableTitleComponent,
