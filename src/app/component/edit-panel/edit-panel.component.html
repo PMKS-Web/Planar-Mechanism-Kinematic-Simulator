@@ -308,28 +308,20 @@
         (opened)="sectionExpanded['LMass'] = true"
         (closed)="sectionExpanded['LMass'] = false"
       >
+        <div class="massArea">
         <!-- Three bodies, not one: the rod and head are welded rigid, but the
              rod's mass is spread along its length while the head's rides the
              pin — the number that matters in a reciprocating machine. Inertia
              and centres stay automatic (uniform body per part). -->
-        <div class="dotRow" [formGroup]="cylinderForm">
-          <span class="dotRowLabel" title="The barrel's mass, acting at the barrel's own center.">Barrel</span>
-          <span class="dotField typed wide narrow">
-            <input formControlName="barrelMass" />
-          </span>
-        </div>
-        <div class="dotRow" [formGroup]="cylinderForm">
-          <span class="dotRowLabel" title="The rod's mass, spread along the rod.">Rod</span>
-          <span class="dotField typed wide narrow">
-            <input formControlName="rodMass" />
-          </span>
-        </div>
-        <div class="dotRow" [formGroup]="cylinderForm">
-          <span class="dotRowLabel" title="The piston head's mass, concentrated at the pin — the reciprocating mass.">Piston head</span>
-          <span class="dotField typed wide narrow">
-            <input formControlName="headMass" />
-          </span>
-        </div>
+        <input-block [formGroup]="cylinderForm" _formControl="barrelMass" tooltip="The barrel's mass, acting at the barrel's own center."
+          >Barrel</input-block
+        >
+        <input-block [formGroup]="cylinderForm" _formControl="rodMass" tooltip="The rod's mass, spread along the rod."
+          >Rod</input-block
+        >
+        <input-block [formGroup]="cylinderForm" _formControl="headMass" tooltip="The piston head's mass, concentrated at the pin — the reciprocating mass."
+          >Piston head</input-block
+        >
         <p class="massNote">Rotational inertia and centers follow each part's own shape.</p>
         @if (cylinderHasCustomInertia()) {
           <subtitle-block
@@ -339,6 +331,7 @@
             [click]="deriveCylinderInertiaFromShape.bind(this)"
           ></subtitle-block>
         }
+        </div>
       </collapsible-subseciton>
       <collapsible-subseciton
         titleLabel="Visual Settings"
@@ -400,21 +393,18 @@
         (opened)="sectionExpanded['LMass'] = true"
         (closed)="sectionExpanded['LMass'] = false"
       >
-        <div class="dotRow" [formGroup]="linkForm">
-          <span
-            class="dotRowLabel"
-            title="The mass used by force analysis. Zero is an idealized massless bar: gravity and inertia skip it, and rotational inertia reads zero."
-            >Mass</span
-          >
-          <span class="dotField typed wide">
-            <input formControlName="mass" />
-          </span>
-        </div>
+        <div class="massArea">
+        <input-block
+          [formGroup]="linkForm"
+          _formControl="mass"
+          tooltip="The mass used by force analysis. Zero is an idealized massless bar: gravity and inertia skip it, and rotational inertia reads zero."
+          >Mass</input-block
+        >
         <!-- One legend for the two derived fields below. It sits under Mass —
              which is always typed — so it introduces exactly the fields it
              governs: grey behind a hollow dot follows the shape, ink behind a
              filled one was set by hand and carries a ✕ to hand it back. -->
-        <div class="dotLegend" [formGroup]="linkForm">
+        <div class="dotLegend">
           <span class="dot"></span> shape
           <span class="dot filled"></span> yours
           <button
@@ -426,7 +416,7 @@
             Reset all
           </button>
         </div>
-        <div class="dotRow" [formGroup]="linkForm">
+        <div class="dotRow">
           <span class="dotRowLabel">Center of Mass</span>
           <select
             class="comFrameSelect"
@@ -441,32 +431,34 @@
             }
           </select>
         </div>
-        <div class="dotRow fields" [formGroup]="linkForm">
-          <span class="axisTag">X</span>
-          <span class="dotField" [class.custom]="activeSrv.selectedLink.comIsCustom">
-            <input formControlName="comX" />
-            <span class="dot" [class.filled]="activeSrv.selectedLink.comIsCustom"></span>
-            @if (activeSrv.selectedLink.comIsCustom) {
-              <button type="button" class="clearDot" title="Back to the shape's centroid" (click)="useUniformBodyCoM()">&#10005;</button>
-            }
-          </span>
-          <span class="axisTag">Y</span>
-          <span class="dotField" [class.custom]="activeSrv.selectedLink.comIsCustom">
-            <input formControlName="comY" />
+        <!-- The pair carries one flag, so one marker speaks for both fields. -->
+        <div class="comPairRow">
+          <dual-input-block
+            noHeader
+            label1="X"
+            label2="Y"
+            formControl1="comX"
+            formControl2="comY"
+            [formGroup]="linkForm"
+            tooltip="The physical center of mass used by force analysis, in the frame chosen above."
+            [class.derived]="!activeSrv.selectedLink.comIsCustom"
+          >
+          </dual-input-block>
+          <span class="stateSuffix">
             <span class="dot" [class.filled]="activeSrv.selectedLink.comIsCustom"></span>
             @if (activeSrv.selectedLink.comIsCustom) {
               <button type="button" class="clearDot" title="Back to the shape's centroid" (click)="useUniformBodyCoM()">&#10005;</button>
             }
           </span>
         </div>
-        <div class="dotRow" [formGroup]="linkForm">
-          <span class="dotRowLabel">Rotational Inertia</span>
-          <span
-            class="dotField wide"
-            [class.custom]="activeSrv.selectedLink.moiIsCustom"
-            [class.off]="!(activeSrv.selectedLink.mass > 0)"
-          >
-            <input formControlName="massMoI" />
+        <input-block
+          wide
+          [formGroup]="linkForm"
+          _formControl="massMoI"
+          tooltip="The mass moment of inertia about the link's center of mass. Derived from the shape as a uniform body until a value is typed."
+          [class.derived]="!activeSrv.selectedLink.moiIsCustom"
+          >Rotational Inertia
+          <span fieldSuffix class="stateSuffix">
             @if (activeSrv.selectedLink.mass > 0) {
               <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
             }
@@ -474,10 +466,11 @@
               <button type="button" class="clearDot" title="Back to the shape's own inertia" (click)="useUniformBodyMoI()">&#10005;</button>
             }
           </span>
-        </div>
+        </input-block>
         @if (!(activeSrv.selectedLink.mass > 0)) {
           <p class="massNote">A weightless body has nothing to place or to turn.</p>
         }
+        </div>
       </collapsible-subseciton>
       @if (activeSrv.selectedLink.isCompound) {
         <collapsible-subseciton

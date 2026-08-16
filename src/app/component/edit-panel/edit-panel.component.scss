@@ -132,10 +132,12 @@
   color: #7a5a00;
 }
 
-/* --- The dot anatomy for derived-vs-typed fields (design 2a) --------------
-   Grey behind a hollow dot follows the shape; ink behind a filled dot was set
-   by hand and carries a ✕ to hand it back. One legend under Mass names both. */
-.dotLegend {
+/* --- Derived-vs-typed state, worn by the app's own input fields ----------
+   The fields themselves are input-block / dual-input-block — the exact
+   component every other panel value uses — with the state dot and the clear
+   projected into their suffix slot, and grey text when the value follows the
+   shape. */
+.massArea .dotLegend {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -160,7 +162,7 @@
   }
 }
 
-.dot {
+.massArea .dot {
   display: inline-block;
   width: 4px;
   height: 4px;
@@ -172,31 +174,20 @@
   &.filled { background: #3f51b5; border-color: #3f51b5; }
 }
 
-.dotRow {
+.massArea .dotRow {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 4px 10px;
-
-  &.fields { justify-content: flex-end; gap: 8px; }
 }
 
-.dotRowLabel {
+.massArea .dotRowLabel {
   font-size: 13px;
   flex: 1 1 auto;
   color: rgba(0, 0, 0, 0.6);
 }
 
-/* The axis letter sits outside its field, as the mock draws it. */
-.axisTag {
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
-  flex: none;
-}
-
-/* One right-hand column: the select and every wide field share the same
-   width, so the panel's values align down one edge like the mock's. */
-.comFrameSelect {
+.massArea .comFrameSelect {
   font: inherit;
   font-size: 13px;
   border: 1px solid rgba(0, 0, 0, 0.2);
@@ -209,47 +200,11 @@
   flex: 0 1 150px;
 }
 
-.dotField {
+.massArea .stateSuffix {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 8px;
-  border-radius: 4px;
-  background: #f0f1f5;
-  min-width: 0;
-
-  input {
-    border: none;
-    background: none;
-    font: inherit;
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    text-align: left;
-    width: 52px;
-    min-width: 0;
-    color: rgba(0, 0, 0, 0.5);
-
-    &:focus { outline: none; }
-  }
-
-  /* Floor at its own content — dot, a 40px number, the unit, the clear —
-     so a tight row wraps the label instead of squeezing the ✕ out of its
-     own pill. */
-  &.wide { flex: 1 1 auto; min-width: 128px; max-width: 150px; }
-  /* The cylinder card's three mass rows: a shorter field keeps
-     "Piston head" on one line beside it. */
-  &.narrow { min-width: 96px; max-width: 112px; }
-  /* Inside a flex row the input must flex from a real basis: 100% overflows
-     past its neighbours, and basis-auto can collapse to nothing when the row
-     is tight — which is how a field once showed a dot, a unit, a clear, and
-     no number. */
-  &.wide input { flex: 1 1 48px; width: 48px; min-width: 40px; }
-  &.custom input,
-  &.typed input { color: rgba(0, 0, 0, 0.87); }
-  &.off { opacity: 0.55; pointer-events: none; }
-
-  .unitTag { font-size: 12px; color: rgba(0, 0, 0, 0.45); flex: none; }
+  gap: 5px;
+  margin-left: 4px;
 
   .clearDot {
     border: none;
@@ -264,9 +219,30 @@
   }
 }
 
-.massNote {
+/* Grey means derived; the components' own ink means typed. */
+.massArea input-block.derived .customInput,
+.massArea dual-input-block.derived .customInput {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.massArea .massNote {
   margin: 6px 10px 2px;
   font-size: 11.5px;
   line-height: 16px;
   color: rgba(0, 0, 0, 0.55);
+}
+
+/* The inertia field needs room for value, unit, dot and clear together.
+   The id keeps this ahead of the base #input-block width. */
+.massArea #input-block .customInputForm.wide .mat-mdc-text-field-wrapper {
+  width: 150px;
+  max-width: 100%;
+}
+
+.massArea .comPairRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  dual-input-block { flex: 1 1 auto; min-width: 0; }
 }

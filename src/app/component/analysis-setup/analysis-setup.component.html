@@ -100,23 +100,19 @@
           @for (row of massRows(); track row.body.id) {
             <div class="massRow" [class.weightless]="!(row.body.mass > 0)">
               <span class="massName">{{ row.label }}</span>
-              <span class="dotField typed">
-                <input
-                  [value]="massText(row)"
-                  [disabled]="!massEditable()"
-                  (change)="onMassEdit(row, $any($event.target))"
-                />
-              </span>
-              <span class="dotField" [class.custom]="!row.isBlock && !moiIsAuto(row)">
-                <input
-                  [value]="moiText(row)"
-                  [disabled]="!massEditable() || !moiEditable(row)"
-                  (change)="onInertiaEdit(row, $any($event.target))"
-                />
+              <input-block class="cellField" [formGroup]="tableForm" [_formControl]="massControlName(row)" />
+              <input-block
+                class="cellField"
+                [formGroup]="tableForm"
+                [_formControl]="moiControlName(row)"
+                [class.derived]="row.isBlock || moiIsAuto(row)"
+              >
                 @if (massEditable() && !row.isBlock && row.body.mass > 0) {
-                  <span class="dot" [class.filled]="!moiIsAuto(row)"></span>
+                  <span fieldSuffix class="stateSuffix">
+                    <span class="dot" [class.filled]="!moiIsAuto(row)"></span>
+                  </span>
                 }
-              </span>
+              </input-block>
               @if (massEditable()) {
                 <button
                   class="rowJump"

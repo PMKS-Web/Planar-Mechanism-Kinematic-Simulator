@@ -27,6 +27,9 @@
       @if (unit) {
         <span matTextSuffix class="input-unit">{{ unit }}</span>
       }
+      <!-- Optional projected trailing content — the mass fields hang their
+           state dot and clear button here; everyone else projects nothing. -->
+      <span matTextSuffix class="field-suffix"><ng-content select="[fieldSuffix]"></ng-content></span>
       @if (hasUnitSelect) {
         <!-- A native select rather than mat-select: mat-select registers itself as
              a form field's control, so nesting one here would displace the input.

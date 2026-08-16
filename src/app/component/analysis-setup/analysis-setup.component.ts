@@ -9,6 +9,9 @@ import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { MechanismReadiness, ReadinessCheck } from '../../model/mechanism/readiness';
 import { MatIcon } from '@angular/material/icon';
 import { NotificationService } from '../../services/notification.service';
+import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { InputComponent } from '../BLOCKS/input/input.component';
+import { Subscription } from 'rxjs';
 import { NOT_A } from '../../ui-text';
 
 /** One editable row of the mass table: a body, and what to call it. */
@@ -36,7 +39,7 @@ export interface MassRow {
   templateUrl: './analysis-setup.component.html',
   styleUrls: ['./analysis-setup.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon],
+  imports: [MatIcon, ReactiveFormsModule, InputComponent],
 })
 export class AnalysisSetupComponent {
   mechanism = inject(MechanismService);
@@ -197,7 +200,100 @@ export class AnalysisSetupComponent {
    * Cylinder parts appear under the part's own name, which is the first home
    * their masses have had.
    */
+  /**
+   * The table's fields are the app's own input component, driven through this
+   * form — one control per cell, named by body — so focus, fill, underline
+   * and blur-commit are literally the same code path as every other field.
+   * Values refresh on mechanism updates, never per change-detection pass,
+   * so a half-typed entry is never stomped.
+   */
+  tableForm = new FormGroup({}, { updateOn: 'blur' });
+  private tableSubscriptions = new Map<string, Subscription>();
+  private tableRefresh?: Subscription;
+
+  ngOnInit(): void {
+    this.tableRefresh = this.mechanism.onMechUpdateState.subscribe(() =>
+      this.refreshTableValues()
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.tableRefresh?.unsubscribe();
+    this.tableSubscriptions.forEach((subscription) => subscription.unsubscribe());
+  }
+
+  massControlName(row: MassRow): string {
+    return 'm_' + row.body.id;
+  }
+
+  moiControlName(row: MassRow): string {
+    return 'i_' + row.body.id;
+  }
+
+  private ensureRowControls(rows: MassRow[]): void {
+    const wanted = new Set<string>();
+    for (const row of rows) {
+      for (const [name, kind] of [
+        [this.massControlName(row), 'mass'],
+        [this.moiControlName(row), 'moi'],
+      ] as const) {
+        wanted.add(name);
+        if (!this.tableForm.contains(name)) {
+          const control = new FormControl(
+            kind === 'mass' ? this.massText(row) : this.moiText(row)
+          );
+          this.tableForm.addControl(name, control, { emitEvent: false });
+          this.tableSubscriptions.set(
+            name,
+            control.valueChanges.subscribe((raw) => this.commitCell(row.body.id, kind, raw ?? ''))
+          );
+        }
+        const control = this.tableForm.get(name)!;
+        const editable =
+          this.massEditable() && (kind === 'mass' || this.moiEditable(row));
+        if (editable && control.disabled) control.enable({ emitEvent: false });
+        if (!editable && control.enabled) control.disable({ emitEvent: false });
+      }
+    }
+    for (const [name, subscription] of [...this.tableSubscriptions]) {
+      if (!wanted.has(name)) {
+        subscription.unsubscribe();
+        this.tableSubscriptions.delete(name);
+        this.tableForm.removeControl(name as never, { emitEvent: false });
+      }
+    }
+  }
+
+  private refreshTableValues(): void {
+    for (const row of this.currentRows()) {
+      this.tableForm
+        .get(this.massControlName(row))
+        ?.setValue(this.massText(row), { emitEvent: false });
+      this.tableForm
+        .get(this.moiControlName(row))
+        ?.setValue(this.moiText(row), { emitEvent: false });
+    }
+  }
+
+  private commitCell(bodyId: string, kind: 'mass' | 'moi', raw: string): void {
+    const row = this.currentRows().find((candidate) => candidate.body.id === bodyId);
+    if (!row) return;
+    if (kind === 'mass') this.applyMass(row, raw);
+    else this.applyInertia(row, raw);
+    this.refreshTableValues();
+  }
+
+  private currentRows(): MassRow[] {
+    return this.buildRows();
+  }
+
   massRows(): MassRow[] {
+    const rows = this.buildRows();
+    this.ensureRowControls(rows);
+    return rows;
+  }
+
+  private buildRows(): MassRow[] {
     return this.mechanism.links
       .filter((link) => link instanceof RealLink || link instanceof SliderBlock)
       .map((body) => {
@@ -309,44 +405,34 @@ export class AnalysisSetupComponent {
     this.mechanism.onMechUpdateState.next(2);
   }
 
-  onMassEdit(row: MassRow, input: HTMLInputElement): void {
-    if (!this.massEditable()) {
-      input.value = this.massText(row);
-      return;
-    }
+  private applyMass(row: MassRow, raw: string): void {
+    if (!this.massEditable()) return;
     const [success, value] = this.nup.parseMassString(
-      input.value,
+      raw,
       this.nup.massUnitFor(this.settings.lengthUnit.value)
     );
     if (!success || value < 0) {
       this.notify.refusal('value.mass', NOT_A.mass);
-      input.value = this.massText(row);
       return;
     }
     this.mechanism.assignBodyMass(row.body, value);
     this.mechanism.updateMechanism(true);
     this.mechanism.onMechUpdateState.next(2);
-    input.value = this.massText(row);
   }
 
-  onInertiaEdit(row: MassRow, input: HTMLInputElement): void {
-    if (!this.massEditable() || !this.moiEditable(row) || !(row.body instanceof RealLink)) {
-      input.value = this.moiText(row);
-      return;
-    }
+  private applyInertia(row: MassRow, raw: string): void {
+    if (!this.massEditable() || !this.moiEditable(row) || !(row.body instanceof RealLink)) return;
     const length = this.settings.lengthUnit.value;
     const display = this.nup.displayInertiaUnit(length);
-    const [success, value] = this.nup.parseInertiaString(input.value, display);
+    const [success, value] = this.nup.parseInertiaString(raw, display);
     if (!success || value < 0) {
       this.notify.refusal('value.inertia', NOT_A.momentOfInertia);
-      input.value = this.moiText(row);
       return;
     }
     row.body.massMoI = this.nup.convertInertia(value, display, this.nup.storedInertiaUnit(length));
     row.body.moiIsCustom = true;
     this.mechanism.updateMechanism(true);
     this.mechanism.onMechUpdateState.next(2);
-    input.value = this.moiText(row);
   }
 
   /**

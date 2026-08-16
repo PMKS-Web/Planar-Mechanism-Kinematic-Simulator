@@ -1632,13 +1632,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     this.refreshDerivedMassFields();
   }
 
-  inertiaUnitLabel(): string {
-    return this.nup.unitLabel(this.nup.displayInertiaUnit(this.settingsService.lengthUnit.value));
-  }
 
-  massUnitTag(): string {
-    return this.nup.unitLabel(this.massUnit());
-  }
 
   /** Hand a field back to the uniform body, and show what it derives. */
   useUniformBodyMoI(): void {

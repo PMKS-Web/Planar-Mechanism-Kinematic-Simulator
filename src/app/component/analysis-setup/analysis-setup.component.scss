@@ -217,12 +217,12 @@
 
   .massRow {
     display: grid;
-    grid-template-columns: minmax(64px, 1fr) 58px 110px 18px;
+    grid-template-columns: minmax(54px, 1fr) 62px 118px 16px;
 
     /* Grid items default to min-width auto, so a field's own content forces
        its column wide and shoves the jump arrows off the drawer. */
     > * { min-width: 0; }
-    gap: 5px;
+    gap: 4px;
     align-items: center;
     padding: 3px 0;
     font-size: 13px;
@@ -243,7 +243,7 @@
 
     /* The whole weightless row mutes as one thing: label, both fields. */
     &.weightless .massName { color: rgba(0, 0, 0, 0.4); }
-    &.weightless .dotField input:disabled { color: rgba(0, 0, 0, 0.35); }
+    &.weightless .cellField .customInput { color: rgba(0, 0, 0, 0.35); }
   }
 
   .num { text-align: right; }
@@ -256,9 +256,36 @@
 
   .massMoI { color: rgba(0, 0, 0, 0.6); }
 
-  /* The dot anatomy, shared in spirit with the Edit panel's Mass Settings:
-     grey behind a hollow dot follows the shape, ink behind a filled one was
-     typed. */
+  /* The table's cells ARE the shared input component; the only difference
+     is size, so size is the only thing written here. Label and help are the
+     row's own columns, so the component's header parts hide. */
+  .cellField {
+    min-width: 0;
+
+    .customInput {
+      font-size: 12.5px;
+    }
+
+    #input-block .label,
+    #input-block .label-help,
+    #input-block .spacer {
+      display: none;
+    }
+
+    #input-block .row {
+      gap: 0;
+    }
+
+    #input-block .customInputForm .mat-mdc-text-field-wrapper {
+      width: 100%;
+      padding: 0 7px;
+    }
+
+    &.derived .customInput {
+      color: rgba(0, 0, 0, 0.5);
+    }
+  }
+
   .dot {
     display: inline-block;
     width: 4px;
@@ -271,46 +298,21 @@
 
   .dot.filled { background: #3f51b5; border-color: #3f51b5; }
 
-  .dotField {
+  .stateSuffix {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    height: 28px;
-    padding: 0 7px;
-    border-radius: 4px;
-    background: #f0f1f5;
-    min-width: 0;
-
-    input {
-      border: none;
-      background: none;
-      font: inherit;
-      font-size: 12.5px;
-      font-variant-numeric: tabular-nums;
-      text-align: left;
-      width: 100%;
-      min-width: 0;
-      color: rgba(0, 0, 0, 0.5);
-
-      &:focus { outline: none; }
-    }
-
-    /* Mass is always typed, so it always reads in ink — grey is reserved for
-       values that follow the shape. Disabling greys either kind slightly. */
-    &.typed input,
-    &.custom input { color: rgba(0, 0, 0, 0.87); }
-    &.typed input:disabled,
-    &.custom input:disabled { color: rgba(0, 0, 0, 0.6); }
-    input:disabled { color: rgba(0, 0, 0, 0.4); }
+    margin-left: 4px;
   }
 
   .dotLegend {
     display: flex;
     align-items: center;
     gap: 6px;
+    margin: 0;
     padding: 8px 0 0;
     font-size: 10.5px;
     color: rgba(0, 0, 0, 0.55);
+    border-bottom: none;
 
     .resetAll {
       margin-left: auto;
@@ -353,11 +355,7 @@
      rather than leaving rows that merely cannot be clicked. */
   .massTable.readonly {
     .massName { color: rgba(0, 0, 0, 0.45); }
-    .dotField { background: rgba(0, 0, 0, 0.03); }
-    .dotField input:disabled,
-    .dotField.typed input:disabled,
-    .dotField.custom input:disabled { color: rgba(0, 0, 0, 0.45); }
-    .massMoI { color: rgba(0, 0, 0, 0.4); }
+    .cellField .customInput { color: rgba(0, 0, 0, 0.45); }
   }
 
   .actionButton {
