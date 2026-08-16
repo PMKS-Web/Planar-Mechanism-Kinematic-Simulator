@@ -32,71 +32,8 @@
       </div>
     }
     @if (getOpenTab() === 3) {
-      <div class="page3">
-        <div id="helpWrapper">
-          <panel-section>
-            <title-block>Help</title-block>
-            <div style="padding: 10px 0 10px 10px; width: calc(100% - 20px)">
-              <button-block icon="help_center" [click]="gotoHelpSite">Tutorial Videos</button-block>
-              <!--           <button-block icon='info' [click]='sendNotReady'>Restart Tutorial</button-block> -->
-              <subtitle-block>
-                PMKS+ is open source! Do you want to help us develop it?</subtitle-block
-              >
-              <button-block customIcon="github" [click]="gotoGithub">Github Repo</button-block>
-            </div>
-          </panel-section>
-          <panel-section>
-            <title-block
-              description="Do you want to attach a file? Send us an email at gr-pmksplus@wpi.edu"
-            >
-              Send Feedback
-            </title-block>
-            <form [formGroup]="commentForm">
-              <mat-form-field class="max-width">
-                <mat-label>Leave a message</mat-label>
-                <textarea type="text" matInput formControlName="comment"></textarea>
-                @if (commentForm.controls['comment'].hasError('required')) {
-                  <mat-error> Message is required </mat-error>
-                }
-              </mat-form-field>
-              <mat-checkbox color="primary" formControlName="response"
-                >I would like a response</mat-checkbox
-              >
-              @if (commentForm.value.response) {
-                <mat-form-field class="max-width">
-                  <mat-label>Email</mat-label>
-                  <input
-                    type="email"
-                    matInput
-                    formControlName="email"
-                    [errorStateMatcher]="matcher"
-                    placeholder="Ex. pat@example.com"
-                  />
-                  @if (
-                    commentForm.controls['email'].hasError('email') &&
-                    !commentForm.controls['email'].hasError('required')
-                  ) {
-                    <mat-error> Invalid email address </mat-error>
-                  }
-                </mat-form-field>
-              }
-              <mat-checkbox color="primary" checked formControlName="diagnostics"
-                >Send browser and version data
-              </mat-checkbox>
-              <mat-checkbox color="primary" checked formControlName="project"
-                >Send a copy of the open project
-              </mat-checkbox>
-              <div style="padding: 10px 0 10px 10px; width: calc(100% - 20px)">
-                <button-block
-                  [disabled]="sendingEmail"
-                  icon="send"
-                  [click]="sendCommentEmail.bind(this)"
-                  >Send Message
-                </button-block>
-              </div>
-            </form>
-          </panel-section>
-        </div>
+      <div class="page1">
+        <app-help-panel></app-help-panel>
       </div>
     }
     @if (getOpenTab() === 4) {

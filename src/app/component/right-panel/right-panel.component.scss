@@ -179,26 +179,25 @@
   // button went with the content -- gone from the corner while the half of it
   // still showing went on taking the click.
   app-analysis-setup,
-  app-settings-panel {
+  app-settings-panel,
+  app-help-panel {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
     min-height: 0;
   }
 
-  // These two pages hold several cards rather than one, so there is no single
-  // card to hand the height to and the page itself has to scroll. It takes the
+  // This page holds several cards rather than one, so there is no single card
+  // to hand the height to and the page itself has to scroll. It takes the
   // inset over from the page around it: an overflow box drawn at the cards'
   // own edge would clip their shadows, and an inset outside the scrolling box
   // is an inset that scrolls away.
-  #rightPanel > .page3,
   #rightPanel > .page4 {
     padding: 0;
     overflow: hidden;
   }
 
-  #debugWrapper,
-  #helpWrapper {
+  #debugWrapper {
     display: flex;
     flex-direction: column;
     gap: 10px;

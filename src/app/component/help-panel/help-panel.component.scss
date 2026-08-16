@@ -1,0 +1,48 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+
+@mixin css($theme) {
+  // Get the color config from the theme.
+  $color-config: mat.m2-get-color-config($theme);
+  // Get the primary color palette from the color-config.
+  $primary-palette: map.get($color-config, 'primary');
+  $typography-config: mat.m2-get-typography-config($theme);
+
+  // The drawer hands its height down to here, and this hands it to the card,
+  // which is what scrolls -- the same chain the settings panel uses, and for
+  // the same reason: a frame that scrolls carries the close button, which is
+  // positioned against it, off its own top edge.
+  #helpWrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+
+    panel-section {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    // A line of standing text inside a section, rather than a control with a
+    // label: the address to write to when the form will not do.
+    .sectionNote {
+      margin: 0;
+      @include mat.m2-typography-level($typography-config, 'body-2');
+      color: rgba(0, 0, 0, 0.6);
+    }
+
+    // The fields and checkboxes stack on the same gap the sections' own
+    // controls do; the form is a plain box around them, not a layout of its own.
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .max-width {
+      width: 100%;
+    }
+  }
+}

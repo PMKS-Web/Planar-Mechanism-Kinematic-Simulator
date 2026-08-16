@@ -7,35 +7,16 @@ import { ActiveObjService } from '../../services/active-obj.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { RealLink } from '../../model/link';
 import { AnalyticsService } from '../../services/analytics.service';
-import {
-  FormBuilder,
-  FormControl,
-  FormGroupDirective,
-  NgForm,
-  Validators,
-  FormsModule,
-  ReactiveFormsModule,
-} from '@angular/forms';
-import { ErrorStateMatcher } from '@angular/material/core';
-import { environment } from '../../../environments/environment';
-import emailjs from '@emailjs/browser';
 import { SettingsService } from '../../services/settings.service';
 import { Arc, Line } from '../../model/line';
 import { Coord } from '../../model/coord';
 import { SvgGridService } from '../../services/svg-grid.service';
-import introJs from 'intro.js';
-import { UrlGenerationService } from 'src/app/services/url-generation.service';
-import { NotificationService } from '../../services/notification.service';
 import { AnalysisSetupComponent } from '../analysis-setup/analysis-setup.component';
 import { SettingsPanelComponent } from '../settings-panel/settings-panel.component';
 import { EquationPanelComponent } from '../equation-panel/equation-panel.component';
+import { HelpPanelComponent } from '../help-panel/help-panel.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
-import { TitleBlock } from '../BLOCKS/title/title.component';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
-import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
-import { MatFormField, MatLabel, MatError } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
-import { MatCheckbox } from '@angular/material/checkbox';
 import { LinkageTableComponent } from '../linkage-table/linkage-table.component';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
@@ -80,17 +61,9 @@ import { MatIcon } from '@angular/material/icon';
     AnalysisSetupComponent,
     SettingsPanelComponent,
     EquationPanelComponent,
+    HelpPanelComponent,
     PanelSectionComponent,
-    TitleBlock,
     ButtonComponent,
-    SubtitleComponent,
-    FormsModule,
-    ReactiveFormsModule,
-    MatFormField,
-    MatLabel,
-    MatInput,
-    MatError,
-    MatCheckbox,
     LinkageTableComponent,
     MatTooltip,
     MatIcon,
@@ -101,23 +74,8 @@ export class RightPanelComponent implements DoCheck {
   mechanismService = inject(MechanismService);
   settingsService = inject(SettingsService);
   svgService = inject(SvgGridService);
-  urlGenerationService = inject(UrlGenerationService);
-  private fb = inject(FormBuilder);
-  private notify = inject(NotificationService);
 
   private analytics: AnalyticsService = inject(AnalyticsService);
-
-  public sendingEmail: boolean = false;
-
-  commentForm = this.fb.group({
-    comment: ['', Validators.required],
-    email: ['', Validators.email],
-    response: [false],
-    diagnostics: [true],
-    project: [true],
-  });
-
-  matcher = new MyErrorStateMatcher();
 
   static openTab = 0; //Default open tab to "Edit" /
   static isOpen = false; // Is the tab open?
@@ -375,146 +333,5 @@ export class RightPanelComponent implements DoCheck {
     console.log('Does not intersect, should be no points:');
     console.log(arc10.intersectsWith(arc11));
     console.log(arc11.intersectsWith(arc10));
-  }
-
-  gotoHelpSite() {
-    //Open a new tab to this site: https://pmks.mech.website/pmks-web-how-to-videos/
-    window.open('https://pmks.mech.website/pmks-web-how-to-videos/', '_blank');
-    this.analytics.logEvent('goto_help_site');
-  }
-
-  gotoGithub() {
-    //Open a new tab to this site: https://pmks.mech.website/pmks-web-how-to-videos/
-    window.open('https://github.com/PMKS-Web/PMKSWeb', '_blank');
-    this.analytics.logEvent('goto_github');
-  }
-
-  sendNotReady() {
-    introJs().start();
-  }
-
-  getBrowserName() {
-    const agent = window.navigator.userAgent.toLowerCase();
-    switch (true) {
-      case agent.indexOf('edge') > -1:
-        return 'Edge';
-      case agent.indexOf('opr') > -1 && !!(window as unknown as Record<string, unknown>)['opr']:
-        return 'Opera';
-      case agent.indexOf('chrome') > -1 &&
-        !!(window as unknown as Record<string, unknown>)['chrome']:
-        return 'Chrome';
-      case agent.indexOf('trident') > -1:
-        return 'Internet Explorer';
-      case agent.indexOf('firefox') > -1:
-        return 'Firefox';
-      case agent.indexOf('safari') > -1:
-        return 'Safari';
-      default:
-        return 'Other';
-    }
-  }
-
-  detectBrowserVersion() {
-    var userAgent = navigator.userAgent,
-      tem,
-      matchTest =
-        userAgent.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
-
-    if (/trident/i.test(matchTest[1])) {
-      tem = /\brv[ :]+(\d+)/g.exec(userAgent) || [];
-      return 'IE ' + (tem[1] || '');
-    }
-    if (matchTest[1] === 'Chrome') {
-      tem = userAgent.match(/\b(OPR|Edge)\/(\d+)/);
-      if (tem != null) return tem.slice(1).join(' ').replace('OPR', 'Opera');
-    }
-    matchTest = matchTest[2]
-      ? [matchTest[1], matchTest[2]]
-      : [navigator.appName, navigator.appVersion, '-?'];
-    if ((tem = userAgent.match(/version\/(\d+)/i)) != null) matchTest.splice(1, 1, tem[1]);
-    return matchTest.join(' ');
-  }
-
-  async sendCommentEmail() {
-    this.sendingEmail = true;
-    if (this.commentForm.invalid) {
-      this.notify.refusal('feedback.incomplete', 'Fill in the form before sending it.');
-      this.sendingEmail = false;
-      return;
-    } else {
-      let emailJSKey = '';
-      try {
-        const res = await fetch('/.netlify//functions/getEmailJSKey').then((response) =>
-          response.json()
-        );
-        emailJSKey = res.apiKey;
-      } catch (err) {
-        console.log(err);
-        this.notify.failure(
-          'feedback.no-key',
-          'It looks like you are in a development environment. If this is not the case, please try again later or contact us directly at: gr-pmksplus@wpi.edu'
-        );
-        this.sendingEmail = false;
-        return;
-      }
-      emailjs.init(emailJSKey);
-
-      let browserInfo = '';
-      if (this.commentForm.value.diagnostics) {
-        browserInfo += 'Browser: ';
-        browserInfo += this.getBrowserName();
-        browserInfo += '\n Browser Version: ';
-        browserInfo += this.detectBrowserVersion();
-        browserInfo += '\n OS: ';
-        browserInfo += window.navigator.platform;
-        browserInfo += '\n User Agent: ';
-        browserInfo += window.navigator.userAgent;
-        browserInfo += '\n App Version: ';
-        browserInfo += environment.appVersion;
-      } else {
-        browserInfo = 'User did not allow diagnostics';
-      }
-
-      let projectURL: string = 'User did not leave a project URL';
-      if (this.commentForm.value.project) {
-        projectURL = this.urlGenerationService.generateFullUrl();
-      }
-
-      const params = {
-        to_email: 'gr-pmksplus@wpi.edu',
-        message: this.commentForm.value.comment
-          ? this.commentForm.value.comment
-          : 'User did not leave a comment',
-        email: this.commentForm.value.email
-          ? this.commentForm.value.email
-          : 'User did not leave an email and does not want a response',
-        diagnostic: browserInfo,
-        project: projectURL,
-      };
-
-      emailjs
-        .send('service_pg2k647', 'template_kfwdx5c', params)
-        .then(() => {
-          this.notify.success('feedback.sent', 'Message sent. Thank you for your feedback!');
-          this.sendingEmail = false;
-          this.commentForm.reset();
-        })
-        .catch((error: unknown) => {
-          console.log(error);
-          this.notify.failure(
-            'feedback.send-failed',
-            'Message failed to send. Please try again later or contact us directly at: gr-pmksplus@wpi.edu'
-          );
-          this.sendingEmail = false;
-        });
-    }
-  }
-}
-
-/** Error when invalid control is dirty, touched, or submitted. */
-export class MyErrorStateMatcher implements ErrorStateMatcher {
-  isErrorState(control: FormControl | null, form: FormGroupDirective | NgForm | null): boolean {
-    const isSubmitted = form && form.submitted;
-    return !!(control && control.invalid && (control.dirty || control.touched || isSubmitted));
   }
 }

@@ -28,6 +28,7 @@
 @use 'src/app/component/analysis-graph-section/analysis-graph-section.component.scss' as analysis-graph-section;
 @use 'src/app/component/right-panel/right-panel.component.scss' as right-panel;
 @use 'src/app/component/settings-panel/settings-panel.component.scss' as settings-panel;
+@use 'src/app/component/help-panel/help-panel.component.scss' as help-panel;
 @use 'src/app/component/synthesis-panel/synthesis-panel.component.scss' as synthesis-panel;
 @use 'src/app/component/new-grid/new-grid.component.scss' as new-grid;
 @use 'src/app/component/context-menu/context-menu.component.scss' as context-menu;
@@ -95,6 +96,7 @@ $my-theme: mat.m2-define-light-theme(
 @include analysis-graph-section.css($my-theme);
 @include right-panel.css($my-theme);
 @include settings-panel.css($my-theme);
+@include help-panel.css($my-theme);
 @include synthesis-panel.css($my-theme);
 @include new-grid.css($my-theme);
 @include context-menu.css($my-theme);
