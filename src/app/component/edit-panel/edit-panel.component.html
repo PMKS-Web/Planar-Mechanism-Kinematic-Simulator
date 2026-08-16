@@ -404,9 +404,9 @@
              which is always typed — so it introduces exactly the fields it
              governs: grey behind a hollow dot follows the shape, ink behind a
              filled one was set by hand and carries a ✕ to hand it back. -->
-        <div class="dotLegend">
-          <span class="dot"></span> shape
-          <span class="dot filled"></span> yours
+        <div class="dotLegend" [class.off]="!(activeSrv.selectedLink.mass > 0)">
+          <span class="dot"></span> from shape
+          <span class="dot filled"></span> set by you
           <button
             type="button"
             class="resetAll"
@@ -433,7 +433,11 @@
           </select>
         </div>
         <!-- Each field wears the pair's state, as the mock draws it. -->
-        <div class="comPairRow" [class.derived]="!activeSrv.selectedLink.comIsCustom">
+        <div
+          class="comPairRow"
+          [class.derived]="!activeSrv.selectedLink.comIsCustom"
+          [class.off]="!(activeSrv.selectedLink.mass > 0)"
+        >
           <span class="axisTag">X</span>
           <state-input
             [formGroup]="linkForm"
@@ -441,6 +445,7 @@
             [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
             clearTitle="Back to the shape's centroid"
             (cleared)="useUniformBodyCoM()"
+            (hovered)="setComPreview($event)"
           />
           <span class="axisTag">Y</span>
           <state-input
@@ -449,6 +454,7 @@
             [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
             clearTitle="Back to the shape's centroid"
             (cleared)="useUniformBodyCoM()"
+            (hovered)="setComPreview($event)"
           />
         </div>
         <input-block
@@ -457,10 +463,8 @@
           tooltip="The mass moment of inertia about the link's center of mass. Derived from the shape as a uniform body until a value is typed."
           [class.derived]="!activeSrv.selectedLink.moiIsCustom"
           >Rotational Inertia
-          <span fieldSuffix class="stateSuffix">
-            @if (activeSrv.selectedLink.mass > 0) {
-              <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
-            }
+          <span fieldSuffix class="stateSuffix" [class.off]="!(activeSrv.selectedLink.mass > 0)">
+            <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
             @if (activeSrv.selectedLink.moiIsCustom) {
               <button type="button" class="clearDot" title="Back to the shape's own inertia" (click)="useUniformBodyMoI()">&#10005;</button>
             }

@@ -23,7 +23,12 @@ import { MatInput } from '@angular/material/input';
   template: `
     <div id="input-block" class="state-input-host">
       <div class="row" [formGroup]="formGroup">
-        <mat-form-field class="customInputForm" (click)="field.select()">
+        <mat-form-field
+          class="customInputForm"
+          (click)="field.select()"
+          (mouseenter)="hovered.emit(true)"
+          (mouseleave)="hovered.emit(false)"
+        >
           <input
             matInput
             class="customInput"
@@ -59,4 +64,6 @@ export class StateInputComponent {
   @Input() state: 'none' | 'auto' | 'custom' = 'none';
   @Input() clearTitle = 'Back to the shape';
   @Output() cleared = new EventEmitter<void>();
+  /** Fires on pointer enter/leave, for panels that preview on the grid. */
+  @Output() hovered = new EventEmitter<boolean>();
 }

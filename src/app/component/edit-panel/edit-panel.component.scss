@@ -164,6 +164,14 @@
 
     &:disabled { color: rgba(0, 0, 0, 0.3); cursor: default; }
   }
+
+  /* A massless body derives nothing, so the legend has nothing to explain. */
+  &.off {
+    color: rgba(0, 0, 0, 0.32);
+
+    .dot { border-color: rgba(0, 0, 0, 0.2); }
+    .dot.filled { background: rgba(0, 0, 0, 0.2); border-color: rgba(0, 0, 0, 0.2); }
+  }
 }
 
 .massArea .dot {
@@ -191,6 +199,8 @@
   font-size: 13px;
   flex: 1 1 auto;
   color: rgba(0, 0, 0, 0.6);
+  /* One line always; the field column cedes the width this needs. */
+  white-space: nowrap;
 }
 
 .massArea .comFrameSelect {
@@ -201,9 +211,9 @@
   background: #f0f1f5;
   height: 30px;
   padding: 0 8px;
-  width: 148px;
+  width: 112px;
   min-width: 0;
-  flex: 0 0 148px;
+  flex: 0 0 112px;
   margin-left: auto;
 
   &:disabled {
@@ -218,11 +228,13 @@
   gap: 5px;
   margin-left: 4px;
 
+  &.off .dot { border-color: rgba(0, 0, 0, 0.2); }
+
   .clearDot {
     border: none;
     background: none;
     padding: 0;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1;
     color: rgba(0, 0, 0, 0.45);
     cursor: pointer;
@@ -279,12 +291,36 @@
   color: rgba(0, 0, 0, 0.5);
 }
 
+/* Massless: the pair's markers grey out with the fields they mark. */
+.massArea .comPairRow.off .state-dot {
+  border-color: rgba(0, 0, 0, 0.2);
+}
+.massArea .comPairRow.off .state-dot.filled {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+.massArea .comPairRow.off .state-clear {
+  color: rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
 /* The mock's one field column: Mass, the frame select and Rotational
    Inertia share one width, one left edge and one right edge — the centre
    line of the panel. The id out-ranks the base #input-block width. */
 .massArea #input-block .customInputForm .mat-mdc-text-field-wrapper {
-  width: 148px;
+  width: 112px;
   max-width: 100%;
+}
+
+/* The dot and its ✕ sit on the field's visible centre, not the baseline.
+   Same anchoring as state-input: the 30px wrapper clips MDC's 56px flex
+   row, so top-anchor and offset instead of flex centring. */
+.massArea #input-block .mat-mdc-form-field-icon-suffix,
+.massArea #input-block .mat-mdc-form-field-text-suffix {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  margin-top: 8px;
 }
 
 /* A long label wraps; the field does not shrink below its own value. The
@@ -296,11 +332,15 @@
   /* Take the room the row actually has: basis auto keeps one line whenever
      it fits, instead of flex min-content wrapping at the longest word. */
   flex: 1 1 auto;
+  /* One label size for the whole section — Mass, Center of Mass and
+     Rotational Inertia read as siblings, not as different ranks. */
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .massArea #input-block:not(.state-input-host) .customInputForm {
-  flex: 0 0 148px;
-  min-width: 148px;
+  flex: 0 0 112px;
+  min-width: 112px;
   margin-left: auto;
 }
 
