@@ -93,12 +93,12 @@
         <div class="massTable" [class.readonly]="!massEditable()">
           <div class="massRow head">
             <span>Body</span>
-            <span class="num">Mass ({{ massUnitLabel() }})</span>
-            <span class="num">Rot. inertia ({{ inertiaUnitLabel() }})</span>
+            <span>Mass</span>
+            <span>Rotational inertia</span>
             <span></span>
           </div>
           @for (row of massRows(); track row.body.id) {
-            <div class="massRow">
+            <div class="massRow" [class.weightless]="!(row.body.mass > 0)">
               <span class="massName">{{ row.label }}</span>
               <span class="dotField typed">
                 <input
@@ -107,20 +107,16 @@
                   (change)="onMassEdit(row, $any($event.target))"
                 />
               </span>
-              @if (row.isBlock) {
-                <span class="massMoI num">—</span>
-              } @else {
-                <span class="dotField" [class.custom]="!moiIsAuto(row)">
-                  @if (massEditable()) {
-                    <span class="dot" [class.filled]="!moiIsAuto(row)"></span>
-                  }
-                  <input
-                    [value]="moiText(row)"
-                    [disabled]="!massEditable() || !moiEditable(row)"
-                    (change)="onInertiaEdit(row, $any($event.target))"
-                  />
-                </span>
-              }
+              <span class="dotField" [class.custom]="!row.isBlock && !moiIsAuto(row)">
+                <input
+                  [value]="moiText(row)"
+                  [disabled]="!massEditable() || !moiEditable(row)"
+                  (change)="onInertiaEdit(row, $any($event.target))"
+                />
+                @if (massEditable() && !row.isBlock && row.body.mass > 0) {
+                  <span class="dot" [class.filled]="!moiIsAuto(row)"></span>
+                }
+              </span>
               @if (massEditable()) {
                 <button
                   class="rowJump"

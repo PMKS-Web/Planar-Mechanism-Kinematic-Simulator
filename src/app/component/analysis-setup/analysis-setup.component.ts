@@ -227,20 +227,26 @@ export class AnalysisSetupComponent {
   }
 
   massText(row: MassRow): string {
-    // Value only: the unit lives in the column header, never on the number.
-    return row.body.mass.toFixed(2);
+    // The unit is typed into the box, exactly as Basic Settings does it — and
+    // typing it back (or not) parses the same either way.
+    return this.nup.formatValueAndUnit(
+      row.body.mass,
+      this.nup.massUnitFor(this.settings.lengthUnit.value)
+    );
   }
 
   moiText(row: MassRow): string {
-    if (row.isBlock || !(row.body instanceof RealLink)) return '—';
     const length = this.settings.lengthUnit.value;
-    return this.nup
-      .convertInertia(
-        row.body.massMoI,
-        this.nup.storedInertiaUnit(length),
-        this.nup.displayInertiaUnit(length)
-      )
-      .toFixed(2);
+    const display = this.nup.displayInertiaUnit(length);
+    if (row.isBlock || !(row.body instanceof RealLink)) {
+      // A block is a point mass: its inertia is zero and stays a disabled
+      // fact rather than a dash pretending the column does not apply.
+      return this.nup.formatValueAndUnit(0, display);
+    }
+    return this.nup.formatValueAndUnit(
+      this.nup.convertInertia(row.body.massMoI, this.nup.storedInertiaUnit(length), display),
+      display
+    );
   }
 
   moiIsAuto(row: MassRow): boolean {

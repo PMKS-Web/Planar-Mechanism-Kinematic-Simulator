@@ -316,21 +316,18 @@
           <span class="dotRowLabel" title="The barrel's mass, acting at the barrel's own center.">Barrel</span>
           <span class="dotField typed wide narrow">
             <input formControlName="barrelMass" />
-            <span class="unitTag">{{ massUnitTag() }}</span>
           </span>
         </div>
         <div class="dotRow" [formGroup]="cylinderForm">
           <span class="dotRowLabel" title="The rod's mass, spread along the rod.">Rod</span>
           <span class="dotField typed wide narrow">
             <input formControlName="rodMass" />
-            <span class="unitTag">{{ massUnitTag() }}</span>
           </span>
         </div>
         <div class="dotRow" [formGroup]="cylinderForm">
           <span class="dotRowLabel" title="The piston head's mass, concentrated at the pin — the reciprocating mass.">Piston head</span>
           <span class="dotField typed wide narrow">
             <input formControlName="headMass" />
-            <span class="unitTag">{{ massUnitTag() }}</span>
           </span>
         </div>
         <p class="massNote">Rotational inertia and centers follow each part's own shape.</p>
@@ -411,7 +408,6 @@
           >
           <span class="dotField typed wide">
             <input formControlName="mass" />
-            <span class="unitTag">{{ massUnitTag() }}</span>
           </span>
         </div>
         <!-- One legend for the two derived fields below. It sits under Mass —
@@ -419,8 +415,8 @@
              governs: grey behind a hollow dot follows the shape, ink behind a
              filled one was set by hand and carries a ✕ to hand it back. -->
         <div class="dotLegend" [formGroup]="linkForm">
-          <span class="dot"></span> from shape
-          <span class="dot filled"></span> set by you
+          <span class="dot"></span> shape
+          <span class="dot filled"></span> yours
           <button
             type="button"
             class="resetAll"
@@ -446,18 +442,18 @@
           </select>
         </div>
         <div class="dotRow fields" [formGroup]="linkForm">
+          <span class="axisTag">X</span>
           <span class="dotField" [class.custom]="activeSrv.selectedLink.comIsCustom">
-            <span class="dot" [class.filled]="activeSrv.selectedLink.comIsCustom"></span>
-            <span class="axisTag">X</span>
             <input formControlName="comX" />
+            <span class="dot" [class.filled]="activeSrv.selectedLink.comIsCustom"></span>
             @if (activeSrv.selectedLink.comIsCustom) {
               <button type="button" class="clearDot" title="Back to the shape's centroid" (click)="useUniformBodyCoM()">&#10005;</button>
             }
           </span>
+          <span class="axisTag">Y</span>
           <span class="dotField" [class.custom]="activeSrv.selectedLink.comIsCustom">
-            <span class="dot" [class.filled]="activeSrv.selectedLink.comIsCustom"></span>
-            <span class="axisTag">Y</span>
             <input formControlName="comY" />
+            <span class="dot" [class.filled]="activeSrv.selectedLink.comIsCustom"></span>
             @if (activeSrv.selectedLink.comIsCustom) {
               <button type="button" class="clearDot" title="Back to the shape's centroid" (click)="useUniformBodyCoM()">&#10005;</button>
             }
@@ -470,14 +466,18 @@
             [class.custom]="activeSrv.selectedLink.moiIsCustom"
             [class.off]="!(activeSrv.selectedLink.mass > 0)"
           >
-            <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
             <input formControlName="massMoI" />
-            <span class="unitTag">{{ inertiaUnitLabel() }}</span>
+            @if (activeSrv.selectedLink.mass > 0) {
+              <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
+            }
             @if (activeSrv.selectedLink.moiIsCustom) {
               <button type="button" class="clearDot" title="Back to the shape's own inertia" (click)="useUniformBodyMoI()">&#10005;</button>
             }
           </span>
         </div>
+        @if (!(activeSrv.selectedLink.mass > 0)) {
+          <p class="massNote">A weightless body has nothing to place or to turn.</p>
+        }
       </collapsible-subseciton>
       @if (activeSrv.selectedLink.isCompound) {
         <collapsible-subseciton

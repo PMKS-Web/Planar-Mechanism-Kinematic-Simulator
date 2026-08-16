@@ -139,13 +139,10 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0 10px 6px;
-  padding: 2px 0 8px;
+  margin: 0 10px 4px;
+  padding: 2px 0 6px;
   font-size: 10.5px;
   color: rgba(0, 0, 0, 0.55);
-  /* The pale rule under the legend is what makes it introduce the derived
-     fields below it, instead of floating between Mass and Center of Mass. */
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 
   .dot { margin-right: -2px; }
 
@@ -190,6 +187,13 @@
   color: rgba(0, 0, 0, 0.6);
 }
 
+/* The axis letter sits outside its field, as the mock draws it. */
+.axisTag {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  flex: none;
+}
+
 /* One right-hand column: the select and every wide field share the same
    width, so the panel's values align down one edge like the mock's. */
 .comFrameSelect {
@@ -212,7 +216,7 @@
   height: 30px;
   padding: 0 8px;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.05);
+  background: #f0f1f5;
   min-width: 0;
 
   input {
@@ -221,7 +225,7 @@
     font: inherit;
     font-size: 13px;
     font-variant-numeric: tabular-nums;
-    text-align: right;
+    text-align: left;
     width: 52px;
     min-width: 0;
     color: rgba(0, 0, 0, 0.5);
@@ -245,7 +249,7 @@
   &.typed input { color: rgba(0, 0, 0, 0.87); }
   &.off { opacity: 0.55; pointer-events: none; }
 
-  .axisTag, .unitTag { font-size: 12px; color: rgba(0, 0, 0, 0.45); flex: none; }
+  .unitTag { font-size: 12px; color: rgba(0, 0, 0, 0.45); flex: none; }
 
   .clearDot {
     border: none;
