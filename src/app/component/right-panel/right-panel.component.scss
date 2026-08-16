@@ -22,7 +22,11 @@
   // 10px inset plus the card's 8px gutter, and the title row's centre line.
   .closeDrawer {
     position: absolute;
-    top: 25px;
+    // Centred on the title it shares a line with, rather than on the space the
+    // title's box takes up: the box carries the padding above the text, so
+    // splitting the box put the button six pixels high of the words. Measured
+    // off the text, and the same six pixels in all three drawers.
+    top: 31px;
     right: 18px;
     // Above the sticky heads it shares a line with, which are also 2. A tie
     // leaves the winner to document order, and document order is the weakest
