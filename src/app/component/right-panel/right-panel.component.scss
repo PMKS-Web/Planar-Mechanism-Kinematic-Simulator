@@ -20,14 +20,22 @@
   // panel in here was written before the drawer could be closed from inside
   // it, so none of them leaves room for this -- these are the drawer's own
   // 10px inset plus the card's 8px gutter, and the title row's centre line.
+  // The same air on all three sides the button has a free edge on: above it to
+  // the accent bar, right of it to the card's edge, below it to the rule under
+  // the title. Centring it on the title's text instead got the middle one right
+  // and left the other two at ten and five, which read as a button sitting low.
+  //
+  // The button is 32px, so the band it sits in has to be 32 + 2 x 8; the drawer
+  // is the only place a title shares its line with a button, so the band is set
+  // here rather than on the title block every panel in the app uses.
+  $close-air: 8px;
+
   .closeDrawer {
     position: absolute;
-    // Centred on the title it shares a line with, rather than on the space the
-    // title's box takes up: the box carries the padding above the text, so
-    // splitting the box put the button six pixels high of the words. Measured
-    // off the text, and the same six pixels in all three drawers.
-    top: 31px;
-    right: 18px;
+    // The card starts one shadow-room inside the frame and then spends 5px on
+    // its accent bar, and stands one card-inset off the frame's right edge.
+    top: nav.$shadow-room + 5px + $close-air;
+    right: nav.$card-inset + $close-air;
     // Above the sticky heads it shares a line with, which are also 2. A tie
     // leaves the winner to document order, and document order is the weakest
     // thing to rest on: the heads are the ones that get promoted to a layer of
@@ -55,6 +63,15 @@
     &:hover {
       background: rgba(0, 0, 0, 0.06);
     }
+  }
+
+  // The band the close button sits in, on the drawers whose title is a plain
+  // title block. Elsewhere a title block keeps less space below it than above,
+  // because what follows a title belongs to it; here what follows is a rule,
+  // and the button between them wants the same air on both sides.
+  #rightPanel #title-block {
+    padding-top: $close-air;
+    padding-bottom: $close-air;
   }
 
   // Asked for while already open. A deliberate pull rather than a wobble: it
