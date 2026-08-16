@@ -24,6 +24,9 @@
     max-height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
+    // Its sticky head is raised above this card's own contents and no further,
+    // so it cannot come out over the drawer's close button beside it.
+    isolation: isolate;
     padding-bottom: 8px;
     background: var(--card-surface);
     border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);

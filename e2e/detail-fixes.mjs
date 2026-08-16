@@ -756,6 +756,35 @@ for (const [tab, name] of [
     corner
   );
 }
+
+// --- and it is not the last one in the drawer that keeps it visible ---------
+// The button used to beat the sticky title it shares a line with on document
+// order alone -- both were z-index 2 -- and document order is the one thing a
+// compositor is free to decide differently. In Safari it did: the title's white
+// background covered the X while the click still went through. Put the button
+// at the FRONT of the drawer, which is the worst order there is, and it has to
+// stay visible on its own merits.
+await page.evaluate((tab) => {
+  const panel = ng.getComponent(document.querySelector('app-right-panel'));
+  panel.constructor.openTab = tab;
+  panel.constructor.isOpen = true;
+}, 1);
+await page.waitForTimeout(800);
+await page.evaluate(() => {
+  const frame = document.querySelector('#rightPanel');
+  frame.insertBefore(document.querySelector('.closeDrawer'), frame.firstChild);
+});
+await page.waitForTimeout(400);
+const worstOrder = await page.evaluate(() => {
+  const btn = document.querySelector('.closeDrawer');
+  const b = btn.getBoundingClientRect();
+  const top = document.elementsFromPoint(b.left + b.width / 2, b.top + b.height / 2)[0];
+  return {
+    onTop: btn.contains(top),
+    coveredBy: btn.contains(top) ? null : top?.tagName.toLowerCase(),
+  };
+});
+record('and it does not rely on being last in the drawer to be seen', worstOrder.onTop, worstOrder);
 await page.setViewportSize({ width: 1500, height: 950 });
 
 // --- a scrolled panel says there is something above it ----------------------

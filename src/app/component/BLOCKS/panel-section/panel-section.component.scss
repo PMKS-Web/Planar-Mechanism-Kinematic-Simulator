@@ -13,6 +13,14 @@
 
   #normalPanel {
     pointer-events: all;
+    // Nothing inside this card paints outside it. The sticky title below is
+    // raised above the card's own contents, and without this it is raised
+    // against everything the card is standing in as well -- including the
+    // drawer's close button, which shares the title's line and lost to it in
+    // Safari: covered by the title's white background while still taking the
+    // click. Confining the title to the card settles it by construction
+    // rather than by who has the larger number.
+    isolation: isolate;
     // The card owns the scroll, not the frame around it. Scrolling the frame
     // cut the card off square at the bottom of the window; scrolling the card
     // keeps its own rounded corner as the edge, and lets the title stay put
