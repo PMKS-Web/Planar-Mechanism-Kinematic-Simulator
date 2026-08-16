@@ -101,6 +101,12 @@
     stroke: mat.m2-get-color-from-palette($accent-palette, 200);
   }
 
+  // The grab-me ring around the selected link's CoM mark: dashed so it reads
+  // as an affordance rather than part of the standard symbol.
+  .com-drag-ring {
+    stroke: mat.m2-get-color-from-palette($accent-palette, 400);
+  }
+
   // The cylinder part whose mass field is being pointed at: a glaze over the
   // one piece, since the selected body already wears the accent outline.
   .cylinder-part-preview {

@@ -1225,25 +1225,44 @@
                  white used to be, and everything is half opaque. The outline is
                  the same four wedges stroked rather than a circle drawn beside
                  them -- one set of coordinates, so it cannot land anywhere else. -->
-            @for (
-              quarter of [
-                mechanismSrv.getLinkProp(link, 'CoM_d1'),
-                mechanismSrv.getLinkProp(link, 'CoM_d2'),
-                mechanismSrv.getLinkProp(link, 'CoM_d3'),
-                mechanismSrv.getLinkProp(link, 'CoM_d4'),
-              ];
-              track $index
-            ) {
-              <path
-                [attr.d]="quarter"
-                [attr.fill]="$index % 2 === 0 ? 'black' : 'none'"
-                fill-opacity="0.45"
-                stroke="black"
-                stroke-opacity="0.45"
-                stroke-linejoin="round"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
-              ></path>
-            }
+            <g
+              [style.pointer-events]="comDraggable(link) ? 'auto' : 'none'"
+              [style.cursor]="comDraggable(link) ? 'move' : null"
+              (pointerdown)="comDraggable(link) && startComDrag($any(link), $event)"
+            >
+              <!-- The selected link's mark is a handle: the dashed accent ring
+                   says grab me, and doubles as the hit area. -->
+              @if (comDraggable(link)) {
+                <circle
+                  class="com-drag-ring"
+                  [attr.cx]="$any(link).CoM.x"
+                  [attr.cy]="$any(link).CoM.y"
+                  [attr.r]="0.16 * settings.objectScale"
+                  fill="transparent"
+                  [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+                  [attr.stroke-dasharray]="svgGrid.scaleWithZoom(4) + ' ' + svgGrid.scaleWithZoom(3)"
+                ></circle>
+              }
+              @for (
+                quarter of [
+                  mechanismSrv.getLinkProp(link, 'CoM_d1'),
+                  mechanismSrv.getLinkProp(link, 'CoM_d2'),
+                  mechanismSrv.getLinkProp(link, 'CoM_d3'),
+                  mechanismSrv.getLinkProp(link, 'CoM_d4'),
+                ];
+                track $index
+              ) {
+                <path
+                  [attr.d]="quarter"
+                  [attr.fill]="$index % 2 === 0 ? 'black' : 'none'"
+                  fill-opacity="0.45"
+                  stroke="black"
+                  stroke-opacity="0.45"
+                  stroke-linejoin="round"
+                  [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+                ></path>
+              }
+            </g>
           </svg>
         }
       }
@@ -1425,7 +1444,7 @@
   <!-- The distance a CoM field states, drawn where it is measured: from the
        frame's zero, along the hovered axis, to the centre of mass — whose
        mark the same hover previews. -->
-  @if (comMeasure; as measure) {
+  @if (comMeasure && comMeasureValue(comMeasure) > 1e-9 ? comMeasure : null; as measure) {
     <g style="pointer-events: none; transform: scaleY(-1)">
       <line
         [attr.x1]="comMeasureLine(measure).from.x"

@@ -2536,6 +2536,47 @@ export class NewGridComponent implements OnDestroy {
     this.comMeasure = measure;
   }
 
+  /**
+   * The selected link's CoM mark is a handle, not just a glyph: drag it to
+   * place a custom centre of mass, exactly as typing in the panel's X/Y
+   * would. Only the selected link's mark — a whole canvas of grabbable
+   * marks would fight the links they sit on for every click.
+   */
+  comDraggable(link: Link): boolean {
+    return (
+      link instanceof RealLink &&
+      this.activeObjService.objType === 'Link' &&
+      this.activeObjService.selectedLink === link &&
+      !this.mechanismSrv.cylinderAt(link) &&
+      this.canEditNow()
+    );
+  }
+
+  /** Live while a CoM mark rides the pointer; the ring stays lit through it. */
+  draggingCoMLink?: RealLink;
+
+  startComDrag(link: RealLink, event: PointerEvent): void {
+    event.stopPropagation();
+    event.preventDefault();
+    this.draggingCoMLink = link;
+    const move = (e: PointerEvent) => {
+      const pos = this.svgGrid.screenToSVGfromXY(e.clientX, e.clientY);
+      link.placeCustomCoM({ x: pos.x, y: pos.y });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      this.draggingCoMLink = undefined;
+      // One undo step for the whole gesture, then the panel re-reads its
+      // fields the same way a unit change makes it re-read them.
+      this.mechanismSrv.updateMechanism(true);
+      this.mechanismSrv.onMechUpdateState.next(2);
+      this.activeObjService.fakeUpdateSelectedObj();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
   /** Which cylinder part's mass field is being pointed at in the panel. */
   cylinderPartPreview?: 'barrel' | 'rod' | 'head';
 
