@@ -278,12 +278,26 @@
   }
 }
 
-/* The mock draws no help icons in Mass Settings; the tooltips live on. The
-   spacer goes with it — the field pushes itself right with margin auto, so
-   no phantom flex gaps stack up against the fixed field column. */
-.massArea #input-block:not(.state-input-host) .label-help,
+/* The spacer stays hidden — the field pushes itself right with margin auto,
+   so no phantom flex gaps stack up against the fixed field column. The help
+   icons are back where they fit; Rotational Inertia's wide field leaves its
+   wrapped label no room for one, so its tooltip rides the label alone. */
 .massArea #input-block:not(.state-input-host) .spacer {
   display: none;
+}
+.massArea input-block.moiBlock .label-help {
+  display: none;
+}
+
+/* Rotational Inertia breaks the centre line: its value carries a unit and
+   needs the room, so its field expands leftward while still ending on the
+   panel's shared right edge. */
+.massArea input-block.moiBlock #input-block:not(.state-input-host) .customInputForm {
+  flex-basis: 148px;
+  min-width: 148px;
+}
+.massArea input-block.moiBlock #input-block .customInputForm .mat-mdc-text-field-wrapper {
+  width: 148px;
 }
 
 /* Grey means derived, in the pair too. */
@@ -323,15 +337,23 @@
   margin-top: 8px;
 }
 
+/* The projected wrapper is otherwise inline: its font-sized line box
+   baseline-shifts the dot a few pixels low. Flex collapses it to content. */
+.massArea #input-block .field-suffix {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
 /* A long label wraps; the field does not shrink below its own value. The
    base rule pins labels to one line, which squeezed Rotational Inertia's
    field to a third of its number. Scoped off the X/Y pair, which splits its
    row by design. */
 .massArea #input-block:not(.state-input-host) .label {
   white-space: normal;
-  /* Take the room the row actually has: basis auto keeps one line whenever
-     it fits, instead of flex min-content wrapping at the longest word. */
-  flex: 1 1 auto;
+  /* Natural width, shrink allowed: the label wraps only when it must, and
+     the help icon sits against its text instead of drifting to the field. */
+  flex: 0 1 auto;
   /* One label size for the whole section — Mass, Center of Mass and
      Rotational Inertia read as siblings, not as different ranks. */
   font-size: 13px;

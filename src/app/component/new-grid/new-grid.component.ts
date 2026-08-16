@@ -2512,6 +2512,55 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
+   * The centre-of-mass distance being pointed at in the Edit panel, drawn
+   * where it is measured: from the chosen frame's zero, along one axis, to
+   * the link's centre of mass. The panel hands the points over because the
+   * frame choice lives there, not here.
+   */
+  comMeasure?: {
+    axis: 'x' | 'y';
+    origin: { x: number; y: number };
+    com: { x: number; y: number };
+  };
+
+  setComMeasureOverlay(measure: NewGridComponent['comMeasure']): void {
+    this.comMeasure = measure;
+  }
+
+  /** The measured stretch: the frame's zero to the CoM's coordinate on one axis. */
+  comMeasureLine(m: NonNullable<NewGridComponent['comMeasure']>) {
+    const to = m.axis === 'x' ? { x: m.com.x, y: m.origin.y } : { x: m.origin.x, y: m.com.y };
+    return { from: m.origin, to };
+  }
+
+  /** End caps like the length overlay's: short bars across the line. */
+  comMeasureCaps(m: NonNullable<NewGridComponent['comMeasure']>): string {
+    const { from, to } = this.comMeasureLine(m);
+    const t = SettingsService.objectScale / 7;
+    return m.axis === 'x'
+      ? `M${from.x} ${from.y - t} L${from.x} ${from.y + t} M${to.x} ${to.y - t} L${to.x} ${to.y + t}`
+      : `M${from.x - t} ${from.y} L${from.x + t} ${from.y} M${to.x - t} ${to.y} L${to.x + t} ${to.y}`;
+  }
+
+  /** A dashed run from the line's end to the mark it measures to. */
+  comMeasureConnector(m: NonNullable<NewGridComponent['comMeasure']>): string {
+    const { to } = this.comMeasureLine(m);
+    return `M${to.x} ${to.y} L${m.com.x} ${m.com.y}`;
+  }
+
+  comMeasureLabelPos(m: NonNullable<NewGridComponent['comMeasure']>) {
+    const { from, to } = this.comMeasureLine(m);
+    const off = 0.25 * this.settings.objectScale;
+    return m.axis === 'x'
+      ? { x: (from.x + to.x) / 2, y: from.y + off }
+      : { x: from.x + off, y: (from.y + to.y) / 2 };
+  }
+
+  comMeasureValue(m: NonNullable<NewGridComponent['comMeasure']>): number {
+    return m.axis === 'x' ? Math.abs(m.com.x - m.origin.x) : Math.abs(m.com.y - m.origin.y);
+  }
+
+  /**
    * The stretch of ground the rod's mount covers, drawn on the canvas.
    *
    * One picture for both fields, because they are two readings of one line:

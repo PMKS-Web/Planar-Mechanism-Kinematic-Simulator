@@ -1789,10 +1789,18 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     return this.gridUtils.canToggleInput(selectedJoint);
   }
 
-  /** Point at a CoM field, see the CoM mark — the grid annotation the length
-   *  and angle fields get, in the only form a centre of mass has. */
-  setComPreview(on: boolean) {
-    this.settingsService.previewCoMLinkId = on ? (this.activeSrv.selectedLink?.id ?? null) : null;
+  /** Point at a CoM field, see what it states: the CoM mark, plus the
+   *  distance drawn from the chosen frame's zero along that axis — the same
+   *  show-me the length and angle fields give. */
+  setComPreview(axis: 'x' | 'y', on: boolean) {
+    const link = this.activeSrv.selectedLink;
+    const showing = on && !!link;
+    this.settingsService.previewCoMLinkId = showing ? link.id : null;
+    NewGridComponent.instance.setComMeasureOverlay(
+      showing
+        ? { axis, origin: this.comFrameOrigin(link), com: { x: link.CoM.x, y: link.CoM.y } }
+        : undefined
+    );
   }
 
   setShowLinkLengthOverlay($event: number) {

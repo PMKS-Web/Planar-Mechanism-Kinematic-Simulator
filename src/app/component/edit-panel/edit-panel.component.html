@@ -445,7 +445,7 @@
             [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
             clearTitle="Back to the shape's centroid"
             (cleared)="useUniformBodyCoM()"
-            (hovered)="setComPreview($event)"
+            (hovered)="setComPreview('x', $event)"
           />
           <span class="axisTag">Y</span>
           <state-input
@@ -454,12 +454,13 @@
             [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
             clearTitle="Back to the shape's centroid"
             (cleared)="useUniformBodyCoM()"
-            (hovered)="setComPreview($event)"
+            (hovered)="setComPreview('y', $event)"
           />
         </div>
         <input-block
           [formGroup]="linkForm"
           _formControl="massMoI"
+          class="moiBlock"
           tooltip="The mass moment of inertia about the link's center of mass. Derived from the shape as a uniform body until a value is typed."
           [class.derived]="!activeSrv.selectedLink.moiIsCustom"
           >Rotational Inertia
