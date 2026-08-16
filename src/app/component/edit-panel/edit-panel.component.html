@@ -421,6 +421,7 @@
           <select
             class="comFrameSelect"
             [value]="comFrame"
+            [disabled]="!(activeSrv.selectedLink.mass > 0)"
             (change)="setComFrame($any($event.target).value)"
             title="The frame the two numbers below are typed and read in. Stored against the link, whichever you pick."
           >
@@ -465,9 +466,6 @@
             }
           </span>
         </input-block>
-        @if (!(activeSrv.selectedLink.mass > 0)) {
-          <p class="massNote">A weightless body has nothing to place or to turn.</p>
-        }
         </div>
       </collapsible-subseciton>
       @if (activeSrv.selectedLink.isCompound) {

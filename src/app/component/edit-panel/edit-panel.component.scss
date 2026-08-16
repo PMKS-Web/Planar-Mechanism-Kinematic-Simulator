@@ -142,8 +142,9 @@
   align-items: center;
   gap: 6px;
   /* Flush with the label column, exactly where the mock starts it, and
-     closed by the mock's hairline under Reset all. */
-  margin: 0 0 6px;
+     closed by the mock's hairline under Reset all. Clear air above: the mock
+     does not crowd the legend against the Mass field. */
+  margin: 8px 0 6px;
   padding: 2px 0 8px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   font-size: 10.5px;
@@ -181,7 +182,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 10px;
+  /* No side padding: every row's label starts at the same left edge and
+     every field ends at the same right edge as the input-block rows. */
+  padding: 4px 0;
 }
 
 .massArea .dotRowLabel {
@@ -198,9 +201,15 @@
   background: #f0f1f5;
   height: 30px;
   padding: 0 8px;
-  width: 160px;
-  min-width: 112px;
-  flex: 0 1 160px;
+  width: 148px;
+  min-width: 0;
+  flex: 0 0 148px;
+  margin-left: auto;
+
+  &:disabled {
+    color: rgba(0, 0, 0, 0.38);
+    opacity: 1;
+  }
 }
 
 .massArea .stateSuffix {
@@ -240,13 +249,14 @@
 .massArea .comPairRow {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 5px;
+  padding: 4px 0;
 
   state-input {
-    flex: 1 1 0;
-    min-width: 0;
+    flex: none;
   }
+
+  justify-content: space-between;
 
   /* The axis letters read as small captions, not headings. */
   .axisTag {
@@ -256,8 +266,11 @@
   }
 }
 
-/* The mock draws no help icons in Mass Settings; the tooltips live on. */
-.massArea #input-block .label-help {
+/* The mock draws no help icons in Mass Settings; the tooltips live on. The
+   spacer goes with it — the field pushes itself right with margin auto, so
+   no phantom flex gaps stack up against the fixed field column. */
+.massArea #input-block:not(.state-input-host) .label-help,
+.massArea #input-block:not(.state-input-host) .spacer {
   display: none;
 }
 
@@ -266,11 +279,11 @@
   color: rgba(0, 0, 0, 0.5);
 }
 
-/* The mock's one right-hand column: Mass, the frame select and Rotational
-   Inertia all share a width and a right edge. The id out-ranks the base
-   #input-block width. */
+/* The mock's one field column: Mass, the frame select and Rotational
+   Inertia share one width, one left edge and one right edge — the centre
+   line of the panel. The id out-ranks the base #input-block width. */
 .massArea #input-block .customInputForm .mat-mdc-text-field-wrapper {
-  width: 160px;
+  width: 148px;
   max-width: 100%;
 }
 
@@ -286,10 +299,13 @@
 }
 
 .massArea #input-block:not(.state-input-host) .customInputForm {
-  min-width: 150px;
+  flex: 0 0 148px;
+  min-width: 148px;
+  margin-left: auto;
 }
 
-/* The X/Y pair splits its row instead of taking the column width. */
+/* The X/Y fields copy the Length/Angle fields above them: the same 80px
+   wrapper, laid out as label–field, gap, label–field across the row. */
 .massArea #input-block.state-input-host .customInputForm .mat-mdc-text-field-wrapper {
-  width: 100%;
+  width: 80px;
 }
