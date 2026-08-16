@@ -317,6 +317,19 @@
   color: rgba(0, 0, 0, 0.5);
 }
 
+/* Massless: values and labels dim with the group. The id out-ranks the
+   derived-ink rule, which otherwise holds the values at reading strength. */
+.massArea #input-block .customInput:disabled {
+  color: rgba(0, 0, 0, 0.32);
+}
+.massArea .dotRow.off .dotRowLabel,
+.massArea input-block.off #input-block .label {
+  color: rgba(0, 0, 0, 0.32);
+}
+.massArea .comPairRow.off .axisTag {
+  color: rgba(0, 0, 0, 0.3);
+}
+
 /* Massless: the pair's markers grey out with the fields they mark. */
 .massArea .comPairRow.off .state-dot {
   border-color: rgba(0, 0, 0, 0.2);

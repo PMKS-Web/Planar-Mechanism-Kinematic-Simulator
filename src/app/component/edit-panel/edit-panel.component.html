@@ -434,7 +434,7 @@
             Reset all
           </button>
         </div>
-        <div class="dotRow">
+        <div class="dotRow" [class.off]="!(activeSrv.selectedLink.mass > 0)">
           <span class="dotRowLabel">Center of Mass</span>
           <select
             class="comFrameSelect"
@@ -481,6 +481,7 @@
           class="moiBlock"
           tooltip="The mass moment of inertia about the link's center of mass. Derived from the shape as a uniform body until a value is typed."
           [class.derived]="!activeSrv.selectedLink.moiIsCustom"
+          [class.off]="!(activeSrv.selectedLink.mass > 0)"
           >Rotational Inertia
           <span fieldSuffix class="stateSuffix" [class.off]="!(activeSrv.selectedLink.mass > 0)">
             <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
