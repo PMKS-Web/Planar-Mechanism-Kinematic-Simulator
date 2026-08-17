@@ -1,4 +1,4 @@
-import { Joint, PrisJoint, RealJoint } from './joint';
+import { Joint, RealJoint } from './joint';
 import { Link, RealLink, SliderBlock } from './link';
 import { Force } from './force';
 import { cylinderJoints, sealedCylinderStructures } from './cylinder';
@@ -23,9 +23,14 @@ import { cylinderJoints, sealedCylinderStructures } from './cylinder';
  *   moves, so holding one holds all five. A held *mount* stays a held mount:
  *   dragging the other mount anchors it, and a body drag can still swing the
  *   part about it, so the implication deliberately does not run outward.
- * - A floating slot's pin is reseated onto its channel after every edit, so
- *   holding the pin means holding the two joints that define the channel —
- *   but holding a channel joint does not pin the slider that rides it.
+ *
+ * A floating slider is the one mark that is not about a point on the drawing.
+ * It has exactly one freedom — where it sits along its slot — and that is what
+ * its mark spends: the channel stays free, and the reseat carries the block
+ * along at the offset it was locked at. So the mark reaches its own block
+ * joint and stops. Holding the pair that cuts the channel, which is what a
+ * world-position lock would have to do, froze two joints the reader never
+ * marked and had no way to predict from the one they did.
  */
 export type Lockable = RealJoint | Force;
 
@@ -54,8 +59,8 @@ export function frozenJointIds(joints: Joint[], links: Link[]): Set<string> {
 
 /**
  * Grow a held set until every implication is satisfied. Iterated to a fixed
- * point — freezing a block joint can seal a cylinder's interior, which can pin
- * a floating slot's channel — and it terminates because each pass only adds.
+ * point — freezing a block joint can seal a cylinder's interior, which holds
+ * its mounts — and it terminates because each pass only adds.
  */
 function closeOverConsequences(frozen: Set<string>, joints: Joint[], links: Link[]): Set<string> {
   const rules: Implication[] = [];
@@ -71,14 +76,6 @@ function closeOverConsequences(frozen: Set<string>, joints: Joint[], links: Link
       ifAnyOf: [sealed.pin.id, sealed.slider.id, sealed.barrelNear.id],
       freeze: cylinderJoints(sealed).map((joint) => joint.id),
     });
-  });
-
-  joints.forEach((joint) => {
-    if (!(joint instanceof PrisJoint) || !joint.isFloating) return;
-    const slotA = joint.slotJointA;
-    const slotB = joint.slotJointB;
-    if (!slotA || !slotB) return;
-    rules.push({ ifAnyOf: [joint.id], freeze: [slotA.id, slotB.id] });
   });
 
   let grew = true;

@@ -1365,9 +1365,14 @@ export class NewGridComponent implements OnDestroy {
   /**
    * The joints a drag of this link would carry, filtered to the ones the
    * current Lock marks hold still. Carried means moved *as a body*: the
-   * link's own joints, the coincident block joints riding them, a sealed
-   * cylinder's five, and any floating slider that would be reseated onto
-   * this link after the move.
+   * link's own joints, the coincident block joints riding them, and a sealed
+   * cylinder's five.
+   *
+   * A floating slider riding this link is not among them, locked or not. Its
+   * mark holds where it sits along the slot, and moving the link moves the
+   * slot with the block still at that place on it — so a locked block is no
+   * reason to refuse the drag, and pivoting the link about one would be
+   * anchoring a point nothing asked to have held.
    */
   private frozenCarriedJoints(link: Link): Joint[] {
     const carried = new Map<string, Joint>();
@@ -1383,9 +1388,6 @@ export class NewGridComponent implements OnDestroy {
           if (other instanceof SliderBlock) other.joints.forEach(add);
         });
       });
-      this.mechanismSrv.joints.forEach((joint) => {
-        if (joint instanceof PrisJoint && joint.carrier?.id === link.id) add(joint);
-      });
     }
     const frozen = this.gridUtils.frozenJointIds();
     return [...carried.values()].filter((joint) => frozen.has(joint.id));
@@ -1395,10 +1397,22 @@ export class NewGridComponent implements OnDestroy {
   private refuseLockedJoint(joint: RealJoint): boolean {
     if (!this.gridUtils.isJointFrozen(joint)) return false;
     const holds = this.gridUtils.locksHolding(joint);
-    const heldByItself = holds.some((lock) => lock instanceof RealJoint && lock.id === joint.id);
-    const text = heldByItself
-      ? `Joint ${joint.name} is locked.`
-      : `Joint ${joint.name} is on a locked ${this.lockNoun(holds)}.`;
+    // A mark on the other half of a block counts as this joint's own: the two
+    // are the same point, and only one of them has a letter the reader can see
+    // to unlock.
+    const block = joint.links.find((link): link is SliderBlock => link instanceof SliderBlock);
+    const itself = new Set([joint.id, ...(block?.joints.map((member) => member.id) ?? [])]);
+    const heldByItself = holds.some((lock) => itself.has(lock.id));
+    const slider = this.mechanismSrv.sliderFor(joint);
+    // A locked block has not been pinned to the grid — its slot is free to
+    // move and will take it along. What it cannot do is slide, so that is what
+    // the refusal says; "is locked" alone would promise a stillness this mark
+    // does not buy.
+    const text = !heldByItself
+      ? `Joint ${joint.name} is on a locked ${this.lockNoun(holds)}.`
+      : slider?.isFloating
+        ? `Slider ${joint.name} is locked to its place in the slot.`
+        : `Joint ${joint.name} is locked.`;
     this.refuseWithUnlock('lock.joint', text, holds);
     return true;
   }

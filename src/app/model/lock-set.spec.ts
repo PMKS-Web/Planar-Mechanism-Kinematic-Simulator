@@ -12,8 +12,8 @@ const S = MODEL_SCALE;
  * What a Lock mark holds still is a set of joints, and this file pins the
  * translation: marks spread along consequence, not membership. The directed
  * cases — a mount that stays free while an interior joint seals the part, a
- * floating pin that pins its channel without the reverse — are exactly the
- * ones a symmetric "travelling group" closure gets wrong.
+ * floating pin that holds its own place without holding its channel — are
+ * exactly the ones a symmetric "travelling group" closure gets wrong.
  */
 
 function fourBar() {
@@ -113,7 +113,10 @@ describe('what a Lock mark holds still', () => {
     expect(frozenJointIds(part.joints, part.links)).toEqual(new Set(['A']));
   });
 
-  it('a locked floating pin holds the two joints that define its channel, and not the reverse', () => {
+  it('a locked floating pin holds its own block and leaves its channel free', () => {
+    // The block's mark is parametric: it spends the one freedom the block has,
+    // which is where it sits along the slot. The two joints that cut the slot
+    // keep moving, and the reseat takes the block with them.
     const { joints, links, a, b, ab } = fourBar();
     const slider = new PrisJoint('P', 1 * S, 1 * S);
     const rider = new RevJoint('E', 1 * S, 1 * S);
@@ -124,7 +127,7 @@ describe('what a Lock mark holds still', () => {
     const withSlot = { joints: [...joints, slider, rider], links: [...links, block] };
 
     slider.locked = true;
-    expect(frozenJointIds(withSlot.joints, withSlot.links)).toEqual(new Set(['P', 'E', 'A', 'B']));
+    expect(frozenJointIds(withSlot.joints, withSlot.links)).toEqual(new Set(['P', 'E']));
 
     slider.locked = false;
     a.locked = true;

@@ -17,6 +17,13 @@ const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4700';
 const FOUR_BAR =
   '0P.TY.K,0.101.MA,A,0mv,0VU,0.GB,B,0e_,E6,0.GC,C,l1,WW,0.KD,D,qD,0Pk,0..YRAB,AB,Fe,Fe,0ix,08i,c5cae9,A,B,,.YRBC,BC,Fe,Fe,32,NJ,303e9f,B,C,,.YRCD,CD,Fe,Fe,nd,3P,0d125a,C,D,,...JBq';
 
+// An inverted slider-crank: block P rides a slot cut into the grounded lever
+// CD, and pin B on the crank is the block's other half. The three trailing
+// tokens on joint P are the carrier and the two joints that cut its slot.
+const INVERTED_SLIDER_CRANK =
+  '2P.Fe.K,0.1011.MA,A,0,0,0.GB,B,0,Fe,0.KC,C,ku,0,0.GD,D,0RF,Oj,0.HP,P,0,Fe,0,CD,C,D..' +
+  'YRAB,AB,Fe,Fe,0,7q,555555,A,B,,.YRCD,CD,Fe,Fe,Fe,Fe,555555,C,D,,.YPBP,BP,Fe,0,0,0,,B,P,,...N_r';
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
 const errors = [];
@@ -260,6 +267,91 @@ record(
   'dragJoint itself refuses a held joint, whoever calls it',
   cHeld.x === cStill.x && cHeld.y === cStill.y,
   { cHeld, cStill }
+);
+
+// --- A lock on a block is parametric: it holds a place on the slot ---------
+// The one mark that is not about a point on the drawing. A block has exactly
+// one freedom -- where it sits along its slot -- and that is what its mark
+// spends. The channel stays free to move and takes the block with it.
+
+await page.goto(`${BASE}/?${INVERTED_SLIDER_CRANK}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await closeTour();
+await page.waitForTimeout(400);
+await page.evaluate(() => {
+  const c = ng.getComponent(document.querySelector('app-new-grid'));
+  c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'B'));
+});
+await page.waitForTimeout(200);
+
+record(
+  'locking a block holds it and its pin, and nothing else',
+  await page.evaluate(() => {
+    const c = ng.getComponent(document.querySelector('app-new-grid'));
+    return [...c.gridUtils.frozenJointIds()].sort().join('') === 'BP';
+  }),
+  await page.evaluate(() =>
+    [...ng.getComponent(document.querySelector('app-new-grid')).gridUtils.frozenJointIds()].sort()
+  )
+);
+
+// The block is drawn on the pin, so the two are one target; whichever the
+// canvas hands the drag, the refusal has to speak about the slot.
+const blockBefore = await jointModel('P');
+await dragBy(await jointOnScreen('B'), 70, 40);
+const blockAfter = await jointModel('P');
+record(
+  'dragging the block itself moves nothing',
+  blockBefore.x === blockAfter.x && blockBefore.y === blockAfter.y,
+  { blockBefore, blockAfter }
+);
+record(
+  'and the refusal says what is actually held: its place in the slot',
+  await page.evaluate(() =>
+    ng
+      .getComponent(document.querySelector('app-new-grid'))
+      .notify.live.some((one) => one.id === 'lock.joint' && /place in the slot/.test(one.text))
+  ),
+  await page.evaluate(() =>
+    ng.getComponent(document.querySelector('app-new-grid')).notify.live.map((one) => one.text)
+  )
+);
+
+// The joints that cut the slot are not held by the block's mark. Dragging one
+// swings the channel, and the reseat carries the block along it.
+const slotBefore = { c: await jointModel('C'), p: await jointModel('P') };
+await dragBy(await jointOnScreen('C'), 0, -70);
+const slotAfter = { c: await jointModel('C'), p: await jointModel('P') };
+record(
+  'a joint that cuts the slot still moves with the block locked',
+  Math.hypot(slotAfter.c.x - slotBefore.c.x, slotAfter.c.y - slotBefore.c.y) > 1,
+  { slotBefore: slotBefore.c, slotAfter: slotAfter.c }
+);
+record(
+  'and the block rides along rather than staying behind on the grid',
+  Math.hypot(slotAfter.p.x - slotBefore.p.x, slotAfter.p.y - slotBefore.p.y) > 1,
+  { slotBefore: slotBefore.p, slotAfter: slotAfter.p }
+);
+
+// Asked of the gate rather than through a grab: on this linkage the slot's
+// own graphic covers the bar, so a pointer aimed at the middle of CD lands on
+// the channel and no link drag ever starts. The gate is what the change is
+// about -- one held carried joint turns a body drag into a swing about it, and
+// a locked block must not be one, or dragging the bar would pivot it about a
+// block the reader only asked to stop sliding.
+record(
+  'the link the block rides is free to drag: a locked block is not carried by it',
+  await page.evaluate(() => {
+    const c = ng.getComponent(document.querySelector('app-new-grid'));
+    const carrier = c.mechanismSrv.links.find((l) => l.id === 'CD');
+    return c['frozenCarriedJoints'](carrier).length === 0;
+  }),
+  await page.evaluate(() => {
+    const c = ng.getComponent(document.querySelector('app-new-grid'));
+    return c['frozenCarriedJoints'](c.mechanismSrv.links.find((l) => l.id === 'CD')).map(
+      (j) => j.id
+    );
+  })
 );
 
 // --- The marks are an Edit affordance: Analysis paints clean ---------------
