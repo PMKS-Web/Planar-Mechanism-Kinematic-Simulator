@@ -2602,6 +2602,12 @@ export class NewGridComponent implements OnDestroy {
     const joints = link.joints;
     let best: { x: number; y: number } | undefined;
     let bestDist = this.svgGrid.scaleWithZoom(12);
+    // The centroid outranks the lines: it is the point the whole feature is
+    // an offset from, and a pointer near it means it exactly.
+    const centroid = uniformBodyOf(joints).centroid;
+    if (Math.hypot(pos.x - centroid.x, pos.y - centroid.y) < bestDist) {
+      return centroid;
+    }
     for (let i = 0; i < joints.length; i++) {
       for (let j = i + 1; j < joints.length; j++) {
         const a = joints[i];

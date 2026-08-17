@@ -217,7 +217,9 @@
 
   .massRow {
     display: grid;
-    grid-template-columns: minmax(54px, 1fr) 62px 118px 16px;
+    /* Mass earns the room a value like "10.00 lbm" needs; the name column
+       gives it up — names are short and ellipsis covers the rare long one. */
+    grid-template-columns: minmax(40px, 1fr) 76px 118px 16px;
 
     /* Grid items default to min-width auto, so a field's own content forces
        its column wide and shoves the jump arrows off the drawer. */

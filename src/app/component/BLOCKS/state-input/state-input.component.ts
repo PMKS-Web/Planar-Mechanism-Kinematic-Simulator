@@ -32,6 +32,7 @@ import { MatInput } from '@angular/material/input';
           <input
             matInput
             class="customInput"
+            spellcheck="false"
             type="text"
             #field
             (keyup.enter)="field.blur()"
