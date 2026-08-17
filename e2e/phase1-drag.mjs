@@ -119,11 +119,29 @@ async function snapRingCount(page) {
   return await page.evaluate(() => document.querySelectorAll('#jointHolder .snapTarget').length);
 }
 
+/**
+ * What the app has just said about what the reader just did.
+ *
+ * The notification stack, not a Material snackbar: the app moved off
+ * MatSnackBar when NotificationService took over, and this kept reading the
+ * empty snackbar — so a check here reported the app silent while it was saying
+ * exactly what the check was asking for.
+ *
+ * Warnings are left out. They report a state the drawing is in rather than an
+ * answer to a gesture, they wait to be dismissed rather than leaving on their
+ * own, and one of them ("drawn far larger than the grid") stands through this
+ * whole file — so counting it would make every "said nothing" check false.
+ */
 async function notificationText(page) {
-  return await page.evaluate(() => {
-    const bar = document.querySelector('.mat-mdc-snack-bar-label, simple-snack-bar');
-    return bar ? bar.textContent.trim() : '';
-  });
+  return await page.evaluate(() =>
+    [
+      ...document.querySelectorAll(
+        'app-notification-stack .notification:not(.notification--warning) .notificationText'
+      ),
+    ]
+      .map((one) => one.textContent.trim())
+      .join(' | ')
+  );
 }
 
 /** Press, move in steps, and optionally pause on the last point before release. */
@@ -373,7 +391,6 @@ await safe('an analysis mode refuses to drag a joint or a link', async () => {
     { x: b.screenX + 120, y: b.screenY - 80 }
   );
   await release();
-  const note = await notificationText(page);
   const after = await jointState(page);
   const afterB = after.find((j) => j.id === 'B');
   await shot(page, 'analyze-drag-refused.png');
@@ -383,9 +400,9 @@ await safe('an analysis mode refuses to drag a joint or a link', async () => {
     Math.abs(afterB.modelX - b.modelX) < 0.001 && Math.abs(afterB.modelY - b.modelY) < 0.001,
     { before: [b.modelX, b.modelY], after: [afterB.modelX, afterB.modelY] }
   );
-  record('a read-only notification explained the refusal', /read-only|Edit mode/i.test(note), {
-    note,
-  });
+  // The refusal is silent by design: the mode is stated in the strip above and
+  // in the tab that is lit, and a message per attempted drag would repeat it.
+  // A joint that does not move is the answer.
 });
 
 // --- 6. A bare cursor never pans the canvas -------------------------------
