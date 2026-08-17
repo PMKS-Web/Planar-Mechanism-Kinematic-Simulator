@@ -2021,7 +2021,13 @@ export class NewGridComponent implements OnDestroy {
                 // Have within constructor other joints so when you add joint, that joint's connected joints also attach
                 joint1.connectedJoints.push(joint2);
                 joint2.connectedJoints.push(joint1);
-                link = new RealLink(joint1.id + joint2.id, [joint1, joint2]);
+                // Through the same door every other creation gesture uses: this is
+                // where a link is given its colour, and the two branches that built
+                // one directly skipped it. The link came out in RealLink's own
+                // stand-in grey -- and the ghost the gesture had just drawn was in
+                // the palette colour it was promised, so the bar changed colour at
+                // the moment of the click.
+                link = this.gridUtils.createRealLink(joint1.id + joint2.id, [joint1, joint2]);
                 joint1.links.push(link);
                 joint2.links.push(link);
                 // TODO: Be sure that I think joint1 also changes the link to add the desired joint to it's connected Joints and to its connected Links
@@ -2154,7 +2160,13 @@ export class NewGridComponent implements OnDestroy {
                 // Have within constructor other joints so when you add joint, that joint's connected joints also attach
                 joint1.connectedJoints.push(joint2);
                 joint2.connectedJoints.push(joint1);
-                link = new RealLink(joint1.id + joint2.id, [joint1, joint2]);
+                // Through the same door every other creation gesture uses: this is
+                // where a link is given its colour, and the two branches that built
+                // one directly skipped it. The link came out in RealLink's own
+                // stand-in grey -- and the ghost the gesture had just drawn was in
+                // the palette colour it was promised, so the bar changed colour at
+                // the moment of the click.
+                link = this.gridUtils.createRealLink(joint1.id + joint2.id, [joint1, joint2]);
                 joint1.links.push(link);
                 joint2.links.push(link);
                 // TODO: Be sure that I think joint1 also changes the link to add the desired joint to it's connected Joints and to its connected Links
