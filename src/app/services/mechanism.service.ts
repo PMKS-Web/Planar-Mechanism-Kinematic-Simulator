@@ -2219,8 +2219,8 @@ export class MechanismService {
       body:
         massless.length === 0
           ? 'Every link has a mass and a moment of inertia.'
-          : `${massless.length === 1 ? 'Link' : 'Links'} ${massless
-              .map((link) => link.name || link.id)
+          : `${massless
+              .map((link) => this.bodyLabel(link))
               .join(
                 ', '
               )} ${massless.length === 1 ? 'weighs' : 'weigh'} nothing, so gravity and inertia pass ${massless.length === 1 ? 'it' : 'them'} by. Fine for an idealized bar — type a mass in the table below to include ${massless.length === 1 ? 'it' : 'them'}.`,
@@ -2251,8 +2251,8 @@ export class MechanismService {
           : gravityLoads
             ? 'Gravity loads the links that have mass.'
             : this.settingsService.isGravity.value
-              ? 'Nothing loads this mechanism yet: no force is applied and every link is massless. Right-click a link and choose Attach Force, or give a link mass — gravity is on, so weight alone is a load.'
-              : 'Nothing loads this mechanism: gravity is off and no force is applied. Right-click a link and choose Attach Force, or turn gravity on in Settings and give a link mass.',
+              ? 'Nothing loads this mechanism yet: no force is applied and every link is massless. Attach a force or give a link mass.'
+              : 'Nothing loads this mechanism: gravity is off and no force is applied. Attach a force, or turn gravity on in Settings and give a link mass.',
     });
 
     return requirements;
@@ -2437,6 +2437,35 @@ export class MechanismService {
     if (obj instanceof Joint) return cylinderOfJointIn(this.sealedStructures(), obj);
     if (obj instanceof Link) return cylinderOfLinkIn(this.sealedStructures(), obj);
     return undefined;
+  }
+
+  /**
+   * What the panels call a body: a cylinder part by its role in the machine,
+   * a block by its kind — never the internal concatenated id, which names
+   * joints a reader cannot even click.
+   */
+  bodyLabel(body: Link): string {
+    const cylinder = this.cylinderAt(body);
+    if (cylinder) {
+      // By identity, with no catch-all: a compound that merely *contains* a
+      // cylinder part is a welded body of its own, not another Piston.
+      const role =
+        body === cylinder.block
+          ? 'Piston'
+          : body === cylinder.barrel
+            ? 'Barrel'
+            : body === cylinder.rod
+              ? 'Rod'
+              : undefined;
+      if (role) {
+        const name =
+          (cylinder.barrelFar.name || cylinder.barrelFar.id) +
+          (cylinder.rodFar.name || cylinder.rodFar.id);
+        return `${role} ${name}`;
+      }
+    }
+    if (body instanceof SliderBlock) return `Block ${body.id}`;
+    return (body as RealLink).name || body.id;
   }
 
   /**

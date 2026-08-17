@@ -296,32 +296,15 @@ export class AnalysisSetupComponent {
   }
 
   private buildRows(): MassRow[] {
+    // The label logic lives with the mechanism, shared with the massless
+    // warning — the table and the warning must call a body the same thing.
     return this.mechanism.links
       .filter((link) => link instanceof RealLink || link instanceof SliderBlock)
-      .map((body) => {
-        const cylinder = this.mechanism.cylinderAt(body);
-        // By identity, with no catch-all: a compound that merely *contains* a
-        // cylinder part is a welded body of its own, not another Piston.
-        const role = !cylinder
-          ? undefined
-          : body === cylinder.block
-            ? 'Piston'
-            : body === cylinder.barrel
-              ? 'Barrel'
-              : body === cylinder.rod
-                ? 'Rod'
-                : undefined;
-        if (cylinder && role) {
-          const name =
-            (cylinder.barrelFar.name || cylinder.barrelFar.id) +
-            (cylinder.rodFar.name || cylinder.rodFar.id);
-          return { body, label: `${role} ${name}`, isBlock: body instanceof SliderBlock };
-        }
-        if (body instanceof SliderBlock) {
-          return { body, label: `Block ${body.id}`, isBlock: true };
-        }
-        return { body, label: body.name || body.id, isBlock: false };
-      });
+      .map((body) => ({
+        body,
+        label: this.mechanism.bodyLabel(body),
+        isBlock: body instanceof SliderBlock,
+      }));
   }
 
   massText(row: MassRow): string {
