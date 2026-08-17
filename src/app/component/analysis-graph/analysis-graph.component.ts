@@ -744,6 +744,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     const velAngUnit = '(' + this.getUnitStr(this.settingsService.angleUnit.value) + '/s)';
     const accAngUnit = '(' + this.getUnitStr(this.settingsService.angleUnit.value) + '/s²)';
     this.analysisDiagnostic = null;
+    // Only the force branch writes the gap, so a kinematic graph would
+    // otherwise inherit the banner from the force graph shown before it.
+    this.analysisGap = null;
     switch (analysis) {
       case 'force':
         switch (mechProp) {

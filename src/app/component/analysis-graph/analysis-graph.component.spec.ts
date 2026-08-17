@@ -12,7 +12,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ApexAxisChartSeries } from 'apexcharts';
 import { RealJoint } from '../../model/joint';
 import { RealLink } from '../../model/link';
-import { ForceSolver } from '../../model/mechanism/force-solver';
+import { ForceAnalysisSeries, ForceSolver } from '../../model/mechanism/force-solver';
 import { KinematicsSolver } from '../../model/mechanism/kinematic-solver';
 import { ForceUnit, LengthUnit } from '../../model/unit-enums';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
@@ -116,6 +116,36 @@ function expectNumericSeries(
       ).toBeGreaterThanOrEqual(2);
     }
   }
+}
+
+/**
+ * No constructible linkage produces a partially failed force series any more:
+ * the position solver only emits frames it solved, and the overhauled force
+ * solver handles toggle and dead-center poses (verified 2026-08-16 against
+ * rocker-driven four-bars, TDC slider-cranks, and the square four-bar). The
+ * banner's input is fabricated here instead, failing frames the way
+ * `analyzeFrame`'s `empty('singular')` does, so the gap rendering cannot rot
+ * invisibly while it waits for a mechanism that can reach it.
+ */
+function failForceFrames(
+  fixture: MechanismFixture,
+  mode: 'static' | 'dynamic',
+  indices: number[]
+): ForceAnalysisSeries {
+  const series = fixture.mechanism.getForceAnalysis(mode);
+  for (const index of indices) {
+    const frame = series.frames[index];
+    frame.status = 'singular';
+    frame.jointReactionsByLink = new Map();
+    frame.jointReactions = new Map();
+    frame.guideCouples = new Map();
+    frame.inputEffort = undefined;
+    frame.rank = 0;
+    frame.residual = Number.POSITIVE_INFINITY;
+    frame.message = ForceSolver.statusMessage('singular');
+  }
+  series.successfulFrames = series.frames.filter((frame) => frame.status === 'ok').length;
+  return series;
 }
 
 describe('AnalysisGraphComponent production fixtures', () => {
@@ -236,6 +266,47 @@ describe('AnalysisGraphComponent production fixtures', () => {
         (series.data as unknown as Array<{ y: number | null }>).every((point) => point.y === null)
       )
     ).toBe(true);
+  });
+
+  it('counts the positions with no solution and can stand the mechanism at the first', () => {
+    const fixture = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
+    const component = createComponent(fixture);
+    const ground = fixture.mechanism.joints[0].find(
+      (candidate): candidate is RealJoint => candidate instanceof RealJoint && candidate.ground
+    )!;
+    const series = failForceFrames(fixture, 'static', [1, 4]);
+
+    component.determineChart('force', 'static', 'Joint Forces', ground.id);
+
+    expect(component.analysisGap).toEqual({
+      failed: 2,
+      total: series.frames.length,
+      firstSeconds: series.frames[1].timeSeconds,
+      mechIndex: 0,
+    });
+    // A hole in a good series, not a failure of the whole series.
+    expect(component.analysisDiagnostic).toBeNull();
+    const points = component.chartOptions.series![0].data as unknown as Array<{
+      y: number | null;
+    }>;
+    expect(points[1].y).toBeNull();
+    expect(points[4].y).toBeNull();
+    expect(Number.isFinite(points[0].y ?? Number.NaN)).toBe(true);
+
+    const seek = vi.fn();
+    Object.assign(fixture.service, { seekMechanism: seek });
+    component.showGapPosition();
+    expect(seek).toHaveBeenCalledWith(0, series.frames[1].timeSeconds);
+
+    // A fully solved series takes the banner down...
+    component.determineChart('force', 'dynamic', 'Joint Forces', ground.id);
+    expect(component.analysisGap).toBeNull();
+
+    // ...and so does leaving force analysis for a kinematic graph.
+    component.determineChart('force', 'static', 'Joint Forces', ground.id);
+    expect(component.analysisGap).not.toBeNull();
+    component.determineChart('kinematic', 'loop', 'Linear Joint Pos', ground.id);
+    expect(component.analysisGap).toBeNull();
   });
 
   it('says the analysis failed rather than showing an empty series selection', () => {
@@ -435,8 +506,10 @@ describe('AnalysisGraphComponent lifecycle', () => {
 describe('AnalysisGraphComponent rendered controls', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('updates the rendered chart series when a series is switched off and on', async () => {
-    const fixtureData = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
+  async function mountGraph(
+    fixtureData: MechanismFixture,
+    inputs: { analysis: string; analysisType: string; mechProp: string; mechPart: string }
+  ): Promise<ComponentFixture<AnalysisGraphComponent>> {
     await TestBed.configureTestingModule({
       imports: [
         ReactiveFormsModule,
@@ -465,13 +538,24 @@ describe('AnalysisGraphComponent rendered controls', () => {
 
     const fixture: ComponentFixture<AnalysisGraphComponent> =
       TestBed.createComponent(AnalysisGraphComponent);
-    fixture.componentRef.setInput('analysis', 'kinematic');
-    fixture.componentRef.setInput('analysisType', 'loop');
-    fixture.componentRef.setInput('mechProp', 'Linear Joint Pos');
-    fixture.componentRef.setInput('mechPart', 'B');
+    fixture.componentRef.setInput('analysis', inputs.analysis);
+    fixture.componentRef.setInput('analysisType', inputs.analysisType);
+    fixture.componentRef.setInput('mechProp', inputs.mechProp);
+    fixture.componentRef.setInput('mechPart', inputs.mechPart);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
+    return fixture;
+  }
+
+  it('updates the rendered chart series when a series is switched off and on', async () => {
+    const fixtureData = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
+    const fixture = await mountGraph(fixtureData, {
+      analysis: 'kinematic',
+      analysisType: 'loop',
+      mechProp: 'Linear Joint Pos',
+      mechPart: 'B',
+    });
 
     // The switches live on the panel header that owns this graph now -- one row
     // that reads the values out and turns the lines on and off -- so this drives
@@ -505,6 +589,31 @@ describe('AnalysisGraphComponent rendered controls', () => {
       expect.objectContaining({ x: fixtureData.mechanism.timeNum[annotationIndex] }),
       false
     );
+    fixture.destroy();
+  });
+
+  it('renders the no-solution banner, and Show them drives the mechanism there', async () => {
+    const fixtureData = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
+    const series = failForceFrames(fixtureData, 'static', [2]);
+    const seek = vi.fn();
+    Object.assign(fixtureData.service, { seekMechanism: seek });
+    const ground = fixtureData.mechanism.joints[0].find(
+      (candidate): candidate is RealJoint => candidate instanceof RealJoint && candidate.ground
+    )!;
+
+    const fixture = await mountGraph(fixtureData, {
+      analysis: 'force',
+      analysisType: 'static',
+      mechProp: 'Joint Forces',
+      mechPart: ground.id,
+    });
+
+    const banner = fixture.nativeElement.querySelector('.analysis-gap') as HTMLElement | null;
+    expect(banner).not.toBeNull();
+    expect(banner!.textContent).toContain(`No solution at 1 of ${series.frames.length} positions`);
+
+    (banner!.querySelector('.gapShow') as HTMLButtonElement).click();
+    expect(seek).toHaveBeenCalledWith(0, series.frames[2].timeSeconds);
     fixture.destroy();
   });
 });
