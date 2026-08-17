@@ -1,19 +1,21 @@
 /**
- * Squaring a drag up with its neighbours.
+ * Squaring a drag up with its neighbours -- and only where it is asked for.
  *
  * A joint dragged nearly level with another one is pulled level, with a guide
- * line saying which one. That has always been true of joints; whole bodies --
- * a bar dragged by its middle, a ram dragged by its barrel -- were left to land
- * wherever the cursor let go.
+ * line saying which one. A whole body dragged by its middle is not: both helps
+ * act on the joint the body is named from rather than on the point under the
+ * hand, so the guide named a neighbour the reader had not aimed at and the body
+ * stepped sideways to put one of its several joints on a grid corner.
  *
  * What must hold:
  *
- *   - Dragging a bar's body squares it up, and lands its reference joint
- *     exactly on the neighbour's axis rather than merely near it.
- *   - Dragging a ram's body does the same, measured on the mount it is named
- *     from, and ignoring its own joints -- they move with the drag.
- *   - Option suspends it for the length of a gesture.
- *   - The settings toggle turns it off entirely.
+ *   - Dragging a bar by its body lands it where the cursor let go, with no
+ *     guide drawn and no grid corner sought.
+ *   - Dragging a ram by its body does the same.
+ *   - A mount, which is a joint the reader has hold of, still squares up --
+ *     against its own far mount included, which is what stands a ram at a
+ *     right angle.
+ *   - Option suspends that, and the settings toggle turns it off entirely.
  *
  *   PMKS_BASE_URL=<origin> node e2e/snap-alignment.mjs
  */
@@ -66,8 +68,9 @@ const perUnit = () =>
 /**
  * Drag a body so its reference joint arrives a whisker off a target's axis.
  *
- * Aimed rather than arbitrary: the snap only fires within a few pixels, so a
- * drag that is not deliberately taken there proves nothing either way.
+ * Aimed rather than arbitrary: this is the drag that used to be caught, so it
+ * is the one that proves it no longer is. Three model units short of level is
+ * well inside what the snap's reach used to be.
  */
 const dragBodyToward = async (grabSelector, referenceId, targetId, axis, { holdOption } = {}) => {
   const before = await joints();
@@ -134,23 +137,21 @@ const setOption = async (control, on) => {
 await load(payloads['4-Bar']);
 record('the settings panel offers it', await setOption('snapToAlignment', true));
 const bar = await dragBodyToward('#linkHolder path', 'A', 'D', 'y');
-record('dragging a bar by its body squares it up with a neighbour', bar.guides > 0, bar);
-record('and lands exactly on that axis, not merely near it', bar.off < 1e-6, bar);
-
-// --- and with Option held ----------------------------------------------------
-await load(payloads['4-Bar']);
-const barFree = await dragBodyToward('#linkHolder path', 'A', 'D', 'y', { holdOption: true });
-record('holding Option drags it free of that', barFree.guides === 0 && barFree.off > 1e-6, barFree);
+record('dragging a bar by its body draws no guide', bar.guides === 0, bar);
+record('and leaves it where the cursor let go, not level with a neighbour', bar.off > 1e-6, bar);
+// The drag is aimed three units short of level, so a body that has not been
+// pulled anywhere is three units short of level. Anything else -- a nudge onto
+// a grid corner included -- moves it off that. The tolerance is a fiftieth of a
+// unit: the drag arrives in whole screen pixels, which is worth a few
+// hundred-thousandths, while the two snaps this rules out are worth half a grid
+// square and the whole three units respectively.
+record('and not onto a grid corner either', Math.abs(bar.off - 3) < 0.02, bar);
 
 // --- a ram dragged by its body ----------------------------------------------
 await load(payloads['Cylinder_Boom']);
 const ram = await dragBodyToward('.cylinder-barrel', 'G', 'O', 'y');
-record('dragging a ram by its body squares up its mount', ram.guides > 0, ram);
-record('and lands exactly on that axis too', ram.off < 1e-6, ram);
-
-await load(payloads['Cylinder_Boom']);
-const ramFree = await dragBodyToward('.cylinder-barrel', 'G', 'O', 'y', { holdOption: true });
-record('which Option suspends as well', ramFree.guides === 0 && ramFree.off > 1e-6, ramFree);
+record('dragging a ram by its body is free the same way', ram.guides === 0, ram);
+record('and lands where it was let go', Math.abs(ram.off - 3) < 0.02, ram);
 
 // --- a ram squared against its own far mount --------------------------------
 /**
@@ -161,8 +162,8 @@ record('which Option suspends as well', ramFree.guides === 0 && ramFree.off > 1e
  * with the drag and are rightly ignored; the far mount does not, and was being
  * ignored with them.
  */
-const squareTheRam = async ({ holdOption } = {}) => {
-  await load(payloads['Cylinder_Boom']);
+const squareTheRam = async ({ holdOption, alreadyLoaded } = {}) => {
+  if (!alreadyLoaded) await load(payloads['Cylinder_Boom']);
   const mounts = await page.evaluate(() => {
     const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
     const ram = srv.cylinderAt(srv.links.find((link) => srv.cylinderAt(link)));
@@ -216,10 +217,10 @@ const ramLoose = await squareTheRam({ holdOption: true });
 record('unless Option is held', ramLoose.guides === 0 && ramLoose.outOfLevel > 1e-4, ramLoose);
 
 // --- turned off entirely -----------------------------------------------------
-await load(payloads['4-Bar']);
+await load(payloads['Cylinder_Boom']);
 await setOption('snapToAlignment', false);
-const off = await dragBodyToward('#linkHolder path', 'A', 'D', 'y');
-record('and the toggle turns it off entirely', off.guides === 0 && off.off > 1e-6, off);
+const off = await squareTheRam({ alreadyLoaded: true });
+record('and the toggle turns it off entirely', off.guides === 0 && off.outOfLevel > 1e-4, off);
 record(
   'which is remembered on this machine',
   (await page.evaluate(() => localStorage.getItem('snapToAlignment'))) === 'false'

@@ -1225,16 +1225,11 @@ export class NewGridComponent implements OnDestroy {
         const bodyCylinder = this.mechanismSrv.cylinderAt(this.activeObjService.selectedLink);
         if (bodyCylinder) {
           // Dragging the body translates the whole assembly rigidly; the
-          // mounts are the handles for re-posing. It squares up and lands on
-          // the grid the same way a bar does, measured on the mount the ram is
-          // named from -- its own joints are excluded, because they move with
-          // the drag and squaring against them is the drag chasing its tail.
+          // mounts are the handles for re-posing. It follows the cursor freely,
+          // the same way a bar does, measured on the mount the ram is named
+          // from.
           const mount = bodyCylinder.barrelFar;
-          const target = this.placeDraggedBody(
-            mount,
-            mousePosInSvg,
-            new Set(cylinderJoints(bodyCylinder).map((joint) => joint.id))
-          );
+          const target = this.placeDraggedBody(mount, mousePosInSvg);
           this.gridUtils.dragCylinder(bodyCylinder, target.x - mount.x, target.y - mount.y);
           this.linkDragAnchor = mousePosInSvg;
           this.dragState.noteMechanismModified();
@@ -1242,20 +1237,13 @@ export class NewGridComponent implements OnDestroy {
           this.showPathWhileDragging();
           break;
         } else {
-          // A rigid body cannot put every joint on the grid -- its lengths are
-          // what they are -- so one of them is the one that lands, and the
-          // rest keep their places around it. The first joint, which is the
-          // one the link is named from.
-          //
-          // Measured from where the grab started, not from the last frame: one
-          // pointer event is a few units, which rounds to no move at all, and a
-          // link asked frame by frame would sit on its corner for ever.
+          // The body travels by however far the cursor has, measured on the
+          // joint the link is named from. Measured from where the grab started,
+          // not from the last frame: one pointer event is a few units, which
+          // rounds to no move at all, and a link asked frame by frame would sit
+          // on its corner for ever.
           const reference = this.activeObjService.selectedLink.joints[0];
-          const landed = this.placeDraggedBody(
-            reference,
-            mousePosInSvg,
-            new Set(this.activeObjService.selectedLink.joints.map((joint) => joint.id))
-          );
+          const landed = this.placeDraggedBody(reference, mousePosInSvg);
           this.gridUtils.dragLink(
             this.activeObjService.selectedLink,
             landed.x - reference.x,
@@ -1611,17 +1599,18 @@ export class NewGridComponent implements OnDestroy {
   /**
    * Where a whole body being dragged should put its reference point.
    *
-   * The same two helpers a joint drag gets, in the same order. Alignment first,
-   * because squaring up with a real neighbour is a more specific intent than
-   * landing on an anonymous grid corner -- and the guide line says which
-   * neighbour, where the grid says nothing. The grid catches what alignment
-   * does not.
+   * The cursor's own displacement, and nothing else. A body drag gets neither
+   * of the two helps a joint drag gets, and for the same reason in both cases:
+   * they act on the body's reference joint, which is whichever joint the link
+   * is named from -- not the point under the hand. So the guide line appeared
+   * at a corner the reader was not holding, naming a neighbour they had not
+   * aimed at, and the body jumped a fraction of a grid square sideways to put
+   * one of its several joints on a corner the others could not reach anyway.
+   *
+   * A joint dragged on its own still squares up and still lands on the grid:
+   * there the thing that snaps is the thing in your hand.
    */
-  private placeDraggedBody(
-    reference: { x: number; y: number },
-    cursor: Coord,
-    exclude: Set<string>
-  ): Coord {
+  private placeDraggedBody(reference: { x: number; y: number }, cursor: Coord): Coord {
     // Measured from the press, not from this first qualifying move: the moves
     // held back below the click threshold are still part of the gesture, and
     // starting the sum after them leaves the body trailing the cursor by
@@ -1631,23 +1620,8 @@ export class NewGridComponent implements OnDestroy {
       from: new Coord(this.linkDragAnchor.x, this.linkDragAnchor.y),
     };
     const held = this.bodyDragOrigin;
-    const wanted = new Coord(
-      held.at.x + (cursor.x - held.from.x),
-      held.at.y + (cursor.y - held.from.y)
-    );
-
-    if (this.alignmentAllowed()) {
-      const others = this.mechanismSrv
-        .getJoints()
-        .filter((other) => !exclude.has(other.id) && !(other instanceof PrisJoint));
-      const aligned = snapToAxes(wanted, others, this.svgGrid.scaleWithZoom(8));
-      if (aligned.guides.length > 0) {
-        this.axisSnapGuides = aligned.guides;
-        return new Coord(aligned.point.x, aligned.point.y);
-      }
-    }
     this.axisSnapGuides = [];
-    return this.svgGrid.snapToGrid(wanted, this.snapSuspended);
+    return new Coord(held.at.x + (cursor.x - held.from.x), held.at.y + (cursor.y - held.from.y));
   }
 
   /** Lines showing which joints a drag has just squared itself against. */
