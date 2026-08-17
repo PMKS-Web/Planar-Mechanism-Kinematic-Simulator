@@ -408,7 +408,26 @@
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
             [class]="mechanismSrv.getLinkCSSClass(link)"
           ></path>
-
+          <!-- The slot is a real hole in the bar, and a hole catches no pointer:
+               a hand aimed at the middle of a slotted link fell straight through
+               to the background, so the one link a reader is most likely to want
+               to move was the one they could not grab along its length. This
+               shape hands the holes back — unpainted, so the slot still reads as
+               a slot, and under the block, so grabbing the block still grabs the
+               block. -->
+          @if (hasChannelHit(link)) {
+            <path
+              (pointerover)="link.showHighlight = true"
+              (pointerout)="link.showHighlight = false"
+              (pointerdown)="setLastLeftClick(link, $event)"
+              (contextmenu)="setLastRightClick(link, $event)"
+              [attr.cursor]="mechanismSrv.isLinkLockedVisual(link) ? 'not-allowed' : null"
+              [attr.d]="channelsCutInto(link)"
+              [attr.id]="link.id + '__slotHit'"
+              fill="none"
+              pointer-events="all"
+            ></path>
+          }
         }
         @if (
           gridUtils.typeOfLink(link) == 'R' &&
@@ -495,6 +514,19 @@
                 [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
                 [class]="mechanismSrv.getLinkCSSClass(item.rider.link)"
               ></path>
+              <!-- Its own slot handed back, as in the link layer: a link can be
+                   a rider of one block and the carrier of another. -->
+              @if (item.rider.cuts.length > 0 || channelCountOn(item.rider.link) > 0) {
+                <path
+                  (pointerover)="item.rider.link.showHighlight = true"
+                  (pointerout)="item.rider.link.showHighlight = false"
+                  (pointerdown)="setLastLeftClick(item.rider.link, $event)"
+                  (contextmenu)="setLastRightClick(item.rider.link, $event)"
+                  [attr.d]="markChannelsCutInto(item.mark, item.rider, item.rider.link)"
+                  fill="none"
+                  pointer-events="all"
+                ></path>
+              }
             }
           }
           @case ('plate') {
@@ -519,6 +551,22 @@
                   [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
                   [class]="mechanismSrv.getLinkCSSClass(item.plate.links[0])"
                 />
+                <!-- The plate is the only thing left to click for the rider it
+                     stands in for, so it is also the only thing that can hand
+                     back the slot cut through it — the Scotch yoke's yoke is
+                     both a carrier and a welded rider. -->
+                @if (item.plate.cuts.length > 0 || channelCountOn(item.plate.links[0]) > 0) {
+                  <path
+                    cursor="move"
+                    (pointerover)="item.plate.links[0].showHighlight = true"
+                    (pointerout)="item.plate.links[0].showHighlight = false"
+                    (pointerdown)="setLastLeftClick(item.plate.links[0], $event)"
+                    (contextmenu)="setLastRightClick(item.plate.links[0], $event)"
+                    [attr.d]="markChannelsCutInto(item.mark, item.plate, item.plate.links[0])"
+                    fill="none"
+                    pointer-events="all"
+                  />
+                }
               </g>
             }
           }

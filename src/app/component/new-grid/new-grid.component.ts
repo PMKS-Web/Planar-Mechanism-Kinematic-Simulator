@@ -2974,6 +2974,14 @@ export class NewGridComponent implements OnDestroy {
     );
   }
 
+  /**
+   * Whether the link layer draws this body with holes in it. A skinned or
+   * plated link is drawn somewhere else, and its holes are handed back there.
+   */
+  hasChannelHit(link: Link): boolean {
+    return this.channelCountOn(link) > 0 && !this.skinnedLink(link) && !this.platedLink(link);
+  }
+
   channelCountOn(link: Link): number {
     return (
       this.channelList.filter((channel) => channel.carrierId === link.id).length +
@@ -3039,20 +3047,28 @@ export class NewGridComponent implements OnDestroy {
     // its own edge inside that outline and double the fill's alpha over itself.
     if (this.platedLink(link)) return '';
     const outline = this.outlineWithMotor(link);
+    const channels = this.channelsCutInto(link);
+
+    return channels === '' ? outline : `${outline} ${channels}`;
+  }
+
+  /**
+   * The channels cut into this link, as one path in the world frame.
+   *
+   * The slot being previewed goes through the same subtraction a committed one
+   * does, rather than being drawn as a stand-in on top. Two reasons: the hover
+   * state is then pixel-identical to the result, and a real hole has no
+   * legibility to lose against a link colour it cannot predict -- every
+   * stand-in considered (a white fill, an outline, an amber highlight) fell
+   * below contrast on part of the palette, because the palette is random.
+   */
+  channelsCutInto(link: Link): string {
     const paths = this.channelList
       .filter((channel) => channel.carrierId === link.id)
       .map((channel) => channel.path);
-
-    // The slot being previewed goes through the same subtraction a committed
-    // one does, rather than being drawn as a stand-in on top. Two reasons: the
-    // hover state is then pixel-identical to the result, and a real hole has no
-    // legibility to lose against a link colour it cannot predict -- every
-    // stand-in considered (a white fill, an outline, an amber highlight) fell
-    // below contrast on part of the palette, because the palette is random.
     const preview = this.previewChannelOn(link);
     if (preview) paths.push(preview);
-
-    return paths.length === 0 ? outline : `${outline} ${mergedChannels(paths)}`;
+    return paths.length === 0 ? '' : mergedChannels(paths);
   }
 
   /**
@@ -3076,6 +3092,20 @@ export class NewGridComponent implements OnDestroy {
   ): string {
     const preview = this.previewChannelOn(link);
     if (!preview) return piece.path;
+    return `${piece.outline} ${this.markChannelsCutInto(mark, piece, link)}`.trim();
+  }
+
+  /**
+   * The same channels on their own, in the mark's frame: what the piece's `d`
+   * has taken out of itself, for the hit shape that hands the holes back.
+   */
+  markChannelsCutInto(
+    mark: SliderMark,
+    piece: { outline: string; cuts: string[] },
+    link: Link
+  ): string {
+    const preview = this.previewChannelOn(link);
+    if (!preview) return piece.cuts.length === 0 ? '' : mergedChannels(piece.cuts);
     const angle = (mark.rotation * Math.PI) / 180;
     const localPreview = transformRigidPath(
       preview,
@@ -3084,7 +3114,7 @@ export class NewGridComponent implements OnDestroy {
       { x: 0, y: 0 },
       { x: 1, y: 0 }
     );
-    return `${piece.outline} ${mergedChannels([...piece.cuts, localPreview])}`.trim();
+    return mergedChannels([...piece.cuts, localPreview]);
   }
 
   private previewChannelOn(link: Link): string | undefined {

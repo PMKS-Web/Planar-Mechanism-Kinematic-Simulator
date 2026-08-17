@@ -333,25 +333,29 @@ record(
   { slotBefore: slotBefore.p, slotAfter: slotAfter.p }
 );
 
-// Asked of the gate rather than through a grab: on this linkage the slot's
-// own graphic covers the bar, so a pointer aimed at the middle of CD lands on
-// the channel and no link drag ever starts. The gate is what the change is
-// about -- one held carried joint turns a body drag into a swing about it, and
-// a locked block must not be one, or dragging the bar would pivot it about a
-// block the reader only asked to stop sliding.
+// A locked block is no reason to refuse a drag of the link it rides, and no
+// reason to pivot that link about it: the body translates, both ends equally.
+// Grabbed at the middle of the bar, which is the middle of the slot -- the one
+// place a hand naturally aims at and the one place a hole would swallow.
+const carrierBefore = { c: await jointModel('C'), d: await jointModel('D') };
+const cSlot = await jointOnScreen('C');
+const dSlot = await jointOnScreen('D');
+await page.evaluate(() => {
+  const c = ng.getComponent(document.querySelector('app-new-grid'));
+  c.activeObjService.updateSelectedObj(c.mechanismSrv.links.find((l) => l.id === 'CD'));
+});
+await dragBy({ x: (cSlot.x + dSlot.x) / 2, y: (cSlot.y + dSlot.y) / 2 }, 50, 0, 12);
+const carrierAfter = { c: await jointModel('C'), d: await jointModel('D') };
+const moved = {
+  c: { x: carrierAfter.c.x - carrierBefore.c.x, y: carrierAfter.c.y - carrierBefore.c.y },
+  d: { x: carrierAfter.d.x - carrierBefore.d.x, y: carrierAfter.d.y - carrierBefore.d.y },
+};
 record(
-  'the link the block rides is free to drag: a locked block is not carried by it',
-  await page.evaluate(() => {
-    const c = ng.getComponent(document.querySelector('app-new-grid'));
-    const carrier = c.mechanismSrv.links.find((l) => l.id === 'CD');
-    return c['frozenCarriedJoints'](carrier).length === 0;
-  }),
-  await page.evaluate(() => {
-    const c = ng.getComponent(document.querySelector('app-new-grid'));
-    return c['frozenCarriedJoints'](c.mechanismSrv.links.find((l) => l.id === 'CD')).map(
-      (j) => j.id
-    );
-  })
+  'the link the block rides drags by its slot, as a body rather than a swing',
+  Math.hypot(moved.c.x, moved.c.y) > 1 &&
+    Math.abs(moved.c.x - moved.d.x) < 1e-6 &&
+    Math.abs(moved.c.y - moved.d.y) < 1e-6,
+  moved
 );
 
 // --- The marks are an Edit affordance: Analysis paints clean ---------------
