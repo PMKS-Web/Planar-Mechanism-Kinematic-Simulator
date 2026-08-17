@@ -299,8 +299,20 @@ describe('AnalysisGraphComponent production fixtures', () => {
     );
 
     const seek = vi.fn();
-    Object.assign(fixture.service, { seekMechanism: seek });
+    const animate = vi.fn();
+    const togglePlaying = vi.fn();
+    Object.assign(fixture.service, {
+      seekMechanism: seek,
+      animate,
+      isPlaying: true,
+      isMechanismPlaying: () => true,
+      toggleMechanismPlaying: togglePlaying,
+    });
     component.showGapPosition();
+    // Pressed mid-animation, the button pauses playback first -- a seek that
+    // kept playing would sail straight past the pose it names.
+    expect(animate).toHaveBeenCalledWith(fixture.service.mechanismTimeStep, false);
+    expect(togglePlaying).toHaveBeenCalledWith(0);
     expect(seek).toHaveBeenCalledWith(0, series.frames[1].timeSeconds);
 
     // A fully solved series takes the banner down...
@@ -601,7 +613,11 @@ describe('AnalysisGraphComponent rendered controls', () => {
     const fixtureData = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
     const series = failForceFrames(fixtureData, 'static', [2]);
     const seek = vi.fn();
-    Object.assign(fixtureData.service, { seekMechanism: seek });
+    Object.assign(fixtureData.service, {
+      seekMechanism: seek,
+      isPlaying: false,
+      isMechanismPlaying: () => false,
+    });
     const ground = fixtureData.mechanism.joints[0].find(
       (candidate): candidate is RealJoint => candidate instanceof RealJoint && candidate.ground
     )!;

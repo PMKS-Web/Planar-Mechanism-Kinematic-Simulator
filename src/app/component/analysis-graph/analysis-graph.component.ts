@@ -391,7 +391,16 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
 
   showGapPosition(): void {
     if (!this.analysisGap) return;
-    this.mechanismService.seekMechanism(this.analysisGap.mechIndex, this.analysisGap.firstSeconds);
+    const service = this.mechanismService;
+    // A seek keeps the playback state, so pressed mid-animation it would sail
+    // straight past the pose it names. Standing at the pose IS the point.
+    if (service.isPlaying) {
+      service.animate(service.mechanismTimeStep, false);
+    }
+    if (service.isMechanismPlaying(this.analysisGap.mechIndex)) {
+      service.toggleMechanismPlaying(this.analysisGap.mechIndex);
+    }
+    service.seekMechanism(this.analysisGap.mechIndex, this.analysisGap.firstSeconds);
   }
 
   loading: boolean = false;
