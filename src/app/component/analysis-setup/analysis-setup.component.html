@@ -87,7 +87,7 @@
         <div class="sectionHeader static">
           <span class="sectionName">Masses</span>
           @if (!inEditMode()) {
-            <button class="actionButton slim" (click)="switchToEdit()">Switch to Edit mode</button>
+            <span class="sectionHint">Editable in the Edit tab</span>
           }
         </div>
         <div class="massTable" [class.readonly]="!massEditable()">
@@ -138,8 +138,6 @@
               A body left at zero mass is skipped by gravity and inertia. Open a link to place its
               center of mass.
             </p>
-          } @else {
-            <p class="checkText note">Masses are read-only while forces are being analysed.</p>
           }
         </div>
       </div>

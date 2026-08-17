@@ -70,6 +70,9 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
+    /* Padding inside the 100%, not on top of it: content-box pushed the
+       right-hand element 15px past the drawer's edge and sliced it off. */
+    box-sizing: border-box;
     min-height: 40px;
     padding: 0 15px;
     border: none;
@@ -351,6 +354,19 @@
     font-size: 11.5px;
     flex: none;
     white-space: nowrap;
+  }
+
+  /* A statement, not a control: where the editing lives, said quietly, and
+     shrinkable so the drawer's edge never slices it. */
+  .sectionHeader .sectionHint {
+    margin-left: auto;
+    font-size: 11.5px;
+    color: rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 0 1 auto;
   }
 
   /* Read-only: the mock washes the whole table out — names, values, fills —

@@ -383,10 +383,6 @@ export class AnalysisSetupComponent {
     return this.tabs.getCurrentTab() === TabID.EDIT;
   }
 
-  switchToEdit(): void {
-    this.tabs.setTab(TabID.EDIT);
-  }
-
   anyBodyIsCustom(): boolean {
     return this.mechanism.links.some(
       (link) => link instanceof RealLink && (link.moiIsCustom || link.comIsCustom)
