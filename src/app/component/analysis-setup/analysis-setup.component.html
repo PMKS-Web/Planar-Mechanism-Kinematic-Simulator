@@ -43,6 +43,70 @@
   }
 
   @if (mode() === 'force') {
+    @if (massRows().length > 0) {
+      <div class="mechBlock">
+        <button class="sectionHeader" (click)="massesOpen = !massesOpen">
+          <span class="sectionName">Masses</span>
+          @if (!inEditMode()) {
+            <span class="sectionHint">Editable in the Edit tab</span>
+          }
+          <mat-icon>{{ massesOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+        @if (massesOpen) {
+          <div class="massTable" [class.readonly]="!massEditable()">
+            <div class="massRow head">
+              <span>Body</span>
+              <span>Mass</span>
+              <span>Rotational inertia</span>
+              <span></span>
+            </div>
+            @for (row of massRows(); track row.body.id) {
+              <div class="massRow" [class.weightless]="!(row.body.mass > 0)">
+                <span class="massName">{{ row.label }}</span>
+                <input-block class="cellField" [formGroup]="tableForm" [_formControl]="massControlName(row)" />
+                <input-block
+                  class="cellField"
+                  [formGroup]="tableForm"
+                  [_formControl]="moiControlName(row)"
+                  [class.derived]="row.isBlock || moiIsAuto(row)"
+                >
+                  @if (massEditable() && !row.isBlock && row.body.mass > 0) {
+                    <span fieldSuffix class="stateSuffix">
+                      <span class="dot" [class.filled]="!moiIsAuto(row)"></span>
+                    </span>
+                  }
+                </input-block>
+                @if (massEditable()) {
+                  <button
+                    class="rowJump"
+                    title="Open this link in Edit mode"
+                    (click)="goTo(row.body)"
+                  >
+                    <mat-icon>arrow_outward</mat-icon>
+                  </button>
+                } @else {
+                  <span></span>
+                }
+              </div>
+            }
+            @if (massEditable()) {
+              <div class="dotLegend">
+                <span class="dot"></span> from shape
+                <span class="dot filled"></span> set by you
+                <button class="resetAll" [disabled]="!anyBodyIsCustom()" (click)="resetAllBodies()">
+                  Reset all
+                </button>
+              </div>
+              <p class="checkText note">
+                A body left at zero mass is skipped by gravity and inertia. Open a link to place its
+                center of mass.
+              </p>
+            }
+          </div>
+        }
+      </div>
+    }
+
     <div class="mechBlock">
       <button class="sectionHeader" (click)="forceOpen = !forceOpen">
         <span class="sectionName">
@@ -82,66 +146,6 @@
       }
     </div>
 
-    @if (massRows().length > 0) {
-      <div class="mechBlock">
-        <div class="sectionHeader static">
-          <span class="sectionName">Masses</span>
-          @if (!inEditMode()) {
-            <span class="sectionHint">Editable in the Edit tab</span>
-          }
-        </div>
-        <div class="massTable" [class.readonly]="!massEditable()">
-          <div class="massRow head">
-            <span>Body</span>
-            <span>Mass</span>
-            <span>Rotational inertia</span>
-            <span></span>
-          </div>
-          @for (row of massRows(); track row.body.id) {
-            <div class="massRow" [class.weightless]="!(row.body.mass > 0)">
-              <span class="massName">{{ row.label }}</span>
-              <input-block class="cellField" [formGroup]="tableForm" [_formControl]="massControlName(row)" />
-              <input-block
-                class="cellField"
-                [formGroup]="tableForm"
-                [_formControl]="moiControlName(row)"
-                [class.derived]="row.isBlock || moiIsAuto(row)"
-              >
-                @if (massEditable() && !row.isBlock && row.body.mass > 0) {
-                  <span fieldSuffix class="stateSuffix">
-                    <span class="dot" [class.filled]="!moiIsAuto(row)"></span>
-                  </span>
-                }
-              </input-block>
-              @if (massEditable()) {
-                <button
-                  class="rowJump"
-                  title="Open this link in Edit mode"
-                  (click)="goTo(row.body)"
-                >
-                  <mat-icon>arrow_outward</mat-icon>
-                </button>
-              } @else {
-                <span></span>
-              }
-            </div>
-          }
-          @if (massEditable()) {
-            <div class="dotLegend">
-              <span class="dot"></span> from shape
-              <span class="dot filled"></span> set by you
-              <button class="resetAll" [disabled]="!anyBodyIsCustom()" (click)="resetAllBodies()">
-                Reset all
-              </button>
-            </div>
-            <p class="checkText note">
-              A body left at zero mass is skipped by gravity and inertia. Open a link to place its
-              center of mass.
-            </p>
-          }
-        </div>
-      </div>
-    }
   }
 
   @if (mode() === 'kinematic' && unassigned.length > 0) {

@@ -63,6 +63,7 @@ export class AnalysisSetupComponent {
   private collapsed = new Set<string>();
   unassignedOpen = false;
   forceOpen = true;
+  massesOpen = true;
 
   get readiness(): MechanismReadiness[] {
     return this.mechanism.readinessOfEachMechanism();
