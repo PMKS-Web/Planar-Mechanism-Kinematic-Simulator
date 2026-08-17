@@ -2104,9 +2104,7 @@ export class MechanismService {
    */
   private storedMoiFactor(unitStr: string): number {
     const units = siUnitFactors(unitStr);
-    return (
-      ((units.massToKg * units.distanceToM ** 2) / units.inertiaToKgM2) / MODEL_SCALE ** 2
-    );
+    return (units.massToKg * units.distanceToM ** 2) / units.inertiaToKgM2 / MODEL_SCALE ** 2;
   }
 
   private currentUnitStr(): string {
@@ -2161,7 +2159,9 @@ export class MechanismService {
           );
     const moi = parts.reduce(
       (sum, part) =>
-        sum + part.moi + part.mass * ((part.com.x - com.x) ** 2 + (part.com.y - com.y) ** 2) * factor,
+        sum +
+        part.moi +
+        part.mass * ((part.com.x - com.x) ** 2 + (part.com.y - com.y) ** 2) * factor,
       0
     );
     return { com, moi };
@@ -3250,7 +3250,8 @@ export class MechanismService {
     if (!frames || times.length === 0) return 0;
     const period = frames.cyclePeriod;
     let local = this.secondsOf(index);
-    if (period > 0 && Number.isFinite(local)) {
+    if (period > 0 && Number.isFinite(local) && local !== period) {
+      // Exactly the period is the last sample, not a wrap back to the first.
       local = ((local % period) + period) % period;
     }
     let step = 0;
@@ -3699,6 +3700,11 @@ export class MechanismService {
    * comparing the drawing with the readout is looking at where the crank is
    * pointing, and "0" meaning "wherever it was drawn" is a different question
    * they did not ask.
+   *
+   * Except on a cycle of several turns — a branch-swapping slide closes after
+   * two — where the bearing repeats every turn and cannot say which one the
+   * machine is on. There the readout is progress round the whole cycle,
+   * 0 to 720.
    */
   inputAngleDegrees(index: number): number | undefined {
     const partition = this.partitions[index];
@@ -3710,6 +3716,12 @@ export class MechanismService {
     // itself is usually pinned to the frame and points nowhere.
     const end = driven.connectedJoints.find((joint) => !(joint as RealJoint).ground);
     if (!end) return undefined;
+    const samples = this.mechanisms[index]?.joints.length ?? 0;
+    const turns = samples > 1 ? Math.round((samples - 1) / 360) : 1;
+    const profile = this.driveProfileOf(index);
+    if (turns > 1 && profile?.continuous && !profile.linear) {
+      return (this.currentSampleOf(index) * (turns * 360)) / (samples - 1);
+    }
     const degrees = (Math.atan2(end.y - driven.y, end.x - driven.x) * 180) / Math.PI;
     return (degrees + 360) % 360;
   }
@@ -3768,7 +3780,10 @@ export class MechanismService {
   /** Put one machine at a place in its own cycle, and leave the others alone. */
   seekMechanism(index: number, seconds: number): void {
     const period = this.mechanisms[index]?.cyclePeriod ?? 0;
-    const local = period > 0 ? ((seconds % period) + period) % period : seconds;
+    // Exactly the period is the end of the cycle, not the start: dragging the
+    // handle to the track's right edge should read 24.00 s, not 0.00 s.
+    const local =
+      period > 0 ? (seconds === period ? period : ((seconds % period) + period) % period) : seconds;
     this.ownSeconds[index] = local;
     // The sample index is the master machine's, and half the app reads it --
     // the graphs, the URL, and the rule that says the editor is only open at

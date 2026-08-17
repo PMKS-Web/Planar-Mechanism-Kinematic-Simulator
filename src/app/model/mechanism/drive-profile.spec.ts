@@ -146,4 +146,17 @@ describe('Where a machine says its input is', () => {
     const profile = profileOf('4-Bar');
     expect(sampleAlong(profile, 1, 0)).toBe(0);
   });
+
+  it('lands a drag TO the right edge on the last sample, not sample zero', () => {
+    // The two ends of the loop are the same pose, but not the same readout: a
+    // drag arriving at the right edge should read as the end of the cycle
+    // (24.00 s, 720 degrees), and it used to snap to 0.00 s because the tie
+    // between the two ends went to whichever sample the scan met first.
+    const { mechanism } = buildMechanism(squareRodSliderCrankFixture());
+    const profile = driveProfileOf(mechanism)!;
+    const last = profile.along.length - 1;
+    expect(sampleAlong(profile, 1, last - 4)).toBe(last);
+    // And from rest at the start, the same place is still the start.
+    expect(sampleAlong(profile, 1, 0)).toBe(0);
+  });
 });

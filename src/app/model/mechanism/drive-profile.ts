@@ -225,11 +225,15 @@ function nearestSample(profile: DriveProfile, along: number, near: number): numb
   }
   if (profile.continuous) {
     // Round the loop: the place next to 0 is 1, not the far side of the track.
+    // The seam makes the track's two ends the same place, so distance to the
+    // sample the machine is at breaks that tie -- enough to keep a drag on its
+    // own end of the track, never enough to reach a place the reader did not
+    // point at.
     let best = 0;
     let bestCost = Infinity;
     profile.along.forEach((value, sample) => {
       const gap = Math.abs(value - along);
-      const cost = Math.min(gap, 1 - gap);
+      const cost = Math.min(gap, 1 - gap) + (Math.abs(sample - near) / last) * 1e-6;
       if (cost < bestCost) {
         bestCost = cost;
         best = sample;
