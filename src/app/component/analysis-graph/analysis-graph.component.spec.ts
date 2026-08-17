@@ -293,6 +293,11 @@ describe('AnalysisGraphComponent production fixtures', () => {
     expect(points[4].y).toBeNull();
     expect(Number.isFinite(points[0].y ?? Number.NaN)).toBe(true);
 
+    // Several holes: the button names the one it goes to, which is the first.
+    expect(component.gapShowLabel).toBe(
+      `Show first (${formatTimeLabel(series.frames[1].timeSeconds)} s)`
+    );
+
     const seek = vi.fn();
     Object.assign(fixture.service, { seekMechanism: seek });
     component.showGapPosition();
@@ -612,7 +617,10 @@ describe('AnalysisGraphComponent rendered controls', () => {
     expect(banner).not.toBeNull();
     expect(banner!.textContent).toContain(`No solution at 1 of ${series.frames.length} positions`);
 
-    (banner!.querySelector('.gapShow') as HTMLButtonElement).click();
+    const showButton = banner!.querySelector('.gapShow') as HTMLButtonElement;
+    // One hole: singular wording, no time needed.
+    expect(showButton.textContent!.trim()).toBe('Show position');
+    showButton.click();
     expect(seek).toHaveBeenCalledWith(0, series.frames[2].timeSeconds);
     fixture.destroy();
   });

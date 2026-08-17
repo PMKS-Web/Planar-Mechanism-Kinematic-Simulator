@@ -377,6 +377,18 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   analysisGap: { failed: number; total: number; firstSeconds: number; mechIndex: number } | null =
     null;
 
+  /**
+   * One hole is "the position"; several are shown by naming the one the
+   * button actually goes to — the first — so the jump has no surprise in it.
+   */
+  get gapShowLabel(): string {
+    const gap = this.analysisGap;
+    if (!gap) return '';
+    return gap.failed === 1
+      ? 'Show position'
+      : `Show first (${formatTimeLabel(gap.firstSeconds)} s)`;
+  }
+
   showGapPosition(): void {
     if (!this.analysisGap) return;
     this.mechanismService.seekMechanism(this.analysisGap.mechIndex, this.analysisGap.firstSeconds);
