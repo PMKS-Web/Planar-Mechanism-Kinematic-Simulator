@@ -119,13 +119,13 @@ function expectNumericSeries(
 }
 
 /**
- * No constructible linkage produces a partially failed force series any more:
- * the position solver only emits frames it solved, and the overhauled force
- * solver handles toggle and dead-center poses (verified 2026-08-16 against
- * rocker-driven four-bars, TDC slider-cranks, and the square four-bar). The
- * banner's input is fabricated here instead, failing frames the way
- * `analyzeFrame`'s `empty('singular')` does, so the gap rendering cannot rot
- * invisibly while it waits for a mechanism that can reach it.
+ * A partially failed force series is rare but real: the square-rod tangency
+ * slider-crank (fixture gallery) goes singular at the one sampled frame where
+ * the rod stands square to its guide, and a mechanism drawn exactly at a dead
+ * pose fails at frame 0 (square-rod-tangency.spec.ts pins the real case).
+ * This spec fabricates the failure instead, the way `analyzeFrame`'s
+ * `empty('singular')` fails a frame, so the rendering assertions stay
+ * deterministic and independent of solver behavior.
  */
 function failForceFrames(
   fixture: MechanismFixture,

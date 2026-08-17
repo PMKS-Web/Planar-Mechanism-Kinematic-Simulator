@@ -93,4 +93,28 @@ describe('a slider-crank whose rod comes square to its guide', () => {
       expect(Math.abs(at(t, 'C').x - expected)).toBeLessThan(3e-4 * (1 + height / reach));
     }
   });
+
+  it('is force-singular at the tangency pose and nowhere else', () => {
+    // With the rod square to the guide, every force the rod can put on the
+    // block is normal to the slot -- nothing balances a slot-axis load, and
+    // the reactions grow without bound approaching the pose. The merged roots
+    // put C bitwise under B at the sampled tangency, so the equilibrium matrix
+    // is exactly singular at one interior frame of an otherwise good cycle:
+    // the one constructible mechanism known to produce a partial force series,
+    // which is the state the analysis chart's "No solution at N of M
+    // positions" banner exists for. If this ever starts solving, that banner
+    // has lost its last real trigger -- look before deleting it.
+    for (const mode of ['static', 'dynamic'] as const) {
+      const series = mechanism.getForceAnalysis(mode);
+      const failed = series.frames
+        .map((frame, index) => (frame.status !== 'ok' ? index : -1))
+        .filter((index) => index >= 0);
+      expect(failed).toEqual([tangency]);
+      expect(series.frames[tangency].status).toBe('singular');
+      expect(series.successfulFrames).toBe(samples - 1);
+      // A hole, not a verdict on the series: one bad pose must not raise the
+      // whole-series diagnostic.
+      expect(series.diagnostic).toBeUndefined();
+    }
+  });
 });
