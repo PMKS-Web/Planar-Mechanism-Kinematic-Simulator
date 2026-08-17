@@ -15,9 +15,10 @@ import { Mechanism } from './mechanism';
  *
  * - A ram or slider runs from one end of its stroke to the other.
  * - A rocking crank runs from one angular limit to the other.
- * - A crank that goes all the way round has no limits to run between, so one
- *   turn spans the track and it wraps, with zero at the pose the drawing was
- *   authored in.
+ * - A crank that goes all the way round has no limits to run between, so the
+ *   whole cycle spans the track -- one turn usually, two for a rod that swaps
+ *   assembly branch at a slot tangency -- with zero at the pose the drawing
+ *   was authored in.
  *
  * Time is still what the machine is *at*, and still what the readout shows. It
  * is just no longer what the handle means.
@@ -71,18 +72,21 @@ export function driveProfileOf(mechanism: Mechanism, ram?: RamEnds): DriveProfil
   // it is a loop, and the only honest thing to show is how far round it is,
   // from the pose the drawing was authored in.
   //
+  // Round the WHOLE cycle, however many turns that is: a rod that swaps
+  // assembly branch at a slot tangency closes after two, and a track wrapped
+  // to one turn made every handle position name two different poses -- the
+  // scrubber flickered between them, float noise picking the winner.
+  //
   // Signed, and taken from the angle rather than from the sample index: the
   // crank is at the angle it is at whichever way it is being driven, so turning
   // the drive round must leave the handle where it is. Off the sample index it
   // would jump to the mirror image of itself.
   const continuous = !turnsBack(raw);
   if (continuous) {
-    const turn = 2 * Math.PI;
+    const total = raw[raw.length - 1] - raw[0];
+    const denominator = Math.abs(total) > 1e-9 ? total : 1;
     return {
-      along: raw.map((value) => {
-        const wrapped = ((value - raw[0]) / turn) % 1;
-        return wrapped < 0 ? wrapped + 1 : wrapped;
-      }),
+      along: raw.map((value) => (value - raw[0]) / denominator),
       continuous,
       linear,
       span: 0,

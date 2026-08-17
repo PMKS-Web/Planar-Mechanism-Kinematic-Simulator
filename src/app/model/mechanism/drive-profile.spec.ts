@@ -14,6 +14,8 @@ import { MechanismBuilder } from '../../services/transcoding/mechanism-builder';
 import { StringTranscoder } from '../../services/transcoding/string-transcoder';
 import { TemplateID, TEMPLATE_LINKAGES } from '../../component/MODALS/templates/template-linkages';
 import { silentNotifications } from '../../../test-utils/notification-stub';
+import { buildMechanism } from '../../../test-utils/verification/fixture';
+import { squareRodSliderCrankFixture } from '../../../test-utils/verification/slot-fixtures';
 
 /** The solved first mechanism of a template, and what its input does. */
 function profileOf(template: TemplateID): DriveProfile {
@@ -51,6 +53,38 @@ describe('Where a machine says its input is', () => {
     // opposite of the direction a reader expects the handle to travel.
     const profile = profileOf('4-Bar');
     expect(profile.along[1]).toBeGreaterThan(profile.along[0]);
+  });
+
+  it('spans a branch-swapping two-revolution cycle once, so a drag cannot flicker', () => {
+    // The tangency slider-crank closes only after two crank revolutions.
+    // Wrapped to one turn, sample t and t+360 shared a handle position, and
+    // the scrubber flickered between the two assembly branches while
+    // dragging, float noise picking the winner on each event.
+    const { mechanism } = buildMechanism(squareRodSliderCrankFixture());
+    const profile = driveProfileOf(mechanism)!;
+
+    expect(profile.continuous).toBe(true);
+    expect(profile.along).toHaveLength(721);
+    // Monotone: every handle position names exactly one pose.
+    for (let i = 1; i < profile.along.length; i++) {
+      expect(profile.along[i]).toBeGreaterThan(profile.along[i - 1]);
+    }
+    expect(profile.along[0]).toBeCloseTo(0, 9);
+    expect(profile.along.at(-1)!).toBeCloseTo(1, 9);
+
+    // A simulated drag across the whole track lands on nearby samples in
+    // order, never across the cycle to the other branch. Distance is measured
+    // round the loop: the right edge of the track is the left edge, and both
+    // name the same (closed) pose -- a real branch flicker is a ~360-sample
+    // hop, which no seam can excuse.
+    const last = profile.along.length - 1;
+    let previous = 0;
+    for (let i = 0; i <= 200; i++) {
+      const sample = sampleAlong(profile, i / 200, previous);
+      const hop = Math.abs(sample - previous);
+      expect(Math.min(hop, last - hop)).toBeLessThanOrEqual(8);
+      previous = sample;
+    }
   });
 
   it('measures a ram between the ends of its own stroke, not its clock', () => {
