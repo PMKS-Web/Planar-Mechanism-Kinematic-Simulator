@@ -2206,26 +2206,6 @@ export class MechanismService {
         .filter((_, index) => this.mechanisms[index]?.isMechanismValid())
         .flatMap((partition) => partition.links.map((link) => link.id))
     );
-    // A massless link is a legitimate idealization -- the solver simply skips
-    // its weight and inertia -- so this is a warning, not a gate. It is worth
-    // one, because zero is the mass nobody chose: every link starts there.
-    const massless = this.links.filter(
-      (link) => link instanceof RealLink && analysable.has(link.id) && !(link.mass > 0)
-    ) as RealLink[];
-    requirements.push({
-      met: massless.length === 0,
-      warning: true,
-      title: 'Massless links',
-      body:
-        massless.length === 0
-          ? 'Every link has a mass and a moment of inertia.'
-          : `${massless
-              .map((link) => this.bodyLabel(link))
-              .join(
-                ', '
-              )} ${massless.length === 1 ? 'weighs' : 'weigh'} nothing, so gravity and inertia pass ${massless.length === 1 ? 'it' : 'them'} by. Fine for an idealized bar — type a mass in the table below to include ${massless.length === 1 ? 'it' : 'them'}.`,
-    });
-
     // Something has to load the linkage, but weight counts: with gravity on,
     // a link with mass hangs from it, and that is a complete static problem.
     // Demanding a drawn arrow on top of that refused analyses that meant
@@ -2233,7 +2213,7 @@ export class MechanismService {
     const loads = this.forces.filter((force) => analysable.has(force.link?.id));
     // Any body's mass, not only a RealLink's: the solver hangs a slider block's
     // weight from gravity too, so a drawing whose only massive body is a block
-    // is genuinely loaded. (The massless *warning* above stays about links --
+    // is genuinely loaded. (The massless *warning* below stays about links --
     // every block starts massless and naming them all would be noise.)
     const weighted = this.links.some(
       (link) =>
@@ -2242,6 +2222,33 @@ export class MechanismService {
         link.mass > 0
     );
     const gravityLoads = this.settingsService.isGravity.value && weighted;
+    const loaded = loads.length > 0 || gravityLoads;
+
+    // A massless link is a legitimate idealization -- the solver simply skips
+    // its weight and inertia -- so this is a warning, not a gate. It is worth
+    // one, because zero is the mass nobody chose: every link starts there.
+    // Only once something loads the mechanism, though: the unloaded blocker
+    // below already says every link is massless, and saying it twice made the
+    // list read longer than the problem is.
+    if (loaded) {
+      const massless = this.links.filter(
+        (link) => link instanceof RealLink && analysable.has(link.id) && !(link.mass > 0)
+      ) as RealLink[];
+      requirements.push({
+        met: massless.length === 0,
+        warning: true,
+        title: 'Massless links',
+        body:
+          massless.length === 0
+            ? 'Every link has a mass and a moment of inertia.'
+            : `${massless
+                .map((link) => this.bodyLabel(link))
+                .join(
+                  ', '
+                )} ${massless.length === 1 ? 'weighs' : 'weigh'} nothing, so gravity and inertia pass ${massless.length === 1 ? 'it' : 'them'} by. Fine for an idealized bar — type a mass in the table below to include ${massless.length === 1 ? 'it' : 'them'}.`,
+      });
+    }
+
     requirements.push({
       met: loads.length > 0 || gravityLoads,
       title: 'A load to react against',
