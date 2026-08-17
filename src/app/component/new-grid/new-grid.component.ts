@@ -2314,10 +2314,24 @@ export class NewGridComponent implements OnDestroy {
     const pinID = this.activeObjService.selectedJoint?.id;
     if (!pinID) return marks;
     const slotAngleDeg = (Math.atan2(slot.b.y - slot.a.y, slot.b.x - slot.a.x) * 180) / Math.PI;
-    return marks.map((mark) =>
-      mark.pin.id === pinID ? { ...mark, rotation: slotAngleDeg, dangling: false } : mark
-    );
+    // Re-framed rather than re-stamped: turning the frame alone turns the
+    // riders with it, and this getter is read several times a change and once
+    // per pointer move, so the turned geometry is kept until the angle moves.
+    return marks.map((mark) => {
+      if (mark.pin.id !== pinID) return mark;
+      if (this.previewMark?.key !== `${pinID}|${slotAngleDeg}` || this.previewMark.from !== mark) {
+        this.previewMark = {
+          key: `${pinID}|${slotAngleDeg}`,
+          from: mark,
+          mark: { ...this.sliderMarks.reframed(mark, slotAngleDeg), dangling: false },
+        };
+      }
+      return this.previewMark.mark;
+    });
   }
+
+  /** The one re-framed mark of a drop preview, kept while its angle holds. */
+  private previewMark?: { key: string; from: SliderMark; mark: SliderMark };
 
   get channelList(): Channel[] {
     return this.freshMarks().channels;

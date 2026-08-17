@@ -175,6 +175,52 @@ export class SliderMarkService {
   }
 
   /**
+   * The same mark with its frame turned to a different slot angle — the preview
+   * a block shows while it is being dropped into a slot it has not entered yet.
+   *
+   * The block turns to lie along the slot it is about to take; the links pinned
+   * to it do not. Their far joints have not moved, and after the drop they will
+   * still be exactly where they are now — a slot decides where the block points,
+   * not where its riders point. But a rider is drawn *in the block's frame*, so
+   * turning the frame and leaving the geometry swung every rider bodily about
+   * the pin. Between two slots declared in opposite order that is a half turn,
+   * and the rider was drawn pointing away from its own far joint, which sat
+   * there on the grid with nothing attached to it.
+   *
+   * So the geometry is turned back by exactly what the frame turns by, which
+   * leaves it where the world says it is. Only the pieces drawn in this frame
+   * are touched: the block and its arrows are meant to turn, and a grounded
+   * guide's rails carry a frame of their own.
+   */
+  reframed(mark: SliderMark, rotationDeg: number): SliderMark {
+    const delta = ((rotationDeg - mark.rotation) * Math.PI) / 180;
+    const back = (path: string) =>
+      path === ''
+        ? path
+        : transformRigidPath(
+            path,
+            { x: 0, y: 0 },
+            { x: 1, y: 0 },
+            { x: 0, y: 0 },
+            { x: Math.cos(-delta), y: Math.sin(-delta) }
+          );
+    const turnBack = <T extends { path: string; outline: string; cuts: string[] }>(
+      piece: T
+    ): T => ({
+      ...piece,
+      path: back(piece.path),
+      outline: back(piece.outline),
+      cuts: piece.cuts.map(back),
+    });
+    return {
+      ...mark,
+      rotation: rotationDeg,
+      riders: mark.riders.map(turnBack),
+      plate: mark.plate ? turnBack(mark.plate) : undefined,
+    };
+  }
+
+  /**
    * `travel` is how far each slider's block runs across the solved timesteps,
    * keyed by joint id. Absent entries fall back to the drawn rail length.
    */
