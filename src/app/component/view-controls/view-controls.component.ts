@@ -11,6 +11,7 @@ import { SettingsService, writeStoredFlag } from '../../services/settings.servic
 import { SvgGridService } from '../../services/svg-grid.service';
 import { ViewButtonComponent } from './view-button.component';
 import { RealLink } from '../../model/link';
+import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 
 /** The one gap a card keeps from its neighbour (left-tabs.vars.scss). */
 const CARD_GAP = 12;
@@ -31,6 +32,24 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   mechanismService = inject(MechanismService);
   settingsService = inject(SettingsService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private shortcuts = inject(KeyboardShortcutsService);
+
+  /**
+   * The keys reach the same methods the buttons do, greyed state and all: a
+   * switch that would change nothing on the grid is one the key must not
+   * change either, or the shortcut and the button would disagree about what
+   * the drawing can show.
+   */
+  private readonly keyed: Partial<Record<ShortcutId, () => void>> = {
+    'view.zoomIn': () => this.onZoomInPressed(),
+    'view.zoomOut': () => this.onZoomOutPressed(),
+    'view.reset': () => this.onReframePressed(),
+    'view.centerOfMass': () => !this.noMassiveLink() && this.showCenterOfMass(),
+    'view.jointIds': () => !this.noJointExists() && this.onShowIDPressed(),
+    'view.paths': () => !this.noTracedJoint() && this.onShowTracesPressed(),
+  };
+
+  private keySub = this.shortcuts.pressed.subscribe((id) => this.keyed[id]?.());
 
   /**
    * Publish where this card is, for the drawer that stands over it.
@@ -74,6 +93,7 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.keySub.unsubscribe();
     this.geometryWatch?.disconnect();
     if (this.onWindowResize) window.removeEventListener('resize', this.onWindowResize);
     document.documentElement.style.removeProperty('--view-controls-width');

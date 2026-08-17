@@ -108,6 +108,7 @@ export interface SlotStackItem {
 }
 import introJs from 'intro.js';
 import { SvgArrowComponent } from '../svg-arrow/svg-arrow.component';
+import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 
 @Component({
   selector: 'app-new-grid',
@@ -126,6 +127,7 @@ export class NewGridComponent implements OnDestroy {
   private tabService = inject(SelectedTabService);
   synthesisBuilder = inject(SynthesisBuilderService);
   notify = inject(NotificationService);
+  private shortcuts = inject(KeyboardShortcutsService);
   dialog = inject(MatDialog);
   saveHistoryService = inject(SaveHistoryService);
   private colorService = inject(ColorService);
@@ -231,6 +233,8 @@ export class NewGridComponent implements OnDestroy {
   readonly contextMenu = viewChild.required<CdkContextMenuTrigger>('trigger');
 
   ngOnInit() {
+    this.shortcuts.pressed.subscribe((id) => this.onShortcut(id));
+
     const svgElement = document.getElementById('canvas') as HTMLElement;
     this.svgGrid.setNewElement(svgElement);
 
@@ -3239,71 +3243,79 @@ export class NewGridComponent implements OnDestroy {
     this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
   }
 
-  /** Whether the keystroke was aimed at somewhere text is being entered. */
-  private typingInAField($event: KeyboardEvent): boolean {
-    const target = $event.target as HTMLElement | null;
-    if (!target) return false;
-    const tag = target.tagName;
-    return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
-  }
-
   // Angular keys host listeners by event name, so this component gets exactly
-  // one window:keydown. Anything that needs the key down hangs off here.
+  // one window:keydown. Alt is the only key the canvas reads for itself: it
+  // means something only while a drag is in flight, which is state no registry
+  // outside this component can see. Every other key is a shortcut, and those
+  // are declared once in KeyboardShortcutsService and answered below.
   @HostListener('window:keydown', ['$event'])
   onKeyPress($event: KeyboardEvent) {
     this.reconsiderDrop($event, true);
+  }
 
-    // A key pressed into a text field belongs to that field. Undo there means
-    // undo the typing, and Delete means delete a character -- not the joint
-    // whose name is being typed.
-    if (this.typingInAField($event)) {
-      return;
-    }
-
-    // Ctrl/Cmd+Z, and Shift or Y for the other direction. This used to ask the
-    // reader what they had been trying to undo, as a question for a study that
-    // has since ended, while undo itself sat in the top strip working fine.
-    const held = $event.ctrlKey || $event.metaKey;
-    const key = $event.key.toLowerCase();
-    if (held && (key === 'z' || key === 'y')) {
-      $event.preventDefault();
-      // Hidden in the analysis modes for the same reason the buttons are: there
-      // is nothing there to undo.
-      if (this.tabService.isAnalysisMode()) return;
-      if (key === 'y' || $event.shiftKey) {
-        this.saveHistoryService.redo();
-      } else {
-        this.saveHistoryService.undo();
-      }
-      return;
-    }
-
-    if ($event.keyCode == 27) {
-      //Escape Key
-      this.activeObjService.updateSelectedObj(undefined);
-    }
-
-    if ($event.keyCode == 46) {
-      //Delete Key
-      if (true) {
-        //TODO: Sorry jacob you need to fix this it used to say: if(GridComponent.canDelete)
-        if (this.activeObjService.objType === 'Grid') {
-          this.notify.refusal(
-            'delete.nothing-selected',
-            'Select something first — Delete removes whatever is selected.'
-          );
-          return;
-        }
-        if (this.activeObjService.objType === 'Joint') {
-          this.mechanismSrv.deleteJoint();
-        } else if (this.activeObjService.objType === 'Link') {
-          this.mechanismSrv.deleteLink();
-        }
+  /** Answer the shortcuts whose action is the canvas's own. */
+  private onShortcut(id: ShortcutId): void {
+    switch (id) {
+      case 'edit.deselect':
         this.activeObjService.updateSelectedObj(undefined);
-      } else {
         return;
-      }
+      case 'edit.delete':
+        this.deleteSelection();
+        return;
+      case 'edit.lock':
+        this.toggleLockOnSelection();
+        return;
+      case 'history.undo':
+      case 'history.redo':
+        // Nothing to take back in the analysis modes, which is why the buttons
+        // are not there either.
+        if (this.tabService.isAnalysisMode()) return;
+        if (id === 'history.redo') {
+          this.saveHistoryService.redo();
+        } else {
+          this.saveHistoryService.undo();
+        }
+        return;
     }
+  }
+
+  /**
+   * Lock or unlock whatever is selected -- the same act as the panel's own
+   * Lock button, which is the only other way to do it.
+   *
+   * With nothing selected the key has no target, and says so rather than doing
+   * nothing: a lock is not a state the grid as a whole can be in.
+   */
+  private toggleLockOnSelection(): void {
+    const selected = this.activeObjService.getSelectedObj();
+    if (
+      !(selected instanceof RealJoint) &&
+      !(selected instanceof Link) &&
+      !(selected instanceof Force)
+    ) {
+      this.notify.refusal(
+        'lock.nothing-selected',
+        'Select something first — Lock holds whatever is selected.'
+      );
+      return;
+    }
+    this.mechanismSrv.toggleLock(selected);
+  }
+
+  private deleteSelection(): void {
+    if (this.activeObjService.objType === 'Grid') {
+      this.notify.refusal(
+        'delete.nothing-selected',
+        'Select something first — Delete removes whatever is selected.'
+      );
+      return;
+    }
+    if (this.activeObjService.objType === 'Joint') {
+      this.mechanismSrv.deleteJoint();
+    } else if (this.activeObjService.objType === 'Link') {
+      this.mechanismSrv.deleteLink();
+    }
+    this.activeObjService.updateSelectedObj(undefined);
   }
 
   returnDebugValue() {

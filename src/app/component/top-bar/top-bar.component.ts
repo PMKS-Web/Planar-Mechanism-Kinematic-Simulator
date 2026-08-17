@@ -25,6 +25,7 @@ import { AnalysisExportService } from '../../services/analysis-export.service';
 import { NotificationService } from '../../services/notification.service';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
+import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 
 /** A mode's chip: whether that analysis can be entered, and what is missing. */
 interface TabStatus {
@@ -100,6 +101,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   menuOpen = false;
 
   private analytics: AnalyticsService = inject(AnalyticsService);
+  shortcuts = inject(KeyboardShortcutsService);
 
   readonly tabStrip = viewChild<ElementRef<HTMLElement>>('tabStrip');
   readonly strip = viewChild<ElementRef<HTMLElement>>('strip');
@@ -217,7 +219,24 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     }
   }
 
+  /**
+   * The keys that pick a mode go through `select`, exactly as the buttons do,
+   * so a mode that is not ready opens its setup drawer rather than half
+   * switching -- the gate is the mode's, not the button's.
+   */
+  private readonly keyed: Partial<Record<ShortcutId, () => void>> = {
+    'mode.synthesis': () => this.select(TabID.SYNTHESIZE),
+    'mode.edit': () => this.select(TabID.EDIT),
+    'mode.kinematic': () => this.select(TabID.ANALYZE),
+    'mode.force': () => this.select(TabID.FORCE),
+    'app.settings': () => this.openSettings(),
+    'app.help': () => this.openHelp(),
+  };
+
+  private keySub = this.shortcuts.pressed.subscribe((id) => this.keyed[id]?.());
+
   ngOnDestroy(): void {
+    this.keySub.unsubscribe();
     if (this.pendingFrame) cancelAnimationFrame(this.pendingFrame);
     window.removeEventListener('resize', this.onResize);
     this.cardWatch?.disconnect();

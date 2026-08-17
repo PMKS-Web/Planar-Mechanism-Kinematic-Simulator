@@ -53,5 +53,44 @@
     .max-width {
       width: 100%;
     }
+
+    // The list of keys: a name on the left, the key on the right, and the
+    // groups apart far enough that a heading belongs to what is under it.
+    .keyGroup + .keyGroup {
+      margin-top: 14px;
+    }
+
+    .keyHeading {
+      margin: 0 0 4px;
+      @include mat.m2-typography-level($typography-config, 'body-2');
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.6);
+    }
+
+    .keyRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 3px 0;
+      @include mat.m2-typography-level($typography-config, 'body-2');
+    }
+
+    // A key, drawn as one: the cap is what a reader is looking for down the
+    // right-hand edge, so it keeps the same width whatever is printed on it.
+    .keyCap {
+      flex: none;
+      min-width: 24px;
+      padding: 2px 6px;
+      border: 1px solid rgba(0, 0, 0, 0.18);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.03);
+      font-family: inherit;
+      font-size: 12px;
+      line-height: 16px;
+      text-align: center;
+      color: rgba(0, 0, 0, 0.75);
+    }
   }
 }

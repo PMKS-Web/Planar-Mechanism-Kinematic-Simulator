@@ -22,6 +22,7 @@ import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
 import { TitleBlock } from '../BLOCKS/title/title.component';
+import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.service';
 
 /** Error when invalid control is dirty, touched, or submitted. */
 export class MyErrorStateMatcher implements ErrorStateMatcher {
@@ -59,6 +60,7 @@ export class MyErrorStateMatcher implements ErrorStateMatcher {
   ],
 })
 export class HelpPanelComponent {
+  readonly shortcuts = inject(KeyboardShortcutsService);
   private fb = inject(FormBuilder);
   private notify = inject(NotificationService);
   private analytics = inject(AnalyticsService);

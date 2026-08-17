@@ -30,7 +30,11 @@
         (click)="select(TabID.SYNTHESIZE)"
         aria-label="Synthesis"
       >
-        <mat-icon matTooltip="Synthesis" matTooltipShowDelay="600" svgIcon="synthesis"></mat-icon>
+        <mat-icon
+          [matTooltip]="shortcuts.tip('Synthesis', 'mode.synthesis')"
+          matTooltipShowDelay="600"
+          svgIcon="synthesis"
+        ></mat-icon>
         <span class="tabLabel">Synthesis</span>
       </button>
 
@@ -40,7 +44,11 @@
         (click)="select(TabID.EDIT)"
         aria-label="Edit"
       >
-        <mat-icon matTooltip="Edit" matTooltipShowDelay="600" svgIcon="edit_outline"></mat-icon>
+        <mat-icon
+          [matTooltip]="shortcuts.tip('Edit', 'mode.edit')"
+          matTooltipShowDelay="600"
+          svgIcon="edit_outline"
+        ></mat-icon>
         <span class="tabLabel">Edit</span>
       </button>
 
@@ -53,7 +61,11 @@
         (click)="select(TabID.ANALYZE)"
         aria-label="Kinematic Analysis"
       >
-        <mat-icon matTooltip="Kinematic Analysis" matTooltipShowDelay="600">query_stats</mat-icon>
+        <mat-icon
+          [matTooltip]="shortcuts.tip('Kinematic Analysis', 'mode.kinematic')"
+          matTooltipShowDelay="600"
+          >query_stats</mat-icon
+        >
         <span class="tabLabel long">Kinematic Analysis</span>
         <span class="tabLabel short">Kinematic</span>
         <!-- Nothing drawn, nothing to be ready for. -->
@@ -78,7 +90,11 @@
         (click)="select(TabID.FORCE)"
         aria-label="Force Analysis"
       >
-        <mat-icon matTooltip="Force Analysis" matTooltipShowDelay="600">balance</mat-icon>
+        <mat-icon
+          [matTooltip]="shortcuts.tip('Force Analysis', 'mode.force')"
+          matTooltipShowDelay="600"
+          >balance</mat-icon
+        >
         <span class="tabLabel long">Force Analysis</span>
         <span class="tabLabel short">Force</span>
         <!-- Nothing drawn, nothing to be ready for. -->
@@ -105,11 +121,25 @@
   <div class="card historyCard">
     @if (!tabs.isAnalysisMode()) {
       <div class="cardFace" @swapFace>
-        <button class="historyButton" (click)="undo()" [disabled]="!canUndo()" aria-label="Undo">
+        <button
+          class="historyButton"
+          (click)="undo()"
+          [disabled]="!canUndo()"
+          [matTooltip]="shortcuts.tip('Undo', 'history.undo')"
+          matTooltipShowDelay="600"
+          aria-label="Undo"
+        >
           <mat-icon>undo</mat-icon>
           <span class="historyLabel">Undo</span>
         </button>
-        <button class="historyButton" (click)="redo()" [disabled]="!canRedo()" aria-label="Redo">
+        <button
+          class="historyButton"
+          (click)="redo()"
+          [disabled]="!canRedo()"
+          [matTooltip]="shortcuts.tip('Redo', 'history.redo')"
+          matTooltipShowDelay="600"
+          aria-label="Redo"
+        >
           <mat-icon>redo</mat-icon>
           <span class="historyLabel">Redo</span>
         </button>
@@ -146,8 +176,21 @@
     <button class="menuItem" (click)="downloadLinkage()"><mat-icon>save</mat-icon>Save</button>
     <button class="menuItem" (click)="copyURL()"><mat-icon>link</mat-icon>Share Project</button>
     <div class="menuDivider"></div>
-    <button class="menuItem" (click)="openSettings()"><mat-icon>settings</mat-icon>Settings</button>
-    <button class="menuItem" id="helpButton" (click)="openHelp()">
+    <button
+      class="menuItem"
+      (click)="openSettings()"
+      [matTooltip]="shortcuts.tip('Settings', 'app.settings')"
+      matTooltipShowDelay="600"
+    >
+      <mat-icon>settings</mat-icon>Settings
+    </button>
+    <button
+      class="menuItem"
+      id="helpButton"
+      (click)="openHelp()"
+      [matTooltip]="shortcuts.tip('Help', 'app.help')"
+      matTooltipShowDelay="600"
+    >
       <mat-icon>help</mat-icon>Help / Feedback
     </button>
     @if (isDevMode()) {

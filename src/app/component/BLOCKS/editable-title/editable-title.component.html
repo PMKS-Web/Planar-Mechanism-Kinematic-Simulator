@@ -52,7 +52,14 @@
            padlock beside the word Unlock. Both labels are always in the box,
            one invisible, so the button is sized by the wider word and nothing
            shifts when it toggles. -->
-      <button class="mini-buttons blue" mat-stroked-button color="primary" (click)="toggleLock()">
+      <button
+        class="mini-buttons blue"
+        mat-stroked-button
+        color="primary"
+        (click)="toggleLock()"
+        [matTooltip]="shortcuts.tip(isLocked() ? 'Unlock' : 'Lock', 'edit.lock')"
+        matTooltipShowDelay="600"
+      >
         <mat-icon svgIcon="{{ isLocked() ? 'lock' : 'unlock' }}"></mat-icon>
         <span class="labelSwap">
           <span [style.visibility]="isLocked() ? 'visible' : 'hidden'">Unlock</span>

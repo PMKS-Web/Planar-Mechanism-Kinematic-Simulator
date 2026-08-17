@@ -13,6 +13,7 @@ import { FocusOnShowDirective } from '../../../focus-on-show.directive';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
+import { KeyboardShortcutsService } from '../../../services/keyboard-shortcuts.service';
 
 @Component({
   selector: 'editable-title-block',
@@ -32,6 +33,7 @@ import { MatTooltip } from '@angular/material/tooltip';
   ],
 })
 export class EditableTitleComponent {
+  readonly shortcuts = inject(KeyboardShortcutsService);
   private fb = inject(FormBuilder);
   activeObjService = inject(ActiveObjService);
   private mechanismService = inject(MechanismService);

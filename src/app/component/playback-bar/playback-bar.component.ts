@@ -19,6 +19,8 @@ import { Mechanism } from '../../model/mechanism/mechanism';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { MatIcon } from '@angular/material/icon';
 import { ViewControlsComponent } from '../view-controls/view-controls.component';
+import { MatTooltip } from '@angular/material/tooltip';
+import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 
 /** How far the cluster floats above the status strip, matching its own CSS. */
 const BOTTOM_OFFSET = 38;
@@ -91,7 +93,7 @@ export interface PlaybackRow {
     ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, ViewControlsComponent],
+  imports: [MatIcon, MatTooltip, ViewControlsComponent],
 })
 export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   mechanism = inject(MechanismService);
@@ -99,6 +101,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   activeObj = inject(ActiveObjService);
   tabs = inject(SelectedTabService);
   private nup = inject(NumberUnitParserService);
+  shortcuts = inject(KeyboardShortcutsService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   private positionSub?: Subscription;
@@ -137,7 +140,26 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     document.documentElement.style.setProperty('--playback-clearance', `${clearance}px`);
   }
 
+  /**
+   * The transport's own keys. Each goes through the button's own method -- and
+   * only where that button is: the transport belongs to the analysis modes, so
+   * Space in Edit would be a key with no control behind it, playing a drawing
+   * the reader is in the middle of changing.
+   */
+  private readonly keyed: Partial<Record<ShortcutId, () => void>> = {
+    'playback.toggle': () => this.play(),
+    'playback.back': () => this.stepBy(-1),
+    'playback.forward': () => this.stepBy(1),
+    'playback.speed': () => this.canPlay && this.cycleSpeed(),
+  };
+
+  private keySub = this.shortcuts.pressed.subscribe((id) => {
+    if (!this.tabs.isAnalysisMode()) return;
+    this.keyed[id]?.();
+  });
+
   ngOnDestroy(): void {
+    this.keySub.unsubscribe();
     this.positionSub?.unsubscribe();
     this.heightWatch?.disconnect();
     document.documentElement.style.removeProperty('--playback-clearance');
@@ -345,6 +367,28 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private drivenSpeedOf(mechanism: Mechanism): number {
     return mechanism.inputAngularVelocities[0] ?? 0;
+  }
+
+  /**
+   * One frame along, the way the handle moves it.
+   *
+   * Through the same seek the scrubber uses, so a keyed step and a nudge of
+   * the handle are the same motion -- and paused first, because a step is a
+   * look at one pose and playback would carry it off before it could be read.
+   */
+  stepBy(delta: number): void {
+    if (!this.canPlay) return;
+    const master = this.rows.find((row) => row.master);
+    if (!master) return;
+    if (this.mechanism.isPlaying) this.mechanism.setAllPlaying(false);
+    const frames = Math.max(this.maxStep, 1);
+    const along = Math.min(1, Math.max(0, master.scrub / 1000 + delta / frames));
+    if (master.index === -1) {
+      this.mechanism.seekAllAlong(master.leader, along);
+    } else {
+      this.mechanism.seekMechanismTo(master.index, along);
+    }
+    this.settings.animating.next(along !== 0);
   }
 
   play(): void {

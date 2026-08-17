@@ -5,12 +5,24 @@
        them. -->
   @if (tabs.isAnalysisMode()) {
     <div class="transportCard" @riseFromBottom>
-      <button class="speedButton" (click)="cycleSpeed()" [disabled]="!canPlay">{{ speed }}x</button>
+      <button
+        class="speedButton"
+        (click)="cycleSpeed()"
+        [disabled]="!canPlay"
+        [matTooltip]="shortcuts.tip('Playback speed', 'playback.speed')"
+        matTooltipPosition="above"
+        matTooltipShowDelay="600"
+      >
+        {{ speed }}x
+      </button>
       <button
         class="playButton"
         [class.live]="canPlay"
         (click)="play()"
         [disabled]="!canPlay"
+        [matTooltip]="shortcuts.tip(playing ? 'Pause' : 'Play', 'playback.toggle')"
+        matTooltipPosition="above"
+        matTooltipShowDelay="600"
         [attr.aria-label]="playing ? 'Pause' : 'Play'"
       >
         <mat-icon>{{ playing ? 'pause' : 'play_arrow' }}</mat-icon>
@@ -53,7 +65,7 @@
               class="rowPlay"
               [class.live]="canPlay"
               (click)="toggleRow(row)"
-              title="Play / pause"
+              [title]="shortcuts.tip('Play / pause', 'playback.toggle')"
               [attr.aria-label]="row.playing ? 'Pause ' + row.id : 'Play ' + row.id"
             >
               <mat-icon>{{ row.playing ? 'pause' : 'play_arrow' }}</mat-icon>

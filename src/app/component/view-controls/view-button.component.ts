@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
+import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 
 /**
  * One button in the view controls, in both kinds it comes in: a switch that
@@ -21,6 +22,8 @@ import { MatTooltip } from '@angular/material/tooltip';
   imports: [MatIcon, MatTooltip],
 })
 export class ViewButtonComponent {
+  private shortcuts = inject(KeyboardShortcutsService);
+
   /** What a switch puts on the grid: "Center of Mass", "traced paths". */
   readonly noun = input<string>();
   /** The glyph for each state. The `shown` one is the plain, uncrossed glyph. */
@@ -32,6 +35,9 @@ export class ViewButtonComponent {
   /** A plain action instead: a Material ligature and the one name it goes by. */
   readonly icon = input<string>();
   readonly tooltip = input<string>();
+
+  /** The shortcut this button doubles, if it has one: its keys go in the tip. */
+  readonly shortcut = input<ShortcutId>();
 
   /** True when pressing this would change nothing on the grid. */
   readonly disabled = input(false);
@@ -50,9 +56,13 @@ export class ViewButtonComponent {
   readonly label = computed(() => this.tooltip() ?? `Show ${this.noun()}`);
 
   /** The tooltip names what pressing it would do, which is the other state. */
-  readonly tip = computed(() =>
-    this.noun() ? `${this.shown() ? 'Hide' : 'Show'} ${this.noun()}` : (this.tooltip() ?? '')
-  );
+  readonly tip = computed(() => {
+    const name = this.noun()
+      ? `${this.shown() ? 'Hide' : 'Show'} ${this.noun()}`
+      : (this.tooltip() ?? '');
+    const id = this.shortcut();
+    return id ? this.shortcuts.tip(name, id) : name;
+  });
 
   /** The glyph draws the grid as it is: the crossed-out one means hidden. */
   readonly glyph = computed(() => (this.shown() ? this.shownIcon() : this.hiddenIcon()) ?? '');

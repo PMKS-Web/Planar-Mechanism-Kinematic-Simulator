@@ -7,6 +7,7 @@
     hiddenIcon="com_off"
     [shown]="isShowingCoM()"
     [disabled]="noMassiveLink()"
+    shortcut="view.centerOfMass"
     (pressed)="showCenterOfMass()"
   />
   <view-button
@@ -15,6 +16,7 @@
     hiddenIcon="abc_off"
     [shown]="isShowingIDs()"
     [disabled]="noJointExists()"
+    shortcut="view.jointIds"
     (pressed)="onShowIDPressed()"
   />
   <!-- The app's own curve glyph, which is a traced point with its path behind
@@ -25,6 +27,7 @@
     hiddenIcon="hide_path"
     [shown]="isShowingTraces()"
     [disabled]="noTracedJoint()"
+    shortcut="view.paths"
     (pressed)="onShowTracesPressed()"
   />
   <!-- The switches above say what the drawing shows and stay pressed; the
@@ -33,7 +36,22 @@
   <div class="viewDivider" aria-hidden="true"></div>
   <!-- The actions, which are always available: there is a view to zoom
        whether or not there is anything drawn in it. -->
-  <view-button icon="zoom_out" tooltip="Zoom Out" (pressed)="onZoomOutPressed()" />
-  <view-button icon="zoom_in" tooltip="Zoom In" (pressed)="onZoomInPressed()" />
-  <view-button icon="crop_free" tooltip="Reset View" (pressed)="onReframePressed()" />
+  <view-button
+    icon="zoom_out"
+    tooltip="Zoom Out"
+    shortcut="view.zoomOut"
+    (pressed)="onZoomOutPressed()"
+  />
+  <view-button
+    icon="zoom_in"
+    tooltip="Zoom In"
+    shortcut="view.zoomIn"
+    (pressed)="onZoomInPressed()"
+  />
+  <view-button
+    icon="crop_free"
+    tooltip="Reset View"
+    shortcut="view.reset"
+    (pressed)="onReframePressed()"
+  />
 </div>
