@@ -42,6 +42,7 @@ import {
   cylinderSizeOf,
 } from '../../model/cylinder';
 import { NotificationService } from 'src/app/services/notification.service';
+import { BackgroundImageService } from 'src/app/services/background-image.service';
 import { NOT_A } from 'src/app/ui-text';
 import { PanelSectionCollapsibleComponent } from '../BLOCKS/panel-section-collapsible/panel-section-collapsible.component';
 import { TitleBlock } from '../BLOCKS/title/title.component';
@@ -99,6 +100,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   private nup = inject(NumberUnitParserService);
   mechanismService = inject(MechanismService);
   gridUtils = inject(GridUtilsService);
+  bgImage = inject(BackgroundImageService);
   private notify = inject(NotificationService);
 
   listOfOtherJoints: RealJoint[] = [];
@@ -116,6 +118,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     LCompound: true,
     FBasic: true,
     FVisual: false,
+    BGPlace: true,
   };
 
   /**
@@ -317,6 +320,22 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       { value: 'len', label: this.nup.unitLabel(this.settingsService.lengthUnit.getValue()) },
     ];
   }
+  /**
+   * Where the tracing underlay sits and how solid it is drawn.
+   *
+   * Position and width are lengths in the panel's own unit; opacity is a plain
+   * percentage, because there is no unit for "how far you can see through it".
+   */
+  backgroundImageForm = this.fb.group(
+    {
+      centerX: [''],
+      centerY: [''],
+      width: [''],
+      opacity: [''],
+    },
+    { updateOn: 'blur' }
+  );
+
   forceForm = this.fb.group(
     {
       magnitude: [''],
@@ -1357,6 +1376,31 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       })
     );
 
+    // The three lengths behave alike, so they are wired alike. Nothing here
+    // calls updateMechanism or save: moving a picture is not an edit to the
+    // linkage, and putting it in the undo history would mean Undo silently
+    // re-posing the machine because the user nudged the underlay.
+    (['centerX', 'centerY', 'width'] as const).forEach((field) => {
+      this.onDestroySubscriptions.push(
+        this.backgroundImageForm.controls[field].valueChanges.subscribe((val) => {
+          this.commitBackgroundImageLength(field, val);
+        })
+      );
+    });
+
+    this.onDestroySubscriptions.push(
+      this.backgroundImageForm.controls['opacity'].valueChanges.subscribe((val) => {
+        if (!this.bgImage.image()) return;
+        const percent = Number((val ?? '').replace('%', '').trim());
+        if (!Number.isFinite(percent)) {
+          this.notify.refusal('value.opacity', 'Opacity has to be a number from 0 to 100.');
+        } else {
+          this.bgImage.place({ opacity: percent / 100 });
+        }
+        this.patchBackgroundImageForm();
+      })
+    );
+
     this.onDestroySubscriptions.push(
       this.activeSrv.onActiveObjChange.subscribe((newObjType: string) => {
         if (newObjType == 'Joint') {
@@ -1479,11 +1523,74 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
             },
             { emitEvent: false }
           );
+        } else if (newObjType == 'BackgroundImage') {
+          this.currentlyOpenJointID = '';
+          this.patchBackgroundImageForm();
         } else {
           this.currentlyOpenJointID = '';
         }
       })
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Background image
+  //
+  // The one thing this panel edits that is not part of the mechanism: it never
+  // touches MechanismService, never enters the undo history, and never reaches
+  // the URL codec. Its numbers are ordinary lengths, so they go through the same
+  // parser and the same length unit as every other length here.
+  // ---------------------------------------------------------------------------
+
+  /** Show the placement as it actually is, in the user's own units. */
+  private patchBackgroundImageForm(): void {
+    const image = this.bgImage.image();
+    if (!image) return;
+    const unit = this.settingsService.lengthUnit.getValue();
+    this.backgroundImageForm.patchValue(
+      {
+        centerX: this.nup.formatModelLength(image.centerX, unit),
+        centerY: this.nup.formatModelLength(image.centerY, unit),
+        width: this.nup.formatModelLength(image.width, unit),
+        opacity: Math.round(image.opacity * 100).toString(),
+      },
+      { emitEvent: false }
+    );
+  }
+
+  /** Commit one length field, or put back the value that is still true. */
+  private commitBackgroundImageLength(
+    field: 'centerX' | 'centerY' | 'width',
+    raw: string | null
+  ): void {
+    if (!this.bgImage.image()) return;
+    const [ok, value] = this.nup.parseModelLengthString(
+      raw ?? '',
+      this.settingsService.lengthUnit.getValue()
+    );
+    if (!ok) {
+      this.notify.refusal('value.length', NOT_A.length);
+    } else {
+      this.bgImage.place({ [field]: value });
+    }
+    // Either way the field is rewritten from the picture: a rejected entry goes
+    // back to the truth, and an accepted one is reformatted -- and a width may
+    // have been held at the minimum on the way in.
+    this.patchBackgroundImageForm();
+  }
+
+  saveBackgroundImage(): void {
+    // The placement is already live -- every field commits on blur -- so this
+    // closes the editor rather than writing anything. Leaving the picture
+    // selected would keep its outline on the canvas over finished work.
+    this.activeSrv.updateSelectedObj(null);
+    this.notify.success('bgImage.saved', 'Background image placed.');
+  }
+
+  deleteBackgroundImage(): void {
+    this.bgImage.remove();
+    this.activeSrv.updateSelectedObj(null);
+    this.notify.success('bgImage.removed', 'Background image removed.');
   }
 
   private updateLinkCenterOfMass(axis: 'x' | 'y', rawValue: string | null): void {

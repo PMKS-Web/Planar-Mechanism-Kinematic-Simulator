@@ -143,6 +143,26 @@
   // nothing here restyles strokes and no state can cover another. The classes
   // below stay as truthful state markers for tests and tooling.
 
+  // The edges of the tracing underlay, drawn only while its panel is open. The
+  // same accent every other "this is the thing you are editing" mark uses,
+  // broken rather than solid so a rectangle of picture cannot read as a part.
+  .bgImageOutline {
+    fill: none;
+    stroke: mat.m2-get-color-from-palette($accent-palette, 500);
+    pointer-events: none;
+  }
+
+  // The file dialog's input, kept out of the layout without display:none --
+  // which stops some browsers opening a picker from a synthetic click.
+  .offscreenFileInput {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    left: -9999px;
+  }
+
   #mouseLocation {
     position: absolute;
     top: 35px;

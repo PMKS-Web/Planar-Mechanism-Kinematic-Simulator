@@ -6,7 +6,15 @@ import { Coord } from '../model/coord';
 import { SynthesisPose } from './synthesis/synthesis-util';
 
 export type ActiveObjType =
-  'Nothing' | 'Joint' | 'Force' | 'Link' | 'Grid' | 'SynthesisPose' | 'Mechanism';
+  | 'Nothing'
+  | 'Joint'
+  | 'Force'
+  | 'Link'
+  | 'Grid'
+  | 'SynthesisPose'
+  | 'Mechanism'
+  /** The tracing underlay, which is scenery rather than part of the linkage. */
+  | 'BackgroundImage';
 
 @Injectable({
   providedIn: 'root',
@@ -51,6 +59,19 @@ export class ActiveObjService {
 
   fakeUpdateSelectedObj() {
     //Don't actually update the selected object, just emit the event so subscribers can update
+    this.onActiveObjChange.emit(this.objType);
+  }
+
+  /**
+   * Put the background image in the edit panel.
+   *
+   * It is not a mechanism object and has no entry in getSelectedObj(): the only
+   * thing this selection does is decide which panel is showing, and the panel
+   * reads the picture from its own service.
+   */
+  selectBackgroundImage() {
+    this.selectedMechanismIndex = -1;
+    this.objType = 'BackgroundImage';
     this.onActiveObjChange.emit(this.objType);
   }
 

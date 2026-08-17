@@ -2,6 +2,7 @@ import { SvgGridService } from '../../services/svg-grid.service';
 import {
   OnDestroy,
   Component,
+  ElementRef,
   HostListener,
   ChangeDetectionStrategy,
   inject,
@@ -32,6 +33,7 @@ import {
 } from '../../model/utils';
 import { Force } from '../../model/force';
 import { NotificationService } from '../../services/notification.service';
+import { BackgroundImageService } from '../../services/background-image.service';
 import { CdkContextMenuTrigger } from '@angular/cdk/menu';
 import { MatDialog } from '@angular/material/dialog';
 import { TouchscreenWarningComponent } from '../MODALS/touchscreen-warning/touchscreen-warning.component';
@@ -132,6 +134,7 @@ export class NewGridComponent implements OnDestroy {
   nup = inject(NumberUnitParserService);
   dragState = inject(DragStateService);
   sliderMarks = inject(SliderMarkService);
+  bgImage = inject(BackgroundImageService);
 
   public static debugValue: unknown;
   static debugPoints: Coord[] = [];
@@ -229,6 +232,8 @@ export class NewGridComponent implements OnDestroy {
   }
 
   readonly contextMenu = viewChild.required<CdkContextMenuTrigger>('trigger');
+  private readonly backgroundImageInput =
+    viewChild.required<ElementRef<HTMLInputElement>>('backgroundImageInput');
 
   ngOnInit() {
     const svgElement = document.getElementById('canvas') as HTMLElement;
@@ -635,6 +640,16 @@ export class NewGridComponent implements OnDestroy {
         this.cMenuItems.push(
           new cMenuItem('Add Cylinder', this.startCreatingCylinder.bind(this), 'add_cylinder')
         );
+        // Scenery rather than mechanism, so it sits below the two items that
+        // draw parts. One item for both halves: with a picture already placed
+        // there is nothing left to add, only somewhere to adjust it.
+        this.cMenuItems.push(
+          new cMenuItem(
+            this.bgImage.image() ? 'Edit background image' : 'Add background image',
+            () => this.openBackgroundImage(),
+            'background_image'
+          )
+        );
         // Lock everything, unlock one handle, drag: the posing workflow. On
         // the canvas menu because this is where the locking gesture lives —
         // and greyed rather than hidden when there is nothing to act on.
@@ -654,6 +669,65 @@ export class NewGridComponent implements OnDestroy {
             !this.mechanismSrv.anythingLocked()
           )
         );
+    }
+  }
+
+  /**
+   * Whether the panel is currently editing the background image.
+   *
+   * Every clause is a way the panel can go without the selection changing: the
+   * analysis modes replace it, and playback covers it with the stop-the-
+   * animation placeholder. An outline for controls that are not on screen is a
+   * mark nobody can explain.
+   */
+  editingBackgroundImage(): boolean {
+    return (
+      this.activeObjService.objType === 'BackgroundImage' &&
+      !this.tabService.isAnalysisMode() &&
+      !this.mechanismSrv.isPlaying &&
+      this.mechanismSrv.mechanismTimeStep === 0
+    );
+  }
+
+  /**
+   * The one menu item, doing whichever half applies: pick a file if there is no
+   * picture yet, otherwise just open the panel on the one there is.
+   */
+  private openBackgroundImage(): void {
+    this.tabService.setTab(TabID.EDIT);
+    if (this.bgImage.image()) {
+      this.activeObjService.selectBackgroundImage();
+      return;
+    }
+    const input = this.backgroundImageInput().nativeElement;
+    input.value = '';
+    input.click();
+  }
+
+  /** Read the chosen file, place it across half the visible grid, and select it. */
+  async onBackgroundImageChosen(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    try {
+      // Half the width of what is on screen: big enough to be obviously there,
+      // small enough that the mechanism under construction is still visible
+      // around it. Zoom-dependent by design — the picture arrives where the
+      // user is looking rather than at some fixed size off the edge.
+      const visibleWidth = this.svgGrid.viewBoxMaxX - this.svgGrid.viewBoxMinX;
+      await this.bgImage.load(file, visibleWidth / 2);
+      this.activeObjService.selectBackgroundImage();
+      this.notify.success(
+        'bgImage.added',
+        `${file.name} is behind the grid. It is not saved in the share link.`
+      );
+    } catch (error) {
+      this.notify.failure(
+        'bgImage.failed',
+        error instanceof Error ? error.message : 'That image could not be loaded.'
+      );
     }
   }
 

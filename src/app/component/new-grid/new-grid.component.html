@@ -221,6 +221,39 @@
     </g>
   }
 
+  <!-- The tracing underlay. Above the grid's white background so it is visible
+       at all, below every part of the mechanism so it can never hide one, and
+       pointer-events: none throughout -- a right-click on the picture falls
+       through to the grid beneath and opens the grid's own menu, which is where
+       the item that put it here lives. -->
+  @if (bgImage.image(); as bg) {
+    <g id="backgroundImageHolder" pointer-events="none">
+      <image
+        [attr.href]="bg.src"
+        [attr.x]="bgImage.leftOf(bg)"
+        [attr.y]="bgImage.topOf(bg)"
+        [attr.width]="bg.width"
+        [attr.height]="bgImage.heightOf(bg)"
+        [attr.opacity]="bg.opacity"
+        preserveAspectRatio="none"
+      />
+      <!-- Only while the panel is editing it: the placement fields move
+           something the user may have faded almost to nothing, so its edges
+           have to be findable while they are being typed. -->
+      @if (editingBackgroundImage()) {
+        <rect
+          class="bgImageOutline"
+          [attr.x]="bgImage.leftOf(bg)"
+          [attr.y]="bgImage.topOf(bg)"
+          [attr.width]="bg.width"
+          [attr.height]="bgImage.heightOf(bg)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+          [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
+        />
+      }
+    </g>
+  }
+
   <!-- Decoration, not controls: the ground triangle and the input arrow mark
        what a joint *is*, and both are drawn wider than the joint itself. Left
        hit-testable they sit over whatever is beneath them and swallow clicks
@@ -1552,6 +1585,17 @@
     </g>
   }
 </svg>
+<!-- The file dialog the Add background image menu item opens. Off-screen
+     rather than display:none, because a hidden input cannot be driven by the
+     browser's own picker on every platform. Its value is cleared after each
+     pick so choosing the same file twice still fires a change. -->
+<input
+  #backgroundImageInput
+  type="file"
+  accept="image/*"
+  class="offscreenFileInput"
+  (change)="onBackgroundImageChosen($event)"
+/>
 @if (settings.isGridDebugOn) {
   <div id="mouseLocation">
     Mouse Location: {{ (mouseLocation.x / MODEL_SCALE).toFixed(2) }},
