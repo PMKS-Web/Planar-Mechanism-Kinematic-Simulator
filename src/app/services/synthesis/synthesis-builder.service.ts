@@ -38,6 +38,22 @@ export class SynthesisBuilderService {
    */
   public synthesisedIds: { joints: string[]; links: string[] } = { joints: [], links: [] };
 
+  /**
+   * Whether the linkage should be built with a driver on it, and which of its
+   * two ground pins the drive belongs to.
+   *
+   * Held as intent rather than applied to the drawing, because synthesis re-runs
+   * from scratch on every change to a pose: a driver bolted on afterwards would
+   * be thrown away by the next nudge of a coordinate, and a drive pin moved by
+   * hand would move back. Both are read at build time instead, so they survive
+   * every rebuild and there is only ever one way the linkage came to be.
+   */
+  public driverWanted: boolean = false;
+  public driveOnFarPin: boolean = false;
+
+  /** Why the last build could not fit a driver, for the panel to show. */
+  public driverRefusal: string | undefined;
+
   _COR: COR;
   _length: number; // length of the end-effector link
   _selectedPose: number; // currently selected pose (1-3)
