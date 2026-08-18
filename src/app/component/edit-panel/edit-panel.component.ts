@@ -31,8 +31,12 @@ import { NumberUnitParserService } from 'src/app/services/number-unit-parser.ser
 import { SettingsService } from '../../services/settings.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
-import { RealLink } from '../../model/link';
+import { Link, RealLink } from '../../model/link';
 import { NewGridComponent } from '../new-grid/new-grid.component';
+import { MODEL_SCALE } from '../../model/render-scale';
+import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
+import { StateInputComponent } from '../BLOCKS/state-input/state-input.component';
+import { uniformBodyOf } from '../../model/uniform-body';
 import {
   cylinderSpanLayoutFrom,
   cylinderSpanRange,
@@ -77,6 +81,8 @@ const INPUT_SPEED_UNITS = [
     PanelSectionCollapsibleComponent,
     TitleBlock,
     MatIcon,
+    SubtitleComponent,
+    StateInputComponent,
     MechanismPanelComponent,
     PanelSectionComponent,
     EditableTitleComponent,
@@ -293,6 +299,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       start: [''],
       startUnit: ['pct', { updateOn: 'change' }],
       angle: [''],
+      barrelMass: [''],
+      rodMass: [''],
+      headMass: [''],
     },
     { updateOn: 'blur' }
   );
@@ -617,14 +626,86 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   patchCylinderForm(): void {
     const sealed = this.selectedCylinder;
     if (!sealed) return;
+    const massUnits = this.massUnit();
     this.cylinderForm.patchValue(
       {
         travel: this.cylinderTravelLabel(sealed),
         start: this.cylinderStartLabel(sealed),
         angle: this.cylinderAngleLabel(sealed),
+        barrelMass: this.nup.formatValueAndUnit(sealed.barrel.mass, massUnits),
+        rodMass: this.nup.formatValueAndUnit(sealed.rod.mass, massUnits),
+        headMass: this.nup.formatValueAndUnit(sealed.block.mass, massUnits),
       },
       { emitEvent: false }
     );
+  }
+
+  /**
+   * One handler for the three bodies a sealed cylinder weighs in as.
+   *
+   * The rod and head are welded rigid, but rigidity says how they move, not
+   * where their mass sits: the rod's is spread along its length, the head's
+   * is concentrated at the pin — which is the number that matters in a
+   * reciprocating machine. The solver already carries all three bodies, so
+   * these fields are the first door to numbers that were always there.
+   */
+  private cylinderMassEdit(
+    control: 'barrelMass' | 'rodMass' | 'headMass',
+    part: (sealed: NonNullable<EditPanelComponent['selectedCylinder']>) => Link,
+    raw: string | null
+  ): void {
+    const sealed = this.selectedCylinder;
+    if (!sealed) return;
+    const units = this.massUnit();
+    const body = part(sealed);
+    const [success, value] = this.nup.parseMassString(raw ?? '', units);
+    if (!success || value < 0) {
+      this.notify.refusal('value.mass', NOT_A.mass);
+      this.cylinderForm.patchValue(
+        { [control]: this.nup.formatValueAndUnit(body.mass, units) },
+        { emitEvent: false }
+      );
+      return;
+    }
+    // Through the one door: a mount weld can fold the barrel or rod into a
+    // compound, and the aggregate has to keep telling the same story.
+    this.mechanismService.assignBodyMass(body, value);
+    this.mechanismService.updateMechanism(true);
+    this.mechanismService.onMechUpdateState.next(2);
+    this.cylinderForm.patchValue(
+      { [control]: this.nup.formatValueAndUnit(value, units) },
+      { emitEvent: false }
+    );
+  }
+
+  /** Whether either visible cylinder body still carries typed inertia values. */
+  cylinderHasCustomInertia(): boolean {
+    const sealed = this.selectedCylinder;
+    if (!sealed) return false;
+    return [sealed.barrel, sealed.rod].some(
+      (part) => part instanceof RealLink && (part.moiIsCustom || part.comIsCustom)
+    );
+  }
+
+  /**
+   * Hand every part of the cylinder back to the uniform body.
+   *
+   * Template cylinders arrive from legacy URLs with frozen custom values and
+   * no other door to them: the cylinder panel replaces the link panel, so the
+   * per-field Derive buttons are unreachable for these bodies.
+   */
+  deriveCylinderInertiaFromShape(): void {
+    const sealed = this.selectedCylinder;
+    if (!sealed) return;
+    for (const part of [sealed.barrel, sealed.rod]) {
+      if (part instanceof RealLink) {
+        part.moiIsCustom = false;
+        part.comIsCustom = false;
+      }
+    }
+    this.mechanismService.updateMechanism(true);
+    this.mechanismService.onMechUpdateState.next(2);
+    this.patchCylinderForm();
   }
 
   /** Drive (or stop driving) the selected cylinder's hidden prismatic pin. */
@@ -1078,6 +1159,21 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     this.onDestroySubscriptions.push(
       this.cylinderForm.controls['startUnit'].valueChanges.subscribe(() => this.patchCylinderForm())
     );
+    this.onDestroySubscriptions.push(
+      this.cylinderForm.controls['barrelMass'].valueChanges.subscribe((val) =>
+        this.cylinderMassEdit('barrelMass', (sealed) => sealed.barrel, val)
+      )
+    );
+    this.onDestroySubscriptions.push(
+      this.cylinderForm.controls['rodMass'].valueChanges.subscribe((val) =>
+        this.cylinderMassEdit('rodMass', (sealed) => sealed.rod, val)
+      )
+    );
+    this.onDestroySubscriptions.push(
+      this.cylinderForm.controls['headMass'].valueChanges.subscribe((val) =>
+        this.cylinderMassEdit('headMass', (sealed) => sealed.block, val)
+      )
+    );
 
     this.onDestroySubscriptions.push(
       this.cylinderForm.controls['start'].valueChanges.subscribe((val) => {
@@ -1187,13 +1283,14 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         const units = this.massUnit();
         const [success, value] = this.nup.parseMassString(val ?? '', units);
         if (!success || value < 0) {
+          this.notify.refusal('value.mass', NOT_A.mass);
           this.linkForm.patchValue(
             { mass: this.nup.formatValueAndUnit(this.activeSrv.selectedLink.mass, units) },
             { emitEvent: false }
           );
           return;
         }
-        this.activeSrv.selectedLink.mass = value;
+        this.mechanismService.assignBodyMass(this.activeSrv.selectedLink, value);
         this.syncMassDependents();
         this.mechanismService.updateMechanism(true);
         this.mechanismService.onMechUpdateState.next(2);
@@ -1201,27 +1298,33 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           { mass: this.nup.formatValueAndUnit(value, units) },
           { emitEvent: false }
         );
+        // An auto moment of inertia follows the mass it belongs to; show what
+        // the rebuild just derived rather than the number from before it.
+        this.refreshDerivedMassFields();
       })
     );
 
     this.onDestroySubscriptions.push(
       this.linkForm.controls['massMoI'].valueChanges.subscribe((val) => {
-        const units = this.momentOfInertiaUnit();
-        const [success, value] = this.nup.parseInertiaString(val ?? '', units);
-        if (!success || value < 0) {
-          this.linkForm.patchValue(
-            { massMoI: this.nup.formatValueAndUnit(this.activeSrv.selectedLink.massMoI, units) },
-            { emitEvent: false }
-          );
+        // Typed in the display unit (g·cm² for metric), stored in the unit the
+        // solver and every URL are written against (kg·cm²).
+        const length = this.settingsService.lengthUnit.getValue();
+        const display = this.nup.displayInertiaUnit(length);
+        const [success, value] = this.nup.parseInertiaString(val ?? '', display);
+        if (!success || value < 0 || !(this.activeSrv.selectedLink.mass > 0)) {
+          if (!success || value < 0) this.notify.refusal('value.inertia', NOT_A.momentOfInertia);
+          this.refreshDerivedMassFields();
           return;
         }
-        this.activeSrv.selectedLink.massMoI = value;
+        this.activeSrv.selectedLink.massMoI = this.nup.convertInertia(
+          value,
+          display,
+          this.nup.storedInertiaUnit(length)
+        );
+        this.activeSrv.selectedLink.moiIsCustom = true;
         this.mechanismService.updateMechanism(true);
         this.mechanismService.onMechUpdateState.next(2);
-        this.linkForm.patchValue(
-          { massMoI: this.nup.formatValueAndUnit(value, units) },
-          { emitEvent: false }
-        );
+        this.refreshDerivedMassFields();
       })
     );
 
@@ -1432,21 +1535,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
                 this.settingsService.angleUnit.getValue()
               ),
               mass: this.nup.formatValueAndUnit(this.activeSrv.selectedLink.mass, this.massUnit()),
-              massMoI: this.nup.formatValueAndUnit(
-                this.activeSrv.selectedLink.massMoI,
-                this.momentOfInertiaUnit()
-              ),
-              comX: this.nup.formatModelLength(
-                this.activeSrv.selectedLink.CoM.x,
-                this.settingsService.lengthUnit.getValue()
-              ),
-              comY: this.nup.formatModelLength(
-                this.activeSrv.selectedLink.CoM.y,
-                this.settingsService.lengthUnit.getValue()
-              ),
             },
             { emitEvent: false }
           );
+          this.refreshDerivedMassFields();
           this.syncMassDependents();
           // A cylinder body reuses the joint form's Input Settings controls
           // (speed, unit), so they have to be truthful when the body opens.
@@ -1486,6 +1578,29 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     );
   }
 
+  /**
+   * The frame the Center of Mass fields are typed and read in. Display-side
+   * only: whatever is chosen, the point is stored against the link itself
+   * (see RealLink.placeCustomCoM), so the numbers here are a view of it.
+   */
+  comFrame: string = 'centroid';
+
+  setComFrame(frame: string): void {
+    this.comFrame = frame;
+    this.refreshDerivedMassFields();
+  }
+
+  /** Where the chosen frame's zero sits, in model coordinates. */
+  private comFrameOrigin(link: RealLink): { x: number; y: number } {
+    if (this.comFrame === 'grid') return { x: 0, y: 0 };
+    if (this.comFrame.startsWith('joint:')) {
+      const id = this.comFrame.slice('joint:'.length);
+      const joint = link.joints.find((candidate) => candidate.id === id);
+      if (joint) return { x: joint.x, y: joint.y };
+    }
+    return uniformBodyOf(link.joints).centroid;
+  }
+
   private updateLinkCenterOfMass(axis: 'x' | 'y', rawValue: string | null): void {
     const [success, value] = this.nup.parseModelLengthString(
       rawValue ?? '',
@@ -1494,33 +1609,75 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     const link = this.activeSrv.selectedLink;
     if (!success) {
       this.notify.refusal('value.length', NOT_A.length);
-      this.linkForm.patchValue(
-        {
-          [axis === 'x' ? 'comX' : 'comY']: this.nup.formatModelLength(
-            link.CoM[axis],
-            this.settingsService.lengthUnit.getValue()
-          ),
-        },
-        { emitEvent: false }
-      );
+      this.refreshDerivedMassFields();
       return;
     }
 
-    link.CoM[axis] = value;
-    link.updateCoMDs();
+    const origin = this.comFrameOrigin(link);
+    const point = {
+      x: axis === 'x' ? origin.x + value : link.CoM.x,
+      y: axis === 'y' ? origin.y + value : link.CoM.y,
+    };
+    link.placeCustomCoM(point);
     this.mechanismService.updateMechanism(true);
     this.mechanismService.onMechUpdateState.next(2);
+    this.refreshDerivedMassFields();
+  }
+
+  /** Hand both derived fields back to the shape at once. */
+  useUniformBody(): void {
+    this.activeSrv.selectedLink.moiIsCustom = false;
+    this.activeSrv.selectedLink.comIsCustom = false;
+    this.activeSrv.selectedLink.comOffset = undefined;
+    this.mechanismService.updateMechanism(true);
+    this.mechanismService.onMechUpdateState.next(2);
+    this.refreshDerivedMassFields();
+  }
+
+
+
+  /** Hand a field back to the uniform body, and show what it derives. */
+  useUniformBodyMoI(): void {
+    this.activeSrv.selectedLink.moiIsCustom = false;
+    this.mechanismService.updateMechanism(true);
+    this.mechanismService.onMechUpdateState.next(2);
+    this.refreshDerivedMassFields();
+  }
+
+  useUniformBodyCoM(): void {
+    this.activeSrv.selectedLink.comIsCustom = false;
+    this.activeSrv.selectedLink.comOffset = undefined;
+    this.mechanismService.updateMechanism(true);
+    this.mechanismService.onMechUpdateState.next(2);
+    this.refreshDerivedMassFields();
+  }
+
+  /** Re-read MoI and CoM from the link after a rebuild may have re-derived them. */
+  private refreshDerivedMassFields(): void {
+    const link = this.activeSrv.selectedLink;
+    if (!link) return;
+    const length = this.settingsService.lengthUnit.getValue();
+    const origin = this.comFrameOrigin(link);
+    const display = this.nup.displayInertiaUnit(length);
+    const inertia = this.nup.convertInertia(
+      link.massMoI,
+      this.nup.storedInertiaUnit(length),
+      display
+    );
+    this.linkForm.patchValue(
+      {
+        // The unit is typed into the box, as every Basic Settings field does
+        // it; the centre-of-mass pair stays bare — its unit is the frame's.
+        massMoI: this.nup.formatValueAndUnit(inertia, display),
+        comX: ((link.CoM.x - origin.x) / MODEL_SCALE).toFixed(2),
+        comY: ((link.CoM.y - origin.y) / MODEL_SCALE).toFixed(2),
+      },
+      { emitEvent: false }
+    );
   }
 
   momentOfInertiaUnit(): InertiaUnit {
-    switch (this.settingsService.lengthUnit.value) {
-      case LengthUnit.INCH:
-        return InertiaUnit.LBM_IN2;
-      case LengthUnit.METER:
-        return InertiaUnit.KG_M2;
-      default:
-        return InertiaUnit.KG_CM2;
-    }
+    return this.nup.displayInertiaUnit(this.settingsService.lengthUnit.value);
   }
 
   massUnit(): MassUnit {
@@ -1630,6 +1787,30 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   /** One rule, shared with the right-click menu so the two cannot disagree. */
   canToggleInput(selectedJoint: RealJoint) {
     return this.gridUtils.canToggleInput(selectedJoint);
+  }
+
+  /** Point at a CoM field, see what it states: the CoM mark, plus the
+   *  distance drawn from the chosen frame's zero along that axis — the same
+   *  show-me the length and angle fields give. */
+  setComPreview(axis: 'x' | 'y', on: boolean) {
+    const link = this.activeSrv.selectedLink;
+    const showing = on && !!link;
+    this.settingsService.previewCoMLinkId = showing ? link.id : null;
+    NewGridComponent.instance.setComMeasureOverlay(
+      showing
+        ? {
+            axis,
+            origin: this.comFrameOrigin(link),
+            com: { x: link.CoM.x, y: link.CoM.y },
+            mode: this.comFrame === 'grid' ? 'axis' : 'origin',
+          }
+        : undefined
+    );
+  }
+
+  /** Point at a part's mass field, see that part lit on the ram. */
+  setCylinderPartPreview(part: 'barrel' | 'rod' | 'head' | undefined) {
+    NewGridComponent.instance.setCylinderPartPreview(part);
   }
 
   setShowLinkLengthOverlay($event: number) {

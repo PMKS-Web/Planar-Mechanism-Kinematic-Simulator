@@ -50,6 +50,8 @@ export class NumberUnitParserService {
         return 'lbm';
       case InertiaUnit.KG_CM2:
         return 'kg·cm²';
+      case InertiaUnit.G_CM2:
+        return 'g·cm²';
       case InertiaUnit.KG_M2:
         return 'kg·m²';
       case InertiaUnit.LBM_IN2:
@@ -276,6 +278,8 @@ export class NumberUnitParserService {
 
   public getInertiaUnit(input: string): InertiaUnit {
     switch (this.normalizeUnitToken(input)) {
+      case 'gcm2':
+        return InertiaUnit.G_CM2;
       case 'kgcm2':
         return InertiaUnit.KG_CM2;
       case 'kgm2':
@@ -286,6 +290,58 @@ export class NumberUnitParserService {
       default:
         return InertiaUnit.NULL;
     }
+  }
+
+  /** The mass unit that pairs with a length system: g / kg / lbm. */
+  public massUnitFor(length: LengthUnit): MassUnit {
+    switch (length) {
+      case LengthUnit.INCH:
+        return MassUnit.LBM;
+      case LengthUnit.METER:
+        return MassUnit.KG;
+      default:
+        return MassUnit.GRAM;
+    }
+  }
+
+  /**
+   * The unit an inertia field shows beside its number, per length system:
+   * g·cm² / kg·m² / lbm·in², each coherent with the mass unit beside it.
+   */
+  public displayInertiaUnit(length: LengthUnit): InertiaUnit {
+    switch (length) {
+      case LengthUnit.INCH:
+        return InertiaUnit.LBM_IN2;
+      case LengthUnit.METER:
+        return InertiaUnit.KG_M2;
+      default:
+        return InertiaUnit.G_CM2;
+    }
+  }
+
+  /**
+   * The unit link.massMoI is *stored* in, per length system — the one the
+   * solver's siUnitFactors and every circulating URL are written against.
+   * Metric is the one system where it differs from the display unit.
+   */
+  public storedInertiaUnit(length: LengthUnit): InertiaUnit {
+    switch (length) {
+      case LengthUnit.INCH:
+        return InertiaUnit.LBM_IN2;
+      case LengthUnit.METER:
+        return InertiaUnit.KG_M2;
+      default:
+        return InertiaUnit.KG_CM2;
+    }
+  }
+
+  /** A stored inertia, formatted in the display unit for its length system. */
+  public formatStoredInertia(stored: number, length: LengthUnit): string {
+    const display = this.displayInertiaUnit(length);
+    return this.formatValueAndUnit(
+      this.convertInertia(stored, this.storedInertiaUnit(length), display),
+      display
+    );
   }
 
   public parseInertiaString(input: string, desiredUnits: InertiaUnit): [boolean, number] {

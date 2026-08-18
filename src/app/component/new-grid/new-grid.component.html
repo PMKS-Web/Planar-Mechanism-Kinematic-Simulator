@@ -695,6 +695,17 @@
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
         }
+        <!-- Which part a pointed-at mass field means: a glaze over that one
+             piece, because the selected body already wears the outline and a
+             second ring would vanish into it. -->
+        @if (cylinderPartPreviewPath(cyl); as partPath) {
+          <path
+            class="cylinder-part-preview"
+            pointer-events="none"
+            [attr.d]="partPath"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          />
+        }
 
       </g>
     }
@@ -1262,25 +1273,56 @@
                  white used to be, and everything is half opaque. The outline is
                  the same four wedges stroked rather than a circle drawn beside
                  them -- one set of coordinates, so it cannot land anywhere else. -->
-            @for (
-              quarter of [
-                mechanismSrv.getLinkProp(link, 'CoM_d1'),
-                mechanismSrv.getLinkProp(link, 'CoM_d2'),
-                mechanismSrv.getLinkProp(link, 'CoM_d3'),
-                mechanismSrv.getLinkProp(link, 'CoM_d4'),
-              ];
-              track $index
-            ) {
-              <path
-                [attr.d]="quarter"
-                [attr.fill]="$index % 2 === 0 ? 'black' : 'none'"
-                fill-opacity="0.45"
-                stroke="black"
-                stroke-opacity="0.45"
-                stroke-linejoin="round"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
-              ></path>
+            <!-- The shape's own centre, kept visible while the CoM mark is
+                 placed elsewhere: the custom position is an offset from
+                 exactly this point. -->
+            @if (comCentroidDot(link); as centroid) {
+              <circle
+                [attr.cx]="centroid.x"
+                [attr.cy]="centroid.y"
+                [attr.r]="0.035 * settings.objectScale"
+                fill="black"
+                fill-opacity="0.55"
+              ></circle>
             }
+            <g
+              [style.pointer-events]="comDraggable(link) ? 'auto' : 'none'"
+              [style.cursor]="comDraggable(link) ? 'move' : null"
+              (pointerdown)="comDraggable(link) && startComDrag($any(link), $event)"
+            >
+              <!-- The selected link's mark is a handle: the dashed accent ring
+                   says grab me, and doubles as the hit area. -->
+              @if (comDraggable(link)) {
+                <circle
+                  class="com-drag-ring"
+                  [attr.cx]="$any(link).CoM.x"
+                  [attr.cy]="$any(link).CoM.y"
+                  [attr.r]="0.16 * settings.objectScale"
+                  fill="transparent"
+                  [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+                  [attr.stroke-dasharray]="svgGrid.scaleWithZoom(4) + ' ' + svgGrid.scaleWithZoom(3)"
+                ></circle>
+              }
+              @for (
+                quarter of [
+                  mechanismSrv.getLinkProp(link, 'CoM_d1'),
+                  mechanismSrv.getLinkProp(link, 'CoM_d2'),
+                  mechanismSrv.getLinkProp(link, 'CoM_d3'),
+                  mechanismSrv.getLinkProp(link, 'CoM_d4'),
+                ];
+                track $index
+              ) {
+                <path
+                  [attr.d]="quarter"
+                  [attr.fill]="$index % 2 === 0 ? 'black' : 'none'"
+                  fill-opacity="0.45"
+                  stroke="black"
+                  stroke-opacity="0.45"
+                  stroke-linejoin="round"
+                  [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+                ></path>
+              }
+            </g>
           </svg>
         }
       }
@@ -1456,6 +1498,45 @@
             this.settings.angleUnit.getValue()
           )
         }}
+      </text>
+    </g>
+  }
+  <!-- The distance a CoM field states, drawn where it is measured: from the
+       frame's zero, along the hovered axis, to the centre of mass — whose
+       mark the same hover previews. -->
+  @if (comMeasure && comMeasureValue(comMeasure) > 1e-9 ? comMeasure : null; as measure) {
+    <g style="pointer-events: none; transform: scaleY(-1)">
+      <line
+        [attr.x1]="comMeasureLine(measure).from.x"
+        [attr.y1]="comMeasureLine(measure).from.y"
+        [attr.x2]="comMeasureLine(measure).to.x"
+        [attr.y2]="comMeasureLine(measure).to.y"
+        stroke="#000000"
+        [attr.stroke-width]="0.02 * settings.objectScale"
+      />
+      <path
+        [attr.d]="comMeasureCaps(measure)"
+        stroke="#000000"
+        [attr.stroke-width]="0.02 * settings.objectScale"
+      ></path>
+      @if (comMeasureConnector(measure); as connector) {
+        <path
+          [attr.d]="connector"
+          stroke="#000000"
+          [attr.stroke-width]="0.02 * settings.objectScale"
+          [attr.stroke-dasharray]="0.08 * settings.objectScale"
+        ></path>
+      }
+      <!-- A vertical measure's label starts clear of its line; centring it
+           there would run the digits through the stroke. -->
+      <text
+        [attr.text-anchor]="measure.axis === 'y' ? 'start' : 'middle'"
+        style="transform: scaleY(-1)"
+        [attr.x]="comMeasureLabelPos(measure).x"
+        [attr.y]="-comMeasureLabelPos(measure).y"
+        [attr.font-size]="svgGrid.scaleWithZoom(20)"
+      >
+        {{ nup.formatModelLength(comMeasureValue(measure), settings.lengthUnit.getValue()) }}
       </text>
     </g>
   }

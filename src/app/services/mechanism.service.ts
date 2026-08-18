@@ -50,6 +50,8 @@ import { describeActuator } from '../model/actuator';
 import { NotificationService } from './notification.service';
 import { SettingsService } from './settings.service';
 import { slotHalfLength } from '../model/joint-marks';
+import { uniformBodyOf } from '../model/uniform-body';
+import { siUnitFactors } from '../model/unit-conversions';
 import { DragStateService } from './drag-state.service';
 import { Coord } from '../model/coord';
 import { SelectedTabService, TabID } from '../selected-tab.service';
@@ -287,6 +289,8 @@ export class MechanismService {
         unitStr = 'm';
         break;
     }
+
+    this.applyUniformBodyProperties(unitStr);
 
     // One machine per grounded component of the drawing. Each is solved on its
     // own -- its own mobility, its own input, its own cycle -- so a half-built
@@ -557,8 +561,10 @@ export class MechanismService {
       for (const link of this.links) {
         if (!(link instanceof RealLink)) continue;
         if (!link.joints.some((joint) => movedIds.has(joint.id))) continue;
-        link.CoM = RealLink.determineCenterOfMass(link.joints);
-        link.updateCoMDs();
+        if (!link.comIsCustom) {
+          link.CoM = RealLink.determineCenterOfMass(link.joints);
+          link.updateCoMDs();
+        }
         link.updateLengthAndAngle();
       }
     }
@@ -662,6 +668,10 @@ export class MechanismService {
         link.massMoI *= inertiaScale;
         link.CoM.x *= lengthScale;
         link.CoM.y *= lengthScale;
+        // The stored along/across offset is in model lengths too; re-read it
+        // from the correctly scaled point, or the next rebuild would derive
+        // the CoM from a stale offset and throw it lengthScale times as far.
+        if (link.comIsCustom) link.captureComOffset();
         link.subset.forEach(updateLink);
         link.updateLengthAndAngle();
         link.updateCoMDs();
@@ -982,15 +992,28 @@ export class MechanismService {
             leaves.reduce((sum, link) => sum + link.CoM.x, 0) / Math.max(1, leaves.length),
             leaves.reduce((sum, link) => sum + link.CoM.y, 0) / Math.max(1, leaves.length)
           );
+    // The parallel-axis term measures distances in model coordinates, which
+    // are MODEL_SCALE user units, and mass and inertia live in different
+    // prefixes per unit system. Unconverted, welding two 1 g bars produced
+    // tens of thousands of kg·cm² — off by MODEL_SCALE² times the unit ratio.
+    const parallelAxis = this.storedMoiFactor(this.currentUnitStr());
     const massMoI = leaves.reduce(
       (sum, link) =>
         sum +
         link.massMoI +
-        link.mass * (Math.pow(link.CoM.x - CoM.x, 2) + Math.pow(link.CoM.y - CoM.y, 2)),
+        link.mass *
+          (Math.pow(link.CoM.x - CoM.x, 2) + Math.pow(link.CoM.y - CoM.y, 2)) *
+          parallelAxis,
       0
     );
 
     const newLink = new RealLink(id, newLinkJoints, totalMass, massMoI, CoM, leaves);
+    // The parallel-axis sum above is worth keeping exactly when a part's
+    // numbers were chosen by a person; parts that all followed their geometry
+    // leave the compound following its geometry too.
+    newLink.moiIsCustom = leaves.some((leaf) => leaf instanceof RealLink && leaf.moiIsCustom);
+    newLink.comIsCustom = leaves.some((leaf) => leaf instanceof RealLink && leaf.comIsCustom);
+    if (newLink.comIsCustom) newLink.captureComOffset();
     newLink.fill = leaves[0]?.fill ?? ColorService.instance?.getNextLinkColor() ?? '#555555';
     return newLink;
   }
@@ -1072,7 +1095,35 @@ export class MechanismService {
    * compound keeps existing as a member of that compound's subset, so the
    * pointer stays valid while no longer naming a body any solver iterates.
    */
-  private rootLinkOwning(link: Link): Link | undefined {
+  /**
+   * The one door for writing a body's mass, wherever the field lives.
+   *
+   * A compound and its members must keep telling one story: edit a member and
+   * the compound's aggregate moves by the same amount; edit the compound and
+   * the members scale to match, so unwelding later restores what the sum
+   * really was. Without this, the mass table and the cylinder fields were two
+   * sources of truth that only agreed until the first unweld.
+   */
+  assignBodyMass(body: Link, value: number): void {
+    if (!(value >= 0)) return;
+    if (body instanceof RealLink && body.subset.length > 0) {
+      const members = body.subset;
+      const total = members.reduce((sum, member) => sum + member.mass, 0);
+      for (const member of members) {
+        member.mass = total > 0 ? (member.mass / total) * value : value / members.length;
+      }
+    } else {
+      const root = this.rootLinkOwning(body);
+      if (root && root !== body) {
+        root.mass += value - body.mass;
+      }
+    }
+    body.mass = value;
+  }
+
+  /** Public: the cylinder panel writes part masses and must keep a welded
+   * compound's aggregate true. */
+  rootLinkOwning(link: Link): Link | undefined {
     const contains = (candidate: Link): boolean =>
       candidate.id === link.id ||
       (candidate instanceof RealLink && candidate.subset.some(contains));
@@ -1305,7 +1356,9 @@ export class MechanismService {
     }
 
     if (link instanceof RealLink) {
-      link.CoM = RealLink.determineCenterOfMass(link.joints);
+      if (!link.comIsCustom) {
+        link.CoM = RealLink.determineCenterOfMass(link.joints);
+      }
       link.reComputeDPath();
     }
   }
@@ -1993,6 +2046,127 @@ export class MechanismService {
    * drift from the first, and the drift would show as a tab that says Ready
    * above a panel that says it cannot solve.
    */
+  /**
+   * Re-derive every auto link's mass properties from its own skeleton.
+   *
+   * Runs at the one funnel every mutation passes through, for the same reason
+   * the cylinder invariant does: whatever moved a joint — a drag, a panel
+   * field, an undo — an auto link's centroid and moment of inertia follow the
+   * geometry, and a custom one holds whatever its author typed.
+   *
+   * MoI = mass × k², with k² from the skeleton in model units. The unit
+   * factor converts (stored-mass × user-length²) into the stored inertia unit
+   * exactly — derived from the same siUnitFactors the solver converts with,
+   * so the identity survives every unit system rather than being tuned to one.
+   */
+  private applyUniformBodyProperties(unitStr: string): void {
+    const factor = this.storedMoiFactor(unitStr);
+    for (const link of this.links) {
+      if (!(link instanceof RealLink)) continue;
+      // A body with no mass has no moment of inertia, full stop: the solver
+      // applies I·α regardless of mass, so a leftover typed inertia on a
+      // weightless bar would quietly steer every dynamic answer. Zeroing the
+      // mass zeroes the inertia and hands the field back to the shape, which
+      // is also what the panel shows (the field disables and reads 0).
+      if (!(link.mass > 0) && (link.massMoI !== 0 || link.moiIsCustom)) {
+        link.massMoI = 0;
+        link.moiIsCustom = false;
+      }
+      if (link.comIsCustom) {
+        // A placed point rides the link: re-derived from its stored offset
+        // against the centroid, so drags, turns and deformations carry it.
+        const placed = link.customCoMFromOffset();
+        if (placed) {
+          link.CoM = placed;
+          link.updateCoMDs();
+        } else {
+          // Decoded from a URL that only carries the world coordinate:
+          // capture the offset once, against today's geometry.
+          link.captureComOffset();
+        }
+      }
+      if (link.moiIsCustom && link.comIsCustom) continue;
+      const derived = this.uniformBodyFor(link, factor);
+      if (!link.comIsCustom) {
+        link.CoM = new Coord(derived.com.x, derived.com.y);
+        link.updateCoMDs();
+      }
+      if (!link.moiIsCustom) {
+        link.massMoI = derived.moi;
+      }
+    }
+  }
+
+  /**
+   * Converts mass × (model length)² into the stored inertia unit, exactly:
+   * derived from the same siUnitFactors the force solver converts with, so
+   * MoI = m·k² survives every unit system instead of being tuned to one.
+   */
+  private storedMoiFactor(unitStr: string): number {
+    const units = siUnitFactors(unitStr);
+    return (
+      ((units.massToKg * units.distanceToM ** 2) / units.inertiaToKgM2) / MODEL_SCALE ** 2
+    );
+  }
+
+  private currentUnitStr(): string {
+    switch (this.settingsService.lengthUnit.value) {
+      case LengthUnit.INCH:
+        return 'in';
+      case LengthUnit.METER:
+        return 'm';
+      default:
+        return 'cm';
+    }
+  }
+
+  /**
+   * The uniform body a link derives its auto properties from.
+   *
+   * A plain link is a rod or a hull plate over its own joints. A compound is
+   * the *sum of its parts* — each member as its own body, combined by the
+   * parallel-axis theorem — never a plate over the whole hull: a V-shaped
+   * weld is two bars, and a plate spanning the crook would weigh material
+   * that is not there. Members somebody typed at contribute the numbers they
+   * were given.
+   */
+  private uniformBodyFor(link: RealLink, factor: number): { com: Coord; moi: number } {
+    if (link.subset.length === 0) {
+      const body = uniformBodyOf(link.joints);
+      return {
+        com: new Coord(body.centroid.x, body.centroid.y),
+        moi: link.mass * body.gyrationSq * factor,
+      };
+    }
+    const parts = link.subset
+      .filter((member): member is RealLink => member instanceof RealLink)
+      .map((member) => {
+        const own = this.uniformBodyFor(member, factor);
+        return {
+          mass: member.mass,
+          com: member.comIsCustom ? new Coord(member.CoM.x, member.CoM.y) : own.com,
+          moi: member.moiIsCustom ? member.massMoI : own.moi,
+        };
+      });
+    const totalMass = parts.reduce((sum, part) => sum + part.mass, 0);
+    const com =
+      totalMass > 0
+        ? new Coord(
+            parts.reduce((sum, part) => sum + part.mass * part.com.x, 0) / totalMass,
+            parts.reduce((sum, part) => sum + part.mass * part.com.y, 0) / totalMass
+          )
+        : new Coord(
+            parts.reduce((sum, part) => sum + part.com.x, 0) / Math.max(1, parts.length),
+            parts.reduce((sum, part) => sum + part.com.y, 0) / Math.max(1, parts.length)
+          );
+    const moi = parts.reduce(
+      (sum, part) =>
+        sum + part.moi + part.mass * ((part.com.x - com.x) ** 2 + (part.com.y - com.y) ** 2) * factor,
+      0
+    );
+    return { com, moi };
+  }
+
   forceAnalysisRequirements(): ForceRequirement[] {
     const requirements: ForceRequirement[] = [];
 
@@ -2032,26 +2206,6 @@ export class MechanismService {
         .filter((_, index) => this.mechanisms[index]?.isMechanismValid())
         .flatMap((partition) => partition.links.map((link) => link.id))
     );
-    // A massless link is a legitimate idealization -- the solver simply skips
-    // its weight and inertia -- so this is a warning, not a gate. It is worth
-    // one, because zero is the mass nobody chose: every link starts there.
-    const massless = this.links.filter(
-      (link) => link instanceof RealLink && analysable.has(link.id) && !(link.mass > 0)
-    ) as RealLink[];
-    requirements.push({
-      met: massless.length === 0,
-      warning: true,
-      title: 'Massless links',
-      body:
-        massless.length === 0
-          ? 'Every link has a mass and a moment of inertia.'
-          : `${massless.length === 1 ? 'Link' : 'Links'} ${massless
-              .map((link) => link.name || link.id)
-              .join(
-                ', '
-              )} ${massless.length === 1 ? 'weighs' : 'weigh'} nothing, so gravity and inertia pass ${massless.length === 1 ? 'it' : 'them'} by. Fine for an idealized bar — set Link Mass in Mass Settings to include ${massless.length === 1 ? 'it' : 'them'}.`,
-    });
-
     // Something has to load the linkage, but weight counts: with gravity on,
     // a link with mass hangs from it, and that is a complete static problem.
     // Demanding a drawn arrow on top of that refused analyses that meant
@@ -2059,7 +2213,7 @@ export class MechanismService {
     const loads = this.forces.filter((force) => analysable.has(force.link?.id));
     // Any body's mass, not only a RealLink's: the solver hangs a slider block's
     // weight from gravity too, so a drawing whose only massive body is a block
-    // is genuinely loaded. (The massless *warning* above stays about links --
+    // is genuinely loaded. (The massless *warning* below stays about links --
     // every block starts massless and naming them all would be noise.)
     const weighted = this.links.some(
       (link) =>
@@ -2068,6 +2222,33 @@ export class MechanismService {
         link.mass > 0
     );
     const gravityLoads = this.settingsService.isGravity.value && weighted;
+    const loaded = loads.length > 0 || gravityLoads;
+
+    // A massless link is a legitimate idealization -- the solver simply skips
+    // its weight and inertia -- so this is a warning, not a gate. It is worth
+    // one, because zero is the mass nobody chose: every link starts there.
+    // Only once something loads the mechanism, though: the unloaded blocker
+    // below already says every link is massless, and saying it twice made the
+    // list read longer than the problem is.
+    if (loaded) {
+      const massless = this.links.filter(
+        (link) => link instanceof RealLink && analysable.has(link.id) && !(link.mass > 0)
+      ) as RealLink[];
+      requirements.push({
+        met: massless.length === 0,
+        warning: true,
+        title: 'Massless links',
+        body:
+          massless.length === 0
+            ? 'Every link has a mass and a moment of inertia.'
+            : `${massless
+                .map((link) => this.bodyLabel(link))
+                .join(
+                  ', '
+                )} ${massless.length === 1 ? 'weighs' : 'weigh'} nothing, so gravity and inertia pass ${massless.length === 1 ? 'it' : 'them'} by. Fine for an idealized bar — type a mass in the table below to include ${massless.length === 1 ? 'it' : 'them'}.`,
+      });
+    }
+
     requirements.push({
       met: loads.length > 0 || gravityLoads,
       title: 'A load to react against',
@@ -2077,8 +2258,8 @@ export class MechanismService {
           : gravityLoads
             ? 'Gravity loads the links that have mass.'
             : this.settingsService.isGravity.value
-              ? 'Nothing loads this mechanism yet: no force is applied and every link is massless. Right-click a link and choose Attach Force, or give a link mass — gravity is on, so weight alone is a load.'
-              : 'Nothing loads this mechanism: gravity is off and no force is applied. Right-click a link and choose Attach Force, or turn gravity on in Settings and give a link mass.',
+              ? 'Nothing loads this mechanism yet: no force is applied and every link is massless. Attach a force or give a link mass.'
+              : 'Nothing loads this mechanism: gravity is off and no force is applied. Attach a force, or turn gravity on in Settings and give a link mass.',
     });
 
     return requirements;
@@ -2263,6 +2444,35 @@ export class MechanismService {
     if (obj instanceof Joint) return cylinderOfJointIn(this.sealedStructures(), obj);
     if (obj instanceof Link) return cylinderOfLinkIn(this.sealedStructures(), obj);
     return undefined;
+  }
+
+  /**
+   * What the panels call a body: a cylinder part by its role in the machine,
+   * a block by its kind — never the internal concatenated id, which names
+   * joints a reader cannot even click.
+   */
+  bodyLabel(body: Link): string {
+    const cylinder = this.cylinderAt(body);
+    if (cylinder) {
+      // By identity, with no catch-all: a compound that merely *contains* a
+      // cylinder part is a welded body of its own, not another Piston.
+      const role =
+        body === cylinder.block
+          ? 'Piston'
+          : body === cylinder.barrel
+            ? 'Barrel'
+            : body === cylinder.rod
+              ? 'Rod'
+              : undefined;
+      if (role) {
+        const name =
+          (cylinder.barrelFar.name || cylinder.barrelFar.id) +
+          (cylinder.rodFar.name || cylinder.rodFar.id);
+        return `${role} ${name}`;
+      }
+    }
+    if (body instanceof SliderBlock) return `Block ${body.id}`;
+    return (body as RealLink).name || body.id;
   }
 
   /**

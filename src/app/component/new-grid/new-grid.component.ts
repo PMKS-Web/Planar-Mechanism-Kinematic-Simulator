@@ -91,6 +91,7 @@ import {
 import { SnapGuide, snapToAxes } from '../../model/axis-snap';
 import { drawDepths } from '../../model/draw-order';
 import { MODEL_SCALE } from '../../model/render-scale';
+import { uniformBodyOf } from '../../model/uniform-body';
 import { buildCompoundPath } from '../../model/compound-link-path';
 
 import { angleReference, GROUND_BODY, resolveActuator } from '../../model/actuator';
@@ -301,6 +302,11 @@ export class NewGridComponent implements OnDestroy {
     this.activeObjService.onActiveObjChange.subscribe((obj) => {
       this.showLinkAngleOverlay = -2;
       this.showLinkLengthOverlay = -2;
+      // The hover previews die with the selection they described: a panel
+      // swap can eat the mouseleave that would have cleared them.
+      this.comMeasure = undefined;
+      this.cylinderPartPreview = undefined;
+      this.settings.previewCoMLinkId = null;
       //Disable focus on any text input when changing active object
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
@@ -2527,6 +2533,171 @@ export class NewGridComponent implements OnDestroy {
 
   setCylinderRangeOverlay(which: 'travel' | 'start' | undefined): void {
     this.cylinderRangeOverlay = which;
+  }
+
+  /**
+   * The centre-of-mass distance being pointed at in the Edit panel, drawn
+   * where it is measured: from the chosen frame's zero, along one axis, to
+   * the link's centre of mass. The panel hands the points over because the
+   * frame choice lives there, not here.
+   */
+  comMeasure?: {
+    axis: 'x' | 'y';
+    origin: { x: number; y: number };
+    com: { x: number; y: number };
+    /* 'origin' measures along the frame origin's own line with a dashed run
+       up to the mark; 'axis' (the global-grid frame) measures at the CoM's
+       height straight to the grid's axis line, which needs no connector. */
+    mode: 'origin' | 'axis';
+  };
+
+  setComMeasureOverlay(measure: NewGridComponent['comMeasure']): void {
+    this.comMeasure = measure;
+  }
+
+  /**
+   * The selected link's CoM mark is a handle, not just a glyph: drag it to
+   * place a custom centre of mass, exactly as typing in the panel's X/Y
+   * would. Only the selected link's mark — a whole canvas of grabbable
+   * marks would fight the links they sit on for every click.
+   */
+  comDraggable(link: Link): boolean {
+    return (
+      link instanceof RealLink &&
+      this.activeObjService.objType === 'Link' &&
+      this.activeObjService.selectedLink === link &&
+      !this.mechanismSrv.cylinderAt(link) &&
+      this.canEditNow()
+    );
+  }
+
+  /**
+   * Where the shape's own centre sits, for a link whose CoM was placed
+   * elsewhere: the custom mark is defined as an offset from this point, so
+   * the point deserves to be visible while the mark is off wandering.
+   */
+  comCentroidDot(link: Link): { x: number; y: number } | null {
+    if (!(link instanceof RealLink) || !link.comIsCustom) return null;
+    const centroid = uniformBodyOf(link.joints).centroid;
+    if (Math.hypot(centroid.x - link.CoM.x, centroid.y - link.CoM.y) < 1e-6) return null;
+    return centroid;
+  }
+
+  /** Live while a CoM mark rides the pointer; the ring stays lit through it. */
+  draggingCoMLink?: RealLink;
+
+  startComDrag(link: RealLink, event: PointerEvent): void {
+    event.stopPropagation();
+    event.preventDefault();
+    this.draggingCoMLink = link;
+    const move = (e: PointerEvent) => {
+      const pos = this.svgGrid.screenToSVGfromXY(e.clientX, e.clientY);
+      const placed = e.altKey ? pos : this.snapComToJointLines(link, pos);
+      link.placeCustomCoM({ x: placed.x, y: placed.y });
+      // So the panel's X/Y read the drag as it happens, like a force's do.
+      this.activeObjService.fakeUpdateSelectedObj();
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      this.draggingCoMLink = undefined;
+      // One undo step for the whole gesture, then the panel re-reads its
+      // fields the same way a unit change makes it re-read them.
+      this.mechanismSrv.updateMechanism(true);
+      this.mechanismSrv.onMechUpdateState.next(2);
+      this.activeObjService.fakeUpdateSelectedObj();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
+  /**
+   * A dragged centre snaps to the lines a reader would put it on: the
+   * centreline of a bar, each side of a triangle — every joint-pair segment
+   * of the link. Alt suspends it, like every other snap on the canvas.
+   */
+  private snapComToJointLines(link: RealLink, pos: Coord): { x: number; y: number } {
+    const joints = link.joints;
+    let best: { x: number; y: number } | undefined;
+    let bestDist = this.svgGrid.scaleWithZoom(12);
+    // The centroid outranks the lines: it is the point the whole feature is
+    // an offset from, and a pointer near it means it exactly.
+    const centroid = uniformBodyOf(joints).centroid;
+    if (Math.hypot(pos.x - centroid.x, pos.y - centroid.y) < bestDist) {
+      return centroid;
+    }
+    for (let i = 0; i < joints.length; i++) {
+      for (let j = i + 1; j < joints.length; j++) {
+        const a = joints[i];
+        const b = joints[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const lengthSq = dx * dx + dy * dy;
+        if (!(lengthSq > 0)) continue;
+        const t = Math.max(0, Math.min(1, ((pos.x - a.x) * dx + (pos.y - a.y) * dy) / lengthSq));
+        const proj = { x: a.x + t * dx, y: a.y + t * dy };
+        const dist = Math.hypot(pos.x - proj.x, pos.y - proj.y);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = proj;
+        }
+      }
+    }
+    return best ?? pos;
+  }
+
+  /** Which cylinder part's mass field is being pointed at in the panel. */
+  cylinderPartPreview?: 'barrel' | 'rod' | 'head';
+
+  setCylinderPartPreview(part: NewGridComponent['cylinderPartPreview']): void {
+    this.cylinderPartPreview = part;
+  }
+
+  /** The pointed-at part's own outline, in the hover accent — barrel and rod
+   *  by their skins, the piston head by the block that draws it. */
+  cylinderPartPreviewPath(cyl: CylinderMark): string | null {
+    if (!this.cylinderPartPreview || !this.isBodySelected(cyl)) return null;
+    if (this.cylinderPartPreview === 'barrel') return cyl.barrel;
+    if (this.cylinderPartPreview === 'rod') return cyl.rod;
+    return cyl.block;
+  }
+
+  /** The measured stretch: the frame's zero to the CoM's coordinate on one axis. */
+  comMeasureLine(m: NonNullable<NewGridComponent['comMeasure']>) {
+    if (m.mode === 'axis') {
+      const to = m.axis === 'x' ? { x: 0, y: m.com.y } : { x: m.com.x, y: 0 };
+      return { from: { x: m.com.x, y: m.com.y }, to };
+    }
+    const to = m.axis === 'x' ? { x: m.com.x, y: m.origin.y } : { x: m.origin.x, y: m.com.y };
+    return { from: m.origin, to };
+  }
+
+  /** End caps like the length overlay's: short bars across the line. */
+  comMeasureCaps(m: NonNullable<NewGridComponent['comMeasure']>): string {
+    const { from, to } = this.comMeasureLine(m);
+    const t = SettingsService.objectScale / 7;
+    return m.axis === 'x'
+      ? `M${from.x} ${from.y - t} L${from.x} ${from.y + t} M${to.x} ${to.y - t} L${to.x} ${to.y + t}`
+      : `M${from.x - t} ${from.y} L${from.x + t} ${from.y} M${to.x - t} ${to.y} L${to.x + t} ${to.y}`;
+  }
+
+  /** A dashed run from the line's end to the mark it measures to. */
+  comMeasureConnector(m: NonNullable<NewGridComponent['comMeasure']>): string {
+    if (m.mode === 'axis') return '';
+    const { to } = this.comMeasureLine(m);
+    return `M${to.x} ${to.y} L${m.com.x} ${m.com.y}`;
+  }
+
+  comMeasureLabelPos(m: NonNullable<NewGridComponent['comMeasure']>) {
+    const { from, to } = this.comMeasureLine(m);
+    const off = 0.25 * this.settings.objectScale;
+    return m.axis === 'x'
+      ? { x: (from.x + to.x) / 2, y: from.y + off }
+      : { x: from.x + off, y: (from.y + to.y) / 2 };
+  }
+
+  comMeasureValue(m: NonNullable<NewGridComponent['comMeasure']>): number {
+    return m.axis === 'x' ? Math.abs(m.com.x - m.origin.x) : Math.abs(m.com.y - m.origin.y);
   }
 
   /**

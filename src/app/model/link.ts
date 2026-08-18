@@ -1,4 +1,5 @@
 import { Joint, PrisJoint, RealJoint } from './joint';
+import { uniformBodyOf } from './uniform-body';
 import { Coord } from './coord';
 import { Force } from './force';
 import { degToRad, determineSlope, getAngle, getDistance, radToDeg } from './utils';
@@ -144,6 +145,109 @@ export class RealLink extends Link {
 
   public static debugDesiredJointsIDs: unknown;
   public lastSelectedSublink: Link | null = null;
+  /**
+   * Whether the author chose this link's moment of inertia / centre of mass,
+   * or left them to follow the geometry (a uniform body over the joints,
+   * re-derived at every update). Custom values hold still; auto values move
+   * with the mechanism. Old URLs decode as custom-everything, which preserves
+   * exactly what they have always meant.
+   */
+  public moiIsCustom = false;
+  public comIsCustom = false;
+  /**
+   * A hand-placed centre of mass, held against the link's own frame: along
+   * and across the unit direction joints[0]→joints[1], measured from the
+   * uniform-body centroid. "Stored against the centroid" is what lets a
+   * placed point ride the link through drags, rotations and deformations —
+   * a world coordinate goes stale the moment the mechanism moves. The URL
+   * still carries the global coordinate; this is re-captured at decode.
+   */
+  public comOffset?: { along: number; across: number; frame: [string, string] };
+
+  /**
+   * The link's own frame: origin at the uniform centroid, x̂ along the two
+   * *named* joints — the farthest pair at capture time, so the axis is never
+   * degenerate by accident and never silently reinterpreted when the joints
+   * array reorders. `ok` is false when a named joint has left the link, which
+   * tells the caller to rebase rather than trust a different pair.
+   */
+  private comFrame(pair?: [string, string]): {
+    origin: Coord;
+    ux: number;
+    uy: number;
+    pair: [string, string];
+    ok: boolean;
+  } {
+    const origin = uniformBodyOf(this.joints).centroid;
+    let a = pair ? this.joints.find((joint) => joint.id === pair[0]) : undefined;
+    let b = pair ? this.joints.find((joint) => joint.id === pair[1]) : undefined;
+    const named = !!(a && b);
+    if (!named) {
+      // The farthest pair: the most stable axis the link has.
+      let longest = -1;
+      for (let i = 0; i < this.joints.length; i++) {
+        for (let j = i + 1; j < this.joints.length; j++) {
+          const span =
+            (this.joints[i].x - this.joints[j].x) ** 2 +
+            (this.joints[i].y - this.joints[j].y) ** 2;
+          if (span > longest) {
+            longest = span;
+            a = this.joints[i];
+            b = this.joints[j];
+          }
+        }
+      }
+    }
+    const span = a && b ? Math.hypot(b.x - a.x, b.y - a.y) : 0;
+    if (!a || !b || !(span > 1e-9)) {
+      return { origin, ux: 1, uy: 0, pair: [a?.id ?? '', b?.id ?? ''], ok: named };
+    }
+    return {
+      origin,
+      ux: (b.x - a.x) / span,
+      uy: (b.y - a.y) / span,
+      pair: [a.id, b.id],
+      ok: !pair || named,
+    };
+  }
+
+  /** Place the centre of mass by hand: flags it custom and captures the offset. */
+  placeCustomCoM(point: { x: number; y: number }): void {
+    this.comIsCustom = true;
+    this._CoM = new Coord(point.x, point.y);
+    this.captureComOffset();
+    this.updateCoMDs();
+  }
+
+  /** Re-read the local offset from wherever the CoM currently is. */
+  captureComOffset(): void {
+    const frame = this.comFrame();
+    const dx = this._CoM.x - frame.origin.x;
+    const dy = this._CoM.y - frame.origin.y;
+    this.comOffset = {
+      along: dx * frame.ux + dy * frame.uy,
+      across: -dx * frame.uy + dy * frame.ux,
+      frame: frame.pair,
+    };
+  }
+
+  /** Where the captured offset lands in today's geometry. */
+  customCoMFromOffset(): Coord | undefined {
+    if (!this.comOffset) return undefined;
+    const frame = this.comFrame(this.comOffset.frame);
+    if (!frame.ok) {
+      // A frame joint left the link (deleted, merged away). The point itself
+      // is still where it was, so rebase: keep the CoM, re-anchor the offset
+      // to the pair the link has now, rather than silently reading the old
+      // numbers against a different axis.
+      this.captureComOffset();
+      return new Coord(this._CoM.x, this._CoM.y);
+    }
+    return new Coord(
+      frame.origin.x + this.comOffset.along * frame.ux - this.comOffset.across * frame.uy,
+      frame.origin.y + this.comOffset.along * frame.uy + this.comOffset.across * frame.ux
+    );
+  }
 
   constructor(
     id: string,

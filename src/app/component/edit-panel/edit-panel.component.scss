@@ -131,3 +131,271 @@
   line-height: 17px;
   color: #7a5a00;
 }
+
+/* --- Derived-vs-typed state, worn by the app's own input fields ----------
+   The fields themselves are input-block / dual-input-block — the exact
+   component every other panel value uses — with the state dot and the clear
+   projected into their suffix slot, and grey text when the value follows the
+   shape. */
+.massArea .dotLegend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* Flush with the label column, exactly where the mock starts it, and
+     closed by the mock's hairline under Reset all. Clear air above: the mock
+     does not crowd the legend against the Mass field. */
+  margin: 8px 0 6px;
+  padding: 2px 0 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 10.5px;
+  color: rgba(0, 0, 0, 0.55);
+
+  .dot { margin-right: -2px; }
+
+  .resetAll {
+    margin-left: auto;
+    border: none;
+    background: none;
+    color: #3f51b5;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+
+    &:disabled { color: rgba(0, 0, 0, 0.3); cursor: default; }
+  }
+
+  /* A massless body derives nothing, so the legend has nothing to explain. */
+  &.off {
+    color: rgba(0, 0, 0, 0.32);
+
+    .dot { border-color: rgba(0, 0, 0, 0.2); }
+    .dot.filled { background: rgba(0, 0, 0, 0.2); border-color: rgba(0, 0, 0, 0.2); }
+  }
+}
+
+.massArea .dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  border: 1.5px solid #9fa8da;
+  background: transparent;
+  flex: none;
+
+  &.filled { background: #3f51b5; border-color: #3f51b5; }
+}
+
+.massArea .dotRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* No side padding: every row's label starts at the same left edge and
+     every field ends at the same right edge as the input-block rows. */
+  padding: 4px 0;
+}
+
+.massArea .dotRowLabel {
+  font-size: 13px;
+  flex: 1 1 auto;
+  color: rgba(0, 0, 0, 0.6);
+  /* One line always; the field column cedes the width this needs. */
+  white-space: nowrap;
+}
+
+.massArea .comFrameSelect {
+  font: inherit;
+  font-size: 14px;
+  border: none;
+  border-radius: 4px;
+  background: #f0f1f5;
+  height: 30px;
+  padding: 0 8px;
+  width: 112px;
+  min-width: 0;
+  flex: 0 0 112px;
+  margin-left: auto;
+
+  &:disabled {
+    color: rgba(0, 0, 0, 0.38);
+    opacity: 1;
+  }
+}
+
+.massArea .stateSuffix {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 4px;
+
+  &.off .dot { border-color: rgba(0, 0, 0, 0.2); }
+
+  .clearDot {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 14px;
+    line-height: 1;
+    color: rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+
+    &:hover { color: rgba(0, 0, 0, 0.8); }
+  }
+}
+
+/* Grey means derived; the components' own ink means typed. */
+.massArea input-block.derived .customInput,
+.massArea dual-input-block.derived .customInput {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.massArea .massNote {
+  /* Flush with the labels' left line, like everything else in the area. */
+  margin: 8px 0 2px;
+  font-size: 11.5px;
+  line-height: 16px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+/* Air between stacked mass rows: the cylinder's three parts read as three
+   settings, not one field with two echoes. */
+.massArea input-block {
+  display: block;
+}
+.massArea input-block + input-block {
+  margin-top: 8px;
+}
+
+
+
+.massArea .comPairRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  /* One extra bottom pixel: the row above contributes 8px of air, the row
+     below only 7, and the eye catches the difference. Measured, both 8. */
+  padding: 4px 0 5px;
+
+  state-input {
+    flex: none;
+  }
+
+  justify-content: space-between;
+
+  /* The axis letters read as small captions, not headings. */
+  .axisTag {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.45);
+    flex: none;
+  }
+}
+
+/* The spacer stays hidden — the field pushes itself right with margin auto,
+   so no phantom flex gaps stack up against the fixed field column. The help
+   icons are back where they fit; Rotational Inertia's wide field leaves its
+   wrapped label no room for one, so its tooltip rides the label alone. */
+.massArea #input-block:not(.state-input-host) .spacer {
+  display: none;
+}
+.massArea input-block.moiBlock .label-help {
+  display: none;
+}
+
+/* Rotational Inertia breaks the centre line: its value carries a unit and
+   needs the room, so its field expands leftward while still ending on the
+   panel's shared right edge. */
+.massArea input-block.moiBlock #input-block:not(.state-input-host) .customInputForm {
+  flex-basis: 148px;
+  min-width: 148px;
+}
+.massArea input-block.moiBlock #input-block .customInputForm .mat-mdc-text-field-wrapper {
+  width: 148px;
+}
+
+/* Grey means derived, in the pair too. */
+.massArea .comPairRow.derived .customInput {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* Massless: values and labels dim with the group. The id out-ranks the
+   derived-ink rule, which otherwise holds the values at reading strength. */
+.massArea #input-block .customInput:disabled {
+  color: rgba(0, 0, 0, 0.32);
+}
+.massArea .dotRow.off .dotRowLabel,
+.massArea input-block.off #input-block .label {
+  color: rgba(0, 0, 0, 0.32);
+}
+.massArea .comPairRow.off .axisTag {
+  color: rgba(0, 0, 0, 0.3);
+}
+
+/* Massless: the pair's markers grey out with the fields they mark. */
+.massArea .comPairRow.off .state-dot {
+  border-color: rgba(0, 0, 0, 0.2);
+}
+.massArea .comPairRow.off .state-dot.filled {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+.massArea .comPairRow.off .state-clear {
+  color: rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+/* The mock's one field column: Mass, the frame select and Rotational
+   Inertia share one width, one left edge and one right edge — the centre
+   line of the panel. The id out-ranks the base #input-block width. */
+.massArea #input-block .customInputForm .mat-mdc-text-field-wrapper {
+  width: 112px;
+  max-width: 100%;
+}
+
+/* The dot and its ✕ sit on the field's visible centre, not the baseline.
+   Same anchoring as state-input: the 30px wrapper clips MDC's 56px flex
+   row, so top-anchor and offset instead of flex centring. */
+.massArea #input-block .mat-mdc-form-field-icon-suffix,
+.massArea #input-block .mat-mdc-form-field-text-suffix {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  /* A fixed band the height and offset of the input's own line, so the
+     content centres whether it is a lone 7px dot or a dot with a 14px ✕. */
+  margin-top: 6px;
+  height: 18px;
+}
+
+/* The projected wrapper is otherwise inline: its font-sized line box
+   baseline-shifts the dot a few pixels low. Flex collapses it to content. */
+.massArea #input-block .field-suffix {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+/* A long label wraps; the field does not shrink below its own value. The
+   base rule pins labels to one line, which squeezed Rotational Inertia's
+   field to a third of its number. Scoped off the X/Y pair, which splits its
+   row by design. */
+.massArea #input-block:not(.state-input-host) .label {
+  white-space: normal;
+  /* Natural width, shrink allowed: the label wraps only when it must, and
+     the help icon sits against its text instead of drifting to the field. */
+  flex: 0 1 auto;
+  /* One label size for the whole section — Mass, Center of Mass and
+     Rotational Inertia read as siblings, not as different ranks. */
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.massArea #input-block:not(.state-input-host) .customInputForm {
+  flex: 0 0 112px;
+  min-width: 112px;
+  margin-left: auto;
+}
+
+/* The X/Y fields copy the Length/Angle fields above them: the same 80px
+   wrapper, laid out as label–field, gap, label–field across the row. */
+.massArea #input-block.state-input-host .customInputForm .mat-mdc-text-field-wrapper {
+  width: 80px;
+}

@@ -1,6 +1,7 @@
 import '../model/joint';
 import { NotificationService } from './notification.service';
 import { Coord } from '../model/coord';
+import { MODEL_SCALE } from '../model/render-scale';
 import { Force } from '../model/force';
 import { SliderBlock, RealLink } from '../model/link';
 import { PrisJoint, RealJoint, RevJoint } from '../model/joint';
@@ -68,6 +69,11 @@ describe('MechanismService welded links and force ownership', () => {
     harness.links[1].mass = 1;
     harness.links[1].massMoI = 4;
     harness.links[1].CoM = new Coord(1.5, 0);
+    // Chosen values, so the auto pass leaves them alone — as the panel flags.
+    for (const link of [harness.links[0], harness.links[1]]) {
+      (link as RealLink).moiIsCustom = true;
+      (link as RealLink).comIsCustom = true;
+    }
     const force = attachForce(harness.service, harness.links[0], 'F1', 0.25);
 
     harness.service.weldJoint(harness.joints[1]);
@@ -80,7 +86,16 @@ describe('MechanismService welded links and force ownership', () => {
     expect(compound.mass).toBe(3);
     expect(compound.CoM.x).toBeCloseTo(5 / 6, 12);
     expect(compound.CoM.y).toBe(0);
-    expect(compound.massMoI).toBeCloseTo(23 / 3, 12);
+    // Parallel axis in *stored* units: distances here are model coordinates
+    // (MODEL_SCALE user units) and the metric store is kg·cm² against gram
+    // masses, so each m·d² term carries 0.001 / MODEL_SCALE². The old
+    // expectation (23/3) baked in the unconverted sum — the bug that welded
+    // two 1 g bars into tens of thousands of kg·cm².
+    const parallelAxis = 0.001 / MODEL_SCALE ** 2;
+    expect(compound.massMoI).toBeCloseTo(
+      3 + 4 + (2 * (0.5 - 5 / 6) ** 2 + 1 * (1.5 - 5 / 6) ** 2) * parallelAxis,
+      12
+    );
     compound.reComputeDPath();
     expect(compound.CoM.x).toBeCloseTo(5 / 6, 12);
     expect(force.link).toBe(compound);
@@ -184,6 +199,8 @@ describe('MechanismService welded links and force ownership', () => {
     link.mass = 2;
     link.massMoI = 3;
     link.CoM = new Coord(0.5, 0);
+    link.moiIsCustom = true;
+    link.comIsCustom = true;
     const force = attachForce(harness.service, link, 'F1', 0.25);
 
     harness.settings.lengthUnit.next(LengthUnit.METER);
@@ -217,6 +234,8 @@ describe('MechanismService welded links and force ownership', () => {
     link.mass = 2;
     link.massMoI = 3;
     link.CoM = new Coord(0.5, 0);
+    link.moiIsCustom = true;
+    link.comIsCustom = true;
     const force = attachForce(harness.service, link, 'F1', 0.25);
     const original = {
       x: harness.joints[1].x,

@@ -3,6 +3,7 @@ import { MechanismService } from '../mechanism.service';
 import { Link, SliderBlock, RealLink } from 'src/app/model/link';
 import { Force } from 'src/app/model/force';
 import { Coord } from 'src/app/model/coord';
+import { sealedCylinderStructures } from 'src/app/model/cylinder';
 import { GenericTranscoder } from './transcoder-interface';
 import { ForceData, JOINT_TYPE, JointData, LINK_TYPE, LinkData } from './transcoder-data';
 import { SettingsService } from '../settings.service';
@@ -96,6 +97,8 @@ export class MechanismBuilder {
     if (linkData.type === LINK_TYPE.REAL) {
       let CoM: Coord = new Coord(linkData.xCoM * MODEL_SCALE, linkData.yCoM * MODEL_SCALE);
       link = new RealLink(linkData.id, jointsOnLink, linkData.mass, linkData.massMoI, CoM);
+      link.moiIsCustom = linkData.moiIsCustom;
+      link.comIsCustom = linkData.comIsCustom;
       link.fill = linkData.color;
     } else {
       link = new SliderBlock(linkData.id, jointsOnLink, linkData.mass);
@@ -277,6 +280,22 @@ export class MechanismBuilder {
         if (force) force.locked = true;
       }
     });
+
+    // A sealed cylinder's parts always follow their own shapes. Nothing that
+    // shipped ever let anyone choose their inertia or centres — the values in
+    // circulating URLs are fixture defaults — so decoding migrates the parts
+    // to auto rather than freezing numbers nobody picked. Masses stay exactly
+    // as stored: mass carries no flag and is always somebody's choice. After
+    // addAdjacentLinksForJoints, which is what wires the joints to their
+    // links; before it, the structure detector sees no cylinders at all.
+    for (const sealed of sealedCylinderStructures(joints)) {
+      for (const part of [sealed.barrel, sealed.rod]) {
+        if (part instanceof RealLink) {
+          part.moiIsCustom = false;
+          part.comIsCustom = false;
+        }
+      }
+    }
 
     // What was selected before this rebuild, re-found among the new objects.
     //

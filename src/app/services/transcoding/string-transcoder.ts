@@ -159,8 +159,37 @@ export class StringTranscoder extends GenericTranscoder {
     [type][id],[mass],[massMoI],[xCoM],[yCoM],[color],[jointID1,jointID2...],,[subsetLinkID1,subsetLinkID2...]
     This should on average be 26 + [number of joints] characters per link
     */
+  /**
+   * The link record's leading character carries root-ness and the two
+   * auto/custom flags in one slot, because the record's tail is variable
+   * length and cannot take an appended field. 'Y'/'N' are the legacy pair and
+   * keep meaning what every old URL meant: values the author chose.
+   *
+   *   root:      Y = both custom   A = both auto   M = MoI auto   G = CoM auto
+   *   non-root:  N = both custom   a = both auto   m = MoI auto   g = CoM auto
+   */
+  private static readonly LINK_FLAG_CHARS: Record<string, [boolean, boolean, boolean]> = {
+    // char: [isRoot, moiIsCustom, comIsCustom]
+    Y: [true, true, true],
+    A: [true, false, false],
+    M: [true, false, true],
+    G: [true, true, false],
+    N: [false, true, true],
+    a: [false, false, false],
+    m: [false, false, true],
+    g: [false, true, false],
+  };
+
   private encodeLink(link: LinkData): string {
-    let isRoot: string = link.isRoot ? 'Y' : 'N';
+    const flagChar = (root: string[]): string =>
+      !link.moiIsCustom && !link.comIsCustom
+        ? root[1]
+        : !link.moiIsCustom
+          ? root[2]
+          : !link.comIsCustom
+            ? root[3]
+            : root[0];
+    let isRoot: string = link.isRoot ? flagChar(['Y', 'A', 'M', 'G']) : flagChar(['N', 'a', 'm', 'g']);
     let type: string = link.type == LINK_TYPE.REAL ? 'R' : 'P';
     let id = link.id;
     let massString = this.encodeDecimalNumber(link.mass);
@@ -207,7 +236,14 @@ export class StringTranscoder extends GenericTranscoder {
   private decodeLink(linkString: string): LinkData {
     const sd = new StringDisassembler(linkString);
 
-    let isRoot = sd.nextCharacter() === 'Y';
+    const flagChar = sd.nextCharacter();
+    const flags = StringTranscoder.LINK_FLAG_CHARS[flagChar];
+    if (!flags) {
+      // Fail closed: a character from some future format must reject the URL,
+      // not quietly demote the link to a non-root nobody solves.
+      throw new Error(`Unknown link flag character '${flagChar}'`);
+    }
+    const [isRoot, moiIsCustom, comIsCustom] = flags;
     let type = sd.nextCharacter() === 'R' ? LINK_TYPE.REAL : LINK_TYPE.PISTON;
     let id = sd.nextToken();
     let name = sd.nextToken();
@@ -240,7 +276,9 @@ export class StringTranscoder extends GenericTranscoder {
       yCoM,
       color,
       jointIDs,
-      subsetLinkIDs
+      subsetLinkIDs,
+      moiIsCustom,
+      comIsCustom
     );
   }
 

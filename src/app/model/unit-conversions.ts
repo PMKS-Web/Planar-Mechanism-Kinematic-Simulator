@@ -68,6 +68,7 @@ export const INERTIA_TO_KG_M2: Record<number, number> = {
   [InertiaUnit.KG_CM2]: 0.0001,
   [InertiaUnit.KG_M2]: 1,
   [InertiaUnit.LBM_IN2]: KG_PER_LBM * METERS_PER_INCH * METERS_PER_INCH,
+  [InertiaUnit.G_CM2]: 0.0000001,
 };
 
 /** Seconds per one of each time unit. */

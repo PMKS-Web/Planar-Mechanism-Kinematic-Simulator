@@ -1,15 +1,17 @@
 <div id="dual-input-block" style="{{ disabled() ? 'cursor: default' : '' }}">
-  <div class="row">
-    <span class="label {{ disabled() ? 'disabled' : '' }}"><ng-content></ng-content></span>
-    <mat-icon
-      matTooltip="{{ this.tooltip() }}"
-      [matTooltipShowDelay]="1000"
-      class="label-help"
-      [matTooltipDisabled]="disabled()"
-      >help_outline
-    </mat-icon>
-    <div class="spacer"></div>
-  </div>
+  @if (!noHeader()) {
+    <div class="row">
+      <span class="label {{ disabled() ? 'disabled' : '' }}"><ng-content></ng-content></span>
+      <mat-icon
+        matTooltip="{{ this.tooltip() }}"
+        [matTooltipShowDelay]="1000"
+        class="label-help"
+        [matTooltipDisabled]="disabled()"
+        >help_outline
+      </mat-icon>
+      <div class="spacer"></div>
+    </div>
+  }
   <div class="row" [formGroup]="formGroup()" style="gap: 5px">
     @if (formSubGroup) {
       <span class="label {{ disabled() ? 'disabled' : '' }}">{{ label1() }}</span>
@@ -24,6 +26,7 @@
       >
         <input
           class="customInput"
+          spellcheck="false"
           matInput
           type="text"
           #field1
@@ -48,6 +51,7 @@
       >
         <input
           class="customInput"
+          spellcheck="false"
           matInput
           type="text"
           #field2
@@ -68,6 +72,7 @@
       >
         <input
           class="customInput"
+          spellcheck="false"
           matInput
           type="text"
           #field1
@@ -87,10 +92,10 @@
         (mouseenter)="isField2MouseOver = true; updateOverlay()"
         (mouseleave)="isField2MouseOver = false; updateOverlay()"
         (focusin)="isField2Focused = true; updateOverlay()"
-        (focusout)="isField2Focused = false; updateOverlay()"
       >
         <input
           class="customInput"
+          spellcheck="false"
           matInput
           type="text"
           #field2

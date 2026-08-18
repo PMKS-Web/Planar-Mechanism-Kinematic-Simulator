@@ -51,8 +51,8 @@ describe('force analysis setup, as a fresh drawing meets it', () => {
 
     const load = row(harness, 'A load to react against');
     expect(load.met).toBe(false);
-    // Both ways out, in one sentence each: draw a force, or give mass weight.
-    expect(load.body).toContain('Attach Force');
+    // Both ways out, kept short: attach a force, or give a link mass.
+    expect(load.body).toContain('Attach a force');
     expect(load.body).toContain('mass');
     expect(harness.service.forceAnalysisReady()).toBe(false);
   });

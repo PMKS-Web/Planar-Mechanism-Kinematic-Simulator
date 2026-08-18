@@ -1,3 +1,4 @@
+import { MatIcon } from '@angular/material/icon';
 import {
   AfterViewInit,
   Component,
@@ -167,7 +168,7 @@ export function defaultSeriesSelection(count: number, analysis: string): SeriesS
     ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [AnalysisApexChartComponent],
+  imports: [AnalysisApexChartComponent, MatIcon],
 })
 export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
   private fb = inject(FormBuilder);
@@ -378,6 +379,20 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
 
   noDataSelected: boolean = false;
   analysisDiagnostic: string | null = null;
+  /**
+   * A hole in an otherwise good force series: how many positions have no
+   * solution, and where the first one is, so Show Them can take the reader
+   * there. Those are toggle positions — reactions grow without bound as the
+   * mechanism approaches them — and standing the mechanism at one teaches
+   * more than any sentence about it.
+   */
+  analysisGap: { failed: number; total: number; firstSeconds: number; mechIndex: number } | null =
+    null;
+
+  showGapPosition(): void {
+    if (!this.analysisGap) return;
+    this.mechanismService.seekMechanism(this.analysisGap.mechIndex, this.analysisGap.firstSeconds);
+  }
 
   loading: boolean = false;
   private subscriptions = new Subscription();
@@ -935,10 +950,18 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       // silent gap at a toggle position reads as a plotting bug, when it is
       // the most physical thing on the chart.
       const failed = result.frames.length - result.successfulFrames;
+      const firstFailed = result.frames.find((frame) => frame.status !== 'ok');
+      this.analysisGap =
+        hasFiniteData && failed > 0 && firstFailed
+          ? {
+              failed,
+              total: result.frames.length,
+              firstSeconds: firstFailed.timeSeconds,
+              mechIndex: Math.max(this.mechanismService.mechanisms.indexOf(mechanism), 0),
+            }
+          : null;
       this.analysisDiagnostic = hasFiniteData
-        ? failed > 0
-          ? `${failed} of ${result.frames.length} positions have no solution — the chart has a gap there. Those are toggle positions: reactions grow without bound as the mechanism approaches them.`
-          : null
+        ? null
         : (result.diagnostic ??
           (mechProp === 'Joint Forces'
             ? 'This point is internal to one welded body and has no independent joint reaction.'

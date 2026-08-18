@@ -334,16 +334,25 @@ export class GridUtilsService {
           const jointIndex = l.joints.findIndex((jt) => jt.id === selectedJoint.id);
           l.joints[jointIndex].x = roundNumber(trueCoord.x, 6);
           l.joints[jointIndex].y = roundNumber(trueCoord.y, 6);
-          // l.reComputeDPath();
-          l.CoM = RealLink.determineCenterOfMass(l.joints);
-          l.updateCoMDs();
+          // A dragged joint deforms the link, so an auto centre of mass
+          // follows the geometry. A custom one stays where its author put it:
+          // there is no rigid motion to carry it, and guessing would move a
+          // number somebody chose.
+          if (!l.comIsCustom) {
+            l.CoM = RealLink.determineCenterOfMass(l.joints);
+            l.updateCoMDs();
+          }
           l.updateLengthAndAngle();
 
           if (l.subset.length > 0) {
             l.subset.forEach((slink) => {
               let subLink = slink as RealLink;
-              subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
-              subLink.updateCoMDs();
+              // Same rule as the root: a member's hand-placed centre survives
+              // for the unweld that will one day restore it.
+              if (!subLink.comIsCustom) {
+                subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+                subLink.updateCoMDs();
+              }
               subLink.updateLengthAndAngle();
             });
           }
@@ -520,12 +529,30 @@ export class GridUtilsService {
           force.moveForceTo(x, y);
         });
       }
-      link.CoM = RealLink.determineCenterOfMass(link.joints);
+      // A custom centre of mass rides the body through the same change of
+      // frame the forces just did — it is a point somebody fixed to this link.
+      // An auto one is re-derived from the joints like always, and a frame too
+      // degenerate to transport through leaves a custom point untouched.
+      if (link.comIsCustom) {
+        if (from.length === 2 && start && end) {
+          const [comX, comY] = pointThroughFrame(link.CoM, from[0], from[1], start, end);
+          link.CoM = new Coord(comX, comY);
+        }
+      } else {
+        link.CoM = RealLink.determineCenterOfMass(link.joints);
+      }
       link.updateCoMDs();
       link.updateLengthAndAngle();
       link.subset.forEach((sub) => {
         const subLink = sub as RealLink;
-        subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+        if (subLink.comIsCustom) {
+          if (from.length === 2 && start && end) {
+            const [subX, subY] = pointThroughFrame(subLink.CoM, from[0], from[1], start, end);
+            subLink.CoM = new Coord(subX, subY);
+          }
+        } else {
+          subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+        }
         subLink.updateCoMDs();
         subLink.updateLengthAndAngle();
       });
@@ -768,12 +795,30 @@ export class GridUtilsService {
           force.moveForceTo(x, y);
         });
       }
-      link.CoM = RealLink.determineCenterOfMass(link.joints);
+      // A custom centre of mass rides the body through the same change of
+      // frame the forces just did — it is a point somebody fixed to this link.
+      // An auto one is re-derived from the joints like always, and a frame too
+      // degenerate to transport through leaves a custom point untouched.
+      if (link.comIsCustom) {
+        if (from.length === 2 && start && end) {
+          const [comX, comY] = pointThroughFrame(link.CoM, from[0], from[1], start, end);
+          link.CoM = new Coord(comX, comY);
+        }
+      } else {
+        link.CoM = RealLink.determineCenterOfMass(link.joints);
+      }
       link.updateCoMDs();
       link.updateLengthAndAngle();
       link.subset.forEach((sub) => {
         const subLink = sub as RealLink;
-        subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+        if (subLink.comIsCustom) {
+          if (from.length === 2 && start && end) {
+            const [subX, subY] = pointThroughFrame(subLink.CoM, from[0], from[1], start, end);
+            subLink.CoM = new Coord(subX, subY);
+          }
+        } else {
+          subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+        }
         subLink.updateCoMDs();
         subLink.updateLengthAndAngle();
       });

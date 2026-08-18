@@ -100,3 +100,29 @@
     line-height: 1.4;
   }
 }
+
+.analysis-gap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #fdf3dd;
+  color: #7a5600;
+  font-size: 12.5px;
+
+  .gapIcon { font-size: 16px; width: 16px; height: 16px; }
+
+  .gapShow {
+    margin-left: auto;
+    border: none;
+    background: none;
+    color: #7a5600;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+}
