@@ -271,6 +271,9 @@ export class KeyboardShortcutsService {
     const target = event.target as HTMLElement | null;
     if (!target) return false;
     const tag = target.tagName;
-    return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+    // SELECT as well as the two that take typing: a dropdown answers to the
+    // keyboard the whole time it has focus -- letters jump to an option, and
+    // the digits that pick a mode here are letters to it.
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable;
   }
 }

@@ -165,7 +165,73 @@ record('and K again lets it go', (await state()).lockedJoints === 0, await state
 await press(',');
 record('a comma opens Settings', (await state()).drawer === 1, await state());
 
+// --- A key that changes the drawing is an Edit key ---------------------------
+// An analysis mode is a reading of a finished mechanism: it hides the lock
+// marks, greys the panels, and takes Undo away. A key that edits anyway leaves
+// a change there is no way back from without leaving the mode.
+await clickJoint('B');
+const beforeAnalysis = await state();
+await press('3');
+await press('Backspace');
+await press('k');
+const afterAnalysis = await state();
+record(
+  'Delete and Lock do nothing in an analysis mode',
+  afterAnalysis.joints === beforeAnalysis.joints && afterAnalysis.lockedJoints === 0,
+  { beforeAnalysis, afterAnalysis }
+);
+await press('2');
+await clickJoint('B');
+await press('k');
+record('and both work again back in Edit', (await state()).lockedJoints === 1, await state());
+await press('k');
+
+// A dropdown answers to the keyboard the whole time it has focus: letters jump
+// to an option, and the digits that pick a mode here are letters to it.
+await clickJoint('A');
+const dropdown = page.locator('app-edit-panel select').first();
+if ((await dropdown.count()) > 0) {
+  await dropdown.focus();
+  const beforeSelect = await state();
+  await press('3');
+  record(
+    'a mode key inside a focused dropdown stays there',
+    (await state()).tab === beforeSelect.tab,
+    {
+      beforeSelect,
+      now: await state(),
+    }
+  );
+}
+
+// --- "Delete what is selected" means a force too -----------------------------
+// A force is a thing on the drawing with a Delete of its own in its menu. Left
+// out of the key, the arrow stayed put and only the selection cleared, which
+// reads as a delete that did not take.
+await page.goto(`${BASE}/?${payloads['Derrick_Crane']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(700);
+await page.evaluate(() => {
+  const c = ng.getComponent(document.querySelector('app-new-grid'));
+  c.activeObjService.updateSelectedObj(c.mechanismSrv.forces[0]);
+});
+await page.waitForTimeout(500);
+const withForce = await page.evaluate(
+  () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.forces.length
+);
+await press('Backspace');
+const afterForce = await page.evaluate(
+  () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.forces.length
+);
+record('Delete removes a selected force', withForce === 1 && afterForce === 0, {
+  withForce,
+  afterForce,
+});
+
 // --- A key belongs to whatever is standing over the canvas -------------------
+await page.goto(`${BASE}/?${payloads['4-Bar']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(700);
 // These are the canvas's keys. With a dialog open the reader is looking at the
 // dialog, and Delete was quietly removing the joint selected behind it.
 await clickJoint('B');

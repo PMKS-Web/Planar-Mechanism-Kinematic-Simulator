@@ -3686,9 +3686,17 @@ export class NewGridComponent implements OnDestroy {
         this.activeObjService.updateSelectedObj(undefined);
         return;
       case 'edit.delete':
+        // Every key that changes the drawing is held outside Edit, not just
+        // the two that had the check. An analysis mode is a reading of a
+        // finished mechanism: it hides the lock marks, greys the panels and
+        // takes Undo away -- and Delete was still going through, removing a
+        // joint from a drawing the reader was in the middle of measuring, with
+        // no way back short of leaving the mode.
+        if (this.tabService.isAnalysisMode()) return;
         this.deleteSelection();
         return;
       case 'edit.lock':
+        if (this.tabService.isAnalysisMode()) return;
         this.toggleLockOnSelection();
         return;
       case 'history.undo':
@@ -3740,6 +3748,12 @@ export class NewGridComponent implements OnDestroy {
       this.mechanismSrv.deleteJoint();
     } else if (this.activeObjService.objType === 'Link') {
       this.mechanismSrv.deleteLink();
+    } else if (this.activeObjService.objType === 'Force') {
+      // A force is a thing on the drawing with a Delete of its own in its
+      // menu, so the key that says "delete what is selected" has to mean it
+      // here too. Left out, the key cleared the selection and left the arrow
+      // standing -- which reads as a delete that did not take.
+      this.mechanismSrv.deleteForce();
     }
     this.activeObjService.updateSelectedObj(undefined);
   }
