@@ -78,3 +78,16 @@
   padding: 0 15px 12px;
   border-bottom: 1px solid #eceef5;
 }
+
+// The help card's hint pattern, worn inside a panel section: the card brings
+// its own padding, a section does not, so the rows take the section's 15px
+// gutter themselves. As padding, not margin — the row is stretched to the
+// section's full width, and a side margin pushed it out the right edge.
+#analysisWrapper panel-section .helpRule {
+  margin: 4px 15px 12px;
+  width: auto;
+}
+#analysisWrapper panel-section .helpHint {
+  margin: 0 0 14px;
+  padding: 0 15px;
+}

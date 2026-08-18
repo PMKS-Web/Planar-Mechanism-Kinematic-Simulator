@@ -159,10 +159,7 @@
           <div class="helpRule"></div>
           <div class="helpHint" role="status">
             <mat-icon>touch_app</mat-icon>
-            <span
-              >Only one part meets Joint {{ this.activeSrv.selectedJoint.name }}, so there is no
-              force to graph here. Click a joint where separate parts meet, or a grounded one.</span
-            >
+            <span>Click a joint where separate parts meet, or a grounded one.</span>
           </div>
         }
         @for (row of jointForceRows(); track row.linkId) {
@@ -298,10 +295,7 @@
           <div class="helpRule"></div>
           <div class="helpHint" role="status">
             <mat-icon>touch_app</mat-icon>
-            <span
-              >{{ selectedBodyLabel }} does not meet another part at any of its joints, so there is
-              no force to graph here. Click a part that touches another, or a grounded joint.</span
-            >
+            <span>Click a part that touches another, or a grounded joint.</span>
           </div>
         }
         @for (row of linkForceRows(); track row.jointId) {

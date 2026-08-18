@@ -303,15 +303,18 @@ export class AnalysisPanelComponent {
   }
 
   /**
-   * The heading's description. A part with nothing to graph gets only the
-   * note that says so — the speed summary and the mode selector describe
-   * graphs that are not on the panel.
+   * The heading's description. A part with nothing to graph gets the cause in
+   * the description and the way out in the hint row below — the speed summary
+   * and the mode selector describe graphs that are not on the panel.
    */
   get panelDescription(): string {
-    const bare =
-      this.showForce &&
-      (this.activeSrv.objType === 'Joint' ? !this.jointForceHasGraphs : !this.linkForceHasGraphs);
-    return bare ? '' : `${this.inputSummary} ${this.inputEditHint}`;
+    if (this.showForce && this.activeSrv.objType === 'Joint' && !this.jointForceHasGraphs) {
+      return `Only one part meets Joint ${this.activeSrv.selectedJoint?.name}, so there is no force to graph here.`;
+    }
+    if (this.showForce && this.activeSrv.objType === 'Link' && !this.linkForceHasGraphs) {
+      return `${this.selectedBodyLabel} does not meet another part at any of its joints, so there is no force to graph here.`;
+    }
+    return `${this.inputSummary} ${this.inputEditHint}`;
   }
 
   /** One row per external joint of the selected link. */
