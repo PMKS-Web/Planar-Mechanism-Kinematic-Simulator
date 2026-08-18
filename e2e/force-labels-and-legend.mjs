@@ -103,6 +103,46 @@ for (const member of ['GN', 'PC']) {
   );
 }
 
+// --- A ram's own drive is graphed where the ram is ---------------------------
+// The one input whose joint the reader cannot select: it is buried inside the
+// part, with no marker and no hitbox, so its effort belongs on the part.
+for (const member of ['GN', 'PC', 'PS']) {
+  await select(member);
+  const rows = await titles();
+  record(
+    `selecting ${member} offers the effort its drive has to supply`,
+    rows.includes('Input Force for Cylinder GC'),
+    rows
+  );
+}
+await select('OC');
+const unrelated = await titles();
+record(
+  'and a link that is not the driven part is not offered it',
+  !unrelated.some((one) => /^Input /.test(one)),
+  unrelated
+);
+
+// The graph is the drive's own, not a new number: the joint panel has carried
+// it all along on a joint nobody can click, and the two must agree.
+const readingOf = async (id, title) => {
+  await select(id);
+  return page.evaluate((wanted) => {
+    const section = [...document.querySelectorAll('.graphSection')].find(
+      (one) => one.querySelector('.graphTitle')?.textContent.trim() === wanted
+    );
+    return section
+      ? [...section.querySelectorAll('.previewSeries')].map((el) => el.textContent.trim()).join('|')
+      : null;
+  }, title);
+};
+const onThePart = await readingOf('GN', 'Input Force for Cylinder GC');
+const onTheJoint = await readingOf('S', 'Input Force at Joint S');
+record('and reads exactly what the buried joint reads', onThePart === onTheJoint && !!onThePart, {
+  onThePart,
+  onTheJoint,
+});
+
 // --- The legend holds its columns whatever the numbers read ------------------
 await openForce('Slider_Crank');
 await select('B');

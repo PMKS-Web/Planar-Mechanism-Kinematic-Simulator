@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ForceAnalysisMode, ForceReactionIndex } from 'src/app/model/mechanism/force-solver';
 import { Mechanism } from 'src/app/model/mechanism/mechanism';
 import { PrisJoint, RealJoint } from 'src/app/model/joint';
-import { Cylinder, isCylinderInterior } from 'src/app/model/cylinder';
+import { Cylinder, cylinderJoints, isCylinderInterior } from 'src/app/model/cylinder';
 import { LengthUnit } from 'src/app/model/unit-enums';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -105,6 +105,7 @@ export class AnalysisPanelComponent {
     JVel: false,
     JAcc: false,
     JInputForce: false,
+    LInputForce: false,
   };
 
   mechStateSub?: Subscription;
@@ -313,7 +314,7 @@ export class AnalysisPanelComponent {
 
   /** In Force mode, does the selected link have any graph to offer? */
   get linkForceHasGraphs(): boolean {
-    return this.linkForceRows().length > 0;
+    return this.linkForceRows().length > 0 || !!this.inputEffortJoint();
   }
 
   /**
@@ -404,12 +405,31 @@ export class AnalysisPanelComponent {
     }`;
   }
 
-  inputEffortLabel(): string {
-    const joint = this.activeSrv.selectedJoint;
+  inputEffortLabel(driven?: RealJoint): string {
+    const joint = driven ?? this.activeSrv.selectedJoint;
     return joint instanceof PrisJoint ||
       joint?.connectedJoints.some((candidate) => candidate instanceof PrisJoint && candidate.input)
       ? 'Force'
       : 'Torque';
+  }
+
+  /**
+   * The driven joint a selected body carries, for the bodies whose drive the
+   * reader cannot select on its own.
+   *
+   * A ram is driven by a joint buried inside the part: no marker, no hitbox,
+   * no row in the Edit panel. The graph of the effort that drive has to supply
+   * lived on the joint panel, so for a ram it lived on a panel nobody could
+   * open -- the one input in the app whose own force could not be read. Every
+   * other input sits on a joint a reader can click, and the joint panel
+   * already carries it there.
+   */
+  inputEffortJoint(): RealJoint | undefined {
+    const sealed = this.selectedCylinder;
+    if (!sealed) return undefined;
+    return cylinderJoints(sealed).find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
   }
 
   validMechanisms() {

@@ -291,7 +291,7 @@
             </radio-block>
           </div>
         }
-        @if (linkForceRows().length === 0) {
+        @if (!linkForceHasGraphs) {
           <div class="helpRule"></div>
           <div class="helpHint" role="status">
             <mat-icon>touch_app</mat-icon>
@@ -309,6 +309,21 @@
             [reactionLinkId]="row.linkId"
             [expanded]="graphExpanded['LForce_' + row.jointId]"
             (expandedChange)="graphExpanded['LForce_' + row.jointId] = $event"
+          ></app-analysis-graph-section>
+        }
+        <!-- A ram's drive sits on a joint inside the part, which has no marker
+             and no hitbox -- so its effort belongs on the part's own panel, the
+             way its speed already does. -->
+        @if (inputEffortJoint(); as driven) {
+          <app-analysis-graph-section
+            label="Input {{ inputEffortLabel(driven) }} for {{ selectedBodyLabel }}"
+            help="The effort the input has to supply to drive the mechanism"
+            analysis="force"
+            [analysisType]="forceAnalysisMode()"
+            mechProp="Input Effort"
+            mechPart="{{ driven.id }}"
+            [expanded]="graphExpanded['LInputForce']"
+            (expandedChange)="graphExpanded['LInputForce'] = $event"
           ></app-analysis-graph-section>
         }
       }
