@@ -561,6 +561,15 @@
             }
           </span>
         </input-block>
+        <!-- Drawing a crank as a disc is a picture, not a declaration that the
+             part is one. Said here, next to the two numbers it would otherwise
+             be reasonable to assume it had changed. -->
+        @if (activeSrv.selectedLink.isCircle) {
+          <p class="shapeNote">
+            Drawn as a disc. These two still follow the link's joints, not the
+            circle — set Rotational Inertia by hand for a real flywheel.
+          </p>
+        }
         </div>
       </collapsible-subseciton>
       @if (activeSrv.selectedLink.isCompound) {

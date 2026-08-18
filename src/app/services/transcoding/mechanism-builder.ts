@@ -100,6 +100,14 @@ export class MechanismBuilder {
       link.moiIsCustom = linkData.moiIsCustom;
       link.comIsCustom = linkData.comIsCustom;
       link.fill = linkData.color;
+      // The joints are all built before any link is (they have to be — a link
+      // is named by the ones it holds), so the ground pin a disc is centred on
+      // is already known here and the outline can be built for real rather
+      // than as a bar to be corrected on the next update.
+      if (linkData.isCircle) {
+        link.isCircle = true;
+        link.reComputeDPath();
+      }
     } else {
       link = new SliderBlock(linkData.id, jointsOnLink, linkData.mass);
     }

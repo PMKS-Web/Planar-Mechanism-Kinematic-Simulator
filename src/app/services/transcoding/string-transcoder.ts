@@ -160,36 +160,50 @@ export class StringTranscoder extends GenericTranscoder {
     This should on average be 26 + [number of joints] characters per link
     */
   /**
-   * The link record's leading character carries root-ness and the two
-   * auto/custom flags in one slot, because the record's tail is variable
-   * length and cannot take an appended field. 'Y'/'N' are the legacy pair and
-   * keep meaning what every old URL meant: values the author chose.
+   * The link record's leading character carries root-ness, the two auto/custom
+   * flags and whether the link is drawn as a disc, all in one slot, because the
+   * record's tail is variable length and cannot take an appended field. 'Y'/'N'
+   * are the legacy pair and keep meaning what every old URL meant: values the
+   * author chose, drawn as a bar.
    *
-   *   root:      Y = both custom   A = both auto   M = MoI auto   G = CoM auto
-   *   non-root:  N = both custom   a = both auto   m = MoI auto   g = CoM auto
+   *   bar,  root:      Y = both custom   A = both auto   M = MoI auto   G = CoM auto
+   *   bar,  non-root:  N = both custom   a = both auto   m = MoI auto   g = CoM auto
+   *   disc, root:      0 = both custom   1 = both auto   2 = MoI auto   3 = CoM auto
+   *   disc, non-root:  4 = both custom   5 = both auto   6 = MoI auto   7 = CoM auto
+   *
+   * Digits for the disc half so the two halves cannot be confused for one
+   * another by eye, and because no letter was left that did not already read as
+   * something else in this format. A drawing with no circular link in it still
+   * encodes to exactly the bytes it did before discs existed — the same bargain
+   * the lock section makes.
    */
-  private static readonly LINK_FLAG_CHARS: Record<string, [boolean, boolean, boolean]> = {
-    // char: [isRoot, moiIsCustom, comIsCustom]
-    Y: [true, true, true],
-    A: [true, false, false],
-    M: [true, false, true],
-    G: [true, true, false],
-    N: [false, true, true],
-    a: [false, false, false],
-    m: [false, false, true],
-    g: [false, true, false],
+  private static readonly LINK_FLAG_CHARS: Record<string, [boolean, boolean, boolean, boolean]> = {
+    // char: [isRoot, moiIsCustom, comIsCustom, isCircle]
+    Y: [true, true, true, false],
+    A: [true, false, false, false],
+    M: [true, false, true, false],
+    G: [true, true, false, false],
+    N: [false, true, true, false],
+    a: [false, false, false, false],
+    m: [false, false, true, false],
+    g: [false, true, false, false],
+    '0': [true, true, true, true],
+    '1': [true, false, false, true],
+    '2': [true, false, true, true],
+    '3': [true, true, false, true],
+    '4': [false, true, true, true],
+    '5': [false, false, false, true],
+    '6': [false, false, true, true],
+    '7': [false, true, false, true],
   };
 
   private encodeLink(link: LinkData): string {
-    const flagChar = (root: string[]): string =>
-      !link.moiIsCustom && !link.comIsCustom
-        ? root[1]
-        : !link.moiIsCustom
-          ? root[2]
-          : !link.comIsCustom
-            ? root[3]
-            : root[0];
-    let isRoot: string = link.isRoot ? flagChar(['Y', 'A', 'M', 'G']) : flagChar(['N', 'a', 'm', 'g']);
+    // Found in the same table the decoder reads, rather than written out a
+    // second time here: the two can then only agree.
+    const wanted = [link.isRoot, link.moiIsCustom, link.comIsCustom, link.isCircle];
+    const isRoot = Object.keys(StringTranscoder.LINK_FLAG_CHARS).find((candidate) =>
+      StringTranscoder.LINK_FLAG_CHARS[candidate].every((flag, i) => flag === wanted[i])
+    )!;
     let type: string = link.type == LINK_TYPE.REAL ? 'R' : 'P';
     let id = link.id;
     let massString = this.encodeDecimalNumber(link.mass);
@@ -243,7 +257,7 @@ export class StringTranscoder extends GenericTranscoder {
       // not quietly demote the link to a non-root nobody solves.
       throw new Error(`Unknown link flag character '${flagChar}'`);
     }
-    const [isRoot, moiIsCustom, comIsCustom] = flags;
+    const [isRoot, moiIsCustom, comIsCustom, isCircle] = flags;
     let type = sd.nextCharacter() === 'R' ? LINK_TYPE.REAL : LINK_TYPE.PISTON;
     let id = sd.nextToken();
     let name = sd.nextToken();
@@ -278,7 +292,8 @@ export class StringTranscoder extends GenericTranscoder {
       jointIDs,
       subsetLinkIDs,
       moiIsCustom,
-      comIsCustom
+      comIsCustom,
+      isCircle
     );
   }
 

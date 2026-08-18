@@ -219,6 +219,15 @@
   }
 }
 
+/* Sits under the two derived fields it qualifies, in the legend's own grey so
+   it reads as the same aside rather than as a warning about a problem. */
+.massArea .shapeNote {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: rgba(0, 0, 0, 0.55);
+}
+
 .massArea .dot {
   display: inline-block;
   width: 4px;

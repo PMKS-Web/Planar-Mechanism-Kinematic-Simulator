@@ -155,6 +155,22 @@ export class RealLink extends Link {
   public moiIsCustom = false;
   public comIsCustom = false;
   /**
+   * Draw this link as the disc it sweeps rather than as a bar between its
+   * joints — the crank of an engine, drawn the way an engine draws it.
+   *
+   * A drawing choice and nothing more. Mass properties keep coming from the
+   * joint skeleton (see uniform-body.ts), so a link's moment of inertia does
+   * not change because someone changed its picture; the Edit panel says so
+   * where the numbers are, rather than leaving the difference to be guessed.
+   *
+   * Only a link with exactly one ground pin can honour it, because the disc
+   * is centred on the pin the link turns about and a link with no such pin
+   * has no centre to offer. `canBeCircular` is that question; the flag is
+   * simply ignored while the answer is no, so a link that loses its ground
+   * comes back as a bar and returns to a disc if it is grounded again.
+   */
+  public isCircle = false;
+  /**
    * A hand-placed centre of mass, held against the link's own frame: along
    * and across the unit direction joints[0]→joints[1], measured from the
    * uniform-body centroid. "Stored against the centroid" is what lets a
@@ -273,6 +289,13 @@ export class RealLink extends Link {
       this.subset = subSet;
     }
     this._CoM = CoM !== undefined ? CoM : RealLink.determineCenterOfMass(joints);
+    // Before the path is built, because being drawn as a disc is what decides
+    // what that path is. `visualSource` is the link this one is a copy of, so
+    // every solved timestep inherits the choice without each cloning site
+    // having to remember it.
+    if (visualSource !== undefined) {
+      this.isCircle = visualSource.isCircle;
+    }
     if (
       visualSource?.isVisualGeometryCurrent &&
       visualSource.joints.length >= 2 &&
@@ -460,6 +483,47 @@ export class RealLink extends Link {
     );
   }
 
+  /**
+   * The pin a circular link turns about, or nothing when it has no single one.
+   *
+   * Exactly one ground, and a revolute one: two grounds make a frame that does
+   * not turn at all, none makes a coupler with no fixed centre to draw about,
+   * and a prismatic ground anchors a slot rather than a pivot. Each of those
+   * would need a different answer to "centred where?", and a disc drawn about
+   * a guess is worse than the bar it replaced.
+   */
+  groundPivot(): Joint | undefined {
+    const pivots = this.joints.filter(
+      (joint) => joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint)
+    );
+    return pivots.length === 1 ? pivots[0] : undefined;
+  }
+
+  /** Whether Make Circular has anything to act on. */
+  canBeCircular(): boolean {
+    return this.subset.length === 0 && this.groundPivot() !== undefined;
+  }
+
+  /**
+   * The disc a circular link is drawn as, or nothing when it is not one.
+   *
+   * Centred on the ground pin, and wide enough to reach the outermost joint's
+   * end cap — the same half-width every bar is drawn with — so the disc covers
+   * exactly the ground the bar covered and no pin ends up outside its own link.
+   */
+  private circularOutline(): string | undefined {
+    if (!this.isCircle) return undefined;
+    const centre = this.groundPivot();
+    if (centre === undefined) return undefined;
+    const reach = this.joints.reduce((far, joint) => Math.max(far, getDistance(centre, joint)), 0);
+    const radius = reach + SettingsService.objectScale / 4;
+    const { x, y } = centre;
+    return (
+      `M ${x - radius} ${y} A ${radius} ${radius} 0 0 1 ${x + radius} ${y} ` +
+      `A ${radius} ${radius} 0 0 1 ${x - radius} ${y} Z `
+    );
+  }
+
   getSimplePathString(): string {
     this.externalLines = [];
     let l = this;
@@ -473,6 +537,15 @@ export class RealLink extends Link {
       this.externalLines = [];
       this.initialExternalLines = [];
       return collapsed;
+    }
+    // A disc has no edges, so there is nothing for a joint to be attached
+    // along and nothing for the edit-hover to measure — the same empty answer
+    // the collapsed bar above gives, for the same reason.
+    const disc = this.circularOutline();
+    if (disc) {
+      this.externalLines = [];
+      this.initialExternalLines = [];
+      return disc;
     }
     const hullPoints = hull(points, Infinity) as number[][]; //Hull points find the convex hull (largest fence)
 

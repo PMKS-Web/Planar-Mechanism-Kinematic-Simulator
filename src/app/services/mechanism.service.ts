@@ -1876,6 +1876,24 @@ export class MechanismService {
     this.onMechUpdateState.next(2);
   }
 
+  /**
+   * Draw the selected link as the disc it sweeps, or as a bar again.
+   *
+   * The editable link's own outline is rebuilt here rather than left to the
+   * next update: the drawing on screen in Edit mode is this object, not a
+   * solved copy of it, so nothing else would redraw it until the mechanism
+   * moved. Saved, because it is a change to the drawing a person would expect
+   * to be able to undo.
+   */
+  toggleLinkCircular() {
+    const link = this.activeObjService.selectedLink;
+    if (!link.canBeCircular()) return;
+    link.isCircle = !link.isCircle;
+    link.reComputeDPath();
+    this.updateMechanism(true);
+    this.onMechUpdateState.next(2);
+  }
+
   addJointAtCOM() {
     let link = this.activeObjService.selectedLink;
     let com = link.CoM;
