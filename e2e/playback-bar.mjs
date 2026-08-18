@@ -60,6 +60,21 @@ record(
   await page.locator('.scrubCard').innerText()
 );
 
+// --- the transport's own block is a rounded square --------------------------
+const playShape = await page.evaluate(() => {
+  const button = document.querySelector('.playButton');
+  const style = getComputedStyle(button);
+  return {
+    radius: style.borderRadius,
+    width: Math.round(button.getBoundingClientRect().width),
+  };
+});
+record(
+  'the play button is a rounded square, not a disc',
+  !playShape.radius.includes('%') && parseFloat(playShape.radius) < playShape.width / 2,
+  playShape
+);
+
 // --- the highlight lands on the mode that was chosen ------------------------
 const highlight = await page.evaluate(() => {
   const pill = document.querySelector('.activeTabPill');

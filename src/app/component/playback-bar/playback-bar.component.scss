@@ -101,6 +101,9 @@
     }
   }
 
+  // A rounded square rather than a disc: it is the one solid block in the
+  // cluster, and the card's own corner is what makes it read as part of the
+  // chrome instead of a shape only it has.
   .playButton {
     display: flex;
     align-items: center;
@@ -108,7 +111,7 @@
     width: 40px;
     height: 40px;
     border: none;
-    border-radius: 50%;
+    border-radius: var(--card-radius);
     background: #d5d7e0;
     color: #fff;
     cursor: pointer;
