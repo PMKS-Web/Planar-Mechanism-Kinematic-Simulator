@@ -626,7 +626,13 @@ export class MechanismService {
     const held = this.ownSeconds.slice();
     const step = this.mechanismTimeStep;
     const playing = this.isPlaying;
-    if (step > 0) {
+    // Any machine away from its own start, not just the one the shared handle
+    // reports. Unsynced, each keeps its own clock: with the master parked at
+    // zero and another machine scrubbed a quarter of the way round, the rewind
+    // was skipped and the encoder wrote down the pose that machine happened to
+    // be *displaying* as the pose it starts in. The linkage the reader shared
+    // arrived at the other end a different shape.
+    if (step > 0 || held.some((seconds) => seconds > 0)) {
       this.animate(0, false);
     }
     try {

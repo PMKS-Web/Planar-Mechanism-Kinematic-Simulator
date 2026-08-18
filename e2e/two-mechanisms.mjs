@@ -22,6 +22,14 @@ const payloads = Object.fromEntries(
   [...source.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [id, p])
 );
 
+/** Two four-bars side by side, each with its own drive: one drawing, two clocks. */
+const TWO_FOUR_BARS =
+  '2P.Ay,1E8.K,0.1011.6A,A,0mv,0VU,0.0B,B,0e_,E6,0.0C,C,l1,WW,0.4D,D,qD,0Pk,0.6E,E,2Y_,0,0.' +
+  '0F,F,2Y_,GJ,0.0G,G,3Jt,Wc,0.4H,H,3aA,0,0..YRAB,AB,Fe,Fe,0ix,08i,c5cae9,A,B,,.' +
+  'YRBC,BC,Fe,Fe,32,NJ,303e9f,B,C,,.YRCD,CD,Fe,Fe,nd,3P,0d125a,C,D,,.' +
+  'AREF,EF,0,0,2Y_,8A,555555,E,F,,.ARFG,FG,0,0,2xQ,OS,555555,F,G,,.' +
+  'ARGH,GH,0,0,3S0,GJ,555555,G,H,,...N_L';
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
 const errors = [];
@@ -164,6 +172,58 @@ record(
     drawer.includes('Nothing drives this mechanism'),
   drawer
 );
+
+// --- Sharing hands over the machines, not the frame they are paused on ------
+// Unsynced, each machine keeps its own clock. The encoder rewinds to the start
+// pose before writing the URL, because that is the pose the format stores --
+// but it asked only the shared handle whether there was anything to rewind. A
+// machine scrubbed away from zero while the master sat at zero was written
+// down in the pose it happened to be displaying, so the linkage arrived at the
+// other end a different shape than the one that was sent.
+await page.goto(`${BASE}/?${TWO_FOUR_BARS}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(900);
+
+const shapeOf = (target) =>
+  target.evaluate(() => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    return srv.joints
+      .map((joint) => `${joint.id}:${Math.round(joint.x)},${Math.round(joint.y)}`)
+      .join(' ');
+  });
+
+const asDrawn = await shapeOf(page);
+await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  srv.setSyncMechanisms(false);
+  srv.seekMechanism(1, srv.mechanisms[1].cyclePeriod * 0.25);
+});
+await page.waitForTimeout(800);
+const scrubbed = await shapeOf(page);
+record('the second machine can be moved on its own', scrubbed !== asDrawn);
+
+const shared = await page.evaluate(() =>
+  ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
+);
+record('and sharing leaves the drawing exactly where it was', (await shapeOf(page)) === scrubbed, {
+  scrubbed,
+  now: await shapeOf(page),
+});
+
+const opened = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+await opened.goto(`${BASE}/?${shared}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(opened);
+await opened.waitForTimeout(1000);
+const reopened = await shapeOf(opened);
+record(
+  'and the shared link is the mechanism, not the frame it was paused on',
+  reopened === asDrawn,
+  {
+    asDrawn,
+    reopened,
+  }
+);
+await opened.close();
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
