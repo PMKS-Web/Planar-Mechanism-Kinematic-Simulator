@@ -1403,10 +1403,18 @@
                 fill-opacity="0.55"
               ></circle>
             }
+            <!-- A right-click here is still the link's right-click. Selecting a
+                 link is what makes this handle appear, so the press that
+                 selects it puts the handle under the cursor before the
+                 contextmenu event arrives -- and the mark, which had no
+                 handler of its own, swallowed it. Aiming at the middle of a
+                 bar, which is where a hand naturally lands, then opened no
+                 menu at all until the reader right-clicked a second time. -->
             <g
               [style.pointer-events]="comDraggable(link) ? 'auto' : 'none'"
               [style.cursor]="comDraggable(link) ? 'move' : null"
               (pointerdown)="comDraggable(link) && startComDrag($any(link), $event)"
+              (contextmenu)="setLastRightClick(link, $event)"
             >
               <!-- The selected link's mark is a handle: the dashed accent ring
                    says grab me, and doubles as the hit area. -->
