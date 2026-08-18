@@ -47,6 +47,77 @@
     </div>
   }
 
+  <!--  BACKGROUND IMAGE PANEL: the tracing underlay is scenery, not a part, so
+        it has no name to rename and nothing to lock — just where it sits, how
+        big it is drawn, and how far you can see through it. -->
+  @if (this.activeSrv.objType == 'BackgroundImage' && !hideEditPanel()) {
+    @if (bgImage.image(); as bg) {
+      <panel-section>
+        <div class="bgTitle">Background Image</div>
+        <div class="bgFileName">{{ bg.fileName }}</div>
+        <collapsible-subseciton
+          titleLabel="Placement"
+          [expanded]="sectionExpanded['BGPlace']"
+          (opened)="sectionExpanded['BGPlace'] = true"
+          (closed)="sectionExpanded['BGPlace'] = false"
+        >
+          <dual-input-block
+            label1="X"
+            label2="Y"
+            formControl1="centerX"
+            formControl2="centerY"
+            [formGroup]="backgroundImageForm"
+            tooltip="Where the middle of the picture sits on the grid."
+          >
+            Image Center
+          </dual-input-block>
+          <!-- Width alone, because the height follows it: a picture stretched
+               out of its own proportions is no longer something you can measure
+               a linkage against. Set this to a length you can identify in the
+               picture and everything else in it is to scale. -->
+          <!-- No unit suffix: a length formatted by the parser already carries
+               its own, exactly as the position fields above do. -->
+          <input-block
+            [formGroup]="backgroundImageForm"
+            _formControl="width"
+            wide
+            tooltip="How wide the picture is drawn. The height follows, so the picture keeps its proportions."
+            >Image Width
+          </input-block>
+          <!-- A photograph is rarely taken square to the mechanism in it. -->
+          <input-block
+            [formGroup]="backgroundImageForm"
+            _formControl="rotation"
+            wide
+            tooltip="How far the picture is turned about its own centre. A counter-clockwise turn is a positive angle (Right hand rule)."
+            >Rotation
+          </input-block>
+          <input-block
+            [formGroup]="backgroundImageForm"
+            _formControl="opacity"
+            unit="%"
+            tooltip="How solid the picture is. Fade it back to see the grid and the linkage through it."
+            >Opacity
+          </input-block>
+        </collapsible-subseciton>
+        <!-- The horizontal padding a collapsible subsection gives its own
+             contents, so the note and the buttons line up with the fields
+             rather than running to the panel's edge. -->
+        <div class="bgActions">
+          <!-- The one thing about this that trying it cannot teach: the picture
+               is not in the link the user is about to share. -->
+          <div class="bgNote">
+            Background images are not saved in the share link — reloading the page clears this one.
+          </div>
+          <button-block icon="check" [click]="saveBackgroundImage.bind(this)">Save</button-block>
+          <button-block color="warn" customIcon="remove" [click]="deleteBackgroundImage.bind(this)"
+            >Delete</button-block
+          >
+        </div>
+      </panel-section>
+    }
+  }
+
   @if (this.activeSrv.objType == 'Mechanism' && !hideEditPanel()) {
     <app-mechanism-panel [editable]="true"></app-mechanism-panel>
   }

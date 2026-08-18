@@ -1,0 +1,10 @@
+<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <!-- One filled path with even-odd cut-outs, like the other icons here: the
+       icon theme floods every path solid, so the empty frame and the sky above
+       the hills have to be holes in the geometry rather than an absent fill. -->
+  <path
+    fill-rule="evenodd"
+    fill="currentColor"
+    d="M3 4h18v16H3V4Zm2 2v12h14V6H5Zm1.5 10.5 3.75-5 2.75 3.5 2-2.5 3.5 4h-12Z"
+  />
+</svg>

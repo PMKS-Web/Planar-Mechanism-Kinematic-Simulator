@@ -102,6 +102,34 @@
         fill="white"
         stroke="#00000000"
       ></rect>
+      <!-- The tracing underlay, between the white paper and the ruling on it.
+           Inside this group on purpose, and for two reasons: the grid lines and
+           axes have to stay readable over an opaque picture, and this group is
+           what "Fit to zoom" hides while it measures — a picture left outside
+           it made the fit frame the scenery instead of the linkage.
+
+           The picture itself is deaf to the pointer at all times. Only the
+           handles, and only while its panel is open, answer one. -->
+      @if (bgImage.image(); as bg) {
+        <!-- The turn lives on the group rather than on each shape, so the
+             picture is laid out as though it were square to the grid and
+             arrives already turned. -->
+        <g
+          id="backgroundImageHolder"
+          pointer-events="none"
+          [attr.transform]="bgImage.transformOf(bg)"
+        >
+          <image
+            [attr.href]="bg.src"
+            [attr.x]="bgImage.leftOf(bg)"
+            [attr.y]="bgImage.topOf(bg)"
+            [attr.width]="bg.width"
+            [attr.height]="bgImage.heightOf(bg)"
+            [attr.opacity]="bg.opacity"
+            preserveAspectRatio="none"
+          />
+        </g>
+      }
       <!--  The Minor Axes-->
       @if (settings.isShowMajorGrid.getValue() && settings.isShowMinorGrid.getValue()) {
         <ng-container>
@@ -219,6 +247,47 @@
         </text>
       </ng-container>
     </g>
+  }
+
+  <!-- The tracing underlay's edges and its drag surface, in a layer above the
+       grid's ruling and below the mechanism. They cannot ride with the picture,
+       which belongs under the grid lines: a surface under them is a surface the
+       axis line steals the press from. Below the parts on purpose — the whole
+       picture is a drag target, and a target that size must not make the joints
+       inside it unclickable. Grab an empty stretch of it to slide it.
+
+       Drawn only while the panel has the picture, and turned with it. -->
+  @if (bgImage.image(); as bg) {
+    @if (editingBackgroundImage()) {
+      <g
+        id="backgroundImageHandles"
+        pointer-events="none"
+        [attr.transform]="bgImage.transformOf(bg)"
+      >
+        <!-- Its edges, because the fields and the handles move something the
+             user may have faded almost to nothing. -->
+        <rect
+          class="bgImageOutline"
+          [attr.x]="bgImage.leftOf(bg)"
+          [attr.y]="bgImage.topOf(bg)"
+          [attr.width]="bg.width"
+          [attr.height]="bgImage.heightOf(bg)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+          [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
+        />
+        <!-- Grab anywhere inside to slide it. Invisible rather than absent so
+             the whole picture is the target, not just its edges. -->
+        <rect
+          class="bgImageMoveSurface"
+          pointer-events="all"
+          [attr.x]="bgImage.leftOf(bg)"
+          [attr.y]="bgImage.topOf(bg)"
+          [attr.width]="bg.width"
+          [attr.height]="bgImage.heightOf(bg)"
+          (pointerdown)="startBackgroundImageMove($event)"
+        />
+      </g>
+    }
   }
 
   <!-- Decoration, not controls: the ground triangle and the input arrow mark
@@ -1106,9 +1175,7 @@
          the rest of an unanalysable machine does. -->
     <g
       id="forcesHolder"
-      [attr.cursor]="
-        force.locked && mechanismSrv.lockVisualsOn() ? 'not-allowed' : 'move'
-      "
+      [attr.cursor]="force.locked && mechanismSrv.lockVisualsOn() ? 'not-allowed' : 'move'"
       [class.force-inert]="mechanismSrv.isPartInert(force.link)"
       [class.force-locked]="force.locked && mechanismSrv.lockVisualsOn()"
       [attr.pointer-events]="geometryLocked ? 'none' : null"
@@ -1144,7 +1211,11 @@
           <!-- Same badge the joints wear, at the anchor: a force has no joint
                to carry it, so the mark rides where the load is applied. -->
           @if (force.locked && mechanismSrv.lockVisualsOn()) {
-            <g class="lockBadge" pointer-events="none" [attr.transform]="offsetLockBadgeTransform()">
+            <g
+              class="lockBadge"
+              pointer-events="none"
+              [attr.transform]="offsetLockBadgeTransform()"
+            >
               <circle
                 [attr.r]="0.13 * settings.objectScale"
                 fill="#ffffff"
@@ -1221,6 +1292,54 @@
         </ng-container>
       }
     </g>
+  }
+
+  <!-- The corners and the turn knob, above every part: they are the controls of
+       the gesture, and a link lying across one made it ungrabbable. Small
+       enough that what they cover is not worth having. -->
+  @if (bgImage.image(); as bg) {
+    @if (editingBackgroundImage()) {
+      <g id="backgroundImageGrips" pointer-events="none" [attr.transform]="bgImage.transformOf(bg)">
+        <!-- The turn knob, on a stalk above the top edge so it cannot be taken
+             for a corner. Round, because it swings rather than pulls. Alt
+             suspends its 15° snap, as it does everywhere else on this canvas. -->
+        <line
+          class="bgImageRotateStalk"
+          [attr.x1]="bg.centerX"
+          [attr.y1]="bgImage.topOf(bg)"
+          [attr.x2]="bg.centerX"
+          [attr.y2]="bgImage.topOf(bg) - backgroundImageRotateReach()"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+        />
+        <circle
+          class="bgImageHandle bgImageRotateKnob"
+          pointer-events="all"
+          cursor="grab"
+          [attr.cx]="bg.centerX"
+          [attr.cy]="bgImage.topOf(bg) - backgroundImageRotateReach()"
+          [attr.r]="backgroundImageHandleSize() * 0.65"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+          (pointerdown)="startBackgroundImageRotate($event)"
+        />
+        <!-- Corners resize about the opposite corner, with the file's own
+             proportions locked: a picture stretched out of shape is no longer
+             something a linkage can be measured against. Drawn at a constant
+             size on screen, so they stay grabbable at every zoom. -->
+        @for (corner of backgroundImageHandles(); track corner.id) {
+          <rect
+            class="bgImageHandle"
+            pointer-events="all"
+            [attr.x]="corner.x - backgroundImageHandleSize() / 2"
+            [attr.y]="corner.y - backgroundImageHandleSize() / 2"
+            [attr.width]="backgroundImageHandleSize()"
+            [attr.height]="backgroundImageHandleSize()"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+            [attr.cursor]="corner.cursor"
+            (pointerdown)="startBackgroundImageResize($event, corner.id)"
+          />
+        }
+      </g>
+    }
   }
 
   <g id="jointTagHolder" style="pointer-events: none">
@@ -1633,6 +1752,17 @@
     </g>
   }
 </svg>
+<!-- The file dialog the Add background image menu item opens. Off-screen
+     rather than display:none, because a hidden input cannot be driven by the
+     browser's own picker on every platform. Its value is cleared after each
+     pick so choosing the same file twice still fires a change. -->
+<input
+  #backgroundImageInput
+  type="file"
+  accept="image/*"
+  class="offscreenFileInput"
+  (change)="onBackgroundImageChosen($event)"
+/>
 @if (settings.isGridDebugOn) {
   <div id="mouseLocation">
     Mouse Location: {{ (mouseLocation.x / MODEL_SCALE).toFixed(2) }},
@@ -1649,4 +1779,3 @@
 <ng-template #context_menu>
   <app-context-menu [menuItems]="cMenuItems"> </app-context-menu>
 </ng-template>
-

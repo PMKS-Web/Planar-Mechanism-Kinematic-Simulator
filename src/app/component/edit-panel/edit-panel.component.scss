@@ -32,6 +32,16 @@
     //font-weight: 300;
   }
 
+  // The background image has no name to rename and nothing to lock, so it takes
+  // a plain heading rather than the editable-title row every part carries -- at
+  // the same size and in the same place, so the panel does not jump when the
+  // selection moves between a part and the picture behind it.
+  .bgTitle {
+    padding: 10px 15px 0;
+    @include mat.m2-typography-level($typography-config, 'headline-6');
+    white-space: nowrap;
+  }
+
   // Input Settings appears the moment a joint becomes the input, so it eases in
   // rather than popping the sections below it down the panel.
   .inputSettings {
@@ -54,6 +64,41 @@
       animation: none;
     }
   }
+}
+
+// Which file is behind the grid. Under the heading rather than in it, because
+// a file name is as long as it is and the heading must not wrap.
+.bgFileName {
+  padding: 0 15px 8px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// The note and the two buttons, given the same horizontal padding and the same
+// gap a collapsible subsection gives its fields -- written out flat they ran to
+// the panel's own edges and sat flush against each other.
+.bgActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 15px 12px;
+}
+
+// The one thing about this feature a user cannot discover by trying it: the
+// picture is not in the link they are about to share. Same quiet grey as the
+// other read-only notes in this panel.
+.bgNote {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  background: #f0f1f5;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 0;
+  line-height: 17px;
+  text-wrap: pretty;
 }
 
 // Read-only notes under the Slider toggle: what the slot is cut into, and what

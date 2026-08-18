@@ -76,8 +76,13 @@ export class UrlProcessorService {
     //
     // Selecting something is not an edit. It earns no history entry, so it
     // should not be undone by one.
+    //
+    // Named rather than excluded: getSelectedObj() answers for exactly these
+    // three and throws for anything else, so a deny-list turns every selection
+    // kind added later into a crash on Undo. The background image was one --
+    // it is not a mechanism object and has no id to hold.
     const heldSelection =
-      continuingHistory && this.activeObj.objType !== 'Nothing' && this.activeObj.objType !== 'Grid'
+      continuingHistory && ['Joint', 'Link', 'Force'].includes(this.activeObj.objType)
         ? { type: this.activeObj.objType, id: this.activeObj.getSelectedObj()?.id }
         : undefined;
     mechanismSrv.rewindToStart();

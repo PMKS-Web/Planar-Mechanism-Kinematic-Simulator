@@ -5,6 +5,7 @@ import {
   OnDestroy,
   OnInit,
   ChangeDetectionStrategy,
+  effect,
   inject,
 } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
@@ -46,6 +47,7 @@ import {
   cylinderSizeOf,
 } from '../../model/cylinder';
 import { NotificationService } from 'src/app/services/notification.service';
+import { BackgroundImageService, MIN_WIDTH } from 'src/app/services/background-image.service';
 import { NOT_A } from 'src/app/ui-text';
 import { PanelSectionCollapsibleComponent } from '../BLOCKS/panel-section-collapsible/panel-section-collapsible.component';
 import { TitleBlock } from '../BLOCKS/title/title.component';
@@ -105,6 +107,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   private nup = inject(NumberUnitParserService);
   mechanismService = inject(MechanismService);
   gridUtils = inject(GridUtilsService);
+  bgImage = inject(BackgroundImageService);
   private notify = inject(NotificationService);
 
   listOfOtherJoints: RealJoint[] = [];
@@ -122,6 +125,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     LCompound: true,
     FBasic: true,
     FVisual: false,
+    BGPlace: true,
   };
 
   /**
@@ -219,6 +223,13 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   constructor() {
     //Set the instance to this
     EditPanelComponent.instance = this;
+    // The picture can now be moved and resized on the canvas as well as typed
+    // at, so the fields follow it rather than only leading it. Patched without
+    // emitting, so mirroring a drag cannot loop back into a commit.
+    effect(() => {
+      this.bgImage.image();
+      this.patchBackgroundImageForm();
+    });
   }
 
   //Instance of this
@@ -326,6 +337,23 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       { value: 'len', label: this.nup.unitLabel(this.settingsService.lengthUnit.getValue()) },
     ];
   }
+  /**
+   * Where the tracing underlay sits and how solid it is drawn.
+   *
+   * Position and width are lengths in the panel's own unit; opacity is a plain
+   * percentage, because there is no unit for "how far you can see through it".
+   */
+  backgroundImageForm = this.fb.group(
+    {
+      centerX: [''],
+      centerY: [''],
+      width: [''],
+      rotation: [''],
+      opacity: [''],
+    },
+    { updateOn: 'blur' }
+  );
+
   forceForm = this.fb.group(
     {
       magnitude: [''],
@@ -1460,6 +1488,57 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       })
     );
 
+    // The three lengths behave alike, so they are wired alike. Nothing here
+    // calls updateMechanism or save: moving a picture is not an edit to the
+    // linkage, and putting it in the undo history would mean Undo silently
+    // re-posing the machine because the user nudged the underlay.
+    (['centerX', 'centerY', 'width'] as const).forEach((field) => {
+      this.onDestroySubscriptions.push(
+        this.backgroundImageForm.controls[field].valueChanges.subscribe((val) => {
+          this.commitBackgroundImageLength(field, val);
+        })
+      );
+    });
+
+    this.onDestroySubscriptions.push(
+      this.backgroundImageForm.controls['rotation'].valueChanges.subscribe((val) => {
+        if (!this.bgImage.image()) return;
+        const [ok, value] = this.nup.parseAngleString(
+          val ?? '',
+          this.settingsService.angleUnit.getValue()
+        );
+        if (!ok) {
+          this.notify.refusal('value.angle', NOT_A.angle);
+        } else {
+          this.bgImage.place({
+            rotationRad: this.nup.convertAngle(
+              value,
+              this.settingsService.angleUnit.getValue(),
+              AngleUnit.RADIAN
+            ),
+          });
+        }
+        this.patchBackgroundImageForm();
+      })
+    );
+
+    this.onDestroySubscriptions.push(
+      this.backgroundImageForm.controls['opacity'].valueChanges.subscribe((val) => {
+        if (!this.bgImage.image()) return;
+        const typed = (val ?? '').replace('%', '').trim();
+        const percent = Number(typed);
+        // Emptiness is not zero. Number('') is 0, so a blank field silently
+        // turned the picture invisible -- and then the panel reported 0% as
+        // though that had been asked for.
+        if (typed === '' || !Number.isFinite(percent) || percent < 0 || percent > 100) {
+          this.notify.refusal('bgImage.opacity', 'Opacity has to be a number from 0 to 100.');
+        } else {
+          this.bgImage.place({ opacity: percent / 100 });
+        }
+        this.patchBackgroundImageForm();
+      })
+    );
+
     this.onDestroySubscriptions.push(
       this.activeSrv.onActiveObjChange.subscribe((newObjType: string) => {
         if (newObjType == 'Joint') {
@@ -1571,6 +1650,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
             },
             { emitEvent: false }
           );
+        } else if (newObjType == 'BackgroundImage') {
+          this.currentlyOpenJointID = '';
+          this.patchBackgroundImageForm();
         } else {
           this.currentlyOpenJointID = '';
         }
@@ -1599,6 +1681,87 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       if (joint) return { x: joint.x, y: joint.y };
     }
     return uniformBodyOf(link.joints).centroid;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Background image
+  //
+  // The one thing this panel edits that is not part of the mechanism: it never
+  // touches MechanismService, never enters the undo history, and never reaches
+  // the URL codec. Its numbers are ordinary lengths, so they go through the same
+  // parser and the same length unit as every other length here.
+  // ---------------------------------------------------------------------------
+
+  /** Show the placement as it actually is, in the user's own units. */
+  private patchBackgroundImageForm(): void {
+    const image = this.bgImage.image();
+    if (!image) return;
+    const unit = this.settingsService.lengthUnit.getValue();
+    this.backgroundImageForm.patchValue(
+      {
+        centerX: this.nup.formatModelLength(image.centerX, unit),
+        centerY: this.nup.formatModelLength(image.centerY, unit),
+        width: this.nup.formatModelLength(image.width, unit),
+        rotation: this.nup.formatValueAndUnit(
+          this.nup.convertAngle(
+            image.rotationRad,
+            AngleUnit.RADIAN,
+            this.settingsService.angleUnit.getValue()
+          ),
+          this.settingsService.angleUnit.getValue()
+        ),
+        opacity: Math.round(image.opacity * 100).toString(),
+      },
+      { emitEvent: false }
+    );
+  }
+
+  /**
+   * Commit one length field, or put back the value that is still true.
+   *
+   * A width the picture cannot have is refused rather than silently rounded up
+   * to the minimum: the number left in the field has to be the number that took
+   * effect, or the panel is lying about where the picture is.
+   */
+  private commitBackgroundImageLength(
+    field: 'centerX' | 'centerY' | 'width',
+    raw: string | null
+  ): void {
+    if (!this.bgImage.image()) return;
+    const [ok, value] = this.nup.parseModelLengthString(
+      raw ?? '',
+      this.settingsService.lengthUnit.getValue()
+    );
+    if (!ok) {
+      this.notify.refusal('value.length', NOT_A.length);
+    } else if (field === 'width' && value < MIN_WIDTH) {
+      this.notify.refusal(
+        'bgImage.width',
+        `A background image has to be at least ${this.nup.formatModelLength(
+          MIN_WIDTH,
+          this.settingsService.lengthUnit.getValue()
+        )} wide.`
+      );
+    } else {
+      this.bgImage.place({ [field]: value });
+    }
+    // Either way the field is rewritten from the picture: a rejected entry goes
+    // back to the truth, and an accepted one is reformatted.
+    this.patchBackgroundImageForm();
+  }
+
+  saveBackgroundImage(): void {
+    // The placement is already live -- every field commits on blur -- so this
+    // closes the editor rather than writing anything. Leaving the picture
+    // selected would keep its outline on the canvas over finished work.
+    this.activeSrv.updateSelectedObj(null);
+    this.notify.success('bgImage.saved', 'Background image placed.');
+  }
+
+  deleteBackgroundImage(): void {
+    this.bgImage.remove();
+    this.activeSrv.updateSelectedObj(null);
+    this.notify.success('bgImage.removed', 'Background image removed.');
   }
 
   private updateLinkCenterOfMass(axis: 'x' | 'y', rawValue: string | null): void {

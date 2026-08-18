@@ -129,6 +129,10 @@ export class AppComponent {
       this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/edit.svg')
     );
     this.matIconRegistry.addSvgIcon(
+      'background_image',
+      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/background_image.svg')
+    );
+    this.matIconRegistry.addSvgIcon(
       'synthesis',
       this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/synthesis.svg')
     );

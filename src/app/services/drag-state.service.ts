@@ -60,6 +60,15 @@ export class DragStateService {
     );
   }
 
+  /**
+   * The tracing underlay is being moved or resized by its handles.
+   *
+   * Kept apart from the four enums because it is not mechanism state: it makes
+   * `isDragging` true, so the canvas does not pan underneath the gesture, but
+   * it never reaches `noteMechanismModified` and so earns no undo entry.
+   */
+  private backgroundImageHeld = false;
+
   /** True while an existing object is being moved, as opposed to created. */
   get isDragging(): boolean {
     return (
@@ -67,7 +76,8 @@ export class DragStateService {
       this._link === linkStates.dragging ||
       this._force === forceStates.draggingStart ||
       this._force === forceStates.draggingEnd ||
-      this._force === forceStates.draggingBody
+      this._force === forceStates.draggingBody ||
+      this.backgroundImageHeld
     );
   }
 
@@ -131,6 +141,10 @@ export class DragStateService {
     this._force = forceStates.draggingBody;
   }
 
+  beginDraggingBackgroundImage(): void {
+    this.backgroundImageHeld = true;
+  }
+
   // --- Gesture ----------------------------------------------------------
 
   /** A pointer went down. Starts a fresh gesture; nothing is owed yet. */
@@ -177,5 +191,6 @@ export class DragStateService {
     this._joint = jointStates.waiting;
     this._link = linkStates.waiting;
     this._force = forceStates.waiting;
+    this.backgroundImageHeld = false;
   }
 }
