@@ -8,7 +8,11 @@
   $primary-palette: map.get(mat.m2-get-color-config($theme), 'primary');
   // How far the handle has come, and what is still ahead of it. Said once,
   // because the two engines each want their own pseudo-element for the track.
-  $track: linear-gradient(to right, #3f51b5 0 var(--along, 0%), #efefef var(--along, 0%) 100%);
+  // The part ahead of the handle sits as far below the selected row's fill as
+  // that fill sits below white, so the bar reads on a chosen row as clearly as
+  // it does on a plain one. The mock's own grey was the platform's, and it
+  // disappeared into the highlight.
+  $track: linear-gradient(to right, #3f51b5 0 var(--along, 0%), #d5d7e0 var(--along, 0%) 100%);
 
   // Right-aligned in every mode, so the view controls at its right-hand end sit
   // in exactly the same place whatever mode is open. They used to be pushed
@@ -378,14 +382,15 @@
     position: absolute;
     left: 0;
     right: 0;
-    // The handle is taller than the bar, so the element holds the handle and
-    // the bar is centred inside it -- 1px down a 16px well puts the bar's
-    // middle where a 4px bar 6px down had it.
-    top: 1px;
+    // The handle is taller than the bar and taller than the well it sits in --
+    // 20px in 16px, as the mock has it, overhanging into the row's own padding
+    // rather than making the row taller. The element holds the handle, so it
+    // is the handle's height, hung so that its middle lands on the well's.
+    top: -2px;
     width: 100%;
     min-width: 0;
     margin: 0;
-    height: 14px;
+    height: 20px;
     padding: 0;
     border: none;
     -webkit-appearance: none;
@@ -394,16 +399,16 @@
     cursor: pointer;
 
     &::-webkit-slider-runnable-track {
-      height: 6px;
+      height: 8px;
       border: none;
-      border-radius: 3px;
+      border-radius: 4px;
       background: $track;
     }
 
     &::-moz-range-track {
-      height: 6px;
+      height: 8px;
       border: none;
-      border-radius: 3px;
+      border-radius: 4px;
       background: $track;
     }
 
@@ -411,12 +416,12 @@
       -webkit-appearance: none;
       appearance: none;
       box-sizing: border-box;
-      width: 20px;
-      height: 14px;
-      // Centred on the 6px bar rather than on the element.
-      margin-top: -4px;
+      width: 24px;
+      height: 20px;
+      // Centred on the 8px bar rather than on the element.
+      margin-top: -6px;
       border: 1px solid rgba(0, 0, 0, 0.16);
-      border-radius: 7px;
+      border-radius: 10px;
       background: #fff;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
       cursor: inherit;
@@ -424,10 +429,10 @@
 
     &::-moz-range-thumb {
       box-sizing: border-box;
-      width: 20px;
-      height: 14px;
+      width: 24px;
+      height: 20px;
       border: 1px solid rgba(0, 0, 0, 0.16);
-      border-radius: 7px;
+      border-radius: 10px;
       background: #fff;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
       cursor: inherit;

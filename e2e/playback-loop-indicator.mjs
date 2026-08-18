@@ -208,15 +208,15 @@ await page.goto(`${BASE}/?${payloads['Cylinder_Boom']}`, { waitUntil: 'domconten
 await waitForReady(page);
 await kinematic();
 
-// The element holds the handle, so the bar is the 6px centred inside it. One
+// The element holds the handle, so the bar is the 8px centred inside it. One
 // row above and one below are taken too, which is where the rim used to be.
 const bar = await page.locator('.rowScrubber').boundingBox();
 const strip = await page.screenshot({
   clip: {
     x: Math.round(bar.x),
-    y: Math.round(bar.y) + 3,
+    y: Math.round(bar.y) + 5,
     width: Math.round(bar.width),
-    height: 8,
+    height: 10,
   },
 });
 const columns = await page.evaluate(async (encoded) => {
@@ -235,9 +235,9 @@ const columns = await page.evaluate(async (encoded) => {
   };
   return { travelled: column(8), ahead: column(bitmap.width - 8) };
 }, strip.toString('base64'));
-// Row 0 and row 7 are the row's own fill; rows 1-6 are the bar. A rim would
+// Row 0 and row 9 are the row's own fill; rows 1-8 are the bar. A rim would
 // show as a colour of its own at the top or the bottom of the bar.
-const bandOf = (column) => new Set(column.slice(1, 7));
+const bandOf = (column) => new Set(column.slice(1, 9));
 record(
   'the bar is one colour top to bottom, with no rim above or below it',
   bandOf(columns.travelled).size === 1 &&
@@ -264,7 +264,7 @@ await page.waitForTimeout(900);
 await page.locator('.playButton').click();
 await page.waitForTimeout(400);
 const playing = await agrees();
-await page.locator('.rowScrubber').click({ position: { x: 120, y: 2 } });
+await page.locator('.rowScrubber').click({ position: { x: 120, y: 10 } });
 await page.waitForTimeout(500);
 const dragged = await agrees();
 record(
@@ -361,14 +361,14 @@ for (const engine of engines) {
   await enginePage.waitForTimeout(1200);
   const engineBar = await enginePage.locator('.rowScrubber').boundingBox();
   // Halfway along, so the shot holds both what is travelled and what is ahead.
-  await enginePage.mouse.click(engineBar.x + engineBar.width / 2, engineBar.y + 7);
+  await enginePage.mouse.click(engineBar.x + engineBar.width / 2, engineBar.y + 10);
   await enginePage.waitForTimeout(600);
   const shot = await enginePage.screenshot({
     clip: {
       x: Math.round(engineBar.x),
-      y: Math.round(engineBar.y) + 3,
+      y: Math.round(engineBar.y) + 5,
       width: Math.round(engineBar.width),
-      height: 8,
+      height: 10,
     },
   });
   painted[engine] = {
