@@ -10,7 +10,7 @@
 
     <!-- Where the keys are written down. Every hint in the app is drawn from
          the same table this list is, so a key that moves moves in both. -->
-    <collapsible-subseciton titleLabel="Keyboard Shortcuts" [expanded]="true">
+    <collapsible-subseciton titleLabel="Keyboard Shortcuts" [expanded]="false">
       @for (group of shortcuts.bySection(); track group.section) {
         <div class="keyGroup">
           <h4 class="keyHeading">{{ group.section }}</h4>
