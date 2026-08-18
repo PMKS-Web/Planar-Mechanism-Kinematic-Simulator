@@ -65,6 +65,7 @@ import { transformRigidCoord, transformRigidPath } from '../model/compound-link-
 import { MergeRefusal, refuseJointMerge } from '../model/drop-target';
 import { redundantlyHeldJointSets } from '../model/rigid-bodies';
 import { MODEL_SCALE } from '../model/render-scale';
+import { labelForBody } from '../model/body-label';
 
 /**
  * The names joints are given, in the order they are handed out.
@@ -2448,31 +2449,14 @@ export class MechanismService {
 
   /**
    * What the panels call a body: a cylinder part by its role in the machine,
-   * a block by its kind — never the internal concatenated id, which names
-   * joints a reader cannot even click.
+   * a block by the joint it rides on, an ordinary bar by its name — never the
+   * internal concatenated id, which names joints a reader cannot even click.
+   *
+   * Always a complete noun phrase, so a caller can drop it into a sentence
+   * without having to know which kind of body came back.
    */
   bodyLabel(body: Link): string {
-    const cylinder = this.cylinderAt(body);
-    if (cylinder) {
-      // By identity, with no catch-all: a compound that merely *contains* a
-      // cylinder part is a welded body of its own, not another Piston.
-      const role =
-        body === cylinder.block
-          ? 'Piston'
-          : body === cylinder.barrel
-            ? 'Barrel'
-            : body === cylinder.rod
-              ? 'Rod'
-              : undefined;
-      if (role) {
-        const name =
-          (cylinder.barrelFar.name || cylinder.barrelFar.id) +
-          (cylinder.rodFar.name || cylinder.rodFar.id);
-        return `${role} ${name}`;
-      }
-    }
-    if (body instanceof SliderBlock) return `Block ${body.id}`;
-    return (body as RealLink).name || body.id;
+    return labelForBody(body, this.cylinderAt(body));
   }
 
   /**

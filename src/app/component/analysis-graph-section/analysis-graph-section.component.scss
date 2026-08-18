@@ -66,11 +66,16 @@
     color: #2c2c2c;
   }
 
+  // Columns of one width, not a row that closes up around its contents. Open,
+  // each entry is the switch for its own line, and a switch that moves when
+  // the number beside it gains a minus sign or a decimal place is a switch the
+  // reader has to re-aim at every frame -- so an entry's place is decided by
+  // which series it is, and never by what any of them currently reads.
   .graphPreview {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
     align-items: center;
-    gap: 2px 12px;
+    gap: 2px 8px;
     padding: 0 12px 8px;
     font-size: 12px;
     color: rgba(0, 0, 0, 0.6);
@@ -87,6 +92,13 @@
     font-size: inherit;
     color: inherit;
     padding: 0;
+    // Every digit the same width, so the text does not shuffle inside its own
+    // column either.
+    font-variant-numeric: tabular-nums;
+    // The column is the promise; a reading too long for it is allowed to run
+    // past its own edge rather than push the next switch along.
+    min-width: 0;
+    justify-content: flex-start;
   }
 
   // Open, each entry is the switch for its own line.

@@ -13,6 +13,7 @@ import {
 import { SettingsService } from '../../app/services/settings.service';
 import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
+import { labelForBody } from 'src/app/model/body-label';
 
 export const COMPLEX_WELDED_MECHANISM =
   '2P.TY.K,20.1010.MA,A,015C,1ft,0.GB,B,0iQ,I4,0.GC,C,2Z0,1Yv,0.OD,D,2W2,KQ,0.GE,E,3jZ,I9,0.GF,F,Nh,0cX,0.GG,G,V8,l5,0.KH,H,CD,25W,0..YRAB,AB,Fe,Fe,0up,z_,c5cae9,A,B,,.YRBCG,BC,Fe,Fe,nw,sh,303e9f,B,C,G,,.YRFGH,FGH,Fe,Fe,ML,lN,00695C,F,G,H,,.YRCDE,CDE,VG,1-v,2qA,dU,c5cae9,C,D,E,,CD,DE.YRDF,DF,Fe,Fe,1Rs,094,303e9f,D,F,,.NRCD,CD,Fe,Fe,2XX,xg,0d125a,C,D,,.NRDE,DE,Fe,Fe,36p,JI,B2DFDB,D,E,,...LFGHJ';
@@ -79,6 +80,11 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
       if (obj instanceof Joint) return cylinderOfJointIn(structures, obj);
       return cylinderOfLinkIn(structures, obj as Link | undefined);
     },
+    // Implemented, not stubbed, and from the same function the service calls:
+    // the panels put these words on their graphs, so a stub that invented its
+    // own would let the labels drift without a spec noticing.
+    bodyLabel: (body: Link) =>
+      labelForBody(body, cylinderOfLinkIn(sealedCylinderStructures(service.joints), body)),
   } as unknown as MechanismService;
   new MechanismBuilder(service, decoder, settings, active).build(true);
 

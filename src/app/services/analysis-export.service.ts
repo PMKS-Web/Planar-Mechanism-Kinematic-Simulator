@@ -162,7 +162,7 @@ export class AnalysisExportService {
     const reactions: Quantity[] = (
       joint
         ? (index.linksByJoint.get(part.id) ?? []).map((linkId) => ({
-            label: `Force on Link ${this.nameOf(linkId, 'link')}`,
+            label: `Force on ${this.bodyName(linkId)}`,
             mechPart: part.id,
             reactionLinkId: linkId,
           }))
@@ -189,6 +189,12 @@ export class AnalysisExportService {
       });
     }
     return reactions;
+  }
+
+  /** The same words the panel puts on the graph, so the file agrees with it. */
+  private bodyName(linkId: string): string {
+    const body = this.mechanismService.links.find((link) => link.id === linkId);
+    return body ? this.mechanismService.bodyLabel(body) : linkId;
   }
 
   private nameOf(id: string, kind: 'joint' | 'link'): string {

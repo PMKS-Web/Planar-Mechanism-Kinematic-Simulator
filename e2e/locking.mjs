@@ -203,7 +203,14 @@ const lengthBefore = Math.hypot(before.c.x - before.b.x, before.c.y - before.b.y
 // Grab the middle of the coupler BC and pull sideways.
 const bScreen = await jointOnScreen('B');
 const cScreen = await jointOnScreen('C');
-const grab = { x: (bScreen.x + cScreen.x) / 2, y: (bScreen.y + cScreen.y) / 2 };
+// A third of the way along, not the middle: a selected link wears its
+// centre-of-mass handle at its centroid, which for a two-joint bar is exactly
+// the middle -- so a grab there takes hold of the centre of mass rather than
+// the body. Anywhere else on the bar is the body.
+const grab = {
+  x: bScreen.x + (cScreen.x - bScreen.x) / 3,
+  y: bScreen.y + (cScreen.y - bScreen.y) / 3,
+};
 await page.evaluate(() => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.activeObjService.updateSelectedObj(c.mechanismSrv.links.find((l) => l.id === 'BC'));

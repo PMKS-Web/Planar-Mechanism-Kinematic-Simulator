@@ -153,7 +153,10 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
 
     const titles = sectionLabels(fixture);
     for (const row of rows) {
-      expect(titles).toContain(`Force on Link ${row.linkName}`);
+      // The row already carries the body's noun -- "Link AB", "Rod GC",
+      // "Block at C" -- because what a body is called depends on what kind it
+      // is, and the label is the one place that decides.
+      expect(titles).toContain(`Force on ${row.linkName}`);
     }
     fixture.destroy();
   });

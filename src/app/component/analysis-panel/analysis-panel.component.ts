@@ -241,8 +241,18 @@ export class AnalysisPanelComponent {
     return part ? this.mechanismService.mechanismContaining(part) : undefined;
   }
 
+  /**
+   * What a row calls the body it graphs -- the name the reader has seen on the
+   * canvas, not the internal one.
+   *
+   * A cylinder's rod carries the id of the pin buried inside it, and a slider
+   * block's ends in the letter of the sliding joint under it. Both were
+   * printed straight into the label, so the panel offered a force on a link
+   * the reader had never been shown and could not find.
+   */
   private linkName(linkId: string): string {
-    return this.mechanismService.links.find((link) => link.id === linkId)?.name ?? linkId;
+    const body = this.mechanismService.links.find((link) => link.id === linkId);
+    return body ? this.mechanismService.bodyLabel(body) : linkId;
   }
 
   private jointName(jointId: string): string {
@@ -271,12 +281,16 @@ export class AnalysisPanelComponent {
               linkId,
               linkName: this.linkName(linkId),
             }))
-          : (index.jointsByLink.get(partId) ?? []).map((jointId) => ({
-              jointId,
-              jointName: this.jointName(jointId),
-              linkId: partId,
-              linkName: this.linkName(partId),
-            }));
+          : this.bodyMemberIds(partId).flatMap((memberId) =>
+              (index.jointsByLink.get(memberId) ?? []).map((jointId) => ({
+                jointId,
+                jointName: this.jointName(jointId),
+                // The member that actually meets this joint, not the body the
+                // reader selected: it is what the reaction is asked of.
+                linkId: memberId,
+                linkName: this.linkName(memberId),
+              }))
+            );
       rows.sort((a, b) =>
         kind === 'joint'
           ? a.linkName.localeCompare(b.linkName)
@@ -315,6 +329,23 @@ export class AnalysisPanelComponent {
       return `${this.selectedBodyLabel} does not meet another part at any of its joints, so there is no force to graph here.`;
     }
     return `${this.inputSummary} ${this.inputEditHint}`;
+  }
+
+  /**
+   * The links a selected body is made of.
+   *
+   * One for an ordinary bar. A cylinder is one body to the reader and three
+   * links to the solver, and its two mounts sit on different ones -- the
+   * barrel carries the far mount, the rod carries the other. Asking only the
+   * link the canvas hands over (the barrel) listed the barrel's mount and
+   * silently dropped the rod's, so a ram showed a force at one end and nothing
+   * at the end it is pushing.
+   */
+  private bodyMemberIds(partId: string): string[] {
+    const body = this.mechanismService.links.find((link) => link.id === partId);
+    const sealed = body && this.mechanismService.cylinderAt(body);
+    if (!sealed) return [partId];
+    return [sealed.barrel.id, sealed.rod.id, sealed.block.id];
   }
 
   /** One row per external joint of the selected link. */
