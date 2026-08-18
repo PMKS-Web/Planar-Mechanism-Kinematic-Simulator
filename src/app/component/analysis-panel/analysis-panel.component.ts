@@ -292,6 +292,28 @@ export class AnalysisPanelComponent {
     return this.cachedRows('joint', this.activeSrv.selectedJoint?.id ?? '');
   }
 
+  /** In Force mode, does the selected joint have any graph to offer? */
+  get jointForceHasGraphs(): boolean {
+    return this.jointForceRows().length > 0 || !!this.activeSrv.selectedJoint?.input;
+  }
+
+  /** In Force mode, does the selected link have any graph to offer? */
+  get linkForceHasGraphs(): boolean {
+    return this.linkForceRows().length > 0;
+  }
+
+  /**
+   * The heading's description. A part with nothing to graph gets only the
+   * note that says so — the speed summary and the mode selector describe
+   * graphs that are not on the panel.
+   */
+  get panelDescription(): string {
+    const bare =
+      this.showForce &&
+      (this.activeSrv.objType === 'Joint' ? !this.jointForceHasGraphs : !this.linkForceHasGraphs);
+    return bare ? '' : `${this.inputSummary} ${this.inputEditHint}`;
+  }
+
   /** One row per external joint of the selected link. */
   linkForceRows(): ForceAnalysisRow[] {
     const rows = this.cachedRows('link', this.activeSrv.selectedLink?.id ?? '');

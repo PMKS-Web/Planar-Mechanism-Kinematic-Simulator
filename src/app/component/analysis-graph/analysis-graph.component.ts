@@ -976,7 +976,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
         ? null
         : (result.diagnostic ??
           (mechProp === 'Joint Forces'
-            ? 'This point is internal to one welded body and has no independent joint reaction.'
+            ? 'This joint is welded inside one rigid body, so no force passes between parts here.'
             : 'Input effort is unavailable for this mechanism.'));
       return [[datum_X, datum_Y, datum_Z], categories];
     }
