@@ -1661,6 +1661,42 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   }
 
   /**
+   * Whether the selected link is on the canvas as a disc right now.
+   *
+   * Not the same question as "was it asked to be one": the choice is kept
+   * through a ground being removed, so that putting the ground back brings the
+   * disc back rather than making someone ask twice. In between, the link is
+   * drawn as a bar, and everything a person can see about it should agree.
+   */
+  drawnAsDisc(): boolean {
+    const link = this.activeSrv.selectedLink;
+    return !!link?.isCircle && link.canBeCircular();
+  }
+
+  /** Why Make Circular is unavailable, in terms of this particular link. */
+  whyNotCircular(): string {
+    const link = this.activeSrv.selectedLink;
+    const grounded = link.joints.filter(
+      (joint) => joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint)
+    );
+    const held = link.isCircle ? 'Drawn as a bar: a' : 'A';
+    if (link.subset.length > 0) {
+      return `${held} disc is centred on one fixed pin, and a welded compound is drawn from the
+        shapes of its parts. Unweld it to draw a part of it as a disc.`;
+    }
+    if (grounded.length === 0) {
+      return `${held} disc is centred on the pin its link turns about, and this link has no fixed
+        pin. Ground one of its joints to draw it as a disc.`;
+    }
+    if (grounded.length > 1) {
+      return `${held} disc is centred on the pin its link turns about, and this link is fixed at
+        ${grounded.length} joints, so it does not turn about any of them.`;
+    }
+    return `${held} disc is centred on a fixed revolute pin; this link's fixed joint is a slider,
+      which anchors a slot rather than a pivot.`;
+  }
+
+  /**
    * The frame the Center of Mass is both typed in and held against, read off
    * the selected link rather than remembered here — it is the link's property,
    * so selecting another link shows that link's answer and a reloaded drawing

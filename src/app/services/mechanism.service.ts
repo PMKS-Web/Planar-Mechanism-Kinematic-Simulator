@@ -2097,6 +2097,14 @@ export class MechanismService {
         link.massMoI = 0;
         link.moiIsCustom = false;
       }
+      // A link drawn as a disc that has since lost the pin the disc was centred
+      // on -- or been given one back. Nothing else would notice: an outline is
+      // only rebuilt when something asks it to, and grounding a joint asks
+      // about the joint. Left alone, a crank kept its disc after its ground was
+      // removed, and the panel and the canvas disagreed about what it was.
+      if (link.isCircle && link.drawnAsDisc !== link.canBeCircular()) {
+        link.reComputeDPath();
+      }
       if (link.comIsCustom) {
         // A placed point rides the link: re-derived from its stored offset
         // against the centroid, so drags, turns and deformations carry it.

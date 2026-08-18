@@ -212,9 +212,13 @@
 
 }
 
-/* Sits under the two derived fields it qualifies, in the legend's own grey so
-   it reads as the same aside rather than as a warning about a problem. */
-.massArea .shapeNote {
+/* Sits under the control it qualifies — the shape button, or the two derived
+   mass fields — in the legend's own grey, so it reads as the same kind of aside
+   rather than as a warning about a problem. Not scoped to the mass area: the
+   reason a link cannot be drawn as a disc belongs beside the button that is
+   greyed out, and a disabled button takes no pointer events, so its own tooltip
+   is unreachable. */
+.shapeNote {
   margin: 6px 0 0;
   font-size: 10.5px;
   line-height: 1.35;

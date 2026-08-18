@@ -64,7 +64,10 @@ describe('a circular link in the URL', () => {
     // Not merely flagged: built as the disc. Joints are decoded before links
     // are, so the ground pin is known and the outline never has to be a bar
     // first and corrected afterwards.
+    // No straight edge: a bar is drawn with two arcs too (its end caps), so
+    // counting arcs would not tell the two apart.
     expect(crank.d.match(/A /g)?.length).toBe(2);
+    expect(crank.d).not.toMatch(/ L /);
     expect(crank.externalLines).toEqual([]);
   });
 

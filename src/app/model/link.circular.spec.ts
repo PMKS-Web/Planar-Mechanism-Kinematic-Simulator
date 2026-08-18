@@ -65,7 +65,11 @@ describe('a link drawn as a circle', () => {
     const numbers = numbersIn(link.d);
     expect(numbers[0]).toBeCloseTo(ground.x - radius, 6);
     expect(numbers[1]).toBeCloseTo(ground.y, 6);
+    // Two arcs and no straight edge. The arc count alone proves nothing — an
+    // ordinary two-joint bar is also drawn with exactly two, one per end cap —
+    // so what separates a disc from a bar is that a disc has no sides.
     expect(link.d.match(/A /g)?.length).toBe(2);
+    expect(link.d).not.toMatch(/ L /);
 
     // A disc has no edges, so there is nothing to attach a joint along.
     expect(link.externalLines).toEqual([]);
@@ -90,8 +94,11 @@ describe('a link drawn as a circle', () => {
 
     ground.ground = false;
     link.reComputeDPath();
-    expect(link.d).not.toBe(asDisc);
     expect(link.canBeCircular()).toBe(false);
+    // A bar, stated as geometry rather than as "not the string it was": it has
+    // sides, which a disc never does, and it says so itself.
+    expect(link.d).toMatch(/ L /);
+    expect(link.drawnAsDisc).toBe(false);
     // The bar has edges again, which is how the rest of the app knows it can
     // hang a joint on one.
     expect(link.externalLines.length).toBeGreaterThan(0);

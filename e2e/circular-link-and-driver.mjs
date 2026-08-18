@@ -58,6 +58,8 @@ const linkState = () =>
       id: crank?.id,
       isCircle: crank?.isCircle,
       arcs: (crank?.d.match(/A /g) ?? []).length,
+      // A bar has two arcs too (its end caps); only a disc has no straight edge.
+      sides: (crank?.d.match(/ L /g) ?? []).length,
       edges: crank?.externalLines.length,
       box: rect ? [Math.round(rect.width), Math.round(rect.height)] : null,
       url: location.search,
@@ -109,8 +111,8 @@ stage = 'made-circular';
 const after = await linkState();
 check(
   'the crank is drawn as a disc',
-  after.isCircle === true && after.arcs === 2,
-  `${after.arcs} arcs`
+  after.isCircle === true && after.arcs === 2 && after.sides === 0,
+  `${after.arcs} arcs, ${after.sides} straight edges`
 );
 check(
   'the disc is as tall as it is wide',
@@ -136,7 +138,10 @@ if (shared) {
   await waitForReady(page);
   await dismissTour();
   const reopened = await linkState();
-  check('a shared URL reopens as a disc', reopened.isCircle === true && reopened.arcs === 2);
+  check(
+    'a shared URL reopens as a disc',
+    reopened.isCircle === true && reopened.arcs === 2 && reopened.sides === 0
+  );
 } else {
   check('a shared URL reopens as a disc', false, 'could not reach the url generator');
 }
@@ -151,9 +156,13 @@ await page.waitForTimeout(1200);
 const running = await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const crank = grid.mechanismSrv.links.find((l) => l.isCircle);
-  return { arcs: (crank?.d.match(/A /g) ?? []).length, d: crank?.d.slice(0, 40) };
+  return {
+    arcs: (crank?.d.match(/A /g) ?? []).length,
+    sides: (crank?.d.match(/ L /g) ?? []).length,
+    d: crank?.d.slice(0, 40),
+  };
 });
-check('it is still a disc while running', running.arcs === 2, running.d);
+check('it is still a disc while running', running.arcs === 2 && running.sides === 0, running.d);
 await shot('2-running');
 
 // -------------------------------------------------------------- synthesis

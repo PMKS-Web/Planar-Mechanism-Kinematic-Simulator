@@ -478,19 +478,32 @@
         <!-- The same choice the right-click menu offers, in the section that
              collects how this link is drawn. Disabled rather than hidden here:
              the panel is describing the link you selected, so the option is
-             worth naming along with why it is not available. -->
+             worth naming along with why it is not available.
+
+             The label follows what is actually on the canvas, not the stored
+             choice: a disc whose ground has since been removed is drawn as a
+             bar, and a button reading "Make Bar" over a bar is a puzzle. -->
         <button-block
-          [customIcon]="activeSrv.selectedLink.isCircle ? 'make_bar' : 'make_circular'"
+          [customIcon]="drawnAsDisc() ? 'make_bar' : 'make_circular'"
           [disabled]="!activeSrv.selectedLink.canBeCircular()"
           (click)="mechanismService.toggleLinkCircular()"
           [tooltip]="
-            activeSrv.selectedLink.canBeCircular()
-              ? 'Draw this link as the disc it sweeps, centred on its fixed pin. Its mass and rotational inertia are unchanged.'
-              : 'Only a link with exactly one fixed pin can be drawn as a disc — that pin is what the disc is centred on.'
+            drawnAsDisc()
+              ? 'Draw this link as an ordinary bar between its joints.'
+              : 'Draw this link as the disc it sweeps, centred on its fixed pin. Its mass and rotational inertia are unchanged.'
           "
         >
-          {{ activeSrv.selectedLink.isCircle ? 'Make Bar' : 'Make Circular' }}
+          {{ drawnAsDisc() ? 'Make Bar' : 'Make Circular' }}
         </button-block>
+        <!-- Said in the panel rather than left to the button's tooltip: a
+             disabled button receives no pointer events, so its tooltip never
+             opens and the one explanation of why it cannot be pressed is the
+             one nobody can reach. -->
+        @if (!activeSrv.selectedLink.canBeCircular()) {
+          <p class="shapeNote">
+            {{ whyNotCircular() }}
+          </p>
+        }
       </collapsible-subseciton>
       <collapsible-subseciton
         titleLabel="Mass Settings"
@@ -593,7 +606,7 @@
                part is one. Said here, next to the two numbers it would otherwise
                be reasonable to assume it had changed — and only here, because
                with no mass there are no such numbers to mislead anyone. -->
-          @if (activeSrv.selectedLink.isCircle) {
+          @if (drawnAsDisc()) {
             <p class="shapeNote">
               Drawn as a disc. These two still follow the link's joints, not the
               circle — set Rotational Inertia by hand for a real flywheel.

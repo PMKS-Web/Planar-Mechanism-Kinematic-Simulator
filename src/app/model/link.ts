@@ -175,6 +175,16 @@ export class RealLink extends Link {
    * comes back as a bar and returns to a disc if it is grounded again.
    */
   public isCircle = false;
+
+  /**
+   * Whether the outline currently held in `d` is a disc.
+   *
+   * `isCircle` is what was asked for; this is what was drawn. They part company
+   * whenever the link stops or starts qualifying — a ground removed, a ground
+   * put back — and since a path is only rebuilt when something asks it to, the
+   * difference between the two is exactly the signal that it needs rebuilding.
+   */
+  public drawnAsDisc = false;
   /**
    * A hand-placed centre of mass, held against the link's own frame: along
    * and across the unit direction joints[0]→joints[1], measured from the
@@ -450,6 +460,8 @@ export class RealLink extends Link {
   }
 
   getCompoundPathString(): string {
+    // A compound is drawn from the outlines of its parts, never as a disc.
+    this.drawnAsDisc = false;
     // A sealed cylinder's rod welded into this compound is drawn by the skin,
     // above the block; the compound repeating it drew the same bar twice, one
     // copy on the wrong side of the block. The leaf is recognised through its
@@ -587,6 +599,7 @@ export class RealLink extends Link {
 
   getSimplePathString(): string {
     this.externalLines = [];
+    this.drawnAsDisc = false;
     let l = this;
     // Draw link given the desiredJointIDs
     const allJoints = l.joints;
@@ -606,6 +619,7 @@ export class RealLink extends Link {
     if (disc) {
       this.externalLines = [];
       this.initialExternalLines = [];
+      this.drawnAsDisc = true;
       return disc;
     }
     const hullPoints = hull(points, Infinity) as number[][]; //Hull points find the convex hull (largest fence)
