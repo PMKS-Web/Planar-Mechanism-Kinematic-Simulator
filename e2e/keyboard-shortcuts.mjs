@@ -37,12 +37,24 @@ if (await skip.isVisible().catch(() => false)) await skip.click({ force: true })
 await page.waitForTimeout(500);
 
 /** The joint's centre on screen: the canvas places from where the mouse is. */
-const clickJoint = async (id) => {
-  const at = await page.evaluate((jointId) => {
+const centreOf = (id) =>
+  page.evaluate((jointId) => {
     const el = document.querySelector(`#joint_${jointId}`)?.closest('svg[x]');
     const box = el.getBoundingClientRect();
     return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   }, id);
+
+const clickJoint = async (id) => {
+  // Aimed only once the joint has stopped moving. Leaving an analysis mode
+  // winds the linkage back to its start pose, and a click aimed while that is
+  // still running lands where the joint was rather than where it is.
+  let at = await centreOf(id);
+  for (let tries = 0; tries < 20; tries++) {
+    await page.waitForTimeout(100);
+    const now = await centreOf(id);
+    if (Math.hypot(now.x - at.x, now.y - at.y) < 0.5) break;
+    at = now;
+  }
   await page.mouse.move(at.x, at.y);
   await page.mouse.click(at.x, at.y);
   await page.waitForTimeout(400);
