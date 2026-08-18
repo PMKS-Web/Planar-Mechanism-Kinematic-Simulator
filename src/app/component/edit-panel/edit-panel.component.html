@@ -530,16 +530,27 @@
           </div>
           <div class="dotRow">
             <span class="dotRowLabel">Center of Mass</span>
+            <!-- Marked on the options, not with [value] on the select. Setting
+                 the select's value only takes if its options already exist,
+                 and these are rebuilt whenever the panel re-renders this block
+                 — a different link selected, a mass edited — after which the
+                 binding is unchanged and so is never re-applied, leaving the
+                 control reading Centroid over a link held some other way. An
+                 option that knows itself to be the selected one cannot drift. -->
             <select
               class="comFrameSelect"
-              [value]="comFrame"
               (change)="setComFrame($any($event.target).value)"
               title="What the center of mass is held against while you edit, and the frame the two numbers below are read in. Centroid rides the link; Global grid keeps its place on the drawing; a joint follows that pin alone. Once the mechanism runs it rides the link either way."
             >
-              <option value="centroid">Centroid</option>
-              <option value="grid">Global grid</option>
+              <option value="centroid" [selected]="comFrame === 'centroid'">Centroid</option>
+              <option value="grid" [selected]="comFrame === 'grid'">Global grid</option>
               @for (joint of activeSrv.selectedLink.joints; track joint.id) {
-                <option [value]="'joint:' + joint.id">Joint {{ joint.name || joint.id }}</option>
+                <option
+                  [value]="'joint:' + joint.id"
+                  [selected]="comFrame === 'joint:' + joint.id"
+                >
+                  Joint {{ joint.name || joint.id }}
+                </option>
               }
             </select>
           </div>
