@@ -128,12 +128,17 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
 
     expect(fixture.componentInstance.jointForceRows()).toHaveLength(0);
     const text = fixture.nativeElement.textContent;
-    expect(text).toContain('welded inside one rigid body');
-    expect(text).toContain('Select a joint where separate parts meet');
+    // "Only one part" covers the tracer on a plain ternary link as well as a
+    // welded-in pin — a joint can have no reaction without a weld anywhere.
+    expect(text).toContain('Only one part meets Joint');
+    expect(text).toContain('Click a joint where separate parts meet');
     // With no graph to configure, the mode selector and the input-speed
     // summary would describe things that are not on the panel.
     expect(text).not.toContain('Force Analysis Type');
     expect(text).not.toContain('input speed is set');
+    // And it is the help-card hint pattern, not a boxed banner.
+    expect(fixture.nativeElement.querySelector('.helpHint')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.analysis-message')).toBeNull();
     fixture.destroy();
   });
 

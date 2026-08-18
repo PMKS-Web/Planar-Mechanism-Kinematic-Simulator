@@ -260,7 +260,7 @@ describe('AnalysisGraphComponent production fixtures', () => {
     const component = createComponent(fixture);
     component.determineChart('force', 'static', 'Joint Forces', 'B');
 
-    expect(component.analysisDiagnostic).toContain('welded inside one rigid body');
+    expect(component.analysisDiagnostic).toContain('Only one part meets this joint');
     expect(
       component.chartOptions.series!.every((series) =>
         (series.data as unknown as Array<{ y: number | null }>).every((point) => point.y === null)

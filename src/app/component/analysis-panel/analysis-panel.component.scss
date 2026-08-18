@@ -55,19 +55,6 @@
     // }
   }
 }
-// Speaks at the size of the title-block description above it (body-2, 14px).
-// Left to inherit, it picked up the panel's base size, and a note about one
-// joint read louder than the panel's own heading.
-#analysisWrapper .analysis-message {
-  margin: 8px 0 12px;
-  padding: 10px 12px;
-  border-radius: var(--border-radius);
-  background: #f4f5fb;
-  color: rgba(0, 0, 0, 0.7);
-  font-size: 14px;
-  line-height: 1.45;
-}
-
 // Names the group of graphs under it. It used to be a subtitle-block nudged
 // down 20px, which read as a stray line of text between two cards rather than
 // as a heading for the ones below it.
