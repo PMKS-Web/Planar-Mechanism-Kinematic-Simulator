@@ -165,6 +165,34 @@ record('and K again lets it go', (await state()).lockedJoints === 0, await state
 await press(',');
 record('a comma opens Settings', (await state()).drawer === 1, await state());
 
+// --- A key belongs to whatever is standing over the canvas -------------------
+// These are the canvas's keys. With a dialog open the reader is looking at the
+// dialog, and Delete was quietly removing the joint selected behind it.
+await clickJoint('B');
+const guarded = await state();
+await page.locator('.topStrip .iconButton').first().click();
+await page.waitForTimeout(500);
+await page.locator('#templatesButton').click();
+await page.waitForTimeout(1200);
+record(
+  'the Templates dialog is open',
+  (await page.evaluate(() => document.querySelectorAll('mat-dialog-container').length)) > 0
+);
+for (const key of ['Backspace', '3', 'k', ',']) await press(key);
+const behind = await state();
+record(
+  'and no shortcut acts behind it',
+  behind.joints === guarded.joints &&
+    behind.tab === guarded.tab &&
+    behind.lockedJoints === guarded.lockedJoints &&
+    behind.drawer === guarded.drawer,
+  { guarded, behind }
+);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(800);
+await page.mouse.click(900, 700);
+await page.waitForTimeout(300);
+
 // --- The list that teaches them --------------------------------------------
 // Out of the field first: the check above just proved that a key typed into
 // one stays there, so a `?` pressed with the caret still in it would too.

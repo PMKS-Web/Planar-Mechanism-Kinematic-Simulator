@@ -1,4 +1,5 @@
 import { Injectable, NgZone, inject } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { Observable, Subject } from 'rxjs';
 
 /**
@@ -67,6 +68,7 @@ function onAMac(): boolean {
 @Injectable({ providedIn: 'root' })
 export class KeyboardShortcutsService {
   private zone = inject(NgZone);
+  private dialog = inject(MatDialog);
   private readonly presses = new Subject<ShortcutId>();
 
   /** Fires when a shortcut's keys are pressed anywhere outside a text field. */
@@ -231,6 +233,11 @@ export class KeyboardShortcutsService {
     // A key pressed into a text field belongs to that field: Delete means
     // delete a character there, and Undo means undo the typing.
     if (this.typingInAField(event)) return;
+    // And a key pressed while something stands over the canvas belongs to that
+    // thing, or to nothing. These are the canvas's keys: with the Templates
+    // dialog open, Delete was removing the selected joint behind it, out of
+    // sight of the reader who pressed it.
+    if (this.somethingIsOver()) return;
 
     const key = event.key.toLowerCase();
     const held = event.ctrlKey || event.metaKey;
@@ -245,6 +252,18 @@ export class KeyboardShortcutsService {
     // otherwise scroll the page and Command-Z would reach the browser's own.
     event.preventDefault();
     this.zone.run(() => this.presses.next(found.id));
+  }
+
+  /**
+   * Whether the canvas is covered: a modal dialog, or the guided tour.
+   *
+   * Both take the whole screen and both are their own conversation. The tour
+   * is not a dialog and so is not in the dialog's own list -- it is asked
+   * about by the overlay it lays over the page.
+   */
+  private somethingIsOver(): boolean {
+    if (this.dialog.openDialogs.length > 0) return true;
+    return !!document.querySelector('.introjs-overlay, .introjs-tooltip');
   }
 
   /** Whether the keystroke was aimed at somewhere text is being entered. */
