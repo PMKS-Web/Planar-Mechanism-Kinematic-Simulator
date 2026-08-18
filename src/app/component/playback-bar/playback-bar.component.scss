@@ -6,6 +6,9 @@
 // looking at a screenshot is how it drifted the first time.
 @mixin css($theme) {
   $primary-palette: map.get(mat.m2-get-color-config($theme), 'primary');
+  // How far the handle has come, and what is still ahead of it. Said once,
+  // because the two engines each want their own pseudo-element for the track.
+  $track: linear-gradient(to right, #3f51b5 0 var(--along, 0%), #efefef var(--along, 0%) 100%);
 
   // Right-aligned in every mode, so the view controls at its right-hand end sit
   // in exactly the same place whatever mode is open. They used to be pushed
@@ -192,10 +195,23 @@
     }
   }
 
+  // Two spacings, as the mock has them: 8px between the things to read, and
+  // 6px between that whole group and the buttons -- which sit against the
+  // row's own padding rather than a second inset inside the line.
   .rowHead {
     display: flex;
     align-items: center;
     gap: 6px;
+    height: 22px;
+    overflow: hidden;
+  }
+
+  .rowLabel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
     height: 22px;
     padding: 0 4px;
     overflow: hidden;
@@ -277,16 +293,8 @@
 
   // The combined row names no machine and shows no position, so there is
   // nothing for the column to line up with.
-  .mechRow.combined {
-    .rowHead,
-    .trackWell {
-      padding-left: 8px;
-      padding-right: 8px;
-    }
-
-    .rowReadout {
-      flex: 0 0 auto;
-    }
+  .mechRow.combined .rowReadout {
+    flex: 0 0 auto;
   }
 
   // Where the input is, then how long it has been going. The position leads
@@ -348,24 +356,82 @@
   }
 
   // The track sits in a 16px well with the input pinned 6px down it, so the
-  // handle centres on the line rather than on the row.
+  // handle centres on the line rather than on the row. The well is inset the
+  // same 4px the label group is, so the handle starts under the name.
   .trackWell {
     position: relative;
     height: 16px;
-    padding: 0 4px;
+    margin: 0 4px;
   }
 
+  // Drawn rather than themed, and drawn to look like what the platform was
+  // drawing. Left to the browser, `accent-color` colours the travelled part
+  // and the handle but the track keeps a 1px rim -- a grey line above and
+  // below the bar, a border round the one control here that has one. Taking
+  // the painting means saying the rest ourselves: the bar's thickness, the
+  // capsule handle macOS drew, and how far along it sits, which is the same
+  // number the handle itself is bound to.
+  //
+  // It also settles a difference. The native slider is the platform's, so the
+  // same page did not look the same on two machines; this one does.
   .rowScrubber {
     position: absolute;
-    left: 4px;
-    right: 4px;
-    top: 6px;
-    width: auto;
+    left: 0;
+    right: 0;
+    // The handle is taller than the bar, so the element holds the handle and
+    // the bar is centred inside it -- 1px down a 16px well puts the bar's
+    // middle where a 4px bar 6px down had it.
+    top: 1px;
+    width: 100%;
     min-width: 0;
     margin: 0;
-    height: 4px;
-    accent-color: #3f51b5;
+    height: 14px;
+    padding: 0;
+    border: none;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
     cursor: pointer;
+
+    &::-webkit-slider-runnable-track {
+      height: 6px;
+      border: none;
+      border-radius: 3px;
+      background: $track;
+    }
+
+    &::-moz-range-track {
+      height: 6px;
+      border: none;
+      border-radius: 3px;
+      background: $track;
+    }
+
+    &::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      box-sizing: border-box;
+      width: 20px;
+      height: 14px;
+      // Centred on the 6px bar rather than on the element.
+      margin-top: -4px;
+      border: 1px solid rgba(0, 0, 0, 0.16);
+      border-radius: 7px;
+      background: #fff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      cursor: inherit;
+    }
+
+    &::-moz-range-thumb {
+      box-sizing: border-box;
+      width: 20px;
+      height: 14px;
+      border: 1px solid rgba(0, 0, 0, 0.16);
+      border-radius: 7px;
+      background: #fff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      cursor: inherit;
+    }
 
     &:disabled {
       cursor: default;

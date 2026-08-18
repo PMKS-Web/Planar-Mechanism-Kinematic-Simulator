@@ -14,9 +14,10 @@
 
 import { readFileSync, mkdirSync } from 'node:fs';
 
-const { chromium } = await import(
+const playwright = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
+const { chromium } = playwright;
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
@@ -96,9 +97,13 @@ await page.screenshot({
 });
 
 let geometry = (await boxes())[0];
+// The handle runs the row's whole width, inset only by the row's own 12px,
+// rather than sharing a line with the label as it used to.
 record(
-  'the handle gets the card of the width the row does',
-  geometry.track.width > geometry.row.width - 24 && geometry.track.top > geometry.head.bottom,
+  'the handle gets the width the row has, under the line rather than beside it',
+  geometry.track.left - geometry.row.left === 8 &&
+    geometry.row.right - geometry.track.right === 8 &&
+    geometry.track.top > geometry.head.bottom,
   geometry
 );
 record(
@@ -168,6 +173,13 @@ record(
   after[0].fill !== after[1].fill && after[0].row.left === before[0].row.left,
   { selected: after[0].fill, other: after[1].fill }
 );
+const card = await page.locator('.scrubCard').boundingBox();
+record(
+  'and it sits inside the card, one padding in on every side',
+  Math.round(after[0].row.left - card.x) === 4 &&
+    Math.round(card.x + card.width - after[0].row.right) === 4,
+  { row: after[0].row, card }
+);
 record(
   'and choosing it moved nothing on the line',
   after[0].readout.left === before[0].readout.left &&
@@ -187,6 +199,83 @@ const panel = await page
   .innerText()
   .catch(() => '');
 record('the selection reaches the analysis panel', /Mechanism M1/.test(panel), panel.slice(0, 160));
+
+// --- the handle's bar is drawn, not themed ----------------------------------
+// The reported defect: left to the browser the track keeps a 1px rim, a grey
+// line above and below the bar. Read out of the composited pixels rather than
+// out of the CSS, because what was wrong was what the browser painted.
+await page.goto(`${BASE}/?${payloads['Cylinder_Boom']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await kinematic();
+
+// The element holds the handle, so the bar is the 6px centred inside it. One
+// row above and one below are taken too, which is where the rim used to be.
+const bar = await page.locator('.rowScrubber').boundingBox();
+const strip = await page.screenshot({
+  clip: {
+    x: Math.round(bar.x),
+    y: Math.round(bar.y) + 3,
+    width: Math.round(bar.width),
+    height: 8,
+  },
+});
+const columns = await page.evaluate(async (encoded) => {
+  const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+  const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const context = canvas.getContext('2d');
+  context.drawImage(bitmap, 0, 0);
+  const column = (x) => {
+    const { data } = context.getImageData(x, 0, 1, bitmap.height);
+    const rows = [];
+    for (let y = 0; y < bitmap.height; y++) {
+      rows.push(`${data[y * 4]},${data[y * 4 + 1]},${data[y * 4 + 2]}`);
+    }
+    return rows;
+  };
+  return { travelled: column(8), ahead: column(bitmap.width - 8) };
+}, strip.toString('base64'));
+// Row 0 and row 7 are the row's own fill; rows 1-6 are the bar. A rim would
+// show as a colour of its own at the top or the bottom of the bar.
+const bandOf = (column) => new Set(column.slice(1, 7));
+record(
+  'the bar is one colour top to bottom, with no rim above or below it',
+  bandOf(columns.travelled).size === 1 &&
+    bandOf(columns.ahead).size === 1 &&
+    columns.travelled[0] === columns.ahead[0],
+  columns
+);
+record(
+  'and the part already travelled is the part that is filled',
+  columns.travelled[3] !== columns.ahead[3],
+  columns
+);
+
+// The fill is drawn from the same number the handle is placed by, so the two
+// have to agree -- at rest, part way through a cycle, and after a drag.
+const agrees = () =>
+  page.$eval('.rowScrubber', (el) => {
+    const along = parseFloat(getComputedStyle(el).getPropertyValue('--along'));
+    return { along, value: Number(el.value) / 10, width: el.getBoundingClientRect().width };
+  });
+const atRest = await agrees();
+await page.locator('.playButton').click();
+await page.waitForTimeout(900);
+await page.locator('.playButton').click();
+await page.waitForTimeout(400);
+const playing = await agrees();
+await page.locator('.rowScrubber').click({ position: { x: 120, y: 2 } });
+await page.waitForTimeout(500);
+const dragged = await agrees();
+record(
+  'the fill and the handle read the same place along the track',
+  [atRest, playing, dragged].every((s) => Math.abs(s.along - s.value) < 0.5),
+  { atRest, playing, dragged }
+);
+record('and the drag actually moved it', Math.abs(dragged.value - atRest.value) > 1, {
+  atRest,
+  dragged,
+});
 
 // --- one drawing, two kinds of ending ---------------------------------------
 // A driven ram beside a crank, so the combined row has two facts to carry and
@@ -250,4 +339,67 @@ await page.screenshot({
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
 await browser.close();
+
+// --- and the same bar in every engine ---------------------------------------
+// The point of drawing the track rather than letting the platform theme it:
+// what a reader sees should not depend on which browser they opened. Run the
+// same row through all three and compare the pixels down the bar.
+const engines = ['chromium', 'firefox', 'webkit'];
+const painted = {};
+for (const engine of engines) {
+  let engineBrowser;
+  try {
+    engineBrowser = await playwright[engine].launch();
+  } catch (error) {
+    record(`${engine} is installed to compare against`, false, String(error).split('\n')[0]);
+    continue;
+  }
+  const enginePage = await engineBrowser.newPage({ viewport: { width: 1500, height: 950 } });
+  await enginePage.goto(`${BASE}/?${payloads['4-Bar']}`, { waitUntil: 'domcontentloaded' });
+  await waitForReady(enginePage);
+  await enginePage.locator('.tabButton', { hasText: 'Kinematic' }).click();
+  await enginePage.waitForTimeout(1200);
+  const engineBar = await enginePage.locator('.rowScrubber').boundingBox();
+  // Halfway along, so the shot holds both what is travelled and what is ahead.
+  await enginePage.mouse.click(engineBar.x + engineBar.width / 2, engineBar.y + 7);
+  await enginePage.waitForTimeout(600);
+  const shot = await enginePage.screenshot({
+    clip: {
+      x: Math.round(engineBar.x),
+      y: Math.round(engineBar.y) + 3,
+      width: Math.round(engineBar.width),
+      height: 8,
+    },
+  });
+  painted[engine] = {
+    height: Math.round(engineBar.height),
+    // Read in the page that took the shot, so no image library is needed.
+    band: await enginePage.evaluate(async (encoded) => {
+      const bytes = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
+      const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+      const context = canvas.getContext('2d');
+      context.drawImage(bitmap, 0, 0);
+      const column = (x) => {
+        const { data } = context.getImageData(x, 0, 1, bitmap.height);
+        const rows = [];
+        for (let y = 0; y < bitmap.height; y++) {
+          rows.push(`${data[y * 4]},${data[y * 4 + 1]},${data[y * 4 + 2]}`);
+        }
+        return rows.join(' / ');
+      };
+      return { travelled: column(8), ahead: column(bitmap.width - 8) };
+    }, shot.toString('base64')),
+  };
+  await engineBrowser.close();
+}
+const seen = Object.values(painted);
+record(
+  'every engine paints the same bar, and none of them puts a rim on it',
+  seen.length === engines.length &&
+    new Set(seen.map((one) => JSON.stringify(one))).size === 1 &&
+    seen[0].band.travelled !== seen[0].band.ahead,
+  painted
+);
+
 process.exit(results.every(([, ok]) => ok) ? 0 : 1);
