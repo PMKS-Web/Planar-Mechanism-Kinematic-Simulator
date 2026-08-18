@@ -1661,14 +1661,31 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   }
 
   /**
-   * The frame the Center of Mass fields are typed and read in. Display-side
-   * only: whatever is chosen, the point is stored against the link itself
-   * (see RealLink.placeCustomCoM), so the numbers here are a view of it.
+   * The frame the Center of Mass is both typed in and held against, read off
+   * the selected link rather than remembered here — it is the link's property,
+   * so selecting another link shows that link's answer and a reloaded drawing
+   * shows the one it was saved with.
    */
-  comFrame: string = 'centroid';
+  get comFrame(): string {
+    const anchor = this.activeSrv.selectedLink?.comAnchor ?? 'centroid';
+    if (anchor === 'grid' || anchor === 'centroid') return anchor;
+    return 'joint:' + anchor.joint;
+  }
 
   setComFrame(frame: string): void {
-    this.comFrame = frame;
+    const link = this.activeSrv.selectedLink;
+    if (!link) return;
+    link.comAnchor =
+      frame === 'grid'
+        ? 'grid'
+        : frame.startsWith('joint:')
+          ? { joint: frame.slice('joint:'.length) }
+          : 'centroid';
+    // Re-read the offsets against the new anchor before anything moves, so
+    // choosing a frame re-describes where the point already is instead of
+    // moving it there.
+    link.captureComOffset();
+    this.mechanismService.updateMechanism(true);
     this.refreshDerivedMassFields();
   }
 

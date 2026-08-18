@@ -30,6 +30,11 @@ export enum Shape {
   customShape = 'customShape',
 }
 
+/**
+ * What a hand-placed centre of mass is held against. See RealLink.comAnchor.
+ */
+export type ComAnchor = 'centroid' | 'grid' | { joint: string };
+
 export interface Bound {
   b1: Coord;
   b2: Coord;
@@ -181,6 +186,43 @@ export class RealLink extends Link {
   public comOffset?: { along: number; across: number; frame: [string, string] };
 
   /**
+   * What a hand-placed centre of mass is held against while the mechanism is
+   * being edited.
+   *
+   *   'centroid'  the link itself — the point rides every drag, turn and
+   *               deformation, which is `comOffset` above;
+   *   'grid'      the drawing — the point keeps its world coordinate, so moving
+   *               the link out from under it leaves it where it was put;
+   *   {joint}     one pin — the point follows that pin's position and nothing
+   *               else, so turning the link about it does not move it.
+   *
+   * Editing only. Once the mechanism runs, the centre of mass is a point of the
+   * body and rides it like any other: the solved timesteps carry it rigidly
+   * (Mechanism.transportPoint), which is what makes it a centre of mass at all
+   * rather than a mark on the page that inertia would be wrong about.
+   */
+  public comAnchor: ComAnchor = 'centroid';
+
+  /**
+   * Where the point sits relative to whatever `comAnchor` names, in world axes.
+   * Unused by the centroid anchor, which has `comOffset` to express the same
+   * thing in the link's own frame — the difference between the two is the whole
+   * point, so they cannot share one representation.
+   */
+  public comAnchorOffset?: { dx: number; dy: number };
+
+  /** The fixed point a non-centroid anchor measures from, if it still exists. */
+  private anchorPoint(): Coord | undefined {
+    // Read once into a local: inside the callback below, `this.comAnchor` is a
+    // mutable property again and narrowing does not reach it.
+    const anchor = this.comAnchor;
+    if (anchor === 'grid') return new Coord(0, 0);
+    if (anchor === 'centroid') return undefined;
+    const pin = this.joints.find((joint) => joint.id === anchor.joint);
+    return pin ? new Coord(pin.x, pin.y) : undefined;
+  }
+
+  /**
    * The link's own frame: origin at the uniform centroid, x̂ along the two
    * *named* joints — the farthest pair at capture time, so the axis is never
    * degenerate by accident and never silently reinterpreted when the joints
@@ -237,6 +279,9 @@ export class RealLink extends Link {
 
   /** Re-read the local offset from wherever the CoM currently is. */
   captureComOffset(): void {
+    // Both are captured every time, whichever anchor is in force: switching
+    // anchor in the panel must not need the point re-placed, and the anchor a
+    // link is not currently using is the one it will be using next.
     const frame = this.comFrame();
     const dx = this._CoM.x - frame.origin.x;
     const dy = this._CoM.y - frame.origin.y;
@@ -245,10 +290,26 @@ export class RealLink extends Link {
       across: -dx * frame.uy + dy * frame.ux,
       frame: frame.pair,
     };
+    const anchor = this.anchorPoint();
+    this.comAnchorOffset = anchor
+      ? { dx: this._CoM.x - anchor.x, dy: this._CoM.y - anchor.y }
+      : undefined;
   }
 
   /** Where the captured offset lands in today's geometry. */
   customCoMFromOffset(): Coord | undefined {
+    if (this.comAnchor !== 'centroid') {
+      const anchor = this.anchorPoint();
+      if (anchor && this.comAnchorOffset) {
+        return new Coord(anchor.x + this.comAnchorOffset.dx, anchor.y + this.comAnchorOffset.dy);
+      }
+      // The pin this was held against has left the link. Keep the point where
+      // it is and hand it back to the link, which is the one anchor every link
+      // always has -- rather than let it snap to a pin that is not there.
+      this.comAnchor = 'centroid';
+      this.captureComOffset();
+      return new Coord(this._CoM.x, this._CoM.y);
+    }
     if (!this.comOffset) return undefined;
     const frame = this.comFrame(this.comOffset.frame);
     if (!frame.ok) {

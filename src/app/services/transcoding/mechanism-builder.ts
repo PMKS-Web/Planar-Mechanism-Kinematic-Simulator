@@ -289,6 +289,17 @@ export class MechanismBuilder {
       }
     });
 
+    // What each hand-placed centre of mass is held against. The offsets it
+    // needs are captured from the decoded coordinate on the first update, the
+    // same way the centroid anchor already works -- the URL carries where the
+    // point is, and the anchor says what it is measured from.
+    this.transcoder.getComAnchors().forEach((entry) => {
+      const [reference, jointID] = entry.substring(2).split('~');
+      const link = this.getLinkByID(links, reference);
+      if (!(link instanceof RealLink)) return;
+      link.comAnchor = entry.charAt(1) === 'G' ? 'grid' : { joint: jointID };
+    });
+
     // A sealed cylinder's parts always follow their own shapes. Nothing that
     // shipped ever let anyone choose their inertia or centres — the values in
     // circulating URLs are fixture defaults — so decoding migrates the parts

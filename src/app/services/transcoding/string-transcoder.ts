@@ -444,11 +444,20 @@ export class StringTranscoder extends GenericTranscoder {
       '.' +
       activeObjString;
 
-    // Written only when something is locked, so a lock-free URL stays
-    // byte-identical to one written before locks existed — the same bargain
-    // the slot triple and the per-joint drive speed struck.
-    if (this.lockedIds.length > 0) {
-      fullString += '.' + this.lockedIds.join(',');
+    // Written only when there is something to say, so a URL with no locks and
+    // no re-anchored centre of mass stays byte-identical to one written before
+    // either existed — the same bargain the slot triple and the per-joint
+    // drive speed struck.
+    //
+    // Centre-of-mass anchors share this section rather than opening a second
+    // one, because they are the same shape of thing: a tagged reference to an
+    // object the URL already carries. Their tag is 'C', which no lock uses, so
+    // the two are told apart on the way in and neither can be mistaken for the
+    // other. 'CG<link>' holds the point on the drawing; 'CJ<link>~<joint>'
+    // holds it on one pin, '~' being a character no id can contain.
+    const trailing = [...this.lockedIds, ...this.comAnchors];
+    if (trailing.length > 0) {
+      fullString += '.' + trailing.join(',');
     }
 
     // add checksum character in the end
@@ -558,11 +567,15 @@ export class StringTranscoder extends GenericTranscoder {
     let activeType = sd.isEmpty() ? 'N' : sd.nextCharacter();
     let activeID = sd.isEmpty() ? '' : sd.nextToken('.');
 
-    // The lock section: type-tagged ids, absent on every URL written before
+    // The trailing section: type-tagged ids, absent on every URL written before
     // locks existed — and "absent" simply means the disassembler is empty.
+    // 'C' entries are centre-of-mass anchors and go to their own list, so the
+    // lock validator below never has to know they exist.
     while (!sd.isEmpty()) {
-      let lockedId = sd.nextToken(',');
-      if (lockedId !== '') this.lockedIds.push(lockedId);
+      let entry = sd.nextToken(',');
+      if (entry === '') continue;
+      if (entry.charAt(0) === 'C') this.comAnchors.push(entry);
+      else this.lockedIds.push(entry);
     }
 
     let typeEnum;
@@ -668,6 +681,28 @@ export class StringTranscoder extends GenericTranscoder {
         (tag === 'F' && forceIDs.has(id));
       if (!resolves) {
         throw new Error('URL locks an object it does not contain');
+      }
+    });
+    this.validateDecodedComAnchors(linkIDs);
+  }
+
+  /**
+   * Every anchor must name a link this URL carries, and a pin anchor must name
+   * a joint of that same link — anchoring to a pin the link does not hold has
+   * no meaning, and would silently fall back to the centroid on first use.
+   */
+  private validateDecodedComAnchors(linkIDs: Set<string>): void {
+    this.comAnchors.forEach((entry) => {
+      const [reference, jointID] = entry.substring(2).split('~');
+      const link = this.links.find((candidate) => candidate.id === reference);
+      const resolves =
+        linkIDs.has(reference) &&
+        link !== undefined &&
+        (entry.charAt(1) === 'G'
+          ? jointID === undefined
+          : entry.charAt(1) === 'J' && jointID !== undefined && link.jointIDs.includes(jointID));
+      if (!resolves) {
+        throw new Error('URL anchors a center of mass to something it does not contain');
       }
     });
   }

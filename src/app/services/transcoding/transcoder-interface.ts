@@ -31,6 +31,12 @@ export abstract class GenericTranscoder {
    * locks existed.
    */
   protected lockedIds: string[] = [];
+  /**
+   * Which links hold their centre of mass against something other than
+   * themselves, as tagged references sharing the lock section. See
+   * StringTranscoder for the spelling.
+   */
+  protected comAnchors: string[] = [];
 
   // Initialize data dictionaries based on settings enums
   constructor() {
@@ -104,6 +110,14 @@ export abstract class GenericTranscoder {
 
   getLockedIds(): string[] {
     return this.lockedIds;
+  }
+
+  setComAnchors(anchors: string[]): void {
+    this.comAnchors = anchors;
+  }
+
+  getComAnchors(): string[] {
+    return this.comAnchors;
   }
 
   abstract decodeURL(url: string): void;
