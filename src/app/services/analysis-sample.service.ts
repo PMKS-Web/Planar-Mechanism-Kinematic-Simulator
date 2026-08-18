@@ -24,6 +24,23 @@ import { SettingsService } from './settings.service';
  * visible staircase. Nothing needed it: every place that shows one of these
  * numbers formats it, the header to two decimals and the CSV at its own edge.
  */
+/**
+ * A solved value below anything a mechanism can mean is float noise, not data.
+ *
+ * A joint that stands still solves to velocities like 2e-17: the residue of
+ * subtracting a position from itself through a chain of rotations. The header
+ * printed it in scientific notation and the graph drew its jitter as a
+ * mountain range, because a chart scales its axis to whatever range it is
+ * given. One part in 1e9 of the units on screen is far below anything the
+ * drawing can express -- solved positions are held to four decimals -- and
+ * some sixteen orders above nothing, so everything real passes untouched.
+ */
+const NOISE_FLOOR = 1e-9;
+
+function snapNoiseToZero(value: number): number {
+  return Math.abs(value) < NOISE_FLOOR ? 0 : value;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AnalysisSampleService {
   private settingsService = inject(SettingsService);
@@ -56,10 +73,11 @@ export class AnalysisSampleService {
     mechPart: string,
     reactionLinkId: string = ''
   ): number[] {
-    if (analysis === 'force') {
-      return this.forceSample(mechanism, index, analysisType, mechProp, mechPart, reactionLinkId);
-    }
-    return this.kinematicSample(mechanism, index, mechProp, mechPart);
+    const values =
+      analysis === 'force'
+        ? this.forceSample(mechanism, index, analysisType, mechProp, mechPart, reactionLinkId)
+        : this.kinematicSample(mechanism, index, mechProp, mechPart);
+    return values.map(snapNoiseToZero);
   }
 
   private forceSample(

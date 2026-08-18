@@ -66,14 +66,15 @@
     color: #2c2c2c;
   }
 
-  // Columns of one width, not a row that closes up around its contents. Open,
-  // each entry is the switch for its own line, and a switch that moves when
-  // the number beside it gains a minus sign or a decimal place is a switch the
-  // reader has to re-aim at every frame -- so an entry's place is decided by
-  // which series it is, and never by what any of them currently reads.
+  // Three columns of a third each, whatever this graph has to say. An entry's
+  // place is decided by which series it is, never by what it currently reads
+  // (a minus sign or an extra digit must not move the switch the reader is
+  // aiming at) and never by how many series this graph happens to have -- X is
+  // the first third on every card in the stack, so the columns line up down
+  // the whole panel.
   .graphPreview {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     align-items: center;
     gap: 2px 8px;
     padding: 0 12px 8px;
