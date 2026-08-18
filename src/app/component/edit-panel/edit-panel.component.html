@@ -483,27 +483,32 @@
              The label follows what is actually on the canvas, not the stored
              choice: a disc whose ground has since been removed is drawn as a
              bar, and a button reading "Make Bar" over a bar is a puzzle. -->
-        <button-block
-          [customIcon]="drawnAsDisc() ? 'make_bar' : 'make_circular'"
-          [disabled]="!activeSrv.selectedLink.canBeCircular()"
-          (click)="mechanismService.toggleLinkCircular()"
-          [tooltip]="
-            drawnAsDisc()
-              ? 'Draw this link as an ordinary bar between its joints.'
-              : 'Draw this link as the disc it sweeps, centred on its fixed pin. Its mass and rotational inertia are unchanged.'
-          "
+        <!-- The reason it cannot be pressed is carried by this wrapper, not by
+             the button: a disabled button receives no pointer events, so its
+             own tooltip would never open — the one explanation of why it is
+             greyed out would be the one nobody could reach. The wrapper is
+             still hoverable, and the stylesheet takes the disabled button out
+             of the way so the hover lands here. -->
+        <div
+          class="shapeToggle"
+          [matTooltip]="whyNotCircular()"
+          [matTooltipDisabled]="activeSrv.selectedLink.canBeCircular()"
+          [matTooltipShowDelay]="400"
+          matTooltipPosition="above"
         >
-          {{ drawnAsDisc() ? 'Make Bar' : 'Make Circular' }}
-        </button-block>
-        <!-- Said in the panel rather than left to the button's tooltip: a
-             disabled button receives no pointer events, so its tooltip never
-             opens and the one explanation of why it cannot be pressed is the
-             one nobody can reach. -->
-        @if (!activeSrv.selectedLink.canBeCircular()) {
-          <p class="shapeNote">
-            {{ whyNotCircular() }}
-          </p>
-        }
+          <button-block
+            [customIcon]="drawnAsDisc() ? 'make_bar' : 'make_circular'"
+            [disabled]="!activeSrv.selectedLink.canBeCircular()"
+            (click)="mechanismService.toggleLinkCircular()"
+            [tooltip]="
+              drawnAsDisc()
+                ? 'Draw this link as an ordinary bar between its joints.'
+                : 'Draw this link as the disc it sweeps, centred on its fixed pin. Its mass and rotational inertia are unchanged.'
+            "
+          >
+            {{ drawnAsDisc() ? 'Make Bar' : 'Make Circular' }}
+          </button-block>
+        </div>
       </collapsible-subseciton>
       <collapsible-subseciton
         titleLabel="Mass Settings"

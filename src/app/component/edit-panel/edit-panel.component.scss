@@ -212,12 +212,16 @@
 
 }
 
-/* Sits under the control it qualifies — the shape button, or the two derived
-   mass fields — in the legend's own grey, so it reads as the same kind of aside
-   rather than as a warning about a problem. Not scoped to the mass area: the
-   reason a link cannot be drawn as a disc belongs beside the button that is
-   greyed out, and a disabled button takes no pointer events, so its own tooltip
-   is unreachable. */
+/* A disabled button is not a hover target, so the pointer would fall through to
+   nothing and the wrapper's tooltip would never open either. Taking the button
+   out of the way explicitly lets the hover land on the wrapper, which is what
+   carries the explanation. */
+.shapeToggle:has(button:disabled) button {
+  pointer-events: none;
+}
+
+/* Sits under the two derived mass fields it qualifies, in the legend's own grey
+   so it reads as the same aside rather than as a warning about a problem. */
 .shapeNote {
   margin: 6px 0 0;
   font-size: 10.5px;

@@ -63,6 +63,7 @@ import { InputComponent } from '../BLOCKS/input/input.component';
 import { ColorPickerComponent } from '../BLOCKS/color-picker/color-picker.component';
 import { DualButtonComponent } from '../BLOCKS/dual-button/dual-button.component';
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
+import { MatTooltip } from '@angular/material/tooltip';
 
 /**
  * Input Settings unit choices, in the order the picker shows them. The labels
@@ -82,6 +83,7 @@ const INPUT_SPEED_UNITS = [
   imports: [
     PanelSectionCollapsibleComponent,
     TitleBlock,
+    MatTooltip,
     MatIcon,
     SubtitleComponent,
     StateInputComponent,
