@@ -350,6 +350,25 @@ export class PositionSolver {
    * `SAMPLES_PER_STROKE`. Undefined when nothing prismatic is driving.
    */
   static drivenSampleStep?: number;
+  /**
+   * Sample spacing for a revolute input, in radians. One degree, the spacing a
+   * crank has always had -- except when a rocking input turns out to cover
+   * only a few degrees of arc, and the mechanism asks for the same arc cut
+   * finer so its whole cycle is not six frames long (see
+   * Mechanism.findFullMovementPos).
+   */
+  static revoluteSampleStep = Math.PI / 180;
+
+  /**
+   * Whether the crank spacing above is the spacing this mechanism actually
+   * moves by. A driven pin and a driven cylinder each carry a step of their
+   * own, so changing the crank spacing under one of those changes nothing but
+   * the clock -- the arc keeps its old samples while every sample claims to
+   * span less time.
+   */
+  static get stepsByRevoluteSampleStep(): boolean {
+    return this.pinDrive === undefined && this.cylinderDrive === undefined;
+  }
   private static internalTriangleValuesMap = new Map<string, number[]>();
   private static desiredConnectedJointIndicesMap = new Map<string, number[]>();
   private static desiredAnalysisJointMap = new Map<string, string>();
@@ -447,6 +466,7 @@ export class PositionSolver {
     this.solvedPoses = [];
     this.pendingSpan = undefined;
     this.drivenSampleStep = undefined;
+    this.revoluteSampleStep = Math.PI / 180;
     this.stepCount = 0;
     this.unsolvableJoints = [];
     this.unusableCylinderDrive = undefined;
@@ -2369,7 +2389,7 @@ export class PositionSolver {
 
   private static incrementRevInput(inputJoint: Joint, unknownJoint: Joint, angVelDir: boolean) {
     const r = this.jointDistMap.get(inputJoint.id + ',' + unknownJoint.id)!;
-    const increment = angVelDir ? Math.PI / 180.0 : -Math.PI / 180.0;
+    const increment = angVelDir ? this.revoluteSampleStep : -this.revoluteSampleStep;
     const angle = Math.atan2(unknownJoint.y - inputJoint.y, unknownJoint.x - inputJoint.x);
     const x = Math.cos(angle + increment) * r + inputJoint.x;
     const y = Math.sin(angle + increment) * r + inputJoint.y;

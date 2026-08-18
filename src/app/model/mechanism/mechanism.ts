@@ -68,7 +68,14 @@ export class Mechanism {
     ics: InstantCenter[],
     gravity: boolean,
     unit: string,
-    inputAngVel: number
+    inputAngVel: number,
+    // 'adaptive' cuts a rocking input's small arc into a full cycle's worth of
+    // samples; 'degree' holds the crank's classical one-per-degree grid. The
+    // MATLAB verification harness pins 'degree', because its truth tables are
+    // stated row-per-degree and compared one to one -- the solver is the same
+    // either way, so the values it vouches for are the values 'adaptive'
+    // interpolates between.
+    private readonly sampling: 'adaptive' | 'degree' = 'adaptive'
   ) {
     joints.forEach((j) => {
       this._joints[0].push(this.cloneJointAt(j, j.x, j.y));
@@ -361,7 +368,10 @@ export class Mechanism {
     return 3 * (N - 1) - 2 * J1 - J2;
   }
 
-  private findFullMovementPos(inputAngVel: number) {
+  private findFullMovementPos(inputAngVel: number, revoluteStep: number = Math.PI / 180) {
+    // The loop below flips inputAngVel at each reversal; a re-solve has to
+    // start from the speed that was asked for, not the one the loop ended on.
+    const requestedAngVel = inputAngVel;
     let simForward = true;
     let falseTwice = 0;
     let inputAngVelDirection = inputAngVel > 0;
@@ -380,6 +390,8 @@ export class Mechanism {
     let reversals = 0;
     const angularSpeed = Math.abs(inputAngVel);
     PositionSolver.resetStaticVariables();
+    // After the reset, which is what puts the default back.
+    PositionSolver.revoluteSampleStep = revoluteStep;
     PositionSolver.determineJointOrder(this.joints[0], this.links[0]);
     // Before anything is measured from t = 0, put t = 0 on its own constraints.
     PositionSolver.settleInitialPose(this.joints[0]);
@@ -397,7 +409,7 @@ export class Mechanism {
     // frames and a long one in six hundred. Anything else prismatic keeps the
     // fixed step, having no end of travel to divide.
     const sampleStep = revoluteInput
-      ? Math.PI / 180
+      ? revoluteStep
       : (PositionSolver.drivenSampleStep ?? PRISMATIC_INPUT_STEP);
     // Time always moves forward, including across a rocking mechanism's
     // direction reversal. At zero speed retain finite sample coordinates so
@@ -594,6 +606,80 @@ export class Mechanism {
         }
         this._cycleGap = Number.isFinite(nearest) ? nearest / MODEL_SCALE : undefined;
         this.setMechanismInvalid('cycle-never-closes');
+        return;
+      }
+    }
+
+    // A rocking input covers only its own arc, and a degree per sample cuts a
+    // small arc into almost nothing: a linkage that swings eight degrees out
+    // and back was a cycle of some thirty frames, so the scrubber jumped and
+    // the graphs were drawn between a handful of points. The arc is only known
+    // once it has been walked, so walk it at crank spacing first, then cut the
+    // same arc into the sample count a full crank turn would have had and walk
+    // it again. One refinement, never a coarsening, and never for a crank:
+    // a full revolution already has its 360, and the MATLAB verification
+    // tables are stated at exactly that spacing.
+    if (
+      this.sampling === 'adaptive' &&
+      revoluteInput &&
+      // Only when the crank spacing is what this mechanism moves by: a driven
+      // pin steps by its own field, so re-solving it with a finer crank
+      // spacing repeats the identical arc under a 58-times-faster clock.
+      PositionSolver.stepsByRevoluteSampleStep &&
+      reversals >= 2 &&
+      revoluteStep === Math.PI / 180
+    ) {
+      const samples = this._joints.length - 1;
+      const TARGET_SAMPLES = 360;
+      // Sixty-four cuts per degree matches the boundary solver's own halving
+      // cap, and keeps every sample's motion far above the four decimals a
+      // solved position is held to.
+      const FINEST = Math.PI / 180 / 64;
+      if (samples > 0 && samples < TARGET_SAMPLES * (2 / 3)) {
+        const refined = Math.max((revoluteStep * samples) / TARGET_SAMPLES, FINEST);
+        // The coarse cycle is kept in hand, because the fine one is not
+        // guaranteed to be the same cycle: a limit is wherever the solver
+        // failed, and a failure at one degree is sometimes a fold too sharp
+        // for that seed rather than a place the linkage cannot pass. A finer
+        // step walks through such a fold and out into arc the coarse pass
+        // never saw -- the honest response to which is not to wander until
+        // the frame cap calls the whole mechanism broken, but to keep the
+        // cycle that did close.
+        const coarse = {
+          joints: this._joints.slice(),
+          links: this._links.slice(),
+          forces: this._forces.slice(),
+          timeNum: this._timeNum.slice(),
+          speeds: this._inputAngularVelocities.slice(),
+          // setMechanismInvalid clears the loops with the frames, and the
+          // loops were found by the caller before any of this began.
+          loops: this._requiredLoops.slice(),
+        };
+        this._joints.length = 1;
+        this._links.length = 1;
+        this._forces.length = 1;
+        this._timeNum.length = 0;
+        // Back to its seed entry, not to nothing: the first speed is pushed by
+        // the constructor before this function ever runs, so it is the one
+        // entry a re-entry will not put back -- and without it the array runs
+        // one short of the frames, and the last sample of every refined cycle
+        // solves against an undefined speed.
+        this._inputAngularVelocities.length = 1;
+        this.findFullMovementPos(requestedAngVel, refined);
+        if (!this.mechanismValid) {
+          this._joints = coarse.joints;
+          this._links = coarse.links;
+          this._forces = coarse.forces;
+          this._timeNum = coarse.timeNum;
+          this._inputAngularVelocities = coarse.speeds;
+          this._requiredLoops = coarse.loops;
+          this.mechanismValid = true;
+          this._failure = undefined;
+          this._cycleGap = undefined;
+          // The abandoned pass also leaves its spacing in the solver's
+          // static, where the drive-state capture that follows would read it.
+          PositionSolver.revoluteSampleStep = revoluteStep;
+        }
         return;
       }
     }

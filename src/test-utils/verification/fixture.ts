@@ -123,17 +123,23 @@ export interface BuiltMechanism {
  */
 const SOLVING_OBJECT_SCALE = 1 * MODEL_SCALE;
 
-export function buildMechanism(fixture: MechanismFixture): BuiltMechanism {
+export function buildMechanism(
+  fixture: MechanismFixture,
+  sampling: 'adaptive' | 'degree' = 'degree'
+): BuiltMechanism {
   const previousScale = SettingsService.objectScale;
   SettingsService._objectScale.next(SOLVING_OBJECT_SCALE);
   try {
-    return buildMechanismNow(fixture);
+    return buildMechanismNow(fixture, sampling);
   } finally {
     SettingsService._objectScale.next(previousScale);
   }
 }
 
-function buildMechanismNow(fixture: MechanismFixture): BuiltMechanism {
+function buildMechanismNow(
+  fixture: MechanismFixture,
+  sampling: 'adaptive' | 'degree' = 'degree'
+): BuiltMechanism {
   // ColorService registers itself as a static singleton that RealLink depends
   // on; SettingsService.objectScale is used when forces render their SVG.
   if (!ColorService.instance) {
@@ -263,7 +269,11 @@ function buildMechanismNow(fixture: MechanismFixture): BuiltMechanism {
     [],
     fixture.gravity ?? false,
     'm',
-    fixture.inputAngVel
+    fixture.inputAngVel,
+    // The MATLAB tables are stated one row per degree of crank and compared
+    // one to one, so this harness defaults to the grid they are stated on;
+    // the specs that exercise adaptive sampling ask for it by name.
+    sampling
   );
   return { mechanism, joints, links, forces, fixture };
 }
