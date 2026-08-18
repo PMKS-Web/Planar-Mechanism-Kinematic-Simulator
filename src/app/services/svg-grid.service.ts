@@ -507,12 +507,36 @@ export class SvgGridService {
       this.settingsService.tempGridDisable = false;
       return;
     }
+    const restoreScenery = this.hideSceneryWhileMeasuring();
     this.panZoomObject.updateBBox(); // Update viewport bounding box
+    restoreScenery();
     this.settingsService.tempGridDisable = false;
     if (animate) NewGridComponent.instance.enableGridAnimationForThisAction();
     this.panZoomObject.fit();
     this.panZoomObject.center();
     this.zoomOut();
+  }
+
+  /**
+   * Take the background image out of the box this fit is about to measure.
+   *
+   * `tempGridDisable` is meant to do this in the template, but afterNextRender
+   * can land before Angular has acted on the flag -- which went unnoticed while
+   * the only thing it hid was the grid ruling, drawn to the viewport and so
+   * never bigger than the box anyway. A background image is as big as the user
+   * made it, and a hundred-centimetre photograph got framed instead of the
+   * linkage. Hidden straight on the element, so it is gone by the next
+   * statement rather than by the next render.
+   *
+   * Returns the undo, to be called once the measurement is taken.
+   */
+  private hideSceneryWhileMeasuring(): () => void {
+    const layers = ['backgroundImageHolder', 'backgroundImageHandles', 'backgroundImageGrips']
+      .map((id) => document.getElementById(id))
+      .filter((node): node is HTMLElement => node !== null);
+    const was = layers.map((node) => node.style.display);
+    layers.forEach((node) => (node.style.display = 'none'));
+    return () => layers.forEach((node, index) => (node.style.display = was[index]));
   }
 
   updateObjectScale() {

@@ -1,5 +1,7 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { MODEL_SCALE } from '../model/render-scale';
+import { SettingsService } from './settings.service';
+import { NumberUnitParserService } from './number-unit-parser.service';
 
 /**
  * A picture pinned behind the grid, for building a linkage on top of one.
@@ -19,6 +21,12 @@ export interface BackgroundImage {
   centerY: number;
   /** How wide the picture is drawn, in model units. Height follows the ratio. */
   width: number;
+  /**
+   * How far the picture is turned about its own centre, in radians,
+   * counter-clockwise-positive — the same sense as every other angle in the
+   * app. A photograph is rarely taken square to the mechanism in it.
+   */
+  rotationRad: number;
   /** 0..1. A tracing underlay wants to be visible *through*, not just under. */
   opacity: number;
   /** The name of the file it came from, for the panel to show. */
@@ -28,8 +36,14 @@ export interface BackgroundImage {
 /** The largest file we will read, in bytes. */
 export const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 
-/** Nothing narrower than this is a picture you could trace anything against. */
-const MIN_WIDTH = 0.05 * MODEL_SCALE;
+/**
+ * Nothing narrower than this is a picture you could trace anything against.
+ *
+ * A floor for the corner drag, which can be pulled through zero; a typed width
+ * below it is refused by the panel rather than quietly rounded up here, so the
+ * number in the field is always the number that took effect.
+ */
+export const MIN_WIDTH = 0.05 * MODEL_SCALE;
 
 @Injectable({ providedIn: 'root' })
 export class BackgroundImageService {
@@ -41,6 +55,39 @@ export class BackgroundImageService {
    * version of this that survives a link. The panel says so in as many words.
    */
   readonly image = signal<BackgroundImage | null>(null);
+
+  private settings = inject(SettingsService);
+  private nup = inject(NumberUnitParserService);
+
+  constructor() {
+    // A change of length unit rescales every stored coordinate in the drawing,
+    // so a picture whose placement stayed put would be left at the conversion
+    // factor's worth of wrong size — a linkage traced in centimetres came back
+    // a hundred times too small against its own photograph.
+    //
+    // Watched here rather than patched into the settings panel because a unit
+    // change also arrives by replaying a URL: undo and redo cross one whenever
+    // the step they are undoing did, and both routes come through this subject.
+    let previous = this.settings.lengthUnit.value;
+    this.settings.lengthUnit.subscribe((unit) => {
+      const from = previous;
+      previous = unit;
+      if (from === unit) return;
+      this.rescale(this.nup.convertLength(1, from, unit));
+    });
+  }
+
+  /** Restate the placement in units that are now worth `factor` times as much. */
+  private rescale(factor: number): void {
+    const current = this.image();
+    if (!current || !Number.isFinite(factor) || factor <= 0) return;
+    this.image.set({
+      ...current,
+      centerX: current.centerX * factor,
+      centerY: current.centerY * factor,
+      width: current.width * factor,
+    });
+  }
 
   /** How tall the picture is drawn, in model units — the ratio decides. */
   heightOf(image: BackgroundImage): number {
@@ -60,6 +107,19 @@ export class BackgroundImageService {
    */
   topOf(image: BackgroundImage): number {
     return -image.centerY - this.heightOf(image) / 2;
+  }
+
+  /**
+   * The turn, as an SVG transform about the picture's own centre.
+   *
+   * Negated: the stored angle is counter-clockwise-positive like every other
+   * angle in the app, and SVG's rotate is clockwise-positive because its y
+   * points down. Everything drawn inside this transform can then be laid out
+   * as though the picture were square to the grid.
+   */
+  transformOf(image: BackgroundImage): string {
+    const degrees = (-image.rotationRad * 180) / Math.PI;
+    return `rotate(${degrees}, ${image.centerX}, ${-image.centerY})`;
   }
 
   /**
@@ -91,13 +151,18 @@ export class BackgroundImageService {
       centerX: 0,
       centerY: 0,
       width: Math.max(MIN_WIDTH, fitWidth),
+      rotationRad: 0,
       opacity: 0.5,
       fileName: file.name,
     });
   }
 
   /** Change part of the placement, leaving the picture itself alone. */
-  place(change: Partial<Pick<BackgroundImage, 'centerX' | 'centerY' | 'width' | 'opacity'>>): void {
+  place(
+    change: Partial<
+      Pick<BackgroundImage, 'centerX' | 'centerY' | 'width' | 'rotationRad' | 'opacity'>
+    >
+  ): void {
     const current = this.image();
     if (!current) return;
     this.image.set({

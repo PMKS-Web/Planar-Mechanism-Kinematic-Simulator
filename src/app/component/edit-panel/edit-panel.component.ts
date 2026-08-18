@@ -5,6 +5,7 @@ import {
   OnDestroy,
   OnInit,
   ChangeDetectionStrategy,
+  effect,
   inject,
 } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
@@ -42,7 +43,7 @@ import {
   cylinderSizeOf,
 } from '../../model/cylinder';
 import { NotificationService } from 'src/app/services/notification.service';
-import { BackgroundImageService } from 'src/app/services/background-image.service';
+import { BackgroundImageService, MIN_WIDTH } from 'src/app/services/background-image.service';
 import { NOT_A } from 'src/app/ui-text';
 import { PanelSectionCollapsibleComponent } from '../BLOCKS/panel-section-collapsible/panel-section-collapsible.component';
 import { TitleBlock } from '../BLOCKS/title/title.component';
@@ -216,6 +217,13 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   constructor() {
     //Set the instance to this
     EditPanelComponent.instance = this;
+    // The picture can now be moved and resized on the canvas as well as typed
+    // at, so the fields follow it rather than only leading it. Patched without
+    // emitting, so mirroring a drag cannot loop back into a commit.
+    effect(() => {
+      this.bgImage.image();
+      this.patchBackgroundImageForm();
+    });
   }
 
   //Instance of this
@@ -331,6 +339,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       centerX: [''],
       centerY: [''],
       width: [''],
+      rotation: [''],
       opacity: [''],
     },
     { updateOn: 'blur' }
@@ -1389,11 +1398,37 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     });
 
     this.onDestroySubscriptions.push(
+      this.backgroundImageForm.controls['rotation'].valueChanges.subscribe((val) => {
+        if (!this.bgImage.image()) return;
+        const [ok, value] = this.nup.parseAngleString(
+          val ?? '',
+          this.settingsService.angleUnit.getValue()
+        );
+        if (!ok) {
+          this.notify.refusal('value.angle', NOT_A.angle);
+        } else {
+          this.bgImage.place({
+            rotationRad: this.nup.convertAngle(
+              value,
+              this.settingsService.angleUnit.getValue(),
+              AngleUnit.RADIAN
+            ),
+          });
+        }
+        this.patchBackgroundImageForm();
+      })
+    );
+
+    this.onDestroySubscriptions.push(
       this.backgroundImageForm.controls['opacity'].valueChanges.subscribe((val) => {
         if (!this.bgImage.image()) return;
-        const percent = Number((val ?? '').replace('%', '').trim());
-        if (!Number.isFinite(percent)) {
-          this.notify.refusal('value.opacity', 'Opacity has to be a number from 0 to 100.');
+        const typed = (val ?? '').replace('%', '').trim();
+        const percent = Number(typed);
+        // Emptiness is not zero. Number('') is 0, so a blank field silently
+        // turned the picture invisible -- and then the panel reported 0% as
+        // though that had been asked for.
+        if (typed === '' || !Number.isFinite(percent) || percent < 0 || percent > 100) {
+          this.notify.refusal('bgImage.opacity', 'Opacity has to be a number from 0 to 100.');
         } else {
           this.bgImage.place({ opacity: percent / 100 });
         }
@@ -1552,13 +1587,27 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         centerX: this.nup.formatModelLength(image.centerX, unit),
         centerY: this.nup.formatModelLength(image.centerY, unit),
         width: this.nup.formatModelLength(image.width, unit),
+        rotation: this.nup.formatValueAndUnit(
+          this.nup.convertAngle(
+            image.rotationRad,
+            AngleUnit.RADIAN,
+            this.settingsService.angleUnit.getValue()
+          ),
+          this.settingsService.angleUnit.getValue()
+        ),
         opacity: Math.round(image.opacity * 100).toString(),
       },
       { emitEvent: false }
     );
   }
 
-  /** Commit one length field, or put back the value that is still true. */
+  /**
+   * Commit one length field, or put back the value that is still true.
+   *
+   * A width the picture cannot have is refused rather than silently rounded up
+   * to the minimum: the number left in the field has to be the number that took
+   * effect, or the panel is lying about where the picture is.
+   */
   private commitBackgroundImageLength(
     field: 'centerX' | 'centerY' | 'width',
     raw: string | null
@@ -1570,12 +1619,19 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     );
     if (!ok) {
       this.notify.refusal('value.length', NOT_A.length);
+    } else if (field === 'width' && value < MIN_WIDTH) {
+      this.notify.refusal(
+        'bgImage.width',
+        `A background image has to be at least ${this.nup.formatModelLength(
+          MIN_WIDTH,
+          this.settingsService.lengthUnit.getValue()
+        )} wide.`
+      );
     } else {
       this.bgImage.place({ [field]: value });
     }
     // Either way the field is rewritten from the picture: a rejected entry goes
-    // back to the truth, and an accepted one is reformatted -- and a width may
-    // have been held at the minimum on the way in.
+    // back to the truth, and an accepted one is reformatted.
     this.patchBackgroundImageForm();
   }
 

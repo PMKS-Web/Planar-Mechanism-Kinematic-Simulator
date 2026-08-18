@@ -77,6 +77,16 @@
   white-space: nowrap;
 }
 
+// The note and the two buttons, given the same horizontal padding and the same
+// gap a collapsible subsection gives its fields -- written out flat they ran to
+// the panel's own edges and sat flush against each other.
+.bgActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 15px 12px;
+}
+
 // The one thing about this feature a user cannot discover by trying it: the
 // picture is not in the link they are about to share. Same quiet grey as the
 // other read-only notes in this panel.
@@ -86,7 +96,7 @@
   background: #f0f1f5;
   border-radius: 4px;
   padding: 8px 10px;
-  margin: 0 0 10px;
+  margin: 0;
   line-height: 17px;
   text-wrap: pretty;
 }

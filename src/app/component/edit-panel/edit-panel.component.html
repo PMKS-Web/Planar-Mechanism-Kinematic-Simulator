@@ -84,6 +84,14 @@
             tooltip="How wide the picture is drawn. The height follows, so the picture keeps its proportions."
             >Image Width
           </input-block>
+          <!-- A photograph is rarely taken square to the mechanism in it. -->
+          <input-block
+            [formGroup]="backgroundImageForm"
+            _formControl="rotation"
+            wide
+            tooltip="How far the picture is turned about its own centre. A counter-clockwise turn is a positive angle (Right hand rule)."
+            >Rotation
+          </input-block>
           <input-block
             [formGroup]="backgroundImageForm"
             _formControl="opacity"
@@ -92,14 +100,20 @@
             >Opacity
           </input-block>
         </collapsible-subseciton>
-        <div class="bgNote">
-          The picture stays behind the grid and cannot be clicked or dragged. It is not saved in the
-          share link and not covered by undo — reloading the page clears it.
+        <!-- The horizontal padding a collapsible subsection gives its own
+             contents, so the note and the buttons line up with the fields
+             rather than running to the panel's edge. -->
+        <div class="bgActions">
+          <!-- The one thing about this that trying it cannot teach: the picture
+               is not in the link the user is about to share. -->
+          <div class="bgNote">
+            Background images are not saved in the share link — reloading the page clears this one.
+          </div>
+          <button-block icon="check" [click]="saveBackgroundImage.bind(this)">Save</button-block>
+          <button-block color="warn" customIcon="remove" [click]="deleteBackgroundImage.bind(this)"
+            >Delete</button-block
+          >
         </div>
-        <button-block icon="check" [click]="saveBackgroundImage.bind(this)">Save</button-block>
-        <button-block color="warn" customIcon="remove" [click]="deleteBackgroundImage.bind(this)"
-          >Delete</button-block
-        >
       </panel-section>
     }
   }

@@ -33,7 +33,7 @@ import {
 } from '../../model/utils';
 import { Force } from '../../model/force';
 import { NotificationService } from '../../services/notification.service';
-import { BackgroundImageService } from '../../services/background-image.service';
+import { BackgroundImageService, MIN_WIDTH } from '../../services/background-image.service';
 import { CdkContextMenuTrigger } from '@angular/cdk/menu';
 import { MatDialog } from '@angular/material/dialog';
 import { TouchscreenWarningComponent } from '../MODALS/touchscreen-warning/touchscreen-warning.component';
@@ -110,6 +110,9 @@ export interface SlotStackItem {
 }
 import introJs from 'intro.js';
 import { SvgArrowComponent } from '../svg-arrow/svg-arrow.component';
+
+/** Which corner of the tracing underlay a resize gesture is holding. */
+type BackgroundImageCorner = 'tl' | 'tr' | 'bl' | 'br';
 
 @Component({
   selector: 'app-new-grid',
@@ -679,14 +682,186 @@ export class NewGridComponent implements OnDestroy {
    * analysis modes replace it, and playback covers it with the stop-the-
    * animation placeholder. An outline for controls that are not on screen is a
    * mark nobody can explain.
+   *
+   * The last one is not about the panel at all. `tempGridDisable` is the flag
+   * "Fit to zoom" sets while it measures the drawing, and an outline the size
+   * of the picture counts towards that box exactly as the picture would -- the
+   * fit framed a hundred-centimetre photograph and left the linkage too small
+   * to work on.
    */
   editingBackgroundImage(): boolean {
     return (
       this.activeObjService.objType === 'BackgroundImage' &&
       !this.tabService.isAnalysisMode() &&
       !this.mechanismSrv.isPlaying &&
-      this.mechanismSrv.mechanismTimeStep === 0
+      this.mechanismSrv.mechanismTimeStep === 0 &&
+      !this.settings.tempGridDisable
     );
+  }
+
+  /** Half a centimetre of screen, whatever the zoom: a grabbable corner. */
+  backgroundImageHandleSize(): number {
+    return this.svgGrid.scaleWithZoom(10);
+  }
+
+  /** How far above the top edge the turn handle stands, at any zoom. */
+  backgroundImageRotateReach(): number {
+    return this.svgGrid.scaleWithZoom(34);
+  }
+
+  /**
+   * The four corners, in SVG coordinates, each with the cursor that says which
+   * way it pulls.
+   */
+  backgroundImageHandles(): { id: BackgroundImageCorner; x: number; y: number; cursor: string }[] {
+    const image = this.bgImage.image();
+    if (!image) return [];
+    const left = this.bgImage.leftOf(image);
+    const top = this.bgImage.topOf(image);
+    const right = left + image.width;
+    const bottom = top + this.bgImage.heightOf(image);
+    return [
+      { id: 'tl', x: left, y: top, cursor: 'nwse-resize' },
+      { id: 'tr', x: right, y: top, cursor: 'nesw-resize' },
+      { id: 'bl', x: left, y: bottom, cursor: 'nesw-resize' },
+      { id: 'br', x: right, y: bottom, cursor: 'nwse-resize' },
+    ];
+  }
+
+  /**
+   * The gesture in flight on the picture, if there is one.
+   *
+   * `stopPropagation` on the press is what keeps svg-pan-zoom out of it — the
+   * library binds its own handler to the canvas root, so a press that reaches
+   * it starts a pan under the drag. The state lives here rather than in
+   * DragStateService's enums because moving scenery is not an edit: it earns no
+   * rebuild and no undo entry.
+   */
+  private bgDrag?: {
+    corner?: BackgroundImageCorner;
+    /** For a move: model-space offset from the pointer to the picture's centre. */
+    grabOffset?: Coord;
+    /** For a resize: the corner that stays where it is, in model coordinates. */
+    anchor?: Coord;
+    /** For a turn: the angle the hand grabbed at, less the picture's own. */
+    grabAngleRad?: number;
+  };
+
+  startBackgroundImageMove(event: PointerEvent): void {
+    const image = this.bgImage.image();
+    if (!image || !this.editingBackgroundImage()) return;
+    event.stopPropagation();
+    const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
+    this.bgDrag = { grabOffset: new Coord(image.centerX - at.x, image.centerY - at.y) };
+    this.dragState.press();
+    this.dragState.beginDraggingBackgroundImage();
+  }
+
+  /**
+   * How far along the picture's own axes a corner sits from its centre: +1 to
+   * the right and up in the picture's frame, whatever the picture is turned to.
+   */
+  private cornerSigns(corner: BackgroundImageCorner): { alongX: number; alongY: number } {
+    return {
+      alongX: corner === 'tr' || corner === 'br' ? 1 : -1,
+      alongY: corner === 'tl' || corner === 'tr' ? 1 : -1,
+    };
+  }
+
+  startBackgroundImageResize(event: PointerEvent, corner: BackgroundImageCorner): void {
+    const image = this.bgImage.image();
+    if (!image || !this.editingBackgroundImage()) return;
+    event.stopPropagation();
+    // The opposite corner is what the drag pivots on, and it is held in world
+    // coordinates: the resize moves the centre, and the picture may be turned,
+    // so an anchor remembered in the picture's own frame would not stay put.
+    const { alongX, alongY } = this.cornerSigns(corner);
+    const axes = this.backgroundImageAxes(image);
+    const halfHeight = this.bgImage.heightOf(image) / 2;
+    this.bgDrag = {
+      corner,
+      anchor: new Coord(
+        image.centerX - alongX * (image.width / 2) * axes.u.x - alongY * halfHeight * axes.v.x,
+        image.centerY - alongX * (image.width / 2) * axes.u.y - alongY * halfHeight * axes.v.y
+      ),
+    };
+    this.dragState.press();
+    this.dragState.beginDraggingBackgroundImage();
+  }
+
+  startBackgroundImageRotate(event: PointerEvent): void {
+    const image = this.bgImage.image();
+    if (!image || !this.editingBackgroundImage()) return;
+    event.stopPropagation();
+    const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
+    // What the hand grabbed at, less what the picture already is: the drag then
+    // turns the picture with the hand rather than snapping it to the pointer.
+    this.bgDrag = {
+      grabAngleRad: Math.atan2(at.y - image.centerY, at.x - image.centerX) - image.rotationRad,
+    };
+    this.dragState.press();
+    this.dragState.beginDraggingBackgroundImage();
+  }
+
+  /** The picture's own axes in model coordinates: along its width, and up it. */
+  private backgroundImageAxes(image: { rotationRad: number }): { u: Coord; v: Coord } {
+    const cos = Math.cos(image.rotationRad);
+    const sin = Math.sin(image.rotationRad);
+    return { u: new Coord(cos, sin), v: new Coord(-sin, cos) };
+  }
+
+  /**
+   * Follow the pointer for whichever gesture is in flight. Returns whether it
+   * handled the move, so mouseMove can stop before the mechanism's own drags.
+   */
+  private dragBackgroundImage(at: Coord): boolean {
+    const image = this.bgImage.image();
+    if (!this.bgDrag || !image) return false;
+
+    if (this.bgDrag.grabOffset) {
+      this.bgImage.place({
+        centerX: at.x + this.bgDrag.grabOffset.x,
+        centerY: at.y + this.bgDrag.grabOffset.y,
+      });
+      return true;
+    }
+
+    if (this.bgDrag.grabAngleRad !== undefined) {
+      const turned =
+        Math.atan2(at.y - image.centerY, at.x - image.centerX) - this.bgDrag.grabAngleRad;
+      // Quarter turns and the common skews land exactly, which is most of what
+      // squaring a photograph to a grid actually needs. Alt suspends it, the
+      // same key that suspends snapping everywhere else on this canvas.
+      const step = Math.PI / 12; // 15 degrees
+      this.bgImage.place({
+        rotationRad: this.snapSuspended ? turned : Math.round(turned / step) * step,
+      });
+      return true;
+    }
+
+    const anchor = this.bgDrag.anchor!;
+    const ratio = image.naturalHeight / image.naturalWidth;
+    const { alongX, alongY } = this.cornerSigns(this.bgDrag.corner!);
+    const axes = this.backgroundImageAxes(image);
+    // How far the pointer is from the anchor along each of the picture's own
+    // axes. Measuring in the picture's frame is what lets a turned picture
+    // resize by the corner the hand is actually holding.
+    const reach = new Coord(at.x - anchor.x, at.y - anchor.y);
+    const alongWidth = reach.x * axes.u.x + reach.y * axes.u.y;
+    const alongHeight = reach.x * axes.v.x + reach.y * axes.v.y;
+    // Whichever axis the hand pulled further decides the size, so the corner
+    // keeps up with a diagonal drag instead of tracking only one of them.
+    const width = Math.max(MIN_WIDTH, Math.abs(alongWidth), Math.abs(alongHeight) / ratio);
+    const height = width * ratio;
+    // The signs come from which corner is held, not from where the pointer is:
+    // dragged past its anchor, the picture pins at its minimum rather than
+    // flipping to the other side of it.
+    this.bgImage.place({
+      width,
+      centerX: anchor.x + alongX * (width / 2) * axes.u.x + alongY * (height / 2) * axes.v.x,
+      centerY: anchor.y + alongX * (width / 2) * axes.u.y + alongY * (height / 2) * axes.v.y,
+    });
+    return true;
   }
 
   /**
@@ -1161,6 +1336,11 @@ export class NewGridComponent implements OnDestroy {
     this.svgGrid.cursorAt = mousePosInSvg;
 
     this.dragState.notePointerMoved();
+
+    // The picture is scenery, and its gesture owns the pointer outright: no
+    // snapping, no drop candidates, no mechanism state to keep in step.
+    if (this.dragBackgroundImage(mousePosInSvg)) return;
+
     let deltaMouseX = this.mouseLocation.x - this.lastMouseLocation.x;
     let deltaMouseY = this.mouseLocation.y - this.lastMouseLocation.y;
 
@@ -1914,6 +2094,7 @@ export class NewGridComponent implements OnDestroy {
 
   mouseUp($event: MouseEvent) {
     //This is the mouseUp that is called no matter what is clicked on
+    this.bgDrag = undefined;
     this.synthesisClickMode = SynthesisClickMode.NORMAL;
     // The alignment guides belong to the drag that made them.
     this.axisSnapGuides = [];
