@@ -1797,8 +1797,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     this.refreshDerivedMassFields();
   }
 
-
-
   /** Hand a field back to the uniform body, and show what it derives. */
   useUniformBodyMoI(): void {
     this.activeSrv.selectedLink.moiIsCustom = false;
