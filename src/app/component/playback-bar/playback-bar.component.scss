@@ -183,15 +183,11 @@
         background: #eceef5;
       }
 
-      // A shade darker, and the name it is about set a weight heavier. Nothing
-      // added and nothing moved: the two numbers sit in a column of their own
-      // width, so the name growing cannot push a button under the pointer.
+      // A shade darker, and that is the whole of it. Nothing added, nothing
+      // moved -- not even the name's weight, which would reflow the line it
+      // leads for a state the surface under it already says.
       &.selected {
         background: #e9ebf3;
-
-        .mechChip {
-          font-weight: 600;
-        }
       }
     }
   }
