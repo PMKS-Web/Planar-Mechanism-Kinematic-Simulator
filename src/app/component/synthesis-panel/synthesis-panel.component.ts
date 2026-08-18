@@ -8,6 +8,7 @@ import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-bu
 import { NumberUnitParserService } from 'src/app/services/number-unit-parser.service';
 import { SettingsService } from 'src/app/services/settings.service';
 import { SynthesisStatus } from 'src/app/services/synthesis/synthesis-constants';
+import { MODEL_SCALE } from 'src/app/model/render-scale';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { ColorService } from '../../services/color.service';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
@@ -380,20 +381,22 @@ export class SynthesisPanelComponent implements OnInit {
   }
 
   checkQuality(quality: number[]) {
+    // In model units, like the distances it is comparing against.
+    const POSE_REACHED = 0.09 * MODEL_SCALE;
     let positionMatches: string[] = ['Position 1', 'Position 2', 'Position 3'];
-    if (quality[0] >= 0.09 || quality[1] >= 0.09) {
+    if (quality[0] >= POSE_REACHED || quality[1] >= POSE_REACHED) {
       positionMatches[0] = 'No Match';
       this.synthesisBuilder.poses[1].status = SynthesisStatus.INVALID;
     } else {
       this.synthesisBuilder.poses[1].status = SynthesisStatus.VALID;
     }
-    if (quality[3] >= 0.09 || quality[4] >= 0.09) {
+    if (quality[3] >= POSE_REACHED || quality[4] >= POSE_REACHED) {
       positionMatches[1] = 'No Match';
       this.synthesisBuilder.poses[2].status = SynthesisStatus.INVALID;
     } else {
       this.synthesisBuilder.poses[2].status = SynthesisStatus.VALID;
     }
-    if (quality[6] >= 0.09 || quality[7] >= 0.09) {
+    if (quality[6] >= POSE_REACHED || quality[7] >= POSE_REACHED) {
       positionMatches[2] = 'No Match';
       this.synthesisBuilder.poses[3].status = SynthesisStatus.INVALID;
     } else {
@@ -407,6 +410,14 @@ export class SynthesisPanelComponent implements OnInit {
     //get position analysis data
     //joint B, Joint C,
     //compare that with poses
+
+    // Both tolerances a person deals with -- the one typed into the panel and
+    // the 0.09 below -- are lengths in the units the grid is labelled in. Every
+    // distance measured here is between model coordinates, which are those
+    // units times MODEL_SCALE. Comparing the two directly meant a pose counted
+    // as reached only when it was hit to the last decimal place, so all three
+    // marks read "no match" on linkages that pass straight through the poses.
+    const tolerance = qualityOfSyn * MODEL_SCALE;
 
     let quality1_b: number = 999;
     let quality2_b: number = 999;
@@ -456,27 +467,27 @@ export class SynthesisPanelComponent implements OnInit {
       //need to check if exact match
       //need to extract time step.
 
-      if (pos1Value_b < qualityOfSyn && pos1Value_c < qualityOfSyn && index == 1) {
+      if (pos1Value_b < tolerance && pos1Value_c < tolerance && index == 1) {
         quality1_b = pos1Value_b;
         quality1_c = pos1Value_c;
         pos1TimeStep = index;
-      } else if (pos1Value_b < qualityOfSyn && pos1Value_c < qualityOfSyn && index > 1) {
+      } else if (pos1Value_b < tolerance && pos1Value_c < tolerance && index > 1) {
         quality1_b = pos1Value_b;
         quality1_c = pos1Value_c;
         pos1TimeStep = index;
-      } else if (pos2Value_b < qualityOfSyn && pos2Value_c < qualityOfSyn && index == 1) {
+      } else if (pos2Value_b < tolerance && pos2Value_c < tolerance && index == 1) {
         quality2_b = pos2Value_b;
         quality2_c = pos2Value_c;
         pos2TimeStep = index;
-      } else if (pos2Value_b < qualityOfSyn && pos2Value_c < qualityOfSyn && index > 1) {
+      } else if (pos2Value_b < tolerance && pos2Value_c < tolerance && index > 1) {
         quality2_b = pos2Value_b;
         quality2_c = pos2Value_c;
         pos2TimeStep = index;
-      } else if (pos3Value_b < qualityOfSyn && pos3Value_c < qualityOfSyn && index == 1) {
+      } else if (pos3Value_b < tolerance && pos3Value_c < tolerance && index == 1) {
         quality3_b = pos3Value_b;
         quality3_c = pos3Value_c;
         pos3TimeStep = index;
-      } else if (pos3Value_b < qualityOfSyn && pos3Value_c < qualityOfSyn && index > 1) {
+      } else if (pos3Value_b < tolerance && pos3Value_c < tolerance && index > 1) {
         quality3_b = pos3Value_b;
         quality3_c = pos3Value_c;
         pos3TimeStep = index;
@@ -509,15 +520,15 @@ export class SynthesisPanelComponent implements OnInit {
             Math.pow(jointC_x - posCoords[5].x, 2) + Math.pow(jointC_y - posCoords[5].y, 2)
           );
 
-          if (pos1Value_b < qualityOfSyn && pos1Value_c < qualityOfSyn) {
+          if (pos1Value_b < tolerance && pos1Value_c < tolerance) {
             quality1_b = pos1Value_b;
             quality1_c = pos1Value_c;
             pos1TimeStep = index - 0.5;
-          } else if (pos2Value_b < qualityOfSyn && pos2Value_c < qualityOfSyn) {
+          } else if (pos2Value_b < tolerance && pos2Value_c < tolerance) {
             quality2_b = pos2Value_b;
             quality2_c = pos2Value_c;
             pos2TimeStep = index - 0.5;
-          } else if (pos3Value_b < qualityOfSyn && pos3Value_c < qualityOfSyn) {
+          } else if (pos3Value_b < tolerance && pos3Value_c < tolerance) {
             quality3_b = pos3Value_b;
             quality3_c = pos3Value_c;
             pos3TimeStep = index - 0.5;
