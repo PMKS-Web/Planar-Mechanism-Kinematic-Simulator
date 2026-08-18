@@ -389,9 +389,30 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   analysisGap: { failed: number; total: number; firstSeconds: number; mechIndex: number } | null =
     null;
 
+  /**
+   * One hole is "the position"; several are shown by naming the one the
+   * button actually goes to — the first — so the jump has no surprise in it.
+   */
+  get gapShowLabel(): string {
+    const gap = this.analysisGap;
+    if (!gap) return '';
+    return gap.failed === 1
+      ? 'Show position'
+      : `Show first (${formatTimeLabel(gap.firstSeconds)} s)`;
+  }
+
   showGapPosition(): void {
     if (!this.analysisGap) return;
-    this.mechanismService.seekMechanism(this.analysisGap.mechIndex, this.analysisGap.firstSeconds);
+    const service = this.mechanismService;
+    // A seek keeps the playback state, so pressed mid-animation it would sail
+    // straight past the pose it names. Standing at the pose IS the point.
+    if (service.isPlaying) {
+      service.animate(service.mechanismTimeStep, false);
+    }
+    if (service.isMechanismPlaying(this.analysisGap.mechIndex)) {
+      service.toggleMechanismPlaying(this.analysisGap.mechIndex);
+    }
+    service.seekMechanism(this.analysisGap.mechIndex, this.analysisGap.firstSeconds);
   }
 
   loading: boolean = false;
@@ -756,6 +777,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     const velAngUnit = '(' + this.getUnitStr(this.settingsService.angleUnit.value) + '/s)';
     const accAngUnit = '(' + this.getUnitStr(this.settingsService.angleUnit.value) + '/s²)';
     this.analysisDiagnostic = null;
+    // Only the force branch writes the gap, so a kinematic graph would
+    // otherwise inherit the banner from the force graph shown before it.
+    this.analysisGap = null;
     switch (analysis) {
       case 'force':
         switch (mechProp) {
@@ -964,7 +988,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
         ? null
         : (result.diagnostic ??
           (mechProp === 'Joint Forces'
-            ? 'This point is internal to one welded body and has no independent joint reaction.'
+            ? 'Only one part meets this joint, so there is no force to graph here.'
             : 'Input effort is unavailable for this mechanism.'));
       return [[datum_X, datum_Y, datum_Z], categories];
     }

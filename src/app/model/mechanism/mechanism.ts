@@ -438,9 +438,20 @@ export class Mechanism {
     // fraction of its stroke happened to lie on one side of where it was drawn.
     // The cycle is closed only once both limits have been reached and the
     // mechanism is home again.
+    // One revolution closes most cycles, but not every one: a rod that passes
+    // through tangency with its slot comes back on the other assembly branch,
+    // so after a full turn of the crank the block is across the slot from
+    // where it started. Its true period is two revolutions — out on one
+    // branch, home on the other. Watching only the reference joint missed
+    // this (the crank pin is home; the block is not), and the animation
+    // teleported at the wrap.
+    let revolutionsToClose = 1;
+    // One-shot: an abandoned extension rewinds to the very pose that asked for
+    // it, and without this it would ask again forever.
+    let extensionAbandoned = false;
     const cycleIncomplete = () =>
       revoluteInput && reversals === 0
-        ? currentTimeStamp < STEPS_PER_REVOLUTION
+        ? currentTimeStamp < STEPS_PER_REVOLUTION * revolutionsToClose
         : reversals < 2 || xDiff > TOLERANCE || yDiff > TOLERANCE;
 
     while (!simForward || currentTimeStamp === 0 || cycleIncomplete()) {
@@ -526,6 +537,15 @@ export class Mechanism {
         curTimeNum = curTimeNum + timeNumIncrement;
         this._timeNum.push(curTimeNum);
         this._inputAngularVelocities.push(inputAngVel);
+      } else if (revolutionsToClose === 2 && currentTimeStamp >= STEPS_PER_REVOLUTION) {
+        // The second revolution could not be solved through. Fall back to the
+        // one-revolution cycle and its warned seam rather than losing a
+        // mechanism the old behavior kept.
+        this.trimToSample(STEPS_PER_REVOLUTION);
+        currentTimeStamp = STEPS_PER_REVOLUTION;
+        curTimeNum = this._timeNum[currentTimeStamp];
+        revolutionsToClose = 1;
+        extensionAbandoned = true;
       } else {
         if ((!simForward && currentTimeStamp === 0) || falseTwice === 2) {
           //If we are here, the mechnism is in a toggle point
@@ -547,6 +567,18 @@ export class Mechanism {
       yDiff = Math.abs(
         startingPositionY - roundNumber(this._joints[currentTimeStamp][desiredJointIndex].y, 2)
       );
+      // The whole drawing has to be home, not just the reference joint, before
+      // the first revolution is allowed to be the whole cycle.
+      if (
+        revoluteInput &&
+        reversals === 0 &&
+        revolutionsToClose === 1 &&
+        !extensionAbandoned &&
+        currentTimeStamp === STEPS_PER_REVOLUTION &&
+        this.seamGapAt(currentTimeStamp) > this.seamTolerance()
+      ) {
+        revolutionsToClose = 2;
+      }
       if (currentTimeStamp === 750) {
         // How close it ever came to its starting pose, skipping the first few
         // frames where it is trivially still there. setMechanismInvalid wipes
@@ -566,20 +598,72 @@ export class Mechanism {
       }
     }
 
-    // Pin the closing sample to the analytic period 2*pi/|w| rather than to 360
-    // accumulated float additions, so the reported cycle time scales exactly with
-    // input speed and the last sample lines up with the first.
+    // An extension that ran its full second revolution and is still not home
+    // bought nothing: keep the one-revolution cycle the old behavior kept.
+    if (
+      revoluteInput &&
+      reversals === 0 &&
+      revolutionsToClose === 2 &&
+      this.seamGapAt(currentTimeStamp) > this.seamTolerance()
+    ) {
+      this.trimToSample(STEPS_PER_REVOLUTION);
+      currentTimeStamp = STEPS_PER_REVOLUTION;
+      revolutionsToClose = 1;
+    }
+
+    // Pin the closing sample to the analytic period rather than to hundreds of
+    // accumulated float additions, so the reported cycle time scales exactly
+    // with input speed and the last sample lines up with the first.
     if (revoluteInput && reversals === 0 && angularSpeed > Number.EPSILON) {
-      this._timeNum[this._timeNum.length - 1] = (2 * Math.PI) / angularSpeed;
-      // Closing at a fixed 360 steps assumes assembly-mode tracking held all the
-      // way around; if it did not, the cycle no longer ends where it began and
-      // the seam would otherwise be silent.
-      if (xDiff > TOLERANCE || yDiff > TOLERANCE) {
+      this._timeNum[this._timeNum.length - 1] = (revolutionsToClose * 2 * Math.PI) / angularSpeed;
+      // Closing at a fixed step count assumes assembly-mode tracking held all
+      // the way around; if it did not, the cycle no longer ends where it began
+      // and the seam would otherwise be silent.
+      const seam = this.seamGapAt(currentTimeStamp);
+      if (seam > this.seamTolerance()) {
         console.warn(
-          `Cycle did not close: after one input revolution the reference joint is off by (${xDiff}, ${yDiff})`
+          `Cycle did not close: after ${revolutionsToClose} input revolution(s) the drawing is off by ${seam}`
         );
       }
     }
+  }
+
+  /** Drop precomputed samples past `lastSample`, keeping 0..lastSample. */
+  private trimToSample(lastSample: number): void {
+    this._joints.length = lastSample + 1;
+    this._links.length = lastSample + 1;
+    this._forces.length = lastSample + 1;
+    this._timeNum.length = lastSample + 1;
+    this._inputAngularVelocities.length = lastSample + 1;
+  }
+
+  /** How far the furthest joint stands from its starting position at `sample`. */
+  private seamGapAt(sample: number): number {
+    const start = this._joints[0];
+    const now = this._joints[sample];
+    if (!now || now.length !== start.length) return Infinity;
+    let gap = 0;
+    for (let index = 0; index < start.length; index++) {
+      gap = Math.max(gap, Math.hypot(now[index].x - start[index].x, now[index].y - start[index].y));
+    }
+    return gap;
+  }
+
+  /**
+   * A seam wide enough to mean "different pose", not solver noise.
+   *
+   * Relative to the drawing's own size because coordinates arrive at whatever
+   * scale the caller drew in: solved positions are held to four decimals, so
+   * noise is orders below a thousandth of the drawing while a branch swap is
+   * on the order of a link length.
+   */
+  private seamTolerance(): number {
+    const start = this._joints[0];
+    let extent = 0;
+    for (const joint of start) {
+      extent = Math.max(extent, Math.abs(joint.x), Math.abs(joint.y));
+    }
+    return Math.max(extent, 1) * 1e-3;
   }
 
   /** Seconds spanned by one full traversal of the precomputed motion. */

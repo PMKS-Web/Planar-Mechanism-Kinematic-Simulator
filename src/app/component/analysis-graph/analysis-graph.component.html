@@ -6,7 +6,7 @@
   >
     <mat-icon class="gapIcon">warning_amber</mat-icon>
     <span>No solution at {{ gap.failed }} of {{ gap.total }} positions</span>
-    <button class="gapShow" (click)="showGapPosition()">Show them</button>
+    <button class="gapShow" (click)="showGapPosition()">{{ gapShowLabel }}</button>
   </div>
 }
 @if (analysisDiagnostic) {

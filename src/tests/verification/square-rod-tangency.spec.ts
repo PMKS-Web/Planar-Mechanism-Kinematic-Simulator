@@ -32,7 +32,25 @@ describe('a slider-crank whose rod comes square to its guide', () => {
   /** How high the crank pin rides above the guide at each sample. */
   const heights = Array.from({ length: samples }, (_, t) => at(t, 'B').y);
   /** The sample the rod stands up on: the pin's height is greatest there. */
-  const tangency = heights.indexOf(Math.max(...heights));
+  const tangency = heights.slice(0, 361).indexOf(Math.max(...heights.slice(0, 361)));
+  /**
+   * Both stand-ups. Each pass through tangency swaps the assembly branch, so
+   * the block is across the slot after one crank revolution and home after
+   * two -- the cycle is 721 samples with a tangency in each revolution.
+   */
+  const tangencies = [tangency, tangency + 360];
+
+  it('needs two crank revolutions to close, and does close', () => {
+    // One revolution used to be assumed as the whole cycle, and the branch
+    // swap meant frame 360 was nowhere near frame 0: the animation teleported
+    // the block across the slot at every wrap.
+    expect(samples).toBe(721);
+    for (const joint of mechanism.joints[0]) {
+      const last = at(samples - 1, joint.id);
+      const gap = Math.hypot(last.x - joint.x, last.y - joint.y);
+      expect(gap, `joint ${joint.id} is not home at the seam`).toBeLessThan(1e-2);
+    }
+  });
 
   it('turns all the way round, through the pose rather than stopping at it', () => {
     expect(samples).toBeGreaterThan(300);
@@ -40,8 +58,10 @@ describe('a slider-crank whose rod comes square to its guide', () => {
     // started on it, would exercise nothing.
     expect(tangency).toBeGreaterThan(20);
     expect(tangency).toBeLessThan(samples - 20);
-    // And it really is the tangency: the rod reaches exactly to the guide.
-    expect(Math.abs(heights[tangency] - ROD)).toBeLessThan(2e-3);
+    // And both really are the tangency: the rod reaches exactly to the guide.
+    for (const pass of tangencies) {
+      expect(Math.abs(heights[pass] - ROD)).toBeLessThan(2e-3);
+    }
   });
 
   it('keeps the rod rigid and the slider on its guide', () => {
@@ -71,15 +91,16 @@ describe('a slider-crank whose rod comes square to its guide', () => {
   it('matches the closed form, swapping branch where the roots meet', () => {
     // s = r cos(theta) +/- sqrt(rod^2 - h^2), h the pin's height above the
     // guide. Which sign is not a free choice and not a fitted parameter: the
-    // slider crosses the foot of the perpendicular at the tangency, so it comes
-    // out on the other root, and the sign flips there and nowhere else.
+    // slider crosses the foot of the perpendicular at each tangency, so it
+    // comes out on the other root, and the sign flips there and nowhere else
+    // -- minus between the two stand-ups, plus outside them.
     for (let t = 1; t < samples; t++) {
       const a = at(t, 'A');
       const b = at(t, 'B');
       const theta = Math.atan2(b.y - a.y, b.x - a.x);
       const height = SQUARE_ROD_OFFSET + SQUARE_ROD_CRANK * Math.sin(theta);
       const reach = Math.sqrt(Math.max(0, ROD * ROD - height * height));
-      const sign = t <= tangency ? 1 : -1;
+      const sign = t <= tangencies[0] || t > tangencies[1] ? 1 : -1;
       const expected = SQUARE_ROD_CRANK * Math.cos(theta) + sign * reach;
 
       // The bound is derived rather than chosen, because the formula is
@@ -91,6 +112,32 @@ describe('a slider-crank whose rod comes square to its guide', () => {
       // later. A single fixed tolerance would either fail at the tangency or
       // say nothing away from it.
       expect(Math.abs(at(t, 'C').x - expected)).toBeLessThan(3e-4 * (1 + height / reach));
+    }
+  });
+
+  it('is force-singular at the tangency poses and nowhere else', () => {
+    // With the rod square to the guide, every force the rod can put on the
+    // block is normal to the slot -- nothing balances a slot-axis load, and
+    // the reactions grow without bound approaching the pose. The merged roots
+    // put C bitwise under B at each sampled tangency, so the equilibrium
+    // matrix is exactly singular at two interior frames of an otherwise good
+    // cycle: the one constructible mechanism known to produce a partial force
+    // series, which is the state the analysis chart's "No solution at N of M
+    // positions" banner exists for. If this ever starts solving, that banner
+    // has lost its last real trigger -- look before deleting it.
+    for (const mode of ['static', 'dynamic'] as const) {
+      const series = mechanism.getForceAnalysis(mode);
+      const failed = series.frames
+        .map((frame, index) => (frame.status !== 'ok' ? index : -1))
+        .filter((index) => index >= 0);
+      expect(failed).toEqual(tangencies);
+      for (const pass of tangencies) {
+        expect(series.frames[pass].status).toBe('singular');
+      }
+      expect(series.successfulFrames).toBe(samples - 2);
+      // Holes, not a verdict on the series: two bad poses must not raise the
+      // whole-series diagnostic.
+      expect(series.diagnostic).toBeUndefined();
     }
   });
 });

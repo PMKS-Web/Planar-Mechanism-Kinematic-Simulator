@@ -55,14 +55,6 @@
     // }
   }
 }
-#analysisWrapper .analysis-message {
-  margin: 8px 0 12px;
-  padding: 12px;
-  border-radius: var(--border-radius);
-  background: #f4f5fb;
-  line-height: 1.4;
-}
-
 // Names the group of graphs under it. It used to be a subtitle-block nudged
 // down 20px, which read as a stray line of text between two cards rather than
 // as a heading for the ones below it.
@@ -85,4 +77,17 @@
   margin: 0 0 12px;
   padding: 0 15px 12px;
   border-bottom: 1px solid #eceef5;
+}
+
+// The help card's hint pattern, worn inside a panel section: the card brings
+// its own padding, a section does not, so the rows take the section's 15px
+// gutter themselves. As padding, not margin — the row is stretched to the
+// section's full width, and a side margin pushed it out the right edge.
+#analysisWrapper panel-section .helpRule {
+  margin: 4px 15px 12px;
+  width: auto;
+}
+#analysisWrapper panel-section .helpHint {
+  margin: 0 0 14px;
+  padding: 0 15px;
 }

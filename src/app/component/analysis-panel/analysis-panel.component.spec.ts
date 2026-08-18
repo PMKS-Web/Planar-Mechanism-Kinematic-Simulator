@@ -28,7 +28,12 @@ async function createPanel(payload: string, selectedId: string, mode: TabID = Ta
   const tabs = { getCurrentTab: () => mode } as unknown as SelectedTabService;
 
   await TestBed.configureTestingModule({
-    imports: [ReactiveFormsModule, MatFormFieldModule, NoopAnimationsModule, AnalysisPanelComponent],
+    imports: [
+      ReactiveFormsModule,
+      MatFormFieldModule,
+      NoopAnimationsModule,
+      AnalysisPanelComponent,
+    ],
     providers: [
       { provide: ActiveObjService, useValue: fixtureData.active },
       { provide: MechanismService, useValue: fixtureData.service },
@@ -62,7 +67,11 @@ async function createPanel(payload: string, selectedId: string, mode: TabID = Ta
 function sectionLabels(fixture: ComponentFixture<AnalysisPanelComponent>): string[] {
   return [...fixture.nativeElement.querySelectorAll('app-analysis-graph-section')].map(
     (section: Element) =>
-      ((section as unknown as { label?: string }).label ?? section.getAttribute('label') ?? '').trim()
+      (
+        (section as unknown as { label?: string }).label ??
+        section.getAttribute('label') ??
+        ''
+      ).trim()
   );
 }
 
@@ -113,13 +122,23 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     fixture.destroy();
   });
 
-  it('explains that an internal welded joint has no independent pin reaction', async () => {
+  it('explains a welded-in joint plainly, and shows nothing else to configure', async () => {
     const { fixture } = await createPanel(LOOPLESS_WELDED_MECHANISM, 'B', TabID.FORCE);
     fixture.detectChanges();
 
     expect(fixture.componentInstance.jointForceRows()).toHaveLength(0);
-    expect(fixture.nativeElement.textContent).toContain('internal to one welded body');
-    expect(fixture.nativeElement.textContent).toContain('no independent pin reaction');
+    const text = fixture.nativeElement.textContent;
+    // "Only one part" covers the tracer on a plain ternary link as well as a
+    // welded-in pin — a joint can have no reaction without a weld anywhere.
+    expect(text).toContain('Only one part meets Joint');
+    expect(text).toContain('Click a joint where separate parts meet');
+    // With no graph to configure, the mode selector and the input-speed
+    // summary would describe things that are not on the panel.
+    expect(text).not.toContain('Force Analysis Type');
+    expect(text).not.toContain('input speed is set');
+    // And it is the help-card hint pattern, not a boxed banner.
+    expect(fixture.nativeElement.querySelector('.helpHint')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.analysis-message')).toBeNull();
     fixture.destroy();
   });
 

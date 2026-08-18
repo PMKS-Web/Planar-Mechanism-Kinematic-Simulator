@@ -90,14 +90,19 @@
     color: mat.m2-get-color-from-palette($primary-palette, 900);
   }
 
+  // Sized like its siblings — the gap strip above the chart and the
+  // placeholder that stands in for one. Left to inherit, this spoke at the
+  // panel's base size out of a 16px-padded box, and read as a headline
+  // rather than as one more quiet note about the chart.
   .analysis-diagnostic {
-    margin: 16px 4px 12px;
-    padding: 16px;
+    margin: 4px 0 8px;
+    padding: 8px 12px;
     border: 1px solid mat.m2-get-color-from-palette($primary-palette, 200);
     border-radius: var(--border-radius);
     background: mat.m2-get-color-from-palette($primary-palette, 50);
     color: mat.m2-get-color-from-palette($primary-palette, 900);
-    line-height: 1.4;
+    font-size: 13px;
+    line-height: 1.5;
   }
 }
 
@@ -112,7 +117,11 @@
   color: #7a5600;
   font-size: 12.5px;
 
-  .gapIcon { font-size: 16px; width: 16px; height: 16px; }
+  .gapIcon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
 
   .gapShow {
     margin-left: auto;

@@ -36,6 +36,8 @@ export interface ForceAnalysisFrame {
   inputEffort?: ForceAnalysisEffort;
   rank: number;
   residual: number;
+  /** Smallest scaled pivot of the solve — how far this pose sat from singular. */
+  minPivot?: number;
   message?: string;
 }
 
@@ -115,10 +117,28 @@ interface LinearSolution {
   values: number[];
   rank: number;
   residual: number;
+  /** Smallest scaled pivot the elimination met — distance from singular. */
+  minPivot: number;
 }
 
 const GRAVITY = 9.80665;
 const MAX_NORMALIZED_RESIDUAL = 1e-8;
+/**
+ * The smallest scaled pivot the elimination accepts before calling the pose
+ * singular.
+ *
+ * A toggle pose reached through exact arithmetic pivots at exactly zero, but
+ * the same pose reached through floating-point trig lands within round-off of
+ * zero — and *which* side of zero differs by browser, because engines round
+ * transcendentals differently at the last bit. Chrome refused the square-rod
+ * tangency frame while Safari "solved" it into 8.5e5 N reactions from a 10 N
+ * load. Refusing anything below this line makes the call deterministic. The
+ * smallest scaled pivot of any healthy solve across the whole fixture corpus
+ * is 3.4e-3, 34x above the line (force-solver.fixture.spec.ts holds every
+ * frame above 1e-3), so frames the sampler lands merely *near* a toggle still
+ * solve, as designed.
+ */
+const SINGULAR_PIVOT_TOLERANCE = 1e-4;
 
 /**
  * Free-body force analysis for the current root topology.
@@ -241,8 +261,7 @@ export class ForceSolver {
       // the status alone can only say "topology".
       diagnostic:
         successfulFrames === 0
-          ? (frames[0]?.message ??
-            this.statusMessage(frames[0]?.status ?? 'unsupported-topology'))
+          ? (frames[0]?.message ?? this.statusMessage(frames[0]?.status ?? 'unsupported-topology'))
           : undefined,
     };
   }
@@ -526,6 +545,7 @@ export class ForceSolver {
       inputEffort,
       rank: solution.rank,
       residual: solution.residual,
+      minPivot: solution.minPivot,
     };
   }
 
@@ -591,9 +611,7 @@ export class ForceSolver {
         // has to appear in the carrier's equilibrium as well or the slot
         // transmits force out of nowhere. Resolved through compounds: a weld
         // may have folded the carrier into a root whose id is not its own.
-        const carrier = candidate.isFloating
-          ? this.rootBody(bodies, candidate.carrier)
-          : undefined;
+        const carrier = candidate.isFloating ? this.rootBody(bodies, candidate.carrier) : undefined;
         if (piston && (candidate.ground || carrier)) {
           reactions.push({
             joint: candidate,
@@ -895,6 +913,7 @@ export class ForceSolver {
     const matrix = A.map((row, index) => [...row, b[index]]);
     const scales = A.map((row) => Math.max(...row.map(Math.abs), 0));
     let rank = 0;
+    let minPivot = Infinity;
 
     for (let column = 0; column < n; column++) {
       let pivotRow = -1;
@@ -906,16 +925,18 @@ export class ForceSolver {
           pivotRow = row;
         }
       }
-      // Near-toggle frames legitimately have extremely small pivots and very
-      // large reactions. Solve them, then let the normalized residual decide
-      // whether the result is usable; reject only an exact/non-finite pivot.
+      // Near-toggle frames legitimately have small pivots and large reactions;
+      // they solve, and the normalized residual judges the result. But a pivot
+      // within SINGULAR_PIVOT_TOLERANCE of zero is a toggle pose seen through
+      // round-off, and which browser's round-off must not decide the answer.
       if (
         pivotRow < 0 ||
         !Number.isFinite(matrix[pivotRow][column]) ||
-        matrix[pivotRow][column] === 0
+        pivotScore < SINGULAR_PIVOT_TOLERANCE
       ) {
         return undefined;
       }
+      minPivot = Math.min(minPivot, pivotScore);
       if (pivotRow !== column) {
         [matrix[column], matrix[pivotRow]] = [matrix[pivotRow], matrix[column]];
         [scales[column], scales[pivotRow]] = [scales[pivotRow], scales[column]];
@@ -958,6 +979,6 @@ export class ForceSolver {
       solutionNorm = Math.max(solutionNorm, Math.abs(values[row]));
     }
     const residual = residualNorm / Math.max(1, matrixNorm * solutionNorm + rhsNorm);
-    return { values, rank, residual };
+    return { values, rank, residual, minPivot };
   }
 }

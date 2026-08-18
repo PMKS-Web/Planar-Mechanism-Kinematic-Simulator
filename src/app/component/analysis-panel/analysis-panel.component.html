@@ -106,7 +106,7 @@
   <!-- Joint Kinematics-->
   @if (validMechanisms() && this.activeSrv.objType == 'Joint') {
     <panel-section id="analysis-panel">
-      <title-block description="{{ inputSummary }} {{ inputEditHint }}">
+      <title-block description="{{ panelDescription }}">
         {{ modeLabel }} for Joint {{ this.activeSrv.selectedJoint.name }}
       </title-block>
       @if (showKinematic) {
@@ -142,20 +142,24 @@
         ></app-analysis-graph-section>
       }
       @if (showForce) {
-        <div class="forceModeRow">
-          <radio-block
-            tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
-            option1="Static (Equilibrium)"
-            option2="In-motion (Dynamic)"
-            [formGroup]="this.forceAnalysisFormGroup"
-            _formControl="mode"
-            >Force Analysis Type
-          </radio-block>
-        </div>
+        <!-- Nothing to graph, so nothing to configure: the note stands alone. -->
+        @if (jointForceHasGraphs) {
+          <div class="forceModeRow">
+            <radio-block
+              tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
+              option1="Static (Equilibrium)"
+              option2="In-motion (Dynamic)"
+              [formGroup]="this.forceAnalysisFormGroup"
+              _formControl="mode"
+              >Force Analysis Type
+            </radio-block>
+          </div>
+        }
         @if (jointForceRows().length === 0) {
-          <div class="analysis-message" role="status">
-            Joint {{ this.activeSrv.selectedJoint.name }} is internal to one welded body and has no
-            independent pin reaction. Select an external or grounded joint to graph a reaction.
+          <div class="helpRule"></div>
+          <div class="helpHint" role="status">
+            <mat-icon>touch_app</mat-icon>
+            <span>Click a joint where separate parts meet, or a grounded one.</span>
           </div>
         }
         @for (row of jointForceRows(); track row.linkId) {
@@ -190,7 +194,7 @@
   <!-- Link Kinematics-->
   @if (validMechanisms() && this.activeSrv.objType == 'Link') {
     <panel-section id="analysis-panel">
-      <title-block description="{{ inputSummary }} {{ inputEditHint }}">
+      <title-block description="{{ panelDescription }}">
         {{ modeLabel }} for {{ selectedBodyLabel }}
       </title-block>
       <!-- <subtitle-block>Kinematics</subtitle-block> -->
@@ -274,19 +278,24 @@
         ></app-analysis-graph-section>
       }
       @if (showForce) {
-        <div class="forceModeRow">
-          <radio-block
-            tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
-            option1="Static (Equilibrium)"
-            option2="In-motion (Dynamic)"
-            [formGroup]="this.forceAnalysisFormGroup"
-            _formControl="mode"
-            >Force Analysis Type
-          </radio-block>
-        </div>
+        <!-- Nothing to graph, so nothing to configure: the note stands alone. -->
+        @if (linkForceHasGraphs) {
+          <div class="forceModeRow">
+            <radio-block
+              tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
+              option1="Static (Equilibrium)"
+              option2="In-motion (Dynamic)"
+              [formGroup]="this.forceAnalysisFormGroup"
+              _formControl="mode"
+              >Force Analysis Type
+            </radio-block>
+          </div>
+        }
         @if (linkForceRows().length === 0) {
-          <div class="analysis-message" role="status">
-            {{ selectedBodyLabel }} has no external joint that carries an independent pin reaction.
+          <div class="helpRule"></div>
+          <div class="helpHint" role="status">
+            <mat-icon>touch_app</mat-icon>
+            <span>Click a part that touches another, or a grounded joint.</span>
           </div>
         }
         @for (row of linkForceRows(); track row.jointId) {

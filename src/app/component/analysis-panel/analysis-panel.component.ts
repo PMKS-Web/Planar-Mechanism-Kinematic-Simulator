@@ -292,6 +292,31 @@ export class AnalysisPanelComponent {
     return this.cachedRows('joint', this.activeSrv.selectedJoint?.id ?? '');
   }
 
+  /** In Force mode, does the selected joint have any graph to offer? */
+  get jointForceHasGraphs(): boolean {
+    return this.jointForceRows().length > 0 || !!this.activeSrv.selectedJoint?.input;
+  }
+
+  /** In Force mode, does the selected link have any graph to offer? */
+  get linkForceHasGraphs(): boolean {
+    return this.linkForceRows().length > 0;
+  }
+
+  /**
+   * The heading's description. A part with nothing to graph gets the cause in
+   * the description and the way out in the hint row below — the speed summary
+   * and the mode selector describe graphs that are not on the panel.
+   */
+  get panelDescription(): string {
+    if (this.showForce && this.activeSrv.objType === 'Joint' && !this.jointForceHasGraphs) {
+      return `Only one part meets Joint ${this.activeSrv.selectedJoint?.name}, so there is no force to graph here.`;
+    }
+    if (this.showForce && this.activeSrv.objType === 'Link' && !this.linkForceHasGraphs) {
+      return `${this.selectedBodyLabel} does not meet another part at any of its joints, so there is no force to graph here.`;
+    }
+    return `${this.inputSummary} ${this.inputEditHint}`;
+  }
+
   /** One row per external joint of the selected link. */
   linkForceRows(): ForceAnalysisRow[] {
     const rows = this.cachedRows('link', this.activeSrv.selectedLink?.id ?? '');
