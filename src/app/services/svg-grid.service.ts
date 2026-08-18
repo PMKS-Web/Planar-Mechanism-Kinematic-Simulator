@@ -166,6 +166,7 @@ export class SvgGridService {
       customEventsHandler: eventsHandler,
     });
     this.guardAgainstStuckPan(root);
+    this.restoreMissingPointerDown(root);
     this.scaleToFitLinkage(false);
   }
 
@@ -266,6 +267,73 @@ export class SvgGridService {
         gestureLive = false;
         // Non-bubbling, so only the listeners on the root see it.
         root.dispatchEvent(new MouseEvent('mouseup', { bubbles: false }));
+      },
+      true
+    );
+  }
+
+  /**
+   * Give back the `pointerdown` Safari owes us after a native menu closes.
+   *
+   * The canvas is driven entirely by pointer events -- the root's own handler
+   * and every joint, link and force binding are `(pointerdown)` -- while
+   * svg-pan-zoom listens for `mousedown`. Normally the pair arrive together and
+   * in that order, so whichever one the gesture belongs to claims it.
+   *
+   * Safari breaks the pair exactly once after dismissing a native `<select>`
+   * popup: the next press arrives as a bare `mousedown` with no `pointerdown`
+   * before it. Traced from the failing gesture, the whole of it:
+   *
+   *     pointerdown SELECT, mousedown SELECT      (popup opens; no release)
+   *     mousedown path#AB                         (no pointerdown!)
+   *     pointerup path#AB, mouseup path#AB
+   *
+   * So the library saw a press the app never did: nothing armed a drag, and the
+   * canvas panned under a cursor that was holding a link. The press after that
+   * is paired again, which is why a click "wakes it up" and hides the cause.
+   *
+   * Rather than teach every binding to accept either event -- and then dedupe
+   * the pair on the browsers that send both -- put the missing event back at
+   * its source. Dispatched during capture, before the mousedown reaches
+   * anything, so handlers still see pointerdown first and in the right order;
+   * every existing binding then works as written.
+   */
+  private restoreMissingPointerDown(root: HTMLElement) {
+    let pressOpened = false;
+    const opened = () => (pressOpened = true);
+    const closed = () => (pressOpened = false);
+    root.addEventListener('pointerdown', opened, true);
+    root.addEventListener('pointerup', closed, true);
+    root.addEventListener('pointercancel', closed, true);
+    // Not every gesture ends in a pointerup -- a release outside the canvas
+    // ends one without it -- so the mouse release clears the flag too.
+    root.addEventListener('mouseup', closed, true);
+    root.addEventListener(
+      'mousedown',
+      (event: MouseEvent) => {
+        if (pressOpened) return;
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        target.dispatchEvent(
+          new PointerEvent('pointerdown', {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            clientX: event.clientX,
+            clientY: event.clientY,
+            screenX: event.screenX,
+            screenY: event.screenY,
+            button: event.button,
+            buttons: event.buttons,
+            ctrlKey: event.ctrlKey,
+            shiftKey: event.shiftKey,
+            altKey: event.altKey,
+            metaKey: event.metaKey,
+            pointerId: 1,
+            pointerType: 'mouse',
+            isPrimary: true,
+          })
+        );
       },
       true
     );
