@@ -1,0 +1,304 @@
+<div class="export">
+  <!-- Three bands. The question, the rule and the count stay put; only the
+       list between them moves; Back and Next are always reachable, however
+       long the drawing is. -->
+  <div class="exportHead">
+    <div class="exportTitle">Export Data</div>
+    <p class="exportLead">{{ lead }}</p>
+
+    <div class="steps">
+      @for (mark of steps; track mark.number) {
+        <div class="step">
+          @if (mark.number < flow.step) {
+            <button class="stepName done" (click)="goTo(mark.number)">
+              <mat-icon>check</mat-icon>{{ mark.number }}. {{ mark.name }}
+            </button>
+          } @else {
+            <span class="stepName" [class.current]="mark.number === flow.step"
+              >{{ mark.number }}. {{ mark.name }}</span
+            >
+          }
+          <span
+            class="stepBar"
+            [class.current]="mark.number === flow.step"
+            [class.done]="mark.number < flow.step"
+          ></span>
+        </div>
+      }
+    </div>
+
+    <!-- Kinematics and forces are different questions about the same cycle, so
+         they get a tab each rather than one list twice as long. -->
+    @if (flow.step === 2 && flow.forcesAvailable()) {
+      <div class="tabs">
+        @for (tab of ['kinematics', 'forces']; track tab) {
+          <button class="tab" [class.on]="flow.tab === tab" (click)="setTab($any(tab))">
+            {{ tab === 'forces' ? 'Forces' : 'Kinematics' }}
+            <span class="tabCount">{{ flow.columnCount($any(tab)) }}</span>
+          </button>
+        }
+      </div>
+    }
+
+    @if (flow.step !== 3) {
+      <div class="countRow">
+        <span class="count">{{ countText }}</span>
+        <span class="spacer"></span>
+        @if (flow.step === 1) {
+          <button class="linkButton" (click)="everything(true)">Select all</button>
+          <span class="dot">·</span>
+          <button class="linkButton" (click)="everything(false)">Select none</button>
+        } @else {
+          <button class="linkButton" (click)="everyColumn(true)">Select all</button>
+          <span class="dot">·</span>
+          <button class="linkButton" (click)="everyColumn(false)">Select none</button>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="exportBody" appScrollShadow>
+    @if (flow.step === 1) {
+      @for (group of groups(); track group.id) {
+        <!-- Each machine's name stays under the head while its own rows pass,
+             so a reader ticking part nineteen still knows whose it is. -->
+        <div class="mechHead">
+          <span class="mechName">{{ group.id }}</span>
+          <span class="mechNote">{{ groupNote(group) }}</span>
+          <span class="spacer"></span>
+          <button class="linkButton small" (click)="flow.setParts(group.parts, true)">All</button>
+          <span class="dot">·</span>
+          <button class="linkButton small" (click)="flow.setParts(group.parts, false)">None</button>
+        </div>
+        <div class="rows">
+          @for (part of group.parts; track part.key) {
+            <button
+              class="pickRow"
+              [class.off]="!part.available"
+              [class.on]="flow.isPicked(part)"
+              [disabled]="!part.available"
+              (click)="flow.togglePart(part)"
+            >
+              <span class="box" [class.ticked]="flow.isPicked(part)">
+                @if (flow.isPicked(part)) {
+                  <mat-icon>check</mat-icon>
+                }
+              </span>
+              <span class="rowName">{{ part.label }}</span>
+              @if (part.note) {
+                <span class="rowNote">{{ part.note }}</span>
+              }
+            </button>
+          }
+        </div>
+        <!-- Why the list looks different from the one the other mode shows. -->
+        @if (groundedHint(group); as hint) {
+          <p class="hint">{{ hint }}</p>
+        }
+      }
+      @if (groups().length === 0) {
+        <p class="empty">
+          Nothing here has been solved yet. A mechanism has to run before it has numbers to give.
+        </p>
+      }
+    }
+
+    @if (flow.step === 2) {
+      @if (flow.tab === 'forces') {
+        <div class="settingRow">
+          <span class="settingName">Analysis type</span>
+          <span class="spacer"></span>
+          <div class="segmented">
+            @for (mode of ['static', 'dynamic']; track mode) {
+              <button
+                [class.on]="flow.forceMode() === mode"
+                (click)="flow.setForceMode($any(mode))"
+              >
+                {{ mode === 'static' ? 'Static' : 'In-motion' }}
+              </button>
+            }
+          </div>
+        </div>
+        <p class="hint">
+          Static holds the mechanism still; In-motion includes the forces of movement.
+        </p>
+      }
+
+      @for (group of flow.columnGroups(); track group.key) {
+        <div class="groupTitle">{{ group.title }}</div>
+        <div class="rows">
+          @for (column of group.columns; track column.key) {
+            <button
+              class="pickRow"
+              [class.on]="flow.isColumnPicked(column)"
+              (click)="flow.toggleColumn(column)"
+            >
+              <span class="box" [class.ticked]="flow.isColumnPicked(column)">
+                @if (flow.isColumnPicked(column)) {
+                  <mat-icon>check</mat-icon>
+                }
+              </span>
+              <span class="rowName">{{ column.label }}</span>
+              <span class="spacer"></span>
+              <span class="rowUnit">{{ column.unit }}</span>
+            </button>
+          }
+        </div>
+      }
+
+      @if (flow.columnGroups().length === 0) {
+        <p class="empty">
+          {{
+            flow.tab === 'forces'
+              ? 'None of the chosen parts carries a reaction this analysis can solve.'
+              : 'Choose a part on the previous step to see what it has to give.'
+          }}
+        </p>
+      }
+
+      <div class="settingRow spaced">
+        <span class="settingName">Components</span>
+        <span class="spacer"></span>
+        <div class="segmented">
+          <button [class.on]="!flow.withMagnitude" (click)="flow.withMagnitude = false">
+            X, Y
+          </button>
+          <button [class.on]="flow.withMagnitude" (click)="flow.withMagnitude = true">
+            + magnitude
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (flow.step === 3) {
+      <div class="formatBlock">
+        <span class="settingName">Format</span>
+        @for (choice of formats; track choice.key) {
+          <button class="formatRow" (click)="flow.format = choice.key">
+            <span class="radio" [class.on]="flow.format === choice.key">
+              @if (flow.format === choice.key) {
+                <span class="pip"></span>
+              }
+            </span>
+            <span class="formatText">
+              <span class="formatName">{{ choice.name }}</span>
+              <span class="formatNote">{{ choice.note }}</span>
+            </span>
+          </button>
+        }
+      </div>
+
+      <div class="settingBlock">
+        @if (flow.format !== 'images') {
+          <div class="settingRow">
+            <span class="settingName">Decimals</span>
+            <span class="spacer"></span>
+            <div class="segmented">
+              @for (choice of decimalChoices; track choice) {
+                <button [class.on]="flow.decimals === choice" (click)="flow.decimals = choice">
+                  {{ decimalLabel(choice) }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        @if (flow.format === 'csv') {
+          <div class="settingRow">
+            <span class="settingName">Files</span>
+            <span class="spacer"></span>
+            <div class="segmented">
+              <button [class.on]="!flow.splitPerPart" (click)="flow.splitPerPart = false">
+                One file
+              </button>
+              <button [class.on]="flow.splitPerPart" (click)="flow.splitPerPart = true">
+                Per part
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (flow.format === 'xlsx') {
+          <div class="settingRow">
+            <span class="settingName">Sheets</span>
+            <span class="spacer"></span>
+            <div class="segmented">
+              <button [class.on]="!flow.splitPerPart" (click)="flow.splitPerPart = false">
+                By analysis
+              </button>
+              <button [class.on]="flow.splitPerPart" (click)="flow.splitPerPart = true">
+                By part
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (flow.format === 'images') {
+          <div class="settingRow">
+            <span class="settingName">Images</span>
+            <span class="spacer"></span>
+            <div class="segmented">
+              <button [class.on]="flow.imageFormat === 'png'" (click)="flow.imageFormat = 'png'">
+                PNG
+              </button>
+              <button [class.on]="flow.imageFormat === 'svg'" (click)="flow.imageFormat = 'svg'">
+                SVG
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (flow.format !== 'report') {
+          <div class="settingRow">
+            <span class="settingName">Name</span>
+            <span class="spacer"></span>
+            <input
+              class="nameField"
+              type="text"
+              [value]="flow.typedName"
+              [placeholder]="flow.defaultName()"
+              (input)="onName($event)"
+            />
+            <span class="extension">{{ flow.extension() }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="summaryCard">
+        <span class="summaryName"
+          >{{ fileName }}{{ flow.format === 'report' ? '' : flow.extension() }}</span
+        >
+        <span class="summaryNote">{{ summaryLine }}</span>
+        @if (flow.selectedColumns('forces').length > 0) {
+          <span class="summaryNote">
+            Every force column is headed
+            {{ flow.forceMode() === 'static' ? 'Static' : 'In-motion' }}, so the file says which
+            analysis it holds.
+          </span>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="exportFoot">
+    @if (flow.step > 1) {
+      <button class="backButton" (click)="back()">
+        <mat-icon>arrow_back</mat-icon>
+        Back
+      </button>
+    }
+    @if (footNote) {
+      <span class="footNote">{{ footNote }}</span>
+    }
+    <span class="spacer"></span>
+    <button class="nextButton" [disabled]="!canGoOn() || working" (click)="next()">
+      @if (flow.step === 3) {
+        <mat-icon>download</mat-icon>
+        {{ working ? 'Writing…' : 'Export' }}
+      } @else {
+        Next
+        <mat-icon>arrow_forward</mat-icon>
+      }
+    </button>
+  </div>
+</div>

@@ -1,0 +1,292 @@
+import { Injectable, inject } from '@angular/core';
+import { ANALYSIS_SERIES_COLORS } from '../../model/analysis-series';
+import { RealJoint } from '../../model/joint';
+import { MechanismService } from '../mechanism.service';
+import { NumberUnitParserService } from '../number-unit-parser.service';
+import { SettingsService } from '../settings.service';
+import { UrlGenerationService } from '../url-generation.service';
+import { ExportCatalogService } from './export-catalog.service';
+import { ExportFlowService } from './export-flow.service';
+import { ExportFile } from './export-model';
+import { ExportPlot, ExportTable, ExportTableService } from './export-table.service';
+import { formatCell, toCsv } from './csv-writer';
+import { toXlsx, sheetNames } from './xlsx-writer';
+import { plotSvg } from './graph-svg';
+import { mechanismSvg } from './mechanism-svg';
+import { ReportSection, reportHtml, reportPages } from './report-html';
+
+const SERIES_COLORS: Record<string, string> = {
+  X: ANALYSIS_SERIES_COLORS.X,
+  Y: ANALYSIS_SERIES_COLORS.Y,
+  Mag: ANALYSIS_SERIES_COLORS.Z,
+};
+
+/**
+ * The chosen export, written out.
+ *
+ * One entry point for four formats, because they differ only in how the same
+ * solved cycle is spelled: a CSV per machine, a workbook of sheets, a picture
+ * per graph, or a report a reader can hand in.
+ */
+@Injectable({ providedIn: 'root' })
+export class ExportWriterService {
+  private flow = inject(ExportFlowService);
+  private tables = inject(ExportTableService);
+  private catalog = inject(ExportCatalogService);
+  private mechanism = inject(MechanismService);
+  private settings = inject(SettingsService);
+  private nup = inject(NumberUnitParserService);
+  private urls = inject(UrlGenerationService);
+
+  /** What the export would produce, for the summary the drawer shows. */
+  summary(): { files: number; columns: number; rows: number; pages: number } {
+    const tables = this.tables.tables();
+    return {
+      files: this.flow.format === 'xlsx' || this.flow.format === 'report' ? 1 : tables.length,
+      columns: tables.reduce((most, table) => Math.max(most, table.heads.length), 0),
+      rows: tables.reduce((most, table) => Math.max(most, table.times.length), 0),
+      pages: tables
+        .filter(
+          (table, at) =>
+            tables.findIndex((one) => one.mechanismIndex === table.mechanismIndex) === at
+        )
+        .reduce(
+          (total, table) =>
+            total +
+            reportPages({
+              plots: table.plots.length,
+              rows: table.times.length,
+              columns: table.heads.length - 1,
+            }),
+          0
+        ),
+    };
+  }
+
+  async run(): Promise<void> {
+    const tables = this.tables.tables();
+    if (tables.length === 0) return;
+    switch (this.flow.format) {
+      case 'xlsx':
+        return this.writeWorkbook(tables);
+      case 'images':
+        return this.writeImages(tables);
+      case 'report':
+        return this.writeReport(tables);
+      default:
+        return this.writeCsv(tables);
+    }
+  }
+
+  private writeCsv(tables: ExportTable[]): void {
+    const stem = this.flow.name();
+    tables.forEach((table, at) =>
+      this.hand({
+        name: `${this.fileStem(stem, table, tables.length, at)}.csv`,
+        mime: 'text/csv;charset=utf-8',
+        text: toCsv(table, this.flow.decimals),
+      })
+    );
+  }
+
+  private writeWorkbook(tables: ExportTable[]): void {
+    this.hand({
+      name: `${this.flow.name()}.xlsx`,
+      mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      bytes: toXlsx(tables, this.flow.decimals),
+    });
+  }
+
+  private async writeImages(tables: ExportTable[]): Promise<void> {
+    const width = 720;
+    const height = 400;
+    for (const table of tables) {
+      for (const plot of table.plots) {
+        const svg = plotSvg(plot, table.times, { width, height, standalone: true });
+        const name = `${this.flow.name()}_${safe(plot.title)}`;
+        if (this.flow.imageFormat === 'svg') {
+          this.hand({ name: `${name}.svg`, mime: 'image/svg+xml', text: svg });
+        } else {
+          this.hand({
+            name: `${name}.png`,
+            mime: 'image/png',
+            bytes: await rasterize(svg, width, height),
+          });
+        }
+      }
+    }
+  }
+
+  /** Every selected machine, one section each, in one printable document. */
+  private writeReport(tables: ExportTable[]): void {
+    const sections = this.flow
+      .mechanismIndexes()
+      .map((index) =>
+        this.section(
+          index,
+          tables.filter((table) => table.mechanismIndex === index)
+        )
+      )
+      .filter((section): section is ReportSection => !!section);
+    if (sections.length === 0) return;
+    const logo = new URL('assets/PMKS_logo.png', document.baseURI).href;
+    print(reportHtml({ logoUrl: logo, sections }));
+  }
+
+  private section(index: number, tables: ExportTable[]): ReportSection | undefined {
+    const table = tables[0];
+    const solved = this.mechanism.mechanisms[index];
+    const group = this.flow.partGroups()[index];
+    if (!table || !solved || !group) return undefined;
+    const drawing = mechanismSvg(solved.joints[0] ?? [], solved.links[0] ?? [], 330, 230);
+    const decimals = this.flow.decimals;
+    return {
+      title: `${this.flow.selectedColumns('forces').length > 0 ? 'Analysis' : 'Kinematic analysis'} — ${group.id}`,
+      subtitle: `${group.note} · ${today()}`,
+      dataTitle: `Data — ${group.id}`,
+      graphsTitle: `Graphs — ${group.id}`,
+      drawing,
+      facts: this.facts(index, table),
+      shareUrl: this.urls.generateFullUrl(),
+      plots: table.plots.map((plot) => ({
+        title: plot.title,
+        unit: plot.unit,
+        svg: plotSvg(plot, table.times, { width: 320, height: 150, standalone: false }),
+        legend: plot.series.map((series) => ({
+          name: series.name || plot.head,
+          color: SERIES_COLORS[series.name] ?? ANALYSIS_SERIES_COLORS.X,
+        })),
+      })),
+      heads: table.heads,
+      rows: table.times.map((time, row) => [
+        formatCell(time, decimals),
+        ...table.columns.map((column) => formatCell(column[row], decimals)),
+      ]),
+      footer: `${group.id} · ${group.note}`,
+    };
+  }
+
+  /** What a reader needs in order to trust the numbers on the pages after it. */
+  private facts(index: number, table: ExportTable): { label: string; value: string }[] {
+    const solved = this.mechanism.mechanisms[index];
+    const group = this.flow.partGroups()[index];
+    const readiness = this.mechanism.readinessOfEachMechanism()[index];
+    const driven = this.mechanism.partitions[index]?.joints.find(
+      (joint) => joint instanceof RealJoint && joint.input
+    ) as RealJoint | undefined;
+    const speed = readiness?.facts.find((fact) => fact.label === 'Input speed')?.value ?? '—';
+    const parts = this.flow
+      .selectedParts()
+      .filter((part) => part.mechanismIndex === index)
+      .map((part) => part.label)
+      .join(', ');
+    const length = this.catalog.unitStr(this.settings.lengthUnit.value);
+    const mass = this.nup.unitLabel(this.nup.massUnitFor(this.settings.lengthUnit.value));
+    const angle = this.catalog.unitStr(this.settings.angleUnit.value);
+    return [
+      { label: 'Mechanism', value: `${group.id}, ${group.note}, ${solved.dof} DoF` },
+      {
+        label: 'Input',
+        value: driven ? `Joint ${driven.name || driven.id}, ${speed}` : 'Not set',
+      },
+      {
+        label: 'Cycle',
+        value: `${solved.cyclePeriod.toFixed(2)} s, ${table.times.length} solved positions`,
+      },
+      { label: 'Units', value: `${length}, ${mass}, ${this.catalog.forceUnit()}, ${angle}` },
+      { label: 'Parts', value: parts || '—' },
+      { label: 'Decimals', value: String(this.flow.decimals) },
+    ];
+  }
+
+  /** One file gets the plain name; several get what tells them apart. */
+  private fileStem(stem: string, table: ExportTable, count: number, at: number): string {
+    if (count === 1) return stem;
+    return `${stem}_${safe(table.name) || String(at + 1)}`;
+  }
+
+  private hand(file: ExportFile): void {
+    const blob = file.bytes
+      ? new Blob([file.bytes as BlobPart], { type: file.mime })
+      : new Blob([file.text ?? ''], { type: file.mime });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  }
+
+  /** Exposed so a spec can name the sheets without opening a workbook. */
+  sheetNamesFor(tables: ExportTable[]): string[] {
+    return sheetNames(tables);
+  }
+
+  plotsOf(table: ExportTable): ExportPlot[] {
+    return table.plots;
+  }
+}
+
+/** A picture the browser will draw, as PNG bytes. */
+async function rasterize(svg: string, width: number, height: number): Promise<Uint8Array> {
+  const source = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const element = new Image();
+    element.onload = () => resolve(element);
+    element.onerror = () => reject(new Error('The graph could not be drawn.'));
+    element.src = source;
+  });
+  const canvas = document.createElement('canvas');
+  // Twice the drawn size: a chart printed or pasted at full width should not be
+  // the one blurred thing on the page.
+  canvas.width = width * 2;
+  canvas.height = height * 2;
+  const context = canvas.getContext('2d')!;
+  context.scale(2, 2);
+  context.drawImage(image, 0, 0, width, height);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  return new Uint8Array(await (blob ?? new Blob()).arrayBuffer());
+}
+
+/**
+ * Hand a document to the browser's own printer.
+ *
+ * An off-screen frame rather than a new window: a popup blocker stops the
+ * window, and the frame is torn down as soon as the dialog closes.
+ */
+function print(html: string): void {
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  if (!doc) {
+    frame.remove();
+    return;
+  }
+  doc.open();
+  doc.write(html);
+  doc.close();
+  const go = () => {
+    frame.contentWindow?.focus();
+    frame.contentWindow?.print();
+    setTimeout(() => frame.remove(), 1000);
+  };
+  if (doc.readyState === 'complete') setTimeout(go, 100);
+  else frame.onload = () => setTimeout(go, 100);
+}
+
+/** A name a file system will take, from a title a person wrote. */
+function safe(text: string): string {
+  return text.replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function today(): string {
+  return new Date().toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}

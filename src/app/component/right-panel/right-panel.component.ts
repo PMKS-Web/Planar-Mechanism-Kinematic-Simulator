@@ -12,6 +12,7 @@ import { Arc, Line } from '../../model/line';
 import { Coord } from '../../model/coord';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { AnalysisSetupComponent } from '../analysis-setup/analysis-setup.component';
+import { ExportPanelComponent } from '../export-panel/export-panel.component';
 import { SettingsPanelComponent } from '../settings-panel/settings-panel.component';
 import { EquationPanelComponent } from '../equation-panel/equation-panel.component';
 import { HelpPanelComponent } from '../help-panel/help-panel.component';
@@ -59,6 +60,7 @@ import { MatIcon } from '@angular/material/icon';
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     AnalysisSetupComponent,
+    ExportPanelComponent,
     SettingsPanelComponent,
     EquationPanelComponent,
     HelpPanelComponent,
@@ -92,6 +94,12 @@ export class RightPanelComponent implements DoCheck {
    */
   static readonly KINEMATIC_SETUP_TAB = 5;
   static readonly FORCE_SETUP_TAB = 6;
+  /**
+   * Export Data, which is a drawer rather than a dialog for the same reason the
+   * setups are: the canvas stays visible, so ticking a part is done next to the
+   * drawing it is a part of.
+   */
+  static readonly EXPORT_TAB = 7;
   turnOnDebugger() {
     this.settingsService.isGridDebugOn = !this.settingsService.isGridDebugOn;
   }
@@ -179,6 +187,12 @@ export class RightPanelComponent implements DoCheck {
     if (this.openTab === RightPanelComponent.KINEMATIC_SETUP_TAB && this.openTab !== wanted) {
       this.isOpen = false;
     }
+    // Export is an analysis-mode command: there is nothing to take away from a
+    // mechanism being drawn, and the drawer's own lists come from a solved
+    // cycle that Edit is about to change.
+    if (this.openTab === RightPanelComponent.EXPORT_TAB && wanted === -1) {
+      this.isOpen = false;
+    }
   }
 
   getOpenTab() {
@@ -188,6 +202,16 @@ export class RightPanelComponent implements DoCheck {
   /** Two of these pages hold a table rather than a panel, and need the room. */
   isWidePage(): boolean {
     return this.getOpenTab() === 2 || this.getOpenTab() === 4;
+  }
+
+  /**
+   * The export drawer is wider than the view controls it stands over.
+   *
+   * Its rows are a checkbox, a part's name and what is notable about it, and at
+   * the drawer's usual width the third of those was always ellipsed away.
+   */
+  isExportPage(): boolean {
+    return this.getOpenTab() === RightPanelComponent.EXPORT_TAB;
   }
 
   getIsOpen() {

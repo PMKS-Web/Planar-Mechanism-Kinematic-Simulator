@@ -144,6 +144,13 @@
     &.wide {
       width: calc(500px + #{nav.$shadow-room} + #{nav.$card-inset});
     }
+
+    // Wider than the view controls, and narrower than the table pages: an
+    // export row is a checkbox, a part's name and what is notable about it, and
+    // at the drawer's usual width the third of those was always ellipsed away.
+    &.export {
+      width: calc(380px + #{nav.$shadow-room} + #{nav.$card-inset});
+    }
   }
 
   // One inset and one gap for every drawer page. The two setup drawers had
@@ -179,6 +186,7 @@
   // button went with the content -- gone from the corner while the half of it
   // still showing went on taking the click.
   app-analysis-setup,
+  app-export-panel,
   app-settings-panel,
   app-help-panel {
     display: flex;

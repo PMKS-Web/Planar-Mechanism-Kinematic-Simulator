@@ -1,0 +1,576 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+
+@mixin css($theme) {
+  $color-config: mat.m2-get-color-config($theme);
+  $primary-palette: map.get($color-config, 'primary');
+  $indigo: mat.m2-get-color-from-palette($primary-palette, 500);
+  $indigo-light: mat.m2-get-color-from-palette($primary-palette, 400);
+
+  // Its own card, like every other drawer page: one card per panel, never a
+  // card inside a card. Three bands rather than one scrolling column -- the
+  // question and the decisions stay put, and only the list moves.
+  .export {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--card-surface);
+    border-top: 5px solid $indigo;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    isolation: isolate;
+    // Something is above, out of sight. Read off the body rather than set on it,
+    // because the band that casts the shadow is not the one that scrolls.
+    &:has(.exportBody.scrolled) .exportHead {
+      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0.35);
+    }
+
+    .spacer {
+      flex: 1 1 auto;
+    }
+
+    .exportHead {
+      flex: 0 0 auto;
+      padding: 8px 15px 0;
+      background: var(--card-surface);
+      // Nothing yet: the shadow only means "there is more above", so it is drawn
+      // when the list underneath has actually been scrolled.
+      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0);
+      transition: box-shadow 0.15s ease-in-out;
+      z-index: 3;
+    }
+
+    .exportTitle {
+      // Clear of the drawer's close button, which shares this line.
+      padding-right: 40px;
+      font-size: 20px;
+      line-height: 32px;
+      font-weight: 500;
+      letter-spacing: 0.0125em;
+      color: rgba(0, 0, 0, 0.87);
+    }
+
+    .exportLead {
+      margin: 0;
+      font-size: 14px;
+      line-height: 18px;
+      letter-spacing: 0.25px;
+      color: rgba(0, 0, 0, 0.6);
+    }
+
+    .steps {
+      display: flex;
+      align-items: center;
+      padding-top: 12px;
+    }
+
+    .step {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1 1 0;
+      min-width: 0;
+
+      // Each step but the first is indented, so its name reads as belonging to
+      // its own bar rather than to the end of the one before.
+      & + .step .stepName {
+        padding-left: 8px;
+      }
+    }
+
+    .stepName {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.45);
+      padding: 0;
+      white-space: nowrap;
+
+      &.current {
+        font-weight: 500;
+        color: $indigo;
+      }
+
+      // A step already answered is the way back to it; one not reached yet is
+      // not, because there is nothing there to answer.
+      &.done {
+        color: $indigo;
+        cursor: pointer;
+      }
+
+      mat-icon {
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
+        line-height: 14px;
+      }
+    }
+
+    .stepBar {
+      height: 3px;
+      border-radius: 2px;
+      background: #eceef5;
+
+      &.current {
+        background: $indigo;
+      }
+
+      &.done {
+        background: #c5cae9;
+      }
+    }
+
+    .tabs {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding-top: 14px;
+      border-bottom: 1px solid #eceef5;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 0 8px;
+      margin-bottom: -1px;
+      border: none;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      font-family: inherit;
+      font-size: 14px;
+      color: #5f6368;
+      cursor: pointer;
+
+      &.on {
+        border-bottom-color: $indigo;
+        font-weight: 500;
+        color: $indigo;
+      }
+    }
+
+    .tabCount {
+      display: inline-flex;
+      align-items: center;
+      height: 18px;
+      padding: 0 6px;
+      border-radius: 9px;
+      background: #eef0f4;
+      font-size: 11px;
+      color: #5f6368;
+    }
+
+    .tab.on .tabCount {
+      background: #e8eaf6;
+      color: $indigo;
+    }
+
+    .countRow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 0 10px;
+    }
+
+    .count {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.6);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .linkButton {
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: $indigo;
+      cursor: pointer;
+      padding: 0;
+
+      &.small {
+        font-size: 12px;
+      }
+    }
+
+    .dot {
+      color: rgba(0, 0, 0, 0.2);
+    }
+
+    .exportBody {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-bottom: 8px;
+    }
+
+    // The machine whose rows are passing, named while they pass.
+    .mechHead {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 15px;
+      background: var(--card-surface);
+    }
+
+    .mechName {
+      font-size: 14px;
+      font-weight: 500;
+      color: #2c2c2c;
+    }
+
+    .mechNote {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.45);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rows {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pickRow {
+      display: flex;
+      align-items: center;
+      // Said out loud, because a button's own alignment is not a flex row's:
+      // left to itself the browser centres the name between the box and the note.
+      justify-content: flex-start;
+      gap: 12px;
+      width: 100%;
+      padding: 7px 15px;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        background: #f4f5f9;
+      }
+
+      // Nothing to give, so nothing to tick: greyed rather than hidden, because
+      // a reader looking for Joint A should find out why it is not on offer.
+      &.off {
+        cursor: default;
+
+        .rowName,
+        .rowNote {
+          color: rgba(0, 0, 0, 0.38);
+        }
+      }
+    }
+
+    .box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(0, 0, 0, 0.54);
+      border-radius: 2px;
+      box-sizing: border-box;
+      flex: 0 0 auto;
+      color: #fff;
+
+      &.ticked {
+        border-color: $indigo;
+        background: $indigo;
+      }
+
+      mat-icon {
+        width: 15px;
+        height: 15px;
+        font-size: 15px;
+        line-height: 15px;
+      }
+    }
+
+    .pickRow.off .box {
+      border-color: rgba(0, 0, 0, 0.2);
+      background: #f4f4f7;
+    }
+
+    .rowName {
+      font-size: 14px;
+      color: #2c2c2c;
+    }
+
+    .rowNote {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.45);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rowUnit {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.45);
+    }
+
+    .groupTitle {
+      padding: 10px 15px 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #2c2c2c;
+    }
+
+    .settingRow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 15px;
+
+      &.spaced {
+        margin-top: 6px;
+        padding-top: 12px;
+        border-top: 1px solid #eceef5;
+      }
+    }
+
+    .settingName {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.6);
+      flex: 0 0 auto;
+    }
+
+    .hint {
+      margin: 2px 15px 0;
+      font-size: 12px;
+      line-height: 16px;
+      color: rgba(0, 0, 0, 0.45);
+    }
+
+    .empty {
+      margin: 10px 15px;
+      font-size: 13px;
+      line-height: 18px;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    .segmented {
+      display: flex;
+      height: 30px;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+
+      button {
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        border: none;
+        background: #fff;
+        color: #2c2c2c;
+        font-family: inherit;
+        font-size: 13px;
+        cursor: pointer;
+
+        & + button {
+          border-left: 1px solid rgba(0, 0, 0, 0.12);
+        }
+
+        &.on {
+          background: $indigo-light;
+          color: #fff;
+        }
+      }
+    }
+
+    .formatBlock {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 14px 15px 0;
+    }
+
+    .formatRow {
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 10px;
+      padding: 5px 0;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .radio {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      border: 2px solid rgba(0, 0, 0, 0.54);
+      border-radius: 50%;
+      box-sizing: border-box;
+      flex: 0 0 auto;
+
+      &.on {
+        border-color: $indigo;
+        background: $indigo;
+      }
+    }
+
+    .pip {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .formatText {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .formatName {
+      font-size: 14px;
+      color: #2c2c2c;
+    }
+
+    .formatNote {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.55);
+    }
+
+    .settingBlock {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px 0;
+      margin-top: 6px;
+      border-top: 1px solid #eceef5;
+    }
+
+    .nameField {
+      height: 30px;
+      width: 170px;
+      padding: 0 8px;
+      border: none;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.42);
+      border-radius: 4px 4px 0 0;
+      background: #f0f1f5;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 14px;
+      color: #2c2c2c;
+
+      &:focus {
+        outline: none;
+        border-bottom-color: $indigo;
+      }
+    }
+
+    .extension {
+      font-size: 13px;
+      color: rgba(0, 0, 0, 0.55);
+    }
+
+    .summaryCard {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin: 0 15px 12px;
+      padding: 10px 12px;
+      background: #f7f8fc;
+      border-radius: 5px;
+    }
+
+    .summaryName {
+      font-size: 13px;
+      font-weight: 500;
+      color: #2c2c2c;
+    }
+
+    .summaryNote {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.55);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .exportFoot {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 15px;
+      border-top: 1px solid #eceef5;
+      background: #fafbfd;
+    }
+
+    .footNote {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.6);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .backButton {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 36px;
+      padding: 0 10px;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: $indigo;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(63, 81, 181, 0.08);
+      }
+    }
+
+    .nextButton {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 18px;
+      border: none;
+      border-radius: 4px;
+      background: $indigo;
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+
+      &:disabled {
+        background: #d5d7e0;
+        color: rgba(0, 0, 0, 0.38);
+        cursor: default;
+      }
+    }
+
+    .backButton mat-icon,
+    .nextButton mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+      line-height: 18px;
+    }
+  }
+}

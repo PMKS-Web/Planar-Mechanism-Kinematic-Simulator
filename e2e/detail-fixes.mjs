@@ -241,29 +241,22 @@ record('turning a line off leaves the panel where it was', Math.abs(after - befo
 });
 
 // --- Export Data ------------------------------------------------------------
+// The corner card opens the export drawer rather than writing a file on the
+// spot; what the drawer then does is `e2e/export-flow.mjs`.
 await load(payloads['4-Bar']);
 await page.locator('.tabButton', { hasText: 'Kinematic' }).click({ force: true });
 await page.waitForTimeout(700);
 record(
-  'nothing selected, there is nothing to export',
-  await page.locator('.historyCard button').first().isDisabled(),
+  'with a solved mechanism there is something to export, selection or not',
+  !(await page.locator('.historyCard button').first().isDisabled()),
   {}
 );
-await page.locator('#joint_B').first().click({ force: true });
-await page.waitForTimeout(700);
-const download = page.waitForEvent('download', { timeout: 8000 }).catch(() => null);
 await page.locator('.historyCard button').first().click();
-const file = await download;
-record('and with a joint selected it writes a file', !!file, file && file.suggestedFilename());
-if (file) {
-  const path = await file.path();
-  const csv = readFileSync(path, 'utf8').trim().split('\n');
-  record(
-    'one time column and a column per series, one row per sample',
-    csv[0].startsWith('Time (seconds),') && csv[0].split(',').length === 9 && csv.length > 100,
-    { head: csv[0], rows: csv.length }
-  );
-}
+await page.waitForTimeout(700);
+record(
+  'and the corner card opens the drawer that asks what to write',
+  (await page.locator('app-export-panel').count()) === 1
+);
 
 // --- three machines at once -------------------------------------------------
 await load(THREE_MACHINES);

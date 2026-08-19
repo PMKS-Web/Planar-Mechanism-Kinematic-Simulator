@@ -2,7 +2,11 @@
   <div
     [@openClose]="
       getIsOpen()
-        ? getOpenTab() === 1 || getOpenTab() === 3 || getOpenTab() === 5 || getOpenTab() === 6
+        ? getOpenTab() === 1 ||
+          getOpenTab() === 3 ||
+          getOpenTab() === 5 ||
+          getOpenTab() === 6 ||
+          getOpenTab() === 7
           ? 'open'
           : 'openWide'
         : 'closed'
@@ -10,6 +14,7 @@
     id="rightPanel"
     [class.insisting]="attention"
     [class.wide]="isWidePage()"
+    [class.export]="isExportPage()"
   >
     @if (getOpenTab() === 5) {
       <div class="page1">
@@ -19,6 +24,11 @@
     @if (getOpenTab() === 6) {
       <div class="page1">
         <app-analysis-setup mode="force"></app-analysis-setup>
+      </div>
+    }
+    @if (getOpenTab() === 7) {
+      <div class="page1">
+        <app-export-panel></app-export-panel>
       </div>
     }
     @if (getOpenTab() === 1) {
