@@ -429,6 +429,38 @@ describe('how much paper the report asks for', () => {
     expect(Math.min(...perPage)).toBeGreaterThan(Math.max(...perPage) * 0.8);
   });
 
+  it('leaves room for the heads, so no row falls off the bottom of a page', () => {
+    const table = (head: (at: number) => string): number => {
+      const html = reportHtml({
+        logoUrl: '',
+        sections: [
+          {
+            title: 'M1',
+            subtitle: '',
+            dataTitle: 'Data',
+            graphsTitle: 'Graphs',
+            drawing: '',
+            facts: [],
+            shareUrl: '',
+            plots: [],
+            heads: ['Time (s)', ...Array.from({ length: 20 }, (_, at) => head(at))],
+            // Enough rows that a few fewer per page is a page more.
+            rows: Array.from({ length: 3000 }, () => Array(21).fill('-1.061858')),
+            footer: 'M1',
+          },
+        ],
+      });
+      return (html.match(/<section class="page">/g) ?? []).length;
+    };
+
+    // A head wraps down the page in a column half an inch wide, and a page laid
+    // out by hand does not carry what does not fit -- it loses it. So a long
+    // head has to cost rows, and enough rows cost pages.
+    const short = table((at) => `F${at}`);
+    const long = table((at) => `Static force at Joint ${at} on Link ABCD Mag (N)`);
+    expect(long).toBeGreaterThan(short);
+  });
+
   it('asks for less paper when the numbers are narrower', () => {
     // Two decimals is a narrower column than six, so more of them fit across a
     // page and the table is split into fewer passes over the same rows.

@@ -58,6 +58,11 @@ const COLUMN_PADDING = 4;
 const WIDTH_MARGIN = 1.04;
 /** However narrow the numbers are, a head needs room to be read. */
 const MOST_COLUMNS = 24;
+/** A letter is wider than a digit, and a head is set on 11px lines. */
+const LETTER_WIDTH = 4.6;
+const HEAD_LINE = 11;
+const HEAD_PADDING = 14;
+const MOST_HEAD_LINES = 9;
 /**
  * How many graphs a page carries.
  *
@@ -70,7 +75,23 @@ const GRAPHS_ON_FIRST_PAGE = 4;
 const GRAPHS_ON_FIRST_PAGE_TIGHT = 6;
 const GRAPHS_PER_PAGE = 8;
 
-const rowsPerPage = (): number => Math.floor(BODY_HEIGHT / ROW_HEIGHT);
+/**
+ * How many rows fit under the heads a page of this many columns carries.
+ *
+ * Not a constant, because the heads are not. `Static force at Joint B on Link
+ * AB Mag (N)` in a column half an inch wide is nine lines, and a head band nine
+ * lines deep is nine rows of numbers that no longer fit — which, on a page laid
+ * out by hand rather than reflowed, means rows clipped off the bottom.
+ */
+function rowsPerPage(heads: string[], columns: number): number {
+  const columnWidth = Math.max(12, BODY_WIDTH / (columns + 1) - COLUMN_PADDING);
+  const lines = heads.reduce(
+    (most, head) => Math.max(most, Math.ceil((head.length * LETTER_WIDTH) / columnWidth)),
+    1
+  );
+  const headBand = Math.min(lines, MOST_HEAD_LINES) * HEAD_LINE + HEAD_PADDING;
+  return Math.max(10, Math.floor((BODY_HEIGHT - headBand) / ROW_HEIGHT));
+}
 
 /**
  * How many columns fit across the page, measured off the numbers themselves.
@@ -104,13 +125,25 @@ function cellWidth(text: string): number {
  * Split into pages that are as full as each other rather than as full as
  * possible.
  *
- * Nine pages of forty rows and a tenth holding one is the same paper as six
- * pages of sixty and a seventh holding one; balanced, it is six pages of sixty
- * and no orphan at all.
+ * Nine pages of forty and a tenth holding one is the same paper as six pages of
+ * sixty; spread evenly it is six pages of sixty and no orphan at all. Taking
+ * the most each time is not enough on its own — fifty-eight graphs eight to a
+ * page is seven full pages and one holding two — so the remainder is shared out
+ * a page at a time.
  */
-function pageSize(total: number, most: number): number {
-  const pages = Math.max(1, Math.ceil(total / most));
-  return Math.ceil(total / pages);
+function spread<T>(items: T[], most: number): T[][] {
+  if (items.length === 0) return [];
+  const pages = Math.max(1, Math.ceil(items.length / most));
+  const base = Math.floor(items.length / pages);
+  const over = items.length % pages;
+  const out: T[][] = [];
+  let at = 0;
+  for (let page = 0; page < pages; page++) {
+    const size = base + (page < over ? 1 : 0);
+    out.push(items.slice(at, at + size));
+    at += size;
+  }
+  return out;
 }
 
 /**
@@ -125,19 +158,19 @@ function pageSize(total: number, most: number): number {
 export function reportHtml(context: ReportContext): string {
   const bodies: { body: string; footer: string }[] = [];
   context.sections.forEach((section) => {
-    const graphs = chunkGraphs(section.plots);
-    bodies.push({
-      body: firstPageBody(context, section, graphs[0]),
-      footer: section.footer,
-    });
-    graphs.slice(1).forEach((page) => {
+    const plan = planSection({ ...section, plots: section.plots.length });
+    plan.graphPages.forEach((graphs, at) => {
+      const plots = section.plots.slice(graphs.from, graphs.from + graphs.count);
       bodies.push({
-        body: `${sectionHead(context, section.graphsTitle, section.subtitle)}
-          <div class="graphs across${page.across}">${page.plots.map(graphBlock).join('')}</div>`,
+        body:
+          at === 0
+            ? firstPageBody(context, section, { plots, across: graphs.across })
+            : `${sectionHead(context, section.graphsTitle, section.subtitle)}
+              <div class="graphs across${graphs.across}">${plots.map(graphBlock).join('')}</div>`,
         footer: section.footer,
       });
     });
-    tablePages(section).forEach((page) => {
+    plan.tablePages.forEach((page) => {
       bodies.push({ body: dataPageBody(context, section, page), footer: section.footer });
     });
   });
@@ -153,57 +186,58 @@ export function reportHtml(context: ReportContext): string {
  * How long the report will be, before anyone waits for it to be built.
  *
  * The table is every row the CSV would hold, which is the point of the format
- * and also how a wide selection becomes two hundred pages. Counted here so the
- * drawer can say so while there is still time to choose fewer parts.
+ * and also how a wide selection becomes a hundred pages. Counted from the same
+ * plan that lays the report out, because a promise made by different arithmetic
+ * from the one that keeps it is a promise that drifts.
  */
-export function reportPages(section: { plots: number; rows: string[][]; columns: number }): number {
-  const graphPages = graphChunkCount(section.plots);
-  const perPage = pageSize(section.columns, columnsPerPage(section.rows));
-  const dataPages =
-    Math.ceil(section.columns / perPage) *
-    Math.ceil(section.rows.length / pageSize(section.rows.length, rowsPerPage()));
-  return 1 + graphPages + dataPages;
+export function reportPages(section: { plots: number; rows: string[][]; heads: string[] }): number {
+  const plan = planSection(section);
+  return plan.graphPages.length + plan.tablePages.length;
 }
 
-/** How many pages of graphs follow the first one. */
-function graphChunkCount(plots: number): number {
-  if (plots <= GRAPHS_ON_FIRST_PAGE_TIGHT) return 0;
-  return Math.ceil((plots - GRAPHS_ON_FIRST_PAGE) / GRAPHS_PER_PAGE);
+/** Which graphs and which numbers land on which page. */
+function planSection(section: { plots: number; rows: string[][]; heads: string[] }): {
+  graphPages: { from: number; count: number; across: 2 | 3 }[];
+  tablePages: { columns: number[]; rows: string[][] }[];
+} {
+  // Time rides every chunk: a column of numbers with nothing to line it up
+  // against is not data anyone can use.
+  const columns = section.heads.slice(1).map((_, at) => at + 1);
+  const tablePages = spread(columns, columnsPerPage(section.rows)).flatMap((chunkOfColumns) =>
+    // Paginated per chunk, because a chunk whose heads are short leaves room
+    // for more rows than one whose heads wrap down half the page.
+    spread(
+      section.rows,
+      rowsPerPage(
+        [section.heads[0], ...chunkOfColumns.map((at) => section.heads[at])],
+        chunkOfColumns.length
+      )
+    ).map((rows) => ({ columns: chunkOfColumns, rows }))
+  );
+  return { graphPages: planGraphs(section.plots), tablePages };
 }
 
 /**
- * Which graphs land on which page, and how many across.
+ * Which graphs go on which page, and how many across.
  *
  * A fifth graph used to go on a page of its own, nine tenths of it white. Set
  * three across instead, the first page takes six — so a report with no more
  * graphs than that has no graph page at all.
  */
-function chunkGraphs(plots: ReportPlot[]): { plots: ReportPlot[]; across: 2 | 3 }[] {
-  if (plots.length === 0) return [{ plots: [], across: 2 }];
-  if (plots.length <= GRAPHS_ON_FIRST_PAGE) return [{ plots, across: 2 }];
-  if (plots.length <= GRAPHS_ON_FIRST_PAGE_TIGHT) return [{ plots, across: 3 }];
-  const rest = plots.slice(GRAPHS_ON_FIRST_PAGE);
-  // Spread over as many pages as they need, evenly: nine graphs are better as
-  // two pages of five and four than as a full page and one nearly empty.
-  return [
-    { plots: plots.slice(0, GRAPHS_ON_FIRST_PAGE), across: 2 as const },
-    ...chunk(rest, pageSize(rest.length, GRAPHS_PER_PAGE)).map((page) => ({
-      plots: page,
-      across: 2 as const,
-    })),
-  ];
-}
-
-/** Which rows and which columns land on each data page, in reading order. */
-function tablePages(section: ReportSection): { columns: number[]; rows: string[][] }[] {
-  const rowPages = chunk(section.rows, pageSize(section.rows.length, rowsPerPage()));
-  // Time rides every chunk: a column of numbers with nothing to line it up
-  // against is not data anyone can use.
-  const columns = section.heads.slice(1).map((_, at) => at + 1);
-  const columnChunks = chunk(columns, pageSize(columns.length, columnsPerPage(section.rows)));
-  return columnChunks.flatMap((chunkOfColumns) =>
-    rowPages.map((rows) => ({ columns: chunkOfColumns, rows }))
-  );
+function planGraphs(plots: number): { from: number; count: number; across: 2 | 3 }[] {
+  if (plots === 0) return [{ from: 0, count: 0, across: 2 }];
+  if (plots <= GRAPHS_ON_FIRST_PAGE) return [{ from: 0, count: plots, across: 2 }];
+  if (plots <= GRAPHS_ON_FIRST_PAGE_TIGHT) return [{ from: 0, count: plots, across: 3 }];
+  let from = GRAPHS_ON_FIRST_PAGE;
+  const rest = spread(
+    Array.from({ length: plots - GRAPHS_ON_FIRST_PAGE }, (_, at) => at),
+    GRAPHS_PER_PAGE
+  ).map((page) => {
+    const entry = { from, count: page.length, across: 2 as const };
+    from += page.length;
+    return entry;
+  });
+  return [{ from: 0, count: GRAPHS_ON_FIRST_PAGE, across: 2 as const }, ...rest];
 }
 
 function sectionHead(context: ReportContext, title: string, subtitle: string): string {
@@ -289,13 +323,6 @@ function page(body: string, footer: string, number: number, total: number): stri
   return `<section class="page"><div class="pageBody">${body}</div><div class="pageFoot"><span>PMKS+ · app.pmksplus.com</span><span class="spacer"></span><span>${escapeHtml(
     footer
   )}</span><span class="pageNumber">Page ${number} of ${total}</span></div></section>`;
-}
-
-function chunk<T>(items: T[], size: number): T[][] {
-  if (items.length === 0) return [];
-  const out: T[][] = [];
-  for (let at = 0; at < items.length; at += size) out.push(items.slice(at, at + size));
-  return out;
 }
 
 function escapeHtml(text: string): string {

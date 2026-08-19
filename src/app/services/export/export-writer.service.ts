@@ -56,7 +56,7 @@ export class ExportWriterService {
             reportPages({
               plots: table.plots.length,
               rows: this.rowsOf(table),
-              columns: table.heads.length - 1,
+              heads: table.heads,
             }),
           0
         ),
