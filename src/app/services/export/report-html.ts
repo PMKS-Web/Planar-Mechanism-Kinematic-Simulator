@@ -27,9 +27,21 @@ export interface ReportSection {
   graphsTitle: string;
 }
 
+/**
+ * How wide a string is, in the type the table is set in.
+ *
+ * Passed in so the page can be laid out against the browser's own measurement
+ * rather than against a table of glyph widths that is right for one font and a
+ * few per cent out for the next one down the stack. The estimate below is the
+ * fallback for anywhere without a canvas to ask.
+ */
+export type Measure = (text: string, bold?: boolean) => number;
+
 export interface ReportContext {
   logoUrl: string;
   sections: ReportSection[];
+  /** Omitted where there is nothing to measure with; estimated instead. */
+  measure?: Measure;
 }
 
 /**
@@ -49,20 +61,27 @@ const BODY_WIDTH = 720;
  * characters instead of measuring them over-estimates a signed decimal by about
  * a tenth — which is the difference between fifteen columns on a page and
  * fourteen, and so between six pages of table and twelve.
+ *
+ * Taken from the browser, not from a rule of thumb: `-1234.567890` measures
+ * 52.3px, which is ten digits at 4.78, a point at 2.25 and a sign at 2.36.
  */
-const DIGIT_WIDTH = 4.46;
-const POINT_WIDTH = 2.2;
-const SIGN_WIDTH = 2.7;
+const DIGIT_WIDTH = 4.78;
+const POINT_WIDTH = 2.25;
+const SIGN_WIDTH = 2.36;
 /** Padding either side of a cell, and a little over on the measurement. */
 const COLUMN_PADDING = 4;
-const WIDTH_MARGIN = 1.04;
+const WIDTH_MARGIN = 1.02;
 /** However narrow the numbers are, a head needs room to be read. */
 const MOST_COLUMNS = 24;
-/** A letter is wider than a digit, and a head is set on 11px lines. */
-const LETTER_WIDTH = 4.6;
+/**
+ * A letter *averages* narrower than a digit — the digits of this type are all
+ * one width and most letters are less — and a head is set on 11px lines.
+ * `Position B X (cm)` measures 65.7px across seventeen characters.
+ */
+const LETTER_WIDTH = 3.95;
 const HEAD_LINE = 11;
 const HEAD_PADDING = 14;
-const MOST_HEAD_LINES = 9;
+const MOST_HEAD_LINES = 14;
 /**
  * How many graphs a page carries.
  *
@@ -83,10 +102,10 @@ const GRAPHS_PER_PAGE = 8;
  * lines deep is nine rows of numbers that no longer fit — which, on a page laid
  * out by hand rather than reflowed, means rows clipped off the bottom.
  */
-function rowsPerPage(heads: string[], columns: number): number {
+function rowsPerPage(heads: string[], columns: number, measure: Measure): number {
   const columnWidth = Math.max(12, BODY_WIDTH / (columns + 1) - COLUMN_PADDING);
   const lines = heads.reduce(
-    (most, head) => Math.max(most, Math.ceil((head.length * LETTER_WIDTH) / columnWidth)),
+    (most, head) => Math.max(most, headLines(head, columnWidth, measure)),
     1
   );
   const headBand = Math.min(lines, MOST_HEAD_LINES) * HEAD_LINE + HEAD_PADDING;
@@ -94,31 +113,105 @@ function rowsPerPage(heads: string[], columns: number): number {
 }
 
 /**
- * How many columns fit across the page, measured off the numbers themselves.
+ * How many lines a head takes in a column of a given width.
  *
- * Two decimals is a much narrower column than six, and a reading in the tens is
- * narrower than one in the thousands. Estimating from the setting alone split
- * every table into the same number of chunks whatever it held — and each chunk
- * is another pass over every row, which is where the pages went.
+ * Word by word, because that is how the browser does it: a head only breaks
+ * inside a word when the word alone will not fit. Dividing the head's whole
+ * width by the column's assumes a perfect packing nothing achieves, and every
+ * line it under-counts is a row clipped off the bottom of the page.
  */
-function columnsPerPage(rows: string[][]): number {
-  // A floor low enough that it never decides the answer for a real table, and
-  // only stops an empty one dividing by nothing.
-  let widest = 4 * DIGIT_WIDTH;
-  rows.forEach((row) => row.forEach((cell) => (widest = Math.max(widest, cellWidth(cell)))));
+function headLines(head: string, columnWidth: number, measure: Measure): number {
+  let lines = 1;
+  let used = 0;
+  const space = measure(' ', true);
+  for (const word of head.split(' ')) {
+    const width = measure(word, true);
+    if (width > columnWidth) {
+      if (used > 0) lines++;
+      const pieces = Math.ceil(width / columnWidth);
+      lines += pieces - 1;
+      used = width - (pieces - 1) * columnWidth;
+      continue;
+    }
+    const gap = used === 0 ? 0 : space;
+    if (used + gap + width > columnWidth) {
+      lines++;
+      used = width;
+    } else {
+      used += gap + width;
+    }
+  }
+  return lines;
+}
+
+/**
+ * How many columns of a given width fit across the page.
+ *
+ * Every column is drawn the same width, so what fits is decided by the widest
+ * number among them — and one fewer than that, because the time column rides
+ * every page beside them. Capped, because a column narrower than its own head
+ * sets that head wrapping down the page a letter at a time.
+ */
+function capacityFor(widest: number): number {
   const width = (widest + COLUMN_PADDING) * WIDTH_MARGIN;
-  // One fewer, because the time column rides every page beside these. Capped,
-  // because a column narrower than its own head sets that head wrapping down
-  // the page a letter at a time.
   return Math.min(MOST_COLUMNS, Math.max(3, Math.floor(BODY_WIDTH / width) - 1));
 }
 
-function cellWidth(text: string): number {
+/**
+ * Which columns go on which page, packed by what they are actually as wide as.
+ *
+ * Sizing every page from the widest number anywhere in the table charged a page
+ * of positions in the tens for the one reaction that ran to five figures. Taken
+ * a column at a time, a run of narrow columns packs tighter — on an eighty-six
+ * column export that is one pass over the rows fewer, which is six pages.
+ */
+function columnChunks(heads: string[], rows: string[][], measure: Measure): number[][] {
+  const columns = heads.slice(1).map((_, at) => at + 1);
+  if (columns.length === 0) return [];
+  const widthOf = (at: number): number =>
+    rows.reduce((most, row) => Math.max(most, measure(row[at] ?? '', false)), 4 * DIGIT_WIDTH);
+  // Time rides every chunk: a column of numbers with nothing to line it up
+  // against is not data anyone can use, so its width is charged to every page.
+  const time = widthOf(0);
+  const widths = columns.map(widthOf);
+
+  const chunks: number[][] = [];
+  let at = 0;
+  while (at < columns.length) {
+    let widest = time;
+    let take = 1;
+    for (let end = at; end < columns.length; end++) {
+      const next = Math.max(widest, widths[end]);
+      if (end - at + 1 > capacityFor(next)) break;
+      widest = next;
+      take = end - at + 1;
+    }
+    chunks.push(columns.slice(at, at + take));
+    at += take;
+  }
+  return chunks;
+}
+
+/**
+ * What a string measures, when there is no browser to ask.
+ *
+ * Only the fallback: every glyph here was measured once in one browser, and the
+ * whole point of `Measure` is not to have to trust that anywhere it matters.
+ */
+export function estimateWidth(text: string, bold = false): number {
   let width = 0;
   for (const character of text) {
-    width += character === '.' ? POINT_WIDTH : character === '-' ? SIGN_WIDTH : DIGIT_WIDTH;
+    width +=
+      character === '.'
+        ? POINT_WIDTH
+        : character === '-'
+          ? SIGN_WIDTH
+          : /[0-9]/.test(character)
+            ? DIGIT_WIDTH
+            : LETTER_WIDTH;
   }
-  return width;
+  // A head is set in medium, which is a shade wider than the numbers under it.
+  return bold ? width * 1.03 : width;
 }
 
 /**
@@ -158,7 +251,10 @@ function spread<T>(items: T[], most: number): T[][] {
 export function reportHtml(context: ReportContext): string {
   const bodies: { body: string; footer: string }[] = [];
   context.sections.forEach((section) => {
-    const plan = planSection({ ...section, plots: section.plots.length });
+    const plan = planSection(
+      { ...section, plots: section.plots.length },
+      context.measure ?? estimateWidth
+    );
     plan.graphPages.forEach((graphs, at) => {
       const plots = section.plots.slice(graphs.from, graphs.from + graphs.count);
       bodies.push({
@@ -190,27 +286,31 @@ export function reportHtml(context: ReportContext): string {
  * plan that lays the report out, because a promise made by different arithmetic
  * from the one that keeps it is a promise that drifts.
  */
-export function reportPages(section: { plots: number; rows: string[][]; heads: string[] }): number {
-  const plan = planSection(section);
+export function reportPages(
+  section: { plots: number; rows: string[][]; heads: string[] },
+  measure: Measure = estimateWidth
+): number {
+  const plan = planSection(section, measure);
   return plan.graphPages.length + plan.tablePages.length;
 }
 
 /** Which graphs and which numbers land on which page. */
-function planSection(section: { plots: number; rows: string[][]; heads: string[] }): {
+function planSection(
+  section: { plots: number; rows: string[][]; heads: string[] },
+  measure: Measure
+): {
   graphPages: { from: number; count: number; across: 2 | 3 }[];
   tablePages: { columns: number[]; rows: string[][] }[];
 } {
-  // Time rides every chunk: a column of numbers with nothing to line it up
-  // against is not data anyone can use.
-  const columns = section.heads.slice(1).map((_, at) => at + 1);
-  const tablePages = spread(columns, columnsPerPage(section.rows)).flatMap((chunkOfColumns) =>
+  const tablePages = columnChunks(section.heads, section.rows, measure).flatMap((chunkOfColumns) =>
     // Paginated per chunk, because a chunk whose heads are short leaves room
     // for more rows than one whose heads wrap down half the page.
     spread(
       section.rows,
       rowsPerPage(
         [section.heads[0], ...chunkOfColumns.map((at) => section.heads[at])],
-        chunkOfColumns.length
+        chunkOfColumns.length,
+        measure
       )
     ).map((rows) => ({ columns: chunkOfColumns, rows }))
   );
@@ -228,16 +328,24 @@ function planGraphs(plots: number): { from: number; count: number; across: 2 | 3
   if (plots === 0) return [{ from: 0, count: 0, across: 2 }];
   if (plots <= GRAPHS_ON_FIRST_PAGE) return [{ from: 0, count: plots, across: 2 }];
   if (plots <= GRAPHS_ON_FIRST_PAGE_TIGHT) return [{ from: 0, count: plots, across: 3 }];
-  let from = GRAPHS_ON_FIRST_PAGE;
+  // Three across on the first page too, where the two it makes room for are the
+  // two that would otherwise start a page of their own.
+  const pagesAfter = (first: number): number => Math.ceil((plots - first) / GRAPHS_PER_PAGE);
+  const onFirst =
+    pagesAfter(GRAPHS_ON_FIRST_PAGE_TIGHT) < pagesAfter(GRAPHS_ON_FIRST_PAGE)
+      ? GRAPHS_ON_FIRST_PAGE_TIGHT
+      : GRAPHS_ON_FIRST_PAGE;
+  const across: 2 | 3 = onFirst === GRAPHS_ON_FIRST_PAGE_TIGHT ? 3 : 2;
+  let from = onFirst;
   const rest = spread(
-    Array.from({ length: plots - GRAPHS_ON_FIRST_PAGE }, (_, at) => at),
+    Array.from({ length: plots - onFirst }, (_, at) => at),
     GRAPHS_PER_PAGE
   ).map((page) => {
     const entry = { from, count: page.length, across: 2 as const };
     from += page.length;
     return entry;
   });
-  return [{ from: 0, count: GRAPHS_ON_FIRST_PAGE, across: 2 as const }, ...rest];
+  return [{ from: 0, count: onFirst, across }, ...rest];
 }
 
 function sectionHead(context: ReportContext, title: string, subtitle: string): string {

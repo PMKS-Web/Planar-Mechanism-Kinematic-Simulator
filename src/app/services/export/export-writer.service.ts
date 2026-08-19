@@ -13,7 +13,7 @@ import { formatCell, toCsv } from './csv-writer';
 import { toXlsx, sheetNames } from './xlsx-writer';
 import { plotSvg } from './graph-svg';
 import { mechanismSvg } from './mechanism-svg';
-import { ReportSection, reportHtml, reportPages } from './report-html';
+import { Measure, ReportSection, reportHtml, reportPages } from './report-html';
 
 const SERIES_COLORS: Record<string, string> = {
   X: ANALYSIS_SERIES_COLORS.X,
@@ -53,11 +53,14 @@ export class ExportWriterService {
         .reduce(
           (total, table) =>
             total +
-            reportPages({
-              plots: table.plots.length,
-              rows: this.rowsOf(table),
-              heads: table.heads,
-            }),
+            reportPages(
+              {
+                plots: table.plots.length,
+                rows: this.rowsOf(table),
+                heads: table.heads,
+              },
+              textMeasure()
+            ),
           0
         ),
     };
@@ -151,7 +154,7 @@ export class ExportWriterService {
       .filter((section): section is ReportSection => !!section);
     if (sections.length === 0) return false;
     const logo = new URL('assets/PMKS_logo.png', document.baseURI).href;
-    print(reportHtml({ logoUrl: logo, sections }));
+    print(reportHtml({ logoUrl: logo, sections, measure: textMeasure() }));
     return true;
   }
 
@@ -245,6 +248,34 @@ export class ExportWriterService {
   plotsOf(table: ExportTable): ExportPlot[] {
     return table.plots;
   }
+}
+
+/** The type the report's table is set in, for measuring a string against. */
+const TABLE_FONT = "8.5px Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif";
+
+/**
+ * How wide a string will actually be, asked of the browser that will draw it.
+ *
+ * The report is laid out here rather than reflowed, so how many columns fit
+ * across a page is arithmetic — and arithmetic done against a table of glyph
+ * widths is right for the font it was measured in and a few per cent out for
+ * whichever one the reader's machine falls back to. A canvas knows exactly.
+ * Memoised per string, because a table of 361 rows asks the same questions
+ * thousands of times.
+ */
+function textMeasure(): Measure | undefined {
+  const context = document.createElement('canvas').getContext('2d');
+  if (!context) return undefined;
+  const seen = new Map<string, number>();
+  return (text: string, bold = false): number => {
+    const key = bold ? `b:${text}` : text;
+    const known = seen.get(key);
+    if (known !== undefined) return known;
+    context.font = `${bold ? '500 ' : ''}${TABLE_FONT}`;
+    const width = context.measureText(text).width;
+    seen.set(key, width);
+    return width;
+  };
 }
 
 /** A picture the browser will draw, as PNG bytes. */

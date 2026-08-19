@@ -150,6 +150,26 @@ describe('the export drawer', () => {
     expect(table.heads).toContain('Angle AB (deg)');
   });
 
+  it('declares how many numbers a column writes, and the sampler agrees', () => {
+    const { flow, tables, fixture } = flowFor(LEGACY_FORCE_MECHANISM, { forces: true });
+    flow.setParts(flow.offeredParts(), true);
+    flow.withMagnitude = true;
+    const solved = fixture.mechanism;
+    const parts = flow.selectedParts();
+
+    // What the drawer tells a reader a row will write, against what the solver
+    // hands back for it. A declaration that drifts is a row promising `X, Y`
+    // and a file carrying three columns.
+    flow.allColumns().forEach((column) => {
+      const declared = column.series.map((series) => series.components);
+      const sampled = tables
+        .plots(solved, 0, parts, [column])
+        .slice(0, declared.length)
+        .map((plot) => plot.series.length);
+      expect([column.label, sampled]).toEqual([column.label, declared]);
+    });
+  });
+
   it('drops the magnitude series when the reader asks for X and Y alone', () => {
     const { flow, tables } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
     pick(flow, 'Joint B');
@@ -459,6 +479,42 @@ describe('how much paper the report asks for', () => {
     const short = table((at) => `F${at}`);
     const long = table((at) => `Static force at Joint ${at} on Link ABCD Mag (N)`);
     expect(long).toBeGreaterThan(short);
+  });
+
+  it('carries every column exactly once across the pages it splits them over', () => {
+    // The packer takes as many columns as the widest of them allows, which is a
+    // different number on every page -- so what it covers is worth stating.
+    const heads = ['Time (s)', ...Array.from({ length: 40 }, (_, at) => `Column ${at} (cm)`)];
+    const html = reportHtml({
+      logoUrl: '',
+      sections: [
+        {
+          title: 'M1',
+          subtitle: '',
+          dataTitle: 'Data',
+          graphsTitle: 'Graphs',
+          drawing: '',
+          facts: [],
+          shareUrl: '',
+          plots: [],
+          heads,
+          // A mix of narrow and wide, so the pages are not all the same width.
+          rows: Array.from({ length: 120 }, () =>
+            heads.map((_, at) => (at % 3 === 0 ? '-1234.567890' : '0.01'))
+          ),
+          footer: 'M1',
+        },
+      ],
+    });
+    const seen = [...html.matchAll(/<thead><tr>(.*?)<\/tr><\/thead>/gs)].flatMap((head) =>
+      [...head[1].matchAll(/<th>(.*?)<\/th>/g)].map((cell) => cell[1])
+    );
+    const withoutTime = seen.filter((head) => head !== 'Time (s)');
+    const distinct = new Set(withoutTime);
+    expect(distinct.size).toBe(40);
+    // Each page repeats the time column and nothing else.
+    expect(withoutTime.length / (seen.length - withoutTime.length)).toBeGreaterThan(1);
+    expect(withoutTime.length % distinct.size).toBe(0);
   });
 
   it('asks for less paper when the numbers are narrower', () => {

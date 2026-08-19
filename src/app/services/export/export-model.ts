@@ -64,7 +64,8 @@ export interface ExportSeries {
    * 1 for a scalar like an angle, 2 for a position, 3 for a rate or a reaction
    * — X, Y and the magnitude that can be dropped. Declared rather than
    * discovered so the drawer can say what a row will write before anything has
-   * been sampled; a spec holds it to what the sampler actually produces.
+   * been sampled; `export-flow.spec.ts` holds every declaration to what the
+   * sampler actually hands back.
    */
   components: 1 | 2 | 3;
   mechProp: string;
