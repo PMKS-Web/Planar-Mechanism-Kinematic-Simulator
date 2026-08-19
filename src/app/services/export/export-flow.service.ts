@@ -1,8 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { ForceAnalysisMode } from '../../model/mechanism/force-solver';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
 import { ExportCatalogService } from './export-catalog.service';
+import { ExportColumnsService } from './export-columns.service';
 import {
   ColumnTab,
   Decimals,
@@ -27,6 +29,8 @@ export type ExportStep = 1 | 2 | 3;
 @Injectable({ providedIn: 'root' })
 export class ExportFlowService {
   private catalog = inject(ExportCatalogService);
+  private columns = inject(ExportColumnsService);
+  private mechanism = inject(MechanismService);
   private settings = inject(SettingsService);
   private tabs = inject(SelectedTabService);
 
@@ -48,24 +52,65 @@ export class ExportFlowService {
   private touchedColumns = false;
 
   /**
-   * What this drawing has to offer, held still while the drawer is open.
+   * What this drawing has to offer, held between changes to the drawing.
    *
-   * Rebuilt on `refresh()` rather than per change-detection pass: the lists
-   * come from the readiness report and the force solver, and a template that
-   * asks for them a dozen times a frame would solve the whole drawing for every
-   * mouse move. Nothing in analysis mode edits the mechanism, so holding them
-   * is safe as well as cheap.
+   * The lists come from the readiness report and the force solver, and the
+   * template asks for them a dozen times a frame — without this, moving the
+   * mouse over the drawer re-solves the whole drawing. Held against a
+   * fingerprint rather than a notification, so a rebuild that never published
+   * one cannot leave a stale list on screen.
    */
-  private cached?: { groups: ExportPartGroup[]; forces: boolean };
+  private cached?: { key: string; groups: ExportPartGroup[]; forces: boolean };
 
-  private build(): { groups: ExportPartGroup[]; forces: boolean } {
+  /**
+   * What the lists are of, cheaply enough to check on every question.
+   *
+   * A subscription to the mechanism's update subject is not enough on its own:
+   * not every path that changes a drawing publishes on it, and a drawer showing
+   * parts of a mechanism that has since stopped solving is worse than a drawer
+   * that rebuilds a list too often. Nothing here samples or solves — it is
+   * lengths, ids and flags the mechanism already holds.
+   */
+  private fingerprint(): string {
+    return [
+      this.mechanism.joints.length,
+      this.mechanism.links.length,
+      this.mechanism.partitions.map((partition) => partition.id).join(','),
+      this.mechanism.mechanisms.map((solved) => (solved.isMechanismValid() ? 1 : 0)).join(''),
+      this.settings.forceAnalysisMode.value,
+      // Units ride the column heads, so a change of them is a change of list.
+      this.settings.lengthUnit.value,
+      this.settings.angleUnit.value,
+      this.settings.forceUnit.value,
+      // Bumped by every mutation the service funnels, which is how a change
+      // that leaves the counts alone still invalidates this.
+      this.mechanism.poseRevision,
+      this.stamp,
+    ].join('|');
+  }
+
+  /** Bumped by `refresh()`, so an explicit ask always rebuilds. */
+  private stamp = 0;
+
+  private build(): { key: string; groups: ExportPartGroup[]; forces: boolean } {
     const withForces = this.catalog.partGroups(true);
     const forces = withForces.some((group) => group.forcesReady && group.parts.length > 0);
-    return { groups: forces ? withForces : this.catalog.partGroups(false), forces };
+    return {
+      key: this.fingerprint(),
+      groups: forces ? withForces : this.catalog.partGroups(false),
+      forces,
+    };
+  }
+
+  private lists(): { key: string; groups: ExportPartGroup[]; forces: boolean } {
+    const key = this.fingerprint();
+    if (this.cached?.key !== key) this.cached = this.build();
+    return this.cached;
   }
 
   /** Forget the lists, so the next question rebuilds them. */
   refresh(): void {
+    this.stamp++;
     this.cached = undefined;
   }
 
@@ -89,7 +134,7 @@ export class ExportFlowService {
   // --- step 1: parts --------------------------------------------------------
 
   partGroups(): ExportPartGroup[] {
-    return (this.cached ??= this.build()).groups;
+    return this.lists().groups;
   }
 
   isPicked(part: ExportPart): boolean {
@@ -112,8 +157,18 @@ export class ExportFlowService {
     this.touchedColumns = false;
   }
 
+  /**
+   * What is ticked *and* still has something to give.
+   *
+   * A mechanism can stop solving while the drawer is open — an undo, a reload,
+   * a machine that loses its input — and a tick left over from before is a
+   * promise of numbers that no longer exist. Kept in `pickedParts` rather than
+   * struck out, so a mechanism that comes back brings its selection with it.
+   */
   selectedParts(): ExportPart[] {
-    return this.catalog.partsOf(this.partGroups(), this.pickedParts);
+    return this.catalog
+      .partsOf(this.partGroups(), this.pickedParts)
+      .filter((part) => part.available);
   }
 
   offeredParts(): ExportPart[] {
@@ -126,11 +181,11 @@ export class ExportFlowService {
 
   /** Force columns are only worth a tab where a force analysis actually solves. */
   forcesAvailable(): boolean {
-    return (this.cached ??= this.build()).forces;
+    return this.lists().forces;
   }
 
   columnGroups(tab: ColumnTab = this.tab): ExportColumnGroup[] {
-    return this.catalog.columnGroups(this.selectedParts(), tab);
+    return this.columns.columnGroups(this.selectedParts(), tab);
   }
 
   allColumns(): ExportColumn[] {

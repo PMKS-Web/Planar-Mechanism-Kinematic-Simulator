@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { RealJoint } from '../../model/joint';
-import { ForceUnit } from '../../model/unit-enums';
+import { AngleUnit, ForceUnit } from '../../model/unit-enums';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ActiveObjService } from '../active-obj.service';
 import { AnalysisSampleService } from '../analysis-sample.service';
@@ -14,6 +14,7 @@ import {
 } from '../../../tests/fixtures/mechanism-fixtures';
 import { TEMPLATE_LINKAGES } from '../../component/MODALS/templates/template-linkages';
 import { ExportCatalogService } from './export-catalog.service';
+import { ExportColumnsService } from './export-columns.service';
 import { ExportFlowService } from './export-flow.service';
 import { ExportTableService, ExportTable } from './export-table.service';
 import { toCsv } from './csv-writer';
@@ -61,6 +62,7 @@ function flowFor(payload: string, options: { forces?: boolean } = {}): Flow {
       },
       { provide: AnalysisSampleService, deps: [] },
       { provide: ExportCatalogService, deps: [] },
+      { provide: ExportColumnsService, deps: [] },
       { provide: ExportFlowService, deps: [] },
       { provide: ExportTableService, deps: [] },
     ],
@@ -178,6 +180,114 @@ describe('the export drawer', () => {
     const split = tables.tables();
     expect(split).toHaveLength(2);
     expect(split.map((table) => table.name)).toEqual(['M1_JointB', 'M1_JointC']);
+    // The machine's id is not repeated in the file name: the name the reader
+    // typed already carries it, and one machine has nothing to be told from.
+    expect(split.map((table) => table.suffix)).toEqual(['JointB', 'JointC']);
+  });
+
+  it('puts an angular rate into the unit its head claims', () => {
+    const { flow, tables, fixture } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
+    pick(flow, 'Link AB');
+    // The solver records an angle in degrees and a rate in radians, so exactly
+    // one of these two is converted whichever unit the reader has chosen.
+    const inDegrees = tables.tables()[0];
+    const degreeRate = inDegrees.plots.find((plot) => plot.head.startsWith('Angular velocity'))!;
+    const degreeAngle = inDegrees.plots.find((plot) => plot.head.startsWith('Angle'))!;
+
+    fixture.settings.angleUnit.next(AngleUnit.RADIAN);
+    const inRadians = tables.tables()[0];
+    const radianRate = inRadians.plots.find((plot) => plot.head.startsWith('Angular velocity'))!;
+    const radianAngle = inRadians.plots.find((plot) => plot.head.startsWith('Angle'))!;
+
+    expect(degreeRate.unit).toBe('deg/s');
+    expect(radianRate.unit).toBe('rad/s');
+    expect(degreeRate.series[0].values[0]).toBeCloseTo(
+      radianRate.series[0].values[0] * (180 / Math.PI),
+      9
+    );
+    expect(radianAngle.series[0].values[0]).toBeCloseTo(
+      degreeAngle.series[0].values[0] * (Math.PI / 180),
+      9
+    );
+  });
+
+  it('offers a slider block, which the solver weighs like any other body', () => {
+    const { flow } = flowFor(TEMPLATE_LINKAGES['Slider_Crank']);
+    const labels = flow
+      .partGroups()
+      .flatMap((group) => group.parts)
+      .filter((part) => part.kind === 'link')
+      .map((part) => part.note);
+    expect(labels).toContain('slider block');
+  });
+
+  it('keeps a joint that cannot move out of the kinematics it has none of', () => {
+    const { flow } = flowFor(LEGACY_FORCE_MECHANISM, { forces: true });
+    const grounded = flow
+      .partGroups()
+      .flatMap((group) => group.parts)
+      .filter((part) => part.kind === 'joint' && part.note.includes('grounded'));
+    expect(grounded.length).toBeGreaterThan(0);
+    grounded.forEach((part) => flow.togglePart(part));
+    // Offered, because of the reaction it carries — and asked nothing about
+    // position or velocity, which a pinned joint does not have.
+    expect(flow.columnGroups('kinematics')).toHaveLength(0);
+    expect(flow.columnGroups('forces').length).toBeGreaterThan(0);
+  });
+
+  it('gives each of a link’s reactions its own tick', () => {
+    const { flow } = flowFor(LEGACY_FORCE_MECHANISM, { forces: true });
+    const link = flow
+      .partGroups()
+      .flatMap((group) => group.parts)
+      .find((part) => part.kind === 'link')!;
+    flow.togglePart(link);
+    flow.tab = 'forces';
+    const columns = flow.columnGroups('forces').flatMap((group) => group.columns);
+    expect(columns.length).toBeGreaterThan(1);
+    expect(new Set(columns.map((column) => column.key)).size).toBe(columns.length);
+
+    flow.toggleColumn(columns[0]);
+    expect(flow.isColumnPicked(columns[0])).toBe(false);
+    expect(flow.isColumnPicked(columns[1])).toBe(true);
+  });
+
+  it('keeps a report whole when the file step was last left splitting per part', () => {
+    const { flow, tables } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
+    pick(flow, 'Joint B', 'Joint C');
+    flow.splitPerPart = true;
+    expect(tables.tables()).toHaveLength(2);
+    // A report is per machine whatever that control last said, because the
+    // report writer takes one table per machine and would drop the rest.
+    flow.format = 'report';
+    expect(tables.tables()).toHaveLength(1);
+  });
+
+  it('drops the lists when the drawing stops solving, without being told to', () => {
+    const { flow, fixture } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
+    expect(flow.offeredParts().length).toBeGreaterThan(0);
+
+    // No refresh(): a rebuild that publishes nothing must not leave a drawer
+    // offering parts of a mechanism that no longer has any numbers.
+    const solving = vi.spyOn(fixture.mechanism, 'isMechanismValid').mockReturnValue(false);
+    expect(flow.offeredParts()).toHaveLength(0);
+    expect(flow.canExport()).toBe(false);
+    solving.mockRestore();
+    expect(flow.offeredParts().length).toBeGreaterThan(0);
+  });
+
+  it('un-chooses a part that has stopped having anything to give', () => {
+    const { flow, fixture } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
+    pick(flow, 'Joint B');
+    expect(flow.canExport()).toBe(true);
+
+    const solving = vi.spyOn(fixture.mechanism, 'isMechanismValid').mockReturnValue(false);
+    expect(flow.selectedParts()).toHaveLength(0);
+    expect(flow.canExport()).toBe(false);
+
+    // The tick itself is kept, so a mechanism that comes back brings it along.
+    solving.mockRestore();
+    expect(flow.selectedParts()).toHaveLength(1);
   });
 
   it('heads a force column with the analysis it came from, in the reader’s unit', () => {

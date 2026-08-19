@@ -163,6 +163,23 @@ record(
   { head: splitCsv(lines[0]).length, second: splitCsv(lines[1]).length }
 );
 
+// The one column whose right answer is known without solving anything: the
+// input crank turns at the speed the drive is set to. The solver keeps angles
+// in degrees and rates in radians, so a file that skipped the conversion writes
+// 2.09 here under a head saying deg/s.
+const speed = await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  return srv.settingsService.inputSpeed.value * 6; // rpm -> deg/s
+});
+const rateColumn = splitCsv(lines[0]).findIndex((head) =>
+  head.startsWith('Angular velocity AB (deg/s)')
+);
+record(
+  'and an angular rate in the unit its head claims',
+  rateColumn > 0 && Math.abs(Math.abs(Number(splitCsv(lines[1])[rateColumn])) - speed) < 0.5,
+  { speed, column: rateColumn, value: rateColumn > 0 && splitCsv(lines[1])[rateColumn] }
+);
+
 // --- the workbook -----------------------------------------------------------
 await drawer().locator('.formatRow', { hasText: 'Excel workbook' }).click();
 await page.waitForTimeout(200);
@@ -301,5 +318,8 @@ function number(text) {
 
 /** Split a CSV line, respecting the quotes a head may carry. */
 function splitCsv(line) {
-  return line.match(/("([^"]|"")*"|[^,]*)(,|$)/g).slice(0, -1);
+  return line
+    .match(/("([^"]|"")*"|[^,]*)(,|$)/g)
+    .slice(0, -1)
+    .map((field) => field.replace(/,$/, ''));
 }

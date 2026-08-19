@@ -1,8 +1,10 @@
 import { Injectable, inject } from '@angular/core';
+import { angularScale } from '../../model/analysis-series';
 import { RealJoint } from '../../model/joint';
 import { Mechanism } from '../../model/mechanism/mechanism';
 import { AnalysisSampleService } from '../analysis-sample.service';
 import { MechanismService } from '../mechanism.service';
+import { SettingsService } from '../settings.service';
 import { ExportFlowService } from './export-flow.service';
 import { ExportColumn, ExportPart } from './export-model';
 
@@ -22,8 +24,16 @@ export interface ExportPlot {
 
 /** A whole file or sheet: a time column, and every series beside it. */
 export interface ExportTable {
-  /** What distinguishes this one from the others — a sheet name, a file suffix. */
+  /** What this one is called as a sheet: always qualified by its machine. */
   name: string;
+  /**
+   * What is added to the file name to tell this one from the others.
+   *
+   * Empty when there is only one file, and free of the machine's id unless
+   * there are several machines — the name the reader typed usually carries it
+   * already, and `M1_kinematics_M1_JointA.csv` says it twice.
+   */
+  suffix: string;
   mechanismIndex: number;
   times: number[];
   heads: string[];
@@ -44,6 +54,7 @@ export class ExportTableService {
   private flow = inject(ExportFlowService);
   private mechanism = inject(MechanismService);
   private samples = inject(AnalysisSampleService);
+  private settings = inject(SettingsService);
 
   /**
    * The last answer, and what was asked to get it.
@@ -90,8 +101,13 @@ export class ExportTableService {
       this.flow.splitPerPart,
       this.flow.withMagnitude,
       this.flow.forceMode(),
+      this.settings.lengthUnit.value,
+      this.settings.angleUnit.value,
+      this.settings.forceUnit.value,
       this.mechanism.mechanisms.map((solved) => solved.timeNum.length).join(','),
-      this.mechanism.onMechUpdateState.value,
+      // Bumped by every mutation the mechanism service funnels, so a change
+      // that leaves the shape of the selection alone still re-samples.
+      this.mechanism.poseRevision,
     ].join('|');
   }
 
@@ -99,12 +115,18 @@ export class ExportTableService {
     const id = this.flow.partGroups()[index]?.id ?? `M${index + 1}`;
     const parts = this.flow.selectedParts().filter((part) => part.mechanismIndex === index);
     const columns = this.flow.selectedColumns();
+    // Only where there is more than one machine to tell apart.
+    const qualify = this.flow.mechanismIndexes().length > 1 ? `${id}_` : '';
 
-    if (this.flow.splitPerPart) {
+    // Only where the format offers the choice. A report and a set of graph
+    // images are per machine whatever the file step last had ticked, and a
+    // report built from a split selection silently kept only the first part.
+    if (this.flow.splitPerPart && (this.flow.format === 'csv' || this.flow.format === 'xlsx')) {
       return parts
-        .map((part) =>
-          this.table(index, `${id}_${part.label.replace(/\s+/g, '')}`, [part], columns)
-        )
+        .map((part) => {
+          const short = part.label.replace(/\s+/g, '');
+          return this.table(index, `${id}_${short}`, `${qualify}${short}`, [part], columns);
+        })
         .filter((table) => table.heads.length > 1);
     }
     if (this.flow.format === 'xlsx') {
@@ -116,18 +138,22 @@ export class ExportTableService {
           this.table(
             index,
             `${id}_${tab}`,
+            `${qualify}${tab}`,
             parts,
             columns.filter((column) => column.tab === tab)
           )
         )
         .filter((table) => table.heads.length > 1);
     }
-    return [this.table(index, id, parts, columns)].filter((table) => table.heads.length > 1);
+    return [this.table(index, id, qualify.replace(/_$/, ''), parts, columns)].filter(
+      (table) => table.heads.length > 1
+    );
   }
 
   private table(
     index: number,
     name: string,
+    suffix: string,
     parts: ExportPart[],
     columns: ExportColumn[]
   ): ExportTable {
@@ -142,7 +168,7 @@ export class ExportTableService {
         values.push(series.values);
       });
     });
-    return { name, mechanismIndex: index, times, heads, columns: values, plots };
+    return { name, suffix, mechanismIndex: index, times, heads, columns: values, plots };
   }
 
   /** Every graph the selection asks for, in the order the columns are listed. */
@@ -156,13 +182,14 @@ export class ExportTableService {
     const mode = this.flow.forceMode();
     const plots: ExportPlot[] = [];
     columns.forEach((column) => {
-      const targets =
-        column.spans === 'own'
-          ? parts.filter((part) => part.key === column.owner)
-          : parts.filter((part) => part.kind === column.spans);
+      const targets = parts.filter((part) => column.appliesTo.includes(part.key));
       targets.forEach((part) => {
         column.series.forEach((series) => {
-          const mechPart = column.spans === 'own' ? series.mechPart : part.id;
+          const mechPart = series.mechPart || part.id;
+          // The solver hands angles out in degrees and rates in radians, so
+          // one or the other is converted on the way to whatever is labelled
+          // with the reader's unit -- the same scale the graphs apply.
+          const scale = angularScale(series.mechProp, this.settings.angleUnit.value);
           const rows = solved.timeNum.map((_, step) =>
             this.samples.sampleAt(
               solved,
@@ -187,7 +214,7 @@ export class ExportTableService {
             mechanismIndex: index,
             series: names.map((name, at) => ({
               name,
-              values: rows.map((row) => row[at]),
+              values: rows.map((row) => row[at] * scale),
             })),
           });
         });

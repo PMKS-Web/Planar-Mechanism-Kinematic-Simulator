@@ -79,10 +79,15 @@ export interface ExportColumn {
   unit: string;
   /** `Centre of mass` writes three series from one tick. */
   series: ExportSeries[];
-  /** Whose quantity this is: every selected joint, every selected link, or its own. */
-  spans: PartKind | 'own';
-  /** The part a self-owned column belongs to. Empty where the column spans parts. */
-  owner: string;
+  /**
+   * The keys of the parts this one tick asks the question of.
+   *
+   * A kinematic row spans every chosen part that has the quantity — every
+   * moving joint, every link — and a force row names the one part whose
+   * reaction it is. Held as a list rather than as a rule, so the writer cannot
+   * apply a different rule from the one the drawer drew.
+   */
+  appliesTo: string[];
   tab: ColumnTab;
 }
 

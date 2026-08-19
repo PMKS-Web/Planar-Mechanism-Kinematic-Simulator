@@ -63,26 +63,35 @@ export class ExportWriterService {
     };
   }
 
-  async run(): Promise<void> {
+  /**
+   * Write the chosen export, and say whether anything came of it.
+   *
+   * A selection can empty itself out from under the reader — a mechanism that
+   * stops solving takes its parts with it — and an export that writes nothing
+   * must not be reported as one that worked.
+   */
+  async run(): Promise<boolean> {
     const tables = this.tables.tables();
-    if (tables.length === 0) return;
+    if (tables.length === 0) return false;
     switch (this.flow.format) {
       case 'xlsx':
-        return this.writeWorkbook(tables);
+        this.writeWorkbook(tables);
+        return true;
       case 'images':
         return this.writeImages(tables);
       case 'report':
         return this.writeReport(tables);
       default:
-        return this.writeCsv(tables);
+        this.writeCsv(tables);
+        return true;
     }
   }
 
   private writeCsv(tables: ExportTable[]): void {
     const stem = this.flow.name();
-    tables.forEach((table, at) =>
+    tables.forEach((table) =>
       this.hand({
-        name: `${this.fileStem(stem, table, tables.length, at)}.csv`,
+        name: `${this.fileStem(stem, table)}.csv`,
         mime: 'text/csv;charset=utf-8',
         text: toCsv(table, this.flow.decimals),
       })
@@ -97,9 +106,10 @@ export class ExportWriterService {
     });
   }
 
-  private async writeImages(tables: ExportTable[]): Promise<void> {
+  private async writeImages(tables: ExportTable[]): Promise<boolean> {
     const width = 720;
     const height = 400;
+    let drawn = 0;
     for (const table of tables) {
       for (const plot of table.plots) {
         const svg = plotSvg(plot, table.times, { width, height, standalone: true });
@@ -113,12 +123,14 @@ export class ExportWriterService {
             bytes: await rasterize(svg, width, height),
           });
         }
+        drawn++;
       }
     }
+    return drawn > 0;
   }
 
   /** Every selected machine, one section each, in one printable document. */
-  private writeReport(tables: ExportTable[]): void {
+  private writeReport(tables: ExportTable[]): boolean {
     const sections = this.flow
       .mechanismIndexes()
       .map((index) =>
@@ -128,9 +140,10 @@ export class ExportWriterService {
         )
       )
       .filter((section): section is ReportSection => !!section);
-    if (sections.length === 0) return;
+    if (sections.length === 0) return false;
     const logo = new URL('assets/PMKS_logo.png', document.baseURI).href;
     print(reportHtml({ logoUrl: logo, sections }));
+    return true;
   }
 
   private section(index: number, tables: ExportTable[]): ReportSection | undefined {
@@ -200,9 +213,8 @@ export class ExportWriterService {
   }
 
   /** One file gets the plain name; several get what tells them apart. */
-  private fileStem(stem: string, table: ExportTable, count: number, at: number): string {
-    if (count === 1) return stem;
-    return `${stem}_${safe(table.name) || String(at + 1)}`;
+  private fileStem(stem: string, table: ExportTable): string {
+    return table.suffix ? `${stem}_${safe(table.suffix)}` : stem;
   }
 
   private hand(file: ExportFile): void {

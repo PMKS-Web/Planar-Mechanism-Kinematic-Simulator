@@ -54,7 +54,11 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
 
   readonly formats: { key: ExportFormat; name: string; note: string }[] = [
     { key: 'csv', name: 'CSV', note: 'One time column, one per series.' },
-    { key: 'xlsx', name: 'Excel workbook', note: 'A sheet per part, for overlaying charts.' },
+    {
+      key: 'xlsx',
+      name: 'Excel workbook',
+      note: 'Sheets by analysis or by part, for charting.',
+    },
     { key: 'images', name: 'Graph images', note: 'PNG or SVG per graph.' },
     { key: 'report', name: 'Report', note: 'PDF: mechanism, graphs and table.' },
   ];
@@ -190,13 +194,9 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   }
 
   private pictureCount(): number {
-    return this.flow.selectedColumns().reduce((total, column) => {
-      const parts =
-        column.spans === 'own'
-          ? 1
-          : this.flow.selectedParts().filter((part) => part.kind === column.spans).length;
-      return total + parts * column.series.length;
-    }, 0);
+    return this.flow
+      .selectedColumns()
+      .reduce((total, column) => total + column.appliesTo.length * column.series.length, 0);
   }
 
   get fileName(): string {
@@ -244,7 +244,14 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
     this.working = true;
     this.analytics.logEvent(`export_data_${this.flow.format}`);
     try {
-      await this.writer.run();
+      const written = await this.writer.run();
+      if (!written) {
+        this.notify.refusal(
+          'export.empty',
+          'Nothing was written: the parts that were ticked no longer have numbers to give.'
+        );
+        return;
+      }
       this.notify.success(
         'export.done',
         this.flow.format === 'report'
