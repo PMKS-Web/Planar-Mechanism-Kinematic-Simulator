@@ -69,6 +69,29 @@ const playShape = await page.evaluate(() => {
     width: Math.round(button.getBoundingClientRect().width),
   };
 });
+// --- back to where the mechanism was drawn ----------------------------------
+// Every other mode shows the start pose, so a reader who has watched a cycle
+// needs a way back to it that is not "scrub until the numbers read zero".
+await page.locator('.playButton').click();
+await page.waitForTimeout(1200);
+await page.locator('.playButton').click();
+await page.waitForTimeout(300);
+const moved = await page.evaluate(() =>
+  ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.currentTimeSeconds()
+);
+record('a played cycle leaves the mechanism away from its start', moved > 0.05, { moved });
+record(
+  'and the stop button beside play offers the way back',
+  !(await page.locator('.stopButton').isDisabled())
+);
+await page.locator('.stopButton').click();
+await page.waitForTimeout(1200);
+const home = await page.evaluate(() =>
+  ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.currentTimeSeconds()
+);
+record('which takes it there', home === 0, { home });
+record('and then has nothing left to do', await page.locator('.stopButton').isDisabled());
+
 record(
   'the play button is a rounded square, not a disc',
   !playShape.radius.includes('%') && parseFloat(playShape.radius) < playShape.width / 2,

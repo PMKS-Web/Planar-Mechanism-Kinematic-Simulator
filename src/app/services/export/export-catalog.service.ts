@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { RealJoint } from '../../model/joint';
+import { Joint, RealJoint } from '../../model/joint';
+import { Cylinder } from '../../model/cylinder';
 import { Link, RealLink, SliderBlock } from '../../model/link';
 import { AngleUnit, ForceUnit, LengthUnit } from '../../model/unit-enums';
 import { ActiveObjService } from '../active-obj.service';
@@ -27,11 +28,13 @@ export class ExportCatalogService {
    * joint has no motion to report, but it does carry a reaction.
    */
   partGroups(withForces: boolean): ExportPartGroup[] {
+    const cylinders = this.mechanism.sealedStructures();
     return this.mechanism.partitions.map((partition, index) => {
       const solved = this.mechanism.mechanisms[index];
       const valid = solved?.isMechanismValid() ?? false;
       const joints = partition.ownJoints
         .filter((joint): joint is RealJoint => joint instanceof RealJoint)
+        .filter((joint) => !this.isInsideCylinder(cylinders, joint))
         .map((joint) => this.jointPart(joint, index, withForces));
       // Blocks as well as bars. A slider's block is a body the solver weighs
       // and balances like any other, and leaving it off the list put its
@@ -41,7 +44,11 @@ export class ExportCatalogService {
           (link): link is RealLink | SliderBlock =>
             link instanceof RealLink || link instanceof SliderBlock
         )
-        .map((link) => this.linkPart(link, index, valid));
+        // A sealed cylinder stands in the list as one part. Its barrel, its
+        // piston and the joints buried inside it are pieces of a ram nobody
+        // drew and nobody can point at on the canvas.
+        .filter((link) => this.standsForCylinder(cylinders, link) !== 'hidden')
+        .map((link) => this.linkPart(link, index, valid, cylinders));
       return {
         index,
         id: partition.id,
@@ -54,6 +61,34 @@ export class ExportCatalogService {
 
   /** Nothing solves for a mechanism that does not run, so nothing is on offer. */
   private unsolved = (part: ExportPart): ExportPart => ({ ...part, available: false });
+
+  /** The three joints a sealed cylinder keeps to itself: no hitbox, no row. */
+  private isInsideCylinder(cylinders: Cylinder[], joint: Joint): boolean {
+    return cylinders.some(
+      (cylinder) =>
+        cylinder.barrelNear.id === joint.id ||
+        cylinder.pin.id === joint.id ||
+        cylinder.slider.id === joint.id
+    );
+  }
+
+  /**
+   * Whether a body is a piece of a cylinder, and if so which piece.
+   *
+   * The rod stands for the whole ram — it is the member that moves, and it
+   * shares the barrel's angle — so it keeps its row under the cylinder's name;
+   * the barrel and the piston are hidden behind it.
+   */
+  private standsForCylinder(cylinders: Cylinder[], link: Link): 'rod' | 'hidden' | 'none' {
+    const cylinder = cylinders.find(
+      (candidate) =>
+        candidate.rod.id === link.id ||
+        candidate.barrel.id === link.id ||
+        candidate.block.id === link.id
+    );
+    if (!cylinder) return 'none';
+    return cylinder.rod.id === link.id ? 'rod' : 'hidden';
+  }
 
   private jointPart(joint: RealJoint, index: number, withForces: boolean): ExportPart {
     const notes: string[] = [];
@@ -68,17 +103,21 @@ export class ExportCatalogService {
       id: joint.id,
       label: `Joint ${joint.name || joint.id}`,
       note: notes.join(', '),
-      // A pinned joint stands still, so kinematics has nothing for it; the
-      // reaction it carries is the whole reason force analysis wants it.
-      available: withForces || !joint.ground,
+      // Every joint of a mechanism that solves. A pinned one has a position
+      // worth writing down and a reaction worth reading, and a list that
+      // decided for the reader which of those they meant was a list that
+      // hid parts they had come looking for.
+      available: true,
       part: joint,
       mechanismIndex: index,
     };
   }
 
-  private linkPart(link: Link, index: number, valid: boolean): ExportPart {
+  private linkPart(link: Link, index: number, valid: boolean, cylinders: Cylinder[]): ExportPart {
     const notes: string[] = [];
-    if (link instanceof SliderBlock) notes.push('slider block');
+    const ram = this.standsForCylinder(cylinders, link) === 'rod';
+    if (ram) notes.push('cylinder');
+    else if (link instanceof SliderBlock) notes.push('slider block');
     if (link.joints.some((joint) => (joint as RealJoint).input)) notes.push('input crank');
     if (link instanceof RealLink && link.subset.length > 0) notes.push('compound');
     if (this.activeObj.selectedLink?.id === link.id) notes.push('on the grid');
@@ -86,12 +125,47 @@ export class ExportCatalogService {
       key: `link:${link.id}`,
       kind: 'link',
       id: link.id,
-      label: this.mechanism.bodyLabel(link),
+      label: ram ? this.cylinderLabel(cylinders, link) : this.mechanism.bodyLabel(link),
       note: notes.join(', '),
       available: valid,
       part: link,
       mechanismIndex: index,
     };
+  }
+
+  /** `Cylinder AC` — the ram by the two mounts a reader can see. */
+  private cylinderLabel(cylinders: Cylinder[], link: Link): string {
+    const cylinder = cylinders.find((candidate) => candidate.rod.id === link.id)!;
+    const mounts =
+      (cylinder.barrelFar.name || cylinder.barrelFar.id) +
+      (cylinder.rodFar.name || cylinder.rodFar.id);
+    return `Cylinder ${mounts}`;
+  }
+
+  /**
+   * What to call a body anywhere a reader will read it.
+   *
+   * A cylinder is one part in this drawer, so its pieces answer to the ram's
+   * name: a reaction headed `Rod GC` names a body the parts list never offered.
+   */
+  labelFor(link: Link): string {
+    const cylinders = this.mechanism.sealedStructures();
+    const cylinder = cylinders.find(
+      (candidate) =>
+        candidate.rod.id === link.id ||
+        candidate.barrel.id === link.id ||
+        candidate.block.id === link.id
+    );
+    return cylinder ? this.cylinderLabel(cylinders, cylinder.rod) : this.mechanism.bodyLabel(link);
+  }
+
+  /** The joints a sealed cylinder keeps to itself, by id. */
+  hiddenJointIds(): Set<string> {
+    return new Set(
+      this.mechanism
+        .sealedStructures()
+        .flatMap((cylinder) => [cylinder.barrelNear.id, cylinder.pin.id, cylinder.slider.id])
+    );
   }
 
   /** What a machine is, in the one line the section heading has room for. */

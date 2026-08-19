@@ -72,6 +72,10 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
     // are all well-proportioned, so the default answer is "nothing to say".
     // A spec that wants the warning rendered overrides it.
     cylinderReachWarning: () => undefined,
+    // Implemented, from the same function the service calls: what counts as a
+    // cylinder decides which parts a panel offers and which it folds away, so
+    // a stub here could make a drawer look right about a machine it had wrong.
+    sealedStructures: () => sealedCylinderStructures(service.joints),
     // This one is not stubbed but implemented, because a panel that changes
     // what it shows for a cylinder has to be tested against a real one. It is
     // the same resolution the service does, over the same joints.

@@ -200,8 +200,14 @@
       }
     }
 
+    // Drawn rather than typed: a middot at this size renders as a ring in some
+    // faces and takes the ink of whatever it sits between.
     .dot {
-      color: rgba(0, 0, 0, 0.2);
+      flex: 0 0 auto;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.3);
     }
 
     .exportBody {
@@ -260,6 +266,16 @@
 
       &:hover:not(:disabled) {
         background: #f4f5f9;
+      }
+
+      // The part the reader picked on the canvas, so the list opens at the
+      // thing they were already looking at.
+      &.onGrid {
+        background: #fff8e1;
+
+        &:hover:not(:disabled) {
+          background: #fff3cd;
+        }
       }
 
       // Nothing to give, so nothing to tick: greyed rather than hidden, because
@@ -413,14 +429,44 @@
     .formatRow {
       display: flex;
       align-items: flex-start;
+      gap: 8px;
+    }
+
+    .formatPick {
+      display: flex;
+      align-items: flex-start;
       justify-content: flex-start;
       gap: 10px;
+      flex: 1 1 auto;
       padding: 5px 0;
       border: none;
       background: transparent;
       font-family: inherit;
       text-align: left;
       cursor: pointer;
+    }
+
+    // Asks the question rather than answering it in place: four paragraphs
+    // under four formats is a page nobody reads to choose between them.
+    .whatIsThis {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+      margin-top: 7px;
+      padding: 0;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: 50%;
+      background: transparent;
+      color: rgba(0, 0, 0, 0.45);
+      font-family: inherit;
+      font-size: 11px;
+      line-height: 1;
+      cursor: help;
+
+      &:hover {
+        border-color: $indigo;
+        color: $indigo;
+      }
     }
 
     .radio {
@@ -517,6 +563,17 @@
       font-size: 12px;
       color: rgba(0, 0, 0, 0.55);
       font-variant-numeric: tabular-nums;
+    }
+
+    // Its own band above the footer, so it reads as belonging to the whole
+    // list rather than to the last group in it.
+    .componentsBar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 15px;
+      border-top: 1px solid #eceef5;
     }
 
     .exportFoot {

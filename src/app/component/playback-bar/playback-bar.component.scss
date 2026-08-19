@@ -133,6 +133,38 @@
     }
   }
 
+  // Smaller than play, and outlined rather than filled: it is the way back
+  // rather than the thing you came here to press.
+  .stopButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #5f6368;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    &:disabled {
+      color: #c8cad3;
+      cursor: default;
+    }
+
+    mat-icon {
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+      line-height: 20px;
+    }
+  }
+
   // A tab off the top edge of the card, with the shadow above it that makes it
   // read as attached rather than floating.
   .syncToggle {

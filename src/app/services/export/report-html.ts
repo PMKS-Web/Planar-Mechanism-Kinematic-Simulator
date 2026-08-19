@@ -441,7 +441,11 @@ function styles(): string {
   return `
 @page { size: letter; margin: 0.5in; }
 * { box-sizing: border-box; }
-body { margin: 0; font-family: Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #2c2c2c; }
+/* A printer drops backgrounds unless it is told not to, which took the colour
+   out of every legend swatch on the page and left the reader three unnamed
+   lines. */
+body { margin: 0; font-family: Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #2c2c2c; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .page {
   width: 7.5in;
   /* A shade under the 10in a Letter page leaves at half-inch margins. A block
@@ -479,7 +483,7 @@ body { margin: 0; font-family: Roboto, 'Helvetica Neue', Helvetica, Arial, sans-
 .graphTitle { font-size: 12px; font-weight: 500; }
 .graphLegend { display: flex; align-items: center; gap: 10px; font-size: 11px; color: rgba(0,0,0,0.55); padding: 2px 0 4px; }
 .graphLegend .spacer { flex: 1 1 auto; }
-.swatch { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+.swatch { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; border: 0.5px solid rgba(0,0,0,0.15); }
 .dataTable { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 8.5px; font-variant-numeric: tabular-nums; margin-top: 8px; }
 /* A head is several words and a column is one number wide, so the head wraps
    rather than setting the width of everything under it. */

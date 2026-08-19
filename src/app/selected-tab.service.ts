@@ -82,8 +82,10 @@ export class SelectedTabService {
     // looking like the app is stuck between two places.
     RightPanelComponent.closeSetupUnlessFor(this.getCurrentTab());
 
-    // Replaces the old stop button: leaving Analyze is what rewinds the
-    // mechanism, so the other modes always act on the pose at time 0.
+    // Leaving Analyze rewinds the mechanism, so the other modes always act on
+    // the pose at time 0. The transport's stop button does the same thing
+    // without leaving, for a reader who wants the drawn pose back and wants to
+    // stay where they are.
     if (this.isAnalysisMode(previousTab) && !this.isAnalysisMode()) {
       this.mechanism.easeToStart();
       this.settings.animating.next(false);

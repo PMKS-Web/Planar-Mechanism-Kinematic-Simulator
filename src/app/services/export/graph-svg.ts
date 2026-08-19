@@ -7,6 +7,14 @@ export interface PlotSvgOptions {
   height: number;
   /** Whether the picture carries its own title and legend, or a page does. */
   standalone: boolean;
+  /**
+   * The PMKS+ mark, as a data URI.
+   *
+   * Embedded rather than linked: a graph leaves here as a file of its own and
+   * lands in a report or a slide deck with nothing around it to say what drew
+   * it, and a picture that reaches for a URL is a picture with a hole in it.
+   */
+  logo?: string;
 }
 
 const COLORS = [ANALYSIS_SERIES_COLORS.X, ANALYSIS_SERIES_COLORS.Y, ANALYSIS_SERIES_COLORS.Z];
@@ -82,6 +90,12 @@ export function plotSvg(plot: ExportPlot, times: number[], options: PlotSvgOptio
       top + innerHeight + 20
     }" text-anchor="end" font-size="11" fill="rgba(0,0,0,0.55)">${lastTime.toFixed(2)} s</text>`;
 
+  const mark =
+    standalone && options.logo
+      ? `<image href="${options.logo}" x="${width - right - 84}" y="${
+          height - bottom + 12
+        }" width="84" height="20" preserveAspectRatio="xMaxYMid meet"/>`
+      : '';
   const heading = standalone
     ? `<text x="${left}" y="22" font-size="15" font-weight="500" fill="#2c2c2c">${escapeXml(
         plot.title
@@ -89,7 +103,8 @@ export function plotSvg(plot: ExportPlot, times: number[], options: PlotSvgOptio
       `<text x="${width - right}" y="22" text-anchor="end" font-size="12" fill="rgba(0,0,0,0.45)">${escapeXml(
         plot.unit
       )}</text>` +
-      legend(plot, left)
+      legend(plot, left) +
+      mark
     : '';
 
   return (

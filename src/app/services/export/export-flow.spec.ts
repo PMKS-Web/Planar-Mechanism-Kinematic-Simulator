@@ -87,7 +87,7 @@ describe('the export drawer', () => {
   beforeAll(() => vi.spyOn(console, 'log').mockImplementation(() => undefined));
   afterAll(() => vi.restoreAllMocks());
 
-  it('lists every part of the mechanism, and refuses a grounded joint its kinematics', () => {
+  it('lists every part of the mechanism, pinned ones included', () => {
     const { flow } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
     const parts = flow.partGroups().flatMap((group) => group.parts);
     expect(parts.map((part) => part.label)).toEqual([
@@ -99,10 +99,12 @@ describe('the export drawer', () => {
       'Link BC',
       'Link CD',
     ]);
+    // A pinned joint says what it is and is offered anyway: it has a position
+    // worth writing down and a reaction worth reading, and a list that decided
+    // which of those the reader meant was a list hiding parts they came for.
     const grounded = parts.find((part) => part.label === 'Joint D')!;
     expect(grounded.note).toContain('grounded');
-    expect(grounded.available).toBe(false);
-    expect(parts.find((part) => part.label === 'Joint B')!.available).toBe(true);
+    expect(parts.every((part) => part.available)).toBe(true);
   });
 
   it('offers a grounded joint once force analysis is set up, for its reaction', () => {
@@ -128,7 +130,7 @@ describe('the export drawer', () => {
       'Velocity',
       'Acceleration',
     ]);
-    expect(groups[1].columns.map((column) => column.label)).toContain('Centre of mass');
+    expect(groups[1].columns.map((column) => column.label)).toContain('Center of mass');
   });
 
   it('writes one row per solved sample, on the mechanism’s own clock', () => {
@@ -241,18 +243,17 @@ describe('the export drawer', () => {
     expect(labels).toContain('slider block');
   });
 
-  it('keeps a joint that cannot move out of the kinematics it has none of', () => {
-    const { flow } = flowFor(LEGACY_FORCE_MECHANISM, { forces: true });
-    const grounded = flow
-      .partGroups()
-      .flatMap((group) => group.parts)
-      .filter((part) => part.kind === 'joint' && part.note.includes('grounded'));
-    expect(grounded.length).toBeGreaterThan(0);
-    grounded.forEach((part) => flow.togglePart(part));
-    // Offered, because of the reaction it carries — and asked nothing about
-    // position or velocity, which a pinned joint does not have.
-    expect(flow.columnGroups('kinematics')).toHaveLength(0);
-    expect(flow.columnGroups('forces').length).toBeGreaterThan(0);
+  it('stands a sealed cylinder in the list as one part, not as its pieces', () => {
+    const { flow } = flowFor(TEMPLATE_LINKAGES['Cylinder_Boom']);
+    const labels = flow.partGroups().flatMap((group) => group.parts.map((part) => part.label));
+
+    // The ram under the two mounts a reader can point at, and none of the
+    // barrel, piston or buried pins it is assembled from.
+    expect(labels.some((label) => label.startsWith('Cylinder '))).toBe(true);
+    expect(labels.some((label) => label.startsWith('Rod '))).toBe(false);
+    expect(labels.some((label) => label.startsWith('Barrel '))).toBe(false);
+    expect(labels.some((label) => label.startsWith('Piston '))).toBe(false);
+    expect(labels.some((label) => label.startsWith('Block '))).toBe(false);
   });
 
   it('gives each of a link’s reactions its own tick', () => {

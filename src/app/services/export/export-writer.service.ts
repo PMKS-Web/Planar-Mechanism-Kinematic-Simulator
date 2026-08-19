@@ -11,8 +11,10 @@ import { ExportFile } from './export-model';
 import { ExportPlot, ExportTable, ExportTableService } from './export-table.service';
 import { formatCell, toCsv } from './csv-writer';
 import { toXlsx, sheetNames } from './xlsx-writer';
+import { utf8, zipStore } from './zip';
 import { plotSvg } from './graph-svg';
 import { mechanismSvg } from './mechanism-svg';
+import { canvasSnapshot } from './canvas-svg';
 import { Measure, ReportSection, reportHtml, reportPages } from './report-html';
 
 const SERIES_COLORS: Record<string, string> = {
@@ -101,13 +103,38 @@ export class ExportWriterService {
 
   private writeCsv(tables: ExportTable[]): void {
     const stem = this.flow.name();
-    tables.forEach((table) =>
-      this.hand({
+    this.deliver(
+      tables.map((table) => ({
         name: `${this.fileStem(stem, table)}.csv`,
         mime: 'text/csv;charset=utf-8',
         text: toCsv(table, this.flow.decimals),
-      })
+      })),
+      stem
     );
+  }
+
+  /**
+   * Hand the files over, as one download where there are more than two.
+   *
+   * A browser asks before it will take a second file and stops after a handful,
+   * so an export of a part each arrived as one CSV and a permission prompt the
+   * reader had to answer for the rest. One archive is one download.
+   */
+  private deliver(files: ExportFile[], stem: string): void {
+    if (files.length <= 2) {
+      files.forEach((file) => this.hand(file));
+      return;
+    }
+    this.hand({
+      name: `${stem}.zip`,
+      mime: 'application/zip',
+      bytes: zipStore(
+        files.map((file) => ({
+          name: file.name,
+          data: file.bytes ?? utf8(file.text ?? ''),
+        }))
+      ),
+    });
   }
 
   private writeWorkbook(tables: ExportTable[]): void {
@@ -120,25 +147,26 @@ export class ExportWriterService {
 
   private async writeImages(tables: ExportTable[]): Promise<boolean> {
     const width = 720;
-    const height = 400;
-    let drawn = 0;
+    const height = 420;
+    const logo = await logoDataUrl();
+    const files: ExportFile[] = [];
     for (const table of tables) {
       for (const plot of table.plots) {
-        const svg = plotSvg(plot, table.times, { width, height, standalone: true });
+        const svg = plotSvg(plot, table.times, { width, height, standalone: true, logo });
         const name = `${this.flow.name()}_${safe(plot.title)}`;
-        if (this.flow.imageFormat === 'svg') {
-          this.hand({ name: `${name}.svg`, mime: 'image/svg+xml', text: svg });
-        } else {
-          this.hand({
-            name: `${name}.png`,
-            mime: 'image/png',
-            bytes: await rasterize(svg, width, height),
-          });
-        }
-        drawn++;
+        files.push(
+          this.flow.imageFormat === 'svg'
+            ? { name: `${name}.svg`, mime: 'image/svg+xml', text: svg }
+            : {
+                name: `${name}.png`,
+                mime: 'image/png',
+                bytes: await rasterize(svg, width, height),
+              }
+        );
       }
     }
-    return drawn > 0;
+    this.deliver(files, `${this.flow.name()}_graphs`);
+    return files.length > 0;
   }
 
   /** Every selected machine, one section each, in one printable document. */
@@ -163,7 +191,12 @@ export class ExportWriterService {
     const solved = this.mechanism.mechanisms[index];
     const group = this.flow.partGroups()[index];
     if (!table || !solved || !group) return undefined;
-    const drawing = mechanismSvg(solved.joints[0] ?? [], solved.links[0] ?? [], 330, 230);
+    // The canvas itself where there is one, so a slot, a piston and a sealed
+    // cylinder reach the page as the reader drew them; the skeleton is the
+    // fallback for a report built without a canvas to copy.
+    const drawing =
+      canvasSnapshot(330, 250) ??
+      mechanismSvg(solved.joints[0] ?? [], solved.links[0] ?? [], 330, 230);
     const decimals = this.flow.decimals;
     return {
       title: `${this.flow.selectedColumns('forces').length > 0 ? 'Analysis' : 'Kinematic analysis'} — ${group.id}`,
@@ -276,6 +309,27 @@ function textMeasure(): Measure | undefined {
     seen.set(key, width);
     return width;
   };
+}
+
+/**
+ * The PMKS+ mark as a data URI, for a picture that has to stand on its own.
+ *
+ * Read once per export and given to every graph in it. A failure here is not
+ * worth refusing an export over: the graph goes out without the mark.
+ */
+async function logoDataUrl(): Promise<string | undefined> {
+  try {
+    const response = await fetch(new URL('assets/PMKS_logo.png', document.baseURI).href);
+    const blob = await response.blob();
+    return await new Promise<string | undefined>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => resolve(undefined);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return undefined;
+  }
 }
 
 /** A picture the browser will draw, as PNG bytes. */

@@ -46,11 +46,11 @@
         <span class="spacer"></span>
         @if (flow.step === 1) {
           <button class="linkButton" (click)="everything(true)">Select all</button>
-          <span class="dot">·</span>
+          <span class="dot"></span>
           <button class="linkButton" (click)="everything(false)">Select none</button>
         } @else {
           <button class="linkButton" (click)="everyColumn(true)">Select all</button>
-          <span class="dot">·</span>
+          <span class="dot"></span>
           <button class="linkButton" (click)="everyColumn(false)">Select none</button>
         }
       </div>
@@ -67,7 +67,7 @@
           <span class="mechNote">{{ groupNote(group) }}</span>
           <span class="spacer"></span>
           <button class="linkButton small" (click)="flow.setParts(group.parts, true)">All</button>
-          <span class="dot">·</span>
+          <span class="dot"></span>
           <button class="linkButton small" (click)="flow.setParts(group.parts, false)">None</button>
         </div>
         <div class="rows">
@@ -76,8 +76,11 @@
               class="pickRow"
               [class.off]="!part.available"
               [class.on]="flow.isPicked(part)"
+              [class.onGrid]="isOnGrid(part)"
               [disabled]="!part.available"
               (click)="flow.togglePart(part)"
+              (mouseenter)="pointAt(part)"
+              (mouseleave)="pointAt(undefined)"
             >
               <span class="box" [class.ticked]="flow.isPicked(part)">
                 @if (flow.isPicked(part)) {
@@ -91,10 +94,6 @@
             </button>
           }
         </div>
-        <!-- Why the list looks different from the one the other mode shows. -->
-        @if (groundedHint(group); as hint) {
-          <p class="hint">{{ hint }}</p>
-        }
       }
       @if (groups().length === 0) {
         <p class="empty">
@@ -114,14 +113,11 @@
                 [class.on]="flow.forceMode() === mode"
                 (click)="flow.setForceMode($any(mode))"
               >
-                {{ mode === 'static' ? 'Static' : 'In-motion' }}
+                {{ mode === 'static' ? 'Static (Equilibrium)' : 'In-motion (Dynamic)' }}
               </button>
             }
           </div>
         </div>
-        <p class="hint">
-          Static holds the mechanism still; In-motion includes the forces of movement.
-        </p>
       }
 
       @for (group of flow.columnGroups(); track group.key) {
@@ -161,42 +157,36 @@
           }}
         </p>
       }
-
-      @if (hasMagnitude()) {
-        <div class="settingRow spaced">
-          <span class="settingName">Components</span>
-          <span class="spacer"></span>
-          <div class="segmented">
-            <button [class.on]="!flow.withMagnitude" (click)="flow.withMagnitude = false">
-              X, Y
-            </button>
-            <button [class.on]="flow.withMagnitude" (click)="flow.withMagnitude = true">
-              X, Y, Mag
-            </button>
-          </div>
-        </div>
-        <p class="hint">
-          Each row above says what it will write. Magnitude is √(X² + Y²), so only a rate or a force
-          has one to add.
-        </p>
-      }
     }
 
     @if (flow.step === 3) {
       <div class="formatBlock">
         <span class="settingName">Format</span>
         @for (choice of formats; track choice.key) {
-          <button class="formatRow" (click)="flow.format = choice.key">
-            <span class="radio" [class.on]="flow.format === choice.key">
-              @if (flow.format === choice.key) {
-                <span class="pip"></span>
-              }
-            </span>
-            <span class="formatText">
-              <span class="formatName">{{ choice.name }}</span>
-              <span class="formatNote">{{ choice.note }}</span>
-            </span>
-          </button>
+          <div class="formatRow">
+            <button class="formatPick" (click)="flow.format = choice.key">
+              <span class="radio" [class.on]="flow.format === choice.key">
+                @if (flow.format === choice.key) {
+                  <span class="pip"></span>
+                }
+              </span>
+              <span class="formatText">
+                <span class="formatName">{{ choice.name }}</span>
+                <span class="formatNote">{{ choice.note }}</span>
+              </span>
+            </button>
+            <!-- The whole answer, for a reader deciding between four formats
+                 they have never used, without a paragraph under each one. -->
+            <button
+              class="whatIsThis"
+              [matTooltip]="choice.about"
+              matTooltipPosition="left"
+              matTooltipClass="exportTip"
+              [attr.aria-label]="'About ' + choice.name"
+            >
+              ?
+            </button>
+          </div>
         }
       </div>
 
@@ -281,16 +271,25 @@
           >{{ fileName }}{{ flow.format === 'report' ? '' : flow.extension() }}</span
         >
         <span class="summaryNote">{{ summaryLine }}</span>
-        @if (flow.selectedColumns('forces').length > 0) {
-          <span class="summaryNote">
-            Every force column is headed
-            {{ flow.forceMode() === 'static' ? 'Static' : 'In-motion' }}, so the file says which
-            analysis it holds.
-          </span>
-        }
       </div>
     }
   </div>
+
+  <!-- On the footer rather than at the end of the list: it governs every row
+       above it, and a control a reader has to scroll to find is a control they
+       decide they do not have. -->
+  @if (flow.step === 2 && hasMagnitude()) {
+    <div class="componentsBar">
+      <span class="settingName">Components to export</span>
+      <span class="spacer"></span>
+      <div class="segmented">
+        <button [class.on]="!flow.withMagnitude" (click)="flow.withMagnitude = false">X, Y</button>
+        <button [class.on]="flow.withMagnitude" (click)="flow.withMagnitude = true">
+          X, Y, Magnitude
+        </button>
+      </div>
+    </div>
+  }
 
   <div class="exportFoot">
     @if (flow.step > 1) {

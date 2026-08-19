@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
 import { ScrollShadowDirective } from '../../scroll-shadow.directive';
 import { MechanismService } from '../../services/mechanism.service';
+import { ActiveObjService } from '../../services/active-obj.service';
 import { NotificationService } from '../../services/notification.service';
 import { AnalyticsService } from '../../services/analytics.service';
 import { ExportFlowService, ExportStep } from '../../services/export/export-flow.service';
@@ -37,12 +39,13 @@ interface StepMark {
   templateUrl: './export-panel.component.html',
   styleUrls: ['./export-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, ScrollShadowDirective],
+  imports: [MatIcon, MatTooltip, ScrollShadowDirective],
 })
 export class ExportPanelComponent implements OnInit, OnDestroy {
   flow = inject(ExportFlowService);
   private writer = inject(ExportWriterService);
   private mechanism = inject(MechanismService);
+  private activeObj = inject(ActiveObjService);
   private notify = inject(NotificationService);
   private analytics = inject(AnalyticsService);
 
@@ -52,15 +55,35 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
     { number: 3, name: 'File' },
   ];
 
-  readonly formats: { key: ExportFormat; name: string; note: string }[] = [
-    { key: 'csv', name: 'CSV', note: 'One time column, one per series.' },
+  readonly formats: { key: ExportFormat; name: string; note: string; about: string }[] = [
+    {
+      key: 'csv',
+      name: 'CSV',
+      note: 'One time column, one per series.',
+      about:
+        'A plain text table: the first row names the columns, and every row after it is one solved position. Opens in any spreadsheet and reads into any script. One file per machine, or one per part; more than two arrive as a zip.',
+    },
     {
       key: 'xlsx',
       name: 'Excel workbook',
       note: 'Sheets by analysis or by part, for charting.',
+      about:
+        'One .xlsx holding the same numbers on separate sheets — kinematics and forces apart, or a sheet per part — so several series can be charted together without pasting between files. Written here rather than exported through Excel, so no add-in is needed.',
     },
-    { key: 'images', name: 'Graph images', note: 'PNG or SVG per graph.' },
-    { key: 'report', name: 'Report', note: 'PDF: mechanism, graphs and table.' },
+    {
+      key: 'images',
+      name: 'Graph images',
+      note: 'PNG or SVG per graph.',
+      about:
+        'A picture of every graph the selection asks for, drawn at the size it is plotted, with the PMKS+ mark on it. SVG stays sharp at any size and can be edited; PNG drops into a document that will not take a vector. More than two arrive as a zip.',
+    },
+    {
+      key: 'report',
+      name: 'Report',
+      note: 'PDF: mechanism, graphs and table.',
+      about:
+        'A printable document: the mechanism as drawn, what it was solved under, its graphs, and every row the CSV would have held. Opens the print dialog, where “Save as PDF” writes the file. The share link is on every page, so a report leads back to the mechanism that made it.',
+    },
   ];
 
   readonly decimalChoices: Decimals[] = [2, 4, 6, 'full'];
@@ -77,6 +100,8 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.updates?.unsubscribe();
+    // Nothing on the canvas should stay lit once the list that lit it is gone.
+    this.mechanism.hoveredPart = undefined;
   }
 
   // --- what the head says ---------------------------------------------------
@@ -129,25 +154,24 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
 
   groupNote(group: ExportPartGroup): string {
     const picked = this.pickedIn(group);
-    return picked > 0 ? `${group.note} · ${picked} ticked` : group.note;
+    return picked > 0 ? `${group.note} · ${picked} selected` : group.note;
   }
 
   /**
-   * Why this machine's list is the shape it is.
+   * Point at the part this row is about, on the canvas.
    *
-   * Only where forces are in play: in a purely kinematic export a grounded
-   * joint being greyed needs no explaining, because the row already says
-   * `grounded` and there is nothing else it could mean.
+   * A name is not a place: `Joint F` on a Jansen leg is one of eleven pins and
+   * the list says nothing about which. The grid defers to whatever is already
+   * selected there, so this can never take a reader's own mark away.
    */
-  groundedHint(group: ExportPartGroup): string {
-    if (!this.flow.forcesAvailable()) return '';
-    if (!group.forcesReady) {
-      return `${group.id} will export kinematics only until its force setup is finished.`;
-    }
-    const grounded = group.parts.some((part) => part.note.includes('grounded'));
-    return grounded
-      ? 'Grounded joints are offered here: they do not move, but they carry a reaction.'
-      : '';
+  pointAt(part: ExportPart | undefined): void {
+    this.mechanism.hoveredPart = part?.part;
+  }
+
+  /** Whether this row is the thing the reader picked on the canvas. */
+  isOnGrid(part: ExportPart): boolean {
+    if (part.kind === 'joint') return this.activeObj.selectedJoint?.id === part.id;
+    return this.activeObj.selectedLink?.id === part.id;
   }
 
   everything(picked: boolean): void {

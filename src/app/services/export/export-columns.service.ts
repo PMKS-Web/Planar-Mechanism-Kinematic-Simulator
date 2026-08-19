@@ -37,12 +37,7 @@ export class ExportColumnsService {
 
   private kinematicGroups(parts: ExportPart[]): ExportColumnGroup[] {
     const groups: ExportColumnGroup[] = [];
-    // A pinned joint stands still, so it has no kinematics whichever mode it
-    // was offered in. It is on the list at all because of the reaction it
-    // carries, and that belongs to the other tab.
-    const joints = parts.filter(
-      (part) => part.kind === 'joint' && !(part.part as RealJoint).ground
-    );
+    const joints = parts.filter((part) => part.kind === 'joint');
     const links = parts.filter((part) => part.kind === 'link');
     const length = this.catalog.unitStr(this.settings.lengthUnit.value);
     const angle = this.catalog.unitStr(this.settings.angleUnit.value);
@@ -79,10 +74,10 @@ export class ExportColumnsService {
           this.kinematic(links, 'l:angacc', 'Angular acceleration', `${angle}/s²`, [
             ['Angular acceleration', 'Angular Link Acc', `${angle}/s²`, 1],
           ]),
-          this.kinematic(links, 'l:com', 'Centre of mass', 'pos, vel, acc', [
-            ['CoM position', "Linear Link's CoM Pos", length, 2],
-            ['CoM velocity', "Linear Link's CoM Vel", `${length}/s`, 3],
-            ['CoM acceleration', "Linear Link's CoM Acc", `${length}/s²`, 3],
+          this.kinematic(links, 'l:com', 'Center of mass', 'pos, vel, acc', [
+            ['Center of mass position', "Linear Link's CoM Pos", length, 2],
+            ['Center of mass velocity', "Linear Link's CoM Vel", `${length}/s`, 3],
+            ['Center of mass acceleration', "Linear Link's CoM Acc", `${length}/s²`, 3],
           ]),
         ],
       });
@@ -130,6 +125,9 @@ export class ExportColumnsService {
    */
   private forceGroups(parts: ExportPart[]): ExportColumnGroup[] {
     const mode = this.settings.forceAnalysisMode.value;
+    // A reaction at a joint buried inside a sealed cylinder is a force between
+    // two halves of one part, named after a pin the drawing never shows.
+    const hidden = this.catalog.hiddenJointIds();
     const groups: ExportColumnGroup[] = [];
     parts.forEach((part) => {
       const solved = this.mechanism.mechanisms[part.mechanismIndex];
@@ -147,16 +145,18 @@ export class ExportColumnsService {
                 'Joint Forces'
               )
             )
-          : (index.jointsByLink.get(part.id) ?? []).map((jointId) =>
-              this.force(
-                part,
-                `Force at ${this.jointName(jointId)}`,
-                `${this.modeWord()} force on ${part.label} at ${this.jointName(jointId)}`,
-                jointId,
-                part.id,
-                'Joint Forces'
-              )
-            );
+          : (index.jointsByLink.get(part.id) ?? [])
+              .filter((jointId) => !hidden.has(jointId))
+              .map((jointId) =>
+                this.force(
+                  part,
+                  `Force at ${this.jointName(jointId)}`,
+                  `${this.modeWord()} force on ${part.label} at ${this.jointName(jointId)}`,
+                  jointId,
+                  part.id,
+                  'Joint Forces'
+                )
+              );
       if (part.kind === 'joint' && (part.part as RealJoint).input) {
         const effort = part.part instanceof PrisJoint ? 'Input force' : 'Input torque';
         columns.push(
@@ -226,7 +226,7 @@ export class ExportColumnsService {
   /** The same words the panels put on a graph, so the file agrees with them. */
   private bodyName(linkId: string): string {
     const body = this.mechanism.links.find((link) => link.id === linkId);
-    return body ? this.mechanism.bodyLabel(body) : linkId;
+    return body ? this.catalog.labelFor(body) : linkId;
   }
 
   private jointName(jointId: string): string {

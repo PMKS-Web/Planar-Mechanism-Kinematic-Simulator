@@ -3360,6 +3360,11 @@ export class MechanismService {
     return this.mechanismTimeStep === 0;
   }
 
+  /** The same question, for a control that has to say when it would do nothing. */
+  isAtStartPose(): boolean {
+    return this.atStartPose();
+  }
+
   /**
    * Stop playback and draw the start of the cycle.
    *
@@ -3917,7 +3922,7 @@ export class MechanismService {
     if (this.isInSelectedMechanism(joint)) {
       return 'joint-selected';
     }
-    if (this.isInHoveredMechanism(joint)) {
+    if (this.isInHoveredMechanism(joint) || this.isHoveredPart(joint)) {
       return 'joint-highlight';
     }
     if (joint.showHighlight) {
@@ -3979,6 +3984,28 @@ export class MechanismService {
    */
   hoveredMechanismIndex = -1;
 
+  /**
+   * The one part a list elsewhere is pointing at.
+   *
+   * The export drawer lists every joint and link by name, and a name is not a
+   * place: a reader ticking `Joint F` on a Jansen leg has no idea which of
+   * eleven pins that is. Pointing at the row lights it on the canvas.
+   *
+   * Deferred to whatever is selected: a selection is the stronger statement,
+   * and a hover that repainted over it would take the reader's own mark away
+   * while they were reading the list beside it.
+   */
+  hoveredPart: Joint | Link | undefined;
+
+  private isHoveredPart(part: Joint | Link): boolean {
+    return (
+      !!this.hoveredPart &&
+      this.hoveredPart.id === part.id &&
+      this.activeObjService.objType !== 'Joint' &&
+      this.activeObjService.objType !== 'Link'
+    );
+  }
+
   private isInHoveredMechanism(part: Joint | Link): boolean {
     return this.hoveredMechanismIndex >= 0
       ? this.isInPartition(part, this.hoveredMechanismIndex)
@@ -4014,7 +4041,7 @@ export class MechanismService {
     if (this.isInSelectedMechanism(link)) {
       return 'link-selected';
     }
-    if (this.isInHoveredMechanism(link)) {
+    if (this.isInHoveredMechanism(link) || this.isHoveredPart(link)) {
       return 'link-hovered';
     }
     return 'link-default';

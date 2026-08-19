@@ -128,7 +128,7 @@ record(
 await drawer().getByRole('button', { name: 'X, Y', exact: true }).click();
 await page.waitForTimeout(200);
 const withoutMag = await drawer().locator('.footNote').innerText();
-await drawer().getByRole('button', { name: 'X, Y, Mag', exact: true }).click();
+await drawer().getByRole('button', { name: 'X, Y, Magnitude', exact: true }).click();
 await page.waitForTimeout(200);
 const withMag = await drawer().locator('.footNote').innerText();
 record('dropping the magnitude narrows the file', number(withoutMag) < number(withMag), {
@@ -208,12 +208,16 @@ await drawer().locator('.formatRow', { hasText: 'Graph images' }).click();
 await page.waitForTimeout(200);
 await drawer().locator('.segmented button', { hasText: 'SVG' }).click();
 await page.waitForTimeout(200);
-const svg = await grab(() => page.locator('.nextButton').click());
-const drawing = readFileSync(svg.path, 'utf8');
+const pictures = await grab(() => page.locator('.nextButton').click());
+const inside = readStoredZip(readFileSync(pictures.path));
+const drawing = inside.find((entry) => entry.name.endsWith('.svg'))?.text ?? '';
 record(
-  'a graph comes down as a drawing with a line in it',
-  svg.name.endsWith('.svg') && drawing.includes('<polyline') && drawing.includes('<svg'),
-  svg.name
+  'a graph comes down as a drawing with a line in it, and the mark on it',
+  pictures.name.endsWith('.zip') &&
+    inside.length > 2 &&
+    drawing.includes('<polyline') &&
+    drawing.includes('<image href="data:image/png'),
+  { name: pictures.name, files: inside.length, bytes: drawing.length }
 );
 
 // --- the report -------------------------------------------------------------
@@ -295,6 +299,72 @@ record(
   layout
 );
 
+// --- the list is a way into the drawing -------------------------------------
+const lit = () =>
+  page.evaluate(() => document.querySelectorAll('.joint-highlight, .link-hovered').length);
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+await page.waitForTimeout(600);
+await openDrawer();
+const dark = await lit();
+await drawer().locator('.pickRow').nth(1).hover();
+await page.waitForTimeout(300);
+const pointed = await lit();
+await page.mouse.move(700, 500);
+await page.waitForTimeout(300);
+record(
+  'pointing at a row lights that one part on the grid, and lets it go again',
+  dark === 0 && pointed === 1 && (await lit()) === 0,
+  { dark, pointed }
+);
+
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((joint) => !joint.ground));
+});
+await page.waitForTimeout(600);
+record(
+  'and the part picked on the canvas is marked in the list',
+  (await drawer().locator('.pickRow.onGrid').count()) === 1 &&
+    (await drawer()
+      .locator('.pickRow.onGrid')
+      .first()
+      .evaluate((row) => getComputedStyle(row).backgroundColor)) === 'rgb(255, 248, 225)'
+);
+await drawer().locator('.pickRow').first().hover();
+await page.waitForTimeout(300);
+record('a selection on the canvas is not painted over by a hover in the list', (await lit()) === 0);
+
+// --- a sealed cylinder is one part, not the pieces it is assembled from ------
+await page.goto(`${BASE}/?${payloads['Cylinder_Boom']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+await page.waitForTimeout(700);
+await openDrawer();
+const cylinderParts = await drawer().locator('.pickRow .rowName').allInnerTexts();
+record(
+  'a sealed cylinder stands in the list as one part',
+  cylinderParts.some((name) => name.startsWith('Cylinder ')) &&
+    !cylinderParts.some((name) => /^(Rod|Barrel|Piston|Block) /.test(name)),
+  cylinderParts
+);
+
+// --- more than two files arrive as one download -----------------------------
+await drawer().locator('.linkButton', { hasText: 'Select all' }).click();
+await page.waitForTimeout(300);
+await page.locator('.nextButton').click();
+await page.waitForTimeout(500);
+await page.locator('.nextButton').click();
+await page.waitForTimeout(400);
+await drawer().locator('.segmented button', { hasText: 'Per part' }).click();
+await page.waitForTimeout(400);
+const archive = await grab(() => page.locator('.nextButton').click());
+const zipped = readFileSync(archive.path);
+record(
+  'more than two files come down as one archive, not one prompt each',
+  archive.name.endsWith('.zip') && zipped[0] === 0x50 && zipped.includes(Buffer.from('.csv')),
+  archive.name
+);
+
 // --- a long list scrolls, and its decisions do not --------------------------
 await page.goto(`${BASE}/?${TWO_FOUR_BARS}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
@@ -363,6 +433,33 @@ process.exit(results.every(([, ok]) => ok) ? 0 : 1);
 /** The first number in a phrase like `26 columns · 361 rows`. */
 function number(text) {
   return Number((text.match(/\d+/) ?? [0])[0]);
+}
+
+/**
+ * Read back an archive of stored entries.
+ *
+ * Enough of the zip format to open what this app writes, which never
+ * compresses — so an entry's bytes are its bytes, at the offset its local
+ * header names.
+ */
+function readStoredZip(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let end = bytes.length - 22;
+  while (end >= 0 && view.getUint32(end, true) !== 0x06054b50) end--;
+  const count = view.getUint16(end + 10, true);
+  let at = view.getUint32(end + 16, true);
+  const entries = [];
+  for (let n = 0; n < count; n++) {
+    const nameLength = view.getUint16(at + 28, true);
+    const size = view.getUint32(at + 24, true);
+    const offset = view.getUint32(at + 42, true);
+    const name = bytes.subarray(at + 46, at + 46 + nameLength).toString('utf8');
+    const start =
+      offset + 30 + view.getUint16(offset + 26, true) + view.getUint16(offset + 28, true);
+    entries.push({ name, text: bytes.subarray(start, start + size).toString('utf8') });
+    at += 46 + nameLength + view.getUint16(at + 30, true) + view.getUint16(at + 32, true);
+  }
+  return entries;
 }
 
 /** Split a CSV line, respecting the quotes a head may carry. */

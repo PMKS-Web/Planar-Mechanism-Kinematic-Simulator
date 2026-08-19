@@ -230,7 +230,15 @@ export class ExportTableService {
     return ['X', 'Y', 'Mag'];
   }
 
+  /**
+   * What a column head calls a part.
+   *
+   * The label without the word `Link`, rather than the id: a cylinder answers
+   * to the two mounts a reader can see, and a block to the pin it rides on —
+   * both of which have ids naming joints that were never drawn.
+   */
   private shortName(part: ExportPart): string {
-    return part.kind === 'joint' ? (part.part as RealJoint).name || part.id : part.id;
+    if (part.kind === 'joint') return (part.part as RealJoint).name || part.id;
+    return part.label.replace(/^Link /, '');
   }
 }

@@ -8,9 +8,10 @@
  * changes the mode, the left panel follows it, the sliding highlight lands on
  * the mode you actually chose, each analysis mode carries a chip saying whether
  * it can be entered, the transport belongs to the analysis modes alone, and
- * leaving an analysis mode still rewinds the mechanism (there is no stop
- * button). The removed chrome is asserted absent, because a selector that
- * matches nothing passes every test written against it.
+ * leaving an analysis mode still rewinds the mechanism — as does the stop
+ * button beside play, for a reader who wants the drawn pose without leaving.
+ * The removed chrome is asserted absent, because a selector that matches
+ * nothing passes every test written against it.
  *
  *   PMKS_BASE_URL=<origin> node e2e/left-nav-modes.mjs
  */
@@ -173,9 +174,12 @@ try {
     kinematicHighlight
   );
   record('the transport appears', (await page.locator('.playButton').count()) === 1);
+  // Back, and asked for: leaving the mode rewinds the mechanism, but a reader
+  // who wants the drawn pose *without* leaving analysis had no way to it but
+  // to scrub until the clock read zero.
   record(
-    'stop button is gone',
-    (await page.locator('app-playback-bar mat-icon', { hasText: 'stop' }).count()) === 0
+    'with a stop button beside play, for the pose the mechanism was drawn in',
+    (await page.locator('.transportCard .stopButton').count()) === 1
   );
 
   // The scrubber is a plain range input now, laid out across the card.
