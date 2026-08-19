@@ -58,6 +58,15 @@ export interface ExportSeries {
   head: string;
   unit: string;
   analysis: 'kinematic' | 'force';
+  /**
+   * How many numbers this series writes per row before any trimming.
+   *
+   * 1 for a scalar like an angle, 2 for a position, 3 for a rate or a reaction
+   * — X, Y and the magnitude that can be dropped. Declared rather than
+   * discovered so the drawer can say what a row will write before anything has
+   * been sampled; a spec holds it to what the sampler actually produces.
+   */
+  components: 1 | 2 | 3;
   mechProp: string;
   /** Filled in per selected part where the column spans parts. */
   mechPart: string;

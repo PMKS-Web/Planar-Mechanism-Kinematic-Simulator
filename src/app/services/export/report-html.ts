@@ -32,11 +32,86 @@ export interface ReportContext {
   sections: ReportSection[];
 }
 
-/** How much one printed page holds, at the size these are set in. */
-const ROWS_PER_PAGE = 40;
-const COLUMNS_PER_PAGE = 7;
+/**
+ * What one printed page holds, measured rather than guessed.
+ *
+ * A Letter page at half-inch margins leaves 960px of content at 96dpi; the
+ * heading and the footer take about 88 of them. A table row is set in 8.5px
+ * type with a pixel of padding either side, which measures 12px.
+ */
+const BODY_HEIGHT = 860;
+const ROW_HEIGHT = 13;
+const BODY_WIDTH = 720;
+/**
+ * How wide the characters of a number are in this type, measured at 8.5px.
+ *
+ * A digit, a point and a minus sign are three different widths, and counting
+ * characters instead of measuring them over-estimates a signed decimal by about
+ * a tenth — which is the difference between fifteen columns on a page and
+ * fourteen, and so between six pages of table and twelve.
+ */
+const DIGIT_WIDTH = 4.46;
+const POINT_WIDTH = 2.2;
+const SIGN_WIDTH = 2.7;
+/** Padding either side of a cell, and a little over on the measurement. */
+const COLUMN_PADDING = 4;
+const WIDTH_MARGIN = 1.04;
+/** However narrow the numbers are, a head needs room to be read. */
+const MOST_COLUMNS = 24;
+/**
+ * How many graphs a page carries.
+ *
+ * Four on the first page, in two columns, beside the drawing and the settings —
+ * the size the design draws them at. Six is what fits when they are set three
+ * across, which is what a first page holds when that is all of them; eight is
+ * what a page of nothing but graphs holds.
+ */
 const GRAPHS_ON_FIRST_PAGE = 4;
-const GRAPHS_PER_PAGE = 6;
+const GRAPHS_ON_FIRST_PAGE_TIGHT = 6;
+const GRAPHS_PER_PAGE = 8;
+
+const rowsPerPage = (): number => Math.floor(BODY_HEIGHT / ROW_HEIGHT);
+
+/**
+ * How many columns fit across the page, measured off the numbers themselves.
+ *
+ * Two decimals is a much narrower column than six, and a reading in the tens is
+ * narrower than one in the thousands. Estimating from the setting alone split
+ * every table into the same number of chunks whatever it held — and each chunk
+ * is another pass over every row, which is where the pages went.
+ */
+function columnsPerPage(rows: string[][]): number {
+  // A floor low enough that it never decides the answer for a real table, and
+  // only stops an empty one dividing by nothing.
+  let widest = 4 * DIGIT_WIDTH;
+  rows.forEach((row) => row.forEach((cell) => (widest = Math.max(widest, cellWidth(cell)))));
+  const width = (widest + COLUMN_PADDING) * WIDTH_MARGIN;
+  // One fewer, because the time column rides every page beside these. Capped,
+  // because a column narrower than its own head sets that head wrapping down
+  // the page a letter at a time.
+  return Math.min(MOST_COLUMNS, Math.max(3, Math.floor(BODY_WIDTH / width) - 1));
+}
+
+function cellWidth(text: string): number {
+  let width = 0;
+  for (const character of text) {
+    width += character === '.' ? POINT_WIDTH : character === '-' ? SIGN_WIDTH : DIGIT_WIDTH;
+  }
+  return width;
+}
+
+/**
+ * Split into pages that are as full as each other rather than as full as
+ * possible.
+ *
+ * Nine pages of forty rows and a tenth holding one is the same paper as six
+ * pages of sixty and a seventh holding one; balanced, it is six pages of sixty
+ * and no orphan at all.
+ */
+function pageSize(total: number, most: number): number {
+  const pages = Math.max(1, Math.ceil(total / most));
+  return Math.ceil(total / pages);
+}
 
 /**
  * The Report format: the mechanism, what it was solved under, its graphs, and
@@ -52,13 +127,13 @@ export function reportHtml(context: ReportContext): string {
   context.sections.forEach((section) => {
     const graphs = chunkGraphs(section.plots);
     bodies.push({
-      body: firstPageBody(context, section, graphs[0] ?? []),
+      body: firstPageBody(context, section, graphs[0]),
       footer: section.footer,
     });
     graphs.slice(1).forEach((page) => {
       bodies.push({
         body: `${sectionHead(context, section.graphsTitle, section.subtitle)}
-          <div class="graphs">${page.map(graphBlock).join('')}</div>`,
+          <div class="graphs across${page.across}">${page.plots.map(graphBlock).join('')}</div>`,
         footer: section.footer,
       });
     });
@@ -81,34 +156,54 @@ export function reportHtml(context: ReportContext): string {
  * and also how a wide selection becomes two hundred pages. Counted here so the
  * drawer can say so while there is still time to choose fewer parts.
  */
-export function reportPages(section: { plots: number; rows: number; columns: number }): number {
-  const graphPages = Math.max(
-    0,
-    Math.ceil((section.plots - GRAPHS_ON_FIRST_PAGE) / GRAPHS_PER_PAGE)
-  );
+export function reportPages(section: { plots: number; rows: string[][]; columns: number }): number {
+  const graphPages = graphChunkCount(section.plots);
+  const perPage = pageSize(section.columns, columnsPerPage(section.rows));
   const dataPages =
-    Math.ceil(section.columns / COLUMNS_PER_PAGE) * Math.ceil(section.rows / ROWS_PER_PAGE);
+    Math.ceil(section.columns / perPage) *
+    Math.ceil(section.rows.length / pageSize(section.rows.length, rowsPerPage()));
   return 1 + graphPages + dataPages;
 }
 
-function chunkGraphs(plots: ReportPlot[]): ReportPlot[][] {
-  if (plots.length === 0) return [[]];
+/** How many pages of graphs follow the first one. */
+function graphChunkCount(plots: number): number {
+  if (plots <= GRAPHS_ON_FIRST_PAGE_TIGHT) return 0;
+  return Math.ceil((plots - GRAPHS_ON_FIRST_PAGE) / GRAPHS_PER_PAGE);
+}
+
+/**
+ * Which graphs land on which page, and how many across.
+ *
+ * A fifth graph used to go on a page of its own, nine tenths of it white. Set
+ * three across instead, the first page takes six — so a report with no more
+ * graphs than that has no graph page at all.
+ */
+function chunkGraphs(plots: ReportPlot[]): { plots: ReportPlot[]; across: 2 | 3 }[] {
+  if (plots.length === 0) return [{ plots: [], across: 2 }];
+  if (plots.length <= GRAPHS_ON_FIRST_PAGE) return [{ plots, across: 2 }];
+  if (plots.length <= GRAPHS_ON_FIRST_PAGE_TIGHT) return [{ plots, across: 3 }];
+  const rest = plots.slice(GRAPHS_ON_FIRST_PAGE);
+  // Spread over as many pages as they need, evenly: nine graphs are better as
+  // two pages of five and four than as a full page and one nearly empty.
   return [
-    plots.slice(0, GRAPHS_ON_FIRST_PAGE),
-    ...chunk(plots.slice(GRAPHS_ON_FIRST_PAGE), GRAPHS_PER_PAGE),
+    { plots: plots.slice(0, GRAPHS_ON_FIRST_PAGE), across: 2 as const },
+    ...chunk(rest, pageSize(rest.length, GRAPHS_PER_PAGE)).map((page) => ({
+      plots: page,
+      across: 2 as const,
+    })),
   ];
 }
 
 /** Which rows and which columns land on each data page, in reading order. */
 function tablePages(section: ReportSection): { columns: number[]; rows: string[][] }[] {
-  const rowPages = chunk(section.rows, ROWS_PER_PAGE);
+  const rowPages = chunk(section.rows, pageSize(section.rows.length, rowsPerPage()));
   // Time rides every chunk: a column of numbers with nothing to line it up
   // against is not data anyone can use.
-  const columnChunks = chunk(
-    section.heads.slice(1).map((_, at) => at + 1),
-    COLUMNS_PER_PAGE
+  const columns = section.heads.slice(1).map((_, at) => at + 1);
+  const columnChunks = chunk(columns, pageSize(columns.length, columnsPerPage(section.rows)));
+  return columnChunks.flatMap((chunkOfColumns) =>
+    rowPages.map((rows) => ({ columns: chunkOfColumns, rows }))
   );
-  return columnChunks.flatMap((columns) => rowPages.map((rows) => ({ columns, rows })));
 }
 
 function sectionHead(context: ReportContext, title: string, subtitle: string): string {
@@ -137,7 +232,7 @@ function graphBlock(plot: ReportPlot): string {
 function firstPageBody(
   context: ReportContext,
   section: ReportSection,
-  plots: ReportPlot[]
+  graphs: { plots: ReportPlot[]; across: 2 | 3 }
 ): string {
   const facts = section.facts
     .map(
@@ -154,10 +249,10 @@ function firstPageBody(
       section.shareUrl
     )}</span></div></div></div>
     ${
-      plots.length > 0
-        ? `<div class="panelTitle graphsTitle">Graphs</div><div class="graphs">${plots
-            .map(graphBlock)
-            .join('')}</div>`
+      graphs.plots.length > 0
+        ? `<div class="panelTitle graphsTitle">Graphs</div><div class="graphs across${
+            graphs.across
+          }">${graphs.plots.map(graphBlock).join('')}</div>`
         : ''
     }`;
 }
@@ -176,7 +271,7 @@ function dataPageBody(
         `<tr>${[0, ...table.columns].map((at) => `<td>${escapeHtml(row[at])}</td>`).join('')}</tr>`
     )
     .join('');
-  const split = section.heads.length - 1 > COLUMNS_PER_PAGE;
+  const split = table.columns.length < section.heads.length - 1;
   const note = split
     ? `<div class="tableNote">Columns ${table.columns[0]}–${
         table.columns[table.columns.length - 1]
@@ -212,7 +307,19 @@ function styles(): string {
 @page { size: letter; margin: 0.5in; }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #2c2c2c; }
-.page { width: 7.5in; height: 10in; display: flex; flex-direction: column; page-break-after: always; overflow: hidden; }
+.page {
+  width: 7.5in;
+  /* A shade under the 10in a Letter page leaves at half-inch margins. A block
+     exactly the height of the printable area rounds over it in some printers
+     and lays a blank page after every real one, which is where the empty pages
+     in the first cut of this came from. */
+  height: 9.85in;
+  display: flex;
+  flex-direction: column;
+  page-break-after: always;
+  break-after: page;
+  overflow: hidden;
+}
 .page:last-child { page-break-after: auto; }
 .pageBody { flex: 1 1 auto; min-height: 0; }
 .head { display: flex; align-items: flex-start; gap: 16px; padding-bottom: 10px; border-bottom: 1px solid #eceef5; }
@@ -229,16 +336,22 @@ body { margin: 0; font-family: Roboto, 'Helvetica Neue', Helvetica, Arial, sans-
 .shareNote { padding-top: 10px; font-size: 11px; line-height: 15px; color: rgba(0,0,0,0.55); }
 .shareUrl { font-family: 'Roboto Mono', Menlo, monospace; word-break: break-all; color: #3f51b5; }
 .graphsTitle { padding-top: 6px; }
-.graphs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 8px; }
+.graphs { display: grid; gap: 8px; padding-top: 8px; }
+.graphs.across2 { grid-template-columns: 1fr 1fr; }
+.graphs.across3 { grid-template-columns: 1fr 1fr 1fr; }
 .graph { border: 1px solid #eceef5; border-radius: 4px; padding: 6px; }
 .graph svg { width: 100%; height: auto; }
 .graphTitle { font-size: 12px; font-weight: 500; }
 .graphLegend { display: flex; align-items: center; gap: 10px; font-size: 11px; color: rgba(0,0,0,0.55); padding: 2px 0 4px; }
 .graphLegend .spacer { flex: 1 1 auto; }
 .swatch { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
-.dataTable { width: 100%; border-collapse: collapse; font-size: 9px; font-variant-numeric: tabular-nums; margin-top: 10px; }
-.dataTable th { text-align: right; font-weight: 500; color: #5f6368; border-bottom: 1px solid #d5d7e0; padding: 3px 4px; }
-.dataTable td { text-align: right; padding: 2px 4px; border-bottom: 1px solid #f4f5f9; }
+.dataTable { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 8.5px; font-variant-numeric: tabular-nums; margin-top: 8px; }
+/* A head is several words and a column is one number wide, so the head wraps
+   rather than setting the width of everything under it. */
+.dataTable th { text-align: right; font-weight: 500; color: #5f6368; border-bottom: 1px solid #d5d7e0; padding: 2px; line-height: 11px; word-break: break-word; }
+.dataTable td { text-align: right; padding: 1px 2px; border-bottom: 1px solid #f7f8fc; line-height: 10px; }
+/* Time is the column every page repeats, and the one a reader scans down. */
+.dataTable th:first-child, .dataTable td:first-child { text-align: left; }
 .tableNote { padding-top: 8px; font-size: 10px; color: rgba(0,0,0,0.5); }
 .pageFoot { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding-top: 8px; border-top: 1px solid #eceef5; font-size: 10px; color: rgba(0,0,0,0.5); }
 .pageFoot .spacer { flex: 1 1 auto; }

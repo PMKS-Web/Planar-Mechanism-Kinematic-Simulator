@@ -10,7 +10,7 @@
   // Its own card, like every other drawer page: one card per panel, never a
   // card inside a card. Three bands rather than one scrolling column -- the
   // question and the decisions stay put, and only the list moves.
-  .export {
+  .exportCard {
     display: flex;
     flex-direction: column;
     height: auto;
@@ -320,6 +320,18 @@
     .rowUnit {
       font-size: 12px;
       color: rgba(0, 0, 0, 0.45);
+      // A fixed column, so the units line up down the list however wide the
+      // components beside them turn out to be.
+      flex: 0 0 auto;
+      min-width: 46px;
+      text-align: right;
+    }
+
+    // What the row writes, in the ink of a fact rather than of a label.
+    .rowComponents {
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      color: rgba(0, 0, 0, 0.6);
     }
 
     .groupTitle {

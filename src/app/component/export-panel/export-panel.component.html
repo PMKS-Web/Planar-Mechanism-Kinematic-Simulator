@@ -1,4 +1,4 @@
-<div class="export">
+<div class="exportCard">
   <!-- Three bands. The question, the rule and the count stay put; only the
        list between them moves; Back and Next are always reachable, however
        long the drawing is. -->
@@ -140,6 +140,12 @@
               </span>
               <span class="rowName">{{ column.label }}</span>
               <span class="spacer"></span>
+              <!-- What this row writes, not only what it is measured in: the
+                   components control below governs some of these rows and has
+                   nothing to add to the others. -->
+              @if (componentsOf(column)) {
+                <span class="rowComponents">{{ componentsOf(column) }}</span>
+              }
               <span class="rowUnit">{{ column.unit }}</span>
             </button>
           }
@@ -156,18 +162,24 @@
         </p>
       }
 
-      <div class="settingRow spaced">
-        <span class="settingName">Components</span>
-        <span class="spacer"></span>
-        <div class="segmented">
-          <button [class.on]="!flow.withMagnitude" (click)="flow.withMagnitude = false">
-            X, Y
-          </button>
-          <button [class.on]="flow.withMagnitude" (click)="flow.withMagnitude = true">
-            + magnitude
-          </button>
+      @if (hasMagnitude()) {
+        <div class="settingRow spaced">
+          <span class="settingName">Components</span>
+          <span class="spacer"></span>
+          <div class="segmented">
+            <button [class.on]="!flow.withMagnitude" (click)="flow.withMagnitude = false">
+              X, Y
+            </button>
+            <button [class.on]="flow.withMagnitude" (click)="flow.withMagnitude = true">
+              X, Y, Mag
+            </button>
+          </div>
         </div>
-      </div>
+        <p class="hint">
+          Each row above says what it will write. Magnitude is √(X² + Y²), so only a rate or a force
+          has one to add.
+        </p>
+      }
     }
 
     @if (flow.step === 3) {

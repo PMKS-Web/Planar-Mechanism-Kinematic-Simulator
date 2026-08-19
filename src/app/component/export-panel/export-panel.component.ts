@@ -168,6 +168,26 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
     this.flow.setColumns(this.allColumnsOnTab(), picked);
   }
 
+  /**
+   * What one ticked row will actually write, said on the row itself.
+   *
+   * The components control underneath used to be the only statement of it,
+   * which left a reader to work out for themselves that it governs a rate and a
+   * reaction but has nothing to add to an angle or a position.
+   */
+  componentsOf(column: ExportColumn): string {
+    const widest = column.series.reduce((most, series) => Math.max(most, series.components), 1);
+    if (widest < 2) return '';
+    return widest === 2 || !this.flow.withMagnitude ? 'X, Y' : 'X, Y, Mag';
+  }
+
+  /** Whether anything on offer has a magnitude, and so anything to choose. */
+  hasMagnitude(): boolean {
+    return this.allColumnsOnTab().some((column) =>
+      column.series.some((series) => series.components === 3)
+    );
+  }
+
   // --- step 3 ---------------------------------------------------------------
 
   get summaryLine(): string {

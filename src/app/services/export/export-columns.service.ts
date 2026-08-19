@@ -54,13 +54,13 @@ export class ExportColumnsService {
         tab: 'kinematics',
         columns: [
           this.kinematic(joints, 'j:pos', 'Position', length, [
-            ['Position', 'Linear Joint Pos', length],
+            ['Position', 'Linear Joint Pos', length, 2],
           ]),
           this.kinematic(joints, 'j:vel', 'Velocity', `${length}/s`, [
-            ['Velocity', 'Linear Joint Vel', `${length}/s`],
+            ['Velocity', 'Linear Joint Vel', `${length}/s`, 3],
           ]),
           this.kinematic(joints, 'j:acc', 'Acceleration', `${length}/s²`, [
-            ['Acceleration', 'Linear Joint Acc', `${length}/s²`],
+            ['Acceleration', 'Linear Joint Acc', `${length}/s²`, 3],
           ]),
         ],
       });
@@ -72,17 +72,17 @@ export class ExportColumnsService {
         title: this.titleOf('Link', links),
         tab: 'kinematics',
         columns: [
-          this.kinematic(links, 'l:ang', 'Angle', angle, [['Angle', 'Angular Link Pos', angle]]),
+          this.kinematic(links, 'l:ang', 'Angle', angle, [['Angle', 'Angular Link Pos', angle, 1]]),
           this.kinematic(links, 'l:angvel', 'Angular velocity', `${angle}/s`, [
-            ['Angular velocity', 'Angular Link Vel', `${angle}/s`],
+            ['Angular velocity', 'Angular Link Vel', `${angle}/s`, 1],
           ]),
           this.kinematic(links, 'l:angacc', 'Angular acceleration', `${angle}/s²`, [
-            ['Angular acceleration', 'Angular Link Acc', `${angle}/s²`],
+            ['Angular acceleration', 'Angular Link Acc', `${angle}/s²`, 1],
           ]),
           this.kinematic(links, 'l:com', 'Centre of mass', 'pos, vel, acc', [
-            ['CoM position', "Linear Link's CoM Pos", length],
-            ['CoM velocity', "Linear Link's CoM Vel", `${length}/s`],
-            ['CoM acceleration', "Linear Link's CoM Acc", `${length}/s²`],
+            ['CoM position', "Linear Link's CoM Pos", length, 2],
+            ['CoM velocity', "Linear Link's CoM Vel", `${length}/s`, 3],
+            ['CoM acceleration', "Linear Link's CoM Acc", `${length}/s²`, 3],
           ]),
         ],
       });
@@ -101,7 +101,7 @@ export class ExportColumnsService {
     key: string,
     label: string,
     unit: string,
-    series: [string, string, string][]
+    series: [string, string, string, 1 | 2 | 3][]
   ): ExportColumn {
     return {
       key,
@@ -109,10 +109,11 @@ export class ExportColumnsService {
       unit,
       appliesTo: parts.map((part) => part.key),
       tab: 'kinematics',
-      series: series.map(([seriesLabel, mechProp, seriesUnit]) => ({
+      series: series.map(([seriesLabel, mechProp, seriesUnit, components]) => ({
         label: seriesLabel,
         head: '',
         unit: seriesUnit,
+        components,
         analysis: 'kinematic' as const,
         mechProp,
         mechPart: '',
@@ -190,6 +191,8 @@ export class ExportColumnsService {
       label,
       head,
       unit,
+      // A reaction is a vector; an input effort is one number.
+      components: mechProp === 'Input Effort' ? 1 : 3,
       analysis: 'force',
       mechProp,
       mechPart,

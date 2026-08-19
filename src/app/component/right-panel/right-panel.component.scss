@@ -148,7 +148,10 @@
     // Wider than the view controls, and narrower than the table pages: an
     // export row is a checkbox, a part's name and what is notable about it, and
     // at the drawer's usual width the third of those was always ellipsed away.
-    &.export {
+    // Named for the page rather than after its card: the export card is
+    // `.exportCard`, and a frame sharing a class with the card it holds was
+    // drawing a second background, corner, shadow and accent bar around it.
+    &.exportPage {
       width: calc(380px + #{nav.$shadow-room} + #{nav.$card-inset});
     }
   }

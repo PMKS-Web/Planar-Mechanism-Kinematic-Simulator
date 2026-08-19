@@ -378,12 +378,89 @@ describe('what the export is written as', () => {
       ],
     });
     const pages = html.match(/<section class="page">/g) ?? [];
-    // One first page, then a page per forty rows.
-    expect(pages).toHaveLength(1 + Math.ceil(rows.length / 40));
+    // One first page, then as few pages of table as the rows fit into: a page
+    // holds sixty-odd rows of this size, and two columns fit across it easily.
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages.length).toBeLessThanOrEqual(1 + Math.ceil(rows.length / 60));
     expect(html.match(/Page 1 of /g)).toHaveLength(1);
     expect(html).toContain(`Page ${pages.length} of ${pages.length}`);
     expect(html).toContain('https://app.pmksplus.com/?abc');
     expect(flow.extension()).toBe('.csv');
+  });
+});
+
+describe('how much paper the report asks for', () => {
+  /** A table of `columns` columns and `rows` rows, at a given number width. */
+  function report(rows: number, columns: number, digits: number): string {
+    const cell = (-1.0618581).toFixed(digits);
+    return reportHtml({
+      logoUrl: 'assets/PMKS_logo.png',
+      sections: [
+        {
+          title: 'Kinematic analysis — M1',
+          subtitle: '3 links',
+          dataTitle: 'Data — M1',
+          graphsTitle: 'Graphs — M1',
+          drawing: '<svg></svg>',
+          facts: [],
+          shareUrl: 'https://app.pmksplus.com/?abc',
+          plots: [],
+          heads: ['Time (s)', ...Array.from({ length: columns }, (_, at) => `Column ${at} (cm)`)],
+          rows: Array.from({ length: rows }, () => Array(columns + 1).fill(cell)),
+          footer: 'M1',
+        },
+      ],
+    });
+  }
+
+  const pagesOf = (html: string): number => (html.match(/<section class="page">/g) ?? []).length;
+
+  it('fills a page before it starts another', () => {
+    // A cycle's worth of rows and a wide-ish selection: this was twenty-two
+    // pages when a page held forty rows and seven columns.
+    const html = report(361, 14, 6);
+    expect(pagesOf(html)).toBeLessThanOrEqual(8);
+
+    // The pages of table are filled to about the same depth, so the last one
+    // is not a single line of numbers under an inch of heading.
+    const perPage = [...html.matchAll(/<tbody>(.*?)<\/tbody>/gs)].map(
+      (body) => (body[1].match(/<tr>/g) ?? []).length
+    );
+    expect(Math.min(...perPage)).toBeGreaterThan(Math.max(...perPage) * 0.8);
+  });
+
+  it('asks for less paper when the numbers are narrower', () => {
+    // Two decimals is a narrower column than six, so more of them fit across a
+    // page and the table is split into fewer passes over the same rows.
+    expect(pagesOf(report(361, 24, 2))).toBeLessThan(pagesOf(report(361, 24, 6)));
+  });
+
+  it('has no page of graphs when they fit beside the mechanism', () => {
+    const withFive = reportHtml({
+      logoUrl: '',
+      sections: [
+        {
+          title: 'M1',
+          subtitle: '',
+          dataTitle: 'Data',
+          graphsTitle: 'Graphs',
+          drawing: '',
+          facts: [],
+          shareUrl: '',
+          plots: Array.from({ length: 5 }, (_, at) => ({
+            title: `Plot ${at}`,
+            unit: 'cm',
+            svg: '<svg></svg>',
+            legend: [],
+          })),
+          heads: ['Time (s)'],
+          rows: [],
+          footer: 'M1',
+        },
+      ],
+    });
+    expect(pagesOf(withFive)).toBe(1);
+    expect(withFive).toContain('across3');
   });
 });
 

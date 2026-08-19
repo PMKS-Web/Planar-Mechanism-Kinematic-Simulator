@@ -55,7 +55,7 @@ export class ExportWriterService {
             total +
             reportPages({
               plots: table.plots.length,
-              rows: table.times.length,
+              rows: this.rowsOf(table),
               columns: table.heads.length - 1,
             }),
           0
@@ -70,6 +70,15 @@ export class ExportWriterService {
    * stops solving takes its parts with it — and an export that writes nothing
    * must not be reported as one that worked.
    */
+  /** Every row of a table, formatted the way a file or a page would carry it. */
+  private rowsOf(table: ExportTable): string[][] {
+    const decimals = this.flow.decimals;
+    return table.times.map((time, row) => [
+      formatCell(time, decimals),
+      ...table.columns.map((column) => formatCell(column[row], decimals)),
+    ]);
+  }
+
   async run(): Promise<boolean> {
     const tables = this.tables.tables();
     if (tables.length === 0) return false;
@@ -171,10 +180,7 @@ export class ExportWriterService {
         })),
       })),
       heads: table.heads,
-      rows: table.times.map((time, row) => [
-        formatCell(time, decimals),
-        ...table.columns.map((column) => formatCell(column[row], decimals)),
-      ]),
+      rows: this.rowsOf(table),
       footer: `${group.id} · ${group.note}`,
     };
   }

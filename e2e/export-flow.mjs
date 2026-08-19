@@ -125,16 +125,23 @@ record(
   step2
 );
 
-await drawer().locator('.segmented button', { hasText: 'X, Y' }).click();
+await drawer().getByRole('button', { name: 'X, Y', exact: true }).click();
 await page.waitForTimeout(200);
 const withoutMag = await drawer().locator('.footNote').innerText();
-await drawer().locator('.segmented button', { hasText: '+ magnitude' }).click();
+await drawer().getByRole('button', { name: 'X, Y, Mag', exact: true }).click();
 await page.waitForTimeout(200);
 const withMag = await drawer().locator('.footNote').innerText();
 record('dropping the magnitude narrows the file', number(withoutMag) < number(withMag), {
   withoutMag,
   withMag,
 });
+record(
+  'and every row says which of the two it will write',
+  (await drawer().locator('.rowComponents').allInnerTexts()).some((text) => text === 'X, Y, Mag') &&
+    (await drawer().locator('.pickRow', { hasText: 'Angle' }).locator('.rowComponents').count()) ===
+      0,
+  await drawer().locator('.rowComponents').allInnerTexts()
+);
 
 await page.locator('.nextButton').click();
 await page.waitForTimeout(400);
@@ -244,6 +251,48 @@ record(
   'and prints the way back to the mechanism on it',
   printed.includes('shareUrl') && printed.includes('?'),
   printed.slice(0, 200)
+);
+
+// The report is laid out page by page rather than left to reflow, so how full
+// those pages are is something only measuring can answer.
+const layout = await (async () => {
+  const viewer = await context.newPage();
+  await viewer.setContent(printed);
+  await viewer.waitForTimeout(400);
+  const measured = await viewer.evaluate(() => {
+    const pages = [...document.querySelectorAll('section.page')];
+    const use = pages.map((page) => {
+      const body = page.querySelector('.pageBody');
+      const kids = [...body.children];
+      const used = kids.length
+        ? Math.max(...kids.map((kid) => kid.getBoundingClientRect().bottom)) -
+          body.getBoundingClientRect().top
+        : 0;
+      return Math.round((used / body.getBoundingClientRect().height) * 100);
+    });
+    return {
+      pages: pages.length,
+      leastFull: Math.min(...use),
+      // A page taller than the box it is drawn in has lost rows off the bottom.
+      clipped: pages.filter((page) => {
+        const body = page.querySelector('.pageBody');
+        return body.scrollHeight > body.clientHeight + 1;
+      }).length,
+      // A number wider than its column overlaps the one beside it.
+      overflowing: [...document.querySelectorAll('.dataTable td')].filter(
+        (cell) => cell.scrollWidth > cell.clientWidth + 0.5
+      ).length,
+    };
+  });
+  await viewer.close();
+  return measured;
+})();
+// Two parts and every column they have, over a 361-position cycle: forty-two
+// pages when a page held forty rows and seven columns of it.
+record(
+  'and fills the pages it asks for, without losing a row or a digit off one',
+  layout.pages <= 16 && layout.leastFull >= 60 && layout.clipped === 0 && layout.overflowing === 0,
+  layout
 );
 
 // --- a long list scrolls, and its decisions do not --------------------------
