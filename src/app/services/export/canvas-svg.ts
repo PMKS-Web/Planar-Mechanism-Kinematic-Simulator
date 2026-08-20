@@ -46,11 +46,21 @@ const COPIED = [
   'visibility',
 ];
 
-export function canvasSnapshot(width: number, height: number): string | undefined {
+/**
+ * @param jointIds The joints of the one machine this picture is about. The
+ * frame is set on those, so a drawing holding three machines yields three
+ * pictures of one machine each rather than three of the same crowd — and the
+ * one being reported on fills the box instead of sitting in a corner of it.
+ */
+export function canvasSnapshot(
+  width: number,
+  height: number,
+  jointIds: string[] = []
+): string | undefined {
   const canvas = document.querySelector('svg#canvas') as SVGSVGElement | null;
   if (!canvas) return undefined;
 
-  const frame = contentFrame(canvas);
+  const frame = machineFrame(canvas, jointIds) ?? contentFrame(canvas);
   if (!frame) return undefined;
 
   const clone = canvas.cloneNode(true) as SVGSVGElement;
@@ -59,7 +69,9 @@ export function canvasSnapshot(width: number, height: number): string | undefine
   inlineStyles(canvas, clone);
   DROPPED.forEach((id) => clone.querySelector(`#${id}`)?.remove());
 
+  absolutiseHrefs(clone);
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
   clone.setAttribute('width', String(width));
   clone.setAttribute('height', String(height));
   clone.setAttribute('viewBox', `${frame.x} ${frame.y} ${frame.width} ${frame.height}`);
@@ -68,6 +80,44 @@ export function canvasSnapshot(width: number, height: number): string | undefine
   clone.removeAttribute('class');
   clone.removeAttribute('style');
   return new XMLSerializer().serializeToString(clone);
+}
+
+/**
+ * The box one machine's joints stand in, in the canvas's own coordinates.
+ *
+ * Its joints rather than its links: a joint is one marker with an id on it,
+ * where a link is several paths and a label with none. The margin is generous
+ * enough to take in the bodies hanging off those joints — a bar reaches no
+ * further than the two pins holding it, and a ground mark or a ram's barrel
+ * only a little past its own.
+ */
+function machineFrame(canvas: SVGSVGElement, jointIds: string[]): DOMRect | undefined {
+  if (jointIds.length === 0) return undefined;
+  const origin = canvas.getBoundingClientRect();
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  jointIds.forEach((id) => {
+    const marker = canvas.querySelector(`#joint_${CSS.escape(id)}`);
+    if (!marker) return;
+    const box = marker.getBoundingClientRect();
+    if (box.width === 0 && box.height === 0) return;
+    left = Math.min(left, box.left);
+    top = Math.min(top, box.top);
+    right = Math.max(right, box.right);
+    bottom = Math.max(bottom, box.bottom);
+  });
+  if (!Number.isFinite(left)) return undefined;
+
+  const span = Math.max(right - left, bottom - top, 1);
+  const margin = span * 0.16 + 16;
+  return new DOMRect(
+    left - origin.left - margin,
+    top - origin.top - margin,
+    right - left + 2 * margin,
+    bottom - top + 2 * margin
+  );
 }
 
 /**
@@ -107,6 +157,30 @@ function contentFrame(canvas: SVGSVGElement): DOMRect | undefined {
     right - left + 2 * margin,
     bottom - top + 2 * margin
   );
+}
+
+/**
+ * Point every referenced file at where it actually is.
+ *
+ * The canvas reaches for its ground marks and input arrows with paths relative
+ * to the app — `../../../assets/Ground.svg`. The report is its own document
+ * with its own base, so every one of those came out as a broken-image square
+ * under the joints they belong to.
+ */
+function absolutiseHrefs(root: Element): void {
+  const XLINK = 'http://www.w3.org/1999/xlink';
+  [root, ...root.querySelectorAll('*')].forEach((element) => {
+    (['href', 'xlink:href'] as const).forEach((name) => {
+      const value =
+        name === 'href' ? element.getAttribute('href') : element.getAttributeNS(XLINK, 'href');
+      // A fragment points inside this file — at a filter or a gradient — and
+      // must stay a fragment.
+      if (!value || value.startsWith('#') || value.startsWith('data:')) return;
+      const absolute = new URL(value, document.baseURI).href;
+      if (name === 'href') element.setAttribute('href', absolute);
+      else element.setAttributeNS(XLINK, 'xlink:href', absolute);
+    });
+  });
 }
 
 /** Write what the stylesheet was saying onto the elements it was saying it to. */

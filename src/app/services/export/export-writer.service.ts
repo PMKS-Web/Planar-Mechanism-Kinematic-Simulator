@@ -41,31 +41,42 @@ export class ExportWriterService {
   private urls = inject(UrlGenerationService);
 
   /** What the export would produce, for the summary the drawer shows. */
+  /**
+   * What the export would produce, forecast rather than measured.
+   *
+   * Read off the plan, which is arithmetic over the selection — so the counts
+   * under a reader's hand keep up with a checkbox instead of re-solving every
+   * chosen series before the number beside it can change.
+   */
   summary(): { files: number; columns: number; rows: number; pages: number } {
-    const tables = this.tables.tables();
+    const plan = this.tables.plan();
     return {
-      files: this.flow.format === 'xlsx' || this.flow.format === 'report' ? 1 : tables.length,
-      columns: tables.reduce((most, table) => Math.max(most, table.heads.length), 0),
-      rows: tables.reduce((most, table) => Math.max(most, table.times.length), 0),
-      pages: tables
-        .filter(
-          (table, at) =>
-            tables.findIndex((one) => one.mechanismIndex === table.mechanismIndex) === at
-        )
-        .reduce(
-          (total, table) =>
-            total +
-            reportPages(
-              {
-                plots: table.plots.length,
-                rows: this.rowsOf(table),
-                heads: table.heads,
-              },
-              textMeasure()
-            ),
-          0
-        ),
+      files: this.flow.format === 'xlsx' || this.flow.format === 'report' ? 1 : plan.length,
+      columns: plan.reduce((most, piece) => Math.max(most, piece.heads.length), 0),
+      rows: plan.reduce((most, piece) => Math.max(most, piece.rows), 0),
+      // The one number that cannot be forecast: a page holds as many columns as
+      // its numbers are wide, and how wide they are is a property of the values
+      // themselves. Paid for only where it is shown, which is the Report format.
+      pages: this.flow.format === 'report' ? this.printedPages() : 0,
     };
+  }
+
+  /** How many printed pages the chosen selection comes to. Samples the cycle. */
+  private printedPages(): number {
+    const tables = this.tables.tables();
+    return tables
+      .filter(
+        (table, at) => tables.findIndex((one) => one.mechanismIndex === table.mechanismIndex) === at
+      )
+      .reduce(
+        (total, table) =>
+          total +
+          reportPages(
+            { plots: table.plots.length, rows: this.rowsOf(table), heads: table.heads },
+            textMeasure()
+          ),
+        0
+      );
   }
 
   /**
@@ -194,8 +205,9 @@ export class ExportWriterService {
     // The canvas itself where there is one, so a slot, a piston and a sealed
     // cylinder reach the page as the reader drew them; the skeleton is the
     // fallback for a report built without a canvas to copy.
+    const jointIds = (this.mechanism.partitions[index]?.ownJoints ?? []).map((joint) => joint.id);
     const drawing =
-      canvasSnapshot(330, 250) ??
+      canvasSnapshot(330, 250, jointIds) ??
       mechanismSvg(solved.joints[0] ?? [], solved.links[0] ?? [], 330, 230);
     const decimals = this.flow.decimals;
     return {

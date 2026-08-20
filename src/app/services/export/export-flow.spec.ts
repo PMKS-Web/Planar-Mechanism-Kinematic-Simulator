@@ -284,6 +284,30 @@ describe('the export drawer', () => {
     expect(tables.tables()).toHaveLength(1);
   });
 
+  it('forecasts the same files, names and heads that it goes on to write', () => {
+    const { flow, tables } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
+    pick(flow, 'Joint B', 'Joint C', 'Link AB');
+
+    // The counts under a reader's hand are arithmetic over the selection, and
+    // the file is the solved cycle. A forecast that disagrees with what gets
+    // written is worse than no forecast at all.
+    for (const split of [false, true]) {
+      flow.splitPerPart = split;
+      for (const format of ['csv', 'xlsx'] as const) {
+        flow.format = format;
+        const planned = tables.plan();
+        const written = tables.tables();
+        expect(planned.map((piece) => piece.name)).toEqual(written.map((table) => table.name));
+        expect(planned.map((piece) => piece.suffix)).toEqual(written.map((table) => table.suffix));
+        planned.forEach((piece, at) => {
+          expect(piece.heads).toEqual(written[at].heads);
+          expect(piece.rows).toBe(written[at].times.length);
+          expect(piece.plots).toBe(written[at].plots.length);
+        });
+      }
+    }
+  });
+
   it('drops the lists when the drawing stops solving, without being told to', () => {
     const { flow, fixture } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
     expect(flow.offeredParts().length).toBeGreaterThan(0);

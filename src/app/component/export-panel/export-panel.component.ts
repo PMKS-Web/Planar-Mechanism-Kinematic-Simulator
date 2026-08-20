@@ -286,6 +286,10 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   async exportNow(): Promise<void> {
     if (!this.flow.canExport() || this.working) return;
     this.working = true;
+    // Let the button paint its spinner before the work starts. Sampling a
+    // cycle for eighty series holds the main thread, and a press that showed
+    // nothing until it finished read as a press that had not registered.
+    await new Promise((resolve) => setTimeout(resolve, 32));
     this.analytics.logEvent(`export_data_${this.flow.format}`);
     try {
       const written = await this.writer.run();

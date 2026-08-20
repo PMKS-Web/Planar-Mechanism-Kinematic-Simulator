@@ -101,6 +101,22 @@
     stroke: mat.m2-get-color-from-palette($accent-palette, 200);
   }
 
+  // Pointed at from a list that names one part. Stronger than the whole-machine
+  // hover above, because it has to answer "which of these eleven pins" across
+  // the width of the window: the tint alone was a change a reader had to hunt
+  // for. Elevated as well as filled, so it lifts off whatever it overlaps.
+  .joint-pointed {
+    filter: url(#elevation-3);
+    fill: mat.m2-get-color-from-palette($accent-palette, 400);
+    stroke: #3f51b5;
+    stroke-width: 0.06;
+  }
+
+  .link-pointed {
+    stroke: mat.m2-get-color-from-palette($accent-palette, 400);
+    filter: url(#elevation-2);
+  }
+
   // The grab-me ring around the selected link's CoM mark: dashed so it reads
   // as an affordance rather than part of the standard symbol.
   .com-drag-ring {

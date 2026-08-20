@@ -43,6 +43,25 @@ export interface ExportTable {
 }
 
 /**
+ * One file the export will produce, described without solving it.
+ *
+ * Everything the drawer needs to say what it is about to write — how many
+ * columns, how many rows, how many printed pages — is decided by the selection
+ * and by numbers the mechanism already holds. Sampling a cycle to answer that
+ * meant every tick of a checkbox re-solved the whole drawing before the count
+ * beside it could change.
+ */
+export interface ExportPlan {
+  name: string;
+  suffix: string;
+  mechanismIndex: number;
+  rows: number;
+  heads: string[];
+  /** How many graphs this file's columns amount to. */
+  plots: number;
+}
+
+/**
  * The numbers behind a chosen export, sampled once and shared by every format.
  *
  * A CSV, a workbook, a set of graph images and a report all say the same thing
@@ -112,41 +131,91 @@ export class ExportTableService {
   }
 
   private tablesFor(index: number): ExportTable[] {
+    return this.spread(index)
+      .map((piece) => this.table(index, piece.name, piece.suffix, piece.parts, piece.columns))
+      .filter((table) => table.heads.length > 1);
+  }
+
+  /**
+   * How one machine's selection is divided into files, and what goes in each.
+   *
+   * The one statement of the rule, so a forecast of the export cannot be split
+   * differently from the export itself.
+   */
+  private spread(
+    index: number
+  ): { name: string; suffix: string; parts: ExportPart[]; columns: ExportColumn[] }[] {
     const id = this.flow.partGroups()[index]?.id ?? `M${index + 1}`;
     const parts = this.flow.selectedParts().filter((part) => part.mechanismIndex === index);
     const columns = this.flow.selectedColumns();
     // Only where there is more than one machine to tell apart.
     const qualify = this.flow.mechanismIndexes().length > 1 ? `${id}_` : '';
 
-    // Only where the format offers the choice. A report and a set of graph
-    // images are per machine whatever the file step last had ticked, and a
-    // report built from a split selection silently kept only the first part.
+    // Per part only where the format offers the choice. A report and a set of
+    // graph images are per machine whatever the file step last had ticked, and
+    // a report built from a split selection silently kept only the first part.
     if (this.flow.splitPerPart && (this.flow.format === 'csv' || this.flow.format === 'xlsx')) {
-      return parts
-        .map((part) => {
-          const short = part.label.replace(/\s+/g, '');
-          return this.table(index, `${id}_${short}`, `${qualify}${short}`, [part], columns);
-        })
-        .filter((table) => table.heads.length > 1);
+      return parts.map((part) => {
+        const short = part.label.replace(/\s+/g, '');
+        return { name: `${id}_${short}`, suffix: `${qualify}${short}`, parts: [part], columns };
+      });
     }
     if (this.flow.format === 'xlsx') {
       // "By analysis": kinematics and forces are different questions about the
       // same cycle, and a sheet each is what lets one be charted without the
       // other's axis running through it.
-      return (['kinematics', 'forces'] as const)
-        .map((tab) =>
-          this.table(
-            index,
-            `${id}_${tab}`,
-            `${qualify}${tab}`,
-            parts,
-            columns.filter((column) => column.tab === tab)
-          )
-        )
-        .filter((table) => table.heads.length > 1);
+      return (['kinematics', 'forces'] as const).map((tab) => ({
+        name: `${id}_${tab}`,
+        suffix: `${qualify}${tab}`,
+        parts,
+        columns: columns.filter((column) => column.tab === tab),
+      }));
     }
-    return [this.table(index, id, qualify.replace(/_$/, ''), parts, columns)].filter(
-      (table) => table.heads.length > 1
+    return [{ name: id, suffix: qualify.replace(/_$/, ''), parts, columns }];
+  }
+
+  /**
+   * What the export will come to, arithmetic only.
+   *
+   * A forecast rather than a measurement: a series the solver turns out to have
+   * nothing for is dropped when the file is written, so the real table can be a
+   * column narrower than this says. Everything a reader is told before pressing
+   * Export comes from here, and nothing here touches the solver.
+   */
+  plan(): ExportPlan[] {
+    return this.flow.mechanismIndexes().flatMap((index) =>
+      this.spread(index)
+        .map((piece) => {
+          const solved = this.mechanism.mechanisms[index];
+          const heads = ['Time (s)'];
+          let plots = 0;
+          piece.columns.forEach((column) => {
+            piece.parts
+              .filter((part) => column.appliesTo.includes(part.key))
+              .forEach((part) => {
+                column.series.forEach((series) => {
+                  const kept =
+                    series.components === 3 && !this.flow.withMagnitude ? 2 : series.components;
+                  const head = series.head || `${series.label} ${this.shortName(part)}`;
+                  this.seriesNames(series.components)
+                    .slice(0, kept)
+                    .forEach((name) =>
+                      heads.push(`${head}${name ? ' ' + name : ''} (${series.unit})`)
+                    );
+                  plots++;
+                });
+              });
+          });
+          return {
+            name: piece.name,
+            suffix: piece.suffix,
+            mechanismIndex: index,
+            rows: solved?.isMechanismValid() ? solved.timeNum.length : 0,
+            heads,
+            plots,
+          };
+        })
+        .filter((piece) => piece.heads.length > 1)
     );
   }
 

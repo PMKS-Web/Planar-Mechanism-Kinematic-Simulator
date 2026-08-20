@@ -46,11 +46,11 @@
         <span class="spacer"></span>
         @if (flow.step === 1) {
           <button class="linkButton" (click)="everything(true)">Select all</button>
-          <span class="dot"></span>
+          <span class="pickSep"></span>
           <button class="linkButton" (click)="everything(false)">Select none</button>
         } @else {
           <button class="linkButton" (click)="everyColumn(true)">Select all</button>
-          <span class="dot"></span>
+          <span class="pickSep"></span>
           <button class="linkButton" (click)="everyColumn(false)">Select none</button>
         }
       </div>
@@ -67,7 +67,7 @@
           <span class="mechNote">{{ groupNote(group) }}</span>
           <span class="spacer"></span>
           <button class="linkButton small" (click)="flow.setParts(group.parts, true)">All</button>
-          <span class="dot"></span>
+          <span class="pickSep"></span>
           <button class="linkButton small" (click)="flow.setParts(group.parts, false)">None</button>
         </div>
         <div class="rows">
@@ -103,23 +103,6 @@
     }
 
     @if (flow.step === 2) {
-      @if (flow.tab === 'forces') {
-        <div class="settingRow">
-          <span class="settingName">Analysis type</span>
-          <span class="spacer"></span>
-          <div class="segmented">
-            @for (mode of ['static', 'dynamic']; track mode) {
-              <button
-                [class.on]="flow.forceMode() === mode"
-                (click)="flow.setForceMode($any(mode))"
-              >
-                {{ mode === 'static' ? 'Static (Equilibrium)' : 'In-motion (Dynamic)' }}
-              </button>
-            }
-          </div>
-        </div>
-      }
-
       @for (group of flow.columnGroups(); track group.key) {
         <div class="groupTitle">{{ group.title }}</div>
         <div class="rows">
@@ -278,16 +261,38 @@
   <!-- On the footer rather than at the end of the list: it governs every row
        above it, and a control a reader has to scroll to find is a control they
        decide they do not have. -->
-  @if (flow.step === 2 && hasMagnitude()) {
+  @if (flow.step === 2 && (hasMagnitude() || flow.tab === 'forces')) {
     <div class="componentsBar">
-      <span class="settingName">Components to export</span>
-      <span class="spacer"></span>
-      <div class="segmented">
-        <button [class.on]="!flow.withMagnitude" (click)="flow.withMagnitude = false">X, Y</button>
-        <button [class.on]="flow.withMagnitude" (click)="flow.withMagnitude = true">
-          X, Y, Magnitude
-        </button>
-      </div>
+      @if (flow.tab === 'forces') {
+        <div class="barRow">
+          <span class="settingName">Analysis type</span>
+          <span class="spacer"></span>
+          <div class="segmented tight">
+            @for (mode of ['static', 'dynamic']; track mode) {
+              <button
+                [class.on]="flow.forceMode() === mode"
+                (click)="flow.setForceMode($any(mode))"
+              >
+                {{ mode === 'static' ? 'Static (Equilibrium)' : 'In-motion (Dynamic)' }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+      @if (hasMagnitude()) {
+        <div class="barRow">
+          <span class="settingName">Components to export</span>
+          <span class="spacer"></span>
+          <div class="segmented tight">
+            <button [class.on]="!flow.withMagnitude" (click)="flow.withMagnitude = false">
+              X, Y
+            </button>
+            <button [class.on]="flow.withMagnitude" (click)="flow.withMagnitude = true">
+              X, Y, Magnitude
+            </button>
+          </div>
+        </div>
+      }
     </div>
   }
 
@@ -304,8 +309,13 @@
     <span class="spacer"></span>
     <button class="nextButton" [disabled]="!canGoOn() || working" (click)="next()">
       @if (flow.step === 3) {
-        <mat-icon>download</mat-icon>
-        {{ working ? 'Writing…' : 'Export' }}
+        @if (working) {
+          <span class="spinner" aria-hidden="true"></span>
+          Writing…
+        } @else {
+          <mat-icon>download</mat-icon>
+          Export
+        }
       } @else {
         Next
         <mat-icon>arrow_forward</mat-icon>

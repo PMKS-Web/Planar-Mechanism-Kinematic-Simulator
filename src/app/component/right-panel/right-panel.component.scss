@@ -124,8 +124,12 @@
     //
     // Plus the shadow room, because that clearance is measured to where the
     // *card* stops and this frame holds the card that much inside it.
+    // Measured against the window rather than against the page. They are the
+    // same number until something else makes the document taller than the
+    // viewport, at which point `100%` grows with it and the drawer is free to
+    // run off the bottom of the screen.
     max-height: calc(
-      100% -
+      100dvh -
         #{nav.$top-strip-height} - var(--view-controls-clearance, #{nav.$view-controls-clearance}) +
         #{nav.$shadow-room}
     );

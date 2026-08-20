@@ -301,7 +301,7 @@ record(
 
 // --- the list is a way into the drawing -------------------------------------
 const lit = () =>
-  page.evaluate(() => document.querySelectorAll('.joint-highlight, .link-hovered').length);
+  page.evaluate(() => document.querySelectorAll('.joint-pointed, .link-pointed').length);
 await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
 await page.waitForTimeout(600);
 await openDrawer();
@@ -348,6 +348,17 @@ record(
   cylinderParts
 );
 
+// A ram is drawn as one silhouette over a barrel, a block and a rod, so
+// pointing at its row has to light that silhouette rather than one piece.
+await drawer().locator('.pickRow', { hasText: 'Cylinder' }).first().hover();
+await page.waitForTimeout(400);
+record(
+  'and pointing at it lights the whole ram on the grid',
+  (await page.evaluate(() => document.querySelectorAll('.link-pointed').length)) > 0
+);
+await page.mouse.move(700, 500);
+await page.waitForTimeout(300);
+
 // --- more than two files arrive as one download -----------------------------
 await drawer().locator('.linkButton', { hasText: 'Select all' }).click();
 await page.waitForTimeout(300);
@@ -393,7 +404,9 @@ const geometry = await drawer().evaluate((panel) => {
     headBottom: head.getBoundingClientRect().bottom,
     firstStickyTop: panel.querySelector('.mechHead').getBoundingClientRect().top,
     footTop: foot.getBoundingClientRect().top,
+    footBottom: foot.getBoundingClientRect().bottom,
     bodyBottom: body.getBoundingClientRect().bottom,
+    window: window.innerHeight,
   };
 });
 record(
@@ -404,6 +417,25 @@ record(
   geometry
 );
 await page.waitForTimeout(300);
+record(
+  'and the footer it holds stays on screen, however long the list is',
+  geometry.footBottom > 0 && geometry.footBottom <= geometry.window,
+  geometry
+);
+// One mark, one colour: this used to be a grey pip inside the mass table's
+// lavender ring, because both were called `.dot`.
+const separator = await drawer()
+  .locator('.pickSep')
+  .first()
+  .evaluate((mark) => ({
+    border: getComputedStyle(mark).borderTopWidth,
+    fill: getComputedStyle(mark).backgroundColor,
+  }));
+record(
+  'and the mark between Select all and Select none is one solid dot',
+  separator.border === '0px' && separator.fill.startsWith('rgba(0, 0, 0'),
+  separator
+);
 record(
   'and the head says so, with the shadow the panels already use',
   await drawer().evaluate((panel) => {

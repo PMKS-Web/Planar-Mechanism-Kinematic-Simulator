@@ -3104,7 +3104,12 @@ export class NewGridComponent implements OnDestroy {
 
   /** The reader is pointing at this cylinder's machine in the transport. */
   isBodyHovered(mark: CylinderMark): boolean {
-    return this.mechanismSrv.isPartInHoveredMechanism(mark.body);
+    return this.mechanismSrv.isPartInHoveredMechanism(mark.body) || this.isBodyPointedAt(mark);
+  }
+
+  /** Or at this ram itself, from a list that offers it as one part. */
+  isBodyPointedAt(mark: CylinderMark): boolean {
+    return this.mechanismSrv.isPointedAtBody(mark.body);
   }
 
   /**

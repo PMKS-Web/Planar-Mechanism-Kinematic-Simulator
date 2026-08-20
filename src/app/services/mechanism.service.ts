@@ -3922,7 +3922,10 @@ export class MechanismService {
     if (this.isInSelectedMechanism(joint)) {
       return 'joint-selected';
     }
-    if (this.isInHoveredMechanism(joint) || this.isHoveredPart(joint)) {
+    if (this.isHoveredPart(joint)) {
+      return 'joint-pointed';
+    }
+    if (this.isInHoveredMechanism(joint)) {
       return 'joint-highlight';
     }
     if (joint.showHighlight) {
@@ -3998,12 +4001,35 @@ export class MechanismService {
   hoveredPart: Joint | Link | undefined;
 
   private isHoveredPart(part: Joint | Link): boolean {
-    return (
-      !!this.hoveredPart &&
-      this.hoveredPart.id === part.id &&
-      this.activeObjService.objType !== 'Joint' &&
-      this.activeObjService.objType !== 'Link'
-    );
+    return !!this.hoveredPart && this.hoveredPart.id === part.id && this.nothingIsChosen();
+  }
+
+  /**
+   * Whether the canvas is free to answer a pointed-at row.
+   *
+   * The canvas carries one mark because it holds one selection, and a hover
+   * that added a second while a joint, a link, a force or a whole machine was
+   * already chosen made the drawing say two things at once.
+   */
+  private nothingIsChosen(): boolean {
+    const chosen = this.activeObjService.objType;
+    return chosen !== 'Joint' && chosen !== 'Link' && chosen !== 'Force' && chosen !== 'Mechanism';
+  }
+
+  /**
+   * Whether this body is the one a list is pointing at.
+   *
+   * A sealed cylinder answers for all of its pieces: the list offers the ram
+   * as one part, and the canvas draws it as a barrel, a block and a rod under
+   * one silhouette — so pointing at the row has to light that silhouette
+   * whichever piece the mark happens to be built around.
+   */
+  isPointedAtBody(body: Link | undefined): boolean {
+    const pointed = this.hoveredPart;
+    if (!body || !pointed || pointed instanceof Joint || !this.nothingIsChosen()) return false;
+    if (pointed.id === body.id) return true;
+    const cylinder = this.cylinderAt(pointed);
+    return !!cylinder && cylinder === this.cylinderAt(body);
   }
 
   private isInHoveredMechanism(part: Joint | Link): boolean {
@@ -4041,7 +4067,10 @@ export class MechanismService {
     if (this.isInSelectedMechanism(link)) {
       return 'link-selected';
     }
-    if (this.isInHoveredMechanism(link) || this.isHoveredPart(link)) {
+    if (this.isHoveredPart(link)) {
+      return 'link-pointed';
+    }
+    if (this.isInHoveredMechanism(link)) {
       return 'link-hovered';
     }
     return 'link-default';

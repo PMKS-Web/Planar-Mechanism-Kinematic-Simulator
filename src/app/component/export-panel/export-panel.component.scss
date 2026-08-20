@@ -202,10 +202,16 @@
 
     // Drawn rather than typed: a middot at this size renders as a ring in some
     // faces and takes the ink of whatever it sits between.
-    .dot {
+    //
+    // Named for this panel, and saying `border: none` out loud. It was called
+    // `.dot`, which the mass table's legend also calls its own marks -- so this
+    // one came out as a grey pip inside that legend's lavender ring, and the
+    // two ends of the same row disagreed about what a dot looks like.
+    .pickSep {
       flex: 0 0 auto;
       width: 3px;
       height: 3px;
+      border: none;
       border-radius: 50%;
       background: rgba(0, 0, 0, 0.3);
     }
@@ -361,7 +367,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 6px 15px;
+      padding: 2px 15px;
 
       &.spaced {
         margin-top: 6px;
@@ -513,9 +519,9 @@
     .settingBlock {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      padding: 12px 0;
-      margin-top: 6px;
+      gap: 6px;
+      padding: 8px 0;
+      margin-top: 4px;
       border-top: 1px solid #eceef5;
     }
 
@@ -547,7 +553,7 @@
       display: flex;
       flex-direction: column;
       gap: 3px;
-      margin: 0 15px 12px;
+      margin: 4px 15px 12px;
       padding: 10px 12px;
       background: #f7f8fc;
       border-radius: 5px;
@@ -565,15 +571,30 @@
       font-variant-numeric: tabular-nums;
     }
 
-    // Its own band above the footer, so it reads as belonging to the whole
+    // Its own band above the footer, so these read as belonging to the whole
     // list rather than to the last group in it.
     .componentsBar {
       flex: 0 0 auto;
       display: flex;
-      align-items: center;
-      gap: 10px;
+      flex-direction: column;
+      gap: 6px;
       padding: 8px 15px;
       border-top: 1px solid #eceef5;
+    }
+
+    .barRow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    // Both labels have to fit beside their control on a 380px drawer, and
+    // `Static (Equilibrium)` beside `In-motion (Dynamic)` will not do it at the
+    // size the rest of the panel's controls are set in.
+    .segmented.tight button {
+      padding: 0 7px;
+      font-size: 12px;
+      white-space: nowrap;
     }
 
     .exportFoot {
@@ -631,6 +652,25 @@
         background: #d5d7e0;
         color: rgba(0, 0, 0, 0.38);
         cursor: default;
+      }
+    }
+
+    // Turning while the cycle is sampled and the file is written. A ring rather
+    // than a bar: it says "still going" without pretending to know how far
+    // along a job whose length nobody has measured is.
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.45);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: exportSpin 0.7s linear infinite;
+    }
+
+    @keyframes exportSpin {
+      to {
+        transform: rotate(360deg);
       }
     }
 

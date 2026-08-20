@@ -90,14 +90,16 @@ export function plotSvg(plot: ExportPlot, times: number[], options: PlotSvgOptio
       top + innerHeight + 20
     }" text-anchor="end" font-size="11" fill="rgba(0,0,0,0.55)">${lastTime.toFixed(2)} s</text>`;
 
+  // On the top line, ahead of the title. The bottom right is where the last
+  // axis label is, and a mark parked there sat on top of it.
+  const markWidth = 74;
   const mark =
     standalone && options.logo
-      ? `<image href="${options.logo}" x="${width - right - 84}" y="${
-          height - bottom + 12
-        }" width="84" height="20" preserveAspectRatio="xMaxYMid meet"/>`
+      ? `<image href="${options.logo}" x="12" y="8" width="${markWidth}" height="18" preserveAspectRatio="xMinYMid meet"/>`
       : '';
+  const titleAt = standalone && options.logo ? 12 + markWidth + 12 : left;
   const heading = standalone
-    ? `<text x="${left}" y="22" font-size="15" font-weight="500" fill="#2c2c2c">${escapeXml(
+    ? `<text x="${titleAt}" y="22" font-size="15" font-weight="500" fill="#2c2c2c">${escapeXml(
         plot.title
       )}</text>` +
       `<text x="${width - right}" y="22" text-anchor="end" font-size="12" fill="rgba(0,0,0,0.45)">${escapeXml(
