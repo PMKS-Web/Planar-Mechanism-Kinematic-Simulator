@@ -132,15 +132,16 @@ export class ExportWriterService {
    * reader had to answer for the rest. One archive is one download.
    */
   private deliver(files: ExportFile[], stem: string): void {
-    if (files.length <= 2) {
-      files.forEach((file) => this.hand(file));
+    const named = distinctNames(files);
+    if (named.length <= 2) {
+      named.forEach((file) => this.hand(file));
       return;
     }
     this.hand({
       name: `${stem}.zip`,
       mime: 'application/zip',
       bytes: zipStore(
-        files.map((file) => ({
+        named.map((file) => ({
           name: file.name,
           data: file.bytes ?? utf8(file.text ?? ''),
         }))
@@ -164,7 +165,11 @@ export class ExportWriterService {
     for (const table of tables) {
       for (const plot of table.plots) {
         const svg = plotSvg(plot, table.times, { width, height, standalone: true, logo });
-        const name = `${this.flow.name()}_${safe(plot.title)}`;
+        // The machine, where there is more than one: a joint shared by two of
+        // them is `Position of Joint D` in both, and two entries of one name in
+        // one archive is one picture that quietly replaces the other.
+        const machine = tables.length > 1 ? `${table.name}_` : '';
+        const name = `${this.flow.name()}_${machine}${safe(plot.title)}`;
         files.push(
           this.flow.imageFormat === 'svg'
             ? { name: `${name}.svg`, mime: 'image/svg+xml', text: svg }
@@ -331,6 +336,32 @@ function textMeasure(): Measure | undefined {
     seen.set(key, width);
     return width;
   };
+}
+
+/**
+ * Make sure no two files going out together share a name.
+ *
+ * A zip will hold two entries of one name quite happily, and every unzipper
+ * then writes one over the other -- so a picture goes missing with nothing
+ * anywhere saying it did. The last resort rather than the plan: the names are
+ * built to differ, and this is what catches the case nobody thought of.
+ */
+function distinctNames(files: ExportFile[]): ExportFile[] {
+  const used = new Set<string>();
+  return files.map((file) => {
+    if (!used.has(file.name)) {
+      used.add(file.name);
+      return file;
+    }
+    const dot = file.name.lastIndexOf('.');
+    const stem = dot > 0 ? file.name.slice(0, dot) : file.name;
+    const suffix = dot > 0 ? file.name.slice(dot) : '';
+    let at = 2;
+    while (used.has(`${stem}_${at}${suffix}`)) at++;
+    const name = `${stem}_${at}${suffix}`;
+    used.add(name);
+    return { ...file, name };
+  });
 }
 
 /**

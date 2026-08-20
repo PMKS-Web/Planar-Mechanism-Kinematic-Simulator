@@ -403,6 +403,29 @@ describe('what the export is written as', () => {
     expect(sheet.match(/<row /g)).toHaveLength(table.times.length + 1);
   });
 
+  it('breaks a graph where the solver had nothing to say, rather than drawing through it', () => {
+    const { table } = sample();
+    const plot = table.plots.find((candidate) => candidate.head.startsWith('Velocity'))!;
+    const gapped = {
+      ...plot,
+      series: [
+        {
+          name: 'X',
+          values: plot.series[0].values.map((value, at) =>
+            at > 100 && at < 140 ? Number.NaN : value
+          ),
+        },
+      ],
+    };
+    const svg = plotSvg(gapped, table.times, { width: 640, height: 360, standalone: true });
+    // Two runs, two lines. Joined into one, the picture drew a straight line
+    // through exactly the positions it has no answer for -- where the panel's
+    // own chart leaves a hole.
+    expect(svg.match(/<polyline/g)).toHaveLength(2);
+    const before = gapped.series[0].values.slice(0, 101).filter(Number.isFinite).length;
+    expect(before).toBeGreaterThan(0);
+  });
+
   it('draws a graph with a line per series', () => {
     const { table } = sample();
     const plot = table.plots.find((candidate) => candidate.head.startsWith('Velocity'))!;

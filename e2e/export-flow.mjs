@@ -453,8 +453,35 @@ record(
   await drawer().locator('.summaryCard').innerText()
 );
 
-// Back to the parts, for the next question — this drawing has two machines and
-// enough parts between them to need an archive.
+// Both machines' copies of the shared joint, as pictures. `Position of Joint D`
+// is the title under either of them, and two entries of one name in one archive
+// is one picture quietly writing over the other.
+await drawer().locator('.backButton').click();
+await page.waitForTimeout(300);
+await drawer().locator('.backButton').click();
+await page.waitForTimeout(300);
+await drawer().locator('.pickRow', { hasText: 'Joint D' }).nth(1).click();
+await page.waitForTimeout(300);
+await page.locator('.nextButton').click();
+await page.waitForTimeout(400);
+await page.locator('.nextButton').click();
+await page.waitForTimeout(300);
+await drawer().locator('.formatRow', { hasText: 'Graph images' }).click();
+await page.waitForTimeout(200);
+await drawer().locator('.segmented button', { hasText: 'SVG' }).click();
+await page.waitForTimeout(300);
+const shared = await grab(() => page.locator('.nextButton').click());
+const inArchive = readStoredZip(readFileSync(shared.path)).map((entry) => entry.name);
+record(
+  'and a joint exported from both machines gives a picture each, under names of their own',
+  inArchive.length > 2 && new Set(inArchive).size === inArchive.length,
+  inArchive
+);
+
+// Back to the parts, and back to CSV, for the next question — this drawing has
+// two machines and enough parts between them to need an archive.
+await drawer().locator('.formatRow', { hasText: 'CSV' }).click();
+await page.waitForTimeout(300);
 await drawer().locator('.backButton').click();
 await page.waitForTimeout(300);
 await drawer().locator('.backButton').click();

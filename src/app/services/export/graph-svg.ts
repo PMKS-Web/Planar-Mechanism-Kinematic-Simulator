@@ -67,17 +67,26 @@ export function plotSvg(plot: ExportPlot, times: number[], options: PlotSvgOptio
     )
     .join('');
 
+  // A line per unbroken run, not one line through every point there is. Where
+  // the solver has nothing to say -- a position a force analysis could not
+  // balance -- the panel's own chart breaks, and a picture that joined the two
+  // ends drew a straight line through the very positions it has no answer for.
   const curves = plot.series
     .map((series, at) => {
-      const points = series.values
-        .map((value, index) =>
-          Number.isFinite(value) ? `${round(x(index))},${round(y(value))}` : ''
-        )
-        .filter(Boolean)
-        .join(' ');
-      return `<polyline points="${points}" fill="none" stroke="${
-        COLORS[at] ?? COLORS[0]
-      }" stroke-width="1.8" stroke-linejoin="round"/>`;
+      const colour = COLORS[at] ?? COLORS[0];
+      return runsOf(series.values)
+        .map((run) => {
+          const points = run
+            .map((index) => `${round(x(index))},${round(y(series.values[index]))}`)
+            .join(' ');
+          // A run of one has no line in it; a dot is what the panel leaves.
+          return run.length === 1
+            ? `<circle cx="${round(x(run[0]))}" cy="${round(
+                y(series.values[run[0]])
+              )}" r="1.4" fill="${colour}"/>`
+            : `<polyline points="${points}" fill="none" stroke="${colour}" stroke-width="1.8" stroke-linejoin="round"/>`;
+        })
+        .join('');
     })
     .join('');
 
@@ -136,6 +145,22 @@ function legend(plot: ExportPlot, left: number): string {
       return swatch;
     })
     .join('');
+}
+
+/** The stretches of a series the solver actually answered for, as index runs. */
+function runsOf(values: number[]): number[][] {
+  const runs: number[][] = [];
+  let run: number[] = [];
+  values.forEach((value, index) => {
+    if (Number.isFinite(value)) {
+      run.push(index);
+      return;
+    }
+    if (run.length > 0) runs.push(run);
+    run = [];
+  });
+  if (run.length > 0) runs.push(run);
+  return runs;
 }
 
 /** A little air above and below, so a flat line is not drawn on the frame. */
