@@ -20,7 +20,7 @@ import { ExportTableService, ExportTable } from './export-table.service';
 import { toCsv } from './csv-writer';
 import { toXlsx } from './xlsx-writer';
 import { plotSvg } from './graph-svg';
-import { reportHtml } from './report-html';
+import { reportHtml, reportPages } from './report-html';
 import { crc32 } from './zip';
 
 /** The drawer's three services, over one fixture's mechanism. */
@@ -399,6 +399,45 @@ describe('what the export is written as', () => {
     expect(svg.match(/<polyline/g)).toHaveLength(plot.series.length);
     expect(svg).toContain(plot.title);
     expect(svg).toContain(`${table.times[table.times.length - 1].toFixed(2)} s`);
+  });
+
+  it('fills the first page with graphs before it starts a second', () => {
+    const bare = { heads: ['Time (s)'], rows: [] as string[][] };
+    // Three rows of three, which is what the page body holds beside the
+    // drawing. Nine used to spill onto a page of its own at seven.
+    expect(reportPages({ ...bare, plots: 9 })).toBe(1);
+    expect(reportPages({ ...bare, plots: 10 })).toBe(2);
+  });
+
+  it('spreads a wide table evenly over the pages it needs', () => {
+    // Enough columns to need several passes over the rows. Packed greedily,
+    // the last page of an eighty-six column export held the time column and
+    // one other while the pages before it held fifteen each.
+    const heads = ['Time (s)', ...Array.from({ length: 46 }, (_, at) => `Position P${at} X (cm)`)];
+    const rows = Array.from({ length: 3 }, () => heads.map(() => '-1234.567890'));
+    const html = reportHtml({
+      logoUrl: 'assets/PMKS_logo.png',
+      sections: [
+        {
+          title: 'Analysis — M1',
+          subtitle: '',
+          dataTitle: 'Data — M1',
+          graphsTitle: 'Graphs — M1',
+          drawing: '',
+          facts: [],
+          shareUrl: '',
+          plots: [],
+          heads,
+          rows,
+          footer: 'M1',
+        },
+      ],
+    });
+    const widths = [...html.matchAll(/<thead><tr>(.*?)<\/tr><\/thead>/g)].map(
+      (page) => (page[1].match(/<th>/g) ?? []).length
+    );
+    expect(widths.length).toBeGreaterThan(2);
+    expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
   });
 
   it('paginates the report, and prints the way back to the mechanism on every page', () => {

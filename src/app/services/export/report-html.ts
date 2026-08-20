@@ -86,12 +86,14 @@ const MOST_HEAD_LINES = 14;
  * How many graphs a page carries.
  *
  * Four on the first page, in two columns, beside the drawing and the settings —
- * the size the design draws them at. Six is what fits when they are set three
- * across, which is what a first page holds when that is all of them; eight is
- * what a page of nothing but graphs holds.
+ * the size the design draws them at. Nine is what fits when they are set three
+ * across, which is what a first page holds when that is all of them: three
+ * rows of three end 105px inside the page body, and a fourth row does not fit
+ * however few graphs are on it. Eight is what a page of nothing but graphs
+ * holds.
  */
 const GRAPHS_ON_FIRST_PAGE = 4;
-const GRAPHS_ON_FIRST_PAGE_TIGHT = 6;
+const GRAPHS_ON_FIRST_PAGE_TIGHT = 9;
 const GRAPHS_PER_PAGE = 8;
 
 /**
@@ -175,21 +177,37 @@ function columnChunks(heads: string[], rows: string[][], measure: Measure): numb
   const time = widthOf(0);
   const widths = columns.map(widthOf);
 
-  const chunks: number[][] = [];
-  let at = 0;
-  while (at < columns.length) {
-    let widest = time;
-    let take = 1;
-    for (let end = at; end < columns.length; end++) {
-      const next = Math.max(widest, widths[end]);
-      if (end - at + 1 > capacityFor(next)) break;
-      widest = next;
-      take = end - at + 1;
+  /**
+   * Walk the columns, taking as many as fit — but never more than `wanted`
+   * says, which is how the same number of pages can be packed evenly instead
+   * of greedily.
+   */
+  const pack = (wanted: (left: number, pagesLeft: number) => number, pages: number): number[][] => {
+    const chunks: number[][] = [];
+    let at = 0;
+    while (at < columns.length) {
+      const cap = Math.max(1, wanted(columns.length - at, Math.max(1, pages - chunks.length)));
+      let widest = time;
+      let take = 1;
+      for (let end = at; end < columns.length && end - at + 1 <= cap; end++) {
+        const next = Math.max(widest, widths[end]);
+        if (end - at + 1 > capacityFor(next)) break;
+        widest = next;
+        take = end - at + 1;
+      }
+      chunks.push(columns.slice(at, at + take));
+      at += take;
     }
-    chunks.push(columns.slice(at, at + take));
-    at += take;
-  }
-  return chunks;
+    return chunks;
+  };
+
+  const greedy = pack(() => Number.POSITIVE_INFINITY, 1);
+  if (greedy.length <= 1) return greedy;
+  // The same pages, filled evenly. Greedily packed, an eighty-six column export
+  // ended on a page holding the time column and one other, because the three
+  // before it had taken fifteen each.
+  const balanced = pack((left, pagesLeft) => Math.ceil(left / pagesLeft), greedy.length);
+  return balanced.length <= greedy.length ? balanced : greedy;
 }
 
 /**
