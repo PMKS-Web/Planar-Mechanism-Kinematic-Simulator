@@ -4,7 +4,8 @@ import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { ScrollShadowDirective } from '../../scroll-shadow.directive';
 import { MechanismService } from '../../services/mechanism.service';
-import { ActiveObjService } from '../../services/active-obj.service';
+import { Joint } from '../../model/joint';
+import { Link } from '../../model/link';
 import { NotificationService } from '../../services/notification.service';
 import { AnalyticsService } from '../../services/analytics.service';
 import { ExportFlowService, ExportStep } from '../../services/export/export-flow.service';
@@ -45,7 +46,6 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   flow = inject(ExportFlowService);
   private writer = inject(ExportWriterService);
   private mechanism = inject(MechanismService);
-  private activeObj = inject(ActiveObjService);
   private notify = inject(NotificationService);
   private analytics = inject(AnalyticsService);
 
@@ -55,38 +55,80 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
     { number: 3, name: 'File' },
   ];
 
-  readonly formats: { key: ExportFormat; name: string; note: string; about: string }[] = [
+  readonly formats: { key: ExportFormat; name: string; about: string }[] = [
     {
       key: 'csv',
       name: 'CSV',
-      note: 'One time column, one per series.',
       about:
         'A plain text table: the first row names the columns, and every row after it is one solved position. Opens in any spreadsheet and reads into any script. One file per machine, or one per part; more than two arrive as a zip.',
     },
     {
       key: 'xlsx',
       name: 'Excel workbook',
-      note: 'Sheets by analysis or by part, for charting.',
       about:
         'One .xlsx holding the same numbers on separate sheets — kinematics and forces apart, or a sheet per part — so several series can be charted together without pasting between files. Written here rather than exported through Excel, so no add-in is needed.',
     },
     {
       key: 'images',
       name: 'Graph images',
-      note: 'PNG or SVG per graph.',
       about:
         'A picture of every graph the selection asks for, drawn at the size it is plotted, with the PMKS+ mark on it. SVG stays sharp at any size and can be edited; PNG drops into a document that will not take a vector. More than two arrive as a zip.',
     },
     {
       key: 'report',
-      name: 'Report',
-      note: 'PDF: mechanism, graphs and table.',
+      name: 'Report (PDF)',
       about:
         'A printable document: the mechanism as drawn, what it was solved under, its graphs, and every row the CSV would have held. Opens the print dialog, where “Save as PDF” writes the file. The share link is on every page, so a report leads back to the mechanism that made it.',
     },
   ];
 
   readonly decimalChoices: Decimals[] = [2, 4, 6, 'full'];
+
+  /**
+   * What each of the file step's settings does, in the panel's own help mark.
+   *
+   * Beside the control rather than under it: four paragraphs stacked down a
+   * 380px drawer is a page nobody reads to answer a question they have about
+   * one row of it.
+   */
+  readonly help: Record<string, string> = {
+    decimals:
+      'How many digits after the point every number keeps. Full writes what the solver produced, which is what to choose if the rounding is going to happen somewhere else.',
+    files:
+      'One file holds every chosen part of a machine against one time column. Per part writes a file for each, which is easier to chart one at a time and harder to compare across. Either way a machine gets its own file, because two machines run on two clocks.',
+    sheets:
+      'By analysis puts kinematics and forces on sheets of their own, so one can be charted without the other’s axis running through it. By part gives every chosen joint and link a sheet.',
+    images:
+      'SVG stays sharp at any size and can be opened and edited; PNG drops into a document that will not take a vector. Both carry the PMKS+ mark.',
+    name: 'The stem every file is named from. Where the export writes more than one, what tells them apart is added to it.',
+    analysis:
+      'Static solves the mechanism held still at each position, which is the equilibrium a hand calculation gives. In-motion adds the inertia of the moving parts, so a fast machine reads differently from a slow one.',
+    components:
+      'X and Y are the components along the axes. Magnitude is √(X² + Y²) — the size of the vector, without its direction — and only a series that has two components has one to add.',
+  };
+
+  /**
+   * Which glyph says what is about to come down: one file, a few, or a folder.
+   *
+   * Ligatures from the classic Material set the app already loads. A name the
+   * font does not know renders as the name itself in a box, which is worse
+   * than no glyph at all.
+   */
+  get deliveryGlyph(): string {
+    if (this.flow.format === 'report') return 'print';
+    if (this.flow.format === 'xlsx') return 'grid_on';
+    const count = this.flow.format === 'images' ? this.pictureCount() : this.writer.summary().files;
+    if (count > 2) return 'folder';
+    return count > 1 ? 'content_copy' : 'insert_drive_file';
+  }
+
+  get deliveryNote(): string {
+    if (this.flow.format === 'report') return 'Opens the print dialog, where Save as PDF writes it';
+    const count = this.flow.format === 'images' ? this.pictureCount() : this.writer.summary().files;
+    if (count > 2) return `${count} files, in one zip folder`;
+    if (count > 1) return `${count} files`;
+    return this.flow.format === 'xlsx' ? 'One workbook' : 'One file';
+  }
 
   /** Set while the browser is drawing pictures, which is not instant. */
   working = false;
@@ -168,10 +210,17 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
     this.mechanism.hoveredPart = part?.part;
   }
 
-  /** Whether this row is the thing the reader picked on the canvas. */
+  /**
+   * Whether this row is the thing the reader has picked on the canvas.
+   *
+   * Asked of the mechanism rather than read off the selection's fields: the
+   * type has to be right (letting go of a part leaves the old one remembered)
+   * and a sealed cylinder has to answer for whichever of its pieces was hit.
+   */
   isOnGrid(part: ExportPart): boolean {
-    if (part.kind === 'joint') return this.activeObj.selectedJoint?.id === part.id;
-    return this.activeObj.selectedLink?.id === part.id;
+    return part.kind === 'joint'
+      ? this.mechanism.isSelectedJoint(part.part as Joint)
+      : this.mechanism.isSelectedBody(part.part as Link);
   }
 
   everything(picked: boolean): void {
@@ -225,16 +274,9 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
         summary.pages
       } printed ${summary.pages === 1 ? 'page' : 'pages'}`;
     }
-    const files = summary.files;
-    return `${Math.max(summary.columns - 1, 0)} columns · ${summary.rows} rows · ${files} ${
-      files === 1
-        ? this.flow.format === 'xlsx'
-          ? 'workbook'
-          : 'file'
-        : this.flow.format === 'xlsx'
-          ? 'sheets'
-          : 'files'
-    }`;
+    // How many files there are is the line under this one, in the glyph's own
+    // words; saying it twice made a two-line card read as a paragraph.
+    return `${Math.max(summary.columns - 1, 0)} columns · ${summary.rows} rows`;
   }
 
   private pictureCount(): number {
@@ -245,6 +287,20 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
 
   get fileName(): string {
     return this.flow.name();
+  }
+
+  /**
+   * What will actually land in the downloads folder.
+   *
+   * The archive, where there is one: the name field says `.csv` because that
+   * is what the files inside it are, and a card promising `M1_analysis.csv`
+   * while `M1_analysis.zip` arrives is the card being wrong about the one
+   * thing it is there to say.
+   */
+  get arrivingName(): string {
+    const count = this.flow.format === 'images' ? this.pictureCount() : this.writer.summary().files;
+    const zipped = count > 2 && this.flow.format !== 'report' && this.flow.format !== 'xlsx';
+    return `${this.fileName}${zipped ? '.zip' : this.flow.extension()}`;
   }
 
   onName(event: Event): void {

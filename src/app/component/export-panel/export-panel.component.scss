@@ -434,13 +434,13 @@
 
     .formatRow {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: 8px;
     }
 
     .formatPick {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: flex-start;
       gap: 10px;
       flex: 1 1 auto;
@@ -452,27 +452,24 @@
       cursor: pointer;
     }
 
-    // Asks the question rather than answering it in place: four paragraphs
-    // under four formats is a page nobody reads to choose between them.
-    .whatIsThis {
+    // The same mark every field in the app carries, at the same size and the
+    // same weight: a reader who has learned what it means anywhere has learned
+    // it here. Asks the question rather than answering it in place, because
+    // four paragraphs under four formats is a page nobody reads to choose
+    // between them.
+    .label-help {
       flex: 0 0 auto;
-      width: 18px;
-      height: 18px;
-      margin-top: 7px;
-      padding: 0;
-      border: 1px solid rgba(0, 0, 0, 0.2);
-      border-radius: 50%;
-      background: transparent;
-      color: rgba(0, 0, 0, 0.45);
-      font-family: inherit;
-      font-size: 11px;
-      line-height: 1;
+      transform: scale(0.65);
+      color: rgba(0, 0, 0, 0.3);
       cursor: help;
 
       &:hover {
-        border-color: $indigo;
         color: $indigo;
       }
+    }
+
+    .formatRow .label-help {
+      margin-top: 2px;
     }
 
     .radio {
@@ -481,7 +478,6 @@
       justify-content: center;
       width: 18px;
       height: 18px;
-      margin-top: 2px;
       border: 2px solid rgba(0, 0, 0, 0.54);
       border-radius: 50%;
       box-sizing: border-box;
@@ -500,20 +496,9 @@
       background: #fff;
     }
 
-    .formatText {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
-
     .formatName {
       font-size: 14px;
       color: #2c2c2c;
-    }
-
-    .formatNote {
-      font-size: 12px;
-      color: rgba(0, 0, 0, 0.55);
     }
 
     .settingBlock {
@@ -551,12 +536,28 @@
 
     .summaryCard {
       display: flex;
-      flex-direction: column;
-      gap: 3px;
+      align-items: flex-start;
+      gap: 10px;
       margin: 4px 15px 12px;
       padding: 10px 12px;
       background: #f7f8fc;
       border-radius: 5px;
+    }
+
+    .summaryGlyph {
+      flex: 0 0 auto;
+      width: 22px;
+      height: 22px;
+      font-size: 22px;
+      line-height: 22px;
+      color: #5f6368;
+    }
+
+    .summaryText {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
     }
 
     .summaryName {

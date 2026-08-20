@@ -193,7 +193,17 @@ export class ExportWriterService {
       .filter((section): section is ReportSection => !!section);
     if (sections.length === 0) return false;
     const logo = new URL('assets/PMKS_logo.png', document.baseURI).href;
-    print(reportHtml({ logoUrl: logo, sections, measure: textMeasure() }));
+    // The name the reader typed reaches the file through the document's title:
+    // the app never writes this one, the print dialog does, and the title is
+    // what it offers as the name.
+    print(
+      reportHtml({
+        logoUrl: logo,
+        documentTitle: this.flow.name(),
+        sections,
+        measure: textMeasure(),
+      })
+    );
     return true;
   }
 

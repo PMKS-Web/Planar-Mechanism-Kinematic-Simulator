@@ -153,22 +153,18 @@
                   <span class="pip"></span>
                 }
               </span>
-              <span class="formatText">
-                <span class="formatName">{{ choice.name }}</span>
-                <span class="formatNote">{{ choice.note }}</span>
-              </span>
+              <span class="formatName">{{ choice.name }}</span>
             </button>
             <!-- The whole answer, for a reader deciding between four formats
                  they have never used, without a paragraph under each one. -->
-            <button
-              class="whatIsThis"
+            <mat-icon
+              class="label-help"
               [matTooltip]="choice.about"
               matTooltipPosition="left"
               matTooltipClass="exportTip"
-              [attr.aria-label]="'About ' + choice.name"
+              matTooltipShowDelay="400"
+              >help_outline</mat-icon
             >
-              ?
-            </button>
           </div>
         }
       </div>
@@ -177,6 +173,14 @@
         @if (flow.format !== 'images') {
           <div class="settingRow">
             <span class="settingName">Decimals</span>
+            <mat-icon
+              class="label-help"
+              [matTooltip]="help['decimals']"
+              matTooltipPosition="left"
+              matTooltipClass="exportTip"
+              matTooltipShowDelay="400"
+              >help_outline</mat-icon
+            >
             <span class="spacer"></span>
             <div class="segmented">
               @for (choice of decimalChoices; track choice) {
@@ -191,6 +195,14 @@
         @if (flow.format === 'csv') {
           <div class="settingRow">
             <span class="settingName">Files</span>
+            <mat-icon
+              class="label-help"
+              [matTooltip]="help['files']"
+              matTooltipPosition="left"
+              matTooltipClass="exportTip"
+              matTooltipShowDelay="400"
+              >help_outline</mat-icon
+            >
             <span class="spacer"></span>
             <div class="segmented">
               <button [class.on]="!flow.splitPerPart" (click)="flow.splitPerPart = false">
@@ -206,6 +218,14 @@
         @if (flow.format === 'xlsx') {
           <div class="settingRow">
             <span class="settingName">Sheets</span>
+            <mat-icon
+              class="label-help"
+              [matTooltip]="help['sheets']"
+              matTooltipPosition="left"
+              matTooltipClass="exportTip"
+              matTooltipShowDelay="400"
+              >help_outline</mat-icon
+            >
             <span class="spacer"></span>
             <div class="segmented">
               <button [class.on]="!flow.splitPerPart" (click)="flow.splitPerPart = false">
@@ -221,6 +241,14 @@
         @if (flow.format === 'images') {
           <div class="settingRow">
             <span class="settingName">Images</span>
+            <mat-icon
+              class="label-help"
+              [matTooltip]="help['images']"
+              matTooltipPosition="left"
+              matTooltipClass="exportTip"
+              matTooltipShowDelay="400"
+              >help_outline</mat-icon
+            >
             <span class="spacer"></span>
             <div class="segmented">
               <button [class.on]="flow.imageFormat === 'png'" (click)="flow.imageFormat = 'png'">
@@ -233,27 +261,37 @@
           </div>
         }
 
-        @if (flow.format !== 'report') {
-          <div class="settingRow">
-            <span class="settingName">Name</span>
-            <span class="spacer"></span>
-            <input
-              class="nameField"
-              type="text"
-              [value]="flow.typedName"
-              [placeholder]="flow.defaultName()"
-              (input)="onName($event)"
-            />
-            <span class="extension">{{ flow.extension() }}</span>
-          </div>
-        }
+        <div class="settingRow">
+          <span class="settingName">Name</span>
+          <mat-icon
+            class="label-help"
+            [matTooltip]="help['name']"
+            matTooltipPosition="left"
+            matTooltipClass="exportTip"
+            matTooltipShowDelay="400"
+            >help_outline</mat-icon
+          >
+          <span class="spacer"></span>
+          <input
+            class="nameField"
+            type="text"
+            [value]="flow.typedName"
+            [placeholder]="flow.defaultName()"
+            (input)="onName($event)"
+          />
+          <span class="extension">{{ flow.extension() }}</span>
+        </div>
       </div>
 
       <div class="summaryCard">
-        <span class="summaryName"
-          >{{ fileName }}{{ flow.format === 'report' ? '' : flow.extension() }}</span
-        >
-        <span class="summaryNote">{{ summaryLine }}</span>
+        <!-- One file, a few, or an archive: the shape of what arrives, before
+             it arrives. -->
+        <mat-icon class="summaryGlyph">{{ deliveryGlyph }}</mat-icon>
+        <div class="summaryText">
+          <span class="summaryName">{{ arrivingName }}</span>
+          <span class="summaryNote">{{ summaryLine }}</span>
+          <span class="summaryNote">{{ deliveryNote }}</span>
+        </div>
       </div>
     }
   </div>
@@ -266,6 +304,14 @@
       @if (flow.tab === 'forces') {
         <div class="barRow">
           <span class="settingName">Analysis type</span>
+          <mat-icon
+            class="label-help"
+            [matTooltip]="help['analysis']"
+            matTooltipPosition="above"
+            matTooltipClass="exportTip"
+            matTooltipShowDelay="400"
+            >help_outline</mat-icon
+          >
           <span class="spacer"></span>
           <div class="segmented tight">
             @for (mode of ['static', 'dynamic']; track mode) {
@@ -282,6 +328,14 @@
       @if (hasMagnitude()) {
         <div class="barRow">
           <span class="settingName">Components to export</span>
+          <mat-icon
+            class="label-help"
+            [matTooltip]="help['components']"
+            matTooltipPosition="above"
+            matTooltipClass="exportTip"
+            matTooltipShowDelay="400"
+            >help_outline</mat-icon
+          >
           <span class="spacer"></span>
           <div class="segmented tight">
             <button [class.on]="!flow.withMagnitude" (click)="flow.withMagnitude = false">

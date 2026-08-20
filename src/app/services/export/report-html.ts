@@ -39,6 +39,13 @@ export type Measure = (text: string, bold?: boolean) => number;
 
 export interface ReportContext {
   logoUrl: string;
+  /**
+   * What the document is called.
+   *
+   * The print dialog offers this as the PDF's file name, which is the only way
+   * the name typed in the drawer can reach a file the app never writes itself.
+   */
+  documentTitle?: string;
   sections: ReportSection[];
   /** Omitted where there is nothing to measure with; estimated instead. */
   measure?: Measure;
@@ -290,7 +297,7 @@ export function reportHtml(context: ReportContext): string {
   });
 
   const pages = bodies.map((entry, at) => page(entry.body, entry.footer, at + 1, bodies.length));
-  const title = context.sections[0]?.title ?? 'PMKS+ report';
+  const title = context.documentTitle || context.sections[0]?.title || 'PMKS+ report';
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(
     title
   )}</title><style>${styles()}</style></head><body>${pages.join('')}</body></html>`;

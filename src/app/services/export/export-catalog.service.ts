@@ -3,7 +3,6 @@ import { Joint, RealJoint } from '../../model/joint';
 import { Cylinder } from '../../model/cylinder';
 import { Link, RealLink, SliderBlock } from '../../model/link';
 import { AngleUnit, ForceUnit, LengthUnit } from '../../model/unit-enums';
-import { ActiveObjService } from '../active-obj.service';
 import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
 import { ExportPart, ExportPartGroup } from './export-model';
@@ -18,7 +17,6 @@ import { ExportPart, ExportPartGroup } from './export-model';
 @Injectable({ providedIn: 'root' })
 export class ExportCatalogService {
   private mechanism = inject(MechanismService);
-  private activeObj = inject(ActiveObjService);
   private settings = inject(SettingsService);
 
   /**
@@ -96,7 +94,7 @@ export class ExportCatalogService {
     if (joint.input) notes.push('input');
     if (this.mechanism.sliderFor(joint)) notes.push('slider');
     if (joint.showCurve) notes.push('tracer point');
-    if (this.activeObj.selectedJoint?.id === joint.id) notes.push('on the grid');
+    if (this.mechanism.isSelectedJoint(joint)) notes.push('on the grid');
     return {
       key: `joint:${joint.id}`,
       kind: 'joint',
@@ -120,7 +118,7 @@ export class ExportCatalogService {
     else if (link instanceof SliderBlock) notes.push('slider block');
     if (link.joints.some((joint) => (joint as RealJoint).input)) notes.push('input crank');
     if (link instanceof RealLink && link.subset.length > 0) notes.push('compound');
-    if (this.activeObj.selectedLink?.id === link.id) notes.push('on the grid');
+    if (this.mechanism.isSelectedBody(link)) notes.push('on the grid');
     return {
       key: `link:${link.id}`,
       kind: 'link',

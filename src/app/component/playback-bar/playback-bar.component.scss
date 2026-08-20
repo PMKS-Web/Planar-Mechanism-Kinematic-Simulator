@@ -101,9 +101,10 @@
     }
   }
 
-  // A rounded square rather than a disc: it is the one solid block in the
-  // cluster, and the card's own corner is what makes it read as part of the
-  // chrome instead of a shape only it has.
+  // A rounded square rather than a disc, and the *same* rounded square as the
+  // speed button beside it and the view controls along the strip: every
+  // 40px button on this chrome takes one corner, so the one that is filled
+  // reads as the loud one of a set rather than as a shape of its own.
   .playButton {
     display: flex;
     align-items: center;
@@ -111,7 +112,7 @@
     width: 40px;
     height: 40px;
     border: none;
-    border-radius: var(--card-radius);
+    border-radius: 6px;
     background: #d5d7e0;
     color: #fff;
     cursor: pointer;
@@ -133,26 +134,28 @@
     }
   }
 
-  // Smaller than play, and outlined rather than filled: it is the way back
-  // rather than the thing you came here to press.
+  // Filled, like play, and only a little smaller: it is the other half of the
+  // same question, and left as an outline it read as a hint rather than as a
+  // control -- at rest it was a glyph on nothing beside a solid indigo block.
   .stopButton {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     padding: 0;
     border: none;
-    border-radius: 8px;
-    background: transparent;
+    border-radius: 6px;
+    background: #eceef5;
     color: #5f6368;
     cursor: pointer;
 
     &:hover:not(:disabled) {
-      background: rgba(0, 0, 0, 0.06);
+      background: #dcdfe9;
     }
 
     &:disabled {
+      background: #f4f5f9;
       color: #c8cad3;
       cursor: default;
     }

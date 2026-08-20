@@ -130,6 +130,13 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
   service.mechanismContaining = MechanismService.prototype.mechanismContaining.bind(service);
   service.partitionContaining = MechanismService.prototype.partitionContaining.bind(service);
   service.driveSpeedOf = MechanismService.prototype.driveSpeedOf.bind(service);
+  // Which part the canvas is holding, borrowed rather than restated. The
+  // panels ask this to mark the row a reader has already picked, and a copy
+  // here could disagree with the canvas about what "selected" means -- a
+  // cylinder in particular, which answers for all of its pieces.
+  (service as { activeObjService: ActiveObjService }).activeObjService = active;
+  service.isSelectedJoint = MechanismService.prototype.isSelectedJoint.bind(service);
+  service.isSelectedBody = MechanismService.prototype.isSelectedBody.bind(service);
 
   return { active, mechanism, service, settings };
 }

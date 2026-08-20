@@ -98,6 +98,31 @@ record(
   playShape
 );
 
+// One corner for the whole chrome: play, stop, speed and every view control
+// are the same size button on the same strip, and three radii between them
+// read as three unrelated controls that happen to sit together.
+const corners = await page.evaluate(() =>
+  ['.playButton', '.stopButton', '.speedButton', '.viewButton'].map((selector) => {
+    const button = document.querySelector(selector);
+    return button ? getComputedStyle(button).borderRadius : null;
+  })
+);
+record(
+  'and every button on the chrome takes the same corner',
+  new Set(corners).size === 1,
+  corners
+);
+
+// Filled rather than outlined: at rest it used to be a glyph on nothing
+// beside a solid indigo block, which read as a hint rather than a control.
+record(
+  'and stop is filled, so it carries the weight play does',
+  await page.evaluate(() => {
+    const fill = getComputedStyle(document.querySelector('.stopButton')).backgroundColor;
+    return fill !== 'rgba(0, 0, 0, 0)' && fill !== 'transparent';
+  })
+);
+
 // --- the highlight lands on the mode that was chosen ------------------------
 const highlight = await page.evaluate(() => {
   const pill = document.querySelector('.activeTabPill');

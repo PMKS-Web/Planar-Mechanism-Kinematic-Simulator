@@ -252,6 +252,11 @@ record(
   { length: printed.length, pages: (printed.match(/class="page"/g) ?? []).length }
 );
 record(
+  'named as the drawer said, so the print dialog offers that name for the PDF',
+  printed.includes('<title>M1_') || /<title>[^<]+<\/title>/.test(printed),
+  printed.match(/<title>[^<]*<\/title>/)?.[0]
+);
+record(
   'and prints the way back to the mechanism on it',
   printed.includes('shareUrl') && printed.includes('?'),
   printed.slice(0, 200)
@@ -334,6 +339,17 @@ await drawer().locator('.pickRow').first().hover();
 await page.waitForTimeout(300);
 record('a selection on the canvas is not painted over by a hover in the list', (await lit()) === 0);
 
+// Letting go of a part leaves the old one remembered, so a list reading the
+// selection's fields alone went on marking a row nobody had chosen.
+await page.evaluate(() =>
+  ng.getComponent(document.querySelector('app-new-grid')).activeObjService.updateSelectedObj(null)
+);
+await page.waitForTimeout(500);
+record(
+  'and letting go of it clears the mark',
+  (await drawer().locator('.pickRow.onGrid').count()) === 0
+);
+
 // --- a sealed cylinder is one part, not the pieces it is assembled from ------
 await page.goto(`${BASE}/?${payloads['Cylinder_Boom']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
@@ -347,6 +363,24 @@ record(
     !cylinderParts.some((name) => /^(Rod|Barrel|Piston|Block) /.test(name)),
   cylinderParts
 );
+
+// A ram is picked on the canvas by whichever of its pieces the pointer was
+// over, and stands in this list as one part, so the row has to answer for all
+// three of them.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.sealedStructures()[0].barrel);
+});
+await page.waitForTimeout(500);
+record(
+  'and picking any piece of it on the canvas marks that one row',
+  (await drawer().locator('.pickRow.onGrid').count()) === 1 &&
+    (await drawer().locator('.pickRow.onGrid .rowName').innerText()).startsWith('Cylinder')
+);
+await page.evaluate(() =>
+  ng.getComponent(document.querySelector('app-new-grid')).activeObjService.updateSelectedObj(null)
+);
+await page.waitForTimeout(400);
 
 // A ram is drawn as one silhouette over a barrel, a block and a rod, so
 // pointing at its row has to light that silhouette rather than one piece.
@@ -453,8 +487,8 @@ await page.locator('.nextButton').click();
 await page.waitForTimeout(400);
 record(
   'two machines are written as two files, because they run on two clocks',
-  (await drawer().locator('.summaryNote').first().innerText()).includes('2 files'),
-  await drawer().locator('.summaryNote').first().innerText()
+  (await drawer().locator('.summaryCard').innerText()).includes('2 files'),
+  await drawer().locator('.summaryCard').innerText()
 );
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));

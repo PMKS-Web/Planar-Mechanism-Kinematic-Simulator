@@ -4017,6 +4017,39 @@ export class MechanismService {
   }
 
   /**
+   * Whether the canvas's current selection is this joint.
+   *
+   * The selection *type* decides, not the remembered object: clicking the grid
+   * sets the type to `Grid` and leaves `selectedJoint` holding whatever was
+   * chosen before, so a list reading that field alone went on marking a row
+   * after the reader had let go of the thing it names.
+   */
+  isSelectedJoint(joint: Joint | undefined): boolean {
+    return (
+      !!joint &&
+      this.activeObjService.objType === 'Joint' &&
+      this.activeObjService.selectedJoint?.id === joint.id
+    );
+  }
+
+  /**
+   * Whether the canvas's current selection is this body.
+   *
+   * A sealed cylinder answers for all of its pieces, as it does everywhere
+   * else: the list offers the ram as one part, and clicking it on the canvas
+   * lands on whichever of the barrel, the block or the rod the pointer was
+   * over.
+   */
+  isSelectedBody(body: Link | undefined): boolean {
+    if (!body || this.activeObjService.objType !== 'Link') return false;
+    const chosen = this.activeObjService.selectedLink;
+    if (!chosen) return false;
+    if (chosen.id === body.id) return true;
+    const cylinder = this.cylinderAt(chosen);
+    return !!cylinder && cylinder === this.cylinderAt(body);
+  }
+
+  /**
    * Whether this body is the one a list is pointing at.
    *
    * A sealed cylinder answers for all of its pieces: the list offers the ram
