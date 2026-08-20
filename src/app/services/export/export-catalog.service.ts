@@ -33,7 +33,7 @@ export class ExportCatalogService {
       const joints = partition.ownJoints
         .filter((joint): joint is RealJoint => joint instanceof RealJoint)
         .filter((joint) => !this.isInsideCylinder(cylinders, joint))
-        .map((joint) => this.jointPart(joint, index, withForces));
+        .map((joint) => this.jointPart(joint, partition.id, index, withForces));
       // Blocks as well as bars. A slider's block is a body the solver weighs
       // and balances like any other, and leaving it off the list put its
       // reactions out of reach of an export that offers everything else.
@@ -46,7 +46,7 @@ export class ExportCatalogService {
         // piston and the joints buried inside it are pieces of a ram nobody
         // drew and nobody can point at on the canvas.
         .filter((link) => this.standsForCylinder(cylinders, link) !== 'hidden')
-        .map((link) => this.linkPart(link, index, valid, cylinders));
+        .map((link) => this.linkPart(link, partition.id, index, valid, cylinders));
       return {
         index,
         id: partition.id,
@@ -88,7 +88,12 @@ export class ExportCatalogService {
     return cylinder.rod.id === link.id ? 'rod' : 'hidden';
   }
 
-  private jointPart(joint: RealJoint, index: number, withForces: boolean): ExportPart {
+  private jointPart(
+    joint: RealJoint,
+    machine: string,
+    index: number,
+    withForces: boolean
+  ): ExportPart {
     const notes: string[] = [];
     if (joint.ground) notes.push('grounded');
     if (joint.input) notes.push('input');
@@ -96,7 +101,11 @@ export class ExportCatalogService {
     if (joint.showCurve) notes.push('tracer point');
     if (this.mechanism.isSelectedJoint(joint)) notes.push('on the grid');
     return {
-      key: `joint:${joint.id}`,
+      // Qualified by machine, because a joint can belong to two of them: a
+      // chain bolted to another's ground shares that pin, and keyed by its
+      // letter alone, ticking it under one machine ticked it under both --
+      // which wrote a file for a machine the reader had not asked about.
+      key: `${machine}|joint:${joint.id}`,
       kind: 'joint',
       id: joint.id,
       label: `Joint ${joint.name || joint.id}`,
@@ -111,7 +120,13 @@ export class ExportCatalogService {
     };
   }
 
-  private linkPart(link: Link, index: number, valid: boolean, cylinders: Cylinder[]): ExportPart {
+  private linkPart(
+    link: Link,
+    machine: string,
+    index: number,
+    valid: boolean,
+    cylinders: Cylinder[]
+  ): ExportPart {
     const notes: string[] = [];
     const ram = this.standsForCylinder(cylinders, link) === 'rod';
     if (ram) notes.push('cylinder');
@@ -120,7 +135,7 @@ export class ExportCatalogService {
     if (link instanceof RealLink && link.subset.length > 0) notes.push('compound');
     if (this.mechanism.isSelectedBody(link)) notes.push('on the grid');
     return {
-      key: `link:${link.id}`,
+      key: `${machine}|link:${link.id}`,
       kind: 'link',
       id: link.id,
       label: ram ? this.cylinderLabel(cylinders, link) : this.mechanism.bodyLabel(link),

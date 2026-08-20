@@ -113,15 +113,26 @@ record(
   corners
 );
 
-// Filled rather than outlined: at rest it used to be a glyph on nothing
-// beside a solid indigo block, which read as a hint rather than a control.
+// Play is the only filled thing in the cluster, which is what makes it the
+// one you press; stop is the same quiet button as the speed control beside it.
 record(
-  'and stop is filled, so it carries the weight play does',
+  'and play is the only filled one of them',
   await page.evaluate(() => {
-    const fill = getComputedStyle(document.querySelector('.stopButton')).backgroundColor;
-    return fill !== 'rgba(0, 0, 0, 0)' && fill !== 'transparent';
+    const fill = (selector) => getComputedStyle(document.querySelector(selector)).backgroundColor;
+    const clear = (paint) => paint === 'rgba(0, 0, 0, 0)' || paint === 'transparent';
+    return !clear(fill('.playButton')) && clear(fill('.stopButton')) && clear(fill('.speedButton'));
   })
 );
+
+// Same size, not merely the same shape: three buttons in a row at three widths
+// read as three unrelated controls.
+const sizes = await page.evaluate(() =>
+  ['.playButton', '.stopButton', '.speedButton', '.viewButton'].map((selector) => {
+    const box = document.querySelector(selector)?.getBoundingClientRect();
+    return box ? `${Math.round(box.width)}x${Math.round(box.height)}` : null;
+  })
+);
+record('and every one of them is the same size', new Set(sizes).size === 1, sizes);
 
 // --- the highlight lands on the mode that was chosen ------------------------
 const highlight = await page.evaluate(() => {

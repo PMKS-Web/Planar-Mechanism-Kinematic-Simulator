@@ -55,30 +55,34 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
     { number: 3, name: 'File' },
   ];
 
-  readonly formats: { key: ExportFormat; name: string; about: string }[] = [
+  /**
+   * The four ways out, each with the line that says what it is for.
+   *
+   * A sentence apiece rather than a mark to press: there are only four, they
+   * are read together while choosing between them, and a tooltip that has to
+   * be hunted for four times is a worse way to compare them than four lines
+   * already on the page.
+   */
+  readonly formats: { key: ExportFormat; name: string; note: string }[] = [
     {
       key: 'csv',
       name: 'CSV',
-      about:
-        'A plain text table: the first row names the columns, and every row after it is one solved position. Opens in any spreadsheet and reads into any script. One file per machine, or one per part; more than two arrive as a zip.',
+      note: 'One time column, one per series.',
     },
     {
       key: 'xlsx',
       name: 'Excel workbook',
-      about:
-        'One .xlsx holding the same numbers on separate sheets — kinematics and forces apart, or a sheet per part — so several series can be charted together without pasting between files. Written here rather than exported through Excel, so no add-in is needed.',
+      note: 'Sheets by analysis or by part, for charting.',
     },
     {
       key: 'images',
       name: 'Graph images',
-      about:
-        'A picture of every graph the selection asks for, drawn at the size it is plotted, with the PMKS+ mark on it. SVG stays sharp at any size and can be edited; PNG drops into a document that will not take a vector. More than two arrive as a zip.',
+      note: 'PNG or SVG per graph.',
     },
     {
       key: 'report',
       name: 'Report (PDF)',
-      about:
-        'A printable document: the mechanism as drawn, what it was solved under, its graphs, and every row the CSV would have held. Opens the print dialog, where “Save as PDF” writes the file. The share link is on every page, so a report leads back to the mechanism that made it.',
+      note: 'The mechanism, the graphs and the table.',
     },
   ];
 

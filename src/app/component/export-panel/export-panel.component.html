@@ -153,18 +153,11 @@
                   <span class="pip"></span>
                 }
               </span>
-              <span class="formatName">{{ choice.name }}</span>
+              <span class="formatText">
+                <span class="formatName">{{ choice.name }}</span>
+                <span class="formatNote">{{ choice.note }}</span>
+              </span>
             </button>
-            <!-- The whole answer, for a reader deciding between four formats
-                 they have never used, without a paragraph under each one. -->
-            <mat-icon
-              class="label-help"
-              [matTooltip]="choice.about"
-              matTooltipPosition="left"
-              matTooltipClass="exportTip"
-              matTooltipShowDelay="400"
-              >help_outline</mat-icon
-            >
           </div>
         }
       </div>
@@ -319,7 +312,7 @@
                 [class.on]="flow.forceMode() === mode"
                 (click)="flow.setForceMode($any(mode))"
               >
-                {{ mode === 'static' ? 'Static (Equilibrium)' : 'In-motion (Dynamic)' }}
+                {{ mode === 'static' ? 'Static' : 'In-motion' }}
               </button>
             }
           </div>

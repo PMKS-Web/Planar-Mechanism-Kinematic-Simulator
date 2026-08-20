@@ -134,28 +134,27 @@
     }
   }
 
-  // Filled, like play, and only a little smaller: it is the other half of the
-  // same question, and left as an outline it read as a hint rather than as a
-  // control -- at rest it was a glyph on nothing beside a solid indigo block.
+  // The same button as the speed control on its other side: forty square, one
+  // corner, no fill until it is pointed at. Play is the only filled thing in
+  // the cluster, which is what makes it the one you press.
   .stopButton {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     padding: 0;
     border: none;
     border-radius: 6px;
-    background: #eceef5;
+    background: transparent;
     color: #5f6368;
     cursor: pointer;
 
     &:hover:not(:disabled) {
-      background: #dcdfe9;
+      background: rgba(0, 0, 0, 0.04);
     }
 
     &:disabled {
-      background: #f4f5f9;
       color: #c8cad3;
       cursor: default;
     }

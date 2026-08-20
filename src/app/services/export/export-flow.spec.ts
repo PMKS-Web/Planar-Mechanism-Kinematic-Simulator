@@ -243,6 +243,17 @@ describe('the export drawer', () => {
     expect(labels).toContain('slider block');
   });
 
+  it('keys a part by its machine, so a shared joint is two rows and two ticks', () => {
+    const { flow } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
+    const parts = flow.partGroups().flatMap((group) => group.parts);
+    // A chain bolted to another machine's ground shares that pin and is listed
+    // under both. Keyed by its letter alone, ticking it under one machine
+    // ticked it under the other, and the export wrote a file for a machine the
+    // reader had not asked about.
+    expect(parts.every((part) => part.key.startsWith('M1|'))).toBe(true);
+    expect(new Set(parts.map((part) => part.key)).size).toBe(parts.length);
+  });
+
   it('stands a sealed cylinder in the list as one part, not as its pieces', () => {
     const { flow } = flowFor(TEMPLATE_LINKAGES['Cylinder_Boom']);
     const labels = flow.partGroups().flatMap((group) => group.parts.map((part) => part.label));

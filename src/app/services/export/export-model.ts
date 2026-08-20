@@ -15,7 +15,12 @@ export type ColumnTab = 'kinematics' | 'forces';
 
 /** One tickable row of step 1: a joint or a link of one mechanism. */
 export interface ExportPart {
-  /** Unique across the drawing, and stable across rebuilds: `joint:A`. */
+  /**
+   * Unique across the drawing: `M1|joint:A`.
+   *
+   * Qualified by machine, because a joint can belong to two of them — a chain
+   * bolted to another's ground shares that pin, and it is listed under both.
+   */
   key: string;
   kind: PartKind;
   id: string;

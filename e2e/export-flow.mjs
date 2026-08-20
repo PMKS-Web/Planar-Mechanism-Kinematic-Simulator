@@ -393,6 +393,73 @@ record(
 await page.mouse.move(700, 500);
 await page.waitForTimeout(300);
 
+// --- a joint two machines share is two rows, and two ticks ------------------
+// A chain bolted to another machine's ground shares that pin. Keyed by its
+// letter alone, ticking it under one machine ticked it under the other, and
+// the export wrote a file for a machine nobody had asked about.
+await page.goto(`${BASE}/?${payloads['4-Bar']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  const JointClass = Object.getPrototypeOf(srv.joints[0]).constructor;
+  const LinkClass = Object.getPrototypeOf(srv.links[0]).constructor;
+  const scale = Math.abs(srv.joints[0].x) / 3 || 200;
+  const shared = srv.joints.find((joint) => joint.id === 'D');
+  const made = [
+    ['E', 6, 1],
+    ['F', 8, 2],
+    ['G', 9, 0],
+  ].map(([id, x, y]) => new JointClass(id, x * scale, y * scale));
+  made[2].ground = true;
+  made[2].input = true;
+  const chain = [shared, ...made];
+  const links = [0, 1, 2].map((at) => {
+    const link = new LinkClass(chain[at].id + chain[at + 1].id, [chain[at], chain[at + 1]]);
+    chain[at].links.push(link);
+    chain[at + 1].links.push(link);
+    chain[at].connectedJoints.push(chain[at + 1]);
+    chain[at + 1].connectedJoints.push(chain[at]);
+    return link;
+  });
+  srv.joints.push(...made);
+  srv.links.push(...links);
+  srv.updateMechanism(true);
+});
+await page.waitForTimeout(1400);
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+await page.waitForTimeout(700);
+await openDrawer();
+const shownNames = await drawer().locator('.pickRow .rowName').allInnerTexts();
+record(
+  'a joint two machines share is listed under each of them',
+  shownNames.filter((name) => name === 'Joint D').length === 2,
+  shownNames
+);
+await drawer().locator('.pickRow', { hasText: 'Joint D' }).first().click();
+await page.waitForTimeout(400);
+record(
+  'and ticking it under one leaves the other alone',
+  (await drawer().locator('.pickRow.on').count()) === 1 &&
+    (await drawer().locator('.footNote').innerText()).includes('M1'),
+  await drawer().locator('.footNote').innerText()
+);
+await page.locator('.nextButton').click();
+await page.waitForTimeout(500);
+await page.locator('.nextButton').click();
+await page.waitForTimeout(500);
+record(
+  'so the export is one file, for the machine that was asked about',
+  (await drawer().locator('.summaryCard').innerText()).includes('One file'),
+  await drawer().locator('.summaryCard').innerText()
+);
+
+// Back to the parts, for the next question — this drawing has two machines and
+// enough parts between them to need an archive.
+await drawer().locator('.backButton').click();
+await page.waitForTimeout(300);
+await drawer().locator('.backButton').click();
+await page.waitForTimeout(300);
+
 // --- more than two files arrive as one download -----------------------------
 await drawer().locator('.linkButton', { hasText: 'Select all' }).click();
 await page.waitForTimeout(300);

@@ -434,13 +434,13 @@
 
     .formatRow {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 8px;
     }
 
     .formatPick {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: flex-start;
       gap: 10px;
       flex: 1 1 auto;
@@ -468,16 +468,13 @@
       }
     }
 
-    .formatRow .label-help {
-      margin-top: 2px;
-    }
-
     .radio {
       display: flex;
       align-items: center;
       justify-content: center;
       width: 18px;
       height: 18px;
+      margin-top: 2px;
       border: 2px solid rgba(0, 0, 0, 0.54);
       border-radius: 50%;
       box-sizing: border-box;
@@ -496,9 +493,20 @@
       background: #fff;
     }
 
+    .formatText {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
     .formatName {
       font-size: 14px;
       color: #2c2c2c;
+    }
+
+    .formatNote {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.55);
     }
 
     .settingBlock {
