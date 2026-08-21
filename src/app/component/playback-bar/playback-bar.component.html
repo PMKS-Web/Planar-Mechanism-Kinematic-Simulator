@@ -27,6 +27,20 @@
       >
         <mat-icon>{{ playing ? 'pause' : 'play_arrow' }}</mat-icon>
       </button>
+      <!-- Back to the pose the mechanism was drawn in, which is the one every
+           other mode shows. Beside the play button rather than in the row of
+           readings: it is the other half of the same question. -->
+      <button
+        class="stopButton"
+        (click)="stop()"
+        [disabled]="!canStop"
+        matTooltip="Back to the start pose"
+        matTooltipPosition="above"
+        matTooltipShowDelay="600"
+        aria-label="Back to the start pose"
+      >
+        <mat-icon>stop</mat-icon>
+      </button>
     </div>
 
     <div class="scrubCard" @riseFromBottom>

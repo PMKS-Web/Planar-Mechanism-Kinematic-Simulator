@@ -488,6 +488,31 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     this.settings.animating.next(this.mechanism.mechanismTimeStep !== 0);
   }
 
+  /**
+   * Whether there is anything to come back from.
+   *
+   * A machine at the start of its cycle is already showing the pose it was
+   * drawn in, and a button that does nothing when pressed is worse than one
+   * that says so.
+   */
+  get canStop(): boolean {
+    return this.canPlay && !this.mechanism.isAtStartPose();
+  }
+
+  /**
+   * Back to the pose the mechanism was drawn in.
+   *
+   * Eased rather than cut, and by whichever way round is shorter for each
+   * machine: a linkage that teleports reads as the drawing breaking, where the
+   * same move played over a fifth of a second reads as playback ending.
+   */
+  stop(): void {
+    if (!this.canPlay) return;
+    this.mechanism.setAllPlaying(false);
+    this.settings.animating.next(false);
+    this.mechanism.easeToStart();
+  }
+
   cycleSpeed(): void {
     // 1x plays back in real time: one revolution takes 60/RPM seconds. The
     // other stops are explicit fast-forwards for slow input speeds.

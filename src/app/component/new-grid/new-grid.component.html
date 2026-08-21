@@ -757,7 +757,8 @@
           <path
             class="cylinder-selected"
             [class.link-selected]="isBodySelected(cyl)"
-            [class.link-hovered]="!isBodySelected(cyl)"
+            [class.link-pointed]="!isBodySelected(cyl) && isBodyPointedAt(cyl)"
+            [class.link-hovered]="!isBodySelected(cyl) && !isBodyPointedAt(cyl)"
             pointer-events="none"
             [attr.d]="cylinderSilhouette(cyl)"
             fill="none"

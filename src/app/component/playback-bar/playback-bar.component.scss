@@ -101,9 +101,10 @@
     }
   }
 
-  // A rounded square rather than a disc: it is the one solid block in the
-  // cluster, and the card's own corner is what makes it read as part of the
-  // chrome instead of a shape only it has.
+  // A rounded square rather than a disc, and the *same* rounded square as the
+  // speed button beside it and the view controls along the strip: every
+  // 40px button on this chrome takes one corner, so the one that is filled
+  // reads as the loud one of a set rather than as a shape of its own.
   .playButton {
     display: flex;
     align-items: center;
@@ -111,7 +112,7 @@
     width: 40px;
     height: 40px;
     border: none;
-    border-radius: var(--card-radius);
+    border-radius: 6px;
     background: #d5d7e0;
     color: #fff;
     cursor: pointer;
@@ -130,6 +131,39 @@
       height: 26px;
       font-size: 26px;
       line-height: 26px;
+    }
+  }
+
+  // The same button as the speed control on its other side: forty square, one
+  // corner, no fill until it is pointed at. Play is the only filled thing in
+  // the cluster, which is what makes it the one you press.
+  .stopButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #5f6368;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    &:disabled {
+      color: #c8cad3;
+      cursor: default;
+    }
+
+    mat-icon {
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+      line-height: 20px;
     }
   }
 

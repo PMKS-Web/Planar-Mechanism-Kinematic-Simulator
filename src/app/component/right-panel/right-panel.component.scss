@@ -124,8 +124,12 @@
     //
     // Plus the shadow room, because that clearance is measured to where the
     // *card* stops and this frame holds the card that much inside it.
+    // Measured against the window rather than against the page. They are the
+    // same number until something else makes the document taller than the
+    // viewport, at which point `100%` grows with it and the drawer is free to
+    // run off the bottom of the screen.
     max-height: calc(
-      100% -
+      100dvh -
         #{nav.$top-strip-height} - var(--view-controls-clearance, #{nav.$view-controls-clearance}) +
         #{nav.$shadow-room}
     );
@@ -143,6 +147,16 @@
 
     &.wide {
       width: calc(500px + #{nav.$shadow-room} + #{nav.$card-inset});
+    }
+
+    // Wider than the view controls, and narrower than the table pages: an
+    // export row is a checkbox, a part's name and what is notable about it, and
+    // at the drawer's usual width the third of those was always ellipsed away.
+    // Named for the page rather than after its card: the export card is
+    // `.exportCard`, and a frame sharing a class with the card it holds was
+    // drawing a second background, corner, shadow and accent bar around it.
+    &.exportPage {
+      width: calc(380px + #{nav.$shadow-room} + #{nav.$card-inset});
     }
   }
 
@@ -179,6 +193,7 @@
   // button went with the content -- gone from the corner while the half of it
   // still showing went on taking the click.
   app-analysis-setup,
+  app-export-panel,
   app-settings-panel,
   app-help-panel {
     display: flex;

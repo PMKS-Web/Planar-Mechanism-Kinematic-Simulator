@@ -20,8 +20,8 @@ import { AnalyticsService } from '../../services/analytics.service';
 import { UrlGenerationService } from '../../services/url-generation.service';
 import { UrlProcessorService } from '../../services/url-processor.service';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
+import { ExportFlowService } from '../../services/export/export-flow.service';
 import { TemplatesComponent } from '../MODALS/templates/templates.component';
-import { AnalysisExportService } from '../../services/analysis-export.service';
 import { NotificationService } from '../../services/notification.service';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
@@ -94,7 +94,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   private dialog = inject(MatDialog);
   private zone = inject(NgZone);
   private changes = inject(ChangeDetectorRef);
-  private exports = inject(AnalysisExportService);
+  private exportFlow = inject(ExportFlowService);
   private notify = inject(NotificationService);
 
   TabID = TabID;
@@ -359,20 +359,27 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     return !this.mechanism.isAnimating() && this.history.canRedo();
   }
 
-  /** Everything the analysis panel is showing for the selection, as one CSV. */
+  /**
+   * Whether there is anything to take away.
+   *
+   * A solved mechanism, rather than a selected part: the drawer offers every
+   * part of every machine, so a reader who has selected nothing still has an
+   * export to make -- which is exactly the case the old one-click command could
+   * not serve.
+   */
   canExport(): boolean {
-    return this.exports.canExport();
+    return this.mechanism.oneValidMechanismExists();
   }
 
   exportTooltip(): string {
-    const subject = this.exports.subjectName();
-    return subject
-      ? `Download every graph for ${subject} as a CSV`
-      : 'Select a joint or a link to export its data';
+    return this.canExport()
+      ? 'Choose parts, columns and a file format'
+      : 'Nothing has been solved yet, so there are no numbers to export';
   }
 
   exportData(): void {
-    this.exports.download();
+    this.exportFlow.reset();
+    RightPanelComponent.insistOn(RightPanelComponent.EXPORT_TAB);
   }
 
   undo(): void {
