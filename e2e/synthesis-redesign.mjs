@@ -95,6 +95,15 @@ check(
   (await page.locator('#synthesisPanel .panel-header__actions .pill').count()) === 1
 );
 check(
+  'one button at the foot carries whatever the next step is',
+  (await page.locator('#synthesisPanel .cta').count()) === 1
+);
+check(
+  'and it names the search before there is anything to search',
+  (await page.locator('#synthesisPanel .cta').innerText()).includes('Generate') &&
+    (await page.locator('#synthesisPanel .cta').isDisabled())
+);
+check(
   'the strictest requirement is the one offered first',
   (await page.locator('#synthesisPanel .req__label').first().innerText()).includes(
     'Reaches all 3 positions'
@@ -370,6 +379,18 @@ if (driver.dyad) {
   check('and that travel is a revolution, not a sliver of one', steady.span >= 180, steady);
 }
 
+check(
+  'a driver that cannot be fitted is greyed rather than merely explained',
+  await page.evaluate(() => {
+    const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
+    const row = [...document.querySelectorAll('#synthesisPanel .row')].find((r) =>
+      r.textContent.includes('Add driver')
+    );
+    const button = row.querySelector('.switch');
+    // Whichever way this design falls, the switch's state must match the fact.
+    return button.disabled === !!panel.driverRefusal;
+  })
+);
 check(
   'a driver is either fitted or refused in words',
   driver.dyad || typeof driver.refusal === 'string',

@@ -577,6 +577,46 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     this.solution.generate();
   }
 
+  /**
+   * The one button at the foot of the panel.
+   *
+   * Generate and Insert are the same button at two moments: they are the step
+   * the reader takes next, and only one of them is ever the step. Two buttons
+   * in two places meant hunting for whichever one was live, and the one in the
+   * scroll area could be scrolled off the screen at the moment it mattered.
+   */
+  get primaryIsGenerate(): boolean {
+    // Named for the step that is coming even before it can be taken. With two
+    // positions placed the button used to read "Replace on grid", greyed --
+    // which is true and useless: what is actually next is the search, and the
+    // reader is one position away from it.
+    return !this.solution.generated;
+  }
+
+  get primaryLabel(): string {
+    if (this.primaryIsGenerate) {
+      return this.solution.generating ? 'Searching…' : 'Generate solutions';
+    }
+    return this.insertLabel;
+  }
+
+  get primaryIcon(): string {
+    if (this.primaryIsGenerate) {
+      return this.solution.generating ? 'hourglass_top' : 'auto_awesome';
+    }
+    return this.solutionIsOnGrid ? 'check' : 'add_circle_outline';
+  }
+
+  get primaryDisabled(): boolean {
+    if (!this.primaryIsGenerate) return !this.canInsert;
+    return this.solution.generating || !this.design.isFullyDefined();
+  }
+
+  primaryAction(): void {
+    if (this.primaryIsGenerate) this.generate();
+    else this.insert();
+  }
+
   // --- results -------------------------------------------------------------
 
   get showResults(): boolean {

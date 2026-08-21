@@ -321,6 +321,13 @@ $red: #e53935;
           font-size: 14px;
           color: rgba(0, 0, 0, 0.72);
           cursor: pointer;
+
+          /* Greyed with the switch beside it: a driver that will not fit
+             these positions is not something to press. */
+          &:disabled {
+            color: rgba(0, 0, 0, 0.35);
+            cursor: default;
+          }
         }
       }
 
@@ -651,6 +658,19 @@ $red: #e53935;
       border-radius: 7px;
       background: rgba(0, 0, 0, 0.22);
       cursor: pointer;
+
+      /* Offered but not available -- a driver that will not fit these
+         positions. The reason is on the switch itself, on hover; this is the
+         part that says not to bother pressing it. */
+      &:disabled {
+        cursor: default;
+        background: rgba(0, 0, 0, 0.09);
+      }
+
+      &:disabled .switch__knob {
+        background: #f2f2f2;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+      }
 
       &__knob {
         position: absolute;

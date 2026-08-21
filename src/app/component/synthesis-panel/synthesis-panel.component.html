@@ -256,29 +256,6 @@
         }
 
         <!-- Running the search -------------------------------------------- -->
-        @if (showGenerate) {
-          <section class="sect">
-            <div class="sect__prose">{{ generateNote() }}</div>
-            <button
-              type="button"
-              class="cta"
-              [class.cta--busy]="solution.generating"
-              [disabled]="solution.generating"
-              (click)="generate()"
-            >
-              <mat-icon>{{ solution.generating ? 'hourglass_top' : 'auto_awesome' }}</mat-icon>
-              {{ solution.generating ? 'Searching…' : 'Generate solutions' }}
-            </button>
-            @if (solution.generating) {
-              <div class="sweep"><div class="sweep__bar"></div></div>
-              <div class="sect__fine">
-                Constructing circle centres, then solving a full crank revolution for each
-                candidate…
-              </div>
-            }
-          </section>
-        }
-
         <!-- What came back ------------------------------------------------ -->
         @if (showResults) {
           <!-- Only when it has something in it: with one solution and nothing
@@ -388,7 +365,12 @@
               </div>
 
               <div class="row">
-                <button type="button" class="row__label row__label--btn" (click)="toggleDriver()">
+                <button
+                  type="button"
+                  class="row__label row__label--btn"
+                  [disabled]="!!driverRefusal"
+                  (click)="toggleDriver()"
+                >
                   Add driver (six-bar)
                 </button>
                 <mat-icon class="row__help" [matTooltip]="help.driver" [matTooltipShowDelay]="400">
@@ -475,10 +457,26 @@
             </div>
           </div>
         }
+        <!-- One button, because there is only ever one next step: search, or
+             commit what the search found. -->
+        @if (solution.generating) {
+          <div class="foot__progress">
+            <div class="sweep"><div class="sweep__bar"></div></div>
+            <div class="foot__fine">
+              Constructing circle centres, then solving a full crank revolution for each…
+            </div>
+          </div>
+        }
         <div class="foot__buttons">
-          <button type="button" class="cta cta--insert" [disabled]="!canInsert" (click)="insert()">
-            <mat-icon>{{ solutionIsOnGrid ? 'check' : 'add_circle_outline' }}</mat-icon>
-            {{ insertLabel }}
+          <button
+            type="button"
+            class="cta cta--insert"
+            [class.cta--busy]="solution.generating"
+            [disabled]="primaryDisabled"
+            (click)="primaryAction()"
+          >
+            <mat-icon>{{ primaryIcon }}</mat-icon>
+            {{ primaryLabel }}
           </button>
           <button type="button" class="danger" (click)="deleteAll()">
             <mat-icon>delete_outline</mat-icon>Delete all positions
