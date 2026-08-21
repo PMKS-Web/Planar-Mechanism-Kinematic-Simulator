@@ -2266,17 +2266,25 @@ export class MechanismService {
       });
     }
 
+    // Gravity off over a drawing that does have mass is the one refusal here
+    // with a one-click way out, so it gets a button as well as a sentence:
+    // everything the analysis needs is already drawn, and the only thing
+    // standing in the way is a switch in another panel.
+    const gravityWouldLoad = !this.settingsService.isGravity.value && weighted;
     requirements.push({
       met: loads.length > 0 || gravityLoads,
       title: 'A load to react against',
+      act: gravityWouldLoad ? 'gravity' : undefined,
       body:
         loads.length > 0
           ? `${loads.length} ${loads.length === 1 ? 'force is' : 'forces are'} applied.`
           : gravityLoads
             ? 'Gravity loads the links that have mass.'
-            : this.settingsService.isGravity.value
-              ? 'Nothing loads this mechanism yet: no force is applied and every link is massless. Attach a force or give a link mass.'
-              : 'Nothing loads this mechanism: gravity is off and no force is applied. Attach a force, or turn gravity on in Settings and give a link mass.',
+            : gravityWouldLoad
+              ? 'Nothing loads this mechanism: gravity is off, so the mass it has weighs nothing. Turn gravity on, or attach a force.'
+              : this.settingsService.isGravity.value
+                ? 'Nothing loads this mechanism yet: no force is applied and every link is massless. Attach a force or give a link mass.'
+                : 'Nothing loads this mechanism: gravity is off and no force is applied. Attach a force, or turn gravity on in Settings and give a link mass.',
     });
 
     return requirements;
