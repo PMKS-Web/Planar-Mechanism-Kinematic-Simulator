@@ -52,6 +52,9 @@ interface CandidateCard {
   metric: string;
 }
 
+/** The one message whose answers act on this panel after it has been raised. */
+const REPLACE_WARNING = 'synthesis.replace-edited';
+
 const HELP = {
   length:
     'The length of the end-effector link — the part whose three positions you are designing for. ' +
@@ -195,6 +198,12 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.gone = true;
+    // Take the replace warning with us: its buttons act on this panel, and left
+    // on screen they were still clickable after it was gone.
+    this.notify.live
+      .filter((one) => one.id === REPLACE_WARNING)
+      .forEach((one) => this.notify.dismiss(one.key));
     this.subs.forEach((s) => s.unsubscribe());
     if (this.frame) cancelAnimationFrame(this.frame);
     // Stop any wind-back, and stop what it was going to do afterwards: a commit
@@ -1082,8 +1091,10 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     */
     let delta = home - from;
     if (this.solution.drivenRange().full) {
+      // Into (-180, 180]: at exactly half a turn both ways are the same length,
+      // and forwards is the one that matches which way the crank was going.
       while (delta > 180) delta -= 360;
-      while (delta < -180) delta += 360;
+      while (delta <= -180) delta += 360;
     }
     const started = performance.now();
     const DURATION = 220;
@@ -1110,6 +1121,9 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     this.windBackFrame = requestAnimationFrame(step);
   }
 
+  /** Whether this panel has been left, so nothing deferred acts on it. */
+  private gone = false;
+
   /** Whether a wind-back is running, so a second press cannot start another. */
   private windingBack = false;
   private windBackFrame: number | undefined;
@@ -1131,15 +1145,20 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       // by hand, and only they know whether that work still matters -- so the
       // two things they could mean are on the message.
       this.notify.warning(
-        'synthesis.replace-edited',
+        REPLACE_WARNING,
         `${this.solutionName} would replace the linkage on the grid, and it has been moved by ` +
           `hand since Synthesis put it there. Those changes would be lost.`,
         {
+          // Guarded as well as dismissed on the way out. The message outlives
+          // the press that raised it by design -- it waits to be answered --
+          // but its answers act on this panel, and a panel that has been left
+          // is not one to act on.
           actions: [
-            { label: 'Replace it', run: () => this.insert(true) },
+            { label: 'Replace it', run: () => !this.gone && this.insert(true) },
             {
               label: 'Keep it, insert a new one',
               run: () => {
+                if (this.gone) return;
                 this.solution.releaseOwnership();
                 this.insert();
               },
@@ -1149,7 +1168,10 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       );
       return;
     }
-    if (outcome === 'done') this.record();
+    // No `record()` here. Inserting rebuilds the mechanism through
+    // `updateMechanism(true)`, and the `true` is a save -- so recording again
+    // wrote two entries for one press, and one Undo left the linkage on the
+    // grid because it only stepped back over the second of them.
   }
 
   undoInsert(): void {

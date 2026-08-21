@@ -156,6 +156,31 @@ check(
   await page.locator('.poseRow input').first().isDisabled()
 );
 
+// Arming from an empty row, before the suite arms from the button: both are
+// advertised as ways to place a position, and only the button used to prepare
+// the scale, so a ghost armed from the row was drawn at the old one. Left
+// disarmed, which is the state the next step expects.
+check(
+  'an empty position row arms placing, and fits the scale as the button does',
+  await (async () => {
+    await page.evaluate(() => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      grid.settings.objectScale = 140;
+    });
+    await page.waitForTimeout(200);
+    await page.locator('#synthesisPanel .poseRow__n').first().click();
+    await page.waitForTimeout(300);
+    const armed = await panel('(p) => p.design.armed');
+    const fitted = await page.evaluate(() => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      return Math.abs(grid.settings.objectScale - 60 / grid.svgGrid.getZoom()) < 0.02;
+    });
+    await panel('(p) => p.design.setArmed(false)');
+    await page.waitForTimeout(200);
+    return armed && fitted;
+  })()
+);
+
 await page.locator('#synthesisPanel .pill', { hasText: 'Add position' }).click();
 await page.waitForTimeout(250);
 await page.mouse.move(900, 560);
@@ -164,16 +189,6 @@ const angleBefore = await panel('(p) => p.design.placeAngleDeg');
 await page.mouse.wheel(0, -120);
 await page.waitForTimeout(200);
 const angleAfter = await panel('(p) => p.design.placeAngleDeg');
-check(
-  'and an empty row arms the same way the button does',
-  await page.evaluate(() => {
-    const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    // Both are advertised as ways to place a position, so both have to prepare
-    // the same way. Only the button did, so arming from the row drew a ghost at
-    // the old scale.
-    return Math.abs(grid.settings.objectScale - 60 / grid.svgGrid.getZoom()) < 0.02;
-  })
-);
 check(
   'the ghost is drawn at the size the position will be, not resized by the click',
   await page.evaluate(() => {
@@ -780,7 +795,7 @@ check(
   })
 );
 check(
-  'a flurry of presses on Insert commits once, not once each',
+  'a flurry of presses on Insert commits once, and one Undo takes it back',
   await (async () => {
     await panel(`(p) => {
       const range = p.solution.drivenRange();
@@ -795,9 +810,17 @@ check(
     await button.click({ force: true });
     await page.waitForTimeout(1200);
     const committed = await page.evaluate(() => window.__inserts);
-    await panel('(p) => { p.solution.undoInsert(); p.solution.releaseOwnership(); }');
-    await page.waitForTimeout(400);
-    return committed === 1;
+    // And measured where it actually shows: one press must be one step of
+    // history. Counting calls missed that inserting saved twice -- once through
+    // the rebuild and once again afterwards -- so a single Undo stepped back
+    // over the second save and left the linkage on the grid.
+    const joints = await grid('(g) => g.mechanismSrv.joints.length');
+    await page.evaluate(() => ng.getComponent(document.querySelector('app-top-bar')).undo());
+    await page.waitForTimeout(1200);
+    const afterOneUndo = await grid('(g) => g.mechanismSrv.joints.length');
+    await panel('(p) => { p.solution.releaseOwnership(); }');
+    await page.waitForTimeout(300);
+    return committed === 1 && joints > 0 && afterOneUndo === 0;
   })()
 );
 check('and Undo takes exactly it back', (await grid('(g) => g.mechanismSrv.joints.length')) === 0);
