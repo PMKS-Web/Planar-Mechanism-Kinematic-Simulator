@@ -91,6 +91,10 @@ await page.waitForTimeout(400);
 
 // --- placing ------------------------------------------------------------
 check(
+  'the design is laid out as sections that can be folded away',
+  (await page.locator('#synthesisPanel collapsible-subseciton').count()) === 3
+);
+check(
   'all three positions have a row before any is placed',
   (await page.locator('#synthesisPanel .poseRow').count()) === 3
 );
@@ -221,8 +225,14 @@ await settled();
 const strict = await panel('(p) => p.solution.candidates().length');
 check('Generate finds four-bars through the three positions', strict > 0, strict);
 check(
-  'every one of them is drawn as a card',
-  (await page.locator('#synthesisPanel .card').count()) > 0
+  'a lone candidate is not given a gallery of one to be compared against',
+  (await page.locator('#synthesisPanel .card').count()) === (strict > 1 ? strict : 0),
+  { strict, cards: await page.locator('#synthesisPanel .card').count() }
+);
+check(
+  'and is called simply the solution, with no letter to go looking past',
+  (await panel('(p) => p.solutionHeading')) === (strict > 1 ? 'Solution A' : 'Solution'),
+  await panel('(p) => p.solutionHeading')
 );
 check(
   'the positions are marked as reached',
@@ -247,6 +257,35 @@ await page.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).cl
 await settled();
 const loose = await panel('(p) => p.solution.candidates().length');
 check('letting the pins slide finds more of them', loose > strict, { strict, loose });
+check(
+  'and now there is a gallery to compare them in',
+  (await page.locator('#synthesisPanel .card').count()) > 1
+);
+
+// --- a nudge is a different answer, not a different question -------------
+await panel(`(p) => {
+  const pose = p.design.getPose(2);
+  pose.position = { x: pose.position.x + 40, y: pose.position.y + 40, applyMatrix() {} };
+  p.design.valueChanges.next(true);
+}`);
+await page.waitForTimeout(500);
+check(
+  'nudging a position does not send the reader back to Generate',
+  await panel('(p) => p.solution.generated')
+);
+check(
+  'and the search keeps up with it by itself',
+  (await panel('(p) => p.solution.candidates().length')) > 0
+);
+
+// --- "Driven from" has to change something the reader can see -------------
+const onPinA = await grid('(g) => JSON.stringify(g.synthCanvas.previewGrounds())');
+await page.locator('#synthesisPanel .seg__opt', { hasText: 'Pin D' }).click();
+await page.waitForTimeout(600);
+const onPinD = await grid('(g) => JSON.stringify(g.synthCanvas.previewGrounds())');
+check('changing the drive pin moves the input mark on the grid', onPinA !== onPinD);
+await page.locator('#synthesisPanel .seg__opt', { hasText: 'Pin A' }).click();
+await page.waitForTimeout(500);
 
 // --- comparing --------------------------------------------------------
 if ((await page.locator('#synthesisPanel .card').count()) > 1) {
@@ -291,6 +330,16 @@ check('and paused', !(await panel('(p) => p.solution.playing')));
 check(
   'the three positions are marked along its travel',
   (await page.locator('#synthesisPanel .track__tick').count()) === 3
+);
+check(
+  'the transport buttons are big enough for the glyphs in them',
+  await page.evaluate(() =>
+    [...document.querySelectorAll('#synthesisPanel .iconBtn--sm')].every((button) => {
+      const outer = button.getBoundingClientRect();
+      const glyph = button.querySelector('mat-icon').getBoundingClientRect();
+      return glyph.height <= outer.height + 0.5 && glyph.width <= outer.width + 0.5;
+    })
+  )
 );
 
 // --- inserting ---------------------------------------------------------
@@ -447,6 +496,10 @@ await page
 await page.locator('#synthesisPanel .poseRow').nth(2).locator('.poseRow__remove').click();
 await page.waitForTimeout(600);
 check('a position can be removed', (await panel('(p) => p.design.getAllPoses().length')) === 2);
+check(
+  'and that, unlike a nudge, does send the reader back to Generate',
+  !(await panel('(p) => p.solution.generated'))
+);
 
 await page.evaluate(() => {
   const bar = ng.getComponent(document.querySelector('app-top-bar'));

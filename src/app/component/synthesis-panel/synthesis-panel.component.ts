@@ -3,6 +3,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
+import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
 import { MechanismService } from '../../services/mechanism.service';
 import { NotificationService } from '../../services/notification.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
@@ -69,7 +70,7 @@ const HELP = {
   templateUrl: './synthesis-panel.component.html',
   styleUrls: ['./synthesis-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [FormsModule, ReactiveFormsModule, MatIcon, MatTooltip],
+  imports: [FormsModule, ReactiveFormsModule, MatIcon, MatTooltip, CollapsibleSubsecitonComponent],
 })
 export class SynthesisPanelComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
@@ -110,13 +111,15 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     this.readFromModel();
 
     this.subs.push(
-      this.design.valueChanges.subscribe((structural) => {
+      this.design.valueChanges.subscribe(() => {
         this.readFromModel();
         this.claimWheel();
-        // A moved position, a different reference point, a new requirement: the
-        // candidates on screen were computed for a design that no longer
-        // exists. Only a re-run may put them back.
-        if (structural) this.solution.invalidate();
+        // Deliberately not invalidating here. Moving a position changes the
+        // answer, not the question, and the search keeps up with it on its own
+        // -- being sent back to Generate for a one-millimetre nudge made the
+        // button the thing the reader spent the session pressing. The sites
+        // that really do change the question say so themselves.
+        this.solution.changed.next();
       })
     );
 
@@ -127,7 +130,6 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
         this.design.updatePosesFromForm({ ...value, cor: this.corIndex() });
         this.readFromModel();
         this.syncing = false;
-        this.solution.invalidate();
         this.record();
       })
     );
@@ -246,7 +248,6 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       h: Math.max(MODEL_SCALE, parsed[3][1]),
     };
     this.readFromModel();
-    this.solution.invalidate();
     this.record();
   }
 
@@ -366,6 +367,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
 
   duplicateLast(): void {
     this.design.duplicateLastPose();
+    this.solution.invalidate();
     this.record();
   }
 
@@ -566,6 +568,28 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
 
   get showResults(): boolean {
     return this.design.isFullyDefined() && this.solution.generated;
+  }
+
+  /**
+   * Whether the gallery is worth drawing.
+   *
+   * With one candidate there is nothing to compare it against, and a row of
+   * one card asks the reader to choose between a thing and nothing. The
+   * solution below says everything the card would have.
+   */
+  get showGallery(): boolean {
+    return this.solution.candidates().length > 1;
+  }
+
+  /**
+   * What to call the solution being looked at.
+   *
+   * The letters exist to tell candidates apart in the gallery. With only one,
+   * there is nothing to tell it apart from, and "Solution A" invites the reader
+   * to go looking for B.
+   */
+  get solutionHeading(): string {
+    return this.showGallery ? `Solution ${this.solutionName}` : 'Solution';
   }
 
   candidateHeading(): string {

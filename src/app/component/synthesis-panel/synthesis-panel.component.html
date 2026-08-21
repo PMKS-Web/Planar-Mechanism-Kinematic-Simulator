@@ -57,8 +57,7 @@
 
       <div class="work__scroll" [formGroup]="poseForm">
         <!-- The coupler ------------------------------------------------- -->
-        <section class="sect">
-          <div class="sect__title">Coupler</div>
+        <collapsible-subseciton class="sect" titleLabel="Coupler" [expanded]="true">
           <div class="row">
             <span class="row__label">Length</span>
             <mat-icon class="row__help" [matTooltip]="help.length" [matTooltipShowDelay]="400">
@@ -88,12 +87,11 @@
               }
             </div>
           </div>
-        </section>
+        </collapsible-subseciton>
 
         <!-- The three positions ------------------------------------------ -->
-        <section class="sect">
+        <collapsible-subseciton class="sect" titleLabel="Positions" [expanded]="true">
           <div class="sect__head">
-            <div class="sect__title">Positions</div>
             <span class="row__spacer"></span>
             @if (showAddButton) {
               <button
@@ -177,18 +175,10 @@
               </mat-icon>
             </div>
           }
-        </section>
+        </collapsible-subseciton>
 
         <!-- What a solution has to satisfy -------------------------------- -->
-        <section class="sect">
-          <div class="sect__head">
-            <div class="sect__title">Requirements</div>
-            <mat-icon class="row__help" [matTooltip]="help.requirements" [matTooltipShowDelay]="400">
-              help_outline
-            </mat-icon>
-            <span class="row__spacer"></span>
-            <span class="sect__count">{{ requirementCount() }}</span>
-          </div>
+        <collapsible-subseciton class="sect" titleLabel="Requirements" [expanded]="true">
 
           @for (rq of requirements(); track rq.key) {
             <div class="req" [class.req--on]="rq.on">
@@ -237,7 +227,7 @@
               <span>{{ requirementsBlockingNote() }}</span>
             </div>
           }
-        </section>
+        </collapsible-subseciton>
 
         <!-- Running the search -------------------------------------------- -->
         @if (showGenerate) {
@@ -277,6 +267,7 @@
               </div>
             }
 
+            @if (showGallery) {
             <div class="gallery" [class.gallery--all]="solution.showAll">
               @for (c of visibleCandidates(); track c.key) {
                 <button
@@ -311,11 +302,12 @@
                 <mat-icon>{{ solution.showAll ? 'expand_less' : 'expand_more' }}</mat-icon>
               </button>
             }
+            }
           </section>
 
           @if (hasSolution) {
             <section class="sect sect--last">
-              <div class="sect__title">Solution {{ solutionName }}</div>
+              <div class="sect__title">{{ solutionHeading }}</div>
 
               <div class="row">
                 <span class="row__label">Assembly branch</span>

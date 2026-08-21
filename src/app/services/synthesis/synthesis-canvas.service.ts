@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Coord } from 'src/app/model/coord';
 import { SettingsService } from '../settings.service';
 import { SvgGridService } from '../svg-grid.service';
+import { ColorService } from '../color.service';
 import { SynthesisBuilderService } from './synthesis-builder.service';
 import { SynthesisSolutionService } from './synthesis-solution.service';
 import { meet, solveFourBar } from './synthesis-candidates';
@@ -10,12 +11,13 @@ import { COR } from './synthesis-util';
 /** A bar drawn on the grid: two pins, a fill, and what it is called. */
 export interface PoseBar {
   id: number;
+  /** The bar's outline, the same shape a two-joint link is drawn with. */
+  d: string;
   x1: number;
   y1: number;
   x2: number;
   y2: number;
   fill: string;
-  edge: string;
   selected: boolean;
 }
 
@@ -39,7 +41,7 @@ export interface Handle {
 }
 
 export interface SelectionBox {
-  /** Degrees, in the flipped drawing frame the grid renders in. */
+  /** Degrees, applied about the position's own point. */
   rotate: string;
   cx: number;
   cy: number;
@@ -47,32 +49,54 @@ export interface SelectionBox {
   y: number;
   w: number;
   h: number;
+  /** Where the turn knob sits, on its stalk above the bar. */
+  knobX: number;
   knobY: number;
-  corners: Handle[];
+  /** Where the length handle sits, on the bar's own axis at its front end. */
+  lengthX: number;
+  lengthY: number;
+  grip: number;
 }
 
 export interface PreviewLink {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
+  /** The bar's outline, drawn exactly as the drawing draws a link. */
+  d: string;
   color: string;
-  width: number;
 }
 
 export interface PreviewJoint {
   id: string;
   x: number;
   y: number;
+  /** Whether this pin carries the input, so it wears the motor's mark. */
+  input?: boolean;
 }
 
-const LINK_PALE = '#c5cae9';
-const LINK_DEEP = '#303e9f';
-const DRIVER_CRANK = '#0d125a';
-const DRIVER_COUPLER = '#26a69a';
 const REACH_GREEN = '#bfe0c0';
 const REACH_AMBER = '#f6dcb0';
 const SELECT_AMBER = '#ffc107';
+const NEUTRAL_BAR = '#c5cae9';
+
+/**
+ * A bar between two pins, as a filled outline.
+ *
+ * The same shape `RealLink` computes for a two-joint link, at the same radius
+ * -- a quarter of the object scale -- so a position and a previewed solution
+ * are drawn to the dimensions the drawing itself uses. They were strokes on a
+ * line before, which matched by arithmetic rather than by construction and
+ * looked subtly unlike every other bar on the canvas.
+ */
+function capsulePath(x1: number, y1: number, x2: number, y2: number, r: number): string {
+  const theta = Math.atan2(y2 - y1, x2 - x1);
+  const nx = r * Math.sin(theta);
+  const ny = r * Math.cos(theta);
+  return (
+    `M ${x1 - nx} ${y1 + ny} ` +
+    `A ${r} ${r} 0 1 1 ${x1 + nx} ${y1 - ny} ` +
+    `L ${x2 + nx} ${y2 - ny} ` +
+    `A ${r} ${r} 0 1 1 ${x2 - nx} ${y2 + ny} Z`
+  );
+}
 
 /**
  * What Synthesis draws on the grid, and what the pointer does to it.
@@ -88,6 +112,7 @@ export class SynthesisCanvasService {
   private svgGrid = inject(SvgGridService);
   private design = inject(SynthesisBuilderService);
   private solution = inject(SynthesisSolutionService);
+  private colors = inject(ColorService);
 
   /** Where the pointer last was, in model coordinates. */
   public cursor: Coord | undefined;
@@ -129,12 +154,18 @@ export class SynthesisCanvasService {
       const reached = cand ? cand.onBranch[pose.id - 1] : undefined;
       return {
         id: pose.id,
+        d: capsulePath(
+          pose.posBack.x,
+          pose.posBack.y,
+          pose.posFront.x,
+          pose.posFront.y,
+          this.settings.objectScale / 4
+        ),
         x1: pose.posBack.x,
         y1: pose.posBack.y,
         x2: pose.posFront.x,
         y2: pose.posFront.y,
-        fill: reached === undefined ? LINK_PALE : reached ? REACH_GREEN : REACH_AMBER,
-        edge: this.design.selectedPose === pose.id ? SELECT_AMBER : 'rgba(0,0,0,0.42)',
+        fill: reached === undefined ? NEUTRAL_BAR : reached ? REACH_GREEN : REACH_AMBER,
         selected: this.design.selectedPose === pose.id,
       };
     });
@@ -176,29 +207,22 @@ export class SynthesisCanvasService {
     const id = this.design.selectedPose;
     if (!this.design.isPoseDefined(id)) return undefined;
     const pose = this.design.getPose(id);
-    const grip = this.svgGrid.scaleWithZoom(10);
-    const pad = this.svgGrid.scaleWithZoom(14);
+    const grip = this.svgGrid.scaleWithZoom(9);
+    const pad = this.svgGrid.scaleWithZoom(12);
     const length = this.design.length;
     const ahead = this.design.COR === COR.CENTER ? length / 2 + pad : length + pad;
     const behind = this.design.COR === COR.CENTER ? length / 2 + pad : pad;
-    const half = this.barHalfWidth() + pad / 2;
+    const half = this.settings.objectScale / 4 + pad / 2;
     // Model coordinates throughout, y up. The grid draws this inside its own
-    // y-flip, so the flip is already accounted for -- negating here as well put
-    // every handle on the wrong side of the axis.
+    // y-flip, so the flip is already accounted for.
     const cx = pose.position.x;
     const cy = pose.position.y;
     const x = cx - (this.design.COR === COR.FRONT ? ahead : behind);
     const w = ahead + behind;
     const y = cy - half;
     const h = half * 2;
-    // Inside the flip, +y is up, which is the sense a positive angle turns in.
-    const cursors: Record<string, string> = {
-      tl: 'nwse-resize',
-      tr: 'nesw-resize',
-      bl: 'nesw-resize',
-      br: 'nwse-resize',
-    };
     return {
+      // Inside the flip, +y is up, which is the sense a positive angle turns in.
       rotate: `rotate(${pose.thetaDegrees.toFixed(2)} ${cx.toFixed(1)} ${cy.toFixed(1)})`,
       cx,
       cy,
@@ -206,14 +230,18 @@ export class SynthesisCanvasService {
       y,
       w,
       h,
-      // Above the link, which in this frame is further along +y.
-      knobY: y + h + this.svgGrid.scaleWithZoom(34),
-      corners: [
-        { id: 'tl', x, y: y + h },
-        { id: 'tr', x: x + w, y: y + h },
-        { id: 'bl', x, y },
-        { id: 'br', x: x + w, y },
-      ].map((c) => ({ ...c, cursor: cursors[c.id], x: c.x - grip / 2, y: c.y - grip / 2 })),
+      // One handle per thing that can be changed, and each one where the change
+      // happens. Four corners said "scale me in two directions and maybe turn
+      // me", which is three promises this gesture does not keep: a position has
+      // a place, a heading, and one length. So the body is the place, a knob
+      // above it is the heading, and a single grip off the front end -- on the
+      // bar's own axis, which is the direction it actually pulls -- is the
+      // length.
+      knobX: x + w / 2,
+      knobY: y + h + this.svgGrid.scaleWithZoom(30),
+      lengthX: x + w,
+      lengthY: cy,
+      grip,
     };
   }
 
@@ -221,7 +249,7 @@ export class SynthesisCanvasService {
    * The bar about to be dropped: same length, same reference point, turned the
    * way the wheel has turned it. A promise about what the click will make.
    */
-  ghostBar(): { x1: number; y1: number; x2: number; y2: number } | undefined {
+  ghostBar(): { d: string } | undefined {
     if (!this.design.armed || !this.cursor || this.design.regionDraw) return undefined;
     if (this.design.getFirstUndefinedPose() === undefined) return undefined;
     const theta = (this.design.placeAngleDeg * Math.PI) / 180;
@@ -234,16 +262,20 @@ export class SynthesisCanvasService {
         : this.design.COR === COR.FRONT
           ? { x: this.cursor.x - dx, y: this.cursor.y - dy }
           : { x: this.cursor.x - dx / 2, y: this.cursor.y - dy / 2 };
-    return { x1: anchor.x, y1: anchor.y, x2: anchor.x + dx, y2: anchor.y + dy };
+    return {
+      d: capsulePath(
+        anchor.x,
+        anchor.y,
+        anchor.x + dx,
+        anchor.y + dy,
+        this.settings.objectScale / 4
+      ),
+    };
   }
 
   /** The angle the ghost is turned to, for the hint beside the pointer. */
   ghostAngleLabel(): string {
     return Math.round(((this.design.placeAngleDeg % 360) + 360) % 360) + '°';
-  }
-
-  private linkWidth(): number {
-    return 0.5 * this.settings.objectScale;
   }
 
   /**
@@ -261,53 +293,25 @@ export class SynthesisCanvasService {
   previewLinks(): PreviewLink[] {
     const solved = this.previewing() ? this.solution.previewPose() : null;
     if (!solved) return [];
-    const w = this.linkWidth();
-    const links: PreviewLink[] = [
-      {
-        x1: solved.A.x,
-        y1: solved.A.y,
-        x2: solved.B.x,
-        y2: solved.B.y,
-        color: LINK_PALE,
-        width: w,
-      },
-      {
-        x1: solved.B.x,
-        y1: solved.B.y,
-        x2: solved.C.x,
-        y2: solved.C.y,
-        color: LINK_DEEP,
-        width: w,
-      },
-      {
-        x1: solved.C.x,
-        y1: solved.C.y,
-        x2: solved.D.x,
-        y2: solved.D.y,
-        color: LINK_PALE,
-        width: w,
-      },
+    const r = this.settings.objectScale / 4;
+    const bar = (a: Coord, b: Coord, colorIndex: number): PreviewLink => ({
+      d: capsulePath(a.x, a.y, b.x, b.y, r),
+      // The colours the linkage will actually be built in, asked of the same
+      // service `insert` asks, so the preview cannot promise one thing and the
+      // drawing deliver another.
+      color: this.colors.getLinkColorFromIndex(colorIndex),
+    });
+    const links = [
+      bar(solved.A, solved.B, 0),
+      bar(solved.B, solved.C, 1),
+      bar(solved.C, solved.D, 0),
     ];
     const dyad = this.solution.dyad();
     if (dyad) {
       const elbow = meet(dyad.ground, dyad.crankLength, solved.B, dyad.couplerLength);
       if (elbow) {
-        links.push({
-          x1: dyad.ground.x,
-          y1: dyad.ground.y,
-          x2: elbow[0].x,
-          y2: elbow[0].y,
-          color: DRIVER_CRANK,
-          width: w * 0.86,
-        });
-        links.push({
-          x1: elbow[0].x,
-          y1: elbow[0].y,
-          x2: solved.B.x,
-          y2: solved.B.y,
-          color: DRIVER_COUPLER,
-          width: w * 0.8,
-        });
+        links.push(bar(dyad.ground, elbow[0], 2));
+        links.push(bar(elbow[0], solved.B, 3));
       }
     }
     return links;
@@ -334,15 +338,24 @@ export class SynthesisCanvasService {
   }
 
   /** Which of the preview's pins are bolted to the frame. */
+  /**
+   * Which of the preview's pins are bolted to the frame, and which one turns.
+   *
+   * The input mark is the whole visible answer to "Driven from": without it,
+   * swapping the drive pin rearranged nothing a reader could see and the
+   * control looked broken. With a driver fitted neither ground pin is the
+   * input at all -- the motor sits on the driver's own ground -- which is
+   * itself worth being able to see.
+   */
   previewGrounds(): PreviewJoint[] {
     const solved = this.previewing() ? this.solution.previewPose() : null;
     if (!solved) return [];
-    const out = [
-      { id: 'A', x: solved.A.x, y: solved.A.y },
-      { id: 'D', x: solved.D.x, y: solved.D.y },
-    ];
     const dyad = this.solution.dyad();
-    if (dyad) out.push({ id: 'E', x: dyad.ground.x, y: dyad.ground.y });
+    const out: PreviewJoint[] = [
+      { id: 'A', x: solved.A.x, y: solved.A.y, input: !dyad },
+      { id: 'D', x: solved.D.x, y: solved.D.y, input: false },
+    ];
+    if (dyad) out.push({ id: 'E', x: dyad.ground.x, y: dyad.ground.y, input: true });
     return out;
   }
 
@@ -378,33 +391,12 @@ export class SynthesisCanvasService {
     if (!base) return [];
     const solved = solveFourBar(base, base.thetas[0], base.sign);
     if (!solved) return [];
-    const w = this.linkWidth() * 0.8;
-    return [
-      {
-        x1: solved.A.x,
-        y1: solved.A.y,
-        x2: solved.B.x,
-        y2: solved.B.y,
-        color: '#9aa0ac',
-        width: w,
-      },
-      {
-        x1: solved.B.x,
-        y1: solved.B.y,
-        x2: solved.C.x,
-        y2: solved.C.y,
-        color: '#9aa0ac',
-        width: w,
-      },
-      {
-        x1: solved.C.x,
-        y1: solved.C.y,
-        x2: solved.D.x,
-        y2: solved.D.y,
-        color: '#9aa0ac',
-        width: w,
-      },
-    ];
+    const r = this.settings.objectScale / 4;
+    const ghost = (a: Coord, b: Coord): PreviewLink => ({
+      d: capsulePath(a.x, a.y, b.x, b.y, r),
+      color: '#9aa0ac',
+    });
+    return [ghost(solved.A, solved.B), ghost(solved.B, solved.C), ghost(solved.C, solved.D)];
   }
 
   /** The ground-pivot region, in model coordinates like everything else here. */
@@ -440,6 +432,7 @@ export class SynthesisCanvasService {
     const pose = this.design.getPose(id);
     this.design.selectedPose = id;
     this.design.setArmed(false);
+    this.solution.interactive = true;
     this.drag = {
       kind: 'pose',
       id,
@@ -464,6 +457,7 @@ export class SynthesisCanvasService {
       originY: at.y,
     };
     if (mode === 'draw') this.design.region = { x: at.x, y: at.y, w: 0, h: 0 };
+    this.solution.interactive = true;
   }
 
   /** Follow the pointer. Returns whether a gesture consumed the move. */
@@ -528,6 +522,8 @@ export class SynthesisCanvasService {
   release(): boolean {
     const had = this.drag !== undefined;
     this.drag = undefined;
+    // The search was held still through the gesture; let it catch up now.
+    this.solution.interactive = false;
     if (this.design.regionDraw) this.design.regionDraw = false;
     return had;
   }

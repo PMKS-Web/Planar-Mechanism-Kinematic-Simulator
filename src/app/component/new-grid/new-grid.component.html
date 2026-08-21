@@ -979,15 +979,7 @@
       @if (showSynthesis() && synthCanvas.hoverGhostLinks(); as ghosts) {
         <g class="synthGhostLinkage" pointer-events="none">
           @for (lk of ghosts; track $index) {
-            <line
-              [attr.x1]="lk.x1"
-              [attr.y1]="lk.y1"
-              [attr.x2]="lk.x2"
-              [attr.y2]="lk.y2"
-              [attr.stroke]="lk.color"
-              [attr.stroke-width]="lk.width"
-              stroke-linecap="round"
-            />
+            <path class="synthBar" [attr.d]="lk.d" [attr.fill]="lk.color" />
           }
         </g>
       }
@@ -1007,14 +999,12 @@
       @if (showSynthesis()) {
       <g id="synthesisPreview" pointer-events="none">
         @for (lk of synthCanvas.previewLinks(); track $index) {
-          <line
-            [attr.x1]="lk.x1"
-            [attr.y1]="lk.y1"
-            [attr.x2]="lk.x2"
-            [attr.y2]="lk.y2"
+          <path
+            class="synthBar"
+            [attr.d]="lk.d"
+            [attr.fill]="lk.color"
             [attr.stroke]="lk.color"
-            [attr.stroke-width]="lk.width"
-            stroke-linecap="round"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
         }
         <!-- Placed and flipped exactly as the drawing's own ground marks are:
@@ -1022,14 +1012,34 @@
              grid's flip and hung off a wrapper sitting on the pin. -->
         @for (gd of synthCanvas.previewGrounds(); track gd.id) {
           <svg [attr.x]="gd.x" [attr.y]="gd.y" width="10" height="10" style="overflow: visible">
-            <image
-              xlink:href="../../../assets/Ground.svg"
-              [attr.width]="settings.objectScale * 1.2"
-              [attr.height]="settings.objectScale * 1.2"
-              [attr.x]="settings.objectScale * -0.6"
-              [attr.y]="settings.objectScale * -0.35 * 1.2"
-              style="transform: scaleY(-1)"
-            />
+            @if (!gd.input) {
+              <image
+                xlink:href="../../../assets/Ground.svg"
+                [attr.width]="settings.objectScale * 1.2"
+                [attr.height]="settings.objectScale * 1.2"
+                [attr.x]="settings.objectScale * -0.6"
+                [attr.y]="settings.objectScale * -0.35 * 1.2"
+                style="transform: scaleY(-1)"
+              />
+            }
+            <!-- The pin that turns wears the motor's mark, from the same two
+                 assets the drawing uses. It is the whole visible answer to
+                 "Driven from": without it, swapping the drive pin rearranged
+                 nothing a reader could see. -->
+            @if (gd.input) {
+              <image
+                [attr.xlink:href]="
+                  settings.isInputCW.value
+                    ? '../../../assets/InputCW.svg'
+                    : '../../../assets/InputCCW.svg'
+                "
+                [attr.width]="settings.objectScale * 1.2"
+                [attr.height]="settings.objectScale * 1.2"
+                [attr.x]="settings.objectScale * -0.505 * 1.2"
+                [attr.y]="settings.objectScale * -0.435 * 1.2"
+                style="transform: scaleY(-1)"
+              />
+            }
           </svg>
         }
         @for (jt of synthCanvas.previewJoints(); track jt.id) {
@@ -1053,23 +1063,13 @@
           (pointerdown)="startPoseGesture($event, bar.id, 'move')"
           (contextmenu)="setLastRightClick(synthesisBuilder.getPose(bar.id), $event)"
         >
-          <line
-            [attr.x1]="bar.x1"
-            [attr.y1]="bar.y1"
-            [attr.x2]="bar.x2"
-            [attr.y2]="bar.y2"
-            [attr.stroke]="bar.edge"
-            [attr.stroke-width]="0.56 * settings.objectScale"
-            stroke-linecap="round"
-          />
-          <line
-            [attr.x1]="bar.x1"
-            [attr.y1]="bar.y1"
-            [attr.x2]="bar.x2"
-            [attr.y2]="bar.y2"
-            [attr.stroke]="bar.fill"
-            [attr.stroke-width]="0.5 * settings.objectScale"
-            stroke-linecap="round"
+          <path
+            class="synthBar"
+            [class.synthBar--sel]="bar.selected"
+            [attr.d]="bar.d"
+            [attr.fill]="bar.fill"
+            [attr.stroke]="bar.selected ? null : bar.fill"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
           <circle
             class="synthPosePin"
@@ -1091,24 +1091,8 @@
       <!-- The bar about to be dropped, following the pointer. -->
       @if (showSynthesis() && synthCanvas.ghostBar(); as ghost) {
         <g class="synthGhost" pointer-events="none">
-          <line
-            [attr.x1]="ghost.x1"
-            [attr.y1]="ghost.y1"
-            [attr.x2]="ghost.x2"
-            [attr.y2]="ghost.y2"
-            stroke="rgba(0,0,0,0.4)"
-            [attr.stroke-width]="0.56 * settings.objectScale"
-            stroke-linecap="round"
-          />
-          <line
-            [attr.x1]="ghost.x1"
-            [attr.y1]="ghost.y1"
-            [attr.x2]="ghost.x2"
-            [attr.y2]="ghost.y2"
-            stroke="#c5cae9"
-            [attr.stroke-width]="0.5 * settings.objectScale"
-            stroke-linecap="round"
-          />
+          <path class="synthBar" [attr.d]="ghost.d" fill="#c5cae9" stroke="#c5cae9"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(3)" />
         </g>
       }
 
@@ -1116,6 +1100,12 @@
            grips and turn knob the tracing underlay wears, because it is the
            same kind of gesture. Its corners pull the end-effector's length. -->
       @if (showSynthesis() && synthCanvas.selectionBox(); as box) {
+        <!-- One handle per thing a position has: a place, a heading, and one
+             length. The four corners this replaces promised two axes of
+             scaling and left the reader to discover that only one of them did
+             anything. The body is the place, the knob above is the heading,
+             and the grip off the front -- on the bar's own axis, which is the
+             direction it pulls -- is the length. -->
         <g id="synthesisHandles" [attr.transform]="box.rotate">
           <rect
             class="synthOutline"
@@ -1130,33 +1120,33 @@
           <line
             class="synthStalk"
             pointer-events="none"
-            [attr.x1]="box.x + box.w / 2"
-            [attr.y1]="box.y"
-            [attr.x2]="box.x + box.w / 2"
+            [attr.x1]="box.knobX"
+            [attr.y1]="box.y + box.h"
+            [attr.x2]="box.knobX"
             [attr.y2]="box.knobY"
             [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
           />
           <circle
             class="synthHandle synthKnob"
             cursor="grab"
-            [attr.cx]="box.x + box.w / 2"
+            [attr.cx]="box.knobX"
             [attr.cy]="box.knobY"
-            [attr.r]="svgGrid.scaleWithZoom(6.5)"
+            [attr.r]="box.grip * 0.72"
             [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
             (pointerdown)="startPoseGesture($event, synthesisBuilder.selectedPose, 'rotate')"
           />
-          @for (corner of box.corners; track corner.id) {
-            <rect
-              class="synthHandle"
-              [attr.x]="corner.x"
-              [attr.y]="corner.y"
-              [attr.width]="svgGrid.scaleWithZoom(10)"
-              [attr.height]="svgGrid.scaleWithZoom(10)"
-              [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
-              [attr.cursor]="corner.cursor"
-              (pointerdown)="startPoseGesture($event, synthesisBuilder.selectedPose, 'length')"
-            />
-          }
+          <!-- Squared off and sitting on the axis, so it reads as a pull along
+               the bar rather than as a corner. -->
+          <rect
+            class="synthHandle"
+            cursor="ew-resize"
+            [attr.x]="box.lengthX - box.grip / 2"
+            [attr.y]="box.lengthY - box.grip / 2"
+            [attr.width]="box.grip"
+            [attr.height]="box.grip"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+            (pointerdown)="startPoseGesture($event, synthesisBuilder.selectedPose, 'length')"
+          />
         </g>
       }
 

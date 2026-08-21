@@ -200,6 +200,21 @@
     cursor: move;
   }
 
+  // Positions, previewed solutions and ghosts are all drawn the way the drawing
+  // draws a link: a filled outline at a quarter of the object scale, the same
+  // 0.7 fill opacity, and a stroke of its own colour. They used to be strokes on
+  // a line, which came out the same width by arithmetic and subtly unlike every
+  // other bar on the canvas.
+  .synthBar {
+    fill-opacity: 0.7;
+
+    // The one that is being edited takes the accent, like everything else that
+    // is being edited on this canvas.
+    &--sel {
+      stroke: mat.m2-get-color-from-palette($accent-palette, 500);
+    }
+  }
+
   // Outside Synthesis the positions are a record rather than a control: what
   // the linkage on the grid was designed to do, kept beside it. Faint, and out
   // of the way of every click -- a bar this size left hit-testable would sit

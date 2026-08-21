@@ -228,6 +228,29 @@ $red: #e53935;
       flex-direction: column;
     }
 
+    /* The collapsible sections carry their own header, so this styles the box
+       around whichever kind a section is -- a plain <section> for the results,
+       a collapsible for the design above them. */
+    collapsible-subseciton.sect {
+      display: block;
+      padding: 0;
+
+      .panel-header {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 15px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .panel-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 0 15px 10px;
+      }
+    }
+
     .sect {
       display: flex;
       flex-direction: column;
@@ -281,11 +304,15 @@ $red: #e53935;
         font-size: 14px;
         color: rgba(0, 0, 0, 0.72);
 
+        /* A button, so it needs the label's size said again: `font: inherit`
+           reaches the row, which sets none, and the three rows in the solution
+           section came out at two different sizes. */
         &--btn {
           border: 0;
           background: none;
           padding: 0;
-          font: inherit;
+          font-family: inherit;
+          font-size: 14px;
           color: rgba(0, 0, 0, 0.72);
           cursor: pointer;
         }
@@ -1025,14 +1052,18 @@ $red: #e53935;
         background: rgba(0, 0, 0, 0.05);
       }
 
+      /* The box Material gives an icon is 24px; in a 22px button its glyph was
+         clipped, which took the top off the direction arrow. The button is the
+         size of the thing inside it. */
       &--sm {
-        width: 22px;
-        height: 22px;
+        width: 24px;
+        height: 24px;
 
         mat-icon {
           font-size: 18px;
           width: 18px;
           height: 18px;
+          overflow: visible;
         }
       }
     }
@@ -1116,7 +1147,6 @@ $red: #e53935;
         margin-left: -3px;
         border-radius: 3px;
         background: $amber;
-        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
         pointer-events: none;
 
         &--ok {

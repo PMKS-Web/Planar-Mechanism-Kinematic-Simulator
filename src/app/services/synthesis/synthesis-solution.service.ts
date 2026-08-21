@@ -107,12 +107,27 @@ export class SynthesisSolutionService {
   private timer: ReturnType<typeof setTimeout> | undefined;
 
   /**
-   * Throw away the answer because the question changed.
+   * Whether a gesture is in flight, so the search should hold still.
    *
-   * Anything that moves a position, or changes what a solution has to satisfy,
-   * lands here: the candidates on screen were computed for a design that no
-   * longer exists, and showing them against the new one would be a lie the
-   * reader has no way to spot.
+   * Set by the canvas while a position is being dragged. The enumeration walks
+   * a full crank revolution for every candidate; running it on each pointermove
+   * would make the drag stutter for an answer nobody can read mid-gesture. The
+   * positions themselves still follow the pointer -- they are drawn from the
+   * design, not from the search -- and the answer catches up on release.
+   */
+  public interactive = false;
+
+  /**
+   * Throw away the answer because the *question* changed.
+   *
+   * Only for changes that alter what is being searched for: a position added
+   * or removed, or a requirement switched. Those change which linkages are
+   * even candidates, so the reader is sent back to Generate.
+   *
+   * Moving a position does not land here. It changes the answer, not the
+   * question, and the search keeps up with it by itself: `candidates()` is
+   * keyed on the design, so a nudge simply recomputes, and the chosen
+   * candidate -- identified by where its pins sit on the link -- survives.
    */
   invalidate(): void {
     this.generated = false;
@@ -179,7 +194,9 @@ export class SynthesisSolutionService {
   candidates(): FourBarCandidate[] {
     if (!this.generated || !this.design.isFullyDefined()) return [];
     const key = this.design.searchKey();
-    if (key !== this.cacheKey) {
+    // Held still through a drag: the last answer stays on screen while the
+    // position moves under it, and the search runs once when the hand lets go.
+    if (key !== this.cacheKey && !this.interactive) {
       const result = enumerateCandidates(this.design.search());
       this.cacheKey = key;
       this.cached = result.candidates;
