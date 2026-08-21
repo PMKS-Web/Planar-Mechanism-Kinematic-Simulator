@@ -2188,6 +2188,20 @@ export class NewGridComponent implements OnDestroy {
         this.mechanismSrv.save();
         return;
       }
+      // A click on the canvas that took hold of nothing lets go of whatever
+      // position was selected -- the same way clicking empty grid clears the
+      // selection everywhere else in the app. Only when placing is not armed:
+      // armed, the click has already been spent dropping a position.
+      if (
+        !wasDragging &&
+        !this.synthPressTaken &&
+        !this.synthesisBuilder.armed &&
+        this.synthesisBuilder.selectedPose !== 0 &&
+        this.pressDidNotTravel($event) &&
+        this.objectKind(this.lastLeftClick) === 'String'
+      ) {
+        this.synthesisBuilder.selectedPose = 0;
+      }
     }
     // The alignment guides belong to the drag that made them.
     this.axisSnapGuides = [];

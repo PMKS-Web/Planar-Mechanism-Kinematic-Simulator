@@ -79,7 +79,7 @@ export class BottombarComponent {
   private synthesisStatus(): string {
     if (this.design.stage === 'chooser') return 'Pick a synthesis type to begin';
     if (this.design.regionDraw) {
-      return 'Drag on the grid to draw the region the ground pivots must sit in';
+      return 'Drag on the grid to draw the region the ground pins must sit in';
     }
     const placed = this.design.getAllPoses().length;
     const next = this.design.getFirstUndefinedPose();
@@ -98,7 +98,7 @@ export class BottombarComponent {
       return `Inserted as a ${kind} · positions kept for reference`;
     }
     const chosen = this.solution.chosen();
-    if (!chosen) return 'No linkage meets the current criteria';
+    if (!chosen) return 'No solution meets the current requirements';
     const missed = 3 - chosen.onBranchCount;
     const how = chosen.defectFree
       ? 'walks all 3 on one assembly'

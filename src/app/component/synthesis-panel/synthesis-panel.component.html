@@ -56,8 +56,14 @@
       </div>
 
       <div class="work__scroll" [formGroup]="poseForm">
-        <!-- The coupler ------------------------------------------------- -->
-        <collapsible-subseciton class="sect" titleLabel="Coupler" [expanded]="true">
+        <!-- The bar being positioned ------------------------------------- -->
+        <!-- Named for what it is. Titled "Coupler", this section held a Length
+             field belonging to a different bar: the coupler is the four-bar's
+             own floating member, pinned *to* this link and only the same length
+             when it happens to be pinned at its ends. That is precisely what
+             the first requirement decides, and the two readings of the word
+             made the requirement read like a contradiction. -->
+        <collapsible-subseciton class="sect" titleLabel="End-effector link" [expanded]="true">
           <div class="row">
             <span class="row__label">Length</span>
             <mat-icon class="row__help" [matTooltip]="help.length" [matTooltipShowDelay]="400">
@@ -91,12 +97,11 @@
 
         <!-- The three positions ------------------------------------------ -->
         <collapsible-subseciton class="sect" titleLabel="Positions" [expanded]="true">
-          <!-- Only when there is a button to put in it. Left standing with all
-               three positions placed it was an empty row of air between the
-               heading and the first position. -->
-          @if (showAddButton || canDuplicate) {
-          <div class="sect__head">
-            <span class="row__spacer"></span>
+          <!-- Beside the heading rather than under it: they were a row of their
+               own, which cost a band of vertical space in a panel that has
+               little to spare, and left a gap once all three were placed and
+               there was nothing left to put in it. -->
+          <ng-container headerActions>
             @if (showAddButton) {
               <button
                 type="button"
@@ -120,8 +125,7 @@
                 <mat-icon>content_copy</mat-icon>
               </button>
             }
-          </div>
-          }
+          </ng-container>
 
           @for (i of rows; track i) {
             <div
@@ -226,13 +230,18 @@
             </div>
           }
 
-          @if (requirementsBlocking) {
+        </collapsible-subseciton>
+
+        <!-- Under the requirements rather than inside them: it is not one of
+             them, it is what they have jointly done. -->
+        @if (requirementsBlocking) {
+          <div class="sect sect--note">
             <div class="note note--warn">
               <mat-icon>rule</mat-icon>
               <span>{{ requirementsBlockingNote() }}</span>
             </div>
-          }
-        </collapsible-subseciton>
+          </div>
+        }
 
         <!-- Running the search -------------------------------------------- -->
         @if (showGenerate) {
@@ -260,6 +269,9 @@
 
         <!-- What came back ------------------------------------------------ -->
         @if (showResults) {
+          <!-- Only when it has something in it: with one solution and nothing
+               to explain, this was an empty band above the Solution heading. -->
+          @if (showGallery || !hasSolution || showNoCandidateReason) {
           <section class="sect">
             <!-- A heading over a gallery says what there is to choose between.
                  Over a single solution it only repeats what the section below
@@ -314,6 +326,7 @@
             }
             }
           </section>
+          }
 
           @if (hasSolution) {
             <section class="sect sect--last">
@@ -368,20 +381,24 @@
                   help_outline
                 </mat-icon>
                 <span class="row__spacer"></span>
-                <button
-                  type="button"
-                  class="switch"
-                  [class.switch--on]="solution.driverWanted"
-                  (click)="toggleDriver()"
-                  aria-label="Add driver"
+                <span
+                  [matTooltip]="driverRefusal"
+                  [matTooltipDisabled]="!driverRefusal"
+                  [matTooltipShowDelay]="200"
+                  matTooltipPosition="above"
                 >
-                  <span class="switch__knob"></span>
-                </button>
+                  <button
+                    type="button"
+                    class="switch"
+                    [class.switch--on]="driverOn"
+                    [disabled]="!!driverRefusal"
+                    (click)="toggleDriver()"
+                    aria-label="Add driver"
+                  >
+                    <span class="switch__knob"></span>
+                  </button>
+                </span>
               </div>
-
-              @if (solution.driverRefusal) {
-                <div class="refusal">{{ solution.driverRefusal }}</div>
-              }
 
               <div class="dims">
                 <button type="button" class="dims__head" (click)="toggleDimensions()">
@@ -410,7 +427,9 @@
         @if (hasSolution) {
           <div class="transport" [class.transport--playing]="solution.playing">
             <div class="transport__line">
-              <span class="transport__name">{{ solutionName }}</span>
+              @if (showGallery) {
+                <span class="transport__name">{{ solutionName }}</span>
+              }
               <span class="transport__note">{{ previewNote() }}</span>
               <span class="transport__angle">{{ angleLabel() }}</span>
               <button type="button" class="iconBtn iconBtn--sm" (click)="togglePlay()"
@@ -448,7 +467,7 @@
             {{ insertLabel }}
           </button>
           <button type="button" class="danger" (click)="deleteAll()">
-            <mat-icon>delete_outline</mat-icon>Delete
+            <mat-icon>delete_outline</mat-icon>Delete all positions
           </button>
         </div>
         @if (solution.inserted) {

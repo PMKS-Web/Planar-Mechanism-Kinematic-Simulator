@@ -251,6 +251,12 @@ $red: #e53935;
       }
     }
 
+    /* A note that belongs to the section above it rather than to one of its
+       own: no heading, and a little more air over it than under. */
+    .sect--note {
+      padding-top: 10px;
+    }
+
     .sect {
       display: flex;
       flex-direction: column;
@@ -868,11 +874,12 @@ $red: #e53935;
       display: flex;
       gap: 8px;
 
-      /* Three abreast is a comparison; eight abreast is a list. Opened out, they
-       go two to a row and the section scrolls rather than the panel. */
+      /* Opened out, the same three columns rather than two: the cards are there
+         to be compared with each other, and a set that re-flows as it grows
+         makes the reader find their place again for no reason. */
       &--all {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, 1fr);
         max-height: 260px;
         overflow-y: auto;
       }

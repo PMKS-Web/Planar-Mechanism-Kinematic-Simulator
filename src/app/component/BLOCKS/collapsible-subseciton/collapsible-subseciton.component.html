@@ -1,9 +1,15 @@
 <div class="collapsibleSubsection">
   @if (!hideHeader()) {
-    <button class="panel-header" (click)="toggleExpand()">
-      {{ titleLabel() }}
-      <mat-icon class="{{ expanded ? 'rotate180' : '' }}"> expand_more </mat-icon>
-    </button>
+    <!-- The title and the chevron are one button; anything a section wants to
+         put beside them sits outside it. A control nested inside a button is
+         neither valid nor operable -- the outer button swallows the press. -->
+    <div class="panel-header">
+      <button class="panel-header__toggle" (click)="toggleExpand()">
+        {{ titleLabel() }}
+        <mat-icon class="{{ expanded ? 'rotate180' : '' }}"> expand_more </mat-icon>
+      </button>
+      <span class="panel-header__actions"><ng-content select="[headerActions]"></ng-content></span>
+    </div>
   }
   <div [@openClose]="expanded ? 'open' : 'closed'" class="panel-content">
     <ng-content></ng-content>

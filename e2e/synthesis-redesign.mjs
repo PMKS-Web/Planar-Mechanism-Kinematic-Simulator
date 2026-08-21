@@ -91,6 +91,16 @@ await page.waitForTimeout(400);
 
 // --- placing ------------------------------------------------------------
 check(
+  "the Positions buttons live in that section's heading, not in a row of their own",
+  (await page.locator('#synthesisPanel .panel-header__actions .pill').count()) === 1
+);
+check(
+  'the strictest requirement is the one offered first',
+  (await page.locator('#synthesisPanel .req__label').first().innerText()).includes(
+    'Reaches all 3 positions'
+  )
+);
+check(
   'the design is laid out as sections that can be folded away',
   (await page.locator('#synthesisPanel collapsible-subseciton').count()) === 3
 );
@@ -273,9 +283,10 @@ check(
   (await grid('(g) => g.mechanismSrv.joints.length')) === 0
 );
 
-// Letting the pins slide finds more machines through the same positions.
+// Unpinning the coupler from the link's ends finds more machines through the
+// same three positions.
 await page
-  .locator('#synthesisPanel .req', { hasText: 'Coupler is exactly' })
+  .locator('#synthesisPanel .req', { hasText: "Coupler pinned at the link's ends" })
   .locator('.req__line')
   .click();
 await page.waitForTimeout(300);
@@ -505,6 +516,13 @@ check('and replaces it when told to', (await panel('(p) => p.solution.ownership(
 
 await page.locator('#synthesisPanel .note__undo').click();
 await page.waitForTimeout(700);
+check(
+  'the gallery keeps its three columns when it is opened out',
+  await page.evaluate(() => {
+    const gallery = document.querySelector('#synthesisPanel .gallery');
+    return !gallery || getComputedStyle(gallery).gridTemplateColumns.split(' ').length !== 2;
+  })
+);
 check('and Undo takes exactly it back', (await grid('(g) => g.mechanismSrv.joints.length')) === 0);
 check('leaving the design alone', (await panel('(p) => p.design.getAllPoses().length')) === 3);
 

@@ -52,8 +52,8 @@ const HELP = {
   duplicate:
     'Copy the last position and offset it slightly — a quick start for three similar positions.',
   branch:
-    'A four-bar can be closed two ways through the same pivots. Which way it is closed decides ' +
-    'which of the three positions it can pass through without coming apart.',
+    'A four-bar can be closed two ways through the same ground pins. Which way it is closed ' +
+    'decides which of the three positions it can pass through without coming apart.',
   pin:
     'Which ground pin carries the input. A four-bar that will not turn from one ground pin often ' +
     'turns freely from the other.',
@@ -288,7 +288,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     if (!this.solution.generated) return '3 positions · no solutions yet';
     const count = this.solution.candidates().length;
     const kind = this.solution.dyad() ? 'six-bar' : 'four-bar';
-    return `${kind} · ${count} ${count === 1 ? 'candidate' : 'candidates'}`;
+    return `${kind} · ${count} ${count === 1 ? 'solution' : 'solutions'}`;
   }
 
   // --- the coupler ---------------------------------------------------------
@@ -398,12 +398,12 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     if (ok === undefined) {
       if (!this.design.isFullyDefined()) return 'Waiting for all three positions';
       return this.solution.generated
-        ? 'No candidate linkage to check this position against yet'
+        ? 'No solution to check this position against yet'
         : 'Generate solutions to check this position';
     }
     return ok
-      ? 'The chosen linkage passes through this position on its own assembly'
-      : 'The chosen linkage reaches this position only on its other assembly — a branch defect';
+      ? 'The chosen solution passes through this position on its own assembly'
+      : 'The chosen solution reaches this position only on its other assembly — a branch defect';
   }
 
   // --- requirements --------------------------------------------------------
@@ -412,30 +412,34 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     const length = this.plain(this.design.length);
     return [
       {
-        key: 'coupler',
-        on: this.design.endsOnly,
-        label: `Coupler is exactly ${length} ${this.lengthUnit}`,
-        detail: this.design.endsOnly
-          ? 'Both pins sit on the ends of the link'
-          : 'Pins may slide along the link, so the coupler can be any length',
-        toggle: () => this.toggleRequirement('endsOnly'),
-      },
-      {
         key: 'defect',
         on: !this.design.allowDefect,
         label: 'Reaches all 3 positions on one assembly',
         detail: this.design.allowDefect
-          ? 'Linkages with a branch defect are listed too'
-          : 'No taking the linkage apart between positions',
+          ? 'Solutions that have to be taken apart between positions are listed too'
+          : 'The linkage never has to be taken apart',
         toggle: () => this.toggleRequirement('allowDefect'),
+      },
+      {
+        // Named for where the coupler is pinned rather than for how long it
+        // comes out, because the length is a consequence and the pinning is
+        // the choice -- and because the panel already has a Length field, for
+        // the end-effector link, which is a different bar.
+        key: 'coupler',
+        on: this.design.endsOnly,
+        label: "Coupler pinned at the link's ends",
+        detail: this.design.endsOnly
+          ? `The coupler is the whole ${length} ${this.lengthUnit} of the end-effector link`
+          : 'The coupler may be pinned anywhere along the link, at any length',
+        toggle: () => this.toggleRequirement('endsOnly'),
       },
       {
         key: 'region',
         on: this.design.constrain,
-        label: 'Ground pivots inside a region',
+        label: 'Ground pins inside a region',
         detail: this.design.constrain
-          ? 'Both pivots must land in the box on the grid'
-          : 'Pivots may land anywhere',
+          ? 'Both ground pins must land in the box on the grid'
+          : 'Ground pins may land anywhere',
         toggle: () => this.toggleRequirement('constrain'),
         hasRegion: this.design.constrain,
       },
@@ -512,33 +516,39 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   }
 
   requirementsBlockingNote(): string {
+    // Every one of these ends by offering to move a position, because that is
+    // the way out that does not cost a requirement -- and when nothing fits at
+    // all, it is usually because the three are close to a straight line.
+    const moveOne =
+      'Moving the middle position further off the line between the other two also opens it up.';
     if (this.design.constrain) {
       return (
-        'Nothing satisfies all of these. The region is usually the first to give: widen it, ' +
-        'move it, or switch it off.'
+        'No solution keeps both ground pins inside the region. Widen it, move it, or switch it ' +
+        `off. ${moveOne}`
       );
     }
     if (this.design.endsOnly && !this.design.allowDefect) {
       return (
-        'Nothing satisfies both. Letting the pins slide along the link is the usual first ' +
-        'relaxation — it keeps the motion and changes only where the coupler is pinned.'
+        'No solution satisfies both. Unpinning the coupler from the ends of the link is the ' +
+        'usual first one to give: the three positions stay exactly where they are, and only ' +
+        `where the coupler is attached to the link changes. ${moveOne}`
       );
     }
     if (this.design.endsOnly) {
       return (
-        `No four-bar with a ${this.plain(this.design.length)} ${this.lengthUnit} coupler passes ` +
-        'through these three positions. Let the pins slide, or move a position.'
+        "No four-bar whose coupler is pinned at the link's ends passes through these three " +
+        `positions. Unpin it to let the coupler be any length. ${moveOne}`
       );
     }
     if (!this.design.allowDefect) {
       return (
-        'Every construction through these three positions needs to be taken apart between them. ' +
-        'Accept a branch defect to see them, or turn the middle position further.'
+        'Every four-bar through these three positions has to be taken apart between them. ' +
+        `Accept a branch defect to see them. ${moveOne}`
       );
     }
     return (
-      'Nothing was found even with every requirement relaxed — the three positions are too close ' +
-      'to a straight line.'
+      'Nothing was found even with every requirement relaxed. The three positions are too close ' +
+      `to a straight line. ${moveOne}`
     );
   }
 
@@ -550,11 +560,9 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
 
   generateNote(): string {
     const parts: string[] = [];
-    if (this.design.endsOnly) {
-      parts.push(`a ${this.plain(this.design.length)} ${this.lengthUnit} coupler`);
-    }
     if (!this.design.allowDefect) parts.push('all three positions on one assembly');
-    if (this.design.constrain) parts.push('both ground pivots in the region');
+    if (this.design.endsOnly) parts.push("the coupler pinned at the link's ends");
+    if (this.design.constrain) parts.push('both ground pins in the region');
     return parts.length
       ? 'Search for four-bars with ' + parts.join(', ') + '.'
       : 'Search for any four-bar through these three positions.';
@@ -594,12 +602,12 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
 
   candidateHeading(): string {
     const list = this.solution.candidates();
-    if (!list.length) return 'No linkage meets the criteria';
+    if (!list.length) return 'No solution meets the requirements';
     const strict = this.solution.strictCount;
     if (strict) {
-      return `${strict} ${strict === 1 ? 'linkage works' : 'linkages work'} on one assembly`;
+      return `${strict} ${strict === 1 ? 'solution reaches' : 'solutions reach'} all 3 positions`;
     }
-    return `${list.length} candidate${list.length === 1 ? '' : 's'}, all with a branch defect`;
+    return `${list.length} solution${list.length === 1 ? '' : 's'}, all with a branch defect`;
   }
 
   /**
@@ -731,7 +739,25 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     this.solution.setDriveOnFarPin(far);
   }
 
+  /**
+   * Why a driver cannot be fitted to this solution, if it cannot.
+   *
+   * Asked whether or not one is wanted, so the switch can be turned off before
+   * it is pressed rather than after. A refusal used to arrive as a paragraph
+   * under a switch that had just been flipped -- a large piece of text
+   * explaining that the thing the reader had asked for had not happened.
+   */
+  get driverRefusal(): string | undefined {
+    return this.solution.driverAvailability();
+  }
+
+  /** Whether the driver is both wanted and possible. */
+  get driverOn(): boolean {
+    return this.solution.driverWanted && !this.driverRefusal;
+  }
+
   toggleDriver(): void {
+    if (this.driverRefusal) return;
     this.solution.toggleDriver();
   }
 
@@ -754,7 +780,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       { label: 'Coupler B–C', value: this.lengthText(c.d) },
       { label: 'Output rocker', value: this.lengthText(c.r2) },
       {
-        label: 'Coupler pins',
+        label: 'Coupler pinned',
         value: describeCouplerPins(c, this.design.length) + ' ' + this.lengthUnit,
       },
     ];

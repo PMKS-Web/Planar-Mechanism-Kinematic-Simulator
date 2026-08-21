@@ -73,9 +73,6 @@ export class SynthesisSolutionService {
   /** Drive from the far ground pin, and put a driver dyad on the input. */
   public driveOnFarPin = false;
   public driverWanted = false;
-  /** Why the last driver could not be fitted, for the panel to show. */
-  public driverRefusal: string | undefined;
-
   /** Where the preview stands, in crank degrees, and whether it is running. */
   public phase: number | null = null;
   public playing = false;
@@ -240,17 +237,25 @@ export class SynthesisSolutionService {
     return swapped;
   }
 
-  /** The driver dyad for the current solution, or why there is not one. */
+  /**
+   * Why a driver cannot be fitted to the current solution, or nothing.
+   *
+   * Asked independently of whether one is wanted: the panel needs to know
+   * before the switch is pressed, not after.
+   */
+  driverAvailability(): string | undefined {
+    const cand = this.driven();
+    if (!cand) return undefined;
+    const result = driverDyadFor(cand.A, cand.ptsA);
+    return 'refusal' in result ? result.refusal : undefined;
+  }
+
+  /** The driver dyad for the current solution, if one is wanted and fits. */
   dyad(): DriverDyad | undefined {
-    this.driverRefusal = undefined;
     const cand = this.driven();
     if (!cand || !this.driverWanted) return undefined;
     const result = driverDyadFor(cand.A, cand.ptsA);
-    if ('refusal' in result) {
-      this.driverRefusal = result.refusal;
-      return undefined;
-    }
-    return result.dyad;
+    return 'refusal' in result ? undefined : result.dyad;
   }
 
   /** Where the preview stands now, in crank degrees. */
@@ -299,7 +304,6 @@ export class SynthesisSolutionService {
     this.invalidate();
     this.driverWanted = false;
     this.driveOnFarPin = false;
-    this.driverRefusal = undefined;
     this.showAll = false;
     this.releaseOwnership();
   }
