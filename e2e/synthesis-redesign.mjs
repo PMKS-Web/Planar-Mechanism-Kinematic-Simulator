@@ -104,6 +104,23 @@ check(
     (await page.locator('#synthesisPanel .cta').isDisabled())
 );
 check(
+  "a section's header, and its hit area, run the full width of the panel",
+  await page.evaluate(() => {
+    const panel = document.querySelector('#synthesisPanel').getBoundingClientRect();
+    const section = [...document.querySelectorAll('#synthesisPanel collapsible-subseciton')].find(
+      (s) => s.querySelector('.panel-header')?.textContent.includes('Requirements')
+    );
+    const toggle = section.querySelector('.panel-header__toggle').getBoundingClientRect();
+    // And the far edge is the toggle, not a dead strip beside it.
+    const atEdge = document.elementFromPoint(panel.right - 4, toggle.top + toggle.height / 2);
+    return (
+      Math.abs(toggle.left - panel.left) < 1 &&
+      Math.abs(toggle.right - panel.right) < 1 &&
+      atEdge.classList.contains('panel-header__toggle')
+    );
+  })
+);
+check(
   'the strictest requirement is the one offered first',
   (await page.locator('#synthesisPanel .req__label').first().innerText()).includes(
     'Reaches all 3 positions'
@@ -253,8 +270,31 @@ check(
   (await panel('(p) => p.solution.candidates().length')) === 0
 );
 
+// Where the panel is looking before the search, so the scroll can be measured.
+await page.evaluate(() => document.querySelector('#synthesisPanel .work__scroll').scrollTo(0, 0));
+await page.waitForTimeout(200);
+const scrollBefore = await page.evaluate(() =>
+  Math.round(document.querySelector('#synthesisPanel .work__scroll').scrollTop)
+);
 await page.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+await page.waitForTimeout(400);
+check(
+  'a search in progress is a bar, with no prose nobody has time to read',
+  await page.evaluate(() => {
+    const box = document.querySelector('#synthesisPanel .foot__progress');
+    return !!box && box.innerText.trim() === '' && box.querySelectorAll('.sweep').length === 1;
+  })
+);
 await settled();
+await page.waitForTimeout(1200);
+check(
+  'and when it finishes the panel goes to meet its answer',
+  await page.evaluate((was) => {
+    const box = document.querySelector('#synthesisPanel .work__scroll');
+    const bottom = Math.round(box.scrollHeight - box.clientHeight);
+    return bottom === 0 || (Math.round(box.scrollTop) >= bottom - 4 && box.scrollTop > was);
+  }, scrollBefore)
+);
 const strict = await panel('(p) => p.solution.candidates().length');
 check('Generate finds four-bars through the three positions', strict > 0, strict);
 check(

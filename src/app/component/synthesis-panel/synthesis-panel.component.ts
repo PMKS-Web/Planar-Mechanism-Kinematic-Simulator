@@ -1,4 +1,12 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, inject } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  ChangeDetectionStrategy,
+  ElementRef,
+  inject,
+  viewChild,
+} from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
@@ -87,6 +95,9 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   readonly help = HELP;
   readonly rows = [1, 2, 3];
 
+  /** The panel's scrolling half, so a finished search can be scrolled to. */
+  private readonly workScroll = viewChild<ElementRef<HTMLElement>>('workScroll');
+
   private subs: Subscription[] = [];
   private syncing = false;
   private frame: number | undefined;
@@ -148,6 +159,39 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
         this.design.getAllPoses().forEach((pose) => pose.recompute());
       })
     );
+
+    // A finished search puts its answer at the bottom of a panel the reader is
+    // looking at the top of. Nothing about the design above it has changed, so
+    // there is no cue that anything happened down there -- and the button that
+    // was just pressed is in the foot, which does not move. So the panel goes
+    // to meet it.
+    this.subs.push(
+      this.solution.changed.subscribe(() => {
+        const searching = this.solution.generating;
+        const finished = this.wasSearching && !searching && this.solution.generated;
+        this.wasSearching = searching;
+        if (finished) this.revealTheAnswer();
+      })
+    );
+  }
+
+  /** Whether the last thing this panel heard about was a search in progress. */
+  private wasSearching = false;
+
+  /**
+   * Scroll the design out of the way and the solution into view.
+   *
+   * Deferred a frame: the results are rendered by the change detection this
+   * notification is part of, so the box is still its old height until that has
+   * run and there is nothing yet to scroll to.
+   */
+  private revealTheAnswer(): void {
+    setTimeout(() => {
+      const box = this.workScroll()?.nativeElement;
+      if (!box) return;
+      const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      box.scrollTo({ top: box.scrollHeight, behavior: still ? 'auto' : 'smooth' });
+    });
   }
 
   ngOnDestroy(): void {

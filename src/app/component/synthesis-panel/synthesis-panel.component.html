@@ -55,7 +55,7 @@
         </div>
       </div>
 
-      <div class="work__scroll" [formGroup]="poseForm">
+      <div class="work__scroll" #workScroll [formGroup]="poseForm">
         <!-- The bar being positioned ------------------------------------- -->
         <!-- Named for what it is. Titled "Coupler", this section held a Length
              field belonging to a different bar: the coupler is the four-bar's
@@ -459,12 +459,12 @@
         }
         <!-- One button, because there is only ever one next step: search, or
              commit what the search found. -->
+        <!-- A bar and nothing else. The sentence that used to be here described
+             the search accurately and was gone before anybody finished reading
+             it, which is a sentence doing no work. -->
         @if (solution.generating) {
           <div class="foot__progress">
             <div class="sweep"><div class="sweep__bar"></div></div>
-            <div class="foot__fine">
-              Constructing circle centres, then solving a full crank revolution for each…
-            </div>
           </div>
         }
         <div class="foot__buttons">

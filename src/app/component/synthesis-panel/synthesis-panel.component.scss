@@ -235,12 +235,22 @@ $red: #e53935;
       display: block;
       padding: 0;
 
+      /* The band runs the whole width of the panel. The inset used to be on
+         this row, which meant the toggle's own background -- and so its hover,
+         and its hit area -- stopped short of both sides, leaving a strip beside
+         the header that looked part of it and did nothing. The inset belongs to
+         the text, so it sits on the button's padding instead. */
       .panel-header {
         width: 100%;
         box-sizing: border-box;
-        padding: 10px 15px;
+        padding: 0;
         font-size: 14px;
         font-weight: 500;
+      }
+
+      .panel-header__toggle {
+        padding: 10px 15px;
+        height: auto;
       }
 
       .panel-content {
@@ -1074,6 +1084,13 @@ $red: #e53935;
       padding: 8px;
       border-top: 1px solid $edge;
       background: #fbfbfd;
+    }
+
+    /* The search reporting itself, directly over the button that started it.
+       A bar and nothing else: the sentence that used to sit under it described
+       the search accurately and was gone before anybody finished reading it. */
+    .foot__progress {
+      padding: 0 4px;
     }
 
     .iconBtn {
