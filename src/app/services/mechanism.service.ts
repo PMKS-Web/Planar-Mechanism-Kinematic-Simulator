@@ -239,6 +239,7 @@ export class MechanismService {
     // within a revision the topology cannot have changed.
     this.cylinderRevision++;
     this.poseRevision++;
+    this.solveRevision++;
     Force.normalizeVisualWidths(this.forces);
     // Changing the input speed re-samples the same geometry onto a different time
     // axis. Hold the simulation time rather than the sample index, so t and the pose
@@ -790,6 +791,63 @@ export class MechanismService {
     links.forEach((l) => {
       this.links.push(l);
     });
+  }
+
+  /**
+   * A free-standing bar between two points — what `Add Link` on bare grid
+   * commits when the drag is released.
+   *
+   * Here rather than in the canvas because it is a creation, and every other
+   * one lives here; the canvas has the same recipe inline because it also has a
+   * ghost to draw and a drag to end. Anything that wants a bar without a
+   * gesture — the tutorial doing a step for the student — asks for one here.
+   */
+  addBar(from: Coord, to: Coord): RealLink {
+    const first = this.createRevJoint(from.x.toString(), from.y.toString());
+    const second = this.createRevJoint(to.x.toString(), to.y.toString(), first.id);
+    return this.joinWithBar(first, second, [first, second]);
+  }
+
+  /**
+   * A bar hung off a joint that is already there, as `Attach Link` makes.
+   *
+   * The anchor is not created and not re-merged: it is already in the drawing,
+   * and pushing it a second time gives it two entries and one very confusing
+   * delete.
+   */
+  addBarFrom(anchor: RealJoint, to: Coord): RealLink {
+    const far = this.createRevJoint(to.x.toString(), to.y.toString());
+    return this.joinWithBar(anchor, far, [far]);
+  }
+
+  /** The wiring both of the above share: connect, name, merge, re-solve. */
+  private joinWithBar(first: RealJoint, second: RealJoint, fresh: Joint[]): RealLink {
+    first.connectedJoints.push(second);
+    second.connectedJoints.push(first);
+    const link = this.gridUtils.createRealLink(first.id + second.id, [first, second]);
+    first.links.push(link);
+    second.links.push(link);
+    this.mergeToJoints(fresh);
+    this.mergeToLinks([link]);
+    this.updateMechanism(true);
+    return link;
+  }
+
+  /**
+   * Everything on the grid, gone, as one undo entry.
+   *
+   * The joints go one at a time because deleting a joint is what takes its
+   * links with it, but none of them saves — otherwise clearing a four-bar
+   * would cost four presses of Undo to take back.
+   */
+  deleteAll(): void {
+    if (this.joints.length === 0 && this.links.length === 0 && this.forces.length === 0) return;
+    [...this.joints].forEach((joint) => {
+      this.activeObjService.updateSelectedObj(joint);
+      this.deleteJoint(false);
+    });
+    this.activeObjService.updateSelectedObj(null);
+    this.finishStructuralEdit(true);
   }
 
   /**
@@ -2008,6 +2066,15 @@ export class MechanismService {
    * on every frame to answer a question whose answer cannot have changed.
    */
   poseRevision = 0;
+  /**
+   * Bumped when the *solved cycle* changes, rather than the pose being drawn.
+   *
+   * `poseRevision` moves on every frame of playback, because the pose is what
+   * playback changes. Anything cached against the numbers themselves — the
+   * export's sampled tables, for one — has to key on this instead, or watching
+   * a mechanism run rebuilds it sixty times a second.
+   */
+  solveRevision = 0;
   private structuresCache?: { revision: number; list: Cylinder[] };
 
   /**
@@ -2292,17 +2359,25 @@ export class MechanismService {
       });
     }
 
+    // Gravity off over a drawing that does have mass is the one refusal here
+    // with a one-click way out, so it gets a button as well as a sentence:
+    // everything the analysis needs is already drawn, and the only thing
+    // standing in the way is a switch in another panel.
+    const gravityWouldLoad = !this.settingsService.isGravity.value && weighted;
     requirements.push({
       met: loads.length > 0 || gravityLoads,
       title: 'A load to react against',
+      act: gravityWouldLoad ? 'gravity' : undefined,
       body:
         loads.length > 0
           ? `${loads.length} ${loads.length === 1 ? 'force is' : 'forces are'} applied.`
           : gravityLoads
             ? 'Gravity loads the links that have mass.'
-            : this.settingsService.isGravity.value
-              ? 'Nothing loads this mechanism yet: no force is applied and every link is massless. Attach a force or give a link mass.'
-              : 'Nothing loads this mechanism: gravity is off and no force is applied. Attach a force, or turn gravity on in Settings and give a link mass.',
+            : gravityWouldLoad
+              ? 'Nothing loads this mechanism: gravity is off, so the mass it has weighs nothing. Turn gravity on, or attach a force.'
+              : this.settingsService.isGravity.value
+                ? 'Nothing loads this mechanism yet: no force is applied and every link is massless. Attach a force or give a link mass.'
+                : 'Nothing loads this mechanism: gravity is off and no force is applied. Attach a force, or turn gravity on in Settings and give a link mass.',
     });
 
     return requirements;
@@ -2480,6 +2555,41 @@ export class MechanismService {
       (cylinder.barrelFar.name || cylinder.barrelFar.id) +
       (cylinder.rodFar.name || cylinder.rodFar.id)
     );
+  }
+
+  /**
+   * The one reaction a slider's block has that its pin does not.
+   *
+   * A block is a zero-length link binding a pin to a slot. It meets the world
+   * twice: at the pin, where the force is exactly the pin's own reaction
+   * negated -- the same number already carried under the name of the bar it
+   * holds -- and at the slot, where it presses on whatever the slot is cut
+   * into. The second is the force that sizes a slide, and it is here or
+   * nowhere: a slot has no marker, no hitbox and no panel.
+   */
+  slotReactionOf(pin: Joint | undefined): { slot: PrisJoint; block: Link; on: string } | undefined {
+    const slot = this.sliderFor(pin);
+    if (!slot) return undefined;
+    const block = this.links.find(
+      (link) => link instanceof SliderBlock && link.joints.some((joint) => joint.id === slot.id)
+    );
+    if (!block) return undefined;
+    const carrier = slot.isFloating && slot.isSlotWellFormed ? slot.carrier : undefined;
+    return { slot, block, on: carrier ? this.bodyLabel(carrier) : 'the ground' };
+  }
+
+  /**
+   * What to call a reaction that acts at a slot.
+   *
+   * The slider it belongs to, because that is the pin a reader can point at: a
+   * slot has no name anyone has ever been shown.
+   */
+  slotName(jointId: string): string | undefined {
+    const slot = this.joints.find((joint) => joint.id === jointId);
+    if (!(slot instanceof PrisJoint)) return undefined;
+    const pin = slot.connectedJoints.find((joint) => !(joint instanceof PrisJoint)) as
+      RealJoint | undefined;
+    return pin ? `the slider at ${pin.name || pin.id}` : 'the slider';
   }
 
   /** The sealed cylinder a joint or link belongs to, if any. */
@@ -3396,6 +3506,11 @@ export class MechanismService {
     return this.mechanismTimeStep === 0;
   }
 
+  /** The same question, for a control that has to say when it would do nothing. */
+  isAtStartPose(): boolean {
+    return this.atStartPose();
+  }
+
   /**
    * Stop playback and draw the start of the cycle.
    *
@@ -3617,6 +3732,13 @@ export class MechanismService {
     const reversed = this.mechanisms[index]?.withReversedDrive();
     if (reversed) {
       this.mechanisms[index] = reversed;
+      // A solved cycle has been replaced without going through
+      // `updateMechanism`, so say so. The graphs notice by object identity,
+      // but the export's sampled tables are cached against this counter --
+      // without the bump an export taken after reversing served the rates it
+      // had sampled before, every angular velocity still carrying the sign it
+      // had turned round from.
+      this.solveRevision++;
       // Through the cycle the other way, from where it stands.
       this.playbackDirection[index] = this.directionOf(index) < 0 ? 1 : -1;
     } else {
@@ -3953,6 +4075,9 @@ export class MechanismService {
     if (this.isInSelectedMechanism(joint)) {
       return 'joint-selected';
     }
+    if (this.isHoveredPart(joint)) {
+      return 'joint-pointed';
+    }
     if (this.isInHoveredMechanism(joint)) {
       return 'joint-highlight';
     }
@@ -4015,6 +4140,84 @@ export class MechanismService {
    */
   hoveredMechanismIndex = -1;
 
+  /**
+   * The one part a list elsewhere is pointing at.
+   *
+   * The export drawer lists every joint and link by name, and a name is not a
+   * place: a reader ticking `Joint F` on a Jansen leg has no idea which of
+   * eleven pins that is. Pointing at the row lights it on the canvas.
+   *
+   * Deferred to whatever is selected: a selection is the stronger statement,
+   * and a hover that repainted over it would take the reader's own mark away
+   * while they were reading the list beside it.
+   */
+  hoveredPart: Joint | Link | undefined;
+
+  private isHoveredPart(part: Joint | Link): boolean {
+    return !!this.hoveredPart && this.hoveredPart.id === part.id && this.nothingIsChosen();
+  }
+
+  /**
+   * Whether the canvas is free to answer a pointed-at row.
+   *
+   * The canvas carries one mark because it holds one selection, and a hover
+   * that added a second while a joint, a link, a force or a whole machine was
+   * already chosen made the drawing say two things at once.
+   */
+  private nothingIsChosen(): boolean {
+    const chosen = this.activeObjService.objType;
+    return chosen !== 'Joint' && chosen !== 'Link' && chosen !== 'Force' && chosen !== 'Mechanism';
+  }
+
+  /**
+   * Whether the canvas's current selection is this joint.
+   *
+   * The selection *type* decides, not the remembered object: clicking the grid
+   * sets the type to `Grid` and leaves `selectedJoint` holding whatever was
+   * chosen before, so a list reading that field alone went on marking a row
+   * after the reader had let go of the thing it names.
+   */
+  isSelectedJoint(joint: Joint | undefined): boolean {
+    return (
+      !!joint &&
+      this.activeObjService.objType === 'Joint' &&
+      this.activeObjService.selectedJoint?.id === joint.id
+    );
+  }
+
+  /**
+   * Whether the canvas's current selection is this body.
+   *
+   * A sealed cylinder answers for all of its pieces, as it does everywhere
+   * else: the list offers the ram as one part, and clicking it on the canvas
+   * lands on whichever of the barrel, the block or the rod the pointer was
+   * over.
+   */
+  isSelectedBody(body: Link | undefined): boolean {
+    if (!body || this.activeObjService.objType !== 'Link') return false;
+    const chosen = this.activeObjService.selectedLink;
+    if (!chosen) return false;
+    if (chosen.id === body.id) return true;
+    const cylinder = this.cylinderAt(chosen);
+    return !!cylinder && cylinder === this.cylinderAt(body);
+  }
+
+  /**
+   * Whether this body is the one a list is pointing at.
+   *
+   * A sealed cylinder answers for all of its pieces: the list offers the ram
+   * as one part, and the canvas draws it as a barrel, a block and a rod under
+   * one silhouette — so pointing at the row has to light that silhouette
+   * whichever piece the mark happens to be built around.
+   */
+  isPointedAtBody(body: Link | undefined): boolean {
+    const pointed = this.hoveredPart;
+    if (!body || !pointed || pointed instanceof Joint || !this.nothingIsChosen()) return false;
+    if (pointed.id === body.id) return true;
+    const cylinder = this.cylinderAt(pointed);
+    return !!cylinder && cylinder === this.cylinderAt(body);
+  }
+
   private isInHoveredMechanism(part: Joint | Link): boolean {
     return this.hoveredMechanismIndex >= 0
       ? this.isInPartition(part, this.hoveredMechanismIndex)
@@ -4049,6 +4252,9 @@ export class MechanismService {
     }
     if (this.isInSelectedMechanism(link)) {
       return 'link-selected';
+    }
+    if (this.isHoveredPart(link)) {
+      return 'link-pointed';
     }
     if (this.isInHoveredMechanism(link)) {
       return 'link-hovered';
