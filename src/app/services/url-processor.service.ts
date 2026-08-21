@@ -129,8 +129,14 @@ export class UrlProcessorService {
         // reload turned "you cut into this, I will leave it alone" into "this
         // is mine, I will delete it": the reader's own edits, removed without
         // the warning that exists to prevent exactly that.
-        if (kept.length !== this.synthesis.ownedJointIds.length) {
+        // Only while something of ours is still standing. If every joint we
+        // wrote has been taken away there is nothing left to be entangled
+        // with -- the design owns nothing, and saying otherwise would keep a
+        // section in every URL it writes from then on.
+        if (kept.length > 0 && kept.length !== this.synthesis.ownedJointIds.length) {
           this.synthesis.ownershipPartial = true;
+        } else if (kept.length === 0) {
+          this.synthesis.ownershipPartial = false;
         }
         this.synthesis.ownedJointIds = kept;
         // A decode replaces the design wholesale, so whatever was found for the
