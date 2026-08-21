@@ -84,11 +84,25 @@ export class SynthesisSolutionService {
    *
    * The one thing that cannot be derived from the drawing: whether the linkage
    * on the grid is still the one synthesis produced, or one the reader has
-   * since moved by hand. Held in memory only -- after a reload there is nothing
-   * to compare against, and the honest default there is to assume nothing has
-   * been touched rather than to nag about an edit that may never have happened.
+   * since moved by hand.
+   *
+   * It used to be held in memory only, on the reasoning that after a reload
+   * there was nothing to compare against and the honest default was to assume
+   * nothing had been touched. That default was not honest, it was expensive:
+   * assuming nothing had been touched meant Replace deleted whatever had been,
+   * without the warning that exists for it. Move a joint, share the link, open
+   * it, press Replace, and the joint went back where synthesis had put it. So
+   * it is written down with the ids, and read back off the design.
    */
-  private writtenAt = new Map<string, { x: number; y: number }>();
+  private get writtenAt(): Map<string, { x: number; y: number }> {
+    const at = this.design.ownedAt;
+    return new Map(
+      this.design.ownedJointIds
+        .map((id, index) => [id, at[index]] as const)
+        .filter((pair): pair is readonly [string, { x: number; y: number }] => !!pair[1])
+        .map(([id, place]) => [id, place])
+    );
+  }
 
   private cacheKey = '';
   private cached: FourBarCandidate[] = [];
@@ -650,9 +664,18 @@ export class SynthesisSolutionService {
       (joint as RealJoint).connectedJoints?.some((other) => !ids.has(other.id))
     );
     if (joinedOutward) return 'entangled';
-    if (this.writtenAt.size === 0) return 'ours';
+    /*
+      No baseline is "ask", not "help yourself".
+
+      Every insert writes one, so the only way to be without it is a URL from
+      before this was written down -- and the answer that costs nothing is to
+      ask before replacing. The answer that used to be given, that the linkage
+      must be untouched, cost the reader whatever they had moved.
+    */
+    const baseline = this.writtenAt;
+    if (baseline.size === 0) return 'edited';
     const moved = owned.some((joint) => {
-      const was = this.writtenAt.get(joint.id);
+      const was = baseline.get(joint.id);
       return !was || Math.hypot(joint.x - was.x, joint.y - was.y) > MOVED_BY_HAND;
     });
     return moved ? 'edited' : 'ours';
@@ -703,8 +726,8 @@ export class SynthesisSolutionService {
   /** Stop claiming the linkage on the grid, without removing it. */
   releaseOwnership(): void {
     this.design.ownedJointIds = [];
+    this.design.ownedAt = [];
     this.design.ownershipPartial = false;
-    this.writtenAt.clear();
     this.changed.next();
   }
 
@@ -799,8 +822,8 @@ export class SynthesisSolutionService {
     this.mechanismSrv.mergeToJoints(joints);
     this.mechanismSrv.mergeToLinks(links);
     this.design.ownedJointIds = joints.map((joint) => joint.id);
+    this.design.ownedAt = joints.map((joint) => ({ x: joint.x, y: joint.y }));
     this.design.ownershipPartial = false;
-    this.writtenAt = new Map(joints.map((joint) => [joint.id, { x: joint.x, y: joint.y }]));
     this.playing = false;
     // Eased rather than snapped: the drawing may be parked anywhere in its
     // cycle, and dropping it onto its start pose between one frame and the next
@@ -833,8 +856,8 @@ export class SynthesisSolutionService {
     this.mechanismSrv.links = this.mechanismSrv.links.filter((link) => !goneLinks.has(link.id));
     this.mechanismSrv.joints = this.mechanismSrv.joints.filter((joint) => !ids.has(joint.id));
     this.design.ownedJointIds = [];
+    this.design.ownedAt = [];
     this.design.ownershipPartial = false;
-    this.writtenAt.clear();
   }
 
   /**

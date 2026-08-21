@@ -121,7 +121,12 @@ export class UrlProcessorService {
         // names that is not here was removed by hand at some point, and a
         // claim on an object that does not exist is not a claim worth keeping.
         const present = new Set(mechanismSrv.joints.map((joint) => joint.id));
-        const kept = this.synthesis.ownedJointIds.filter((id) => present.has(id));
+        // Ids and their baselines are one list in two arrays, so they are
+        // filtered together or not at all -- dropping an id on its own would
+        // slide every baseline after it onto the wrong joint.
+        const survives = this.synthesis.ownedJointIds.map((id) => present.has(id));
+        const kept = this.synthesis.ownedJointIds.filter((_, index) => survives[index]);
+        const keptAt = this.synthesis.ownedAt.filter((_, index) => survives[index]);
         // Dropping the ids of joints that are gone is right -- a claim on
         // something that does not exist would be inherited by whatever new
         // joint next took that letter. But dropping them silently threw away
@@ -139,6 +144,7 @@ export class UrlProcessorService {
           this.synthesis.ownershipPartial = false;
         }
         this.synthesis.ownedJointIds = kept;
+        this.synthesis.ownedAt = keptAt;
         // A decode replaces the design wholesale, so whatever was found for the
         // last one says nothing about this one. Resolved late, like the other
         // services this one reaches: asking for it at construction would build

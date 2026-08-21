@@ -97,6 +97,17 @@ export class SynthesisBuilderService {
    */
   public ownershipPartial = false;
 
+  /**
+   * Where each of those joints was put, in the order the ids are held.
+   *
+   * The baseline for "has this been moved by hand", and it has to be written
+   * down for the same reason the ids are. Kept in memory only, it vanished on
+   * reload and every owned linkage read as untouched -- so a joint the reader
+   * had dragged somewhere was quietly dragged back by the next Replace, and
+   * the warning that exists to stop exactly that never appeared.
+   */
+  public ownedAt: { x: number; y: number }[] = [];
+
   public region = {
     x: -6 * MODEL_SCALE,
     y: -14 * MODEL_SCALE,
@@ -405,6 +416,7 @@ export class SynthesisBuilderService {
     this.allowDefect = false;
     this.constrain = false;
     this.ownedJointIds = [];
+    this.ownedAt = [];
     this.ownershipPartial = false;
     this.valueChanges.next(true);
   }
@@ -426,6 +438,7 @@ export class SynthesisBuilderService {
     poses: { at: Coord; thetaDegrees: number }[];
     region?: { x: number; y: number; w: number; h: number };
     ownedJointIds: string[];
+    ownedAt?: { x: number; y: number }[];
     ownershipPartial?: boolean;
   }): void {
     this._COR = decoded.reference;
@@ -437,6 +450,7 @@ export class SynthesisBuilderService {
     this.armed = false;
     this.regionDraw = false;
     this.ownedJointIds = decoded.ownedJointIds;
+    this.ownedAt = decoded.ownedAt ?? [];
     this.ownershipPartial = !!decoded.ownershipPartial;
     if (decoded.region) this.region = decoded.region;
 

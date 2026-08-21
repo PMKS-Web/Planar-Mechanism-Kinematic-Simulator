@@ -628,18 +628,15 @@ check(
   })()
 );
 check(
-  'a driver that cannot be fitted is greyed rather than merely explained',
+  'the driver switch agrees with the panel on every candidate and both drive ends',
   await (async () => {
     /*
-      Swept over every candidate and both drive ends rather than asked once.
-
-      Asked once, this compared two things that were both false and passed
-      without establishing anything -- these designs raise no refusal at all,
-      so `disabled === refusal` was `false === false`. The sweep is still not
-      guaranteed to meet a refusal, so it also requires having seen the switch
-      live: that at least proves the row was found and the two sides can
-      differ. The refusal itself is covered where it can be built to order, in
-      driver-dyad.spec.ts.
+      Named for what it establishes, which is agreement across this design --
+      not the greying, because this design never refuses a driver and so never
+      turns the switch off. It was called "a driver that cannot be fitted is
+      greyed" while comparing two values that were both false on every sample.
+      A design that does refuse is checked at the end of this file, where one
+      is built for the purpose.
     */
     const seen = await page.evaluate(() => {
       const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
@@ -1492,6 +1489,206 @@ const ask = (p, fn) =>
       !outcome.near.refused &&
       !outcome.near.disabled,
     outcome
+  );
+  await p.close();
+}
+
+{
+  /*
+    A joint moved by hand stays moved, across a shared link.
+
+    The record of where insert put each joint was held in memory, so opening a
+    link produced a design that believed nothing had been touched -- and
+    Replace put the moved joint back where synthesis had wanted it, silently,
+    because "untouched" is the one state that needs no warning. Nothing in the
+    session that made the link is available to check this: it has to survive
+    the URL.
+  */
+  const p = await solvedPage();
+  const moved = await ask(
+    p,
+    `(panel) => {
+      panel.solution.driverWanted = false;
+      panel.solution.insert();
+      const ids = panel.design.ownedJointIds.slice();
+      const joint = panel.mechanismSrv.joints.find((j) => j.id === ids[1]);
+      joint.x += 900;
+      joint.y -= 700;
+      panel.mechanismSrv.updateMechanism(true);
+      return { ids, at: [Math.round(joint.x), Math.round(joint.y)], says: panel.solution.ownership() };
+    }`
+  );
+  const link = await p.evaluate(() =>
+    ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
+  );
+  const opened = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+  opened.on('pageerror', (error) => errors.push(String(error)));
+  await opened.goto(BASE + '/?' + link, { waitUntil: 'domcontentloaded' });
+  await waitForReady(opened);
+  await dismissTour(opened);
+  await opened.locator('.tabButton', { hasText: 'Synthesis' }).click();
+  await opened.waitForTimeout(700);
+  // A reopened link has the design but not the search, and Insert with nothing
+  // chosen refuses for that reason rather than the one being tested.
+  await opened.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+  await opened.waitForFunction(
+    () => !ng.getComponent(document.querySelector('app-synthesis-panel')).solution.generating,
+    null,
+    { timeout: 20000 }
+  );
+  const after = await ask(
+    opened,
+    `(panel) => {
+      const ids = panel.design.ownedJointIds.slice();
+      const joint = panel.mechanismSrv.joints.find((j) => j.id === ids[1]);
+      return {
+        says: panel.solution.ownership(),
+        at: joint ? [Math.round(joint.x), Math.round(joint.y)] : null,
+        // 'edited' is the answer that makes Insert ask first rather than act.
+        wouldAsk: panel.solution.insert() === 'edited',
+        stillThere: (() => {
+          const now = panel.mechanismSrv.joints.find((j) => j.id === ids[1]);
+          return now ? [Math.round(now.x), Math.round(now.y)] : null;
+        })(),
+      };
+    }`
+  );
+  check(
+    'a joint moved by hand is still known to have been moved after a reload',
+    moved.says === 'edited' &&
+      after.says === 'edited' &&
+      after.wouldAsk &&
+      JSON.stringify(after.at) === JSON.stringify(moved.at) &&
+      JSON.stringify(after.stillThere) === JSON.stringify(moved.at),
+    { moved, after }
+  );
+  await opened.close();
+  await p.close();
+}
+
+{
+  /*
+    The other half of the same fact, and the half that tells the two apart.
+
+    Without a baseline the safest answer to "has this been moved" is "ask" --
+    which is what an unmoved linkage would also get, so a design that has
+    forgotten everything looks exactly like one that remembers a move. This is
+    the case that separates them: nothing was touched, so nothing should be
+    asked.
+  */
+  const p = await solvedPage();
+  await ask(p, '(panel) => { panel.solution.driverWanted = false; panel.solution.insert(); }');
+  await p.waitForTimeout(400);
+  const link = await p.evaluate(() =>
+    ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
+  );
+  await p.close();
+  const opened = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+  opened.on('pageerror', (error) => errors.push(String(error)));
+  await opened.goto(BASE + '/?' + link, { waitUntil: 'domcontentloaded' });
+  await waitForReady(opened);
+  await dismissTour(opened);
+  await opened.locator('.tabButton', { hasText: 'Synthesis' }).click();
+  await opened.waitForTimeout(700);
+  await opened.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+  await opened.waitForFunction(
+    () => !ng.getComponent(document.querySelector('app-synthesis-panel')).solution.generating,
+    null,
+    { timeout: 20000 }
+  );
+  const untouched = await ask(
+    opened,
+    `(panel) => ({
+      says: panel.solution.ownership(),
+      replacedWithoutAsking: panel.solution.insert() === 'done',
+    })`
+  );
+  check(
+    'a linkage nobody touched is still known to be untouched after a reload',
+    untouched.says === 'ours' && untouched.replacedWithoutAsking,
+    untouched
+  );
+  await opened.close();
+}
+
+{
+  // Insert one, replace it with another, undo. What comes back is the first
+  // linkage exactly as it was written, so it is ours and not an edit -- which
+  // it could not be while the baseline described whatever had been inserted
+  // most recently rather than what is actually on the grid.
+  const p = await solvedPage();
+  const outcome = await ask(
+    p,
+    `(panel) => {
+      panel.solution.driverWanted = false;
+      panel.solution.insert();
+      const first = panel.design.ownedJointIds.slice();
+      panel.solution.toggleDriver();
+      panel.solution.insert();
+      return { first, second: panel.design.ownedJointIds.slice() };
+    }`
+  );
+  await p.evaluate(() => ng.getComponent(document.querySelector('app-top-bar')).undo());
+  await p.waitForTimeout(900);
+  const restored = await ask(p, '(panel) => panel.solution.ownership()');
+  check(
+    'undoing a replacement gives back a linkage that is ours, not one that looks edited',
+    outcome.first.length === 4 && outcome.second.length === 6 && restored === 'ours',
+    { ...outcome, restored }
+  );
+  await p.close();
+}
+
+{
+  /*
+    The switch offered instead of a second card has to do the second card's job.
+
+    Collapsing Open and Crossed into one solution is only right if the control
+    that replaced the extra card actually reaches the other assembly -- and the
+    check that they are not two cards says nothing about that. Run on a
+    construction that really has both: on one where the second assembly cannot
+    be built, the switch is correctly stuck, which would prove nothing either
+    way.
+  */
+  const p = await solvedPage();
+  const picked = await ask(
+    p,
+    `(panel) => {
+      // With defects allowed, which is a setting the panel offers. Held to the
+      // strict list, this design's constructions each have one assembly that
+      // can be built, so the switch is correctly stuck and proves nothing.
+      panel.design.allowDefect = true;
+      panel.solution.changed.next();
+      const both = panel.solution
+        .candidates()
+        .find((c) => panel.solution.allAssemblies().filter((a) => a.pair === c.pair).length === 2);
+      if (!both) return null;
+      panel.solution.pick(both.key);
+      return both.key;
+    }`
+  );
+  await p.waitForTimeout(400);
+  const row = p
+    .locator('#synthesisPanel .row', { hasText: 'Assembly branch' })
+    .locator('.seg__opt');
+  const labels = () =>
+    ask(p, '(panel) => JSON.stringify(panel.branchOptions().map((o) => [o.label, o.active]))');
+  const before = picked ? await labels() : null;
+  let moved = null;
+  let restored = null;
+  if (picked && (await row.count()) === 2) {
+    const off = (await row.nth(0).getAttribute('class')).includes('--on') ? 1 : 0;
+    await row.nth(off).click();
+    await p.waitForTimeout(400);
+    moved = await labels();
+    await row.nth(off === 1 ? 0 : 1).click();
+    await p.waitForTimeout(400);
+    restored = await labels();
+  }
+  check(
+    'the Open/Crossed switch reaches the assembly it replaced a card for',
+    !!picked && (await row.count()) === 2 && moved !== before && restored === before,
+    { picked, before, moved, restored }
   );
   await p.close();
 }

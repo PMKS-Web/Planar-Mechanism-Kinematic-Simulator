@@ -212,7 +212,9 @@ describe('rankCandidates', () => {
     const ranked = rankCandidates(candidates);
     expect(ranked.length).toBeGreaterThan(0);
     expect(ranked.length).toBeLessThanOrEqual(8);
-    expect(ranked[0].name).toBe('A');
+    // The whole sequence. Asking only whether the first is A is satisfied by
+    // every one of them being A, which is not an order.
+    expect(ranked.map((c) => c.name).join('')).toBe('ABCDEFGH'.slice(0, ranked.length));
     ranked.forEach((c, i) => {
       if (i === 0) return;
       const before = ranked[i - 1];
