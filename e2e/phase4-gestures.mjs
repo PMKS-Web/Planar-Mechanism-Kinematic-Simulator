@@ -164,7 +164,19 @@ await page.waitForTimeout(400);
 const panelText = await page.evaluate(() => document.body.innerText);
 checkThat('the panel offers Slider and Weld', /Slider/.test(panelText) && /Weld/.test(panelText));
 checkThat('and no longer offers a separate Unweld button', !/Unweld\b/.test(panelText));
-checkThat('it names what the slot is cut into', /Slot on:/.test(panelText), panelText.slice(0, 0));
+// The panel used to say "Slot on: CD" in words. The canvas draws the slot on
+// its carrier, so the panel no longer repeats it -- but the gesture still has
+// to have attached it, and that is what this ever checked.
+const slotCarrier = await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  const slot = srv.joints.find((j) => j.constructor.name === 'PrisJoint');
+  return slot ? `${slot.id} -> ${slot.carrier?.id ?? 'nothing'}` : 'no slot';
+});
+checkThat(
+  'the slot is cut into the link it was dropped on',
+  /-> \w/.test(slotCarrier),
+  slotCarrier
+);
 await page.screenshot({ path: `${OUT}/4-panel.png` });
 
 /** Toggle a panel row by its visible label. */
