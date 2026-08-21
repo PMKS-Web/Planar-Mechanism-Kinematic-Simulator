@@ -1089,6 +1089,33 @@
             [attr.r]="0.15 * settings.objectScale"
             [attr.stroke-width]="svgGrid.scaleWithZoom(1.4)"
           />
+          <!-- Where this position is measured from, and what it turns about.
+               Back, Center and Front are otherwise a change nobody can see:
+               the numbers jump and the bar does not, so it is impossible to
+               tell which of the three the coordinates belong to. -->
+          <g class="synthRef" pointer-events="none">
+            <circle
+              class="synthRefRing"
+              [attr.cx]="bar.refX"
+              [attr.cy]="bar.refY"
+              [attr.r]="svgGrid.scaleWithZoom(6)"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(1.6)"
+            />
+            <line
+              [attr.x1]="bar.refX - svgGrid.scaleWithZoom(9)"
+              [attr.y1]="bar.refY"
+              [attr.x2]="bar.refX + svgGrid.scaleWithZoom(9)"
+              [attr.y2]="bar.refY"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(1.6)"
+            />
+            <line
+              [attr.x1]="bar.refX"
+              [attr.y1]="bar.refY - svgGrid.scaleWithZoom(9)"
+              [attr.x2]="bar.refX"
+              [attr.y2]="bar.refY + svgGrid.scaleWithZoom(9)"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(1.6)"
+            />
+          </g>
         </g>
       }
 

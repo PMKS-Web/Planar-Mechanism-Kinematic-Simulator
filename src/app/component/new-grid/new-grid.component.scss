@@ -237,6 +237,21 @@
     }
   }
 
+  // The datum each position's coordinates are measured from. Drawn as a
+  // crosshair rather than another circle, so it is not read as a third pin.
+  .synthRef {
+    stroke: rgba(0, 0, 0, 0.55);
+
+    line {
+      stroke: inherit;
+    }
+  }
+
+  .synthRefRing {
+    fill: #fff;
+    stroke: inherit;
+  }
+
   .synthPosePin {
     fill: #ffecb2;
     stroke: rgba(0, 0, 0, 0.4);

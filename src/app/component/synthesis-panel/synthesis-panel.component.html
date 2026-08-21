@@ -215,15 +215,27 @@
                       {{ design.regionDraw ? 'Cancel' : 'Redraw' }}
                     </button>
                   </div>
+                  <!-- Four numbers on one row cannot each carry a unit and
+                       still show their digits, so the unit is said once for
+                       all of them and the boxes hold plain numbers. -->
                   <div class="region__fields">
                     <span class="region__tag">X</span>
-                    <label class="field field--tiny"><input type="text" formControlName="rx" /></label>
+                    <label class="field field--tiny"
+                      ><input type="text" inputmode="decimal" formControlName="rx"
+                    /></label>
                     <span class="region__tag">Y</span>
-                    <label class="field field--tiny"><input type="text" formControlName="ry" /></label>
+                    <label class="field field--tiny"
+                      ><input type="text" inputmode="decimal" formControlName="ry"
+                    /></label>
                     <span class="region__tag">W</span>
-                    <label class="field field--tiny"><input type="text" formControlName="rw" /></label>
+                    <label class="field field--tiny"
+                      ><input type="text" inputmode="decimal" formControlName="rw"
+                    /></label>
                     <span class="region__tag">H</span>
-                    <label class="field field--tiny"><input type="text" formControlName="rh" /></label>
+                    <label class="field field--tiny"
+                      ><input type="text" inputmode="decimal" formControlName="rh"
+                    /></label>
+                    <span class="region__unit">{{ lengthUnit }}</span>
                   </div>
                 </div>
               }
@@ -313,7 +325,9 @@
                   <span class="card__reach" [class.card__reach--ok]="c.defectFree">
                     {{ c.reachText }}
                   </span>
-                  <span class="card__metric">{{ c.metric }}</span>
+                  <span class="card__metric" [class.card__metric--binds]="c.binds">{{
+                    c.metric
+                  }}</span>
                 </button>
               }
             </div>

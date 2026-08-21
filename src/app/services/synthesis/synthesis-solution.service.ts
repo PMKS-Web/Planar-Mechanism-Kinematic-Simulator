@@ -258,6 +258,53 @@ export class SynthesisSolutionService {
     return 'refusal' in result ? undefined : result.dyad;
   }
 
+  /**
+   * How far the preview may actually be driven.
+   *
+   * Without a driver this is the four-bar's own travel. With one it is less,
+   * and has to be: the dyad is sized to carry the input across the span the
+   * three positions occupy, not across a whole revolution, so beyond that span
+   * its crank and coupler no longer reach the pin they drive. The elbow simply
+   * has no solution there -- and the preview, solving it per frame, dropped the
+   * driver's two links for those frames and flickered.
+   *
+   * Walked outward from position 1, so what is offered is one continuous run
+   * the machine could really make.
+   */
+  drivenRange(): { from: number; to: number; full: boolean } {
+    const cand = this.driven();
+    if (!cand) return { from: 0, to: 360, full: false };
+    const dyad = this.dyad();
+    if (!dyad) return cand.range;
+
+    const key = cand.key + ':' + this.driveOnFarPin + ':' + this.design.searchKey();
+    if (this.driverRangeKey === key) return this.driverRange;
+
+    const closes = (deg: number): boolean => {
+      const solved = solveFourBar(cand, deg, cand.sign);
+      if (!solved) return false;
+      return meet(dyad.ground, dyad.crankLength, solved.B, dyad.couplerLength) !== null;
+    };
+    const start = cand.thetas[0];
+    let from = start;
+    let to = start;
+    const STEP = 0.5;
+    for (let deg = start + STEP; deg <= cand.range.to; deg += STEP) {
+      if (!closes(deg)) break;
+      to = deg;
+    }
+    for (let deg = start - STEP; deg >= cand.range.from; deg -= STEP) {
+      if (!closes(deg)) break;
+      from = deg;
+    }
+    this.driverRangeKey = key;
+    this.driverRange = { from, to, full: cand.range.full && to - from >= 359 };
+    return this.driverRange;
+  }
+
+  private driverRangeKey = '';
+  private driverRange = { from: 0, to: 360, full: false };
+
   /** Where the preview stands now, in crank degrees. */
   currentPhase(): number {
     const cand = this.driven();

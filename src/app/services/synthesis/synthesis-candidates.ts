@@ -27,6 +27,22 @@ import { MODEL_SCALE } from 'src/app/model/render-scale';
 export const POSE_TOLERANCE = 0.18 * MODEL_SCALE;
 
 /**
+ * The worst transmission angle a solution may have and still be offered.
+ *
+ * The transmission angle is how squarely the coupler pushes the rocker. As it
+ * goes to zero the linkage approaches a dead point: the force needed to keep
+ * it moving goes to infinity, and the pin it drives races across the drawing
+ * for a fraction of a degree of crank. Such a four-bar passes through its
+ * positions on paper and stalls at them in metal -- which is exactly what
+ * "it claims all three and only gets to the first" looks like.
+ *
+ * Fifteen degrees is deliberately permissive. Machine design usually wants
+ * forty-five and treats thirty as the floor for a working linkage; this only
+ * rules out the ones that are stuck.
+ */
+export const BINDING_ANGLE = 15;
+
+/**
  * Where the two coupler pins may sit on the end-effector link, as fractions of
  * its length from the back end. 0 and 1 are its ends; outside that range the
  * pin is on an extension of the link, which is a real and often better
@@ -82,6 +98,8 @@ export interface FourBarCandidate {
   range: { from: number; to: number; full: boolean };
   /** The worst transmission angle over the working stroke, in degrees. */
   minTransmission: number;
+  /** Whether that angle is so tight the linkage stalls rather than turns. */
+  binds: boolean;
   kind: string;
   size: number;
 }
@@ -162,10 +180,28 @@ export function solveFourBar(
 ): { A: Coord; B: Coord; C: Coord; D: Coord } | null {
   const B = pointOn(cand.A, cand.r1, (thetaDeg * Math.PI) / 180);
   const pair = meet(B, cand.d, cand.D, cand.r2);
+  // The one honest failure: the coupler and the rocker cannot reach each other,
+  // so the loop does not close at all. That is where travel ends.
   if (!pair) return null;
   const want = sign === undefined ? cand.sign : sign;
-  const C = pair.find((p) => Math.sign(cross(B, cand.D, p)) === want);
-  if (!C) return null;
+  /*
+    Choose between the two intersections, always.
+
+    This used to look for the one on the wanted side and give up if it found
+    neither -- which sounds equivalent and is not. Near a dead point the two
+    intersections converge, `cross` goes to zero, and its sign is whatever the
+    rounding says; both can come back on the same side, and the search then
+    reported the loop as unclosable at an angle it closes at perfectly well.
+    Downstream that read as travel ending early, or as the linkage jumping to
+    its other assembly for a frame -- a solution that promised three positions
+    and stopped at the first.
+
+    Picking by which side the first intersection is on always yields one of the
+    two, and yields the same one the sign test did wherever the sign test meant
+    anything. Where it did not -- the two points within rounding of each other
+    -- either is right.
+  */
+  const C = Math.sign(cross(B, cand.D, pair[0])) === want ? pair[0] : pair[1];
   return { A: cand.A, B, C, D: cand.D };
 }
 
@@ -189,20 +225,30 @@ function attach(pose: PosePoint, u: number): Coord {
  * defect, and it is the single most important thing to tell a reader
  * comparing candidates.
  */
+/**
+ * Whether a crank angle lies inside a stretch of continuous travel.
+ *
+ * Angles come out of `atan2` in (-180, 180] while a walked range can run
+ * anywhere, so the same direction has to be tried a turn either way before it
+ * can be called out of reach.
+ */
+function withinTravel(theta: number, range: { from: number; to: number; full: boolean }): boolean {
+  if (range.full) return true;
+  const slack = 1e-6;
+  for (let turn = -2; turn <= 2; turn++) {
+    const at = theta + turn * 360;
+    if (at >= range.from - slack && at <= range.to + slack) return true;
+  }
+  return false;
+}
+
 export function assess(cand: FourBarCandidate): void {
   const branch = cand.sign;
   cand.thetas = cand.ptsA.map((p) => (Math.atan2(p.y - cand.A.y, p.x - cand.A.x) * 180) / Math.PI);
-  cand.errors = cand.ptsB.map((target, i) => {
-    const sol = solveFourBar(cand, cand.thetas[i], branch);
-    return sol ? distance(sol.C, target) : Infinity;
-  });
-  cand.onBranch = cand.errors.map((e) => e < POSE_TOLERANCE);
-  cand.onBranchCount = cand.onBranch.filter(Boolean).length;
-  cand.defectFree = cand.onBranchCount === 3;
 
   // How far the crank turns from position 1 before the loop can no longer be
   // closed. Walked rather than solved because the limit is where two circles
-  // stop reaching, and walking outward from a pose we know closes cannot
+  // stop reaching, and walking outward from a position we know closes cannot
   // wander onto a disconnected stretch of the same curve.
   const start = cand.thetas[0];
   let from = start;
@@ -220,6 +266,28 @@ export function assess(cand: FourBarCandidate): void {
   // and those are the ends that were walked.
   const full = to - from >= 359;
   cand.range = full ? { from: start, to: start + 360, full: true } : { from, to, full: false };
+
+  /*
+    Reached means driveable to, not merely solvable at.
+
+    These two came apart badly. The loop can close at a crank angle the crank
+    cannot actually turn to: the circles intersect again on a stretch of the
+    curve the linkage can only get onto by being taken apart, which is the very
+    thing a branch defect is. Asking only whether the loop closes therefore
+    called such a candidate defect-free, and the reader got a linkage that
+    promised three positions and stopped at the first.
+
+    So a position counts when the loop closes there on this assembly AND its
+    crank angle lies inside the travel walked above -- one continuous run,
+    starting from the position the linkage is drawn in.
+  */
+  cand.errors = cand.ptsB.map((target, i) => {
+    if (!withinTravel(cand.thetas[i], cand.range)) return Infinity;
+    const sol = solveFourBar(cand, cand.thetas[i], branch);
+    return sol ? distance(sol.C, target) : Infinity;
+  });
+  cand.onBranch = cand.errors.map((e) => e < POSE_TOLERANCE);
+  cand.onBranchCount = cand.onBranch.filter(Boolean).length;
 
   // The transmission angle over the stroke that matters -- the span the three
   // positions actually occupy, not the whole range. It is how squarely the
@@ -239,6 +307,11 @@ export function assess(cand: FourBarCandidate): void {
     minMu = Math.min(minMu, mu);
   }
   cand.minTransmission = Math.round(minMu);
+  cand.binds = cand.minTransmission < BINDING_ANGLE;
+  // Reaching all three is not enough on its own: a linkage that has to pass
+  // through a dead point to get between them arrives at the first position and
+  // stops there, which is not what "reaches all 3" promises anybody.
+  cand.defectFree = cand.onBranchCount === 3 && !cand.binds;
   cand.kind = cand.range.full ? 'crank-rocker' : 'double-rocker';
   cand.size = Math.max(cand.r1, cand.r2, cand.g);
 }
@@ -404,6 +477,7 @@ export function enumerateCandidates(search: CandidateSearch): CandidateResult {
         defectFree: false,
         range: { from: 0, to: 0, full: false },
         minTransmission: 0,
+        binds: false,
         kind: '',
         size: 0,
       };

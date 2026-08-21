@@ -39,6 +39,8 @@ interface CandidateCard {
   selected: boolean;
   reachText: string;
   defectFree: boolean;
+  /** Whether it stalls at a dead point on the way between positions. */
+  binds: boolean;
   metric: string;
 }
 
@@ -222,10 +224,10 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     const r = this.design.region;
     this.regionForm.setValue(
       {
-        rx: this.lengthText(r.x),
-        ry: this.lengthText(r.y),
-        rw: this.lengthText(r.w),
-        rh: this.lengthText(r.h),
+        rx: this.plain(r.x),
+        ry: this.plain(r.y),
+        rw: this.plain(r.w),
+        rh: this.plain(r.h),
       },
       { emitEvent: false }
     );
@@ -234,9 +236,16 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
 
   private readRegionFromForm(): void {
     const unit = this.settings.lengthUnit.getValue();
-    const parsed = (['rx', 'ry', 'rw', 'rh'] as const).map((key) =>
-      this.nup.parseModelLengthString(this.regionForm.get(key)!.value ?? '', unit)
-    );
+    // The four boxes hold bare numbers -- the unit is said once, on the row --
+    // so a value is read as being in whatever unit the drawing is in. A reader
+    // who types one anyway is still understood.
+    const parsed = (['rx', 'ry', 'rw', 'rh'] as const).map((key) => {
+      const typed = (this.regionForm.get(key)!.value ?? '').trim();
+      return this.nup.parseModelLengthString(
+        /[a-z]/i.test(typed) ? typed : `${typed} ${this.lengthUnit}`,
+        unit
+      );
+    });
     if (parsed.some(([ok]) => !ok)) {
       this.readFromModel();
       return;
@@ -498,11 +507,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   }
 
   regionSummary(): string {
-    const r = this.design.region;
-    return (
-      `${this.plain(r.w)} × ${this.plain(r.h)} ${this.lengthUnit} at ` +
-      `(${this.plain(r.x)}, ${this.plain(r.y)}) — drag the box or its corners`
-    );
+    return 'Drag the box on the grid, or its corners.';
   }
 
   toggleRegionDraw(): void {
@@ -671,9 +676,14 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       thumbCoupler: `M ${tx(c.B)} ${ty(c.B)} L ${tx(c.C)} ${ty(c.C)}`,
       selected: !!picked && picked.key === c.key,
       defectFree: c.defectFree,
-      reachText: c.defectFree ? 'all 3, one assembly' : `branch defect · ${c.onBranchCount} of 3`,
+      binds: c.binds,
+      reachText: c.defectFree
+        ? 'all 3, one assembly'
+        : c.binds && c.onBranchCount === 3
+          ? 'all 3, but stalls between them'
+          : `branch defect · ${c.onBranchCount} of 3`,
       metric:
-        `min angle ${c.minTransmission}° · ` +
+        (c.binds ? `stalls at ${c.minTransmission}° · ` : `min angle ${c.minTransmission}° · `) +
         (c.range.full ? 'full turn' : `${Math.round(c.range.to - c.range.from)}° swing`),
     };
   }
@@ -816,7 +826,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     if (!this.solution.playing) return;
     const cand = this.solution.driven();
     if (!cand) return;
-    const range = cand.range;
+    const range = this.solution.drivenRange();
     const stride = 1.4 * (this.solution.clockwise ? 1 : -1);
     let phase = this.solution.currentPhase() + this.direction * stride;
     if (range.full) {
@@ -832,11 +842,11 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   };
 
   scrubMin(): number {
-    return Math.round(this.solution.driven()?.range.from ?? 0);
+    return Math.round(this.solution.drivenRange().from);
   }
 
   scrubMax(): number {
-    return Math.round(this.solution.driven()?.range.to ?? 360);
+    return Math.round(this.solution.drivenRange().to);
   }
 
   scrubValue(): number {
@@ -850,15 +860,16 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   alongPercent(): string {
     const cand = this.solution.driven();
     if (!cand) return '0%';
-    const span = Math.max(1e-6, cand.range.to - cand.range.from);
-    return (((this.solution.currentPhase() - cand.range.from) / span) * 100).toFixed(1) + '%';
+    const range = this.solution.drivenRange();
+    const span = Math.max(1e-6, range.to - range.from);
+    return (((this.solution.currentPhase() - range.from) / span) * 100).toFixed(1) + '%';
   }
 
   /** Where each position falls along the crank's travel, for the track marks. */
   poseTicks(): { percent: string; reached: boolean }[] {
     const cand = this.solution.driven();
     if (!cand) return [];
-    const range = cand.range;
+    const range = this.solution.drivenRange();
     const span = Math.max(1e-6, range.to - range.from);
     return cand.thetas.map((theta, i) => {
       let a = theta;
@@ -877,9 +888,10 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   previewNote(): string {
     const cand = this.solution.driven();
     if (!cand) return '';
-    return cand.range.full
+    const range = this.solution.drivenRange();
+    return range.full
       ? 'full crank rotation'
-      : `rocks through ${Math.round(cand.range.to - cand.range.from)}°`;
+      : `rocks through ${Math.round(range.to - range.from)}°`;
   }
 
   // --- committing ----------------------------------------------------------

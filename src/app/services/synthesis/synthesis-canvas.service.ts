@@ -11,8 +11,11 @@ import { COR } from './synthesis-util';
 /** A bar drawn on the grid: two pins, a fill, and what it is called. */
 export interface PoseBar {
   id: number;
-  /** The bar's outline, the same shape a two-joint link is drawn with. */
+  /** The bar's outline: round at the back, pointed at the front. */
   d: string;
+  /** The point the coordinates describe, and the point it turns about. */
+  refX: number;
+  refY: number;
   x1: number;
   y1: number;
   x2: number;
@@ -86,6 +89,38 @@ const NEUTRAL_BAR = '#c5cae9';
  * line before, which matched by arithmetic rather than by construction and
  * looked subtly unlike every other bar on the canvas.
  */
+/**
+ * A position's own outline: round at the back, pointed at the front.
+ *
+ * A capsule is unchanged by turning it half a revolution, so a position that
+ * had been flipped end for end looked exactly like one that had not -- and a
+ * design that solves perfectly once position 2 is turned 180 degrees is
+ * impossible to spot, because the drawing of the wrong one and the drawing of
+ * the right one are the same picture. Front and back are told apart here so
+ * that the flip is visible before it is puzzled over.
+ */
+function poseBarPath(x1: number, y1: number, x2: number, y2: number, r: number): string {
+  const theta = Math.atan2(y2 - y1, x2 - x1);
+  const nx = r * Math.sin(theta);
+  const ny = r * Math.cos(theta);
+  // Narrower at the front than the back, and drawn to a point past the front
+  // pin. A tip alone was a few pixels of difference at ordinary zoom -- too
+  // little to notice, which is no use for a mark whose whole job is to be
+  // noticed. The taper is legible at any size the link is drawn at.
+  const front = 0.5 * r;
+  const fx = front * Math.sin(theta);
+  const fy = front * Math.cos(theta);
+  const tipX = x2 + 0.95 * r * Math.cos(theta);
+  const tipY = y2 + 0.95 * r * Math.sin(theta);
+  return (
+    `M ${x1 - nx} ${y1 + ny} ` +
+    `A ${r} ${r} 0 1 1 ${x1 + nx} ${y1 - ny} ` +
+    `L ${x2 + fx} ${y2 - fy} ` +
+    `L ${tipX} ${tipY} ` +
+    `L ${x2 - fx} ${y2 + fy} Z`
+  );
+}
+
 function capsulePath(x1: number, y1: number, x2: number, y2: number, r: number): string {
   const theta = Math.atan2(y2 - y1, x2 - x1);
   const nx = r * Math.sin(theta);
@@ -154,13 +189,15 @@ export class SynthesisCanvasService {
       const reached = cand ? cand.onBranch[pose.id - 1] : undefined;
       return {
         id: pose.id,
-        d: capsulePath(
+        d: poseBarPath(
           pose.posBack.x,
           pose.posBack.y,
           pose.posFront.x,
           pose.posFront.y,
           this.settings.objectScale / 4
         ),
+        refX: pose.position.x,
+        refY: pose.position.y,
         x1: pose.posBack.x,
         y1: pose.posBack.y,
         x2: pose.posFront.x,
@@ -263,7 +300,7 @@ export class SynthesisCanvasService {
           ? { x: this.cursor.x - dx, y: this.cursor.y - dy }
           : { x: this.cursor.x - dx / 2, y: this.cursor.y - dy / 2 };
     return {
-      d: capsulePath(
+      d: poseBarPath(
         anchor.x,
         anchor.y,
         anchor.x + dx,
@@ -363,10 +400,12 @@ export class SynthesisCanvasService {
   couplerTrace(): string {
     const cand = this.previewing() ? this.solution.driven() : null;
     if (!cand) return '';
-    const span = cand.range.to - cand.range.from;
+    // The travel the preview can actually make, which a driver narrows.
+    const range = this.solution.drivenRange();
+    const span = range.to - range.from;
     let d = '';
     for (let k = 0; k <= 60; k++) {
-      const solved = solveFourBar(cand, cand.range.from + (span * k) / 60, cand.sign);
+      const solved = solveFourBar(cand, range.from + (span * k) / 60, cand.sign);
       if (!solved) continue;
       const midX = (solved.B.x + solved.C.x) / 2;
       const midY = (solved.B.y + solved.C.y) / 2;
