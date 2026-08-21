@@ -368,11 +368,19 @@ check(
 );
 check(
   'drawn broken, because it is still only an offer',
-  await page.evaluate(() =>
-    [...document.querySelectorAll('#synthesisPreview path.synthBar')].every(
-      (bar) => bar.classList.contains('synthBar--proposed') && bar.getAttribute('stroke-dasharray')
-    )
-  )
+  await page.evaluate(() => {
+    const bars = [...document.querySelectorAll('#synthesisPreview path.synthBar')];
+    // Rendered at all, first. Asking only whether every bar is dashed is a
+    // question an empty canvas answers yes to, so losing the class -- or the
+    // paths -- would have read as a pass.
+    return (
+      bars.length >= 3 &&
+      bars.every(
+        (bar) =>
+          bar.classList.contains('synthBar--proposed') && bar.getAttribute('stroke-dasharray')
+      )
+    );
+  })
 );
 check(
   'but still nothing has been added to the drawing',
@@ -1372,12 +1380,28 @@ const ask = (p, fn) =>
       const replacement = grid.mechanismSrv.createRevJoint('3', '3');
       grid.mechanismSrv.mergeToJoints([replacement]);
       grid.mechanismSrv.updateMechanism(true);
+      const afterwards = panel.solution.ownership();
+      const was = { id: replacement.id, x: replacement.x, y: replacement.y };
+      // And then actually replace, which is the moment the reader's joint
+      // would be taken away. Reporting "still entangled" and stopping there
+      // left the deletion itself untested.
+      panel.solution.insert(true);
+      // By where it is, not by what it is called. Removing it frees its letter
+      // and the very next insert hands that letter straight back out, so a
+      // joint called D exists either way -- somewhere else, belonging to
+      // somebody else. Asking only for the name reported the deletion as a
+      // survival.
+      const survivor = panel.mechanismSrv.joints.find(
+        (j) => Math.hypot(j.x - was.x, j.y - was.y) < 1
+      );
       return {
         ids,
         cutInto,
         reusedTheLetter: replacement.id === ids[3],
-        afterwards: panel.solution.ownership(),
-        stillHere: panel.mechanismSrv.joints.some((j) => j.id === replacement.id),
+        afterwards,
+        was,
+        survivedTheReplace: !!survivor,
+        survivorId: survivor ? survivor.id : null,
       };
     }`
   );
@@ -1385,7 +1409,88 @@ const ask = (p, fn) =>
     'a joint that takes back a deleted id does not become ours to delete',
     outcome.cutInto === 'entangled' &&
       outcome.reusedTheLetter &&
-      outcome.afterwards === 'entangled',
+      outcome.afterwards === 'entangled' &&
+      outcome.survivedTheReplace,
+    outcome
+  );
+  await p.close();
+}
+
+{
+  /*
+    A design that really does refuse a driver, so the greyed switch is tested
+    against both answers.
+
+    The sweep earlier in this file only ever meets designs that accept one, so
+    it can say the switch agrees with the panel without ever seeing the switch
+    turned off -- removing the binding would not have failed it. These three
+    positions need the input to swing more than half a turn between them, which
+    is the refusal `driverDyadFor` exists to give.
+  */
+  const p = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+  p.on('pageerror', (error) => errors.push(String(error)));
+  await p.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await waitForReady(p);
+  await dismissTour(p);
+  await p.locator('.tabButton', { hasText: 'Synthesis' }).click();
+  await p.waitForTimeout(600);
+  await p.locator('#synthesisPanel .kindCard--on').click();
+  await p.waitForTimeout(400);
+  await ask(
+    p,
+    `(panel) => {
+      const S = 200;
+      [[0, 0, 0], [1, 2, 5], [2, 4, 60]].forEach(([x, y]) =>
+        panel.design.placePose({ x: x * S, y: y * S, applyMatrix() {} })
+      );
+      [0, 5, 60].forEach((t, i) => (panel.design.getPose(i + 1).thetaDegrees = t));
+      panel.design.valueChanges.next(true);
+    }`
+  );
+  await p.waitForTimeout(300);
+  await p.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+  await p.waitForFunction(
+    () => !ng.getComponent(document.querySelector('app-synthesis-panel')).solution.generating,
+    null,
+    { timeout: 20000 }
+  );
+  const present = await ask(
+    p,
+    `(panel) => {
+      const wanted = panel.solution.candidates().find((c) => c.key === '0:1:-1');
+      if (!wanted) return { missing: panel.solution.candidates().map((c) => c.key) };
+      panel.solution.pick(wanted.key);
+      return {};
+    }`
+  );
+  // Read after Angular has drawn it: asking in the same turn as the change
+  // reports the switch as it was before, which is how this first "found" a
+  // binding that was never broken.
+  const read = () =>
+    ask(
+      p,
+      `(panel) => {
+        const row = [...document.querySelectorAll('#synthesisPanel .row')].find((r) =>
+          r.textContent.includes('Add driver')
+        );
+        const button = row && row.querySelector('.switch');
+        return { refused: !!panel.driverRefusal, disabled: !!(button && button.disabled) };
+      }`
+    );
+  await ask(p, '(panel) => panel.solution.setDriveOnFarPin(true)');
+  await p.waitForTimeout(400);
+  const far = await read();
+  await ask(p, '(panel) => panel.solution.setDriveOnFarPin(false)');
+  await p.waitForTimeout(400);
+  const near = await read();
+  const outcome = { ...present, far, near };
+  check(
+    'the switch is actually greyed on a design whose driver is refused',
+    !outcome.missing &&
+      outcome.far.refused &&
+      outcome.far.disabled &&
+      !outcome.near.refused &&
+      !outcome.near.disabled,
     outcome
   );
   await p.close();
