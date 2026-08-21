@@ -27,6 +27,8 @@ export interface PoseChip {
   text: string;
   dot: string;
   selected: boolean;
+  /** How wide the pill behind the words has to be, in screen pixels. */
+  width: number;
 }
 
 export interface Handle {
@@ -143,14 +145,20 @@ export class SynthesisCanvasService {
     return this.design.getAllPoses().map((pose) => {
       const reached = cand ? cand.onBranch[pose.id - 1] : undefined;
       const far = pose.posBack.x > pose.posFront.x ? pose.posBack : pose.posFront;
+      const text =
+        reached === undefined ? 'position ' + pose.id : reached ? 'reached' : 'needs reassembly';
       return {
         id: pose.id,
         x: far.x + 0.5 * this.settings.objectScale,
         y: Math.max(pose.posBack.y, pose.posFront.y) + 0.75 * this.settings.objectScale,
-        text:
-          reached === undefined ? 'position ' + pose.id : reached ? 'reached' : 'needs reassembly',
+        text,
         dot: reached === undefined ? '#8a90a0' : reached ? '#43a047' : '#f5a623',
         selected: this.design.selectedPose === pose.id,
+        // Estimated rather than measured: SVG cannot report a text width before
+        // it is laid out, and this only has to be wide enough that the pill
+        // does not clip the words. Roboto Medium at 13px runs a little over
+        // half its size per character, plus the numbered dot and its padding.
+        width: 30 + text.length * 6.9,
       };
     });
   }

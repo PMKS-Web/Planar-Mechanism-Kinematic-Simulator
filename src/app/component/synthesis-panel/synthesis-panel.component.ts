@@ -477,12 +477,20 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     this.readFromModel();
   }
 
+  /**
+   * How strict the search currently is.
+   *
+   * It used to read "2 of 3 required", which names an obligation the reader
+   * does not have: it looked like two of the three had to be switched on before
+   * anything would happen. What the number reports is how much is being asked
+   * of a solution, so it says that instead.
+   */
   requirementCount(): string {
     const n =
       (this.design.endsOnly ? 1 : 0) +
       (this.design.allowDefect ? 0 : 1) +
       (this.design.constrain ? 1 : 0);
-    return n + ' of 3 required';
+    return n === 0 ? 'nothing narrowing the search' : `${n} of 3 narrowing the search`;
   }
 
   regionSummary(): string {

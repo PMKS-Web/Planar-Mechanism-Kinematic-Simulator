@@ -78,7 +78,15 @@ export class SynthesisBuilderService {
 
   _COR: COR;
   _length: number; // length of the end-effector link
-  _selectedPose: number; // currently selected pose (1-3)
+  /**
+   * Which position row is selected, or 0 for none.
+   *
+   * Starts at none. A row highlighted before anything has been placed reads as
+   * "this is where your first position went", which is exactly what it is not:
+   * the first position does not exist until Add position has armed the canvas
+   * and a click has dropped it.
+   */
+  _selectedPose: number;
 
   poses: { [key: number]: SynthesisPose }; // a dictionary of poses, but including each pose is optional
 
@@ -88,7 +96,7 @@ export class SynthesisBuilderService {
     // start with a length of 5 user units, held in model units
     this._COR = COR.CENTER;
     this._length = 5 * MODEL_SCALE;
-    this._selectedPose = 1;
+    this._selectedPose = 0;
 
     // start with no defined poses
     this.poses = {};
@@ -352,7 +360,7 @@ export class SynthesisBuilderService {
       );
     });
     this.armed = false;
-    this.selectedPose = Math.min(this.selectedPose, Math.max(1, kept.length));
+    this.selectedPose = kept.length ? Math.min(this.selectedPose, kept.length) : 0;
     this.valueChanges.next(true);
   }
 
@@ -361,7 +369,7 @@ export class SynthesisBuilderService {
     this.poses = {};
     this._COR = COR.CENTER;
     this._length = 5 * MODEL_SCALE;
-    this._selectedPose = 1;
+    this._selectedPose = 0;
     this.stage = 'chooser';
     this.armed = false;
     this.regionDraw = false;
@@ -408,7 +416,9 @@ export class SynthesisBuilderService {
         () => this.length
       );
     });
-    this._selectedPose = Math.min(this._selectedPose, Math.max(1, decoded.poses.length));
+    // A decode is not a click, so it selects nothing: the design comes back as
+    // it was written, not as though a row had just been picked.
+    this._selectedPose = 0;
     this.valueChanges.next(true);
   }
 }

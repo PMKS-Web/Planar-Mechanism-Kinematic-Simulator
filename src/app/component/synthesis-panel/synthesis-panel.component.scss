@@ -354,12 +354,22 @@ $red: #e53935;
         flex: 0 0 214px;
       }
 
+      /* The three values on a position row share what is left of the row after
+         its number, the axis captions and the two icons, rather than each
+         holding a width of its own. Fixed widths meant every value had to be
+         sized for the longest one it might ever hold -- and they could not all
+         be, so whichever lost had its unit cut off. Sharing gives each of them
+         as much as there is. The angle takes a slightly larger share: "deg" is
+         a character longer than "cm", and an angle can want a sign and three
+         digits in front of it. */
       &--num {
-        flex: 0 0 76px;
+        flex: 1 1 0;
+        min-width: 0;
       }
 
       &--angle {
-        flex: 0 0 64px;
+        flex: 1.12 1 0;
+        min-width: 0;
       }
 
       &--tiny {
@@ -454,8 +464,10 @@ $red: #e53935;
     .poseRow {
       display: flex;
       align-items: center;
-      gap: 5px;
-      padding: 5px 6px;
+      /* Tighter than the panel's usual 5px: the row carries nine things and
+         the space belongs to the fields. */
+      gap: 4px;
+      padding: 5px 4px;
       border: 1.5px solid $edge;
       border-radius: 5px;
       background: #fff;
@@ -467,11 +479,11 @@ $red: #e53935;
       }
 
       &__n {
-        flex: 0 0 20px;
+        flex: 0 0 18px;
         display: flex;
         align-items: center;
         justify-content: center;
-        height: 20px;
+        height: 18px;
         border-radius: 10px;
         background: #dfe1e8;
         color: rgba(0, 0, 0, 0.45);
@@ -485,12 +497,12 @@ $red: #e53935;
       }
 
       &__axis {
-        flex: 0 0 10px;
+        flex: 0 0 9px;
         font-size: 14px;
         color: rgba(0, 0, 0, 0.6);
 
         &--angle {
-          flex: 0 0 14px;
+          flex: 0 0 12px;
           font-size: 15px;
           text-align: center;
         }

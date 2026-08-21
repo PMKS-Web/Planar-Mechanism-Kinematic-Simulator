@@ -31,6 +31,15 @@ import {
  * nudge of a coordinate, which made comparing two solutions impossible --
  * looking at the second one destroyed the first.
  */
+/**
+ * How long the search reports itself for, at the least.
+ *
+ * Not a delay on the work -- the work starts at once -- but a floor under how
+ * briefly the progress state may flash past. Under about a second the reader
+ * sees a button flicker rather than a search happen.
+ */
+const MIN_SEARCH_VISIBLE_MS = 1100;
+
 @Injectable({ providedIn: 'root' })
 export class SynthesisSolutionService {
   private design = inject(SynthesisBuilderService);
@@ -112,24 +121,44 @@ export class SynthesisSolutionService {
   /**
    * Run the search.
    *
-   * The first search is the one worth showing as work: it is the moment three
-   * positions become a set of machines. It is deliberately deferred a beat so
-   * the button can say so, and because the enumeration walks a full crank
-   * revolution for every candidate and would otherwise freeze the frame it was
-   * clicked on.
+   * The enumeration is real work -- it constructs a circle centre for every
+   * pair of pin positions and then walks a full crank revolution for each
+   * candidate -- but on a small design it finishes in well under a tenth of a
+   * second, and a button labelled "Generate solutions" that produces its answer
+   * in one frame reads as though nothing happened. So the progress state has a
+   * floor rather than a fake delay: the search starts immediately, and the bar
+   * stays up until it has been visible long enough to be read. A slower search
+   * simply takes longer, and the bar tells the truth about it.
    */
   generate(): void {
     if (this.generating || !this.design.isFullyDefined()) return;
     this.generating = true;
     this.changed.next();
     if (this.timer) clearTimeout(this.timer);
+    const started = Date.now();
+    // Off the frame the click landed on, so the bar is painted before the
+    // enumeration blocks the thread.
     this.timer = setTimeout(() => {
-      this.timer = undefined;
-      this.generating = false;
-      this.generated = true;
-      this.candidateKey = null;
-      this.changed.next();
-    }, 60);
+      this.warmCandidates();
+      const remaining = Math.max(0, MIN_SEARCH_VISIBLE_MS - (Date.now() - started));
+      this.timer = setTimeout(() => {
+        this.timer = undefined;
+        this.generating = false;
+        this.generated = true;
+        this.candidateKey = null;
+        this.changed.next();
+      }, remaining);
+    }, 30);
+  }
+
+  /** Do the search now, so the wait is spent on it rather than after it. */
+  private warmCandidates(): void {
+    const key = this.design.searchKey();
+    if (key === this.cacheKey) return;
+    const result = enumerateCandidates(this.design.search());
+    this.cacheKey = key;
+    this.cached = result.candidates;
+    this.cachedRejections = result.rejections;
   }
 
   /** Every candidate the current design admits, best first, at most eight. */

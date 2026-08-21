@@ -2101,7 +2101,7 @@ export class NewGridComponent implements OnDestroy {
         !wasDragging &&
         !this.synthPressTaken &&
         this.synthesisBuilder.armed &&
-        !this.pastDragThreshold($event)
+        this.pressDidNotTravel($event)
       ) {
         const at = this.svgGrid.screenToSVGfromXY($event.clientX, $event.clientY);
         this.synthesisBuilder.placePose(at);
@@ -2197,6 +2197,22 @@ export class NewGridComponent implements OnDestroy {
     }
     this.popJoint(target.id);
     return true;
+  }
+
+  /**
+   * Whether this press stayed put -- a click rather than a drag.
+   *
+   * Deliberately not `pastDragThreshold`, which also calls a press held for a
+   * tenth of a second a drag. That is right for a part already on the grid,
+   * where holding still is how you take hold of something, but wrong for
+   * dropping a position: aiming at a spot takes as long as it takes, and every
+   * click slower than 100ms was being thrown away -- which is why a position
+   * seemed to need several clicks to place. Distance is the only thing that
+   * tells the two gestures apart here.
+   */
+  private pressDidNotTravel($event: MouseEvent): boolean {
+    const from = new Coord(this.startX, this.startY);
+    return getDistance(from, new Coord($event.pageX, $event.pageY)) <= 10;
   }
 
   /**

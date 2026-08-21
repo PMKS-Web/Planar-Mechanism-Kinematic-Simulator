@@ -1159,23 +1159,44 @@
       <g id="synthesisChips" pointer-events="none">
         @for (chip of synthCanvas.poseChips(); track chip.id) {
           <!-- Placed in model coordinates, then flipped back so the words read
-               the right way up inside the grid's own y-flip. -->
+               the right way up inside the grid's own y-flip. A filled pill
+               rather than bare text: it is read against whatever the drawing
+               puts behind it, and grey words over a link are words nobody can
+               read. -->
           <g [attr.transform]="'translate(' + chip.x + ',' + chip.y + ') scale(1,-1)'">
+            <rect
+              class="synthChip"
+              [class.synthChip--sel]="chip.selected"
+              [attr.x]="svgGrid.scaleWithZoom(-11)"
+              [attr.y]="svgGrid.scaleWithZoom(-16)"
+              [attr.width]="svgGrid.scaleWithZoom(chip.width)"
+              [attr.height]="svgGrid.scaleWithZoom(22)"
+              [attr.rx]="svgGrid.scaleWithZoom(11)"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+            />
             <circle
               class="synthChipDot"
               [attr.cx]="0"
-              [attr.cy]="svgGrid.scaleWithZoom(-4)"
-              [attr.r]="svgGrid.scaleWithZoom(6)"
+              [attr.cy]="svgGrid.scaleWithZoom(-5)"
+              [attr.r]="svgGrid.scaleWithZoom(7.5)"
               [attr.fill]="chip.dot"
             />
             <text
+              class="synthChipNumber"
+              [attr.x]="0"
+              [attr.y]="svgGrid.scaleWithZoom(-1.5)"
+              [style.font-size.px]="svgGrid.scaleWithZoom(10.5)"
+            >
+              {{ chip.id }}
+            </text>
+            <text
               class="synthChipText"
-              [attr.x]="svgGrid.scaleWithZoom(11)"
+              [attr.x]="svgGrid.scaleWithZoom(12)"
               y="0"
               [style.font-size.px]="svgGrid.scaleWithZoom(13)"
               [class.synthChipText--sel]="chip.selected"
             >
-              {{ chip.id }} · {{ chip.text }}
+              {{ chip.text }}
             </text>
           </g>
         }

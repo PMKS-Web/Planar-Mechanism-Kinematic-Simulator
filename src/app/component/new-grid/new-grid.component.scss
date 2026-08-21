@@ -278,10 +278,29 @@
     stroke: mat.m2-get-color-from-palette($accent-palette, 500);
   }
 
-  // What the chosen linkage does with each position, said beside it.
+  // What the chosen linkage does with each position, said beside it. A filled
+  // pill, because it is read against whatever the drawing happens to put behind
+  // it -- grey words over a link are words nobody can read.
+  .synthChip {
+    fill: #fff;
+    stroke: rgba(0, 0, 0, 0.12);
+
+    &--sel {
+      fill: mat.m2-get-color-from-palette($accent-palette, 500);
+      stroke: rgba(0, 0, 0, 0.2);
+    }
+  }
+
   .synthChipDot {
     stroke: #fff;
     stroke-width: 1;
+  }
+
+  .synthChipNumber {
+    fill: #fff;
+    font-family: Roboto, sans-serif;
+    font-weight: 500;
+    text-anchor: middle;
   }
 
   .synthChipText {

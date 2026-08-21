@@ -57,6 +57,19 @@ await page.waitForTimeout(700);
 
 const status = () => page.locator('#bottomBar .status').innerText();
 
+/**
+ * Wait for the search rather than for a clock: its progress state has a floor
+ * under how briefly it may flash past, so a fixed sleep would race it.
+ */
+const settled = async () => {
+  await page.waitForFunction(
+    () => !ng.getComponent(document.querySelector('app-synthesis-panel')).solution.generating,
+    null,
+    { timeout: 15000 }
+  );
+  await page.waitForTimeout(200);
+};
+
 // --- the chooser --------------------------------------------------------
 check(
   'Synthesis opens on the question of what is being synthesised',
@@ -80,6 +93,10 @@ await page.waitForTimeout(400);
 check(
   'all three positions have a row before any is placed',
   (await page.locator('#synthesisPanel .poseRow').count()) === 3
+);
+check(
+  'and none of them is selected until one is asked for',
+  (await page.locator('#synthesisPanel .poseRow--sel').count()) === 0
 );
 check(
   'and none of them can be typed into yet',
@@ -107,10 +124,27 @@ check(
 );
 
 await page.mouse.down();
+// Held well past the tenth of a second the old gate allowed: aiming at a spot
+// takes as long as it takes, and every slower click used to be thrown away.
+await page.waitForTimeout(500);
 await page.mouse.up();
 await page.waitForTimeout(350);
-check('a click on the grid drops it', (await panel('(p) => p.design.getAllPoses().length')) === 1);
+check(
+  'a click on the grid drops it, however long it is held',
+  (await panel('(p) => p.design.getAllPoses().length')) === 1
+);
 check('and placing stays armed for the next one', await panel('(p) => p.design.armed'));
+
+// A press that travels is a drag, and must not drop anything.
+await page.mouse.move(1180, 300);
+await page.mouse.down();
+await page.mouse.move(1260, 250, { steps: 6 });
+await page.mouse.up();
+await page.waitForTimeout(300);
+check(
+  'but a press that travels is a drag, and drops nothing',
+  (await panel('(p) => p.design.getAllPoses().length')) === 1
+);
 
 // The remaining two, so there is a design to search.
 for (const [x, y] of [
@@ -183,7 +217,7 @@ check(
 );
 
 await page.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
-await page.waitForTimeout(900);
+await settled();
 const strict = await panel('(p) => p.solution.candidates().length');
 check('Generate finds four-bars through the three positions', strict > 0, strict);
 check(
@@ -210,7 +244,7 @@ await page
   .click();
 await page.waitForTimeout(300);
 await page.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
-await page.waitForTimeout(900);
+await settled();
 const loose = await panel('(p) => p.solution.candidates().length');
 check('letting the pins slide finds more of them', loose > strict, { strict, loose });
 
