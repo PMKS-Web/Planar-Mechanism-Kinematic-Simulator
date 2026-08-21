@@ -187,6 +187,125 @@
     pointer-events: none;
   }
 
+  // --- Synthesis on the canvas -------------------------------------------
+  //
+  // The positions being designed for wear the same accent the tracing underlay
+  // wears, for the same reason: both are things being placed on the grid rather
+  // than parts of the drawing, and both are edited by the same box-and-grips
+  // gesture. The candidate linkage under them is drawn in the link palette but
+  // half-lit, because it is a proposal -- it is not in the drawing until the
+  // panel's Insert says so.
+
+  .synthPose {
+    cursor: move;
+  }
+
+  .synthPosePin {
+    fill: #ffecb2;
+    stroke: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+  }
+
+  .synthPreviewJoint {
+    fill: #ffecb2;
+    stroke: rgba(0, 0, 0, 0.4);
+  }
+
+  #synthesisPreview {
+    opacity: 0.85;
+  }
+
+  // The candidate that is picked, while a different one is being hovered.
+  .synthGhostLinkage {
+    opacity: 0.3;
+  }
+
+  // Where the middle of the coupler goes over the whole of the travel.
+  .synthTrace {
+    fill: none;
+    stroke: mat.m2-get-color-from-palette($primary-palette, 500);
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  // The bar about to be dropped. It pulses so it reads as a promise about the
+  // next click rather than as a fourth position already placed.
+  .synthGhost {
+    animation: synthGhostPulse 1.8s ease-in-out infinite;
+  }
+
+  @keyframes synthGhostPulse {
+    0%,
+    100% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 0.62;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .synthGhost {
+      animation: none;
+      opacity: 0.5;
+    }
+  }
+
+  .synthOutline,
+  .synthRegion {
+    fill: none;
+    stroke: mat.m2-get-color-from-palette($accent-palette, 500);
+  }
+
+  // The region has a body to grab, so unlike the selection outline it is filled
+  // -- faintly, because what it marks is where pivots may land, not a part.
+  .synthRegion {
+    fill: rgba(255, 193, 7, 0.08);
+    cursor: move;
+  }
+
+  .synthDrawSurface {
+    fill: transparent;
+    cursor: crosshair;
+  }
+
+  .synthHandle {
+    fill: mat.m2-get-color-from-palette($accent-palette, 500);
+    stroke: #fff;
+  }
+
+  .synthStalk {
+    stroke: mat.m2-get-color-from-palette($accent-palette, 500);
+  }
+
+  // What the chosen linkage does with each position, said beside it.
+  .synthChipDot {
+    stroke: #fff;
+    stroke-width: 1;
+  }
+
+  .synthChipText {
+    fill: rgba(0, 0, 0, 0.65);
+    font-family: Roboto, sans-serif;
+    font-weight: 500;
+
+    &--sel {
+      fill: rgba(0, 0, 0, 0.87);
+    }
+  }
+
+  // What the next click will do, beside the pointer that will do it.
+  .synthHint {
+    fill: mat.m2-get-color-from-palette($primary-palette, 500);
+    font-family: Roboto, sans-serif;
+    font-weight: 500;
+
+    &--sub {
+      fill: rgba(0, 0, 0, 0.5);
+      font-weight: 400;
+    }
+  }
+
   // The file dialog's input, kept out of the layout without display:none --
   // which stops some browsers opening a picker from a synthetic click.
   .offscreenFileInput {
