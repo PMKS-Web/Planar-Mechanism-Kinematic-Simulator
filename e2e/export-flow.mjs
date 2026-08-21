@@ -457,6 +457,32 @@ record(
   yokeParts
 );
 
+// A slider is one thing to a reader: a pin, its block and its slot are three
+// bodies to the solver, and the block's force at the pin is the bar's force
+// negated. So the pin carries both numbers, and nothing is named after a body
+// or a joint nobody has seen.
+await drawer().locator('.linkButton', { hasText: 'Select all' }).click();
+await page.waitForTimeout(300);
+await page.locator('.nextButton').click();
+await page.waitForTimeout(500);
+await page.locator('.nextButton').click();
+await page.waitForTimeout(500);
+const yokeForces = await drawer().locator('.pickRow .rowName').allInnerTexts();
+record(
+  'a slider is one row, with the force in its bar and the force in its slot',
+  yokeForces.length > 0 &&
+    !yokeForces.some((name) => /Block|Joint E|Joint F/.test(name)) &&
+    yokeForces.some((name) => name.includes('the ground') || name.includes('the slider')),
+  yokeForces
+);
+record(
+  'and no reaction is offered twice',
+  new Set(yokeForces).size === yokeForces.length ||
+    yokeForces.length === (await drawer().locator('.pickRow').count()),
+  yokeForces
+);
+await goToParts();
+
 // --- a sealed cylinder is one part, not the pieces it is assembled from ------
 await page.goto(`${BASE}/?${payloads['Cylinder_Boom']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);

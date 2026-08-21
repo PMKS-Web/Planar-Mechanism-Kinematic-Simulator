@@ -60,7 +60,6 @@ function flowFor(payload: string, options: { forces?: boolean } = {}): Flow {
         facts: [{ label: 'Input speed', value: '20.00 RPM CW' }],
       },
     ],
-    sliderFor: () => undefined,
     forceAnalysisReady: () => options.forces === true,
   });
 
@@ -249,16 +248,6 @@ describe('the export drawer', () => {
     );
   });
 
-  it('offers a slider block, which the solver weighs like any other body', () => {
-    const { flow } = flowFor(TEMPLATE_LINKAGES['Slider_Crank']);
-    const labels = flow
-      .partGroups()
-      .flatMap((group) => group.parts)
-      .filter((part) => part.kind === 'link')
-      .map((part) => part.note);
-    expect(labels).toContain('slider block');
-  });
-
   it('keys a part by its machine, so a shared joint is two rows and two ticks', () => {
     const { flow } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
     const parts = flow.partGroups().flatMap((group) => group.parts);
@@ -288,49 +277,51 @@ describe('the export drawer', () => {
     expect(labels).toContain('Input force');
   });
 
-  it('leaves a slot off the list, and still reaches the force it carries', () => {
+  it('lists a slider as the one part a reader can point at', () => {
     const { flow } = flowFor(TEMPLATE_LINKAGES['Scotch_Yoke'], { forces: true });
     const parts = flow.offeredParts();
 
     // A slot is a joint to the solver and nothing at all to a reader: a
-    // zero-sized marker, no hitbox, no panel. Every other joint is on the list.
-    expect(parts.filter((part) => part.kind === 'joint').map((part) => part.label)).toEqual([
+    // zero-sized marker, no hitbox, no panel. Nor is the block between them,
+    // which is a zero-length link binding one to the other.
+    expect(parts.map((part) => part.label)).toEqual([
       'Joint A',
       'Joint B',
       'Joint C',
       'Joint D',
+      'Link AB',
+      'Link CD',
     ]);
-    expect(parts.some((part) => part.note.includes('slider block'))).toBe(true);
-
-    // And nothing is lost by leaving it off: the force in the guide is the
-    // block's, and the block is on the list.
-    flow.setParts(parts, true);
-    const reached = new Set(
-      flow
-        .columnGroups('forces')
-        .flatMap((group) => group.columns)
-        .map((column) => `${column.series[0].mechPart}@${column.series[0].reactionLinkId}`)
-    );
-    const solved = fixtureMechanismOf(flow, 0)!;
-    expect(solved.length).toBeGreaterThan(0);
-    expect(reached.size).toBeGreaterThan(0);
-    expect(solved.filter((pair) => !reached.has(pair))).toEqual([]);
   });
 
-  it('asks a slider block only for the reaction it actually carries', () => {
-    const { flow, tables } = flowFor(TEMPLATE_LINKAGES['Slider_Crank'], { forces: true });
-    const block = flow.offeredParts().find((part) => part.note.includes('slider block'))!;
-    flow.togglePart(block);
+  it('gives a pin the force in its bar and the force in its slot, and no more', () => {
+    const { flow } = flowFor(TEMPLATE_LINKAGES['Slider_Crank'], { forces: true });
+    const pin = flow.offeredParts().find((part) => part.note.includes('slider'))!;
+    flow.togglePart(pin);
+    const columns = flow.columnGroups('forces').flatMap((group) => group.columns);
 
-    // The solver leaves a block out of its angular maps and gives it no centre
-    // of mass, so offering it those four choices wrote eleven columns of blanks.
-    expect(flow.columnGroups('kinematics')).toHaveLength(0);
-    expect(flow.columnGroups('forces').length).toBeGreaterThan(0);
-    const [table] = tables.tables();
-    expect(table.columns.length).toBeGreaterThan(0);
-    table.columns.forEach((column) => {
-      expect(column.filter(Number.isFinite).length).toBe(table.times.length);
-    });
+    // Two numbers, not four. The block's force at the pin is the bar's force
+    // negated, and its force in the slot is the one thing it has of its own —
+    // so a reader is offered the bar and the slot, and nothing named after a
+    // joint or a body they have never seen.
+    expect(columns.map((column) => column.label)).toEqual([
+      'Force on Link BC',
+      'Force on the ground',
+    ]);
+    expect(columns.some((column) => /Block|Joint D/.test(column.label))).toBe(false);
+  });
+
+  it('writes a reaction once, however many of its two sides are chosen', () => {
+    const { flow, tables } = flowFor(TEMPLATE_LINKAGES['4-Bar'], { forces: true });
+    // At a pin joining two bodies the solver holds one force and its negative,
+    // so a joint's view and a body's view of it are the same column twice.
+    flow.setParts(flow.offeredParts(), true);
+    const written = flow
+      .columnGroups('forces')
+      .flatMap((group) => group.columns)
+      .map((column) => `${column.series[0].mechPart}@${column.series[0].reactionLinkId}`);
+    expect(new Set(written).size).toBe(written.length);
+    expect(new Set(tables.tables()[0].heads).size).toBe(tables.tables()[0].heads.length);
   });
 
   it('stands a sealed cylinder in the list as one part, not as its pieces', () => {

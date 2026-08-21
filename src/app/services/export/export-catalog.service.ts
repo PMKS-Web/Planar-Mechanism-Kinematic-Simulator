@@ -40,14 +40,13 @@ export class ExportCatalogService {
         .filter((joint) => !(joint instanceof PrisJoint))
         .filter((joint) => !this.isInsideCylinder(cylinders, joint))
         .map((joint) => this.jointPart(joint, partition.id, index, withForces));
-      // Blocks as well as bars. A slider's block is a body the solver weighs
-      // and balances like any other, and leaving it off the list put its
-      // reactions out of reach of an export that offers everything else.
+      // Bars, and the rods that stand for rams. A slider's block is a
+      // zero-length link binding a pin to a slot: a reader sees one slider
+      // where the solver has three bodies, and the block's own reactions are
+      // its pin's force negated and the force in the slot -- both of which the
+      // pin now carries. See `slotReactionOf`.
       const links = partition.links
-        .filter(
-          (link): link is RealLink | SliderBlock =>
-            link instanceof RealLink || link instanceof SliderBlock
-        )
+        .filter((link): link is RealLink => link instanceof RealLink)
         // A sealed cylinder stands in the list as one part. Its barrel, its
         // piston and the joints buried inside it are pieces of a ram nobody
         // drew and nobody can point at on the canvas.
@@ -207,6 +206,40 @@ export class ExportCatalogService {
     return cylinderJoints(sealed).find(
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
     );
+  }
+
+  /**
+   * The one reaction a slider's block has that its pin does not.
+   *
+   * A block meets the world twice: at its pin, where the force is exactly the
+   * pin's own reaction negated, and at its slot, where it presses on whatever
+   * the slot is cut into. The first is already on the pin's row under the name
+   * of the bar it holds; the second is the force that sizes the slide, and it
+   * is here or nowhere -- the slot is a joint no reader can point at.
+   */
+  slotReactionOf(pin: RealJoint): { slot: RealJoint; block: Link; on: string } | undefined {
+    const slot = this.mechanism.sliderFor(pin);
+    if (!slot) return undefined;
+    const block = this.mechanism.links.find(
+      (link) => link instanceof SliderBlock && link.joints.some((joint) => joint.id === slot.id)
+    );
+    if (!block) return undefined;
+    const carrier = slot.isFloating && slot.isSlotWellFormed ? slot.carrier : undefined;
+    return { slot, block, on: carrier ? this.mechanism.bodyLabel(carrier) : 'the ground' };
+  }
+
+  /**
+   * What to call a reaction that acts at a slot.
+   *
+   * A slot has no marker and no name a reader has seen; the slider it belongs
+   * to is the pin they can point at, so the force in it is named after that.
+   */
+  slotName(jointId: string): string | undefined {
+    const slot = this.mechanism.joints.find((joint) => joint.id === jointId);
+    if (!(slot instanceof PrisJoint)) return undefined;
+    const pin = slot.connectedJoints.find((joint) => !(joint instanceof PrisJoint)) as
+      RealJoint | undefined;
+    return pin ? `the slider at ${pin.name || pin.id}` : 'the slider';
   }
 
   /** The slot this pin rides in, where that slot is what drives the mechanism. */
