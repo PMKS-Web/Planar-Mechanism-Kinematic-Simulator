@@ -100,8 +100,32 @@
     color: rgba(0, 0, 0, 0.6);
   }
 
-  .offerButton {
+  // Start, and the way to say no. The offer is a question, and a question with
+  // only one answer keeps getting asked.
+  .offerButtons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     margin-top: 11px;
+  }
+
+  .offerDismiss {
+    height: 32px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    font-family: inherit;
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+  }
+
+  .offerButton {
     height: 32px;
     padding: 0 14px;
     border: none;
@@ -122,7 +146,11 @@
     align-items: center;
     width: 100%;
     box-sizing: border-box;
-    margin-top: 10px;
+    // No margin of its own: the wrapper around these cards already spaces them,
+    // and the frame's own note warns that a margin here is what once pushed a
+    // card past the bottom of a frame capped at its own height and cut the
+    // shadow off. Ten pixels, the same as every other pair of cards in this
+    // column.
     padding: 12px 15px;
     border: none;
     border-radius: var(--border-radius);

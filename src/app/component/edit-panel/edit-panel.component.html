@@ -58,7 +58,10 @@
               Build a four-bar linkage on this grid and read a velocity off it. About three
               minutes, in five steps.
             </p>
-            <button class="offerButton" (click)="startTutorial()">Start Tutorial</button>
+            <div class="offerButtons">
+              <button class="offerButton" (click)="startTutorial()">Start Tutorial</button>
+              <button class="offerDismiss" (click)="dismissTutorial()">No thanks</button>
+            </div>
           </div>
         </div>
       }

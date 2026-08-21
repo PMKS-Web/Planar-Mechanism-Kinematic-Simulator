@@ -125,7 +125,8 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 - `component/BLOCKS/` holds the reusable form primitives (input, toggle, radio, dual-input, panel-section, ...) that the panels are composed from; `component/MODALS/` holds the two dialogs (Templates, touchscreen warning).
 - Messages to the user go through `NotificationService`, which replaced the old `NewGridComponent.sendNotification()` static. Some components still talk through statics (e.g. `RightPanelComponent.openTab` / `insistOn`) — grep for the static before assuming a service is the only channel.
 - Four-bar synthesis (generating a linkage from three desired coupler poses) lives in `services/synthesis/`.
-- The first-run tour is five hard-coded `intro.js` steps inside `new-grid.component.ts`'s `ngOnInit`, fired only when the grid loads empty and suppressed for good by its own "don't show again". There is no way to replay it and no separate onboarding component.
+- Onboarding is the **tutorial**: `services/tutorial.service.ts` with `model/tutorial-steps.ts`, shown by `component/tutorial-panel/` as a card *pinned* in the right drawer above whatever page is open (it is not one of the numbered pages). Its step is derived from the drawing by `progressFor`, never counted, which is what lets it start on a half-built mechanism and follow an undo backwards. It is offered from the Edit panel's empty state, reopened from the project menu, and remembers in `localStorage` (`tutorialSeen`) that it has been finished, dismissed or walked out of. The `intro.js` overlay tour it replaced is gone, dependency and all.
+- The tutorial card asks the drawing for its step from `ngDoCheck`, not a subscription: every edit ends in `updateMechanism`, which publishes on nothing that could be listened to — `onMechUpdateState` carries the *analysis* state, which is why caches elsewhere key on `poseRevision` instead.
 
 ### Misc
 

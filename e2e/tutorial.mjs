@@ -48,6 +48,9 @@ check(
   'the panel still says what right-click is for',
   (await page.locator('.helpHints').innerText()).includes('Right-click the grid')
 );
+// A question with only one answer keeps getting asked. Declining is as final
+// as finishing: both write the same mark, and the project menu is the way back.
+check('the offer can be declined', await page.locator('.offerDismiss').isVisible());
 await page.screenshot({ path: `${OUT}/01-offer.png` });
 
 await page.locator('.offerButton').click();
@@ -314,6 +317,34 @@ await page.screenshot({ path: `${OUT}/07-resume.png` });
   check('and the ringed joint is still the thing under the pointer', !blocked);
   await small.screenshot({ path: `${OUT}/09-narrow-ring.png` });
   await narrow.close();
+}
+
+// ---- declining the offer, in a profile that has not met it ----
+{
+  const declining = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const shy = await declining.newPage();
+  await shy.goto(BASE, { waitUntil: 'networkidle' });
+  await waitForReady(shy);
+  await shy.locator('.offerDismiss').click();
+  await shy.waitForTimeout(700);
+  check('declining takes the offer away', (await shy.locator('.offer').count()) === 0);
+  check('without starting anything', (await shy.locator('.tutorialCard').count()) === 0);
+  check(
+    'and says where it went',
+    /project menu/i.test(
+      await shy
+        .locator('app-notification-stack')
+        .innerText()
+        .catch(() => '')
+    )
+  );
+  await shy.reload({ waitUntil: 'networkidle' });
+  await waitForReady(shy);
+  check('and it stays gone next time', (await shy.locator('.offer').count()) === 0);
+  await shy.locator('.brandCard .iconButton').click();
+  await shy.waitForTimeout(350);
+  check('but the project menu still has it', await shy.locator('#tutorialButton').isVisible());
+  await declining.close();
 }
 
 await browser.close();

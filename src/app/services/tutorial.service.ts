@@ -305,6 +305,18 @@ export class TutorialService {
     this.tabs.setTab(TabID.EDIT);
   }
 
+  /**
+   * The offer turned down without being opened.
+   *
+   * Marked the same way finishing it is. The offer is a question asked once,
+   * and "no" has to be as final an answer as "yes" — otherwise every new
+   * session asks again, which is what made the tour it replaced so easy to
+   * resent. The project menu is still the way in.
+   */
+  dismissOffer(): void {
+    this.remember();
+  }
+
   private remember(): void {
     this.seen = true;
     writeStoredFlag(SEEN_KEY, true);

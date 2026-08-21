@@ -2258,4 +2258,13 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   startTutorial(): void {
     this.tutorial.start();
   }
+
+  /** Turn the offer down for good, and say where it went. */
+  dismissTutorial(): void {
+    this.tutorial.dismissOffer();
+    this.notify.success(
+      'tutorial.dismissed',
+      'Tutorial dismissed. It is in the project menu, at the top left, if you change your mind.'
+    );
+  }
 }
