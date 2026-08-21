@@ -674,7 +674,9 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
         `M ${tx(c.A)} ${ty(c.A)} L ${tx(c.B)} ${ty(c.B)} ` +
         `M ${tx(c.C)} ${ty(c.C)} L ${tx(c.D)} ${ty(c.D)}`,
       thumbCoupler: `M ${tx(c.B)} ${ty(c.B)} L ${tx(c.C)} ${ty(c.C)}`,
-      selected: !!picked && picked.key === c.key,
+      // The same construction, whichever way it is closed: a card is the
+      // solution, and the assembly is a switch inside it.
+      selected: !!picked && picked.pair === c.pair,
       defectFree: c.defectFree,
       binds: c.binds,
       reachText: c.defectFree
@@ -720,7 +722,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
 
   branchOptions(): { label: string; active: boolean; available: boolean; key: string }[] {
     const cand = this.solution.chosen();
-    const list = this.solution.candidates();
+    const list = this.solution.allAssemblies();
     return (['Open', 'Crossed'] as const).map((label) => {
       const sibling = cand
         ? list.find((c) => c.pair === cand.pair && c.branch === label)
@@ -871,8 +873,11 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     if (!cand) return [];
     const range = this.solution.drivenRange();
     const span = Math.max(1e-6, range.to - range.from);
-    return cand.thetas.map((theta, i) => {
-      let a = theta;
+    // Along whatever is being turned: with a driver fitted the track is the
+    // driver crank's own revolution, so the marks have to be where the
+    // positions fall on *that*, not on the four-bar's angle.
+    return this.solution.positionPhases().map((phase, i) => {
+      let a = phase ?? range.from;
       while (a < range.from) a += 360;
       while (a > range.to) a -= 360;
       const percent = Math.max(0, Math.min(100, ((a - range.from) / span) * 100));

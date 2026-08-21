@@ -200,9 +200,19 @@ export class SynthesisSolutionService {
       this.cachedRejections = result.rejections;
     }
     let list = this.cached;
-    this.strictCount = list.filter((c) => c.defectFree).length;
+    this.strictCount = new Set(list.filter((c) => c.defectFree).map((c) => c.pair)).size;
     if (!this.design.allowDefect) list = list.filter((c) => c.defectFree);
     return rankCandidates(list);
+  }
+
+  /**
+   * Every assembly of every solution, including the ones the gallery folds
+   * away. What Assembly branch reaches for, and where a picked one is found.
+   */
+  allAssemblies(): FourBarCandidate[] {
+    if (!this.generated || !this.design.isFullyDefined()) return [];
+    this.candidates();
+    return this.design.allowDefect ? this.cached : this.cached.filter((c) => c.defectFree);
   }
 
   rejections(): CandidateRejections {
@@ -213,16 +223,20 @@ export class SynthesisSolutionService {
   chosen(): FourBarCandidate | null {
     const list = this.candidates();
     if (!list.length) return null;
-    const hovered = this.hoverKey ? list.find((c) => c.key === this.hoverKey) : undefined;
+    // Looked up among every assembly, not only the ones on show: the crossed
+    // half of a construction is picked by the branch switch and never appears
+    // in the gallery.
+    const all = this.allAssemblies();
+    const hovered = this.hoverKey ? all.find((c) => c.key === this.hoverKey) : undefined;
     if (hovered) return hovered;
-    return list.find((c) => c.key === this.candidateKey) ?? list[0];
+    return all.find((c) => c.key === this.candidateKey) ?? list[0];
   }
 
   /** The candidate that was picked, ignoring the hover, for the ghost to show. */
   picked(): FourBarCandidate | null {
     const list = this.candidates();
     if (!list.length) return null;
-    return list.find((c) => c.key === this.candidateKey) ?? list[0];
+    return this.allAssemblies().find((c) => c.key === this.candidateKey) ?? list[0];
   }
 
   /** The chosen candidate as it is actually driven -- from A, or from D. */
@@ -259,17 +273,103 @@ export class SynthesisSolutionService {
   }
 
   /**
-   * How far the preview may actually be driven.
+   * Where the driver's elbow sits when the pin it drives is at a given place.
    *
-   * Without a driver this is the four-bar's own travel. With one it is less,
-   * and has to be: the dyad is sized to carry the input across the span the
-   * three positions occupy, not across a whole revolution, so beyond that span
-   * its crank and coupler no longer reach the pin they drive. The elbow simply
-   * has no solution there -- and the preview, solving it per frame, dropped the
-   * driver's two links for those frames and flickered.
+   * The same choice `insert` makes when it builds the joint, so the preview and
+   * the linkage that comes out of it are assembled the same way round.
+   */
+  private elbowFor(dyad: DriverDyad, drivenPin: Coord): Coord | null {
+    const pair = meet(dyad.ground, dyad.crankLength, drivenPin, dyad.couplerLength);
+    return pair ? pair[0] : null;
+  }
+
+  /**
+   * The driver crank angle that puts the linkage at a given four-bar angle.
    *
-   * Walked outward from position 1, so what is offered is one continuous run
-   * the machine could really make.
+   * Reading the train backwards: the four-bar angle fixes the pin, the pin
+   * fixes the elbow, and the elbow fixes the crank. Used to find where the
+   * three positions fall along the driver's own revolution.
+   */
+  private driverAngleAt(
+    cand: FourBarCandidate,
+    dyad: DriverDyad,
+    fourBarDeg: number
+  ): number | null {
+    const solved = solveFourBar(cand, fourBarDeg, cand.sign);
+    if (!solved) return null;
+    const elbow = this.elbowFor(dyad, solved.B);
+    if (!elbow) return null;
+    return (Math.atan2(elbow.y - dyad.ground.y, elbow.x - dyad.ground.x) * 180) / Math.PI;
+  }
+
+  /**
+   * The six-bar, solved forwards from the crank a motor would actually turn.
+   *
+   * This is the whole of the fix for a six-bar preview that would not move. It
+   * used to be run the other way about: the four-bar's own crank was stepped
+   * and a driver drawn onto whatever came out. But with a driver fitted the
+   * four-bar's crank is not an input at all -- it is an output, rocking back
+   * and forth as the driver goes round -- so stepping it covered half a stroke
+   * once and then ran out of angles where the dyad could close. On one design
+   * that left four degrees of travel to animate, and the linkage sat still.
+   *
+   * Forwards: the driver crank turns, which places the elbow, which places the
+   * pin it drives, which sets the four-bar. Exactly the train the inserted
+   * mechanism solves -- which is why that one always moved correctly.
+   */
+  private solveFromDriver(
+    cand: FourBarCandidate,
+    dyad: DriverDyad,
+    driverDeg: number
+  ): { A: Coord; B: Coord; C: Coord; D: Coord; elbow: Coord } | null {
+    const phi = (driverDeg * Math.PI) / 180;
+    const elbow = new Coord(
+      dyad.ground.x + dyad.crankLength * Math.cos(phi),
+      dyad.ground.y + dyad.crankLength * Math.sin(phi)
+    );
+    // Where the coupler can put the driven pin: on the four-bar's crank circle
+    // and a coupler's length from the elbow.
+    const pair = meet(cand.A, cand.r1, elbow, dyad.couplerLength);
+    if (!pair) return null;
+    const sign = this.driverAssemblySign(cand, dyad);
+    const B =
+      Math.sign(
+        (elbow.x - cand.A.x) * (pair[0].y - cand.A.y) -
+          (elbow.y - cand.A.y) * (pair[0].x - cand.A.x)
+      ) === sign
+        ? pair[0]
+        : pair[1];
+    const solved = solveFourBar(
+      cand,
+      (Math.atan2(B.y - cand.A.y, B.x - cand.A.x) * 180) / Math.PI,
+      cand.sign
+    );
+    return solved ? { ...solved, elbow } : null;
+  }
+
+  /**
+   * Which side of the crank the driver's coupler sits on, fixed at position 1.
+   *
+   * The dyad, like the four-bar, can be put together two ways; it has to stay
+   * on the one it was built in or the preview flips through itself.
+   */
+  private driverAssemblySign(cand: FourBarCandidate, dyad: DriverDyad): number {
+    const B = cand.ptsA[0];
+    const elbow = this.elbowFor(dyad, B);
+    if (!elbow) return 1;
+    return (
+      Math.sign(
+        (elbow.x - cand.A.x) * (B.y - cand.A.y) - (elbow.y - cand.A.y) * (B.x - cand.A.x)
+      ) || 1
+    );
+  }
+
+  /**
+   * How far the preview may be driven, and in what.
+   *
+   * Without a driver, the four-bar's own crank across its travel. With one,
+   * the driver crank across as much of a revolution as it can turn -- which
+   * for a dyad sized for these positions is normally the whole of it.
    */
   drivenRange(): { from: number; to: number; full: boolean } {
     const cand = this.driven();
@@ -280,42 +380,66 @@ export class SynthesisSolutionService {
     const key = cand.key + ':' + this.driveOnFarPin + ':' + this.design.searchKey();
     if (this.driverRangeKey === key) return this.driverRange;
 
-    const closes = (deg: number): boolean => {
-      const solved = solveFourBar(cand, deg, cand.sign);
-      if (!solved) return false;
-      return meet(dyad.ground, dyad.crankLength, solved.B, dyad.couplerLength) !== null;
-    };
-    const start = cand.thetas[0];
-    let from = start;
-    let to = start;
-    const STEP = 0.5;
-    for (let deg = start + STEP; deg <= cand.range.to; deg += STEP) {
-      if (!closes(deg)) break;
-      to = deg;
+    const startPhi = this.driverAngleAt(cand, dyad, cand.thetas[0]) ?? 0;
+    const STEP = 1;
+    let from = startPhi;
+    let to = startPhi;
+    for (let k = STEP; k <= 360; k += STEP) {
+      if (!this.solveFromDriver(cand, dyad, startPhi + k)) break;
+      to = startPhi + k;
     }
-    for (let deg = start - STEP; deg >= cand.range.from; deg -= STEP) {
-      if (!closes(deg)) break;
-      from = deg;
+    for (let k = STEP; k <= 360; k += STEP) {
+      if (!this.solveFromDriver(cand, dyad, startPhi - k)) break;
+      from = startPhi - k;
     }
+    const full = to - from >= 359;
     this.driverRangeKey = key;
-    this.driverRange = { from, to, full: cand.range.full && to - from >= 359 };
+    this.driverRange = full
+      ? { from: startPhi, to: startPhi + 360, full: true }
+      : { from, to, full: false };
     return this.driverRange;
   }
 
   private driverRangeKey = '';
   private driverRange = { from: 0, to: 360, full: false };
 
-  /** Where the preview stands now, in crank degrees. */
+  /**
+   * Where the preview stands now -- in driver crank degrees when a driver is
+   * fitted, in the four-bar's own crank degrees otherwise.
+   */
   currentPhase(): number {
     const cand = this.driven();
     if (!cand) return 0;
-    return this.phase === null ? cand.thetas[0] : this.phase;
+    if (this.phase !== null) return this.phase;
+    const dyad = this.dyad();
+    if (dyad) return this.driverAngleAt(cand, dyad, cand.thetas[0]) ?? 0;
+    return cand.thetas[0];
+  }
+
+  /** The linkage at an arbitrary phase, in whatever is being turned. */
+  poseAtPhase(phase: number): { A: Coord; B: Coord; C: Coord; D: Coord; elbow?: Coord } | null {
+    const cand = this.driven();
+    if (!cand) return null;
+    const dyad = this.dyad();
+    if (dyad) return this.solveFromDriver(cand, dyad, phase);
+    return solveFourBar(cand, phase, cand.sign);
+  }
+
+  /** Where each position falls along whatever is being turned. */
+  positionPhases(): (number | null)[] {
+    const cand = this.driven();
+    if (!cand) return [];
+    const dyad = this.dyad();
+    if (!dyad) return cand.thetas;
+    return cand.thetas.map((theta) => this.driverAngleAt(cand, dyad, theta));
   }
 
   /** The four pin positions of the preview at the current phase. */
-  previewPose(): { A: Coord; B: Coord; C: Coord; D: Coord } | null {
+  previewPose(): { A: Coord; B: Coord; C: Coord; D: Coord; elbow?: Coord } | null {
     const cand = this.driven();
     if (!cand) return null;
+    const dyad = this.dyad();
+    if (dyad) return this.solveFromDriver(cand, dyad, this.currentPhase());
     return solveFourBar(cand, this.currentPhase(), cand.sign);
   }
 

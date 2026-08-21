@@ -1075,6 +1075,17 @@
             [attr.stroke]="bar.selected ? null : bar.fill"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
+          <!-- Which way round it is. The outline is the same capsule every link
+               on this canvas wears, so the direction has to be said inside it
+               -- otherwise a position turned end for end is the same picture as
+               one that is not. -->
+          @if (bar.arrow) {
+            <path
+              class="synthBarArrow"
+              [attr.d]="bar.arrow"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
+            />
+          }
           <circle
             class="synthPosePin"
             [attr.cx]="bar.x1"
@@ -1124,6 +1135,10 @@
         <g class="synthGhost" pointer-events="none">
           <path class="synthBar" [attr.d]="ghost.d" fill="#c5cae9" stroke="#c5cae9"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)" />
+          @if (ghost.arrow) {
+            <path class="synthBarArrow" [attr.d]="ghost.arrow"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(2)" />
+          }
         </g>
       }
 

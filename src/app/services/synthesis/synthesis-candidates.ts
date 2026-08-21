@@ -494,14 +494,42 @@ export function enumerateCandidates(search: CandidateSearch): CandidateResult {
 }
 
 /** Best first: defect-free, then most positions on one assembly, then roomiest. */
+function betterFirst(a: FourBarCandidate, b: FourBarCandidate): number {
+  if (a.defectFree !== b.defectFree) return a.defectFree ? -1 : 1;
+  if (b.onBranchCount !== a.onBranchCount) return b.onBranchCount - a.onBranchCount;
+  return b.minTransmission - a.minTransmission;
+}
+
+/**
+ * Best first, and one entry per construction rather than per assembly.
+ *
+ * Open and Crossed are the same four bars closed two different ways -- the same
+ * pins in the same places, the same lengths -- so listing them as two solutions
+ * asks the reader to compare a thing with itself. They are one solution with a
+ * switch on it, and the switch is Assembly branch.
+ *
+ * The letter is assigned to the construction, so flipping the switch does not
+ * rename the solution under the reader.
+ */
 export function rankCandidates(list: FourBarCandidate[], limit = 8): FourBarCandidate[] {
-  const sorted = list.slice().sort((a, b) => {
-    if (a.defectFree !== b.defectFree) return a.defectFree ? -1 : 1;
-    if (b.onBranchCount !== a.onBranchCount) return b.onBranchCount - a.onBranchCount;
-    return b.minTransmission - a.minTransmission;
+  const byPair = new Map<string, FourBarCandidate[]>();
+  list.forEach((c) => {
+    const siblings = byPair.get(c.pair);
+    if (siblings) siblings.push(c);
+    else byPair.set(c.pair, [c]);
   });
-  const best = sorted.slice(0, limit);
-  best.forEach((c, i) => (c.name = 'ABCDEFGH'[i] ?? '?'));
+
+  const best = [...byPair.values()]
+    .map((siblings) => siblings.slice().sort(betterFirst)[0])
+    .sort(betterFirst)
+    .slice(0, limit);
+
+  best.forEach((c, i) => {
+    const name = 'ABCDEFGH'[i] ?? '?';
+    // Both assemblies of one construction wear it, so the name survives the
+    // switch.
+    (byPair.get(c.pair) ?? []).forEach((sibling) => (sibling.name = name));
+  });
   return best;
 }
 

@@ -5,14 +5,16 @@ import { SvgGridService } from '../svg-grid.service';
 import { ColorService } from '../color.service';
 import { SynthesisBuilderService } from './synthesis-builder.service';
 import { SynthesisSolutionService } from './synthesis-solution.service';
-import { meet, solveFourBar } from './synthesis-candidates';
+import { solveFourBar } from './synthesis-candidates';
 import { COR } from './synthesis-util';
 
 /** A bar drawn on the grid: two pins, a fill, and what it is called. */
 export interface PoseBar {
   id: number;
-  /** The bar's outline: round at the back, pointed at the front. */
+  /** The bar's outline -- the same capsule every link on this canvas wears. */
   d: string;
+  /** A chevron inside the bar, pointing from its back end to its front. */
+  arrow: string;
   /** The point the coordinates describe, and the point it turns about. */
   refX: number;
   refY: number;
@@ -90,34 +92,44 @@ const NEUTRAL_BAR = '#c5cae9';
  * looked subtly unlike every other bar on the canvas.
  */
 /**
- * A position's own outline: round at the back, pointed at the front.
+ * Which way round a position is, drawn inside it.
  *
  * A capsule is unchanged by turning it half a revolution, so a position that
  * had been flipped end for end looked exactly like one that had not -- and a
- * design that solves perfectly once position 2 is turned 180 degrees is
- * impossible to spot, because the drawing of the wrong one and the drawing of
- * the right one are the same picture. Front and back are told apart here so
- * that the flip is visible before it is puzzled over.
+ * design that solves perfectly once a position is turned 180 degrees is
+ * impossible to spot when the wrong drawing and the right one are the same
+ * picture. Shaping the outline solved that and cost more than it was worth:
+ * the bars stopped looking like the links they are. So the silhouette is a
+ * plain capsule again and the direction is said inside it, with a chevron
+ * pointing from the back end to the front -- the way a drawing normally says
+ * which way round something goes.
  */
-function poseBarPath(x1: number, y1: number, x2: number, y2: number, r: number): string {
+function directionMark(x1: number, y1: number, x2: number, y2: number, r: number): string {
   const theta = Math.atan2(y2 - y1, x2 - x1);
-  const nx = r * Math.sin(theta);
-  const ny = r * Math.cos(theta);
-  // Narrower at the front than the back, and drawn to a point past the front
-  // pin. A tip alone was a few pixels of difference at ordinary zoom -- too
-  // little to notice, which is no use for a mark whose whole job is to be
-  // noticed. The taper is legible at any size the link is drawn at.
-  const front = 0.5 * r;
-  const fx = front * Math.sin(theta);
-  const fy = front * Math.cos(theta);
-  const tipX = x2 + 0.95 * r * Math.cos(theta);
-  const tipY = y2 + 0.95 * r * Math.sin(theta);
+  const length = Math.hypot(x2 - x1, y2 - y1);
+  // A short bar has no room for a chevron inside it, and one drawn anyway
+  // would be bigger than the link it is meant to annotate.
+  if (length < r * 3) return '';
+  const ux = Math.cos(theta);
+  const uy = Math.sin(theta);
+  const nx = -uy;
+  const ny = ux;
+  // Two thirds of the way along, so it reads as pointing at the front end
+  // rather than sitting in the middle of the bar.
+  // Three quarters of the way along, clear of the datum that marks the middle
+  // when the reference is Center, and plainly nearer the end it points at.
+  const cx = x1 + ux * length * 0.75;
+  const cy = y1 + uy * length * 0.75;
+  const reach = r * 0.6;
+  const wing = r * 0.66;
+  const tipX = cx + ux * reach;
+  const tipY = cy + uy * reach;
+  const backX = cx - ux * reach;
+  const backY = cy - uy * reach;
   return (
-    `M ${x1 - nx} ${y1 + ny} ` +
-    `A ${r} ${r} 0 1 1 ${x1 + nx} ${y1 - ny} ` +
-    `L ${x2 + fx} ${y2 - fy} ` +
+    `M ${backX + nx * wing} ${backY + ny * wing} ` +
     `L ${tipX} ${tipY} ` +
-    `L ${x2 - fx} ${y2 + fy} Z`
+    `L ${backX - nx * wing} ${backY - ny * wing}`
   );
 }
 
@@ -189,7 +201,14 @@ export class SynthesisCanvasService {
       const reached = cand ? cand.onBranch[pose.id - 1] : undefined;
       return {
         id: pose.id,
-        d: poseBarPath(
+        d: capsulePath(
+          pose.posBack.x,
+          pose.posBack.y,
+          pose.posFront.x,
+          pose.posFront.y,
+          this.settings.objectScale / 4
+        ),
+        arrow: directionMark(
           pose.posBack.x,
           pose.posBack.y,
           pose.posFront.x,
@@ -286,7 +305,7 @@ export class SynthesisCanvasService {
    * The bar about to be dropped: same length, same reference point, turned the
    * way the wheel has turned it. A promise about what the click will make.
    */
-  ghostBar(): { d: string } | undefined {
+  ghostBar(): { d: string; arrow: string } | undefined {
     if (!this.design.armed || !this.cursor || this.design.regionDraw) return undefined;
     if (this.design.getFirstUndefinedPose() === undefined) return undefined;
     const theta = (this.design.placeAngleDeg * Math.PI) / 180;
@@ -300,7 +319,14 @@ export class SynthesisCanvasService {
           ? { x: this.cursor.x - dx, y: this.cursor.y - dy }
           : { x: this.cursor.x - dx / 2, y: this.cursor.y - dy / 2 };
     return {
-      d: poseBarPath(
+      d: capsulePath(
+        anchor.x,
+        anchor.y,
+        anchor.x + dx,
+        anchor.y + dy,
+        this.settings.objectScale / 4
+      ),
+      arrow: directionMark(
         anchor.x,
         anchor.y,
         anchor.x + dx,
@@ -344,12 +370,12 @@ export class SynthesisCanvasService {
       bar(solved.C, solved.D, 0),
     ];
     const dyad = this.solution.dyad();
-    if (dyad) {
-      const elbow = meet(dyad.ground, dyad.crankLength, solved.B, dyad.couplerLength);
-      if (elbow) {
-        links.push(bar(dyad.ground, elbow[0], 2));
-        links.push(bar(elbow[0], solved.B, 3));
-      }
+    // The elbow the six-bar solve already found, rather than one worked out
+    // again from the pin: solving the same joint twice is what let the driver's
+    // two links vanish for a frame whenever the second answer disagreed.
+    if (dyad && solved.elbow) {
+      links.push(bar(dyad.ground, solved.elbow, 2));
+      links.push(bar(solved.elbow, solved.B, 3));
     }
     return links;
   }
@@ -364,12 +390,9 @@ export class SynthesisCanvasService {
       { id: 'D', x: solved.D.x, y: solved.D.y },
     ];
     const dyad = this.solution.dyad();
-    if (dyad) {
-      const elbow = meet(dyad.ground, dyad.crankLength, solved.B, dyad.couplerLength);
-      if (elbow) {
-        out.push({ id: 'E', x: dyad.ground.x, y: dyad.ground.y });
-        out.push({ id: 'F', x: elbow[0].x, y: elbow[0].y });
-      }
+    if (dyad && solved.elbow) {
+      out.push({ id: 'E', x: dyad.ground.x, y: dyad.ground.y });
+      out.push({ id: 'F', x: solved.elbow.x, y: solved.elbow.y });
     }
     return out;
   }

@@ -346,6 +346,30 @@ const withDriver = await panel(
   '(p) => JSON.stringify({ dyad: !!p.solution.dyad(), refusal: p.solution.driverRefusal ?? null, rows: p.dimensionRows().length })'
 );
 const driver = JSON.parse(withDriver);
+// A six-bar is driven by its own crank, so its preview must turn through a
+// whole revolution without the driver's links dropping out.
+if (driver.dyad) {
+  const steady = await page.evaluate(() => {
+    const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const range = panel.solution.drivenRange();
+    const held = panel.solution.phase;
+    const counts = new Set();
+    for (let k = 0; k <= 120; k++) {
+      panel.solution.phase = range.from + ((range.to - range.from) * k) / 120;
+      counts.add(grid.synthCanvas.previewLinks().length);
+    }
+    panel.solution.phase = held;
+    return { counts: [...counts], span: Math.round(range.to - range.from) };
+  });
+  check(
+    'the six-bar preview holds together across the whole of its travel',
+    steady.counts.length === 1 && steady.counts[0] === 5,
+    steady
+  );
+  check('and that travel is a revolution, not a sliver of one', steady.span >= 180, steady);
+}
+
 check(
   'a driver is either fitted or refused in words',
   driver.dyad || typeof driver.refusal === 'string',
@@ -516,6 +540,27 @@ check('and replaces it when told to', (await panel('(p) => p.solution.ownership(
 
 await page.locator('#synthesisPanel .note__undo').click();
 await page.waitForTimeout(700);
+check(
+  'Open and Crossed are one solution with a switch, not two solutions',
+  await page.evaluate(() => {
+    const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
+    const shown = panel.solution.candidates();
+    const constructions = new Set(panel.solution.allAssemblies().map((c) => c.pair));
+    // One card per construction, and never two cards for the same one.
+    return (
+      shown.length === new Set(shown.map((c) => c.pair)).size && shown.length <= constructions.size
+    );
+  })
+);
+check(
+  'a position says which way round it is without changing its silhouette',
+  await page.evaluate(() => {
+    const bar = document.querySelector('.synthPose path.synthBar');
+    const arrows = document.querySelectorAll('.synthBarArrow').length;
+    // Two round caps, as every other link on this canvas has, plus a chevron.
+    return (bar.getAttribute('d').match(/A /g) || []).length === 2 && arrows > 0;
+  })
+);
 check(
   'the gallery keeps its three columns when it is opened out',
   await page.evaluate(() => {

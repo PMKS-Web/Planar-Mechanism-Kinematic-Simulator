@@ -252,6 +252,15 @@
     stroke: inherit;
   }
 
+  // The chevron inside a position, pointing at its front end.
+  .synthBarArrow {
+    fill: none;
+    stroke: rgba(0, 0, 0, 0.42);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+  }
+
   .synthPosePin {
     fill: #ffecb2;
     stroke: rgba(0, 0, 0, 0.4);
