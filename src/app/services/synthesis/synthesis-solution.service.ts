@@ -243,13 +243,32 @@ export class SynthesisSolutionService {
   driven(cand: FourBarCandidate | null = this.chosen()): FourBarCandidate | null {
     if (!cand) return null;
     if (!this.driveOnFarPin) return cand;
+    /*
+      Read from the far pin, and remembered.
+
+      `drivenFromFarPin` re-assesses the swapped linkage, which walks a whole
+      revolution a degree at a time -- seven hundred solves. That was done on
+      every call, and the calls are not few: drawing the coupler's path asks
+      for this once per sample, two hundred and forty times, on every animation
+      frame. Driving from Pin D therefore cost something like a hundred and
+      seventy thousand solves a frame, which is as slow as it sounds. Driving
+      from Pin A never noticed, because that path returns the candidate
+      untouched.
+    */
+    const key = cand.key + ':' + this.design.searchKey();
+    if (this.swappedKey === key && this.swapped) return this.swapped;
     const swapped = drivenFromFarPin(cand);
     swapped.name = cand.name;
     swapped.branch = cand.branch;
     swapped.key = cand.key;
     swapped.pair = cand.pair;
+    this.swappedKey = key;
+    this.swapped = swapped;
     return swapped;
   }
+
+  private swappedKey = '';
+  private swapped: FourBarCandidate | null = null;
 
   /**
    * Why a driver cannot be fitted to the current solution, or nothing.
@@ -448,6 +467,15 @@ export class SynthesisSolutionService {
     const dyad = this.dyad();
     if (dyad) return this.solveFromDriver(cand, dyad, phase);
     return solveFourBar(cand, phase, cand.sign);
+  }
+
+  /** Where the linkage sits when it is drawn: position 1, in whatever turns. */
+  startPhase(): number {
+    const cand = this.driven();
+    if (!cand) return 0;
+    const dyad = this.dyad();
+    if (dyad) return this.driverAngleAt(cand, dyad, cand.thetas[0]) ?? 0;
+    return cand.thetas[0];
   }
 
   /** Where each position falls along whatever is being turned. */
@@ -681,7 +709,11 @@ export class SynthesisSolutionService {
     this.design.ownedJointIds = joints.map((joint) => joint.id);
     this.writtenAt = new Map(joints.map((joint) => [joint.id, { x: joint.x, y: joint.y }]));
     this.playing = false;
-    this.mechanismSrv.mechanismTimeStep = 0;
+    // Eased rather than snapped: the drawing may be parked anywhere in its
+    // cycle, and dropping it onto its start pose between one frame and the next
+    // reads as the linkage jumping rather than as it going home. The same
+    // easing leaving an analysis mode uses.
+    this.mechanismSrv.easeToStart();
     this.mechanismSrv.updateMechanism(true);
     this.changed.next();
     return 'done';

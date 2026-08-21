@@ -379,7 +379,18 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   }
 
   toggleArmed(): void {
-    this.design.setArmed(!this.design.armed);
+    const arming = !this.design.armed;
+    // Before the ghost appears, not after the first position lands. Object
+    // scale is what parts are drawn at, and it was being fitted on the first
+    // click -- so the ghost was drawn at the old, small scale and the position
+    // it turned into was drawn at the new one, which looked like the click had
+    // grown it. Only on a drawing with nothing in it: the scale is global, and
+    // resizing someone's work because a position is about to be placed is a
+    // change nobody asked for.
+    if (arming && this.mechanismSrv.links.length === 0 && !this.design.getAllPoses().length) {
+      this.svgGrid.updateObjectScale();
+    }
+    this.design.setArmed(arming);
   }
 
   get canDuplicate(): boolean {
@@ -1021,7 +1032,55 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     return this.solution.inserted && !this.solution.needsReinsert();
   }
 
+  /**
+   * Wind the preview back to where the linkage starts, then do something.
+   *
+   * The preview can be parked anywhere in its cycle, and what gets built is
+   * always the start pose -- so committing from halfway round replaced the
+   * linkage on screen with a differently-posed one between two frames, which
+   * reads as a jump rather than as the thing being put down. It goes home
+   * first, at the same 220ms the app eases everything else home at.
+   */
+  private windBackThen(then: () => void): void {
+    const cand = this.solution.driven();
+    const home = this.solution.startPhase();
+    if (!cand || this.solution.phase === null || Math.abs(this.solution.phase - home) < 0.5) {
+      this.solution.phase = null;
+      then();
+      return;
+    }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.solution.phase = null;
+      then();
+      return;
+    }
+    this.solution.playing = false;
+    const from = this.solution.phase;
+    const started = performance.now();
+    const DURATION = 220;
+    const step = () => {
+      const t = Math.min(1, (performance.now() - started) / DURATION);
+      // Ease out, so it settles rather than stopping dead.
+      const eased = 1 - (1 - t) * (1 - t);
+      this.solution.phase = from + (home - from) * eased;
+      this.solution.changed.next();
+      if (t < 1) {
+        this.frame = requestAnimationFrame(step);
+        return;
+      }
+      this.solution.phase = null;
+      then();
+    };
+    this.frame = requestAnimationFrame(step);
+  }
+
   insert(force = false): void {
+    // Only the first press winds back; the retries from the warning below are
+    // already home.
+    if (!force && this.solution.phase !== null) {
+      this.windBackThen(() => this.insert(force));
+      return;
+    }
     const outcome = this.solution.insert(force);
     if (outcome === 'edited') {
       // Not a refusal and not a silent overwrite. The reader moved those joints

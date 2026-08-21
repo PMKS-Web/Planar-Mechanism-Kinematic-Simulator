@@ -164,6 +164,16 @@ const angleBefore = await panel('(p) => p.design.placeAngleDeg');
 await page.mouse.wheel(0, -120);
 await page.waitForTimeout(200);
 const angleAfter = await panel('(p) => p.design.placeAngleDeg');
+check(
+  'the ghost is drawn at the size the position will be, not resized by the click',
+  await page.evaluate(() => {
+    // Object scale decides how big parts are drawn, and it used to be fitted on
+    // the first click -- so the ghost was drawn small and the position it
+    // turned into was drawn large, which looked like clicking had grown it.
+    const ghost = document.querySelector('.synthGhost path');
+    return !!ghost && ghost.getBoundingClientRect().width > 20;
+  })
+);
 check('the wheel turns the position that is about to be dropped', angleAfter !== angleBefore, {
   angleBefore,
   angleAfter,
@@ -465,6 +475,34 @@ check(
     const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
     // Not swallowed by a global shortcut on its way past.
     return button.dispatchEvent(event);
+  })
+);
+check(
+  'driving from the far pin is no slower to draw than driving from the near one',
+  await page.evaluate(() => {
+    const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const held = panel.solution.driveOnFarPin;
+    const timeIt = () => {
+      const range = panel.solution.drivenRange();
+      const started = performance.now();
+      for (let k = 0; k < 20; k++) {
+        panel.solution.phase = range.from + ((range.to - range.from) * k) / 20;
+        grid.synthCanvas.previewLinks();
+        grid.synthCanvas.couplerTrace();
+      }
+      panel.solution.phase = null;
+      return performance.now() - started;
+    };
+    panel.solution.setDriveOnFarPin(false);
+    const near = timeIt();
+    panel.solution.setDriveOnFarPin(true);
+    const far = timeIt();
+    panel.solution.setDriveOnFarPin(held);
+    // Reading the linkage from the far pin re-assesses it, which walks a whole
+    // revolution. Done per call, that was hundreds of thousands of solves a
+    // frame and the preview crawled.
+    return far < Math.max(60, near * 4);
   })
 );
 check(

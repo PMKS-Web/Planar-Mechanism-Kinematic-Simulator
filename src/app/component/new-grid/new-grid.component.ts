@@ -2172,16 +2172,7 @@ export class NewGridComponent implements OnDestroy {
         this.pressDidNotTravel($event)
       ) {
         const at = this.svgGrid.screenToSVGfromXY($event.clientX, $event.clientY);
-        const first = this.synthesisBuilder.getAllPoses().length === 0;
         this.synthesisBuilder.placePose(at);
-        // The first position on an empty drawing sets the size parts are drawn
-        // at, exactly as the old panel did when it created one. Object scale is
-        // a global, so this is deliberately limited to a drawing with nothing
-        // in it: on one that already holds work, resizing every bar in it
-        // because a position was placed would be a change nobody asked for.
-        if (first && this.mechanismSrv.links.length === 0) {
-          this.svgGrid.updateObjectScale();
-        }
         // A position added is a different question, not a different answer.
         this.synthSolution.invalidate();
         this.dragState.release();
