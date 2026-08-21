@@ -22,6 +22,8 @@ import {
 } from './transcoding/transcoder-data';
 import { SettingsService } from './settings.service';
 import { MODEL_SCALE } from '../model/render-scale';
+import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
+import { encodeSynthesisDesign } from './synthesis/synthesis-url';
 
 /*
  * This service is responsible for generating the URL from the current mechanism.
@@ -39,6 +41,7 @@ import { MODEL_SCALE } from '../model/render-scale';
 export class UrlGenerationService {
   private mechanism = inject(MechanismService);
   private settings = inject(SettingsService);
+  private synthesis = inject(SynthesisBuilderService);
 
   _addJointToEncoder(encoder: StringTranscoder, joint: Joint) {
     if (joint instanceof RevJoint) {
@@ -200,6 +203,12 @@ export class UrlGenerationService {
               : 'CJ' + link.id + '~' + (link.comAnchor as { joint: string }).joint
           )
       );
+
+      // The synthesis design, if one is being worked on. It is not part of the
+      // mechanism -- nothing here is on the grid yet -- but undo and redo are a
+      // stack of these strings, so a design left out of them could not be
+      // undone, and a link shared mid-design would open on an empty panel.
+      encoder.setSynthesisMarks(encodeSynthesisDesign(this.synthesis));
 
       // Encode global settings
       encoder.addEnumSetting(

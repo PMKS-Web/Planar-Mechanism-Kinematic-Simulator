@@ -1,105 +1,1332 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
 
+/* The panel is the app's indigo throughout; these are the same values
+   mytheme.scss resolves to, written out so a rule can be read on its own. */
+$ink: #2c2c2c;
+$indigo: #3f51b5;
+$indigo-mid: #5c6bc0;
+$indigo-pale: #e8eaf6;
+$indigo-tint: #f7f8fd;
+$fill: #f0f1f5;
+$rule: #eceef5;
+$edge: #e6e7ee;
+$quiet: rgba(0, 0, 0, 0.55);
+$amber: #f5a623;
+$amber-ink: #b26a00;
+$green: #2e7d32;
+$red: #e53935;
+
+/**
+ * Shipped through the theme mixin, like every other panel in the app.
+ *
+ * Two reasons, and they are the same reason twice. A component stylesheet is
+ * capped at 6 kB and this one is twice that; and half these class names --
+ * `.row`, `.field`, `.card`, `.note` -- are words, not names, so emitting them
+ * at the top level of the global sheet would restyle the rest of the app.
+ * Nesting the whole thing under the panel's own id settles both at once.
+ */
 @mixin css($theme) {
-  // Get the color config from the theme.
-  $color-config: mat.m2-get-color-config($theme);
-  // Get the primary color palette from the color-config.
-  $primary-palette: map.get($color-config, 'primary');
-  $accent-palette: map.get($color-config, 'accent');
   $typography-config: mat.m2-get-typography-config($theme);
-  $background: map.get($theme, background);
-  $foreground: map.get($theme, foreground);
-}
 
-#synthesisWrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+  #synthesisPanel {
+    .chooser__title {
+      @include mat.m2-typography-level($typography-config, 'headline-6');
+    }
 
-.poseHeader {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-}
+    /* The card, drawn here rather than by panel-section: this panel owns two
+     scroll regions of its own -- the design above and a transport that has to
+     stay put below it -- and panel-section's card scrolls as one piece. Same
+     surface, same shadow, same 5px indigo bar, so it is the same card. */
+    & {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      max-height: 100%;
+      overflow: hidden;
+      pointer-events: all;
+      background-color: var(--card-surface);
+      border-top: 5px solid $indigo;
+      border-radius: var(--border-radius);
+      box-shadow: var(--card-shadow);
+      color: $ink;
+      font-family: Roboto, 'Helvetica Neue', sans-serif;
 
-.poseEdit {
-  zoom: 0.7;
-  justify-content: flex-end;
-}
+      mat-icon {
+        /* Material's icon box is 24px around an 18px glyph laid out at the top;
+         every icon here is inline beside text, so the box centres its own
+         contents rather than the row centring a box with air in it. */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
 
-// #headline-1 {
-//   @include mat.typography-level($typography-config, 'headline-1');
-// }
+    /* --- the chooser --------------------------------------------------------- */
 
-// #headline-2 {
-//   @include mat.typography-level($typography-config, 'headline-2');
-// }
+    .chooser__head {
+      padding: 10px 15px 8px;
+    }
 
-// #headline-3 {
-//   @include mat.typography-level($typography-config, 'headline-3');
-// }
+    .chooser__title {
+      white-space: nowrap;
+    }
 
-// #headline-4 {
-//   @include mat.typography-level($typography-config, 'headline-4');
-// }
+    .chooser__sub {
+      font-size: 14px;
+      line-height: 18px;
+      color: rgba(0, 0, 0, 0.6);
+    }
 
-// #headline-5 {
-//   @include mat.typography-level($typography-config, 'headline-5');
-// }
+    .chooser__body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px 15px 14px;
+      border-top: 1px solid $rule;
+    }
 
-// #headline-6 {
-//   @include mat.typography-level($typography-config, 'headline-6');
-// }
+    .chooser__prompt {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 22px;
+    }
 
-// #subtitle-1 {
-//   @include mat.typography-level($typography-config, 'subtitle-1');
-// }
+    .kindCard {
+      display: flex;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 6px;
+      text-align: left;
+      font: inherit;
+      color: inherit;
 
-// #body-1 {
-//   @include mat.typography-level($typography-config, 'body-2');
-// }
+      &--on {
+        border: 1.5px solid $indigo;
+        background: $indigo-tint;
+        cursor: pointer;
 
-// #body-2 {
-//   @include mat.typography-level($typography-config, 'body-2');
-// }
+        &:hover {
+          background: #eef1fc;
+        }
+      }
 
-// #subtitle-2 {
-//   @include mat.typography-level($typography-config, 'subtitle-2');
-// }
+      /* Named rather than hidden: what this screen cannot do yet is the first
+       thing a reader wants to know about it. */
+      &--off {
+        border: 1px solid $edge;
+        background: #fafafc;
+        cursor: not-allowed;
 
-// #caption {
-//   @include mat.typography-level($typography-config, 'caption');
-// }
+        .kindCard__name,
+        .kindCard__detail {
+          color: rgba(0, 0, 0, 0.45);
+        }
 
-// #overline {
-//   @include mat.typography-level($typography-config, 'overline');
-// }
+        .kindCard__icon {
+          background: $fill;
+          color: #b0b3c0;
+        }
+      }
 
-// #button {
-//   @include mat.typography-level($typography-config, 'button');
-// }
+      &__icon {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        background: $indigo-pale;
+        color: $indigo;
+      }
 
-//#input {
-//  @include mat.typography-level($typography-config, 'input');
-//}
+      &__text {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
 
-.poseData {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+      &__row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
 
-/* Why no driver could be fitted, sitting under the button that tried. Warm
-   rather than red: the four-bar is still there and still good, so this is an
-   explanation of what did not happen, not a report of something broken. */
-.driverRefusal {
-  margin: 6px 2px 10px;
-  padding: 8px 10px;
-  border-left: 3px solid #f5a623;
-  background: rgba(245, 166, 35, 0.08);
-  font-size: 11.5px;
-  line-height: 1.4;
-  color: rgba(0, 0, 0, 0.7);
+      &__name {
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      &__detail {
+        font-size: 13px;
+        line-height: 18px;
+        color: rgba(0, 0, 0, 0.6);
+      }
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      height: 18px;
+      padding: 0 7px;
+      border-radius: 9px;
+      background: $fill;
+      color: #8a8d99;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+
+      &--on {
+        background: $indigo-pale;
+        color: $indigo;
+      }
+    }
+
+    /* --- the working screen -------------------------------------------------- */
+
+    .work {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .work__head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+      padding: 8px 15px 8px 8px;
+      /* No rule of its own: the first section's header draws one directly
+         under this, and two together read as a heavy line. */
+    }
+
+    .work__headText {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .work__title {
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 24px;
+    }
+
+    .work__note {
+      font-size: 12px;
+      color: $quiet;
+    }
+
+    .work__scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* The collapsible sections carry their own header, so this styles the box
+       around whichever kind a section is -- a plain <section> for the results,
+       a collapsible for the design above them. */
+    collapsible-subseciton.sect {
+      display: block;
+      padding: 0;
+      /* Its header already draws the rule above it. Carrying `.sect`'s own rule
+         as well put two 1px lines against each other at every boundary, which
+         is why the dividers in this panel came out twice the weight of the ones
+         everywhere else in the app. */
+      border-bottom: 0;
+
+      /* The band runs the whole width of the panel. The inset used to be on
+         this row, which meant the toggle's own background -- and so its hover,
+         and its hit area -- stopped short of both sides, leaving a strip beside
+         the header that looked part of it and did nothing. The inset belongs to
+         the text, so it sits on the button's padding instead. */
+      .panel-header {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .panel-header__toggle {
+        padding: 10px 15px;
+        height: auto;
+      }
+
+      .panel-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 0 15px 10px;
+      }
+    }
+
+    /* A note that belongs to the section above it rather than to one of its
+       own: no heading, and a little more air over it than under. */
+    .sect--note {
+      padding-top: 10px;
+    }
+
+    .sect {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 8px 15px 10px;
+      border-bottom: 1px solid $rule;
+
+      &--last {
+        border-bottom: 0;
+      }
+
+      &__head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 28px;
+      }
+
+      &__title {
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 22px;
+      }
+
+      &__count {
+        font-size: 11.5px;
+        color: rgba(0, 0, 0, 0.5);
+      }
+
+      &__prose {
+        font-size: 12.5px;
+        line-height: 17px;
+        color: rgba(0, 0, 0, 0.6);
+      }
+
+      &__fine {
+        font-size: 11.5px;
+        color: $quiet;
+      }
+    }
+
+    /* One row: label, help, then the control hard against the right edge, so
+     every row's control shares a left edge down the panel. */
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 30px;
+
+      &__label {
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.72);
+
+        /* A button, so it needs the label's size said again: `font: inherit`
+           reaches the row, which sets none, and the three rows in the solution
+           section came out at two different sizes. */
+        &--btn {
+          border: 0;
+          background: none;
+          padding: 0;
+          font-family: inherit;
+          font-size: 14px;
+          color: rgba(0, 0, 0, 0.72);
+          cursor: pointer;
+
+          /* Greyed with the switch beside it: a driver that will not fit
+             these positions is not something to press. */
+          &:disabled {
+            color: rgba(0, 0, 0, 0.35);
+            cursor: default;
+          }
+        }
+      }
+
+      &__help {
+        font-size: 15px;
+        width: 15px;
+        height: 15px;
+        color: rgba(0, 0, 0, 0.3);
+        cursor: help;
+      }
+
+      &__spacer {
+        flex: 1 1 auto;
+      }
+    }
+
+    /* The panel's field, as input.component.scss draws it: a filled box with an
+     underline, and the unit living inside the value as part of the text the
+     reader selects and types over -- not a separate label beside it. */
+    .field {
+      display: flex;
+      align-items: center;
+      height: 30px;
+      padding: 0 8px 1px;
+      background: $fill;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.42);
+      border-radius: 4px 4px 0 0;
+      box-sizing: border-box;
+
+      &:focus-within {
+        padding-bottom: 0;
+        border-bottom: 2px solid $indigo;
+      }
+
+      input {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        border: 0;
+        padding: 0;
+        background: transparent;
+        font-family: Roboto, sans-serif;
+        font-size: 14px;
+        line-height: 20px;
+        color: $ink;
+
+        &:focus {
+          outline: none;
+        }
+
+        &::placeholder {
+          color: rgba(0, 0, 0, 0.26);
+        }
+
+        /* A row that has not been placed yet still shows its shape, greyed. */
+        &[disabled] {
+          -webkit-text-fill-color: rgba(0, 0, 0, 0.3);
+          color: rgba(0, 0, 0, 0.3);
+        }
+      }
+
+      &--wide {
+        width: 214px;
+        flex: 0 0 214px;
+      }
+
+      /* The three values on a position row share what is left of the row after
+         its number, the axis captions and the two icons, rather than each
+         holding a width of its own. Fixed widths meant every value had to be
+         sized for the longest one it might ever hold -- and they could not all
+         be, so whichever lost had its unit cut off. Sharing gives each of them
+         as much as there is. The angle takes a slightly larger share: "deg" is
+         a character longer than "cm", and an angle can want a sign and three
+         digits in front of it. */
+      &--num {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+
+      &--angle {
+        flex: 1.12 1 0;
+        min-width: 0;
+      }
+
+      &--tiny {
+        flex: 1 1 0;
+        height: 26px;
+      }
+    }
+
+    /* A segmented control: one box, one option lit. */
+    .seg {
+      display: flex;
+      height: 30px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      border-radius: 4px;
+      overflow: hidden;
+
+      &--wide {
+        width: 214px;
+        flex: 0 0 214px;
+      }
+
+      &__opt {
+        flex: 1 1 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        background: #fff;
+        font-family: Roboto, sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        color: #3c4043;
+        cursor: pointer;
+
+        & + & {
+          border-left: 1px solid rgba(0, 0, 0, 0.12);
+        }
+
+        &--on {
+          background: $indigo-mid;
+          color: #fff;
+        }
+
+        /* The other branch of a pair that has only one: offered, so the reader can
+         see the choice exists, but there is nothing behind it. */
+        &:disabled {
+          color: #c4c7d0;
+          cursor: default;
+        }
+      }
+    }
+
+    /* --- positions ----------------------------------------------------------- */
+
+    .pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid $indigo;
+      border-radius: 4px;
+      background: $indigo;
+      color: #fff;
+      font-family: Roboto, sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+
+      mat-icon {
+        font-size: 17px;
+        width: 17px;
+        height: 17px;
+      }
+
+      /* Armed reads as a mode the reader is *in*, so it inverts rather than
+       brightening: the button is now the way out of it. */
+      &--armed {
+        background: #eef1fc;
+        color: $indigo;
+      }
+
+      &--square {
+        width: 28px;
+        padding: 0;
+        justify-content: center;
+        background: #fff;
+        color: $indigo;
+      }
+    }
+
+    .poseRow {
+      display: flex;
+      align-items: center;
+
+      /* Tighter than the panel's usual 5px: the row carries nine things and
+         the space belongs to the fields. */
+      gap: 4px;
+      padding: 5px 4px;
+      border: 1.5px solid $edge;
+      border-radius: 5px;
+      background: #fff;
+      cursor: pointer;
+
+      &--sel {
+        border-color: #ffc107;
+        background: #fffdf5;
+      }
+
+      &__n {
+        flex: 0 0 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 18px;
+        border: 0;
+        padding: 0;
+        font-family: inherit;
+        cursor: pointer;
+
+        &:focus-visible {
+          outline: 2px solid $indigo;
+          outline-offset: 2px;
+        }
+
+        border-radius: 10px;
+        background: #dfe1e8;
+        color: rgba(0, 0, 0, 0.45);
+        font-size: 12px;
+        font-weight: 500;
+
+        &--placed {
+          background: $indigo-mid;
+          color: #fff;
+        }
+      }
+
+      &__axis {
+        flex: 0 0 9px;
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.6);
+
+        &--angle {
+          flex: 0 0 12px;
+          font-size: 15px;
+          text-align: center;
+        }
+      }
+
+      &__status {
+        flex: 0 0 18px;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: #b6bac6;
+        cursor: help;
+
+        &--ok {
+          color: $green;
+        }
+
+        &--defect {
+          color: $amber-ink;
+        }
+
+        &--arm {
+          color: $indigo;
+        }
+      }
+
+      &__remove {
+        flex: 0 0 17px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        padding: 0;
+        background: none;
+        font-size: 17px;
+        width: 17px;
+        height: 17px;
+        color: #9aa0ac;
+        cursor: pointer;
+
+        mat-icon {
+          font-size: 17px;
+          width: 17px;
+          height: 17px;
+        }
+
+        &--off {
+          color: #e2e4ea;
+          cursor: default;
+        }
+      }
+    }
+
+    /* --- requirements -------------------------------------------------------- */
+
+    .req {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 7px 9px;
+      border: 1px solid $rule;
+      border-radius: 5px;
+      background: #fff;
+
+      &--on {
+        border-color: #d3d8f0;
+        background: $indigo-tint;
+      }
+
+      &__line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 0;
+        padding: 0;
+        background: none;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      &__icon {
+        flex: 0 0 18px;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: #c4c7d0;
+      }
+
+      &__text {
+        flex: 1 1 auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      &__label {
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.5);
+      }
+
+      &__detail {
+        font-size: 11.5px;
+        line-height: 16px;
+        color: $quiet;
+      }
+
+      &--on &__icon {
+        color: $indigo;
+      }
+
+      &--on &__label {
+        color: rgba(0, 0, 0, 0.85);
+      }
+    }
+
+    .switch {
+      position: relative;
+      flex: 0 0 34px;
+      width: 34px;
+      height: 14px;
+      margin-right: 3px;
+      border: 0;
+      padding: 0;
+      border-radius: 7px;
+      background: rgba(0, 0, 0, 0.22);
+      cursor: pointer;
+
+      /* Offered but not available -- a driver that will not fit these
+         positions. The reason is on the switch itself, on hover; this is the
+         part that says not to bother pressing it. */
+      &:disabled {
+        cursor: default;
+        background: rgba(0, 0, 0, 0.09);
+      }
+
+      &:disabled .switch__knob {
+        background: #f2f2f2;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+      }
+
+      &__knob {
+        position: absolute;
+        left: -3px;
+        top: -3px;
+        width: 20px;
+        height: 20px;
+        border-radius: 10px;
+        background: #fafafa;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        transition: left 120ms ease-out;
+      }
+
+      &--on {
+        background: rgba(63, 81, 181, 0.5);
+      }
+
+      &--on .switch__knob {
+        left: 17px;
+        background: $indigo;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .switch__knob {
+        transition: none;
+      }
+    }
+
+    .region {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-left: 26px;
+
+      &__line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      &__summary {
+        flex: 1 1 auto;
+        font-size: 11.5px;
+        color: rgba(0, 0, 0, 0.6);
+      }
+
+      &__draw {
+        border: 0;
+        padding: 0;
+        background: none;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        color: #8a6d1b;
+        cursor: pointer;
+
+        &--on {
+          color: #c62828;
+        }
+      }
+
+      &__fields {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      &__tag {
+        flex: 0 0 11px;
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.6);
+      }
+
+      /* Said once, for all four. */
+      &__unit {
+        flex: 0 0 auto;
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.5);
+      }
+    }
+
+    /* --- notes --------------------------------------------------------------- */
+
+    .note {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 9px 11px;
+      border-radius: 5px;
+      font-size: 12px;
+      line-height: 17px;
+
+      mat-icon {
+        flex: 0 0 18px;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      &--warn {
+        background: rgba(245, 166, 35, 0.09);
+        border: 1px solid rgba(245, 166, 35, 0.45);
+        color: rgba(0, 0, 0, 0.72);
+
+        mat-icon {
+          color: $amber-ink;
+        }
+      }
+
+      &--bad {
+        background: #fdf6f6;
+        color: rgba(0, 0, 0, 0.7);
+
+        mat-icon {
+          color: $red;
+        }
+      }
+
+      &--good {
+        align-items: center;
+        background: #e6f4ea;
+        color: #1a4a29;
+
+        mat-icon {
+          color: #137333;
+        }
+
+        span {
+          flex: 1 1 auto;
+        }
+      }
+
+      &__undo {
+        border: 0;
+        padding: 0;
+        background: none;
+        font: inherit;
+        font-weight: 500;
+        color: #137333;
+        cursor: pointer;
+      }
+    }
+
+    /* Why no driver could be fitted, under the toggle that tried. Warm rather than
+     red: the four-bar is still there and still good, so this is an explanation of
+     what did not happen, not a report of something broken. */
+    .refusal {
+      padding: 8px 10px;
+      border-left: 3px solid $amber;
+      background: rgba(245, 166, 35, 0.08);
+      font-size: 12px;
+      line-height: 17px;
+      color: rgba(0, 0, 0, 0.72);
+    }
+
+    /* --- generating ---------------------------------------------------------- */
+
+    .cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 38px;
+      border: 0;
+      border-radius: 4px;
+      background: $indigo;
+      color: #fff;
+      font-family: Roboto, sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+
+      &:disabled {
+        background: #d5d7e0;
+        color: #8f93a1;
+        cursor: default;
+      }
+
+      &--busy:disabled {
+        background: #9fa8da;
+        color: #fff;
+      }
+
+      &--insert {
+        flex: 1 1 auto;
+        height: 36px;
+      }
+    }
+
+    .sweep {
+      position: relative;
+      height: 4px;
+      border-radius: 2px;
+      background: #e4e6ef;
+      overflow: hidden;
+
+      &__bar {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 38%;
+        border-radius: 2px;
+        background: $indigo;
+        animation: synthesisSweep 1s linear infinite;
+      }
+    }
+
+    @keyframes synthesisSweep {
+      from {
+        transform: translateX(-60%);
+      }
+      to {
+        transform: translateX(360%);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sweep__bar {
+        animation: none;
+        width: 100%;
+      }
+    }
+
+    /* --- the gallery --------------------------------------------------------- */
+
+    .gallery {
+      display: flex;
+      gap: 8px;
+
+      /* Opened out, the same three columns rather than two: the cards are there
+         to be compared with each other, and a set that re-flows as it grows
+         makes the reader find their place again for no reason. */
+      &--all {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        max-height: 260px;
+        overflow-y: auto;
+      }
+    }
+
+    .card {
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 6px;
+      border: 1px solid $edge;
+      border-radius: 5px;
+      background: #fff;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+
+      &--sel {
+        border: 1.5px solid $indigo;
+        background: $indigo-tint;
+
+        .card__name {
+          color: $indigo;
+        }
+
+        .card__thumb {
+          background: #fff;
+        }
+      }
+
+      &__head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      &__name {
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      &__kind {
+        flex: 1 1 auto;
+        font-size: 10.5px;
+        color: $quiet;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      &__thumb {
+        background: #fafafc;
+        border-radius: 3px;
+      }
+
+      &__reach {
+        font-size: 10.5px;
+        color: $amber-ink;
+
+        &--ok {
+          color: $green;
+        }
+      }
+
+      &__metric {
+        font-size: 10.5px;
+        color: $quiet;
+
+        /* A dead point is the one number on this card that decides whether the
+           linkage is a machine or an ornament. */
+        &--binds {
+          color: $amber-ink;
+        }
+      }
+    }
+
+    .linkBtn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border: 0;
+      padding: 0;
+      background: none;
+      font: inherit;
+      font-size: 12.5px;
+      color: $indigo;
+      cursor: pointer;
+
+      mat-icon {
+        font-size: 15px;
+        width: 15px;
+        height: 15px;
+      }
+    }
+
+    /* --- link lengths -------------------------------------------------------- */
+
+    .dims {
+      display: flex;
+      flex-direction: column;
+      border-radius: 5px;
+      background: #f4f5f9;
+      overflow: hidden;
+
+      &__head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 0;
+        padding: 7px 10px;
+        background: none;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      &__title {
+        flex: 1 1 auto;
+        text-align: left;
+        font-size: 12.5px;
+        font-weight: 500;
+        color: rgba(0, 0, 0, 0.7);
+      }
+
+      &__summary {
+        font-size: 11.5px;
+        color: rgba(0, 0, 0, 0.5);
+      }
+
+      &__body {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        padding: 0 10px 8px;
+      }
+
+      &__row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        font-size: 12.5px;
+        line-height: 19px;
+        color: rgba(0, 0, 0, 0.6);
+
+        span:first-child {
+          flex: 1 1 auto;
+        }
+      }
+
+      &__value {
+        font-weight: 500;
+        color: $ink;
+      }
+    }
+
+    /* --- the foot ------------------------------------------------------------ */
+
+    .foot {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 8px;
+      border-top: 1px solid $edge;
+      background: #fbfbfd;
+    }
+
+    /* The search reporting itself, directly over the button that started it.
+       A bar and nothing else: the sentence that used to sit under it described
+       the search accurately and was gone before anybody finished reading it. */
+    .foot__progress {
+      padding: 0 4px;
+    }
+
+    .iconBtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border: 0;
+      border-radius: 6px;
+      background: none;
+      color: #5f6368;
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.05);
+      }
+
+      /* The box Material gives an icon is 24px; in a 22px button its glyph was
+         clipped, which took the top off the direction arrow. The button is the
+         size of the thing inside it. */
+      &--sm {
+        width: 24px;
+        height: 24px;
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+          overflow: visible;
+        }
+      }
+    }
+
+    .transport {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 3px 4px;
+      border-radius: 6px;
+
+      &--playing {
+        background: #e9ebf3;
+      }
+
+      &__line {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 22px;
+        padding: 0 4px;
+        overflow: hidden;
+      }
+
+      &__name {
+        flex: 0 0 auto;
+        font-size: 13px;
+        font-weight: 500;
+        color: $indigo;
+      }
+
+      &__note {
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.5);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      &__angle {
+        margin-left: auto;
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+    }
+
+    /* The channel and its indigo progress are their own elements so the position
+     marks can sit BETWEEN them and the handle: the input keeps only its thumb,
+     on top of everything. */
+    .track {
+      position: relative;
+      height: 16px;
+      margin: 0 4px;
+
+      &__channel {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 8px;
+        border-radius: 4px;
+        background: #d5d7e0;
+      }
+
+      &__done {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 8px;
+        border-radius: 4px;
+        background: $indigo;
+      }
+
+      &__tick {
+        position: absolute;
+        top: 1px;
+        z-index: 1;
+        width: 6px;
+        height: 6px;
+        margin-left: -3px;
+        border-radius: 3px;
+        background: $amber;
+        pointer-events: none;
+
+        &--ok {
+          background: #43a047;
+        }
+      }
+
+      &__scrub {
+        -webkit-appearance: none;
+        appearance: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: -6px;
+        z-index: 2;
+        width: 100%;
+        height: 20px;
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+
+        &::-webkit-slider-runnable-track {
+          height: 8px;
+          border: none;
+          background: transparent;
+        }
+
+        &::-moz-range-track {
+          height: 8px;
+          border: none;
+          background: transparent;
+        }
+
+        &::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          box-sizing: border-box;
+          width: 24px;
+          height: 20px;
+          margin-top: -6px;
+          border: 1px solid rgba(0, 0, 0, 0.16);
+          border-radius: 10px;
+          background: #fff;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+          cursor: inherit;
+        }
+
+        &::-moz-range-thumb {
+          box-sizing: border-box;
+          width: 24px;
+          height: 20px;
+          border: 1px solid rgba(0, 0, 0, 0.16);
+          border-radius: 10px;
+          background: #fff;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+          cursor: inherit;
+        }
+      }
+    }
+
+    .foot__buttons {
+      display: flex;
+      gap: 8px;
+      padding: 0 4px 2px;
+    }
+
+    .danger {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid $red;
+      border-radius: 4px;
+      background: none;
+      color: $red;
+      font-family: Roboto, sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      &:hover {
+        background: rgba(229, 57, 53, 0.06);
+      }
+    }
+  }
 }

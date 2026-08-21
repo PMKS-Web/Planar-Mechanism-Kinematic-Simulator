@@ -190,7 +190,14 @@ function distance(a: Coord, b: Coord): number {
  * The shortest arc holding every angle: found as the complement of the widest
  * empty gap between neighbours, which is the one stretch nothing has to cross.
  */
-function smallestArcContaining(angles: number[]): { start: number; span: number } {
+/**
+ * The shortest arc that contains every one of the given directions.
+ *
+ * Found by looking for the widest gap between them and taking what is left:
+ * the answer wraps, so it cannot be had from the smallest and largest values.
+ * Angles in radians; the arc runs from `start` for `span`.
+ */
+export function smallestArcContaining(angles: number[]): { start: number; span: number } {
   const sorted = angles.map((angle) => ((angle % TAU) + TAU) % TAU).sort((a, b) => a - b);
   let widest = -1;
   let after = 0;

@@ -278,7 +278,7 @@
 
       #editWrapper,
       #analysisWrapper,
-      #synthesisWrapper {
+      #synthesisPanel {
         flex: 1 1 auto;
         min-height: 0;
       }
@@ -306,8 +306,12 @@
     // the wrapper inside the page, and moving it to the frame left the page at
     // the frame's own width, so the card overhung it and its right-hand shadow
     // was cut off.
+    // Synthesis is as wide as the analysis panel, not as wide as Edit: it
+    // holds a row of three numbers per position, a gallery of candidate
+    // linkages side by side, and a transport -- none of which fit in 250px,
+    // and all of which are comparisons that stop working once they wrap.
     .page1 {
-      width: 250px; //Be careful, there are multiple places to change this value
+      width: 400px; //Be careful, there are multiple places to change this value
     }
 
     .page2 {

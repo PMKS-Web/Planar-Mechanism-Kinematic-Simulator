@@ -7,6 +7,9 @@ import { SvgGridService } from './svg-grid.service';
 import { ActiveObjService } from './active-obj.service';
 import { NotificationService } from './notification.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
+import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
+import { applySynthesisDesign } from './synthesis/synthesis-url';
+import { SynthesisSolutionService } from './synthesis/synthesis-solution.service';
 
 @Injectable({
   providedIn: 'root',
@@ -17,6 +20,7 @@ export class UrlProcessorService {
   private svgGrid = inject(SvgGridService);
   private activeObj = inject(ActiveObjService);
   private notify = inject(NotificationService);
+  private synthesis = inject(SynthesisBuilderService);
 
   constructor() {
     // the content part of the url (the part after the ?)
@@ -108,6 +112,44 @@ export class UrlProcessorService {
           this.activeObj
         );
         builder.build(updateSettings);
+        // After the mechanism, because a design is about a machine that is not
+        // on the grid yet and so has nothing in the build to wait for -- but
+        // before the rebuild below, so the panel and the canvas come up
+        // describing the same state.
+        applySynthesisDesign(decoder.getSynthesisMarks(), this.synthesis);
+        // Ownership names joints this URL is supposed to carry. Anything it
+        // names that is not here was removed by hand at some point, and a
+        // claim on an object that does not exist is not a claim worth keeping.
+        const present = new Set(mechanismSrv.joints.map((joint) => joint.id));
+        // Ids and their baselines are one list in two arrays, so they are
+        // filtered together or not at all -- dropping an id on its own would
+        // slide every baseline after it onto the wrong joint.
+        const survives = this.synthesis.ownedJointIds.map((id) => present.has(id));
+        const kept = this.synthesis.ownedJointIds.filter((_, index) => survives[index]);
+        const keptAt = this.synthesis.ownedAt.filter((_, index) => survives[index]);
+        // Dropping the ids of joints that are gone is right -- a claim on
+        // something that does not exist would be inherited by whatever new
+        // joint next took that letter. But dropping them silently threw away
+        // the one fact that made the linkage entangled rather than ours, so a
+        // reload turned "you cut into this, I will leave it alone" into "this
+        // is mine, I will delete it": the reader's own edits, removed without
+        // the warning that exists to prevent exactly that.
+        // Only while something of ours is still standing. If every joint we
+        // wrote has been taken away there is nothing left to be entangled
+        // with -- the design owns nothing, and saying otherwise would keep a
+        // section in every URL it writes from then on.
+        if (kept.length > 0 && kept.length !== this.synthesis.ownedJointIds.length) {
+          this.synthesis.ownershipPartial = true;
+        } else if (kept.length === 0) {
+          this.synthesis.ownershipPartial = false;
+        }
+        this.synthesis.ownedJointIds = kept;
+        this.synthesis.ownedAt = keptAt;
+        // A decode replaces the design wholesale, so whatever was found for the
+        // last one says nothing about this one. Resolved late, like the other
+        // services this one reaches: asking for it at construction would build
+        // MechanismService before this service is finished being built.
+        this.injector.get(SynthesisSolutionService).invalidate();
       } catch (error) {
         console.error('Unable to load mechanism URL', error);
         // Deferred because this can run inside the service's own constructor,

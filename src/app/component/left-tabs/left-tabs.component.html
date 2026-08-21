@@ -1,6 +1,6 @@
 <div
   [@openClose]="
-    this.tabs.isTabVisible() ? (this.tabs.isAnalysisMode() ? 'openWide' : 'open') : 'closed'
+    this.tabs.isTabVisible() ? (this.tabs.isWidePanel() ? 'openWide' : 'open') : 'closed'
   "
   class="panel"
   [class.analysis]="this.tabs.isAnalysisMode()"

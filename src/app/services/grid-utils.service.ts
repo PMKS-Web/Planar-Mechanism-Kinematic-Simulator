@@ -20,7 +20,6 @@ import { Force } from '../model/force';
 import { Arc, Line } from '../model/line';
 import { SynthesisPose } from './synthesis/synthesis-util';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
-import { SynthesisClickMode } from './synthesis/synthesis-constants';
 import { SvgGridService } from './svg-grid.service';
 import { ColorService } from './color.service';
 
@@ -926,14 +925,6 @@ export class GridUtilsService {
     if (how === 'whole') selectedForce.moveAnchor(at);
     else selectedForce.moveApplicationPoint(at);
     return selectedForce;
-  }
-
-  setPoseTheta(pose: SynthesisPose, thetaRadians: number) {
-    this.synthesisBuilder.setPoseTheta(pose, thetaRadians);
-  }
-
-  dragPose(pose: SynthesisPose, dx: number, dy: number, mode: SynthesisClickMode) {
-    this.synthesisBuilder.movePoseByOffset(pose, mode, dx, dy);
   }
 
   isAttachedToSlider(lastRightClick: Joint | Link | Force | String) {

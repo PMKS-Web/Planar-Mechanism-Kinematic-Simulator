@@ -76,6 +76,18 @@ export class SelectedTabService {
     return tab === TabID.ANALYZE || tab === TabID.FORCE;
   }
 
+  /**
+   * Whether the current mode's panel needs the wide drawer.
+   *
+   * The two analyses need it for their tables and graphs; Synthesis needs it
+   * for a row of three numbers per position and a gallery of candidate
+   * linkages read side by side. Edit is the only mode that still fits in the
+   * narrow one.
+   */
+  public isWidePanel(tab: TabID = this.getCurrentTab()) {
+    return this.isAnalysisMode(tab) || tab === TabID.SYNTHESIZE;
+  }
+
   private onNewTab(previousTab: TabID) {
     // A setup drawer answers a question about one mode, so it goes when that
     // mode does -- otherwise the Force list sits over the Synthesis canvas
@@ -91,20 +103,18 @@ export class SelectedTabService {
       this.settings.animating.next(false);
     }
 
-    if (this.getCurrentTab() === TabID.SYNTHESIZE) {
-      // reset flag
-      this.synthesis.modifiedMechanism = false;
-      // A fresh visit synthesises a new linkage rather than editing the one the
-      // last visit left behind, so nothing here belongs to this one yet.
-      this.synthesis.synthesisedIds = { joints: [], links: [] };
-      this.synthesis.driverWanted = false;
-      this.synthesis.driveOnFarPin = false;
-      this.synthesis.driverRefusal = undefined;
-    } else if (previousTab === TabID.SYNTHESIZE && this.getCurrentTab() === TabID.EDIT) {
-      // save mechanism state if modified in synthesis tab
-      this.mechanism.save();
-      // reset flag
-      this.synthesis.modifiedMechanism = false;
-    }
+    /*
+      Leaving Synthesis no longer saves.
+
+      It used to, because the old mode built onto the grid as the reader typed
+      and nothing else was going to write that down. The redesign only ever
+      touches the drawing through Insert, Undo-insert and Delete, and each of
+      those saves for itself -- so this wrote a second, identical entry on the
+      way out, and the first Undo after inserting appeared to do nothing at all
+      because it stepped back onto the same state.
+
+      The flag that was supposed to gate it had not been set by anything for as
+      long as the redesign has existed, and is gone with it.
+    */
   }
 }

@@ -167,7 +167,42 @@ export class SvgGridService {
     });
     this.guardAgainstStuckPan(root);
     this.restoreMissingPointerDown(root);
+    this.releaseGesturesOnLostPointer();
     this.scaleToFitLinkage(false);
+  }
+
+  /**
+   * End a canvas gesture the canvas never saw end.
+   *
+   * A press that goes down on the drawing can come up anywhere -- over a panel,
+   * outside the window, or not at all if the browser cancels it. The canvas
+   * hears `pointerup` only on itself, so those releases went unheard and the
+   * gesture stayed live: the pan guard kept refusing to pan and the search
+   * stayed frozen mid-drag until something else was clicked.
+   *
+   * On the window, and in the capture phase, so it runs wherever the release
+   * lands and whatever else claims it.
+   */
+  private releaseGesturesOnLostPointer(): void {
+    const release = () => NewGridComponent.instance?.releaseCanvasGestures();
+    window.addEventListener('pointerup', release, true);
+    window.addEventListener('pointercancel', release, true);
+  }
+
+  /**
+   * Hand the wheel to whatever gesture wants it, or give it back to the zoom.
+   *
+   * Synthesis turns the position it is about to drop with the wheel, and the
+   * library binds its own wheel listener to the same element -- so asking it to
+   * stand down is the only way to stop the canvas zooming under the gesture.
+   * Through the library's own API rather than by swallowing the event, because
+   * a swallowed event depends on which listener was registered first.
+   */
+  setWheelZoomEnabled(enabled: boolean): void {
+    if (!this.panZoomObject) return;
+    if (enabled === this.panZoomObject.isMouseWheelZoomEnabled()) return;
+    if (enabled) this.panZoomObject.enableMouseWheelZoom();
+    else this.panZoomObject.disableMouseWheelZoom();
   }
 
   screenToSVG(screenPos: Coord): Coord {
@@ -350,7 +385,12 @@ export class SvgGridService {
     // added: link dragging panned the canvas underneath itself for exactly as
     // long as this list did not mention it, which made the drag look inert
     // because the content moved with the cursor.
-    if (this.dragState.isDragging || NewGridComponent.getLastLeftClickType() === 'SynthesisPose') {
+    // Synthesis runs its gestures outside the state machine -- a position is a
+    // question about a machine, not part of one -- so it is asked separately.
+    // It used to be recognised by what was last clicked, which never stopped
+    // being a pose: the canvas could not be panned again until something else
+    // was selected.
+    if (this.dragState.isDragging || NewGridComponent.isSynthesisGestureLive()) {
       return oldPan;
     }
     return newPan;

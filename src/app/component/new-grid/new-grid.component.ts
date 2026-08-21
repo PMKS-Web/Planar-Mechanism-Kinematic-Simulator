@@ -43,10 +43,8 @@ import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 import { SynthesisPose } from 'src/app/services/synthesis/synthesis-util';
-import {
-  SynthesisClickMode,
-  SynthesisConstants,
-} from 'src/app/services/synthesis/synthesis-constants';
+import { SynthesisCanvasService } from 'src/app/services/synthesis/synthesis-canvas.service';
+import { SynthesisSolutionService } from 'src/app/services/synthesis/synthesis-solution.service';
 import { ColorService } from '../../services/color.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { EditPanelComponent } from '../edit-panel/edit-panel.component';
@@ -121,7 +119,7 @@ type BackgroundImageCorner = 'tl' | 'tr' | 'bl' | 'br';
   templateUrl: './new-grid.component.html',
   styleUrls: ['./new-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CdkContextMenuTrigger, SvgArrowComponent, ContextMenuComponent],
+  imports: [CdkContextMenuTrigger, ContextMenuComponent],
 })
 export class NewGridComponent implements OnDestroy {
   svgGrid = inject(SvgGridService);
@@ -133,6 +131,8 @@ export class NewGridComponent implements OnDestroy {
   activeObjService = inject(ActiveObjService);
   private tabService = inject(SelectedTabService);
   synthesisBuilder = inject(SynthesisBuilderService);
+  synthCanvas = inject(SynthesisCanvasService);
+  synthSolution = inject(SynthesisSolutionService);
   notify = inject(NotificationService);
   private shortcuts = inject(KeyboardShortcutsService);
   dialog = inject(MatDialog);
@@ -157,7 +157,7 @@ export class NewGridComponent implements OnDestroy {
 
   private svgGridElement!: HTMLElement;
   public cMenuItems: cMenuItem[] = [];
-  public lastRightClick: Joint | Link | Force | string = '';
+  public lastRightClick: Joint | Link | Force | string | SynthesisPose = '';
   public lastRightClickCoord: Coord = new Coord(0, 0);
 
   public lastLeftClick: Joint | Link | Force | string | SynthesisPose = '';
@@ -218,10 +218,7 @@ export class NewGridComponent implements OnDestroy {
   private startY!: number;
   mouseLocation: Coord = new Coord(0, 0);
   lastMouseLocation: Coord = new Coord(0, 0);
-  private synthesisClickMode: SynthesisClickMode = SynthesisClickMode.NORMAL;
-  private synthesisRotateStart: number = 0;
 
-  public sConstants = new SynthesisConstants();
   mouseLocationRaw: Coord = new Coord(0, 0);
 
   /** For template bindings that size things in user units. */
@@ -326,9 +323,75 @@ export class NewGridComponent implements OnDestroy {
     //This is for debug purposes, do not make anything else static!
   }
 
-  // whether to show the synthesis poses
+  /** Whether Synthesis owns the canvas: its handles, ghost and preview. */
   showSynthesis(): boolean {
     return this.tabService.getCurrentTab() === TabID.SYNTHESIZE;
+  }
+
+  /**
+   * Whether the positions are on the grid at all.
+   *
+   * They outlive the mode. A design that has produced a linkage is the record
+   * of what that linkage was *for*, and hiding it the moment the reader goes to
+   * look at the motion leaves them with a machine and no account of it. Outside
+   * Synthesis they are a shadow -- faint, and not in the way of anything -- and
+   * the canvas menu is where they are taken away.
+   */
+  showSynthesisPositions(): boolean {
+    return this.showSynthesis() || this.synthesisBuilder.getAllPoses().length > 0;
+  }
+
+  /** Positions drawn, but as a record rather than as controls. */
+  synthesisShadowOnly(): boolean {
+    return !this.showSynthesis();
+  }
+
+  /**
+   * What can be done to the synthesis positions from here.
+   *
+   * The only part of this menu offered in every mode, because the positions
+   * themselves are drawn in every mode. They are a note about what the linkage
+   * was designed to do rather than a part of it, so clearing them is not an
+   * edit to the mechanism and does not have to wait for the start pose.
+   */
+  private synthesisMenuItems(): cMenuItem[] {
+    if (this.synthesisBuilder.getAllPoses().length === 0) return [];
+    const items: cMenuItem[] = [];
+    if (this.objectKind(this.lastRightClick) === 'SynthesisPose') {
+      const pose = this.lastRightClick as SynthesisPose;
+      items.push(
+        new cMenuItem(
+          `Delete Position ${pose.id}`,
+          () => this.deleteSynthesisPosition(pose.id),
+          'trash',
+          false,
+          true
+        )
+      );
+    }
+    items.push(
+      new cMenuItem(
+        'Delete Synthesis Positions',
+        () => this.deleteAllSynthesisPositions(),
+        'remove',
+        false,
+        true
+      )
+    );
+    return items;
+  }
+
+  /** Take one position away, or all of them, and record it as one step. */
+  deleteSynthesisPosition(id: number): void {
+    this.synthesisBuilder.removePose(id);
+    this.synthSolution.invalidate();
+    this.mechanismSrv.save();
+  }
+
+  deleteAllSynthesisPositions(): void {
+    this.synthesisBuilder.deleteAllPoses();
+    this.synthSolution.invalidate();
+    this.mechanismSrv.save();
   }
 
   enableGridAnimationForThisAction() {
@@ -472,7 +535,7 @@ export class NewGridComponent implements OnDestroy {
         break;
       }
       case 'RevJoint': {
-        let jointIsSlider = this.gridUtils.isAttachedToSlider(this.lastRightClick);
+        let jointIsSlider = this.gridUtils.isAttachedToSlider(this.lastRightClick as RealJoint);
         let jointIsGround = (this.lastRightClick as RealJoint).ground;
         let canToggleInput = this.gridUtils.canToggleInput(this.lastRightClick as RealJoint);
         const jointIsInput = this.gridUtils.isVisuallyInput(this.lastRightClick as RealJoint);
@@ -603,10 +666,14 @@ export class NewGridComponent implements OnDestroy {
         // allowed -- that direction takes a body away.
         this.cMenuItems.push(
           new cMenuItem(
-            this.gridUtils.isAttachedToSlider(this.lastRightClick) ? 'Remove Slider' : 'Add Slider',
+            this.gridUtils.isAttachedToSlider(this.lastRightClick as RealJoint)
+              ? 'Remove Slider'
+              : 'Add Slider',
             this.mechanismSrv.toggleSlider.bind(this.mechanismSrv),
-            this.gridUtils.isAttachedToSlider(this.lastRightClick) ? 'remove_slider' : 'add_slider',
-            jointIsInput && !this.gridUtils.isAttachedToSlider(this.lastRightClick)
+            this.gridUtils.isAttachedToSlider(this.lastRightClick as RealJoint)
+              ? 'remove_slider'
+              : 'add_slider',
+            jointIsInput && !this.gridUtils.isAttachedToSlider(this.lastRightClick as RealJoint)
           )
         ); //Rev Joint - Always
 
@@ -626,7 +693,13 @@ export class NewGridComponent implements OnDestroy {
         break;
       }
 
+      case 'SynthesisPose':
+        this.cMenuItems.push(...this.synthesisMenuItems());
+        break;
       case 'String': //This means grid
+        // The positions stay on the grid after the linkage is inserted, in
+        // every mode, so the way to be rid of them is reachable from every mode.
+        this.cMenuItems.push(...this.synthesisMenuItems());
         this.cMenuItems.push(
           new cMenuItem('Add Link', this.startCreatingLink.bind(this), 'new_link')
         );
@@ -994,7 +1067,7 @@ export class NewGridComponent implements OnDestroy {
     this.mechanismSrv.createCylinderFrom(start, end, mountOn, mountAt);
   }
 
-  setLastRightClick(clickedObj: Joint | Link | string | Force, event?: MouseEvent) {
+  setLastRightClick(clickedObj: Joint | Link | string | Force | SynthesisPose, event?: MouseEvent) {
     this.lastRightClick = clickedObj;
     // The edit context menu acts on the selected object, so in Edit mode a
     // right-click selects what it will target. In Analyze/Synthesis mode a
@@ -1017,19 +1090,6 @@ export class NewGridComponent implements OnDestroy {
     }
 
     this.updateContextMenuItems();
-  }
-
-  get mode(): typeof SynthesisClickMode {
-    return SynthesisClickMode;
-  }
-
-  setSynthesisClickMode(mode: SynthesisClickMode) {
-    console.log('Setting synthesis click mode to ' + mode);
-    this.synthesisClickMode = mode;
-    let pose = this.lastLeftClick as SynthesisPose;
-    this.synthesisRotateStart =
-      pose.thetaRadians -
-      Math.atan2(this.mouseLocation.y - pose.position.y, this.mouseLocation.x - pose.position.x);
   }
 
   setLastLeftClick(clickedObj: Joint | Link | string | Force | SynthesisPose, event?: MouseEvent) {
@@ -1331,6 +1391,12 @@ export class NewGridComponent implements OnDestroy {
     // snapping, no drop candidates, no mechanism state to keep in step.
     if (this.dragBackgroundImage(mousePosInSvg)) return;
 
+    // Synthesis is the same kind of thing: positions and the preview are a
+    // question and a proposed answer, not parts of the drawing, so nothing
+    // here earns a rebuild or an undo entry. The cursor is recorded either
+    // way -- the ghost about to be dropped follows it.
+    if (this.showSynthesis() && this.synthCanvas.move(mousePosInSvg)) return;
+
     let deltaMouseX = this.mouseLocation.x - this.lastMouseLocation.x;
     let deltaMouseY = this.mouseLocation.y - this.lastMouseLocation.y;
 
@@ -1344,27 +1410,6 @@ export class NewGridComponent implements OnDestroy {
     ) {
       this.heldGestureNotice();
       this.heldGestureNotice = undefined;
-    }
-
-    if (this.dragState.isPointerDown && this.lastLeftClickType === 'SynthesisPose') {
-      if (this.synthesisClickMode === SynthesisClickMode.ROTATE) {
-        let pose = this.lastLeftClick as SynthesisPose;
-        let rotate =
-          Math.atan2(
-            this.mouseLocation.y - pose.position.y,
-            this.mouseLocation.x - pose.position.x
-          ) + this.synthesisRotateStart;
-        if (!isNaN(rotate)) {
-          this.gridUtils.setPoseTheta(pose, rotate);
-        }
-      } else {
-        this.gridUtils.dragPose(
-          this.activeObjService.selectedPose,
-          deltaMouseX,
-          deltaMouseY,
-          this.synthesisClickMode
-        );
-      }
     }
 
     switch (this.dragState.joint) {
@@ -2055,23 +2100,14 @@ export class NewGridComponent implements OnDestroy {
   }
 
   onContextMenu($event: MouseEvent) {
-    if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
-      this.cMenuItems = [];
-      return;
-    }
-
-    if (this.tabService.isAnalysisMode()) {
-      // Both analysis modes are read-only. Show no edit menu; setLastRightClick
-      // has already declined to change the selection.
-      this.cMenuItems = [];
-      return;
-    }
-
-    if (this.mechanismSrv.isPlaying == true) {
-      this.cMenuItems = [];
-      return;
-    }
-    if (this.mechanismSrv.mechanismTimeStep !== 0) {
+    // Everything on this menu except the synthesis positions edits the drawing,
+    // and only Edit does that -- setLastRightClick has already declined to move
+    // the selection in the other modes. The positions are drawn in every mode
+    // though, so the way to clear them away comes with them.
+    if (this.tabService.getCurrentTab() !== TabID.EDIT) {
+      this.cMenuItems = this.synthesisMenuItems();
+      if (this.cMenuItems.length === 0) return;
+    } else if (this.mechanismSrv.isPlaying || this.mechanismSrv.mechanismTimeStep !== 0) {
       this.cMenuItems = [];
       //Close the MatContextMenu
       return;
@@ -2085,7 +2121,46 @@ export class NewGridComponent implements OnDestroy {
   mouseUp($event: MouseEvent) {
     //This is the mouseUp that is called no matter what is clicked on
     this.bgDrag = undefined;
-    this.synthesisClickMode = SynthesisClickMode.NORMAL;
+    if (this.showSynthesis()) {
+      const wasDragging = this.synthCanvas.release();
+      // One gesture, one entry: the design is carried in the same URL the undo
+      // stack is made of, so a drag that moved a position has to be written --
+      // once, here, rather than on every pointer-move that made it.
+      if (wasDragging) this.mechanismSrv.save();
+      // A press that neither took hold of anything nor moved is a click, and
+      // while placing is armed a click on the canvas drops the next position.
+      // On the release rather than the press so svg-pan-zoom keeps its own
+      // gesture: a press it never sees is a canvas that cannot be panned.
+      if (
+        $event.button === 0 &&
+        !wasDragging &&
+        !this.synthPressTaken &&
+        this.synthesisBuilder.armed &&
+        this.pressDidNotTravel($event)
+      ) {
+        const at = this.svgGrid.screenToSVGfromXY($event.clientX, $event.clientY);
+        this.synthesisBuilder.placePose(at);
+        // A position added is a different question, not a different answer.
+        this.synthSolution.invalidate();
+        this.dragState.release();
+        this.mechanismSrv.save();
+        return;
+      }
+      // A click on the canvas that took hold of nothing lets go of whatever
+      // position was selected -- the same way clicking empty grid clears the
+      // selection everywhere else in the app. Only when placing is not armed:
+      // armed, the click has already been spent dropping a position.
+      if (
+        !wasDragging &&
+        !this.synthPressTaken &&
+        !this.synthesisBuilder.armed &&
+        this.synthesisBuilder.selectedPose !== 0 &&
+        this.pressDidNotTravel($event) &&
+        this.objectKind(this.lastLeftClick) === 'String'
+      ) {
+        this.synthesisBuilder.selectedPose = 0;
+      }
+    }
     // The alignment guides belong to the drag that made them.
     this.axisSnapGuides = [];
     // A press on a held object that never tried to move it is a click — a
@@ -2175,9 +2250,146 @@ export class NewGridComponent implements OnDestroy {
     return true;
   }
 
+  /**
+   * Whether this press stayed put -- a click rather than a drag.
+   *
+   * Deliberately not `pastDragThreshold`, which also calls a press held for a
+   * tenth of a second a drag. That is right for a part already on the grid,
+   * where holding still is how you take hold of something, but wrong for
+   * dropping a position: aiming at a spot takes as long as it takes, and every
+   * click slower than 100ms was being thrown away -- which is why a position
+   * seemed to need several clicks to place. Distance is the only thing that
+   * tells the two gestures apart here.
+   */
+  private pressDidNotTravel($event: MouseEvent): boolean {
+    const from = new Coord(this.startX, this.startY);
+    return getDistance(from, new Coord($event.pageX, $event.pageY)) <= 10;
+  }
+
+  /**
+   * Let go of any canvas gesture still in flight.
+   *
+   * Called from the window-level release in SvgGridService, for the presses
+   * that come up somewhere the canvas cannot hear. Safe to call when nothing
+   * is happening -- it is the same tidying `mouseUp` does.
+   */
+  releaseCanvasGestures(): void {
+    this.bgDrag = undefined;
+    if (this.synthCanvas.dragging) {
+      this.synthCanvas.release();
+      this.mechanismSrv.save();
+    }
+  }
+
+  /**
+   * Whether a synthesis gesture has the pointer.
+   *
+   * Read by the pan guard, which cannot inject the canvas service -- that
+   * service needs the grid's own zoom, so the two would depend on each other.
+   * The static is how everything else in this file answers that question.
+   */
+  static isSynthesisGestureLive(): boolean {
+    return this.instance?.synthCanvas.dragging ?? false;
+  }
+
+  // --- Synthesis on the canvas -------------------------------------------
+  //
+  // Thin plumbing only: every handler turns a screen point into a model point
+  // and hands it to SynthesisCanvasService, which decides what it means. None
+  // of it goes through the mechanism's own drag state -- a position is a
+  // question about a machine, not part of one.
+
+  /** Take hold of a position by its body, its turn knob, or a corner grip. */
+  /**
+   * Hold the pointer for the rest of the gesture.
+   *
+   * The canvas hears `pointerup` only on itself, so a drag released anywhere
+   * else -- over the panel, off the window -- was never told it had ended: the
+   * gesture stayed live, which left the canvas unpannable and the search frozen
+   * until something else was clicked. Capture makes the release come back here
+   * whatever it happens over.
+   */
+  private holdPointer(event: PointerEvent): void {
+    const target = event.target;
+    if (target instanceof Element && target.hasPointerCapture !== undefined) {
+      try {
+        target.setPointerCapture(event.pointerId);
+      } catch {
+        // Some pointers cannot be captured; the window-level release below is
+        // what covers those.
+      }
+    }
+  }
+
+  startPoseGesture(event: PointerEvent, id: number, mode: 'move' | 'rotate' | 'length'): void {
+    // The left button only. A right-press is asking for the menu, and taking
+    // the pointer for a drag took the menu with it.
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    this.synthPressTaken = true;
+    this.holdPointer(event);
+    const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
+    this.synthCanvas.grabPose(at, id, mode);
+    if (this.synthesisBuilder.isPoseDefined(id)) {
+      const pose = this.synthesisBuilder.getPose(id);
+      this.setLastLeftClick(pose);
+      this.activeObjService.updateSelectedObj(pose);
+    }
+  }
+
+  /** Take hold of the ground-pivot region, or draw a new one. */
+  startRegionGesture(event: PointerEvent, mode: 'move' | 'corner' | 'draw', corner?: string): void {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    this.synthPressTaken = true;
+    this.holdPointer(event);
+    const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
+    this.synthCanvas.grabRegion(at, mode, corner);
+  }
+
+  /**
+   * The wheel turns the position about to be dropped.
+   *
+   * Only while placing is armed, and only then: the wheel is the canvas zoom
+   * the rest of the time, and svg-pan-zoom has been asked to stand down for
+   * exactly as long as this gesture is running.
+   */
+  onCanvasWheel(event: WheelEvent): void {
+    if (!this.showSynthesis() || !this.synthesisBuilder.armed) return;
+    if (this.synthesisBuilder.getFirstUndefinedPose() === undefined) return;
+    event.preventDefault();
+    this.synthCanvas.turnGhost(event.deltaY);
+  }
+
+  /** Where the hint beside the pointer sits while a position is being placed. */
+  get synthesisHint(): { x: number; y: number; text: string; sub: string } | undefined {
+    const cursor = this.synthCanvas.cursor;
+    if (!this.showSynthesis() || !cursor) return undefined;
+    if (this.synthesisBuilder.regionDraw) {
+      return {
+        x: cursor.x,
+        y: cursor.y,
+        text: 'Drag to draw the region',
+        sub: '',
+      };
+    }
+    const next = this.synthesisBuilder.getFirstUndefinedPose();
+    if (!this.synthesisBuilder.armed || next === undefined) return undefined;
+    return {
+      x: cursor.x,
+      y: cursor.y,
+      text: 'Click to drop position ' + next,
+      sub: 'Scroll to turn · ' + this.synthCanvas.ghostAngleLabel(),
+    };
+  }
+
+  /** Whether a synthesis handle claimed the press that is in flight. */
+  private synthPressTaken = false;
+
   mouseDown($event: MouseEvent) {
     // Log the time that the mouse was clicked
     this.timeMouseDown = new Date().getTime();
+    this.synthPressTaken = false;
     this.dragState.press();
     this.startX = $event.pageX;
     this.startY = $event.pageY;

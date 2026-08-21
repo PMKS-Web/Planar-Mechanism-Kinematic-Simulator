@@ -1,31 +1,24 @@
 import { Coord } from 'src/app/model/coord';
-import { SynthesisConstants, SynthesisStatus } from './synthesis-constants';
-import { SettingsService } from '../settings.service';
 
+/** Which point on the end-effector link its coordinates describe. */
 export enum COR {
   BACK = 'BACK',
   CENTER = 'CENTER',
   FRONT = 'FRONT',
 }
 
-// storing state for a pose
+/**
+ * One position of the end-effector link.
+ *
+ * A position is a point and an angle; where the link's two ends land follows
+ * from those plus the length and the reference point, both of which belong to
+ * the design as a whole rather than to any one position. They are read through
+ * callbacks so that changing either moves all three positions at once, which
+ * is what a reader means by "the link is 6 cm long".
+ */
 export class SynthesisPose {
-  // cached values for graphical display
   private _posBack: Coord;
-  private _posCenter: Coord;
   private _posFront: Coord;
-
-  // string for SVG link
-  private _pathString: string = '';
-
-  public showHighlight: boolean = false;
-  public showHighlightX: boolean = false;
-  public showHighlightY: boolean = false;
-  public showHighlightR: boolean = false;
-
-  private sConstants = new SynthesisConstants();
-
-  private _status: SynthesisStatus = SynthesisStatus.DISABLED;
 
   constructor(
     public id: number,
@@ -34,13 +27,9 @@ export class SynthesisPose {
     private getCOR: () => COR,
     private getLength: () => number
   ) {
-    // dummy values to be overwritten by recompute
     this._posBack = new Coord(0, 0);
-    this._posCenter = new Coord(0, 0);
     this._posFront = new Coord(0, 0);
-
     this._thetaRadians %= Math.PI * 2;
-
     this.recompute();
   }
 
@@ -48,33 +37,13 @@ export class SynthesisPose {
     return this._position;
   }
 
-  get thetaDegrees(): number {
-    return (this._thetaRadians * 180) / Math.PI;
+  set position(position: Coord) {
+    this._position = position;
+    this.recompute();
   }
 
   get thetaRadians(): number {
     return this._thetaRadians;
-  }
-
-  get posBack(): Coord {
-    return this._posBack;
-  }
-
-  get posCenter(): Coord {
-    return this._posCenter;
-  }
-
-  get posFront(): Coord {
-    return this._posFront;
-  }
-
-  get pathString(): string {
-    return this._pathString;
-  }
-
-  set position(position: Coord) {
-    this._position = position;
-    this.recompute();
   }
 
   set thetaRadians(thetaRadians: number) {
@@ -82,108 +51,38 @@ export class SynthesisPose {
     this.recompute();
   }
 
-  get rotationCircleX(): number {
-    return (
-      this.position.x +
-      this.sConstants.ROTATION_CIRCLE_LOCATION_SCALAR *
-        SettingsService.objectScale *
-        Math.cos(this.thetaRadians)
-    );
-  }
-
-  get rotationCircleY(): number {
-    return (
-      this.position.y +
-      this.sConstants.ROTATION_CIRCLE_LOCATION_SCALAR *
-        SettingsService.objectScale *
-        Math.sin(this.thetaRadians)
-    );
+  get thetaDegrees(): number {
+    return (this._thetaRadians * 180) / Math.PI;
   }
 
   set thetaDegrees(thetaDegrees: number) {
-    thetaDegrees %= 360;
-    this._thetaRadians = (thetaDegrees * Math.PI) / 180;
+    this._thetaRadians = ((thetaDegrees % 360) * Math.PI) / 180;
     this.recompute();
   }
 
-  get status(): SynthesisStatus {
-    return this._status;
+  get posBack(): Coord {
+    return this._posBack;
   }
 
-  set status(status: SynthesisStatus) {
-    this._status = status;
+  get posFront(): Coord {
+    return this._posFront;
   }
 
-  isAnyHighlight(): boolean {
-    return this.showHighlight || this.showHighlightX || this.showHighlightY || this.showHighlightR;
-  }
-
-  // recompute cached data like endpoint positions
-  recompute() {
-    let halfLength = this.getLength() / 2;
-
-    let dx = Math.cos(this.thetaRadians) * halfLength;
-    let dy = Math.sin(this.thetaRadians) * halfLength;
+  /** Where the link's two ends are, given where this position is measured from. */
+  recompute(): void {
+    const half = this.getLength() / 2;
+    const dx = Math.cos(this.thetaRadians) * half;
+    const dy = Math.sin(this.thetaRadians) * half;
 
     if (this.getCOR() === COR.BACK) {
       this._posBack = new Coord(this.position.x, this.position.y);
-      this._posCenter = new Coord(this.position.x + dx, this.position.y + dy);
       this._posFront = new Coord(this.position.x + dx * 2, this.position.y + dy * 2);
     } else if (this.getCOR() === COR.CENTER) {
       this._posBack = new Coord(this.position.x - dx, this.position.y - dy);
-      this._posCenter = new Coord(this.position.x, this.position.y);
       this._posFront = new Coord(this.position.x + dx, this.position.y + dy);
     } else {
       this._posBack = new Coord(this.position.x - dx * 2, this.position.y - dy * 2);
-      this._posCenter = new Coord(this.position.x - dx, this.position.y - dy);
       this._posFront = new Coord(this.position.x, this.position.y);
     }
-
-    this._pathString = this._createPath(
-      this.posBack.x,
-      this.posBack.y,
-      this.posFront.x,
-      this.posFront.y,
-      this.sConstants.LINK_CIRCLE_RADIUS
-    );
   }
-
-  // generate SVG path for a link given two points and a radius
-  private _createPath(x1: number, y1: number, x2: number, y2: number, r: number): string {
-    r = r * SettingsService.objectScale;
-
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-
-    // calculate angle between the two points
-    const theta = Math.atan2(dy, dx);
-
-    // calculate points for the rectangle
-    const p1x = x1 - r * Math.sin(theta);
-    const p1y = y1 + r * Math.cos(theta);
-    const p2x = x2 - r * Math.sin(theta);
-    const p2y = y2 + r * Math.cos(theta);
-    const p3x = x2 + r * Math.sin(theta);
-    const p3y = y2 - r * Math.cos(theta);
-    const p4x = x1 + r * Math.sin(theta);
-    const p4y = y1 - r * Math.cos(theta);
-
-    // draw the path
-    return `
-          M ${p1x} ${p1y}
-          A ${r} ${r} 0 1 1 ${p4x} ${p4y}
-          L ${p3x} ${p3y}
-          A ${r} ${r} 0 1 1 ${p2x} ${p2y}
-          Z
-        `;
-  }
-}
-
-// cached graphics data for a pose to be displayed as an SVG
-export class PoseGraphicsData {
-  constructor(
-    public pose: SynthesisPose,
-    public pointA: Coord,
-    public pointB: Coord
-  ) {}
 }

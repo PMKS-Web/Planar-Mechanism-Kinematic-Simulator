@@ -455,7 +455,11 @@ export class StringTranscoder extends GenericTranscoder {
     // the two are told apart on the way in and neither can be mistaken for the
     // other. 'CG<link>' holds the point on the drawing; 'CJ<link>~<joint>'
     // holds it on one pin, '~' being a character no id can contain.
-    const trailing = [...this.lockedIds, ...this.comAnchors];
+    // Synthesis joins them for a third time, tagged 'S'. Its entries describe a
+    // design rather than an object the URL carries, so unlike a lock or an
+    // anchor there is nothing for them to resolve against -- which is exactly
+    // why they can be validated on their own numbers alone.
+    const trailing = [...this.lockedIds, ...this.comAnchors, ...this.synthesisMarks];
     if (trailing.length > 0) {
       fullString += '.' + trailing.join(',');
     }
@@ -575,6 +579,7 @@ export class StringTranscoder extends GenericTranscoder {
       let entry = sd.nextToken(',');
       if (entry === '') continue;
       if (entry.charAt(0) === 'C') this.comAnchors.push(entry);
+      else if (entry.charAt(0) === 'S') this.synthesisMarks.push(entry);
       else this.lockedIds.push(entry);
     }
 
@@ -684,6 +689,72 @@ export class StringTranscoder extends GenericTranscoder {
       }
     });
     this.validateDecodedComAnchors(linkIDs);
+    this.validateDecodedSynthesis();
+  }
+
+  /**
+   * A synthesis design must be the right entries, with the right count of
+   * readable numbers in each.
+   *
+   * Most of it names nothing in the drawing -- the exception is `SO`, which
+   * lists the joints the design put there -- so there is little to resolve
+   * against. What there is to check is shape, and a design half-read is worse
+   * than no design: the panel would open on positions that are not where the
+   * reader left them. Fails closed, like every other trailing section.
+   */
+  private validateDecodedSynthesis(): void {
+    // Field counts per entry. `SO` is the one that varies: it lists the joints
+    // the design owns, and how many there are depends on the linkage.
+    const expected: { [tag: string]: number } = { SD: 3, SP: 3, SR: 4 };
+    /*
+      Every character the number encoder can emit, and nothing else.
+
+      Without this the check stopped at counting fields, and an unreadable
+      character decoded to -1 rather than failing -- so one corrupt digit in a
+      length silently produced a different number, and the design came back
+      with its three positions intact around a coupler that was not the one
+      that had been shared. That is precisely the half-load this validator
+      exists to prevent.
+    */
+    const numeric = /^[0-9A-Za-z_-]+$/;
+    const seen = new Map<string, number>();
+    this.synthesisMarks.forEach((entry) => {
+      const tag = entry.substring(0, 2);
+      const count = expected[tag];
+      // `SO` and `SW` both vary in length with the size of the linkage: the
+      // ids the design owns, and the place each of them was put.
+      const varies = tag === 'SO' || tag === 'SW';
+      if (count === undefined && !varies) {
+        throw new Error('URL contains an unknown synthesis entry');
+      }
+      seen.set(tag, (seen.get(tag) ?? 0) + 1);
+      const parts = entry.substring(2).split('~').slice(1);
+      const enough = varies ? parts.length >= 1 : parts.length === count;
+      // Two numbers to a joint, so an odd count is a truncated list and the
+      // baseline would silently belong to the wrong joints.
+      if (tag === 'SW' && parts.length % 2 !== 0) {
+        throw new Error('URL contains an incomplete synthesis entry');
+      }
+      if (!enough || parts.some((part) => part === '')) {
+        throw new Error('URL contains an incomplete synthesis entry');
+      }
+      // Ownership carries object ids, which are letters; every other entry is
+      // numbers, and has to look like numbers.
+      if (tag !== 'SO' && parts.some((part) => !numeric.test(part))) {
+        throw new Error('URL contains an unreadable synthesis number');
+      }
+    });
+    if ((seen.get('SP') ?? 0) > 3) {
+      throw new Error('URL contains more than three synthesis positions');
+    }
+    // One design per URL. Two headers, or two of anything that describes the
+    // design as a whole, means the section was assembled by something other
+    // than this app, and there is no sensible way to choose between them.
+    (['SD', 'SR', 'SO', 'SW'] as const).forEach((tag) => {
+      if ((seen.get(tag) ?? 0) > 1) {
+        throw new Error('URL repeats a synthesis entry');
+      }
+    });
   }
 
   /**

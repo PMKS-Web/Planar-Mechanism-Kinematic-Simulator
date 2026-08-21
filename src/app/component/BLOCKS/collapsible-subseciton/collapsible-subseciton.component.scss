@@ -12,19 +12,46 @@
   $foreground: map.get($theme, foreground);
 
   .collapsibleSubsection {
+    // The header is a row: the toggle takes all of it unless a section has put
+    // something beside it, and then that something takes what it needs.
+    /* Edge to edge. The inset used to be here, which meant the toggle's own
+       background -- and so its hover, and its hit area -- stopped short of both
+       sides of the panel, leaving a strip beside the header that looked part of
+       it and did nothing. The inset belongs to the text, so it now sits on the
+       button's padding instead. */
     .panel-header {
+      display: flex;
+      align-items: center;
+      height: 40px;
+      width: 100%;
+      box-sizing: border-box;
+      border-top: 1px solid #eceef5;
+    }
+
+    .panel-header__actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+      padding-right: 15px;
+
+      // Empty unless a section fills it, and an empty box must take no room.
+      &:empty {
+        display: none;
+      }
+    }
+
+    .panel-header__toggle {
       padding: 0 15px;
       border-style: none;
-      height: 40px;
-
-      width: 100%;
+      height: 100%;
+      flex: 1 1 auto;
+      min-width: 0;
       //border-color: mat.get-color-from-palette($primary-palette, 500);
       //Hide left and right borders
       //border-left: 0;
       //border-right: 0;
       background-color: transparent;
-      border-top: 1px solid #eceef5;
-      //border-width: 1px;
       display: flex;
       justify-content: space-between;
       align-items: center;
