@@ -94,6 +94,7 @@ check(
   'the design is laid out as sections that can be folded away',
   (await page.locator('#synthesisPanel collapsible-subseciton').count()) === 3
 );
+
 check(
   'all three positions have a row before any is placed',
   (await page.locator('#synthesisPanel .poseRow').count()) === 3
@@ -166,6 +167,19 @@ check(
   (await panel('(p) => p.design.getAllPoses().length')) === 3
 );
 check('placing disarmed', !(await panel('(p) => p.design.armed')));
+// With all three placed there is no button left to put in the Positions
+// header, and the empty row it left behind was a gap under the heading.
+check(
+  'the first position sits under its heading, with no empty row between',
+  (await page.evaluate(() => {
+    const section = [...document.querySelectorAll('#synthesisPanel collapsible-subseciton')].find(
+      (s) => s.querySelector('.panel-header')?.textContent.includes('Positions')
+    );
+    const head = section.querySelector('.panel-header').getBoundingClientRect();
+    const row = section.querySelector('.poseRow').getBoundingClientRect();
+    return Math.round(row.top - head.bottom);
+  })) <= 8
+);
 check(
   'the status strip follows the design rather than the empty drawing',
   (await status()).includes('positions placed'),
@@ -230,6 +244,10 @@ check(
   { strict, cards: await page.locator('#synthesisPanel .card').count() }
 );
 check(
+  'nor a heading counting it',
+  (await page.locator('#synthesisPanel .sect__head .sect__title').count()) === (strict > 1 ? 1 : 0)
+);
+check(
   'and is called simply the solution, with no letter to go looking past',
   (await panel('(p) => p.solutionHeading')) === (strict > 1 ? 'Solution A' : 'Solution'),
   await panel('(p) => p.solutionHeading')
@@ -241,6 +259,14 @@ check(
 check(
   'and the linkage is previewed on the grid',
   (await grid('(g) => g.synthCanvas.previewLinks().length')) > 0
+);
+check(
+  'drawn broken, because it is still only an offer',
+  await page.evaluate(() =>
+    [...document.querySelectorAll('#synthesisPreview path.synthBar')].every(
+      (bar) => bar.classList.contains('synthBar--proposed') && bar.getAttribute('stroke-dasharray')
+    )
+  )
 );
 check(
   'but still nothing has been added to the drawing',

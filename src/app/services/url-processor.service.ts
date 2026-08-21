@@ -9,6 +9,7 @@ import { NotificationService } from './notification.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { applySynthesisDesign } from './synthesis/synthesis-url';
+import { SynthesisSolutionService } from './synthesis/synthesis-solution.service';
 
 @Injectable({
   providedIn: 'root',
@@ -116,6 +117,11 @@ export class UrlProcessorService {
         // before the rebuild below, so the panel and the canvas come up
         // describing the same state.
         applySynthesisDesign(decoder.getSynthesisMarks(), this.synthesis);
+        // A decode replaces the design wholesale, so whatever was found for the
+        // last one says nothing about this one. Resolved late, like the other
+        // services this one reaches: asking for it at construction would build
+        // MechanismService before this service is finished being built.
+        this.injector.get(SynthesisSolutionService).invalidate();
       } catch (error) {
         console.error('Unable to load mechanism URL', error);
         // Deferred because this can run inside the service's own constructor,

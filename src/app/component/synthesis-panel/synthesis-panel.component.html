@@ -91,6 +91,10 @@
 
         <!-- The three positions ------------------------------------------ -->
         <collapsible-subseciton class="sect" titleLabel="Positions" [expanded]="true">
+          <!-- Only when there is a button to put in it. Left standing with all
+               three positions placed it was an empty row of air between the
+               heading and the first position. -->
+          @if (showAddButton || canDuplicate) {
           <div class="sect__head">
             <span class="row__spacer"></span>
             @if (showAddButton) {
@@ -117,6 +121,7 @@
               </button>
             }
           </div>
+          }
 
           @for (i of rows; track i) {
             <div
@@ -256,9 +261,14 @@
         <!-- What came back ------------------------------------------------ -->
         @if (showResults) {
           <section class="sect">
-            <div class="sect__head">
-              <div class="sect__title">{{ candidateHeading() }}</div>
-            </div>
+            <!-- A heading over a gallery says what there is to choose between.
+                 Over a single solution it only repeats what the section below
+                 already says, at greater length. -->
+            @if (showGallery || !hasSolution) {
+              <div class="sect__head">
+                <div class="sect__title">{{ candidateHeading() }}</div>
+              </div>
+            }
 
             @if (showNoCandidateReason) {
               <div class="note note--bad">

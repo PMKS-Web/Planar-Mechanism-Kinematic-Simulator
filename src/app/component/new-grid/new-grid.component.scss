@@ -208,6 +208,14 @@
   .synthBar {
     fill-opacity: 0.7;
 
+    // A solution that is only proposed. Its fill is the colour it will be
+    // built in, so the reader can see what they are choosing; its outline is
+    // broken, so an inserted linkage -- drawn solid, by the drawing's own
+    // renderer -- cannot be mistaken for one that is still an offer.
+    &--proposed {
+      fill-opacity: 0.45;
+    }
+
     // The one that is being edited takes the accent, like everything else that
     // is being edited on this canvas.
     &--sel {

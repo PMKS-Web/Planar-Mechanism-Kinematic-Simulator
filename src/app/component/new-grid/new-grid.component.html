@@ -998,13 +998,17 @@
       <!-- The candidate itself, at whatever the transport has been scrubbed to. -->
       @if (showSynthesis()) {
       <g id="synthesisPreview" pointer-events="none">
+        <!-- Dashed, because it is a proposal. The one moment that matters in
+             this mode is Insert, and a solid outline is what says it has
+             happened -- so what has not happened yet must not look the same. -->
         @for (lk of synthCanvas.previewLinks(); track $index) {
           <path
-            class="synthBar"
+            class="synthBar synthBar--proposed"
             [attr.d]="lk.d"
             [attr.fill]="lk.color"
             [attr.stroke]="lk.color"
-            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
+            [attr.stroke-dasharray]="svgGrid.scaleWithZoom(7) + ' ' + svgGrid.scaleWithZoom(5)"
           />
         }
         <!-- Placed and flipped exactly as the drawing's own ground marks are:
