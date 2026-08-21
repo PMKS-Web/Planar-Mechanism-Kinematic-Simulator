@@ -153,10 +153,77 @@ describe('every solution offered can be driven through what it claims', () => {
     });
   });
 
-  it('never offers one that stalls at a dead point', () => {
+  /**
+   * The transmission angle, worked out from the bar lengths alone.
+   *
+   * Deliberately not the code's own routine, and deliberately not by asking
+   * the solver where the joints are: this measures the same physical quantity
+   * by an independent route, so agreeing with it means something. The angle at
+   * the coupler-rocker joint follows from the distance between the crank pin
+   * and the far ground pin by the cosine rule.
+   */
+  function transmissionAt(cand: Candidate, deg: number): number | null {
+    const t = (deg * Math.PI) / 180;
+    const bx = cand.A.x + cand.r1 * Math.cos(t);
+    const by = cand.A.y + cand.r1 * Math.sin(t);
+    const span = Math.hypot(bx - cand.D.x, by - cand.D.y);
+    if (span > cand.d + cand.r2 || span < Math.abs(cand.d - cand.r2)) return null;
+    const cosine = (cand.d * cand.d + cand.r2 * cand.r2 - span * span) / (2 * cand.d * cand.r2);
+    let mu = (Math.acos(Math.max(-1, Math.min(1, cosine))) * 180) / Math.PI;
+    if (mu > 90) mu = 180 - mu;
+    return mu;
+  }
+
+  /**
+   * The worst it gets over the stroke, swept densely rather than claimed.
+   *
+   * The stroke is the code's, because which span to measure is a definition
+   * rather than a measurement -- but the number is arrived at independently,
+   * from the bar lengths by the cosine rule, without asking the solver where
+   * any joint is. Stepped so that both ends are always sampled: the angle
+   * collapses at a travel limit, so an endpoint missed by a rounding error is
+   * exactly the sample that matters.
+   */
+  function measuredWorst(cand: Candidate): number {
+    const { from, to } = cand.stroke;
+    const steps = Math.max(1, Math.ceil((to - from) / 0.02));
+    let worst = 90;
+    for (let k = 0; k <= steps; k++) {
+      const mu = transmissionAt(cand, from + ((to - from) * k) / steps);
+      if (mu !== null) worst = Math.min(worst, mu);
+    }
+    return worst;
+  }
+
+  it('reports a transmission angle that a dense independent measure agrees with', () => {
     const next = rng(20260821);
-    const binding: string[] = [];
-    for (let n = 0; n < 400; n++) {
+    const disagreements: string[] = [];
+    for (let n = 0; n < 300; n++) {
+      const poses = [0, 1, 2].map(() =>
+        pose(next() * 24 - 12, next() * 24 - 12, next() * 360 - 180)
+      );
+      const { candidates } = enumerateCandidates({
+        poses,
+        length: LENGTH,
+        endsOnly: next() < 0.5,
+      });
+      candidates.forEach((cand) => {
+        const measured = measuredWorst(cand);
+        // Half a degree of slack for the dense sweep's own step.
+        if (Math.abs(measured - cand.minTransmission) > 1.5) {
+          disagreements.push(
+            `design ${n} ${cand.key}: reported ${cand.minTransmission}°, measured ${measured.toFixed(2)}°`
+          );
+        }
+      });
+    }
+    expect(disagreements.slice(0, 5)).toEqual([]);
+  });
+
+  it('never offers one that a dense measure says stalls', () => {
+    const next = rng(20260821);
+    const stalling: string[] = [];
+    for (let n = 0; n < 300; n++) {
       const poses = [0, 1, 2].map(() =>
         pose(next() * 24 - 12, next() * 24 - 12, next() * 360 - 180)
       );
@@ -166,10 +233,15 @@ describe('every solution offered can be driven through what it claims', () => {
         endsOnly: next() < 0.5,
       });
       candidates
-        .filter((c) => c.defectFree && c.minTransmission < BINDING_ANGLE)
-        .forEach((c) => binding.push(`design ${n} ${c.key} at ${c.minTransmission}°`));
+        .filter((c) => c.defectFree)
+        // Measured independently, so this is not the code agreeing with itself.
+        // The previous version of this test asked whether any defect-free
+        // candidate had `minTransmission < BINDING_ANGLE`, which `defectFree`
+        // is defined to make impossible: it could not have failed.
+        .filter((c) => measuredWorst(c) < BINDING_ANGLE - 0.5)
+        .forEach((c) => stalling.push(`design ${n} ${c.key} at ${measuredWorst(c).toFixed(2)}°`));
     }
-    expect(binding.slice(0, 5)).toEqual([]);
+    expect(stalling.slice(0, 5)).toEqual([]);
   });
 
   it('over four hundred designs, every claim survives being driven', () => {

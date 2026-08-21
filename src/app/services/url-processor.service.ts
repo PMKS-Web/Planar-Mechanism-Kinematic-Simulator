@@ -117,6 +117,11 @@ export class UrlProcessorService {
         // before the rebuild below, so the panel and the canvas come up
         // describing the same state.
         applySynthesisDesign(decoder.getSynthesisMarks(), this.synthesis);
+        // Ownership names joints this URL is supposed to carry. Anything it
+        // names that is not here was removed by hand at some point, and a
+        // claim on an object that does not exist is not a claim worth keeping.
+        const present = new Set(mechanismSrv.joints.map((joint) => joint.id));
+        this.synthesis.ownedJointIds = this.synthesis.ownedJointIds.filter((id) => present.has(id));
         // A decode replaces the design wholesale, so whatever was found for the
         // last one says nothing about this one. Resolved late, like the other
         // services this one reaches: asking for it at construction would build

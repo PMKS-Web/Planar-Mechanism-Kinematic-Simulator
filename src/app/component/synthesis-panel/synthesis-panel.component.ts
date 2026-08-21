@@ -483,7 +483,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
         label: "Coupler pinned at the link's ends",
         detail: this.design.endsOnly
           ? `The coupler is the whole ${length} ${this.lengthUnit} of the end-effector link`
-          : 'The coupler may be pinned anywhere along the link, at any length',
+          : 'Pins are tried at a range of places along the link and past its ends',
         toggle: () => this.toggleRequirement('endsOnly'),
       },
       {
@@ -614,7 +614,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     if (this.design.constrain) parts.push('both ground pins in the region');
     return parts.length
       ? 'Search for four-bars with ' + parts.join(', ') + '.'
-      : 'Search for any four-bar through these three positions.';
+      : 'Search for four-bars through these three positions.';
   }
 
   generate(): void {
@@ -693,10 +693,16 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     const list = this.solution.candidates();
     if (!list.length) return 'No solution meets the requirements';
     const strict = this.solution.strictCount;
+    // Counted as what can be browsed, not as what was found. The gallery shows
+    // the best few; a heading naming ten when eight is the most anybody can
+    // open is a heading describing something else.
+    const shown = list.length;
+    const capped = strict > shown ? ` (best ${shown} shown)` : '';
     if (strict) {
-      return `${strict} ${strict === 1 ? 'solution reaches' : 'solutions reach'} all 3 positions`;
+      const label = strict === 1 ? 'solution reaches' : 'solutions reach';
+      return `${strict} ${label} all 3 positions${capped}`;
     }
-    return `${list.length} solution${list.length === 1 ? '' : 's'}, all with a branch defect`;
+    return `${shown} solution${shown === 1 ? '' : 's'}, all with a branch defect`;
   }
 
   /**

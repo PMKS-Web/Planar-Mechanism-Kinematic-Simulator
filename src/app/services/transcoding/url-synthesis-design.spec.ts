@@ -163,6 +163,24 @@ describe('a synthesis design in the URL', () => {
     expect(() => decodeInto(broken)).toThrowError(/incomplete synthesis entry/);
   });
 
+  it('refuses a number it cannot read, rather than substituting a default', () => {
+    const url = encode(worked());
+    // One character of the coupler length replaced by something outside the
+    // number alphabet. It used to decode as -1 and be absorbed silently: the
+    // three positions came back intact around a coupler that was not the one
+    // that had been shared, which is a half-load wearing the face of a success.
+    const broken = url.replace(/SD~([^~,])/, 'SD~$');
+    expect(broken).not.toBe(url);
+    expect(broken.length).toBe(url.length);
+    expect(() => decodeInto(broken)).toThrowError(/unreadable synthesis number/);
+  });
+
+  it('refuses a design that describes itself twice', () => {
+    const url = encode(worked());
+    const doubled = url.replace(/(SD~[^,]+)/, '$1,$1');
+    expect(() => decodeInto(doubled)).toThrow();
+  });
+
   it('refuses an entry it does not recognise', () => {
     const url = encode(worked());
     expect(() => decodeInto(url.replace('SD~', 'SZ~'))).toThrowError(/unknown synthesis entry/);

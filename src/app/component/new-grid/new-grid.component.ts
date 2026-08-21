@@ -2309,6 +2309,21 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
+   * Let go of any canvas gesture still in flight.
+   *
+   * Called from the window-level release in SvgGridService, for the presses
+   * that come up somewhere the canvas cannot hear. Safe to call when nothing
+   * is happening -- it is the same tidying `mouseUp` does.
+   */
+  releaseCanvasGestures(): void {
+    this.bgDrag = undefined;
+    if (this.synthCanvas.dragging) {
+      this.synthCanvas.release();
+      this.mechanismSrv.save();
+    }
+  }
+
+  /**
    * Whether a synthesis gesture has the pointer.
    *
    * Read by the pan guard, which cannot inject the canvas service -- that
@@ -2327,9 +2342,34 @@ export class NewGridComponent implements OnDestroy {
   // question about a machine, not part of one.
 
   /** Take hold of a position by its body, its turn knob, or a corner grip. */
+  /**
+   * Hold the pointer for the rest of the gesture.
+   *
+   * The canvas hears `pointerup` only on itself, so a drag released anywhere
+   * else -- over the panel, off the window -- was never told it had ended: the
+   * gesture stayed live, which left the canvas unpannable and the search frozen
+   * until something else was clicked. Capture makes the release come back here
+   * whatever it happens over.
+   */
+  private holdPointer(event: PointerEvent): void {
+    const target = event.target;
+    if (target instanceof Element && target.hasPointerCapture !== undefined) {
+      try {
+        target.setPointerCapture(event.pointerId);
+      } catch {
+        // Some pointers cannot be captured; the window-level release below is
+        // what covers those.
+      }
+    }
+  }
+
   startPoseGesture(event: PointerEvent, id: number, mode: 'move' | 'rotate' | 'length'): void {
+    // The left button only. A right-press is asking for the menu, and taking
+    // the pointer for a drag took the menu with it.
+    if (event.button !== 0) return;
     event.stopPropagation();
     this.synthPressTaken = true;
+    this.holdPointer(event);
     const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
     this.synthCanvas.grabPose(at, id, mode);
     if (this.synthesisBuilder.isPoseDefined(id)) {
@@ -2341,8 +2381,10 @@ export class NewGridComponent implements OnDestroy {
 
   /** Take hold of the ground-pivot region, or draw a new one. */
   startRegionGesture(event: PointerEvent, mode: 'move' | 'corner' | 'draw', corner?: string): void {
+    if (event.button !== 0) return;
     event.stopPropagation();
     this.synthPressTaken = true;
+    this.holdPointer(event);
     const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
     this.synthCanvas.grabRegion(at, mode, corner);
   }

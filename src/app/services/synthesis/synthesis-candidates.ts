@@ -100,6 +100,8 @@ export interface FourBarCandidate {
   minTransmission: number;
   /** Whether that angle is so tight the linkage stalls rather than turns. */
   binds: boolean;
+  /** The span of crank travel the angle above was measured over. */
+  stroke: { from: number; to: number };
   kind: string;
   size: number;
 }
@@ -226,6 +228,55 @@ function attach(pose: PosePoint, u: number): Coord {
  * comparing candidates.
  */
 /**
+ * The worst transmission angle over a stretch of crank travel, exactly.
+ *
+ * This was sampled every two degrees, and the answer rounded, which is not
+ * good enough for the one number that decides whether a linkage is a machine
+ * or an ornament: near a travel limit the angle falls away steeply, and a
+ * candidate reported at sixteen degrees was measured independently at four and
+ * a half between two of the samples.
+ *
+ * It does not need sampling. With the ground link fixed, the distance between
+ * the crank pin and the far ground pin is
+ *
+ *     s(theta)^2 = g^2 + r1^2 - 2*g*r1*cos(theta - theta_AD)
+ *
+ * and the angle at the coupler-rocker joint follows from that distance alone
+ * by the cosine rule. Folded into the first quadrant, the angle is worst where
+ * |cos| is largest, which is where s is at an extreme -- and s is extreme only
+ * at the ends of the interval or where the crank points directly at, or
+ * directly away from, the far ground pin. Four angles to check, not a hundred.
+ */
+export function worstTransmission(
+  cand: FourBarCandidate,
+  from: number,
+  to: number
+): number {
+  const towardsD = (Math.atan2(cand.D.y - cand.A.y, cand.D.x - cand.A.x) * 180) / Math.PI;
+  const candidates = [from, to];
+  // The two interior extremes, brought into the interval a turn at a time.
+  [towardsD, towardsD + 180].forEach((critical) => {
+    for (let turn = -2; turn <= 2; turn++) {
+      const at = critical + turn * 360;
+      if (at > from && at < to) candidates.push(at);
+    }
+  });
+
+  let worst = 90;
+  candidates.forEach((deg) => {
+    const t = (deg * Math.PI) / 180;
+    const bx = cand.A.x + cand.r1 * Math.cos(t);
+    const by = cand.A.y + cand.r1 * Math.sin(t);
+    const span = Math.hypot(bx - cand.D.x, by - cand.D.y);
+    const cosine = (cand.d * cand.d + cand.r2 * cand.r2 - span * span) / (2 * cand.d * cand.r2);
+    let mu = (Math.acos(Math.max(-1, Math.min(1, cosine))) * 180) / Math.PI;
+    if (mu > 90) mu = 180 - mu;
+    worst = Math.min(worst, mu);
+  });
+  return worst;
+}
+
+/**
  * Whether a crank angle lies inside a stretch of continuous travel.
  *
  * Angles come out of `atan2` in (-180, 180] while a walked range can run
@@ -233,13 +284,27 @@ function attach(pose: PosePoint, u: number): Coord {
  * can be called out of reach.
  */
 function withinTravel(theta: number, range: { from: number; to: number; full: boolean }): boolean {
-  if (range.full) return true;
+  return intoTravel(theta, range) !== null;
+}
+
+/**
+ * The same crank direction, expressed inside a stretch of travel.
+ *
+ * Angles come out of `atan2` in (-180, 180] while a walked range runs wherever
+ * the walk took it, so the same direction has to be tried a turn either way
+ * before it can be placed -- or called out of reach. Returns null when it is
+ * genuinely outside.
+ */
+function intoTravel(
+  theta: number,
+  range: { from: number; to: number; full: boolean }
+): number | null {
   const slack = 1e-6;
   for (let turn = -2; turn <= 2; turn++) {
     const at = theta + turn * 360;
-    if (at >= range.from - slack && at <= range.to + slack) return true;
+    if (at >= range.from - slack && at <= range.to + slack) return at;
   }
-  return false;
+  return range.full ? theta : null;
 }
 
 export function assess(cand: FourBarCandidate): void {
@@ -291,23 +356,30 @@ export function assess(cand: FourBarCandidate): void {
 
   // The transmission angle over the stroke that matters -- the span the three
   // positions actually occupy, not the whole range. It is how squarely the
-  // coupler pushes the rocker, and a four-bar that passes through the poses at
-  // five degrees will stall there in real life.
-  let minMu = 180;
-  const strokeFrom = Math.max(cand.range.from, Math.min(...cand.thetas) - 5);
-  const strokeTo = Math.min(cand.range.to, Math.max(...cand.thetas) + 5);
-  for (let deg = strokeFrom; deg <= strokeTo; deg += 2) {
-    const sol = solveFourBar(cand, deg, branch);
-    if (!sol) continue;
-    const v1 = { x: sol.B.x - sol.C.x, y: sol.B.y - sol.C.y };
-    const v2 = { x: cand.D.x - sol.C.x, y: cand.D.y - sol.C.y };
-    const dot = (v1.x * v2.x + v1.y * v2.y) / (Math.hypot(v1.x, v1.y) * Math.hypot(v2.x, v2.y));
-    let mu = (Math.acos(Math.max(-1, Math.min(1, dot))) * 180) / Math.PI;
-    if (mu > 90) mu = 180 - mu;
-    minMu = Math.min(minMu, mu);
-  }
-  cand.minTransmission = Math.round(minMu);
-  cand.binds = cand.minTransmission < BINDING_ANGLE;
+  // coupler pushes the rocker, and a four-bar that passes through the positions
+  // at five degrees will stall there in real life.
+  // Measured over the stroke expressed in the *range's* terms. These were raw
+  // atan2 angles compared against a walked range that can sit a turn away from
+  // them, which produced intervals that were offset, or inverted and therefore
+  // empty -- and an empty interval reports whatever its two endpoints happen to
+  // say rather than the worst of the travel.
+  const placed = cand.thetas
+    .map((theta) => intoTravel(theta, cand.range))
+    .filter((theta): theta is number => theta !== null);
+  const strokeFrom = placed.length
+    ? Math.max(cand.range.from, Math.min(...placed) - 5)
+    : cand.range.from;
+  const strokeTo = placed.length ? Math.min(cand.range.to, Math.max(...placed) + 5) : cand.range.to;
+  const worst = worstTransmission(
+    cand,
+    Math.min(strokeFrom, strokeTo),
+    Math.max(strokeFrom, strokeTo)
+  );
+  cand.stroke = { from: Math.min(strokeFrom, strokeTo), to: Math.max(strokeFrom, strokeTo) };
+  cand.minTransmission = Math.round(worst);
+  // Against the exact figure, not the rounded one: a linkage that stalls at
+  // 14.6 degrees is not saved by being displayed as 15.
+  cand.binds = worst < BINDING_ANGLE;
   // Reaching all three is not enough on its own: a linkage that has to pass
   // through a dead point to get between them arrives at the first position and
   // stops there, which is not what "reaches all 3" promises anybody.
@@ -478,6 +550,7 @@ export function enumerateCandidates(search: CandidateSearch): CandidateResult {
         range: { from: 0, to: 0, full: false },
         minTransmission: 0,
         binds: false,
+        stroke: { from: 0, to: 0 },
         kind: '',
         size: 0,
       };

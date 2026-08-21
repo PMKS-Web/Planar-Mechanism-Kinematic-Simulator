@@ -23,8 +23,8 @@
               <span class="chip chip--on">4-bar or 6-bar</span>
             </span>
             <span class="kindCard__detail">
-              Place a coupler in three positions. Every four-bar that passes through them is
-              listed for you to compare.
+              Place a coupler in three positions. Every four-bar that passes through them is listed
+              for you to compare.
             </span>
           </span>
         </button>
@@ -71,7 +71,13 @@
             </mat-icon>
             <span class="row__spacer"></span>
             <label class="field field--wide">
-              <input type="text" inputmode="decimal" formControlName="length" spellcheck="false" />
+              <input
+                type="text"
+                inputmode="decimal"
+                formControlName="length"
+                spellcheck="false"
+                aria-label="End-effector link length"
+              />
             </label>
           </div>
           <div class="row">
@@ -128,11 +134,20 @@
           </ng-container>
 
           @for (i of rows; track i) {
+            <!-- A row selects a position, which makes it a control. It was a
+                 div with a click handler: no keyboard, no name, invisible to
+                 anything not driving a mouse. -->
             <div
               class="poseRow"
+              role="button"
+              tabindex="0"
+              [attr.aria-pressed]="isSelectedRow(i)"
+              [attr.aria-label]="isPlaced(i) ? 'Select position ' + i : 'Place position ' + i"
               [class.poseRow--sel]="isSelectedRow(i)"
               [class.poseRow--empty]="!isPlaced(i)"
               (click)="selectRow(i)"
+              (keydown.enter)="selectRow(i)"
+              (keydown.space)="selectRow(i); $event.preventDefault()"
             >
               <span class="poseRow__n" [class.poseRow__n--placed]="isPlaced(i)">{{ i }}</span>
               <span class="poseRow__axis">X</span>
@@ -143,6 +158,7 @@
                   spellcheck="false"
                   placeholder="—"
                   [formControlName]="'p' + i + 'x'"
+                  [attr.aria-label]="'Position ' + i + ' X'"
                 />
               </label>
               <span class="poseRow__axis">Y</span>
@@ -153,6 +169,7 @@
                   spellcheck="false"
                   placeholder="—"
                   [formControlName]="'p' + i + 'y'"
+                  [attr.aria-label]="'Position ' + i + ' Y'"
                 />
               </label>
               <span class="poseRow__axis poseRow__axis--angle">&#8894;</span>
@@ -163,6 +180,7 @@
                   spellcheck="false"
                   placeholder="—"
                   [formControlName]="'p' + i + 'theta'"
+                  [attr.aria-label]="'Position ' + i + ' angle'"
                 />
               </label>
               <mat-icon
@@ -175,20 +193,22 @@
               >
                 {{ rowStatusIcon(i) }}
               </mat-icon>
-              <mat-icon
+              <button
+                type="button"
                 class="poseRow__remove"
                 [class.poseRow__remove--off]="!isPlaced(i)"
+                [disabled]="!isPlaced(i)"
+                [attr.aria-label]="'Remove position ' + i"
                 (click)="removeRow($event, i)"
               >
-                close
-              </mat-icon>
+                <mat-icon>close</mat-icon>
+              </button>
             </div>
           }
         </collapsible-subseciton>
 
         <!-- What a solution has to satisfy -------------------------------- -->
         <collapsible-subseciton class="sect" titleLabel="Requirements" [expanded]="true">
-
           @for (rq of requirements(); track rq.key) {
             <div class="req" [class.req--on]="rq.on">
               <button type="button" class="req__line" (click)="rq.toggle()">
@@ -199,7 +219,9 @@
                   <span class="req__label">{{ rq.label }}</span>
                   <span class="req__detail">{{ rq.detail }}</span>
                 </span>
-                <span class="switch" [class.switch--on]="rq.on"><span class="switch__knob"></span></span>
+                <span class="switch" [class.switch--on]="rq.on"
+                  ><span class="switch__knob"></span
+                ></span>
               </button>
 
               @if (rq.hasRegion) {
@@ -221,19 +243,35 @@
                   <div class="region__fields">
                     <span class="region__tag">X</span>
                     <label class="field field--tiny"
-                      ><input type="text" inputmode="decimal" formControlName="rx"
+                      ><input
+                        type="text"
+                        inputmode="decimal"
+                        formControlName="rx"
+                        aria-label="Region X"
                     /></label>
                     <span class="region__tag">Y</span>
                     <label class="field field--tiny"
-                      ><input type="text" inputmode="decimal" formControlName="ry"
+                      ><input
+                        type="text"
+                        inputmode="decimal"
+                        formControlName="ry"
+                        aria-label="Region Y"
                     /></label>
                     <span class="region__tag">W</span>
                     <label class="field field--tiny"
-                      ><input type="text" inputmode="decimal" formControlName="rw"
+                      ><input
+                        type="text"
+                        inputmode="decimal"
+                        formControlName="rw"
+                        aria-label="Region width"
                     /></label>
                     <span class="region__tag">H</span>
                     <label class="field field--tiny"
-                      ><input type="text" inputmode="decimal" formControlName="rh"
+                      ><input
+                        type="text"
+                        inputmode="decimal"
+                        formControlName="rh"
+                        aria-label="Region height"
                     /></label>
                     <span class="region__unit">{{ lengthUnit }}</span>
                   </div>
@@ -241,7 +279,6 @@
               }
             </div>
           }
-
         </collapsible-subseciton>
 
         <!-- Under the requirements rather than inside them: it is not one of
@@ -261,62 +298,72 @@
           <!-- Only when it has something in it: with one solution and nothing
                to explain, this was an empty band above the Solution heading. -->
           @if (showGallery || !hasSolution || showNoCandidateReason) {
-          <section class="sect">
-            <!-- A heading over a gallery says what there is to choose between.
+            <section class="sect">
+              <!-- A heading over a gallery says what there is to choose between.
                  Over a single solution it only repeats what the section below
                  already says, at greater length. -->
-            @if (showGallery || !hasSolution) {
-              <div class="sect__head">
-                <div class="sect__title">{{ candidateHeading() }}</div>
-              </div>
-            }
-
-            @if (showNoCandidateReason) {
-              <div class="note note--bad">
-                <mat-icon>error_outline</mat-icon>
-                <span>{{ noCandidateReason() }}</span>
-              </div>
-            }
-
-            @if (showGallery) {
-            <div class="gallery" [class.gallery--all]="solution.showAll">
-              @for (c of visibleCandidates(); track c.key) {
-                <button
-                  type="button"
-                  class="card"
-                  [class.card--sel]="c.selected"
-                  (click)="pickCandidate(c.key)"
-                  (pointerenter)="hoverCandidate(c.key)"
-                  (pointerleave)="hoverCandidate(null)"
-                >
-                  <span class="card__head">
-                    <span class="card__name">{{ c.name }}</span>
-                    <span class="card__kind">{{ c.kind }}</span>
-                  </span>
-                  <svg class="card__thumb" width="100%" height="48" viewBox="0 0 120 48">
-                    <path [attr.d]="c.thumb" fill="none" stroke="#c5cae9" stroke-width="4"
-                      stroke-linecap="round"></path>
-                    <path [attr.d]="c.thumbCoupler" fill="none" stroke="#303e9f" stroke-width="4"
-                      stroke-linecap="round"></path>
-                  </svg>
-                  <span class="card__reach" [class.card__reach--ok]="c.defectFree">
-                    {{ c.reachText }}
-                  </span>
-                  <span class="card__metric" [class.card__metric--binds]="c.binds">{{
-                    c.metric
-                  }}</span>
-                </button>
+              @if (showGallery || !hasSolution) {
+                <div class="sect__head">
+                  <div class="sect__title">{{ candidateHeading() }}</div>
+                </div>
               }
-            </div>
 
-            @if (hasMoreCandidates) {
-              <button type="button" class="linkBtn" (click)="toggleAllCandidates()">
-                {{ moreLabel() }}
-                <mat-icon>{{ solution.showAll ? 'expand_less' : 'expand_more' }}</mat-icon>
-              </button>
-            }
-            }
-          </section>
+              @if (showNoCandidateReason) {
+                <div class="note note--bad">
+                  <mat-icon>error_outline</mat-icon>
+                  <span>{{ noCandidateReason() }}</span>
+                </div>
+              }
+
+              @if (showGallery) {
+                <div class="gallery" [class.gallery--all]="solution.showAll">
+                  @for (c of visibleCandidates(); track c.key) {
+                    <button
+                      type="button"
+                      class="card"
+                      [class.card--sel]="c.selected"
+                      (click)="pickCandidate(c.key)"
+                      (pointerenter)="hoverCandidate(c.key)"
+                      (pointerleave)="hoverCandidate(null)"
+                    >
+                      <span class="card__head">
+                        <span class="card__name">{{ c.name }}</span>
+                        <span class="card__kind">{{ c.kind }}</span>
+                      </span>
+                      <svg class="card__thumb" width="100%" height="48" viewBox="0 0 120 48">
+                        <path
+                          [attr.d]="c.thumb"
+                          fill="none"
+                          stroke="#c5cae9"
+                          stroke-width="4"
+                          stroke-linecap="round"
+                        ></path>
+                        <path
+                          [attr.d]="c.thumbCoupler"
+                          fill="none"
+                          stroke="#303e9f"
+                          stroke-width="4"
+                          stroke-linecap="round"
+                        ></path>
+                      </svg>
+                      <span class="card__reach" [class.card__reach--ok]="c.defectFree">
+                        {{ c.reachText }}
+                      </span>
+                      <span class="card__metric" [class.card__metric--binds]="c.binds">{{
+                        c.metric
+                      }}</span>
+                    </button>
+                  }
+                </div>
+
+                @if (hasMoreCandidates) {
+                  <button type="button" class="linkBtn" (click)="toggleAllCandidates()">
+                    {{ moreLabel() }}
+                    <mat-icon>{{ solution.showAll ? 'expand_less' : 'expand_more' }}</mat-icon>
+                  </button>
+                }
+              }
+            </section>
           }
 
           @if (hasSolution) {
@@ -428,12 +475,20 @@
               }
               <span class="transport__note">{{ previewNote() }}</span>
               <span class="transport__angle">{{ angleLabel() }}</span>
-              <button type="button" class="iconBtn iconBtn--sm" (click)="togglePlay()"
-                [attr.aria-label]="solution.playing ? 'Pause preview' : 'Play preview'">
+              <button
+                type="button"
+                class="iconBtn iconBtn--sm"
+                (click)="togglePlay()"
+                [attr.aria-label]="solution.playing ? 'Pause preview' : 'Play preview'"
+              >
                 <mat-icon>{{ solution.playing ? 'pause' : 'play_arrow' }}</mat-icon>
               </button>
-              <button type="button" class="iconBtn iconBtn--sm" (click)="flipDirection()"
-                aria-label="Reverse direction">
+              <button
+                type="button"
+                class="iconBtn iconBtn--sm"
+                (click)="flipDirection()"
+                aria-label="Reverse direction"
+              >
                 <mat-icon>{{ solution.clockwise ? 'rotate_right' : 'rotate_left' }}</mat-icon>
               </button>
             </div>
@@ -441,8 +496,11 @@
               <div class="track__channel"></div>
               <div class="track__done" [style.width]="alongPercent()"></div>
               @for (tk of poseTicks(); track $index) {
-                <div class="track__tick" [class.track__tick--ok]="tk.reached"
-                  [style.left.%]="tk.percent"></div>
+                <div
+                  class="track__tick"
+                  [class.track__tick--ok]="tk.reached"
+                  [style.left.%]="tk.percent"
+                ></div>
               }
               <input
                 class="track__scrub"

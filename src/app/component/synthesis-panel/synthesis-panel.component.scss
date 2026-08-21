@@ -520,6 +520,13 @@ $red: #e53935;
     .poseRow {
       display: flex;
       align-items: center;
+
+      /* It answers the keyboard now, so it has to show when it has focus. */
+      &:focus-visible {
+        outline: 2px solid $indigo;
+        outline-offset: 1px;
+      }
+
       /* Tighter than the panel's usual 5px: the row carries nine things and
          the space belongs to the fields. */
       gap: 4px;
@@ -587,11 +594,23 @@ $red: #e53935;
 
       &__remove {
         flex: 0 0 17px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        padding: 0;
+        background: none;
         font-size: 17px;
         width: 17px;
         height: 17px;
         color: #9aa0ac;
         cursor: pointer;
+
+        mat-icon {
+          font-size: 17px;
+          width: 17px;
+          height: 17px;
+        }
 
         &--off {
           color: #e2e4ea;

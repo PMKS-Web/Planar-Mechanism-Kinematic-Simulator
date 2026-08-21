@@ -693,34 +693,60 @@ export class StringTranscoder extends GenericTranscoder {
   }
 
   /**
-   * A synthesis design must be numbers, and the right count of them.
+   * A synthesis design must be the right entries, with the right count of
+   * readable numbers in each.
    *
-   * It names nothing in the drawing, so there is no reference to resolve --
-   * but a design half-read is worse than no design, because the panel would
-   * open on positions that are not where the reader left them. Fails closed,
-   * like every other trailing section.
+   * Most of it names nothing in the drawing -- the exception is `SO`, which
+   * lists the joints the design put there -- so there is little to resolve
+   * against. What there is to check is shape, and a design half-read is worse
+   * than no design: the panel would open on positions that are not where the
+   * reader left them. Fails closed, like every other trailing section.
    */
   private validateDecodedSynthesis(): void {
     // Field counts per entry. `SO` is the one that varies: it lists the joints
     // the design owns, and how many there are depends on the linkage.
     const expected: { [tag: string]: number } = { SD: 3, SP: 3, SR: 4 };
-    let positions = 0;
+    /*
+      Every character the number encoder can emit, and nothing else.
+
+      Without this the check stopped at counting fields, and an unreadable
+      character decoded to -1 rather than failing -- so one corrupt digit in a
+      length silently produced a different number, and the design came back
+      with its three positions intact around a coupler that was not the one
+      that had been shared. That is precisely the half-load this validator
+      exists to prevent.
+    */
+    const numeric = /^[0-9A-Za-z_-]+$/;
+    const seen = new Map<string, number>();
     this.synthesisMarks.forEach((entry) => {
       const tag = entry.substring(0, 2);
       const count = expected[tag];
       if (count === undefined && tag !== 'SO') {
         throw new Error('URL contains an unknown synthesis entry');
       }
+      seen.set(tag, (seen.get(tag) ?? 0) + 1);
       const parts = entry.substring(2).split('~').slice(1);
       const enough = tag === 'SO' ? parts.length >= 1 : parts.length === count;
       if (!enough || parts.some((part) => part === '')) {
         throw new Error('URL contains an incomplete synthesis entry');
       }
-      if (tag === 'SP') positions++;
+      // Ownership carries object ids, which are letters; every other entry is
+      // numbers, and has to look like numbers.
+      if (tag !== 'SO' && parts.some((part) => !numeric.test(part))) {
+        throw new Error('URL contains an unreadable synthesis number');
+      }
     });
-    if (positions > 3) {
+    if ((seen.get('SP') ?? 0) > 3) {
       throw new Error('URL contains more than three synthesis positions');
     }
+    // One design per URL. Two headers, or two of anything that describes the
+    // design as a whole, means the section was assembled by something other
+    // than this app, and there is no sensible way to choose between them.
+    (['SD', 'SR', 'SO'] as const).forEach((tag) => {
+      if ((seen.get(tag) ?? 0) > 1) {
+        throw new Error('URL repeats a synthesis entry');
+      }
+    });
   }
 
   /**

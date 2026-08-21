@@ -432,6 +432,60 @@ if (driver.dyad) {
 }
 
 check(
+  'a driver is only offered when it can turn a whole revolution',
+  await page.evaluate(() => {
+    const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
+    const held = panel.solution.driverWanted;
+    const bad = [];
+    for (const candidate of panel.solution.candidates()) {
+      panel.solution.pick(candidate.key);
+      const refused = !!panel.driverRefusal;
+      panel.solution.driverWanted = true;
+      const range = panel.solution.drivenRange();
+      const fitted = !!panel.solution.dyad();
+      panel.solution.driverWanted = held;
+      // Offered, sized, and yet unable to complete a turn is the combination
+      // that breaks the "one full turn" promise the panel makes.
+      if (!refused && fitted && !range.full) bad.push(candidate.key);
+    }
+    return bad.length === 0;
+  })
+);
+check(
+  'a drag released off the canvas still ends the gesture',
+  await (async () => {
+    const bar = await page.evaluate(() => {
+      const box = document.querySelector('.synthPose')?.getBoundingClientRect();
+      return box
+        ? { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) }
+        : null;
+    });
+    if (!bar) return true;
+    // Remember where it was: this drag deliberately ends over the panel, and a
+    // position parked under the panel is one nothing later can right-click.
+    const before = await panel(
+      '(p) => JSON.stringify(p.design.getAllPoses().map((q) => [q.position.x, q.position.y, q.thetaDegrees]))'
+    );
+    await page.mouse.move(bar.x, bar.y);
+    await page.mouse.down();
+    await page.mouse.move(200, 500, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+    const ended = await grid('(g) => !g.synthCanvas.dragging && !g.synthSolution.interactive');
+    await page.evaluate((was) => {
+      const design = ng.getComponent(document.querySelector('app-synthesis-panel')).design;
+      JSON.parse(was).forEach(([x, y, theta], index) => {
+        const pose = design.getPose(index + 1);
+        pose.position = { x, y, applyMatrix() {} };
+        pose.thetaDegrees = theta;
+      });
+      design.valueChanges.next(true);
+    }, before);
+    await page.waitForTimeout(400);
+    return ended;
+  })()
+);
+check(
   'a driver that cannot be fitted is greyed rather than merely explained',
   await page.evaluate(() => {
     const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));

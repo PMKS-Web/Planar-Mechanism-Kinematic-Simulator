@@ -260,16 +260,28 @@ export class SynthesisSolutionService {
   driverAvailability(): string | undefined {
     const cand = this.driven();
     if (!cand) return undefined;
-    const result = driverDyadFor(cand.A, cand.ptsA);
-    return 'refusal' in result ? result.refusal : undefined;
+    const sized = driverDyadFor(cand.A, cand.ptsA);
+    if ('refusal' in sized) return sized.refusal;
+    // Sized is not the same as workable. `driverDyadFor` solves for a crank and
+    // coupler that carry the input across the arc the three positions need,
+    // and stops there -- it never asks whether the four-bar can be closed
+    // everywhere in between, and sometimes it cannot. The result is a six-bar
+    // whose motor jams partway round, which is worse than no driver at all
+    // because the panel promises "one full turn".
+    return this.driverTravel(cand, sized.dyad).full
+      ? undefined
+      : 'A driver sized for these positions cannot turn a whole revolution — the ' +
+          'four-bar jams partway round. Moving a position, or driving from the ' +
+          'other pin, usually frees it.';
   }
 
-  /** The driver dyad for the current solution, if one is wanted and fits. */
+  /** The driver dyad for the current solution, if one is wanted and works. */
   dyad(): DriverDyad | undefined {
     const cand = this.driven();
     if (!cand || !this.driverWanted) return undefined;
-    const result = driverDyadFor(cand.A, cand.ptsA);
-    return 'refusal' in result ? undefined : result.dyad;
+    const sized = driverDyadFor(cand.A, cand.ptsA);
+    if ('refusal' in sized) return undefined;
+    return this.driverTravel(cand, sized.dyad).full ? sized.dyad : undefined;
   }
 
   /**
@@ -376,7 +388,20 @@ export class SynthesisSolutionService {
     if (!cand) return { from: 0, to: 360, full: false };
     const dyad = this.dyad();
     if (!dyad) return cand.range;
+    return this.driverTravel(cand, dyad);
+  }
 
+  /**
+   * How far the driver's crank can turn before the train stops closing.
+   *
+   * Walked forwards from the position the linkage is drawn in. Its answer is
+   * both what the transport offers and what decides whether a driver may be
+   * fitted at all, so the two cannot disagree about what the machine does.
+   */
+  private driverTravel(
+    cand: FourBarCandidate,
+    dyad: DriverDyad
+  ): { from: number; to: number; full: boolean } {
     const key = cand.key + ':' + this.driveOnFarPin + ':' + this.design.searchKey();
     if (this.driverRangeKey === key) return this.driverRange;
 

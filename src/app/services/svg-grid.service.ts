@@ -167,7 +167,26 @@ export class SvgGridService {
     });
     this.guardAgainstStuckPan(root);
     this.restoreMissingPointerDown(root);
+    this.releaseGesturesOnLostPointer();
     this.scaleToFitLinkage(false);
+  }
+
+  /**
+   * End a canvas gesture the canvas never saw end.
+   *
+   * A press that goes down on the drawing can come up anywhere -- over a panel,
+   * outside the window, or not at all if the browser cancels it. The canvas
+   * hears `pointerup` only on itself, so those releases went unheard and the
+   * gesture stayed live: the pan guard kept refusing to pan and the search
+   * stayed frozen mid-drag until something else was clicked.
+   *
+   * On the window, and in the capture phase, so it runs wherever the release
+   * lands and whatever else claims it.
+   */
+  private releaseGesturesOnLostPointer(): void {
+    const release = () => NewGridComponent.instance?.releaseCanvasGestures();
+    window.addEventListener('pointerup', release, true);
+    window.addEventListener('pointercancel', release, true);
   }
 
   /**
