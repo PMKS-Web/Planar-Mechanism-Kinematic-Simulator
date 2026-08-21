@@ -104,6 +104,18 @@ check(
     (await page.locator('#synthesisPanel .cta').isDisabled())
 );
 check(
+  'section dividers are a single rule, as they are everywhere else in the app',
+  await page.evaluate(() =>
+    [...document.querySelectorAll('#synthesisPanel collapsible-subseciton')].every((section) => {
+      // The header draws the rule; the section must not draw a second one
+      // against it, or every boundary comes out at twice the weight.
+      const own = getComputedStyle(section).borderBottomWidth;
+      const header = getComputedStyle(section.querySelector('.panel-header')).borderTopWidth;
+      return own === '0px' && header === '1px';
+    })
+  )
+);
+check(
   "a section's header, and its hit area, run the full width of the panel",
   await page.evaluate(() => {
     const panel = document.querySelector('#synthesisPanel').getBoundingClientRect();

@@ -423,16 +423,35 @@ export class SynthesisCanvasService {
   couplerTrace(): string {
     const cand = this.previewing() ? this.solution.driven() : null;
     if (!cand) return '';
-    // The travel the preview can actually make, which a driver narrows.
+    /*
+      Sampled through the same solve the preview itself uses.
+
+      This asked the *four-bar* where it would be at each angle, while the range
+      it was stepping belonged to the *driver's* crank -- two different cranks,
+      so the angles meant nothing to the solver they were handed to. Where they
+      happened not to close it skipped the sample and carried on with a line,
+      ruling a straight edge across a region the linkage never visits. That is
+      the flat side on an otherwise curved path.
+    */
     const range = this.solution.drivenRange();
     const span = range.to - range.from;
+    // Fine enough that a stretch the coupler crosses quickly is drawn as the
+    // path it takes rather than as one long chord across it.
+    const STEPS = 240;
     let d = '';
-    for (let k = 0; k <= 60; k++) {
-      const solved = solveFourBar(cand, range.from + (span * k) / 60, cand.sign);
-      if (!solved) continue;
+    let lifted = true;
+    for (let k = 0; k <= STEPS; k++) {
+      const solved = this.solution.poseAtPhase(range.from + (span * k) / STEPS);
+      // A phase that will not close is a hole in the travel, not a shortcut
+      // over it: the pen lifts rather than drawing across.
+      if (!solved) {
+        lifted = true;
+        continue;
+      }
       const midX = (solved.B.x + solved.C.x) / 2;
       const midY = (solved.B.y + solved.C.y) / 2;
-      d += (d ? ' L ' : 'M ') + midX.toFixed(1) + ' ' + midY.toFixed(1);
+      d += (lifted ? (d ? ' M ' : 'M ') : ' L ') + midX.toFixed(1) + ' ' + midY.toFixed(1);
+      lifted = false;
     }
     return d;
   }

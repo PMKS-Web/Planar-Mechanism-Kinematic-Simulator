@@ -199,7 +199,8 @@ $red: #e53935;
       gap: 8px;
       flex: 0 0 auto;
       padding: 8px 15px 8px 8px;
-      border-bottom: 1px solid $rule;
+      /* No rule of its own: the first section's header draws one directly
+         under this, and two together read as a heavy line. */
     }
 
     .work__headText {
@@ -234,6 +235,11 @@ $red: #e53935;
     collapsible-subseciton.sect {
       display: block;
       padding: 0;
+      /* Its header already draws the rule above it. Carrying `.sect`'s own rule
+         as well put two 1px lines against each other at every boundary, which
+         is why the dividers in this panel came out twice the weight of the ones
+         everywhere else in the app. */
+      border-bottom: 0;
 
       /* The band runs the whole width of the panel. The inset used to be on
          this row, which meant the toggle's own background -- and so its hover,
