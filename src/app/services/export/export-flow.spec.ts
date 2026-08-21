@@ -23,6 +23,22 @@ import { plotSvg } from './graph-svg';
 import { reportHtml, reportPages } from './report-html';
 import { crc32 } from './zip';
 
+/**
+ * Every reaction the solver has for a machine, as `joint@body` pairs.
+ *
+ * What the drawer offers is checked against this rather than against a list
+ * written out by hand: the point of leaving a part off is that nothing is lost
+ * by it, and only the solver knows what there was to lose.
+ */
+function fixtureMechanismOf(flow: ExportFlowService, at: number): string[] | undefined {
+  const solved = (flow as unknown as { mechanism: MechanismService }).mechanism.mechanisms[at];
+  if (!solved?.isMechanismValid()) return undefined;
+  const index = solved.getForceAnalysis(flow.forceMode()).reactionIndex;
+  return [...index.linksByJoint].flatMap(([joint, bodies]) =>
+    bodies.map((body) => `${joint}@${body}`)
+  );
+}
+
 /** The drawer's three services, over one fixture's mechanism. */
 interface Flow {
   flow: ExportFlowService;
@@ -270,6 +286,35 @@ describe('the export drawer', () => {
     // makes this the only place its effort can be asked for.
     expect(labels.filter((label) => label.startsWith('Force at Joint ')).length).toBe(2);
     expect(labels).toContain('Input force');
+  });
+
+  it('leaves a slot off the list, and still reaches the force it carries', () => {
+    const { flow } = flowFor(TEMPLATE_LINKAGES['Scotch_Yoke'], { forces: true });
+    const parts = flow.offeredParts();
+
+    // A slot is a joint to the solver and nothing at all to a reader: a
+    // zero-sized marker, no hitbox, no panel. Every other joint is on the list.
+    expect(parts.filter((part) => part.kind === 'joint').map((part) => part.label)).toEqual([
+      'Joint A',
+      'Joint B',
+      'Joint C',
+      'Joint D',
+    ]);
+    expect(parts.some((part) => part.note.includes('slider block'))).toBe(true);
+
+    // And nothing is lost by leaving it off: the force in the guide is the
+    // block's, and the block is on the list.
+    flow.setParts(parts, true);
+    const reached = new Set(
+      flow
+        .columnGroups('forces')
+        .flatMap((group) => group.columns)
+        .map((column) => `${column.series[0].mechPart}@${column.series[0].reactionLinkId}`)
+    );
+    const solved = fixtureMechanismOf(flow, 0)!;
+    expect(solved.length).toBeGreaterThan(0);
+    expect(reached.size).toBeGreaterThan(0);
+    expect(solved.filter((pair) => !reached.has(pair))).toEqual([]);
   });
 
   it('asks a slider block only for the reaction it actually carries', () => {

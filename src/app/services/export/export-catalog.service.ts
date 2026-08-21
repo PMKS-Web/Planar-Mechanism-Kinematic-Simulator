@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Joint, RealJoint } from '../../model/joint';
+import { Joint, PrisJoint, RealJoint } from '../../model/joint';
 import { Cylinder, cylinderJoints } from '../../model/cylinder';
 import { Link, RealLink, SliderBlock } from '../../model/link';
 import { AngleUnit, ForceUnit, LengthUnit } from '../../model/unit-enums';
@@ -32,6 +32,12 @@ export class ExportCatalogService {
       const valid = solved?.isMechanismValid() ?? false;
       const joints = partition.ownJoints
         .filter((joint): joint is RealJoint => joint instanceof RealJoint)
+        // Every joint the canvas draws a marker for, and no others. A slot is
+        // a joint to the solver and nothing at all to a reader: it has a
+        // zero-sized marker, no hitbox and no panel, so a row for it offered
+        // numbers no graph in the app can show -- and the force it carries is
+        // reachable from the block that rides in it.
+        .filter((joint) => !(joint instanceof PrisJoint))
         .filter((joint) => !this.isInsideCylinder(cylinders, joint))
         .map((joint) => this.jointPart(joint, partition.id, index, withForces));
       // Blocks as well as bars. A slider's block is a body the solver weighs
@@ -201,6 +207,12 @@ export class ExportCatalogService {
     return cylinderJoints(sealed).find(
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
     );
+  }
+
+  /** The slot this pin rides in, where that slot is what drives the mechanism. */
+  drivingSlotOf(joint: RealJoint): RealJoint | undefined {
+    const slider = this.mechanism.sliderFor(joint);
+    return slider?.input ? slider : undefined;
   }
 
   /** The joints a sealed cylinder keeps to itself, by id. */

@@ -359,6 +359,19 @@ for (const engine of engines) {
   await waitForReady(enginePage);
   await enginePage.locator('.tabButton', { hasText: 'Kinematic' }).click();
   await enginePage.waitForTimeout(1200);
+  // Wait for the stylesheet to have reached the control, not for the clock.
+  // A range input the app has not styled yet is the platform's own 4px bar,
+  // and Firefox lays this out later than the others -- so a fixed wait
+  // measured one engine's finished work and another's default.
+  await enginePage
+    .waitForFunction(
+      () => {
+        const bar = document.querySelector('.rowScrubber');
+        return !!bar && bar.getBoundingClientRect().height > 12;
+      },
+      { timeout: 10000 }
+    )
+    .catch(() => {});
   const engineBar = await enginePage.locator('.rowScrubber').boundingBox();
   // Halfway along, so the shot holds both what is travelled and what is ahead.
   await enginePage.mouse.click(engineBar.x + engineBar.width / 2, engineBar.y + 10);

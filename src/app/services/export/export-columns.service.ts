@@ -178,9 +178,12 @@ export class ExportColumnsService {
       // is the only place that number can be asked for.
       const driven =
         part.kind === 'joint'
-          ? (part.part as RealJoint).input
+          ? // The joint itself, or the slot it rides in: a slot is never on the
+            // list, so the effort driving one has to be asked for against the
+            // pin a reader can actually point at.
+            (part.part as RealJoint).input
             ? (part.part as RealJoint)
-            : undefined
+            : this.catalog.drivingSlotOf(part.part as RealJoint)
           : this.catalog.drivenJointOf(part.id);
       if (driven) {
         const torque = !(driven instanceof PrisJoint);

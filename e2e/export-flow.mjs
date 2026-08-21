@@ -428,6 +428,35 @@ record(
   (await drawer().locator('.pickRow.onGrid').count()) === 0
 );
 
+// --- a slot is not a part, because a reader cannot point at one -------------
+await page.goto(`${BASE}/?${payloads['Scotch_Yoke']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+await page.waitForTimeout(700);
+await openDrawer();
+const yokeParts = await drawer().locator('.pickRow .rowName').allInnerTexts();
+const invisible = await page.evaluate(() =>
+  [...document.querySelectorAll('[id^="joint_"]')]
+    .filter((marker) => marker.getBoundingClientRect().width === 0)
+    .map((marker) => 'Joint ' + marker.id.replace('joint_', ''))
+);
+record(
+  'a joint the canvas draws nothing for is not offered as a part',
+  invisible.length > 0 && invisible.every((name) => !yokeParts.includes(name)),
+  { invisible, yokeParts }
+);
+record(
+  'and every joint it does draw is',
+  (
+    await page.evaluate(() =>
+      [...document.querySelectorAll('[id^="joint_"]')]
+        .filter((marker) => marker.getBoundingClientRect().width > 0)
+        .map((marker) => 'Joint ' + marker.id.replace('joint_', ''))
+    )
+  ).every((name) => yokeParts.includes(name)),
+  yokeParts
+);
+
 // --- a sealed cylinder is one part, not the pieces it is assembled from ------
 await page.goto(`${BASE}/?${payloads['Cylinder_Boom']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);

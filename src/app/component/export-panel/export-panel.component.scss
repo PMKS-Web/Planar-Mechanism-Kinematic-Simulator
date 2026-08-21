@@ -64,21 +64,22 @@
     .steps {
       display: flex;
       align-items: center;
+      // The gap does the separating, so a name never runs up against the one
+      // after it.
+      gap: 8px;
       padding-top: 12px;
     }
 
+    // As wide as its own name, not an equal quarter of the rule. Four equal
+    // shares of 380px is 95 apiece, which `2. Kinematics` overruns -- so the
+    // long name crowded the short one beside it while `4. File` sat in a third
+    // of a segment of white.
     .step {
       display: flex;
       flex-direction: column;
       gap: 6px;
-      flex: 1 1 0;
+      flex: 1 1 auto;
       min-width: 0;
-
-      // Each step but the first is indented, so its name reads as belonging to
-      // its own bar rather than to the end of the one before.
-      & + .step .stepName {
-        padding-left: 8px;
-      }
     }
 
     .stepName {
