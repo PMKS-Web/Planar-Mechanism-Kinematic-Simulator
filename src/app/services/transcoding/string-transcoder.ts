@@ -455,7 +455,11 @@ export class StringTranscoder extends GenericTranscoder {
     // the two are told apart on the way in and neither can be mistaken for the
     // other. 'CG<link>' holds the point on the drawing; 'CJ<link>~<joint>'
     // holds it on one pin, '~' being a character no id can contain.
-    const trailing = [...this.lockedIds, ...this.comAnchors];
+    // Synthesis joins them for a third time, tagged 'S'. Its entries describe a
+    // design rather than an object the URL carries, so unlike a lock or an
+    // anchor there is nothing for them to resolve against -- which is exactly
+    // why they can be validated on their own numbers alone.
+    const trailing = [...this.lockedIds, ...this.comAnchors, ...this.synthesisMarks];
     if (trailing.length > 0) {
       fullString += '.' + trailing.join(',');
     }
@@ -575,6 +579,7 @@ export class StringTranscoder extends GenericTranscoder {
       let entry = sd.nextToken(',');
       if (entry === '') continue;
       if (entry.charAt(0) === 'C') this.comAnchors.push(entry);
+      else if (entry.charAt(0) === 'S') this.synthesisMarks.push(entry);
       else this.lockedIds.push(entry);
     }
 
@@ -684,6 +689,35 @@ export class StringTranscoder extends GenericTranscoder {
       }
     });
     this.validateDecodedComAnchors(linkIDs);
+    this.validateDecodedSynthesis();
+  }
+
+  /**
+   * A synthesis design must be numbers, and the right count of them.
+   *
+   * It names nothing in the drawing, so there is no reference to resolve --
+   * but a design half-read is worse than no design, because the panel would
+   * open on positions that are not where the reader left them. Fails closed,
+   * like every other trailing section.
+   */
+  private validateDecodedSynthesis(): void {
+    const expected: { [tag: string]: number } = { SD: 3, SP: 3, SR: 4, SC: 3 };
+    let positions = 0;
+    this.synthesisMarks.forEach((entry) => {
+      const tag = entry.substring(0, 2);
+      const count = expected[tag];
+      if (count === undefined) {
+        throw new Error('URL contains an unknown synthesis entry');
+      }
+      const parts = entry.substring(2).split('~').slice(1);
+      if (parts.length !== count || parts.some((part) => part === '')) {
+        throw new Error('URL contains an incomplete synthesis entry');
+      }
+      if (tag === 'SP') positions++;
+    });
+    if (positions > 3) {
+      throw new Error('URL contains more than three synthesis positions');
+    }
   }
 
   /**

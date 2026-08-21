@@ -37,6 +37,16 @@ export abstract class GenericTranscoder {
    * StringTranscoder for the spelling.
    */
   protected comAnchors: string[] = [];
+  /**
+   * The synthesis design -- three positions of an end-effector link and what a
+   * solution has to satisfy -- as tagged entries sharing the same trailing
+   * section. See StringTranscoder for the spelling.
+   *
+   * It is in the URL for the same reason the mechanism is: undo and redo are a
+   * stack of these strings, so a design that was not written here could not be
+   * undone, and a link shared mid-design would open on an empty panel.
+   */
+  protected synthesisMarks: string[] = [];
 
   // Initialize data dictionaries based on settings enums
   constructor() {
@@ -118,6 +128,14 @@ export abstract class GenericTranscoder {
 
   getComAnchors(): string[] {
     return this.comAnchors;
+  }
+
+  setSynthesisMarks(marks: string[]): void {
+    this.synthesisMarks = marks;
+  }
+
+  getSynthesisMarks(): string[] {
+    return this.synthesisMarks;
   }
 
   abstract decodeURL(url: string): void;

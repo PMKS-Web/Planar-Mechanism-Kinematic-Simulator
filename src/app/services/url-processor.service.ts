@@ -7,6 +7,8 @@ import { SvgGridService } from './svg-grid.service';
 import { ActiveObjService } from './active-obj.service';
 import { NotificationService } from './notification.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
+import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
+import { applySynthesisDesign } from './synthesis/synthesis-url';
 
 @Injectable({
   providedIn: 'root',
@@ -17,6 +19,7 @@ export class UrlProcessorService {
   private svgGrid = inject(SvgGridService);
   private activeObj = inject(ActiveObjService);
   private notify = inject(NotificationService);
+  private synthesis = inject(SynthesisBuilderService);
 
   constructor() {
     // the content part of the url (the part after the ?)
@@ -108,6 +111,11 @@ export class UrlProcessorService {
           this.activeObj
         );
         builder.build(updateSettings);
+        // After the mechanism, because a design is about a machine that is not
+        // on the grid yet and so has nothing in the build to wait for -- but
+        // before the rebuild below, so the panel and the canvas come up
+        // describing the same state.
+        applySynthesisDesign(decoder.getSynthesisMarks(), this.synthesis);
       } catch (error) {
         console.error('Unable to load mechanism URL', error);
         // Deferred because this can run inside the service's own constructor,
