@@ -76,6 +76,18 @@ export class SelectedTabService {
     return tab === TabID.ANALYZE || tab === TabID.FORCE;
   }
 
+  /**
+   * Whether the current mode's panel needs the wide drawer.
+   *
+   * The two analyses need it for their tables and graphs; Synthesis needs it
+   * for a row of three numbers per position and a gallery of candidate
+   * linkages read side by side. Edit is the only mode that still fits in the
+   * narrow one.
+   */
+  public isWidePanel(tab: TabID = this.getCurrentTab()) {
+    return this.isAnalysisMode(tab) || tab === TabID.SYNTHESIZE;
+  }
+
   private onNewTab(previousTab: TabID) {
     // A setup drawer answers a question about one mode, so it goes when that
     // mode does -- otherwise the Force list sits over the Synthesis canvas
@@ -92,12 +104,6 @@ export class SelectedTabService {
     if (this.getCurrentTab() === TabID.SYNTHESIZE) {
       // reset flag
       this.synthesis.modifiedMechanism = false;
-      // A fresh visit synthesises a new linkage rather than editing the one the
-      // last visit left behind, so nothing here belongs to this one yet.
-      this.synthesis.synthesisedIds = { joints: [], links: [] };
-      this.synthesis.driverWanted = false;
-      this.synthesis.driveOnFarPin = false;
-      this.synthesis.driverRefusal = undefined;
     } else if (previousTab === TabID.SYNTHESIZE && this.getCurrentTab() === TabID.EDIT) {
       // save mechanism state if modified in synthesis tab
       this.mechanism.save();
