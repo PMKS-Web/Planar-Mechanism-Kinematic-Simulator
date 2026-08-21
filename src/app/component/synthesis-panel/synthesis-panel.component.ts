@@ -197,6 +197,10 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.subs.forEach((s) => s.unsubscribe());
     if (this.frame) cancelAnimationFrame(this.frame);
+    // Stop any wind-back, and stop what it was going to do afterwards: a commit
+    // that lands after the panel is gone acts on a drawing nobody is looking at.
+    this.windingBack = false;
+    if (this.windBackFrame) cancelAnimationFrame(this.windBackFrame);
     // Leaving the tab hands the wheel back whatever state placing was left in.
     this.svgGrid.setWheelZoomEnabled(true);
   }
@@ -378,19 +382,29 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     return this.design.armed ? 'Cancel' : 'Add position ' + this.nextPositionNumber;
   }
 
-  toggleArmed(): void {
-    const arming = !this.design.armed;
-    // Before the ghost appears, not after the first position lands. Object
-    // scale is what parts are drawn at, and it was being fitted on the first
-    // click -- so the ghost was drawn at the old, small scale and the position
-    // it turned into was drawn at the new one, which looked like the click had
-    // grown it. Only on a drawing with nothing in it: the scale is global, and
-    // resizing someone's work because a position is about to be placed is a
-    // change nobody asked for.
-    if (arming && this.mechanismSrv.links.length === 0 && !this.design.getAllPoses().length) {
+  /**
+   * Arm or disarm placing, fitting the scale on the way in.
+   *
+   * Every route to arming comes through here. Object scale is what parts are
+   * drawn at, and it was being fitted on the first click -- after the ghost had
+   * already been drawn at the old one, so the click appeared to grow the
+   * position. Fitting it here happens before the ghost first appears; putting
+   * it in the button's own handler missed the other way in, which is clicking
+   * an empty position row.
+   *
+   * Only on a drawing with nothing in it: the scale is global, and resizing
+   * someone's work because a position is about to be placed is a change nobody
+   * asked for.
+   */
+  private arm(armed: boolean): void {
+    if (armed && this.mechanismSrv.links.length === 0 && !this.design.getAllPoses().length) {
       this.svgGrid.updateObjectScale();
     }
-    this.design.setArmed(arming);
+    this.design.setArmed(armed);
+  }
+
+  toggleArmed(): void {
+    this.arm(!this.design.armed);
   }
 
   get canDuplicate(): boolean {
@@ -416,8 +430,9 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       this.design.selectedPose = i;
       this.design.setArmed(false);
     } else {
-      // An empty row is the one place a reader looks to fill it in.
-      this.design.setArmed(true);
+      // An empty row is the one place a reader looks to fill it in -- so it is
+      // a way of arming, and has to prepare the same way the button does.
+      this.arm(true);
     }
   }
 
@@ -1056,25 +1071,54 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     }
     this.solution.playing = false;
     const from = this.solution.phase;
+    /*
+      The short way round.
+
+      On a crank that turns fully, home can be a degree ahead and three hundred
+      and fifty-nine behind, and interpolating the raw numbers took the long
+      way: pressing Insert near the end of the cycle spun the linkage almost a
+      whole revolution backwards to get somewhere it was nearly at. The app's
+      own easeToStart picks the shorter direction for the same reason.
+    */
+    let delta = home - from;
+    if (this.solution.drivenRange().full) {
+      while (delta > 180) delta -= 360;
+      while (delta < -180) delta += 360;
+    }
     const started = performance.now();
     const DURATION = 220;
     const step = () => {
+      // The panel can be left while this is running -- and was: a press, a
+      // switch to Edit, and the commit landed afterwards, onto a drawing the
+      // reader had moved on from.
+      if (!this.windingBack) return;
       const t = Math.min(1, (performance.now() - started) / DURATION);
       // Ease out, so it settles rather than stopping dead.
       const eased = 1 - (1 - t) * (1 - t);
-      this.solution.phase = from + (home - from) * eased;
+      this.solution.phase = from + delta * eased;
       this.solution.changed.next();
       if (t < 1) {
-        this.frame = requestAnimationFrame(step);
+        this.windBackFrame = requestAnimationFrame(step);
         return;
       }
+      this.windingBack = false;
+      this.windBackFrame = undefined;
       this.solution.phase = null;
       then();
     };
-    this.frame = requestAnimationFrame(step);
+    this.windingBack = true;
+    this.windBackFrame = requestAnimationFrame(step);
   }
 
+  /** Whether a wind-back is running, so a second press cannot start another. */
+  private windingBack = false;
+  private windBackFrame: number | undefined;
+
   insert(force = false): void {
+    // One commit per press. Each press used to start its own wind-back, so a
+    // double-press committed twice -- rebuilding the linkage, and writing two
+    // entries into the history for one intention.
+    if (this.windingBack) return;
     // Only the first press winds back; the retries from the warning below are
     // already home.
     if (!force && this.solution.phase !== null) {

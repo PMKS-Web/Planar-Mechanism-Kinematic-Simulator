@@ -165,6 +165,16 @@ await page.mouse.wheel(0, -120);
 await page.waitForTimeout(200);
 const angleAfter = await panel('(p) => p.design.placeAngleDeg');
 check(
+  'and an empty row arms the same way the button does',
+  await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    // Both are advertised as ways to place a position, so both have to prepare
+    // the same way. Only the button did, so arming from the row drew a ghost at
+    // the old scale.
+    return Math.abs(grid.settings.objectScale - 60 / grid.svgGrid.getZoom()) < 0.02;
+  })
+);
+check(
   'the ghost is drawn at the size the position will be, not resized by the click',
   await page.evaluate(() => {
     // Object scale decides how big parts are drawn, and it used to be fitted on
@@ -768,6 +778,27 @@ check(
     const gallery = document.querySelector('#synthesisPanel .gallery');
     return !gallery || getComputedStyle(gallery).gridTemplateColumns.split(' ').length !== 2;
   })
+);
+check(
+  'a flurry of presses on Insert commits once, not once each',
+  await (async () => {
+    await panel(`(p) => {
+      const range = p.solution.drivenRange();
+      p.solution.setPhase(range.from + (range.to - range.from) * 0.6);
+      window.__inserts = 0;
+      const real = p.solution.insert.bind(p.solution);
+      p.solution.insert = (...args) => { window.__inserts += 1; return real(...args); };
+    }`);
+    const button = page.locator('#synthesisPanel .cta--insert');
+    await button.click();
+    await button.click({ force: true });
+    await button.click({ force: true });
+    await page.waitForTimeout(1200);
+    const committed = await page.evaluate(() => window.__inserts);
+    await panel('(p) => { p.solution.undoInsert(); p.solution.releaseOwnership(); }');
+    await page.waitForTimeout(400);
+    return committed === 1;
+  })()
 );
 check('and Undo takes exactly it back', (await grid('(g) => g.mechanismSrv.joints.length')) === 0);
 check('leaving the design alone', (await panel('(p) => p.design.getAllPoses().length')) === 3);
