@@ -267,6 +267,19 @@
     pointer-events: none;
   }
 
+  // The pins' letters, which the panel refers to by name. Haloed rather than
+  // boxed: they sit over whatever the drawing has behind them, and a box that
+  // size beside every pin would be more chrome than linkage.
+  .synthPreviewTag {
+    fill: rgba(0, 0, 0, 0.72);
+    stroke: #fff;
+    stroke-width: 3;
+    paint-order: stroke;
+    font-family: Roboto, sans-serif;
+    font-weight: 500;
+    pointer-events: none;
+  }
+
   .synthPreviewJoint {
     fill: #ffecb2;
     stroke: rgba(0, 0, 0, 0.4);

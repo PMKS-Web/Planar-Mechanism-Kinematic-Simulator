@@ -195,6 +195,59 @@ describe('every solution offered can be driven through what it claims', () => {
     return worst;
   }
 
+  /**
+   * The shortest arc containing three directions, worked out independently.
+   *
+   * Sorted, then the widest gap between neighbours removed: what is left is the
+   * arc, and it is not in general the span between the smallest and the largest.
+   */
+  function shortestArc(anglesDeg: number[]): { from: number; to: number } {
+    const sorted = anglesDeg.map((a) => ((a % 360) + 360) % 360).sort((a, b) => a - b);
+    let widest = -1;
+    let after = 0;
+    sorted.forEach((angle, i) => {
+      const next = sorted[(i + 1) % sorted.length];
+      const gap = (((next - angle) % 360) + 360) % 360;
+      if (gap > widest) {
+        widest = gap;
+        after = (i + 1) % sorted.length;
+      }
+    });
+    return { from: sorted[after], to: sorted[after] + (360 - widest) };
+  }
+
+  it('measures over the shortest travel between the positions, not the long way round', () => {
+    const next = rng(20260821);
+    const wrong: string[] = [];
+    for (let n = 0; n < 300; n++) {
+      const poses = [0, 1, 2].map(() =>
+        pose(next() * 24 - 12, next() * 24 - 12, next() * 360 - 180)
+      );
+      const { candidates } = enumerateCandidates({
+        poses,
+        length: LENGTH,
+        endsOnly: next() < 0.5,
+      });
+      candidates
+        .filter((c) => c.range.full)
+        .forEach((c) => {
+          // On a crank that turns fully the arc wraps, so the smallest and
+          // largest of the three angles can name the long way round -- which is
+          // travel the linkage never makes between the positions, and judging
+          // it there rejects good candidates and accepts binding ones.
+          const arc = shortestArc(c.thetas);
+          const span = c.stroke.to - c.stroke.from;
+          const expected = arc.to - arc.from + 10;
+          if (Math.abs(span - expected) > 0.5) {
+            wrong.push(
+              `design ${n} ${c.key}: measured over ${span.toFixed(1)}°, shortest is ${expected.toFixed(1)}°`
+            );
+          }
+        });
+    }
+    expect(wrong.slice(0, 5)).toEqual([]);
+  });
+
   it('reports a transmission angle that a dense independent measure agrees with', () => {
     const next = rng(20260821);
     const disagreements: string[] = [];

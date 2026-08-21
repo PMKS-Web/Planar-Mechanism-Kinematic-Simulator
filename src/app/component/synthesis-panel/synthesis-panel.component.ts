@@ -876,20 +876,24 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   dimensionRows(): { label: string; value: string }[] {
     const c = this.solution.driven();
     if (!c) return [];
+    // Every bar named by the pins at its ends, and every one of those letters
+    // drawn on the linkage beside it. Two of these named their pins and two
+    // did not, so half the list pointed at something on the grid and half
+    // asked the reader to work out which bar was meant.
     const rows = [
-      { label: 'Ground link A–D', value: this.lengthText(c.g) },
-      { label: 'Input crank', value: this.lengthText(c.r1) },
+      { label: 'Crank A–B', value: this.lengthText(c.r1) },
       { label: 'Coupler B–C', value: this.lengthText(c.d) },
-      { label: 'Output rocker', value: this.lengthText(c.r2) },
+      { label: 'Rocker C–D', value: this.lengthText(c.r2) },
+      { label: 'Ground A–D', value: this.lengthText(c.g) },
       {
         label: 'Coupler pinned',
-        value: describeCouplerPins(c, this.design.length) + ' ' + this.lengthUnit,
+        value: describeCouplerPins(c, this.design.length, this.lengthUnit),
       },
     ];
     const dyad = this.solution.dyad();
     if (dyad) {
-      rows.push({ label: 'Driver crank', value: this.lengthText(dyad.crankLength) });
-      rows.push({ label: 'Driver coupler', value: this.lengthText(dyad.couplerLength) });
+      rows.push({ label: 'Driver crank E–F', value: this.lengthText(dyad.crankLength) });
+      rows.push({ label: 'Driver coupler F–B', value: this.lengthText(dyad.couplerLength) });
     }
     return rows;
   }
@@ -984,9 +988,13 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     const cand = this.solution.driven();
     if (!cand) return '';
     const range = this.solution.drivenRange();
+    // Which crank is turning, because with a driver fitted it is not the
+    // four-bar's: naming it "crank rotation" beside a six-bar left the reader
+    // to guess which of the two the transport was scrubbing.
+    const crank = this.solution.dyad() ? 'driver crank' : 'crank';
     return range.full
-      ? 'full crank rotation'
-      : `rocks through ${Math.round(range.to - range.from)}°`;
+      ? `full ${crank} rotation`
+      : `${crank} rocks through ${Math.round(range.to - range.from)}°`;
   }
 
   // --- committing ----------------------------------------------------------

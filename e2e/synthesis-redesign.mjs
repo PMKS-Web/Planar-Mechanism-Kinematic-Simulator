@@ -432,6 +432,42 @@ if (driver.dyad) {
 }
 
 check(
+  'every pin the panel names by letter is lettered on the drawing',
+  await page.evaluate(() => {
+    const drawn = new Set(
+      [...document.querySelectorAll('#synthesisPreviewTags .synthPreviewTag')].map((t) =>
+        t.textContent.trim()
+      )
+    );
+    const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
+    // Every letter the panel uses -- "Pin A", "Ground A–D", "Coupler B–C" --
+    // has to name something the reader can find on the grid.
+    const named = new Set();
+    panel.pinOptions().forEach((o) => (o.label.match(/[A-F]/g) ?? []).forEach((l) => named.add(l)));
+    panel
+      .dimensionRows()
+      .forEach((r) => (r.label.match(/\b[A-F]\b/g) ?? []).forEach((l) => named.add(l)));
+    return [...named].every((letter) => drawn.has(letter));
+  })
+);
+check(
+  'and a length given in words still puts its unit beside the number',
+  await panel(
+    '(p) => !p.dimensionRows().some((r) => / (cm|m|in)$/.test(r.value) && /[a-z]{3,} (cm|m|in)$/.test(r.value))'
+  )
+);
+check(
+  'Space activates a focused button, as Space does',
+  await page.evaluate(() => {
+    const button = document.querySelector('#synthesisPanel .poseRow__remove');
+    if (!button || button.disabled) return true;
+    button.focus();
+    const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    // Not swallowed by a global shortcut on its way past.
+    return button.dispatchEvent(event);
+  })
+);
+check(
   'a driver is only offered when it can turn a whole revolution',
   await page.evaluate(() => {
     const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));

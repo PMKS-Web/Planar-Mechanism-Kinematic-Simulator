@@ -1,5 +1,6 @@
 import { Coord } from 'src/app/model/coord';
 import { MODEL_SCALE } from 'src/app/model/render-scale';
+import { smallestArcContaining } from './driver-dyad';
 
 /**
  * Every four-bar that carries a coupler through three given positions.
@@ -228,6 +229,42 @@ function attach(pose: PosePoint, u: number): Coord {
  * comparing candidates.
  */
 /**
+ * The stretch of crank travel the three positions occupy, with a little margin.
+ *
+ * Which stretch this is decides everything the transmission angle then says,
+ * and it is not simply the smallest and largest of the three angles.
+ *
+ * On a crank that turns fully the angles live on a circle, so the arc holding
+ * them wraps: taking their smallest and largest can name the long way round.
+ * Three positions clustered near the top of the circle came out as a stroke of
+ * three hundred and thirty degrees rather than eighty, and the linkage was then
+ * judged on travel it never makes between them -- which rejected candidates
+ * that are perfectly good, and the other way about accepted ones that bind
+ * where they actually work. So the arc is the shortest one containing all
+ * three, found by looking for the widest gap between them and taking the rest.
+ *
+ * On a crank that only rocks there is no wrap to worry about: the travel has
+ * ends, and the positions lie between them.
+ */
+function poseStroke(cand: FourBarCandidate): [number, number] {
+  const MARGIN = 5;
+  if (cand.range.full) {
+    const arc = smallestArcContaining(cand.thetas.map((theta) => (theta * Math.PI) / 180));
+    const start = (arc.start * 180) / Math.PI;
+    const span = (arc.span * 180) / Math.PI;
+    return [start - MARGIN, start + span + MARGIN];
+  }
+  const placed = cand.thetas
+    .map((theta) => intoTravel(theta, cand.range))
+    .filter((theta): theta is number => theta !== null);
+  if (!placed.length) return [cand.range.from, cand.range.to];
+  return [
+    Math.max(cand.range.from, Math.min(...placed) - MARGIN),
+    Math.min(cand.range.to, Math.max(...placed) + MARGIN),
+  ];
+}
+
+/**
  * The worst transmission angle over a stretch of crank travel, exactly.
  *
  * This was sampled every two degrees, and the answer rounded, which is not
@@ -247,11 +284,7 @@ function attach(pose: PosePoint, u: number): Coord {
  * at the ends of the interval or where the crank points directly at, or
  * directly away from, the far ground pin. Four angles to check, not a hundred.
  */
-export function worstTransmission(
-  cand: FourBarCandidate,
-  from: number,
-  to: number
-): number {
+export function worstTransmission(cand: FourBarCandidate, from: number, to: number): number {
   const towardsD = (Math.atan2(cand.D.y - cand.A.y, cand.D.x - cand.A.x) * 180) / Math.PI;
   const candidates = [from, to];
   // The two interior extremes, brought into the interval a turn at a time.
@@ -358,24 +391,9 @@ export function assess(cand: FourBarCandidate): void {
   // positions actually occupy, not the whole range. It is how squarely the
   // coupler pushes the rocker, and a four-bar that passes through the positions
   // at five degrees will stall there in real life.
-  // Measured over the stroke expressed in the *range's* terms. These were raw
-  // atan2 angles compared against a walked range that can sit a turn away from
-  // them, which produced intervals that were offset, or inverted and therefore
-  // empty -- and an empty interval reports whatever its two endpoints happen to
-  // say rather than the worst of the travel.
-  const placed = cand.thetas
-    .map((theta) => intoTravel(theta, cand.range))
-    .filter((theta): theta is number => theta !== null);
-  const strokeFrom = placed.length
-    ? Math.max(cand.range.from, Math.min(...placed) - 5)
-    : cand.range.from;
-  const strokeTo = placed.length ? Math.min(cand.range.to, Math.max(...placed) + 5) : cand.range.to;
-  const worst = worstTransmission(
-    cand,
-    Math.min(strokeFrom, strokeTo),
-    Math.max(strokeFrom, strokeTo)
-  );
-  cand.stroke = { from: Math.min(strokeFrom, strokeTo), to: Math.max(strokeFrom, strokeTo) };
+  const [strokeFrom, strokeTo] = poseStroke(cand);
+  const worst = worstTransmission(cand, strokeFrom, strokeTo);
+  cand.stroke = { from: strokeFrom, to: strokeTo };
   cand.minTransmission = Math.round(worst);
   // Against the exact figure, not the rounded one: a linkage that stalls at
   // 14.6 degrees is not saved by being displayed as 15.
@@ -420,13 +438,18 @@ function inRegion(p: Coord, region: { x: number; y: number; w: number; h: number
 }
 
 /** How the two pins sit on the link, in words, for the dimensions list. */
-function describePins(uA: number, uB: number, length: number): string {
+function describePins(uA: number, uB: number, length: number, unit: string): string {
   const part = (u: number, end: 0 | 1): string => {
     if (Math.abs(u - end) < 1e-9) return '';
     const away = Math.abs(u - end) * length;
     const outside = end === 0 ? u < 0 : u > 1;
+    // The unit goes with its number. Appended to the whole phrase by the
+    // caller, it produced "3.0 past the back cm" -- and, when the pins sit on
+    // the ends and there is no number at all, "at both ends cm".
     return (
       (away / MODEL_SCALE).toFixed(1) +
+      ' ' +
+      unit +
       ' ' +
       (outside ? 'past' : 'inside') +
       ' the ' +
@@ -607,6 +630,6 @@ export function rankCandidates(list: FourBarCandidate[], limit = 8): FourBarCand
 }
 
 /** Where the two coupler pins sit on the link, in the reader's own words. */
-export function describeCouplerPins(cand: FourBarCandidate, length: number): string {
-  return describePins(cand.uA, cand.uB, length);
+export function describeCouplerPins(cand: FourBarCandidate, length: number, unit: string): string {
+  return describePins(cand.uA, cand.uB, length, unit);
 }

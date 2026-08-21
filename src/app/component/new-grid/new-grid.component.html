@@ -1055,6 +1055,26 @@
             [attr.stroke-width]="svgGrid.scaleWithZoom(1.4)"
           />
         }
+        <!-- Named, because the panel names them. "Driven from Pin A", "Ground
+             A–D", "Coupler B–C" -- every one of those letters was a reference
+             to something the drawing never wrote down, so the reader had no way
+             to tell which pin or which bar was meant. Drawn whatever the
+             show-ids setting says: the panel is talking about them either way. -->
+        <g id="synthesisPreviewTags">
+          @for (jt of synthCanvas.previewJoints(); track jt.id) {
+            <text
+              class="synthPreviewTag"
+              [attr.transform]="
+                'translate(' + jt.x + ',' + jt.y + ') scale(1,-1)'
+              "
+              [attr.x]="svgGrid.scaleWithZoom(11)"
+              [attr.y]="svgGrid.scaleWithZoom(-9)"
+              [style.font-size.px]="svgGrid.scaleWithZoom(13)"
+            >
+              {{ jt.id }}
+            </text>
+          }
+        </g>
       </g>
       }
 
