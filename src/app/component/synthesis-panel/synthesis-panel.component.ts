@@ -23,6 +23,7 @@ import {
   FourBarCandidate,
   describeCouplerPins,
   solveFourBar,
+  endLetters,
 } from 'src/app/services/synthesis/synthesis-candidates';
 import { MODEL_SCALE } from 'src/app/model/render-scale';
 import { SvgGridService } from '../../services/svg-grid.service';
@@ -406,7 +407,13 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
    * asked for.
    */
   private arm(armed: boolean): void {
-    if (armed && this.mechanismSrv.links.length === 0 && !this.design.getAllPoses().length) {
+    // Joints as well as links. A joint on its own belongs to no link, so a
+    // drawing holding nothing but loose joints counted as empty -- and fitting
+    // the scale to the zoom resized them under the reader, which is the one
+    // thing this was supposed to avoid doing to existing work.
+    const drawingIsEmpty =
+      this.mechanismSrv.links.length === 0 && this.mechanismSrv.joints.length === 0;
+    if (armed && drawingIsEmpty && !this.design.getAllPoses().length) {
       this.svgGrid.updateObjectScale();
     }
     this.design.setArmed(armed);
@@ -915,11 +922,15 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     // drawn on the linkage beside it. Two of these named their pins and two
     // did not, so half the list pointed at something on the grid and half
     // asked the reader to work out which bar was meant.
+    // Named by the letters actually drawn beside those pins. Driving from the
+    // far pin reads the same linkage from the other end, and naming the bars
+    // after the fields rather than the pins renamed all four of them.
+    const e = endLetters(c);
     const rows = [
-      { label: 'Crank A–B', value: this.lengthText(c.r1) },
-      { label: 'Coupler B–C', value: this.lengthText(c.d) },
-      { label: 'Rocker C–D', value: this.lengthText(c.r2) },
-      { label: 'Ground A–D', value: this.lengthText(c.g) },
+      { label: `Crank ${e.A}–${e.B}`, value: this.lengthText(c.r1) },
+      { label: `Coupler ${e.B}–${e.C}`, value: this.lengthText(c.d) },
+      { label: `Rocker ${e.C}–${e.D}`, value: this.lengthText(c.r2) },
+      { label: `Ground ${e.A}–${e.D}`, value: this.lengthText(c.g) },
       {
         label: 'Coupler pinned',
         value: describeCouplerPins(c, this.design.length, this.lengthUnit),
@@ -928,7 +939,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     const dyad = this.solution.dyad();
     if (dyad) {
       rows.push({ label: 'Driver crank E–F', value: this.lengthText(dyad.crankLength) });
-      rows.push({ label: 'Driver coupler F–B', value: this.lengthText(dyad.couplerLength) });
+      rows.push({ label: `Driver coupler F–${e.B}`, value: this.lengthText(dyad.couplerLength) });
     }
     return rows;
   }
@@ -1128,6 +1139,24 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   private windingBack = false;
   private windBackFrame: number | undefined;
 
+  /**
+   * What is about to be built, as one string.
+   *
+   * Insert defers by 220ms to wind the preview home, and used to work out what
+   * to build only once it got there -- so choosing a different card during
+   * those 220ms built that one instead, from a press that was aimed at the one
+   * before it. Nothing else on the panel takes that long to act, so there is
+   * no reason for the reader to expect the press to still be in flight.
+   */
+  private commitKey(): string {
+    return [
+      this.solution.chosen()?.key ?? '',
+      this.solution.driveOnFarPin,
+      !!this.solution.dyad(),
+      this.design.searchKey(),
+    ].join('|');
+  }
+
   insert(force = false): void {
     // One commit per press. Each press used to start its own wind-back, so a
     // double-press committed twice -- rebuilding the linkage, and writing two
@@ -1136,7 +1165,15 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     // Only the first press winds back; the retries from the warning below are
     // already home.
     if (!force && this.solution.phase !== null) {
-      this.windBackThen(() => this.insert(force));
+      const pressedOn = this.commitKey();
+      this.windBackThen(() => {
+        // Changing the choice mid-flight cancels the press rather than
+        // redirecting it: the reader has just said they want to look at
+        // something else, and building either one from here would be building
+        // something they did not ask for.
+        if (this.commitKey() !== pressedOn) return;
+        this.insert(force);
+      });
       return;
     }
     const outcome = this.solution.insert(force);

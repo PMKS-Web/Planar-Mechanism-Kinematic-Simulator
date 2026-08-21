@@ -88,6 +88,12 @@ export interface FourBarCandidate {
   branch: 'Open' | 'Crossed';
   /** The two branches of one pin pair share this, so they can be swapped. */
   pair: string;
+  /**
+   * Whether this is the far-pin reading, in which the fields hold the opposite
+   * physical pins. The letters drawn on the grid follow the pins, not the
+   * fields, so anything that labels a pin must ask `endLetters`.
+   */
+  swappedEnds?: boolean;
   /** The crank angle, in degrees, at each of the three positions. */
   thetas: number[];
   /** How far the solved coupler pin misses each position by, on this branch. */
@@ -426,9 +432,31 @@ export function drivenFromFarPin(cand: FourBarCandidate): FourBarCandidate {
     ptsA: cand.ptsB,
     ptsB: cand.ptsA,
     sign: Math.sign(cross(cand.ptsB[0], cand.A, cand.ptsA[0])) || 1,
+    swappedEnds: !cand.swappedEnds,
   };
   assess(swapped);
   return swapped;
+}
+
+/**
+ * Which letter belongs to each field of a candidate.
+ *
+ * A pin keeps its name when you change which end drives. Reading the linkage
+ * from the far pin puts pin D in the field called `A`, and labelling by the
+ * field meant choosing "Driven from Pin D" drew the motor beside a pin marked
+ * A and renamed every bar in the dimensions list -- so the one control whose
+ * whole job is to say which pin drives was the control that made the letters
+ * stop meaning anything.
+ */
+export function endLetters(cand: FourBarCandidate | null): {
+  A: string;
+  B: string;
+  C: string;
+  D: string;
+} {
+  return cand?.swappedEnds
+    ? { A: 'D', B: 'C', C: 'B', D: 'A' }
+    : { A: 'A', B: 'B', C: 'C', D: 'D' };
 }
 
 function inRegion(p: Coord, region: { x: number; y: number; w: number; h: number }): boolean {

@@ -256,19 +256,23 @@ export class SynthesisSolutionService {
       untouched.
     */
     const key = cand.key + ':' + this.design.searchKey();
-    if (this.swappedKey === key && this.swapped) return this.swapped;
+    const remembered = this.swapped.get(key);
+    if (remembered) return remembered;
     const swapped = drivenFromFarPin(cand);
     swapped.name = cand.name;
     swapped.branch = cand.branch;
     swapped.key = cand.key;
     swapped.pair = cand.pair;
-    this.swappedKey = key;
-    this.swapped = swapped;
+    // Keyed by candidate rather than holding only the last one. Hovering a
+    // card asks for that candidate while the picked one is still being drawn,
+    // and a single slot let the two evict each other on every pass -- the same
+    // seven hundred solves the cache exists to avoid, just less often.
+    if (this.swapped.size > 64) this.swapped.clear();
+    this.swapped.set(key, swapped);
     return swapped;
   }
 
-  private swappedKey = '';
-  private swapped: FourBarCandidate | null = null;
+  private swapped = new Map<string, FourBarCandidate>();
 
   /**
    * Why a driver cannot be fitted to the current solution, or nothing.

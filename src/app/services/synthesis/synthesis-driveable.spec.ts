@@ -122,15 +122,35 @@ describe('every solution offered can be driven through what it claims', () => {
         length: LENGTH,
         endsOnly: false,
       });
-      candidates
-        .filter((c) => c.defectFree)
-        .forEach((cand) => {
-          const { closest, brokeAt } = drive(cand);
-          expect(brokeAt).toBeNull();
-          closest.forEach((d) => expect(d).toBeLessThan(POSE_TOLERANCE));
-        });
+      const offered = candidates.filter((c) => c.defectFree);
+      walked.set(design.name, offered.length);
+      offered.forEach((cand) => {
+        const { closest, brokeAt } = drive(cand);
+        expect(brokeAt).toBeNull();
+        closest.forEach((d) => expect(d).toBeLessThan(POSE_TOLERANCE));
+      });
     });
   }
+
+  /**
+   * What each named design actually offered, so that walking nothing cannot
+   * read as walking everything.
+   *
+   * Three of the six offer nothing, and each for its own reason: a tight turn
+   * reaches all three on twenty-eight candidates and every one of them binds,
+   * a long reach admits no construction at all, and doubling back stays on one
+   * assembly for none. Those are answers, not gaps -- but a test that walks an
+   * empty list passes without doing anything, so the ones that do offer
+   * something have to be seen to.
+   */
+  const walked = new Map<string, number>();
+
+  it('and the named designs between them gave it something to walk', () => {
+    expect(walked.size).toBe(designs.length);
+    const total = [...walked.values()].reduce((sum, n) => sum + n, 0);
+    expect(total).toBeGreaterThan(0);
+    expect(walked.get('a gentle sweep')).toBeGreaterThan(0);
+  });
 
   it('never claims a position the crank cannot turn to', () => {
     const { candidates } = enumerateCandidates({

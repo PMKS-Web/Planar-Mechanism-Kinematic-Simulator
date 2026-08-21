@@ -493,14 +493,32 @@ check(
 );
 check(
   'Space activates a focused button, as Space does',
-  await page.evaluate(() => {
-    const button = document.querySelector('#synthesisPanel .poseRow__remove');
-    if (!button || button.disabled) return true;
-    button.focus();
-    const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
-    // Not swallowed by a global shortcut on its way past.
-    return button.dispatchEvent(event);
-  })
+  await (async () => {
+    // A real key press on a real button, judged by whether the button did its
+    // job. The old check dispatched a synthetic event and asked only whether
+    // anything called preventDefault on it -- which a synthetic event proves
+    // nothing about, since it cannot trigger the native activation the global
+    // shortcut was suppressing in the first place.
+    const toggle = page.locator('#synthesisPanel .panel-header__toggle').first();
+    if (!(await toggle.count())) return false;
+    const openState = () =>
+      page.evaluate(
+        () =>
+          !!document
+            .querySelector('#synthesisPanel .panel-header__toggle mat-icon')
+            ?.classList.contains('rotate180')
+      );
+    const before = await openState();
+    await toggle.focus();
+    await page.keyboard.press(' ');
+    await page.waitForTimeout(350);
+    const after = await openState();
+    // Put the section back the way it was found.
+    await page.keyboard.press(' ');
+    await page.waitForTimeout(350);
+    const restored = await openState();
+    return after !== before && restored === before;
+  })()
 );
 check(
   'driving from the far pin is no slower to draw than driving from the near one',
@@ -789,10 +807,24 @@ check(
 );
 check(
   'the gallery keeps its three columns when it is opened out',
-  await page.evaluate(() => {
-    const gallery = document.querySelector('#synthesisPanel .gallery');
-    return !gallery || getComputedStyle(gallery).gridTemplateColumns.split(' ').length !== 2;
-  })
+  await (async () => {
+    // Opened out, which is the only state the claim is about. The old check
+    // never opened it, asked whether the closed gallery's columns were "not
+    // two", and passed because a flex row has no columns at all -- so the one
+    // thing it was named for was the one thing it did not look at.
+    const more = page.locator('#synthesisPanel .linkBtn').first();
+    if (!(await more.count())) return false;
+    await more.click();
+    await page.waitForTimeout(250);
+    const opened = await page.evaluate(() => {
+      const gallery = document.querySelector('#synthesisPanel .gallery--all');
+      if (!gallery) return null;
+      return getComputedStyle(gallery).gridTemplateColumns.split(/\s+/).filter(Boolean).length;
+    });
+    await more.click();
+    await page.waitForTimeout(250);
+    return opened === 3;
+  })()
 );
 check(
   'a flurry of presses on Insert commits once, and one Undo takes it back',
@@ -868,6 +900,192 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(900);
 check('and Redo takes it away again', (await panel('(p) => p.design.getAllPoses().length')) === 2);
+
+/*
+  The four things the fifth review found, each on its own page.
+
+  They run last and in isolation because every one of them is about state --
+  what is on the grid, what has been chosen, what is mid-flight -- and a check
+  that leaves any of that behind is a check that breaks the next one. That has
+  happened twice in this file already.
+*/
+
+/** The tour's overlay swallows pointer events until it is sent away. */
+async function dismissTour(p) {
+  const skip = p.locator('.introjs-skipbutton').first();
+  if (await skip.isVisible().catch(() => false)) await skip.click({ force: true });
+  await p.evaluate(() =>
+    document.querySelectorAll('.introjs-overlay, .introjs-tooltip').forEach((n) => n.remove())
+  );
+}
+
+const SOLVED =
+  BASE + '/?2P.VC,1E8.5,0.1011....N_.SD~1uT~1~8,SP~01lk~g_~1z0,SP~DT~1e5~087a,SP~59p~0I0~0OBHJ';
+
+/** A page showing that design with its solutions already worked out. */
+async function solvedPage() {
+  const p = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+  p.on('pageerror', (error) => errors.push(String(error)));
+  await p.goto(SOLVED, { waitUntil: 'domcontentloaded' });
+  await waitForReady(p);
+  // The app does not open on Synthesis, and a design in the URL does not send
+  // it there either. The tour's overlay eats the click if it is still up.
+  await dismissTour(p);
+  await p.locator('.tabButton', { hasText: 'Synthesis' }).click();
+  await p.waitForTimeout(700);
+  await p.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+  await p.waitForFunction(
+    () => !ng.getComponent(document.querySelector('app-synthesis-panel')).solution.generating,
+    null,
+    { timeout: 20000 }
+  );
+  return p;
+}
+
+const ask = (p, fn) =>
+  p.evaluate(
+    (body) =>
+      new Function('panel', 'grid', body)(
+        ng.getComponent(document.querySelector('app-synthesis-panel')),
+        ng.getComponent(document.querySelector('app-new-grid'))
+      ),
+    `return (${fn})(panel, grid);`
+  );
+
+{
+  // A pin keeps its name when you change which end drives it. The ground pins
+  // are the ones to ask: they are the two the control names, and unlike the
+  // coupler pins they do not move when the linkage is re-posed.
+  const p = await solvedPage();
+  const groundsAt = () =>
+    ask(
+      p,
+      `(panel, grid) =>
+        JSON.stringify(
+          grid.synthCanvas
+            .previewGrounds()
+            .filter((j) => j.id === 'A' || j.id === 'D')
+            .sort((a, b) => (a.id < b.id ? -1 : 1))
+            .map((j) => [j.id, Math.round(j.x), Math.round(j.y)])
+        )`
+    );
+  await ask(p, '(panel) => panel.solution.setDriveOnFarPin(false)');
+  await p.waitForTimeout(250);
+  const near = await groundsAt();
+  await ask(p, '(panel) => panel.solution.setDriveOnFarPin(true)');
+  await p.waitForTimeout(400);
+  const far = await groundsAt();
+  check('the letter on a pin does not move when the other end drives', near === far, {
+    near,
+    far,
+  });
+  check(
+    'and the motor moves to the pin the control names',
+    await ask(
+      p,
+      `(panel, grid) => {
+        const input = grid.synthCanvas.previewGrounds().find((j) => j.input);
+        return !!input && input.id === 'D';
+      }`
+    )
+  );
+  await p.close();
+}
+
+{
+  // Insert one, then look at another: the panel offers to replace, so the one
+  // being offered has to be the one on screen.
+  const p = await solvedPage();
+  const outcome = await ask(
+    p,
+    `(panel, grid) => {
+      const all = panel.solution.candidates();
+      if (all.length < 2) return { few: all.length };
+      panel.solution.pick(all[0].key);
+      panel.insert();
+      const afterInsert = grid.synthCanvas.previewLinks().length;
+      panel.solution.pick(all[1].key);
+      return {
+        few: 0,
+        afterInsert,
+        afterChoosingAnother: grid.synthCanvas.previewLinks().length,
+        offersToReplace: panel.primaryLabel === 'Replace on grid',
+      };
+    }`
+  );
+  check(
+    'the one on the grid stops being previewed, and a different choice starts being',
+    outcome.few === 0 &&
+      outcome.afterInsert === 0 &&
+      outcome.afterChoosingAnother > 0 &&
+      outcome.offersToReplace,
+    outcome
+  );
+  await p.close();
+}
+
+{
+  // Insert waits 220ms to wind the preview home. Choosing something else
+  // during that time is a change of mind, not a redirection of the press.
+  const p = await solvedPage();
+  const setup = await ask(
+    p,
+    `(panel) => {
+      const all = panel.solution.candidates();
+      if (all.length < 2) return { few: all.length };
+      panel.solution.pick(all[0].key);
+      const range = panel.solution.drivenRange();
+      panel.solution.setPhase(range.from + (range.to - range.from) * 0.6);
+      panel.insert();
+      return { few: 0, second: all[1].key, joints: panel.mechanismSrv.joints.length };
+    }`
+  );
+  if (setup.few === 0) {
+    await p.waitForTimeout(40);
+    await ask(p, `(panel) => panel.solution.pick(${JSON.stringify(setup.second)})`);
+    await p.waitForTimeout(600);
+  }
+  const after = await ask(p, '(panel) => panel.mechanismSrv.joints.length');
+  check(
+    'changing the choice mid-press cancels it rather than building the new one',
+    setup.few === 0 && setup.joints === 0 && after === 0,
+    { setup, after }
+  );
+  await p.close();
+}
+
+{
+  // Loose joints are geometry too. Fitting the scale to the zoom resizes
+  // whatever is already drawn, so "empty" has to mean empty.
+  const p = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+  p.on('pageerror', (error) => errors.push(String(error)));
+  await p.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await waitForReady(p);
+  await dismissTour(p);
+  await p.locator('.tabButton', { hasText: 'Synthesis' }).click();
+  await p.waitForTimeout(700);
+  await p.locator('#synthesisPanel .kindCard--on').click();
+  await p.waitForTimeout(200);
+  const before = await ask(
+    p,
+    `(panel, grid) => {
+      grid.mechanismSrv.mergeToJoints([grid.mechanismSrv.createRevJoint('0', '0')]);
+      grid.mechanismSrv.updateMechanism();
+      grid.settings.objectScale = 140;
+      return { scale: grid.settings.objectScale, joints: grid.mechanismSrv.joints.length };
+    }`
+  );
+  await p.waitForTimeout(200);
+  await p.locator('#synthesisPanel .poseRow__n').first().click();
+  await p.waitForTimeout(300);
+  const after = await ask(p, '(panel, grid) => grid.settings.objectScale');
+  check(
+    'arming leaves the scale alone when the drawing holds a loose joint',
+    before.joints === 1 && after === 140,
+    { before, after }
+  );
+  await p.close();
+}
 
 check('nothing threw', errors.length === 0, errors.slice(0, 3));
 await browser.close();
