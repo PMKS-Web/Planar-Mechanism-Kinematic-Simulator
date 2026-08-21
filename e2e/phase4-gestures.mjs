@@ -115,6 +115,16 @@ await load(FOUR_BAR);
 const before = await sliderState();
 check('starts with no sliders', before.blocks, 0);
 
+// The fit frames the mechanism, not the marks hanging off it. This URL carries
+// a hand-placed centre of mass some 90,000 units away, and framing that drew
+// the whole four-bar as a single pixel behind the Edit panel -- every gesture
+// below still worked, because they aim at coordinates read from the DOM, but
+// nothing here was clickable by a reader.
+const drawnJoint = await page.evaluate(() =>
+  Math.round(document.querySelector('#joint_A')?.getBoundingClientRect().width ?? 0)
+);
+checkThat('and is framed at a size a reader could aim at', drawnJoint > 10, `${drawnJoint}px`);
+
 // E sits on the coupler CDEI; ABH is a different body, so it is a legal carrier.
 //
 // Aimed at the midpoint of ABH's A-B edge rather than at the link element's
