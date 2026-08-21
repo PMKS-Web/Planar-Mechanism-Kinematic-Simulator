@@ -160,7 +160,7 @@ export class ExportColumnsService {
                 .map((jointId) => {
                   // A slot is named after the slider it belongs to: it has no
                   // marker of its own and no name a reader has ever seen.
-                  const where = this.catalog.slotName(jointId) ?? this.jointName(jointId);
+                  const where = this.mechanism.slotName(jointId) ?? this.jointName(jointId);
                   return this.force(
                     `Force at ${where}`,
                     `${this.modeWord()} force on ${part.label} at ${where}`,
@@ -226,7 +226,7 @@ export class ExportColumnsService {
     linkId: string,
     index: { jointsByLink: Map<string, string[]> }
   ): ExportColumn[] {
-    const slot = this.catalog.slotReactionOf(part.part as RealJoint);
+    const slot = this.mechanism.slotReactionOf(part.part as RealJoint);
     if (slot && slot.block.id === linkId) {
       return [
         this.force(

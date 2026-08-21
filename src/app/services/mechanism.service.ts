@@ -2456,6 +2456,41 @@ export class MechanismService {
     );
   }
 
+  /**
+   * The one reaction a slider's block has that its pin does not.
+   *
+   * A block is a zero-length link binding a pin to a slot. It meets the world
+   * twice: at the pin, where the force is exactly the pin's own reaction
+   * negated -- the same number already carried under the name of the bar it
+   * holds -- and at the slot, where it presses on whatever the slot is cut
+   * into. The second is the force that sizes a slide, and it is here or
+   * nowhere: a slot has no marker, no hitbox and no panel.
+   */
+  slotReactionOf(pin: Joint | undefined): { slot: PrisJoint; block: Link; on: string } | undefined {
+    const slot = this.sliderFor(pin);
+    if (!slot) return undefined;
+    const block = this.links.find(
+      (link) => link instanceof SliderBlock && link.joints.some((joint) => joint.id === slot.id)
+    );
+    if (!block) return undefined;
+    const carrier = slot.isFloating && slot.isSlotWellFormed ? slot.carrier : undefined;
+    return { slot, block, on: carrier ? this.bodyLabel(carrier) : 'the ground' };
+  }
+
+  /**
+   * What to call a reaction that acts at a slot.
+   *
+   * The slider it belongs to, because that is the pin a reader can point at: a
+   * slot has no name anyone has ever been shown.
+   */
+  slotName(jointId: string): string | undefined {
+    const slot = this.joints.find((joint) => joint.id === jointId);
+    if (!(slot instanceof PrisJoint)) return undefined;
+    const pin = slot.connectedJoints.find((joint) => !(joint instanceof PrisJoint)) as
+      RealJoint | undefined;
+    return pin ? `the slider at ${pin.name || pin.id}` : 'the slider';
+  }
+
   /** The sealed cylinder a joint or link belongs to, if any. */
   cylinderAt(obj: Joint | Link | undefined): Cylinder | undefined {
     if (obj instanceof Joint) return cylinderOfJointIn(this.sealedStructures(), obj);

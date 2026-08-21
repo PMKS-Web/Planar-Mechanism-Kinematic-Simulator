@@ -208,40 +208,6 @@ export class ExportCatalogService {
     );
   }
 
-  /**
-   * The one reaction a slider's block has that its pin does not.
-   *
-   * A block meets the world twice: at its pin, where the force is exactly the
-   * pin's own reaction negated, and at its slot, where it presses on whatever
-   * the slot is cut into. The first is already on the pin's row under the name
-   * of the bar it holds; the second is the force that sizes the slide, and it
-   * is here or nowhere -- the slot is a joint no reader can point at.
-   */
-  slotReactionOf(pin: RealJoint): { slot: RealJoint; block: Link; on: string } | undefined {
-    const slot = this.mechanism.sliderFor(pin);
-    if (!slot) return undefined;
-    const block = this.mechanism.links.find(
-      (link) => link instanceof SliderBlock && link.joints.some((joint) => joint.id === slot.id)
-    );
-    if (!block) return undefined;
-    const carrier = slot.isFloating && slot.isSlotWellFormed ? slot.carrier : undefined;
-    return { slot, block, on: carrier ? this.mechanism.bodyLabel(carrier) : 'the ground' };
-  }
-
-  /**
-   * What to call a reaction that acts at a slot.
-   *
-   * A slot has no marker and no name a reader has seen; the slider it belongs
-   * to is the pin they can point at, so the force in it is named after that.
-   */
-  slotName(jointId: string): string | undefined {
-    const slot = this.mechanism.joints.find((joint) => joint.id === jointId);
-    if (!(slot instanceof PrisJoint)) return undefined;
-    const pin = slot.connectedJoints.find((joint) => !(joint instanceof PrisJoint)) as
-      RealJoint | undefined;
-    return pin ? `the slider at ${pin.name || pin.id}` : 'the slider';
-  }
-
   /** The slot this pin rides in, where that slot is what drives the mechanism. */
   drivingSlotOf(joint: RealJoint): RealJoint | undefined {
     const slider = this.mechanism.sliderFor(joint);
