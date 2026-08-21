@@ -1,0 +1,332 @@
+/**
+ * Synthesis, end to end: place, generate, browse, preview, insert.
+ *
+ * The redesign changed what the mode *is*. It used to build a four-bar onto the
+ * grid on every nudge of a coordinate, which made comparing two solutions
+ * impossible -- looking at the second destroyed the first. Now three positions
+ * are placed, an explicit search offers every four-bar that passes through
+ * them, and exactly one of them reaches the drawing, when Insert says so.
+ *
+ * Most of what is checked here is the machinery around that promise: that the
+ * canvas gestures do not fight svg-pan-zoom, that the preview stops being drawn
+ * once it is real, and that the design survives a shared link.
+ *
+ *   PMKS_BASE_URL=<origin> node e2e/synthesis-redesign.mjs
+ */
+
+const { chromium } = await import(
+  (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
+);
+import { waitForReady } from './app-ready.mjs';
+
+const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+
+const checks = [];
+const check = (what, ok, detail) => {
+  checks.push([what, ok]);
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}${ok ? '' : ' — ' + JSON.stringify(detail)}`);
+};
+
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+const errors = [];
+page.on('pageerror', (error) => errors.push(String(error)));
+
+const panel = (fn, arg) =>
+  page.evaluate(
+    ([body, value]) =>
+      new Function('panel', 'arg', body)(
+        ng.getComponent(document.querySelector('app-synthesis-panel')),
+        value
+      ),
+    [`return (${fn})(panel, arg);`, arg ?? null]
+  );
+
+const grid = (fn) =>
+  page.evaluate(
+    (body) => new Function('grid', body)(ng.getComponent(document.querySelector('app-new-grid'))),
+    `return (${fn})(grid);`
+  );
+
+await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+const skip = page.locator('.introjs-skipbutton').first();
+if (await skip.isVisible().catch(() => false)) await skip.click({ force: true });
+await page.locator('.tabButton', { hasText: 'Synthesis' }).click();
+await page.waitForTimeout(700);
+
+// --- the chooser --------------------------------------------------------
+check(
+  'Synthesis opens on the question of what is being synthesised',
+  await page.locator('#synthesisPanel .kindCard--on').isVisible()
+);
+check(
+  'and says what it cannot do yet rather than hiding it',
+  (await page.locator('#synthesisPanel .kindCard--off').innerText()).includes('Coming soon')
+);
+check(
+  'the panel is as wide as the analysis panel, not as wide as Edit',
+  (await page.evaluate(() =>
+    Math.round(document.querySelector('#synthesisPanel').getBoundingClientRect().width)
+  )) === 400
+);
+
+await page.locator('#synthesisPanel .kindCard--on').click();
+await page.waitForTimeout(400);
+
+// --- placing ------------------------------------------------------------
+check(
+  'all three positions have a row before any is placed',
+  (await page.locator('#synthesisPanel .poseRow').count()) === 3
+);
+check(
+  'and none of them can be typed into yet',
+  await page.locator('.poseRow input').first().isDisabled()
+);
+
+await page.locator('#synthesisPanel .pill', { hasText: 'Add position' }).click();
+await page.waitForTimeout(250);
+await page.mouse.move(900, 560);
+await page.waitForTimeout(200);
+const angleBefore = await panel('(p) => p.design.placeAngleDeg');
+await page.mouse.wheel(0, -120);
+await page.waitForTimeout(200);
+const angleAfter = await panel('(p) => p.design.placeAngleDeg');
+check('the wheel turns the position that is about to be dropped', angleAfter !== angleBefore, {
+  angleBefore,
+  angleAfter,
+});
+const zoomWhileArmed = await grid('(g) => g.svgGrid.panZoomObject.getZoom()');
+await page.mouse.wheel(0, -120);
+await page.waitForTimeout(200);
+check(
+  'and does not zoom the canvas while it is doing so',
+  (await grid('(g) => g.svgGrid.panZoomObject.getZoom()')) === zoomWhileArmed
+);
+
+await page.mouse.down();
+await page.mouse.up();
+await page.waitForTimeout(350);
+check('a click on the grid drops it', (await panel('(p) => p.design.getAllPoses().length')) === 1);
+check('and placing stays armed for the next one', await panel('(p) => p.design.armed'));
+
+// The remaining two, so there is a design to search.
+for (const [x, y] of [
+  [1000, 470],
+  [1120, 330],
+]) {
+  await page.mouse.move(x, y);
+  await page.waitForTimeout(150);
+  await page.mouse.down();
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+}
+check(
+  'three placed, and placing disarms itself',
+  (await panel('(p) => p.design.getAllPoses().length')) === 3
+);
+check('placing disarmed', !(await panel('(p) => p.design.armed')));
+check(
+  'the wheel is the canvas zoom again',
+  await grid('(g) => g.svgGrid.panZoomObject.isMouseWheelZoomEnabled()')
+);
+
+// --- dragging a position on the grid ------------------------------------
+const panBefore = await grid('(g) => JSON.stringify(g.svgGrid.panZoomObject.getPan())');
+const posBefore = await panel('(p) => p.design.getPose(1).position.x');
+const bar = await page.evaluate(() => {
+  const box = document.querySelector('.synthPose').getBoundingClientRect();
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+});
+await page.mouse.move(bar.x, bar.y);
+await page.mouse.down();
+await page.mouse.move(bar.x + 60, bar.y + 20, { steps: 6 });
+await page.mouse.up();
+await page.waitForTimeout(300);
+check(
+  'a position can be dragged on the grid',
+  (await panel('(p) => p.design.getPose(1).position.x')) !== posBefore
+);
+check(
+  'and the canvas does not pan under the drag',
+  (await grid('(g) => JSON.stringify(g.svgGrid.panZoomObject.getPan())')) === panBefore
+);
+
+// --- a design that actually has solutions -------------------------------
+await panel(`(p) => {
+  p.design.applyDecoded({
+    length: 1000, reference: 'CENTER', endsOnly: true, allowDefect: false,
+    constrain: false, stage: 'working',
+    poses: [
+      { at: { x: 0, y: 0 }, thetaDegrees: 0 },
+      { at: { x: 800, y: 400 }, thetaDegrees: 25 },
+      { at: { x: 1400, y: 1400 }, thetaDegrees: 50 },
+    ],
+  });
+}`);
+await page.waitForTimeout(400);
+
+check(
+  'nothing is on the grid before Generate',
+  (await grid('(g) => g.mechanismSrv.joints.length')) === 0
+);
+check(
+  'and no candidates are offered',
+  (await panel('(p) => p.solution.candidates().length')) === 0
+);
+
+await page.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+await page.waitForTimeout(900);
+const strict = await panel('(p) => p.solution.candidates().length');
+check('Generate finds four-bars through the three positions', strict > 0, strict);
+check(
+  'every one of them is drawn as a card',
+  (await page.locator('#synthesisPanel .card').count()) > 0
+);
+check(
+  'the positions are marked as reached',
+  (await panel('(p) => JSON.stringify([1,2,3].map(i => p.reached(i)))')) === '[true,true,true]'
+);
+check(
+  'and the linkage is previewed on the grid',
+  (await grid('(g) => g.synthCanvas.previewLinks().length')) > 0
+);
+check(
+  'but still nothing has been added to the drawing',
+  (await grid('(g) => g.mechanismSrv.joints.length')) === 0
+);
+
+// Letting the pins slide finds more machines through the same positions.
+await page
+  .locator('#synthesisPanel .req', { hasText: 'Coupler is exactly' })
+  .locator('.req__line')
+  .click();
+await page.waitForTimeout(300);
+await page.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+await page.waitForTimeout(900);
+const loose = await panel('(p) => p.solution.candidates().length');
+check('letting the pins slide finds more of them', loose > strict, { strict, loose });
+
+// --- comparing --------------------------------------------------------
+if ((await page.locator('#synthesisPanel .card').count()) > 1) {
+  await page.locator('#synthesisPanel .card').nth(1).hover();
+  await page.waitForTimeout(300);
+  check(
+    'hovering another candidate keeps the chosen one on screen to compare against',
+    (await grid('(g) => g.synthCanvas.hoverGhostLinks().length')) === 3
+  );
+  await page.locator('#synthesisPanel .card').nth(1).click();
+  await page.waitForTimeout(300);
+  check('and clicking it takes it', (await panel('(p) => p.solutionName')) === 'B');
+  await page.locator('#synthesisPanel .card').first().click();
+  await page.waitForTimeout(300);
+}
+
+// --- the driver -------------------------------------------------------
+await page.locator('#synthesisPanel .row', { hasText: 'Add driver' }).locator('.switch').click();
+await page.waitForTimeout(500);
+const withDriver = await panel(
+  '(p) => JSON.stringify({ dyad: !!p.solution.dyad(), refusal: p.solution.driverRefusal ?? null, rows: p.dimensionRows().length })'
+);
+const driver = JSON.parse(withDriver);
+check(
+  'a driver is either fitted or refused in words',
+  driver.dyad || typeof driver.refusal === 'string',
+  driver
+);
+if (driver.dyad) {
+  check('and its two lengths are listed with the rest', driver.rows === 7, driver);
+}
+
+// --- the transport ----------------------------------------------------
+const phaseBefore = await panel('(p) => p.solution.currentPhase()');
+await page.locator('#synthesisPanel .iconBtn--sm').first().click();
+await page.waitForTimeout(600);
+const phaseAfter = await panel('(p) => p.solution.currentPhase()');
+check('the preview can be played', phaseAfter !== phaseBefore, { phaseBefore, phaseAfter });
+await page.locator('#synthesisPanel .iconBtn--sm').first().click();
+await page.waitForTimeout(200);
+check('and paused', !(await panel('(p) => p.solution.playing')));
+check(
+  'the three positions are marked along its travel',
+  (await page.locator('#synthesisPanel .track__tick').count()) === 3
+);
+
+// --- inserting ---------------------------------------------------------
+await page.locator('#synthesisPanel .cta--insert').click();
+await page.waitForTimeout(900);
+const inserted = JSON.parse(
+  await grid(
+    '(g) => JSON.stringify({ joints: g.mechanismSrv.joints.map(j => j.id), links: g.mechanismSrv.links.map(l => l.id), valid: g.mechanismSrv.mechanisms.map(m => m.isMechanismValid()) })'
+  )
+);
+check(
+  'Insert puts the solution on the grid',
+  inserted.joints.length === (driver.dyad ? 6 : 4),
+  inserted
+);
+check(
+  'with no two joints sharing an id',
+  new Set(inserted.joints).size === inserted.joints.length,
+  inserted
+);
+check('and it solves', inserted.valid.length > 0 && inserted.valid.every(Boolean), inserted);
+check(
+  'the preview stops being drawn once the real thing is there',
+  (await grid('(g) => g.synthCanvas.previewLinks().length')) === 0
+);
+check(
+  'the positions stay for reference',
+  (await panel('(p) => p.design.getAllPoses().length')) === 3
+);
+
+await page.locator('#synthesisPanel .note__undo').click();
+await page.waitForTimeout(700);
+check('and Undo takes exactly it back', (await grid('(g) => g.mechanismSrv.joints.length')) === 0);
+check('leaving the design alone', (await panel('(p) => p.design.getAllPoses().length')) === 3);
+
+// --- the design survives undo -------------------------------------------
+//
+// The real test of the design being in the URL: undo and redo are a stack of
+// those strings, so a design that is not written into them cannot survive one.
+const beforeUndo = await panel(
+  '(p) => JSON.stringify(p.design.getAllPoses().map(q => [Math.round(q.position.x), Math.round(q.position.y)]))'
+);
+await page
+  .locator('#synthesisPanel .pill--square')
+  .count()
+  .catch(() => 0);
+await page.locator('#synthesisPanel .poseRow').nth(2).locator('.poseRow__remove').click();
+await page.waitForTimeout(600);
+check('a position can be removed', (await panel('(p) => p.design.getAllPoses().length')) === 2);
+
+await page.evaluate(() => {
+  const bar = ng.getComponent(document.querySelector('app-top-bar'));
+  bar.undo();
+});
+await page.waitForTimeout(900);
+check(
+  'and Undo brings it back, in the place it was',
+  (await panel(
+    '(p) => JSON.stringify(p.design.getAllPoses().map(q => [Math.round(q.position.x), Math.round(q.position.y)]))'
+  )) === beforeUndo,
+  {
+    beforeUndo,
+    now: await panel(
+      '(p) => JSON.stringify(p.design.getAllPoses().map(q => [Math.round(q.position.x), Math.round(q.position.y)]))'
+    ),
+  }
+);
+
+await page.evaluate(() => {
+  ng.getComponent(document.querySelector('app-top-bar')).redo();
+});
+await page.waitForTimeout(900);
+check('and Redo takes it away again', (await panel('(p) => p.design.getAllPoses().length')) === 2);
+
+check('nothing threw', errors.length === 0, errors.slice(0, 3));
+await browser.close();
+
+const failed = checks.filter(([, ok]) => !ok);
+console.log(`\n${checks.length - failed.length}/${checks.length} checks passed`);
+process.exit(failed.length ? 1 : 0);
