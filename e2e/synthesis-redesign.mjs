@@ -1055,6 +1055,44 @@ const ask = (p, fn) =>
 }
 
 {
+  // And the letters go onto the grid with the pins. Naming the preview
+  // honestly is only half of it: what gets built has to agree with what was
+  // shown, or the fix has moved the mismatch rather than removed it.
+  const p = await solvedPage();
+  const outcome = await ask(
+    p,
+    `(panel, grid) => {
+      panel.solution.setDriveOnFarPin(true);
+      const shown = grid.synthCanvas
+        .previewGrounds()
+        .map((j) => [j.id, Math.round(j.x), Math.round(j.y), !!j.input]);
+      panel.solution.insert();
+      const built = panel.mechanismSrv.joints.map((j) => [
+        j.id.toUpperCase(),
+        Math.round(j.x),
+        Math.round(j.y),
+      ]);
+      const at = (x, y) =>
+        built.find((b) => Math.abs(b[1] - x) < 2 && Math.abs(b[2] - y) < 2)?.[0] ?? null;
+      return {
+        agrees: shown.every(([id, x, y]) => at(x, y) === id),
+        shown,
+        built,
+        links: panel.mechanismSrv.links.map((l) => l.id),
+      };
+    }`
+  );
+  check('the letters the preview showed are the letters that get built', outcome.agrees, outcome);
+  check(
+    'and every link is still named by its ends in order',
+    outcome.links.length > 0 &&
+      outcome.links.every((id) => [...id].join('') === [...id].sort().join('')),
+    outcome.links
+  );
+  await p.close();
+}
+
+{
   // Loose joints are geometry too. Fitting the scale to the zoom resizes
   // whatever is already drawn, so "empty" has to mean empty.
   const p = await browser.newPage({ viewport: { width: 1500, height: 950 } });

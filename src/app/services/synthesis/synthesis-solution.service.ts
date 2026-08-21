@@ -16,6 +16,7 @@ import {
   meet,
   rankCandidates,
   solveFourBar,
+  endLetters,
 } from './synthesis-candidates';
 
 /**
@@ -648,7 +649,27 @@ export class SynthesisSolutionService {
     else if (held !== 'none') this.removeOwned();
 
     const dyad = this.dyad();
-    const [idA, idB, idC, idD, idE, idF] = this.nextLetters(6);
+    /*
+      The letters follow the pins onto the grid.
+
+      Assigning them in field order named the first joint `a` wherever it sat --
+      and reading a candidate from the far pin puts pin D in the field called
+      A, so the pin the panel had just called D arrived on the grid called a.
+      Fixing the preview's letters without fixing these would have moved the
+      mismatch rather than removed it: the panel would say "Crank D-C" over a
+      crank whose ends were marked a and b.
+    */
+    const letters = this.nextLetters(6);
+    const slot: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
+    const mark = endLetters(cand);
+    const idA = letters[slot[mark.A]];
+    const idB = letters[slot[mark.B]];
+    const idC = letters[slot[mark.C]];
+    const idD = letters[slot[mark.D]];
+    const idE = letters[4];
+    const idF = letters[5];
+    /** A link is named by its ends in alphabetical order, as everywhere else. */
+    const linkId = (one: string, two: string): string => [one, two].sort().join('');
     // With a driver on the linkage neither ground pin is the input at all; the
     // motor sits on the driver's own ground and turns the whole train.
     const drivenDirectly = !dyad;
@@ -663,11 +684,11 @@ export class SynthesisSolutionService {
     jointC.connectedJoints.push(jointB, jointD);
     jointD.connectedJoints.push(jointC);
 
-    const crank = new RealLink(idA + idB, [jointA, jointB]);
+    const crank = new RealLink(linkId(idA, idB), [jointA, jointB]);
     crank.fill = this.colors.getLinkColorFromIndex(0);
-    const coupler = new RealLink(idB + idC, [jointB, jointC]);
+    const coupler = new RealLink(linkId(idB, idC), [jointB, jointC]);
     coupler.fill = this.colors.getLinkColorFromIndex(1);
-    const rocker = new RealLink(idC + idD, [jointC, jointD]);
+    const rocker = new RealLink(linkId(idC, idD), [jointC, jointD]);
     rocker.fill = this.colors.getLinkColorFromIndex(0);
 
     jointA.links.push(crank);
@@ -689,9 +710,9 @@ export class SynthesisSolutionService {
         knee.connectedJoints.push(motor, jointB);
         jointB.connectedJoints.push(knee);
 
-        const driverCrank = new RealLink(idE + idF, [motor, knee]);
+        const driverCrank = new RealLink(linkId(idE, idF), [motor, knee]);
         driverCrank.fill = this.colors.getLinkColorFromIndex(2);
-        const driverCoupler = new RealLink(idF + idB, [knee, jointB]);
+        const driverCoupler = new RealLink(linkId(idF, idB), [knee, jointB]);
         driverCoupler.fill = this.colors.getLinkColorFromIndex(3);
 
         motor.links.push(driverCrank);
