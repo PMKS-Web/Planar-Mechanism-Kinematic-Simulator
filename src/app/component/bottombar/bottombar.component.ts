@@ -7,6 +7,8 @@ import { SettingsService } from '../../services/settings.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { environment } from '../../../environments/environment';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { SynthesisBuilderService } from '../../services/synthesis/synthesis-builder.service';
+import { SynthesisSolutionService } from '../../services/synthesis/synthesis-solution.service';
 
 @Component({
   selector: 'app-bottombar',
@@ -20,6 +22,8 @@ export class BottombarComponent {
   private tabs = inject(SelectedTabService);
   private svgGrid = inject(SvgGridService);
   private nup = inject(NumberUnitParserService);
+  private design = inject(SynthesisBuilderService);
+  private solution = inject(SynthesisSolutionService);
 
   /**
    * Which mode the app is in, spelled the way the tabs spell it.
@@ -51,6 +55,9 @@ export class BottombarComponent {
     if (this.tabs.isAnalysisMode()) {
       return 'Geometry locked';
     }
+    if (this.tabs.getCurrentTab() === TabID.SYNTHESIZE) {
+      return this.synthesisStatus();
+    }
     const blockers = this.mechanismSrv.blockerCount();
     if (this.mechanismSrv.mechanisms.length === 0) {
       return 'Nothing to analyse yet';
@@ -59,6 +66,45 @@ export class BottombarComponent {
       return 'Ready to analyse';
     }
     return `${blockers} ${blockers === 1 ? 'fix' : 'fixes'} before analysis`;
+  }
+
+  /**
+   * What Synthesis is waiting for, or what it has found.
+   *
+   * The rest of this strip reports on the drawing, and in Synthesis the drawing
+   * is not what the reader is working on -- a design in progress is not on it
+   * at all, so "Nothing to analyse yet" was true and useless. This says where
+   * in the search they are, and after Insert it says what was left behind.
+   */
+  private synthesisStatus(): string {
+    if (this.design.stage === 'chooser') return 'Pick a synthesis type to begin';
+    if (this.design.regionDraw) {
+      return 'Drag on the grid to draw the region the ground pivots must sit in';
+    }
+    const placed = this.design.getAllPoses().length;
+    const next = this.design.getFirstUndefinedPose();
+    if (this.design.armed && next !== undefined) {
+      return `Click the grid to place position ${next} of 3 · scroll to turn it`;
+    }
+    if (placed < 3) return `${placed} of 3 positions placed`;
+    if (this.solution.generating) {
+      return 'Searching for four-bars through these three positions…';
+    }
+    if (!this.solution.generated) {
+      return 'Three positions placed · ready to generate solutions';
+    }
+    const kind = this.solution.dyad() ? 'six-bar' : 'four-bar';
+    if (this.solution.inserted) {
+      return `Inserted as a ${kind} · positions kept for reference`;
+    }
+    const chosen = this.solution.chosen();
+    if (!chosen) return 'No linkage meets the current criteria';
+    const missed = 3 - chosen.onBranchCount;
+    const how = chosen.defectFree
+      ? 'walks all 3 on one assembly'
+      : `branch defect at ${missed} position${missed === 1 ? '' : 's'}`;
+    const count = this.solution.candidates().length;
+    return `Solution ${chosen.name} of ${count} · ${how}`;
   }
 
   /**

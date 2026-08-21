@@ -55,6 +55,8 @@ if (await skip.isVisible().catch(() => false)) await skip.click({ force: true })
 await page.locator('.tabButton', { hasText: 'Synthesis' }).click();
 await page.waitForTimeout(700);
 
+const status = () => page.locator('#bottomBar .status').innerText();
+
 // --- the chooser --------------------------------------------------------
 check(
   'Synthesis opens on the question of what is being synthesised',
@@ -126,6 +128,11 @@ check(
   (await panel('(p) => p.design.getAllPoses().length')) === 3
 );
 check('placing disarmed', !(await panel('(p) => p.design.armed')));
+check(
+  'the status strip follows the design rather than the empty drawing',
+  (await status()).includes('positions placed'),
+  await status()
+);
 check(
   'the wheel is the canvas zoom again',
   await grid('(g) => g.svgGrid.panZoomObject.isMouseWheelZoomEnabled()')
@@ -278,6 +285,11 @@ check(
 check(
   'the positions stay for reference',
   (await panel('(p) => p.design.getAllPoses().length')) === 3
+);
+check(
+  'and the strip says what was left on the grid',
+  (await status()).startsWith('Inserted as a'),
+  await status()
 );
 
 await page.locator('#synthesisPanel .note__undo').click();
