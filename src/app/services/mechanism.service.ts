@@ -239,6 +239,7 @@ export class MechanismService {
     // within a revision the topology cannot have changed.
     this.cylinderRevision++;
     this.poseRevision++;
+    this.solveRevision++;
     Force.normalizeVisualWidths(this.forces);
     // Changing the input speed re-samples the same geometry onto a different time
     // axis. Hold the simulation time rather than the sample index, so t and the pose
@@ -1980,6 +1981,15 @@ export class MechanismService {
    * on every frame to answer a question whose answer cannot have changed.
    */
   poseRevision = 0;
+  /**
+   * Bumped when the *solved cycle* changes, rather than the pose being drawn.
+   *
+   * `poseRevision` moves on every frame of playback, because the pose is what
+   * playback changes. Anything cached against the numbers themselves — the
+   * export's sampled tables, for one — has to key on this instead, or watching
+   * a mechanism run rebuilds it sixty times a second.
+   */
+  solveRevision = 0;
   private structuresCache?: { revision: number; list: Cylinder[] };
 
   /**

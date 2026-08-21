@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { PrisJoint, RealJoint } from '../../model/joint';
+import { RealLink } from '../../model/link';
 import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
 import { ExportCatalogService } from './export-catalog.service';
@@ -38,7 +39,11 @@ export class ExportColumnsService {
   private kinematicGroups(parts: ExportPart[]): ExportColumnGroup[] {
     const groups: ExportColumnGroup[] = [];
     const joints = parts.filter((part) => part.kind === 'joint');
-    const links = parts.filter((part) => part.kind === 'link');
+    // Bars, and the rods that stand for rams — not slider blocks. The solver
+    // leaves a block out of its angular maps and gives it no centre of mass,
+    // so a block offered these four choices produced eleven columns of blanks.
+    // What a block does have is the reaction it carries, which is the other tab.
+    const links = parts.filter((part) => part.kind === 'link' && part.part instanceof RealLink);
     const length = this.catalog.unitStr(this.settings.lengthUnit.value);
     const angle = this.catalog.unitStr(this.settings.angleUnit.value);
 
@@ -137,39 +142,62 @@ export class ExportColumnsService {
         part.kind === 'joint'
           ? (index.linksByJoint.get(part.id) ?? []).map((linkId) =>
               this.force(
-                part,
                 `Force on ${this.bodyName(linkId)}`,
                 `${this.modeWord()} force at ${part.label} on ${this.bodyName(linkId)}`,
+                part,
                 part.id,
                 linkId,
-                'Joint Forces'
+                'Joint Forces',
+                !(part.part instanceof PrisJoint)
               )
             )
-          : (index.jointsByLink.get(part.id) ?? [])
-              .filter((jointId) => !hidden.has(jointId))
-              .map((jointId) =>
-                this.force(
-                  part,
-                  `Force at ${this.jointName(jointId)}`,
-                  `${this.modeWord()} force on ${part.label} at ${this.jointName(jointId)}`,
-                  jointId,
-                  part.id,
-                  'Joint Forces'
-                )
+          : // Every link the body is made of: a ram's two mounts sit on
+            // different ones, so asking about the rod alone gave the force at
+            // one end of it and nothing at the end it is pushing.
+            this.catalog
+              .memberIdsOf(part.id)
+              .flatMap((memberId) =>
+                (index.jointsByLink.get(memberId) ?? [])
+                  .filter((jointId) => !hidden.has(jointId))
+                  .map((jointId) =>
+                    this.force(
+                      `Force at ${this.jointName(jointId)}`,
+                      `${this.modeWord()} force on ${part.label} at ${this.jointName(jointId)}`,
+                      part,
+                      jointId,
+                      memberId,
+                      'Joint Forces',
+                      false
+                    )
+                  )
               );
-      if (part.kind === 'joint' && (part.part as RealJoint).input) {
-        const effort = part.part instanceof PrisJoint ? 'Input force' : 'Input torque';
+
+      // The effort whatever drives this part has to supply. A joint that is an
+      // input carries its own; a cylinder is driven from a joint buried inside
+      // it, which has no row of its own anywhere in the app -- so the ram's row
+      // is the only place that number can be asked for.
+      const driven =
+        part.kind === 'joint'
+          ? (part.part as RealJoint).input
+            ? (part.part as RealJoint)
+            : undefined
+          : this.catalog.drivenJointOf(part.id);
+      if (driven) {
+        const torque = !(driven instanceof PrisJoint);
+        const effort = torque ? 'Input torque' : 'Input force';
         columns.push(
           this.force(
-            part,
             effort,
             `${this.modeWord()} ${effort.toLowerCase()} at ${part.label}`,
-            part.id,
+            part,
+            driven.id,
             '',
-            'Input Effort'
+            'Input Effort',
+            torque
           )
         );
       }
+
       if (columns.length > 0) {
         groups.push({ key: `force:${part.key}`, title: part.label, tab: 'forces', columns });
       }
@@ -178,14 +206,16 @@ export class ExportColumnsService {
   }
 
   private force(
-    part: ExportPart,
     label: string,
     head: string,
+    part: ExportPart,
     mechPart: string,
     reactionLinkId: string,
-    mechProp: string
+    mechProp: string,
+    /** Whether the effort is a moment. Decided by the driving joint, not the part. */
+    isTorque: boolean
   ): ExportColumn {
-    const torque = mechProp === 'Input Effort' && !(part.part instanceof PrisJoint);
+    const torque = mechProp === 'Input Effort' && isTorque;
     const unit = torque ? this.catalog.torqueUnit() : this.catalog.forceUnit();
     const series: ExportSeries = {
       label,

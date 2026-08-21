@@ -296,15 +296,13 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   /**
    * What will actually land in the downloads folder.
    *
-   * The archive, where there is one: the name field says `.csv` because that
-   * is what the files inside it are, and a card promising `M1_analysis.csv`
-   * while `M1_analysis.zip` arrives is the card being wrong about the one
-   * thing it is there to say.
+   * Asked of the writer, which is what names it: the name field says `.csv`
+   * because that is what the files inside an archive are, and a card promising
+   * `M1_analysis.csv` while `M1_analysis.zip` arrives is the card being wrong
+   * about the one thing it is there to say.
    */
   get arrivingName(): string {
-    const count = this.flow.format === 'images' ? this.pictureCount() : this.writer.summary().files;
-    const zipped = count > 2 && this.flow.format !== 'report' && this.flow.format !== 'xlsx';
-    return `${this.fileName}${zipped ? '.zip' : this.flow.extension()}`;
+    return this.writer.arrivingName();
   }
 
   onName(event: Event): void {
@@ -351,6 +349,9 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
     // nothing until it finished read as a press that had not registered.
     await new Promise((resolve) => setTimeout(resolve, 32));
     this.analytics.logEvent(`export_data_${this.flow.format}`);
+    // Read before the work starts, for the same reason the writer snapshots its
+    // own settings: the message has to name the file that was actually written.
+    const arriving = this.arrivingName;
     try {
       const written = await this.writer.run();
       if (!written) {
@@ -364,7 +365,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
         'export.done',
         this.flow.format === 'report'
           ? 'The report is ready to print or save as PDF.'
-          : `${this.fileName}${this.flow.extension()} is on its way.`
+          : `${arriving} is on its way.`
       );
     } catch {
       this.notify.failure('export.failed', 'The export could not be written.');

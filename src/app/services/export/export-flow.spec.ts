@@ -254,6 +254,40 @@ describe('the export drawer', () => {
     expect(new Set(parts.map((part) => part.key)).size).toBe(parts.length);
   });
 
+  it('reaches both ends of a ram, and the drive buried inside it', () => {
+    const { flow } = flowFor(TEMPLATE_LINKAGES['Cylinder_Boom'], { forces: true });
+    const ram = flow.offeredParts().find((part) => part.label.startsWith('Cylinder '))!;
+    flow.togglePart(ram);
+    const labels = flow
+      .columnGroups('forces')
+      .flatMap((group) => group.columns)
+      .map((column) => column.label);
+
+    // A cylinder is one part to the reader and three links to the solver, and
+    // its two mounts sit on different ones — so asking about the rod alone gave
+    // the force at one end of a ram and nothing at the end it is pushing. The
+    // drive is a joint with no marker, no hitbox and no row of its own, which
+    // makes this the only place its effort can be asked for.
+    expect(labels.filter((label) => label.startsWith('Force at Joint ')).length).toBe(2);
+    expect(labels).toContain('Input force');
+  });
+
+  it('asks a slider block only for the reaction it actually carries', () => {
+    const { flow, tables } = flowFor(TEMPLATE_LINKAGES['Slider_Crank'], { forces: true });
+    const block = flow.offeredParts().find((part) => part.note.includes('slider block'))!;
+    flow.togglePart(block);
+
+    // The solver leaves a block out of its angular maps and gives it no centre
+    // of mass, so offering it those four choices wrote eleven columns of blanks.
+    expect(flow.columnGroups('kinematics')).toHaveLength(0);
+    expect(flow.columnGroups('forces').length).toBeGreaterThan(0);
+    const [table] = tables.tables();
+    expect(table.columns.length).toBeGreaterThan(0);
+    table.columns.forEach((column) => {
+      expect(column.filter(Number.isFinite).length).toBe(table.times.length);
+    });
+  });
+
   it('stands a sealed cylinder in the list as one part, not as its pieces', () => {
     const { flow } = flowFor(TEMPLATE_LINKAGES['Cylinder_Boom']);
     const labels = flow.partGroups().flatMap((group) => group.parts.map((part) => part.label));

@@ -57,7 +57,11 @@
     }
   </div>
 
-  <div class="exportBody" appScrollShadow>
+  <!-- Held still while a file is being written. The writer takes its own
+       snapshot of the answers, so a change made now would not reach the file
+       anyway -- and a control that visibly answers while changing nothing is
+       worse than one that waits. -->
+  <div class="exportBody" [class.busy]="working" appScrollShadow>
     @if (flow.step === 1) {
       @for (group of groups(); track group.id) {
         <!-- Each machine's name stays under the head while its own rows pass,

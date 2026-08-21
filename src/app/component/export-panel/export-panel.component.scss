@@ -216,6 +216,11 @@
       background: rgba(0, 0, 0, 0.3);
     }
 
+    .exportBody.busy {
+      pointer-events: none;
+      opacity: 0.55;
+    }
+
     .exportBody {
       flex: 1 1 auto;
       min-height: 0;

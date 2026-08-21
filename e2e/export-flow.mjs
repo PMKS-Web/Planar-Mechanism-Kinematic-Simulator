@@ -208,7 +208,14 @@ await drawer().locator('.formatRow', { hasText: 'Graph images' }).click();
 await page.waitForTimeout(200);
 await drawer().locator('.segmented button', { hasText: 'SVG' }).click();
 await page.waitForTimeout(200);
+// What the card promised, before it was pressed.
+const promised = await drawer().locator('.summaryName').innerText();
 const pictures = await grab(() => page.locator('.nextButton').click());
+record(
+  'the card names the file that actually arrives, archive and all',
+  promised === pictures.name,
+  { promised, arrived: pictures.name }
+);
 const inside = readStoredZip(readFileSync(pictures.path));
 const drawing = inside.find((entry) => entry.name.endsWith('.svg'))?.text ?? '';
 record(
@@ -303,6 +310,40 @@ record(
   layout.pages <= 16 && layout.leastFull >= 60 && layout.clipped === 0 && layout.overflowing === 0,
   layout
 );
+
+// --- watching the mechanism run does not rebuild the export -----------------
+// The table cache used to key on the pose, which playback moves every frame:
+// leaving Report chosen and pressing play re-sampled every column of every
+// selected part sixty times a second.
+await page.evaluate(() => {
+  const panel = ng.getComponent(document.querySelector('app-export-panel'));
+  const samples = panel.writer.tables.samples;
+  const original = samples.sampleAt.bind(samples);
+  window.__sampled = 0;
+  samples.sampleAt = (...args) => {
+    window.__sampled++;
+    return original(...args);
+  };
+});
+// Ask a question the cache has not been asked before, so there is a real
+// sampling pass to compare playback against.
+await page.evaluate(() => {
+  ng.getComponent(document.querySelector('app-export-panel')).flow.withMagnitude = false;
+});
+await drawer().locator('.formatRow', { hasText: 'Report' }).click();
+await page.waitForTimeout(900);
+const sampledOnce = await page.evaluate(() => window.__sampled);
+await page.locator('.playButton').click();
+await page.waitForTimeout(1500);
+await page.locator('.playButton').click();
+await page.waitForTimeout(300);
+record(
+  'watching the mechanism run does not re-sample a single column',
+  sampledOnce > 0 && (await page.evaluate(() => window.__sampled)) === sampledOnce,
+  { sampledOnce, after: await page.evaluate(() => window.__sampled) }
+);
+await page.locator('.stopButton').click();
+await page.waitForTimeout(800);
 
 // --- the list is a way into the drawing -------------------------------------
 const lit = () =>

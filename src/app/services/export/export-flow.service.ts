@@ -82,9 +82,10 @@ export class ExportFlowService {
       this.settings.lengthUnit.value,
       this.settings.angleUnit.value,
       this.settings.forceUnit.value,
-      // Bumped by every mutation the service funnels, which is how a change
-      // that leaves the counts alone still invalidates this.
-      this.mechanism.poseRevision,
+      // Bumped by every rebuild of the solved cycle, which is how a change
+      // that leaves the counts alone still invalidates this. Deliberately not
+      // the pose, which playback moves every frame.
+      this.mechanism.solveRevision,
       this.stamp,
     ].join('|');
   }

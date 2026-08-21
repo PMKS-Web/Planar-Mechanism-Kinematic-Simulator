@@ -59,6 +59,8 @@ export interface ExportPlan {
   heads: string[];
   /** How many graphs this file's columns amount to. */
   plots: number;
+  /** What each of those graphs is called, for a picture that carries its title. */
+  titles: string[];
 }
 
 /**
@@ -124,9 +126,10 @@ export class ExportTableService {
       this.settings.angleUnit.value,
       this.settings.forceUnit.value,
       this.mechanism.mechanisms.map((solved) => solved.timeNum.length).join(','),
-      // Bumped by every mutation the mechanism service funnels, so a change
-      // that leaves the shape of the selection alone still re-samples.
-      this.mechanism.poseRevision,
+      // Bumped by every rebuild of the solved cycle, so a change that leaves
+      // the shape of the selection alone still re-samples -- and *not* by
+      // playback, which moves the pose without touching a single sample.
+      this.mechanism.solveRevision,
     ].join('|');
   }
 
@@ -188,7 +191,7 @@ export class ExportTableService {
         .map((piece) => {
           const solved = this.mechanism.mechanisms[index];
           const heads = ['Time (s)'];
-          let plots = 0;
+          const titles: string[] = [];
           piece.columns.forEach((column) => {
             piece.parts
               .filter((part) => column.appliesTo.includes(part.key))
@@ -202,7 +205,7 @@ export class ExportTableService {
                     .forEach((name) =>
                       heads.push(`${head}${name ? ' ' + name : ''} (${series.unit})`)
                     );
-                  plots++;
+                  titles.push(series.head || `${series.label} of ${part.label}`);
                 });
               });
           });
@@ -212,7 +215,8 @@ export class ExportTableService {
             mechanismIndex: index,
             rows: solved?.isMechanismValid() ? solved.timeNum.length : 0,
             heads,
-            plots,
+            plots: titles.length,
+            titles,
           };
         })
         .filter((piece) => piece.heads.length > 1)

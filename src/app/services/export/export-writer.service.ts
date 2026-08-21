@@ -125,6 +125,33 @@ export class ExportWriterService {
   }
 
   /**
+   * What the export will actually put in the downloads folder.
+   *
+   * The drawer says this before the reader presses Export, so it has to be the
+   * name the file lands under rather than the name it was built from: a set of
+   * pictures is an archive of its own, and one picture carries the graph's
+   * title.
+   */
+  arrivingName(): string {
+    const stem = this.flow.name();
+    if (this.flow.format === 'report') return `${stem}.pdf`;
+    if (this.flow.format === 'images') {
+      const plan = this.tables.plan();
+      const pictures = plan.reduce((total, piece) => total + piece.plots, 0);
+      if (pictures > 2) return `${stem}_graphs.zip`;
+      const machine = plan.length > 1 ? `${plan[0].name}_` : '';
+      const title = plan[0]?.titles[0];
+      return title
+        ? `${stem}_${machine}${safe(title)}.${this.flow.imageFormat}`
+        : `${stem}.${this.flow.imageFormat}`;
+    }
+    const files = this.summary().files;
+    return files > 2 && this.flow.format !== 'xlsx'
+      ? `${stem}.zip`
+      : `${stem}${this.flow.extension()}`;
+  }
+
+  /**
    * Hand the files over, as one download where there are more than two.
    *
    * A browser asks before it will take a second file and stops after a handful,
@@ -160,6 +187,12 @@ export class ExportWriterService {
   private async writeImages(tables: ExportTable[]): Promise<boolean> {
     const width = 720;
     const height = 420;
+    // Read once, before the first await. Drawing forty graphs takes long enough
+    // for a reader to change their mind about PNG or SVG, or to rename the
+    // export -- and the settings were being read afresh per picture, so half an
+    // archive came out under the old answers and half under the new.
+    const stem = this.flow.name();
+    const kind = this.flow.imageFormat;
     const logo = await logoDataUrl();
     const files: ExportFile[] = [];
     for (const table of tables) {
@@ -169,9 +202,9 @@ export class ExportWriterService {
         // them is `Position of Joint D` in both, and two entries of one name in
         // one archive is one picture that quietly replaces the other.
         const machine = tables.length > 1 ? `${table.name}_` : '';
-        const name = `${this.flow.name()}_${machine}${safe(plot.title)}`;
+        const name = `${stem}_${machine}${safe(plot.title)}`;
         files.push(
-          this.flow.imageFormat === 'svg'
+          kind === 'svg'
             ? { name: `${name}.svg`, mime: 'image/svg+xml', text: svg }
             : {
                 name: `${name}.png`,
@@ -181,7 +214,7 @@ export class ExportWriterService {
         );
       }
     }
-    this.deliver(files, `${this.flow.name()}_graphs`);
+    this.deliver(files, `${stem}_graphs`);
     return files.length > 0;
   }
 

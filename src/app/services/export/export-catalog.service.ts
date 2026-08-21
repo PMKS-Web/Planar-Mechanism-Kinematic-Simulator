@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Joint, RealJoint } from '../../model/joint';
-import { Cylinder } from '../../model/cylinder';
+import { Cylinder, cylinderJoints } from '../../model/cylinder';
 import { Link, RealLink, SliderBlock } from '../../model/link';
 import { AngleUnit, ForceUnit, LengthUnit } from '../../model/unit-enums';
 import { MechanismService } from '../mechanism.service';
@@ -170,6 +170,37 @@ export class ExportCatalogService {
         candidate.block.id === link.id
     );
     return cylinder ? this.cylinderLabel(cylinders, cylinder.rod) : this.mechanism.bodyLabel(link);
+  }
+
+  /**
+   * The links a body is made of, for asking the force solver about it.
+   *
+   * One for an ordinary bar. A cylinder is one part to the reader and three
+   * links to the solver, and its two mounts sit on different ones — the barrel
+   * carries the far mount and the rod the other — so asking about the rod
+   * alone listed the force at one end of a ram and nothing at the end it is
+   * pushing. The same rule the analysis panel uses, for the same reason.
+   */
+  memberIdsOf(linkId: string): string[] {
+    const body = this.mechanism.links.find((link) => link.id === linkId);
+    const sealed = body && this.mechanism.cylinderAt(body);
+    return sealed ? [sealed.barrel.id, sealed.rod.id, sealed.block.id] : [linkId];
+  }
+
+  /**
+   * The joint driving a cylinder, which is buried inside it.
+   *
+   * A ram is driven from a joint with no marker, no hitbox and no row in any
+   * panel, so the effort that drive supplies has to be offered against the
+   * part a reader can actually see.
+   */
+  drivenJointOf(linkId: string): RealJoint | undefined {
+    const body = this.mechanism.links.find((link) => link.id === linkId);
+    const sealed = body && this.mechanism.cylinderAt(body);
+    if (!sealed) return undefined;
+    return cylinderJoints(sealed).find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
   }
 
   /** The joints a sealed cylinder keeps to itself, by id. */
