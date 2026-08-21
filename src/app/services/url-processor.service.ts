@@ -121,7 +121,18 @@ export class UrlProcessorService {
         // names that is not here was removed by hand at some point, and a
         // claim on an object that does not exist is not a claim worth keeping.
         const present = new Set(mechanismSrv.joints.map((joint) => joint.id));
-        this.synthesis.ownedJointIds = this.synthesis.ownedJointIds.filter((id) => present.has(id));
+        const kept = this.synthesis.ownedJointIds.filter((id) => present.has(id));
+        // Dropping the ids of joints that are gone is right -- a claim on
+        // something that does not exist would be inherited by whatever new
+        // joint next took that letter. But dropping them silently threw away
+        // the one fact that made the linkage entangled rather than ours, so a
+        // reload turned "you cut into this, I will leave it alone" into "this
+        // is mine, I will delete it": the reader's own edits, removed without
+        // the warning that exists to prevent exactly that.
+        if (kept.length !== this.synthesis.ownedJointIds.length) {
+          this.synthesis.ownershipPartial = true;
+        }
+        this.synthesis.ownedJointIds = kept;
         // A decode replaces the design wholesale, so whatever was found for the
         // last one says nothing about this one. Resolved late, like the other
         // services this one reaches: asking for it at construction would build

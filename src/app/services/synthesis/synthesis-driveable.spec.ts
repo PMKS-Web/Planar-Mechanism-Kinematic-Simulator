@@ -147,9 +147,12 @@ describe('every solution offered can be driven through what it claims', () => {
 
   it('and the named designs between them gave it something to walk', () => {
     expect(walked.size).toBe(designs.length);
-    const total = [...walked.values()].reduce((sum, n) => sum + n, 0);
-    expect(total).toBeGreaterThan(0);
-    expect(walked.get('a gentle sweep')).toBeGreaterThan(0);
+    // Each of the three that has an answer, not just the total and not just
+    // one of them: any of the others regressing to zero would turn its own
+    // walk into a test of nothing while the total stayed comfortably positive.
+    ['a gentle sweep', 'a small angle change', 'a near reversal'].forEach((name) =>
+      expect(walked.get(name)).toBeGreaterThan(0)
+    );
   });
 
   it('never claims a position the crank cannot turn to', () => {

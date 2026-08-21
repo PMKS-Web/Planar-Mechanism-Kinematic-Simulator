@@ -487,9 +487,18 @@ check(
 );
 check(
   'and a length given in words still puts its unit beside the number',
-  await panel(
-    '(p) => !p.dimensionRows().some((r) => / (cm|m|in)$/.test(r.value) && /[a-z]{3,} (cm|m|in)$/.test(r.value))'
-  )
+  await panel(`(p) => {
+    const rows = p.dimensionRows();
+    // Every length carries a unit, and none of them carries it at the end of a
+    // phrase. Rejecting only the phrase let "no unit anywhere" through, which
+    // is the more obvious way for this to be wrong.
+    const lengths = rows.filter((r) => /\\d/.test(r.value) && r.label !== 'Coupler pinned');
+    return (
+      lengths.length > 0 &&
+      lengths.every((r) => / (cm|m|in)$/.test(r.value)) &&
+      !rows.some((r) => /[a-z]{3,} (cm|m|in)$/.test(r.value))
+    );
+  }`)
 );
 check(
   'Space activates a focused button, as Space does',
@@ -577,7 +586,9 @@ check(
         ? { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) }
         : null;
     });
-    if (!bar) return true;
+    // No bar to drag is a broken check, not a passing one -- and the gesture
+    // has to be seen to start, or "it ended" is true of a drag that never was.
+    if (!bar) return false;
     // Remember where it was: this drag deliberately ends over the panel, and a
     // position parked under the panel is one nothing later can right-click.
     const before = await panel(
@@ -585,10 +596,13 @@ check(
     );
     await page.mouse.move(bar.x, bar.y);
     await page.mouse.down();
+    await page.mouse.move(bar.x - 40, bar.y + 40, { steps: 4 });
+    const began = await grid('(g) => !!g.synthCanvas.dragging');
     await page.mouse.move(200, 500, { steps: 8 });
     await page.mouse.up();
     await page.waitForTimeout(400);
-    const ended = await grid('(g) => !g.synthCanvas.dragging && !g.synthSolution.interactive');
+    const ended =
+      began && (await grid('(g) => !g.synthCanvas.dragging && !g.synthSolution.interactive'));
     await page.evaluate((was) => {
       const design = ng.getComponent(document.querySelector('app-synthesis-panel')).design;
       JSON.parse(was).forEach(([x, y, theta], index) => {
@@ -942,6 +956,13 @@ async function solvedPage() {
   return p;
 }
 
+/** Asks the grid, which outlives the panel when the reader leaves Synthesis. */
+const askGrid = (p, fn) =>
+  p.evaluate(
+    (body) => new Function('grid', body)(ng.getComponent(document.querySelector('app-new-grid'))),
+    `return (${fn})(grid);`
+  );
+
 const ask = (p, fn) =>
   p.evaluate(
     (body) =>
@@ -1093,6 +1114,42 @@ const ask = (p, fn) =>
 }
 
 {
+  // And beside work that is already there, where A-D are taken and the pins
+  // have to be drawn under whatever letters are actually free. Labelling the
+  // preview A-D regardless meant it promised D/C/B/A over pins that arrived
+  // as E/D/C/B -- every one of the four renamed between being shown and being
+  // built.
+  const p = await solvedPage();
+  const outcome = await ask(
+    p,
+    `(panel, grid) => {
+      grid.mechanismSrv.mergeToJoints([grid.mechanismSrv.createRevJoint('0', '0')]);
+      grid.mechanismSrv.updateMechanism();
+      panel.solution.setDriveOnFarPin(true);
+      const shown = grid.synthCanvas
+        .previewJoints()
+        .map((j) => [j.id, Math.round(j.x), Math.round(j.y)]);
+      panel.solution.insert();
+      const built = panel.mechanismSrv.joints.map((j) => [j.id, Math.round(j.x), Math.round(j.y)]);
+      const at = (x, y) =>
+        built.find((b) => Math.abs(b[1] - x) < 2 && Math.abs(b[2] - y) < 2)?.[0] ?? null;
+      return {
+        shown,
+        built,
+        agrees: shown.length > 0 && shown.every(([id, x, y]) => at(x, y) === id),
+        usedLaterLetters: shown.some(([id]) => id > 'D'),
+      };
+    }`
+  );
+  check(
+    'and they still agree when the letters have to start after existing work',
+    outcome.agrees && outcome.usedLaterLetters,
+    outcome
+  );
+  await p.close();
+}
+
+{
   // Loose joints are geometry too. Fitting the scale to the zoom resizes
   // whatever is already drawn, so "empty" has to mean empty.
   const p = await browser.newPage({ viewport: { width: 1500, height: 950 } });
@@ -1122,6 +1179,103 @@ const ask = (p, fn) =>
     before.joints === 1 && after === 140,
     { before, after }
   );
+  await p.close();
+}
+
+{
+  // Fitting a driver changes what would be built, so the drawing no longer
+  // holds what is being looked at -- and the preview has to come back to show
+  // the difference.
+  const p = await solvedPage();
+  const outcome = await ask(
+    p,
+    `(panel, grid) => {
+      panel.solution.driverWanted = false;
+      panel.solution.insert();
+      const asFourBar = {
+        joints: panel.mechanismSrv.joints.length,
+        stale: panel.solution.needsReinsert(),
+        preview: grid.synthCanvas.previewLinks().length,
+      };
+      panel.solution.toggleDriver();
+      const withDriver = {
+        dyad: !!panel.solution.dyad(),
+        stale: panel.solution.needsReinsert(),
+        preview: grid.synthCanvas.previewLinks().length,
+        label: panel.primaryLabel,
+      };
+      return { asFourBar, withDriver };
+    }`
+  );
+  check(
+    'adding a driver to an inserted four-bar is a change the panel notices',
+    outcome.asFourBar.joints === 4 &&
+      outcome.asFourBar.stale === false &&
+      outcome.asFourBar.preview === 0 &&
+      outcome.withDriver.dyad === true &&
+      outcome.withDriver.stale === true &&
+      outcome.withDriver.preview > 0 &&
+      outcome.withDriver.label === 'Replace on grid',
+    outcome
+  );
+  await p.close();
+}
+
+{
+  // Inserting saves once. Leaving for Edit used to save again, identically,
+  // so the first Undo stepped onto the state it was already in.
+  const p = await solvedPage();
+  await ask(p, '(panel) => panel.solution.insert()');
+  await p.waitForTimeout(500);
+  const afterInsert = await askGrid(p, '(g) => g.mechanismSrv.joints.length');
+  await p.locator('.tabButton', { hasText: 'Edit' }).click();
+  await p.waitForTimeout(600);
+  await p.evaluate(() => ng.getComponent(document.querySelector('app-top-bar')).undo());
+  await p.waitForTimeout(900);
+  // Asked of the grid: the panel is gone, which is the whole point of the check.
+  const afterUndo = await askGrid(p, '(g) => g.mechanismSrv.joints.length');
+  check(
+    'one Undo takes the linkage back even after leaving Synthesis',
+    afterInsert > 0 && afterUndo === 0,
+    { afterInsert, afterUndo }
+  );
+  await p.close();
+}
+
+{
+  // A design that put four joints on the grid and has since lost one has been
+  // cut into, and a reload must not forget that: the joints that survived are
+  // the reader's now, and replacing them without asking loses their work.
+  const p = await solvedPage();
+  const before = await ask(
+    p,
+    `(panel) => {
+      panel.solution.insert();
+      const ids = panel.design.ownedJointIds.slice();
+      // Through the app's own delete, which works on the selection.
+      const victim = panel.mechanismSrv.joints.find((j) => j.id === ids[1]);
+      panel.mechanismSrv.activeObjService.updateSelectedObj(victim);
+      panel.mechanismSrv.deleteJoint(true);
+      return { ids, ownership: panel.solution.ownership() };
+    }`
+  );
+  const link = await p.evaluate(() =>
+    ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
+  );
+  const reloaded = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+  reloaded.on('pageerror', (error) => errors.push(String(error)));
+  await reloaded.goto(BASE + '/?' + link, { waitUntil: 'domcontentloaded' });
+  await waitForReady(reloaded);
+  await dismissTour(reloaded);
+  await reloaded.locator('.tabButton', { hasText: 'Synthesis' }).click();
+  await reloaded.waitForTimeout(700);
+  const after = await ask(reloaded, '(panel) => panel.solution.ownership()');
+  check(
+    'a linkage cut into before the link was written is still cut into after it is opened',
+    before.ownership === 'entangled' && after === 'entangled',
+    { before, after }
+  );
+  await reloaded.close();
   await p.close();
 }
 

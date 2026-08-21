@@ -23,7 +23,6 @@ import {
   FourBarCandidate,
   describeCouplerPins,
   solveFourBar,
-  endLetters,
 } from 'src/app/services/synthesis/synthesis-candidates';
 import { MODEL_SCALE } from 'src/app/model/render-scale';
 import { SvgGridService } from '../../services/svg-grid.service';
@@ -873,9 +872,14 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   }
 
   pinOptions(): { label: string; far: boolean; active: boolean }[] {
+    // Named by the letters those two pins are drawn under. `chosen()` rather
+    // than `driven()`: this asks which end to read the linkage from, so it has
+    // to name the ends of the unswapped one, and the far pin is the one that
+    // is called D whichever end is currently driving.
+    const e = this.solution.previewLetters(this.solution.chosen());
     return [
-      { label: 'Pin A', far: false, active: !this.solution.driveOnFarPin },
-      { label: 'Pin D', far: true, active: this.solution.driveOnFarPin },
+      { label: `Pin ${e.A}`, far: false, active: !this.solution.driveOnFarPin },
+      { label: `Pin ${e.D}`, far: true, active: this.solution.driveOnFarPin },
     ];
   }
 
@@ -925,7 +929,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     // Named by the letters actually drawn beside those pins. Driving from the
     // far pin reads the same linkage from the other end, and naming the bars
     // after the fields rather than the pins renamed all four of them.
-    const e = endLetters(c);
+    const e = this.solution.previewLetters(c);
     const rows = [
       { label: `Crank ${e.A}–${e.B}`, value: this.lengthText(c.r1) },
       { label: `Coupler ${e.B}–${e.C}`, value: this.lengthText(c.d) },
@@ -938,8 +942,11 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     ];
     const dyad = this.solution.dyad();
     if (dyad) {
-      rows.push({ label: 'Driver crank E–F', value: this.lengthText(dyad.crankLength) });
-      rows.push({ label: `Driver coupler F–${e.B}`, value: this.lengthText(dyad.couplerLength) });
+      rows.push({ label: `Driver crank ${e.E}–${e.F}`, value: this.lengthText(dyad.crankLength) });
+      rows.push({
+        label: `Driver coupler ${e.F}–${e.B}`,
+        value: this.lengthText(dyad.couplerLength),
+      });
     }
     return rows;
   }

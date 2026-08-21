@@ -539,6 +539,35 @@ export class SynthesisSolutionService {
 
   // --- committing to the drawing -----------------------------------------
 
+  /**
+   * The letters this design's pins will be built under.
+   *
+   * Asked by the preview as well as by insert, so that what is drawn beside a
+   * pin is what that pin ends up called. Labelling the preview A-D and letting
+   * insert take the next free letters agreed only on an empty grid: beside one
+   * loose joint the preview said D-C-B-A over pins that arrived as E-D-C-B.
+   */
+  previewLetters(cand: FourBarCandidate | null = this.driven()): {
+    A: string;
+    B: string;
+    C: string;
+    D: string;
+    E: string;
+    F: string;
+  } {
+    const letters = this.nextLetters(6);
+    const slot: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
+    const mark = endLetters(cand);
+    return {
+      A: letters[slot[mark.A]],
+      B: letters[slot[mark.B]],
+      C: letters[slot[mark.C]],
+      D: letters[slot[mark.D]],
+      E: letters[4],
+      F: letters[5],
+    };
+  }
+
   /** As many ids as asked for, none of which anything on the grid is using. */
   private nextLetters(count: number): string[] {
     const taken: string[] = [];
@@ -570,6 +599,9 @@ export class SynthesisSolutionService {
     const owned = this.mechanismSrv.joints.filter((joint) => ids.has(joint.id));
     if (owned.length === 0) return 'none';
     if (owned.length !== ids.size) return 'entangled';
+    // Or some of it was taken away before this URL was written, in which case
+    // the ids that survived look complete and only the flag remembers.
+    if (this.design.ownershipPartial) return 'entangled';
     // A joint of ours pinned to a joint that is not ours means the two machines
     // have been joined. Taking ours back would either leave a link hanging off
     // nothing or cut into a machine that was never ours to touch.
@@ -609,8 +641,18 @@ export class SynthesisSolutionService {
     // writes them. Anything else on the grid under our ids means a different
     // answer is standing there.
     const wanted = [solved.A, solved.B, solved.C, solved.D];
+    // The driver's two pins as well, when there is one. Comparing the four-bar
+    // alone meant fitting a driver to an inserted four-bar -- or taking one off
+    // an inserted six-bar -- left the panel saying "Inserted into grid" over a
+    // drawing that no longer held what was being looked at, and the preview
+    // stayed hidden because it agreed.
+    const dyad = this.dyad();
+    if (dyad) {
+      const elbow = meet(dyad.ground, dyad.crankLength, solved.B, dyad.couplerLength);
+      if (elbow) wanted.push(dyad.ground, elbow[0]);
+    }
     const ids = this.design.ownedJointIds;
-    if (owned.size < wanted.length) return true;
+    if (owned.size !== wanted.length || ids.length !== wanted.length) return true;
     return wanted.some((point, i) => {
       const joint = owned.get(ids[i]);
       return !joint || Math.hypot(joint.x - point.x, joint.y - point.y) > MOVED_BY_HAND;
@@ -620,6 +662,7 @@ export class SynthesisSolutionService {
   /** Stop claiming the linkage on the grid, without removing it. */
   releaseOwnership(): void {
     this.design.ownedJointIds = [];
+    this.design.ownershipPartial = false;
     this.writtenAt.clear();
     this.changed.next();
   }
@@ -649,25 +692,8 @@ export class SynthesisSolutionService {
     else if (held !== 'none') this.removeOwned();
 
     const dyad = this.dyad();
-    /*
-      The letters follow the pins onto the grid.
-
-      Assigning them in field order named the first joint `a` wherever it sat --
-      and reading a candidate from the far pin puts pin D in the field called
-      A, so the pin the panel had just called D arrived on the grid called a.
-      Fixing the preview's letters without fixing these would have moved the
-      mismatch rather than removed it: the panel would say "Crank D-C" over a
-      crank whose ends were marked a and b.
-    */
-    const letters = this.nextLetters(6);
-    const slot: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
-    const mark = endLetters(cand);
-    const idA = letters[slot[mark.A]];
-    const idB = letters[slot[mark.B]];
-    const idC = letters[slot[mark.C]];
-    const idD = letters[slot[mark.D]];
-    const idE = letters[4];
-    const idF = letters[5];
+    // The same letters the preview has been showing beside these pins.
+    const { A: idA, B: idB, C: idC, D: idD, E: idE, F: idF } = this.previewLetters(cand);
     /** A link is named by its ends in alphabetical order, as everywhere else. */
     const linkId = (one: string, two: string): string => [one, two].sort().join('');
     // With a driver on the linkage neither ground pin is the input at all; the
@@ -732,6 +758,7 @@ export class SynthesisSolutionService {
     this.mechanismSrv.mergeToJoints(joints);
     this.mechanismSrv.mergeToLinks(links);
     this.design.ownedJointIds = joints.map((joint) => joint.id);
+    this.design.ownershipPartial = false;
     this.writtenAt = new Map(joints.map((joint) => [joint.id, { x: joint.x, y: joint.y }]));
     this.playing = false;
     // Eased rather than snapped: the drawing may be parked anywhere in its
@@ -765,6 +792,7 @@ export class SynthesisSolutionService {
     this.mechanismSrv.links = this.mechanismSrv.links.filter((link) => !goneLinks.has(link.id));
     this.mechanismSrv.joints = this.mechanismSrv.joints.filter((joint) => !ids.has(joint.id));
     this.design.ownedJointIds = [];
+    this.design.ownershipPartial = false;
     this.writtenAt.clear();
   }
 

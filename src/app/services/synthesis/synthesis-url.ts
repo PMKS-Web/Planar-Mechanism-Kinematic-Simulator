@@ -58,7 +58,8 @@ export function encodeSynthesisDesign(design: SynthesisBuilderService): string[]
     design.endsOnly &&
     !design.allowDefect &&
     !design.constrain &&
-    design.ownedJointIds.length === 0;
+    design.ownedJointIds.length === 0 &&
+    !design.ownershipPartial;
   if (untouched) return [];
 
   const marks = [
@@ -72,7 +73,7 @@ export function encodeSynthesisDesign(design: SynthesisBuilderService): string[]
         design.allowDefect,
         design.constrain,
         design.stage === 'working',
-        false,
+        design.ownershipPartial,
         false,
       ]),
   ];
@@ -114,7 +115,10 @@ export function applySynthesisDesign(marks: string[], design: SynthesisBuilderSe
   }
 
   const [lengthText, referenceText, flagsText] = header.substring(3).split('~');
-  const [endsOnly, allowDefect, constrain, working] = FlagPacker.unpack(flagsText, FLAGS);
+  const [endsOnly, allowDefect, constrain, working, ownershipPartial] = FlagPacker.unpack(
+    flagsText,
+    FLAGS
+  );
 
   design.applyDecoded({
     length: unlength(lengthText),
@@ -136,5 +140,9 @@ export function applySynthesisDesign(marks: string[], design: SynthesisBuilderSe
       return { x: unlength(x), y: unlength(y), w: unlength(w), h: unlength(h) };
     })(),
     ownedJointIds: (marks.find((mark) => mark.startsWith('SO~')) ?? '').split('~').slice(1),
+    // Whether some of what this design put on the grid has since been taken
+    // away. The ids alone cannot say so after a reload -- the missing ones get
+    // dropped, and a shortened list looks exactly like a shorter linkage.
+    ownershipPartial,
   });
 }

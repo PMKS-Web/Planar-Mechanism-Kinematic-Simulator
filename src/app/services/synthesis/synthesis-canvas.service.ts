@@ -387,10 +387,11 @@ export class SynthesisCanvasService {
   previewJoints(): PreviewJoint[] {
     const solved = this.previewing() ? this.solution.previewPose() : null;
     if (!solved) return [];
-    // Letters follow the pins, not the fields: reading from the far pin puts
-    // pin D in the field called A, and labelling by the field renamed half the
-    // linkage every time the drive end changed.
-    const letter = endLetters(this.solution.driven());
+    // The letters these pins will be built under, which follow the pins rather
+    // than the fields: reading from the far pin puts pin D in the field called
+    // A, and labelling by the field renamed half the linkage every time the
+    // drive end changed.
+    const letter = this.solution.previewLetters();
     const out: PreviewJoint[] = [
       { id: letter.A, x: solved.A.x, y: solved.A.y },
       { id: letter.B, x: solved.B.x, y: solved.B.y },
@@ -399,8 +400,8 @@ export class SynthesisCanvasService {
     ];
     const dyad = this.solution.dyad();
     if (dyad && solved.elbow) {
-      out.push({ id: 'E', x: dyad.ground.x, y: dyad.ground.y });
-      out.push({ id: 'F', x: solved.elbow.x, y: solved.elbow.y });
+      out.push({ id: letter.E, x: dyad.ground.x, y: dyad.ground.y });
+      out.push({ id: letter.F, x: solved.elbow.x, y: solved.elbow.y });
     }
     return out;
   }
@@ -419,12 +420,12 @@ export class SynthesisCanvasService {
     const solved = this.previewing() ? this.solution.previewPose() : null;
     if (!solved) return [];
     const dyad = this.solution.dyad();
-    const letter = endLetters(this.solution.driven());
+    const letter = this.solution.previewLetters();
     const out: PreviewJoint[] = [
       { id: letter.A, x: solved.A.x, y: solved.A.y, input: !dyad },
       { id: letter.D, x: solved.D.x, y: solved.D.y, input: false },
     ];
-    if (dyad) out.push({ id: 'E', x: dyad.ground.x, y: dyad.ground.y, input: true });
+    if (dyad) out.push({ id: letter.E, x: dyad.ground.x, y: dyad.ground.y, input: true });
     return out;
   }
 

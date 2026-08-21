@@ -101,14 +101,18 @@ export class SelectedTabService {
       this.settings.animating.next(false);
     }
 
-    if (this.getCurrentTab() === TabID.SYNTHESIZE) {
-      // reset flag
-      this.synthesis.modifiedMechanism = false;
-    } else if (previousTab === TabID.SYNTHESIZE && this.getCurrentTab() === TabID.EDIT) {
-      // save mechanism state if modified in synthesis tab
-      this.mechanism.save();
-      // reset flag
-      this.synthesis.modifiedMechanism = false;
-    }
+    /*
+      Leaving Synthesis no longer saves.
+
+      It used to, because the old mode built onto the grid as the reader typed
+      and nothing else was going to write that down. The redesign only ever
+      touches the drawing through Insert, Undo-insert and Delete, and each of
+      those saves for itself -- so this wrote a second, identical entry on the
+      way out, and the first Undo after inserting appeared to do nothing at all
+      because it stepped back onto the same state.
+
+      The flag that was supposed to gate it had not been set by anything for as
+      long as the redesign has existed, and is gone with it.
+    */
   }
 }
