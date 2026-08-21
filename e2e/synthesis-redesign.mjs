@@ -571,10 +571,13 @@ check(
       const fitted = !!panel.solution.dyad();
       panel.solution.driverWanted = held;
       // Offered, sized, and yet unable to complete a turn is the combination
-      // that breaks the "one full turn" promise the panel makes.
-      if (!refused && fitted && !range.full) bad.push(candidate.key);
+      // that breaks the "one full turn" promise the panel makes. So is offered
+      // and not sized at all: the panel raised no objection and then produced
+      // no driver, which leaves the switch on over a linkage that has none.
+      if (!refused && fitted && !range.full) bad.push(candidate.key + ' jams');
+      if (!refused && !fitted) bad.push(candidate.key + ' offered but unsized');
     }
-    return bad.length === 0;
+    return panel.solution.candidates().length > 0 && bad.length === 0;
   })
 );
 check(
@@ -618,15 +621,42 @@ check(
 );
 check(
   'a driver that cannot be fitted is greyed rather than merely explained',
-  await page.evaluate(() => {
-    const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
-    const row = [...document.querySelectorAll('#synthesisPanel .row')].find((r) =>
-      r.textContent.includes('Add driver')
-    );
-    const button = row.querySelector('.switch');
-    // Whichever way this design falls, the switch's state must match the fact.
-    return button.disabled === !!panel.driverRefusal;
-  })
+  await (async () => {
+    /*
+      Swept over every candidate and both drive ends rather than asked once.
+
+      Asked once, this compared two things that were both false and passed
+      without establishing anything -- these designs raise no refusal at all,
+      so `disabled === refusal` was `false === false`. The sweep is still not
+      guaranteed to meet a refusal, so it also requires having seen the switch
+      live: that at least proves the row was found and the two sides can
+      differ. The refusal itself is covered where it can be built to order, in
+      driver-dyad.spec.ts.
+    */
+    const seen = await page.evaluate(() => {
+      const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
+      const row = [...document.querySelectorAll('#synthesisPanel .row')].find((r) =>
+        r.textContent.includes('Add driver')
+      );
+      if (!row) return null;
+      const button = row.querySelector('.switch');
+      if (!button) return null;
+      const held = panel.solution.driveOnFarPin;
+      const out = { agreed: true, enabled: 0, disabled: 0 };
+      for (const candidate of panel.solution.candidates()) {
+        panel.solution.pick(candidate.key);
+        for (const far of [false, true]) {
+          panel.solution.setDriveOnFarPin(far);
+          const refused = !!panel.driverRefusal;
+          if (button.disabled !== refused) out.agreed = false;
+          refused ? out.disabled++ : out.enabled++;
+        }
+      }
+      panel.solution.setDriveOnFarPin(held);
+      return out;
+    });
+    return !!seen && seen.agreed && seen.enabled > 0;
+  })()
 );
 check(
   'a driver is either fitted or refused in words',
@@ -1096,7 +1126,9 @@ const ask = (p, fn) =>
       const at = (x, y) =>
         built.find((b) => Math.abs(b[1] - x) < 2 && Math.abs(b[2] - y) < 2)?.[0] ?? null;
       return {
-        agrees: shown.every(([id, x, y]) => at(x, y) === id),
+        // An empty list satisfies every(), and satisfying it is what this
+        // check was reporting as agreement.
+        agrees: shown.length >= 2 && shown.every(([id, x, y]) => at(x, y) === id),
         shown,
         built,
         links: panel.mechanismSrv.links.map((l) => l.id),
@@ -1136,7 +1168,7 @@ const ask = (p, fn) =>
       return {
         shown,
         built,
-        agrees: shown.length > 0 && shown.every(([id, x, y]) => at(x, y) === id),
+        agrees: shown.length >= 4 && shown.every(([id, x, y]) => at(x, y) === id),
         usedLaterLetters: shown.some(([id]) => id > 'D'),
       };
     }`
@@ -1276,6 +1308,86 @@ const ask = (p, fn) =>
     { before, after }
   );
   await reloaded.close();
+  await p.close();
+}
+
+{
+  // Replacing, which is where the letters went wrong last time. Insert takes
+  // the old linkage away before it builds, so the ids it was holding come back
+  // -- and counting them as taken made the preview promise E-J over pins that
+  // arrived as A-F. Also checked straight after an insert, where the same
+  // arithmetic used to rename the labels off the linkage they describe.
+  const p = await solvedPage();
+  const outcome = await ask(
+    p,
+    `(panel, grid) => {
+      panel.solution.driverWanted = false;
+      panel.solution.insert();
+      const afterFirst = grid.synthCanvas.previewJoints().map((j) => j.id);
+      const onGrid = panel.design.ownedJointIds.slice();
+      const labelledAfterInsert = panel.dimensionRows().map((r) => r.label);
+      // Now ask for a driver, which makes this a replacement.
+      panel.solution.toggleDriver();
+      const promised = grid.synthCanvas.previewJoints().map((j) => j.id);
+      panel.solution.insert();
+      const built = panel.design.ownedJointIds.slice();
+      return { onGrid, afterFirst, labelledAfterInsert, promised, built };
+    }`
+  );
+  check(
+    'a replacement is built under the letters it was shown under',
+    outcome.promised.length === 6 &&
+      outcome.built.length === 6 &&
+      outcome.promised.join(',') === outcome.built.join(','),
+    outcome
+  );
+  check(
+    'and the labels do not rename themselves the moment a linkage is inserted',
+    outcome.onGrid.length === 4 &&
+      outcome.labelledAfterInsert.some((l) => l.includes(outcome.onGrid[0])) &&
+      outcome.labelledAfterInsert.some((l) => l.includes(outcome.onGrid[3])),
+    { onGrid: outcome.onGrid, labels: outcome.labelledAfterInsert }
+  );
+  await p.close();
+}
+
+{
+  // Ids come round again. Delete one of ours and draw a joint, and the new
+  // joint takes the letter we just lost -- so the count comes back up, every
+  // id is present, and the linkage would read as wholly ours with somebody
+  // else's joint standing in it. A later replace would take that joint away
+  // without asking, so being cut into has to stick.
+  const p = await solvedPage();
+  const outcome = await ask(
+    p,
+    `(panel, grid) => {
+      panel.solution.driverWanted = false;
+      panel.solution.insert();
+      const ids = panel.design.ownedJointIds.slice();
+      const victim = panel.mechanismSrv.joints.find((j) => j.id === ids[3]);
+      panel.mechanismSrv.activeObjService.updateSelectedObj(victim);
+      panel.mechanismSrv.deleteJoint(true);
+      const cutInto = panel.solution.ownership();
+      // A joint of the reader's own, which takes the freed letter back.
+      const replacement = grid.mechanismSrv.createRevJoint('3', '3');
+      grid.mechanismSrv.mergeToJoints([replacement]);
+      grid.mechanismSrv.updateMechanism(true);
+      return {
+        ids,
+        cutInto,
+        reusedTheLetter: replacement.id === ids[3],
+        afterwards: panel.solution.ownership(),
+        stillHere: panel.mechanismSrv.joints.some((j) => j.id === replacement.id),
+      };
+    }`
+  );
+  check(
+    'a joint that takes back a deleted id does not become ours to delete',
+    outcome.cutInto === 'entangled' &&
+      outcome.reusedTheLetter &&
+      outcome.afterwards === 'entangled',
+    outcome
+  );
   await p.close();
 }
 

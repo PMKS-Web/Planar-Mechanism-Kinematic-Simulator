@@ -802,8 +802,18 @@ export class MechanismService {
    * joints are filled, and past those a two-letter name is used; a drawing with
    * fifty-three live joints has run out of single letters honestly.
    */
-  determineNextLetter(additionalLetters?: string[]) {
+  /**
+   * The next free joint id.
+   *
+   * `additionalLetters` are treated as already used, for callers handing out
+   * several at once. `freedLetters` are treated as free although the joints
+   * holding them are still on the grid: a caller that is about to take those
+   * joints away wants the ids they will release, not the ids that would be
+   * left if they stayed.
+   */
+  determineNextLetter(additionalLetters?: string[], freedLetters?: string[]) {
     const taken = new Set<string>(this.joints.map((joint) => joint.id));
+    freedLetters?.forEach((letter) => taken.delete(letter));
     additionalLetters?.forEach((letter) => taken.add(letter));
 
     let highest = -1;

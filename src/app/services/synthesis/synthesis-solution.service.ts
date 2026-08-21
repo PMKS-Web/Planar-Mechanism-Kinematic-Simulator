@@ -555,7 +555,25 @@ export class SynthesisSolutionService {
     E: string;
     F: string;
   } {
-    const letters = this.nextLetters(6);
+    /*
+      Counted against the grid as insert will find it, not as it stands.
+
+      Insert takes a replaceable linkage of ours away before it builds, so its
+      four or six ids come free -- and counting them as taken meant a
+      replacement preview promised E-J over pins that arrived as A-F. The same
+      arithmetic renamed the labels out from under a linkage the moment it was
+      inserted, because its own new ids were suddenly occupied. Survivors of a
+      linkage that has been cut into are a different matter: those stay, so
+      their ids stay taken.
+    */
+    const held = this.ownership();
+    const freed = held === 'ours' || held === 'edited' ? this.design.ownedJointIds : [];
+    const key = this.lettersKey(freed);
+    if (this.lettersAt !== key) {
+      this.lettersAt = key;
+      this.letters = this.nextLetters(6, freed);
+    }
+    const letters = this.letters;
     const slot: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
     const mark = endLetters(cand);
     return {
@@ -568,11 +586,22 @@ export class SynthesisSolutionService {
     };
   }
 
+  /**
+   * What the six letters depend on: who is on the grid, and what is coming off
+   * it. Cheap enough to build every frame, which handing out six ids -- six
+   * scans of the joint list -- is not.
+   */
+  private lettersKey(freed: string[]): string {
+    return this.mechanismSrv.joints.map((joint) => joint.id).join(',') + '|' + freed.join(',');
+  }
+  private lettersAt = '\u0000';
+  private letters: string[] = [];
+
   /** As many ids as asked for, none of which anything on the grid is using. */
-  private nextLetters(count: number): string[] {
+  private nextLetters(count: number, freed: string[] = []): string[] {
     const taken: string[] = [];
     for (let i = 0; i < count; i++) {
-      taken.push(this.mechanismSrv.determineNextLetter(taken));
+      taken.push(this.mechanismSrv.determineNextLetter(taken, freed));
     }
     return taken;
   }
@@ -598,9 +627,21 @@ export class SynthesisSolutionService {
     if (ids.size === 0) return 'none';
     const owned = this.mechanismSrv.joints.filter((joint) => ids.has(joint.id));
     if (owned.length === 0) return 'none';
-    if (owned.length !== ids.size) return 'entangled';
-    // Or some of it was taken away before this URL was written, in which case
-    // the ids that survived look complete and only the flag remembers.
+    if (owned.length !== ids.size) {
+      /*
+        Latched the moment it is noticed, not only when a URL is read back.
+
+        Ids are handed out again after a deletion. Delete one of ours and draw
+        a joint, and that joint takes the letter we just lost -- so the count
+        comes back up, every id is present again, and the linkage reads as
+        wholly ours with somebody else's joint standing in it. A later replace
+        would take that joint away without asking. Once cut into, cut into.
+      */
+      this.design.ownershipPartial = true;
+      return 'entangled';
+    }
+    // Or it was cut into earlier: the ids that survived look complete on their
+    // own, and only the flag remembers that they are not all of them.
     if (this.design.ownershipPartial) return 'entangled';
     // A joint of ours pinned to a joint that is not ours means the two machines
     // have been joined. Taking ours back would either leave a link hanging off
