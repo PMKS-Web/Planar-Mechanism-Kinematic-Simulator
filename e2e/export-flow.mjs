@@ -700,6 +700,15 @@ record(
   await drawer().locator('.summaryCard').innerText()
 );
 
+// Two files arrive as two downloads under two names. The card used to show the
+// bare stem, promising a `results.csv` that nothing was ever going to write.
+const twoUp = await drawer().locator('.summaryName').innerText();
+const firstOfTwo = await grab(() => page.locator('.nextButton').click());
+record('and the name on the card is one a file actually lands under', firstOfTwo.name === twoUp, {
+  promised: twoUp,
+  arrived: firstOfTwo.name,
+});
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
 await browser.close();

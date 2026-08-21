@@ -96,7 +96,9 @@ export class ExportWriterService {
   }
 
   async run(): Promise<boolean> {
-    const tables = this.tables.tables();
+    // Sampled in slices rather than in one go, so the page keeps drawing --
+    // the spinner on the button that started this among other things.
+    const tables = await this.tables.tablesAsync();
     if (tables.length === 0) return false;
     switch (this.flow.format) {
       case 'xlsx':
@@ -146,9 +148,14 @@ export class ExportWriterService {
         : `${stem}.${this.flow.imageFormat}`;
     }
     const files = this.summary().files;
-    return files > 2 && this.flow.format !== 'xlsx'
-      ? `${stem}.zip`
-      : `${stem}${this.flow.extension()}`;
+    if (files > 2 && this.flow.format !== 'xlsx') return `${stem}.zip`;
+    // Two files arrive as two downloads, each carrying the suffix that tells
+    // them apart -- so name the first of them rather than the bare stem, which
+    // promised a `results.csv` where `results_M1.csv` and `results_M2.csv`
+    // landed. How many are coming is the line underneath.
+    const suffix = files > 1 ? this.tables.plan()[0]?.suffix : undefined;
+    const named = suffix ? `${stem}_${safe(suffix)}` : stem;
+    return `${named}${this.flow.extension()}`;
   }
 
   /**

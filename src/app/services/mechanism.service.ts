@@ -3639,6 +3639,13 @@ export class MechanismService {
     const reversed = this.mechanisms[index]?.withReversedDrive();
     if (reversed) {
       this.mechanisms[index] = reversed;
+      // A solved cycle has been replaced without going through
+      // `updateMechanism`, so say so. The graphs notice by object identity,
+      // but the export's sampled tables are cached against this counter --
+      // without the bump an export taken after reversing served the rates it
+      // had sampled before, every angular velocity still carrying the sign it
+      // had turned round from.
+      this.solveRevision++;
       // Through the cycle the other way, from where it stands.
       this.playbackDirection[index] = this.directionOf(index) < 0 ? 1 : -1;
     } else {
