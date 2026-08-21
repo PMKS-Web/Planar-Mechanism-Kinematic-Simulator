@@ -11,7 +11,6 @@ import { AnalyticsService } from '../../services/analytics.service';
 import { ExportFlowService, ExportStep } from '../../services/export/export-flow.service';
 import { ExportWriterService } from '../../services/export/export-writer.service';
 import {
-  ColumnTab,
   Decimals,
   ExportColumn,
   ExportFormat,
@@ -20,9 +19,10 @@ import {
 } from '../../services/export/export-model';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 
-/** One of the three questions, as the rule across the top draws it. */
+/** One of the questions, as the rule across the top draws it. */
 interface StepMark {
-  number: ExportStep;
+  step: ExportStep;
+  number: number;
   name: string;
 }
 
@@ -49,11 +49,21 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   private notify = inject(NotificationService);
   private analytics = inject(AnalyticsService);
 
-  readonly steps: StepMark[] = [
-    { number: 1, name: 'Parts' },
-    { number: 2, name: 'Columns' },
-    { number: 3, name: 'File' },
-  ];
+  /** The names the rule across the top puts on this drawing's questions. */
+  private readonly stepNames: Record<ExportStep, string> = {
+    parts: 'Parts',
+    kinematics: 'Kinematics',
+    forces: 'Forces',
+    file: 'File',
+  };
+
+  get steps(): StepMark[] {
+    return this.flow.steps().map((step, at) => ({
+      step,
+      number: at + 1,
+      name: this.stepNames[step],
+    }));
+  }
 
   /**
    * The four ways out, each with the line that says what it is for.
@@ -153,14 +163,17 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   // --- what the head says ---------------------------------------------------
 
   get lead(): string {
-    if (this.flow.step === 1) return 'Which parts do you want numbers for?';
-    if (this.flow.step === 3) return 'How should the file be written?';
+    if (this.flow.step === 'parts') return 'Which parts do you want numbers for?';
+    if (this.flow.step === 'file') return 'How should the file be written?';
     const names = this.flow.selectedParts().map((part) => part.label.replace(/^(Joint|Link) /, ''));
-    return names.length === 0 ? 'Nothing is selected yet.' : `Which numbers for ${list(names)}?`;
+    if (names.length === 0) return 'Nothing is selected yet.';
+    return this.flow.step === 'forces'
+      ? `Which forces for ${list(names)}?`
+      : `Which motion for ${list(names)}?`;
   }
 
   get countText(): string {
-    if (this.flow.step === 1) {
+    if (this.flow.step === 'parts') {
       return `${this.flow.selectedParts().length} of ${this.flow.offeredParts().length} parts`;
     }
     const tab = this.flow.tab;
@@ -170,7 +183,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   }
 
   get footNote(): string {
-    if (this.flow.step === 1) {
+    if (this.flow.step === 'parts') {
       const parts = this.flow.selectedParts().length;
       const machines = this.flow
         .mechanismIndexes()
@@ -181,11 +194,9 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
         ? 'Nothing chosen yet'
         : `${parts} ${parts === 1 ? 'part' : 'parts'}${machines ? ' · ' + machines : ''}`;
     }
-    if (this.flow.step === 2) {
-      const summary = this.writer.summary();
-      return `${Math.max(summary.columns - 1, 0)} columns · ${summary.rows} rows`;
-    }
-    return '';
+    if (this.flow.step === 'file') return '';
+    const summary = this.writer.summary();
+    return `${Math.max(summary.columns - 1, 0)} columns · ${summary.rows} rows`;
   }
 
   // --- step 1 ---------------------------------------------------------------
@@ -231,11 +242,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
     this.flow.setParts(this.flow.offeredParts(), picked);
   }
 
-  // --- step 2 ---------------------------------------------------------------
-
-  setTab(tab: ColumnTab): void {
-    this.flow.tab = tab;
-  }
+  // --- the column steps -----------------------------------------------------
 
   allColumnsOnTab(): ExportColumn[] {
     return this.flow.columnGroups(this.flow.tab).flatMap((group) => group.columns);
@@ -315,30 +322,37 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
 
   // --- moving between the steps --------------------------------------------
 
+  /**
+   * Whether Next leads anywhere from here.
+   *
+   * A column step never blocks: a reader who wants forces alone passes through
+   * the kinematics without ticking anything, and the file step is where having
+   * chosen nothing at all is finally in the way.
+   */
   canGoOn(): boolean {
-    if (this.flow.step === 1) return this.flow.selectedParts().length > 0;
-    if (this.flow.step === 2) return this.flow.selectedColumns().length > 0;
-    return this.flow.canExport();
+    if (this.flow.step === 'parts') return this.flow.selectedParts().length > 0;
+    if (this.flow.step === 'file') return this.flow.canExport();
+    return true;
   }
 
   next(): void {
     if (!this.canGoOn()) return;
-    if (this.flow.step === 3) {
+    const onward = this.flow.nextStep();
+    if (!onward) {
       void this.exportNow();
       return;
     }
-    this.flow.step = (this.flow.step + 1) as ExportStep;
-    if (this.flow.step === 2 && this.flow.tab === 'forces' && !this.flow.forcesAvailable()) {
-      this.flow.tab = 'kinematics';
-    }
+    this.flow.goTo(onward);
   }
 
   back(): void {
-    if (this.flow.step > 1) this.flow.step = (this.flow.step - 1) as ExportStep;
+    const behind = this.flow.previousStep();
+    if (behind) this.flow.goTo(behind);
   }
 
+  /** A question already answered is the way back to it; one not reached is not. */
   goTo(step: ExportStep): void {
-    if (step < this.flow.step) this.flow.step = step;
+    if (this.flow.isBehind(step)) this.flow.goTo(step);
   }
 
   async exportNow(): Promise<void> {

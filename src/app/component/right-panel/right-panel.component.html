@@ -100,7 +100,13 @@
          drawer so it paints over the panel it sits on: it shares a line with
          the title, and a title row drawn after it covered it up. -->
     @if (getIsOpen()) {
-      <button class="closeDrawer" (click)="close()" aria-label="Close" matTooltip="Close">
+      <button
+        class="closeDrawer"
+        (click)="close()"
+        aria-label="Close"
+        matTooltip="Close"
+        matTooltipShowDelay="600"
+      >
         <mat-icon>close</mat-icon>
       </button>
     }

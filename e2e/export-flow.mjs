@@ -60,6 +60,30 @@ async function grab(action) {
   return { name: download.suggestedFilename(), path };
 }
 
+/**
+ * Press Next until the file step is showing.
+ *
+ * How many questions the drawer asks depends on the drawing — a mechanism with
+ * force analysis set up is asked about forces and one without is not — so a
+ * fixed number of presses lands somewhere different in each.
+ */
+async function goToFile() {
+  for (let at = 0; at < 5; at++) {
+    if ((await drawer().locator('.formatBlock').count()) > 0) return;
+    await page.locator('.nextButton').click();
+    await page.waitForTimeout(450);
+  }
+}
+
+/** And back again, however many questions lie between here and the parts. */
+async function goToParts() {
+  for (let at = 0; at < 5; at++) {
+    if ((await drawer().locator('.mechHead').count()) > 0) return;
+    await drawer().locator('.backButton').click();
+    await page.waitForTimeout(350);
+  }
+}
+
 async function openDrawer() {
   await page.locator('.historyButton', { hasText: 'Export Data' }).click();
   await page.waitForTimeout(600);
@@ -116,8 +140,17 @@ record(
 await page.locator('.nextButton').click();
 await page.waitForTimeout(400);
 const step2 = await drawer().innerText();
+// Forces are a step of their own now, not a tab inside the columns.
 record(
-  'step 2 asks only about the quantities those parts have',
+  'the drawer asks a question per rule mark, with no tabs inside one of them',
+  (await drawer().locator('.stepName').allInnerTexts())
+    .map((mark) => mark.replace(/^check\s*/, '').trim())
+    .join(' | ') === '1. Parts | 2. Kinematics | 3. Forces | 4. File' &&
+    (await drawer().locator('.tabs').count()) === 0,
+  await drawer().locator('.stepName').allInnerTexts()
+);
+record(
+  'the kinematics step asks only about the quantities those parts have',
   step2.includes('Joint B') &&
     step2.includes('Link AB') &&
     step2.includes('Position') &&
@@ -143,10 +176,9 @@ record(
   await drawer().locator('.rowComponents').allInnerTexts()
 );
 
-await page.locator('.nextButton').click();
-await page.waitForTimeout(400);
+await goToFile();
 record(
-  'step 3 names the file it is about to write',
+  'the file step names the file it is about to write',
   (await drawer().locator('.summaryName').innerText()).endsWith('.csv'),
   await drawer().locator('.summaryName').innerText()
 );
@@ -369,6 +401,11 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(600);
 record(
+  'and the part picked on the canvas says so in the list, and stops when it is let go',
+  (await drawer().locator('.pickRow.onGrid').innerText()).includes('currently selected'),
+  await drawer().locator('.pickRow.onGrid').innerText()
+);
+record(
   'and the part picked on the canvas is marked in the list',
   (await drawer().locator('.pickRow.onGrid').count()) === 1 &&
     (await drawer()
@@ -484,10 +521,7 @@ record(
     (await drawer().locator('.footNote').innerText()).includes('M1'),
   await drawer().locator('.footNote').innerText()
 );
-await page.locator('.nextButton').click();
-await page.waitForTimeout(500);
-await page.locator('.nextButton').click();
-await page.waitForTimeout(500);
+await goToFile();
 record(
   'so the export is one file, for the machine that was asked about',
   (await drawer().locator('.summaryCard').innerText()).includes('One file'),
@@ -497,16 +531,10 @@ record(
 // Both machines' copies of the shared joint, as pictures. `Position of Joint D`
 // is the title under either of them, and two entries of one name in one archive
 // is one picture quietly writing over the other.
-await drawer().locator('.backButton').click();
-await page.waitForTimeout(300);
-await drawer().locator('.backButton').click();
-await page.waitForTimeout(300);
+await goToParts();
 await drawer().locator('.pickRow', { hasText: 'Joint D' }).nth(1).click();
 await page.waitForTimeout(300);
-await page.locator('.nextButton').click();
-await page.waitForTimeout(400);
-await page.locator('.nextButton').click();
-await page.waitForTimeout(300);
+await goToFile();
 await drawer().locator('.formatRow', { hasText: 'Graph images' }).click();
 await page.waitForTimeout(200);
 await drawer().locator('.segmented button', { hasText: 'SVG' }).click();
@@ -523,18 +551,12 @@ record(
 // two machines and enough parts between them to need an archive.
 await drawer().locator('.formatRow', { hasText: 'CSV' }).click();
 await page.waitForTimeout(300);
-await drawer().locator('.backButton').click();
-await page.waitForTimeout(300);
-await drawer().locator('.backButton').click();
-await page.waitForTimeout(300);
+await goToParts();
 
 // --- more than two files arrive as one download -----------------------------
 await drawer().locator('.linkButton', { hasText: 'Select all' }).click();
 await page.waitForTimeout(300);
-await page.locator('.nextButton').click();
-await page.waitForTimeout(500);
-await page.locator('.nextButton').click();
-await page.waitForTimeout(400);
+await goToFile();
 await drawer().locator('.segmented button', { hasText: 'Per part' }).click();
 await page.waitForTimeout(400);
 const archive = await grab(() => page.locator('.nextButton').click());
@@ -616,10 +638,7 @@ record(
 // One file each: two machines on two clocks cannot share a time column.
 await drawer().locator('.linkButton', { hasText: 'Select all' }).click();
 await page.waitForTimeout(200);
-await page.locator('.nextButton').click();
-await page.waitForTimeout(400);
-await page.locator('.nextButton').click();
-await page.waitForTimeout(400);
+await goToFile();
 record(
   'two machines are written as two files, because they run on two clocks',
   (await drawer().locator('.summaryCard').innerText()).includes('2 files'),

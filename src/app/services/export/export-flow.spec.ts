@@ -308,7 +308,7 @@ describe('the export drawer', () => {
       .flatMap((group) => group.parts)
       .find((part) => part.kind === 'link')!;
     flow.togglePart(link);
-    flow.tab = 'forces';
+    flow.step = 'forces';
     const columns = flow.columnGroups('forces').flatMap((group) => group.columns);
     expect(columns.length).toBeGreaterThan(1);
     expect(new Set(columns.map((column) => column.key)).size).toBe(columns.length);
@@ -389,7 +389,7 @@ describe('the export drawer', () => {
       .flatMap((group) => group.parts)
       .find((part) => (part.part as RealJoint).input)!;
     flow.togglePart(input);
-    flow.tab = 'forces';
+    flow.step = 'forces';
 
     const heads = tables.tables()[0].heads;
     expect(heads.some((head) => head.startsWith('Static force at'))).toBe(true);

@@ -127,51 +127,6 @@
       }
     }
 
-    .tabs {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      padding-top: 14px;
-      border-bottom: 1px solid #eceef5;
-    }
-
-    .tab {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 0 0 8px;
-      margin-bottom: -1px;
-      border: none;
-      border-bottom: 2px solid transparent;
-      background: transparent;
-      font-family: inherit;
-      font-size: 14px;
-      color: #5f6368;
-      cursor: pointer;
-
-      &.on {
-        border-bottom-color: $indigo;
-        font-weight: 500;
-        color: $indigo;
-      }
-    }
-
-    .tabCount {
-      display: inline-flex;
-      align-items: center;
-      height: 18px;
-      padding: 0 6px;
-      border-radius: 9px;
-      background: #eef0f4;
-      font-size: 11px;
-      color: #5f6368;
-    }
-
-    .tab.on .tabCount {
-      background: #e8eaf6;
-      color: $indigo;
-    }
-
     .countRow {
       display: flex;
       align-items: center;
@@ -455,22 +410,6 @@
       font-family: inherit;
       text-align: left;
       cursor: pointer;
-    }
-
-    // The same mark every field in the app carries, at the same size and the
-    // same weight: a reader who has learned what it means anywhere has learned
-    // it here. Asks the question rather than answering it in place, because
-    // four paragraphs under four formats is a page nobody reads to choose
-    // between them.
-    .label-help {
-      flex: 0 0 auto;
-      transform: scale(0.65);
-      color: rgba(0, 0, 0, 0.3);
-      cursor: help;
-
-      &:hover {
-        color: $indigo;
-      }
     }
 
     .radio {
