@@ -931,11 +931,11 @@
        of it is a question and a proposed answer rather than part of the
        drawing, which is why none of it goes through the mechanism's holders and
        none of it survives a tab change without being inserted first. -->
-  @if (showSynthesis()) {
-    <g id="synthesis" style="transform: scaleY(-1)">
+  @if (showSynthesisPositions()) {
+    <g id="synthesis" style="transform: scaleY(-1)" [class.shadow]="synthesisShadowOnly()">
       <!-- Where the ground pivots have to land, if that has been asked for.
            Under the parts: it is a constraint on the answer, not the answer. -->
-      @if (synthCanvas.regionBox(); as region) {
+      @if (showSynthesis() && synthCanvas.regionBox(); as region) {
         <g id="synthesisRegion">
           <rect
             class="synthRegion"
@@ -963,7 +963,7 @@
       }
 
       <!-- Drawing a new region: the whole canvas is the target. -->
-      @if (synthesisBuilder.regionDraw) {
+      @if (showSynthesis() && synthesisBuilder.regionDraw) {
         <rect
           class="synthDrawSurface"
           x="-100000"
@@ -976,7 +976,7 @@
 
       <!-- The candidate that is picked, faded, while another is hovered: the
            gallery's whole job is a comparison, and a comparison needs both. -->
-      @if (synthCanvas.hoverGhostLinks(); as ghosts) {
+      @if (showSynthesis() && synthCanvas.hoverGhostLinks(); as ghosts) {
         <g class="synthGhostLinkage" pointer-events="none">
           @for (lk of ghosts; track $index) {
             <line
@@ -993,7 +993,7 @@
       }
 
       <!-- Where the middle of the coupler goes over the whole of the travel. -->
-      @if (mechanismSrv.showPathHolder || synthSolution.generated) {
+      @if (showSynthesis() && synthSolution.generated) {
         <path
           class="synthTrace"
           pointer-events="none"
@@ -1004,6 +1004,7 @@
       }
 
       <!-- The candidate itself, at whatever the transport has been scrubbed to. -->
+      @if (showSynthesis()) {
       <g id="synthesisPreview" pointer-events="none">
         @for (lk of synthCanvas.previewLinks(); track $index) {
           <line
@@ -1041,12 +1042,17 @@
           />
         }
       </g>
+      }
 
       <!-- The positions being designed for, tinted by what the chosen linkage
            does with each: green it passes through, amber it can only reach by
            being taken apart. -->
       @for (bar of synthCanvas.poseBars(); track bar.id) {
-        <g class="synthPose" (pointerdown)="startPoseGesture($event, bar.id, 'move')">
+        <g
+          class="synthPose"
+          (pointerdown)="startPoseGesture($event, bar.id, 'move')"
+          (contextmenu)="setLastRightClick(synthesisBuilder.getPose(bar.id), $event)"
+        >
           <line
             [attr.x1]="bar.x1"
             [attr.y1]="bar.y1"
@@ -1083,7 +1089,7 @@
       }
 
       <!-- The bar about to be dropped, following the pointer. -->
-      @if (synthCanvas.ghostBar(); as ghost) {
+      @if (showSynthesis() && synthCanvas.ghostBar(); as ghost) {
         <g class="synthGhost" pointer-events="none">
           <line
             [attr.x1]="ghost.x1"
@@ -1109,7 +1115,7 @@
       <!-- The handles on the selected position: the same dashed box, corner
            grips and turn knob the tracing underlay wears, because it is the
            same kind of gesture. Its corners pull the end-effector's length. -->
-      @if (synthCanvas.selectionBox(); as box) {
+      @if (showSynthesis() && synthCanvas.selectionBox(); as box) {
         <g id="synthesisHandles" [attr.transform]="box.rotate">
           <rect
             class="synthOutline"
@@ -1155,7 +1161,11 @@
       }
 
       <!-- What the chosen linkage does with each position, said beside it, so
-           the answer can be read off the grid rather than off the panel. -->
+           the answer can be read off the grid rather than off the panel. Only
+           in Synthesis: the verdict belongs to the candidate being compared,
+           and the shadow left in the other modes is a record of where the
+           positions were, not of which solution won. -->
+      @if (showSynthesis()) {
       <g id="synthesisChips" pointer-events="none">
         @for (chip of synthCanvas.poseChips(); track chip.id) {
           <!-- Placed in model coordinates, then flipped back so the words read
@@ -1201,9 +1211,10 @@
           </g>
         }
       </g>
+      }
 
       <!-- What the next click will do, beside the pointer that will do it. -->
-      @if (synthesisHint; as hint) {
+      @if (showSynthesis() && synthesisHint; as hint) {
         <g
           pointer-events="none"
           [attr.transform]="'translate(' + hint.x + ',' + hint.y + ') scale(1,-1)'"

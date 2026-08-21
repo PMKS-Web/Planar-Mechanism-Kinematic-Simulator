@@ -155,7 +155,7 @@ export class NewGridComponent implements OnDestroy {
 
   private svgGridElement!: HTMLElement;
   public cMenuItems: cMenuItem[] = [];
-  public lastRightClick: Joint | Link | Force | string = '';
+  public lastRightClick: Joint | Link | Force | string | SynthesisPose = '';
   public lastRightClickCoord: Coord = new Coord(0, 0);
 
   public lastLeftClick: Joint | Link | Force | string | SynthesisPose = '';
@@ -356,9 +356,75 @@ export class NewGridComponent implements OnDestroy {
     //This is for debug purposes, do not make anything else static!
   }
 
-  // whether to show the synthesis poses
+  /** Whether Synthesis owns the canvas: its handles, ghost and preview. */
   showSynthesis(): boolean {
     return this.tabService.getCurrentTab() === TabID.SYNTHESIZE;
+  }
+
+  /**
+   * Whether the positions are on the grid at all.
+   *
+   * They outlive the mode. A design that has produced a linkage is the record
+   * of what that linkage was *for*, and hiding it the moment the reader goes to
+   * look at the motion leaves them with a machine and no account of it. Outside
+   * Synthesis they are a shadow -- faint, and not in the way of anything -- and
+   * the canvas menu is where they are taken away.
+   */
+  showSynthesisPositions(): boolean {
+    return this.showSynthesis() || this.synthesisBuilder.getAllPoses().length > 0;
+  }
+
+  /** Positions drawn, but as a record rather than as controls. */
+  synthesisShadowOnly(): boolean {
+    return !this.showSynthesis();
+  }
+
+  /**
+   * What can be done to the synthesis positions from here.
+   *
+   * The only part of this menu offered in every mode, because the positions
+   * themselves are drawn in every mode. They are a note about what the linkage
+   * was designed to do rather than a part of it, so clearing them is not an
+   * edit to the mechanism and does not have to wait for the start pose.
+   */
+  private synthesisMenuItems(): cMenuItem[] {
+    if (this.synthesisBuilder.getAllPoses().length === 0) return [];
+    const items: cMenuItem[] = [];
+    if (this.objectKind(this.lastRightClick) === 'SynthesisPose') {
+      const pose = this.lastRightClick as SynthesisPose;
+      items.push(
+        new cMenuItem(
+          `Delete Position ${pose.id}`,
+          () => this.deleteSynthesisPosition(pose.id),
+          'trash',
+          false,
+          true
+        )
+      );
+    }
+    items.push(
+      new cMenuItem(
+        'Delete Synthesis Positions',
+        () => this.deleteAllSynthesisPositions(),
+        'remove',
+        false,
+        true
+      )
+    );
+    return items;
+  }
+
+  /** Take one position away, or all of them, and record it as one step. */
+  deleteSynthesisPosition(id: number): void {
+    this.synthesisBuilder.removePose(id);
+    this.synthSolution.invalidate();
+    this.mechanismSrv.save();
+  }
+
+  deleteAllSynthesisPositions(): void {
+    this.synthesisBuilder.deleteAllPoses();
+    this.synthSolution.invalidate();
+    this.mechanismSrv.save();
   }
 
   enableGridAnimationForThisAction() {
@@ -502,7 +568,7 @@ export class NewGridComponent implements OnDestroy {
         break;
       }
       case 'RevJoint': {
-        let jointIsSlider = this.gridUtils.isAttachedToSlider(this.lastRightClick);
+        let jointIsSlider = this.gridUtils.isAttachedToSlider(this.lastRightClick as RealJoint);
         let jointIsGround = (this.lastRightClick as RealJoint).ground;
         let canToggleInput = this.gridUtils.canToggleInput(this.lastRightClick as RealJoint);
         const jointIsInput = this.gridUtils.isVisuallyInput(this.lastRightClick as RealJoint);
@@ -633,10 +699,14 @@ export class NewGridComponent implements OnDestroy {
         // allowed -- that direction takes a body away.
         this.cMenuItems.push(
           new cMenuItem(
-            this.gridUtils.isAttachedToSlider(this.lastRightClick) ? 'Remove Slider' : 'Add Slider',
+            this.gridUtils.isAttachedToSlider(this.lastRightClick as RealJoint)
+              ? 'Remove Slider'
+              : 'Add Slider',
             this.mechanismSrv.toggleSlider.bind(this.mechanismSrv),
-            this.gridUtils.isAttachedToSlider(this.lastRightClick) ? 'remove_slider' : 'add_slider',
-            jointIsInput && !this.gridUtils.isAttachedToSlider(this.lastRightClick)
+            this.gridUtils.isAttachedToSlider(this.lastRightClick as RealJoint)
+              ? 'remove_slider'
+              : 'add_slider',
+            jointIsInput && !this.gridUtils.isAttachedToSlider(this.lastRightClick as RealJoint)
           )
         ); //Rev Joint - Always
 
@@ -656,7 +726,13 @@ export class NewGridComponent implements OnDestroy {
         break;
       }
 
+      case 'SynthesisPose':
+        this.cMenuItems.push(...this.synthesisMenuItems());
+        break;
       case 'String': //This means grid
+        // The positions stay on the grid after the linkage is inserted, in
+        // every mode, so the way to be rid of them is reachable from every mode.
+        this.cMenuItems.push(...this.synthesisMenuItems());
         this.cMenuItems.push(
           new cMenuItem('Add Link', this.startCreatingLink.bind(this), 'new_link')
         );
@@ -1024,7 +1100,7 @@ export class NewGridComponent implements OnDestroy {
     this.mechanismSrv.createCylinderFrom(start, end, mountOn, mountAt);
   }
 
-  setLastRightClick(clickedObj: Joint | Link | string | Force, event?: MouseEvent) {
+  setLastRightClick(clickedObj: Joint | Link | string | Force | SynthesisPose, event?: MouseEvent) {
     this.lastRightClick = clickedObj;
     // The edit context menu acts on the selected object, so in Edit mode a
     // right-click selects what it will target. In Analyze/Synthesis mode a
@@ -2057,23 +2133,14 @@ export class NewGridComponent implements OnDestroy {
   }
 
   onContextMenu($event: MouseEvent) {
-    if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
-      this.cMenuItems = [];
-      return;
-    }
-
-    if (this.tabService.isAnalysisMode()) {
-      // Both analysis modes are read-only. Show no edit menu; setLastRightClick
-      // has already declined to change the selection.
-      this.cMenuItems = [];
-      return;
-    }
-
-    if (this.mechanismSrv.isPlaying == true) {
-      this.cMenuItems = [];
-      return;
-    }
-    if (this.mechanismSrv.mechanismTimeStep !== 0) {
+    // Everything on this menu except the synthesis positions edits the drawing,
+    // and only Edit does that -- setLastRightClick has already declined to move
+    // the selection in the other modes. The positions are drawn in every mode
+    // though, so the way to clear them away comes with them.
+    if (this.tabService.getCurrentTab() !== TabID.EDIT) {
+      this.cMenuItems = this.synthesisMenuItems();
+      if (this.cMenuItems.length === 0) return;
+    } else if (this.mechanismSrv.isPlaying || this.mechanismSrv.mechanismTimeStep !== 0) {
       this.cMenuItems = [];
       //Close the MatContextMenu
       return;
@@ -2098,6 +2165,7 @@ export class NewGridComponent implements OnDestroy {
       // On the release rather than the press so svg-pan-zoom keeps its own
       // gesture: a press it never sees is a canvas that cannot be panned.
       if (
+        $event.button === 0 &&
         !wasDragging &&
         !this.synthPressTaken &&
         this.synthesisBuilder.armed &&

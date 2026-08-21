@@ -2,9 +2,10 @@ import { Injectable, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { Coord } from 'src/app/model/coord';
 import { RealLink } from 'src/app/model/link';
-import { RevJoint } from 'src/app/model/joint';
+import { RealJoint, RevJoint } from 'src/app/model/joint';
 import { MechanismService } from '../mechanism.service';
 import { ColorService } from '../color.service';
+import { MODEL_SCALE } from 'src/app/model/render-scale';
 import { SynthesisBuilderService } from './synthesis-builder.service';
 import { driverDyadFor, DriverDyad } from './driver-dyad';
 import {
@@ -40,6 +41,15 @@ import {
  */
 const MIN_SEARCH_VISIBLE_MS = 1100;
 
+/**
+ * How far a joint has to have moved to count as moved by hand.
+ *
+ * A tenth of a user unit. Solving is deterministic, so an untouched linkage
+ * comes back at exactly the coordinates it was written at; this is only here so
+ * that floating-point drift through a rebuild cannot read as an edit.
+ */
+const MOVED_BY_HAND = 0.1 * MODEL_SCALE;
+
 @Injectable({ providedIn: 'root' })
 export class SynthesisSolutionService {
   private design = inject(SynthesisBuilderService);
@@ -71,11 +81,16 @@ export class SynthesisSolutionService {
   public playing = false;
   public clockwise = true;
 
-  /** Whether this design has been committed to the drawing. */
-  public inserted = false;
-
-  /** What the last insert put on the grid, so it can be taken back. */
-  private insertedIds: { joints: string[]; links: string[] } = { joints: [], links: [] };
+  /**
+   * Where each joint stood when synthesis last wrote it.
+   *
+   * The one thing that cannot be derived from the drawing: whether the linkage
+   * on the grid is still the one synthesis produced, or one the reader has
+   * since moved by hand. Held in memory only -- after a reload there is nothing
+   * to compare against, and the honest default there is to assume nothing has
+   * been touched rather than to nag about an edit that may never have happened.
+   */
+  private writtenAt = new Map<string, { x: number; y: number }>();
 
   private cacheKey = '';
   private cached: FourBarCandidate[] = [];
@@ -114,7 +129,6 @@ export class SynthesisSolutionService {
   /** A change that leaves the candidates standing -- a different pick, say. */
   private touch(): void {
     this.phase = null;
-    this.inserted = false;
     this.changed.next();
   }
 
@@ -263,19 +277,6 @@ export class SynthesisSolutionService {
     this.changed.next();
   }
 
-  /**
-   * Let go of the linkage a previous visit inserted, without removing it.
-   *
-   * Called on entering the tab. What was inserted is part of the drawing now,
-   * like anything else drawn by hand -- offering to undo it a session later,
-   * from a panel that has since been reset, would take away a machine the
-   * reader has been working on.
-   */
-  forgetInsert(): void {
-    this.insertedIds = { joints: [], links: [] };
-    this.inserted = false;
-  }
-
   /** Take back everything: the answer and the question both. */
   reset(): void {
     this.invalidate();
@@ -283,8 +284,7 @@ export class SynthesisSolutionService {
     this.driveOnFarPin = false;
     this.driverRefusal = undefined;
     this.showAll = false;
-    this.inserted = false;
-    this.insertedIds = { joints: [], links: [] };
+    this.releaseOwnership();
   }
 
   // --- committing to the drawing -----------------------------------------
@@ -299,18 +299,104 @@ export class SynthesisSolutionService {
   }
 
   /**
-   * Put the chosen solution on the grid, as a machine of its own.
+   * What the design owns on the grid right now.
+   *
+   * Three states worth telling apart, because each calls for something
+   * different:
+   *
+   *   'none'        nothing of ours is there -- the first insert, or the
+   *                 reader deleted it, or Undo stepped back past it.
+   *   'ours'        exactly what we wrote, untouched. Insert may replace it
+   *                 without asking: it is our own previous answer.
+   *   'edited'      still ours, still separable, but moved by hand. Replacing
+   *                 it would throw that work away, so the reader chooses.
+   *   'entangled'   joined to something else in the drawing, or half deleted.
+   *                 We can no longer take it back cleanly, so we stop claiming
+   *                 it and the next insert makes a new machine.
+   */
+  ownership(): 'none' | 'ours' | 'edited' | 'entangled' {
+    const ids = new Set(this.design.ownedJointIds);
+    if (ids.size === 0) return 'none';
+    const owned = this.mechanismSrv.joints.filter((joint) => ids.has(joint.id));
+    if (owned.length === 0) return 'none';
+    if (owned.length !== ids.size) return 'entangled';
+    // A joint of ours pinned to a joint that is not ours means the two machines
+    // have been joined. Taking ours back would either leave a link hanging off
+    // nothing or cut into a machine that was never ours to touch.
+    const joinedOutward = owned.some((joint) =>
+      (joint as RealJoint).connectedJoints?.some((other) => !ids.has(other.id))
+    );
+    if (joinedOutward) return 'entangled';
+    if (this.writtenAt.size === 0) return 'ours';
+    const moved = owned.some((joint) => {
+      const was = this.writtenAt.get(joint.id);
+      return !was || Math.hypot(joint.x - was.x, joint.y - was.y) > MOVED_BY_HAND;
+    });
+    return moved ? 'edited' : 'ours';
+  }
+
+  /** Whether the design's own linkage is on the grid, in any condition. */
+  get inserted(): boolean {
+    const state = this.ownership();
+    return state === 'ours' || state === 'edited';
+  }
+
+  /**
+   * Whether the linkage on the grid is a different solution from the one on
+   * screen -- so Insert would change the drawing rather than confirm it.
+   */
+  needsReinsert(): boolean {
+    const cand = this.driven();
+    if (!cand || this.ownership() === 'none') return true;
+    const solved = solveFourBar(cand, cand.thetas[0], cand.sign);
+    if (!solved) return true;
+    const owned = new Map(
+      this.mechanismSrv.joints
+        .filter((joint) => this.design.ownedJointIds.includes(joint.id))
+        .map((joint) => [joint.id, joint])
+    );
+    // The four pins the four-bar would be built from, in the order insert
+    // writes them. Anything else on the grid under our ids means a different
+    // answer is standing there.
+    const wanted = [solved.A, solved.B, solved.C, solved.D];
+    const ids = this.design.ownedJointIds;
+    if (owned.size < wanted.length) return true;
+    return wanted.some((point, i) => {
+      const joint = owned.get(ids[i]);
+      return !joint || Math.hypot(joint.x - point.x, joint.y - point.y) > MOVED_BY_HAND;
+    });
+  }
+
+  /** Stop claiming the linkage on the grid, without removing it. */
+  releaseOwnership(): void {
+    this.design.ownedJointIds = [];
+    this.writtenAt.clear();
+    this.changed.next();
+  }
+
+  /**
+   * Put the chosen solution on the grid, replacing the one this design put
+   * there last time.
    *
    * The one moment synthesis writes to the drawing. It builds the whole
    * linkage -- driver included -- before handing it over, so that one solve
    * sees the finished six-bar rather than a four-bar that grows a motor a
    * frame later.
+   *
+   * Returns 'edited' without writing anything when replacing would throw away
+   * work done by hand; the caller asks, and calls again with `force` if the
+   * answer is yes.
    */
-  insert(): boolean {
+  insert(force = false): 'done' | 'edited' | 'nothing' {
     const cand = this.driven();
-    if (!cand || this.inserted) return false;
+    if (!cand) return 'nothing';
     const solution = solveFourBar(cand, cand.thetas[0], cand.sign);
-    if (!solution) return false;
+    if (!solution) return 'nothing';
+
+    const held = this.ownership();
+    if (held === 'edited' && !force) return 'edited';
+    if (held === 'entangled') this.releaseOwnership();
+    else if (held !== 'none') this.removeOwned();
 
     const dyad = this.dyad();
     const [idA, idB, idC, idD, idE, idF] = this.nextLetters(6);
@@ -375,16 +461,37 @@ export class SynthesisSolutionService {
 
     this.mechanismSrv.mergeToJoints(joints);
     this.mechanismSrv.mergeToLinks(links);
-    this.insertedIds = {
-      joints: joints.map((j) => j.id),
-      links: links.map((l) => l.id),
-    };
-    this.inserted = true;
+    this.design.ownedJointIds = joints.map((joint) => joint.id);
+    this.writtenAt = new Map(joints.map((joint) => [joint.id, { x: joint.x, y: joint.y }]));
     this.playing = false;
     this.mechanismSrv.mechanismTimeStep = 0;
     this.mechanismSrv.updateMechanism(true);
     this.changed.next();
-    return true;
+    return 'done';
+  }
+
+  /**
+   * Take the design's own linkage off the grid.
+   *
+   * By id, and only links every one of whose joints is ours -- a link that
+   * reaches outward belongs half to something else, and `ownership()` has
+   * already refused to call that ours. Forces on a removed link go with it: a
+   * force on a link that no longer exists belongs to no mechanism.
+   */
+  private removeOwned(): void {
+    const ids = new Set(this.design.ownedJointIds);
+    const goneLinks = new Set(
+      this.mechanismSrv.links
+        .filter((link) => link.joints.every((joint) => ids.has(joint.id)))
+        .map((link) => link.id)
+    );
+    this.mechanismSrv.forces = this.mechanismSrv.forces.filter(
+      (force) => !goneLinks.has(force.link?.id ?? '')
+    );
+    this.mechanismSrv.links = this.mechanismSrv.links.filter((link) => !goneLinks.has(link.id));
+    this.mechanismSrv.joints = this.mechanismSrv.joints.filter((joint) => !ids.has(joint.id));
+    this.design.ownedJointIds = [];
+    this.writtenAt.clear();
   }
 
   /**
@@ -396,23 +503,11 @@ export class SynthesisSolutionService {
    * longer exists belongs to no mechanism.
    */
   undoInsert(): void {
-    const { joints, links } = this.insertedIds;
-    if (!joints.length && !links.length) {
-      this.inserted = false;
-      this.changed.next();
+    if (this.ownership() === 'none') {
+      this.releaseOwnership();
       return;
     }
-    const goneLinks = new Set(links);
-    const goneJoints = new Set(joints);
-    this.mechanismSrv.forces = this.mechanismSrv.forces.filter(
-      (force) => !goneLinks.has(force.link?.id ?? '')
-    );
-    this.mechanismSrv.links = this.mechanismSrv.links.filter((link) => !goneLinks.has(link.id));
-    this.mechanismSrv.joints = this.mechanismSrv.joints.filter(
-      (joint) => !goneJoints.has(joint.id)
-    );
-    this.insertedIds = { joints: [], links: [] };
-    this.inserted = false;
+    this.removeOwned();
     this.mechanismSrv.updateMechanism(true);
     this.changed.next();
   }

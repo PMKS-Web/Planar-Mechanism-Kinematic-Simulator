@@ -69,6 +69,22 @@ export class SynthesisBuilderService {
   public constrain = false;
 
   /** The region, in model units, as a box with its origin at bottom-left. */
+  /**
+   * Which joints on the grid this design put there.
+   *
+   * Synthesis keeps hold of what it inserted so that the loop the mode is for
+   * -- tweak a position, search again, insert -- revises one machine rather
+   * than leaving a trail of them. By id, so it can never reach anything else
+   * in a drawing that holds several.
+   *
+   * It rides in the URL with the rest of the design, for two reasons. Undo
+   * steps the drawing back past an insert, and ownership has to step back with
+   * it or the panel claims a machine that is no longer there. And a reload has
+   * to come back holding what it held, or the next Insert quietly makes a
+   * duplicate of the linkage already on the grid.
+   */
+  public ownedJointIds: string[] = [];
+
   public region = {
     x: -6 * MODEL_SCALE,
     y: -14 * MODEL_SCALE,
@@ -376,6 +392,7 @@ export class SynthesisBuilderService {
     this.endsOnly = true;
     this.allowDefect = false;
     this.constrain = false;
+    this.ownedJointIds = [];
     this.valueChanges.next(true);
   }
 
@@ -395,6 +412,7 @@ export class SynthesisBuilderService {
     stage: 'chooser' | 'working';
     poses: { at: Coord; thetaDegrees: number }[];
     region?: { x: number; y: number; w: number; h: number };
+    ownedJointIds: string[];
   }): void {
     this._COR = decoded.reference;
     this._length = decoded.length > 0 ? decoded.length : 5 * MODEL_SCALE;
@@ -404,6 +422,7 @@ export class SynthesisBuilderService {
     this.stage = decoded.stage;
     this.armed = false;
     this.regionDraw = false;
+    this.ownedJointIds = decoded.ownedJointIds;
     if (decoded.region) this.region = decoded.region;
 
     this.poses = {};

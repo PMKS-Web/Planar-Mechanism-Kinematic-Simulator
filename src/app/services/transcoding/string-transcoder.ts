@@ -701,16 +701,19 @@ export class StringTranscoder extends GenericTranscoder {
    * like every other trailing section.
    */
   private validateDecodedSynthesis(): void {
-    const expected: { [tag: string]: number } = { SD: 3, SP: 3, SR: 4, SC: 3 };
+    // Field counts per entry. `SO` is the one that varies: it lists the joints
+    // the design owns, and how many there are depends on the linkage.
+    const expected: { [tag: string]: number } = { SD: 3, SP: 3, SR: 4 };
     let positions = 0;
     this.synthesisMarks.forEach((entry) => {
       const tag = entry.substring(0, 2);
       const count = expected[tag];
-      if (count === undefined) {
+      if (count === undefined && tag !== 'SO') {
         throw new Error('URL contains an unknown synthesis entry');
       }
       const parts = entry.substring(2).split('~').slice(1);
-      if (parts.length !== count || parts.some((part) => part === '')) {
+      const enough = tag === 'SO' ? parts.length >= 1 : parts.length === count;
+      if (!enough || parts.some((part) => part === '')) {
         throw new Error('URL contains an incomplete synthesis entry');
       }
       if (tag === 'SP') positions++;

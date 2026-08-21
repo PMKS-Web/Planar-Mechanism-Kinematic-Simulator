@@ -15,7 +15,7 @@ import { COR, SynthesisPose } from './synthesis-util';
  *   SD~[length]~[reference]~[flags]   the design as a whole
  *   SP~[x]~[y]~[angle]                one position, in the order they were placed
  *   SR~[x]~[y]~[width]~[height]       the ground-pivot region, only when required
- *   SC~[pinA]~[pinB]~[branch]         which candidate was being looked at
+ *   SO~[id]~[id]...                   the joints this design put on the grid
  *
  * Numbers are base-N to three decimals, like every other number in this format,
  * and lengths are in the user's own units -- the internal world is MODEL_SCALE
@@ -57,7 +57,8 @@ export function encodeSynthesisDesign(design: SynthesisBuilderService): string[]
     design.stage === 'chooser' &&
     design.endsOnly &&
     !design.allowDefect &&
-    !design.constrain;
+    !design.constrain &&
+    design.ownedJointIds.length === 0;
   if (untouched) return [];
 
   const marks = [
@@ -85,6 +86,12 @@ export function encodeSynthesisDesign(design: SynthesisBuilderService): string[]
   if (design.constrain) {
     const r = design.region;
     marks.push('SR~' + length(r.x) + '~' + length(r.y) + '~' + length(r.w) + '~' + length(r.h));
+  }
+
+  // What this design owns on the grid, so undo and a reload both come back
+  // holding it. Ids are letters, which nothing here needs to encode.
+  if (design.ownedJointIds.length) {
+    marks.push('SO~' + design.ownedJointIds.join('~'));
   }
 
   return marks;
@@ -128,5 +135,6 @@ export function applySynthesisDesign(marks: string[], design: SynthesisBuilderSe
       const [x, y, w, h] = entry.substring(3).split('~');
       return { x: unlength(x), y: unlength(y), w: unlength(w), h: unlength(h) };
     })(),
+    ownedJointIds: (marks.find((mark) => mark.startsWith('SO~')) ?? '').split('~').slice(1),
   });
 }

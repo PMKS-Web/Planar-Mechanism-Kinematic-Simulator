@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MechanismService } from '../../services/mechanism.service';
+import { NotificationService } from '../../services/notification.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
 import { SynthesisSolutionService } from 'src/app/services/synthesis/synthesis-solution.service';
 import { NumberUnitParserService } from 'src/app/services/number-unit-parser.service';
@@ -73,6 +74,7 @@ const HELP = {
 export class SynthesisPanelComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   mechanismSrv = inject(MechanismService);
+  private notify = inject(NotificationService);
   design = inject(SynthesisBuilderService);
   solution = inject(SynthesisSolutionService);
   private nup = inject(NumberUnitParserService);
@@ -105,10 +107,6 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   regionForm = this.fb.group({ rx: [''], ry: [''], rw: [''], rh: [''] }, { updateOn: 'blur' });
 
   ngOnInit(): void {
-    // Entering the tab. Whatever a previous visit left on the grid belongs to
-    // the drawing now, so this visit's Insert makes a new machine rather than
-    // offering to take back one the reader may have been editing since.
-    this.solution.forgetInsert();
     this.readFromModel();
 
     this.subs.push(
@@ -836,12 +834,54 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
 
   // --- committing ----------------------------------------------------------
 
+  /**
+   * Insert is offered whenever there is a solution to insert.
+   *
+   * It used to switch off once something had been inserted, which made the
+   * mode a one-shot: the whole point of comparing seven linkages is to try one,
+   * look at it, and try the next. Inserting again revises the machine this
+   * design already put on the grid rather than adding another.
+   */
   get canInsert(): boolean {
-    return this.hasSolution && !this.solution.inserted;
+    return this.hasSolution;
   }
 
-  insert(): void {
-    this.solution.insert();
+  get insertLabel(): string {
+    if (!this.solution.inserted) return 'Insert into grid';
+    return this.solutionIsOnGrid ? 'Inserted into grid' : 'Replace on grid';
+  }
+
+  /** Whether what is on the grid is the solution now being looked at. */
+  get solutionIsOnGrid(): boolean {
+    return this.solution.inserted && !this.solution.needsReinsert();
+  }
+
+  insert(force = false): void {
+    const outcome = this.solution.insert(force);
+    if (outcome === 'edited') {
+      // Not a refusal and not a silent overwrite. The reader moved those joints
+      // by hand, and only they know whether that work still matters -- so the
+      // two things they could mean are on the message.
+      this.notify.warning(
+        'synthesis.replace-edited',
+        `${this.solutionName} would replace the linkage on the grid, and it has been moved by ` +
+          `hand since Synthesis put it there. Those changes would be lost.`,
+        {
+          actions: [
+            { label: 'Replace it', run: () => this.insert(true) },
+            {
+              label: 'Keep it, insert a new one',
+              run: () => {
+                this.solution.releaseOwnership();
+                this.insert();
+              },
+            },
+          ],
+        }
+      );
+      return;
+    }
+    if (outcome === 'done') this.record();
   }
 
   undoInsert(): void {
@@ -850,7 +890,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
 
   insertedNote(): string {
     const kind = this.solution.dyad() ? 'six-bar' : 'four-bar';
-    return `Left on the grid as a ${kind}. Kinematic Analysis can run it now.`;
+    return `Left on the grid as a ${kind}. Change a position and insert again to revise it.`;
   }
 
   deleteAll(): void {

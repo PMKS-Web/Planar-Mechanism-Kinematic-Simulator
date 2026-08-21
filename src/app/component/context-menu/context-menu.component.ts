@@ -11,12 +11,29 @@ export class cMenuItem {
   };
   public icon: string = 'none';
   public disabled: boolean = false;
+  /**
+   * Whether this item works away from the start pose.
+   *
+   * Almost nothing does: editing a mechanism that is parked mid-cycle would
+   * write the pose it is standing in back into the drawing. The exceptions are
+   * items that do not touch the mechanism at all -- the synthesis positions are
+   * a note about what it was designed for, not a part of it, and there is no
+   * reason a reader watching the motion cannot clear them away.
+   */
+  public alwaysAllowed: boolean = false;
 
-  constructor(_label: string, _action: Function, _icon: string, _disabled: boolean = false) {
+  constructor(
+    _label: string,
+    _action: Function,
+    _icon: string,
+    _disabled: boolean = false,
+    _alwaysAllowed: boolean = false
+  ) {
     this.label = _label;
     this.action = _action;
     this.icon = _icon;
     this.disabled = _disabled;
+    this.alwaysAllowed = _alwaysAllowed;
   }
 
   actionWrapper() {
@@ -24,7 +41,7 @@ export class cMenuItem {
     // transport says where the mechanism is parked, and it said the wrong thing
     // anyway -- the test here is the timestep, and the message it showed was
     // the one about the animation running, which it need not be.
-    if (NewGridComponent.instance.mechanismSrv.mechanismTimeStep !== 0) {
+    if (!this.alwaysAllowed && NewGridComponent.instance.mechanismSrv.mechanismTimeStep !== 0) {
       return;
     }
     this.action();

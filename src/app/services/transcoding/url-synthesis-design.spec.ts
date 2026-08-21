@@ -73,6 +73,7 @@ function worked(): SynthesisBuilderService {
       { at: new Coord(7 * S, 7.5 * S), thetaDegrees: 61.25 },
     ],
     region: { x: -3 * S, y: -8 * S, w: 14 * S, h: 9 * S },
+    ownedJointIds: ['E', 'F', 'G', 'H'],
   });
   return design;
 }
@@ -130,12 +131,24 @@ describe('a synthesis design in the URL', () => {
     expect(restored.getAllPoses()[0].position.y).toBeCloseTo(2 * S, 3);
   });
 
+  it('brings back the joints the design owns on the grid', () => {
+    const restored = decodeInto(encode(worked()));
+    expect(restored.ownedJointIds).toEqual(['E', 'F', 'G', 'H']);
+  });
+
+  it('says nothing about ownership when the design has inserted nothing', () => {
+    const nothingInserted = worked();
+    nothingInserted.ownedJointIds = [];
+    expect(encode(nothingInserted)).not.toContain('SO~');
+  });
+
   it('clears a design that the URL being read does not have', () => {
     const restored = worked();
     applySynthesisDesign([], restored);
     expect(restored.getAllPoses().length).toBe(0);
     expect(restored.stage).toBe('chooser');
     expect(restored.endsOnly).toBe(true);
+    expect(restored.ownedJointIds).toEqual([]);
   });
 
   it('refuses a URL whose design is incomplete rather than half-reading it', () => {

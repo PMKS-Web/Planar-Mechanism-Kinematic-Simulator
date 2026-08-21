@@ -200,6 +200,20 @@
     cursor: move;
   }
 
+  // Outside Synthesis the positions are a record rather than a control: what
+  // the linkage on the grid was designed to do, kept beside it. Faint, and out
+  // of the way of every click -- a bar this size left hit-testable would sit
+  // over whatever is beneath it and swallow presses meant for a real part. The
+  // canvas menu is how they are taken away from here.
+  #synthesis.shadow {
+    opacity: 0.4;
+    pointer-events: none;
+
+    .synthPose {
+      cursor: default;
+    }
+  }
+
   .synthPosePin {
     fill: #ffecb2;
     stroke: rgba(0, 0, 0, 0.4);

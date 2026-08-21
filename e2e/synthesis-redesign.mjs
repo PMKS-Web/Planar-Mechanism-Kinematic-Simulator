@@ -326,6 +326,108 @@ check(
   await status()
 );
 
+// --- the positions outlive the mode -------------------------------------
+await page.locator('.tabButton', { hasText: 'Kinematic Analysis' }).click();
+await page.waitForTimeout(900);
+check(
+  'the positions are still drawn once the reader goes to look at the motion',
+  (await page.locator('#synthesis .synthPose').count()) === 3,
+  await page.locator('#synthesis .synthPose').count()
+);
+check(
+  'as a shadow rather than as controls',
+  (await page.locator('#synthesis.shadow').count()) === 1,
+  await page.evaluate(
+    () => document.querySelector('#synthesis')?.getAttribute('class') ?? 'no #synthesis'
+  )
+);
+check(
+  'and the verdict on each is not repeated there',
+  (await page.locator('#synthesisChips').count()) === 0
+);
+// Back to Synthesis for the rest of the suite.
+await page.locator('.tabButton', { hasText: 'Synthesis' }).click();
+await page.waitForTimeout(800);
+await page.mouse.click(700, 820, { button: 'right' });
+await page.waitForTimeout(500);
+check(
+  'the canvas menu can clear them away from any mode',
+  (await page.locator('#contextMenu #menu-item').allInnerTexts()).some((t) =>
+    t.includes('Delete Synthesis Positions')
+  ),
+  await page.locator('#contextMenu #menu-item').allInnerTexts()
+);
+await page.keyboard.press('Escape');
+const poseBar = await page.evaluate(() => {
+  const box = document.querySelector('.synthPose').getBoundingClientRect();
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+});
+await page.mouse.click(poseBar.x, poseBar.y, { button: 'right' });
+await page.waitForTimeout(500);
+check(
+  'and one position can be taken away on its own',
+  (await page.locator('#contextMenu #menu-item').allInnerTexts()).some((t) =>
+    /Delete Position \d/.test(t)
+  ),
+  await page.locator('#contextMenu #menu-item').allInnerTexts()
+);
+await page.keyboard.press('Escape');
+
+// --- inserting again revises, rather than accumulating ------------------
+//
+// The loop the mode is for: try a solution, look at it, try the next. Insert
+// replaces the machine this design put there, and never anything else.
+const ownedFirst = await panel('(p) => JSON.stringify(p.design.ownedJointIds)');
+check(
+  'the design knows which joints it put on the grid',
+  JSON.parse(ownedFirst).length > 0,
+  ownedFirst
+);
+if ((await page.locator('#synthesisPanel .card').count()) > 1) {
+  await page.locator('#synthesisPanel .card').nth(1).click();
+  await page.waitForTimeout(400);
+  check(
+    'a different solution offers to replace what is there, not to add to it',
+    (await panel('(p) => p.insertLabel')) === 'Replace on grid',
+    await panel('(p) => p.insertLabel')
+  );
+  await page.locator('#synthesisPanel .cta--insert').click();
+  await page.waitForTimeout(900);
+  const again = JSON.parse(
+    await grid('(g) => JSON.stringify(g.mechanismSrv.joints.map(j => j.id))')
+  );
+  check('and inserting it leaves one machine, not two', again.length === inserted.joints.length, {
+    first: inserted.joints,
+    again,
+  });
+}
+
+// A joint moved by hand is work the reader may still want. Insert says so and
+// changes nothing until they answer.
+await panel(`(p) => {
+  const id = p.design.ownedJointIds[1];
+  const joint = p.mechanismSrv.joints.find((j) => j.id === id);
+  joint.x += 600;
+  joint.y += 600;
+}`);
+await page.waitForTimeout(200);
+check('a hand-moved joint is noticed', (await panel('(p) => p.solution.ownership()')) === 'edited');
+const beforeAsking = await grid('(g) => g.mechanismSrv.joints.length');
+await page.locator('#synthesisPanel .cta--insert').click();
+await page.waitForTimeout(500);
+check(
+  'and Insert asks instead of overwriting it',
+  (await grid('(g) => g.mechanismSrv.joints.length')) === beforeAsking
+);
+check(
+  'offering both of the things the reader could mean',
+  (await page.locator('button', { hasText: 'Replace it' }).count()) === 1 &&
+    (await page.locator('button', { hasText: 'Keep it, insert a new one' }).count()) === 1
+);
+await page.locator('button', { hasText: 'Replace it' }).first().click();
+await page.waitForTimeout(900);
+check('and replaces it when told to', (await panel('(p) => p.solution.ownership()')) === 'ours');
+
 await page.locator('#synthesisPanel .note__undo').click();
 await page.waitForTimeout(700);
 check('and Undo takes exactly it back', (await grid('(g) => g.mechanismSrv.joints.length')) === 0);

@@ -442,8 +442,8 @@
         }
         <div class="foot__buttons">
           <button type="button" class="cta cta--insert" [disabled]="!canInsert" (click)="insert()">
-            <mat-icon>{{ solution.inserted ? 'check' : 'add_circle_outline' }}</mat-icon>
-            {{ solution.inserted ? 'Inserted into grid' : 'Insert into grid' }}
+            <mat-icon>{{ solutionIsOnGrid ? 'check' : 'add_circle_outline' }}</mat-icon>
+            {{ insertLabel }}
           </button>
           <button type="button" class="danger" (click)="deleteAll()">
             <mat-icon>delete_outline</mat-icon>Delete
