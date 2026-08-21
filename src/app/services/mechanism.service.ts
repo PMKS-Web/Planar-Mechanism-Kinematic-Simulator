@@ -1876,6 +1876,24 @@ export class MechanismService {
     this.onMechUpdateState.next(2);
   }
 
+  /**
+   * Draw the selected link as the disc it sweeps, or as a bar again.
+   *
+   * The editable link's own outline is rebuilt here rather than left to the
+   * next update: the drawing on screen in Edit mode is this object, not a
+   * solved copy of it, so nothing else would redraw it until the mechanism
+   * moved. Saved, because it is a change to the drawing a person would expect
+   * to be able to undo.
+   */
+  toggleLinkCircular() {
+    const link = this.activeObjService.selectedLink;
+    if (!link.canBeCircular()) return;
+    link.isCircle = !link.isCircle;
+    link.reComputeDPath();
+    this.updateMechanism(true);
+    this.onMechUpdateState.next(2);
+  }
+
   addJointAtCOM() {
     let link = this.activeObjService.selectedLink;
     let com = link.CoM;
@@ -2078,6 +2096,14 @@ export class MechanismService {
       if (!(link.mass > 0) && (link.massMoI !== 0 || link.moiIsCustom)) {
         link.massMoI = 0;
         link.moiIsCustom = false;
+      }
+      // A link drawn as a disc that has since lost the pin the disc was centred
+      // on -- or been given one back. Nothing else would notice: an outline is
+      // only rebuilt when something asks it to, and grounding a joint asks
+      // about the joint. Left alone, a crank kept its disc after its ground was
+      // removed, and the panel and the canvas disagreed about what it was.
+      if (link.isCircle && link.drawnAsDisc !== link.canBeCircular()) {
+        link.reComputeDPath();
       }
       if (link.comIsCustom) {
         // A placed point rides the link: re-derived from its stored offset

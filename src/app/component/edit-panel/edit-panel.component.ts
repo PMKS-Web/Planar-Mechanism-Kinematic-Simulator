@@ -63,6 +63,7 @@ import { InputComponent } from '../BLOCKS/input/input.component';
 import { ColorPickerComponent } from '../BLOCKS/color-picker/color-picker.component';
 import { DualButtonComponent } from '../BLOCKS/dual-button/dual-button.component';
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
+import { MatTooltip } from '@angular/material/tooltip';
 
 /**
  * Input Settings unit choices, in the order the picker shows them. The labels
@@ -82,6 +83,7 @@ const INPUT_SPEED_UNITS = [
   imports: [
     PanelSectionCollapsibleComponent,
     TitleBlock,
+    MatTooltip,
     MatIcon,
     SubtitleComponent,
     StateInputComponent,
@@ -1661,14 +1663,67 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   }
 
   /**
-   * The frame the Center of Mass fields are typed and read in. Display-side
-   * only: whatever is chosen, the point is stored against the link itself
-   * (see RealLink.placeCustomCoM), so the numbers here are a view of it.
+   * Whether the selected link is on the canvas as a disc right now.
+   *
+   * Not the same question as "was it asked to be one": the choice is kept
+   * through a ground being removed, so that putting the ground back brings the
+   * disc back rather than making someone ask twice. In between, the link is
+   * drawn as a bar, and everything a person can see about it should agree.
    */
-  comFrame: string = 'centroid';
+  drawnAsDisc(): boolean {
+    const link = this.activeSrv.selectedLink;
+    return !!link?.isCircle && link.canBeCircular();
+  }
+
+  /** Why Make Circular is unavailable, in terms of this particular link. */
+  whyNotCircular(): string {
+    const link = this.activeSrv.selectedLink;
+    const grounded = link.joints.filter(
+      (joint) => joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint)
+    );
+    const held = link.isCircle ? 'Drawn as a bar: a' : 'A';
+    if (link.subset.length > 0) {
+      return `${held} disc is centred on one fixed pin, and a welded compound is drawn from the
+        shapes of its parts. Unweld it to draw a part of it as a disc.`;
+    }
+    if (grounded.length === 0) {
+      return `${held} disc is centred on the pin its link turns about, and this link has no fixed
+        pin. Ground one of its joints to draw it as a disc.`;
+    }
+    if (grounded.length > 1) {
+      return `${held} disc is centred on the pin its link turns about, and this link is fixed at
+        ${grounded.length} joints, so it does not turn about any of them.`;
+    }
+    return `${held} disc is centred on a fixed revolute pin; this link's fixed joint is a slider,
+      which anchors a slot rather than a pivot.`;
+  }
+
+  /**
+   * The frame the Center of Mass is both typed in and held against, read off
+   * the selected link rather than remembered here — it is the link's property,
+   * so selecting another link shows that link's answer and a reloaded drawing
+   * shows the one it was saved with.
+   */
+  get comFrame(): string {
+    const anchor = this.activeSrv.selectedLink?.comAnchor ?? 'centroid';
+    if (anchor === 'grid' || anchor === 'centroid') return anchor;
+    return 'joint:' + anchor.joint;
+  }
 
   setComFrame(frame: string): void {
-    this.comFrame = frame;
+    const link = this.activeSrv.selectedLink;
+    if (!link) return;
+    link.comAnchor =
+      frame === 'grid'
+        ? 'grid'
+        : frame.startsWith('joint:')
+          ? { joint: frame.slice('joint:'.length) }
+          : 'centroid';
+    // Re-read the offsets against the new anchor before anything moves, so
+    // choosing a frame re-describes where the point already is instead of
+    // moving it there.
+    link.captureComOffset();
+    this.mechanismService.updateMechanism(true);
     this.refreshDerivedMassFields();
   }
 

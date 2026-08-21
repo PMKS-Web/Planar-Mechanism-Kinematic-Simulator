@@ -69,6 +69,40 @@
 
       <mat-divider></mat-divider>
 
+      <!-- Driving the linkage. Only once there is one: with fewer than three
+           poses these act on nothing, and a row of controls that quietly do
+           nothing is worse than a row that is not there yet. -->
+      @if (hasLinkage()) {
+        <subtitle-block>Drive</subtitle-block>
+        <button-block
+          (click)="swapDrivePin()"
+          customIcon="switch_force_dir"
+          tooltip="Drive the linkage from its other fixed pin. A four-bar that will not turn from one ground pin often turns freely from the other."
+        >
+          Swap Drive Pin
+        </button-block>
+        <button-block
+          (click)="toggleDriver()"
+          [icon]="synthesisBuilder.driverWanted ? undefined : 'add'"
+          [customIcon]="synthesisBuilder.driverWanted ? 'remove' : undefined"
+          [color]="synthesisBuilder.driverWanted ? 'warn' : 'primary'"
+          tooltip="Add a crank and coupler sized so one full turn walks the linkage through all three poses, making it a six-bar a motor can run."
+        >
+          {{ synthesisBuilder.driverWanted ? 'Remove Driver' : 'Add Driver (Six-Bar)' }}
+        </button-block>
+        @if (synthesisBuilder.driverRefusal) {
+          <p class="driverRefusal">{{ synthesisBuilder.driverRefusal }}</p>
+        }
+        <button-block
+          (click)="evaluatePoses()"
+          customIcon="show_path"
+          tooltip="Re-check which poses the linkage still reaches. Synthesis does this as it builds; use it after editing the linkage by hand."
+        >
+          Evaluate Poses
+        </button-block>
+        <mat-divider></mat-divider>
+      }
+
       <!--        Generate Linkage-->
 
       <button-block

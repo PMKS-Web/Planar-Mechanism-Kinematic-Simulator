@@ -8,6 +8,8 @@ import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-bu
 import { NumberUnitParserService } from 'src/app/services/number-unit-parser.service';
 import { SettingsService } from 'src/app/services/settings.service';
 import { SynthesisStatus } from 'src/app/services/synthesis/synthesis-constants';
+import { driverDyadFor } from 'src/app/services/synthesis/driver-dyad';
+import { MODEL_SCALE } from 'src/app/model/render-scale';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { ColorService } from '../../services/color.service';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
@@ -264,13 +266,65 @@ export class SynthesisPanelComponent implements OnInit {
     this.synthesisBuilder.synthesisedIds = { joints: [], links: [] };
   }
 
-  /** Four ids nothing on the grid is already using, in order. */
-  private nextFourLetters(): string[] {
+  /** As many ids as asked for, none of which anything on the grid is using. */
+  private nextLetters(count: number): string[] {
     const taken: string[] = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < count; i++) {
       taken.push(this.mechanismSrv.determineNextLetter(taken));
     }
     return taken;
+  }
+
+  /** Whether there is a linkage on the grid for the driver controls to act on. */
+  hasLinkage(): boolean {
+    return this.synthesisBuilder.isFullyDefined();
+  }
+
+  /**
+   * Add a driver to the four-bar, or take it off again.
+   *
+   * Both go through a full re-synthesis rather than editing what is on the
+   * grid, because the drive pin and the driver change how the four-bar itself
+   * is built -- which of its pins is the input -- and re-running is the only
+   * path that cannot leave the two disagreeing.
+   */
+  toggleDriver(): void {
+    this.synthesisBuilder.driverWanted = !this.synthesisBuilder.driverWanted;
+    if (this.hasLinkage()) this.synthesisFunction();
+  }
+
+  /** Drive the linkage from its other ground pin. */
+  swapDrivePin(): void {
+    this.synthesisBuilder.driveOnFarPin = !this.synthesisBuilder.driveOnFarPin;
+    if (this.hasLinkage()) this.synthesisFunction();
+  }
+
+  /**
+   * Score the poses against the linkage as it now stands.
+   *
+   * Synthesis scores its own answer as it builds it, so this says nothing new
+   * about an untouched linkage -- it is for after the drawing has been edited
+   * by hand, when the marks on the poses are describing a linkage that no
+   * longer exists.
+   */
+  evaluatePoses(): void {
+    const built = this.mechanismSrv.joints.find(
+      (joint) => joint.id === this.synthesisBuilder.synthesisedIds.joints[0]
+    );
+    const solved = built ? this.mechanismSrv.mechanismContaining(built) : undefined;
+    const poseCoords = [1, 2, 3].flatMap((i) => [
+      this.synthesisBuilder.poses[i].posBack,
+      this.synthesisBuilder.poses[i].posFront,
+    ]);
+    this.checkQuality(
+      solved
+        ? this.compareTheQualityofSynthesis(
+            solved.joints,
+            poseCoords,
+            Number(this.synthesisForm.value.quality)
+          )
+        : [999, 999, 999, 999, 999, 999, 999, 999, 999]
+    );
   }
 
   synthesisFunction() {
@@ -305,12 +359,18 @@ export class SynthesisPanelComponent implements OnInit {
     // Not A, B, C, D: those letters are taken as soon as there is anything else
     // on the grid, and two joints with one id is not a mechanism, it is a bug
     // waiting for the codec to find it.
-    const [idA, idB, idC, idD] = this.nextFourLetters();
+    const [idA, idB, idC, idD, idE, idF] = this.nextLetters(6);
 
-    let joint1 = new RevJoint(idA, firstPoint.x, firstPoint.y, true, true);
+    // Which pin the motor sits on is decided here rather than moved afterwards:
+    // with a driver on the linkage neither ground pin is the input at all, and
+    // without one it is whichever the drive-pin choice names.
+    const far = this.synthesisBuilder.driveOnFarPin;
+    const drivenDirectly = !this.synthesisBuilder.driverWanted;
+
+    let joint1 = new RevJoint(idA, firstPoint.x, firstPoint.y, drivenDirectly && !far, true);
     let joint2 = new RevJoint(idB, secondPoint.x, secondPoint.y, false, false);
     let joint3 = new RevJoint(idC, thirdPoint.x, thirdPoint.y, false, false);
-    let joint4 = new RevJoint(idD, fourthPoint.x, fourthPoint.y, false, true);
+    let joint4 = new RevJoint(idD, fourthPoint.x, fourthPoint.y, drivenDirectly && far, true);
 
     joint1.connectedJoints.push(joint2);
     joint2.connectedJoints.push(joint1, joint3);
@@ -331,6 +391,49 @@ export class SynthesisPanelComponent implements OnInit {
 
     const madeJoints = [joint1, joint2, joint3, joint4];
     const madeLinks = [link1, link2, link3];
+
+    // Built into the linkage, not added to it afterwards, so that one solve
+    // sees the finished six-bar and the driver survives the next pose change.
+    this.synthesisBuilder.driverRefusal = undefined;
+    if (this.synthesisBuilder.driverWanted) {
+      const pivot = far ? fourthPoint : firstPoint;
+      const drivenPin = far ? joint3 : joint2;
+      const drivenAt = far
+        ? [pose1_coord2, pose2_coord2, pose3_coord2]
+        : [pose1_coord1, pose2_coord1, pose3_coord1];
+
+      const sized = driverDyadFor(pivot, drivenAt);
+      if ('refusal' in sized) {
+        // The four-bar still stands, and still passes through the poses — it
+        // is only the motor that could not be fitted. Left drivable by hand so
+        // the drawing is not made useless by the refusal.
+        this.synthesisBuilder.driverRefusal = sized.refusal;
+        (far ? joint4 : joint1).input = true;
+      } else {
+        // The two lengths the sizing solved for are the distances between these
+        // three points, so placing the pins is all it takes to realise them.
+        const { ground, elbow } = sized.dyad;
+        const motor = new RevJoint(idE, ground.x, ground.y, true, true);
+        const knee = new RevJoint(idF, elbow.x, elbow.y, false, false);
+
+        motor.connectedJoints.push(knee);
+        knee.connectedJoints.push(motor, drivenPin);
+        drivenPin.connectedJoints.push(knee);
+
+        const driverCrank = new RealLink(idE + idF, [motor, knee]);
+        driverCrank.fill = this.colorService.getLinkColorFromIndex(2);
+        const driverCoupler = new RealLink(idF + drivenPin.id, [knee, drivenPin]);
+        driverCoupler.fill = this.colorService.getLinkColorFromIndex(3);
+
+        motor.links.push(driverCrank);
+        knee.links.push(driverCrank, driverCoupler);
+        drivenPin.links.push(driverCoupler);
+
+        madeJoints.push(motor, knee);
+        madeLinks.push(driverCrank, driverCoupler);
+      }
+    }
+
     this.mechanismSrv.mergeToJoints(madeJoints);
     this.mechanismSrv.mergeToLinks(madeLinks);
     this.synthesisBuilder.synthesisedIds = {
@@ -380,20 +483,22 @@ export class SynthesisPanelComponent implements OnInit {
   }
 
   checkQuality(quality: number[]) {
+    // In model units, like the distances it is comparing against.
+    const POSE_REACHED = 0.09 * MODEL_SCALE;
     let positionMatches: string[] = ['Position 1', 'Position 2', 'Position 3'];
-    if (quality[0] >= 0.09 || quality[1] >= 0.09) {
+    if (quality[0] >= POSE_REACHED || quality[1] >= POSE_REACHED) {
       positionMatches[0] = 'No Match';
       this.synthesisBuilder.poses[1].status = SynthesisStatus.INVALID;
     } else {
       this.synthesisBuilder.poses[1].status = SynthesisStatus.VALID;
     }
-    if (quality[3] >= 0.09 || quality[4] >= 0.09) {
+    if (quality[3] >= POSE_REACHED || quality[4] >= POSE_REACHED) {
       positionMatches[1] = 'No Match';
       this.synthesisBuilder.poses[2].status = SynthesisStatus.INVALID;
     } else {
       this.synthesisBuilder.poses[2].status = SynthesisStatus.VALID;
     }
-    if (quality[6] >= 0.09 || quality[7] >= 0.09) {
+    if (quality[6] >= POSE_REACHED || quality[7] >= POSE_REACHED) {
       positionMatches[2] = 'No Match';
       this.synthesisBuilder.poses[3].status = SynthesisStatus.INVALID;
     } else {
@@ -407,6 +512,14 @@ export class SynthesisPanelComponent implements OnInit {
     //get position analysis data
     //joint B, Joint C,
     //compare that with poses
+
+    // Both tolerances a person deals with -- the one typed into the panel and
+    // the 0.09 below -- are lengths in the units the grid is labelled in. Every
+    // distance measured here is between model coordinates, which are those
+    // units times MODEL_SCALE. Comparing the two directly meant a pose counted
+    // as reached only when it was hit to the last decimal place, so all three
+    // marks read "no match" on linkages that pass straight through the poses.
+    const tolerance = qualityOfSyn * MODEL_SCALE;
 
     let quality1_b: number = 999;
     let quality2_b: number = 999;
@@ -456,27 +569,27 @@ export class SynthesisPanelComponent implements OnInit {
       //need to check if exact match
       //need to extract time step.
 
-      if (pos1Value_b < qualityOfSyn && pos1Value_c < qualityOfSyn && index == 1) {
+      if (pos1Value_b < tolerance && pos1Value_c < tolerance && index == 1) {
         quality1_b = pos1Value_b;
         quality1_c = pos1Value_c;
         pos1TimeStep = index;
-      } else if (pos1Value_b < qualityOfSyn && pos1Value_c < qualityOfSyn && index > 1) {
+      } else if (pos1Value_b < tolerance && pos1Value_c < tolerance && index > 1) {
         quality1_b = pos1Value_b;
         quality1_c = pos1Value_c;
         pos1TimeStep = index;
-      } else if (pos2Value_b < qualityOfSyn && pos2Value_c < qualityOfSyn && index == 1) {
+      } else if (pos2Value_b < tolerance && pos2Value_c < tolerance && index == 1) {
         quality2_b = pos2Value_b;
         quality2_c = pos2Value_c;
         pos2TimeStep = index;
-      } else if (pos2Value_b < qualityOfSyn && pos2Value_c < qualityOfSyn && index > 1) {
+      } else if (pos2Value_b < tolerance && pos2Value_c < tolerance && index > 1) {
         quality2_b = pos2Value_b;
         quality2_c = pos2Value_c;
         pos2TimeStep = index;
-      } else if (pos3Value_b < qualityOfSyn && pos3Value_c < qualityOfSyn && index == 1) {
+      } else if (pos3Value_b < tolerance && pos3Value_c < tolerance && index == 1) {
         quality3_b = pos3Value_b;
         quality3_c = pos3Value_c;
         pos3TimeStep = index;
-      } else if (pos3Value_b < qualityOfSyn && pos3Value_c < qualityOfSyn && index > 1) {
+      } else if (pos3Value_b < tolerance && pos3Value_c < tolerance && index > 1) {
         quality3_b = pos3Value_b;
         quality3_c = pos3Value_c;
         pos3TimeStep = index;
@@ -509,15 +622,15 @@ export class SynthesisPanelComponent implements OnInit {
             Math.pow(jointC_x - posCoords[5].x, 2) + Math.pow(jointC_y - posCoords[5].y, 2)
           );
 
-          if (pos1Value_b < qualityOfSyn && pos1Value_c < qualityOfSyn) {
+          if (pos1Value_b < tolerance && pos1Value_c < tolerance) {
             quality1_b = pos1Value_b;
             quality1_c = pos1Value_c;
             pos1TimeStep = index - 0.5;
-          } else if (pos2Value_b < qualityOfSyn && pos2Value_c < qualityOfSyn) {
+          } else if (pos2Value_b < tolerance && pos2Value_c < tolerance) {
             quality2_b = pos2Value_b;
             quality2_c = pos2Value_c;
             pos2TimeStep = index - 0.5;
-          } else if (pos3Value_b < qualityOfSyn && pos3Value_c < qualityOfSyn) {
+          } else if (pos3Value_b < tolerance && pos3Value_c < tolerance) {
             quality3_b = pos3Value_b;
             quality3_c = pos3Value_c;
             pos3TimeStep = index - 0.5;

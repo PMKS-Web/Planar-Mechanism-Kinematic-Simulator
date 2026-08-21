@@ -160,36 +160,50 @@ export class StringTranscoder extends GenericTranscoder {
     This should on average be 26 + [number of joints] characters per link
     */
   /**
-   * The link record's leading character carries root-ness and the two
-   * auto/custom flags in one slot, because the record's tail is variable
-   * length and cannot take an appended field. 'Y'/'N' are the legacy pair and
-   * keep meaning what every old URL meant: values the author chose.
+   * The link record's leading character carries root-ness, the two auto/custom
+   * flags and whether the link is drawn as a disc, all in one slot, because the
+   * record's tail is variable length and cannot take an appended field. 'Y'/'N'
+   * are the legacy pair and keep meaning what every old URL meant: values the
+   * author chose, drawn as a bar.
    *
-   *   root:      Y = both custom   A = both auto   M = MoI auto   G = CoM auto
-   *   non-root:  N = both custom   a = both auto   m = MoI auto   g = CoM auto
+   *   bar,  root:      Y = both custom   A = both auto   M = MoI auto   G = CoM auto
+   *   bar,  non-root:  N = both custom   a = both auto   m = MoI auto   g = CoM auto
+   *   disc, root:      0 = both custom   1 = both auto   2 = MoI auto   3 = CoM auto
+   *   disc, non-root:  4 = both custom   5 = both auto   6 = MoI auto   7 = CoM auto
+   *
+   * Digits for the disc half so the two halves cannot be confused for one
+   * another by eye, and because no letter was left that did not already read as
+   * something else in this format. A drawing with no circular link in it still
+   * encodes to exactly the bytes it did before discs existed — the same bargain
+   * the lock section makes.
    */
-  private static readonly LINK_FLAG_CHARS: Record<string, [boolean, boolean, boolean]> = {
-    // char: [isRoot, moiIsCustom, comIsCustom]
-    Y: [true, true, true],
-    A: [true, false, false],
-    M: [true, false, true],
-    G: [true, true, false],
-    N: [false, true, true],
-    a: [false, false, false],
-    m: [false, false, true],
-    g: [false, true, false],
+  private static readonly LINK_FLAG_CHARS: Record<string, [boolean, boolean, boolean, boolean]> = {
+    // char: [isRoot, moiIsCustom, comIsCustom, isCircle]
+    Y: [true, true, true, false],
+    A: [true, false, false, false],
+    M: [true, false, true, false],
+    G: [true, true, false, false],
+    N: [false, true, true, false],
+    a: [false, false, false, false],
+    m: [false, false, true, false],
+    g: [false, true, false, false],
+    '0': [true, true, true, true],
+    '1': [true, false, false, true],
+    '2': [true, false, true, true],
+    '3': [true, true, false, true],
+    '4': [false, true, true, true],
+    '5': [false, false, false, true],
+    '6': [false, false, true, true],
+    '7': [false, true, false, true],
   };
 
   private encodeLink(link: LinkData): string {
-    const flagChar = (root: string[]): string =>
-      !link.moiIsCustom && !link.comIsCustom
-        ? root[1]
-        : !link.moiIsCustom
-          ? root[2]
-          : !link.comIsCustom
-            ? root[3]
-            : root[0];
-    let isRoot: string = link.isRoot ? flagChar(['Y', 'A', 'M', 'G']) : flagChar(['N', 'a', 'm', 'g']);
+    // Found in the same table the decoder reads, rather than written out a
+    // second time here: the two can then only agree.
+    const wanted = [link.isRoot, link.moiIsCustom, link.comIsCustom, link.isCircle];
+    const isRoot = Object.keys(StringTranscoder.LINK_FLAG_CHARS).find((candidate) =>
+      StringTranscoder.LINK_FLAG_CHARS[candidate].every((flag, i) => flag === wanted[i])
+    )!;
     let type: string = link.type == LINK_TYPE.REAL ? 'R' : 'P';
     let id = link.id;
     let massString = this.encodeDecimalNumber(link.mass);
@@ -243,7 +257,7 @@ export class StringTranscoder extends GenericTranscoder {
       // not quietly demote the link to a non-root nobody solves.
       throw new Error(`Unknown link flag character '${flagChar}'`);
     }
-    const [isRoot, moiIsCustom, comIsCustom] = flags;
+    const [isRoot, moiIsCustom, comIsCustom, isCircle] = flags;
     let type = sd.nextCharacter() === 'R' ? LINK_TYPE.REAL : LINK_TYPE.PISTON;
     let id = sd.nextToken();
     let name = sd.nextToken();
@@ -278,7 +292,8 @@ export class StringTranscoder extends GenericTranscoder {
       jointIDs,
       subsetLinkIDs,
       moiIsCustom,
-      comIsCustom
+      comIsCustom,
+      isCircle
     );
   }
 
@@ -429,11 +444,20 @@ export class StringTranscoder extends GenericTranscoder {
       '.' +
       activeObjString;
 
-    // Written only when something is locked, so a lock-free URL stays
-    // byte-identical to one written before locks existed — the same bargain
-    // the slot triple and the per-joint drive speed struck.
-    if (this.lockedIds.length > 0) {
-      fullString += '.' + this.lockedIds.join(',');
+    // Written only when there is something to say, so a URL with no locks and
+    // no re-anchored centre of mass stays byte-identical to one written before
+    // either existed — the same bargain the slot triple and the per-joint
+    // drive speed struck.
+    //
+    // Centre-of-mass anchors share this section rather than opening a second
+    // one, because they are the same shape of thing: a tagged reference to an
+    // object the URL already carries. Their tag is 'C', which no lock uses, so
+    // the two are told apart on the way in and neither can be mistaken for the
+    // other. 'CG<link>' holds the point on the drawing; 'CJ<link>~<joint>'
+    // holds it on one pin, '~' being a character no id can contain.
+    const trailing = [...this.lockedIds, ...this.comAnchors];
+    if (trailing.length > 0) {
+      fullString += '.' + trailing.join(',');
     }
 
     // add checksum character in the end
@@ -543,11 +567,15 @@ export class StringTranscoder extends GenericTranscoder {
     let activeType = sd.isEmpty() ? 'N' : sd.nextCharacter();
     let activeID = sd.isEmpty() ? '' : sd.nextToken('.');
 
-    // The lock section: type-tagged ids, absent on every URL written before
+    // The trailing section: type-tagged ids, absent on every URL written before
     // locks existed — and "absent" simply means the disassembler is empty.
+    // 'C' entries are centre-of-mass anchors and go to their own list, so the
+    // lock validator below never has to know they exist.
     while (!sd.isEmpty()) {
-      let lockedId = sd.nextToken(',');
-      if (lockedId !== '') this.lockedIds.push(lockedId);
+      let entry = sd.nextToken(',');
+      if (entry === '') continue;
+      if (entry.charAt(0) === 'C') this.comAnchors.push(entry);
+      else this.lockedIds.push(entry);
     }
 
     let typeEnum;
@@ -653,6 +681,28 @@ export class StringTranscoder extends GenericTranscoder {
         (tag === 'F' && forceIDs.has(id));
       if (!resolves) {
         throw new Error('URL locks an object it does not contain');
+      }
+    });
+    this.validateDecodedComAnchors(linkIDs);
+  }
+
+  /**
+   * Every anchor must name a link this URL carries, and a pin anchor must name
+   * a joint of that same link — anchoring to a pin the link does not hold has
+   * no meaning, and would silently fall back to the centroid on first use.
+   */
+  private validateDecodedComAnchors(linkIDs: Set<string>): void {
+    this.comAnchors.forEach((entry) => {
+      const [reference, jointID] = entry.substring(2).split('~');
+      const link = this.links.find((candidate) => candidate.id === reference);
+      const resolves =
+        linkIDs.has(reference) &&
+        link !== undefined &&
+        (entry.charAt(1) === 'G'
+          ? jointID === undefined
+          : entry.charAt(1) === 'J' && jointID !== undefined && link.jointIDs.includes(jointID));
+      if (!resolves) {
+        throw new Error('URL anchors a center of mass to something it does not contain');
       }
     });
   }

@@ -475,6 +475,40 @@
         (closed)="sectionExpanded['LVisual'] = false"
       >
         <color-picker type="link" [link]="activeSrv.selectedLink">Link Color</color-picker>
+        <!-- The same choice the right-click menu offers, in the section that
+             collects how this link is drawn. Disabled rather than hidden here:
+             the panel is describing the link you selected, so the option is
+             worth naming along with why it is not available.
+
+             The label follows what is actually on the canvas, not the stored
+             choice: a disc whose ground has since been removed is drawn as a
+             bar, and a button reading "Make Bar" over a bar is a puzzle. -->
+        <!-- The reason it cannot be pressed is carried by this wrapper, not by
+             the button: a disabled button receives no pointer events, so its
+             own tooltip would never open — the one explanation of why it is
+             greyed out would be the one nobody could reach. The wrapper is
+             still hoverable, and the stylesheet takes the disabled button out
+             of the way so the hover lands here. -->
+        <div
+          class="shapeToggle"
+          [matTooltip]="whyNotCircular()"
+          [matTooltipDisabled]="activeSrv.selectedLink.canBeCircular()"
+          [matTooltipShowDelay]="400"
+          matTooltipPosition="above"
+        >
+          <button-block
+            [customIcon]="drawnAsDisc() ? 'make_bar' : 'make_circular'"
+            [disabled]="!activeSrv.selectedLink.canBeCircular()"
+            (click)="mechanismService.toggleLinkCircular()"
+            [tooltip]="
+              drawnAsDisc()
+                ? 'Draw this link as an ordinary bar between its joints.'
+                : 'Draw this link as the disc it sweeps, centred on its fixed pin. Its mass and rotational inertia are unchanged.'
+            "
+          >
+            {{ drawnAsDisc() ? 'Make Bar' : 'Make Circular' }}
+          </button-block>
+        </div>
       </collapsible-subseciton>
       <collapsible-subseciton
         titleLabel="Mass Settings"
@@ -489,78 +523,101 @@
           tooltip="The mass used by force analysis. Zero is an idealized massless bar: gravity and inertia skip it, and rotational inertia reads zero."
           >Mass</input-block
         >
-        <!-- One legend for the two derived fields below. It sits under Mass —
-             which is always typed — so it introduces exactly the fields it
-             governs: grey behind a hollow dot follows the shape, ink behind a
-             filled one was set by hand and carries a ✕ to hand it back. -->
-        <div class="dotLegend" [class.off]="!(activeSrv.selectedLink.mass > 0)">
-          <span class="dot"></span> from shape
-          <span class="dot filled"></span> set by you
-          <button
-            type="button"
-            class="resetAll"
-            [disabled]="!activeSrv.selectedLink.moiIsCustom && !activeSrv.selectedLink.comIsCustom"
-            (click)="useUniformBody()"
-          >
-            Reset all
-          </button>
-        </div>
-        <div class="dotRow" [class.off]="!(activeSrv.selectedLink.mass > 0)">
-          <span class="dotRowLabel">Center of Mass</span>
-          <select
-            class="comFrameSelect"
-            [value]="comFrame"
-            [disabled]="!(activeSrv.selectedLink.mass > 0)"
-            (change)="setComFrame($any($event.target).value)"
-            title="The frame the two numbers below are typed and read in. Stored against the link, whichever you pick."
-          >
-            <option value="centroid">Centroid</option>
-            <option value="grid">Global grid</option>
-            @for (joint of activeSrv.selectedLink.joints; track joint.id) {
-              <option [value]="'joint:' + joint.id">Joint {{ joint.name || joint.id }}</option>
-            }
-          </select>
-        </div>
-        <!-- Each field wears the pair's state, as the mock draws it. -->
-        <div
-          class="comPairRow"
-          [class.derived]="!activeSrv.selectedLink.comIsCustom"
-          [class.off]="!(activeSrv.selectedLink.mass > 0)"
-        >
-          <span class="axisTag">X</span>
-          <state-input
+        <!-- Everything below Mass describes how that mass is distributed, so on
+             a massless bar there is nothing for any of it to describe: gravity
+             and inertia skip the link entirely and the numbers cannot change an
+             answer. They used to be shown greyed, which asks the reader to
+             work out that a whole section is inert. Give it a mass and they
+             come back. -->
+        @if (activeSrv.selectedLink.mass > 0) {
+          <!-- One legend for the two derived fields below. It sits under Mass —
+               which is always typed — so it introduces exactly the fields it
+               governs: grey behind a hollow dot follows the shape, ink behind a
+               filled one was set by hand and carries a ✕ to hand it back. -->
+          <div class="dotLegend">
+            <span class="dot"></span> from shape
+            <span class="dot filled"></span> set by you
+            <button
+              type="button"
+              class="resetAll"
+              [disabled]="!activeSrv.selectedLink.moiIsCustom && !activeSrv.selectedLink.comIsCustom"
+              (click)="useUniformBody()"
+            >
+              Reset all
+            </button>
+          </div>
+          <div class="dotRow">
+            <span class="dotRowLabel">Center of Mass</span>
+            <!-- Marked on the options, not with [value] on the select. Setting
+                 the select's value only takes if its options already exist,
+                 and these are rebuilt whenever the panel re-renders this block
+                 — a different link selected, a mass edited — after which the
+                 binding is unchanged and so is never re-applied, leaving the
+                 control reading Centroid over a link held some other way. An
+                 option that knows itself to be the selected one cannot drift. -->
+            <select
+              class="comFrameSelect"
+              (change)="setComFrame($any($event.target).value)"
+              title="What the center of mass is held against while you edit, and the frame the two numbers below are read in. Centroid rides the link; Global grid keeps its place on the drawing; a joint follows that pin alone. Once the mechanism runs it rides the link either way."
+            >
+              <option value="centroid" [selected]="comFrame === 'centroid'">Centroid</option>
+              <option value="grid" [selected]="comFrame === 'grid'">Global grid</option>
+              @for (joint of activeSrv.selectedLink.joints; track joint.id) {
+                <option
+                  [value]="'joint:' + joint.id"
+                  [selected]="comFrame === 'joint:' + joint.id"
+                >
+                  Joint {{ joint.name || joint.id }}
+                </option>
+              }
+            </select>
+          </div>
+          <!-- Each field wears the pair's state, as the mock draws it. -->
+          <div class="comPairRow" [class.derived]="!activeSrv.selectedLink.comIsCustom">
+            <span class="axisTag">X</span>
+            <state-input
+              [formGroup]="linkForm"
+              _formControl="comX"
+              [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
+              clearTitle="Back to the shape's centroid"
+              (cleared)="useUniformBodyCoM()"
+              (hovered)="setComPreview('x', $event)"
+            />
+            <span class="axisTag">Y</span>
+            <state-input
+              [formGroup]="linkForm"
+              _formControl="comY"
+              [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
+              clearTitle="Back to the shape's centroid"
+              (cleared)="useUniformBodyCoM()"
+              (hovered)="setComPreview('y', $event)"
+            />
+          </div>
+          <input-block
             [formGroup]="linkForm"
-            _formControl="comX"
-            [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
-            clearTitle="Back to the shape's centroid"
-            (cleared)="useUniformBodyCoM()"
-            (hovered)="setComPreview('x', $event)"
-          />
-          <span class="axisTag">Y</span>
-          <state-input
-            [formGroup]="linkForm"
-            _formControl="comY"
-            [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
-            clearTitle="Back to the shape's centroid"
-            (cleared)="useUniformBodyCoM()"
-            (hovered)="setComPreview('y', $event)"
-          />
-        </div>
-        <input-block
-          [formGroup]="linkForm"
-          _formControl="massMoI"
-          class="moiBlock"
-          tooltip="The mass moment of inertia about the link's center of mass. Derived from the shape as a uniform body until a value is typed."
-          [class.derived]="!activeSrv.selectedLink.moiIsCustom"
-          [class.off]="!(activeSrv.selectedLink.mass > 0)"
-          >Rotational Inertia
-          <span fieldSuffix class="stateSuffix" [class.off]="!(activeSrv.selectedLink.mass > 0)">
-            <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
-            @if (activeSrv.selectedLink.moiIsCustom) {
-              <button type="button" class="clearDot" title="Back to the shape's own inertia" (click)="useUniformBodyMoI()">&#10005;</button>
-            }
-          </span>
-        </input-block>
+            _formControl="massMoI"
+            class="moiBlock"
+            tooltip="The mass moment of inertia about the link's center of mass. Derived from the shape as a uniform body until a value is typed."
+            [class.derived]="!activeSrv.selectedLink.moiIsCustom"
+            >Rotational Inertia
+            <span fieldSuffix class="stateSuffix">
+              <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
+              @if (activeSrv.selectedLink.moiIsCustom) {
+                <button type="button" class="clearDot" title="Back to the shape's own inertia" (click)="useUniformBodyMoI()">&#10005;</button>
+              }
+            </span>
+          </input-block>
+          <!-- Drawing a crank as a disc is a picture, not a declaration that the
+               part is one. Said here, next to the two numbers it would otherwise
+               be reasonable to assume it had changed — and only here, because
+               with no mass there are no such numbers to mislead anyone. -->
+          @if (drawnAsDisc()) {
+            <p class="shapeNote">
+              Drawn as a disc. These two still follow the link's joints, not the
+              circle — set Rotational Inertia by hand for a real flywheel.
+            </p>
+          }
+        }
         </div>
       </collapsible-subseciton>
       @if (activeSrv.selectedLink.isCompound) {

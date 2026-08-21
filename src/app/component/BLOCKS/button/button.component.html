@@ -7,6 +7,9 @@
     [color]="this.color()"
     [disabled]="this.disabled()"
     [class]="this.color()"
+    [matTooltip]="this.tooltip() ?? ''"
+    [matTooltipDisabled]="!this.tooltip()"
+    [matTooltipShowDelay]="1000"
   >
     @if (icon && !customIcon) {
       <mat-icon>{{ icon }}</mat-icon>

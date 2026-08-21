@@ -210,13 +210,23 @@
     &:disabled { color: rgba(0, 0, 0, 0.3); cursor: default; }
   }
 
-  /* A massless body derives nothing, so the legend has nothing to explain. */
-  &.off {
-    color: rgba(0, 0, 0, 0.32);
+}
 
-    .dot { border-color: rgba(0, 0, 0, 0.2); }
-    .dot.filled { background: rgba(0, 0, 0, 0.2); border-color: rgba(0, 0, 0, 0.2); }
-  }
+/* A disabled button is not a hover target, so the pointer would fall through to
+   nothing and the wrapper's tooltip would never open either. Taking the button
+   out of the way explicitly lets the hover land on the wrapper, which is what
+   carries the explanation. */
+.shapeToggle:has(button:disabled) button {
+  pointer-events: none;
+}
+
+/* Sits under the two derived mass fields it qualifies, in the legend's own grey
+   so it reads as the same aside rather than as a warning about a problem. */
+.shapeNote {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: rgba(0, 0, 0, 0.55);
 }
 
 .massArea .dot {
@@ -273,7 +283,6 @@
   gap: 5px;
   margin-left: 4px;
 
-  &.off .dot { border-color: rgba(0, 0, 0, 0.2); }
 
   .clearDot {
     border: none;
@@ -362,31 +371,6 @@
   color: rgba(0, 0, 0, 0.5);
 }
 
-/* Massless: values and labels dim with the group. The id out-ranks the
-   derived-ink rule, which otherwise holds the values at reading strength. */
-.massArea #input-block .customInput:disabled {
-  color: rgba(0, 0, 0, 0.32);
-}
-.massArea .dotRow.off .dotRowLabel,
-.massArea input-block.off #input-block .label {
-  color: rgba(0, 0, 0, 0.32);
-}
-.massArea .comPairRow.off .axisTag {
-  color: rgba(0, 0, 0, 0.3);
-}
-
-/* Massless: the pair's markers grey out with the fields they mark. */
-.massArea .comPairRow.off .state-dot {
-  border-color: rgba(0, 0, 0, 0.2);
-}
-.massArea .comPairRow.off .state-dot.filled {
-  background: rgba(0, 0, 0, 0.2);
-  border-color: rgba(0, 0, 0, 0.2);
-}
-.massArea .comPairRow.off .state-clear {
-  color: rgba(0, 0, 0, 0.25);
-  pointer-events: none;
-}
 
 /* The mock's one field column: Mass, the frame select and Rotational
    Inertia share one width, one left edge and one right edge — the centre

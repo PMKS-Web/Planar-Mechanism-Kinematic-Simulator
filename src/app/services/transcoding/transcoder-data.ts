@@ -85,7 +85,9 @@ export class LinkData {
      * variable-length, so there is nowhere behind it to append to.
      */
     public moiIsCustom: boolean = true,
-    public comIsCustom: boolean = true
+    public comIsCustom: boolean = true,
+    /** Whether the link is drawn as the disc it sweeps. Legacy URLs: a bar. */
+    public isCircle: boolean = false
   ) {}
 }
 

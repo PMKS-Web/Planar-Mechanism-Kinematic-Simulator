@@ -488,6 +488,20 @@ export class NewGridComponent implements OnDestroy {
             weldedLinkFilletSelected
           )
         );
+        // Offered only where there is a pin to draw the disc about — a crank.
+        // On anything else the item would have to explain why it does nothing,
+        // and a menu that lists actions it will refuse is worse than one that
+        // lists the actions it has.
+        if ((this.lastRightClick as RealLink).canBeCircular()) {
+          const drawnRound = (this.lastRightClick as RealLink).isCircle;
+          this.cMenuItems.push(
+            new cMenuItem(
+              drawnRound ? 'Make Bar' : 'Make Circular',
+              this.mechanismSrv.toggleLinkCircular.bind(this.mechanismSrv),
+              drawnRound ? 'make_bar' : 'make_circular'
+            )
+          );
+        }
         this.cMenuItems.push(this.lockMenuItem(this.lastRightClick as RealLink, 'Link'));
         break;
       }

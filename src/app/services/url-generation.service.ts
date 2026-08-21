@@ -100,7 +100,8 @@ export class UrlGenerationService {
           link.joints.map((joint) => joint.id),
           link.subset.map((subset) => subset.id),
           link.moiIsCustom,
-          link.comIsCustom
+          link.comIsCustom,
+          link.isCircle
         )
       );
     } else if (link instanceof SliderBlock) {
@@ -183,6 +184,22 @@ export class UrlGenerationService {
           .map((joint) => 'J' + joint.id),
         ...this.mechanism.forces.filter((force) => force.locked).map((force) => 'F' + force.id),
       ]);
+
+      // Where a hand-placed centre of mass is held. Only the links that answer
+      // something other than "against the link itself", which is the answer
+      // every link gave before this was a choice.
+      encoder.setComAnchors(
+        this.mechanism.links
+          .filter(
+            (link): link is RealLink =>
+              link instanceof RealLink && link.comIsCustom && link.comAnchor !== 'centroid'
+          )
+          .map((link) =>
+            link.comAnchor === 'grid'
+              ? 'CG' + link.id
+              : 'CJ' + link.id + '~' + (link.comAnchor as { joint: string }).joint
+          )
+      );
 
       // Encode global settings
       encoder.addEnumSetting(

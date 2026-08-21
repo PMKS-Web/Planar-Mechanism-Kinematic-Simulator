@@ -100,6 +100,14 @@ export class MechanismBuilder {
       link.moiIsCustom = linkData.moiIsCustom;
       link.comIsCustom = linkData.comIsCustom;
       link.fill = linkData.color;
+      // The joints are all built before any link is (they have to be — a link
+      // is named by the ones it holds), so the ground pin a disc is centred on
+      // is already known here and the outline can be built for real rather
+      // than as a bar to be corrected on the next update.
+      if (linkData.isCircle) {
+        link.isCircle = true;
+        link.reComputeDPath();
+      }
     } else {
       link = new SliderBlock(linkData.id, jointsOnLink, linkData.mass);
     }
@@ -279,6 +287,17 @@ export class MechanismBuilder {
         const force = forces.find((candidate) => candidate.id === id);
         if (force) force.locked = true;
       }
+    });
+
+    // What each hand-placed centre of mass is held against. The offsets it
+    // needs are captured from the decoded coordinate on the first update, the
+    // same way the centroid anchor already works -- the URL carries where the
+    // point is, and the anchor says what it is measured from.
+    this.transcoder.getComAnchors().forEach((entry) => {
+      const [reference, jointID] = entry.substring(2).split('~');
+      const link = this.getLinkByID(links, reference);
+      if (!(link instanceof RealLink)) return;
+      link.comAnchor = entry.charAt(1) === 'G' ? 'grid' : { joint: jointID };
     });
 
     // A sealed cylinder's parts always follow their own shapes. Nothing that
