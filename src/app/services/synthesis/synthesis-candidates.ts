@@ -1,0 +1,437 @@
+import { Coord } from 'src/app/model/coord';
+import { MODEL_SCALE } from 'src/app/model/render-scale';
+
+/**
+ * Every four-bar that carries a coupler through three given positions.
+ *
+ * Three positions of a rigid body fix, for any point on that body, three
+ * positions of that point -- and three points determine a circle. So the
+ * centre of that circle is a ground pivot the point can be pinned to, and the
+ * radius is the link that holds it. Do that for two points on the body and the
+ * result is a four-bar that closes exactly at all three positions.
+ *
+ * That construction has exactly one answer per pair of points, which is why
+ * synthesis used to produce exactly one linkage: the two points it used were
+ * the ends of the end-effector link. But the coupler does not have to be
+ * pinned at the ends. Sliding the two pins along the link -- or past it --
+ * moves both circle centres and gives a genuinely different machine through
+ * the same three positions. Enumerating those is what turns synthesis from
+ * "here is the answer" into "here are the answers, compare them".
+ *
+ * Everything in this file is in model units (render-scale.ts), like the rest
+ * of the geometry the app computes with, and knows nothing about how it is
+ * drawn.
+ */
+
+/** How near a solved coupler pin has to land to count as the same point. */
+export const POSE_TOLERANCE = 0.18 * MODEL_SCALE;
+
+/**
+ * Where the two coupler pins may sit on the end-effector link, as fractions of
+ * its length from the back end. 0 and 1 are its ends; outside that range the
+ * pin is on an extension of the link, which is a real and often better
+ * machine.
+ */
+const PIN_OFFSETS = [-0.6, -0.3, 0, 0.2, 0.5, 0.8, 1, 1.3, 1.6];
+
+/** The least a pair of pins may be apart, as a fraction of the link. */
+const MIN_PIN_SPAN = 0.5;
+
+export interface PosePoint {
+  /** The back end of the end-effector link in this position. */
+  back: Coord;
+  /** Its front end. */
+  front: Coord;
+}
+
+export interface FourBarCandidate {
+  /** Identifies this candidate across a rebuild: pin offsets and branch. */
+  key: string;
+  /** A letter, assigned by rank when the list is handed to the panel. */
+  name: string;
+  /** Ground pivot of the input crank, and of the output rocker. */
+  A: Coord;
+  D: Coord;
+  /** The two coupler pins in position 1. */
+  B: Coord;
+  C: Coord;
+  /** Crank, rocker, coupler and ground lengths. */
+  r1: number;
+  r2: number;
+  d: number;
+  g: number;
+  /** Where the pins sit on the end-effector link. */
+  uA: number;
+  uB: number;
+  /** The pins' three positions, in order. */
+  ptsA: Coord[];
+  ptsB: Coord[];
+  /** Which of the two circle intersections this assembly uses. */
+  sign: number;
+  branch: 'Open' | 'Crossed';
+  /** The two branches of one pin pair share this, so they can be swapped. */
+  pair: string;
+  /** The crank angle, in degrees, at each of the three positions. */
+  thetas: number[];
+  /** How far the solved coupler pin misses each position by, on this branch. */
+  errors: number[];
+  onBranch: boolean[];
+  onBranchCount: number;
+  defectFree: boolean;
+  /** How far the crank can turn from position 1 without the loop opening. */
+  range: { from: number; to: number; full: boolean };
+  /** The worst transmission angle over the working stroke, in degrees. */
+  minTransmission: number;
+  kind: string;
+  size: number;
+}
+
+export interface CandidateSearch {
+  poses: PosePoint[];
+  /** Length of the end-effector link, in model units. */
+  length: number;
+  /** Whether the coupler must be pinned to the link's own two ends. */
+  endsOnly: boolean;
+  /** When set, both ground pivots must fall inside this box. */
+  region?: { x: number; y: number; w: number; h: number };
+}
+
+/** Why nothing was found, for a panel that has to explain an empty list. */
+export interface CandidateRejections {
+  tried: number;
+  degenerate: number;
+  tooBig: number;
+  alike: number;
+  outsideRegion: number;
+}
+
+export interface CandidateResult {
+  candidates: FourBarCandidate[];
+  rejections: CandidateRejections;
+}
+
+function distance(a: Coord, b: Coord): number {
+  return Math.hypot(b.x - a.x, b.y - a.y);
+}
+
+/** The centre of the circle through three points, or nothing if they line up. */
+export function circumcenter(p1: Coord, p2: Coord, p3: Coord): Coord | null {
+  const d = 2 * (p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y));
+  if (Math.abs(d) < 1e-9) return null;
+  const s1 = p1.x * p1.x + p1.y * p1.y;
+  const s2 = p2.x * p2.x + p2.y * p2.y;
+  const s3 = p3.x * p3.x + p3.y * p3.y;
+  return new Coord(
+    (s1 * (p2.y - p3.y) + s2 * (p3.y - p1.y) + s3 * (p1.y - p2.y)) / d,
+    (s1 * (p3.x - p2.x) + s2 * (p1.x - p3.x) + s3 * (p2.x - p1.x)) / d
+  );
+}
+
+/** Where two circles cross, or nothing if they do not reach each other. */
+export function meet(c1: Coord, r1: number, c2: Coord, r2: number): [Coord, Coord] | null {
+  const span = distance(c1, c2);
+  if (span === 0 || span > r1 + r2 || span < Math.abs(r1 - r2)) return null;
+  const a = (span * span + r1 * r1 - r2 * r2) / (2 * span);
+  const h = Math.sqrt(Math.max(0, r1 * r1 - a * a));
+  const ux = (c2.x - c1.x) / span;
+  const uy = (c2.y - c1.y) / span;
+  const mx = c1.x + a * ux;
+  const my = c1.y + a * uy;
+  return [new Coord(mx - h * uy, my + h * ux), new Coord(mx + h * uy, my - h * ux)];
+}
+
+function cross(o: Coord, a: Coord, b: Coord): number {
+  return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+}
+
+function pointOn(centre: Coord, radius: number, angleRad: number): Coord {
+  return new Coord(centre.x + radius * Math.cos(angleRad), centre.y + radius * Math.sin(angleRad));
+}
+
+/**
+ * Close the loop with the crank at a given angle.
+ *
+ * `sign` is the assembly: the two circle intersections are the two ways the
+ * same four bars can be pinned together, and a linkage cannot cross from one
+ * to the other without being taken apart.
+ */
+export function solveFourBar(
+  cand: Pick<FourBarCandidate, 'A' | 'D' | 'r1' | 'r2' | 'd' | 'sign'>,
+  thetaDeg: number,
+  sign?: number
+): { A: Coord; B: Coord; C: Coord; D: Coord } | null {
+  const B = pointOn(cand.A, cand.r1, (thetaDeg * Math.PI) / 180);
+  const pair = meet(B, cand.d, cand.D, cand.r2);
+  if (!pair) return null;
+  const want = sign === undefined ? cand.sign : sign;
+  const C = pair.find((p) => Math.sign(cross(B, cand.D, p)) === want);
+  if (!C) return null;
+  return { A: cand.A, B, C, D: cand.D };
+}
+
+/** A point a fraction `u` along the end-effector link, from its back end. */
+function attach(pose: PosePoint, u: number): Coord {
+  return new Coord(
+    pose.back.x + u * (pose.front.x - pose.back.x),
+    pose.back.y + u * (pose.front.y - pose.back.y)
+  );
+}
+
+/**
+ * What this candidate can actually do with the three positions.
+ *
+ * The circumcentre construction makes the loop close exactly at all three --
+ * that is what it is for -- so the question is never whether a position is
+ * reached. It is whether all three are reached on ONE assembly. A position
+ * that only closes on the other intersection can be got to only by taking the
+ * linkage apart and putting it back together, and that is what makes an
+ * otherwise perfect construction useless as a machine. It is called a branch
+ * defect, and it is the single most important thing to tell a reader
+ * comparing candidates.
+ */
+export function assess(cand: FourBarCandidate): void {
+  const branch = cand.sign;
+  cand.thetas = cand.ptsA.map((p) => (Math.atan2(p.y - cand.A.y, p.x - cand.A.x) * 180) / Math.PI);
+  cand.errors = cand.ptsB.map((target, i) => {
+    const sol = solveFourBar(cand, cand.thetas[i], branch);
+    return sol ? distance(sol.C, target) : Infinity;
+  });
+  cand.onBranch = cand.errors.map((e) => e < POSE_TOLERANCE);
+  cand.onBranchCount = cand.onBranch.filter(Boolean).length;
+  cand.defectFree = cand.onBranchCount === 3;
+
+  // How far the crank turns from position 1 before the loop can no longer be
+  // closed. Walked rather than solved because the limit is where two circles
+  // stop reaching, and walking outward from a pose we know closes cannot
+  // wander onto a disconnected stretch of the same curve.
+  const start = cand.thetas[0];
+  let from = start;
+  let to = start;
+  for (let k = 1; k <= 360; k++) {
+    if (!solveFourBar(cand, start + k, branch)) break;
+    to = start + k;
+  }
+  for (let k = 1; k <= 360; k++) {
+    if (!solveFourBar(cand, start - k, branch)) break;
+    from = start - k;
+  }
+  // A linkage that turns fully has no start of travel, so its track begins at
+  // position 1 and runs one revolution forward. A rocking one does have ends,
+  // and those are the ends that were walked.
+  const full = to - from >= 359;
+  cand.range = full ? { from: start, to: start + 360, full: true } : { from, to, full: false };
+
+  // The transmission angle over the stroke that matters -- the span the three
+  // positions actually occupy, not the whole range. It is how squarely the
+  // coupler pushes the rocker, and a four-bar that passes through the poses at
+  // five degrees will stall there in real life.
+  let minMu = 180;
+  const strokeFrom = Math.max(cand.range.from, Math.min(...cand.thetas) - 5);
+  const strokeTo = Math.min(cand.range.to, Math.max(...cand.thetas) + 5);
+  for (let deg = strokeFrom; deg <= strokeTo; deg += 2) {
+    const sol = solveFourBar(cand, deg, branch);
+    if (!sol) continue;
+    const v1 = { x: sol.B.x - sol.C.x, y: sol.B.y - sol.C.y };
+    const v2 = { x: cand.D.x - sol.C.x, y: cand.D.y - sol.C.y };
+    const dot = (v1.x * v2.x + v1.y * v2.y) / (Math.hypot(v1.x, v1.y) * Math.hypot(v2.x, v2.y));
+    let mu = (Math.acos(Math.max(-1, Math.min(1, dot))) * 180) / Math.PI;
+    if (mu > 90) mu = 180 - mu;
+    minMu = Math.min(minMu, mu);
+  }
+  cand.minTransmission = Math.round(minMu);
+  cand.kind = cand.range.full ? 'crank-rocker' : 'double-rocker';
+  cand.size = Math.max(cand.r1, cand.r2, cand.g);
+}
+
+/**
+ * Drive the linkage from its other ground pin.
+ *
+ * The same four bars, read from the far end: what was the rocker becomes the
+ * crank. A four-bar that will not turn from one ground pin often turns freely
+ * from the other, so this is a real second machine rather than a relabelling,
+ * and it is re-assessed as one.
+ */
+export function drivenFromFarPin(cand: FourBarCandidate): FourBarCandidate {
+  const swapped: FourBarCandidate = {
+    ...cand,
+    A: cand.D,
+    D: cand.A,
+    r1: cand.r2,
+    r2: cand.r1,
+    B: cand.C,
+    C: cand.B,
+    ptsA: cand.ptsB,
+    ptsB: cand.ptsA,
+    sign: Math.sign(cross(cand.ptsB[0], cand.A, cand.ptsA[0])) || 1,
+  };
+  assess(swapped);
+  return swapped;
+}
+
+function inRegion(p: Coord, region: { x: number; y: number; w: number; h: number }): boolean {
+  return (
+    p.x >= region.x && p.x <= region.x + region.w && p.y >= region.y && p.y <= region.y + region.h
+  );
+}
+
+/** How the two pins sit on the link, in words, for the dimensions list. */
+function describePins(uA: number, uB: number, length: number): string {
+  const part = (u: number, end: 0 | 1): string => {
+    if (Math.abs(u - end) < 1e-9) return '';
+    const away = Math.abs(u - end) * length;
+    const outside = end === 0 ? u < 0 : u > 1;
+    return (
+      (away / MODEL_SCALE).toFixed(1) +
+      ' ' +
+      (outside ? 'past' : 'inside') +
+      ' the ' +
+      (end === 0 ? 'back' : 'front')
+    );
+  };
+  const parts = [part(uA, 0), part(uB, 1)].filter(Boolean);
+  return parts.length ? parts.join(', ') : 'at both ends';
+}
+
+/**
+ * Every buildable four-bar through the three positions, best first.
+ *
+ * "Buildable" is doing real work here: the construction has an answer for
+ * almost every pair of pins, but as the three positions approach a straight
+ * line the circle centres run off towards infinity, and a ground pivot a
+ * hundred link-lengths away is not a machine anybody can make. Those are
+ * counted rather than silently dropped, so the panel can say which way the
+ * positions need to move.
+ */
+export function enumerateCandidates(search: CandidateSearch): CandidateResult {
+  const { poses, length } = search;
+  const rejections: CandidateRejections = {
+    tried: 0,
+    degenerate: 0,
+    tooBig: 0,
+    alike: 0,
+    outsideRegion: 0,
+  };
+  if (poses.length !== 3 || !(length > 0)) return { candidates: [], rejections };
+
+  const pairs: [number, number][] = [];
+  if (search.endsOnly) {
+    pairs.push([0, 1]);
+  } else {
+    PIN_OFFSETS.forEach((uA) =>
+      PIN_OFFSETS.forEach((uB) => {
+        if (uB - uA >= MIN_PIN_SPAN) pairs.push([uA, uB]);
+      })
+    );
+  }
+
+  const centre = new Coord(
+    poses.reduce((sum, p) => sum + (p.back.x + p.front.x) / 2, 0) / 3,
+    poses.reduce((sum, p) => sum + (p.back.y + p.front.y) / 2, 0) / 3
+  );
+  const spread = Math.max(
+    distance(poses[0].back, poses[1].back),
+    distance(poses[1].back, poses[2].back),
+    distance(poses[0].back, poses[2].back)
+  );
+  const reach = Math.max(6 * length, 2.5 * spread);
+
+  const out: FourBarCandidate[] = [];
+  pairs.forEach(([uA, uB]) => {
+    rejections.tried++;
+    const ptsA = poses.map((p) => attach(p, uA));
+    const ptsB = poses.map((p) => attach(p, uB));
+    const A = circumcenter(ptsA[0], ptsA[1], ptsA[2]);
+    const D = circumcenter(ptsB[0], ptsB[1], ptsB[2]);
+    if (!A || !D) {
+      rejections.degenerate++;
+      return;
+    }
+    const r1 = distance(A, ptsA[0]);
+    const r2 = distance(D, ptsB[0]);
+    const g = distance(A, D);
+    if (
+      distance(A, centre) > reach ||
+      distance(D, centre) > reach ||
+      r1 > reach ||
+      r2 > reach ||
+      g > reach
+    ) {
+      rejections.tooBig++;
+      return;
+    }
+    if (search.region && (!inRegion(A, search.region) || !inRegion(D, search.region))) {
+      rejections.outsideRegion++;
+      return;
+    }
+    // Two constructions that put their pivots within a link-length of each
+    // other and hold near-identical bars are the same machine drawn twice.
+    const alike = out.some(
+      (other) =>
+        distance(other.A, A) < length * 0.9 &&
+        distance(other.D, D) < length * 0.9 &&
+        Math.abs(other.r1 - r1) / Math.max(other.r1, r1) < 0.12 &&
+        Math.abs(other.r2 - r2) / Math.max(other.r2, r2) < 0.12
+    );
+    if (alike) {
+      rejections.alike++;
+      return;
+    }
+
+    const openSign = Math.sign(cross(ptsA[0], D, ptsB[0])) || 1;
+    [openSign, -openSign].forEach((sign) => {
+      const variant: FourBarCandidate = {
+        key: uA + ':' + uB + ':' + sign,
+        name: '?',
+        A,
+        D,
+        B: ptsA[0],
+        C: ptsB[0],
+        r1,
+        r2,
+        d: distance(ptsA[0], ptsB[0]),
+        g,
+        uA,
+        uB,
+        ptsA,
+        ptsB,
+        sign,
+        branch: sign === openSign ? 'Open' : 'Crossed',
+        pair: uA + '/' + uB,
+        thetas: [],
+        errors: [],
+        onBranch: [],
+        onBranchCount: 0,
+        defectFree: false,
+        range: { from: 0, to: 0, full: false },
+        minTransmission: 0,
+        kind: '',
+        size: 0,
+      };
+      assess(variant);
+      // A construction that closes at none of the three positions on this
+      // assembly, and cannot even be solved at the first, is not a second
+      // branch of anything -- it is the intersection that does not exist.
+      if (!isFinite(variant.errors[0]) && variant.onBranchCount === 0) return;
+      out.push(variant);
+    });
+  });
+
+  return { candidates: out, rejections };
+}
+
+/** Best first: defect-free, then most positions on one assembly, then roomiest. */
+export function rankCandidates(list: FourBarCandidate[], limit = 8): FourBarCandidate[] {
+  const sorted = list.slice().sort((a, b) => {
+    if (a.defectFree !== b.defectFree) return a.defectFree ? -1 : 1;
+    if (b.onBranchCount !== a.onBranchCount) return b.onBranchCount - a.onBranchCount;
+    return b.minTransmission - a.minTransmission;
+  });
+  const best = sorted.slice(0, limit);
+  best.forEach((c, i) => (c.name = 'ABCDEFGH'[i] ?? '?'));
+  return best;
+}
+
+/** Where the two coupler pins sit on the link, in the reader's own words. */
+export function describeCouplerPins(cand: FourBarCandidate, length: number): string {
+  return describePins(cand.uA, cand.uB, length);
+}
