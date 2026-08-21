@@ -1,183 +1,93 @@
-import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, inject } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { Coord } from '../../model/coord';
-import { Joint, RevJoint } from '../../model/joint';
+import { Subscription } from 'rxjs';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
 import { MechanismService } from '../../services/mechanism.service';
-import { RealLink } from '../../model/link';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
+import { SynthesisSolutionService } from 'src/app/services/synthesis/synthesis-solution.service';
 import { NumberUnitParserService } from 'src/app/services/number-unit-parser.service';
 import { SettingsService } from 'src/app/services/settings.service';
-import { SynthesisStatus } from 'src/app/services/synthesis/synthesis-constants';
-import { driverDyadFor } from 'src/app/services/synthesis/driver-dyad';
+import { COR } from 'src/app/services/synthesis/synthesis-util';
+import {
+  FourBarCandidate,
+  describeCouplerPins,
+  solveFourBar,
+} from 'src/app/services/synthesis/synthesis-candidates';
 import { MODEL_SCALE } from 'src/app/model/render-scale';
 import { SvgGridService } from '../../services/svg-grid.service';
-import { ColorService } from '../../services/color.service';
-import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
-import { TitleBlock } from '../BLOCKS/title/title.component';
-import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
-import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
-import { InputComponent } from '../BLOCKS/input/input.component';
-import { RadioComponent } from '../BLOCKS/radio/radio.component';
-import { MatDivider } from '@angular/material/divider';
-import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
-import { ButtonComponent } from '../BLOCKS/button/button.component';
+
+/** One requirement row: what it costs, and what switching it off buys. */
+interface Requirement {
+  key: string;
+  on: boolean;
+  label: string;
+  detail: string;
+  toggle: () => void;
+  hasRegion?: boolean;
+}
+
+/** What one candidate looks like on its card in the gallery. */
+interface CandidateCard {
+  key: string;
+  name: string;
+  kind: string;
+  thumb: string;
+  thumbCoupler: string;
+  selected: boolean;
+  reachText: string;
+  defectFree: boolean;
+  metric: string;
+}
+
+const HELP = {
+  length:
+    'The length of the end-effector link — the part whose three positions you are designing for. ' +
+    "The four-bar's coupler is pinned to this link, but not necessarily at its ends.",
+  ref:
+    'Which point on the end-effector link the coordinates describe, and the point it turns about: ' +
+    'its back end, its middle, or its front end.',
+  duplicate:
+    'Copy the last position and offset it slightly — a quick start for three similar positions.',
+  branch:
+    'A four-bar can be closed two ways through the same pivots. Which way it is closed decides ' +
+    'which of the three positions it can pass through without coming apart.',
+  pin:
+    'Which ground pin carries the input. A four-bar that will not turn from one ground pin often ' +
+    'turns freely from the other.',
+  driver:
+    'Adds a crank and coupler sized so one full turn walks the linkage through all three ' +
+    'positions, making it a six-bar a motor can run.',
+  requirements:
+    'What a solution has to satisfy to be listed. Every one you switch on narrows the search; ' +
+    'switching one off widens it.',
+};
 
 @Component({
   selector: 'app-synthesis-panel',
   templateUrl: './synthesis-panel.component.html',
   styleUrls: ['./synthesis-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [
-    PanelSectionComponent,
-    TitleBlock,
-    CollapsibleSubsecitonComponent,
-    SubtitleComponent,
-    InputComponent,
-    FormsModule,
-    ReactiveFormsModule,
-    RadioComponent,
-    MatDivider,
-    DualInputComponent,
-    ButtonComponent,
-  ],
+  imports: [FormsModule, ReactiveFormsModule, MatIcon, MatTooltip],
 })
-export class SynthesisPanelComponent implements OnInit {
+export class SynthesisPanelComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   mechanismSrv = inject(MechanismService);
-  synthesisBuilder = inject(SynthesisBuilderService);
+  design = inject(SynthesisBuilderService);
+  solution = inject(SynthesisSolutionService);
   private nup = inject(NumberUnitParserService);
   private settings = inject(SettingsService);
   svgGrid = inject(SvgGridService);
-  private colorService = inject(ColorService);
 
-  private _alreadyHandlingPoseChange: boolean = false;
+  readonly help = HELP;
+  readonly rows = [1, 2, 3];
 
-  ngOnInit() {
-    //Set initial values
-    //(The default values are based on the image Pradeep provided but they can be easily changed below)
-    this.synthesisForm.setValue({
-      //a0x: '6',
-      //a0y: '0',
-      //b0x: '8.1213',
-      //b0y: '-2.1213',
-      //a1x: '8',
-      //a1y: '-4',
-      //b1x: '8',
-      //b1y: '-7',
-      //a2x: '1',
-      //a2y: '2',
-      //b2x: '4',
-      //b2y: '2',
+  private subs: Subscription[] = [];
+  private syncing = false;
+  private frame: number | undefined;
 
-      //a0x: '-7.96',
-      //a0y: '-1.34',
-      //b0x: '-4.42',
-      //b0y: '2.2',
-      //a1x: '-0.37',
-      //a1y: '4.06',
-      //b1x: '4.63',
-      //b1y: '4.06',
-      //a2x: '7.68',
-      //a2y: '2.30',
-      //b2x: '11.22',
-      //b2y: '-1.23',
-
-      a0x: '0',
-      a0y: '0',
-      b0x: '12.5',
-      b0y: '0',
-      a1x: '20',
-      a1y: '10',
-      b1x: '28.8388',
-      b1y: '18.8388',
-      a2x: '20',
-      a2y: '30',
-      b2x: '26.25',
-      b2y: '40.8253',
-
-      quality: '0.05',
-
-      position1Match: ' ',
-      position2Match: ' ',
-      position3Match: ' ',
-    });
-
-    // initialize form values from model
-    this.updateFormFromModel();
-
-    // when model updates, update form values as well
-    this.synthesisBuilder.valueChanges.subscribe((value) => {
-      this.updateFormFromModel();
-      if (this.synthesisBuilder.isFullyDefined()) {
-        this.synthesisFunction();
-      }
-    });
-
-    // set up subscriptions to synthesis form changes to update model
-    this.synthesisPoseForm.valueChanges.subscribe((value) => {
-      // prevent infinite loop
-      if (this._alreadyHandlingPoseChange) return;
-
-      this._alreadyHandlingPoseChange = true;
-
-      this.synthesisBuilder.updatePosesFromForm(value);
-      this.updateFormFromModel();
-
-      if (this.synthesisBuilder.isFullyDefined()) {
-        this.synthesisFunction();
-      }
-
-      this._alreadyHandlingPoseChange = false;
-    });
-
-    SettingsService._objectScale.subscribe((val) => {
-      this.synthesisBuilder.getAllPoses().forEach((pose) => {
-        pose.recompute();
-      });
-    });
-  }
-
-  private convertL(value: number): string {
-    // Pose coordinates and the end-effector length live in internal model
-    // units; the form speaks the user's unit.
-    return this.nup.formatModelLength(value, this.settings.lengthUnit.getValue());
-  }
-
-  private convertA(value: number): string {
-    return this.nup.formatValueAndUnit(value, this.settings.angleUnit.getValue());
-  }
-
-  // given synthesis model, update form values to sync with model
-  updateFormFromModel() {
-    this._alreadyHandlingPoseChange = true;
-
-    let poses = this.synthesisBuilder.poses;
-    let controls = this.synthesisPoseForm.controls;
-
-    controls.length.setValue(this.convertL(this.synthesisBuilder.length));
-
-    if (this.synthesisBuilder.isPoseDefined(1)) {
-      controls.p1x.setValue(this.convertL(poses[1].position.x));
-      controls.p1y.setValue(this.convertL(poses[1].position.y));
-      controls.p1theta.setValue(this.convertA(poses[1].thetaDegrees));
-    }
-    if (this.synthesisBuilder.isPoseDefined(2)) {
-      controls.p2x.setValue(this.convertL(poses[2].position.x));
-      controls.p2y.setValue(this.convertL(poses[2].position.y));
-      controls.p2theta.setValue(this.convertA(poses[2].thetaDegrees));
-    }
-    if (this.synthesisBuilder.isPoseDefined(3)) {
-      controls.p3x.setValue(this.convertL(poses[3].position.x));
-      controls.p3y.setValue(this.convertL(poses[3].position.y));
-      controls.p3theta.setValue(this.convertA(poses[3].thetaDegrees));
-    }
-
-    this._alreadyHandlingPoseChange = false;
-  }
-
-  synthesisPoseForm = this.fb.group(
+  poseForm = this.fb.group(
     {
-      cor: ['1'],
       length: [''],
       p1x: [''],
       p1y: [''],
@@ -189,527 +99,763 @@ export class SynthesisPanelComponent implements OnInit {
       p3y: [''],
       p3theta: [''],
     },
-    {
-      updateOn: 'blur',
-    }
+    { updateOn: 'blur' }
   );
 
-  //Angular form stuff with 12 numbers, a0x, a0y, b0x, b0y, a1x, a1y, b1x, b1y, a2x, a2y, b2x, b2y
-  synthesisForm = this.fb.group({
-    a0x: [''],
-    a0y: [''],
-    b0x: [''],
-    b0y: [''],
-    a1x: [''],
-    a1y: [''],
-    b1x: [''],
-    b1y: [''],
-    a2x: [''],
-    a2y: [''],
-    b2x: [''],
-    b2y: [''],
-    quality: [''],
-    position1Match: [''],
-    position2Match: [''],
-    position3Match: [''],
-  });
+  regionForm = this.fb.group({ rx: [''], ry: [''], rw: [''], rh: [''] }, { updateOn: 'blur' });
 
-  // for html to get current pose as a number
-  getCurrentPose(): number {
-    return this.synthesisBuilder.selectedPose;
+  ngOnInit(): void {
+    // Entering the tab. Whatever a previous visit left on the grid belongs to
+    // the drawing now, so this visit's Insert makes a new machine rather than
+    // offering to take back one the reader may have been editing since.
+    this.solution.forgetInsert();
+    this.readFromModel();
+
+    this.subs.push(
+      this.design.valueChanges.subscribe((structural) => {
+        this.readFromModel();
+        this.claimWheel();
+        // A moved position, a different reference point, a new requirement: the
+        // candidates on screen were computed for a design that no longer
+        // exists. Only a re-run may put them back.
+        if (structural) this.solution.invalidate();
+      })
+    );
+
+    this.subs.push(
+      this.poseForm.valueChanges.subscribe((value) => {
+        if (this.syncing) return;
+        this.syncing = true;
+        this.design.updatePosesFromForm({ ...value, cor: this.corIndex() });
+        this.readFromModel();
+        this.syncing = false;
+        this.solution.invalidate();
+        this.record();
+      })
+    );
+
+    this.subs.push(
+      this.regionForm.valueChanges.subscribe(() => {
+        if (this.syncing) return;
+        this.readRegionFromForm();
+      })
+    );
+
+    this.subs.push(
+      SettingsService._objectScale.subscribe(() => {
+        this.design.getAllPoses().forEach((pose) => pose.recompute());
+      })
+    );
   }
 
-  setCurrentPose(pose: number) {
-    this.synthesisBuilder.selectedPose = pose;
-  }
-
-  getFormIDPoseX(pose: number): string {
-    if (pose == 1) return 'p1x';
-    else if (pose == 2) return 'p2x';
-    else return 'p3x';
-  }
-
-  getFormIDPoseY(pose: number): string {
-    if (pose == 1) return 'p1y';
-    else if (pose == 2) return 'p2y';
-    else return 'p3y';
-  }
-
-  getFormIDPoseTheta(pose: number): string {
-    if (pose == 1) return 'p1theta';
-    else if (pose == 2) return 'p2theta';
-    else return 'p3theta';
+  ngOnDestroy(): void {
+    this.subs.forEach((s) => s.unsubscribe());
+    if (this.frame) cancelAnimationFrame(this.frame);
+    // Leaving the tab hands the wheel back whatever state placing was left in.
+    this.svgGrid.setWheelZoomEnabled(true);
   }
 
   /**
-   * Take back the linkage this visit to Synthesis last produced.
-   *
-   * By id, and only the ids this visit recorded: anything else on the grid was
-   * drawn by hand or left by an earlier visit and is not this one's to remove.
-   * Forces attached to a removed link go with it -- a force on a link that no
-   * longer exists belongs to no mechanism and would sit in the drawing
-   * unreachable.
+   * While a position is waiting to be dropped the wheel turns it, so the canvas
+   * zoom has to stand down. Reconciled from one place -- every path that arms
+   * or disarms placing reports through `valueChanges` -- rather than paired by
+   * hand at each of them, because the failure of a missed pairing is a canvas
+   * whose wheel is dead until the tab is left.
    */
-  private removePreviousSynthesis(): void {
-    const { joints, links } = this.synthesisBuilder.synthesisedIds;
-    if (joints.length === 0 && links.length === 0) return;
-
-    const goneLinks = new Set(links);
-    const goneJoints = new Set(joints);
-    this.mechanismSrv.forces = this.mechanismSrv.forces.filter(
-      (force) => !goneLinks.has(force.link?.id ?? '')
-    );
-    this.mechanismSrv.links = this.mechanismSrv.links.filter((link) => !goneLinks.has(link.id));
-    this.mechanismSrv.joints = this.mechanismSrv.joints.filter(
-      (joint) => !goneJoints.has(joint.id)
-    );
-    this.synthesisBuilder.synthesisedIds = { joints: [], links: [] };
+  private claimWheel(): void {
+    this.svgGrid.setWheelZoomEnabled(!this.design.armed);
   }
 
-  /** As many ids as asked for, none of which anything on the grid is using. */
-  private nextLetters(count: number): string[] {
-    const taken: string[] = [];
-    for (let i = 0; i < count; i++) {
-      taken.push(this.mechanismSrv.determineNextLetter(taken));
+  // --- units ---------------------------------------------------------------
+
+  private lengthText(model: number): string {
+    return this.nup.formatModelLength(model, this.settings.lengthUnit.getValue());
+  }
+
+  private angleText(degrees: number): string {
+    return this.nup.formatValueAndUnit(degrees, this.settings.angleUnit.getValue());
+  }
+
+  /** A model length in the reader's own unit, to two places, without a unit. */
+  private plain(model: number): string {
+    return (model / MODEL_SCALE).toFixed(2);
+  }
+
+  get lengthUnit(): string {
+    return this.nup.unitLabel(this.settings.lengthUnit.getValue());
+  }
+
+  private corIndex(): string {
+    return this.design.COR === COR.BACK ? '0' : this.design.COR === COR.CENTER ? '1' : '2';
+  }
+
+  // --- form <-> model ------------------------------------------------------
+
+  private readFromModel(): void {
+    this.syncing = true;
+    const controls = this.poseForm.controls as unknown as Record<
+      string,
+      { setValue(value: string, options?: { emitEvent: boolean }): void }
+    >;
+    controls['length'].setValue(this.lengthText(this.design.length), { emitEvent: false });
+    for (const i of this.rows) {
+      const pose = this.design.isPoseDefined(i) ? this.design.getPose(i) : undefined;
+      controls[`p${i}x`].setValue(pose ? this.lengthText(pose.position.x) : '', {
+        emitEvent: false,
+      });
+      controls[`p${i}y`].setValue(pose ? this.lengthText(pose.position.y) : '', {
+        emitEvent: false,
+      });
+      controls[`p${i}theta`].setValue(pose ? this.angleText(pose.thetaDegrees) : '', {
+        emitEvent: false,
+      });
+      // Through the control rather than the element: a reactive form owns its
+      // input's disabled state and writes it on every render, so a `disabled`
+      // attribute set beside `formControlName` is removed again the moment
+      // Angular looks at it.
+      [`p${i}x`, `p${i}y`, `p${i}theta`].forEach((name) => {
+        const control = this.poseForm.get(name)!;
+        if (pose && control.disabled) control.enable({ emitEvent: false });
+        if (!pose && control.enabled) control.disable({ emitEvent: false });
+      });
     }
-    return taken;
-  }
-
-  /** Whether there is a linkage on the grid for the driver controls to act on. */
-  hasLinkage(): boolean {
-    return this.synthesisBuilder.isFullyDefined();
-  }
-
-  /**
-   * Add a driver to the four-bar, or take it off again.
-   *
-   * Both go through a full re-synthesis rather than editing what is on the
-   * grid, because the drive pin and the driver change how the four-bar itself
-   * is built -- which of its pins is the input -- and re-running is the only
-   * path that cannot leave the two disagreeing.
-   */
-  toggleDriver(): void {
-    this.synthesisBuilder.driverWanted = !this.synthesisBuilder.driverWanted;
-    if (this.hasLinkage()) this.synthesisFunction();
-  }
-
-  /** Drive the linkage from its other ground pin. */
-  swapDrivePin(): void {
-    this.synthesisBuilder.driveOnFarPin = !this.synthesisBuilder.driveOnFarPin;
-    if (this.hasLinkage()) this.synthesisFunction();
-  }
-
-  /**
-   * Score the poses against the linkage as it now stands.
-   *
-   * Synthesis scores its own answer as it builds it, so this says nothing new
-   * about an untouched linkage -- it is for after the drawing has been edited
-   * by hand, when the marks on the poses are describing a linkage that no
-   * longer exists.
-   */
-  evaluatePoses(): void {
-    const built = this.mechanismSrv.joints.find(
-      (joint) => joint.id === this.synthesisBuilder.synthesisedIds.joints[0]
+    const r = this.design.region;
+    this.regionForm.setValue(
+      {
+        rx: this.lengthText(r.x),
+        ry: this.lengthText(r.y),
+        rw: this.lengthText(r.w),
+        rh: this.lengthText(r.h),
+      },
+      { emitEvent: false }
     );
-    const solved = built ? this.mechanismSrv.mechanismContaining(built) : undefined;
-    const poseCoords = [1, 2, 3].flatMap((i) => [
-      this.synthesisBuilder.poses[i].posBack,
-      this.synthesisBuilder.poses[i].posFront,
-    ]);
-    this.checkQuality(
-      solved
-        ? this.compareTheQualityofSynthesis(
-            solved.joints,
-            poseCoords,
-            Number(this.synthesisForm.value.quality)
-          )
-        : [999, 999, 999, 999, 999, 999, 999, 999, 999]
-    );
+    this.syncing = false;
   }
 
-  synthesisFunction() {
-    //call synthesis functions
-
-    //populate pose information
-
-    let pose1_coord1 = this.synthesisBuilder.poses[1].posBack;
-    let pose1_coord2 = this.synthesisBuilder.poses[1].posFront;
-    let pose2_coord1 = this.synthesisBuilder.poses[2].posBack;
-    let pose2_coord2 = this.synthesisBuilder.poses[2].posFront;
-    let pose3_coord1 = this.synthesisBuilder.poses[3].posBack;
-    let pose3_coord2 = this.synthesisBuilder.poses[3].posFront;
-
-    let qualityfromUser = Number(this.synthesisForm.value.quality);
-
-    //find first itnersection point
-
-    let firstPoint = this.findIntersectionPoint(pose1_coord1, pose2_coord1, pose3_coord1);
-    let secondPoint = pose1_coord1;
-    let thirdPoint = pose1_coord2;
-    let fourthPoint = this.findIntersectionPoint2(pose1_coord2, pose2_coord2, pose3_coord2);
-
-    // Take back what this visit put on the grid last time it ran -- it runs
-    // again on every change to a pose -- and leave everything else alone. It
-    // used to empty the whole drawing, which is the wrong answer now that a
-    // drawing can hold more than one machine.
-    this.removePreviousSynthesis();
-
-    //now create joints, links, etc. from the above four coordinates
-
-    // Not A, B, C, D: those letters are taken as soon as there is anything else
-    // on the grid, and two joints with one id is not a mechanism, it is a bug
-    // waiting for the codec to find it.
-    const [idA, idB, idC, idD, idE, idF] = this.nextLetters(6);
-
-    // Which pin the motor sits on is decided here rather than moved afterwards:
-    // with a driver on the linkage neither ground pin is the input at all, and
-    // without one it is whichever the drive-pin choice names.
-    const far = this.synthesisBuilder.driveOnFarPin;
-    const drivenDirectly = !this.synthesisBuilder.driverWanted;
-
-    let joint1 = new RevJoint(idA, firstPoint.x, firstPoint.y, drivenDirectly && !far, true);
-    let joint2 = new RevJoint(idB, secondPoint.x, secondPoint.y, false, false);
-    let joint3 = new RevJoint(idC, thirdPoint.x, thirdPoint.y, false, false);
-    let joint4 = new RevJoint(idD, fourthPoint.x, fourthPoint.y, drivenDirectly && far, true);
-
-    joint1.connectedJoints.push(joint2);
-    joint2.connectedJoints.push(joint1, joint3);
-    joint3.connectedJoints.push(joint2, joint4);
-    joint4.connectedJoints.push(joint3);
-
-    let link1 = new RealLink(idA + idB, [joint1, joint2]);
-    link1.fill = this.colorService.getLinkColorFromIndex(0);
-    let link2 = new RealLink(idB + idC, [joint2, joint3]);
-    link2.fill = this.colorService.getLinkColorFromIndex(1);
-    let link3 = new RealLink(idC + idD, [joint3, joint4]);
-    link3.fill = this.colorService.getLinkColorFromIndex(0);
-
-    joint1.links.push(link1);
-    joint2.links.push(link1, link2);
-    joint3.links.push(link2, link3);
-    joint4.links.push(link3);
-
-    const madeJoints = [joint1, joint2, joint3, joint4];
-    const madeLinks = [link1, link2, link3];
-
-    // Built into the linkage, not added to it afterwards, so that one solve
-    // sees the finished six-bar and the driver survives the next pose change.
-    this.synthesisBuilder.driverRefusal = undefined;
-    if (this.synthesisBuilder.driverWanted) {
-      const pivot = far ? fourthPoint : firstPoint;
-      const drivenPin = far ? joint3 : joint2;
-      const drivenAt = far
-        ? [pose1_coord2, pose2_coord2, pose3_coord2]
-        : [pose1_coord1, pose2_coord1, pose3_coord1];
-
-      const sized = driverDyadFor(pivot, drivenAt);
-      if ('refusal' in sized) {
-        // The four-bar still stands, and still passes through the poses — it
-        // is only the motor that could not be fitted. Left drivable by hand so
-        // the drawing is not made useless by the refusal.
-        this.synthesisBuilder.driverRefusal = sized.refusal;
-        (far ? joint4 : joint1).input = true;
-      } else {
-        // The two lengths the sizing solved for are the distances between these
-        // three points, so placing the pins is all it takes to realise them.
-        const { ground, elbow } = sized.dyad;
-        const motor = new RevJoint(idE, ground.x, ground.y, true, true);
-        const knee = new RevJoint(idF, elbow.x, elbow.y, false, false);
-
-        motor.connectedJoints.push(knee);
-        knee.connectedJoints.push(motor, drivenPin);
-        drivenPin.connectedJoints.push(knee);
-
-        const driverCrank = new RealLink(idE + idF, [motor, knee]);
-        driverCrank.fill = this.colorService.getLinkColorFromIndex(2);
-        const driverCoupler = new RealLink(idF + drivenPin.id, [knee, drivenPin]);
-        driverCoupler.fill = this.colorService.getLinkColorFromIndex(3);
-
-        motor.links.push(driverCrank);
-        knee.links.push(driverCrank, driverCoupler);
-        drivenPin.links.push(driverCoupler);
-
-        madeJoints.push(motor, knee);
-        madeLinks.push(driverCrank, driverCoupler);
-      }
+  private readRegionFromForm(): void {
+    const unit = this.settings.lengthUnit.getValue();
+    const parsed = (['rx', 'ry', 'rw', 'rh'] as const).map((key) =>
+      this.nup.parseModelLengthString(this.regionForm.get(key)!.value ?? '', unit)
+    );
+    if (parsed.some(([ok]) => !ok)) {
+      this.readFromModel();
+      return;
     }
-
-    this.mechanismSrv.mergeToJoints(madeJoints);
-    this.mechanismSrv.mergeToLinks(madeLinks);
-    this.synthesisBuilder.synthesisedIds = {
-      joints: madeJoints.map((joint) => joint.id),
-      links: madeLinks.map((link) => link.id),
+    this.design.region = {
+      x: parsed[0][1],
+      y: parsed[1][1],
+      w: Math.max(MODEL_SCALE, parsed[2][1]),
+      h: Math.max(MODEL_SCALE, parsed[3][1]),
     };
+    this.readFromModel();
+    this.solution.invalidate();
+    this.record();
+  }
 
-    this.mechanismSrv.mechanismTimeStep = 0;
-    this.mechanismSrv.updateMechanism();
+  /**
+   * One entry in the history for one change to the design.
+   *
+   * The design rides in the same URL undo and redo are made of, so a step of it
+   * has to be written the same way an edit to the drawing is -- once per
+   * completed change, never per pointer-move. Dragging a position on the grid
+   * records on release, for the same reason.
+   */
+  private record(): void {
+    this.mechanismSrv.save();
+  }
 
-    // update flag to indicate that mechanism has been modified since last synthesis
-    this.synthesisBuilder.modifiedMechanism = true;
+  // --- stage ---------------------------------------------------------------
 
-    let posCoords = [
-      pose1_coord1,
-      pose1_coord2,
-      pose2_coord1,
-      pose2_coord2,
-      pose3_coord1,
-      pose3_coord2,
+  get isChooser(): boolean {
+    return this.design.stage === 'chooser';
+  }
+
+  startMotionSynthesis(): void {
+    this.design.stage = 'working';
+    this.design.setArmed(false);
+  }
+
+  backToChooser(): void {
+    this.design.stage = 'chooser';
+    this.design.regionDraw = false;
+    this.design.setArmed(false);
+    this.solution.playing = false;
+  }
+
+  headerNote(): string {
+    if (!this.design.isFullyDefined()) {
+      return this.design.getAllPoses().length + ' of 3 positions placed';
+    }
+    if (!this.solution.generated) return '3 positions · no solutions yet';
+    const count = this.solution.candidates().length;
+    const kind = this.solution.dyad() ? 'six-bar' : 'four-bar';
+    return `${kind} · ${count} ${count === 1 ? 'candidate' : 'candidates'}`;
+  }
+
+  // --- the coupler ---------------------------------------------------------
+
+  setReference(cor: COR): void {
+    if (this.design.COR === cor) return;
+    this.design.updatePosesFromForm({
+      ...this.poseForm.value,
+      cor: cor === COR.BACK ? '0' : cor === COR.CENTER ? '1' : '2',
+    });
+    this.design.valueChanges.next(true);
+    this.record();
+  }
+
+  referenceOptions(): { label: string; value: COR; active: boolean }[] {
+    return [
+      { label: 'Back', value: COR.BACK, active: this.design.COR === COR.BACK },
+      { label: 'Center', value: COR.CENTER, active: this.design.COR === COR.CENTER },
+      { label: 'Front', value: COR.FRONT, active: this.design.COR === COR.FRONT },
     ];
-
-    // The machine this synthesis just made, not whichever one sorts first: a
-    // drawing can hold several now, and the quality being reported is this
-    // one's.
-    const solved = this.mechanismSrv.mechanismContaining(joint1);
-    // Nothing to score if it did not solve. 999 is what the scorer itself uses
-    // for a pose it could not reach, and every reader here compares against a
-    // threshold, so this reads as three misses -- which is what happened.
-    let quality = solved
-      ? this.compareTheQualityofSynthesis(solved.joints, posCoords, qualityfromUser)
-      : [999, 999, 999, 999, 999, 999, 999, 999, 999];
-
-    //  let trialCoord = new Coord(this.mechanismSrv.mechanisms[0].joints[0][0].x, this.mechanismSrv.mechanisms[0].joints[0][0].y);
-
-    //now check if there is 999 in the quality. Count 999 and say which position matches
-
-    this.checkQuality(quality);
-
-    //   'Position Matches:' +
-    //     whichPositionMatches[0] +
-    //     ',' +
-    //     whichPositionMatches[1] +
-    //     ',' +
-    //     whichPositionMatches[2]
-    // );
   }
 
-  checkQuality(quality: number[]) {
-    // In model units, like the distances it is comparing against.
-    const POSE_REACHED = 0.09 * MODEL_SCALE;
-    let positionMatches: string[] = ['Position 1', 'Position 2', 'Position 3'];
-    if (quality[0] >= POSE_REACHED || quality[1] >= POSE_REACHED) {
-      positionMatches[0] = 'No Match';
-      this.synthesisBuilder.poses[1].status = SynthesisStatus.INVALID;
-    } else {
-      this.synthesisBuilder.poses[1].status = SynthesisStatus.VALID;
-    }
-    if (quality[3] >= POSE_REACHED || quality[4] >= POSE_REACHED) {
-      positionMatches[1] = 'No Match';
-      this.synthesisBuilder.poses[2].status = SynthesisStatus.INVALID;
-    } else {
-      this.synthesisBuilder.poses[2].status = SynthesisStatus.VALID;
-    }
-    if (quality[6] >= POSE_REACHED || quality[7] >= POSE_REACHED) {
-      positionMatches[2] = 'No Match';
-      this.synthesisBuilder.poses[3].status = SynthesisStatus.INVALID;
-    } else {
-      this.synthesisBuilder.poses[3].status = SynthesisStatus.VALID;
-    }
+  // --- positions -----------------------------------------------------------
 
-    return positionMatches;
+  get nextPositionNumber(): number {
+    return this.design.getAllPoses().length + 1;
   }
 
-  compareTheQualityofSynthesis(jointValues: Joint[][], posCoords: Coord[], qualityOfSyn: number) {
-    //get position analysis data
-    //joint B, Joint C,
-    //compare that with poses
+  get showAddButton(): boolean {
+    return !this.design.isFullyDefined();
+  }
 
-    // Both tolerances a person deals with -- the one typed into the panel and
-    // the 0.09 below -- are lengths in the units the grid is labelled in. Every
-    // distance measured here is between model coordinates, which are those
-    // units times MODEL_SCALE. Comparing the two directly meant a pose counted
-    // as reached only when it was hit to the last decimal place, so all three
-    // marks read "no match" on linkages that pass straight through the poses.
-    const tolerance = qualityOfSyn * MODEL_SCALE;
+  get addLabel(): string {
+    return this.design.armed ? 'Cancel' : 'Add position ' + this.nextPositionNumber;
+  }
 
-    let quality1_b: number = 999;
-    let quality2_b: number = 999;
-    let quality3_b: number = 999;
+  toggleArmed(): void {
+    this.design.setArmed(!this.design.armed);
+  }
 
-    let quality1_c: number = 999;
-    let quality2_c: number = 999;
-    let quality3_c: number = 999;
+  get canDuplicate(): boolean {
+    const placed = this.design.getAllPoses().length;
+    return placed > 0 && placed < 3;
+  }
 
-    let pos1TimeStep: number = 999;
-    let pos2TimeStep: number = 999;
-    let pos3TimeStep: number = 999;
+  isPlaced(i: number): boolean {
+    return this.design.isPoseDefined(i);
+  }
 
-    //compare Joint B with pose 1, pose2, and pose3;
+  isSelectedRow(i: number): boolean {
+    return this.design.selectedPose === i;
+  }
 
-    let index: number = 1;
+  /** Whether this row is the one the pointer is currently about to fill. */
+  isPreviewingRow(i: number): boolean {
+    return !this.isPlaced(i) && this.design.armed && this.nextPositionNumber === i;
+  }
 
-    for (let val in jointValues) {
-      let pos1Value_b = Math.sqrt(
-        Math.pow(jointValues[val][1].x - posCoords[0].x, 2) +
-          Math.pow(jointValues[val][1].y - posCoords[0].y, 2)
-      );
-      let pos2Value_b = Math.sqrt(
-        Math.pow(jointValues[val][1].x - posCoords[2].x, 2) +
-          Math.pow(jointValues[val][1].y - posCoords[2].y, 2)
-      );
-      let pos3Value_b = Math.sqrt(
-        Math.pow(jointValues[val][1].x - posCoords[4].x, 2) +
-          Math.pow(jointValues[val][1].y - posCoords[4].y, 2)
-      );
-
-      let pos1Value_c = Math.sqrt(
-        Math.pow(jointValues[val][2].x - posCoords[1].x, 2) +
-          Math.pow(jointValues[val][2].y - posCoords[1].y, 2)
-      );
-      let pos2Value_c = Math.sqrt(
-        Math.pow(jointValues[val][2].x - posCoords[3].x, 2) +
-          Math.pow(jointValues[val][2].y - posCoords[3].y, 2)
-      );
-      let pos3Value_c = Math.sqrt(
-        Math.pow(jointValues[val][2].x - posCoords[5].x, 2) +
-          Math.pow(jointValues[val][2].y - posCoords[5].y, 2)
-      );
-
-      //need to compare if less than 0.09
-      //need to store in quality
-      //need to check if exact match
-      //need to extract time step.
-
-      if (pos1Value_b < tolerance && pos1Value_c < tolerance && index == 1) {
-        quality1_b = pos1Value_b;
-        quality1_c = pos1Value_c;
-        pos1TimeStep = index;
-      } else if (pos1Value_b < tolerance && pos1Value_c < tolerance && index > 1) {
-        quality1_b = pos1Value_b;
-        quality1_c = pos1Value_c;
-        pos1TimeStep = index;
-      } else if (pos2Value_b < tolerance && pos2Value_c < tolerance && index == 1) {
-        quality2_b = pos2Value_b;
-        quality2_c = pos2Value_c;
-        pos2TimeStep = index;
-      } else if (pos2Value_b < tolerance && pos2Value_c < tolerance && index > 1) {
-        quality2_b = pos2Value_b;
-        quality2_c = pos2Value_c;
-        pos2TimeStep = index;
-      } else if (pos3Value_b < tolerance && pos3Value_c < tolerance && index == 1) {
-        quality3_b = pos3Value_b;
-        quality3_c = pos3Value_c;
-        pos3TimeStep = index;
-      } else if (pos3Value_b < tolerance && pos3Value_c < tolerance && index > 1) {
-        quality3_b = pos3Value_b;
-        quality3_c = pos3Value_c;
-        pos3TimeStep = index;
-      } else {
-        //if there is no match, then use the prev index and then with the current and prev, find the midpoint and then evaluate the same
-
-        if (index > 1) {
-          let jointB_x = (jointValues[val][1].x + jointValues[index - 2][1].x) / 2;
-          let jointB_y = (jointValues[val][1].y + jointValues[index - 2][1].y) / 2;
-          let jointC_x = (jointValues[val][2].x + jointValues[index - 2][2].x) / 2;
-          let jointC_y = (jointValues[val][2].y + jointValues[index - 2][2].y) / 2;
-
-          let pos1Value_b = Math.sqrt(
-            Math.pow(jointB_x - posCoords[0].x, 2) + Math.pow(jointB_y - posCoords[0].y, 2)
-          );
-          let pos2Value_b = Math.sqrt(
-            Math.pow(jointB_x - posCoords[2].x, 2) + Math.pow(jointB_y - posCoords[2].y, 2)
-          );
-          let pos3Value_b = Math.sqrt(
-            Math.pow(jointB_x - posCoords[4].x, 2) + Math.pow(jointB_y - posCoords[4].y, 2)
-          );
-
-          let pos1Value_c = Math.sqrt(
-            Math.pow(jointC_x - posCoords[1].x, 2) + Math.pow(jointC_y - posCoords[1].y, 2)
-          );
-          let pos2Value_c = Math.sqrt(
-            Math.pow(jointC_x - posCoords[3].x, 2) + Math.pow(jointC_y - posCoords[3].y, 2)
-          );
-          let pos3Value_c = Math.sqrt(
-            Math.pow(jointC_x - posCoords[5].x, 2) + Math.pow(jointC_y - posCoords[5].y, 2)
-          );
-
-          if (pos1Value_b < tolerance && pos1Value_c < tolerance) {
-            quality1_b = pos1Value_b;
-            quality1_c = pos1Value_c;
-            pos1TimeStep = index - 0.5;
-          } else if (pos2Value_b < tolerance && pos2Value_c < tolerance) {
-            quality2_b = pos2Value_b;
-            quality2_c = pos2Value_c;
-            pos2TimeStep = index - 0.5;
-          } else if (pos3Value_b < tolerance && pos3Value_c < tolerance) {
-            quality3_b = pos3Value_b;
-            quality3_c = pos3Value_c;
-            pos3TimeStep = index - 0.5;
-          }
-        }
-      }
-
-      index = index + 1;
+  selectRow(i: number): void {
+    if (this.isPlaced(i)) {
+      this.design.selectedPose = i;
+      this.design.setArmed(false);
+    } else {
+      // An empty row is the one place a reader looks to fill it in.
+      this.design.setArmed(true);
     }
+  }
 
-    //now compile quality array and then pass it back
+  removeRow(event: Event, i: number): void {
+    event.stopPropagation();
+    if (!this.isPlaced(i)) return;
+    this.design.removePose(i);
+    this.solution.invalidate();
+    this.record();
+  }
 
-    let qualityCompilation: number[];
+  duplicateLast(): void {
+    this.design.duplicateLastPose();
+    this.record();
+  }
 
-    qualityCompilation = [
-      quality1_b,
-      quality1_c,
-      pos1TimeStep,
-      quality2_b,
-      quality2_c,
-      pos2TimeStep,
-      quality3_b,
-      quality3_c,
-      pos3TimeStep,
+  /**
+   * Whether the chosen linkage reaches this position on the assembly it is
+   * drawn in. Undefined when there is nothing to check it against.
+   */
+  reached(i: number): boolean | undefined {
+    const cand = this.solution.chosen();
+    if (!cand || !this.isPlaced(i)) return undefined;
+    return cand.onBranch[i - 1];
+  }
+
+  rowStatusIcon(i: number): string {
+    if (!this.isPlaced(i)) {
+      return this.isPreviewingRow(i) ? 'ads_click' : 'radio_button_unchecked';
+    }
+    const ok = this.reached(i);
+    if (ok === undefined) return 'help_outline';
+    return ok ? 'check_circle' : 'link_off';
+  }
+
+  rowStatusTip(i: number): string {
+    if (!this.isPlaced(i)) {
+      return this.isPreviewingRow(i) ? 'Click the grid to drop this position' : 'Not placed yet';
+    }
+    const ok = this.reached(i);
+    if (ok === undefined) {
+      if (!this.design.isFullyDefined()) return 'Waiting for all three positions';
+      return this.solution.generated
+        ? 'No candidate linkage to check this position against yet'
+        : 'Generate solutions to check this position';
+    }
+    return ok
+      ? 'The chosen linkage passes through this position on its own assembly'
+      : 'The chosen linkage reaches this position only on its other assembly — a branch defect';
+  }
+
+  // --- requirements --------------------------------------------------------
+
+  requirements(): Requirement[] {
+    const length = this.plain(this.design.length);
+    return [
+      {
+        key: 'coupler',
+        on: this.design.endsOnly,
+        label: `Coupler is exactly ${length} ${this.lengthUnit}`,
+        detail: this.design.endsOnly
+          ? 'Both pins sit on the ends of the link'
+          : 'Pins may slide along the link, so the coupler can be any length',
+        toggle: () => this.toggleRequirement('endsOnly'),
+      },
+      {
+        key: 'defect',
+        on: !this.design.allowDefect,
+        label: 'Reaches all 3 positions on one assembly',
+        detail: this.design.allowDefect
+          ? 'Linkages with a branch defect are listed too'
+          : 'No taking the linkage apart between positions',
+        toggle: () => this.toggleRequirement('allowDefect'),
+      },
+      {
+        key: 'region',
+        on: this.design.constrain,
+        label: 'Ground pivots inside a region',
+        detail: this.design.constrain
+          ? 'Both pivots must land in the box on the grid'
+          : 'Pivots may land anywhere',
+        toggle: () => this.toggleRequirement('constrain'),
+        hasRegion: this.design.constrain,
+      },
     ];
-
-    return qualityCompilation;
   }
 
-  findIntersectionPoint(pose1_coord1: Coord, pose2_coord1: Coord, pose3_coord1: Coord) {
-    //slope of Line 1
-    let slope1 = 1 / ((pose2_coord1.y - pose1_coord1.y) / (pose2_coord1.x - pose1_coord1.x));
-    //slope of line 2
-    let slope2 = 1 / ((pose3_coord1.y - pose2_coord1.y) / (pose3_coord1.x - pose2_coord1.x));
-
-    //midpoints of the above two lines
-    let midpoint_line1 = new Coord(
-      (pose1_coord1.x + pose2_coord1.x) / 2,
-      (pose1_coord1.y + pose2_coord1.y) / 2
-    );
-    let midpoint_line2 = new Coord(
-      (pose3_coord1.x + pose2_coord1.x) / 2,
-      (pose3_coord1.y + pose2_coord1.y) / 2
-    );
-
-    //intercept
-    let c1 = midpoint_line1.y + slope1 * midpoint_line1.x;
-    let c2 = midpoint_line2.y + slope2 * midpoint_line2.x;
-
-    //intersection point
-    let x1 = (c1 - c2) / (-slope2 + slope1);
-    let y1 = -slope1 * x1 + c1;
-
-    return new Coord(x1, y1);
+  private toggleRequirement(which: 'endsOnly' | 'allowDefect' | 'constrain'): void {
+    if (which === 'endsOnly') this.design.endsOnly = !this.design.endsOnly;
+    if (which === 'allowDefect') this.design.allowDefect = !this.design.allowDefect;
+    if (which === 'constrain') {
+      this.design.constrain = !this.design.constrain;
+      this.design.regionDraw = false;
+      this.design.setArmed(false);
+      if (this.design.constrain) this.frameRegionOnCurrentAnswer();
+    }
+    // Only the defect filter leaves the enumeration standing: it hides members
+    // of a list rather than changing which list it is.
+    if (which === 'allowDefect') this.solution.changed.next();
+    else this.solution.invalidate();
+    this.record();
   }
 
-  findIntersectionPoint2(pose1_coord2: Coord, pose2_coord2: Coord, pose3_coord2: Coord) {
-    let slope1 = 1 / ((pose2_coord2.y - pose1_coord2.y) / (pose2_coord2.x - pose1_coord2.x));
-    //slope of line 2
-    let slope2 = 1 / ((pose3_coord2.y - pose2_coord2.y) / (pose3_coord2.x - pose2_coord2.x));
+  /** Open the region around what is already on screen, not around nothing. */
+  private frameRegionOnCurrentAnswer(): void {
+    const cand = this.solution.chosen();
+    const points = cand ? [cand.A, cand.D] : this.design.getAllPoses().map((pose) => pose.position);
+    if (!points.length) return;
+    const pad = 3 * MODEL_SCALE;
+    const xs = points.map((p) => p.x);
+    const ys = points.map((p) => p.y);
+    const x = Math.min(...xs) - pad;
+    const y = Math.min(...ys) - pad;
+    this.design.region = {
+      x,
+      y,
+      w: Math.max(8 * MODEL_SCALE, Math.max(...xs) - x + pad),
+      h: Math.max(8 * MODEL_SCALE, Math.max(...ys) - y + pad),
+    };
+    this.readFromModel();
+  }
 
-    //midpoints of the above two lines
-    let midpoint_line1 = new Coord(
-      (pose1_coord2.x + pose2_coord2.x) / 2,
-      (pose1_coord2.y + pose2_coord2.y) / 2
+  requirementCount(): string {
+    const n =
+      (this.design.endsOnly ? 1 : 0) +
+      (this.design.allowDefect ? 0 : 1) +
+      (this.design.constrain ? 1 : 0);
+    return n + ' of 3 required';
+  }
+
+  regionSummary(): string {
+    const r = this.design.region;
+    return (
+      `${this.plain(r.w)} × ${this.plain(r.h)} ${this.lengthUnit} at ` +
+      `(${this.plain(r.x)}, ${this.plain(r.y)}) — drag the box or its corners`
     );
-    let midpoint_line2 = new Coord(
-      (pose3_coord2.x + pose2_coord2.x) / 2,
-      (pose3_coord2.y + pose2_coord2.y) / 2
+  }
+
+  toggleRegionDraw(): void {
+    this.design.regionDraw = !this.design.regionDraw;
+    this.design.setArmed(false);
+  }
+
+  /** Named only when the requirements are what stands between reader and answer. */
+  get requirementsBlocking(): boolean {
+    return this.showResults && this.solution.candidates().length === 0;
+  }
+
+  requirementsBlockingNote(): string {
+    if (this.design.constrain) {
+      return (
+        'Nothing satisfies all of these. The region is usually the first to give: widen it, ' +
+        'move it, or switch it off.'
+      );
+    }
+    if (this.design.endsOnly && !this.design.allowDefect) {
+      return (
+        'Nothing satisfies both. Letting the pins slide along the link is the usual first ' +
+        'relaxation — it keeps the motion and changes only where the coupler is pinned.'
+      );
+    }
+    if (this.design.endsOnly) {
+      return (
+        `No four-bar with a ${this.plain(this.design.length)} ${this.lengthUnit} coupler passes ` +
+        'through these three positions. Let the pins slide, or move a position.'
+      );
+    }
+    if (!this.design.allowDefect) {
+      return (
+        'Every construction through these three positions needs to be taken apart between them. ' +
+        'Accept a branch defect to see them, or turn the middle position further.'
+      );
+    }
+    return (
+      'Nothing was found even with every requirement relaxed — the three positions are too close ' +
+      'to a straight line.'
     );
+  }
 
-    //intercept
-    let c1 = midpoint_line1.y + slope1 * midpoint_line1.x;
-    let c2 = midpoint_line2.y + slope2 * midpoint_line2.x;
+  // --- generating ----------------------------------------------------------
 
-    //intersection point
-    let x1 = (c1 - c2) / (-slope2 + slope1);
-    let y1 = -slope1 * x1 + c1;
+  get showGenerate(): boolean {
+    return this.design.isFullyDefined() && !this.solution.generated;
+  }
 
-    return new Coord(x1, y1);
+  generateNote(): string {
+    const parts: string[] = [];
+    if (this.design.endsOnly) {
+      parts.push(`a ${this.plain(this.design.length)} ${this.lengthUnit} coupler`);
+    }
+    if (!this.design.allowDefect) parts.push('all three positions on one assembly');
+    if (this.design.constrain) parts.push('both ground pivots in the region');
+    return parts.length
+      ? 'Search for four-bars with ' + parts.join(', ') + '.'
+      : 'Search for any four-bar through these three positions.';
+  }
+
+  generate(): void {
+    this.solution.generate();
+  }
+
+  // --- results -------------------------------------------------------------
+
+  get showResults(): boolean {
+    return this.design.isFullyDefined() && this.solution.generated;
+  }
+
+  candidateHeading(): string {
+    const list = this.solution.candidates();
+    if (!list.length) return 'No linkage meets the criteria';
+    const strict = this.solution.strictCount;
+    if (strict) {
+      return `${strict} ${strict === 1 ? 'linkage works' : 'linkages work'} on one assembly`;
+    }
+    return `${list.length} candidate${list.length === 1 ? '' : 's'}, all with a branch defect`;
+  }
+
+  /**
+   * The geometric explanation, for when no requirement is standing in the way.
+   * With one switched on, the Requirements note is the better answer.
+   */
+  get showNoCandidateReason(): boolean {
+    return (
+      this.showResults &&
+      this.solution.candidates().length === 0 &&
+      !this.design.endsOnly &&
+      this.design.allowDefect &&
+      !this.design.constrain
+    );
+  }
+
+  noCandidateReason(): string {
+    const why = this.solution.rejections();
+    if (why.degenerate && !why.tooBig) {
+      return (
+        'The three positions lie on one line, so no circle passes through the three positions of ' +
+        'a coupler point. Turn the middle position, or move it off the line between the other two.'
+      );
+    }
+    if (why.tooBig) {
+      return (
+        `${why.tooBig} of ${why.tried} constructions put a ground pivot further from the ` +
+        'positions than the machine could sensibly reach — the three positions are close to a ' +
+        'straight line. Turn the middle position further, or move it off the line between the ' +
+        'other two.'
+      );
+    }
+    return 'No four-bar of a buildable size passes through these three positions.';
+  }
+
+  visibleCandidates(): CandidateCard[] {
+    const list = this.solution.candidates();
+    const shown = this.solution.showAll ? list : list.slice(0, 3);
+    const picked = this.solution.chosen();
+    return shown.map((c) => this.toCard(c, picked));
+  }
+
+  private toCard(c: FourBarCandidate, picked: FourBarCandidate | null): CandidateCard {
+    const pts = [c.A, c.B, c.C, c.D];
+    const xs = pts.map((p) => p.x);
+    const ys = pts.map((p) => p.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const k = Math.min(102 / Math.max(1e-6, maxX - minX), 32 / Math.max(1e-6, maxY - minY));
+    const tx = (p: { x: number }) => (9 + (p.x - minX) * k).toFixed(1);
+    const ty = (p: { y: number }) => (40 - (p.y - minY) * k).toFixed(1);
+    return {
+      key: c.key,
+      name: c.name,
+      kind: c.kind + ' · ' + c.branch.toLowerCase(),
+      thumb:
+        `M ${tx(c.A)} ${ty(c.A)} L ${tx(c.B)} ${ty(c.B)} ` +
+        `M ${tx(c.C)} ${ty(c.C)} L ${tx(c.D)} ${ty(c.D)}`,
+      thumbCoupler: `M ${tx(c.B)} ${ty(c.B)} L ${tx(c.C)} ${ty(c.C)}`,
+      selected: !!picked && picked.key === c.key,
+      defectFree: c.defectFree,
+      reachText: c.defectFree ? 'all 3, one assembly' : `branch defect · ${c.onBranchCount} of 3`,
+      metric:
+        `min angle ${c.minTransmission}° · ` +
+        (c.range.full ? 'full turn' : `${Math.round(c.range.to - c.range.from)}° swing`),
+    };
+  }
+
+  get hasMoreCandidates(): boolean {
+    return this.solution.candidates().length > 3;
+  }
+
+  moreLabel(): string {
+    return this.solution.showAll ? 'Show fewer' : 'Show all ' + this.solution.candidates().length;
+  }
+
+  toggleAllCandidates(): void {
+    this.solution.showAll = !this.solution.showAll;
+  }
+
+  pickCandidate(key: string): void {
+    this.solution.pick(key);
+  }
+
+  hoverCandidate(key: string | null): void {
+    this.solution.setHover(key);
+  }
+
+  // --- the chosen solution -------------------------------------------------
+
+  get hasSolution(): boolean {
+    return this.showResults && this.solution.chosen() !== null;
+  }
+
+  get solutionName(): string {
+    return this.solution.chosen()?.name ?? '—';
+  }
+
+  branchOptions(): { label: string; active: boolean; available: boolean; key: string }[] {
+    const cand = this.solution.chosen();
+    const list = this.solution.candidates();
+    return (['Open', 'Crossed'] as const).map((label) => {
+      const sibling = cand
+        ? list.find((c) => c.pair === cand.pair && c.branch === label)
+        : undefined;
+      return {
+        label,
+        active: !!cand && cand.branch === label,
+        available: !!sibling,
+        key: sibling?.key ?? '',
+      };
+    });
+  }
+
+  pickBranch(key: string): void {
+    if (key) this.solution.pick(key);
+  }
+
+  pinOptions(): { label: string; far: boolean; active: boolean }[] {
+    return [
+      { label: 'Pin A', far: false, active: !this.solution.driveOnFarPin },
+      { label: 'Pin D', far: true, active: this.solution.driveOnFarPin },
+    ];
+  }
+
+  setPin(far: boolean): void {
+    this.solution.setDriveOnFarPin(far);
+  }
+
+  toggleDriver(): void {
+    this.solution.toggleDriver();
+  }
+
+  toggleDimensions(): void {
+    this.solution.dimensionsOpen = !this.solution.dimensionsOpen;
+  }
+
+  dimensionsSummary(): string {
+    const c = this.solution.driven();
+    if (!c) return '';
+    return [c.r1, c.d, c.r2, c.g].map((v) => this.plain(v)).join(' · ') + ' ' + this.lengthUnit;
+  }
+
+  dimensionRows(): { label: string; value: string }[] {
+    const c = this.solution.driven();
+    if (!c) return [];
+    const rows = [
+      { label: 'Ground link A–D', value: this.lengthText(c.g) },
+      { label: 'Input crank', value: this.lengthText(c.r1) },
+      { label: 'Coupler B–C', value: this.lengthText(c.d) },
+      { label: 'Output rocker', value: this.lengthText(c.r2) },
+      {
+        label: 'Coupler pins',
+        value: describeCouplerPins(c, this.design.length) + ' ' + this.lengthUnit,
+      },
+    ];
+    const dyad = this.solution.dyad();
+    if (dyad) {
+      rows.push({ label: 'Driver crank', value: this.lengthText(dyad.crankLength) });
+      rows.push({ label: 'Driver coupler', value: this.lengthText(dyad.couplerLength) });
+    }
+    return rows;
+  }
+
+  // --- previewing the motion -----------------------------------------------
+
+  private direction = 1;
+
+  togglePlay(): void {
+    this.solution.playing = !this.solution.playing;
+    if (this.solution.playing) this.step();
+  }
+
+  flipDirection(): void {
+    this.solution.clockwise = !this.solution.clockwise;
+  }
+
+  /**
+   * Walk the preview forward one frame.
+   *
+   * A linkage that turns fully wraps around; one that rocks reverses at the
+   * ends of its travel, which is what the machine itself would do.
+   */
+  private step = (): void => {
+    this.frame = undefined;
+    if (!this.solution.playing) return;
+    const cand = this.solution.driven();
+    if (!cand) return;
+    const range = cand.range;
+    const stride = 1.4 * (this.solution.clockwise ? 1 : -1);
+    let phase = this.solution.currentPhase() + this.direction * stride;
+    if (range.full) {
+      if (phase > range.to) phase -= 360;
+      if (phase < range.from) phase += 360;
+    } else if (phase > range.to || phase < range.from) {
+      this.direction = -this.direction;
+      phase = Math.max(range.from, Math.min(range.to, phase));
+    }
+    this.solution.phase = phase;
+    this.solution.changed.next();
+    this.frame = requestAnimationFrame(this.step);
+  };
+
+  scrubMin(): number {
+    return Math.round(this.solution.driven()?.range.from ?? 0);
+  }
+
+  scrubMax(): number {
+    return Math.round(this.solution.driven()?.range.to ?? 360);
+  }
+
+  scrubValue(): number {
+    return Math.round(this.solution.currentPhase());
+  }
+
+  setScrub(event: Event): void {
+    this.solution.setPhase(Number((event.target as HTMLInputElement).value));
+  }
+
+  alongPercent(): string {
+    const cand = this.solution.driven();
+    if (!cand) return '0%';
+    const span = Math.max(1e-6, cand.range.to - cand.range.from);
+    return (((this.solution.currentPhase() - cand.range.from) / span) * 100).toFixed(1) + '%';
+  }
+
+  /** Where each position falls along the crank's travel, for the track marks. */
+  poseTicks(): { percent: string; reached: boolean }[] {
+    const cand = this.solution.driven();
+    if (!cand) return [];
+    const range = cand.range;
+    const span = Math.max(1e-6, range.to - range.from);
+    return cand.thetas.map((theta, i) => {
+      let a = theta;
+      while (a < range.from) a += 360;
+      while (a > range.to) a -= 360;
+      const percent = Math.max(0, Math.min(100, ((a - range.from) / span) * 100));
+      return { percent: percent.toFixed(1), reached: cand.onBranch[i] };
+    });
+  }
+
+  angleLabel(): string {
+    const phase = this.solution.currentPhase();
+    return Math.round(((phase % 360) + 360) % 360) + '°';
+  }
+
+  previewNote(): string {
+    const cand = this.solution.driven();
+    if (!cand) return '';
+    return cand.range.full
+      ? 'full crank rotation'
+      : `rocks through ${Math.round(cand.range.to - cand.range.from)}°`;
+  }
+
+  // --- committing ----------------------------------------------------------
+
+  get canInsert(): boolean {
+    return this.hasSolution && !this.solution.inserted;
+  }
+
+  insert(): void {
+    this.solution.insert();
+  }
+
+  undoInsert(): void {
+    this.solution.undoInsert();
+  }
+
+  insertedNote(): string {
+    const kind = this.solution.dyad() ? 'six-bar' : 'four-bar';
+    return `Left on the grid as a ${kind}. Kinematic Analysis can run it now.`;
+  }
+
+  deleteAll(): void {
+    this.design.deleteAllPoses();
+    this.design.regionDraw = false;
+    this.design.setArmed(false);
+    this.solution.reset();
+    this.record();
+  }
+
+  /** Whether the preview would show anything, for the grid to ask as well. */
+  hasPreview(): boolean {
+    const cand = this.solution.driven();
+    return !!cand && solveFourBar(cand, this.solution.currentPhase(), cand.sign) !== null;
   }
 }

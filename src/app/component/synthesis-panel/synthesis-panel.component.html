@@ -1,118 +1,462 @@
-<div id="synthesisWrapper">
-  <panel-section>
-    <title-block description="Automatically create a 4-bar linkage based on 3 coupler poses.">
-      3 Position Synthesis
-    </title-block>
-
-    <collapsible-subseciton [expanded]="true" [hideHeader]="true">
-      <subtitle-block>End-Effector Link (Coupler)</subtitle-block>
-      <input-block
-        [formGroup]="synthesisPoseForm"
-        _formControl="length"
-        tooltip="The length of the end-effector link"
-      >
-        Length
-      </input-block>
-      <radio-block
-        [formGroup]="synthesisPoseForm"
-        _formControl="cor"
-        option1="Back"
-        option2="Center"
-        option3="Front"
-        tooltip="The center of rotation of the end-effector link, and what the position coordinate represents"
-      >
-        Fixed Reference
-      </radio-block>
-      <mat-divider></mat-divider>
-
-      <!-- Construct panel sections for each pose -->
-      @for (i of [1, 2, 3]; track i) {
-        <div>
-          <!-- display header, with edit button on right if pose already has been created -->
-          <div>
-            <subtitle-block class="poseHeader">
-              <p>Pose {{ i }}</p>
-            </subtitle-block>
-          </div>
-          <!-- display editable pose configuration if pose is both created AND selected -->
-          @if (synthesisBuilder.isPoseDefined(i)) {
-            <div class="poseData">
-              <dual-input-block
-                [formGroup]="synthesisPoseForm"
-                formControl1="{{ getFormIDPoseX(i) }}"
-                formControl2="{{ getFormIDPoseY(i) }}"
-                tooltip="The position of the center of the end effector link"
-              >
-                Pose {{ i }} Position
-              </dual-input-block>
-              <input-block
-                [formGroup]="synthesisPoseForm"
-                _formControl="{{ getFormIDPoseTheta(i) }}"
-                tooltip="The angle of the end effector link in degrees"
-              >
-                Pose {{ i }} Angle
-              </input-block>
-            </div>
-          }
-          <!-- if pose has not yet been created and its the first undefined pose, show "create pose" button -->
-          @if (synthesisBuilder.getFirstUndefinedPose() === i) {
-            <div class="poseCreate">
-              <button-block
-                icon="add"
-                (click)="synthesisBuilder.createPose(i); this.svgGrid.updateObjectScale()"
-                >Create Pose
-              </button-block>
-            </div>
-          }
+<div id="synthesisPanel">
+  <!-- What kind of synthesis this is. One kind exists; the second is named
+       rather than hidden, because "can it fit a path?" is the first question
+       anyone asks of this screen and an empty answer is worse than a dated one. -->
+  @if (isChooser) {
+    <div class="chooser">
+      <div class="chooser__head">
+        <div class="chooser__title">Synthesis</div>
+        <div class="chooser__sub">
+          Build a linkage from the motion you want, then insert it into the drawing.
         </div>
-      }
+      </div>
+      <div class="chooser__body">
+        <div class="chooser__prompt">What are you synthesising?</div>
 
-      <mat-divider></mat-divider>
+        <button type="button" class="kindCard kindCard--on" (click)="startMotionSynthesis()">
+          <span class="kindCard__icon">
+            <mat-icon svgIcon="synthesis"></mat-icon>
+          </span>
+          <span class="kindCard__text">
+            <span class="kindCard__row">
+              <span class="kindCard__name">Motion &mdash; 3 positions</span>
+              <span class="chip chip--on">4-bar or 6-bar</span>
+            </span>
+            <span class="kindCard__detail">
+              Place a coupler in three positions. Every four-bar that passes through them is
+              listed for you to compare.
+            </span>
+          </span>
+        </button>
 
-      <!-- Driving the linkage. Only once there is one: with fewer than three
-           poses these act on nothing, and a row of controls that quietly do
-           nothing is worse than a row that is not there yet. -->
-      @if (hasLinkage()) {
-        <subtitle-block>Drive</subtitle-block>
-        <button-block
-          (click)="swapDrivePin()"
-          customIcon="switch_force_dir"
-          tooltip="Drive the linkage from its other fixed pin. A four-bar that will not turn from one ground pin often turns freely from the other."
-        >
-          Swap Drive Pin
-        </button-block>
-        <button-block
-          (click)="toggleDriver()"
-          [icon]="synthesisBuilder.driverWanted ? undefined : 'add'"
-          [customIcon]="synthesisBuilder.driverWanted ? 'remove' : undefined"
-          [color]="synthesisBuilder.driverWanted ? 'warn' : 'primary'"
-          tooltip="Add a crank and coupler sized so one full turn walks the linkage through all three poses, making it a six-bar a motor can run."
-        >
-          {{ synthesisBuilder.driverWanted ? 'Remove Driver' : 'Add Driver (Six-Bar)' }}
-        </button-block>
-        @if (synthesisBuilder.driverRefusal) {
-          <p class="driverRefusal">{{ synthesisBuilder.driverRefusal }}</p>
+        <div class="kindCard kindCard--off">
+          <span class="kindCard__icon"><mat-icon>show_chart</mat-icon></span>
+          <span class="kindCard__text">
+            <span class="kindCard__row">
+              <span class="kindCard__name">Path &mdash; points on a curve</span>
+              <span class="chip">Coming soon</span>
+            </span>
+            <span class="kindCard__detail">
+              Sketch a curve and fit a linkage whose coupler point follows it. Not available yet.
+            </span>
+          </span>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="work">
+      <div class="work__head">
+        <button type="button" class="iconBtn" (click)="backToChooser()" aria-label="Back">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div class="work__headText">
+          <div class="work__title">Motion synthesis</div>
+          <div class="work__note">{{ headerNote() }}</div>
+        </div>
+      </div>
+
+      <div class="work__scroll" [formGroup]="poseForm">
+        <!-- The coupler ------------------------------------------------- -->
+        <section class="sect">
+          <div class="sect__title">Coupler</div>
+          <div class="row">
+            <span class="row__label">Length</span>
+            <mat-icon class="row__help" [matTooltip]="help.length" [matTooltipShowDelay]="400">
+              help_outline
+            </mat-icon>
+            <span class="row__spacer"></span>
+            <label class="field field--wide">
+              <input type="text" inputmode="decimal" formControlName="length" spellcheck="false" />
+            </label>
+          </div>
+          <div class="row">
+            <span class="row__label">Fixed reference</span>
+            <mat-icon class="row__help" [matTooltip]="help.ref" [matTooltipShowDelay]="400">
+              help_outline
+            </mat-icon>
+            <span class="row__spacer"></span>
+            <div class="seg seg--wide">
+              @for (opt of referenceOptions(); track opt.value) {
+                <button
+                  type="button"
+                  class="seg__opt"
+                  [class.seg__opt--on]="opt.active"
+                  (click)="setReference(opt.value)"
+                >
+                  {{ opt.label }}
+                </button>
+              }
+            </div>
+          </div>
+        </section>
+
+        <!-- The three positions ------------------------------------------ -->
+        <section class="sect">
+          <div class="sect__head">
+            <div class="sect__title">Positions</div>
+            <span class="row__spacer"></span>
+            @if (showAddButton) {
+              <button
+                type="button"
+                class="pill"
+                [class.pill--armed]="design.armed"
+                (click)="toggleArmed()"
+              >
+                <mat-icon>{{ design.armed ? 'close' : 'ads_click' }}</mat-icon>
+                {{ addLabel }}
+              </button>
+            }
+            @if (canDuplicate) {
+              <button
+                type="button"
+                class="pill pill--square"
+                [matTooltip]="help.duplicate"
+                [matTooltipShowDelay]="400"
+                (click)="duplicateLast()"
+                aria-label="Duplicate last position"
+              >
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            }
+          </div>
+
+          @for (i of rows; track i) {
+            <div
+              class="poseRow"
+              [class.poseRow--sel]="isSelectedRow(i)"
+              [class.poseRow--empty]="!isPlaced(i)"
+              (click)="selectRow(i)"
+            >
+              <span class="poseRow__n" [class.poseRow__n--placed]="isPlaced(i)">{{ i }}</span>
+              <span class="poseRow__axis">X</span>
+              <label class="field field--num">
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  spellcheck="false"
+                  placeholder="—"
+                  [formControlName]="'p' + i + 'x'"
+                />
+              </label>
+              <span class="poseRow__axis">Y</span>
+              <label class="field field--num">
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  spellcheck="false"
+                  placeholder="—"
+                  [formControlName]="'p' + i + 'y'"
+                />
+              </label>
+              <span class="poseRow__axis poseRow__axis--angle">&#8894;</span>
+              <label class="field field--angle">
+                <input
+                  type="text"
+                  inputmode="decimal"
+                  spellcheck="false"
+                  placeholder="—"
+                  [formControlName]="'p' + i + 'theta'"
+                />
+              </label>
+              <mat-icon
+                class="poseRow__status"
+                [class.poseRow__status--ok]="reached(i) === true"
+                [class.poseRow__status--defect]="reached(i) === false"
+                [class.poseRow__status--arm]="isPreviewingRow(i)"
+                [matTooltip]="rowStatusTip(i)"
+                [matTooltipShowDelay]="300"
+              >
+                {{ rowStatusIcon(i) }}
+              </mat-icon>
+              <mat-icon
+                class="poseRow__remove"
+                [class.poseRow__remove--off]="!isPlaced(i)"
+                (click)="removeRow($event, i)"
+              >
+                close
+              </mat-icon>
+            </div>
+          }
+        </section>
+
+        <!-- What a solution has to satisfy -------------------------------- -->
+        <section class="sect">
+          <div class="sect__head">
+            <div class="sect__title">Requirements</div>
+            <mat-icon class="row__help" [matTooltip]="help.requirements" [matTooltipShowDelay]="400">
+              help_outline
+            </mat-icon>
+            <span class="row__spacer"></span>
+            <span class="sect__count">{{ requirementCount() }}</span>
+          </div>
+
+          @for (rq of requirements(); track rq.key) {
+            <div class="req" [class.req--on]="rq.on">
+              <button type="button" class="req__line" (click)="rq.toggle()">
+                <mat-icon class="req__icon">
+                  {{ rq.on ? 'check_circle' : 'radio_button_unchecked' }}
+                </mat-icon>
+                <span class="req__text">
+                  <span class="req__label">{{ rq.label }}</span>
+                  <span class="req__detail">{{ rq.detail }}</span>
+                </span>
+                <span class="switch" [class.switch--on]="rq.on"><span class="switch__knob"></span></span>
+              </button>
+
+              @if (rq.hasRegion) {
+                <div class="region" [formGroup]="regionForm">
+                  <div class="region__line">
+                    <span class="region__summary">{{ regionSummary() }}</span>
+                    <button
+                      type="button"
+                      class="region__draw"
+                      [class.region__draw--on]="design.regionDraw"
+                      (click)="toggleRegionDraw()"
+                    >
+                      {{ design.regionDraw ? 'Cancel' : 'Redraw' }}
+                    </button>
+                  </div>
+                  <div class="region__fields">
+                    <span class="region__tag">X</span>
+                    <label class="field field--tiny"><input type="text" formControlName="rx" /></label>
+                    <span class="region__tag">Y</span>
+                    <label class="field field--tiny"><input type="text" formControlName="ry" /></label>
+                    <span class="region__tag">W</span>
+                    <label class="field field--tiny"><input type="text" formControlName="rw" /></label>
+                    <span class="region__tag">H</span>
+                    <label class="field field--tiny"><input type="text" formControlName="rh" /></label>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          @if (requirementsBlocking) {
+            <div class="note note--warn">
+              <mat-icon>rule</mat-icon>
+              <span>{{ requirementsBlockingNote() }}</span>
+            </div>
+          }
+        </section>
+
+        <!-- Running the search -------------------------------------------- -->
+        @if (showGenerate) {
+          <section class="sect">
+            <div class="sect__prose">{{ generateNote() }}</div>
+            <button
+              type="button"
+              class="cta"
+              [class.cta--busy]="solution.generating"
+              [disabled]="solution.generating"
+              (click)="generate()"
+            >
+              <mat-icon>{{ solution.generating ? 'hourglass_top' : 'auto_awesome' }}</mat-icon>
+              {{ solution.generating ? 'Searching…' : 'Generate solutions' }}
+            </button>
+            @if (solution.generating) {
+              <div class="sweep"><div class="sweep__bar"></div></div>
+              <div class="sect__fine">
+                Constructing circle centres, then solving a full crank revolution for each
+                candidate…
+              </div>
+            }
+          </section>
         }
-        <button-block
-          (click)="evaluatePoses()"
-          customIcon="show_path"
-          tooltip="Re-check which poses the linkage still reaches. Synthesis does this as it builds; use it after editing the linkage by hand."
-        >
-          Evaluate Poses
-        </button-block>
-        <mat-divider></mat-divider>
-      }
 
-      <!--        Generate Linkage-->
+        <!-- What came back ------------------------------------------------ -->
+        @if (showResults) {
+          <section class="sect">
+            <div class="sect__head">
+              <div class="sect__title">{{ candidateHeading() }}</div>
+            </div>
 
-      <button-block
-        [disabled]="synthesisBuilder.getAllPoses().length === 0"
-        (click)="synthesisBuilder.deleteAllPoses()"
-        customIcon="remove"
-        color="warn"
-      >
-        Remove All Poses
-      </button-block>
-    </collapsible-subseciton>
-  </panel-section>
+            @if (showNoCandidateReason) {
+              <div class="note note--bad">
+                <mat-icon>error_outline</mat-icon>
+                <span>{{ noCandidateReason() }}</span>
+              </div>
+            }
+
+            <div class="gallery" [class.gallery--all]="solution.showAll">
+              @for (c of visibleCandidates(); track c.key) {
+                <button
+                  type="button"
+                  class="card"
+                  [class.card--sel]="c.selected"
+                  (click)="pickCandidate(c.key)"
+                  (pointerenter)="hoverCandidate(c.key)"
+                  (pointerleave)="hoverCandidate(null)"
+                >
+                  <span class="card__head">
+                    <span class="card__name">{{ c.name }}</span>
+                    <span class="card__kind">{{ c.kind }}</span>
+                  </span>
+                  <svg class="card__thumb" width="100%" height="48" viewBox="0 0 120 48">
+                    <path [attr.d]="c.thumb" fill="none" stroke="#c5cae9" stroke-width="4"
+                      stroke-linecap="round"></path>
+                    <path [attr.d]="c.thumbCoupler" fill="none" stroke="#303e9f" stroke-width="4"
+                      stroke-linecap="round"></path>
+                  </svg>
+                  <span class="card__reach" [class.card__reach--ok]="c.defectFree">
+                    {{ c.reachText }}
+                  </span>
+                  <span class="card__metric">{{ c.metric }}</span>
+                </button>
+              }
+            </div>
+
+            @if (hasMoreCandidates) {
+              <button type="button" class="linkBtn" (click)="toggleAllCandidates()">
+                {{ moreLabel() }}
+                <mat-icon>{{ solution.showAll ? 'expand_less' : 'expand_more' }}</mat-icon>
+              </button>
+            }
+          </section>
+
+          @if (hasSolution) {
+            <section class="sect sect--last">
+              <div class="sect__title">Solution {{ solutionName }}</div>
+
+              <div class="row">
+                <span class="row__label">Assembly branch</span>
+                <mat-icon class="row__help" [matTooltip]="help.branch" [matTooltipShowDelay]="400">
+                  help_outline
+                </mat-icon>
+                <span class="row__spacer"></span>
+                <div class="seg seg--wide">
+                  @for (opt of branchOptions(); track opt.label) {
+                    <button
+                      type="button"
+                      class="seg__opt"
+                      [class.seg__opt--on]="opt.active"
+                      [disabled]="!opt.available"
+                      (click)="pickBranch(opt.key)"
+                    >
+                      {{ opt.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <div class="row">
+                <span class="row__label">Driven from</span>
+                <mat-icon class="row__help" [matTooltip]="help.pin" [matTooltipShowDelay]="400">
+                  help_outline
+                </mat-icon>
+                <span class="row__spacer"></span>
+                <div class="seg seg--wide">
+                  @for (opt of pinOptions(); track opt.label) {
+                    <button
+                      type="button"
+                      class="seg__opt"
+                      [class.seg__opt--on]="opt.active"
+                      (click)="setPin(opt.far)"
+                    >
+                      {{ opt.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <div class="row">
+                <button type="button" class="row__label row__label--btn" (click)="toggleDriver()">
+                  Add driver (six-bar)
+                </button>
+                <mat-icon class="row__help" [matTooltip]="help.driver" [matTooltipShowDelay]="400">
+                  help_outline
+                </mat-icon>
+                <span class="row__spacer"></span>
+                <button
+                  type="button"
+                  class="switch"
+                  [class.switch--on]="solution.driverWanted"
+                  (click)="toggleDriver()"
+                  aria-label="Add driver"
+                >
+                  <span class="switch__knob"></span>
+                </button>
+              </div>
+
+              @if (solution.driverRefusal) {
+                <div class="refusal">{{ solution.driverRefusal }}</div>
+              }
+
+              <div class="dims">
+                <button type="button" class="dims__head" (click)="toggleDimensions()">
+                  <span class="dims__title">Link lengths</span>
+                  <span class="dims__summary">{{ dimensionsSummary() }}</span>
+                  <mat-icon>{{ solution.dimensionsOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+                </button>
+                @if (solution.dimensionsOpen) {
+                  <div class="dims__body">
+                    @for (d of dimensionRows(); track d.label) {
+                      <div class="dims__row">
+                        <span>{{ d.label }}</span>
+                        <span class="dims__value">{{ d.value }}</span>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </section>
+          }
+        }
+      </div>
+
+      <!-- The transport, and the one button that changes the drawing ------- -->
+      <div class="foot">
+        @if (hasSolution) {
+          <div class="transport" [class.transport--playing]="solution.playing">
+            <div class="transport__line">
+              <span class="transport__name">{{ solutionName }}</span>
+              <span class="transport__note">{{ previewNote() }}</span>
+              <span class="transport__angle">{{ angleLabel() }}</span>
+              <button type="button" class="iconBtn iconBtn--sm" (click)="togglePlay()"
+                [attr.aria-label]="solution.playing ? 'Pause preview' : 'Play preview'">
+                <mat-icon>{{ solution.playing ? 'pause' : 'play_arrow' }}</mat-icon>
+              </button>
+              <button type="button" class="iconBtn iconBtn--sm" (click)="flipDirection()"
+                aria-label="Reverse direction">
+                <mat-icon>{{ solution.clockwise ? 'rotate_right' : 'rotate_left' }}</mat-icon>
+              </button>
+            </div>
+            <div class="track">
+              <div class="track__channel"></div>
+              <div class="track__done" [style.width]="alongPercent()"></div>
+              @for (tk of poseTicks(); track $index) {
+                <div class="track__tick" [class.track__tick--ok]="tk.reached"
+                  [style.left.%]="tk.percent"></div>
+              }
+              <input
+                class="track__scrub"
+                type="range"
+                step="1"
+                [min]="scrubMin()"
+                [max]="scrubMax()"
+                [value]="scrubValue()"
+                (input)="setScrub($event)"
+                aria-label="Scrub preview"
+              />
+            </div>
+          </div>
+        }
+        <div class="foot__buttons">
+          <button type="button" class="cta cta--insert" [disabled]="!canInsert" (click)="insert()">
+            <mat-icon>{{ solution.inserted ? 'check' : 'add_circle_outline' }}</mat-icon>
+            {{ solution.inserted ? 'Inserted into grid' : 'Insert into grid' }}
+          </button>
+          <button type="button" class="danger" (click)="deleteAll()">
+            <mat-icon>delete_outline</mat-icon>Delete
+          </button>
+        </div>
+        @if (solution.inserted) {
+          <div class="note note--good">
+            <mat-icon>check_circle</mat-icon>
+            <span>{{ insertedNote() }}</span>
+            <button type="button" class="note__undo" (click)="undoInsert()">Undo</button>
+          </div>
+        }
+      </div>
+    </div>
+  }
 </div>
