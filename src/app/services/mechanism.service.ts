@@ -482,6 +482,42 @@ export class MechanismService {
     return index === -1 ? undefined : this.mechanisms[index];
   }
 
+  /**
+   * The readiness of the machine this part belongs to, or nothing when it
+   * belongs to none.
+   *
+   * Per part rather than per drawing. With several machines on one grid, "is
+   * anything analysable" is the wrong question to ask about the joint under
+   * the pointer: a drawing can hold a four-bar that runs and a half-drawn
+   * chain that does not, and offering analysis from the half-drawn one is an
+   * offer the analysis modes will not honour.
+   */
+  readinessOfPart(part: Joint | Link | Force): MechanismReadiness | undefined {
+    const index = this.indexOfMechanismContaining(part);
+    return index === -1 ? undefined : this.readinessOfEachMechanism()[index];
+  }
+
+  /**
+   * Whether this joint has any force to graph — the reaction index's answer,
+   * not a count of what looks like it meets here.
+   *
+   * The count is wrong for a floating slider. Its carrier is deliberately not
+   * in `joint.links` (the slider rides the bar rather than being one of its
+   * members), so counting links says one body meets a joint where the solver
+   * generates a reaction against two. The panel reads the index; so does this,
+   * or the menu greys a row the panel would have filled.
+   */
+  jointHasForceToGraph(joint: Joint): boolean {
+    if (!(joint instanceof RealJoint)) return false;
+    // A driven joint always has one: the effort that drives it.
+    if (joint.input) return true;
+    const solved = this.mechanismContaining(joint);
+    if (!solved?.isMechanismValid()) return false;
+    const mode = this.settingsService.forceAnalysisMode.value;
+    const index = solved.getForceAnalysis(mode).reactionIndex;
+    return (index.linksByJoint.get(joint.id) ?? []).length > 0;
+  }
+
   /** Can this part's own machine be simulated? Says nothing about the others. */
   isPartSimulatable(part: Joint | Link | Force): boolean {
     return this.mechanismContaining(part)?.isMechanismValid() ?? false;
@@ -844,7 +880,7 @@ export class MechanismService {
     if (this.joints.length === 0 && this.links.length === 0 && this.forces.length === 0) return;
     [...this.joints].forEach((joint) => {
       this.activeObjService.updateSelectedObj(joint);
-      this.deleteJoint(false);
+      this.deleteJoint(false, true);
     });
     this.activeObjService.updateSelectedObj(null);
     this.finishStructuralEdit(true);
@@ -990,6 +1026,43 @@ export class MechanismService {
     this.activeObjService.fakeUpdateSelectedObj();
   }
 
+  /**
+   * Why this part cannot be deleted, or nothing.
+   *
+   * A lock is the user saying this part is settled, and deletion is the one
+   * edit worth stopping outright rather than warning about. The rule lives
+   * here rather than in the menu that shows it, because the menu is not the
+   * only way to delete something: the Delete key and the panel's own button
+   * reach the same joint, and a greyed row beside a live keystroke is a rule
+   * that only looks enforced.
+   */
+  deleteRefusal(target: RealJoint | Link | Force): string | undefined {
+    if (this.isLockedTarget(target)) {
+      return 'That part is locked. Unlock it before deleting it.';
+    }
+    // A link is "locked" only when every one of its joints is, so a bar with
+    // one locked end is not -- and deleting it swept that end away as an
+    // orphan, which is the lock being ignored by a longer route. The cascade
+    // is part of the deletion, so the lock has to be asked of the cascade.
+    if (target instanceof Link) {
+      const held = this.jointsOrphanedByDeleting(target).filter((joint) => joint.locked);
+      if (held.length > 0) {
+        const names = held.map((joint) => joint.name || joint.id).join(', ');
+        return `Deleting this would also remove locked ${held.length === 1 ? 'joint' : 'joints'} ${names}. Unlock ${held.length === 1 ? 'it' : 'them'} first.`;
+      }
+    }
+    return undefined;
+  }
+
+  /** Say why, and answer whether the caller should stop. */
+  private blockedByLock(target: RealJoint | Link | Force | undefined): boolean {
+    if (!target) return false;
+    const why = this.deleteRefusal(target);
+    if (!why) return false;
+    this.notify.refusal('delete.locked', why);
+    return true;
+  }
+
   /** Whether the Lock item for this object should read as "on". */
   isLockedTarget(target: RealJoint | Link | Force): boolean {
     const marks = this.lockMarksOf(target);
@@ -1010,6 +1083,165 @@ export class MechanismService {
     this.forces.forEach((force) => (force.locked = locked));
     this.updateMechanism(true);
     this.activeObjService.fakeUpdateSelectedObj();
+  }
+
+  /**
+   * How much of the drawing is held, for the counts beside Lock All and
+   * Unlock All.
+   *
+   * A "part" here is a thing that carries a Lock mark -- every joint and every
+   * force -- because that is what Lock All actually sets. Counting links
+   * instead would let the menu say "3 locked" while five marks were down.
+   */
+  lockCounts(): { locked: number; open: number; total: number } {
+    const marks: { locked: boolean }[] = [
+      ...this.joints.filter((joint): joint is RealJoint => joint instanceof RealJoint),
+      ...this.forces,
+    ];
+    const locked = marks.filter((mark) => mark.locked).length;
+    return { locked, open: marks.length - locked, total: marks.length };
+  }
+
+  /**
+   * The joints deleting this link would sweep up with it.
+   *
+   * `deleteLink` keeps a joint only while some *other* link still holds it, so
+   * this is that rule asked in advance -- what the menu row needs to be able to
+   * name the cascade before the click rather than after it.
+   */
+  jointsOrphanedByDeleting(link: Link): RealJoint[] {
+    const doomed = new Set<Link>([link, ...(link instanceof RealLink ? link.subset : [])]);
+    return link.joints.filter(
+      (joint): joint is RealJoint =>
+        joint instanceof RealJoint &&
+        !this.links.some((other) => !doomed.has(other) && other.joints.includes(joint))
+    );
+  }
+
+  /**
+   * The links deleting this joint would take with it.
+   *
+   * `deleteJoint` removes every link the joint sits on that has fewer than
+   * three joints, because a bar with one end left is not a bar. Asked here in
+   * advance, so the row can say so before the click rather than after it.
+   *
+   * A welded compound is asked leaf by leaf, because that is what the deletion
+   * does to it: the joint comes out of each sub-link it is on, and a sub-link
+   * left with a single end goes the same way a bare bar would. Asking only the
+   * compound's own joint count let the row promise `Delete Joint` and then take
+   * a leaf with it -- the compound has four joints, so nothing looked doomed,
+   * while the two-joint leaf inside it was.
+   */
+  linksRemovedByDeleting(joint: RealJoint): Link[] {
+    const doomed: Link[] = [];
+    for (const link of joint.links) {
+      const parts = link instanceof RealLink && link.subset.length > 0 ? link.subset : [link];
+      for (const part of parts) {
+        if (!part.joints.some((member) => member.id === joint.id)) continue;
+        if (part.joints.length < 3) doomed.push(part);
+      }
+    }
+    return doomed;
+  }
+
+  /**
+   * Copy a bar and the two joints it stands on, a little to one side.
+   *
+   * Free-standing, deliberately: the copy shares no joint with the original,
+   * carries none of its forces and none of its locks, and is not welded to
+   * anything. A duplicate that arrived already attached would be a different
+   * mechanism rather than a second copy of the same bar, and there is no
+   * reading of "duplicate" that says which of the original's neighbours the
+   * copy should have inherited.
+   */
+  duplicateLink(link: RealLink): void {
+    // A compound is several links and the welds between them, and a cylinder
+    // part belongs to an assembly; neither copies as one link. The menu greys
+    // the row for both rather than accepting the click and doing nothing.
+    if (!this.canDuplicate(link)) return;
+    const source = link.joints.filter((joint): joint is RealJoint => joint instanceof RealJoint);
+
+    // Set beside the link rather than diagonally away from it: a copy that
+    // lands along the bar's own direction overlaps it and reads as nothing
+    // having happened, which is exactly how the first cut of this was
+    // reported. Across the bar, the two are plainly two.
+    const step = this.sideStepFor(source);
+    // `determineNextLetter` reads the drawing, and none of these are in it
+    // yet, so the letters handed out so far are passed back in explicitly.
+    const taken: string[] = [];
+    const made = source.map((joint) => {
+      const id = this.determineNextLetter(taken);
+      taken.push(id);
+      return new RevJoint(id, joint.x + step.x, joint.y + step.y);
+    });
+    const copy = this.gridUtils.createRealLink(
+      made
+        .map((joint) => joint.id)
+        .sort()
+        .join(''),
+      made
+    );
+    // A copy of the body, not of its outline: a bar carrying seven grams and a
+    // hand-set moment of inertia is that bar because of those numbers, and a
+    // duplicate that quietly dropped them handed back a shape with a force
+    // analysis that no longer agreed with the original. The name is not
+    // copied -- two links answering to "Crank" is a drawing nobody can talk
+    // about -- and neither is the lock, which is a statement about the part
+    // that was settled rather than about the one just made.
+    //
+    // The *custom* flags come too, and they are the half that matters: without
+    // them the next rebuild treats the copy as an ordinary body and computes
+    // both back over -- a hand-set inertia of 123.456 was landing as 0.005
+    // before the reader had done anything. And everything the offsets are held
+    // against is a joint letter, so those letters are the source's and have to
+    // be re-read as the copy's or the point rides a bar it is not on.
+    const renamed = new Map(source.map((joint, index) => [joint.id, made[index].id]));
+    const rename = (id: string): string => renamed.get(id) ?? made[0].id;
+    copy.mass = link.mass;
+    copy.massMoI = link.massMoI;
+    copy.moiIsCustom = link.moiIsCustom;
+    copy.fill = link.fill;
+    copy.isCircle = link.isCircle;
+    copy.comIsCustom = link.comIsCustom;
+    copy.comAnchor =
+      typeof link.comAnchor === 'object' ? { joint: rename(link.comAnchor.joint) } : link.comAnchor;
+    copy.comAnchorOffset = link.comAnchorOffset ? { ...link.comAnchorOffset } : undefined;
+    copy.comOffset = link.comOffset
+      ? {
+          along: link.comOffset.along,
+          across: link.comOffset.across,
+          frame: [rename(link.comOffset.frame[0]), rename(link.comOffset.frame[1])],
+        }
+      : undefined;
+    made.forEach((joint) => {
+      joint.links.push(copy);
+      made.forEach((other) => {
+        if (other.id !== joint.id) joint.connectedJoints.push(other);
+      });
+    });
+    this.joints.push(...made);
+    this.links.push(copy);
+    this.activeObjService.updateSelectedObj(copy);
+    this.finishStructuralEdit(true);
+  }
+
+  /** Whether Duplicate has a single link to copy — the menu's enable rule. */
+  canDuplicate(link: Link): boolean {
+    if (!(link instanceof RealLink) || link.subset.length > 0) return false;
+    if (this.cylinderAt(link)) return false;
+    return link.joints.filter((joint) => joint instanceof RealJoint).length >= 2;
+  }
+
+  /**
+   * Where a copy is set down: one part-width to the side of the link's own
+   * direction, so the copy sits beside the original rather than along it.
+   */
+  private sideStepFor(joints: RealJoint[]): { x: number; y: number } {
+    const gap = 0.9 * this.settingsService.objectScale;
+    const span = { x: joints[1].x - joints[0].x, y: joints[1].y - joints[0].y };
+    const length = Math.hypot(span.x, span.y);
+    if (length < 1e-6) return { x: gap, y: -gap };
+    return { x: (-span.y / length) * gap, y: (span.x / length) * gap };
   }
 
   /** Whether any Lock mark is set at all — what enables Unlock All. */
@@ -1486,7 +1718,14 @@ export class MechanismService {
    * as one gesture passes `false`, and it owes a `finishStructuralEdit(true)`
    * of its own once the last one is gone — see `deleteMechanism`.
    */
-  deleteJoint(save: boolean = true) {
+  deleteJoint(save: boolean = true, ignoreLocks: boolean = false) {
+    if (!ignoreLocks && this.blockedByLock(this.activeObjService.selectedJoint)) return;
+    // A cylinder's own joint carries its own mark -- locking a mount pins that
+    // point and leaves the ram free to swing about it -- so an unlocked mount
+    // on a *locked* cylinder passed the test above and then took the whole
+    // locked part with it.
+    const sealedHere = this.cylinderAt(this.activeObjService.selectedJoint);
+    if (!ignoreLocks && sealedHere && this.blockedByLock(sealedHere.barrel)) return;
     // Deleting a mount (or, defensively, any member joint) of a sealed cylinder
     // takes the whole assembly with it (§ cylinder 5) — and then goes on to
     // delete the joint itself.
@@ -1927,6 +2166,7 @@ export class MechanismService {
 
   deleteForce(force: Force = this.activeObjService.selectedForce) {
     if (!force) return;
+    if (this.blockedByLock(force)) return;
     this.detachForce(force);
     this.updateMechanism(true);
     this.onMechUpdateState.next(3);
@@ -2024,6 +2264,7 @@ export class MechanismService {
 
   deleteLink() {
     const link = this.activeObjService.selectedLink;
+    if (this.blockedByLock(link)) return;
     // Deleting any member of a sealed cylinder — barrel, rod, block, or a
     // compound that swallowed one — deletes the whole assembly (§ cylinder 5).
     const sealed = this.cylinderAt(link);
@@ -2426,7 +2667,7 @@ export class MechanismService {
       return `Slider ${names} has nothing to slide along. Drag it onto a link to cut a slot, or ground it to fix its direction.`;
     }
     if (!this.joints.some((joint) => joint instanceof RealJoint && joint.input)) {
-      return 'No joint is driven. Right-click a joint and choose Add Input to say what moves the mechanism.';
+      return 'No joint is driven. Right-click a joint and switch on Driven Input to say what moves the mechanism.';
     }
     // A driven joint the actuator record cannot describe -- most often because
     // an edit added a third body to it long after Driven was switched on. The
@@ -2731,6 +2972,10 @@ export class MechanismService {
       this.cylinderAt(this.activeObjService.selectedJoint) ??
       this.cylinderAt(this.activeObjService.selectedLink);
     if (!sealed) return;
+    // Asked here as well as on the way in: the menu calls this directly with
+    // the cylinder it found, so a guard that only sat on deleteLink was a
+    // guard with a door beside it.
+    if (this.blockedByLock(sealed.barrel)) return;
     this.deleteCylinderTopology(sealed);
     this.activeObjService.updateSelectedObj(undefined);
     this.finishStructuralEdit(true);
@@ -4575,8 +4820,13 @@ export class MechanismService {
     );
   }
 
-  createForce(startCoord: Coord, endCoord: Coord): Force | undefined {
-    const selectedLink = this.activeObjService.selectedLink;
+  /**
+   * `onLink` is handed in by the gesture that started this, because the force
+   * row is on a joint's menu as well as a link's and the selection there is
+   * the joint. Falls back to the selected link for the callers that have one.
+   */
+  createForce(startCoord: Coord, endCoord: Coord, onLink?: RealLink): Force | undefined {
+    const selectedLink = onLink ?? this.activeObjService.selectedLink;
     if (!(selectedLink instanceof RealLink)) return undefined;
     startCoord = new Coord(startCoord.x, startCoord.y);
     endCoord = new Coord(endCoord.x, endCoord.y);

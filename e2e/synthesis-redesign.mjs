@@ -50,8 +50,6 @@ const grid = (fn) =>
 
 await page.goto(BASE, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
-const skip = page.locator('.introjs-skipbutton').first();
-if (await skip.isVisible().catch(() => false)) await skip.click({ force: true });
 await page.locator('.tabButton', { hasText: 'Synthesis' }).click();
 await page.waitForTimeout(700);
 
@@ -755,10 +753,10 @@ await page.mouse.click(700, 820, { button: 'right' });
 await page.waitForTimeout(500);
 check(
   'the canvas menu can clear them away from any mode',
-  (await page.locator('#contextMenu #menu-item').allInnerTexts()).some((t) =>
-    t.includes('Delete Synthesis Positions')
+  (await page.locator('#contextMenu .cm-row__label').allInnerTexts()).some((t) =>
+    /Delete \d+ Synthesis Positions?/.test(t)
   ),
-  await page.locator('#contextMenu #menu-item').allInnerTexts()
+  await page.locator('#contextMenu .cm-row__label').allInnerTexts()
 );
 await page.keyboard.press('Escape');
 const poseBar = await page.evaluate(() => {
@@ -769,10 +767,10 @@ await page.mouse.click(poseBar.x, poseBar.y, { button: 'right' });
 await page.waitForTimeout(500);
 check(
   'and one position can be taken away on its own',
-  (await page.locator('#contextMenu #menu-item').allInnerTexts()).some((t) =>
+  (await page.locator('#contextMenu .cm-row__label').allInnerTexts()).some((t) =>
     /Delete Position \d/.test(t)
   ),
-  await page.locator('#contextMenu #menu-item').allInnerTexts()
+  await page.locator('#contextMenu .cm-row__label').allInnerTexts()
 );
 await page.keyboard.press('Escape');
 
@@ -959,15 +957,6 @@ check('and Redo takes it away again', (await panel('(p) => p.design.getAllPoses(
   happened twice in this file already.
 */
 
-/** The tour's overlay swallows pointer events until it is sent away. */
-async function dismissTour(p) {
-  const skip = p.locator('.introjs-skipbutton').first();
-  if (await skip.isVisible().catch(() => false)) await skip.click({ force: true });
-  await p.evaluate(() =>
-    document.querySelectorAll('.introjs-overlay, .introjs-tooltip').forEach((n) => n.remove())
-  );
-}
-
 const SOLVED =
   BASE + '/?2P.VC,1E8.5,0.1011....N_.SD~1uT~1~8,SP~01lk~g_~1z0,SP~DT~1e5~087a,SP~59p~0I0~0OBHJ';
 
@@ -979,7 +968,6 @@ async function solvedPage() {
   await waitForReady(p);
   // The app does not open on Synthesis, and a design in the URL does not send
   // it there either. The tour's overlay eats the click if it is still up.
-  await dismissTour(p);
   await p.locator('.tabButton', { hasText: 'Synthesis' }).click();
   await p.waitForTimeout(700);
   await p.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
@@ -1193,7 +1181,6 @@ const ask = (p, fn) =>
   p.on('pageerror', (error) => errors.push(String(error)));
   await p.goto(BASE, { waitUntil: 'domcontentloaded' });
   await waitForReady(p);
-  await dismissTour(p);
   await p.locator('.tabButton', { hasText: 'Synthesis' }).click();
   await p.waitForTimeout(700);
   await p.locator('#synthesisPanel .kindCard--on').click();
@@ -1303,7 +1290,6 @@ const ask = (p, fn) =>
   reloaded.on('pageerror', (error) => errors.push(String(error)));
   await reloaded.goto(BASE + '/?' + link, { waitUntil: 'domcontentloaded' });
   await waitForReady(reloaded);
-  await dismissTour(reloaded);
   await reloaded.locator('.tabButton', { hasText: 'Synthesis' }).click();
   await reloaded.waitForTimeout(700);
   const after = await ask(reloaded, '(panel) => panel.solution.ownership()');
@@ -1428,7 +1414,6 @@ const ask = (p, fn) =>
   p.on('pageerror', (error) => errors.push(String(error)));
   await p.goto(BASE, { waitUntil: 'domcontentloaded' });
   await waitForReady(p);
-  await dismissTour(p);
   await p.locator('.tabButton', { hasText: 'Synthesis' }).click();
   await p.waitForTimeout(600);
   await p.locator('#synthesisPanel .kindCard--on').click();
@@ -1525,7 +1510,6 @@ const ask = (p, fn) =>
   opened.on('pageerror', (error) => errors.push(String(error)));
   await opened.goto(BASE + '/?' + link, { waitUntil: 'domcontentloaded' });
   await waitForReady(opened);
-  await dismissTour(opened);
   await opened.locator('.tabButton', { hasText: 'Synthesis' }).click();
   await opened.waitForTimeout(700);
   // A reopened link has the design but not the search, and Insert with nothing
@@ -1587,7 +1571,6 @@ const ask = (p, fn) =>
   opened.on('pageerror', (error) => errors.push(String(error)));
   await opened.goto(BASE + '/?' + link, { waitUntil: 'domcontentloaded' });
   await waitForReady(opened);
-  await dismissTour(opened);
   await opened.locator('.tabButton', { hasText: 'Synthesis' }).click();
   await opened.waitForTimeout(700);
   await opened.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
