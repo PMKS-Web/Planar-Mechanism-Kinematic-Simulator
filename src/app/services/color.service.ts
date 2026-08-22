@@ -1,4 +1,18 @@
 import { Injectable } from '@angular/core';
+import {
+  DEFAULT_FORCE_COLOR,
+  JointFamily,
+  JOINT_FAMILIES,
+  PART_COLORS,
+} from '../model/joint-colors';
+
+export {
+  JOINT_FAMILIES,
+  SELECTION_RING,
+  PART_COLORS,
+  DEFAULT_FORCE_COLOR,
+} from '../model/joint-colors';
+export type { JointFamily } from '../model/joint-colors';
 
 @Injectable({
   providedIn: 'root',
@@ -12,24 +26,46 @@ export class ColorService {
     ColorService.instance = this;
   }
 
-  private linkColorOptions = [
-    '#c5cae9',
-    '#303e9f',
-    '#0d125a',
-    // '#283493',
-    // '#3948ab',
-    // '#3f50b5',
-    // '#5c6ac0',
-    // '#7986cb',
-    // '#c5cae9',
-    '#B2DFDB',
-    '#26A69A',
-    '#00695C',
-  ];
+  private linkColorOptions: string[] = [...PART_COLORS];
 
-  private jointColorOptions = ['#ffecb2'];
+  /**
+   * The families a joint can be drawn in, each a set of three.
+   *
+   * A joint is drawn resting, pointed at and picked, and those only read as one
+   * object in three moods if they come from one family -- so choosing a colour
+   * for a joint chooses all three at once, not a fill.
+   *
+   * Amber through brown: warm, complementary to the indigo and teal the links
+   * are drawn in, and none of it competing with the link palette. Amber is
+   * first and is what every joint is drawn in until somebody says otherwise,
+   * so the same row that puts a colour on a joint takes it off again.
+   */
+  private jointFamilies: readonly JointFamily[] = JOINT_FAMILIES;
 
-  private forceColorOptions = ['#3f50b5'];
+  public getJointFamilies(): readonly JointFamily[] {
+    return this.jointFamilies;
+  }
+
+  /** The family a joint belongs to; the first for anything unrecognised. */
+  public jointFamily(id: string): JointFamily {
+    return this.jointFamilies.find((family) => family.id === id) ?? this.jointFamilies[0];
+  }
+
+  public getJointColorOptions(): string[] {
+    return this.jointFamilies.map((family) => family.normal);
+  }
+
+  public getIndexFromJointFamily(id: string): number {
+    const at = this.jointFamilies.findIndex((family) => family.id === id);
+    return at === -1 ? 0 : at;
+  }
+
+  public getJointFamilyFromIndex(index: number): string {
+    return (this.jointFamilies[index] ?? this.jointFamilies[0]).id;
+  }
+
+  /** The same six the links use. A force is read against the link it acts on. */
+  private forceColorOptions: string[] = [...PART_COLORS];
 
   private linkLastColorIndex = 0;
 
@@ -56,10 +92,6 @@ export class ColorService {
     return this.linkColorOptions;
   }
 
-  public getJointColorOptions(): string[] {
-    return this.jointColorOptions;
-  }
-
   public getForceColorOptions(): string[] {
     return this.forceColorOptions;
   }
@@ -68,23 +100,19 @@ export class ColorService {
     return this.linkColorOptions.indexOf(fill);
   }
 
-  getIndexFromJointColor(fill: string) {
-    return this.jointColorOptions.indexOf(fill);
-  }
-
   getIndexFromForceColor(fill: string) {
-    return this.forceColorOptions.indexOf(fill);
+    // An empty colour is the default, which is one of the six -- so the picker
+    // always has exactly one swatch ticked, whether or not anybody has chosen.
+    const wanted = (fill || DEFAULT_FORCE_COLOR).toLowerCase();
+    const at = this.forceColorOptions.findIndex((option) => option.toLowerCase() === wanted);
+    return at === -1 ? this.forceColorOptions.indexOf(DEFAULT_FORCE_COLOR) : at;
   }
 
   getLinkColorFromIndex(index: number) {
     return this.linkColorOptions[index];
   }
 
-  getJointColorFromIndex(index: number) {
-    return this.jointColorOptions[index];
-  }
-
   getForceColorFromIndex(index: number) {
-    return this.forceColorOptions[index];
+    return this.forceColorOptions[index] ?? DEFAULT_FORCE_COLOR;
   }
 }

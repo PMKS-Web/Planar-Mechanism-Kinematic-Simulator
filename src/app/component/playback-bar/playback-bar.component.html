@@ -74,9 +74,11 @@
                    as a button it could be focused, pressed and shown as
                    selected, none of which lead anywhere. -->
               @if (row.isMechanism) {
+                <!-- The row already selects on click, so the button stops here
+                     rather than letting one press run both handlers. -->
                 <button
                   class="mechChip"
-                  (click)="selectMechanism(row)"
+                  (click)="selectMechanism(row); $event.stopPropagation()"
                   [attr.title]="'Select ' + row.id"
                 >
                   {{ row.id }}
@@ -118,11 +120,17 @@
               </span>
             </div>
 
+            <!-- The transport stops the click here rather than letting it reach
+                 the row. The row's whole surface selects the machine, which
+                 changes what the panel is showing -- open analysis and all --
+                 and these two are what a reader presses over and over while
+                 watching one machine run. Sharing a hitbox with the selector
+                 meant every play and every reversal took their place away. -->
             @if (row.ownPlay) {
               <button
                 class="rowPlay"
                 [class.live]="canPlay"
-                (click)="toggleRow(row)"
+                (click)="toggleRow(row); $event.stopPropagation()"
                 [title]="shortcuts.tip('Play / pause', 'playback.toggle')"
                 [attr.aria-label]="row.playing ? 'Pause ' + row.id : 'Play ' + row.id"
               >
@@ -133,7 +141,7 @@
             @if (row.isMechanism) {
               <button
                 class="dirButton"
-                (click)="flipDirection(row)"
+                (click)="flipDirection(row); $event.stopPropagation()"
                 title="Input direction"
                 [attr.aria-label]="'Reverse ' + row.id"
               >
@@ -143,8 +151,11 @@
           </div>
 
           <div class="trackWell">
+            <!-- The handle likewise: moving one machine along its own travel is
+                 watching it, not picking it. -->
             <input
               class="rowScrubber"
+              (click)="$event.stopPropagation()"
               [id]="row.master ? 'slider' : null"
               type="range"
               min="0"

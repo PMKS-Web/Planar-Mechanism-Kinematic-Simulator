@@ -115,9 +115,23 @@ export interface SlotStackItem {
 }
 import { SvgArrowComponent } from '../svg-arrow/svg-arrow.component';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
+import { INK_FLIPS_AT, luminanceOf } from '../../model/contrast';
+import { DEFAULT_FORCE_COLOR, SELECTION_RING } from '../../model/joint-colors';
 
 /** Which corner of the tracing underlay a resize gesture is holding. */
 type BackgroundImageCorner = 'tl' | 'tr' | 'bl' | 'br';
+
+/**
+ * How long the canvas takes to glide to a new frame.
+ *
+ * A hair longer than the CSS transition it switches on, so the class comes off
+ * after the move has landed rather than exactly as it lands -- the two used to
+ * be the same 300, which cut the last frame of every reframe.
+ */
+const GRID_GLIDE_MS = 380;
+
+/** How wide the ring inside a selected joint's edge is drawn, in screen pixels. */
+const SELECTION_RING_PX = 3;
 
 @Component({
   selector: 'app-new-grid',
@@ -132,6 +146,7 @@ export class NewGridComponent implements OnDestroy {
   private tutorial = inject(TutorialService);
   private urlParser = inject(UrlProcessorService);
   gridUtils = inject(GridUtilsService);
+  private colors = inject(ColorService);
   settings = inject(SettingsService);
   activeObjService = inject(ActiveObjService);
   private tabService = inject(SelectedTabService);
@@ -264,8 +279,14 @@ export class NewGridComponent implements OnDestroy {
     }
 
     fromEvent(window, 'resize').subscribe((event) => {
-      this.svgGrid.panZoomObject.resize();
-      this.svgGrid.handlePan();
+      // Through `ourOwnMove`: telling the library its viewport changed size,
+      // and redrawing the ruling for it, is the app keeping up with the window
+      // rather than the reader choosing a view. Read as a choice, it threw away
+      // the view the canvas was about to give back once the resize settled.
+      this.svgGrid.ourOwnMove(() => {
+        this.svgGrid.panZoomObject.resize();
+        this.svgGrid.handlePan();
+      });
     });
 
     this.activeObjService.onActiveObjChange.subscribe((obj) => {
@@ -387,12 +408,48 @@ export class NewGridComponent implements OnDestroy {
     this.mechanismSrv.save();
   }
 
+  /**
+   * Let the canvas glide to wherever it is being sent, for this one move.
+   *
+   * Added and removed from the list rather than written over it: this element
+   * is svg-pan-zoom's viewport and carries the class the library found it by,
+   * so setting `class` outright stripped that name off it permanently -- the
+   * first reframe of a session left nothing on the page called
+   * `svg-pan-zoom_viewport`.
+   */
   enableGridAnimationForThisAction() {
-    this.svgGridElement.setAttribute('class', 'animated');
-    //Disable after 0.5 seconds
-    setTimeout(() => {
-      this.svgGridElement.removeAttribute('class');
-    }, 300);
+    if (!this.svgGridElement) return;
+    this.svgGridElement.classList.add('animated');
+    window.clearTimeout(this.gridAnimationOff);
+    this.glideEndsAt = performance.now() + GRID_GLIDE_MS;
+    this.gridAnimationOff = window.setTimeout(() => {
+      this.glideEndsAt = 0;
+      this.svgGridElement?.classList.remove('animated');
+    }, GRID_GLIDE_MS);
+  }
+
+  private gridAnimationOff = 0;
+  private glideEndsAt = 0;
+
+  /**
+   * Do this once the canvas has stopped gliding, or now if it is not.
+   *
+   * Anything that measures the drawing has to wait: mid-transition the
+   * transform *attribute* already reads as the destination while the picture on
+   * screen is still on its way there, so a measurement taken then divides one
+   * by the other and lands the drawing somewhere neither of them meant.
+   */
+  isGliding(): boolean {
+    return this.glideEndsAt > performance.now();
+  }
+
+  afterGlide(run: () => void): void {
+    const left = this.glideEndsAt - performance.now();
+    if (left <= 0) {
+      run();
+      return;
+    }
+    window.setTimeout(run, left + 16);
   }
 
   static getLastLeftClickType(): string {
@@ -3130,6 +3187,74 @@ export class NewGridComponent implements OnDestroy {
    * about something the reader cannot act on and did not ask about. It goes
    * grey with the rest of the body it marks.
    */
+  /**
+   * The colour one joint is drawn in, or nothing for the family they all share.
+   *
+   * A family is three colours, one per state, so this follows the state rather
+   * than standing aside from it -- that is what keeps a joint reading as one
+   * object resting, pointed at and picked. Amber returns nothing at all: it is
+   * what the stylesheet already draws, so a drawing nobody has coloured is
+   * drawn by exactly the rules it always was.
+   *
+   * The greyed-out analysis state is the one exception. Scenery is scenery
+   * whatever colour it would otherwise be.
+   */
+  jointFillOf(joint: Joint): string | null {
+    if (!joint.colorFamily) return null;
+    const state = this.mechanismSrv.getJointCSSClass(joint);
+    if (state.includes('joint-inert')) return null;
+    const family = this.colors.jointFamily(joint.colorFamily);
+    if (state.includes('joint-selected')) return family.selected;
+    if (state.includes('joint-highlight') || state.includes('joint-dragging')) return family.hover;
+    return family.normal;
+  }
+
+  /**
+   * The ring a selected joint wears inside its own edge, if it needs one.
+   *
+   * Amber is what "picked" means everywhere in the app, and a joint in another
+   * family keeps its own colour rather than borrowing it -- so the fill says
+   * which joint this is and the ring says it is the selected one. A joint
+   * already drawn in amber needs no ring: its picked colour is the ring colour.
+   */
+  selectionRingOn(joint: Joint): string | null {
+    if (!joint.colorFamily) return null;
+    return this.mechanismSrv.getJointCSSClass(joint).includes('joint-selected')
+      ? SELECTION_RING
+      : null;
+  }
+
+  /** How wide that ring is drawn, in screen pixels however far this is zoomed. */
+  selectionRingWidth(): number {
+    return this.svgGrid.scaleWithZoom(SELECTION_RING_PX);
+  }
+
+  /**
+   * The padlock's ink on a given joint.
+   *
+   * The badge is drawn on the joint rather than beside it, so on a dark one the
+   * default near-black glyph disappears into the pin it is sitting on. A welded
+   * joint brings its own white chip and the glyph stands on that instead.
+   */
+  lockInkOn(joint: Joint): string | null {
+    const fill = this.jointFillOf(joint);
+    if (!fill || this.gridUtils.getWelded(joint)) return null;
+    return luminanceOf(fill) > INK_FLIPS_AT ? '#263238' : '#eceff1';
+  }
+
+  /**
+   * The colour one force is drawn in -- line, arrowhead and anchor together.
+   *
+   * Nothing in an analysis mode where the force is scenery: a load on a body
+   * this analysis has nothing to say about is greyed with the body, and a
+   * colour somebody chose is still a louder thing than the machine being
+   * analysed.
+   */
+  forceInkOf(force: Force): string | null {
+    if (this.mechanismSrv.isPartInert(force.link)) return null;
+    return force.color || DEFAULT_FORCE_COLOR;
+  }
+
   get orphanMarkInk(): string {
     return this.tabService.isAnalysisMode() ? '#b6bac6' : '#F44336';
   }

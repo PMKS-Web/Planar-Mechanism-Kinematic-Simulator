@@ -292,7 +292,12 @@
           tooltip="Show / hide the path the joint takes."
           >Show Joint Path
         </toggle-block>
-        <color-picker type="joint"> Joint Color</color-picker>
+        <color-picker
+          type="joint"
+          [joint]="activeSrv.selectedJoint"
+          tooltip="Draw this one joint in its own colour, to tell it apart from the others. The first swatch puts it back to the colour they all share. Travels with the drawing."
+          >Joint Color</color-picker
+        >
       </collapsible-subseciton>
       <collapsible-subseciton
         titleLabel="Distance to Joints"
@@ -726,7 +731,12 @@
         (opened)="sectionExpanded['FVisual'] = true"
         (closed)="sectionExpanded['FVisual'] = false"
       >
-        <color-picker type="force" [force]="activeSrv.selectedForce">Force Color</color-picker>
+        <color-picker
+          type="force"
+          [force]="activeSrv.selectedForce"
+          tooltip="Draw this one force in its own colour, from the same six the links use. Travels with the drawing."
+          >Force Color</color-picker
+        >
       </collapsible-subseciton>
     </panel-section>
   }

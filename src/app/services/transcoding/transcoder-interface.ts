@@ -47,6 +47,19 @@ export abstract class GenericTranscoder {
    * undone, and a link shared mid-design would open on an empty panel.
    */
   protected synthesisMarks: string[] = [];
+  /**
+   * Parts drawn in a colour of their own, as tagged references sharing the same
+   * trailing section: 'KJ' + joint id + '~' + colour family, and 'KF' + force
+   * id + '~' + six hex digits. Two kinds under one tag, told apart by the
+   * second character, the way the centre-of-mass anchors already are.
+   *
+   * In the URL rather than kept on this machine because it is a fact about the
+   * drawing -- which part the reader is being asked to look at -- and because
+   * undo and redo are a stack of these strings, so a colour left out of them
+   * would be wiped by the next undo. Link colours are not here: those have
+   * ridden in the link's own record since long before this section existed.
+   */
+  protected partColors: string[] = [];
 
   // Initialize data dictionaries based on settings enums
   constructor() {
@@ -136,6 +149,14 @@ export abstract class GenericTranscoder {
 
   getSynthesisMarks(): string[] {
     return this.synthesisMarks;
+  }
+
+  setPartColors(colors: string[]) {
+    this.partColors = colors;
+  }
+
+  getPartColors(): string[] {
+    return this.partColors;
   }
 
   abstract decodeURL(url: string): void;

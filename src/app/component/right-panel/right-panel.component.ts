@@ -1,4 +1,5 @@
 import { TabID } from '../../selected-tab.service';
+import { CHROME_MOVED } from '../../model/chrome-motion';
 import { Component, inject, ChangeDetectionStrategy, DoCheck } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NewGridComponent } from '../new-grid/new-grid.component';
@@ -174,7 +175,27 @@ export class RightPanelComponent implements DoCheck {
   attention = false;
   private shownAttention = 0;
 
+  /**
+   * The drawer's shape, as the canvas behind it cares about it: whether it is
+   * there, and how much room it takes when it is.
+   *
+   * Announced from here rather than from each of the five places that open or
+   * close a drawer, because that is five places to remember and this is one --
+   * and the state is a static that any of them may set. Seeded with what is
+   * already true, so the first check announces nothing.
+   */
+  private shownShape = this.drawerShape();
+
+  private drawerShape(): string {
+    return `${RightPanelComponent.isOpen}:${this.isWidePage()}`;
+  }
+
   ngDoCheck(): void {
+    const shape = this.drawerShape();
+    if (shape !== this.shownShape) {
+      this.shownShape = shape;
+      CHROME_MOVED.next();
+    }
     // The Edit panel's resume line is offered only when the card is not up, and
     // a closed drawer still *renders* the page it was last showing -- it parks
     // off the edge rather than being torn down -- so the card cannot answer

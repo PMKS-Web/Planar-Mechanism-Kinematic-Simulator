@@ -891,16 +891,38 @@
                 [attr.cx]="0"
                 [attr.cy]="0"
                 [class]="mechanismSrv.getJointCSSClass(joint)"
+                [style.fill]="jointFillOf(joint)"
               />
+              <!-- What "picked" means, on a joint that keeps its own colour
+                   while it is picked. Drawn inside the edge rather than on it,
+                   so a selected joint is the same size as an unselected one. -->
+              @if (selectionRingOn(joint); as ring) {
+                <circle
+                  class="jointSelectionRing"
+                  [attr.r]="
+                    settings.objectScale * gridUtils.getJointR(joint) - selectionRingWidth() / 2
+                  "
+                  cx="0"
+                  cy="0"
+                  fill="none"
+                  [attr.stroke]="ring"
+                  [attr.stroke-width]="selectionRingWidth()"
+                />
+              }
             }
             <!--      Welded Joint. A sealed cylinder's pin never reaches here:
                       interior joints are filtered out above, and the skin
                       draws its own, larger marker at that point. -->
             @if (gridUtils.getWelded(joint)) {
+              <!-- A weld mark has no inside edge to ring, so it wears the same
+                   amber as an outline instead. -->
               <path
                 [attr.id]="'joint_' + joint.id"
                 [class]="mechanismSrv.getJointCSSClass(joint)"
                 [attr.d]="weldMarkerPath"
+                [style.fill]="jointFillOf(joint)"
+                [style.stroke]="selectionRingOn(joint)"
+                [style.stroke-width]="selectionRingWidth()"
               ></path>
             }
             <!-- The lock cue: a small padlock riding the joint's shoulder.
@@ -920,14 +942,18 @@
                      brings a white chip to stand on. -->
                 @if (gridUtils.getWelded(joint)) {
                   <circle
+                    class="lockChip"
                     [attr.r]="0.13 * settings.objectScale"
-                    fill="#ffffff"
-                    stroke="#26323855"
                     [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
                   />
                 }
                 <g [attr.transform]="lockGlyphTransform()">
-                  <path [attr.d]="lockGlyphPath" fill="#263238" fill-rule="evenodd" />
+                  <path
+                    class="lockGlyph"
+                    [attr.d]="lockGlyphPath"
+                    [style.fill]="lockInkOn(joint)"
+                    fill-rule="evenodd"
+                  />
                 </g>
               </g>
             }
@@ -1213,17 +1239,20 @@
             (pointerdown)="startPoseGesture($event, synthesisBuilder.selectedPose, 'rotate')"
           />
           <!-- Squared off and sitting on the axis, so it reads as a pull along
-               the bar rather than as a corner. -->
-          <rect
-            class="synthHandle"
-            cursor="ew-resize"
-            [attr.x]="box.lengthX - box.grip / 2"
-            [attr.y]="box.lengthY - box.grip / 2"
-            [attr.width]="box.grip"
-            [attr.height]="box.grip"
-            [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
-            (pointerdown)="startPoseGesture($event, synthesisBuilder.selectedPose, 'length')"
-          />
+               the bar rather than as a corner. On the end away from the fixed
+               reference, and on both ends when the reference is the middle. -->
+          @for (pull of box.lengthGrips; track $index) {
+            <rect
+              class="synthHandle"
+              cursor="ew-resize"
+              [attr.x]="pull.x - box.grip / 2"
+              [attr.y]="pull.y - box.grip / 2"
+              [attr.width]="box.grip"
+              [attr.height]="box.grip"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+              (pointerdown)="startPoseGesture($event, synthesisBuilder.selectedPose, 'length')"
+            />
+          }
         </g>
       }
 
@@ -1435,7 +1464,11 @@
                reads around it. At the old 0.15 object scales it was the same
                size as the joint and covered it exactly. -->
           @if (!force.local) {
-            <circle [attr.r]="forceAnchorRadius(force)" class="forceAnchor"></circle>
+            <circle
+              [attr.r]="forceAnchorRadius(force)"
+              class="forceAnchor"
+              [style.fill]="forceInkOf(force)"
+            ></circle>
           }
           <!-- Local: the welded joint's own plus. A local force is carried by
                the body rather than fixed in the world, which is the statement a
@@ -1445,6 +1478,7 @@
             <path
               [attr.d]="forceWeldMark(force)"
               class="forceAnchor"
+              [style.fill]="forceInkOf(force)"
               style="transform: rotateZ({{ force.angleRad }}rad)"
             ></path>
           }
@@ -1472,6 +1506,7 @@
         <path
           [attr.d]="force.forceLine"
           class="forceLine"
+          [style.stroke]="forceInkOf(force)"
           [attr.stroke-width]="force.visualWidth * settings.objectScale"
         ></path>
         <path
@@ -1479,7 +1514,11 @@
           stroke="transparent"
           [attr.stroke-width]="force.visualWidth * settings.objectScale + svgGrid.scaleWithZoom(10)"
         ></path>
-        <path [attr.d]="force.forceArrow" class="forceArrow" [attr.fill]="force.fill"></path>
+        <path
+          [attr.d]="force.forceArrow"
+          class="forceArrow"
+          [style.fill]="forceInkOf(force)"
+        ></path>
       </g>
       @if (activeObjService.selectedForce == force && activeObjService.objType == 'Force') {
         <ng-container>

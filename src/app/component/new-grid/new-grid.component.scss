@@ -86,8 +86,11 @@
     opacity: 0;
   }
 
+  // Switched on for one move by enableGridAnimationForThisAction, which takes
+  // it off again a moment after this ends. Out fast and in gently, so the eye
+  // follows where the drawing is going rather than watching it leave.
   .animated {
-    transition: transform 0.3s ease;
+    transition: transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
   .my-custom-snackbar {
@@ -103,6 +106,10 @@
     stroke: mat.m2-get-color-from-palette($primary-palette, 900);
   }
 
+  // What a joint is drawn in when it has not been given a colour of its own.
+  // A joint that has been keeps these rules for everything but the fill, which
+  // it carries inline -- so the shadow, and every state that means something
+  // other than "resting", still say the same thing on every joint.
   .joint-default {
     filter: url(#elevation-1);
     fill: mat.m2-get-color-from-palette($accent-palette, 50);
@@ -118,6 +125,23 @@
   .joint-selected {
     filter: url(#elevation-1);
     fill: mat.m2-get-color-from-palette($accent-palette, 400);
+  }
+
+  // Drawn on a joint rather than beside it, so its ink follows the joint's own
+  // colour -- a dark pin needs a light padlock or the mark disappears into what
+  // it is sitting on. The component picks which; this is the default, for a
+  // joint drawn in the pale colour it has always been drawn in.
+  .lockBadge {
+    .lockGlyph {
+      fill: #263238;
+    }
+
+    // Only a welded joint brings its own chip -- a plain one's circle is chip
+    // enough.
+    .lockChip {
+      fill: #ffffff;
+      stroke: #26323855;
+    }
   }
 
   .link-selected {

@@ -33,6 +33,18 @@ export class Joint extends Coord {
     this._name = value;
   }
 
+  /**
+   * Which colour family this one joint is drawn in -- see JOINT_FAMILIES --
+   * or '' for the amber every joint shares.
+   *
+   * Per joint rather than per drawing because the point of it is to tell one
+   * pin apart from the fifteen around it: the coupler point being traced, the
+   * joint a force is about, the one a reader is being asked to look at. A
+   * family rather than a fill because a joint is drawn resting, pointed at and
+   * picked, and those three only read as one object if they come from one set.
+   */
+  public colorFamily: string = '';
+
   get showHighlight(): boolean {
     return this._showHighlight;
   }
