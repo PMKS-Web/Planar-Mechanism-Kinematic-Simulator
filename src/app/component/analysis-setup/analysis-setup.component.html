@@ -110,25 +110,26 @@
       </div>
     }
 
-    <div class="mechBlock">
-      <button class="sectionHeader" (click)="forceOpen = !forceOpen">
-        <span class="sectionName">
-          Force analysis
-          @if (forceOutstanding > 0) {
-            <span class="chip warning">{{ forceOutstanding }} to set</span>
-          } @else if (forceWarnings > 0) {
-            <span class="chip">{{ forceWarnings }} worth a look</span>
-          } @else {
-            <span class="chip ready">Ready</span>
-          }
-        </span>
-        <mat-icon>{{ forceOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
-      </button>
+    <!-- Only while something is outstanding. With every requirement met this
+         was a heading over an empty list, and the summary above has already
+         said the analysis is ready to run. -->
+    @if (forceChecks.length > 0) {
+      <div class="mechBlock">
+        <button class="sectionHeader" (click)="forceOpen = !forceOpen">
+          <span class="sectionName">
+            Force analysis
+            @if (forceOutstanding > 0) {
+              <span class="chip warning">{{ forceOutstanding }} to set</span>
+            } @else {
+              <span class="chip">{{ forceWarnings }} worth a look</span>
+            }
+          </span>
+          <mat-icon>{{ forceOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
 
-      @if (forceOpen) {
-        <div class="checkList">
-          @for (requirement of forceRequirements; track requirement.title) {
-            @if (!requirement.met) {
+        @if (forceOpen) {
+          <div class="checkList">
+            @for (requirement of forceChecks; track requirement.title) {
               <div class="check">
                 <mat-icon class="checkIcon" [class]="requirement.warning ? 'warning' : 'blocker'">{{
                   requirement.warning ? 'warning_amber' : 'error_outline'
@@ -151,10 +152,10 @@
                 </div>
               </div>
             }
-          }
-        </div>
-      }
-    </div>
+          </div>
+        }
+      </div>
+    }
   }
 
   @if (mode() === 'kinematic' && unassigned.length > 0) {
@@ -189,6 +190,14 @@
           }
         </div>
       }
+    </div>
+  }
+
+  <!-- Nothing left in the way, so the drawer ends in the thing to do next
+       rather than in a list of headings that open onto nothing. -->
+  @if (canEnterMode()) {
+    <div class="enterRow">
+      <button class="enterButton" (click)="enterMode()">{{ enterModeLabel }}</button>
     </div>
   }
 </div>

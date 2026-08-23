@@ -243,17 +243,17 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     fixture.destroy();
   });
 
-  it('shows a cylinder that cannot use its whole stroke, without calling it invalid', async () => {
+  it('leaves the cylinder stroke warning to the setup drawer', async () => {
     // A mechanism can be perfectly valid and still be driven by a ram bigger
-    // than it needs. That is worth saying and is not a reason to refuse
-    // analysis, so it gets its own line rather than the invalid block's.
+    // than it needs. That is a setup fact, and the setup drawer lists it per
+    // mechanism -- repeating it above every graph made the loudest thing on
+    // the panel a remark about numbers that are all correct.
     const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'AB');
     fixtureData.service.cylinderReachWarning = () => 'Cylinder GC can only use 62% of its stroke.';
     fixture.detectChanges();
 
-    // NO_ERRORS_SCHEMA stubs the block components, so their inputs do not
-    // render -- the section being there at all is what this can honestly check.
-    expect(fixture.nativeElement.querySelector('#cylinderReachContainer')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('#cylinderReachContainer')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('62% of its stroke');
     expect(fixture.nativeElement.querySelector('#placeholderContainer')).toBeNull();
     fixture.destroy();
   });

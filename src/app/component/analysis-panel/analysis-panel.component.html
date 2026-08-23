@@ -65,20 +65,12 @@
   }
 
   <!--
-    A mechanism that runs but cannot use all of a cylinder it contains. Not the
-    same thing as invalid, and deliberately not in the block above: everything
-    here solves and every number is right, so the reading is "this ram is
-    bigger than this machine needs", not "fix this before you can analyse".
-    Warned about rather than clamped, because clamping would quietly resize a
-    part the user sized and hide the very thing worth knowing.
+    A mechanism that runs but cannot use all of a cylinder it contains used to
+    be warned about here too. It is a setup fact, not a reading, and the setup
+    drawer already lists it per mechanism ("A cylinder cannot use its whole
+    stroke"); a second copy above every graph was the loudest thing on a panel
+    whose numbers are all correct.
   -->
-  @if (mechanismService.cylinderReachWarning(); as reach) {
-    <panel-section-collapsible [warning]="true" [expanded]="false" id="cylinderReachContainer">
-      <title-block alwaysShown icon="expand_more" description="{{ reach }}">
-        Cylinder travel
-      </title-block>
-    </panel-section-collapsible>
-  }
 
   <!-- Nothing selected, or a selection whose own machine cannot be solved -->
 

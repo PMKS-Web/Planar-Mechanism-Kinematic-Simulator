@@ -92,6 +92,15 @@ export class AnalysisSetupComponent {
       .sort((a, b) => (a.warning ? 1 : 0) - (b.warning ? 1 : 0));
   }
 
+  /**
+   * The requirements still worth a row. A met one is a tick nobody needs to
+   * read, and when none are left the section they sit in has nothing in it —
+   * which is what the way-in button below stands in for.
+   */
+  get forceChecks() {
+    return this.forceRequirements.filter((requirement) => !requirement.met);
+  }
+
   get forceOutstanding(): number {
     return this.forceRequirements.filter((requirement) => !requirement.met && !requirement.warning)
       .length;
@@ -147,6 +156,40 @@ export class AnalysisSetupComponent {
     return all.length === 1
       ? 'Ready to animate.'
       : `All ${all.length} mechanisms are ready to animate.`;
+  }
+
+  /** The mode this drawer is about — not the one the reader is standing in. */
+  private get modeTab(): TabID {
+    return this.mode() === 'force' ? TabID.FORCE : TabID.ANALYZE;
+  }
+
+  /**
+   * Whether to offer the way in.
+   *
+   * A setup with nothing left to fix used to end in a heading that opened onto
+   * an empty list, which reads as a panel that has lost its content. What the
+   * reader wants at that point is the mode itself.
+   *
+   * Asked of this drawer's mode rather than the current one, because the two
+   * readinesses are different questions: a drawing can run perfectly and still
+   * have nothing for the force solver to react against. Hidden while already
+   * in that mode — a button that goes where you are is a dead control.
+   */
+  canEnterMode(): boolean {
+    if (this.tabs.getCurrentTab() === this.modeTab) return false;
+    return this.mode() === 'force'
+      ? this.mechanism.forceAnalysisReady()
+      : this.mechanism.oneValidMechanismExists() && this.mechanism.blockerCount() === 0;
+  }
+
+  /** Title Case, because it is a control. */
+  get enterModeLabel(): string {
+    return this.mode() === 'force' ? 'Switch to Force Analysis' : 'Switch to Kinematic Analysis';
+  }
+
+  enterMode(): void {
+    if (!this.canEnterMode()) return;
+    this.tabs.setTab(this.modeTab);
   }
 
   isOpen(readiness: MechanismReadiness): boolean {
