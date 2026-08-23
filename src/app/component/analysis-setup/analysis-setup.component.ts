@@ -129,7 +129,7 @@ export class AnalysisSetupComponent {
     if (all.length === 0) {
       return this.unassigned.length > 0
         ? 'Nothing here is a mechanism yet. A chain has to reach ground before it has a position to solve for.'
-        : 'Draw a linkage to analyse it.';
+        : 'Draw a mechanism to analyze it.';
     }
     const blockers = this.mechanism.blockerCount();
     if (blockers > 0) {
@@ -215,9 +215,7 @@ export class AnalysisSetupComponent {
   private tableRefresh?: Subscription;
 
   ngOnInit(): void {
-    this.tableRefresh = this.mechanism.onMechUpdateState.subscribe(() =>
-      this.refreshTableValues()
-    );
+    this.tableRefresh = this.mechanism.onMechUpdateState.subscribe(() => this.refreshTableValues());
   }
 
   ngOnDestroy(): void {
@@ -242,9 +240,7 @@ export class AnalysisSetupComponent {
       ] as const) {
         wanted.add(name);
         if (!this.tableForm.contains(name)) {
-          const control = new FormControl(
-            kind === 'mass' ? this.massText(row) : this.moiText(row)
-          );
+          const control = new FormControl(kind === 'mass' ? this.massText(row) : this.moiText(row));
           this.tableForm.addControl(name, control, { emitEvent: false });
           this.tableSubscriptions.set(
             name,
@@ -252,8 +248,7 @@ export class AnalysisSetupComponent {
           );
         }
         const control = this.tableForm.get(name)!;
-        const editable =
-          this.massEditable() && (kind === 'mass' || this.moiEditable(row));
+        const editable = this.massEditable() && (kind === 'mass' || this.moiEditable(row));
         if (editable && control.disabled) control.enable({ emitEvent: false });
         if (!editable && control.enabled) control.disable({ emitEvent: false });
       }
@@ -359,9 +354,15 @@ export class AnalysisSetupComponent {
    * analysis modes read a solved cycle and hold it still. The header offers
    * the mode switch, so the read-only state is one click from the editable
    * one — with the drawer staying open across it.
+   *
+   * The same at-rest question the canvas and the Edit panel ask, not a looser
+   * one of this drawer's own. "Not playing" alone let the table be typed into
+   * during the ~220 ms ease back to the start pose, and indefinitely after an
+   * aborted one — and the commit's own `updateMechanism` aborts that ease,
+   * stranding Edit mode at a displaced pose with its panel hidden.
    */
   massEditable(): boolean {
-    return this.tabs.getCurrentTab() === TabID.EDIT && !this.mechanism.isPlaying;
+    return this.tabs.getCurrentTab() === TabID.EDIT && this.mechanism.isAtStartPose();
   }
 
   inEditMode(): boolean {

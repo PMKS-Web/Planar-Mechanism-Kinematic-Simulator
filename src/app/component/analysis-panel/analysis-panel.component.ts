@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ForceAnalysisMode, ForceReactionIndex } from 'src/app/model/mechanism/force-solver';
 import { Mechanism } from 'src/app/model/mechanism/mechanism';
 import { PrisJoint, RealJoint } from 'src/app/model/joint';
+import { RealLink } from 'src/app/model/link';
 import { Cylinder, cylinderJoints, isCylinderInterior } from 'src/app/model/cylinder';
 import { LengthUnit } from 'src/app/model/unit-enums';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
@@ -78,18 +79,55 @@ export class AnalysisPanelComponent {
    * them round a loop they are already standing in.
    */
   get analysisHelpLead(): string {
-    const selected = this.activeSrv.getSelectedObjType();
-    if (selected === 'Joint' || selected === 'Link') {
-      const part =
-        this.activeSrv.objType === 'Joint'
-          ? this.activeSrv.selectedJoint
-          : this.activeSrv.selectedLink;
-      const owner = part ? this.mechanismService.indexOfMechanismContaining(part) : -1;
+    const part = this.selectedPart;
+    if (part) {
+      const owner = this.mechanismService.indexOfMechanismContaining(part);
       if (owner !== -1 && !this.mechanismService.mechanisms[owner]?.isMechanismValid()) {
         return `Finish analysis setup on ${this.mechanismService.partitions[owner].id} to see its graphs.`;
       }
+      return 'This part is not in a mechanism that can be solved, so it has no graphs.';
     }
-    return 'Select a part of the linkage to analyze it.';
+    return 'Select a part of the mechanism to analyze it.';
+  }
+
+  /**
+   * What this mode has to offer, which is not what the other one offers.
+   *
+   * Force mode showed the kinematic sentence on entry -- a promise of position,
+   * velocity and acceleration graphs made by the panel that draws reactions.
+   */
+  get analysisHelpHint(): string {
+    return this.showForce
+      ? 'Click a joint for the reactions it carries, or a link for the forces at its joints. The input joint carries the effort that drives the mechanism.'
+      : 'Click a joint for position, velocity and acceleration graphs, or a link for its angular kinematics.';
+  }
+
+  /** The selected joint or link, when the selection is one of those. */
+  private get selectedPart(): RealJoint | RealLink | undefined {
+    if (this.activeSrv.objType === 'Joint') return this.activeSrv.selectedJoint;
+    if (this.activeSrv.objType === 'Link') return this.activeSrv.selectedLink;
+    return undefined;
+  }
+
+  /**
+   * Whether the selected part's own machine can be solved.
+   *
+   * Not "does the drawing hold a valid mechanism": with a four-bar beside a
+   * half-drawn chain, that question says yes for a joint on the chain, and the
+   * panel answered it with a full set of graph cards whose every header read
+   * "—" over an all-null plot. `isPartSimulatable` is the per-part question,
+   * and it is the one the context menu already asks before offering analysis.
+   */
+  get selectionIsSimulatable(): boolean {
+    const part = this.selectedPart;
+    return part ? this.mechanismService.isPartSimulatable(part) : false;
+  }
+
+  /** The empty state stands in wherever the selection has no graphs to show. */
+  get showAnalysisHelp(): boolean {
+    const selected = this.activeSrv.objType;
+    if (selected === 'Grid' || selected === 'Nothing') return true;
+    return (selected === 'Joint' || selected === 'Link') && !this.selectionIsSimulatable;
   }
 
   get showKinematic(): boolean {

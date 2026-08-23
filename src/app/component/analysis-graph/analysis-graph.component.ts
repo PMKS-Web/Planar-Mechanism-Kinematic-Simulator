@@ -36,7 +36,7 @@ import {
 export { ANALYSIS_SERIES_COLORS };
 import { ForceAnalysisMode } from 'src/app/model/mechanism/force-solver';
 import { Mechanism } from 'src/app/model/mechanism/mechanism';
-import { AngleUnit, ForceUnit, LengthUnit } from '../../model/utils';
+import { ForceUnit } from '../../model/utils';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { FormBuilder } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
@@ -401,8 +401,8 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     const gap = this.analysisGap;
     if (!gap) return '';
     return gap.failed === 1
-      ? 'Show position'
-      : `Show first (${formatTimeLabel(gap.firstSeconds)} s)`;
+      ? 'Show Position'
+      : `Show First (${formatTimeLabel(gap.firstSeconds)} s)`;
   }
 
   showGapPosition(): void {
@@ -514,8 +514,9 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   /**
    * Which series this graph has, in the order it plots them.
    *
-   * Two means X and Y; three means either X, Y and a magnitude, or the three
-   * components of a force -- `seriesLabel` is what knows the difference.
+   * Two means X and Y; three means X, Y and their magnitude, force analysis
+   * included -- the plot draws the magnitude first so the components sit over
+   * it rather than under it.
    */
   get seriesKeys(): ('x' | 'y' | 'z')[] {
     if (this.numberOfSeries === 3) return ['z', 'x', 'y'];
@@ -524,10 +525,11 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   }
 
   seriesLabel(key: 'x' | 'y' | 'z'): string {
-    if (key !== 'z') return key.toUpperCase();
-    // The third series is the magnitude of the other two, except in force
-    // analysis, where it is a component of its own.
-    return this.analysis === 'force' ? 'Z' : 'Magnitude';
+    // The third series is always the magnitude of the other two -- a planar
+    // mechanism has no third component, and force analysis returns hypot(x, y)
+    // here exactly as the kinematic series do. It was labelled "Z" in force
+    // mode, which promised an out-of-plane reaction that does not exist.
+    return key === 'z' ? 'Magnitude' : key.toUpperCase();
   }
 
   isSeriesShown(key: 'x' | 'y' | 'z'): boolean {
@@ -716,27 +718,6 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     }
   }
 
-  getUnitStr(unit: LengthUnit | AngleUnit): string {
-    switch (unit) {
-      case AngleUnit.RADIAN:
-        return 'rad';
-      case AngleUnit.DEGREE:
-        return 'deg';
-      case LengthUnit.CM:
-        return 'cm';
-      case LengthUnit.INCH:
-        return 'in';
-      case LengthUnit.METER:
-        return 'm';
-      default:
-        if (typeof unit === typeof LengthUnit) {
-          return 'brokenLength';
-        } else {
-          return 'brokenAngle';
-        }
-    }
-  }
-
   private pointValue(point: unknown): number | null {
     if (typeof point === 'number') return Number.isFinite(point) ? point : null;
     if (point && typeof point === 'object' && 'y' in point) {
@@ -789,12 +770,15 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     let yAxisTitle = '';
     let datum: number[][] = [];
     const seriesData = [];
-    let posLinUnit = '(' + this.getUnitStr(this.settingsService.lengthUnit.value) + ')';
-    let velLinUnit = '(' + this.getUnitStr(this.settingsService.lengthUnit.value) + '/s)';
-    let accLinUnit = '(' + this.getUnitStr(this.settingsService.lengthUnit.value) + '/s²)';
-    const posAngUnit = '(' + this.getUnitStr(this.settingsService.angleUnit.value) + ')';
-    const velAngUnit = '(' + this.getUnitStr(this.settingsService.angleUnit.value) + '/s)';
-    const accAngUnit = '(' + this.getUnitStr(this.settingsService.angleUnit.value) + '/s²)';
+    // One spelling of a unit, from the service every panel's fields use.
+    const lengthUnit = this.nup.unitLabel(this.settingsService.lengthUnit.value);
+    const angleUnit = this.nup.unitLabel(this.settingsService.angleUnit.value);
+    const posLinUnit = `(${lengthUnit})`;
+    const velLinUnit = `(${lengthUnit}/s)`;
+    const accLinUnit = `(${lengthUnit}/s²)`;
+    const posAngUnit = `(${angleUnit})`;
+    const velAngUnit = `(${angleUnit}/s)`;
+    const accAngUnit = `(${angleUnit}/s²)`;
     this.analysisDiagnostic = null;
     // Only the force branch writes the gap, so a kinematic graph would
     // otherwise inherit the banner from the force graph shown before it.

@@ -15,9 +15,16 @@ import {
 } from '../analysis-graph/analysis-graph.component';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
+import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { AnalysisSampleService } from '../../services/analysis-sample.service';
-import { AngleUnit, LengthUnit } from '../../model/unit-enums';
-import { ANALYSIS_SERIES_COLORS, formatAnalysisValue } from '../../model/analysis-series';
+import { ForceUnit } from '../../model/unit-enums';
+import { ForceAnalysisMode } from '../../model/mechanism/force-solver';
+import { Mechanism } from '../../model/mechanism/mechanism';
+import {
+  ANALYSIS_SERIES_COLORS,
+  angularScale,
+  formatAnalysisValue,
+} from '../../model/analysis-series';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 
@@ -56,6 +63,7 @@ export interface SeriesPreview {
 export class AnalysisGraphSectionComponent {
   private mechanismService = inject(MechanismService);
   private settings = inject(SettingsService);
+  private nup = inject(NumberUnitParserService);
   private samples = inject(AnalysisSampleService);
 
   readonly label = input('');
@@ -123,12 +131,16 @@ export class AnalysisGraphSectionComponent {
     );
     const names = this.seriesNames(values.length);
     const keys: ('x' | 'y' | 'z')[] = ['x', 'y', 'z'];
-    const unit = this.unitFor();
+    const unit = this.unitFor(mechanism);
+    // The same conversion the plot below applies. Without it the header quoted
+    // a link's angular velocity in radians per second under a "deg/s" label,
+    // directly above a curve reading the same instant in degrees.
+    const scale = angularScale(this.mechProp(), this.settings.angleUnit.value);
     const series = values.map((value, index) => ({
       key: keys[index],
       name: names[index],
       color: this.colorFor(names[index]),
-      text: Number.isFinite(value) ? `${formatAnalysisValue(value)} ${unit}`.trim() : '—',
+      text: Number.isFinite(value) ? `${formatAnalysisValue(value * scale)} ${unit}`.trim() : '—',
     }));
     this.previewCache = { key, mechanism, series };
     return series;
@@ -207,7 +219,7 @@ export class AnalysisGraphSectionComponent {
     this.expandedChange.emit(!this.expanded());
   }
 
-  private mechanismFor() {
+  private mechanismFor(): Mechanism | undefined {
     const part =
       this.mechanismService.joints.find((joint) => joint.id === this.mechPart()) ??
       this.mechanismService.links.find((link) => link.id === this.mechPart());
@@ -217,49 +229,57 @@ export class AnalysisGraphSectionComponent {
   /**
    * The names the graph plots these under.
    *
-   * A third series is the magnitude of the first two everywhere except force
-   * analysis, where it is a component in its own right.
+   * A third series is the magnitude of the first two, force analysis included:
+   * a planar reaction has no out-of-plane component, and the solver returns
+   * hypot(x, y) there like everywhere else.
    */
   private seriesNames(count: number): string[] {
     if (count === 1) return [''];
     if (count === 2) return ['X', 'Y'];
-    return this.analysis() === 'force' ? ['X', 'Y', 'Z'] : ['X', 'Y', 'Mag'];
+    return ['X', 'Y', 'Mag'];
   }
 
   private colorFor(name: string): string {
     if (name === 'Y') return ANALYSIS_SERIES_COLORS.Y;
-    if (name === 'Z' || name === 'Mag') return ANALYSIS_SERIES_COLORS.Z;
+    if (name === 'Mag') return ANALYSIS_SERIES_COLORS.Z;
     return ANALYSIS_SERIES_COLORS.X;
   }
 
   /** Spelled the way the graph's own axis spells it. */
-  private unitFor(): string {
-    const length = this.unitStr(this.settings.lengthUnit.value);
-    const angle = this.unitStr(this.settings.angleUnit.value);
+  private unitFor(mechanism: Mechanism | undefined): string {
+    const angle = this.nup.unitLabel(this.settings.angleUnit.value);
     const mechProp = this.mechProp();
     if (mechProp.includes('Angular')) {
       if (mechProp.includes('Acc')) return `${angle}/s²`;
       if (mechProp.includes('Vel')) return `${angle}/s`;
       return angle;
     }
-    if (this.analysis() === 'force') return 'N';
+    if (this.analysis() === 'force') return this.forceUnitFor(mechanism);
+    const length = this.nup.unitLabel(this.settings.lengthUnit.value);
     if (mechProp.includes('Acc')) return `${length}/s²`;
     if (mechProp.includes('Vel')) return `${length}/s`;
     return length;
   }
 
-  private unitStr(unit: LengthUnit | AngleUnit): string {
-    switch (unit) {
-      case AngleUnit.RADIAN:
-        return 'rad';
-      case AngleUnit.DEGREE:
-        return 'deg';
-      case LengthUnit.INCH:
-        return 'in';
-      case LengthUnit.METER:
-        return 'm';
-      default:
-        return 'cm';
-    }
+  /**
+   * What a force card's number is in — the same two facts the plot's own axis
+   * title is built from.
+   *
+   * The sample arrives already converted (lbf under English units, and an
+   * input torque in lbf·in or N·m), so a fixed "N" mislabelled every English
+   * reading and every torque. Whether the input is driven by a force or a
+   * torque is a property of the drive, not of the units, so it is read off the
+   * solved frames rather than guessed from the joint.
+   */
+  private forceUnitFor(mechanism: Mechanism | undefined): string {
+    const force = this.nup.unitLabel(this.settings.forceUnit.value);
+    const mechProp = this.mechProp();
+    if (mechProp !== 'Input Torque' && mechProp !== 'Input Effort') return force;
+    const mode: ForceAnalysisMode = this.analysisType() === 'dynamic' ? 'dynamic' : 'static';
+    const kind = mechanism
+      ?.getForceAnalysis(mode)
+      .frames.find((frame) => frame.status === 'ok' && frame.inputEffort)?.inputEffort?.kind;
+    if (kind === 'force') return force;
+    return this.settings.forceUnit.value === ForceUnit.LBF ? 'lbf·in' : 'N·m';
   }
 }

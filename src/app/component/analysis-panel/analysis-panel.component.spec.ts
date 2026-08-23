@@ -17,9 +17,16 @@ import { AnalysisPanelComponent } from './analysis-panel.component';
 
 async function createPanel(payload: string, selectedId: string, mode: TabID = TabID.ANALYZE) {
   const fixtureData = buildMechanismFixture(payload);
-  const selected =
-    fixtureData.service.joints.find((joint) => joint.id === selectedId) ??
-    fixtureData.service.links.find((link) => link.id === selectedId)!;
+  // The panel asks whether the *selected part's* machine solves, not whether
+  // any of them does. Borrowed from the service rather than stubbed, for the
+  // same reason the lookups it builds on are.
+  fixtureData.service.isPartSimulatable = MechanismService.prototype.isPartSimulatable.bind(
+    fixtureData.service
+  );
+  const selected = selectedId
+    ? (fixtureData.service.joints.find((joint) => joint.id === selectedId) ??
+      fixtureData.service.links.find((link) => link.id === selectedId)!)
+    : null;
   fixtureData.active.updateSelectedObj(selected);
 
   // Which mode the panel is being asked about. Kinematic and force analysis are
@@ -254,6 +261,47 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     // render -- the section being there at all is what this can honestly check.
     expect(fixture.nativeElement.querySelector('#cylinderReachContainer')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('#placeholderContainer')).toBeNull();
+    fixture.destroy();
+  });
+
+  it('offers the empty state the graphs of the mode it is standing in', async () => {
+    // Force mode used to promise position, velocity and acceleration graphs --
+    // the other mode's answer, on the panel that draws reactions.
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], '', TabID.FORCE);
+    fixture.detectChanges();
+
+    const help = fixture.nativeElement.querySelector('.helpPanel').textContent;
+    expect(help).toContain('reactions');
+    expect(help).not.toContain('velocity and acceleration');
+    fixture.destroy();
+  });
+
+  it('names the center of mass one way in a label and another in prose', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'AB');
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(sectionLabels(fixture).some((label) => label.endsWith("'s CoM"))).toBe(true);
+    expect(text).not.toContain('COM');
+    fixture.destroy();
+  });
+
+  it('refuses graphs for a part whose own machine cannot be solved', async () => {
+    // Drawing-wide validity is the wrong question with several machines on one
+    // grid: it said yes for a part of a chain that solves nothing, and the
+    // panel answered with a full set of cards reading "—" over null plots.
+    const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'AB');
+    fixtureData.service.mechanisms[0].isMechanismValid = () => false;
+    // The drawing-wide block above the panel is a different question, and the
+    // harness has no reason to answer it.
+    fixtureData.service.invalidReason = () => undefined;
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.selectionIsSimulatable).toBe(false);
+    expect(fixture.nativeElement.querySelectorAll('app-analysis-graph-section').length).toBe(0);
+    expect(fixture.nativeElement.querySelector('.helpPanel').textContent).toContain(
+      'Finish analysis setup on M1'
+    );
     fixture.destroy();
   });
 });

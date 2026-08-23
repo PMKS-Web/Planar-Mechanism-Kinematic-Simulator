@@ -233,7 +233,9 @@
 
     /* Grid items default to min-width auto, so a field's own content forces
        its column wide and shoves the jump arrows off the drawer. */
-    > * { min-width: 0; }
+    > * {
+      min-width: 0;
+    }
     gap: 4px;
     align-items: center;
     padding: 3px 0;
@@ -254,11 +256,17 @@
     }
 
     /* The whole weightless row mutes as one thing: label, both fields. */
-    &.weightless .massName { color: rgba(0, 0, 0, 0.4); }
-    &.weightless .cellField .customInput { color: rgba(0, 0, 0, 0.35); }
+    &.weightless .massName {
+      color: rgba(0, 0, 0, 0.4);
+    }
+    &.weightless .cellField .customInput {
+      color: rgba(0, 0, 0, 0.35);
+    }
   }
 
-  .num { text-align: right; }
+  .num {
+    text-align: right;
+  }
 
   .massName {
     overflow: hidden;
@@ -266,7 +274,9 @@
     white-space: nowrap;
   }
 
-  .massMoI { color: rgba(0, 0, 0, 0.6); }
+  .massMoI {
+    color: rgba(0, 0, 0, 0.6);
+  }
 
   /* The table's cells ARE the shared input component; the only difference
      is size, so size is the only thing written here. Label and help are the
@@ -308,7 +318,10 @@
     flex: none;
   }
 
-  .dot.filled { background: #3f51b5; border-color: #3f51b5; }
+  .dot.filled {
+    background: #3f51b5;
+    border-color: #3f51b5;
+  }
 
   .stateSuffix {
     display: inline-flex;
@@ -336,7 +349,10 @@
       cursor: pointer;
       padding: 0;
 
-      &:disabled { color: rgba(0, 0, 0, 0.3); cursor: default; }
+      &:disabled {
+        color: rgba(0, 0, 0, 0.3);
+        cursor: default;
+      }
     }
   }
 
@@ -350,8 +366,14 @@
     justify-content: center;
     width: 22px;
 
-    mat-icon { font-size: 16px; width: 16px; height: 16px; }
-    &:hover { color: #3f51b5; }
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+    &:hover {
+      color: #3f51b5;
+    }
   }
 
   .sectionHeader .actionButton.slim {
@@ -379,8 +401,12 @@
   /* Read-only: the mock washes the whole table out — names, values, fills —
      rather than leaving rows that merely cannot be clicked. */
   .massTable.readonly {
-    .massName { color: rgba(0, 0, 0, 0.45); }
-    .cellField .customInput { color: rgba(0, 0, 0, 0.45); }
+    .massName {
+      color: rgba(0, 0, 0, 0.45);
+    }
+    .cellField .customInput {
+      color: rgba(0, 0, 0, 0.45);
+    }
   }
 
   .actionButton {
@@ -401,15 +427,19 @@
   }
 }
 
-  .checkIcon.blocker { color: #b3261e; }
+.checkIcon.blocker {
+  color: #b3261e;
+}
 
-  .sevTag {
-    font-size: 10px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    font-weight: 600;
-    color: #b3261e;
-    margin-left: 6px;
+.sevTag {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #b3261e;
+  margin-left: 6px;
 
-    &.warn { color: #9a6a00; }
+  &.warn {
+    color: #9a6a00;
   }
+}

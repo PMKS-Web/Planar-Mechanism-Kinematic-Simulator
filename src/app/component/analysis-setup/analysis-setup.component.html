@@ -63,7 +63,11 @@
             @for (row of massRows(); track row.body.id) {
               <div class="massRow" [class.weightless]="!(row.body.mass > 0)">
                 <span class="massName">{{ row.label }}</span>
-                <input-block class="cellField" [formGroup]="tableForm" [_formControl]="massControlName(row)" />
+                <input-block
+                  class="cellField"
+                  [formGroup]="tableForm"
+                  [_formControl]="massControlName(row)"
+                />
                 <input-block
                   class="cellField"
                   [formGroup]="tableForm"
@@ -91,10 +95,9 @@
             }
             @if (massEditable()) {
               <div class="dotLegend">
-                <span class="dot"></span> from shape
-                <span class="dot filled"></span> set by you
+                <span class="dot"></span> from shape <span class="dot filled"></span> set by you
                 <button class="resetAll" [disabled]="!anyBodyIsCustom()" (click)="resetAllBodies()">
-                  Reset all
+                  Reset All
                 </button>
               </div>
               <p class="checkText note">
@@ -152,7 +155,6 @@
         </div>
       }
     </div>
-
   }
 
   @if (mode() === 'kinematic' && unassigned.length > 0) {

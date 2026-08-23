@@ -297,7 +297,7 @@ describe('AnalysisGraphComponent production fixtures', () => {
 
     // Several holes: the button names the one it goes to, which is the first.
     expect(component.gapShowLabel).toBe(
-      `Show first (${formatTimeLabel(series.frames[1].timeSeconds)} s)`
+      `Show First (${formatTimeLabel(series.frames[1].timeSeconds)} s)`
     );
 
     const seek = vi.fn();
@@ -637,7 +637,7 @@ describe('AnalysisGraphComponent rendered controls', () => {
 
     const showButton = banner!.querySelector('.gapShow') as HTMLButtonElement;
     // One hole: singular wording, no time needed.
-    expect(showButton.textContent!.trim()).toBe('Show position');
+    expect(showButton.textContent!.trim()).toBe('Show Position');
     showButton.click();
     expect(seek).toHaveBeenCalledWith(0, series.frames[2].timeSeconds);
     fixture.destroy();

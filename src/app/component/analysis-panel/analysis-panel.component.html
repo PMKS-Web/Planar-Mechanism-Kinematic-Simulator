@@ -19,7 +19,7 @@
         alwaysShown
         icon="expand_more"
         description="{{
-          mechanismService.invalidReason() ?? 'This linkage is not valid and cannot be analyzed.'
+          mechanismService.invalidReason() ?? 'This mechanism is not valid and cannot be analyzed.'
         }} Every requirement:"
       >
         Analysis Help
@@ -80,9 +80,9 @@
     </panel-section-collapsible>
   }
 
-  <!-- Valid Mech but Nothing Selected -->
+  <!-- Nothing selected, or a selection whose own machine cannot be solved -->
 
-  @if (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') {
+  @if (showAnalysisHelp) {
     <div class="helpPanel">
       <div class="helpTitle">Analysis Help</div>
       <p class="helpLead">{{ analysisHelpLead }}</p>
@@ -90,10 +90,7 @@
       <div class="helpHints">
         <div class="helpHint">
           <mat-icon>touch_app</mat-icon>
-          <span
-            >Click a joint for position, velocity and acceleration graphs, or a link for its angular
-            kinematics.</span
-          >
+          <span>{{ analysisHelpHint }}</span>
         </div>
       </div>
     </div>
@@ -104,7 +101,7 @@
   }
 
   <!-- Joint Kinematics-->
-  @if (validMechanisms() && this.activeSrv.objType == 'Joint') {
+  @if (selectionIsSimulatable && this.activeSrv.objType == 'Joint') {
     <panel-section id="analysis-panel">
       <title-block description="{{ panelDescription }}">
         {{ modeLabel }} for Joint {{ this.activeSrv.selectedJoint.name }}
@@ -192,7 +189,7 @@
   }
 
   <!-- Link Kinematics-->
-  @if (validMechanisms() && this.activeSrv.objType == 'Link') {
+  @if (selectionIsSimulatable && this.activeSrv.objType == 'Link') {
     <panel-section id="analysis-panel">
       <title-block description="{{ panelDescription }}">
         {{ modeLabel }} for {{ selectedBodyLabel }}
@@ -244,10 +241,10 @@
           (mouseenter)="highlightCoM(true)"
           (mouseleave)="highlightCoM(false)"
         >
-          Center of Mass
+          CoM
         </div>
         <app-analysis-graph-section
-          label="Position of {{ selectedBodyLabel }}'s COM"
+          label="Position of {{ selectedBodyLabel }}'s CoM"
           help="Where this link’s center of mass is"
           analysis="kinematic"
           analysisType="loop"
@@ -257,7 +254,7 @@
           (expandedChange)="graphExpanded['LPos'] = $event"
         ></app-analysis-graph-section>
         <app-analysis-graph-section
-          label="Velocity of {{ selectedBodyLabel }}'s COM"
+          label="Velocity of {{ selectedBodyLabel }}'s CoM"
           help="How fast this link’s center of mass moves"
           analysis="kinematic"
           analysisType="loop"
@@ -267,7 +264,7 @@
           (expandedChange)="graphExpanded['LVel'] = $event"
         ></app-analysis-graph-section>
         <app-analysis-graph-section
-          label="Acceleration of {{ selectedBodyLabel }}'s COM"
+          label="Acceleration of {{ selectedBodyLabel }}'s CoM"
           help="How this link’s center of mass changes speed"
           analysis="kinematic"
           analysisType="loop"
