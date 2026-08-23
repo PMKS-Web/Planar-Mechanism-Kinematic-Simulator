@@ -47,6 +47,18 @@ $playback-clearance: 110px;
 $view-controls-clearance: 110px;
 
 /**
+ * Where the bottom cluster stops fitting across one line.
+ *
+ * Three cards need 759px: the row's own 24px of padding, the 160px transport,
+ * the scrub card at the 250px it will not go below, the 301px view controls,
+ * and a gap between each pair. Below this the cluster wraps -- the scrub card
+ * takes a full-width line above the other two -- which is when the right drawer
+ * has to stop above the whole cluster rather than above the view controls at
+ * its right-hand end.
+ */
+$cluster-wraps: 780px;
+
+/**
  * Where the playback cluster can stand clear of the analysis panel.
  *
  * The panel is 420px wide in the analysis modes and the cluster about 880, so

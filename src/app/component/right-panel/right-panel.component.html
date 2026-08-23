@@ -22,7 +22,10 @@
          Export *while* following a step, and the drawer showing one page at a
          time meant doing either put the tutorial away. -->
     @if (tutorialShowing()) {
-      <div class="tutorialSlot">
+      <!-- Leaves the same way the page below it does: held open by an open page,
+           it has to fade on its own; alone in the frame, it travels with the
+           frame and only has to stay in the document long enough to do it. -->
+      <div class="tutorialSlot" [@drawerCard]="getIsOpen() ? 'held' : 'sole'">
         <app-tutorial-panel></app-tutorial-panel>
       </div>
     }
@@ -31,7 +34,11 @@
          tutorial pinned above, a button anchored to the frame landed on the
          tutorial's own corner. -->
     @if (getIsOpen()) {
-      <div class="drawerPage" [class.page4]="getOpenTab() === 4">
+      <div
+        class="drawerPage"
+        [@drawerCard]="tutorialShowing() ? 'held' : 'sole'"
+        [class.page4]="getOpenTab() === 4"
+      >
         @if (getOpenTab() === 5) {
           <app-analysis-setup mode="kinematic"></app-analysis-setup>
         }

@@ -59,6 +59,22 @@ import { MatIcon } from '@angular/material/icon';
       transition('openWide => open', [animate('0.1s ease-in-out')]),
       transition('* => *', [animate('0.3s ease-in-out')]),
     ]),
+    // The page inside the frame, kept for as long as the frame takes to leave.
+    //
+    // The frame has always animated both ways, but the page was torn down the
+    // instant the drawer closed -- so what slid away was an empty box. The
+    // drawer appeared to vanish rather than leave, and the canvas, which frames
+    // itself around the cards standing on it by measuring them, saw a drawer of
+    // no height in the first frame and re-framed in one jump instead of
+    // following the drawer out the way it follows it in.
+    trigger('drawerCard', [
+      // Nothing for the page itself to do: the frame moves and it goes along,
+      // on the frame's own timing.
+      transition('sole => void', [animate('0.3s ease-in-out', style({ opacity: 1 }))]),
+      // Unless the tutorial's card is holding the frame open, in which case
+      // nothing is travelling and the page has to leave on its own.
+      transition('held => void', [animate('0.2s ease-in-out', style({ opacity: 0 }))]),
+    ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [

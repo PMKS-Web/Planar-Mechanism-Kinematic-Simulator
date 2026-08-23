@@ -1,6 +1,8 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
 
+@use '../left-tabs/left-tabs.vars' as nav;
+
 // Every measurement in this file comes from the mock's own inline styles rather
 // than from an eye: the bottom cluster was tuned there, and re-deriving it by
 // looking at a screenshot is how it drifted the first time.
@@ -31,11 +33,11 @@
     display: flex;
     align-items: flex-end;
     justify-content: flex-end;
-    // The sync tab hangs 26px off the top of the scrub card, so a wrapped row
-    // needs that much again between lines or the tab lands on the card above
-    // it. Column gap stays the cluster's own.
-    column-gap: var(--card-gap);
-    row-gap: calc(26px + var(--card-gap));
+    // One gap in both directions. The wrapped cluster used to hold its lines
+    // 26px further apart, for the sync tab hanging off the top of the scrub
+    // card -- which is no longer between the lines, because the scrub card now
+    // takes the upper one.
+    gap: var(--card-gap);
     padding: 0 var(--card-gap);
     z-index: 8;
     pointer-events: none;
@@ -484,25 +486,37 @@
     }
   }
 
-  // A phone cannot hold three cards across one line. The cluster wraps, the
-  // scrub card takes the width it can get, and the view controls sit under it
-  // rather than half off the edge.
-  @media (max-width: 720px) {
+  // A narrow window cannot hold three cards across one line, so the cluster
+  // wraps: the scrub card takes a line of its own and the transport and the
+  // view controls sit under it.
+  //
+  // The scrub card leads rather than trails, because its sync tab hangs 26px
+  // off its top edge. On the lower line that tab pointed at the transport card
+  // above it, and the two lines had to be held 26px further apart to keep the
+  // two from touching; on the upper line the tab overhangs open grid, the same
+  // way it does when the cluster fits on one line.
+  //
+  // The width itself is in left-tabs.vars, because the right drawer measures
+  // itself differently on each side of it. Below it a row that cannot wrap
+  // pushed the transport off the left of the window instead of dropping a line.
+  @media (max-width: nav.$cluster-wraps) {
     .playbackRow {
       flex-wrap: wrap;
-      justify-content: flex-end;
-      // The scrub card goes to a line of its own here, and its sync tab hangs
-      // 26px off its top edge -- into the transport card above it, unless the
-      // line below is given room for it.
-      column-gap: 8px;
-      row-gap: 34px;
-      padding: 0 8px;
     }
 
     .scrubCard {
       flex: 1 1 100%;
       min-width: 0;
-      order: 3;
+      order: -1;
+    }
+  }
+
+  // The phone's own spacing, at the width the view controls tighten up at, so
+  // the two cards on the lower line change together.
+  @media (max-width: 720px) {
+    .playbackRow {
+      gap: 8px;
+      padding: 0 8px;
     }
   }
 }

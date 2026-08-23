@@ -137,6 +137,18 @@
         #{nav.$top-strip-height} - var(--view-controls-clearance, #{nav.$view-controls-clearance}) +
         #{nav.$shadow-room}
     );
+
+    // Except once the cluster has wrapped. The scrub card then takes a
+    // full-width line above the view controls rather than a place beside them,
+    // so it runs under this drawer -- and stopping above the view controls
+    // alone puts the drawer over the row a reader is scrubbing. The whole
+    // cluster's height, which the playback bar measures.
+    @media (max-width: nav.$cluster-wraps) {
+      max-height: calc(
+        100dvh - #{nav.$top-strip-height} - var(--playback-clearance, #{nav.$playback-clearance}) +
+          #{nav.$shadow-room}
+      );
+    }
     // A column, because the tutorial's card stacks above whichever page is
     // open rather than replacing it. With one child this is what a row did
     // anyway; with two, a row put them side by side in a drawer one card wide.
