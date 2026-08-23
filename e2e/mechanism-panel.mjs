@@ -39,6 +39,9 @@ const record = (what, ok, detail) => {
 };
 
 const tab = (name) => page.locator('.tabButton', { hasText: name });
+// The readiness chip is a sibling of the mode button inside `.tabSlot`, not a
+// child of it — it used to be nested, which made it unreachable by keyboard.
+const chipFor = (name) => page.locator('.tabSlot', { hasText: name }).locator('.chip');
 const panelText = () =>
   page
     .locator('app-mechanism-panel')
@@ -100,7 +103,7 @@ await page.evaluate(() => {
 await page.waitForTimeout(400);
 record('deselecting clears the panel', (await panelText()) === '');
 
-await tab('Kinematic').locator('.chip').click();
+await chipFor('Kinematic').click();
 await page.waitForTimeout(700);
 await page.locator('.mechLink').first().click();
 await page.waitForTimeout(700);

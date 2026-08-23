@@ -17,10 +17,12 @@ import { Link, RealLink, SliderBlock } from './link';
 export function labelForBody(body: Link, cylinder: Cylinder | undefined): string {
   if (cylinder) {
     // By identity, with no catch-all: a compound that merely *contains* a
-    // cylinder part is a welded body of its own, not another Piston.
+    // cylinder part is a welded body of its own, not another sliding body.
+    // "Piston" is banned (docs/ui-vocabulary.md): the block has no name of its
+    // own, so it is described by what it does, matching the Edit panel's field.
     const role =
       body === cylinder.block
-        ? 'Piston'
+        ? 'Sliding body'
         : body === cylinder.barrel
           ? 'Barrel'
           : body === cylinder.rod

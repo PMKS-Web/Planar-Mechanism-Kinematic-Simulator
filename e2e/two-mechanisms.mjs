@@ -162,7 +162,8 @@ await page.evaluate(() => {
 await page.waitForTimeout(500);
 // One machine is still fine, so Kinematic is enterable and pressing it does
 // not refuse. The chip is the way to the list either way.
-await page.locator('.tabButton', { hasText: 'Kinematic' }).locator('.chip').click();
+// The readiness chip is a sibling of the mode button inside `.tabSlot`, not a child.
+await page.locator('.tabSlot', { hasText: 'Kinematic' }).locator('.chip').click();
 await page.waitForTimeout(700);
 const drawer = await page.locator('app-analysis-setup').innerText();
 record(

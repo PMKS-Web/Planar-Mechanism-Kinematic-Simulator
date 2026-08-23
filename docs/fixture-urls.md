@@ -3,7 +3,7 @@
 # Verification mechanisms, as links
 
 Every mechanism the verification suite asserts on, encoded into a URL so a
-reviewer can open the exact linkage a test is about instead of rebuilding it
+reviewer can open the exact mechanism a test is about instead of rebuilding it
 from coordinates in a spec file.
 
 Links point at `https://app.pmksplus.com`. **A mechanism marked "floating slot" only decodes on a
@@ -14,7 +14,7 @@ flag — but it only *solves* on a build that includes Phase 3. For a pull
 request, regenerate against its deploy preview:
 
 ```bash
-PMKS_FIXTURE_BASE_URL=https://deploy-preview-227--pmksprod.netlify.app npm run fixture-urls
+PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksprod.netlify.app npm run fixture-urls
 ```
 
 | Mechanism | What it is for | Floating slot | Slide | Asserted in |
@@ -57,3 +57,4 @@ PMKS_FIXTURE_BASE_URL=https://deploy-preview-227--pmksprod.netlify.app npm run f
 | [Slider-crank with a tracer](https://app.pmksplus.com/?2P.Ay,1E8.5,0.1011.6A,A,0,0,0.0B,B,_W,VG,0.0C,C,2xW,0,0.0D,D,4uW,VG,0.5E,E,2xW,0,0..YRAB,AB,1E8,1a,VG,Fe,c5cae9,A,B,,.YRBCD,BCD,2SG,38,2xW,Kr,303e9f,B,C,D,,.YPCE,CE,0,0,0,0,,C,E,,...N_y) | A tracer point on the coupler of a grounded slider | — | — | `slider-crank-tracer.spec.ts` |
 | [Stephenson III](https://app.pmksplus.com/?2P.Ay,1E8.5,0.1011.6A,A,1jO,_W,0.0B,B,1E8,3w0,0.0C,C,66e,66e,0.4D,D,5dO,2SG,0.0E,E,4PG,8Yu,0.0F,F,AVu,7q0,0.4G,G,A-8,49e,0..YRAB,AB,1E8,1a,1Tm,2SG,c5cae9,A,B,,.YRBCE,BCE,2SG,38,3w0,6Br,303e9f,B,C,E,,.YRCD,CD,1E8,1a,5t0,4HS,0d125a,C,D,,.YREF,EF,2SG,38,7Sa,8BS,B2DFDB,E,F,,.YRFG,FG,1E8,1a,AlW,5_q,26A69A,F,G,,..2F1,FG,F1,AlW,5_q,A-8,5_q,CDG..N_W) | Six-bar, MATLAB-verified | — | — | `stephenson-iii-ex2.spec.ts` |
 | [Watt I](https://app.pmksplus.com/?2P.Ay,1E8.5,0.1011.6A,A,0wS,0bg,0.0B,B,0gW,EE,0.0C,C,Oi,6k,0.0D,D,03m,_g,0.0E,E,1FO,1I_,0.0F,F,1-C,qM,0.4G,G,1oO,0ss,0..YRAB,AB,1E8,1a,0oU,0Bk,c5cae9,A,B,,.YRBCD,BCD,2SG,38,07C,Rt,303e9f,B,C,D,,.YRDE,DE,1E8,1a,bq,18q,0d125a,D,E,,.YREF,EF,2SG,38,1dI,13g,B2DFDB,E,F,,.YRCFG,CFG,1E8,1a,1Om,1Q,26A69A,C,F,G,,..2F1,CFG,F1,1Om,1Q,1ck,8P,DfU..N_S) | Six-bar, MATLAB-verified | — | — | `watt-i.spec.ts` |
+| [Two four-bars](https://app.pmksplus.com/?2P.Ay,1E8.5,0.1011.6A,A,0,0,0.0B,B,0,Fe,0.0C,C,ku,VG,0.4D,D,_W,0,0.6E,E,2SG,0,0.0F,F,2SG,Fe,0.0G,G,3B8,VG,0.4H,H,3Qm,0,0..YRAB,AB,Fe,Fe,0,7q,c5cae9,A,B,,.YRBC,BC,Fe,Fe,NS,NS,303e9f,B,C,,.YRCD,CD,Fe,Fe,si,Fe,0d125a,C,D,,.YREF,EF,Fe,Fe,2SG,7q,B2DFDB,E,F,,.YRFG,FG,Fe,Fe,2pi,NS,26A69A,F,G,,.YRGH,GH,Fe,Fe,3Iy,Fe,00695C,G,H,,...N_G) | One drawing, two machines: each solves as its own 1-DoF M1 and M2 | — | — | `two-mechanisms.spec.ts` |

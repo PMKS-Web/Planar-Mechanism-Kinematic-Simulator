@@ -62,6 +62,9 @@ const shot = (name) =>
   page.screenshot({ path: path.join(screenshotDir, `${runPrefix}-${name}`), fullPage: false });
 
 const tab = (label) => page.locator('.tabButton', { hasText: label });
+// The readiness chip is a sibling of the mode button inside `.tabSlot`, not a
+// child of it — it used to be nested, which made it unreachable by keyboard.
+const chipFor = (label) => page.locator('.tabSlot', { hasText: label }).locator('.chip');
 const timeValue = () => page.locator('#playbackTime').innerText();
 /** The value carries its own unit, so read the leading number off "0.20 s". */
 const timeSeconds = async () => parseFloat(await timeValue());
@@ -139,8 +142,8 @@ try {
   record('the transport is absent in Synthesis', (await page.locator('.playButton').count()) === 0);
 
   // --- the chips say whether an analysis can be entered -----------------------
-  const kinematicChip = (await tab('Kinematic').locator('.chip').innerText()).trim();
-  const forceChip = (await tab('Force').locator('.chip').innerText()).trim();
+  const kinematicChip = (await chipFor('Kinematic').innerText()).trim();
+  const forceChip = (await chipFor('Force').innerText()).trim();
   record('the Kinematic chip reads Ready for a four-bar that runs', kinematicChip === 'Ready', {
     kinematicChip,
   });

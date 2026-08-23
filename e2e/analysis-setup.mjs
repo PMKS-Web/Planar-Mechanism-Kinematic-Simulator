@@ -43,6 +43,9 @@ const drawerText = () =>
     .innerText()
     .catch(() => '');
 const tab = (name) => page.locator('.tabButton', { hasText: name });
+// The readiness chip is a sibling of the mode button inside `.tabSlot`, not a
+// child of it — it used to be nested, which made it unreachable by keyboard.
+const chipFor = (name) => page.locator('.tabSlot', { hasText: name }).locator('.chip');
 
 async function open(payload) {
   await page.goto(`${BASE}/?${payload}`, { waitUntil: 'domcontentloaded' });
@@ -123,7 +126,7 @@ record(
   text
 );
 
-const chip = await tab('Kinematic').locator('.chip').textContent();
+const chip = await chipFor('Kinematic').textContent();
 record('and the mode chip counts it', chip.trim() === '1 fix', { chip });
 
 // --- the button that offers to take you there, does -------------------------

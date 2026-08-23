@@ -142,7 +142,7 @@ describe('the drawn barrel', () => {
     const lengths: number[] = [];
     const exposed: number[] = [];
     for (const t of [0, 30, 90, Math.floor(solved.joints.length / 2)]) {
-      const [mark] = marks.cylinderMarks(solved.joints[t], r, true);
+      const [mark] = marks.cylinderMarks(solved.joints[t], r, () => true);
       expect(mark).toBeDefined();
       // barrelPath runs mouth -> anchor -> mouth, so its extreme x values are
       // the two ends of the member.

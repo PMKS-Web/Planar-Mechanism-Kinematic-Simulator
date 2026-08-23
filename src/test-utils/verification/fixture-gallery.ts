@@ -5,6 +5,7 @@ import {
   stephensonIiiEx2Fixture,
   teachingLabFourBarFixture,
   teachingLabSliderCrankFixture,
+  twoFourBarsFixture,
   wattIFixture,
 } from './fixtures';
 import {
@@ -448,6 +449,13 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     floatingSlot: false,
     fixture: wattIFixture(),
   },
+  {
+    name: 'Two four-bars',
+    purpose: 'One drawing, two machines: each solves as its own 1-DoF M1 and M2',
+    spec: 'two-mechanisms.spec.ts',
+    floatingSlot: false,
+    fixture: twoFourBarsFixture(),
+  },
 ];
 
 /**
@@ -517,7 +525,7 @@ export function galleryMarkdown(baseUrl: string): string {
     '# Verification mechanisms, as links',
     '',
     'Every mechanism the verification suite asserts on, encoded into a URL so a',
-    'reviewer can open the exact linkage a test is about instead of rebuilding it',
+    'reviewer can open the exact mechanism a test is about instead of rebuilding it',
     'from coordinates in a spec file.',
     '',
     `Links point at \`${baseUrl}\`. **A mechanism marked "floating slot" only decodes on a`,
@@ -528,7 +536,9 @@ export function galleryMarkdown(baseUrl: string): string {
     'request, regenerate against its deploy preview:',
     '',
     '```bash',
-    'PMKS_FIXTURE_BASE_URL=https://deploy-preview-227--pmksprod.netlify.app npm run fixture-urls',
+    // Deliberately a placeholder rather than a real preview number: pinning one
+    // PR's preview here means every later regeneration re-emits a dead link.
+    'PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksprod.netlify.app npm run fixture-urls',
     '```',
     '',
     '| Mechanism | What it is for | Floating slot | Slide | Asserted in |',

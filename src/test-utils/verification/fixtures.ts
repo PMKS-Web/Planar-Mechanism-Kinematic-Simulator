@@ -175,3 +175,39 @@ export function fourBarDrivenAtFixture(
     inputAngVel: INPUT_SPEED,
   };
 }
+
+/**
+ * Two crank-rockers side by side in one drawing, sharing nothing.
+ *
+ * The gallery's first two-machine mechanism. What it is for is not that a
+ * second four-bar can be drawn — it always could — but that drawing it no
+ * longer breaks the first: everything used to go into one Mechanism, so the
+ * document read as 2 degrees of freedom and *both* machines stopped solving.
+ * Opened from this URL the app should partition it into M1 and M2, each 1-DoF
+ * with its own input, its own playback row and its own clock.
+ */
+export function twoFourBarsFixture(): MechanismFixture {
+  const bar = (from: string, offset: number) => {
+    const letter = (n: number) => String.fromCharCode(from.charCodeAt(0) + n);
+    return {
+      joints: [
+        { id: letter(0), x: offset, y: 0, ground: true, input: true },
+        { id: letter(1), x: offset, y: 1 },
+        { id: letter(2), x: offset + 3, y: 2 },
+        { id: letter(3), x: offset + 4, y: 0, ground: true },
+      ],
+      links: [
+        { joints: letter(0) + letter(1) },
+        { joints: letter(1) + letter(2) },
+        { joints: letter(2) + letter(3) },
+      ],
+    };
+  };
+  const first = bar('A', 0);
+  const second = bar('E', 10);
+  return {
+    joints: [...first.joints, ...second.joints],
+    links: [...first.links, ...second.links],
+    inputAngVel: INPUT_SPEED,
+  };
+}

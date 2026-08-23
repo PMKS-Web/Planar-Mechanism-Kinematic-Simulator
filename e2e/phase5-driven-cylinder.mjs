@@ -248,8 +248,8 @@ checkThat(
 );
 checkThat(
   'the drive reads as extension, not rotation',
-  /Extending|Retracting/.test(panelText) && !/Clockwise/.test(panelText),
-  (panelText.match(/Extending|Retracting|Clockwise/g) ?? []).join(',')
+  /Opening|Closing/.test(panelText) && !/Clockwise/.test(panelText),
+  (panelText.match(/Opening|Closing|Clockwise/g) ?? []).join(',')
 );
 checkThat(
   'the speed is a length per second',

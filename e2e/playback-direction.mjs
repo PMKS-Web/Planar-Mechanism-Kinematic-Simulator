@@ -57,7 +57,7 @@ await page.waitForTimeout(900);
 const atRest = await state();
 record(
   'the row says which way the input is going',
-  ['Clockwise', 'Counter-clockwise', 'Extending', 'Retracting'].includes(atRest.notes[0]),
+  ['Clockwise', 'Counter-clockwise', 'Opening', 'Closing'].includes(atRest.notes[0]),
   atRest.notes
 );
 

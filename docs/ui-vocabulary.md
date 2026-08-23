@@ -147,6 +147,7 @@ Spell it **center of mass** in prose and **CoM** in a label. Not `COM`, not
 | **joint** | either end, where it attaches | ~~mount~~ |
 | **stroke** / **travel** | how far the rod moves | — |
 | **closed** / **open** | the two ends of the travel | ~~retracted~~, ~~extended~~ |
+| **closing** / **opening** | which way it is moving right now | ~~retracting~~, ~~extending~~ |
 
 The black block on the rod has **no user-facing name**. Describe what it does —
 "where the rod begins its cycle" — rather than calling it a piston. If it ever
