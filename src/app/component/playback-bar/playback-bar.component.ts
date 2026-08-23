@@ -15,17 +15,24 @@ import { NumberUnitParserService } from '../../services/number-unit-parser.servi
 import { ActiveObjService } from '../../services/active-obj.service';
 import { SelectedTabService } from '../../selected-tab.service';
 import { TimeUnit } from '../../model/utils';
-import { Mechanism } from '../../model/mechanism/mechanism';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { MatIcon } from '@angular/material/icon';
 import { ViewControlsComponent } from '../view-controls/view-controls.component';
 import { MatTooltip } from '@angular/material/tooltip';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 
-/** How far the cluster floats above the status strip, matching its own CSS. */
-const BOTTOM_OFFSET = 38;
+/** What the stylesheet is asked for, and what to assume if it has not loaded. */
+const BOTTOM_OFFSET_VAR = '--playback-bottom';
+const BOTTOM_OFFSET_FALLBACK = 38;
 /** The one gap the chrome keeps between any two cards. */
-const CARD_GAP = 12;
+const CARD_GAP_VAR = '--card-gap';
+const CARD_GAP_FALLBACK = 12;
+
+/** A custom property in px, or the fallback where nothing has declared it. */
+function cssPixels(style: CSSStyleDeclaration, name: string, fallback: number): number {
+  const declared = parseFloat(style.getPropertyValue(name));
+  return Number.isFinite(declared) ? declared : fallback;
+}
 
 /**
  * What the input does when it reaches the end of its track.
@@ -65,7 +72,7 @@ export interface PlaybackRow {
    */
   scrub: number;
   clockwise: boolean;
-  /** Which way the input is going right now: "Clockwise", "Retracting", ... */
+  /** Which way the input is going right now: "Clockwise", "Closing", ... */
   note: string;
   playing: boolean;
   /** Whether this line carries a play button of its own. */
@@ -155,8 +162,15 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private publishHeight(row: HTMLElement): void {
     // The card's own height, the gap it floats above the status strip, and one
-    // more gap between it and whatever stops above it.
-    const clearance = Math.round(row.getBoundingClientRect().height) + BOTTOM_OFFSET + CARD_GAP;
+    // more gap between it and whatever stops above it. Both gaps are asked of
+    // the stylesheet that sets them rather than restated here: a constant left
+    // behind by a restyle is wrong by exactly the amount nobody measures, and
+    // the panel above then runs under the transport or stops short of it.
+    const style = getComputedStyle(row);
+    const clearance =
+      Math.round(row.getBoundingClientRect().height) +
+      cssPixels(style, BOTTOM_OFFSET_VAR, BOTTOM_OFFSET_FALLBACK) +
+      cssPixels(style, CARD_GAP_VAR, CARD_GAP_FALLBACK);
     document.documentElement.style.setProperty('--playback-clearance', `${clearance}px`);
   }
 
@@ -289,7 +303,11 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
       scrub: combined
         ? Math.round(Math.min(Math.max(seconds / (mechanism.cyclePeriod || 1), 0), 1) * 1000)
         : Math.round((this.mechanism.travelOf(index) ?? 0) * 1000),
-      clockwise: this.drivenSpeedOf(mechanism) < 0,
+      // The same answer the note beside it is written from, so the glyph and
+      // the word can never disagree. Read off the drive alone, the glyph never
+      // changed on a machine whose input reverses on its own: turning one of
+      // those round writes `playbackDirection` and leaves the drive as it was.
+      clockwise: this.mechanism.travellingForward(index),
       note: combined ? '' : this.noteFor(index),
       playing: this.mechanism.isMechanismPlaying(index),
       ownPlay,
@@ -335,7 +353,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     const profile = this.mechanism.driveProfileOf(index);
     const outward = this.mechanism.travellingForward(index);
     if (profile?.linear) {
-      return outward ? 'Extending' : 'Retracting';
+      return outward ? 'Opening' : 'Closing';
     }
     return outward ? 'Clockwise' : 'Counter-clockwise';
   }
@@ -391,8 +409,37 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
       this.mechanism.seekAllAlong(row.leader, along);
       return;
     }
-    const index = row.index;
-    this.mechanism.seekMechanismTo(index, along);
+    this.mechanism.seekMechanismTo(row.index, along);
+    this.publishMotion();
+  }
+
+  /**
+   * Keep the app's "is anything moving" answer honest.
+   *
+   * `settings.animating` is a mirror this bar pushes, and the shared sample
+   * index it is read beside cannot answer for a drawing whose machines run on
+   * their own clocks: seeking an unsynced row that is not the master leaves
+   * `mechanismTimeStep` at 0 over a visibly displaced machine. Five surfaces
+   * decide "may I edit now" from that pair, and two of them -- Undo and the
+   * unit controls -- write to the drawing on the strength of it.
+   *
+   * So the value pushed is the model's own, rather than a fact about whichever
+   * seek happened to run last.
+   */
+  private publishMotion(): void {
+    this.settings.animating.next(!this.mechanism.isAtStartPose());
+  }
+
+  /**
+   * Which handle this is, for a reader who cannot see which row it is on.
+   *
+   * Unsynced, the card carries one identical 0–1000 slider per machine, and
+   * the name of the machine is the only thing that tells them apart.
+   */
+  scrubLabel(row: PlaybackRow): string {
+    return row.isMechanism
+      ? `${row.id} position in its cycle`
+      : 'Position in the cycle, all mechanisms together';
   }
 
   /** What the machine is called, everywhere the transport has to name it. */
@@ -409,7 +456,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    * you watched one happen.
    */
   private endOf(index: number): CycleEnd {
-    return this.endWords(!this.isReciprocating(this.mechanism.mechanisms[index]));
+    return this.endWords(!this.mechanism.mechanisms[index].reciprocates);
   }
 
   private endWords(loops: boolean): CycleEnd {
@@ -426,7 +473,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   private combinedEnds(indices: number[]): CycleEnd[] {
     const groups = new Map<boolean, string[]>();
     indices.forEach((index) => {
-      const loops = !this.isReciprocating(this.mechanism.mechanisms[index]);
+      const loops = !this.mechanism.mechanisms[index].reciprocates;
       groups.set(loops, [...(groups.get(loops) ?? []), this.nameOf(index)]);
     });
     if (groups.size === 1) {
@@ -440,21 +487,6 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
         text: `${names.join(', ')} ${names.length === 1 ? verb + 's' : verb}`,
       };
     });
-  }
-
-  /**
-   * Out-and-back rather than round and round.
-   *
-   * From the sign of the recorded input velocity, which the solver flips at
-   * each reversal: a cycle holding both signs is one that turned around.
-   */
-  private isReciprocating(mechanism: Mechanism): boolean {
-    const speeds = mechanism.inputAngularVelocities;
-    return speeds.some((speed) => speed > 0) && speeds.some((speed) => speed < 0);
-  }
-
-  private drivenSpeedOf(mechanism: Mechanism): number {
-    return mechanism.inputAngularVelocities[0] ?? 0;
   }
 
   /**
@@ -476,7 +508,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     } else {
       this.mechanism.seekMechanismTo(master.index, along);
     }
-    this.settings.animating.next(along !== 0);
+    this.publishMotion();
   }
 
   play(): void {
@@ -485,7 +517,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     // and a master button that left them alone showed a pause icon over a
     // drawing standing still.
     this.mechanism.setAllPlaying(!this.mechanism.isPlaying);
-    this.settings.animating.next(this.mechanism.mechanismTimeStep !== 0);
+    this.publishMotion();
   }
 
   /**
@@ -534,7 +566,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   flipDirection(row: PlaybackRow): void {
     const mechanism = this.mechanism.mechanisms[row.index];
-    if (mechanism && this.isReciprocating(mechanism)) {
+    if (mechanism?.reciprocates) {
       this.mechanism.setPlaybackDirection(row.index, -this.mechanism.directionOf(row.index));
       return;
     }
@@ -574,6 +606,6 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   onScrub(event: Event): void {
     const value = Number((event.target as HTMLInputElement).value);
     this.mechanism.animate(value, this.mechanism.isPlaying);
-    this.settings.animating.next(value !== 0);
+    this.publishMotion();
   }
 }

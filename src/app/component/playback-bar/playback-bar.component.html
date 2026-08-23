@@ -160,6 +160,7 @@
               type="range"
               min="0"
               max="1000"
+              [attr.aria-label]="scrubLabel(row)"
               [value]="row.scrub"
               [style.--along.%]="row.scrub / 10"
               [disabled]="!canPlay"

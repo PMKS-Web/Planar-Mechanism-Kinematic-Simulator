@@ -155,6 +155,28 @@
     }
   }
 
+  // A mode and its readiness chip: two controls, read as one tab. The pair
+  // takes exactly the room the single button used to, the chip having been
+  // given the button's right-hand padding and the gap that stood before it.
+  //
+  // Deliberately not positioned: the sliding highlight is measured in offsets
+  // from the strip, and a positioned wrapper would make every tab's offsetLeft
+  // zero.
+  .tabSlot {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+
+    &.withChip {
+      gap: 8px;
+      padding-right: 12px;
+
+      .tabButton {
+        padding-right: 0;
+      }
+    }
+  }
+
   // The short spelling only appears once the long one has gone.
   .tabButton .tabLabel.short {
     display: none;
@@ -197,8 +219,15 @@
   }
 
   .topStrip.fit0 {
-    .tabButton .chip {
+    .tabSlot .chip {
       display: none;
+    }
+
+    // With the chip gone the slot is the button again, and gives back the room
+    // it was holding for it.
+    .tabSlot.withChip {
+      gap: 0;
+      padding-right: 0;
     }
 
     .logo {
@@ -232,15 +261,26 @@
     align-items: center;
     height: 20px;
     padding: 0 8px;
+    border: none;
     border-radius: 10px;
     background: #eef0f4;
     color: #5f6368;
+    font-family: inherit;
     font-size: 12px;
     font-weight: 400;
+    white-space: nowrap;
+
+    &:hover {
+      background: #e2e5ea;
+    }
 
     &.ok {
       background: #e6f4ea;
       color: #137333;
+
+      &:hover {
+        background: #d7ecdc;
+      }
     }
   }
 

@@ -20,10 +20,14 @@
   // analysis, which moved them -- twice, and by different amounts at different
   // window widths.
   .playbackRow {
+    // Declared rather than written into `bottom` directly, because the
+    // component reads it back to work out the clearance the panels keep above
+    // this cluster (`publishHeight`). Restyling here moves both.
+    --playback-bottom: 38px;
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 38px;
+    bottom: var(--playback-bottom);
     display: flex;
     align-items: flex-end;
     justify-content: flex-end;

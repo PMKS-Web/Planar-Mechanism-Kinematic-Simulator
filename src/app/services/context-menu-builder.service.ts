@@ -66,23 +66,23 @@ export class ContextMenuBuilderService {
   private buildFor(target: MenuTarget, handlers: MenuHandlers): ContextMenuModel {
     if (target instanceof SynthesisPose) return this.forPose(target, handlers);
     // Synthesis mode is a question about a mechanism that does not exist yet:
-    // the only things on the canvas that belong to anyone are the positions,
+    // the only things on the grid that belong to anyone are the positions,
     // and the panel owns everything else about them.
     if (this.tabs.getCurrentTab() === TabID.SYNTHESIZE) {
       const rows = this.positionRows(handlers, undefined);
       return rows.length === 0
         ? { groups: [] }
-        : { header: { title: 'Canvas', subtitle: this.canvasSubtitle() }, groups: [{ rows }] };
+        : { header: { title: 'Grid', subtitle: this.gridSubtitle() }, groups: [{ rows }] };
     }
     if (target instanceof Force) return this.forForce(target);
     if (target instanceof Link) return this.forLink(target, handlers);
     if (target instanceof Joint) return this.forJoint(target, handlers);
-    return this.forCanvas(handlers);
+    return this.forGrid(handlers);
   }
 
-  // ---------------------------------------------------------------- canvas
+  // ------------------------------------------------------------------ grid
 
-  private forCanvas(handlers: MenuHandlers): ContextMenuModel {
+  private forGrid(handlers: MenuHandlers): ContextMenuModel {
     const groups: MenuGroup[] = [];
     if (this.tabs.getCurrentTab() === TabID.EDIT) {
       groups.push({
@@ -104,19 +104,22 @@ export class ContextMenuBuilderService {
       groups.push({ label: 'Machine', rows: this.machineRows() });
     }
     groups.push({ rows: this.positionRows(handlers, undefined) });
-    // Bare canvas in an analysis mode: nothing to name and nothing to do, so
+    // A bare grid in an analysis mode: nothing to name and nothing to do, so
     // no card. A *part* still earns one — its header is the way back into
     // Edit on the thing being looked at — but the grid is not a part.
     if (groups.every((group) => group.rows.length === 0)) return { groups: [] };
-    return { header: { title: 'Canvas', subtitle: this.canvasSubtitle() }, groups };
+    return { header: { title: 'Grid', subtitle: this.gridSubtitle() }, groups };
   }
 
-  private canvasSubtitle(): string {
+  // The surface is the grid everywhere else in the app -- the tutorial says
+  // "right-click the empty grid", every refusal says grid -- so the header says
+  // grid too, and the subtitle no longer has to repeat it.
+  private gridSubtitle(): string {
     const counts = this.mechanism.lockCounts();
-    if (counts.total === 0) return 'Grid · nothing drawn';
-    if (counts.locked === 0) return 'Grid · nothing selected';
-    if (counts.locked === counts.total) return `Grid · all ${counts.total} parts locked`;
-    return `Grid · ${counts.locked} of ${counts.total} parts locked`;
+    if (counts.total === 0) return 'Nothing drawn';
+    if (counts.locked === 0) return 'Nothing selected';
+    if (counts.locked === counts.total) return `All ${counts.total} parts locked`;
+    return `${counts.locked} of ${counts.total} parts locked`;
   }
 
   /**
@@ -412,7 +415,7 @@ export class ContextMenuBuilderService {
         refusal: this.mechanism.jointHasForceToGraph(joint)
           ? undefined
           : // "One part meets it" is only true when that is what is wrong.
-            // On a machine that cannot be analysed at all, the joint may have
+            // On a machine that cannot be analyzed at all, the joint may have
             // three bodies at it and still no graph, and telling that reader
             // to attach something would send them to fix the wrong thing.
             (this.analysisRefusal(joint) ?? {
@@ -807,7 +810,7 @@ export class ContextMenuBuilderService {
    * A row of its own would cost height on every menu; this costs none. In the
    * analysis modes it goes back to Edit, which is where the geometry can be
    * changed; in Edit it goes to Kinematic Analysis, and greys with the
-   * readiness reason when there is nothing that can be analysed yet.
+   * readiness reason when there is nothing that can be analyzed yet.
    */
   private crossing(part: Joint | Link | Force) {
     if (this.tabs.isAnalysisMode()) {
@@ -827,11 +830,11 @@ export class ContextMenuBuilderService {
   }
 
   /**
-   * Why *this part* cannot be analysed — its own machine's answer, not the
+   * Why *this part* cannot be analyzed — its own machine's answer, not the
    * drawing's.
    *
    * A grid can hold a four-bar that runs beside a half-drawn chain that does
-   * not, and asking "is anything here analysable" would offer the crossing
+   * not, and asking "is anything here analyzable" would offer the crossing
    * from the half-drawn one on the strength of the four-bar next to it. The
    * modes themselves would then grey that part out on arrival, which is an
    * offer taken back after it was accepted.
@@ -842,7 +845,7 @@ export class ContextMenuBuilderService {
     if (!readiness) {
       return {
         short: 'not in a mechanism',
-        long: 'This part is not joined into a mechanism that can be analysed. Connect it to a grounded chain.',
+        long: 'This part is not joined into a mechanism that can be analyzed. Connect it to a grounded chain.',
       };
     }
     const several = this.mechanism.partitions.length > 1;
@@ -853,7 +856,7 @@ export class ContextMenuBuilderService {
       short: several ? `${readiness.id} is not ready` : 'not ready',
       long: blocker
         ? `${blocker.title}. ${blocker.body}`
-        : `${several ? readiness.id : 'This mechanism'} cannot be analysed yet.`,
+        : `${several ? readiness.id : 'This mechanism'} cannot be analyzed yet.`,
     };
   }
 

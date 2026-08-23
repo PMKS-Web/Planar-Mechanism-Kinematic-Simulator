@@ -187,7 +187,12 @@ export class RightPanelComponent implements DoCheck {
   private shownShape = this.drawerShape();
 
   private drawerShape(): string {
-    return `${RightPanelComponent.isOpen}:${this.isWidePage()}`;
+    // `frameOpen`, not `isOpen`: the tutorial card opens the frame on its own,
+    // so starting or ending it with no page open changes the drawer's shape
+    // without any page changing. And the width class rather than one of the
+    // two width questions -- switching an open drawer from Settings to Export
+    // is 79px the canvas was never told about.
+    return `${this.frameOpen()}:${this.drawerWidthClass()}`;
   }
 
   ngDoCheck(): void {
@@ -258,19 +263,22 @@ export class RightPanelComponent implements DoCheck {
     return RightPanelComponent.openTab;
   }
 
-  /** Two of these pages hold a table rather than a panel, and need the room. */
-  isWidePage(): boolean {
-    return this.getOpenTab() === 2 || this.getOpenTab() === 4;
-  }
-
   /**
-   * The export drawer is wider than the view controls it stands over.
+   * How much room the open page takes.
    *
-   * Its rows are a checkbox, a part's name and what is notable about it, and at
-   * the drawer's usual width the third of those was always ellipsed away.
+   * One answer for the template's width class and for the shape the canvas is
+   * told about, so a page cannot change the drawer's width without the canvas
+   * hearing about it.
+   *
+   * The debug page holds a table rather than a panel and needs the room. The
+   * export page is wider than the view controls it stands over: its rows are a
+   * checkbox, a part's name and what is notable about it, and at the usual
+   * width the third of those was always ellipsed away.
    */
-  isExportPage(): boolean {
-    return this.getOpenTab() === RightPanelComponent.EXPORT_TAB;
+  drawerWidthClass(): 'wide' | 'export' | 'base' {
+    if (this.getOpenTab() === 4) return 'wide';
+    if (this.getOpenTab() === RightPanelComponent.EXPORT_TAB) return 'export';
+    return 'base';
   }
 
   getIsOpen() {

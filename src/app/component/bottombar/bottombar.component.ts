@@ -1,6 +1,5 @@
 import { SvgGridService } from '../../services/svg-grid.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
-import { MODEL_SCALE } from '../../model/render-scale';
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { AngleUnit, GlobalUnit } from '../../model/utils';
 import { SettingsService } from '../../services/settings.service';
@@ -53,17 +52,19 @@ export class BottombarComponent {
    */
   get status(): string {
     if (this.tabs.isAnalysisMode()) {
-      return 'Geometry locked';
+      // Not "locked": that word belongs to the per-part Lock, and a student
+      // who has locked nothing would go hunting for an unlock that isn't there.
+      return 'Read-only here';
     }
     if (this.tabs.getCurrentTab() === TabID.SYNTHESIZE) {
       return this.synthesisStatus();
     }
     const blockers = this.mechanismSrv.blockerCount();
     if (this.mechanismSrv.mechanisms.length === 0) {
-      return 'Nothing to analyse yet';
+      return 'Nothing to analyze yet';
     }
     if (blockers === 0) {
-      return 'Ready to analyse';
+      return 'Ready to analyze';
     }
     return `${blockers} ${blockers === 1 ? 'fix' : 'fixes'} before analysis`;
   }
@@ -73,7 +74,7 @@ export class BottombarComponent {
    *
    * The rest of this strip reports on the drawing, and in Synthesis the drawing
    * is not what the reader is working on -- a design in progress is not on it
-   * at all, so "Nothing to analyse yet" was true and useless. This says where
+   * at all, so "Nothing to analyze yet" was true and useless. This says where
    * in the search they are, and after Insert it says what was left behind.
    */
   private synthesisStatus(): string {
@@ -139,9 +140,10 @@ export class BottombarComponent {
     if (!at) {
       return '';
     }
-    const unit = this.nup.unitLabel(this.settings.lengthUnit.value);
-    const show = (value: number) => (value / MODEL_SCALE).toFixed(2);
-    return `${show(at.x)} ${unit}, ${show(at.y)} ${unit}`;
+    // Through the one pair that knows the internal scale, like every other
+    // length on screen -- see NumberUnitParserService.formatModelLength.
+    const unit = this.settings.lengthUnit.value;
+    return `${this.nup.formatModelLength(at.x, unit)}, ${this.nup.formatModelLength(at.y, unit)}`;
   }
 
   /**

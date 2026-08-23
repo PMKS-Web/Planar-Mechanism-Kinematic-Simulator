@@ -5,6 +5,7 @@ import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 import { SynthesisPanelComponent } from '../synthesis-panel/synthesis-panel.component';
 import { EditPanelComponent } from '../edit-panel/edit-panel.component';
 import { AnalysisPanelComponent } from '../analysis-panel/analysis-panel.component';
+import { TutorialService } from '../../services/tutorial.service';
 
 @Component({
   selector: 'app-left-tabs',
@@ -55,6 +56,7 @@ import { AnalysisPanelComponent } from '../analysis-panel/analysis-panel.compone
  */
 export class LeftTabsComponent {
   tabs = inject(SelectedTabService);
+  private tutorial = inject(TutorialService);
 
   public get TabID(): typeof TabID {
     return TabID;
@@ -66,8 +68,12 @@ export class LeftTabsComponent {
    * On a wide window both can be read at once. On a narrow one they overlap,
    * and two cards interleaving their borders reads as a broken layout rather
    * than as one thing in front of another — so the drawer wins and this hides.
+   *
+   * The tutorial card is pinned in that drawer without being one of its pages,
+   * so it holds the frame open on its own — and a tutorial started with no
+   * page open used to leave both cards showing on a narrow window.
    */
   get drawerOpen(): boolean {
-    return RightPanelComponent.isOpen;
+    return RightPanelComponent.isOpen || (this.tutorial.started && !this.tutorial.exited);
   }
 }

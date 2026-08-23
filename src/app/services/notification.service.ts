@@ -148,11 +148,16 @@ export class NotificationService {
 
     const last = this.lastSaid.get(id);
     if (last !== undefined && last + cooldownMs > Date.now()) return;
-    this.lastSaid.set(id, Date.now());
 
     const one: LiveNotification = { key: this.nextKey++, id, kind, text, actions };
     this.live.push(one);
-    this.makeRoom();
+    this.makeRoom(one);
+    // A message the stack could not fit was never read: it goes on no cooldown
+    // and needs no timer to take it away. `makeRoom` keeps the newcomer, so
+    // this is a guard rather than a case -- but a timer on a key that is no
+    // longer live orphans its entry in the Map for the rest of the session.
+    if (!this.live.includes(one)) return;
+    this.lastSaid.set(id, Date.now());
 
     const duration = DURATION[kind];
     if (duration !== undefined) {
@@ -163,14 +168,23 @@ export class NotificationService {
     }
   }
 
-  /** Drop the oldest message that was leaving anyway, until the stack fits. */
-  private makeRoom(): void {
+  /**
+   * Drop the oldest message that was leaving anyway, until the stack fits.
+   *
+   * Never the newcomer, whatever kind it is. It is the one the reader has a
+   * chance of connecting to what they just did -- and it is the only message
+   * with a duration once three warnings are waiting to be dismissed, so
+   * choosing by duration alone dismissed the reply to the reader's own action
+   * before it could render.
+   */
+  private makeRoom(newcomer: LiveNotification): void {
     while (this.live.length > MAX_STACK) {
-      const leaving = this.live.find((one) => DURATION[one.kind] !== undefined);
-      // Nothing but messages waiting to be dismissed. The newest is the one the
-      // reader has a chance of connecting to what they just did, so the oldest
-      // still goes -- but it has at least been on screen the longest.
-      this.dismiss((leaving ?? this.live[0]).key);
+      const others = this.live.filter((one) => one !== newcomer);
+      // Nothing but messages waiting to be dismissed. The oldest still goes --
+      // but it has at least been on screen the longest.
+      const leaving = others.find((one) => DURATION[one.kind] !== undefined) ?? others[0];
+      if (leaving === undefined) return;
+      this.dismiss(leaving.key);
     }
   }
 }

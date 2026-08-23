@@ -27,6 +27,7 @@ import { TutorialService } from '../../services/tutorial.service';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
+import { GridUtilsService } from '../../services/grid-utils.service';
 
 /** A mode's chip: whether that analysis can be entered, and what is missing. */
 interface TabStatus {
@@ -36,7 +37,7 @@ interface TabStatus {
 
 /**
  * The strip across the top: what may be done to the mechanism, and whether it
- * is ready to be analysed.
+ * is ready to be analyzed.
  *
  * It replaces a horizontal file toolbar and a vertical mode rail which between
  * them took a whole edge and corner of the window. Opening and saving is not
@@ -104,6 +105,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
 
   private analytics: AnalyticsService = inject(AnalyticsService);
   shortcuts = inject(KeyboardShortcutsService);
+  private gridUtils = inject(GridUtilsService);
 
   readonly tabStrip = viewChild<ElementRef<HTMLElement>>('tabStrip');
   readonly strip = viewChild<ElementRef<HTMLElement>>('strip');
@@ -274,8 +276,11 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     this.pendingFrame = requestAnimationFrame(() => {
       this.pendingFrame = 0;
       const active = this.tabStrip()?.nativeElement.querySelector<HTMLElement>('.tabButton.active');
-      const next = active
-        ? { left: active.offsetLeft, width: active.offsetWidth, visible: this.tabs.isTabVisible() }
+      // The mode and its chip are two controls in one slot, and the highlight
+      // is drawn round the tab a reader sees rather than round the button.
+      const pill = active?.closest<HTMLElement>('.tabSlot') ?? active;
+      const next = pill
+        ? { left: pill.offsetLeft, width: pill.offsetWidth, visible: this.tabs.isTabVisible() }
         : { ...this.highlight, visible: false };
       // Only on a real change, so the measure-every-pass above settles instead
       // of asking for another pass forever.
@@ -302,8 +307,8 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   }
 
   select(tab: TabID): void {
-    this.menuOpen = false;
-    if (this.tabs.isAnalysisMode(tab) && !this.canAnalyse(tab)) {
+    this.closeMenu();
+    if (this.tabs.isAnalysisMode(tab) && !this.canAnalyze(tab)) {
       // The setup for the mode that was pressed, not the other one's -- and
       // never a toggle: a reader pressing a mode that will not open is asking
       // why, and closing the answer is not one.
@@ -318,7 +323,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   }
 
   /** Kinematics needs one mechanism that runs. Force analysis needs more. */
-  canAnalyse(tab: TabID): boolean {
+  canAnalyze(tab: TabID): boolean {
     return tab === TabID.FORCE
       ? this.mechanism.forceAnalysisReady()
       : this.mechanism.oneValidMechanismExists();
@@ -327,9 +332,9 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   /**
    * An empty grid has nothing to be ready for.
    *
-   * "Ready" over a blank canvas is a promise about a mechanism that has not
+   * "Ready" over an empty grid is a promise about a mechanism that has not
    * been drawn: nothing is stopping analysis because there is nothing to
-   * analyse.
+   * analyze.
    */
   hasStatus(): boolean {
     return this.mechanism.joints.length > 0 || this.mechanism.links.length > 0;
@@ -353,12 +358,14 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
 
   // Not while the mechanism is running: undo replays a URL, and replacing the
   // drawing underneath a playing animation is not something anyone asked for.
+  // The keyboard shortcut quotes the same predicate, so the buttons and Ctrl+Z
+  // cannot answer differently in the window where the ease home is still running.
   canUndo(): boolean {
-    return !this.mechanism.isAnimating() && this.history.canUndo();
+    return this.gridUtils.canRestoreHistory() && this.history.canUndo();
   }
 
   canRedo(): boolean {
-    return !this.mechanism.isAnimating() && this.history.canRedo();
+    return this.gridUtils.canRestoreHistory() && this.history.canRedo();
   }
 
   /**
@@ -393,11 +400,66 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   }
 
   toggleMenu(): void {
-    this.menuOpen = !this.menuOpen;
+    this.menuOpen ? this.closeMenu() : this.openMenu();
   }
 
+  /**
+   * Open it, and take focus with it.
+   *
+   * A popover that leaves focus on its trigger is one the keyboard cannot
+   * reach: Tab walked the modes behind the scrim before it ever arrived at New
+   * Project, and every key the drawing answers went on answering it out of
+   * sight -- Delete removing a joint nobody could see, Escape deselecting
+   * instead of closing this. The menu holds the keys while it is up
+   * (`onMenuKey`) and gives focus back to the trigger when it goes.
+   */
+  private openMenu(): void {
+    this.menuReturn = document.activeElement as HTMLElement | null;
+    this.menuOpen = true;
+    // After the pass that renders it. There is nothing to focus until then.
+    setTimeout(() => this.menuItems()[0]?.focus());
+  }
+
+  /** Where focus was when the menu took it, so closing can hand it back. */
+  private menuReturn: HTMLElement | null = null;
+  private readonly projectMenu = viewChild<ElementRef<HTMLElement>>('projectMenu');
+
   closeMenu(): void {
+    if (!this.menuOpen) return;
     this.menuOpen = false;
+    this.menuReturn?.focus();
+    this.menuReturn = null;
+  }
+
+  private menuItems(): HTMLElement[] {
+    const menu = this.projectMenu()?.nativeElement;
+    return menu ? [...menu.querySelectorAll<HTMLElement>('.menuItem')] : [];
+  }
+
+  /**
+   * While the menu is up, the keys are the menu's.
+   *
+   * `KeyboardShortcutsService` listens on `window`, and stopping the event
+   * here is the only way a popover can say the canvas is covered -- the
+   * service's own "something is over" test knows about dialogs and nothing
+   * else. Arrows and Tab walk the items, and neither leaves the card: behind
+   * a scrim, the controls a Tab would reach cannot be pressed anyway.
+   */
+  onMenuKey(event: KeyboardEvent): void {
+    event.stopPropagation();
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.closeMenu();
+      return;
+    }
+    const step = event.key === 'ArrowDown' || (event.key === 'Tab' && !event.shiftKey) ? 1 : -1;
+    if (!['ArrowDown', 'ArrowUp', 'Tab'].includes(event.key)) return;
+    const items = this.menuItems();
+    if (items.length === 0) return;
+    event.preventDefault();
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    const next = at === -1 ? (step === 1 ? 0 : items.length - 1) : at + step;
+    items[(next + items.length) % items.length].focus();
   }
 
   newProject(): void {
@@ -446,7 +508,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    */
   openSetupFor(tab: TabID, event: Event): void {
     event.stopPropagation();
-    this.menuOpen = false;
+    this.closeMenu();
     RightPanelComponent.tabClicked(
       tab === TabID.FORCE
         ? RightPanelComponent.FORCE_SETUP_TAB
@@ -474,8 +536,18 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     }
     const reader = new FileReader();
     reader.onload = () => {
-      this.notify.success('file.loaded', 'Mechanism loaded.');
       this.urlProcessor.updateFromURL(reader.result as string);
+      // After the decode, and only if it worked. Said first, a corrupt or
+      // old-format file got a green "Mechanism loaded." followed by the
+      // decoder's own sticky failure, over a drawing that had not changed.
+      //
+      // The decoder raises that failure a tick late -- it can run inside its
+      // own constructor, before there is an overlay to open into -- so this
+      // waits the same tick and then asks whether it is on screen.
+      setTimeout(() => {
+        if (this.notify.live.some((one) => one.id === 'url.undecodable')) return;
+        this.notify.success('file.loaded', 'Mechanism loaded.');
+      });
       // Reset the input so the same file can be opened again.
       input.value = '';
     };

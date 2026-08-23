@@ -1,4 +1,10 @@
-<div data-canvas-inset="top" class="topStrip" #strip [class]="'topStrip fit' + labelLevel" [class.devMode]="isDevMode()">
+<div
+  data-canvas-inset="top"
+  class="topStrip"
+  #strip
+  [class]="'topStrip fit' + labelLevel"
+  [class.devMode]="isDevMode()"
+>
   <div class="card brandCard">
     <button
       class="iconButton"
@@ -7,6 +13,8 @@
       matTooltip="Project menu"
       matTooltipShowDelay="600"
       aria-label="Project menu"
+      aria-controls="projectMenu"
+      [attr.aria-expanded]="menuOpen"
     >
       <mat-icon>menu</mat-icon>
     </button>
@@ -54,63 +62,71 @@
 
       <div class="modeDivider"></div>
 
-      <button
-        class="tabButton"
-        [class.active]="isActive(TabID.ANALYZE)"
-        [class.notReady]="!canAnalyse(TabID.ANALYZE)"
-        (click)="select(TabID.ANALYZE)"
-        aria-label="Kinematic Analysis"
-      >
-        <mat-icon
-          [matTooltip]="shortcuts.tip('Kinematic Analysis', 'mode.kinematic')"
-          matTooltipShowDelay="600"
-          >query_stats</mat-icon
+      <!-- The chip is a second control with an action of its own, so it sits
+           beside the mode button rather than inside it: an interactive
+           descendant of a <button> is invalid ARIA — a screen reader flattens
+           it into the parent's name — and it answered only the mouse. -->
+      <div class="tabSlot" [class.withChip]="hasStatus()">
+        <button
+          class="tabButton"
+          [class.active]="isActive(TabID.ANALYZE)"
+          [class.notReady]="!canAnalyze(TabID.ANALYZE)"
+          (click)="select(TabID.ANALYZE)"
+          aria-label="Kinematic Analysis"
         >
-        <span class="tabLabel long">Kinematic Analysis</span>
-        <span class="tabLabel short">Kinematic</span>
+          <mat-icon
+            [matTooltip]="shortcuts.tip('Kinematic Analysis', 'mode.kinematic')"
+            matTooltipShowDelay="600"
+            >query_stats</mat-icon
+          >
+          <span class="tabLabel long">Kinematic Analysis</span>
+          <span class="tabLabel short">Kinematic</span>
+        </button>
         <!-- Nothing drawn, nothing to be ready for. -->
         @if (hasStatus()) {
-          <span
+          <button
             class="chip"
-            role="button"
             [class.ok]="statusOf(TabID.ANALYZE).ready"
             [attr.aria-label]="'Kinematic Analysis setup: ' + statusOf(TabID.ANALYZE).text"
             (click)="openSetupFor(TabID.ANALYZE, $event)"
             [matTooltip]="'What this mode needs'"
             matTooltipShowDelay="600"
-            >{{ statusOf(TabID.ANALYZE).text }}</span
           >
+            {{ statusOf(TabID.ANALYZE).text }}
+          </button>
         }
-      </button>
+      </div>
 
-      <button
-        class="tabButton"
-        [class.active]="isActive(TabID.FORCE)"
-        [class.notReady]="!canAnalyse(TabID.FORCE)"
-        (click)="select(TabID.FORCE)"
-        aria-label="Force Analysis"
-      >
-        <mat-icon
-          [matTooltip]="shortcuts.tip('Force Analysis', 'mode.force')"
-          matTooltipShowDelay="600"
-          >balance</mat-icon
+      <div class="tabSlot" [class.withChip]="hasStatus()">
+        <button
+          class="tabButton"
+          [class.active]="isActive(TabID.FORCE)"
+          [class.notReady]="!canAnalyze(TabID.FORCE)"
+          (click)="select(TabID.FORCE)"
+          aria-label="Force Analysis"
         >
-        <span class="tabLabel long">Force Analysis</span>
-        <span class="tabLabel short">Force</span>
+          <mat-icon
+            [matTooltip]="shortcuts.tip('Force Analysis', 'mode.force')"
+            matTooltipShowDelay="600"
+            >balance</mat-icon
+          >
+          <span class="tabLabel long">Force Analysis</span>
+          <span class="tabLabel short">Force</span>
+        </button>
         <!-- Nothing drawn, nothing to be ready for. -->
         @if (hasStatus()) {
-          <span
+          <button
             class="chip"
-            role="button"
             [class.ok]="statusOf(TabID.FORCE).ready"
             [attr.aria-label]="'Force Analysis setup: ' + statusOf(TabID.FORCE).text"
             (click)="openSetupFor(TabID.FORCE, $event)"
             [matTooltip]="'What this mode needs'"
             matTooltipShowDelay="600"
-            >{{ statusOf(TabID.FORCE).text }}</span
           >
+            {{ statusOf(TabID.FORCE).text }}
+          </button>
         }
-      </button>
+      </div>
     </div>
   </div>
 
@@ -164,7 +180,7 @@
 
 @if (menuOpen) {
   <div class="menuScrim" (click)="closeMenu()"></div>
-  <div class="projectMenu" @menuOpen>
+  <div class="projectMenu" id="projectMenu" #projectMenu (keydown)="onMenuKey($event)" @menuOpen>
     <button class="menuItem" (click)="newProject()">
       <mat-icon>note_add</mat-icon>New Project
     </button>

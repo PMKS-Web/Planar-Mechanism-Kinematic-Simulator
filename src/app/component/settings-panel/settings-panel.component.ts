@@ -18,6 +18,18 @@ import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 import { InputComponent } from '../BLOCKS/input/input.component';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
 
+/**
+ * The scale as the field shows it.
+ *
+ * Two decimals, like every other number in the app. It arrives here as a ratio
+ * of two lengths -- the drawing's object scale over the internal one -- so
+ * without this the field read "2.2327500" wherever a URL had set a scale of its
+ * own, which is every shared mechanism.
+ */
+function scaleText(scale: number): string {
+  return scale.toFixed(2);
+}
+
 @Component({
   selector: 'app-settings-panel',
   templateUrl: './settings-panel.component.html',
@@ -63,7 +75,7 @@ export class SettingsPanelComponent implements OnDestroy {
     this.currentObjectScaleSetting = SettingsService.objectScale / MODEL_SCALE;
 
     this.settingsForm.patchValue({
-      objectScale: this.currentObjectScaleSetting.toString(),
+      objectScale: scaleText(this.currentObjectScaleSetting),
       lengthunit: this.currentLengthUnit.toString(),
       angleunit: (this.currentAngleUnit - 10).toString(),
       // torqueunit: (this.currentTorqueUnit - 20).toString(),
@@ -85,7 +97,7 @@ export class SettingsPanelComponent implements OnDestroy {
       SettingsService._objectScale.pipe(skip(1)).subscribe((val) => {
         this.currentObjectScaleSetting = val / MODEL_SCALE;
         this.settingsForm.patchValue(
-          { objectScale: this.currentObjectScaleSetting.toString() },
+          { objectScale: scaleText(this.currentObjectScaleSetting) },
           { emitEvent: false }
         );
 
@@ -149,7 +161,7 @@ export class SettingsPanelComponent implements OnDestroy {
         parsed <= 0
       ) {
         // Restore the last good scale into its own field, not the speed field.
-        this.settingsForm.patchValue({ objectScale: this.currentObjectScaleSetting.toString() });
+        this.settingsForm.patchValue({ objectScale: scaleText(this.currentObjectScaleSetting) });
       } else {
         this.currentObjectScaleSetting = parsed;
         SettingsService._objectScale.next(this.currentObjectScaleSetting * MODEL_SCALE);
@@ -259,17 +271,9 @@ export class SettingsPanelComponent implements OnDestroy {
     this.mechanismSrv.onMechUpdateState.next(2);
   }
 
+  /** The unit's suffix, spelled by the one service that knows them all. */
   getUnitStr(unit: LengthUnit): string {
-    switch (unit) {
-      case LengthUnit.CM:
-        return 'cm';
-      case LengthUnit.INCH:
-        return 'in';
-      case LengthUnit.METER:
-        return 'm';
-      default:
-        return 'cm';
-    }
+    return this.nup.unitLabel(unit);
   }
 
   // The dot is escaped, and the scale has to be positive. Unescaped, `.` matched

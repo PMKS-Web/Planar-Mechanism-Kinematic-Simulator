@@ -1,7 +1,7 @@
 <div data-canvas-inset="bottom" class="viewControls">
   <!-- The switches. Each says what it is about; how a switch looks and reads
-       is view-button's business, so the three cannot drift apart again. -->
-  <view-button
+       is app-view-button's business, so the three cannot drift apart again. -->
+  <app-view-button
     noun="Center of Mass"
     shownIcon="com"
     hiddenIcon="com_off"
@@ -10,7 +10,7 @@
     shortcut="view.centerOfMass"
     (pressed)="showCenterOfMass()"
   />
-  <view-button
+  <app-view-button
     noun="joint IDs"
     shownIcon="abc"
     hiddenIcon="abc_off"
@@ -21,7 +21,7 @@
   />
   <!-- The app's own curve glyph, which is a traced point with its path behind
        it. A line chart reads as another kind of analysis. -->
-  <view-button
+  <app-view-button
     noun="traced paths"
     shownIcon="show_path"
     hiddenIcon="hide_path"
@@ -36,19 +36,19 @@
   <div class="viewDivider" aria-hidden="true"></div>
   <!-- The actions, which are always available: there is a view to zoom
        whether or not there is anything drawn in it. -->
-  <view-button
+  <app-view-button
     icon="zoom_out"
     tooltip="Zoom Out"
     shortcut="view.zoomOut"
     (pressed)="onZoomOutPressed()"
   />
-  <view-button
+  <app-view-button
     icon="zoom_in"
     tooltip="Zoom In"
     shortcut="view.zoomIn"
     (pressed)="onZoomInPressed()"
   />
-  <view-button
+  <app-view-button
     icon="crop_free"
     tooltip="Reset View"
     shortcut="view.reset"

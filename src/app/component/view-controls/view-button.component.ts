@@ -15,7 +15,7 @@ import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-sh
  * how a switch looks.
  */
 @Component({
-  selector: 'view-button',
+  selector: 'app-view-button',
   templateUrl: './view-button.component.html',
   styleUrls: ['./view-button.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,

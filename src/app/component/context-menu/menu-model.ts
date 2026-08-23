@@ -25,13 +25,13 @@ export type MenuRowKind = 'action' | 'toggle';
 
 export class MenuRow {
   /** Title Case, because it labels a control (`docs/ui-vocabulary.md`). */
-  label: string;
+  label!: string;
   /** A registered SVG icon name, or a Material Icons ligature. */
-  icon: string;
+  icon!: string;
   /** Whether `icon` is a Material Icons ligature rather than a registered SVG. */
   material = false;
-  kind: MenuRowKind;
-  action: () => void;
+  kind: MenuRowKind = 'action';
+  action!: () => void;
   /** For a toggle: whether the state it names is on. */
   checked = false;
   /** Set when the row is greyed. Its presence *is* the disabled flag. */
@@ -58,19 +58,16 @@ export class MenuRow {
    */
   hint?: string;
 
+  /**
+   * Copied wholesale, with every default declared on the field above.
+   *
+   * Hand-copying each one meant a field added to the class and forgotten here
+   * was dropped in silence, with the type-checker satisfied: thirty call sites
+   * pass a `Partial`, the builder would set the new thing, and the row would
+   * never see it.
+   */
   constructor(init: Partial<MenuRow> & Pick<MenuRow, 'label' | 'icon' | 'action'>) {
-    this.label = init.label;
-    this.icon = init.icon;
-    this.action = init.action;
-    this.material = init.material ?? false;
-    this.kind = init.kind ?? 'action';
-    this.checked = init.checked ?? false;
-    this.refusal = init.refusal;
-    this.shortcut = init.shortcut;
-    this.destructive = init.destructive ?? false;
-    this.alwaysAllowed = init.alwaysAllowed ?? false;
-    this.tip = init.tip;
-    this.hint = init.hint;
+    Object.assign(this, init);
   }
 
   get disabled(): boolean {

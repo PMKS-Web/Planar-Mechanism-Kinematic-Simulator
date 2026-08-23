@@ -1,6 +1,6 @@
 @mixin css($theme) {
   // The host is only a wrapper; the button is what the row lays out.
-  view-button {
+  app-view-button {
     display: flex;
     flex: 0 0 auto;
   }
