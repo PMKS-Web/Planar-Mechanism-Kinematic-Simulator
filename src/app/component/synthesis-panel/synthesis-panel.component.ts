@@ -71,7 +71,7 @@ const HELP = {
     'Which ground pin carries the input. A four-bar that will not turn from one ground pin often ' +
     'turns freely from the other.',
   driver:
-    'Adds a crank and coupler sized so one full turn walks the linkage through all three ' +
+    'Adds a crank and coupler sized so one full turn walks the mechanism through all three ' +
     'positions, making it a six-bar a motor can run.',
   requirements:
     'What a solution has to satisfy to be listed. Every one you switch on narrows the search; ' +
@@ -538,7 +538,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
         label: 'Reaches all 3 positions on one assembly',
         detail: this.design.allowDefect
           ? 'Solutions that have to be taken apart between positions are listed too'
-          : 'The linkage never has to be taken apart',
+          : 'The mechanism never has to be taken apart',
         toggle: () => this.toggleRequirement('allowDefect'),
       },
       {

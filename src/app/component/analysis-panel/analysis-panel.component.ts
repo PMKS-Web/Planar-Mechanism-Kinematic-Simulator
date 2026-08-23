@@ -138,6 +138,19 @@ export class AnalysisPanelComponent {
     return this.tabs.getCurrentTab() === TabID.FORCE;
   }
 
+  /**
+   * Whether a card is open, for a key that may not be in the map yet.
+   *
+   * The force rows are keyed by the part they are about (`JForce_AB`), so they
+   * are absent until the reader first opens one — and the card was handed
+   * `undefined`, which drops `aria-expanded` from the button entirely rather
+   * than reporting it collapsed. A screen reader was told nothing about the
+   * one kind of row whose state it could not otherwise guess.
+   */
+  isExpanded(key: string): boolean {
+    return this.graphExpanded[key] ?? false;
+  }
+
   //A dictionary for wether each graph is expanded or not
   graphExpanded: { [key: string]: boolean } = {
     LAng: false,
@@ -170,7 +183,8 @@ export class AnalysisPanelComponent {
     const signed = this.mechanismService.driveSpeedOf(driven);
     const speed = Math.abs(signed);
     if (driven instanceof PrisJoint) {
-      const direction = signed < 0 ? 'retracting' : 'extending';
+      // Toward the two ends the Edit panel's Travel field names: closed and open.
+      const direction = signed < 0 ? 'closing' : 'opening';
       return `The input speed is set to ${speed.toFixed(2)} ${this.linearSpeedUnit}, ${direction}.`;
     }
     const direction = signed < 0 ? 'clockwise' : 'counter-clockwise';

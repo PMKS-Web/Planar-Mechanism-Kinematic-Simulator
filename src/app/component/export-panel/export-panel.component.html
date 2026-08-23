@@ -36,13 +36,13 @@
         <span class="count">{{ countText }}</span>
         <span class="spacer"></span>
         @if (flow.step === 'parts') {
-          <button class="linkButton" (click)="everything(true)">Select all</button>
+          <button class="linkButton" (click)="everything(true)">Select All</button>
           <span class="pickSep"></span>
-          <button class="linkButton" (click)="everything(false)">Select none</button>
+          <button class="linkButton" (click)="everything(false)">Select None</button>
         } @else {
-          <button class="linkButton" (click)="everyColumn(true)">Select all</button>
+          <button class="linkButton" (click)="everyColumn(true)">Select All</button>
           <span class="pickSep"></span>
-          <button class="linkButton" (click)="everyColumn(false)">Select none</button>
+          <button class="linkButton" (click)="everyColumn(false)">Select None</button>
         }
       </div>
     }

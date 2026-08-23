@@ -113,13 +113,13 @@ record(
   await page.locator('.nextButton').isDisabled()
 );
 
-await drawer().locator('.linkButton', { hasText: 'Select all' }).click();
+await drawer().locator('.linkButton', { hasText: 'Select All' }).click();
 await page.waitForTimeout(200);
 const allOn = await drawer().locator('.box.ticked').count();
-await drawer().locator('.linkButton', { hasText: 'Select none' }).click();
+await drawer().locator('.linkButton', { hasText: 'Select None' }).click();
 await page.waitForTimeout(200);
 record(
-  'Select all and Select none reach every row',
+  'Select All and Select None reach every row',
   allOn === 7 && (await drawer().locator('.box.ticked').count()) === 0,
   { allOn }
 );
@@ -461,7 +461,7 @@ record(
 // bodies to the solver, and the block's force at the pin is the bar's force
 // negated. So the pin carries both numbers, and nothing is named after a body
 // or a joint nobody has seen.
-await drawer().locator('.linkButton', { hasText: 'Select all' }).click();
+await drawer().locator('.linkButton', { hasText: 'Select All' }).click();
 await page.waitForTimeout(300);
 await page.locator('.nextButton').click();
 await page.waitForTimeout(500);
@@ -609,7 +609,7 @@ await page.waitForTimeout(300);
 await goToParts();
 
 // --- more than two files arrive as one download -----------------------------
-await drawer().locator('.linkButton', { hasText: 'Select all' }).click();
+await drawer().locator('.linkButton', { hasText: 'Select All' }).click();
 await page.waitForTimeout(300);
 await goToFile();
 await drawer().locator('.segmented button', { hasText: 'Per part' }).click();
@@ -678,7 +678,7 @@ const separator = await drawer()
     fill: getComputedStyle(mark).backgroundColor,
   }));
 record(
-  'and the mark between Select all and Select none is one solid dot',
+  'and the mark between Select All and Select None is one solid dot',
   separator.border === '0px' && separator.fill.startsWith('rgba(0, 0, 0'),
   separator
 );
@@ -691,7 +691,7 @@ record(
 );
 
 // One file each: two machines on two clocks cannot share a time column.
-await drawer().locator('.linkButton', { hasText: 'Select all' }).click();
+await drawer().locator('.linkButton', { hasText: 'Select All' }).click();
 await page.waitForTimeout(200);
 await goToFile();
 record(

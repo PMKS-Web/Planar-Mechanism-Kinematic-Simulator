@@ -375,6 +375,11 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   get graphSummary(): string {
     const names = this.displayedSeries
       .map((series) => series.name)
+      // The internal names stay X/Y/Z so visibility and colour keep working;
+      // read out, "Z" promises an out-of-plane component a planar mechanism
+      // does not have. A reader who cannot see the legend hears this instead
+      // of it, so it has to say what the legend says.
+      .map((name) => (name === 'Z' ? this.seriesLabel('z') : name))
       .filter((name): name is string => !!name);
     const plotted = names.length ? `, plotting ${names.join(', ')}` : '';
     return `Graph of ${this.graphLabel} over one cycle${plotted}. The same numbers are available from Export Data in the top strip.`;
