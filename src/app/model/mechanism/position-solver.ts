@@ -387,18 +387,6 @@ export class PositionSolver {
   static forceMagnitudeMap = new Map<string, number>();
 
   /**
-   * Everything in this solver that describes one particular mechanism's drive.
-   *
-   * These three statics are written while a mechanism is being solved and read
-   * again, much later, whenever something differentiates it -- a velocity
-   * graph, a dynamic force analysis. With one mechanism in a drawing that was
-   * safe. With three, the last one solved owns them, and a graph asked about
-   * the first one was answered out of the third one's constraints: it found no
-   * drive it recognised, fell through to the loop formulation, and came back
-   * with nothing at all. Every velocity and acceleration graph of a
-   * cylinder-driven machine standing beside another machine was empty.
-   */
-  /**
    * Build this mechanism's constraint set now, while its own state is loaded.
    *
    * Differentiating a mechanism needs the set, and a mechanism whose positions
@@ -422,6 +410,18 @@ export class PositionSolver {
     );
   }
 
+  /**
+   * Everything in this solver that describes one particular mechanism's drive.
+   *
+   * These three statics are written while a mechanism is being solved and read
+   * again, much later, whenever something differentiates it -- a velocity
+   * graph, a dynamic force analysis. With one mechanism in a drawing that was
+   * safe. With three, the last one solved owns them, and a graph asked about
+   * the first one was answered out of the third one's constraints: it found no
+   * drive it recognised, fell through to the loop formulation, and came back
+   * with nothing at all. Every velocity and acceleration graph of a
+   * cylinder-driven machine standing beside another machine was empty.
+   */
   static captureDriveState(): PositionSolverDriveState {
     return {
       cylinderDrive: this.cylinderDrive,

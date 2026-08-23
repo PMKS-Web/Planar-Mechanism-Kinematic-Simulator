@@ -89,15 +89,6 @@ const SELECT_AMBER = '#ffc107';
 const NEUTRAL_BAR = '#c5cae9';
 
 /**
- * A bar between two pins, as a filled outline.
- *
- * The same shape `RealLink` computes for a two-joint link, at the same radius
- * -- a quarter of the object scale -- so a position and a previewed solution
- * are drawn to the dimensions the drawing itself uses. They were strokes on a
- * line before, which matched by arithmetic rather than by construction and
- * looked subtly unlike every other bar on the canvas.
- */
-/**
  * Which way round a position is, drawn inside it.
  *
  * A capsule is unchanged by turning it half a revolution, so a position that
@@ -139,6 +130,15 @@ function directionMark(x1: number, y1: number, x2: number, y2: number, r: number
   );
 }
 
+/**
+ * A bar between two pins, as a filled outline.
+ *
+ * The same shape `RealLink` computes for a two-joint link, at the same radius
+ * -- a quarter of the object scale -- so a position and a previewed solution
+ * are drawn to the dimensions the drawing itself uses. They were strokes on a
+ * line before, which matched by arithmetic rather than by construction and
+ * looked subtly unlike every other bar on the canvas.
+ */
 function capsulePath(x1: number, y1: number, x2: number, y2: number, r: number): string {
   const theta = Math.atan2(y2 - y1, x2 - x1);
   const nx = r * Math.sin(theta);
@@ -428,7 +428,6 @@ export class SynthesisCanvasService {
     return out;
   }
 
-  /** Which of the preview's pins are bolted to the frame. */
   /**
    * Which of the preview's pins are bolted to the frame, and which one turns.
    *

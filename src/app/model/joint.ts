@@ -159,8 +159,7 @@ export class RealJoint extends Joint {
    * into one, so the length test happens to cover it; a Slide keeps two — the
    * rider and its block — and without this the panel would offer Weld and
    * Unweld at the same time.
-   */
-  /**
+   *
    * Ground is *not* part of this test, though it used to be.
    *
    * Welding two bars that meet at a grounded pin fuses them into one body that

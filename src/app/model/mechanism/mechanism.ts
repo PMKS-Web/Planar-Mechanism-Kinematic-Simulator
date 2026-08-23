@@ -337,19 +337,6 @@ export class Mechanism {
   }
 
   /**
-   * Map every link to the rigid body it belongs to.
-   *
-   * Two links pinned to each other at two or more shared joints cannot move
-   * relative to each other — the second pin constrains nothing the first did
-   * not already, so it is redundant. Gruebler's equation has no way to know
-   * that and subtracts for it anyway, reporting a mobility one lower than the
-   * assembly actually has. Users hit this by drawing a coupler as two
-   * overlapping links (or by welding one across a pair of joints another link
-   * already spans): a perfectly ordinary four-bar then counts as DOF 0 and
-   * refuses to simulate. Collapsing such links into one body before counting
-   * removes the paradox.
-   */
-  /**
    * steps to determine DOF (Gruebler's Criteron with Exceptions):
    1.determine number of links + ground
    1a. Links sharing two or more joints are one rigid body (see assignBodies)
@@ -362,6 +349,17 @@ export class Mechanism {
    * world.
    */
   determineDegreesOfFreedom() {
+    // Map every link to the rigid body it belongs to.
+    //
+    // Two links pinned to each other at two or more shared joints cannot move
+    // relative to each other — the second pin constrains nothing the first did
+    // not already, so it is redundant. Gruebler's equation has no way to know
+    // that and subtracts for it anyway, reporting a mobility one lower than the
+    // assembly actually has. Users hit this by drawing a coupler as two
+    // overlapping links (or by welding one across a pair of joints another link
+    // already spans): a perfectly ordinary four-bar then counts as DOF 0 and
+    // refuses to simulate. Collapsing such links into one body before counting
+    // removes the paradox.
     const { bodyOf, bodiesAt } = assignBodies(this.joints[0], this.links[0]);
 
     const hasGround = this.joints[0].some((j) => j instanceof RealJoint && j.ground);

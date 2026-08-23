@@ -80,8 +80,6 @@ export class RightPanelComponent implements DoCheck {
   mechanismService = inject(MechanismService);
   settingsService = inject(SettingsService);
   svgService = inject(SvgGridService);
-  private tutorial = inject(TutorialService);
-
   /**
    * The tutorial asks to be shown rather than reaching in and setting the tab.
    *
@@ -89,6 +87,8 @@ export class RightPanelComponent implements DoCheck {
    * this component's own page has already opened -- the tutorial page injects
    * the service -- so the request travels the other way.
    */
+  private tutorial = inject(TutorialService);
+
   /**
    * Whether the tutorial's card is showing above whatever page is open.
    *

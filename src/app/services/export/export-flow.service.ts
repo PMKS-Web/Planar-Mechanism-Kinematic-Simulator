@@ -16,7 +16,6 @@ import {
   ExportPartGroup,
 } from './export-model';
 
-/** Which of the three questions the drawer is asking. */
 /**
  * Which of the questions the drawer is asking.
  *
@@ -30,8 +29,8 @@ export type ExportStep = 'parts' | 'kinematics' | 'forces' | 'file';
 /**
  * What the export drawer has been told so far.
  *
- * Three steps, each asking one question: which parts, which numbers, and how
- * the file should be written. Nothing here writes anything — `ExportWriter`
+ * One question per step: which parts, which numbers, and how the file should
+ * be written. Nothing here writes anything — `ExportWriter`
  * turns this state into files — and nothing here touches the mechanism, so
  * opening the drawer and changing every answer in it leaves the drawing alone.
  */

@@ -934,15 +934,6 @@ export class NewGridComponent implements OnDestroy {
   forceGhost?: Force;
 
   /**
-   * The bar being drawn, tracking the cursor.
-   *
-   * Link creation showed a hairline and a dot, which says where the gesture
-   * started and where it will end and nothing about what it will make — the
-   * cylinder and force gestures both preview the part itself. This is the same
-   * capsule a two-joint link is drawn as, at the same half-width, so what is
-   * under the cursor is the bar the click commits.
-   */
-  /**
    * Settle the object scale before the first part is drawn.
    *
    * On an empty grid the scale is derived from the current zoom, so whatever is
@@ -983,6 +974,15 @@ export class NewGridComponent implements OnDestroy {
     return this.colorService.peekNextLinkColor();
   }
 
+  /**
+   * The bar being drawn, tracking the cursor.
+   *
+   * Link creation showed a hairline and a dot, which says where the gesture
+   * started and where it will end and nothing about what it will make — the
+   * cylinder and force gestures both preview the part itself. This is the same
+   * capsule a two-joint link is drawn as, at the same half-width, so what is
+   * under the cursor is the bar the click commits.
+   */
   get linkPreview(): { bar: string; from: Coord; fill: string } | undefined {
     const from = this.linkCreateStart;
     if (!this.dragState.isCreatingLink || !from) return undefined;
@@ -1361,18 +1361,6 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Whether an edit is allowed right now.
-   *
-   * Editing is only defined at the t=0 pose in Edit mode: the solved timesteps
-   * are derived from it, so a change made anywhere else has nothing to write to.
-   *
-   * Silently. Each of these used to announce itself, and each was saying
-   * something the reader could already see — which mode they are in is written
-   * across the top strip and down the side of the window, and whether the
-   * animation is running is the thing they are watching. A message for it was
-   * a fifth place saying the same word.
-   */
-  /**
    * The pivot of the current link drag, when one carried joint is locked.
    * Set at the grab and read per pointer move; a drag with no locked joint
    * clears it, so a stale pivot cannot outlive its gesture.
@@ -1517,6 +1505,18 @@ export class NewGridComponent implements OnDestroy {
     return `joint ${joint.name}`;
   }
 
+  /**
+   * Whether an edit is allowed right now.
+   *
+   * Editing is only defined at the t=0 pose in Edit mode: the solved timesteps
+   * are derived from it, so a change made anywhere else has nothing to write to.
+   *
+   * Silently. Each of these used to announce itself, and each was saying
+   * something the reader could already see — which mode they are in is written
+   * across the top strip and down the side of the window, and whether the
+   * animation is running is the thing they are watching. A message for it was
+   * a fifth place saying the same word.
+   */
   private canEditNow(): boolean {
     if (this.mechanismSrv.isPlaying) {
       return false;
@@ -2099,7 +2099,6 @@ export class NewGridComponent implements OnDestroy {
   // of it goes through the mechanism's own drag state -- a position is a
   // question about a machine, not part of one.
 
-  /** Take hold of a position by its body, its turn knob, or a corner grip. */
   /**
    * Hold the pointer for the rest of the gesture.
    *
@@ -2121,6 +2120,7 @@ export class NewGridComponent implements OnDestroy {
     }
   }
 
+  /** Take hold of a position by its body, its turn knob, or a corner grip. */
   startPoseGesture(event: PointerEvent, id: number, mode: 'move' | 'rotate' | 'length'): void {
     // The left button only. A right-press is asking for the menu, and taking
     // the pointer for a drag took the menu with it.
@@ -2608,16 +2608,6 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * A carrier's outline with its channels cut out of it.
-   *
-   * The link already fills even-odd, so appending a channel subpath subtracts
-   * it, and the link's own stroke then traces the new edge in the link's own
-   * colour — the channel is a hole in the bar rather than a lighter shape laid
-   * on top, which is what keeps its legibility independent of the random colour
-   * that bar happens to have. A bar carrying two slots simply gets two
-   * subpaths.
-   */
-  /**
    * Where each grounded guide sits in the world, and how far along itself its
    * block runs.
    *
@@ -2752,11 +2742,6 @@ export class NewGridComponent implements OnDestroy {
     });
   }
 
-  /**
-   * How many channels this carrier holds. Published on the element because a
-   * cut channel is otherwise indistinguishable from a compound link's extra
-   * subpath, and a test that cannot tell them apart is not testing the channel.
-   */
   /**
    * The sealed cylinders, always wearing their skin. Sealed ⇔ skinned: there
    * is no reveal on selection and no per-session preference any more.
@@ -3269,11 +3254,6 @@ export class NewGridComponent implements OnDestroy {
     return !!sealed && isCylinderInteriorOf(sealed, joint);
   }
 
-  /**
-   * What a link's canvas tag calls it. A sealed cylinder's interior joints are
-   * an implementation detail, so its letters come from the two mounts alone —
-   * and a compound that swallowed a member keeps only its visible letters too.
-   */
   /** One tag per part: the rod defers to the barrel's tag. */
   isSecondaryCylinderTag(link: Link): boolean {
     const sealed = this.mechanismSrv.cylinderAt(link);
@@ -3285,15 +3265,6 @@ export class NewGridComponent implements OnDestroy {
     return this.tabService.isAnalysisMode();
   }
 
-  /**
-   * The ink the "this is not attached to anything" marks are drawn in.
-   *
-   * Red on the canvas means "fix this", which is a thing to do in Edit. In an
-   * analysis mode the same geometry is scenery -- greyed out, not analysed, not
-   * even selectable -- so a red ring around it is the loudest thing on a canvas
-   * about something the reader cannot act on and did not ask about. It goes
-   * grey with the rest of the body it marks.
-   */
   /**
    * The colour one joint is drawn in, or nothing for the family they all share.
    *
@@ -3362,6 +3333,15 @@ export class NewGridComponent implements OnDestroy {
     return force.color || DEFAULT_FORCE_COLOR;
   }
 
+  /**
+   * The ink the "this is not attached to anything" marks are drawn in.
+   *
+   * Red on the canvas means "fix this", which is a thing to do in Edit. In an
+   * analysis mode the same geometry is scenery -- greyed out, not analysed, not
+   * even selectable -- so a red ring around it is the loudest thing on a canvas
+   * about something the reader cannot act on and did not ask about. It goes
+   * grey with the rest of the body it marks.
+   */
   get orphanMarkInk(): string {
     return this.tabService.isAnalysisMode() ? '#b6bac6' : '#F44336';
   }
@@ -3511,6 +3491,11 @@ export class NewGridComponent implements OnDestroy {
     return luminanceOf(fill) > INK_FLIPS_AT ? 'black' : 'white';
   }
 
+  /**
+   * What a link's canvas tag calls it. A sealed cylinder's interior joints are
+   * an implementation detail, so its letters come from the two mounts alone —
+   * and a compound that swallowed a member keeps only its visible letters too.
+   */
   linkDisplayName(link: Link): string {
     const sealed = this.mechanismSrv.cylinderAt(link);
     if (!sealed) return link.name;
@@ -3540,6 +3525,11 @@ export class NewGridComponent implements OnDestroy {
     return this.channelCountOn(link) > 0 && !this.skinnedLink(link) && !this.platedLink(link);
   }
 
+  /**
+   * How many channels this carrier holds. Published on the element because a
+   * cut channel is otherwise indistinguishable from a compound link's extra
+   * subpath, and a test that cannot tell them apart is not testing the channel.
+   */
   channelCountOn(link: Link): number {
     return (
       this.channelList.filter((channel) => channel.carrierId === link.id).length +
@@ -3604,6 +3594,16 @@ export class NewGridComponent implements OnDestroy {
     return fused;
   }
 
+  /**
+   * A carrier's outline with its channels cut out of it.
+   *
+   * The link already fills even-odd, so appending a channel subpath subtracts
+   * it, and the link's own stroke then traces the new edge in the link's own
+   * colour — the channel is a hole in the bar rather than a lighter shape laid
+   * on top, which is what keeps its legibility independent of the random colour
+   * that bar happens to have. A bar carrying two slots simply gets two
+   * subpaths.
+   */
   linkPathWithChannels(link: Link): string {
     // A skinned barrel or rod is drawn by the cylinder instead, so its ordinary
     // outline is suppressed rather than drawn underneath — otherwise the skin

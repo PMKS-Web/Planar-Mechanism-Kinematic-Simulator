@@ -151,11 +151,6 @@ export class StringTranscoder extends GenericTranscoder {
     );
   }
 
-  /*
-    Link encoding is defined as 
-    [type][id],[mass],[massMoI],[xCoM],[yCoM],[color],[jointID1,jointID2...],,[subsetLinkID1,subsetLinkID2...]
-    This should on average be 26 + [number of joints] characters per link
-    */
   /**
    * The link record's leading character carries root-ness, the two auto/custom
    * flags and whether the link is drawn as a disc, all in one slot, because the
@@ -194,6 +189,11 @@ export class StringTranscoder extends GenericTranscoder {
     '7': [false, true, false, true],
   };
 
+  /*
+    Link encoding is defined as
+    [type][id],[mass],[massMoI],[xCoM],[yCoM],[color],[jointID1,jointID2...],,[subsetLinkID1,subsetLinkID2...]
+    This should on average be 26 + [number of joints] characters per link
+    */
   private encodeLink(link: LinkData): string {
     // Found in the same table the decoder reads, rather than written out a
     // second time here: the two can then only agree.
@@ -679,11 +679,6 @@ export class StringTranscoder extends GenericTranscoder {
   }
 
   /*
-    Every lock reference must name an object this URL actually carries. No
-    legacy URL has the section at all, so strictness costs nothing and catches
-    hand-edits — the same bargain the sealed bit strikes.
-    */
-  /*
     Every colour must name a part this URL carries, and say something about it
     this build understands. Refused rather than dropped, for the same reason a
     lock reference is: a URL saying something this build cannot honour would
@@ -707,6 +702,11 @@ export class StringTranscoder extends GenericTranscoder {
     });
   }
 
+  /*
+    Every lock reference must name an object this URL actually carries. No
+    legacy URL has the section at all, so strictness costs nothing and catches
+    hand-edits — the same bargain the sealed bit strikes.
+    */
   private validateDecodedLocks(jointIDs: Set<string>, linkIDs: Set<string>): void {
     const forceIDs = new Set(this.forces.map((force) => force.id));
     this.lockedIds.forEach((lockedId) => {

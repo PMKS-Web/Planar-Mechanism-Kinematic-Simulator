@@ -195,15 +195,6 @@ export class AnalysisSetupComponent {
   }
 
   /**
-   * Every body force analysis will weigh, one editable row each.
-   *
-   * Setting up an analysis is mostly this: eight links, eight masses, and a
-   * panel that needs eight selections to reach them. The table is the same
-   * numbers in one place — and the place the massless warning points at.
-   * Cylinder parts appear under the part's own name, which is the first home
-   * their masses have had.
-   */
-  /**
    * The table's fields are the app's own input component, driven through this
    * form — one control per cell, named by body — so focus, fill, underline
    * and blur-commit are literally the same code path as every other field.
@@ -285,6 +276,15 @@ export class AnalysisSetupComponent {
     return this.buildRows();
   }
 
+  /**
+   * Every body force analysis will weigh, one editable row each.
+   *
+   * Setting up an analysis is mostly this: eight links, eight masses, and a
+   * panel that needs eight selections to reach them. The table is the same
+   * numbers in one place — and the place the massless warning points at.
+   * Cylinder parts appear under the part's own name, which is the first home
+   * their masses have had.
+   */
   massRows(): MassRow[] {
     const rows = this.buildRows();
     this.ensureRowControls(rows);

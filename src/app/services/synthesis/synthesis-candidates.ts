@@ -222,18 +222,6 @@ function attach(pose: PosePoint, u: number): Coord {
 }
 
 /**
- * What this candidate can actually do with the three positions.
- *
- * The circumcentre construction makes the loop close exactly at all three --
- * that is what it is for -- so the question is never whether a position is
- * reached. It is whether all three are reached on ONE assembly. A position
- * that only closes on the other intersection can be got to only by taking the
- * linkage apart and putting it back together, and that is what makes an
- * otherwise perfect construction useless as a machine. It is called a branch
- * defect, and it is the single most important thing to tell a reader
- * comparing candidates.
- */
-/**
  * The stretch of crank travel the three positions occupy, with a little margin.
  *
  * Which stretch this is decides everything the transmission angle then says,
@@ -345,6 +333,18 @@ function intoTravel(
   return range.full ? theta : null;
 }
 
+/**
+ * What this candidate can actually do with the three positions.
+ *
+ * The circumcentre construction makes the loop close exactly at all three --
+ * that is what it is for -- so the question is never whether a position is
+ * reached. It is whether all three are reached on ONE assembly. A position
+ * that only closes on the other intersection can be got to only by taking the
+ * linkage apart and putting it back together, and that is what makes an
+ * otherwise perfect construction useless as a machine. It is called a branch
+ * defect, and it is the single most important thing to tell a reader
+ * comparing candidates.
+ */
 export function assess(cand: FourBarCandidate): void {
   const branch = cand.sign;
   cand.thetas = cand.ptsA.map((p) => (Math.atan2(p.y - cand.A.y, p.x - cand.A.x) * 180) / Math.PI);

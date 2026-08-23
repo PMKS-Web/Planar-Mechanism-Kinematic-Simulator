@@ -179,10 +179,6 @@ function elbowAt(ground: Coord, crank: number, driven: Coord, coupler: number): 
 }
 
 /**
- * The shortest arc holding every angle: found as the complement of the widest
- * empty gap between neighbours, which is the one stretch nothing has to cross.
- */
-/**
  * The shortest arc that contains every one of the given directions.
  *
  * Found by looking for the widest gap between them and taking what is left:

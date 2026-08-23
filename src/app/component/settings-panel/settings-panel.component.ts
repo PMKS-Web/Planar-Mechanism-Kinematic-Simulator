@@ -227,11 +227,6 @@ export class SettingsPanelComponent implements OnDestroy {
   }
 
   /**
-   * The single length-unit switch. Both the Global Units radio and the internal
-   * length control funnel here so a unit change always rescales the mechanism's
-   * stored geometry, mass, inertia, and forces — never just relabels them.
-   */
-  /**
    * A unit change rescales the drawing's stored geometry, so it is an edit.
    *
    * The analysis modes lock the geometry, and Synthesis is writing its own --
@@ -242,6 +237,11 @@ export class SettingsPanelComponent implements OnDestroy {
     return this.tabs.getCurrentTab() === TabID.EDIT && !this.settingsService.animating.value;
   }
 
+  /**
+   * The single length-unit switch. Both the Global Units radio and the internal
+   * length control funnel here so a unit change always rescales the mechanism's
+   * stored geometry, mass, inertia, and forces — never just relabels them.
+   */
   private changeLengthUnit(toUnit: LengthUnit): void {
     const fromUnit = this.settingsService.lengthUnit.value;
     this.currentLengthUnit = toUnit;

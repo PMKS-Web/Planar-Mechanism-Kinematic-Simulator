@@ -6,23 +6,6 @@ interface PointLike {
 }
 
 /**
- * The SVG sweep flag every corner arc of a link outline must use.
- *
- * A link is drawn as its joints' convex hull pushed outward by half the bar
- * width, with an arc round each hull vertex joining one offset edge to the
- * next. Those arcs all turn the same way, and which way that is depends on one
- * thing: the direction the outline is being traced. Trace the hull
- * counter-clockwise and each corner turns positively, so `sweep = 1`; trace it
- * clockwise and every corner is `sweep = 0`.
- *
- * It has to be derived rather than observed because `hull` does not return a
- * consistent winding — a three-vertex hull can come back clockwise for one link
- * and counter-clockwise for the next. With the wrong flag the arc is still the
- * short way round, but round the *other* circle of that radius through the same
- * two points: it bulges inward, and the corner reads as a bite taken out of the
- * link rather than a rounded end.
- */
-/**
  * Hull vertices that are corners, dropping any that sit on the line between
  * their neighbours.
  *
@@ -70,6 +53,23 @@ export function withoutCollinearVertices(
   return kept;
 }
 
+/**
+ * The SVG sweep flag every corner arc of a link outline must use.
+ *
+ * A link is drawn as its joints' convex hull pushed outward by half the bar
+ * width, with an arc round each hull vertex joining one offset edge to the
+ * next. Those arcs all turn the same way, and which way that is depends on one
+ * thing: the direction the outline is being traced. Trace the hull
+ * counter-clockwise and each corner turns positively, so `sweep = 1`; trace it
+ * clockwise and every corner is `sweep = 0`.
+ *
+ * It has to be derived rather than observed because `hull` does not return a
+ * consistent winding — a three-vertex hull can come back clockwise for one link
+ * and counter-clockwise for the next. With the wrong flag the arc is still the
+ * short way round, but round the *other* circle of that radius through the same
+ * two points: it bulges inward, and the corner reads as a bite taken out of the
+ * link rather than a rounded end.
+ */
 export function outlineSweepFlag(
   order: readonly string[],
   joints: PointLike[],

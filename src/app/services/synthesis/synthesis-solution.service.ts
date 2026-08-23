@@ -20,20 +20,6 @@ import {
 } from './synthesis-candidates';
 
 /**
- * The answers, as opposed to the question.
- *
- * SynthesisBuilderService owns what the reader asked for -- three positions of
- * an end-effector link, and what a solution has to satisfy. This owns what
- * comes back: the candidate four-bars, which one is being looked at, how it is
- * being driven, where the preview has been scrubbed to, and the single moment
- * the answer stops being a preview and becomes part of the drawing.
- *
- * Nothing here touches the grid until `insert()` is called. That is the whole
- * point of the redesign: synthesis used to rebuild the mechanism on every
- * nudge of a coordinate, which made comparing two solutions impossible --
- * looking at the second one destroyed the first.
- */
-/**
  * How long the search reports itself for, at the least.
  *
  * Not a delay on the work -- the work starts at once -- but a floor under how
@@ -51,6 +37,20 @@ const MIN_SEARCH_VISIBLE_MS = 1100;
  */
 const MOVED_BY_HAND = 0.1 * MODEL_SCALE;
 
+/**
+ * The answers, as opposed to the question.
+ *
+ * SynthesisBuilderService owns what the reader asked for -- three positions of
+ * an end-effector link, and what a solution has to satisfy. This owns what
+ * comes back: the candidate four-bars, which one is being looked at, how it is
+ * being driven, where the preview has been scrubbed to, and the single moment
+ * the answer stops being a preview and becomes part of the drawing.
+ *
+ * Nothing here touches the grid until `insert()` is called. That is the whole
+ * point of the redesign: synthesis used to rebuild the mechanism on every
+ * nudge of a coordinate, which made comparing two solutions impossible --
+ * looking at the second one destroyed the first.
+ */
 @Injectable({ providedIn: 'root' })
 export class SynthesisSolutionService {
   private design = inject(SynthesisBuilderService);

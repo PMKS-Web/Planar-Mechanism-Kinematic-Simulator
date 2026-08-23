@@ -69,7 +69,11 @@ export const MARK = {
    */
   railMergeSlack: 0.1,
 
-  /** The plate that welds a rider to its block — visual only. */
+  /**
+   * The plate that welds a rider to its block — visual only.
+   *
+   * How far the motor body blends into the bar it is welded to.
+   */
   fillet: 1.25,
 
   /**
@@ -94,7 +98,6 @@ export const MARK = {
 
   /** A driven floating pin has no block, so the overlay brings its own backing. */
   pinBackingHalf: 2.2,
-  /** How far the motor body blends into the bar it is welded to. */
   /**
    * The motor's case, and how far it blends into the member it is bolted to.
    * Wider than the bar by enough to leave a shoulder for the fillet to live in

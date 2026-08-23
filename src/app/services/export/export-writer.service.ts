@@ -40,7 +40,6 @@ export class ExportWriterService {
   private nup = inject(NumberUnitParserService);
   private urls = inject(UrlGenerationService);
 
-  /** What the export would produce, for the summary the drawer shows. */
   /**
    * What the export would produce, forecast rather than measured.
    *
@@ -79,13 +78,6 @@ export class ExportWriterService {
       );
   }
 
-  /**
-   * Write the chosen export, and say whether anything came of it.
-   *
-   * A selection can empty itself out from under the reader — a mechanism that
-   * stops solving takes its parts with it — and an export that writes nothing
-   * must not be reported as one that worked.
-   */
   /** Every row of a table, formatted the way a file or a page would carry it. */
   private rowsOf(table: ExportTable): string[][] {
     const decimals = this.flow.decimals;
@@ -95,6 +87,13 @@ export class ExportWriterService {
     ]);
   }
 
+  /**
+   * Write the chosen export, and say whether anything came of it.
+   *
+   * A selection can empty itself out from under the reader — a mechanism that
+   * stops solving takes its parts with it — and an export that writes nothing
+   * must not be reported as one that worked.
+   */
   async run(): Promise<boolean> {
     // Sampled in slices rather than in one go, so the page keeps drawing --
     // the spinner on the button that started this among other things.

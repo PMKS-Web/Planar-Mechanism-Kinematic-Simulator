@@ -623,13 +623,6 @@ export class GridUtilsService {
     return selectedLink;
   }
 
-  /**
-   * Drag one mount of a sealed cylinder (§ cylinder 6): the assembly re-poses
-   * about the OTHER mount — axis through the mounts, barrel rigid to mount A,
-   * rod rigid to mount C, pin re-derived on the axis with the stroke clamped
-   * to the slot ends. Collinearity holds by construction, so no drag can bend
-   * a cylinder.
-   */
   /** Where this ram would put the mount, without moving anything. */
   private cylinderMountLanding(
     sealed: Cylinder,
@@ -671,6 +664,13 @@ export class GridUtilsService {
     );
   }
 
+  /**
+   * Drag one mount of a sealed cylinder (§ cylinder 6): the assembly re-poses
+   * about the OTHER mount — axis through the mounts, barrel rigid to mount A,
+   * rod rigid to mount C, pin re-derived on the axis with the stroke clamped
+   * to the slot ends. Collinearity holds by construction, so no drag can bend
+   * a cylinder.
+   */
   dragCylinderMount(sealed: Cylinder, mount: RealJoint, wanted: Coord): boolean {
     const pose = this.cylinderMountPose(sealed, mount, wanted);
     if (!pose) return false;
@@ -710,12 +710,6 @@ export class GridUtilsService {
     });
   }
 
-  /**
-   * Land a pose on the assembly's five joints (the slider rides the pin),
-   * then rebuild what depends on them — member links, genuinely deformed
-   * neighbours, and their forces, by the same frame-carrying rule dragLink
-   * applies.
-   */
   /**
    * Resize a cylinder to a stroke and a position in it, holding its barrel
    * mount and its axis — what the panel's Travel and Starts-at fields write.
@@ -790,7 +784,12 @@ export class GridUtilsService {
     this.mechanismSrv.updateMechanism(false);
   }
 
-  /** One assembly's five joints, and everything derived from them. */
+  /**
+   * Land a pose on the assembly's five joints (the slider rides the pin),
+   * then rebuild what depends on them — member links, genuinely deformed
+   * neighbours, and their forces, by the same frame-carrying rule dragLink
+   * applies.
+   */
   private placeCylinder(sealed: Cylinder, pose: CylinderPose): Set<string> {
     const placements: [Joint, { x: number; y: number }][] = [
       [sealed.barrelFar, pose.barrelFar],
@@ -936,12 +935,6 @@ export class GridUtilsService {
     return { at: point };
   }
 
-  /**
-   * Move a force under a drag.
-   *
-   * `how` says which of the three things the gesture is: the tail alone (the
-   * point the load acts at), the whole arrow, or the head (its direction).
-   */
   /**
    * Move a force under a drag.
    *

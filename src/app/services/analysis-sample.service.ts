@@ -8,23 +8,6 @@ import { ForceUnit } from '../model/unit-enums';
 import { SettingsService } from './settings.service';
 
 /**
- * What a graph plots, one solved sample at a time.
- *
- * This used to be a switch inside the graph component's plotting loop, which
- * meant the only way to ask "what does joint B read right now" was to build the
- * whole cycle and take one point out of it. A panel header wants exactly one
- * sample, so the arithmetic lives here and both callers share it — the graph by
- * walking every index, the header by asking for the pose on screen.
- *
- * Values leave at the precision they were solved at. They used to be rounded to
- * three decimals, which is a tenth of a millinewton: fine against a load of tens
- * of newtons and ruinous against a small one. On the four-bar template the
- * solver produces 360 distinct reactions across the cycle and that rounding left
- * 49 of them, each step two per cent of the whole curve — so the graph climbed a
- * visible staircase. Nothing needed it: every place that shows one of these
- * numbers formats it, the header to two decimals and the CSV at its own edge.
- */
-/**
  * A solved value below anything a mechanism can mean is float noise, not data.
  *
  * A joint that stands still solves to velocities like 2e-17: the residue of
@@ -41,6 +24,23 @@ function snapNoiseToZero(value: number): number {
   return Math.abs(value) < NOISE_FLOOR ? 0 : value;
 }
 
+/**
+ * What a graph plots, one solved sample at a time.
+ *
+ * This used to be a switch inside the graph component's plotting loop, which
+ * meant the only way to ask "what does joint B read right now" was to build the
+ * whole cycle and take one point out of it. A panel header wants exactly one
+ * sample, so the arithmetic lives here and both callers share it — the graph by
+ * walking every index, the header by asking for the pose on screen.
+ *
+ * Values leave at the precision they were solved at. They used to be rounded to
+ * three decimals, which is a tenth of a millinewton: fine against a load of tens
+ * of newtons and ruinous against a small one. On the four-bar template the
+ * solver produces 360 distinct reactions across the cycle and that rounding left
+ * 49 of them, each step two per cent of the whole curve — so the graph climbed a
+ * visible staircase. Nothing needed it: every place that shows one of these
+ * numbers formats it, the header to two decimals and the CSV at its own edge.
+ */
 @Injectable({ providedIn: 'root' })
 export class AnalysisSampleService {
   private settingsService = inject(SettingsService);

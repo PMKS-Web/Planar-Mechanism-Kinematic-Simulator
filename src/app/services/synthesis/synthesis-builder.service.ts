@@ -67,7 +67,6 @@ export class SynthesisBuilderService {
   /** Whether both ground pivots must land inside the region below. */
   public constrain = false;
 
-  /** The region, in model units, as a box with its origin at bottom-left. */
   /**
    * Which joints on the grid this design put there.
    *
@@ -108,6 +107,7 @@ export class SynthesisBuilderService {
    */
   public ownedAt: { x: number; y: number }[] = [];
 
+  /** The region, in model units, as a box with its origin at bottom-left. */
   public region = {
     x: -6 * MODEL_SCALE,
     y: -14 * MODEL_SCALE,

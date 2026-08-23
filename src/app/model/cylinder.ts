@@ -594,16 +594,6 @@ export interface CylinderPose {
   rodFar: { x: number; y: number };
 }
 
-/**
- * Re-pose a cylinder from its two mounts — the parametric drag (§ cylinder 6).
- *
- * The span between the mounts drives the layout: inside the ram's own travel
- * only the pin moves, and past either end of it the ram resizes. The `anchor`
- * mount stays exactly where it is in every case, and collinearity holds by
- * construction: every returned point is on the axis. `barrelLength` is read —
- * it is what the current stroke is measured from, and the whole point of the
- * rule is that a span inside the travel does *not* change it.
- */
 /** Barrel, rod and pin for a given size and position. The one place they are built. */
 export function cylinderMembers(stroke: number, start: number, r: number): CylinderMembers {
   const held = Math.max(stroke, MIN_STROKE_R * r);
@@ -688,6 +678,16 @@ export function cylinderSpanLayoutFrom(span: number, start: number, r: number): 
   return cylinderMembers(low, start, r);
 }
 
+/**
+ * Re-pose a cylinder from its two mounts — the parametric drag (§ cylinder 6).
+ *
+ * The span between the mounts drives the layout: inside the ram's own travel
+ * only the pin moves, and past either end of it the ram resizes. The `anchor`
+ * mount stays exactly where it is in every case, and collinearity holds by
+ * construction: every returned point is on the axis. `barrelLength` is read —
+ * it is what the current stroke is measured from, and the whole point of the
+ * rule is that a span inside the travel does *not* change it.
+ */
 export function layoutCylinder(
   barrelMount: { x: number; y: number },
   rodMount: { x: number; y: number },
