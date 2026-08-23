@@ -256,6 +256,16 @@
   }
 
   .chip {
+    // Positioned only so it paints above the sliding highlight. The highlight
+    // is absolutely positioned and opaque, and it is drawn before the tabs; a
+    // static sibling therefore paints underneath it. While the chip lived
+    // inside `.tabButton` it inherited that button's `position: relative` and
+    // the question never arose -- moved out to be keyboard-reachable, the
+    // active mode's chip was covered by its own highlight, and stayed
+    // clickable underneath because the highlight takes no pointer events.
+    // `.tabSlot` cannot take this instead: the highlight is measured from the
+    // slot's offsets, and positioning it would zero them.
+    position: relative;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
