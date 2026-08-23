@@ -104,7 +104,8 @@ export class ExportCatalogService {
     if (joint.input) notes.push('input');
     if (this.mechanism.sliderFor(joint)) notes.push('slider');
     if (joint.showCurve) notes.push('tracer point');
-    if (this.mechanism.isSelectedJoint(joint)) notes.push('currently selected');
+    const selected = this.mechanism.isSelectedJoint(joint);
+    if (selected) notes.push('currently selected');
     return {
       // Qualified by machine, because a joint can belong to two of them: a
       // chain bolted to another's ground shares that pin, and keyed by its
@@ -115,6 +116,7 @@ export class ExportCatalogService {
       id: joint.id,
       label: `Joint ${joint.name || joint.id}`,
       note: notes.join(', '),
+      selected,
       // Every joint of a mechanism that solves. A pinned one has a position
       // worth writing down and a reaction worth reading, and a list that
       // decided for the reader which of those they meant was a list that
@@ -138,13 +140,15 @@ export class ExportCatalogService {
     else if (link instanceof SliderBlock) notes.push('slider block');
     if (link.joints.some((joint) => (joint as RealJoint).input)) notes.push('input crank');
     if (link instanceof RealLink && link.subset.length > 0) notes.push('compound');
-    if (this.mechanism.isSelectedBody(link)) notes.push('currently selected');
+    const selected = this.mechanism.isSelectedBody(link);
+    if (selected) notes.push('currently selected');
     return {
       key: `${machine}|link:${link.id}`,
       kind: 'link',
       id: link.id,
       label: ram ? this.cylinderLabel(cylinders, link) : this.mechanism.bodyLabel(link),
       note: notes.join(', '),
+      selected,
       available: valid,
       part: link,
       mechanismIndex: index,

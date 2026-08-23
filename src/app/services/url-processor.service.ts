@@ -10,6 +10,7 @@ import { SelectedTabService, TabID } from '../selected-tab.service';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { applySynthesisDesign } from './synthesis/synthesis-url';
 import { SynthesisSolutionService } from './synthesis/synthesis-solution.service';
+import { RealLink } from '../model/link';
 
 @Injectable({
   providedIn: 'root',
@@ -182,14 +183,25 @@ export class UrlProcessorService {
     //
     // By id rather than by reference: the decode replaces every joint and link
     // with a new object, so the one held above no longer exists. If its id does
-    // not either, the edit really did remove it and the URL's own selection is
-    // the honest answer.
+    // not either, the edit really did remove it and nothing selected is the
+    // honest answer -- which is what the build has just left behind.
+    //
+    // By id *and* kind: ids are letters handed out alphabetically, so the same
+    // letter can name a joint in one state and a link in the next, and a
+    // lookup that took the first match would change what the panel is about.
     if (heldSelection?.id) {
       const restored =
         heldSelection.type === 'Joint'
           ? mechanismSrv.joints.find((joint) => joint.id === heldSelection.id)
           : heldSelection.type === 'Link'
-            ? mechanismSrv.links.find((link) => link.id === heldSelection.id)
+            ? // Sub-links included: a weld leaves its constituents selectable,
+              // and they are not in the top-level array.
+              mechanismSrv.links.find(
+                (link) =>
+                  link.id === heldSelection.id ||
+                  (link instanceof RealLink &&
+                    link.subset.some((subset) => subset.id === heldSelection.id))
+              )
             : mechanismSrv.forces.find((force) => force.id === heldSelection.id);
       if (restored) this.activeObj.updateSelectedObj(restored);
     }
@@ -220,7 +232,17 @@ export class UrlProcessorService {
     // mechanism's own history is not a new subject.
     if (!continuingHistory) {
       const tabs = this.injector.get(SelectedTabService);
-      if (tabs.isAnalysisMode() && !mechanismSrv.oneValidMechanismExists()) {
+      const tab = tabs.getCurrentTab();
+      // The mode's own gate, not kinematics twice: force analysis asks for more
+      // than a mechanism that runs -- something loading it -- and a drawing
+      // that solves kinematically but has nothing to push it leaves Force
+      // Analysis on screen with no numbers in it and the geometry locked. The
+      // same rule TopBarComponent.canAnalyse applies when the mode is pressed.
+      const ready =
+        tab === TabID.FORCE
+          ? mechanismSrv.forceAnalysisReady()
+          : mechanismSrv.oneValidMechanismExists();
+      if (tabs.isAnalysisMode(tab) && !ready) {
         tabs.setTab(TabID.EDIT);
       }
     }

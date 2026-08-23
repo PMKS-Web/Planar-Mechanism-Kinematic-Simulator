@@ -167,8 +167,7 @@ export class ExportColumnsService {
                     part,
                     jointId,
                     memberId,
-                    'Joint Forces',
-                    false
+                    'Joint Forces'
                   );
                 })
             );
@@ -235,8 +234,7 @@ export class ExportColumnsService {
           part,
           slot.slot.id,
           linkId,
-          'Joint Forces',
-          false
+          'Joint Forces'
         ),
       ];
     }
@@ -247,8 +245,7 @@ export class ExportColumnsService {
         part,
         part.id,
         linkId,
-        'Joint Forces',
-        !(part.part instanceof PrisJoint)
+        'Joint Forces'
       ),
     ];
   }
@@ -260,11 +257,15 @@ export class ExportColumnsService {
     mechPart: string,
     reactionLinkId: string,
     mechProp: string,
-    /** Whether the effort is a moment. Decided by the driving joint, not the part. */
-    isTorque: boolean
+    /**
+     * Whether the effort is a moment. Decided by the driving joint, not the
+     * part -- and only an input effort can be one, since a reaction is a vector
+     * whichever joint carries it. So the reaction call sites leave it alone
+     * rather than computing an answer nothing would read.
+     */
+    isTorque = false
   ): ExportColumn {
-    const torque = mechProp === 'Input Effort' && isTorque;
-    const unit = torque ? this.catalog.torqueUnit() : this.catalog.forceUnit();
+    const unit = isTorque ? this.catalog.torqueUnit() : this.catalog.forceUnit();
     const series: ExportSeries = {
       label,
       head,

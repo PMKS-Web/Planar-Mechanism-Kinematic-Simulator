@@ -66,3 +66,23 @@ export class BaseNConverter {
     return integer;
   }
 }
+
+/**
+ * How many places a number keeps when it rides a URL.
+ *
+ * Every number in this format is packed as a base-N integer of thousandths.
+ * The constant lives here, with the converter, because three separate places
+ * were spelling it out — the mechanism codec, the synthesis codec, and the
+ * fixture gallery — and a format constant restated is a format that can drift.
+ */
+export const URL_DECIMAL_PLACES = 1000;
+
+/** A number as the base-N integer of its thousandths. */
+export function toUrlSafeDecimal(value: number): string {
+  return BaseNConverter.toUrlSafeBaseN(Math.round(value * URL_DECIMAL_PLACES));
+}
+
+/** The inverse of {@link toUrlSafeDecimal}. */
+export function fromUrlSafeDecimal(text: string): number {
+  return BaseNConverter.fromUrlSafeBaseN(text) / URL_DECIMAL_PLACES;
+}

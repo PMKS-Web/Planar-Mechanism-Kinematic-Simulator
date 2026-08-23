@@ -121,7 +121,15 @@ export class ExportFlowService {
 
   private lists(): { key: string; groups: ExportPartGroup[]; forces: boolean } {
     const key = this.fingerprint();
-    if (this.cached?.key !== key) this.cached = this.build();
+    if (this.cached?.key !== key) {
+      this.cached = this.build();
+      // The forces step can stop existing under a reader who is standing on it
+      // -- switching to In-motion can leave the solver with no frames -- and a
+      // step that is not in the list has no neighbours: Back disappeared and
+      // Next threw them back to the first question. Fall back to the step
+      // before it, which every drawing has.
+      if (this.step === 'forces' && !this.cached.forces) this.step = 'kinematics';
+    }
     return this.cached;
   }
 
@@ -141,7 +149,7 @@ export class ExportFlowService {
     this.pickedParts = new Set(
       this.partGroups()
         .flatMap((group) => group.parts)
-        .filter((part) => part.available && part.note.includes('currently selected'))
+        .filter((part) => part.available && part.selected)
         .map((part) => part.key)
     );
   }

@@ -108,6 +108,22 @@ describe('a center-of-mass anchor in the URL', () => {
     expect(() => decoder.decodeURL(encode('grid').replace('CGAB', 'CGZZ'))).toThrow();
   });
 
+  it('holds the point where the URL put it through the first rebuild', () => {
+    // The URL carries the coordinate and the anchor but not the offset between
+    // them, and a non-centroid anchor with no offset reads exactly like one
+    // whose pin has left the link -- so a decode that did not capture it put
+    // the anchor quietly back to 'centroid' on the first update, losing the
+    // one thing this section exists to carry.
+    (['grid', { joint: 'B' }] as ComAnchor[]).forEach((anchor) => {
+      const bar = decode(encode(anchor)).links[0] as RealLink;
+      const placed = bar.customCoMFromOffset();
+
+      expect(bar.comAnchor).toEqual(anchor);
+      expect(placed?.x).toBeCloseTo(bar.CoM.x, 9);
+      expect(placed?.y).toBeCloseTo(bar.CoM.y, 9);
+    });
+  });
+
   it('opens a URL written before anchors existed with every center on its link', () => {
     const opened = decode(encode(undefined));
     expect((opened.links[0] as RealLink).comAnchor).toBe('centroid');

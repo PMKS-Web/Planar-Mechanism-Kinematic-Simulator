@@ -1,4 +1,4 @@
-import { BaseNConverter } from './base64-converter';
+import { BaseNConverter, fromUrlSafeDecimal, toUrlSafeDecimal } from './base64-converter';
 import { Checksum } from './checksum';
 import { FlagPacker } from './flag-packer';
 import { StringDisassembler } from './string-disassembler';
@@ -24,10 +24,7 @@ export class StringTranscoder extends GenericTranscoder {
   // We encode a number to base64.
   // To represent sign, "0", is inserted in the beginning for positive numbers and "1" for negative numbers.
   private encodeDecimalNumber(number: number): string {
-    // Number is now in string form, and is always an integer with resolution of 3 decimal places.
-    let normalizedNumber = Math.round(number * 1000);
-
-    return BaseNConverter.toUrlSafeBaseN(normalizedNumber);
+    return toUrlSafeDecimal(number);
   }
 
   private encodeInteger(integer: number): string {
@@ -35,8 +32,7 @@ export class StringTranscoder extends GenericTranscoder {
   }
 
   private decodeDecimalNumber(numberString: string): number {
-    let normalizedNumber = BaseNConverter.fromUrlSafeBaseN(numberString);
-    return normalizedNumber / 1000;
+    return fromUrlSafeDecimal(numberString);
   }
 
   private decodeInteger(integerString: string): number {

@@ -122,6 +122,36 @@ describe('the export drawer', () => {
     expect(parts.every((part) => part.available)).toBe(true);
   });
 
+  it('opens with whatever the canvas is holding already ticked', () => {
+    // Pinned to the fact rather than to the words: the row's note is copy the
+    // drawer renders, and reading the selection back out of it meant rewording
+    // a label silently stopped the drawer opening on the reader's own part.
+    const { flow, fixture } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
+    const b = fixture.service.joints.find((joint) => joint.id === 'B')!;
+    fixture.active.updateSelectedObj(b);
+    flow.reset();
+
+    expect(flow.selectedParts().map((part) => part.label)).toEqual(['Joint B']);
+  });
+
+  it('steps off the forces question when the forces stop being available', () => {
+    // Switching between Static and In-motion happens *on* this step, and the
+    // in-motion analysis can legitimately solve no frames at all -- so the step
+    // a reader is standing on can leave the list under them. It had no
+    // neighbours then: Back disappeared and Next threw them back to question 1.
+    const { flow, fixture } = flowFor(LEGACY_FORCE_MECHANISM, { forces: true });
+    flow.goTo('forces');
+    expect(flow.stepNumber()).toBe(3);
+
+    Object.assign(fixture.service, { forceAnalysisReady: () => false });
+    flow.refresh();
+
+    expect(flow.forcesAvailable()).toBe(false);
+    expect(flow.step).toBe('kinematics');
+    expect(flow.previousStep()).toBe('parts');
+    expect(flow.nextStep()).toBe('file');
+  });
+
   it('offers a grounded joint once force analysis is set up, for its reaction', () => {
     const { flow } = flowFor(LEGACY_FORCE_MECHANISM, { forces: true });
     const grounded = flow

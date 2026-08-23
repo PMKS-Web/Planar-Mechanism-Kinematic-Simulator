@@ -47,6 +47,17 @@ const COPIED = [
 ];
 
 /**
+ * The properties where `none` is a value rather than the absence of one.
+ *
+ * For the rest of `COPIED` it means "nothing set" — no filter, an unbroken
+ * stroke — and writing it out is noise, which is why it used to be dropped
+ * outright. For these three it is the whole declaration: a path styled
+ * `fill: none` picks up SVG's default black without it (the synthesis
+ * direction chevron is drawn that way), and a hidden element comes back.
+ */
+const NONE_IS_A_VALUE = new Set(['fill', 'stroke', 'display']);
+
+/**
  * @param jointIds The joints of the one machine this picture is about. The
  * frame is set on those, so a drawing holding three machines yields three
  * pictures of one machine each rather than three of the same crowd — and the
@@ -193,9 +204,9 @@ function inlineStyles(source: Element, clone: Element): void {
     if (!target.style) continue;
     COPIED.forEach((property) => {
       const value = computed.getPropertyValue(property);
-      if (value && value !== 'none' && value !== 'normal') {
-        target.style.setProperty(property, value);
-      }
+      if (!value || value === 'normal') return;
+      if (value === 'none' && !NONE_IS_A_VALUE.has(property)) return;
+      target.style.setProperty(property, value);
     });
     // Nothing in a printed picture answers a pointer, and the attributes that
     // said so are noise in the file.

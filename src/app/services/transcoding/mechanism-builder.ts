@@ -304,15 +304,20 @@ export class MechanismBuilder {
       }
     });
 
-    // What each hand-placed centre of mass is held against. The offsets it
-    // needs are captured from the decoded coordinate on the first update, the
-    // same way the centroid anchor already works -- the URL carries where the
-    // point is, and the anchor says what it is measured from.
+    // What each hand-placed centre of mass is held against. The URL carries
+    // where the point is and the anchor says what it is measured from, so the
+    // offset between the two is captured here, against the geometry just
+    // decoded. Not left to the first update as the centroid anchor's is: that
+    // fallback only runs where the point cannot be re-derived, and a
+    // non-centroid anchor with no offset yet is instead read as one whose pin
+    // has gone -- which quietly put the anchor back to 'centroid' and lost the
+    // very thing this section exists to carry.
     this.transcoder.getComAnchors().forEach((entry) => {
       const [reference, jointID] = entry.substring(2).split('~');
       const link = this.getLinkByID(links, reference);
       if (!(link instanceof RealLink)) return;
       link.comAnchor = entry.charAt(1) === 'G' ? 'grid' : { joint: jointID };
+      link.captureComOffset();
     });
 
     // A sealed cylinder's parts always follow their own shapes. Nothing that
@@ -331,7 +336,7 @@ export class MechanismBuilder {
       }
     }
 
-    // What was selected before this rebuild, re-found among the new objects.
+    // Nothing is selected in a mechanism that has just been built.
     //
     // The URL used to carry the selection, which made it two things it should
     // never have been: part of what a shared link says, so opening someone
@@ -342,24 +347,15 @@ export class MechanismBuilder {
     //
     // The field is still written, always empty, because its position in the
     // format is load-bearing for every URL already shared.
-    const selectedType = this.activeObj.getSelectedObjType();
-    const previousId = ['Joint', 'Link', 'Force'].includes(selectedType)
-      ? this.activeObj.getSelectedObj().id
-      : undefined;
-    let activeObj: Joint | Link | Force | null = null;
-    if (previousId) {
-      activeObj =
-        this.getJointByID(joints, previousId) ??
-        links.find(
-          (link) =>
-            link.id === previousId ||
-            (link instanceof RealLink && link.subset.some((subset) => subset.id === previousId))
-        ) ??
-        forces.find((force) => force.id === previousId) ??
-        null;
-    }
-
-    this.activeObj.updateSelectedObj(activeObj);
+    //
+    // Carrying the old selection across by id is no better than the URL was:
+    // ids are letters handed out alphabetically, so any template or project
+    // holding an A would open with an unrelated A selected -- and a different
+    // *kind* of object where the letter had been reused. Where a selection
+    // genuinely should survive a decode, it is because this is one mechanism's
+    // own history being stepped through, and UrlProcessorService puts it back
+    // by id and type under exactly that condition.
+    this.activeObj.updateSelectedObj(null);
 
     if (updateSettings) {
       // Configure mechanism global flags

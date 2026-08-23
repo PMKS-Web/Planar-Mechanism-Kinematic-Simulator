@@ -28,6 +28,14 @@ export interface ExportPart {
   /** Why it is worth noticing — `grounded`, `input crank`, `slider`. */
   note: string;
   /**
+   * Whether this is what the canvas is holding, so the drawer opens on it.
+   *
+   * Carried as a fact rather than read back out of `note`: the note is the copy
+   * the drawer renders, and rewording it must not quietly stop the export
+   * pre-ticking what the reader had already picked.
+   */
+  selected: boolean;
+  /**
    * Whether this part has anything to give in the mode being exported.
    *
    * A grounded joint never moves, so kinematics has nothing for it; force
