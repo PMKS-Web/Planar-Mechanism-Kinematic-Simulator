@@ -353,13 +353,20 @@ const copyMade = await page.evaluate((known) => {
     joints: copy.joints.length,
     sharesAJoint: copy.joints.some((one) => source.joints.some((other) => other.id === one.id)),
     gap: Math.round(gap),
+    // The copy is set aside by a fixed share of the object scale, and the
+    // object scale follows the zoom the canvas settles at -- so the distance
+    // in model units is not a constant, and asserting one made this check
+    // depend on how much room the chrome happened to leave the canvas.
+    expectedGap: Math.round(0.9 * service.settingsService.objectScale),
     mass: copy.mass,
     sourceMass: source.mass,
   };
 }, linksBefore);
 check(
   'Duplicate copies a three-joint link, free-standing and clear of the original',
-  copyMade?.joints === 3 && copyMade?.sharesAJoint === false && (copyMade?.gap ?? 0) > 50,
+  copyMade?.joints === 3 &&
+    copyMade?.sharesAJoint === false &&
+    Math.abs((copyMade?.gap ?? 0) - (copyMade?.expectedGap ?? -1)) <= 1,
   copyMade
 );
 check(

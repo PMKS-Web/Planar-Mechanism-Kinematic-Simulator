@@ -79,11 +79,15 @@ const highlighted = () =>
     const pill = document.querySelector('.activeTabPill');
     const active = document.querySelector('.tabButton.active');
     if (!pill || !active) return null;
+    // An analysis mode and its readiness chip are two controls read as one tab,
+    // so the highlight spans the pair. Measured against the slot that holds
+    // them, which is the button itself for a mode that carries no chip.
+    const box = active.closest('.tabSlot') ?? active;
     const style = getComputedStyle(pill);
     return {
       label: active.querySelector('.tabLabel')?.innerText ?? '',
-      dLeft: Math.round(new DOMMatrix(style.transform).m41 - active.offsetLeft),
-      dWidth: Math.round(parseFloat(style.width) - active.offsetWidth),
+      dLeft: Math.round(new DOMMatrix(style.transform).m41 - box.offsetLeft),
+      dWidth: Math.round(parseFloat(style.width) - box.offsetWidth),
     };
   });
 
@@ -208,7 +212,10 @@ try {
   // genuinely unloaded — the refusal has to come back.
   await page.evaluate(() => {
     const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    // An edit, through the rebuild every edit funnels through — readiness is
+    // cached against it, so a bare next() would leave the chips stale.
     grid.settings.isGravity.next(false);
+    grid.mechanismSrv.updateMechanism(true);
   });
   await tab('Force').click();
   await page.waitForTimeout(800);
@@ -224,7 +231,10 @@ try {
   );
   await page.evaluate(() => {
     const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    // An edit, through the rebuild every edit funnels through — readiness is
+    // cached against it, so a bare next() would leave the chips stale.
     grid.settings.isGravity.next(true);
+    grid.mechanismSrv.updateMechanism(true);
   });
 
   // --- play, then leave: the mechanism must rewind ---------------------------
@@ -332,7 +342,7 @@ try {
   const analysisStrip = await page.locator('#bottomBar').innerText();
   record(
     'and follows the mode into analysis',
-    /Kinematic/.test(analysisStrip) && /Geometry locked/.test(analysisStrip),
+    /Kinematic/.test(analysisStrip) && /Read-only here/.test(analysisStrip),
     analysisStrip
   );
 

@@ -58,8 +58,14 @@ await open(payloads['4-Bar']);
 // static problem, so the four-bar as it arrives is ready for force analysis.
 // Turning gravity off is what makes this drawing genuinely unloaded, which is
 // the refusal these three checks are about.
+// Set through the same three steps the Settings toggle uses, not by poking the
+// subject alone: gravity is an edit, and readiness is cached against the
+// rebuild every edit funnels through. A bare `next()` leaves the cached
+// readiness answering for the drawing as it was.
 await page.evaluate(() => {
-  ng.getComponent(document.querySelector('app-new-grid')).settings.isGravity.next(false);
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.settings.isGravity.next(false);
+  grid.mechanismSrv.updateMechanism(true);
 });
 await tab('Force').click();
 await page.waitForTimeout(600);

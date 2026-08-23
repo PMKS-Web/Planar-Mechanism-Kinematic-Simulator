@@ -50,7 +50,7 @@ const { chromium } = await import(
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
 
-const BASE = process.env.PMKS_URL ?? 'http://127.0.0.1:4200/';
+const BASE = process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://127.0.0.1:4200/';
 const OUT = 'artifacts/template-graphs';
 mkdirSync(OUT, { recursive: true });
 

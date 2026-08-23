@@ -11,7 +11,8 @@ import { waitForReady } from './app-ready.mjs';
 const screenshotDir = path.resolve('artifacts/screenshots');
 await fs.mkdir(screenshotDir, { recursive: true });
 
-const baseUrl = process.env.PMKS_URL || 'http://127.0.0.1:4200/';
+const baseUrl =
+  process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://127.0.0.1:4200/';
 const runPrefix = process.env.RUN_PREFIX || 'phase1';
 const chromePath =
   process.env.PMKS_CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
