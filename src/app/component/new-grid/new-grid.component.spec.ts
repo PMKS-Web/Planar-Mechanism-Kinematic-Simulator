@@ -14,6 +14,7 @@ import { BackgroundImageService } from '../../services/background-image.service'
 import { SynthesisBuilderService } from '../../services/synthesis/synthesis-builder.service';
 import { NotificationService } from '../../services/notification.service';
 import { Coord } from '../../model/coord';
+import { LONGEST_ARROW_FRACTION, PATH_ARROW_COUNT } from '../../model/vector-trace';
 
 /**
  * NewGridComponent renders through svg-pan-zoom, which needs real SVG layout;
@@ -292,6 +293,68 @@ describe('NewGridComponent drag gestures', () => {
     expect([c.x, c.y]).toEqual([20, 20]);
   });
 
+  /**
+   * ...and says so, once, and only to somebody who really tried.
+   *
+   * The refused drag above was silent: the joint stayed put and nothing said
+   * why, which reads as a broken canvas rather than a fixed one. The two bars
+   * here do not solve, so in an analysis mode they would be scenery and take
+   * no click at all -- the refusal is about the mode rather than about this
+   * machine, so the scene is told to treat them as live parts.
+   */
+  describe('the refusal a fixed geometry earns', () => {
+    const said = () =>
+      TestBed.inject(NotificationService).live.filter(
+        (one) => one.id === 'analysis.geometry-fixed'
+      );
+
+    function inAnalysis() {
+      const scene = setUp();
+      TestBed.inject(SelectedTabService).setTab(TabID.ANALYZE);
+      vi.spyOn(scene.mechanism, 'isPartInert').mockReturnValue(false);
+      return scene;
+    }
+
+    it('names the way out when a part is dragged', () => {
+      const { component, b } = inAnalysis();
+      component.setLastLeftClick(b);
+      drag(component, 8);
+      expect(said().length).toBe(1);
+      expect(said()[0].text).toContain('Edit mode');
+    });
+
+    it('says it once for a gesture, however many moves it takes', () => {
+      const { component, b } = inAnalysis();
+      component.setLastLeftClick(b);
+      drag(component, 20);
+      expect(said().length).toBe(1);
+    });
+
+    it('stays quiet for a click that only selected the part', () => {
+      const { component, b } = inAnalysis();
+      component.setLastLeftClick(b);
+      component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 5, clientY: 5 }));
+      component.mouseUp(new MouseEvent('mouseup'));
+      expect(said().length).toBe(0);
+    });
+
+    it('stays quiet for a press that never leaves the click threshold', () => {
+      const { component, b } = inAnalysis();
+      component.setLastLeftClick(b);
+      component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 5, clientY: 5 }));
+      component.mouseMove(new MouseEvent('mousemove', { clientX: 7, clientY: 8 }));
+      component.mouseUp(new MouseEvent('mouseup'));
+      expect(said().length).toBe(0);
+    });
+
+    it('stays quiet where the geometry can actually be moved', () => {
+      const { component, b } = setUp();
+      component.setLastLeftClick(b);
+      drag(component, 8);
+      expect(said().length).toBe(0);
+    });
+  });
+
   // A drag let go of over the floating panel comes up on the window, not on the
   // canvas, so `mouseUp` never fires. Left unreleased the joint kept following a
   // button-less cursor, panning stayed refused, and the move earned no undo
@@ -373,3 +436,84 @@ describe('NewGridComponent keyboard shortcuts', () => {
     expect(refusal).toHaveBeenCalled();
   });
 });
+
+/**
+ * A vector trace is a picture of something a graph can only tabulate: which
+ * way the quantity points, at each place the part passes through. Everything
+ * here is about the two halves agreeing -- the pale arrows along the cycle and
+ * the heavy one at the pose share a scale, or the live one reads as a spike.
+ */
+describe('NewGridComponent vector traces', () => {
+  beforeEach(configureGridTestBed);
+
+  function analysing() {
+    const mechanism = TestBed.inject(MechanismService);
+    const scene = twoBars(mechanism);
+    TestBed.inject(SelectedTabService).setTab(TabID.ANALYZE);
+    return { mechanism, ...scene };
+  }
+
+  it('draws nothing until a part is switched on', () => {
+    const { mechanism } = analysing();
+    expect(mechanism.anyVectorTrace).toBe(false);
+    expect(mechanism.vectorTracePaths()).toEqual([]);
+  });
+
+  it('spaces arrows along the whole cycle, and puts one at the pose', () => {
+    const { mechanism, b } = analysing();
+    mechanism.toggleVectorTrace(b, 'velocity');
+
+    const [trace] = mechanism.vectorTracePaths();
+    expect(trace.key).toBe('velocity:B');
+    // A shaft and two barbs per arrow, and two dozen arrows for the cycle --
+    // not one per solved sample, which is 361 of them.
+    expect(trace.d.split('M').length - 1).toBe(3 * PATH_ARROW_COUNT);
+
+    const [live] = mechanism.liveVectorArrows();
+    // Attached to the part: the tail is where the joint is drawn right now.
+    expect([live.x, live.y]).toEqual([b.x, b.y]);
+    expect(live.d.split('M').length - 1).toBe(3);
+  });
+
+  it('scales the biggest arrow of a cycle against the size of the machine', () => {
+    const { mechanism, b } = analysing();
+    mechanism.toggleVectorTrace(b, 'velocity');
+    const longest = Math.max(...shaftLengths(mechanism.vectorTracePaths()[0].d));
+    // The crank sweeps a circle of radius sqrt(50) about the origin, so its
+    // swept box has a diagonal of 4 * sqrt(50) / sqrt(2) -- and the longest
+    // arrow is the agreed fraction of that.
+    const span = Math.hypot(2 * Math.hypot(5, 5), 2 * Math.hypot(5, 5));
+    expect(longest).toBeCloseTo(span * LONGEST_ARROW_FRACTION, 3);
+  });
+
+  it('keeps each mode to the vectors that mode is about', () => {
+    const { mechanism, b } = analysing();
+    mechanism.toggleVectorTrace(b, 'velocity');
+    expect(mechanism.vectorTracePaths().length).toBe(1);
+    TestBed.inject(SelectedTabService).setTab(TabID.FORCE);
+    expect(mechanism.vectorTracePaths()).toEqual([]);
+    TestBed.inject(SelectedTabService).setTab(TabID.EDIT);
+    expect(mechanism.vectorTracePaths()).toEqual([]);
+  });
+
+  it('forgets a switch whose part has been deleted', () => {
+    const { mechanism, b } = analysing();
+    mechanism.toggleVectorTrace(b, 'velocity');
+    mechanism.joints = mechanism.joints.filter((joint) => joint.id !== 'B');
+    expect(mechanism.vectorTracePaths()).toEqual([]);
+    expect(mechanism.anyVectorTrace).toBe(false);
+  });
+});
+
+/** The shaft of every arrow in a path: each one is the first leg of a triple. */
+function shaftLengths(d: string): number[] {
+  const legs = d.split('M').filter((piece) => piece.trim() !== '');
+  return legs
+    .filter((_, index) => index % 3 === 0)
+    .map((leg) => {
+      const [x1, y1, x2, y2] = leg
+        .split('L')
+        .flatMap((half) => half.trim().split(/\s+/).map(Number));
+      return Math.hypot(x2 - x1, y2 - y1);
+    });
+}

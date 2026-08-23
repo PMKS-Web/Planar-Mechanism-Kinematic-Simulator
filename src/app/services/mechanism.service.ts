@@ -56,6 +56,19 @@ import { siUnitFactors } from '../model/unit-conversions';
 import { DragStateService } from './drag-state.service';
 import { Coord } from '../model/coord';
 import { SelectedTabService, TabID } from '../selected-tab.service';
+import { AnalysisSampleService } from './analysis-sample.service';
+import { ForceAnalysisMode } from '../model/mechanism/force-solver';
+import {
+  arrowPath,
+  buildVectorTrace,
+  DrawnVectorTrace,
+  LiveVectorArrow,
+  planar,
+  VectorQuantity,
+  VectorTraceRefusal,
+  VectorTraceShape,
+  VECTOR_INK,
+} from '../model/vector-trace';
 import { frozenJointIds } from '../model/lock-set';
 import { SaveHistoryService } from './save-history.service';
 import { NumberUnitParserService } from './number-unit-parser.service';
@@ -1016,6 +1029,283 @@ export class MechanismService {
     return this.mechanisms.length > 0 && this.mechanisms.every((m) => m.isMechanismValid());
   }
 
+  // -------------------------------------------------------- vector traces
+
+  /**
+   * Which parts carry which vector, as `${quantity}:${part id}`.
+   *
+   * Held here rather than on the part, and deliberately not written into the
+   * URL. The codec is a compatibility surface -- every shared link ever
+   * produced decodes through it -- and a switch about how the mechanism is
+   * *looked at* is not worth spending a flag bit on in the pass that
+   * introduces it. Keyed by id, it also survives undo and redo, which rebuild
+   * every Joint and Link from the URL: a field on the part would not.
+   */
+  private vectorTraceKeys = new Set<string>();
+
+  /** True where anything at all is switched on, for the canvas's own guard. */
+  get anyVectorTrace(): boolean {
+    return this.vectorTraceKeys.size > 0;
+  }
+
+  private vectorKey(part: Joint | Link, quantity: VectorQuantity): string {
+    return `${quantity}:${part.id}`;
+  }
+
+  isVectorTraceOn(part: Joint | Link, quantity: VectorQuantity): boolean {
+    return this.vectorTraceKeys.has(this.vectorKey(part, quantity));
+  }
+
+  toggleVectorTrace(part: Joint | Link, quantity: VectorQuantity): void {
+    const key = this.vectorKey(part, quantity);
+    if (!this.vectorTraceKeys.delete(key)) this.vectorTraceKeys.add(key);
+  }
+
+  /**
+   * Why this part will not take this vector, in the model's own words.
+   *
+   * Only the reasons this module owns. Whether the part's machine can be
+   * analyzed at all is the readiness list's answer and the menu asks that
+   * separately, because it is the same answer for every row on the card.
+   */
+  vectorTraceRefusal(part: Joint | Link, quantity: VectorQuantity): VectorTraceRefusal | undefined {
+    const solved = this.mechanismContaining(part);
+    if (!solved?.isMechanismValid()) return undefined;
+    if (quantity === 'force') {
+      const series = solved.getForceAnalysis(this.settingsService.forceAnalysisMode.value);
+      if (series.successfulFrames === 0) {
+        return {
+          short: 'no force solution',
+          long: series.diagnostic ?? 'This mechanism has no determinate force-equilibrium model.',
+        };
+      }
+      if (!this.jointHasReactionVector(part)) {
+        return {
+          short: 'one part meets it',
+          long: 'Only one part meets this joint, so there is no second body for it to react against and no force to draw.',
+        };
+      }
+      return undefined;
+    }
+    // A pin bolted to the frame stands still all cycle, so its arrow would be
+    // a point. Answered from the geometry rather than by solving the cycle:
+    // opening a menu should not cost an analysis.
+    if (part instanceof RealJoint && this.groundedInPlace(part)) {
+      return {
+        short: 'it never moves',
+        long: `This joint is fixed to the frame, so its ${quantity} is zero at every instant.`,
+      };
+    }
+    return undefined;
+  }
+
+  /** Fixed to the frame, and not the pin of a slider that runs along one. */
+  private groundedInPlace(joint: RealJoint): boolean {
+    return joint.ground && !this.gridUtils.isAttachedToSlider(joint);
+  }
+
+  /**
+   * Whether a reaction vector is solved *at* this joint.
+   *
+   * Not `jointHasForceToGraph`, which also answers yes for the driven joint:
+   * what that one has is the effort driving it, and an input torque is not a
+   * vector anything can draw at a point.
+   */
+  jointHasReactionVector(part: Joint | Link): boolean {
+    if (!(part instanceof RealJoint)) return false;
+    const solved = this.mechanismContaining(part);
+    if (!solved?.isMechanismValid()) return false;
+    const series = solved.getForceAnalysis(this.settingsService.forceAnalysisMode.value);
+    return (series.reactionIndex.linksByJoint.get(part.id) ?? []).length > 0;
+  }
+
+  /**
+   * The arrows spaced along each switched-on part's cycle.
+   *
+   * Cached on `solveRevision`, like the readiness list beside it: every input
+   * is written by an edit, and a cycle of arrows costs one solve per sample.
+   * The mode and the force-analysis kind are in the key because they change
+   * which traces are drawn and what a force one reads, and neither moves the
+   * revision.
+   */
+  vectorTracePaths(): DrawnVectorTrace[] {
+    const tab = this.tabs.getCurrentTab();
+    const mode = this.settingsService.forceAnalysisMode.value;
+    const held = this.vectorTraceCache;
+    if (!held || held.revision !== this.solveRevision || held.tab !== tab || held.mode !== mode) {
+      this.vectorTraceCache = {
+        revision: this.solveRevision,
+        tab,
+        mode,
+        ...this.buildVectorTraces(tab, mode),
+      };
+    }
+    return this.vectorTraceCache!.list;
+  }
+
+  private vectorTraceCache?: {
+    revision: number;
+    tab: TabID;
+    mode: ForceAnalysisMode;
+    list: DrawnVectorTrace[];
+    scales: Map<string, number>;
+  };
+
+  private buildVectorTraces(
+    tab: TabID,
+    mode: ForceAnalysisMode
+  ): { list: DrawnVectorTrace[]; scales: Map<string, number> } {
+    const list: DrawnVectorTrace[] = [];
+    const scales = new Map<string, number>();
+    for (const key of [...this.vectorTraceKeys]) {
+      const quantity = key.slice(0, key.indexOf(':')) as VectorQuantity;
+      const part = this.partById(key.slice(key.indexOf(':') + 1));
+      // The part is gone -- deleted, or cleared with the drawing. A switch on
+      // nothing is not state worth keeping.
+      if (!part || part instanceof Force) {
+        this.vectorTraceKeys.delete(key);
+        continue;
+      }
+      // Each mode draws what it is about, so a velocity switched on in
+      // Kinematic does not clutter the force picture.
+      if (tab !== (quantity === 'force' ? TabID.FORCE : TabID.ANALYZE)) continue;
+      const shape = this.vectorShapeOf(part, quantity, mode);
+      if (!shape) continue;
+      list.push({ key, quantity, ink: VECTOR_INK[quantity], d: shape.d });
+      scales.set(key, shape.scale);
+    }
+    return { list, scales };
+  }
+
+  private vectorShapeOf(
+    part: Joint | Link,
+    quantity: VectorQuantity,
+    mode: ForceAnalysisMode
+  ): VectorTraceShape | undefined {
+    const solved = this.mechanismContaining(part);
+    if (!solved?.isMechanismValid()) return undefined;
+    const vectorAt = this.vectorSamplerFor(solved, part, quantity, mode);
+    if (!vectorAt) return undefined;
+    return buildVectorTrace(
+      solved.joints.length,
+      this.positionSamplerFor(solved, part),
+      vectorAt,
+      this.sweptSpanOf(solved)
+    );
+  }
+
+  /** Where the arrow's tail sits at one sample: the joint, or the link's CoM. */
+  private positionSamplerFor(solved: Mechanism, part: Joint | Link) {
+    if (part instanceof Joint) {
+      return (index: number) => solved.joints[index]?.find((one) => one.id === part.id);
+    }
+    return (index: number) => {
+      const link = solved.links[index]?.find((one) => one.id === part.id);
+      return link instanceof RealLink ? link.CoM : undefined;
+    };
+  }
+
+  /**
+   * What the quantity reads at one sample, through the same service the graphs
+   * plot from — so an arrow and a curve of the same thing cannot disagree.
+   */
+  private vectorSamplerFor(
+    solved: Mechanism,
+    part: Joint | Link,
+    quantity: VectorQuantity,
+    mode: ForceAnalysisMode
+  ): ((index: number) => { x: number; y: number } | undefined) | undefined {
+    if (quantity === 'force') {
+      // A reaction is carried at a joint. A link has no single one.
+      if (!(part instanceof Joint)) return undefined;
+      return (index) =>
+        planar(this.samples.sampleAt(solved, index, 'force', mode, 'Joint Forces', part.id));
+    }
+    const property =
+      part instanceof Joint
+        ? quantity === 'velocity'
+          ? 'Linear Joint Vel'
+          : 'Linear Joint Acc'
+        : quantity === 'velocity'
+          ? "Linear Link's CoM Vel"
+          : "Linear Link's CoM Acc";
+    return (index) =>
+      planar(this.samples.sampleAt(solved, index, 'kinematic', '', property, part.id));
+  }
+
+  /** How big this machine is on the drawing: the box its cycle sweeps out. */
+  private sweptSpanOf(solved: Mechanism): number {
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    solved.joints.forEach((frame) =>
+      frame.forEach((joint) => {
+        minX = Math.min(minX, joint.x);
+        maxX = Math.max(maxX, joint.x);
+        minY = Math.min(minY, joint.y);
+        maxY = Math.max(maxY, joint.y);
+      })
+    );
+    const span = Math.hypot(maxX - minX, maxY - minY);
+    // A machine whose joints all sit on one point sweeps nothing; one user
+    // length keeps the arrows from collapsing to nothing with it.
+    return Number.isFinite(span) && span > 0 ? span : MODEL_SCALE;
+  }
+
+  /**
+   * One arrow per switched-on part, at the pose on screen.
+   *
+   * Cached against the pose rather than the solve, because this is the one
+   * thing here that does move every animation frame — and against the path
+   * list's identity too, so a change of mode rebuilds it even though no pose
+   * moved.
+   */
+  liveVectorArrows(): LiveVectorArrow[] {
+    const paths = this.vectorTracePaths();
+    const held = this.liveVectorCache;
+    if (!held || held.revision !== this.poseRevision || held.from !== paths) {
+      this.liveVectorCache = {
+        revision: this.poseRevision,
+        from: paths,
+        list: this.buildLiveVectors(paths),
+      };
+    }
+    return this.liveVectorCache!.list;
+  }
+
+  private liveVectorCache?: {
+    revision: number;
+    from: DrawnVectorTrace[];
+    list: LiveVectorArrow[];
+  };
+
+  private buildLiveVectors(paths: DrawnVectorTrace[]): LiveVectorArrow[] {
+    const mode = this.settingsService.forceAnalysisMode.value;
+    const scales = this.vectorTraceCache?.scales ?? new Map<string, number>();
+    return paths.flatMap((trace) => {
+      const part = this.partById(trace.key.slice(trace.key.indexOf(':') + 1));
+      if (!part || part instanceof Force) return [];
+      const index = this.indexOfMechanismContaining(part);
+      const solved = this.mechanisms[index];
+      const scale = scales.get(trace.key);
+      if (!solved || scale === undefined) return [];
+      const value = this.vectorSamplerFor(
+        solved,
+        part,
+        trace.quantity,
+        mode
+      )?.(this.currentSampleOf(index));
+      // The tail rides the drawn part, not the sample: between samples the
+      // pose is blended, and an arrow left at the last solved position would
+      // detach from the joint it belongs to.
+      const tail = part instanceof Joint ? part : part instanceof RealLink ? part.CoM : undefined;
+      if (!value || !tail) return [];
+      const arrow = { x: tail.x, y: tail.y, dx: value.x * scale, dy: value.y * scale };
+      return [{ key: trace.key, ink: trace.ink, x: tail.x, y: tail.y, d: arrowPath([arrow]) }];
+    });
+  }
+
   mergeToJoints(joints: Joint[]) {
     joints.forEach((j) => {
       this.joints.push(j);
@@ -1083,6 +1373,39 @@ export class MechanismService {
       // joints with it. Asking for one of those afterwards used to fall into
       // the generic path, look its index up as -1, and throw part-way through
       // -- leaving the drawing half cleared.
+      if (!this.joints.some((live) => live.id === joint.id)) return;
+      this.activeObjService.updateSelectedObj(joint);
+      this.deleteJoint(false, true);
+    });
+    this.activeObjService.updateSelectedObj(null);
+    this.finishStructuralEdit(true);
+  }
+
+  /**
+   * One whole machine, gone, as one undo entry.
+   *
+   * Deleting its joints takes the links with them, which is what "delete this
+   * mechanism" means: nothing of it is left, and nothing else is touched.
+   *
+   * The joints go one at a time, but the gesture is a single press: none of
+   * them saves, and the removal is minted as one undo entry below. Otherwise
+   * restoring the mechanism would cost one undo per joint it happened to have.
+   * Locks are passed by here, as they are when the whole drawing is cleared:
+   * this is a wholesale act aimed at the machine rather than at one of its
+   * parts. Left guarded, the loop deleted every unlocked joint and stopped at
+   * the locked ones, leaving a half-machine of orphans behind -- a worse
+   * outcome than either honouring the locks or ignoring them.
+   *
+   * Lives here rather than on the panel that used to own it because the
+   * right-click menu offers the same act on any part of the machine, and two
+   * copies of a cascade this destructive is one copy too many.
+   */
+  deleteMechanism(index: number): void {
+    const partition = this.partitions[index];
+    if (!partition) return;
+    [...partition.ownJoints].forEach((joint) => {
+      // A cylinder's joint takes its four siblings with it, and the snapshot
+      // above still lists them -- same trap `deleteAll` guards against.
       if (!this.joints.some((live) => live.id === joint.id)) return;
       this.activeObjService.updateSelectedObj(joint);
       this.deleteJoint(false, true);
@@ -4698,6 +5021,19 @@ export class MechanismService {
   private tabsService?: SelectedTabService;
   private get tabs(): SelectedTabService {
     return (this.tabsService ??= this.injector.get(SelectedTabService));
+  }
+
+  /**
+   * What a graph plots, one sample at a time. The vector traces read the same
+   * service, so an arrow and a curve of the same quantity cannot disagree.
+   *
+   * Fetched on first use rather than injected, like the tab service above:
+   * every spec that stands this service up in a hand-built injector would
+   * otherwise have to list a provider for something only the traces use.
+   */
+  private sampleService?: AnalysisSampleService;
+  private get samples(): AnalysisSampleService {
+    return (this.sampleService ??= this.injector.get(AnalysisSampleService));
   }
 
   /** Is this part of the machine the reader has selected as a whole? */

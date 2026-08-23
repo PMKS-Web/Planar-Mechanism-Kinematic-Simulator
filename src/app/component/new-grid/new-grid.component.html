@@ -1444,6 +1444,43 @@
       }
     </g>
   }
+
+  <!-- Velocity, acceleration and the reaction a joint carries, drawn where they
+       act. Two dozen arrows spaced along the cycle say what the whole turn does
+       standing still; one heavier arrow at the pose on screen says what is
+       happening now, and moves with the animation. Both come from the service
+       already cached, because this group is redrawn every frame. -->
+  @if (mechanismSrv.anyVectorTrace) {
+    <g id="vectorTraceHolder" style="transform: scaleY(-1); pointer-events: none">
+      @for (trace of mechanismSrv.vectorTracePaths(); track trace.key) {
+        <path
+          [attr.d]="trace.d"
+          fill="none"
+          [attr.stroke]="trace.ink"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+          stroke-linecap="round"
+          opacity="0.45"
+        ></path>
+      }
+      <!-- The present instant: full strength, twice the weight, and a dot on
+           its tail, so it cannot be mistaken for one of the pale ones behind. -->
+      @for (live of mechanismSrv.liveVectorArrows(); track live.key) {
+        <path
+          [attr.d]="live.d"
+          fill="none"
+          [attr.stroke]="live.ink"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          stroke-linecap="round"
+        ></path>
+        <circle
+          [attr.cx]="live.x"
+          [attr.cy]="live.y"
+          [attr.r]="svgGrid.scaleWithZoom(3)"
+          [attr.fill]="live.ink"
+        ></circle>
+      }
+    </g>
+  }
   @for (force of mechanismSrv.getForces(); track force) {
     <!-- A force is something to place, and placing is an Edit job: the analysis
          modes have no panel for one and cannot move it, so it is drawn and

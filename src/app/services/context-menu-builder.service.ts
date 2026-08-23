@@ -19,6 +19,7 @@ import { ActiveObjService } from './active-obj.service';
 import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
+import { VectorQuantity, VECTOR_ICON, VECTOR_LABEL } from '../model/vector-trace';
 
 /** What the canvas does when a row asks for a gesture rather than an edit. */
 export interface MenuHandlers {
@@ -216,7 +217,10 @@ export class ContextMenuBuilderService {
       return {
         header,
         groups: [
-          { label: 'State', rows: [this.traceRow(joint), ...this.forceGraphRow(joint)] },
+          {
+            label: 'State',
+            rows: [this.traceRow(joint), ...this.vectorRows(joint), ...this.forceGraphRow(joint)],
+          },
           { rows: this.positionRows(handlers, undefined) },
         ],
       };
@@ -227,7 +231,7 @@ export class ContextMenuBuilderService {
       groups: [
         { label: 'Attach', rows: this.jointAttachRows(joint, handlers) },
         { label: 'State', rows: this.jointStateRows(joint, sealed) },
-        { rows: [this.deleteJointRow(joint, sealed)] },
+        { rows: [this.deleteJointRow(joint, sealed), this.deleteMechanismRow(joint)] },
       ],
     };
   }
@@ -402,6 +406,47 @@ export class ContextMenuBuilderService {
     });
   }
 
+  /**
+   * The vector switches: which way this part's velocity, acceleration or the
+   * force it carries points, drawn on the mechanism itself.
+   *
+   * Each mode offers what it is about — Kinematic the two rates, Force the
+   * reaction — so a reader is never handed a switch that draws something the
+   * mode they are in is not asking about. A force is carried at a joint and
+   * has no single value for a whole link, so the row is absent on a link
+   * rather than greyed: that is a fact about the kind of part, not about this
+   * arrangement.
+   */
+  private vectorRows(part: RealJoint | RealLink): MenuRow[] {
+    const tab = this.tabs.getCurrentTab();
+    const quantities: VectorQuantity[] =
+      tab === TabID.ANALYZE
+        ? ['velocity', 'acceleration']
+        : tab === TabID.FORCE && part instanceof RealJoint
+          ? ['force']
+          : [];
+    return quantities.map((quantity) => this.vectorRow(part, quantity));
+  }
+
+  private vectorRow(part: RealJoint | RealLink, quantity: VectorQuantity): MenuRow {
+    return new MenuRow({
+      label: VECTOR_LABEL[quantity],
+      icon: VECTOR_ICON[quantity],
+      material: true,
+      kind: 'toggle',
+      checked: this.mechanism.isVectorTraceOn(part, quantity),
+      // A view of the mechanism rather than a change to it, like the trace
+      // beside it: it stays live mid-cycle and while the animation runs, which
+      // is when watching a vector turn is the whole point.
+      alwaysAllowed: true,
+      action: () => this.mechanism.toggleVectorTrace(part, quantity),
+      // The machine's own readiness first: on one that does not solve there is
+      // no cycle to take a vector from, and "one part meets it" would send the
+      // reader to fix the wrong thing.
+      refusal: this.analysisRefusal(part) ?? this.mechanism.vectorTraceRefusal(part, quantity),
+    });
+  }
+
   /** In Force mode only: the joint's own force graphs, and why there are none. */
   private forceGraphRow(joint: RealJoint): MenuRow[] {
     if (this.tabs.getCurrentTab() !== TabID.FORCE) return [];
@@ -512,7 +557,14 @@ export class ContextMenuBuilderService {
       crossing: this.crossing(link),
     };
     if (this.tabs.isAnalysisMode()) {
-      return { header, groups: [{ rows: this.positionRows(handlers, undefined) }] };
+      const vectors = link instanceof RealLink ? this.vectorRows(link) : [];
+      return {
+        header,
+        groups: [
+          { label: 'State', rows: vectors },
+          { rows: this.positionRows(handlers, undefined) },
+        ],
+      };
     }
     if (sealed) {
       // No Attach group at all: a sealed assembly takes no third body, and a
@@ -543,6 +595,7 @@ export class ContextMenuBuilderService {
                 action: () => this.mechanism.deleteCylinder(sealed),
                 refusal: this.lockedRefusal(link as RealLink),
               }),
+              this.deleteMechanismRow(link),
             ],
           },
         ],
@@ -563,7 +616,7 @@ export class ContextMenuBuilderService {
       groups: [
         { label: 'Attach', rows: this.linkAttachRows(bar, handlers) },
         { label: 'State', rows: this.linkStateRows(bar) },
-        { rows: [this.deleteLinkRow(bar)] },
+        { rows: [this.deleteLinkRow(bar), this.deleteMechanismRow(bar)] },
       ],
     };
   }
@@ -741,6 +794,44 @@ export class ContextMenuBuilderService {
         },
       ],
     };
+  }
+
+  // ------------------------------------------------------------- mechanism
+
+  /**
+   * The whole machine this part belongs to, gone.
+   *
+   * The panel that owns a selected mechanism has offered this all along; the
+   * menu offers it on any part of one, because "delete this mechanism" is a
+   * thing a reader wants while pointing at the bar they are looking at rather
+   * than after selecting the machine. Both call the same service method.
+   *
+   * The cascade is named before the click, as every other delete row here
+   * names its own: the machine's letter and how many joints go with it. It
+   * passes locks by — see `MechanismService.deleteMechanism` — so the row says
+   * so rather than letting a reader find out afterwards.
+   */
+  private deleteMechanismRow(part: Joint | Link): MenuRow {
+    const index = this.mechanism.indexOfMechanismContaining(part);
+    const partition = index === -1 ? undefined : this.mechanism.partitions[index];
+    // Named only where there is more than one machine: "M1" on a drawing
+    // holding exactly one says nothing the reader did not know.
+    const named = this.mechanism.partitions.length > 1 && partition ? ` ${partition.id}` : '';
+    const joints = partition?.ownJoints.length ?? 0;
+    return new MenuRow({
+      label: `Delete Mechanism${named}`,
+      icon: 'remove',
+      destructive: true,
+      hint: joints > 0 ? `${joints} ${joints === 1 ? 'joint' : 'joints'}` : undefined,
+      tip: 'Deletes the whole machine this part belongs to — every joint, link and force in it, locked or not.',
+      action: () => this.mechanism.deleteMechanism(index),
+      refusal: partition
+        ? undefined
+        : {
+            short: 'not in a mechanism',
+            long: 'This part is not joined into a mechanism, so there is no machine here to delete. Delete the part itself.',
+          },
+    });
   }
 
   // ----------------------------------------------------------------- locks

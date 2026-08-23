@@ -1178,11 +1178,19 @@ export class NewGridComponent implements OnDestroy {
 
     // The press earned a refusal, and the pointer has now actually tried to
     // move the object: say it, once per gesture.
+    // `geometryLocked` as well as `canEditNow`: in an analysis mode nothing is
+    // editable by definition, and the refusal armed there is precisely about
+    // that. Everywhere else the gate is unchanged -- a press held while the
+    // animation runs still says nothing, because the reader can see it running.
     if (
       this.heldGestureNotice &&
       this.dragState.isPointerDown &&
-      this.canEditNow() &&
-      this.pastDragThreshold($event)
+      (this.canEditNow() || this.geometryLocked) &&
+      this.pastDragThreshold($event) &&
+      // Travelled, not merely held: `pastDragThreshold` also calls a press held
+      // for a tenth of a second a drag, and a hand resting on the button while
+      // the pointer twitches a pixel has not tried to move anything.
+      !this.pressDidNotTravel($event)
     ) {
       this.heldGestureNotice();
       this.heldGestureNotice = undefined;
@@ -1375,6 +1383,35 @@ export class NewGridComponent implements OnDestroy {
    * button, not an offence. Cleared on release.
    */
   private heldGestureNotice?: () => void;
+
+  /**
+   * Arm a refusal for this press, unless one is already armed.
+   *
+   * First wins, because the first is the outer reason: in an analysis mode
+   * nothing moves whatever the locks say, and telling a reader to unlock a
+   * joint that would still not move is sending them to fix the wrong thing.
+   */
+  private holdNotice(say: () => void): void {
+    this.heldGestureNotice ??= say;
+  }
+
+  /**
+   * Refuse a drag the analysis modes cannot honour, and name the way out.
+   *
+   * On a long cooldown on purpose. It is a fact about the mode rather than
+   * about this part, so it is learned once — and a reader who has read it and
+   * carries on dragging is not helped by reading it again.
+   */
+  private refuseAnalysisDrag(): void {
+    this.notify.refusal(
+      'analysis.geometry-fixed',
+      'Geometry is fixed while analyzing. Switch to Edit mode to move this part.',
+      {
+        cooldownMs: 10000,
+        actions: [{ label: 'Switch to Edit', run: () => this.tabService.setTab(TabID.EDIT) }],
+      }
+    );
+  }
 
   /**
    * The padlock the canvas badges wear. Unlike lock.svg's fully hollow
@@ -2215,6 +2252,18 @@ export class NewGridComponent implements OnDestroy {
           this.commitCylinderCreation(mousePosInSvg);
           break;
         }
+        // The analysis modes read a solved cycle, so the geometry under it
+        // cannot move: a drag on a part there is a refusal rather than a drag.
+        // Armed here and ahead of the lock refusals below, because in these
+        // modes the mode is the reason and a lock is beside the point —
+        // and spoken only if the pointer actually travels, since a click here
+        // is how a part is picked for its graphs.
+        if (
+          this.geometryLocked &&
+          (this.lastLeftClickType === 'Joint' || this.lastLeftClickType === 'Link')
+        ) {
+          this.holdNotice(() => this.refuseAnalysisDrag());
+        }
         switch (this.lastLeftClickType) {
           case 'Grid':
             switch (this.dragState.grid) {
@@ -2454,7 +2503,7 @@ export class NewGridComponent implements OnDestroy {
                 // to remember to hold it still.
                 const grabbed = this.activeObjService.selectedJoint;
                 if (this.gridUtils.isJointFrozen(grabbed)) {
-                  this.heldGestureNotice = () => this.refuseLockedJoint(grabbed);
+                  this.holdNotice(() => this.refuseLockedJoint(grabbed));
                   break;
                 }
                 this.dragState.beginDraggingJoint();
@@ -2480,7 +2529,7 @@ export class NewGridComponent implements OnDestroy {
               const held = this.frozenCarriedJoints(this.activeObjService.selectedLink);
               if (held.length >= 2) {
                 const grabbedLink = this.activeObjService.selectedLink;
-                this.heldGestureNotice = () => this.refuseHeldLink(grabbedLink, held);
+                this.holdNotice(() => this.refuseHeldLink(grabbedLink, held));
                 break;
               }
               if (held.length === 1) {
@@ -2501,7 +2550,7 @@ export class NewGridComponent implements OnDestroy {
               case forceStates.waiting:
                 if (this.activeObjService.selectedForce.locked) {
                   const grabbedForce = this.activeObjService.selectedForce;
-                  this.heldGestureNotice = () => this.refuseLockedForce(grabbedForce);
+                  this.holdNotice(() => this.refuseLockedForce(grabbedForce));
                   break;
                 }
                 if (this.activeObjService.selectedForce.isStartSelected) {

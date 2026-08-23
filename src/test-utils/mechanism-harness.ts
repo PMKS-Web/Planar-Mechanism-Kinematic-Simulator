@@ -11,6 +11,7 @@ import { SaveHistoryService } from '../app/services/save-history.service';
 import { SelectedTabService } from '../app/selected-tab.service';
 import { SettingsService } from '../app/services/settings.service';
 import { SvgGridService } from '../app/services/svg-grid.service';
+import { AnalysisSampleService } from '../app/services/analysis-sample.service';
 import { SynthesisBuilderService } from '../app/services/synthesis/synthesis-builder.service';
 import { silentNotifications } from './notification-stub';
 
@@ -62,6 +63,9 @@ export function createMechanismHarness(): MechanismHarness {
       { provide: SaveHistoryService, useValue: history },
       { provide: SynthesisBuilderService, deps: [] },
       { provide: SvgGridService, deps: [] },
+      // Reached lazily by the vector traces, so a spec that switches one on
+      // through this harness needs it listed like everything else.
+      { provide: AnalysisSampleService, deps: [] },
       { provide: GridUtilsService, deps: [] },
       { provide: MechanismService, deps: [] },
     ],

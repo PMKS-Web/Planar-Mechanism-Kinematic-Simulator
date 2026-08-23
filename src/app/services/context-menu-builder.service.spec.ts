@@ -125,7 +125,12 @@ describe('the right-click menu', () => {
       for (const target of [parts.a, parts.t, parts.crank, parts.coupler]) {
         const all = rows(harness.builder.build(target, noHandlers));
         expect(all[all.length - 1].destructive).toBe(true);
-        expect(all.filter((one) => one.destructive).length).toBe(1);
+        // The footer is the part's own deletion and then the machine's, and
+        // nothing destructive appears above it.
+        const destructive = all.filter((one) => one.destructive);
+        expect(destructive.length).toBe(2);
+        expect(all.slice(-2)).toEqual(destructive);
+        expect(destructive[1].label.startsWith('Delete Mechanism')).toBe(true);
       }
     });
 
@@ -331,6 +336,33 @@ describe('the right-click menu', () => {
         rows(harness.builder.build(parts.t, noHandlers)).find((one) => one.destructive)!.label
       ).toBe('Delete Joint');
     });
+
+    it('counts the joints Delete Mechanism would take, on a joint or a link', () => {
+      const parts = fourBar(harness.mechanism);
+      harness.mechanism.updateMechanism();
+      for (const target of [parts.a, parts.coupler]) {
+        const machine = row(harness.builder.build(target, noHandlers), 'Delete Mechanism')!;
+        expect(machine.destructive).toBe(true);
+        expect(machine.hint).toBe('5 joints');
+        expect(machine.disabled).toBe(false);
+      }
+    });
+
+    it('will not offer to delete a machine a loose part is in no part of', () => {
+      const parts = fourBar(harness.mechanism);
+      // Nothing partitioned, so no part belongs to a machine — the state a
+      // bar dropped on the grid on its own is in.
+      const machine = row(harness.builder.build(parts.a, noHandlers), 'Delete Mechanism')!;
+      expect(machine.refusal!.short).toBe('not in a mechanism');
+    });
+
+    it('takes the whole machine when the row is used', () => {
+      const parts = fourBar(harness.mechanism);
+      harness.mechanism.updateMechanism();
+      row(harness.builder.build(parts.crank, noHandlers), 'Delete Mechanism')!.action();
+      expect(harness.mechanism.joints.length).toBe(0);
+      expect(harness.mechanism.links.length).toBe(0);
+    });
   });
 
   describe('words the reader has to live with', () => {
@@ -374,10 +406,58 @@ describe('the right-click menu', () => {
       const parts = fourBar(harness.mechanism);
       harness.tabs.setTab(TabID.ANALYZE);
       const model = harness.builder.build(parts.a, noHandlers);
-      expect(labels(model)).toEqual(['Trace Path']);
+      // Views of the mechanism, all of them: the path it traces and the two
+      // rates drawn along it. Nothing here changes the drawing.
+      expect(labels(model)).toEqual(['Trace Path', 'Velocity Vectors', 'Acceleration Vectors']);
       // Geometry is frozen there, so Attach and the footer are absent rather
       // than greyed — and the way back into Edit rides the header.
       expect(model.header?.crossing?.icon).toBe('edit_outline');
+    });
+
+    it('offers each mode the vectors that mode is about', () => {
+      const parts = fourBar(harness.mechanism);
+      harness.tabs.setTab(TabID.FORCE);
+      expect(labels(harness.builder.build(parts.a, noHandlers))).toContain('Force Vectors');
+      expect(labels(harness.builder.build(parts.a, noHandlers))).not.toContain('Velocity Vectors');
+      harness.tabs.setTab(TabID.ANALYZE);
+      expect(labels(harness.builder.build(parts.a, noHandlers))).not.toContain('Force Vectors');
+    });
+
+    it('offers a link the two rates at its CoM, and no force of its own', () => {
+      const parts = fourBar(harness.mechanism);
+      harness.tabs.setTab(TabID.ANALYZE);
+      expect(labels(harness.builder.build(parts.coupler, noHandlers))).toEqual([
+        'Velocity Vectors',
+        'Acceleration Vectors',
+      ]);
+      // A reaction is carried at a joint, so the row is absent rather than
+      // greyed — a fact about the kind of part, not about this drawing.
+      harness.tabs.setTab(TabID.FORCE);
+      expect(labels(harness.builder.build(parts.coupler, noHandlers))).toEqual([]);
+    });
+
+    it('greys a vector on a machine that does not solve, with its own reason', () => {
+      const parts = fourBar(harness.mechanism);
+      harness.mechanism.updateMechanism();
+      harness.tabs.setTab(TabID.ANALYZE);
+      // No input, so nothing has a cycle to take a velocity from — and the
+      // reason is the readiness list's, not one written here.
+      const velocity = row(harness.builder.build(parts.a, noHandlers), 'Velocity Vectors')!;
+      expect(velocity.disabled).toBe(!harness.mechanism.isPartSimulatable(parts.a));
+      expect(velocity.refusal?.short).toBe('not ready');
+    });
+
+    it('keeps the switch it was given', () => {
+      const parts = fourBar(harness.mechanism);
+      harness.tabs.setTab(TabID.ANALYZE);
+      row(harness.builder.build(parts.a, noHandlers), 'Velocity Vectors')!.action();
+      expect(harness.mechanism.isVectorTraceOn(parts.a, 'velocity')).toBe(true);
+      expect(harness.mechanism.isVectorTraceOn(parts.a, 'acceleration')).toBe(false);
+      expect(row(harness.builder.build(parts.a, noHandlers), 'Velocity Vectors')!.checked).toBe(
+        true
+      );
+      row(harness.builder.build(parts.a, noHandlers), 'Velocity Vectors')!.action();
+      expect(harness.mechanism.isVectorTraceOn(parts.a, 'velocity')).toBe(false);
     });
 
     it('crosses into analysis from Edit, and the canvas has nowhere to cross to', () => {
