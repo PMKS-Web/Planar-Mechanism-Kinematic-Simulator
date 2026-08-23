@@ -146,10 +146,13 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
         if (this.syncing) return;
         this.syncing = true;
         const before = new Set(this.design.getAllPoses().map((pose) => pose.id));
-        this.design.updatePosesFromForm({ ...value, cor: this.corIndex() });
+        const applied = this.design.updatePosesFromForm({ ...value, cor: this.corIndex() });
         this.readFromModel();
         this.syncing = false;
-        this.record();
+        // A refused edit left the model as it was, and `readFromModel` has just
+        // put the old numbers back in the boxes. Recording it would push an
+        // identical URL, and the next Undo would look like it did nothing.
+        if (applied) this.record();
         // A typed position can name any coordinate at all, and nobody pointed
         // at where it landed -- so the canvas goes to it if it is not already
         // there. Only for one that has just come into existence: editing a
@@ -217,7 +220,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       .filter((one) => one.id === REPLACE_WARNING)
       .forEach((one) => this.notify.dismiss(one.key));
     this.subs.forEach((s) => s.unsubscribe());
-    if (this.frame) cancelAnimationFrame(this.frame);
+    this.cancelFrame();
     // Stop any wind-back, and stop what it was going to do afterwards: a commit
     // that lands after the panel is gone acts on a drawing nobody is looking at.
     this.windingBack = false;
@@ -981,7 +984,24 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
 
   togglePlay(): void {
     this.solution.playing = !this.solution.playing;
-    if (this.solution.playing) this.step();
+    if (this.solution.playing) this.schedule();
+    else this.cancelFrame();
+  }
+
+  /**
+   * At most one chain of frames.
+   *
+   * Pausing and playing again inside one frame's worth of time used to leave
+   * the previous request still in flight, and two chains both advancing the
+   * phase preview at double speed.
+   */
+  private schedule(): void {
+    if (this.frame === undefined) this.frame = requestAnimationFrame(this.step);
+  }
+
+  private cancelFrame(): void {
+    if (this.frame !== undefined) cancelAnimationFrame(this.frame);
+    this.frame = undefined;
   }
 
   flipDirection(): void {
@@ -1011,7 +1031,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     }
     this.solution.phase = phase;
     this.solution.changed.next();
-    this.frame = requestAnimationFrame(this.step);
+    this.schedule();
   };
 
   scrubMin(): number {
@@ -1214,7 +1234,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       // two things they could mean are on the message.
       this.notify.warning(
         REPLACE_WARNING,
-        `${this.solutionName} would replace the linkage on the grid, and it has been moved by ` +
+        `${this.solutionName} would replace the mechanism on the grid, and it has been moved by ` +
           `hand since Synthesis put it there. Those changes would be lost.`,
         {
           // Guarded as well as dismissed on the way out. The message outlives

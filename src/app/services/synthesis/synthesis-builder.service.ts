@@ -223,24 +223,24 @@ export class SynthesisBuilderService {
     this.valueChanges.next(true);
   }
 
-  // given form, update poses
-  // if form is invalid, return false to revert form
+  /**
+   * Read the whole form, and either apply all of it or none of it.
+   *
+   * Every row is read before any of it is written, so a `false` here means the
+   * design is exactly as it was. The panel writes the old values back on a
+   * refusal, and the caller records an undo step only on a `true` — both of
+   * which are only honest if a refusal really did leave nothing half-applied.
+   */
   updatePosesFromForm(form: { [key: string]: string | null | undefined }): boolean {
-    if (form['cor'] === '0') this._COR = COR.BACK;
-    else if (form['cor'] === '1') this._COR = COR.CENTER;
-    else this._COR = COR.FRONT;
-
     // if length is a number and positive, update length
     const [success, maybeLength] = this.nup.parseModelLengthString(
       form['length']!,
       this.settings.lengthUnit.getValue()
     );
-    if (!success) {
-      console.log('invalid length');
-      return false;
-    }
-    this.length = maybeLength;
+    if (!success) return false;
 
+    /** What each row wants doing, in the order the rows are numbered. */
+    const edits: { index: number; position: Coord; thetaDegrees: number; fresh: boolean }[] = [];
     for (let i = 1; i <= 3; i++) {
       const typed = (key: string) => (form[key] ?? '').toString().trim();
       const xText = typed(`p${i}x`);
@@ -262,33 +262,47 @@ export class SynthesisBuilderService {
       // three blanks are a row nobody has started, not a position at the origin.
       const complete = !!xText && !!yText && !!thetaText;
       const readable = successX && successY && successTheta;
+      const defined = this.isPoseDefined(i);
 
-      if (this.isPoseDefined(i)) {
-        // An existing position is only ever edited. A box emptied or filled with
-        // something unreadable is refused rather than applied, and the panel
-        // writes the old value back.
-        if (!complete || !readable) return false;
-        this.poses[i].position = new Coord(maybeX, maybeY);
-        this.poses[i].thetaDegrees = maybeTheta;
+      if (!complete || !readable) {
+        // An existing position is only ever edited, so a box emptied or filled
+        // with something unreadable is refused. A row being typed into is not
+        // an error until it is finished.
+        if (defined) return false;
         continue;
       }
+      edits.push({
+        index: i,
+        position: new Coord(maybeX, maybeY),
+        thetaDegrees: maybeTheta,
+        fresh: !defined,
+      });
+    }
 
-      // A row being typed into is not an error until it is finished. It becomes
-      // a position on the drawing at the moment it says where and which way --
-      // which is the same moment a dropped one does, reached by the other road.
-      if (!complete || !readable) continue;
-      this.poses[i] = new SynthesisPose(
-        i,
-        new Coord(maybeX, maybeY),
-        (maybeTheta * Math.PI) / 180,
+    if (form['cor'] === '0') this._COR = COR.BACK;
+    else if (form['cor'] === '1') this._COR = COR.CENTER;
+    else this._COR = COR.FRONT;
+    this.length = maybeLength;
+
+    for (const edit of edits) {
+      if (!edit.fresh) {
+        this.poses[edit.index].position = edit.position;
+        this.poses[edit.index].thetaDegrees = edit.thetaDegrees;
+        continue;
+      }
+      // A row becomes a position on the drawing at the moment it says where and
+      // which way -- the same moment a dropped one does, by the other road.
+      this.poses[edit.index] = new SynthesisPose(
+        edit.index,
+        edit.position,
+        (edit.thetaDegrees * Math.PI) / 180,
         () => this.COR,
         () => this.length
       );
-      this.selectedPose = i;
+      this.selectedPose = edit.index;
       this.armed = false;
     }
 
-    // if we get here, form is valid
     return true;
   }
 
@@ -417,6 +431,44 @@ export class SynthesisBuilderService {
     });
     this.armed = false;
     this.selectedPose = kept.length ? Math.min(this.selectedPose, kept.length) : 0;
+    this.valueChanges.next(true);
+  }
+
+  /**
+   * Whether this design holds work a reader would mind losing.
+   *
+   * Positions and the region they have to satisfy outlive the Synthesis tab, so
+   * anything that asks whether the document is empty before writing over it --
+   * a template, say -- has to ask this too, not only the drawing.
+   */
+  hasDesign(): boolean {
+    return this.getAllPoses().length > 0 || this.constrain;
+  }
+
+  /**
+   * Rescale everything held as a model length, when the document changes units.
+   *
+   * The drawing's own geometry is multiplied by the same factor, and the design
+   * has to travel with it: positions typed in centimetres are the very same
+   * numbers after a switch to inches, and left alone they are then read as
+   * inches and no longer line up with the machine they were used to build.
+   */
+  convertLengths(scale: number): void {
+    if (scale === 1) return;
+    for (const pose of this.getAllPoses()) {
+      pose.position = new Coord(pose.position.x * scale, pose.position.y * scale);
+    }
+    this.region = {
+      x: this.region.x * scale,
+      y: this.region.y * scale,
+      w: this.region.w * scale,
+      h: this.region.h * scale,
+    };
+    // The baseline for "has this joint been dragged since we put it there" is a
+    // model position like any other, and a baseline left behind reads the whole
+    // inserted machine as moved by hand.
+    this.ownedAt = this.ownedAt.map((at) => ({ x: at.x * scale, y: at.y * scale }));
+    this.length = this._length * scale;
     this.valueChanges.next(true);
   }
 

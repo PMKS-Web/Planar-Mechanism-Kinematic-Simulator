@@ -6,6 +6,7 @@ import {
   circumcenter,
   drivenFromFarPin,
   enumerateCandidates,
+  meet,
   rankCandidates,
   solveFourBar,
 } from './synthesis-candidates';
@@ -253,5 +254,37 @@ describe('drivenFromFarPin', () => {
     expect(original.r1).toBe(before.r1);
     expect(original.r2).toBe(before.r2);
     expect(original.sign).toBe(before.sign);
+  });
+});
+
+describe('where two circles cross', () => {
+  /**
+   * `meet` delegates to the position solver's intersection but hands the pair
+   * back the other way round, because three callers take the driver's elbow as
+   * `pair[0]`. Pinned here: the order is a compatibility surface, not taste --
+   * flipping it flips the handedness of every driver already shared in a URL.
+   */
+  it('puts the left-hand crossing first', () => {
+    const pair = meet(new Coord(0, 0), 5, new Coord(8, 0), 5);
+    expect(pair).not.toBeNull();
+    expect(pair![0].x).toBeCloseTo(4, 6);
+    expect(pair![0].y).toBeCloseTo(3, 6);
+    expect(pair![1].y).toBeCloseTo(-3, 6);
+  });
+
+  /**
+   * The tolerance the copy of this code used to lack. Circles that just fail to
+   * reach still meet, because a joint that goes collinear rounds to exactly
+   * tangent and the animation assembles it fine.
+   */
+  it('accepts a hair-tangent pair rather than calling it unreachable', () => {
+    const pair = meet(new Coord(0, 0), 5, new Coord(10.0005, 0), 5);
+    expect(pair).not.toBeNull();
+    expect(pair![0].x).toBeCloseTo(5, 3);
+    expect(pair![0].y).toBeCloseTo(0, 3);
+  });
+
+  it('still refuses circles that genuinely cannot reach', () => {
+    expect(meet(new Coord(0, 0), 5, new Coord(20, 0), 5)).toBeNull();
   });
 });

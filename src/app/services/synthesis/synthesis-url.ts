@@ -1,6 +1,10 @@
 import { Coord } from 'src/app/model/coord';
 import { MODEL_SCALE } from 'src/app/model/render-scale';
-import { BaseNConverter } from '../transcoding/base64-converter';
+import {
+  BaseNConverter,
+  fromUrlSafeDecimal,
+  toUrlSafeDecimal,
+} from '../transcoding/base64-converter';
 import { FlagPacker } from '../transcoding/flag-packer';
 import { SynthesisBuilderService } from './synthesis-builder.service';
 import { COR, SynthesisPose } from './synthesis-util';
@@ -26,13 +30,9 @@ import { COR, SynthesisPose } from './synthesis-util';
 /** The order the flags pack in. Appending is safe; reordering is not. */
 const FLAGS = 6;
 
-function num(value: number): string {
-  return BaseNConverter.toUrlSafeBaseN(Math.round(value * 1000));
-}
-
-function unnum(text: string): number {
-  return BaseNConverter.fromUrlSafeBaseN(text) / 1000;
-}
+// The mechanism codec's own packing, not a second spelling of it.
+const num = toUrlSafeDecimal;
+const unnum = fromUrlSafeDecimal;
 
 function length(model: number): string {
   return num(model / MODEL_SCALE);

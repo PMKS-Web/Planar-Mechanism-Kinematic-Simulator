@@ -16,6 +16,7 @@ import {
 } from '@angular/material/dialog';
 import { MechanismService } from 'src/app/services/mechanism.service';
 import { UrlProcessorService } from 'src/app/services/url-processor.service';
+import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
 import { DEV_TEMPLATES, DevTemplateID } from './dev-templates';
 import { TemplateID, TEMPLATE_LINKAGES } from './template-linkages';
 import { MatIconButton, MatButton } from '@angular/material/button';
@@ -50,6 +51,7 @@ export class TemplatesComponent {
   private dialog = inject(MatDialog);
   private mechanismSrv = inject(MechanismService);
   private urlProcessor = inject(UrlProcessorService);
+  private design = inject(SynthesisBuilderService);
 
   /** Asks whether to replace the linkage already on the grid or open a new tab. */
   readonly openChoiceDialog = viewChild.required<TemplateRef<unknown>>('openChoiceDialog');
@@ -84,11 +86,19 @@ export class TemplatesComponent {
       });
   }
 
+  /**
+   * Whether there is nothing here to lose.
+   *
+   * A synthesis design counts. Positions persist after the tab is left and are
+   * cleared by the template's own load, so a reader who has drawn three of them
+   * but inserted nothing yet was having them thrown away with no warning at all.
+   */
   private gridIsEmpty(): boolean {
     return (
       this.mechanismSrv.joints.length === 0 &&
       this.mechanismSrv.links.length === 0 &&
-      this.mechanismSrv.forces.length === 0
+      this.mechanismSrv.forces.length === 0 &&
+      !this.design.hasDesign()
     );
   }
 

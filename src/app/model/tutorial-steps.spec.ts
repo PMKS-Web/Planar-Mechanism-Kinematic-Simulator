@@ -40,6 +40,13 @@ function looseBars() {
   return { joints, links };
 }
 
+/** A bar off to one side, with nothing to do with the tutorial's chain. */
+function stray(one: string, two: string) {
+  const p = new RevJoint(one, 5, 5);
+  const q = new RevJoint(two, 6, 6);
+  return { joints: [p, q], link: bar(p, q), p, q };
+}
+
 describe('which step the drawing is on', () => {
   it('starts at step 1 with nothing drawn', () => {
     expect(progressFor([], []).step).toBe(1);
@@ -114,6 +121,45 @@ describe('which step the drawing is on', () => {
     const progress = progressFor(joints, links);
     expect(progress.step).toBe(5);
     expect(progress.achieved).toBe('Joint A is the input');
+  });
+
+  /**
+   * Step 3 asks for the chain's two *ends*. Pinning a joint in the middle is a
+   * different move, and the step it was asked of has not been made.
+   */
+  it('does not count a grounded joint in the middle of the chain', () => {
+    const { joints, links, a, b, d } = chain();
+    a.ground = true;
+    b.ground = true;
+    const progress = progressFor(joints, links);
+    expect(progress.step).toBe(3);
+    expect(progress.target).toBe(d);
+  });
+
+  it('ignores grounds and inputs on a bar off to one side', () => {
+    const built = chain();
+    const off = stray('X', 'Y');
+    const joints = [...built.joints, ...off.joints];
+    const links = [...built.links, off.link];
+    off.p.ground = true;
+    off.q.ground = true;
+    off.p.input = true;
+    expect(progressFor(joints, links).step).toBe(3);
+
+    built.a.ground = true;
+    built.d.ground = true;
+    expect(progressFor(joints, links).step).toBe(4);
+
+    built.a.input = true;
+    expect(progressFor(joints, links).step).toBe(5);
+  });
+
+  it('finds the chain even when a stray bar is drawn first', () => {
+    const built = chain();
+    const off = stray('X', 'Y');
+    const links = [off.link, ...built.links];
+    expect(linksAreChained(links)).toBe(true);
+    expect(progressFor([...off.joints, ...built.joints], links).step).toBe(3);
   });
 });
 

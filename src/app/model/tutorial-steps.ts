@@ -41,31 +41,66 @@ export function endJoints(joints: Joint[]): RealJoint[] {
 }
 
 /**
- * Whether the drawing holds three links that are actually joined up.
+ * The three-or-more links that are actually joined up — the chain every later
+ * step is then read against.
  *
  * Three separate bars are three links and are not a chain, and this is the
  * whole reason step 1 and step 2 are two steps: Add on the bare grid makes a
  * free-standing bar every time, so three of them never touch. Connectivity
  * is the test rather than a joint count, because a student who builds their
- * chain in a different order still built a chain.
+ * chain in a different order still built a chain — and every component is
+ * tried, not only the one the first link happens to sit in, so a stray bar
+ * left over from an earlier attempt does not hide the chain behind it.
  */
-export function linksAreChained(links: Link[]): boolean {
-  if (links.length < 3) return false;
-  const reached = new Set<Link>([links[0]]);
-  const queue: Link[] = [links[0]];
-  while (queue.length > 0) {
-    const link = queue.pop()!;
-    for (const joint of link.joints) {
-      if (!(joint instanceof RealJoint)) continue;
-      for (const neighbour of joint.links) {
-        if (!reached.has(neighbour)) {
-          reached.add(neighbour);
-          queue.push(neighbour);
+export function chainedLinks(links: Link[]): Link[] | undefined {
+  const visited = new Set<Link>();
+  for (const start of links) {
+    if (visited.has(start)) continue;
+    const reached = new Set<Link>([start]);
+    const queue: Link[] = [start];
+    while (queue.length > 0) {
+      const link = queue.pop()!;
+      for (const joint of link.joints) {
+        if (!(joint instanceof RealJoint)) continue;
+        for (const neighbour of joint.links) {
+          if (!reached.has(neighbour)) {
+            reached.add(neighbour);
+            queue.push(neighbour);
+          }
         }
       }
     }
+    for (const link of reached) visited.add(link);
+    if (reached.size >= 3) return [...reached];
   }
-  return reached.size >= 3;
+  return undefined;
+}
+
+/** Whether the drawing holds three links that are actually joined up. */
+export function linksAreChained(links: Link[]): boolean {
+  return chainedLinks(links) !== undefined;
+}
+
+/** The joints the qualifying chain is made of. */
+function chainJoints(chain: Link[]): RealJoint[] {
+  const joints = new Set<RealJoint>();
+  for (const link of chain) for (const joint of real(link.joints)) joints.add(joint);
+  return [...joints];
+}
+
+/**
+ * The grounded joints step 3 is actually asking for.
+ *
+ * Scoped to the chain and to its free ends, so grounding a joint in the middle
+ * of it — or one on an unrelated component — leaves the student where they
+ * are, which is the contract at the top of this file. A chain that already
+ * closes a loop has no degree-one end at all, and there any two of its own
+ * grounded joints count, so a drawing that arrives finished is not stuck being
+ * asked for ends it does not have.
+ */
+function groundedAnchors(own: RealJoint[]): RealJoint[] {
+  const ends = own.filter((joint) => joint.links.length === 1);
+  return (ends.length > 0 ? ends : own).filter((joint) => joint.ground);
 }
 
 const nameOf = (joint: RealJoint): string => joint.name || joint.id;
@@ -84,9 +119,11 @@ export function progressFor(joints: Joint[], links: Link[]): TutorialProgress {
 /** The first of the five moves this drawing has not made. */
 export function stepOf(joints: Joint[], links: Link[]): TutorialStepId {
   if (links.length < 1) return 1;
-  if (!linksAreChained(links)) return 2;
-  if (real(joints).filter((joint) => joint.ground).length < 2) return 3;
-  if (!real(joints).some((joint) => joint.input)) return 4;
+  const chain = chainedLinks(links);
+  if (!chain) return 2;
+  const own = chainJoints(chain);
+  if (groundedAnchors(own).length < 2) return 3;
+  if (!own.some((joint) => joint.input)) return 4;
   return 5;
 }
 
@@ -100,9 +137,13 @@ export function stepOf(joints: Joint[], links: Link[]): TutorialStepId {
  * instruction, and a record still has to say which joint it was about.
  */
 export function progressAt(joints: Joint[], links: Link[], step: TutorialStepId): TutorialProgress {
-  const ends = endJoints(joints);
-  const grounded = real(joints).filter((joint) => joint.ground);
-  const input = real(joints).find((joint) => joint.input);
+  // Everything the card names comes off the qualifying chain, so the ringed
+  // joint is one of the chain's own and not a lookalike on a stray component.
+  const chain = chainedLinks(links);
+  const own = chain ? chainJoints(chain) : real(joints);
+  const ends = own.filter((joint) => joint.links.length === 1);
+  const grounded = groundedAnchors(own);
+  const input = own.find((joint) => joint.input);
 
   switch (step) {
     case 1:

@@ -1,4 +1,5 @@
 import { Coord } from 'src/app/model/coord';
+import { circleCircleIntersection, getNewOtherJointPos } from 'src/app/model/utils';
 import { MODEL_SCALE } from 'src/app/model/render-scale';
 import { smallestArcContaining } from './driver-dyad';
 
@@ -137,10 +138,6 @@ export interface CandidateResult {
   rejections: CandidateRejections;
 }
 
-function distance(a: Coord, b: Coord): number {
-  return Math.hypot(b.x - a.x, b.y - a.y);
-}
-
 /** The centre of the circle through three points, or nothing if they line up. */
 export function circumcenter(p1: Coord, p2: Coord, p3: Coord): Coord | null {
   const d = 2 * (p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y));
@@ -154,25 +151,27 @@ export function circumcenter(p1: Coord, p2: Coord, p3: Coord): Coord | null {
   );
 }
 
-/** Where two circles cross, or nothing if they do not reach each other. */
+/**
+ * Where two circles cross, or nothing if they do not reach each other.
+ *
+ * The position solver's own intersection, so the preview agrees with the
+ * animation about which four-bars assemble -- including its tangent tolerance,
+ * without which a linkage that goes collinear at a toggle is rejected here and
+ * animated fine there.
+ *
+ * The pair comes back in the opposite order to `circleCircleIntersection`'s,
+ * and stays that way on purpose: three callers take the elbow of a driver dyad
+ * as `pair[0]`, and swapping which of the two that is flips the handedness of
+ * every driver already shared in a URL.
+ */
 export function meet(c1: Coord, r1: number, c2: Coord, r2: number): [Coord, Coord] | null {
-  const span = distance(c1, c2);
-  if (span === 0 || span > r1 + r2 || span < Math.abs(r1 - r2)) return null;
-  const a = (span * span + r1 * r1 - r2 * r2) / (2 * span);
-  const h = Math.sqrt(Math.max(0, r1 * r1 - a * a));
-  const ux = (c2.x - c1.x) / span;
-  const uy = (c2.y - c1.y) / span;
-  const mx = c1.x + a * ux;
-  const my = c1.y + a * uy;
-  return [new Coord(mx - h * uy, my + h * ux), new Coord(mx + h * uy, my - h * ux)];
+  const pair = circleCircleIntersection(c1.x, c1.y, r1, c2.x, c2.y, r2);
+  if (!pair) return null;
+  return [new Coord(pair[1][0], pair[1][1]), new Coord(pair[0][0], pair[0][1])];
 }
 
 function cross(o: Coord, a: Coord, b: Coord): number {
   return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-}
-
-function pointOn(centre: Coord, radius: number, angleRad: number): Coord {
-  return new Coord(centre.x + radius * Math.cos(angleRad), centre.y + radius * Math.sin(angleRad));
 }
 
 /**
@@ -187,7 +186,7 @@ export function solveFourBar(
   thetaDeg: number,
   sign?: number
 ): { A: Coord; B: Coord; C: Coord; D: Coord } | null {
-  const B = pointOn(cand.A, cand.r1, (thetaDeg * Math.PI) / 180);
+  const B = getNewOtherJointPos(cand.A, (thetaDeg * Math.PI) / 180, cand.r1);
   const pair = meet(B, cand.d, cand.D, cand.r2);
   // The one honest failure: the coupler and the rocker cannot reach each other,
   // so the loop does not close at all. That is where travel ends.
@@ -388,7 +387,7 @@ export function assess(cand: FourBarCandidate): void {
   cand.errors = cand.ptsB.map((target, i) => {
     if (!withinTravel(cand.thetas[i], cand.range)) return Infinity;
     const sol = solveFourBar(cand, cand.thetas[i], branch);
-    return sol ? distance(sol.C, target) : Infinity;
+    return sol ? sol.C.getDistanceTo(target) : Infinity;
   });
   cand.onBranch = cand.errors.map((e) => e < POSE_TOLERANCE);
   cand.onBranchCount = cand.onBranch.filter(Boolean).length;
@@ -525,9 +524,9 @@ export function enumerateCandidates(search: CandidateSearch): CandidateResult {
     poses.reduce((sum, p) => sum + (p.back.y + p.front.y) / 2, 0) / 3
   );
   const spread = Math.max(
-    distance(poses[0].back, poses[1].back),
-    distance(poses[1].back, poses[2].back),
-    distance(poses[0].back, poses[2].back)
+    poses[0].back.getDistanceTo(poses[1].back),
+    poses[1].back.getDistanceTo(poses[2].back),
+    poses[0].back.getDistanceTo(poses[2].back)
   );
   const reach = Math.max(6 * length, 2.5 * spread);
 
@@ -542,12 +541,12 @@ export function enumerateCandidates(search: CandidateSearch): CandidateResult {
       rejections.degenerate++;
       return;
     }
-    const r1 = distance(A, ptsA[0]);
-    const r2 = distance(D, ptsB[0]);
-    const g = distance(A, D);
+    const r1 = A.getDistanceTo(ptsA[0]);
+    const r2 = D.getDistanceTo(ptsB[0]);
+    const g = A.getDistanceTo(D);
     if (
-      distance(A, centre) > reach ||
-      distance(D, centre) > reach ||
+      A.getDistanceTo(centre) > reach ||
+      D.getDistanceTo(centre) > reach ||
       r1 > reach ||
       r2 > reach ||
       g > reach
@@ -563,8 +562,8 @@ export function enumerateCandidates(search: CandidateSearch): CandidateResult {
     // other and hold near-identical bars are the same machine drawn twice.
     const alike = out.some(
       (other) =>
-        distance(other.A, A) < length * 0.9 &&
-        distance(other.D, D) < length * 0.9 &&
+        other.A.getDistanceTo(A) < length * 0.9 &&
+        other.D.getDistanceTo(D) < length * 0.9 &&
         Math.abs(other.r1 - r1) / Math.max(other.r1, r1) < 0.12 &&
         Math.abs(other.r2 - r2) / Math.max(other.r2, r2) < 0.12
     );
@@ -584,7 +583,7 @@ export function enumerateCandidates(search: CandidateSearch): CandidateResult {
         C: ptsB[0],
         r1,
         r2,
-        d: distance(ptsA[0], ptsB[0]),
+        d: ptsA[0].getDistanceTo(ptsB[0]),
         g,
         uA,
         uB,

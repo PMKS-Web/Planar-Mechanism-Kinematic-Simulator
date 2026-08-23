@@ -1,4 +1,5 @@
 import { Coord } from 'src/app/model/coord';
+import { getNewOtherJointPos } from 'src/app/model/utils';
 
 /**
  * Sizing the two-bar driver that turns a synthesised four-bar into a six-bar
@@ -82,7 +83,7 @@ export function driverDyadFor(pivot: Coord, drivenPin: Coord[]): DriverDyadResul
     return { refusal: 'A driver needs at least two poses to know what swing to deliver.' };
   }
 
-  const radius = distance(pivot, drivenPin[0]);
+  const radius = pivot.getDistanceTo(drivenPin[0]);
   if (!(radius > 0)) {
     return { refusal: 'The four-bar has no input crank to drive: its two pins are in one place.' };
   }
@@ -116,8 +117,8 @@ export function driverDyadFor(pivot: Coord, drivenPin: Coord[]): DriverDyadResul
 
   // The two turning points, by construction the far and near ends of the
   // swing — the arc was placed so that d(θ) climbs the whole way between them.
-  const far = distance(ground, on(pivot, radius, from));
-  const near = distance(ground, on(pivot, radius, to));
+  const far = ground.getDistanceTo(getNewOtherJointPos(pivot, from, radius));
+  const near = ground.getDistanceTo(getNewOtherJointPos(pivot, to, radius));
   const crankLength = (far - near) / 2;
   const couplerLength = (far + near) / 2;
   if (!(crankLength > 0) || !(couplerLength > crankLength)) {
@@ -166,7 +167,7 @@ function place(pivot: Coord, radius: number, from: number, to: number): Coord {
  * happens to come out of the square root.
  */
 function elbowAt(ground: Coord, crank: number, driven: Coord, coupler: number): Coord | undefined {
-  const span = distance(ground, driven);
+  const span = ground.getDistanceTo(driven);
   if (span === 0 || span > crank + coupler || span < Math.abs(coupler - crank)) {
     return undefined;
   }
@@ -175,15 +176,6 @@ function elbowAt(ground: Coord, crank: number, driven: Coord, coupler: number): 
   const ux = (driven.x - ground.x) / span;
   const uy = (driven.y - ground.y) / span;
   return new Coord(ground.x + along * ux - across * uy, ground.y + along * uy + across * ux);
-}
-
-/** The point at `angle` on the circle of `radius` about `centre`. */
-function on(centre: Coord, radius: number, angle: number): Coord {
-  return new Coord(centre.x + radius * Math.cos(angle), centre.y + radius * Math.sin(angle));
-}
-
-function distance(a: Coord, b: Coord): number {
-  return Math.hypot(b.x - a.x, b.y - a.y);
 }
 
 /**
