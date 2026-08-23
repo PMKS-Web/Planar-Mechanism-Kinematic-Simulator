@@ -10,6 +10,10 @@ import { SvgGridService } from '../../services/svg-grid.service';
 import { NewGridComponent } from './new-grid.component';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { MODEL_SCALE } from '../../model/render-scale';
+import { BackgroundImageService } from '../../services/background-image.service';
+import { SynthesisBuilderService } from '../../services/synthesis/synthesis-builder.service';
+import { NotificationService } from '../../services/notification.service';
+import { Coord } from '../../model/coord';
 
 /**
  * NewGridComponent renders through svg-pan-zoom, which needs real SVG layout;
@@ -286,5 +290,86 @@ describe('NewGridComponent drag gestures', () => {
 
     expect([b.x, b.y]).toEqual([5, 5]);
     expect([c.x, c.y]).toEqual([20, 20]);
+  });
+
+  // A drag let go of over the floating panel comes up on the window, not on the
+  // canvas, so `mouseUp` never fires. Left unreleased the joint kept following a
+  // button-less cursor, panning stayed refused, and the move earned no undo
+  // entry.
+  it('commits a joint drag released away from the grid', () => {
+    const { mechanism, component, b } = setUp();
+    const save = vi.spyOn(mechanism, 'save').mockImplementation(() => {});
+    const dragState = TestBed.inject(DragStateService);
+    component.setLastLeftClick(b);
+
+    component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 5, clientY: 5 }));
+    // Far enough to clear the hold that separates a drag from a click. B is
+    // then captured by C, so the release has the whole of a drop to land.
+    component.mouseMove(new MouseEvent('mousemove', { clientX: 14, clientY: 14 }));
+    expect(dragState.isDragging).toBe(true);
+
+    component.releaseCanvasGestures(new MouseEvent('pointerup') as PointerEvent);
+
+    expect(dragState.isDragging).toBe(false);
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(mechanism.joints.map((joint) => joint.id)).toEqual(['A', 'C', 'D']);
+  });
+});
+
+describe('NewGridComponent keyboard shortcuts', () => {
+  beforeEach(configureGridTestBed);
+
+  function setUp() {
+    const fixture = TestBed.createComponent(NewGridComponent);
+    fixture.detectChanges();
+    return fixture.componentInstance;
+  }
+
+  // Everything selectable that has a Delete of its own has to answer this key.
+  // Left out, it cleared the selection and left the object standing, which
+  // reads as a delete that did not take.
+  it('takes away the background image it has selected', () => {
+    const component = setUp();
+    const bgImage = TestBed.inject(BackgroundImageService);
+    bgImage.image.set({
+      src: 'data:image/png;base64,',
+      naturalWidth: 100,
+      naturalHeight: 50,
+      centerX: 0,
+      centerY: 0,
+      width: 10,
+      rotationRad: 0,
+      opacity: 0.5,
+      fileName: 'trace.png',
+    });
+    TestBed.inject(ActiveObjService).selectBackgroundImage();
+
+    component['onShortcut']('edit.delete');
+
+    expect(bgImage.image()).toBeNull();
+  });
+
+  it('takes away the synthesis position it has selected', () => {
+    const component = setUp();
+    const builder = TestBed.inject(SynthesisBuilderService);
+    vi.spyOn(TestBed.inject(MechanismService), 'save').mockImplementation(() => {});
+    builder.placePose(new Coord(1, 1));
+    TestBed.inject(ActiveObjService).updateSelectedObj(builder.getPose(1));
+
+    component['onShortcut']('edit.delete');
+
+    expect(builder.getAllPoses().length).toBe(0);
+  });
+
+  // `getSelectedObj` throws for everything it has no case for, so asking it
+  // before checking the type turned "there is nothing to lock" into an uncaught
+  // error on a fresh grid.
+  it('refuses the lock key on an empty grid instead of throwing', () => {
+    const component = setUp();
+    const refusal = vi.spyOn(TestBed.inject(NotificationService), 'refusal');
+    TestBed.inject(ActiveObjService).objType = 'Nothing';
+
+    expect(() => component['onShortcut']('edit.lock')).not.toThrow();
+    expect(refusal).toHaveBeenCalled();
   });
 });

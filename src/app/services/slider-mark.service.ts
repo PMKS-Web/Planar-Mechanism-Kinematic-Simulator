@@ -21,11 +21,21 @@ import {
 import { buildCompoundPath, mergedChannels, transformRigidPath } from '../model/compound-link-path';
 
 /**
- * The rider's own paint, redrawn over the black block so a Slide reads as one
- * body with it. Visual only: `fill` is the link's colour, never a function of
- * it, so a random palette can never break the cue (§2.8 rule 4).
+ * Which way the drive on `joint` is running, asked per joint rather than told
+ * once for the drawing.
+ *
+ * A drawing holds several machines, each with its own driven joint and its own
+ * signed speed, so one boolean for the whole canvas drew every arrow the way
+ * whichever machine was edited last happens to turn.
  */
+export type DriveForward = (joint: RealJoint) => boolean;
+
 export interface WeldPlate {
+  /**
+   * The rider's own paint, redrawn over the black block so a Slide reads as one
+   * body with it. Visual only: `fill` is the link's colour, never a function of
+   * it, so a random palette can never break the cue (§2.8 rule 4).
+   */
   fill: string;
   /**
    * Rider and block fused into one outline, with the rider's channels cut back
@@ -228,7 +238,7 @@ export class SliderMarkService {
     joints: Joint[],
     r: number,
     guides?: Map<string, Guide>,
-    driveForward = true
+    driveForward: DriveForward = () => true
   ): SliderMark[] {
     // A link pinned to two different blocks would otherwise be drawn as a rider
     // by both of them, at double its own alpha where they overlap. The first
@@ -301,7 +311,11 @@ export class SliderMarkService {
    * selection and no per-session preference — a sealed assembly is one part,
    * and a hand-built slide is never skinned at all.
    */
-  cylinderMarks(joints: Joint[], r: number, driveForward = true): CylinderMark[] {
+  cylinderMarks(
+    joints: Joint[],
+    r: number,
+    driveForward: DriveForward = () => true
+  ): CylinderMark[] {
     return sealedCylinders(joints).map((found) => this.cylinderMark(found, r, driveForward));
   }
 
@@ -341,7 +355,7 @@ export class SliderMarkService {
     return cuts;
   }
 
-  private cylinderMark(found: Cylinder, r: number, driveForward: boolean): CylinderMark {
+  private cylinderMark(found: Cylinder, r: number, driveForward: DriveForward): CylinderMark {
     const { pin, rodFar, barrelNear } = found;
     const angle = Math.atan2(rodFar.y - pin.y, rodFar.x - pin.x);
     const rodReach = Math.hypot(rodFar.x - pin.x, rodFar.y - pin.y);
@@ -367,7 +381,9 @@ export class SliderMarkService {
     // The mark's frame runs +x toward the rod; the drive direction is declared
     // along the slot, which may point either way along the same line.
     const leading: 1 | -1 =
-      (driveForward ? 1 : -1) * (Math.cos(found.slider.slotAngle - angle) >= 0 ? 1 : -1) > 0
+      (driveForward(found.slider.input ? found.slider : pin) ? 1 : -1) *
+        (Math.cos(found.slider.slotAngle - angle) >= 0 ? 1 : -1) >
+      0
         ? 1
         : -1;
     return {
@@ -425,7 +441,7 @@ export class SliderMarkService {
     guide: Guide | undefined,
     joints: Joint[],
     claimed: Set<string>,
-    driveForward: boolean,
+    driveForward: DriveForward,
     otherGuides: GuideBand[]
   ): SliderMark | undefined {
     const block = slider.links.find((link): link is SliderBlock => link instanceof SliderBlock);
@@ -459,7 +475,9 @@ export class SliderMarkService {
       driven,
       plate: welded ? this.plateFor(pin, riders, angle, r, joints) : undefined,
       riders: welded ? [] : this.ridersFor(pin, riders, angle, r, joints),
-      arrows: driven ? straightArrowPaths(r, driveForward ? 1 : -1) : [],
+      arrows: driven
+        ? straightArrowPaths(r, driveForward(slider.input ? slider : pin) ? 1 : -1)
+        : [],
       rails: slider.ground ? this.railsFor(slider, guide, angle, r, otherGuides) : undefined,
       dangling: !slider.ground && !slider.isFloating,
     };

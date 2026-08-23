@@ -260,7 +260,7 @@ export class SvgGridService {
     });
     this.guardAgainstStuckPan(root);
     this.restoreMissingPointerDown(root);
-    this.releaseGesturesOnLostPointer();
+    this.releaseGesturesOnLostPointer(root);
     this.watchTheChrome();
     this.scaleToFitLinkage(false);
   }
@@ -277,8 +277,20 @@ export class SvgGridService {
    * On the window, and in the capture phase, so it runs wherever the release
    * lands and whatever else claims it.
    */
-  private releaseGesturesOnLostPointer(): void {
-    const release = () => NewGridComponent.instance?.releaseCanvasGestures();
+  private releaseGesturesOnLostPointer(root: HTMLElement): void {
+    const release = (event: Event) => {
+      // A release the canvas hears for itself is already handled by its own
+      // `pointerup`. This listener is in the capture phase, so it runs *first*:
+      // doing the work here as well would take the gesture out from under that
+      // handler rather than adding to it. A held pointer retargets its release
+      // to the element that captured it, which is inside the canvas, so a
+      // captured gesture still counts as heard.
+      const heardByCanvas = event.target instanceof Node && root.contains(event.target);
+      if (event.type === 'pointerup' && heardByCanvas) {
+        return;
+      }
+      NewGridComponent.instance?.releaseCanvasGestures(event as PointerEvent);
+    };
     window.addEventListener('pointerup', release, true);
     window.addEventListener('pointercancel', release, true);
   }

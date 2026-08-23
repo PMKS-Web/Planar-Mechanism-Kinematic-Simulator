@@ -2,12 +2,14 @@ import { SvgGridService } from '../../services/svg-grid.service';
 import {
   OnDestroy,
   Component,
+  DestroyRef,
   ElementRef,
   HostListener,
   ChangeDetectionStrategy,
   inject,
   viewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { fromEvent } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
 import { TutorialService } from '../../services/tutorial.service';
@@ -121,6 +123,17 @@ import { DEFAULT_FORCE_COLOR, SELECTION_RING } from '../../model/joint-colors';
 /** Which corner of the tracing underlay a resize gesture is holding. */
 type BackgroundImageCorner = 'tl' | 'tr' | 'bl' | 'br';
 
+/** A driven pin's motor, in the frame of the body its case is bolted to. */
+interface DrivenPinMotor {
+  id: string;
+  x: number;
+  y: number;
+  angle: number;
+  bodyId: string | undefined;
+  /** Which way this drive turns — its own machine's answer, not the document's. */
+  cw: boolean;
+}
+
 /**
  * How long the canvas takes to glide to a new frame.
  *
@@ -163,6 +176,14 @@ export class NewGridComponent implements OnDestroy {
   sliderMarks = inject(SliderMarkService);
   bgImage = inject(BackgroundImageService);
   private menuBuilder = inject(ContextMenuBuilderService);
+  /**
+   * For the subscriptions taken in `ngOnInit`, which is outside the injection
+   * context `takeUntilDestroyed` reads by default. Their sources are root
+   * singletons, so without this a destroyed grid keeps answering shortcuts —
+   * harmless in the app, where there is one grid for the session, and the
+   * order-dependent cross-spec failures the static below describes in a suite.
+   */
+  private destroyRef = inject(DestroyRef);
 
   public static debugValue: unknown;
   static debugPoints: Coord[] = [];
@@ -264,7 +285,9 @@ export class NewGridComponent implements OnDestroy {
     viewChild.required<ElementRef<HTMLInputElement>>('backgroundImageInput');
 
   ngOnInit() {
-    this.shortcuts.pressed.subscribe((id) => this.onShortcut(id));
+    this.shortcuts.pressed
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((id) => this.onShortcut(id));
 
     const svgElement = document.getElementById('canvas') as HTMLElement;
     this.svgGrid.setNewElement(svgElement);
@@ -278,30 +301,34 @@ export class NewGridComponent implements OnDestroy {
       });
     }
 
-    fromEvent(window, 'resize').subscribe((event) => {
-      // Through `ourOwnMove`: telling the library its viewport changed size,
-      // and redrawing the ruling for it, is the app keeping up with the window
-      // rather than the reader choosing a view. Read as a choice, it threw away
-      // the view the canvas was about to give back once the resize settled.
-      this.svgGrid.ourOwnMove(() => {
-        this.svgGrid.panZoomObject.resize();
-        this.svgGrid.handlePan();
+    fromEvent(window, 'resize')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        // Through `ourOwnMove`: telling the library its viewport changed size,
+        // and redrawing the ruling for it, is the app keeping up with the window
+        // rather than the reader choosing a view. Read as a choice, it threw away
+        // the view the canvas was about to give back once the resize settled.
+        this.svgGrid.ourOwnMove(() => {
+          this.svgGrid.panZoomObject.resize();
+          this.svgGrid.handlePan();
+        });
       });
-    });
 
-    this.activeObjService.onActiveObjChange.subscribe((obj) => {
-      this.showLinkAngleOverlay = -2;
-      this.showLinkLengthOverlay = -2;
-      // The hover previews die with the selection they described: a panel
-      // swap can eat the mouseleave that would have cleared them.
-      this.comMeasure = undefined;
-      this.cylinderPartPreview = undefined;
-      this.settings.previewCoMLinkId = null;
-      //Disable focus on any text input when changing active object
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
-      }
-    });
+    this.activeObjService.onActiveObjChange
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.showLinkAngleOverlay = -2;
+        this.showLinkLengthOverlay = -2;
+        // The hover previews die with the selection they described: a panel
+        // swap can eat the mouseleave that would have cleared them.
+        this.comMeasure = undefined;
+        this.cylinderPartPreview = undefined;
+        this.settings.previewCoMLinkId = null;
+        //Disable focus on any text input when changing active object
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      });
   }
 
   /**
@@ -481,9 +508,12 @@ export class NewGridComponent implements OnDestroy {
    * Whether the panel is currently editing the background image.
    *
    * Every clause is a way the panel can go without the selection changing: the
-   * analysis modes replace it, and playback covers it with the stop-the-
-   * animation placeholder. An outline for controls that are not on screen is a
-   * mark nobody can explain.
+   * analysis modes replace it, Synthesis replaces it with the pose form, and
+   * playback covers it with the stop-the-animation placeholder. An outline for
+   * controls that are not on screen is a mark nobody can explain — and in
+   * Synthesis the handles stayed live over pose work and could still move the
+   * picture, which is why the mode is named rather than the analysis pair
+   * excluded.
    *
    * The last one is not about the panel at all. `tempGridDisable` is the flag
    * "Fit to zoom" sets while it measures the drawing, and an outline the size
@@ -494,7 +524,7 @@ export class NewGridComponent implements OnDestroy {
   editingBackgroundImage(): boolean {
     return (
       this.activeObjService.objType === 'BackgroundImage' &&
-      !this.tabService.isAnalysisMode() &&
+      this.tabService.getCurrentTab() === TabID.EDIT &&
       !this.mechanismSrv.isPlaying &&
       this.mechanismSrv.mechanismTimeStep === 0 &&
       !this.settings.tempGridDisable
@@ -549,9 +579,18 @@ export class NewGridComponent implements OnDestroy {
     grabAngleRad?: number;
   };
 
+  /**
+   * The left button only, as `startPoseGesture` has it: a right-press is asking
+   * for the menu, and taking it for a gesture moved, resized or turned the
+   * picture on the way to opening one.
+   */
+  private isPrimaryPress(event: PointerEvent): boolean {
+    return event.button === 0;
+  }
+
   startBackgroundImageMove(event: PointerEvent): void {
     const image = this.bgImage.image();
-    if (!image || !this.editingBackgroundImage()) return;
+    if (!image || !this.editingBackgroundImage() || !this.isPrimaryPress(event)) return;
     event.stopPropagation();
     const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
     this.bgDrag = { grabOffset: new Coord(image.centerX - at.x, image.centerY - at.y) };
@@ -572,7 +611,7 @@ export class NewGridComponent implements OnDestroy {
 
   startBackgroundImageResize(event: PointerEvent, corner: BackgroundImageCorner): void {
     const image = this.bgImage.image();
-    if (!image || !this.editingBackgroundImage()) return;
+    if (!image || !this.editingBackgroundImage() || !this.isPrimaryPress(event)) return;
     event.stopPropagation();
     // The opposite corner is what the drag pivots on, and it is held in world
     // coordinates: the resize moves the centre, and the picture may be turned,
@@ -593,7 +632,7 @@ export class NewGridComponent implements OnDestroy {
 
   startBackgroundImageRotate(event: PointerEvent): void {
     const image = this.bgImage.image();
-    if (!image || !this.editingBackgroundImage()) return;
+    if (!image || !this.editingBackgroundImage() || !this.isPrimaryPress(event)) return;
     event.stopPropagation();
     const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
     // What the hand grabbed at, less what the picture already is: the drag then
@@ -1241,7 +1280,7 @@ export class NewGridComponent implements OnDestroy {
           }
           this.dragState.noteMechanismModified();
           this.activeObjService.updateSelectedObj(this.activeObjService.selectedLink);
-          this.showPathWhileDragging();
+          this.showPathWhileDragging(this.activeObjService.selectedLink);
           break;
         }
         // Measured from where the body was last placed, not from the previous
@@ -1260,7 +1299,7 @@ export class NewGridComponent implements OnDestroy {
           this.linkDragAnchor = mousePosInSvg;
           this.dragState.noteMechanismModified();
           this.activeObjService.updateSelectedObj(this.activeObjService.selectedLink);
-          this.showPathWhileDragging();
+          this.showPathWhileDragging(this.activeObjService.selectedLink);
           break;
         } else {
           // The body travels by however far the cursor has, measured on the
@@ -1278,14 +1317,9 @@ export class NewGridComponent implements OnDestroy {
           this.linkDragAnchor = mousePosInSvg;
           this.dragState.noteMechanismModified();
           this.activeObjService.updateSelectedObj(this.activeObjService.selectedLink);
-          this.showPathWhileDragging();
+          this.showPathWhileDragging(this.activeObjService.selectedLink);
           break;
         }
-        this.linkDragAnchor = mousePosInSvg;
-        this.dragState.noteMechanismModified();
-        this.activeObjService.updateSelectedObj(this.activeObjService.selectedLink);
-        this.showPathWhileDragging();
-        break;
       }
     }
     switch (this.dragState.force) {
@@ -1822,11 +1856,18 @@ export class NewGridComponent implements OnDestroy {
     setTimeout(() => (this.poppingJointID = undefined), 400);
   }
 
-  private showPathWhileDragging(): void {
+  /**
+   * @param body the part the gesture is actually moving. A link drag has to
+   * name its link: the selection is that link, so `selectedJoint` still holds
+   * whichever joint was last clicked — nothing at all on a fresh load, and on a
+   * drawing with two machines a joint of the *other* one, whose dof then
+   * decided whether this machine drew its path.
+   */
+  private showPathWhileDragging(body?: Joint | Link): void {
     // The machine being dragged, not whichever was built first — and possibly
     // none at all, while a chain is still being drawn and has yet to reach
     // ground.
-    const dragged = this.activeObjService.selectedJoint;
+    const dragged = body ?? this.activeObjService.selectedJoint;
     const solved = dragged ? this.mechanismSrv.mechanismContaining(dragged) : undefined;
     if (!solved || solved.joints[0].length === 0) return;
     if (solved.dof !== 1) return;
@@ -1902,6 +1943,18 @@ export class NewGridComponent implements OnDestroy {
     // click deserves no scolding.
     this.heldGestureNotice = undefined;
 
+    this.finishMechanismDrag($event);
+  }
+
+  /**
+   * Land whatever the gesture did to the mechanism: fold a pending merge,
+   * rebuild if it needs one, and mint the undo entry.
+   *
+   * Its own method because `mouseUp` is not the only release that reaches it —
+   * a drag let go of over a panel comes up on the window instead, and that path
+   * has to commit the same drag rather than leave it in flight.
+   */
+  private finishMechanismDrag($event: MouseEvent): void {
     // Resolve the drop before releasing: the snap target is only meaningful
     // while the drag it belongs to is still in flight.
     const merged = this.completePendingJointMerge($event);
@@ -2006,13 +2059,26 @@ export class NewGridComponent implements OnDestroy {
    * Called from the window-level release in SvgGridService, for the presses
    * that come up somewhere the canvas cannot hear. Safe to call when nothing
    * is happening -- it is the same tidying `mouseUp` does.
+   *
+   * The mechanism's own drags take no pointer capture, so this is the only
+   * thing that ends one released over the floating panel. Left out, the joint
+   * went on following a button-less cursor, panning stayed refused, and the
+   * click that eventually dropped it kept the moved geometry with no undo entry
+   * to take it back. It commits, as `mouseUp` does: what is on screen when the
+   * hand lets go is what the drawing keeps.
    */
-  releaseCanvasGestures(): void {
+  releaseCanvasGestures(event?: PointerEvent): void {
     this.bgDrag = undefined;
     if (this.synthCanvas.dragging) {
       this.synthCanvas.release();
       this.mechanismSrv.save();
     }
+    this.axisSnapGuides = [];
+    this.heldGestureNotice = undefined;
+    // Only a drag. A creation gesture is armed by the menu and committed by the
+    // next click, with no pointer held down in between: releasing it here would
+    // cancel the rubber band whenever a button anywhere else was pressed.
+    if (event && this.dragState.isDragging) this.finishMechanismDrag(event);
   }
 
   /**
@@ -2574,7 +2640,8 @@ export class NewGridComponent implements OnDestroy {
       if (!frames?.length) continue;
 
       const rest = frames[0];
-      for (const joint of rest) {
+      for (let index = 0; index < rest.length; index++) {
+        const joint = rest[index];
         if (!(joint instanceof PrisJoint) || !joint.ground) continue;
         const angle = joint.slotAngle;
         const cos = Math.cos(angle);
@@ -2582,7 +2649,11 @@ export class NewGridComponent implements OnDestroy {
         let lo = 0;
         let hi = 0;
         for (const frame of frames) {
-          const at = frame.find((member) => member.id === joint.id);
+          // By index rather than by id: every timestep is built by walking
+          // frames[0] in order, so a joint keeps its place in all of them. The
+          // search was a scan of the whole frame per timestep per guide, on a
+          // cache that playback invalidates once an animation frame.
+          const at = frame[index];
           if (!at) continue;
           const along = (at.x - joint.x) * cos + (at.y - joint.y) * sin;
           lo = Math.min(lo, along);
@@ -2592,6 +2663,37 @@ export class NewGridComponent implements OnDestroy {
       }
     }
     return found;
+  }
+
+  /**
+   * Which way one drive turns, asked of the machine that drive belongs to.
+   *
+   * Not the document-wide `isInputCW`. That is only the default a drive with no
+   * speed of its own falls back to, and setting any machine's speed mirrors it
+   * there — so on a drawing holding two machines the arrow beside one crank
+   * reported whichever machine had been touched last. A drive that has never
+   * been given a speed of its own still gets exactly the old answer.
+   */
+  drivenClockwise(joint: Joint): boolean {
+    return this.mechanismSrv.driveSpeedOf(joint instanceof RealJoint ? joint : undefined) < 0;
+  }
+
+  /** Which way each drive runs, for the mark service to ask per joint. */
+  private readonly driveForward = (joint: RealJoint): boolean => !this.drivenClockwise(joint);
+
+  /**
+   * Every drive's direction, as one string.
+   *
+   * The mark caches below are keyed on where things are, and reversing a drive
+   * moves nothing at all — so without this, flipping one machine's direction
+   * redraws no arrows. One entry per driven joint rather than one boolean for
+   * the drawing, because each machine turns its own way.
+   */
+  private driveDirections(joints: Joint[]): string {
+    return joints
+      .filter((joint) => (joint as RealJoint).input)
+      .map((joint) => `${joint.id}:${this.drivenClockwise(joint) ? 1 : 0}`)
+      .join(',');
   }
 
   /**
@@ -2623,13 +2725,7 @@ export class NewGridComponent implements OnDestroy {
    * is drawn along the reference body's direction — which is what lets the
    * fillets meet that bar and makes the pair read as one welded piece.
    */
-  get drivenPinMotors(): {
-    id: string;
-    x: number;
-    y: number;
-    angle: number;
-    bodyId: string | undefined;
-  }[] {
+  get drivenPinMotors(): DrivenPinMotor[] {
     return this.drivenFloatingPins.map((joint) => {
       const actuator = resolveActuator(joint);
       const reference = actuator
@@ -2645,7 +2741,14 @@ export class NewGridComponent implements OnDestroy {
         actuator && actuator.referenceBody !== GROUND_BODY
           ? (actuator.referenceBody as Link).id
           : undefined;
-      return { id: joint.id, x: joint.x, y: joint.y, angle, bodyId };
+      return {
+        id: joint.id,
+        x: joint.x,
+        y: joint.y,
+        angle,
+        bodyId,
+        cw: this.drivenClockwise(joint),
+      };
     });
   }
 
@@ -2662,7 +2765,7 @@ export class NewGridComponent implements OnDestroy {
     revision: number;
     pose: number;
     scale: number;
-    forward: boolean;
+    forward: string;
     paint: string;
     list: CylinderMark[];
   };
@@ -2684,7 +2787,7 @@ export class NewGridComponent implements OnDestroy {
     const revision = this.mechanismSrv.cylinderRevision;
     const pose = this.mechanismSrv.poseRevision;
     const scale = this.settings.objectScale;
-    const forward = !this.settings.isInputCW.value;
+    const forward = this.driveDirections(this.mechanismSrv.getJoints());
     const paint = this.linkPaint();
     const cache = this.cylinderListCache;
     if (
@@ -2701,7 +2804,11 @@ export class NewGridComponent implements OnDestroy {
         scale,
         forward,
         paint,
-        list: this.sliderMarks.cylinderMarks(this.mechanismSrv.getJoints(), 0.15 * scale, forward),
+        list: this.sliderMarks.cylinderMarks(
+          this.mechanismSrv.getJoints(),
+          0.15 * scale,
+          this.driveForward
+        ),
       };
     }
     return this.cylinderListCache!.list;
@@ -3389,8 +3496,10 @@ export class NewGridComponent implements OnDestroy {
    * Black or white, whichever the link's own colour can be read against.
    *
    * The label sits on the body it names, and the bodies run from pale mint to
-   * navy, so one ink cannot serve them all. Relative luminance decides it, the
-   * same rule a contrast checker uses.
+   * navy, so one ink cannot serve them all. Through `contrast.ts`, which is
+   * where the joint mark and the swatch picker get the same answer: this used
+   * to do its own luminance and flip at its own threshold, so a band of greys
+   * took dark ink on the mark and light ink on the name beside it.
    */
   linkLabelInk(link: Link): string {
     // A body the analysis modes have nothing to say about is drawn in one pale
@@ -3399,14 +3508,7 @@ export class NewGridComponent implements OnDestroy {
     // name went invisible the moment the body went grey under it.
     if (this.mechanismSrv.isPartInert(link)) return 'black';
     const fill = (link as { fill?: string }).fill ?? '#ffffff';
-    const hex = fill.replace('#', '');
-    if (hex.length < 6) return 'black';
-    const channel = (at: number) => {
-      const value = parseInt(hex.slice(at, at + 2), 16) / 255;
-      return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-    };
-    const luminance = 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
-    return luminance > 0.45 ? 'black' : 'white';
+    return luminanceOf(fill) > INK_FLIPS_AT ? 'black' : 'white';
   }
 
   linkDisplayName(link: Link): string {
@@ -3461,7 +3563,12 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /** The unioned outline, per pose, so the clipping is not redone every frame. */
-  private motorUnionCache?: { pose: number; scale: number; byLink: Map<string, string> };
+  private motorUnionCache?: {
+    pose: number;
+    scale: number;
+    byLink: Map<string, string>;
+    motors: DrivenPinMotor[];
+  };
 
   /**
    * A link's outline, with the motor's case fused into it where one is bolted
@@ -3474,17 +3581,21 @@ export class NewGridComponent implements OnDestroy {
    * as the app's other rigid attachments read.
    */
   private outlineWithMotor(link: Link): string {
-    const outline = String(this.mechanismSrv.getLinkProp(link, 'd') ?? '');
     const pose = this.mechanismSrv.poseRevision;
     const scale = this.settings.objectScale;
     if (this.motorUnionCache?.pose !== pose || this.motorUnionCache.scale !== scale) {
-      this.motorUnionCache = { pose, scale, byLink: new Map() };
+      // The motors are re-derived once per rebuild rather than per link: the
+      // getter walks every joint and resolves an actuator for each driven one,
+      // and it cannot answer differently within one pose.
+      this.motorUnionCache = { pose, scale, byLink: new Map(), motors: this.drivenPinMotors };
     }
     const cached = this.motorUnionCache.byLink.get(link.id);
     if (cached !== undefined) return cached;
 
+    // Read on the miss only: on a hit the fused path already holds it.
+    const outline = String(this.mechanismSrv.getLinkProp(link, 'd') ?? '');
     const r = 0.15 * scale;
-    const cases = this.drivenPinMotors
+    const cases = this.motorUnionCache.motors
       .filter((motor) => motor.bodyId === link.id)
       .map((motor) => motorBodyAt(r, { x: motor.x, y: motor.y }, (motor.angle * Math.PI) / 180));
     const fused =
@@ -3618,7 +3729,7 @@ export class NewGridComponent implements OnDestroy {
     const joints = this.mechanismSrv.getJoints();
     const r = 0.15 * this.settings.objectScale;
     const key =
-      `${r}|${this.linkPaint()}|${this.settings.isInputCW.value}|` +
+      `${r}|${this.linkPaint()}|${this.driveDirections(joints)}|` +
       joints
         .map((joint) => {
           const real = joint as RealJoint;
@@ -3635,7 +3746,7 @@ export class NewGridComponent implements OnDestroy {
     if (this.markCache?.key !== key) {
       this.markCache = {
         key,
-        marks: this.sliderMarks.marks(joints, r, this.guides(), !this.settings.isInputCW.value),
+        marks: this.sliderMarks.marks(joints, r, this.guides(), this.driveForward),
         channels: this.sliderMarks.channels(joints, r),
       };
     }
@@ -3702,8 +3813,11 @@ export class NewGridComponent implements OnDestroy {
       case 'history.undo':
       case 'history.redo':
         // Nothing to take back in the analysis modes, which is why the buttons
-        // are not there either.
-        if (this.tabService.isAnalysisMode()) return;
+        // are not there either -- and nothing to take back under a running or
+        // parked-away-from-start mechanism, which is why they grey. The same
+        // predicate the buttons quote, so the key and the button cannot give
+        // two answers in the same session.
+        if (!this.gridUtils.canRestoreHistory()) return;
         if (id === 'history.redo') {
           this.saveHistoryService.redo();
         } else {
@@ -3721,39 +3835,61 @@ export class NewGridComponent implements OnDestroy {
    * nothing: a lock is not a state the grid as a whole can be in.
    */
   private toggleLockOnSelection(): void {
-    const selected = this.activeObjService.getSelectedObj();
-    if (
-      !(selected instanceof RealJoint) &&
-      !(selected instanceof Link) &&
-      !(selected instanceof Force)
-    ) {
+    // The type first, then the object. `getSelectedObj` throws for everything
+    // it has no case for — the grid, a position, the picture, a whole machine,
+    // nothing at all — so asking it before checking turned "there is nothing to
+    // lock" into an uncaught error on a fresh grid.
+    const kind = this.activeObjService.objType;
+    if (kind !== 'Joint' && kind !== 'Link' && kind !== 'Force') {
       this.notify.refusal(
         'lock.nothing-selected',
         'Select something first — Lock holds whatever is selected.'
       );
       return;
     }
-    this.mechanismSrv.toggleLock(selected);
+    this.mechanismSrv.toggleLock(this.activeObjService.getSelectedObj());
   }
 
+  /**
+   * Take away whatever is selected.
+   *
+   * Every selectable thing that has a Delete of its own is answered here. Left
+   * out, the key cleared the selection and left the object standing -- which
+   * reads as a delete that did not take, and is the exact failure the force
+   * branch was added to prevent. A machine is the one selection with no answer
+   * of its own: "delete" on it means all of its parts at once, which is its
+   * panel's own button rather than a per-part key.
+   */
   private deleteSelection(): void {
-    if (this.activeObjService.objType === 'Grid') {
-      this.notify.refusal(
-        'delete.nothing-selected',
-        'Select something first — Delete removes whatever is selected.'
-      );
-      return;
-    }
-    if (this.activeObjService.objType === 'Joint') {
-      this.mechanismSrv.deleteJoint();
-    } else if (this.activeObjService.objType === 'Link') {
-      this.mechanismSrv.deleteLink();
-    } else if (this.activeObjService.objType === 'Force') {
-      // A force is a thing on the drawing with a Delete of its own in its
-      // menu, so the key that says "delete what is selected" has to mean it
-      // here too. Left out, the key cleared the selection and left the arrow
-      // standing -- which reads as a delete that did not take.
-      this.mechanismSrv.deleteForce();
+    switch (this.activeObjService.objType) {
+      case 'Joint':
+        this.mechanismSrv.deleteJoint();
+        break;
+      case 'Link':
+        this.mechanismSrv.deleteLink();
+        break;
+      case 'Force':
+        this.mechanismSrv.deleteForce();
+        break;
+      case 'SynthesisPose':
+        this.deleteSynthesisPosition(this.activeObjService.selectedPose.id);
+        break;
+      case 'BackgroundImage':
+        this.bgImage.remove();
+        this.notify.success('bgImage.removed', 'Background image removed.');
+        break;
+      case 'Mechanism':
+        this.notify.refusal(
+          'delete.whole-mechanism',
+          'Delete removes one part — the mechanism panel has its own Delete for the whole machine.'
+        );
+        return;
+      default:
+        this.notify.refusal(
+          'delete.nothing-selected',
+          'Select something first — Delete removes whatever is selected.'
+        );
+        return;
     }
     this.activeObjService.updateSelectedObj(undefined);
   }

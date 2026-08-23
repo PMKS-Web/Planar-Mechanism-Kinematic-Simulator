@@ -277,7 +277,13 @@
           [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
         />
         <!-- Grab anywhere inside to slide it. Invisible rather than absent so
-             the whole picture is the target, not just its edges. -->
+             the whole picture is the target, not just its edges.
+
+             It names its own menu target, as every other surface on this canvas
+             does. Without that, a right-click here reached only the SVG root,
+             which moves the pointer but deliberately does not rebuild the card
+             -- so whatever was right-clicked last, a link say, reopened over
+             the picture with its actions still aimed at that link. -->
         <rect
           class="bgImageMoveSurface"
           pointer-events="all"
@@ -285,6 +291,7 @@
           [attr.y]="bgImage.topOf(bg)"
           [attr.width]="bg.width"
           [attr.height]="bgImage.heightOf(bg)"
+          (contextmenu)="setLastRightClick('grid')"
           (pointerdown)="startBackgroundImageMove($event)"
         />
       </g>
@@ -317,7 +324,7 @@
           gridUtils.getGround(joint) &&
           gridUtils.typeOfJoint(joint) !== 'P' &&
           gridUtils.getInput(joint) &&
-          settings.isInputCW.value
+          drivenClockwise(joint)
         ) {
           <!-- The grid's y-flip reverses each asset's apparent chirality, so the
                file that *looks* clockwise here is InputCW.svg, verified on screen
@@ -335,7 +342,7 @@
           gridUtils.getGround(joint) &&
           gridUtils.typeOfJoint(joint) !== 'P' &&
           gridUtils.getInput(joint) &&
-          !settings.isInputCW.value
+          !drivenClockwise(joint)
         ) {
           <image
             xlink:href="../../../assets/InputCCW.svg"
@@ -445,7 +452,7 @@
       >
         <image
           [attr.xlink:href]="
-            settings.isInputCW.value
+            motor.cw
               ? '../../../assets/InputArrowCW.svg'
               : '../../../assets/InputArrowCCW.svg'
           "
@@ -1598,6 +1605,7 @@
           [attr.cy]="bgImage.topOf(bg) - backgroundImageRotateReach()"
           [attr.r]="backgroundImageHandleSize() * 0.65"
           [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+          (contextmenu)="setLastRightClick('grid')"
           (pointerdown)="startBackgroundImageRotate($event)"
         />
         <!-- Corners resize about the opposite corner, with the file's own
@@ -1614,6 +1622,7 @@
             [attr.height]="backgroundImageHandleSize()"
             [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
             [attr.cursor]="corner.cursor"
+            (contextmenu)="setLastRightClick('grid')"
             (pointerdown)="startBackgroundImageResize($event, corner.id)"
           />
         }

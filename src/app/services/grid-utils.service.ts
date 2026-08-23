@@ -12,6 +12,7 @@ import {
 } from '../model/cylinder';
 import { SettingsService } from './settings.service';
 import { MechanismService } from './mechanism.service';
+import { SelectedTabService } from '../selected-tab.service';
 import { canDrive } from '../model/actuator';
 import { Lockable, frozenJointIds, locksHolding } from '../model/lock-set';
 import { Coord } from '../model/coord';
@@ -73,6 +74,26 @@ export class GridUtilsService {
    */
   private get mechanismSrv(): MechanismService {
     return this.injector.get(MechanismService);
+  }
+
+  /** At call time for the same reason: SelectedTabService injects the mechanism. */
+  private get tabService(): SelectedTabService {
+    return this.injector.get(SelectedTabService);
+  }
+
+  /**
+   * Whether a state out of the history may replace the drawing right now.
+   *
+   * Both surfaces that offer undo — the top bar's buttons and the keyboard
+   * shortcut — quote this, so they cannot answer differently. They used to:
+   * the buttons greyed while the mechanism was animating, the shortcut did
+   * not, and in the window where the mechanism is paused away from timestep 0
+   * Ctrl+Z replayed a URL under a displaced pose beside two greyed buttons
+   * that refused to. It lives here, on a service both can reach, rather than
+   * on either of them.
+   */
+  canRestoreHistory(): boolean {
+    return !this.tabService.isAnalysisMode() && !this.mechanismSrv.isAnimating();
   }
 
   //Return a boolean, is this link a ground link?
@@ -262,13 +283,15 @@ export class GridUtilsService {
   }
 
   /**
-   * The joints the current Lock marks hold still. Derived fresh each time —
-   * the mechanism is small and the closure is cheap — so every asker (the
-   * drag gates, the canvas paint, the panel) reads the same answer with no
-   * cache to invalidate.
+   * The joints the current Lock marks hold still, so every asker (the drag
+   * gates, the canvas paint, the panel) reads the same answer.
+   *
+   * Through the service's cache rather than re-deriving: the closure walks
+   * every body and every sealed assembly, and the canvas asks it several times
+   * per joint on every change detection pass.
    */
   frozenJointIds(): Set<string> {
-    return frozenJointIds(this.mechanismSrv.joints, this.mechanismSrv.links);
+    return this.mechanismSrv.frozenJoints();
   }
 
   isJointFrozen(joint: Joint): boolean {
@@ -277,7 +300,12 @@ export class GridUtilsService {
 
   /** The locked objects an Unlock action has to clear for this joint to move. */
   locksHolding(joint: Joint): Lockable[] {
-    return locksHolding(joint.id, this.mechanismSrv.joints, this.mechanismSrv.links);
+    return locksHolding(
+      joint.id,
+      this.mechanismSrv.joints,
+      this.mechanismSrv.links,
+      this.mechanismSrv.sealedStructures()
+    );
   }
 
   dragJoint(selectedJoint: RealJoint, trueCoord: Coord) {
@@ -558,41 +586,7 @@ export class GridUtilsService {
     // reference frame the link's own geometry goes through.
     neighbours.forEach(({ link, from }) => {
       if (!link.joints.some((joint) => movedJointIDs.has(joint.id))) return;
-      const [start, end] = link.joints;
-      if (from.length === 2 && start && end) {
-        link.forces.forEach((force) => {
-          const [x, y] = pointThroughFrame(force.startCoord, from[0], from[1], start, end);
-          force.moveForceTo(x, y);
-        });
-      }
-      // A custom centre of mass rides the body through the same change of
-      // frame the forces just did — it is a point somebody fixed to this link.
-      // An auto one is re-derived from the joints like always, and a frame too
-      // degenerate to transport through leaves a custom point untouched.
-      if (link.comIsCustom) {
-        if (from.length === 2 && start && end) {
-          const [comX, comY] = pointThroughFrame(link.CoM, from[0], from[1], start, end);
-          link.CoM = new Coord(comX, comY);
-        }
-      } else {
-        link.CoM = RealLink.determineCenterOfMass(link.joints);
-      }
-      link.updateCoMDs();
-      link.updateLengthAndAngle();
-      link.subset.forEach((sub) => {
-        const subLink = sub as RealLink;
-        if (subLink.comIsCustom) {
-          if (from.length === 2 && start && end) {
-            const [subX, subY] = pointThroughFrame(subLink.CoM, from[0], from[1], start, end);
-            subLink.CoM = new Coord(subX, subY);
-          }
-        } else {
-          subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
-        }
-        subLink.updateCoMDs();
-        subLink.updateLengthAndAngle();
-      });
-      PositionSolver.setUpInitialJointLocations(link.joints);
+      this.reframeDeformedLink(link, from);
     });
 
     // A neighbour drag that carried a cylinder mount along re-poses that
@@ -823,45 +817,61 @@ export class GridUtilsService {
       joint.y = roundNumber(at.y, 6);
     });
 
-    affected.forEach(({ link, from }) => {
-      const [start, end] = link.joints;
-      if (from.length === 2 && start && end) {
-        link.forces.forEach((force) => {
-          const [x, y] = pointThroughFrame(force.startCoord, from[0], from[1], start, end);
-          force.moveForceTo(x, y);
-        });
-      }
-      // A custom centre of mass rides the body through the same change of
-      // frame the forces just did — it is a point somebody fixed to this link.
-      // An auto one is re-derived from the joints like always, and a frame too
-      // degenerate to transport through leaves a custom point untouched.
-      if (link.comIsCustom) {
-        if (from.length === 2 && start && end) {
-          const [comX, comY] = pointThroughFrame(link.CoM, from[0], from[1], start, end);
-          link.CoM = new Coord(comX, comY);
-        }
-      } else {
-        link.CoM = RealLink.determineCenterOfMass(link.joints);
-      }
-      link.updateCoMDs();
-      link.updateLengthAndAngle();
-      link.subset.forEach((sub) => {
-        const subLink = sub as RealLink;
-        if (subLink.comIsCustom) {
-          if (from.length === 2 && start && end) {
-            const [subX, subY] = pointThroughFrame(subLink.CoM, from[0], from[1], start, end);
-            subLink.CoM = new Coord(subX, subY);
-          }
-        } else {
-          subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
-        }
-        subLink.updateCoMDs();
-        subLink.updateLengthAndAngle();
-      });
-      PositionSolver.setUpInitialJointLocations(link.joints);
-    });
+    affected.forEach(({ link, from }) => this.reframeDeformedLink(link, from));
 
     return movedIds;
+  }
+
+  /**
+   * Carry one deformed link's fixed points through its change of frame.
+   *
+   * A link holding a joint that moved has been deformed, not translated, so its
+   * outline and an automatic centre of mass follow from where its joints now
+   * are. Its forces do not, and neither does a custom centre of mass: those are
+   * points somebody fixed to *this body*, and leaving them at their old world
+   * position silently moves them to a different point of the link. A frame too
+   * degenerate to transport through leaves them untouched.
+   *
+   * One copy for both drag paths — a link drag and a cylinder re-pose. They
+   * each carried their own, identical, and a fix to either would have reached
+   * only one kind of drag, surfacing as a discrepancy in force numbers.
+   *
+   * @param from where this link's own two reference joints stood before the
+   * move, captured by the caller while the geometry was still the old one.
+   */
+  private reframeDeformedLink(link: RealLink, from: { x: number; y: number }[]): void {
+    const [start, end] = link.joints;
+    const transportable = from.length === 2 && !!start && !!end;
+    if (transportable) {
+      link.forces.forEach((force) => {
+        const [x, y] = pointThroughFrame(force.startCoord, from[0], from[1], start, end);
+        force.moveForceTo(x, y);
+      });
+    }
+    if (link.comIsCustom) {
+      if (transportable) {
+        const [comX, comY] = pointThroughFrame(link.CoM, from[0], from[1], start, end);
+        link.CoM = new Coord(comX, comY);
+      }
+    } else {
+      link.CoM = RealLink.determineCenterOfMass(link.joints);
+    }
+    link.updateCoMDs();
+    link.updateLengthAndAngle();
+    link.subset.forEach((sub) => {
+      const subLink = sub as RealLink;
+      if (subLink.comIsCustom) {
+        if (transportable) {
+          const [subX, subY] = pointThroughFrame(subLink.CoM, from[0], from[1], start, end);
+          subLink.CoM = new Coord(subX, subY);
+        }
+      } else {
+        subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+      }
+      subLink.updateCoMDs();
+      subLink.updateLengthAndAngle();
+    });
+    PositionSolver.setUpInitialJointLocations(link.joints);
   }
 
   private transformLinkBody(
