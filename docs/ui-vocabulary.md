@@ -19,6 +19,13 @@ why, and what to do about it.**
 | Buttons, menu items, section headings, field labels | `Add Cylinder`, `Input Settings`, `Starts at` |
 | Messages, tooltips, refusals, warnings | `Switch to Edit mode to change the mechanism.` |
 
+One carve-out: the **action chips on a notification** stay sentence case, because they are
+written as the end of the sentence above them — `Keep it, insert a new one` is a phrase, not
+a control name, and Title Case makes it absurd.
+
+**Spell American.** `analyze`, `analyzed`, `analyzing` — never `analyse`. The noun is
+`Analysis`, which is spelled the same either way, and it is what named the modes.
+
 **Write to the person, about their mechanism.** Not about the program.
 
 | Instead of | Write |
@@ -125,8 +132,8 @@ Show the unit the mechanism is currently in — never a list of the alternatives
 number or a number with a unit, and messages should say so once:
 `Type a number, with or without a unit — 2, 2 cm, 0.75 in.`
 
-Spell it **centre of mass** in prose and **CoM** in a label. Not `COM`, not
-`center of mass`, not both in one panel.
+Spell it **center of mass** in prose and **CoM** in a label. Not `COM`, not
+`Center of Mass` mid-sentence, not both forms in one panel.
 
 ---
 

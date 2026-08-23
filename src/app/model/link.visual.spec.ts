@@ -131,10 +131,18 @@ function expectEverySimulatedCompoundPathStable(mechanism: Mechanism): void {
   });
 }
 
+// The object scale is process-wide static state shared with every other spec
+// file in the worker, so pin it for the file and put it back.
+let previousObjectScale: number;
+beforeEach(() => {
+  previousObjectScale = SettingsService.objectScale;
+  SettingsService._objectScale.next(1);
+});
+afterEach(() => {
+  SettingsService._objectScale.next(previousObjectScale);
+});
+
 describe('welded link SVG geometry', () => {
-  beforeEach(() => {
-    SettingsService._objectScale.next(1);
-  });
 
   it('keeps every frame of the Safari regression mechanism deterministic and finite', () => {
     const { mechanism } = buildMechanismFixture(LOOPLESS_WELDED_MECHANISM);
@@ -158,9 +166,6 @@ describe('welded link SVG geometry', () => {
 });
 
 describe('a bar whose joints have all landed on one point', () => {
-  beforeEach(() => {
-    SettingsService._objectScale.next(1);
-  });
 
   it('draws its end cap instead of a path full of NaN', () => {
     // Reachable: drop a joint exactly onto another joint of its own link and the

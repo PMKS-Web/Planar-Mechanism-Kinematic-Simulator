@@ -17,7 +17,7 @@ const { chromium } = await import(
 );
 import { waitForReady } from './app-ready.mjs';
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4600';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
 
 const templates = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
 const FOUR_BAR = Object.fromEntries(

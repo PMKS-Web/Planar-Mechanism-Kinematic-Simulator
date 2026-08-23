@@ -153,7 +153,13 @@ await page.screenshot({ path: `${OUT}/08-paged-back.png` });
 await page.locator('.stepBar').first().click();
 await page.waitForTimeout(400);
 check('the progress bar jumps to a step', (await stepNow())?.step === 1);
+// Capped: if the arrow stops disabling itself, fail loudly here rather than
+// clicking forever with no diagnostic.
+let paged = 0;
 while (!(await page.locator('.stepArrow').last().isDisabled())) {
+  if (++paged > 30) {
+    throw new Error('forward arrow never disabled after 30 pages — step paging is stuck');
+  }
   await page.locator('.stepArrow').last().click();
   await page.waitForTimeout(260);
 }

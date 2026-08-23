@@ -3,13 +3,13 @@
  * Make Circular on a crank, and the driver dyad that turns a synthesised
  * four-bar into a six-bar a motor can run.
  *
- *   BASE=http://localhost:4310 node e2e/circular-link-and-driver.mjs
+ *   PMKS_BASE_URL=http://127.0.0.1:4200 node e2e/circular-link-and-driver.mjs
  */
 const { chromium } = await import('/tmp/pmks-playwright/node_modules/playwright/index.mjs');
 import { waitForReady } from './app-ready.mjs';
 import { readFileSync, mkdirSync } from 'node:fs';
 
-const BASE = process.env.BASE ?? 'http://localhost:4310';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
 const SHOTS = new URL('../artifacts/screenshots/', import.meta.url).pathname;
 mkdirSync(SHOTS, { recursive: true });
 

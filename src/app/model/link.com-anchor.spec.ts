@@ -57,10 +57,18 @@ function turnAboutA(link: RealLink, degrees: number): void {
   settle(link);
 }
 
+// The object scale is process-wide static state shared with every other spec
+// file in the worker, so pin it for the file and put it back.
+let previousObjectScale: number;
+beforeEach(() => {
+  previousObjectScale = SettingsService.objectScale;
+  SettingsService._objectScale.next(1);
+});
+afterEach(() => {
+  SettingsService._objectScale.next(previousObjectScale);
+});
+
 describe('what a placed center of mass is held against', () => {
-  beforeEach(() => {
-    SettingsService._objectScale.next(1);
-  });
 
   it('rides the link when held against the link, which is the standing default', () => {
     const { link } = bar();

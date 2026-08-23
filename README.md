@@ -78,7 +78,7 @@ Please note, the main branch has a CI/CD workflow setup that will update the pro
 
 The commits to the main branch will get reflected on [app.pmksplus.com](https://app.pmksplus.com)
 
-All other branches will get published to https://[BRANCHNAME]--pmks.netlify.app (For example https://staging--pmks.netlify.app)
+All other branches will get published to https://[BRANCHNAME]--pmksprod.netlify.app (For example https://staging--pmksprod.netlify.app)
 
 Landing Page: https://pmksplus.com
 

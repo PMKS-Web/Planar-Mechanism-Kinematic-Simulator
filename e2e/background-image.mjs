@@ -13,7 +13,7 @@ const { chromium } = await import(
 import { waitForReady } from './app-ready.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4710';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
 const SHOTS = new URL('../artifacts/background-image/', import.meta.url).pathname;
 mkdirSync(SHOTS, { recursive: true });
 

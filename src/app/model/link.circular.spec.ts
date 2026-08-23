@@ -24,10 +24,18 @@ function numbersIn(path: string): number[] {
   return (path.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
 }
 
+// The object scale is process-wide static state shared with every other spec
+// file in the worker, so pin it for the file and put it back.
+let previousObjectScale: number;
+beforeEach(() => {
+  previousObjectScale = SettingsService.objectScale;
+  SettingsService._objectScale.next(1);
+});
+afterEach(() => {
+  SettingsService._objectScale.next(previousObjectScale);
+});
+
 describe('a link drawn as a circle', () => {
-  beforeEach(() => {
-    SettingsService._objectScale.next(1);
-  });
 
   it('is offered on a grounded crank and nowhere else', () => {
     expect(crank().link.canBeCircular()).toBe(true);

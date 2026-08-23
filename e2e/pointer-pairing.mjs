@@ -10,13 +10,13 @@
  * The sequence below is the one traced from the failing gesture in Safari, so
  * this reproduces it in any engine — no native popup required.
  *
- *   BASE=http://127.0.0.1:4310 node e2e/pointer-pairing.mjs
+ *   PMKS_BASE_URL=http://127.0.0.1:4200 node e2e/pointer-pairing.mjs
  */
 const { chromium, webkit } = await import('/tmp/pmks-playwright/node_modules/playwright/index.mjs');
 import { waitForReady } from './app-ready.mjs';
 import { readFileSync } from 'node:fs';
 
-const BASE = process.env.BASE ?? 'http://127.0.0.1:4310';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
 const source = readFileSync(
   new URL('../src/app/component/MODALS/templates/template-linkages.ts', import.meta.url).pathname,
   'utf8'
