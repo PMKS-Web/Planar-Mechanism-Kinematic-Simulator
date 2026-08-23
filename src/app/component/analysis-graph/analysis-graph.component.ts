@@ -35,7 +35,6 @@ import {
 } from 'src/app/model/analysis-series';
 export { ANALYSIS_SERIES_COLORS };
 import { ForceAnalysisMode } from 'src/app/model/mechanism/force-solver';
-import { Mechanism } from 'src/app/model/mechanism/mechanism';
 import { ForceUnit } from '../../model/utils';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { FormBuilder } from '@angular/forms';
@@ -608,7 +607,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
    * of samples, so the shared index does not even mean the same moment.
    */
   private ownSample(): number {
-    const mechanism = this.mechanismFor(this.mechPart);
+    const mechanism = this.mechanismService.mechanismForId(this.mechPart);
     if (!mechanism) return 0;
     const at = this.mechanismService.mechanisms.indexOf(mechanism);
     const step =
@@ -625,7 +624,8 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       this.chart.clearAnnotations();
       return;
     }
-    const timeSeconds = this.mechanismFor(this.mechPart)?.timeNum[timeIndex] ?? timeIndex;
+    const timeSeconds =
+      this.mechanismService.mechanismForId(this.mechPart)?.timeNum[timeIndex] ?? timeIndex;
     if (
       this.seriesCheckboxForm.value.x ||
       this.seriesCheckboxForm.value.y ||
@@ -735,13 +735,6 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
    * have to come from this part's machine rather than from whichever one was
    * built first. A part in a floating chain belongs to none, and graphs nothing.
    */
-  private mechanismFor(mechPart: string): Mechanism | undefined {
-    const part =
-      this.mechanismService.joints.find((joint) => joint.id === mechPart) ??
-      this.mechanismService.links.find((link) => link.id === mechPart);
-    return part ? this.mechanismService.mechanismContaining(part) : undefined;
-  }
-
   determineChart(analysis: string, analysisType: string, mechProp: string, mechPart: string) {
     try {
       this.buildChart(analysis, analysisType, mechProp, mechPart);
@@ -766,7 +759,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     mechProp: string,
     mechPart: string
   ): void {
-    const mechanism = this.mechanismFor(mechPart);
+    const mechanism = this.mechanismService.mechanismForId(mechPart);
     let yAxisTitle = '';
     let datum: number[][] = [];
     const seriesData = [];
@@ -931,7 +924,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     const datum_Y: number[] = [];
     const datum_Z: number[] = [];
     const categories: string[] = [];
-    const mechanism = this.mechanismFor(mechPart);
+    const mechanism = this.mechanismService.mechanismForId(mechPart);
     // A loose joint, or a chain that never reaches ground, is in no mechanism
     // and so has nothing solved to plot.
     if (!mechanism) return [[datum_X, datum_Y, datum_Z], categories];

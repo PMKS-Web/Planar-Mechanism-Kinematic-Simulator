@@ -1100,9 +1100,6 @@ export class MechanismService {
    * then repeated back as "Edit Cylinder ]`". Past z the gaps left by deleted
    * joints are filled, and past those a two-letter name is used; a drawing with
    * fifty-three live joints has run out of single letters honestly.
-   */
-  /**
-   * The next free joint id.
    *
    * `additionalLetters` are treated as already used, for callers handing out
    * several at once. `freedLetters` are treated as free although the joints
@@ -1603,11 +1600,6 @@ export class MechanismService {
   }
 
   /**
-   * The root link that owns `link`, following welds. A carrier absorbed into a
-   * compound keeps existing as a member of that compound's subset, so the
-   * pointer stays valid while no longer naming a body any solver iterates.
-   */
-  /**
    * The one door for writing a body's mass, wherever the field lives.
    *
    * A compound and its members must keep telling one story: edit a member and
@@ -1633,8 +1625,14 @@ export class MechanismService {
     body.mass = value;
   }
 
-  /** Public: the cylinder panel writes part masses and must keep a welded
-   * compound's aggregate true. */
+  /**
+   * The root link that owns `link`, following welds. A carrier absorbed into a
+   * compound keeps existing as a member of that compound's subset, so the
+   * pointer stays valid while no longer naming a body any solver iterates.
+   *
+   * Public: the cylinder panel writes part masses and must keep a welded
+   * compound's aggregate true.
+   */
   rootLinkOwning(link: Link): Link | undefined {
     const contains = (candidate: Link): boolean =>
       candidate.id === link.id ||
@@ -2616,16 +2614,6 @@ export class MechanismService {
   }
 
   /**
-   * What force analysis still needs, asked of the force solver rather than
-   * guessed at.
-   *
-   * The solver already refuses precisely and says why -- an unsupported
-   * topology, mass properties that are not numbers, an equilibrium that is
-   * singular. Restating those conditions here would be a second opinion free to
-   * drift from the first, and the drift would show as a tab that says Ready
-   * above a panel that says it cannot solve.
-   */
-  /**
    * Re-derive every auto link's mass properties from its own skeleton.
    *
    * Runs at the one funnel every mutation passes through, for the same reason
@@ -2754,6 +2742,16 @@ export class MechanismService {
     return { com, moi };
   }
 
+  /**
+   * What force analysis still needs, asked of the force solver rather than
+   * guessed at.
+   *
+   * The solver already refuses precisely and says why -- an unsupported
+   * topology, mass properties that are not numbers, an equilibrium that is
+   * singular. Restating those conditions here would be a second opinion free to
+   * drift from the first, and the drift would show as a tab that says Ready
+   * above a panel that says it cannot solve.
+   */
   forceAnalysisRequirements(): ForceRequirement[] {
     if (this.requirementsCache?.revision !== this.solveRevision) {
       this.requirementsCache = { revision: this.solveRevision, list: this.buildRequirements() };
@@ -2882,7 +2880,6 @@ export class MechanismService {
     return describeUnassigned(this.unassigned);
   }
 
-  /** How many blockers stand between this drawing and a full set of animations. */
   /**
    * How many things stand between the drawing and being analysed.
    *
@@ -3856,14 +3853,6 @@ export class MechanismService {
   }
 
   /**
-   * Draw one machine's solved sample onto its own editable objects.
-   *
-   * Matched by id rather than by position. The editable arrays hold the whole
-   * drawing while a Mechanism holds only its own component, so the two are no
-   * longer the same list in the same order -- and pairing them positionally
-   * would quietly move one mechanism's joint to another's coordinates.
-   */
-  /**
    * The sample one machine is showing right now, in its own sample array.
    *
    * Not `mechanismTimeStep`: that indexes the shared clock's cycle, and while
@@ -3924,6 +3913,14 @@ export class MechanismService {
     { joints: Map<string, number>; links: Map<string, number>; forces: Map<string, number> }
   >();
 
+  /**
+   * Draw one machine's solved sample onto its own editable objects.
+   *
+   * Matched by id rather than by position. The editable arrays hold the whole
+   * drawing while a Mechanism holds only its own component, so the two are no
+   * longer the same list in the same order -- and pairing them positionally
+   * would quietly move one mechanism's joint to another's coordinates.
+   */
   private applyMechanismPose(frames: Mechanism, partition: MechanismPartition, seconds: number) {
     const times = frames.timeNum ?? [];
     if (!frames.isMechanismValid() || times.length === 0) {

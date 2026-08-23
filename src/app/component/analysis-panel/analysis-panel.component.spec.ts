@@ -17,12 +17,6 @@ import { AnalysisPanelComponent } from './analysis-panel.component';
 
 async function createPanel(payload: string, selectedId: string, mode: TabID = TabID.ANALYZE) {
   const fixtureData = buildMechanismFixture(payload);
-  // The panel asks whether the *selected part's* machine solves, not whether
-  // any of them does. Borrowed from the service rather than stubbed, for the
-  // same reason the lookups it builds on are.
-  fixtureData.service.isPartSimulatable = MechanismService.prototype.isPartSimulatable.bind(
-    fixtureData.service
-  );
   const selected = selectedId
     ? (fixtureData.service.joints.find((joint) => joint.id === selectedId) ??
       fixtureData.service.links.find((link) => link.id === selectedId)!)

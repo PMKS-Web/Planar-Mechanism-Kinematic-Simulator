@@ -64,14 +64,6 @@ export class AnalysisPanelComponent {
   private tabs = inject(SelectedTabService);
 
   /**
-   * Which half of the analysis this mode is asking for.
-   *
-   * The two used to sit one above the other in a single Analyze panel, which
-   * meant every reader scrolled past the answer they did not want and neither
-   * question could say what *it* needed. They are separate modes now, so the
-   * panel shows one at a time.
-   */
-  /**
    * What the empty analysis panel says, which depends on why it is empty.
    *
    * Nothing selected is a different situation from a selection whose mechanism
@@ -130,6 +122,14 @@ export class AnalysisPanelComponent {
     return (selected === 'Joint' || selected === 'Link') && !this.selectionIsSimulatable;
   }
 
+  /**
+   * Which half of the analysis this mode is asking for.
+   *
+   * The two used to sit one above the other in a single Analyze panel, which
+   * meant every reader scrolled past the answer they did not want and neither
+   * question could say what *it* needed. They are separate modes now, so the
+   * panel shows one at a time.
+   */
   get showKinematic(): boolean {
     return this.tabs.getCurrentTab() !== TabID.FORCE;
   }
@@ -276,19 +276,6 @@ export class AnalysisPanelComponent {
   }
 
   /**
-   * The machine the selected part belongs to. Reactions are a property of one
-   * machine, so a part in another one -- or in none, as an ungrounded chain is
-   * -- must not be answered out of whichever mechanism came first.
-   */
-  private mechanismFor(kind: 'joint' | 'link', partId: string): Mechanism | undefined {
-    const part =
-      kind === 'joint'
-        ? this.jointById(partId)
-        : this.mechanismService.links.find((link) => link.id === partId);
-    return part ? this.mechanismService.mechanismContaining(part) : undefined;
-  }
-
-  /**
    * What a row calls the body it graphs -- the name the reader has seen on the
    * canvas, not the internal one.
    *
@@ -340,7 +327,10 @@ export class AnalysisPanelComponent {
    * changes; the template reads them on every change-detection pass.
    */
   private cachedRows(kind: 'joint' | 'link', partId: string): ForceAnalysisRow[] {
-    const mechanism = this.mechanismFor(kind, partId);
+    // The machine the selected part belongs to. Reactions are a property of one
+    // machine, so a part in another one -- or in none, as an ungrounded chain is
+    // -- must not be answered out of whichever mechanism came first.
+    const mechanism = this.mechanismService.mechanismForId(partId);
     const key = `${kind}|${partId}|${this.forceAnalysisMode()}`;
     if (this.rowCache?.key === key && this.rowCache.mechanism === mechanism) {
       return this.rowCache.rows;
@@ -449,14 +439,11 @@ export class AnalysisPanelComponent {
     return this.mechanismService.cylinderAt(this.activeSrv.selectedLink);
   }
 
-  /**
-   * What to call the selected body.
-   *
-   * A cylinder is drawn, selected and edited as one part, so analysing it under
-   * the name of its barrel link contradicts everything else the app says about
-   * it -- the canvas outlines the whole ram while the panel headed itself
-   * "Analysis for Link GN".
-   */
+  /** Point at the thing on the grid these numbers describe, while asked to. */
+  highlightCoM(on: boolean): void {
+    this.settingsService.previewCoMLinkId = on ? (this.activeSrv.selectedLink?.id ?? null) : null;
+  }
+
   /**
    * Which analysis this panel is showing.
    *
@@ -465,15 +452,18 @@ export class AnalysisPanelComponent {
    * one more thing to open before reaching a graph. The panel's own title says
    * it now.
    */
-  /** Point at the thing on the grid these numbers describe, while asked to. */
-  highlightCoM(on: boolean): void {
-    this.settingsService.previewCoMLinkId = on ? (this.activeSrv.selectedLink?.id ?? null) : null;
-  }
-
   get modeLabel(): string {
     return this.tabs.getCurrentTab() === TabID.FORCE ? 'Force Analysis' : 'Kinematic Analysis';
   }
 
+  /**
+   * What to call the selected body.
+   *
+   * A cylinder is drawn, selected and edited as one part, so analysing it under
+   * the name of its barrel link contradicts everything else the app says about
+   * it -- the canvas outlines the whole ram while the panel headed itself
+   * "Analysis for Link GN".
+   */
   get selectedBodyLabel(): string {
     const sealed = this.selectedCylinder;
     if (!sealed) return `Link ${this.activeSrv.selectedLink.name}`;

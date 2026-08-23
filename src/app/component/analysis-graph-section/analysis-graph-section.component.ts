@@ -78,13 +78,6 @@ export class AnalysisGraphSectionComponent {
   readonly graph = viewChild<AnalysisGraphComponent>('graph');
 
   /**
-   * What this quantity reads at the pose on screen.
-   *
-   * One sample, not the cycle: the header is answering "what is it now", and
-   * solving every sample of every collapsed graph to answer that would cost
-   * more than the graphs themselves.
-   */
-  /**
    * The last answer, and what it was an answer to.
    *
    * Reading one sample means solving the mechanism at that pose, and the
@@ -93,8 +86,15 @@ export class AnalysisGraphSectionComponent {
    */
   private previewCache?: { key: string; mechanism: unknown; series: SeriesPreview[] };
 
+  /**
+   * What this quantity reads at the pose on screen.
+   *
+   * One sample, not the cycle: the header is answering "what is it now", and
+   * solving every sample of every collapsed graph to answer that would cost
+   * more than the graphs themselves.
+   */
   get preview(): SeriesPreview[] {
-    const mechanism = this.mechanismFor();
+    const mechanism = this.mechanismService.mechanismForId(this.mechPart());
     if (!mechanism) return [];
     // This machine's own sample, not the shared clock's: while the machines
     // are unsynced they are each somewhere different, and the header has to
@@ -217,13 +217,6 @@ export class AnalysisGraphSectionComponent {
    */
   toggle(): void {
     this.expandedChange.emit(!this.expanded());
-  }
-
-  private mechanismFor(): Mechanism | undefined {
-    const part =
-      this.mechanismService.joints.find((joint) => joint.id === this.mechPart()) ??
-      this.mechanismService.links.find((link) => link.id === this.mechPart());
-    return part ? this.mechanismService.mechanismContaining(part) : undefined;
   }
 
   /**
