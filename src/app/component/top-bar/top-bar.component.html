@@ -62,71 +62,52 @@
 
       <div class="modeDivider"></div>
 
-      <!-- The chip is a second control with an action of its own, so it sits
-           beside the mode button rather than inside it: an interactive
-           descendant of a <button> is invalid ARIA — a screen reader flattens
-           it into the parent's name — and it answered only the mouse. -->
-      <div class="tabSlot" [class.withChip]="hasStatus()">
-        <button
-          class="tabButton"
-          [class.active]="isActive(TabID.ANALYZE)"
-          [class.notReady]="!canAnalyze(TabID.ANALYZE)"
-          (click)="select(TabID.ANALYZE)"
-          aria-label="Kinematic Analysis"
-        >
-          <mat-icon
-            [matTooltip]="shortcuts.tip('Kinematic Analysis', 'mode.kinematic')"
-            matTooltipShowDelay="600"
-            >query_stats</mat-icon
-          >
-          <span class="tabLabel long">Kinematic Analysis</span>
-          <span class="tabLabel short">Kinematic</span>
-        </button>
+      <!-- One control per analysis mode, doing all three things a press can
+           mean (`select`). The chip is a plain <span> inside it: a label, not a
+           second control -- an interactive descendant of a <button> is invalid
+           ARIA, a screen reader flattens it into the parent's name, and it
+           answered only the mouse. The count is spoken as part of the button's
+           own name instead, and the tooltip says when a press opens the setup
+           rather than switching mode. -->
+      <button
+        class="tabButton"
+        [class.active]="isActive(TabID.ANALYZE)"
+        [class.notReady]="!canAnalyze(TabID.ANALYZE)"
+        (click)="select(TabID.ANALYZE)"
+        [attr.aria-label]="nameOf(TabID.ANALYZE, 'Kinematic Analysis')"
+        [matTooltip]="tipFor(TabID.ANALYZE, 'Kinematic Analysis', 'mode.kinematic')"
+        matTooltipShowDelay="600"
+      >
+        <mat-icon>query_stats</mat-icon>
+        <span class="tabLabel long">Kinematic Analysis</span>
+        <span class="tabLabel short">Kinematic</span>
         <!-- Nothing drawn, nothing to be ready for. -->
         @if (hasStatus()) {
-          <button
-            class="chip"
-            [class.ok]="statusOf(TabID.ANALYZE).ready"
-            [attr.aria-label]="'Kinematic Analysis setup: ' + statusOf(TabID.ANALYZE).text"
-            (click)="openSetupFor(TabID.ANALYZE, $event)"
-            [matTooltip]="'What this mode needs'"
-            matTooltipShowDelay="600"
-          >
-            {{ statusOf(TabID.ANALYZE).text }}
-          </button>
+          <span class="chip" [class.ok]="statusOf(TabID.ANALYZE).ready">{{
+            statusOf(TabID.ANALYZE).text
+          }}</span>
         }
-      </div>
+      </button>
 
-      <div class="tabSlot" [class.withChip]="hasStatus()">
-        <button
-          class="tabButton"
-          [class.active]="isActive(TabID.FORCE)"
-          [class.notReady]="!canAnalyze(TabID.FORCE)"
-          (click)="select(TabID.FORCE)"
-          aria-label="Force Analysis"
-        >
-          <mat-icon
-            [matTooltip]="shortcuts.tip('Force Analysis', 'mode.force')"
-            matTooltipShowDelay="600"
-            >balance</mat-icon
-          >
-          <span class="tabLabel long">Force Analysis</span>
-          <span class="tabLabel short">Force</span>
-        </button>
+      <button
+        class="tabButton"
+        [class.active]="isActive(TabID.FORCE)"
+        [class.notReady]="!canAnalyze(TabID.FORCE)"
+        (click)="select(TabID.FORCE)"
+        [attr.aria-label]="nameOf(TabID.FORCE, 'Force Analysis')"
+        [matTooltip]="tipFor(TabID.FORCE, 'Force Analysis', 'mode.force')"
+        matTooltipShowDelay="600"
+      >
+        <mat-icon>balance</mat-icon>
+        <span class="tabLabel long">Force Analysis</span>
+        <span class="tabLabel short">Force</span>
         <!-- Nothing drawn, nothing to be ready for. -->
         @if (hasStatus()) {
-          <button
-            class="chip"
-            [class.ok]="statusOf(TabID.FORCE).ready"
-            [attr.aria-label]="'Force Analysis setup: ' + statusOf(TabID.FORCE).text"
-            (click)="openSetupFor(TabID.FORCE, $event)"
-            [matTooltip]="'What this mode needs'"
-            matTooltipShowDelay="600"
-          >
-            {{ statusOf(TabID.FORCE).text }}
-          </button>
+          <span class="chip" [class.ok]="statusOf(TabID.FORCE).ready">{{
+            statusOf(TabID.FORCE).text
+          }}</span>
         }
-      </div>
+      </button>
     </div>
   </div>
 

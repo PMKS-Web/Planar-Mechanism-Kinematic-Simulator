@@ -155,28 +155,6 @@
     }
   }
 
-  // A mode and its readiness chip: two controls, read as one tab. The pair
-  // takes exactly the room the single button used to, the chip having been
-  // given the button's right-hand padding and the gap that stood before it.
-  //
-  // Deliberately not positioned: the sliding highlight is measured in offsets
-  // from the strip, and a positioned wrapper would make every tab's offsetLeft
-  // zero.
-  .tabSlot {
-    display: flex;
-    align-items: center;
-    flex: 0 0 auto;
-
-    &.withChip {
-      gap: 8px;
-      padding-right: 12px;
-
-      .tabButton {
-        padding-right: 0;
-      }
-    }
-  }
-
   // The short spelling only appears once the long one has gone.
   .tabButton .tabLabel.short {
     display: none;
@@ -219,15 +197,8 @@
   }
 
   .topStrip.fit0 {
-    .tabSlot .chip {
+    .tabButton .chip {
       display: none;
-    }
-
-    // With the chip gone the slot is the button again, and gives back the room
-    // it was holding for it.
-    .tabSlot.withChip {
-      gap: 0;
-      padding-right: 0;
     }
 
     .logo {
@@ -255,42 +226,28 @@
     margin: 0 8px;
   }
 
+  // A label inside the mode button, not a control: no cursor of its own and no
+  // hover of its own, because the whole tab is one target and a chip that lit
+  // up under the pointer would read as a second thing to press.
+  //
+  // It paints above the sliding highlight by sitting inside `.tabButton`, which
+  // is positioned; the highlight is absolutely positioned, opaque, and drawn
+  // before the tabs, so a static element beside it would go underneath.
   .chip {
-    // Positioned only so it paints above the sliding highlight. The highlight
-    // is absolutely positioned and opaque, and it is drawn before the tabs; a
-    // static sibling therefore paints underneath it. While the chip lived
-    // inside `.tabButton` it inherited that button's `position: relative` and
-    // the question never arose -- moved out to be keyboard-reachable, the
-    // active mode's chip was covered by its own highlight, and stayed
-    // clickable underneath because the highlight takes no pointer events.
-    // `.tabSlot` cannot take this instead: the highlight is measured from the
-    // slot's offsets, and positioning it would zero them.
-    position: relative;
-    cursor: pointer;
     display: inline-flex;
     align-items: center;
     height: 20px;
     padding: 0 8px;
-    border: none;
     border-radius: 10px;
     background: #eef0f4;
     color: #5f6368;
-    font-family: inherit;
     font-size: 12px;
     font-weight: 400;
     white-space: nowrap;
 
-    &:hover {
-      background: #e2e5ea;
-    }
-
     &.ok {
       background: #e6f4ea;
       color: #137333;
-
-      &:hover {
-        background: #d7ecdc;
-      }
     }
   }
 

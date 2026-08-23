@@ -47,6 +47,9 @@ interface TabStatus {
  * Both analysis tabs stay pressable even when they cannot be entered. A greyed
  * tab provokes exactly the question "why not?" and is the one control unable to
  * answer it; pressing these opens the setup list, which is the answer.
+ *
+ * One button per mode, carrying its readiness chip as a label rather than as a
+ * second control beside it -- see `select` for the three things a press means.
  */
 @Component({
   selector: 'app-top-bar',
@@ -275,10 +278,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     if (this.pendingFrame) return;
     this.pendingFrame = requestAnimationFrame(() => {
       this.pendingFrame = 0;
-      const active = this.tabStrip()?.nativeElement.querySelector<HTMLElement>('.tabButton.active');
-      // The mode and its chip are two controls in one slot, and the highlight
-      // is drawn round the tab a reader sees rather than round the button.
-      const pill = active?.closest<HTMLElement>('.tabSlot') ?? active;
+      const pill = this.tabStrip()?.nativeElement.querySelector<HTMLElement>('.tabButton.active');
       const next = pill
         ? { left: pill.offsetLeft, width: pill.offsetWidth, visible: this.tabs.isTabVisible() }
         : { ...this.highlight, visible: false };
@@ -306,20 +306,40 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     });
   }
 
+  /**
+   * One press, three things -- because there is one button per mode.
+   *
+   * Refused: the setup that says why, and no mode change. Ready and elsewhere:
+   * the mode, and nothing else opens over it. Ready and already here: the setup
+   * toggles, so the mode a reader is standing in is also the way back to what
+   * it needs.
+   *
+   * The refusal deliberately stays an insist rather than a toggle. A reader
+   * pressing a mode that will not open is asking why, and taking the answer
+   * away is not one -- pressing twice used to leave them with nothing, which is
+   * what `attentionCount` exists to stop.
+   */
   select(tab: TabID): void {
     this.closeMenu();
-    if (this.tabs.isAnalysisMode(tab) && !this.canAnalyze(tab)) {
-      // The setup for the mode that was pressed, not the other one's -- and
-      // never a toggle: a reader pressing a mode that will not open is asking
-      // why, and closing the answer is not one.
-      RightPanelComponent.insistOn(
-        tab === TabID.FORCE
-          ? RightPanelComponent.FORCE_SETUP_TAB
-          : RightPanelComponent.KINEMATIC_SETUP_TAB
-      );
+    const setup = this.setupTabFor(tab);
+    if (setup === null) {
+      this.tabs.setTab(tab);
       return;
     }
-    this.tabs.setTab(tab);
+    if (!this.canAnalyze(tab)) {
+      RightPanelComponent.insistOn(setup);
+    } else if (this.isActive(tab)) {
+      RightPanelComponent.tabClicked(setup);
+    } else {
+      this.tabs.setTab(tab);
+    }
+  }
+
+  /** The setup drawer that answers for a mode, or null for a mode with none. */
+  private setupTabFor(tab: TabID): number | null {
+    if (tab === TabID.FORCE) return RightPanelComponent.FORCE_SETUP_TAB;
+    if (tab === TabID.ANALYZE) return RightPanelComponent.KINEMATIC_SETUP_TAB;
+    return null;
   }
 
   /** Kinematics needs one mechanism that runs. Force analysis needs more. */
@@ -354,6 +374,34 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     return blockers === 0
       ? { text: 'Ready', ready: true }
       : { text: `${blockers} ${blockers === 1 ? 'fix' : 'fixes'}`, ready: false };
+  }
+
+  /**
+   * The mode's name with its chip read into it.
+   *
+   * The chip is a label rather than a control, and a button carrying an
+   * `aria-label` of its own does not read its contents -- so the count is said
+   * here or it is not said at all.
+   */
+  nameOf(tab: TabID, name: string): string {
+    return this.hasStatus() ? `${name}: ${this.statusOf(tab).text}` : name;
+  }
+
+  /**
+   * What the press will do, for the two presses that are not a mode change.
+   *
+   * One button now means three things, and which one it means depends on state
+   * the reader cannot see -- so the tooltip says it rather than leaving them to
+   * find out by pressing.
+   */
+  tipFor(tab: TabID, name: string, id: ShortcutId): string {
+    const tip = this.shortcuts.tip(name, id);
+    if (this.canAnalyze(tab) && !this.isActive(tab)) return tip;
+    const shown =
+      this.canAnalyze(tab) &&
+      RightPanelComponent.isOpen &&
+      RightPanelComponent.openTab === this.setupTabFor(tab);
+    return `${tip}. ${shown ? 'Hides' : 'Shows'} what this mode needs.`;
   }
 
   // Not while the mechanism is running: undo replays a URL, and replacing the
@@ -499,28 +547,10 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     RightPanelComponent.tabClicked(4);
   }
 
-  /**
-   * The chip opens that mode's setup, whether or not the mode can be entered.
-   *
-   * Otherwise the list is reachable only by being refused, and a drawing where
-   * one machine is ready and another is not can be *entered* -- leaving the
-   * reader with a chip that counts problems and no way to read them.
-   */
-  openSetupFor(tab: TabID, event: Event): void {
-    event.stopPropagation();
-    this.closeMenu();
-    RightPanelComponent.tabClicked(
-      tab === TabID.FORCE
-        ? RightPanelComponent.FORCE_SETUP_TAB
-        : RightPanelComponent.KINEMATIC_SETUP_TAB
-    );
-  }
-
+  /** The current mode's setup, for anything outside the strip that wants it. */
   openSetup(): void {
     RightPanelComponent.tabClicked(
-      this.tabs.getCurrentTab() === TabID.FORCE
-        ? RightPanelComponent.FORCE_SETUP_TAB
-        : RightPanelComponent.KINEMATIC_SETUP_TAB
+      this.setupTabFor(this.tabs.getCurrentTab()) ?? RightPanelComponent.KINEMATIC_SETUP_TAB
     );
   }
 
