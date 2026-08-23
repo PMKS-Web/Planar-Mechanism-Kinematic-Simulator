@@ -23,6 +23,7 @@ import {
 import { Mechanism } from '../model/mechanism/mechanism';
 import {
   MechanismPartition,
+  partitionKey,
   partitionMechanisms,
   UnassignedGeometry,
 } from '../model/mechanism/mechanism-partition';
@@ -46,7 +47,7 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { GridUtilsService } from './grid-utils.service';
 import { ActiveObjService } from './active-obj.service';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
-import { describeActuator } from '../model/actuator';
+import { angleReference, describeActuator, resolveActuator } from '../model/actuator';
 import { NotificationService } from './notification.service';
 import { SettingsService } from './settings.service';
 import { slotHalfLength } from '../model/joint-marks';
@@ -66,6 +67,7 @@ import { MergeRefusal, refuseJointMerge } from '../model/drop-target';
 import { redundantlyHeldJointSets } from '../model/rigid-bodies';
 import { MODEL_SCALE } from '../model/render-scale';
 import { labelForBody } from '../model/body-label';
+import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 
 /**
  * The names joints are given, in the order they are handed out.
@@ -74,6 +76,34 @@ import { labelForBody } from '../model/body-label';
  * where a joint's name is a token in a comma- and period-delimited payload.
  */
 const JOINT_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+
+/** One machine's playback state, carried across a rebuild by `partitionKey`. */
+interface HeldPlayback {
+  seconds: number;
+  playing: boolean;
+  direction: number;
+  /** Running backwards only because its drive was turned round in place. */
+  compensating: boolean;
+}
+
+/**
+ * One solved object out of a frame, by id, in constant time.
+ *
+ * A Mechanism holds the same objects in the same order at every sample, so the
+ * position an id sits at is fixed for the machine's whole life and worth
+ * looking up once (see `frameIndexOf`). The id at that position is still
+ * checked, and the linear search is still there behind it: a frame is allowed
+ * to drop an object the solver could not place, and a wrong answer here moves a
+ * joint to another joint's coordinates.
+ */
+function at<T extends { id: string }>(
+  frame: T[],
+  where: Map<string, number>,
+  id: string
+): T | undefined {
+  const guess = frame[where.get(id) ?? -1];
+  return guess?.id === id ? guess : frame.find((candidate) => candidate.id === id);
+}
 
 /** Blend two angles along the shorter arc, so a wrap past pi does not spin. */
 function blendAngle(from: number, to: number, blend: number): number {
@@ -93,6 +123,13 @@ export class MechanismService {
   private settingsService = inject(SettingsService);
   private nup = inject(NumberUnitParserService);
   private notify = inject(NotificationService);
+  /**
+   * The synthesis design, whose poses are stored in user lengths like every
+   * other coordinate. Injected directly rather than through the injector this
+   * file uses for its circular dependencies: the builder knows nothing about
+   * mechanisms, so there is no cycle to break.
+   */
+  private design = inject(SynthesisBuilderService);
 
   public mechanismTimeStep: number = 0;
   /**
@@ -228,8 +265,21 @@ export class MechanismService {
     return this.forces;
   }
 
+  /**
+   * Is the drawing away from the pose an edit is allowed to start from?
+   *
+   * Answered from the model rather than from `settings.animating`, which is a
+   * flag the transport pushes: it went false the moment the reader left an
+   * analysis mode, while the ease back to the start pose was still running, so
+   * for a fifth of a second the app believed the mechanism was standing still
+   * and let edits through against a pose that was still moving.
+   *
+   * `mechanismTimeStep > 0` is subsumed: a machine at a non-zero step is not at
+   * its start pose, and neither is one whose own clock is elsewhere while the
+   * shared step reads zero.
+   */
   isAnimating(): boolean {
-    return this.mechanismTimeStep > 0 || this.settingsService.animating.getValue();
+    return this.isPlaying || !this.atStartPose();
   }
 
   updateMechanism(save: boolean = false) {
@@ -247,27 +297,31 @@ export class MechanismService {
     // rewinding, which is what the held time is measured against. The drawn time,
     // not the sample's: during playback it carries the sub-sample fraction.
     const heldTime = this.currentTimeSeconds();
-    // Each machine's own place, not just the master's. Restoring only the
-    // shared time put every machine back on the master's clock, so any edit --
-    // a speed change, a reversal, a joint moved -- silently pulled them all
-    // back into step with each other.
-    const heldEach = this.partitions.map((partition, index) => ({
-      id: partition.id,
-      seconds: this.ownSeconds[index] ?? 0,
-    }));
-    // Which machines are only running backwards because their drive was turned
-    // round without re-solving them.
+    // Each machine's own place, its own running flag and its own playback
+    // direction, kept by *identity* rather than by list position -- see
+    // `partitionKey`. Restoring only the shared time put every machine back on
+    // the master's clock, so any edit -- a speed change, a reversal, a joint
+    // moved -- silently pulled them all back into step with each other.
     //
-    // `reverseDrive` leaves the frames alone and walks them backwards instead,
-    // which is what keeps a reader's place on the chart. The rebuild below
-    // solves fresh frames *from the drive's new sign*, so they already run the
-    // new way and that compensation becomes a second reversal: the machine
-    // went back to turning the way it originally did while the stored speed
-    // said the opposite.
-    const heldCompensation = this.partitions.map((partition, index) => ({
-      id: partition.id,
-      compensating: this.mechanisms[index]?.framesRunBackwards === true,
-    }));
+    // `compensating` records which machines are only running backwards because
+    // their drive was turned round without re-solving them. `reverseDrive`
+    // leaves the frames alone and walks them backwards instead, which is what
+    // keeps a reader's place on the chart. The rebuild below solves fresh
+    // frames *from the drive's new sign*, so they already run the new way and
+    // that compensation becomes a second reversal: the machine went back to
+    // turning the way it originally did while the stored speed said the
+    // opposite.
+    const heldEach = new Map<string, HeldPlayback>(
+      this.partitions.map((partition, index) => [
+        partitionKey(partition),
+        {
+          seconds: this.ownSeconds[index] ?? 0,
+          playing: this.ownPlaying[index] === true,
+          direction: this.playbackDirection[index] === -1 ? -1 : 1,
+          compensating: this.mechanisms[index]?.framesRunBackwards === true,
+        },
+      ])
+    );
     this.restoreStartPose();
 
     // The sealed-cylinder invariant is enforced HERE, at the one funnel every
@@ -302,6 +356,12 @@ export class MechanismService {
     this.partitions = partitioning.mechanisms;
     this.unassigned = partitioning.unassigned;
     this.rebuildOwnerIndex();
+    // A structural edit can fuse two driven machines into one -- attaching a
+    // link across them, un-grounding a shared pivot, dropping one's joint onto
+    // the other's. The toggle's one-input-per-machine rule only runs at toggle
+    // time, so nothing else would notice, and the solver would silently drive
+    // whichever input it found first while the other kept its badge.
+    this.reconcileOneInputPerMechanism();
     this.mechanisms = this.partitions.map(
       //If the mechanism is simulatable, it will generate loops and all future time steps
       (partition) =>
@@ -312,18 +372,34 @@ export class MechanismService {
           this.ics,
           this.settingsService.isGravity.value,
           unitStr,
-          this.inputVelocityFor(partition)
+          this.inputVelocityFor(partition),
+          'adaptive',
+          new Set(partition.ownJoints.map((joint) => joint.id))
         )
     );
-    // The frames are new and run the drive's way, so anything that was walking
-    // the old ones backwards to make up for a reversal stops. A machine whose
-    // playback the reader turned round themselves -- a rocking one, which
-    // reverses by playback alone -- was never compensating and is left as it is.
+    // Every machine's held state, re-laid onto the machines that now exist:
+    // matched by identity, defaulted for one that has just appeared, and
+    // dropped for one that has gone. Written wholesale rather than in place
+    // because these arrays are read by length elsewhere -- `isPlaying` is the
+    // or of `ownPlaying`, `atStartPose` the and of `ownSeconds` -- and an entry
+    // left behind past the end of a shrunken drawing was permanent.
+    this.ownSeconds = [];
+    this.ownPlaying = [];
+    this.playbackDirection = [];
     this.partitions.forEach((partition, index) => {
-      const was = heldCompensation.find((entry) => entry.id === partition.id);
-      if (was?.compensating) {
-        this.playbackDirection[index] = this.directionOf(index) < 0 ? 1 : -1;
-      }
+      const was = heldEach.get(partitionKey(partition));
+      this.ownSeconds[index] = 0;
+      // Synced, the shared flag is what actually decides whether a row runs, so
+      // the per-row flags are seeded from it rather than from a held value the
+      // transport had no reason to keep up to date.
+      this.ownPlaying[index] = this.syncMechanisms ? this.isPlaying : was?.playing === true;
+      // The frames are new and run the drive's way, so anything that was
+      // walking the old ones backwards to make up for a reversal stops. A
+      // machine whose playback the reader turned round themselves -- a rocking
+      // one, which reverses by playback alone -- was never compensating and
+      // keeps the direction it was given.
+      const direction = was?.direction ?? 1;
+      this.playbackDirection[index] = was?.compensating ? -direction : direction;
     });
     this.activeObjService.fakeUpdateSelectedObj();
     this.reseekToTime(heldTime);
@@ -350,7 +426,10 @@ export class MechanismService {
    * cylinder beside a crank must not be handed the crank's rpm.
    */
   private inputVelocityFor(partition: MechanismPartition): number {
-    const driven = partition.joints.find((j) => j instanceof RealJoint && j.input) as
+    // Its own joints, not everything it is handed to solve against: a frame
+    // piece shared with the machine next door carries that machine's driven
+    // pin, and asking `joints` handed this one the neighbour's speed.
+    const driven = partition.ownJoints.find((j) => j instanceof RealJoint && j.input) as
       RealJoint | undefined;
     const signed = this.driveSpeedOf(driven);
     // rpm for a pin, length per second for a slider -- two different
@@ -385,11 +464,26 @@ export class MechanismService {
    * starts where the reader last was rather than at whatever the app shipped
    * with -- and so a drawing holding one mechanism behaves exactly as it did
    * when the speed really was one number.
+   *
+   * Which is why every *other* machine's speed is written onto its own drive
+   * first. `driveSpeedOf` falls back to that default for any drive that has
+   * never been given a speed of its own -- the state every joint just switched
+   * on is in, and every URL written before drives had speeds of their own --
+   * so moving it here would otherwise retype, or reverse, every machine in the
+   * drawing that the reader had not touched. Done here rather than at the call
+   * sites so no caller has to remember: the Edit panel's field, its direction
+   * flip and the transport's reverse all arrive through this one door.
+   *
+   * `signed` is rpm for a pin and length per second, in the current length
+   * unit, for a prismatic drive -- the same two quantities `driveSpeedOf`
+   * answers in. Zero is not a speed and is ignored, because zero on the joint
+   * is how "follow the default" is spelled.
    */
   setDriveSpeed(joint: RealJoint, signed: number): void {
     if (!Number.isFinite(signed) || signed === 0) {
       return;
     }
+    this.pinDriveSpeeds();
     joint.driveSpeed = signed;
     const magnitude = Math.abs(signed);
     if (joint instanceof PrisJoint) {
@@ -398,6 +492,44 @@ export class MechanismService {
       this.settingsService.inputSpeed.next(magnitude);
     }
     this.settingsService.isInputCW.next(signed < 0);
+  }
+
+  /**
+   * One drive per machine, re-checked after the drawing has been partitioned.
+   *
+   * The toggle enforces this when a joint is switched on, which is the only
+   * moment anybody was checking -- but a structural edit can fuse two machines
+   * that were each legitimately driven: attach a link across them, drop one's
+   * joint onto the other's, un-ground a pivot they share. The result is a
+   * single mechanism with two `input` joints, and since the flag is stored per
+   * joint that state round-trips URLs and undo forever. The solver drives
+   * whichever it finds first, so the second joint keeps its badge while its
+   * speed controls quietly do nothing.
+   *
+   * The first in the machine's own order is kept, which is the one the solver
+   * would have picked anyway, so nothing that was running changes what it does.
+   */
+  private reconcileOneInputPerMechanism(): void {
+    const dropped: string[] = [];
+    this.partitions.forEach((partition) => {
+      let seen = false;
+      partition.ownJoints.forEach((candidate) => {
+        if (!(candidate instanceof RealJoint) || !candidate.input) return;
+        if (!seen) {
+          seen = true;
+          return;
+        }
+        candidate.input = false;
+        dropped.push(candidate.name || candidate.id);
+      });
+    });
+    if (dropped.length === 0) return;
+    this.notify.warning(
+      'input.merged',
+      `A mechanism can have one driven joint. ${dropped.join(', ')} ${
+        dropped.length === 1 ? 'is' : 'are'
+      } no longer driven.`
+    );
   }
 
   /**
@@ -410,7 +542,14 @@ export class MechanismService {
    */
   private clearInputsSharingMechanismWith(joint: RealJoint): void {
     const index = this.indexOfMechanismContaining(joint);
-    const scope = index === -1 ? this.joints : this.partitions[index].ownJoints;
+    // A joint in no machine -- one on a bar pinned down at both ends, say --
+    // shares a mechanism with nothing that has one. Clearing every input in the
+    // document, which is what the fallback used to do, took the four-bar's own
+    // drive away in the same click that switched on a joint driving nothing.
+    const scope =
+      index === -1
+        ? this.joints.filter((candidate) => this.indexOfMechanismContaining(candidate) === -1)
+        : this.partitions[index].ownJoints;
     scope.forEach((candidate) => {
       if (candidate instanceof RealJoint && candidate.input && candidate.id !== joint.id) {
         candidate.input = false;
@@ -450,6 +589,18 @@ export class MechanismService {
       partition.links.forEach(claim);
       partition.forces.forEach(claim);
     });
+    // "In no machine" is an answer too. Recording only the positive ones left
+    // every part of the half-drawn chain this partitioning exists to tolerate a
+    // permanent miss, falling through to the full scan on every binding on
+    // every change-detection pass -- which is exactly the mixed drawing where
+    // the analysis modes ask of every part whether it is inert. Whatever no
+    // partition claimed above belongs to none of them, by definition.
+    const unassigned = (part: Joint | Link | Force) => {
+      if (!owner.has(part)) owner.set(part, -1);
+    };
+    this.joints.forEach(unassigned);
+    this.links.forEach(unassigned);
+    this.forces.forEach(unassigned);
     this.ownerOfPart = owner;
   }
 
@@ -480,6 +631,28 @@ export class MechanismService {
   mechanismContaining(part: Joint | Link | Force): Mechanism | undefined {
     const index = this.indexOfMechanismContaining(part);
     return index === -1 ? undefined : this.mechanisms[index];
+  }
+
+  /**
+   * The drawing's own object with this id, whatever kind of thing it is.
+   *
+   * A graph, a section header and a panel each names its subject by id and each
+   * used to look it up for itself -- joints, then links, and none of them
+   * forces, so a force's graph belonged to no machine at all. Written once here
+   * so the three cannot answer differently for the same id.
+   */
+  partById(id: string): Joint | Link | Force | undefined {
+    return (
+      this.joints.find((joint) => joint.id === id) ??
+      this.links.find((link) => link.id === id) ??
+      this.forces.find((force) => force.id === id)
+    );
+  }
+
+  /** The solved mechanism the part with this id belongs to, if any. */
+  mechanismForId(id: string): Mechanism | undefined {
+    const part = this.partById(id);
+    return part ? this.mechanismContaining(part) : undefined;
   }
 
   /**
@@ -634,16 +807,24 @@ export class MechanismService {
   /**
    * Put each machine back where it was after a rebuild.
    *
-   * By partition id, not by index: a rebuild can add, remove or reorder
-   * mechanisms, and pairing them positionally would hand one machine another's
-   * place in its cycle.
+   * By `partitionKey`, not by index and not by the M-number: a rebuild can add,
+   * remove or reorder mechanisms, and both of those pair machines positionally
+   * -- so deleting the first machine handed the second the first's place in its
+   * cycle.
    */
-  private restoreOwnTimes(held: { id: string; seconds: number }[]): void {
+  private restoreOwnTimes(held: Map<string, HeldPlayback>): void {
     if (!this.oneValidMechanismExists()) return;
     this.partitions.forEach((partition, index) => {
-      const was = held.find((entry) => entry.id === partition.id);
+      const was = held.get(partitionKey(partition));
       const period = this.mechanisms[index]?.cyclePeriod ?? 0;
-      if (!was || !(period > 0) || !(was.seconds > 0)) return;
+      if (!was || !(period > 0)) return;
+      // Zero is a position, not an absence. `reseekToTime` above has already
+      // written the master's time into every machine's clock, so skipping the
+      // machines held at their own start left exactly those holding somebody
+      // else's phase -- which, unsynced, is a machine visibly jumping on an
+      // edit that had nothing to do with it. Synced, they are all meant to be
+      // on the master's clock, and the skip is what puts them there.
+      if (this.syncMechanisms && !(was.seconds > 0)) return;
       this.ownSeconds[index] = ((was.seconds % period) + period) % period;
     });
     this.applyPose();
@@ -704,7 +885,25 @@ export class MechanismService {
     this.joints.forEach((joint) => {
       joint.x *= lengthScale;
       joint.y *= lengthScale;
+      // A prismatic drive's speed is a length per second in the *user's* unit,
+      // so it rescales with the geometry exactly as a coordinate does. An rpm
+      // drive is angular and scale-invariant, which is what hid this: only the
+      // rams were wrong, and by the whole unit factor -- a ram set to 2 cm/s
+      // came out of a switch to metres running at 2 m/s, a hundred times its
+      // stroke rate, with the panel still reading 2.
+      if (joint instanceof PrisJoint && joint.driveSpeed !== 0) {
+        joint.driveSpeed *= lengthScale;
+      }
     });
+    // And the default every drive that has never been given one of its own
+    // reads, which is most of them.
+    this.settingsService.linearInputSpeed.next(
+      this.settingsService.linearInputSpeed.value * lengthScale
+    );
+    // The synthesis design is drawn in the same lengths, and it outlives the
+    // mechanism built from it: leave it alone and poses laid out in centimetres
+    // are reread as inches the next time the reader opens Synthesis.
+    this.design.convertLengths(lengthScale);
 
     const updateLink = (link: Link): void => {
       link.mass *= massScale;
@@ -879,6 +1078,12 @@ export class MechanismService {
   deleteAll(): void {
     if (this.joints.length === 0 && this.links.length === 0 && this.forces.length === 0) return;
     [...this.joints].forEach((joint) => {
+      // The snapshot is a list of what was there when this started, and
+      // deleting a joint cascades: a sealed cylinder takes its four other
+      // joints with it. Asking for one of those afterwards used to fall into
+      // the generic path, look its index up as -1, and throw part-way through
+      // -- leaving the drawing half cleared.
+      if (!this.joints.some((live) => live.id === joint.id)) return;
       this.activeObjService.updateSelectedObj(joint);
       this.deleteJoint(false, true);
     });
@@ -1719,6 +1924,12 @@ export class MechanismService {
    * of its own once the last one is gone — see `deleteMechanism`.
    */
   deleteJoint(save: boolean = true, ignoreLocks: boolean = false) {
+    // A joint some earlier cascade already took. The generic path below indexes
+    // into `this.joints` without re-checking, so -1 there is a TypeError on one
+    // line and a `splice(-1, 1)` -- which removes the *last* element, not none
+    // -- on several others.
+    const selected = this.activeObjService.selectedJoint;
+    if (!selected || !this.joints.some((joint) => joint.id === selected.id)) return;
     if (!ignoreLocks && this.blockedByLock(this.activeObjService.selectedJoint)) return;
     // A cylinder's own joint carries its own mark -- locking a mount pins that
     // point and leaves the ram free to swing about it -- so an unlocked mount
@@ -2347,6 +2558,29 @@ export class MechanismService {
    * Returns nothing when the mechanism is fine.
    */
   readinessOfEachMechanism(): MechanismReadiness[] {
+    if (this.readinessCache?.revision !== this.solveRevision) {
+      this.readinessCache = { revision: this.solveRevision, list: this.buildReadiness() };
+    }
+    return this.readinessCache.list;
+  }
+
+  /**
+   * Cached on `solveRevision` because the always-mounted top bar asks for this
+   * four or five times per change-detection pass -- once per mode chip, once
+   * for the analysis gate, once more when it re-measures its labels -- and
+   * playback runs change detection every frame. Each rebuild runs a 360-frame
+   * stroke sweep per sealed cylinder and a per-sample scan for reciprocation,
+   * so the uncached version paid a full cycle's arithmetic several times over
+   * to answer a question whose inputs cannot have moved.
+   *
+   * `solveRevision` and not `poseRevision`: none of this is about where the
+   * mechanism is drawn, and keying on the pose would rebuild it every frame.
+   * Everything it reads -- geometry, drive speeds, gravity, units -- is only
+   * written by an edit, and every edit ends in `updateMechanism`.
+   */
+  private readinessCache?: { revision: number; list: MechanismReadiness[] };
+
+  private buildReadiness(): MechanismReadiness[] {
     return this.partitions.map((partition, index) =>
       readinessOf(partition, this.mechanisms[index], {
         cylinderName: (sliderId) => {
@@ -2363,8 +2597,10 @@ export class MechanismService {
         },
         strokeWarning: (part) => this.strokeWarningFor(part),
         describeSpeed: (part) => {
-          const driven = part.joints.find((joint) => joint instanceof RealJoint && joint.input) as
-            RealJoint | undefined;
+          // Its own drive, not one borrowed along with a shared frame piece.
+          const driven = part.ownJoints.find(
+            (joint) => joint instanceof RealJoint && joint.input
+          ) as RealJoint | undefined;
           if (!driven) {
             return 'Not set';
           }
@@ -2519,6 +2755,16 @@ export class MechanismService {
   }
 
   forceAnalysisRequirements(): ForceRequirement[] {
+    if (this.requirementsCache?.revision !== this.solveRevision) {
+      this.requirementsCache = { revision: this.solveRevision, list: this.buildRequirements() };
+    }
+    return this.requirementsCache.list;
+  }
+
+  /** Cached for the same reason readiness is, and against the same counter. */
+  private requirementsCache?: { revision: number; list: ForceRequirement[] };
+
+  private buildRequirements(): ForceRequirement[] {
     const requirements: ForceRequirement[] = [];
 
     const runnable = this.mechanisms.filter((mechanism) => mechanism.isMechanismValid());
@@ -2700,7 +2946,7 @@ export class MechanismService {
     if (stuck.length > 0) {
       return `These joints cannot be placed from the ones around them: ${stuck.join(', ')}. They may need another link, or a driven joint nearer to them.`;
     }
-    return 'This mechanism reached a position it could not solve from the one before it \u2014 usually a toggle, where the linkage locks.';
+    return 'This mechanism reached a position it could not solve from the one before it \u2014 usually a toggle, where the mechanism locks.';
   }
 
   /**
@@ -2785,7 +3031,7 @@ export class MechanismService {
       // deaf on small ones, because the shortfall scales with the stroke.
       if (used >= stroke - (3 * stroke) / SAMPLES_PER_STROKE) continue;
       const percent = Math.round((used / stroke) * 100);
-      return `Cylinder ${this.cylinderName(cylinder)} can only use ${percent}% of its stroke \u2014 the linkage binds before the cylinder does. Shorten its travel, or give the mechanism more room.`;
+      return `Cylinder ${this.cylinderName(cylinder)} can only use ${percent}% of its stroke \u2014 the mechanism binds before the cylinder does. Shorten its travel, or give the mechanism more room.`;
     }
     return undefined;
   }
@@ -3640,6 +3886,44 @@ export class MechanismService {
     return step;
   }
 
+  /**
+   * Where each id sits in one machine's frames, worked out once per machine.
+   *
+   * The editable arrays hold the whole drawing while a Mechanism holds only its
+   * own component, so the two are not the same list in the same order and the
+   * pairing has to be by id. But the pairing is *constant* -- a Mechanism's
+   * frames are all built from its own frame zero, in that order -- so it is a
+   * lookup, not a search. Rediscovering it with `find` cost a 45-joint machine
+   * some four thousand id comparisons on every sixteen-millisecond frame.
+   *
+   * Held in a WeakMap keyed by the Mechanism, exactly as the drive profiles
+   * are: a rebuild makes new Mechanism objects, so the index cannot outlive the
+   * frames it describes.
+   */
+  private frameIndexOf(frames: Mechanism): {
+    joints: Map<string, number>;
+    links: Map<string, number>;
+    forces: Map<string, number>;
+  } {
+    let found = this.frameIndices.get(frames);
+    if (!found) {
+      const index = <T extends { id: string }>(list: T[]) =>
+        new Map(list.map((item, position) => [item.id, position] as const));
+      found = {
+        joints: index(frames.joints[0] ?? []),
+        links: index(frames.links[0] ?? []),
+        forces: index(frames.forces[0] ?? []),
+      };
+      this.frameIndices.set(frames, found);
+    }
+    return found;
+  }
+
+  private frameIndices = new WeakMap<
+    Mechanism,
+    { joints: Map<string, number>; links: Map<string, number>; forces: Map<string, number> }
+  >();
+
   private applyMechanismPose(frames: Mechanism, partition: MechanismPartition, seconds: number) {
     const times = frames.timeNum ?? [];
     if (!frames.isMechanismValid() || times.length === 0) {
@@ -3659,9 +3943,10 @@ export class MechanismService {
 
     const jointFrom = frames.joints[step];
     const jointTo = frames.joints[nextStep];
+    const where = this.frameIndexOf(frames);
     partition.joints.forEach((j) => {
-      const from = jointFrom.find((candidate) => candidate.id === j.id);
-      const to = jointTo.find((candidate) => candidate.id === j.id);
+      const from = at(jointFrom, where.joints, j.id);
+      const to = at(jointTo, where.joints, j.id);
       if (!from || !to) {
         return;
       }
@@ -3672,7 +3957,7 @@ export class MechanismService {
       if (!(l instanceof RealLink)) {
         return;
       }
-      const link = frames.links[step].find((candidate) => candidate.id === l.id);
+      const link = at(frames.links[step], where.links, l.id);
       if (!(link instanceof RealLink)) {
         return;
       }
@@ -3690,8 +3975,8 @@ export class MechanismService {
       this.placeLinkGeometry(l, link, blend);
     });
     partition.forces.forEach((f) => {
-      const from = frames.forces[step].find((candidate) => candidate.id === f.id);
-      const to = frames.forces[nextStep].find((candidate) => candidate.id === f.id);
+      const from = at(frames.forces[step], where.forces, f.id);
+      const to = at(frames.forces[nextStep], where.forces, f.id);
       if (!from || !to) {
         return;
       }
@@ -3957,17 +4242,13 @@ export class MechanismService {
    * for a machine that has not moved at all.
    */
   reverseDrive(index: number): boolean {
-    const driven = this.partitions[index]?.joints.find(
+    const driven = this.partitions[index]?.ownJoints.find(
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
     );
     if (!driven) return false;
 
-    // Write every machine's current speed onto its own drive first. Setting one
-    // machine's speed also moves the document-wide default, and a machine that
-    // has never been given a speed of its own reads that default -- so
-    // reversing one machine turned round every machine that had not been
-    // turned round before.
-    this.pinDriveSpeeds();
+    // `setDriveSpeed` pins every other machine's speed before it moves the
+    // document-wide default, so reversing this one leaves the rest alone.
     this.setDriveSpeed(driven, -this.driveSpeedOf(driven));
 
     // Not saved. Reversing is done from the transport, which is a way of
@@ -4098,6 +4379,14 @@ export class MechanismService {
    * two — where the bearing repeats every turn and cannot say which one the
    * machine is on. There the readout is progress round the whole cycle,
    * 0 to 720.
+   *
+   * "From the positive x axis" is only right when the world is what the input
+   * is measured against, which is to say for a grounded crank. A floating pin
+   * commands the angle between two *moving* bodies, and the solver drives
+   * exactly that (`registerPinDrive`) — so an absolute bearing there reports a
+   * different quantity from the one the transport is scrubbing. The oscillating
+   * fan is the case: its input goes right round relative to the head while the
+   * head itself only rocks, and the two readouts disagreed all cycle.
    */
   inputAngleDegrees(index: number): number | undefined {
     const partition = this.partitions[index];
@@ -4105,18 +4394,42 @@ export class MechanismService {
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
     );
     if (!driven) return undefined;
-    // The end of the crank, which is what points somewhere -- the input joint
-    // itself is usually pinned to the frame and points nowhere.
-    const end = driven.connectedJoints.find((joint) => !(joint as RealJoint).ground);
-    if (!end) return undefined;
     const samples = this.mechanisms[index]?.joints.length ?? 0;
     const turns = samples > 1 ? Math.round((samples - 1) / 360) : 1;
     const profile = this.driveProfileOf(index);
     if (turns > 1 && profile?.continuous && !profile.linear) {
       return (this.currentSampleOf(index) * (turns * 360)) / (samples - 1);
     }
-    const degrees = (Math.atan2(end.y - driven.y, end.x - driven.x) * 180) / Math.PI;
-    return (degrees + 360) % 360;
+    const bearings = this.actuatorBearings(driven);
+    if (!bearings) return undefined;
+    const degrees = ((bearings.driven - bearings.reference) * 180) / Math.PI;
+    return ((degrees % 360) + 360) % 360;
+  }
+
+  /**
+   * The two directions an angular input is measured between, in radians.
+   *
+   * The same pair `registerPinDrive` resolves, so the readout and the drive are
+   * describing one quantity. Ground supplies its own direction without a joint,
+   * and there the reference is the x axis — which is what makes a grounded
+   * crank read as the bearing it has always read as.
+   */
+  private actuatorBearings(driven: RealJoint): { reference: number; driven: number } | undefined {
+    const bearing = (joint: Joint) => Math.atan2(joint.y - driven.y, joint.x - driven.x);
+    const actuator = resolveActuator(driven);
+    if (actuator && actuator.kind === 'angle') {
+      const end = angleReference(actuator.drivenBody, driven);
+      if (end) {
+        const from = angleReference(actuator.referenceBody, driven);
+        return { reference: from ? bearing(from) : 0, driven: bearing(end) };
+      }
+    }
+    // No actuator record -- a joint driven before some later edit added a third
+    // body to it, which the panel reports as a blocker rather than hiding. The
+    // end of the crank still points somewhere; the input joint itself is
+    // usually pinned to the frame and points nowhere.
+    const end = driven.connectedJoints.find((joint) => !(joint as RealJoint).ground);
+    return end ? { reference: 0, driven: bearing(end) } : undefined;
   }
 
   /** Put one machine at a place along its input's travel. */
@@ -4266,6 +4579,16 @@ export class MechanismService {
       // lie about three of them -- which is what made it jump when dragged
       // after a spell apart.
       this.seekAllTo(this.ownSeconds[this.masterMechanismIndex()] ?? 0);
+    } else {
+      // And leaving sync hands each row the running state it was showing a
+      // moment ago. Synced, `isMechanismPlaying` answers off the shared flag
+      // and the per-row flags go unread -- so the transport's own scrub, which
+      // writes the shared flag directly, leaves them saying something else.
+      // Reading those stale flags is what made rows stop, or start, on a toggle
+      // that is meant to change nothing but who owns the clock.
+      this.ownPlaying = this.mechanisms.map(
+        (mechanism) => this.isPlaying && mechanism.isMechanismValid()
+      );
     }
     this.drawOwnClocks(this.isPlaying);
   }
@@ -4280,15 +4603,37 @@ export class MechanismService {
     return this.tabs.getCurrentTab() === TabID.EDIT && !this.isPlaying;
   }
 
+  private frozenCache?: { revision: number; ids: Set<string> };
+
+  /**
+   * Which joints the Lock marks hold still, cached per structural revision.
+   *
+   * The canvas asks this several times per joint and per link on every change
+   * detection pass, and the closure is a walk over every body plus every sealed
+   * assembly. On a forty-five joint drawing that was a couple of hundred full
+   * closures per pointer move -- paid by readers with no locks at all. Every
+   * write to a lock mark goes through `updateMechanism`, the same funnel
+   * `sealedStructures` keys on, so within a revision the answer cannot change.
+   */
+  frozenJoints(): Set<string> {
+    if (this.frozenCache?.revision !== this.cylinderRevision) {
+      this.frozenCache = {
+        revision: this.cylinderRevision,
+        ids: frozenJointIds(this.joints, this.links, this.sealedStructures()),
+      };
+    }
+    return this.frozenCache.ids;
+  }
+
   /** Painted as held: the joint itself, wherever its stillness comes from. */
   isJointLockedVisual(joint: Joint): boolean {
-    return this.lockVisualsOn() && frozenJointIds(this.joints, this.links).has(joint.id);
+    return this.lockVisualsOn() && this.frozenJoints().has(joint.id);
   }
 
   /** Painted as held: a body whose whole pose is frozen, not one merely touched. */
   isLinkLockedVisual(link: Link): boolean {
     if (!this.lockVisualsOn()) return false;
-    const frozen = frozenJointIds(this.joints, this.links);
+    const frozen = this.frozenJoints();
     return link.joints.length > 0 && link.joints.every((joint) => frozen.has(joint.id));
   }
 
@@ -4558,7 +4903,7 @@ export class MechanismService {
     if (created) {
       this.notify.warning(
         'weld.pinned-twice',
-        `${created[0]} and ${created[1]} are now pinned together twice. The linkage still ` +
+        `${created[0]} and ${created[1]} are now pinned together twice. The mechanism still ` +
           'moves, but its forces have no unique solution.'
       );
     }

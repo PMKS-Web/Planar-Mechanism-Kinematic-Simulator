@@ -1,7 +1,7 @@
 import { Joint, RealJoint } from './joint';
 import { Link, RealLink, SliderBlock } from './link';
 import { Force } from './force';
-import { cylinderJoints, sealedCylinderStructures } from './cylinder';
+import { Cylinder, cylinderJoints, sealedCylinderStructures } from './cylinder';
 
 /**
  * Which joints the current Lock marks hold still.
@@ -48,13 +48,28 @@ function allBodies(links: Link[]): Link[] {
   return links.flatMap((link) => [link, ...(link instanceof RealLink ? link.subset : [])]);
 }
 
-/** The ids of every joint the current Lock marks hold still. */
-export function frozenJointIds(joints: Joint[], links: Link[]): Set<string> {
+/**
+ * The ids of every joint the current Lock marks hold still.
+ *
+ * `sealedParts` lets a caller that already keeps the assembly walk cached hand it
+ * over. This is asked from template bindings, several times per joint per
+ * change-detection pass, and rediscovering every sealed cylinder each time is
+ * the whole cost of the answer on a drawing with no locks in it at all.
+ */
+export function frozenJointIds(
+  joints: Joint[],
+  links: Link[],
+  sealedParts?: Cylinder[]
+): Set<string> {
   const frozen = new Set<string>();
   joints.forEach((joint) => {
     if (joint instanceof RealJoint && joint.locked) frozen.add(joint.id);
   });
-  return closeOverConsequences(frozen, joints, links);
+  // Nothing is marked, so no implication can fire and nothing has to be walked
+  // to prove it: every rule below is guarded on the set already holding one of
+  // its antecedents.
+  if (frozen.size === 0) return frozen;
+  return closeOverConsequences(frozen, joints, links, sealedParts);
 }
 
 /**
@@ -62,7 +77,12 @@ export function frozenJointIds(joints: Joint[], links: Link[]): Set<string> {
  * point — freezing a block joint can seal a cylinder's interior, which holds
  * its mounts — and it terminates because each pass only adds.
  */
-function closeOverConsequences(frozen: Set<string>, joints: Joint[], links: Link[]): Set<string> {
+function closeOverConsequences(
+  frozen: Set<string>,
+  joints: Joint[],
+  links: Link[],
+  sealedParts?: Cylinder[]
+): Set<string> {
   const rules: Implication[] = [];
 
   allBodies(links).forEach((link) => {
@@ -71,7 +91,7 @@ function closeOverConsequences(frozen: Set<string>, joints: Joint[], links: Link
     rules.push({ ifAnyOf: pair, freeze: pair });
   });
 
-  sealedCylinderStructures(joints).forEach((sealed) => {
+  (sealedParts ?? sealedCylinderStructures(joints)).forEach((sealed) => {
     rules.push({
       ifAnyOf: [sealed.pin.id, sealed.slider.id, sealed.barrelNear.id],
       freeze: cylinderJoints(sealed).map((joint) => joint.id),
@@ -99,8 +119,15 @@ function closeOverConsequences(frozen: Set<string>, joints: Joint[], links: Link
  * for the joint to move again. Each marked joint is asked alone: the closure
  * of just that mark either reaches the joint or it does not.
  */
-export function locksHolding(jointId: string, joints: Joint[], links: Link[]): Lockable[] {
+export function locksHolding(
+  jointId: string,
+  joints: Joint[],
+  links: Link[],
+  sealedParts?: Cylinder[]
+): Lockable[] {
   return joints
     .filter((joint): joint is RealJoint => joint instanceof RealJoint && joint.locked)
-    .filter((locked) => closeOverConsequences(new Set([locked.id]), joints, links).has(jointId));
+    .filter((locked) =>
+      closeOverConsequences(new Set([locked.id]), joints, links, sealedParts).has(jointId)
+    );
 }

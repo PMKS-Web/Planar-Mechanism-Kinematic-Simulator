@@ -92,6 +92,7 @@
         (mouseenter)="isField2MouseOver = true; updateOverlay()"
         (mouseleave)="isField2MouseOver = false; updateOverlay()"
         (focusin)="isField2Focused = true; updateOverlay()"
+        (focusout)="isField2Focused = false; updateOverlay()"
       >
         <input
           class="customInput"

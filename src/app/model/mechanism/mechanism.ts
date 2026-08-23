@@ -75,10 +75,25 @@ export class Mechanism {
     // stated row-per-degree and compared one to one -- the solver is the same
     // either way, so the values it vouches for are the values 'adaptive'
     // interpolates between.
-    private readonly sampling: 'adaptive' | 'degree' = 'adaptive'
+    private readonly sampling: 'adaptive' | 'degree' = 'adaptive',
+    // Which of `joints` this machine is actually made of. It has to be handed
+    // frame it shares with its neighbours -- an anchored bar a slider runs
+    // along, a fixed link between two frames -- and the far ends of those
+    // pieces are somebody else's joints. Without the distinction a neighbour's
+    // driven pin reads as this machine's input: it is handed the foreign
+    // speed, skips the "nothing drives this" blocker, and then solves a
+    // mechanism nothing actually turns. Omitted means every joint is its own.
+    ownJointIds?: ReadonlySet<string>
   ) {
     joints.forEach((j) => {
-      this._joints[0].push(this.cloneJointAt(j, j.x, j.y));
+      const clone = this.cloneJointAt(j, j.x, j.y);
+      // Cleared on the copy, so every solver downstream -- loops, positions,
+      // kinematics, forces, the drive profile -- asks the same question once
+      // rather than each rediscovering ownership for itself.
+      if (ownJointIds && !ownJointIds.has(clone.id) && clone instanceof RealJoint) {
+        clone.input = false;
+      }
+      this._joints[0].push(clone);
     });
     links.forEach((l) => {
       const linkJoints = l.joints.map((joint) => this._joints[0].find((j) => j.id === joint.id)!);
@@ -751,14 +766,50 @@ export class Mechanism {
    * scale the caller drew in: solved positions are held to four decimals, so
    * noise is orders below a thousandth of the drawing while a branch swap is
    * on the order of a link length.
+   *
+   * Its *size*, measured across the bounding box, and not its distance from the
+   * world origin. `seamGapAt` does not care where the mechanism sits, so a
+   * tolerance that did made the same linkage close in one revolution near the
+   * origin and two after being dragged away from it -- and the wrap teleported
+   * on whichever side of that the drawing happened to land.
    */
   private seamTolerance(): number {
     const start = this._joints[0];
-    let extent = 0;
+    if (start.length === 0) return 1e-3;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
     for (const joint of start) {
-      extent = Math.max(extent, Math.abs(joint.x), Math.abs(joint.y));
+      minX = Math.min(minX, joint.x);
+      maxX = Math.max(maxX, joint.x);
+      minY = Math.min(minY, joint.y);
+      maxY = Math.max(maxY, joint.y);
     }
-    return Math.max(extent, 1) * 1e-3;
+    return Math.max(maxX - minX, maxY - minY, 1) * 1e-3;
+  }
+
+  /**
+   * Out and back, rather than round and round.
+   *
+   * Taken from the sign of the recorded input velocity, which the solver flips
+   * at each reversal — so a cycle containing both signs is one that turned
+   * around. Owned by the mechanism because three places were deriving it
+   * separately — the readiness facts, the transport's direction control, and
+   * the drive profile's own geometry — and on a prismatic input the three could
+   * disagree, which showed as a direction button doing one thing beside a label
+   * saying another.
+   *
+   * An earlier version compared a joint's position at the start and the
+   * midpoint, which read every mechanism as reciprocating: the joint it sampled
+   * was the first in the frame, and the first joint is usually ground, which
+   * never moves.
+   */
+  get reciprocates(): boolean {
+    return (
+      this._inputAngularVelocities.some((speed) => speed > 0) &&
+      this._inputAngularVelocities.some((speed) => speed < 0)
+    );
   }
 
   /** Seconds spanned by one full traversal of the precomputed motion. */

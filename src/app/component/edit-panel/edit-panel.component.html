@@ -55,7 +55,7 @@
           <div class="offerText">
             <div class="offerTitle">First time here?</div>
             <p class="offerWhy">
-              Build a four-bar linkage on this grid and read a velocity off it. About three
+              Build a four-bar mechanism on this grid and read a velocity off it. About three
               minutes, in five steps.
             </p>
             <div class="offerButtons">
@@ -95,7 +95,7 @@
           </dual-input-block>
           <!-- Width alone, because the height follows it: a picture stretched
                out of its own proportions is no longer something you can measure
-               a linkage against. Set this to a length you can identify in the
+               a mechanism against. Set this to a length you can identify in the
                picture and everything else in it is to scale. -->
           <!-- No unit suffix: a length formatted by the parser already carries
                its own, exactly as the position fields above do. -->
@@ -118,7 +118,7 @@
             [formGroup]="backgroundImageForm"
             _formControl="opacity"
             unit="%"
-            tooltip="How solid the picture is. Fade it back to see the grid and the linkage through it."
+            tooltip="How solid the picture is. Fade it back to see the grid and the mechanism through it."
             >Opacity
           </input-block>
         </collapsible-subseciton>
@@ -448,10 +448,10 @@
         <input-block
           [formGroup]="cylinderForm"
           _formControl="headMass"
-          tooltip="The piston head's mass, concentrated at the pin — the reciprocating mass."
+          tooltip="The sliding body's mass, concentrated at the pin — the reciprocating mass."
           (mouseenter)="setCylinderPartPreview('head')"
           (mouseleave)="setCylinderPartPreview(undefined)"
-          >Piston head</input-block
+          >Sliding Body</input-block
         >
         <p class="massNote">
           Each part's rotational inertia and center of mass are computed from its own shape and the

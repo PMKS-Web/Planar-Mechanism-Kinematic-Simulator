@@ -173,9 +173,23 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     label: option.label,
   }));
 
-  /** The joint whose drive this panel is editing, if it is editing one. */
+  /**
+   * The joint whose drive this panel is editing, if it is editing one.
+   *
+   * The drive never lives on the joint the reader clicked. A slider is selected
+   * by its pin and a cylinder by one of its bodies, while the flag and the
+   * speed both sit on the PrisJoint underneath -- the same hop `adjustInput`
+   * and `isVisuallyInput` make. Without it the Input Settings section rendered
+   * (its own guard hops) while every handler here missed the machine: the speed
+   * went to the document default, the direction flip turned the *other*
+   * mechanisms round, and a cylinder's speed could land on whatever joint
+   * happened to be selected last.
+   */
   private get drivenJoint(): RealJoint | undefined {
-    const joint = this.activeSrv.selectedJoint;
+    const sealed = this.selectedCylinder;
+    if (sealed) return sealed.slider.input ? sealed.slider : undefined;
+    if (this.activeSrv.objType !== 'Joint') return undefined;
+    const joint = this.selectedSlider ?? this.activeSrv.selectedJoint;
     return joint && joint.input ? joint : undefined;
   }
 
@@ -584,14 +598,23 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     return !!sealed && !!sealed.slider.input && this.cylinderTravelEnd(sealed) !== undefined;
   }
 
-  /** Point a driven ram the only way it can go, when its start leaves only one. */
+  /**
+   * Point a driven ram the only way it can go, when its start leaves only one.
+   *
+   * Through the ram's own drive rather than through `isInputCW`: the direction
+   * this panel and the solver read is the sign on the joint, so writing only
+   * the document-wide default left the greyed button naming the one direction
+   * the ram cannot take. `setDriveSpeed` mirrors the default along anyway.
+   */
   private syncCylinderDirection(sealed: Cylinder): void {
     if (!sealed.slider.input) return;
     const end = this.cylinderTravelEnd(sealed);
     if (end === undefined) return;
     const wantsRetract = end === 1;
-    if (this.settingsService.isInputCW.value === wantsRetract) return;
-    this.settingsService.isInputCW.next(wantsRetract);
+    const signed = this.mechanismService.driveSpeedOf(sealed.slider);
+    if (signed === 0 || signed < 0 === wantsRetract) return;
+    const magnitude = Math.abs(signed);
+    this.mechanismService.setDriveSpeed(sealed.slider, wantsRetract ? -magnitude : magnitude);
     this.mechanismService.updateMechanism(false);
   }
 
@@ -852,6 +875,16 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   }
 
   /**
+   * Which way *this* drive is set, read off the joint rather than off
+   * `isInputCW` — that setting only mirrors the machine whose speed was set
+   * last, so on a drawing holding several it described whichever one the reader
+   * had touched most recently rather than the one in front of them.
+   */
+  private get drivenClockwise(): boolean {
+    return this.mechanismService.driveSpeedOf(this.drivenJoint) < 0;
+  }
+
+  /**
    * Which way the drive sets off, said in the terms that drive has (§5.5).
    *
    * A cylinder extends or retracts — it is the one part whose two directions
@@ -862,19 +895,20 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
    */
   get inputDirectionLabel(): string {
     if (this.selectedCylinder) {
-      return this.settingsService.isInputCW.value ? 'Retracting' : 'Extending';
+      // Toward the two ends this panel's own Travel field names: closed and open.
+      return this.drivenClockwise ? 'Closing' : 'Opening';
     }
     if (!this.isSliderInput) {
-      return this.settingsService.isInputCW.value ? 'Clockwise' : 'Counter-Clockwise';
+      return this.drivenClockwise ? 'Clockwise' : 'Counter-Clockwise';
     }
-    return this.settingsService.isInputCW.value ? 'Backward along slot' : 'Forward along slot';
+    return this.drivenClockwise ? 'Backward along slot' : 'Forward along slot';
   }
 
   get inputDirectionIcon(): string {
     if (!this.isSliderInput) {
-      return this.settingsService.isInputCW.value ? 'rotate_right' : 'rotate_left';
+      return this.drivenClockwise ? 'rotate_right' : 'rotate_left';
     }
-    return this.settingsService.isInputCW.value ? 'arrow_back' : 'arrow_forward';
+    return this.drivenClockwise ? 'arrow_back' : 'arrow_forward';
   }
 
   /** A slider with a block and nowhere to slide: invalid until it gets a carrier. */
@@ -1043,6 +1077,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           );
           this.mechanismService.updateMechanism();
           this.mechanismService.onMechUpdateState.next(2);
+          // One committed edit, one undo step, exactly as the position fields
+          // above: `updateMechanism` does not save on its own, so without this
+          // Undo took back the slot angle *and* whatever was done before it.
+          this.mechanismService.save();
         }
       })
     );

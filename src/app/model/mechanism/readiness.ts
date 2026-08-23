@@ -126,9 +126,7 @@ export function readinessOf(
           title: `This mechanism has ${dof} degrees of freedom`,
           body:
             'It is over-constrained, so nothing can move at all. Remove a link, or unground a joint, until this reads 1.' +
-            (welded
-              ? ' A weld also removes freedom — unwelding a joint is another way out.'
-              : ''),
+            (welded ? ' A weld also removes freedom — unwelding a joint is another way out.' : ''),
         });
       }
       break;
@@ -251,7 +249,10 @@ function factsOf(
   mechanism: Mechanism,
   helpers: ReadinessHelpers
 ): MechanismFact[] {
-  const driven = partition.joints.find((joint) => joint instanceof RealJoint && joint.input) as
+  // Its own, not everything it is handed: a shared frame piece carries the
+  // neighbour's driven pin along with it, and naming that as this machine's
+  // "Driven joint" pointed the reader at a joint in another mechanism.
+  const driven = partition.ownJoints.find((joint) => joint instanceof RealJoint && joint.input) as
     RealJoint | undefined;
   const moving = partition.links.length;
   const dof = mechanism.dof;
@@ -265,25 +266,10 @@ function factsOf(
     facts.push({ label: 'Cycle time', value: `${mechanism.cyclePeriod.toFixed(2)} s` });
     facts.push({
       label: 'Motion',
-      value: reciprocates(mechanism) ? 'Reciprocating' : 'Continuous',
+      value: mechanism.reciprocates ? 'Reciprocating' : 'Continuous',
     });
   }
   return facts;
-}
-
-/**
- * Out and back, rather than round and round.
- *
- * Taken from the sign of the recorded input velocity, which the solver flips at
- * each reversal — so a cycle containing both signs is one that turned around.
- *
- * An earlier version compared a joint's position at the start and the midpoint,
- * which read every mechanism as reciprocating: the joint it sampled was the
- * first in the frame, and the first joint is usually ground, which never moves.
- */
-function reciprocates(mechanism: Mechanism): boolean {
-  const speeds = mechanism.inputAngularVelocities;
-  return speeds.some((speed) => speed > 0) && speeds.some((speed) => speed < 0);
 }
 
 /** One condition force analysis needs, and whether the drawing meets it. */

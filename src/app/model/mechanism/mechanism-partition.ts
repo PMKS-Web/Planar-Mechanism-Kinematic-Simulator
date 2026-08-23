@@ -5,7 +5,12 @@ import { assignBodies, WORLD } from './bodies';
 
 /** One independently solvable machine within the drawing. */
 export interface MechanismPartition {
-  /** Derived, never stored: M1, M2… in a stable order. See `partitionMechanisms`. */
+  /**
+   * Derived, never stored: M1, M2… in a stable order. See `partitionMechanisms`.
+   *
+   * A label, not an identity — it is the ordinal, and a rebuild renumbers it.
+   * Anything pairing held state across a rebuild wants `partitionKey`.
+   */
   id: string;
   /** Everything the solver has to be handed, frame pieces included. */
   joints: Joint[];
@@ -46,6 +51,29 @@ export interface Partitioning {
 /** Sort ids the way the alphabet does, with longer ids after the letters they extend. */
 function byJointId(a: string, b: string): number {
   return a.length === b.length ? a.localeCompare(b) : a.length - b.length;
+}
+
+/**
+ * Which machine this *is*, as opposed to where it currently sits in the list.
+ *
+ * `id` is the ordinal the panels show, and an ordinal is exactly what a rebuild
+ * renumbers: delete the first machine and the second becomes M1, inheriting
+ * whatever clock and drive compensation was being held under that name. So
+ * anything pairing held per-machine state across a rebuild keys on this
+ * instead, and gets to discard the entries whose machine has gone.
+ *
+ * The lowest id among the joints the machine owns and the world does not.
+ * Grounded joints are shared with every machine bolted to the same point, so
+ * they cannot tell two cranks on one pivot apart; a moving joint belongs to
+ * exactly one component by construction, because a joint between two moving
+ * bodies is precisely what unions them.
+ */
+export function partitionKey(partition: MechanismPartition): string {
+  const moving = partition.ownJoints
+    .filter((joint) => !(joint instanceof RealJoint && joint.ground))
+    .map((joint) => joint.id)
+    .sort(byJointId);
+  return moving[0] ?? partition.id;
 }
 
 /**
