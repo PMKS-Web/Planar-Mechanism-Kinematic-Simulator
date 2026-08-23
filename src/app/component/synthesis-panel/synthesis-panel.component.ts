@@ -12,6 +12,7 @@ import { Subscription } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { StandardFieldDirective } from '../BLOCKS/standard-field/standard-field.directive';
 import { MechanismService } from '../../services/mechanism.service';
 import { NotificationService } from '../../services/notification.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
@@ -83,7 +84,14 @@ const HELP = {
   templateUrl: './synthesis-panel.component.html',
   styleUrls: ['./synthesis-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [FormsModule, ReactiveFormsModule, MatIcon, MatTooltip, CollapsibleSubsecitonComponent],
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    MatIcon,
+    MatTooltip,
+    CollapsibleSubsecitonComponent,
+    StandardFieldDirective,
+  ],
 })
 export class SynthesisPanelComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);

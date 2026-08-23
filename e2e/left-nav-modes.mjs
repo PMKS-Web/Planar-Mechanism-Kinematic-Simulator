@@ -62,9 +62,8 @@ const shot = (name) =>
   page.screenshot({ path: path.join(screenshotDir, `${runPrefix}-${name}`), fullPage: false });
 
 const tab = (label) => page.locator('.tabButton', { hasText: label });
-// The readiness chip is a sibling of the mode button inside `.tabSlot`, not a
-// child of it — it used to be nested, which made it unreachable by keyboard.
-const chipFor = (label) => page.locator('.tabSlot', { hasText: label }).locator('.chip');
+// The chip is a plain label inside the mode button — one control per mode.
+const chipFor = (label) => page.locator('.tabButton', { hasText: label }).locator('.chip');
 const timeValue = () => page.locator('#playbackTime').innerText();
 /** The value carries its own unit, so read the leading number off "0.20 s". */
 const timeSeconds = async () => parseFloat(await timeValue());
@@ -79,10 +78,9 @@ const highlighted = () =>
     const pill = document.querySelector('.activeTabPill');
     const active = document.querySelector('.tabButton.active');
     if (!pill || !active) return null;
-    // An analysis mode and its readiness chip are two controls read as one tab,
-    // so the highlight spans the pair. Measured against the slot that holds
-    // them, which is the button itself for a mode that carries no chip.
-    const box = active.closest('.tabSlot') ?? active;
+    // The highlight spans the mode button, which now carries its readiness chip
+    // inside it as a label rather than beside it as a second control.
+    const box = active;
     const style = getComputedStyle(pill);
     return {
       label: active.querySelector('.tabLabel')?.innerText ?? '',

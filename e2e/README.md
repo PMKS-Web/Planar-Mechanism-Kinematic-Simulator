@@ -71,10 +71,19 @@ Interaction gotchas baked into these scripts:
   panel's HTML controls over the SVG context menu (its hitboxes drift at some
   viewports).
 - Modes are the `.tabButton`s in the top strip: Synthesis, Edit, Kinematic, Force.
-  What used to be called Analyze is **Kinematic**. Pressing a mode is idempotent —
-  they no longer toggle their own panel — so `page.locator('.tabButton', { hasText: 'Kinematic' })`
-  can be clicked without checking first. Below 1080px the labels are hidden, and
-  `hasText` stops matching with them; size the viewport wider than that.
+  What used to be called Analyze is **Kinematic**. Below 1080px the labels are hidden,
+  and `hasText` stops matching with them; size the viewport wider than that.
+- **Pressing an analysis mode is not idempotent.** There is one button per mode, and it
+  does one of three things: a mode you cannot enter yet opens its setup drawer and does
+  not switch; a mode you can enter but are not in switches to it; and the mode you are
+  *already* in toggles its setup drawer open or closed. So a script that presses
+  Kinematic twice ends up with the setup drawer open over the panel it was about to read.
+  To reach the drawer for an enterable mode, press until the drawer says so rather than
+  counting presses — `e2e/mechanism-panel.mjs` has the pattern. Synthesis and Edit are
+  still plain switches and can be pressed without checking.
+- The readiness chip (`.chip`) is a plain label **inside** the mode button, not a control.
+  Read it for readiness; do not click it — the click lands on the mode and follows the
+  rule above.
 - File actions (Templates, Open, Save, Share Project, Settings, Help / Feedback) live
   behind the hamburger: click `.topStrip .iconButton`, then the `.projectMenu .menuItem`.
   Undo and Redo are `.historyButton`s in the strip itself, in every mode.

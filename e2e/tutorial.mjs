@@ -281,7 +281,13 @@ check(
   )
 );
 // Closed rather than removed: the drawer parks off the edge, so the card is
-// still in the document and only `isVisible` can tell the difference.
+// still in the document and only `isVisible` can tell the difference. It now
+// leaves on an animation rather than vanishing, so wait it out instead of
+// reading the frame the click landed on.
+await page
+  .locator('.tutorialCard')
+  .waitFor({ state: 'hidden', timeout: 4000 })
+  .catch(() => {});
 check('exiting closes the drawer', !(await page.locator('.tutorialCard').isVisible()));
 // The thread back has to survive a selection. It used to live inside the Edit
 // panel's *empty* state, and closing the tutorial past step two leaves a joint

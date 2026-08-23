@@ -39,9 +39,29 @@ const record = (what, ok, detail) => {
 };
 
 const tab = (name) => page.locator('.tabButton', { hasText: name });
-// The readiness chip is a sibling of the mode button inside `.tabSlot`, not a
-// child of it — it used to be nested, which made it unreachable by keyboard.
-const chipFor = (name) => page.locator('.tabSlot', { hasText: name }).locator('.chip');
+// One button per mode now. Pressing a mode you can enter switches to it;
+// pressing the mode you are already in toggles its setup drawer. So reaching
+// the drawer for an enterable mode takes up to two presses, and this asks the
+// drawer itself rather than counting clicks.
+const setupTitleFor = (name) => (name === 'Force' ? 'Force analysis setup' : 'Analysis setup');
+const openSetupFor = async (name) => {
+  for (let press = 0; press < 2; press++) {
+    const showing = await page
+      .locator('app-analysis-setup')
+      .innerText()
+      .catch(() => '');
+    if (showing.includes(setupTitleFor(name))) return;
+    await tab(name).click();
+    await page.waitForTimeout(700);
+  }
+  const showing = await page
+    .locator('app-analysis-setup')
+    .innerText()
+    .catch(() => '');
+  if (!showing.includes(setupTitleFor(name))) {
+    throw new Error(`the ${name} setup drawer never opened`);
+  }
+};
 const panelText = () =>
   page
     .locator('app-mechanism-panel')
@@ -103,7 +123,7 @@ await page.evaluate(() => {
 await page.waitForTimeout(400);
 record('deselecting clears the panel', (await panelText()) === '');
 
-await chipFor('Kinematic').click();
+await openSetupFor('Kinematic');
 await page.waitForTimeout(700);
 await page.locator('.mechLink').first().click();
 await page.waitForTimeout(700);

@@ -160,11 +160,17 @@ await page.evaluate(() => {
   srv.updateMechanism();
 });
 await page.waitForTimeout(500);
-// One machine is still fine, so Kinematic is enterable and pressing it does
-// not refuse. The chip is the way to the list either way.
-// The readiness chip is a sibling of the mode button inside `.tabSlot`, not a child.
-await page.locator('.tabSlot', { hasText: 'Kinematic' }).locator('.chip').click();
-await page.waitForTimeout(700);
+// One machine is still fine, so Kinematic is enterable: the first press enters
+// the mode and the second opens its setup list.
+for (let press = 0; press < 2; press++) {
+  const showing = await page
+    .locator('app-analysis-setup')
+    .innerText()
+    .catch(() => '');
+  if (showing.includes('Analysis setup')) break;
+  await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+  await page.waitForTimeout(700);
+}
 const drawer = await page.locator('app-analysis-setup').innerText();
 record(
   'the drawer names both mechanisms and blames only the broken one',

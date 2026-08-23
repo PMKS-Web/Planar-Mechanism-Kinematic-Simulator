@@ -156,6 +156,19 @@ async function openAt(x, y) {
 
 await openMechanism(page, BASE + FOURBAR);
 
+/**
+ * The row that deletes the part itself.
+ *
+ * In Edit mode the ladder now ends with two destructive rows — the part's own
+ * Delete, and below it Delete Mechanism, which takes the whole machine. So the
+ * part's Delete is the last row only where the machine-wide one is not offered.
+ */
+const ownDelete = (menu) => {
+  const rows = menu?.rows ?? [];
+  const last = rows.at(-1);
+  return last?.label === 'Delete Mechanism' ? rows.at(-2) : last;
+};
+
 const jointA = await openOn('#joint_A');
 check('a joint menu names the joint it is about', jointA?.title === 'Joint A', jointA?.title);
 check('and what it is made of', jointA?.subtitle === 'Pin · Links OA, ACT', jointA?.subtitle);
@@ -165,9 +178,12 @@ check(
   jointA?.groups
 );
 check(
-  'Delete is the last row, and the only red one',
+  'the deletions are the last rows, and the only red ones',
   jointA?.rows.at(-1)?.destructive === true &&
-    jointA?.rows.filter((one) => one.destructive).length === 1,
+    ownDelete(jointA)?.destructive === true &&
+    // Red belongs to the foot of the ladder and nowhere above it.
+    jointA?.rows.filter((one) => one.destructive).length === 2 &&
+    jointA?.rows.slice(0, -2).every((one) => !one.destructive),
   jointA?.rows.map((one) => one.label)
 );
 check(
@@ -184,13 +200,13 @@ check(
 );
 check(
   'the destructive row names what goes with it',
-  jointA?.rows.at(-1)?.label === 'Delete Joint and Link OA',
-  jointA?.rows.at(-1)?.label
+  ownDelete(jointA)?.label === 'Delete Joint and Link OA',
+  ownDelete(jointA)?.label
 );
 check(
   'and carries its key from the registry',
-  jointA?.rows.at(-1)?.slot === 'Delete' && rowNamed(jointA, 'Locked')?.slot === 'K',
-  { del: jointA?.rows.at(-1)?.slot, lock: rowNamed(jointA, 'Locked')?.slot }
+  ownDelete(jointA)?.slot === 'Delete' && rowNamed(jointA, 'Locked')?.slot === 'K',
+  { del: ownDelete(jointA)?.slot, lock: rowNamed(jointA, 'Locked')?.slot }
 );
 
 const groundO = await openOn('#joint_O');
@@ -213,8 +229,8 @@ check(
 );
 check(
   'a joint that orphans nothing says plain Delete Joint',
-  tracerT?.rows.at(-1)?.label === 'Delete Joint',
-  tracerT?.rows.at(-1)?.label
+  ownDelete(tracerT)?.label === 'Delete Joint',
+  ownDelete(tracerT)?.label
 );
 
 const link = await openOn('[id="OA"]');
@@ -227,8 +243,8 @@ check(
 );
 check(
   'and counts the joints its deletion would sweep up',
-  link?.rows.at(-1)?.label === 'Delete Link and Joint O',
-  link?.rows.at(-1)?.label
+  ownDelete(link)?.label === 'Delete Link and Joint O',
+  ownDelete(link)?.label
 );
 
 const canvas = await openAt(1150, 780);
@@ -257,8 +273,8 @@ check(
 );
 check(
   'refuses to be deleted, and says which way out',
-  locked?.rows.at(-1)?.off === true && locked?.rows.at(-1)?.slot === 'unlock first',
-  locked?.rows.at(-1)
+  ownDelete(locked)?.off === true && ownDelete(locked)?.slot === 'unlock first',
+  ownDelete(locked)
 );
 check(
   'and refuses attachments for the same reason',
@@ -278,8 +294,12 @@ await page.click('text=Kinematic Analysis');
 await page.waitForTimeout(900);
 const analysisJoint = await openOn('#joint_T');
 check(
+  // The vector traces joined Trace Path here: all three draw what the solved
+  // cycle already knows and none of them changes the mechanism, which is the
+  // whole test — an analysis mode offers ways to look and no way to edit.
   'an analysis menu offers the view and nothing that edits',
-  JSON.stringify(analysisJoint?.rows.map((one) => one.label)) === JSON.stringify(['Trace Path']),
+  JSON.stringify(analysisJoint?.rows.map((one) => one.label)) ===
+    JSON.stringify(['Trace Path', 'Velocity Vectors', 'Acceleration Vectors']),
   analysisJoint?.rows.map((one) => one.label)
 );
 check('and the way back into Edit rides the header', analysisJoint?.cross === 'on', analysisJoint);
@@ -315,8 +335,8 @@ check(
 );
 check(
   'and the deletion says it takes the whole part',
-  cylinderJoint?.rows.at(-1)?.label === 'Delete Joint and Cylinder',
-  cylinderJoint?.rows.at(-1)?.label
+  ownDelete(cylinderJoint)?.label === 'Delete Joint and Cylinder',
+  ownDelete(cylinderJoint)?.label
 );
 check(
   'a cylinder joint takes no block: the row is absent, not greyed',
