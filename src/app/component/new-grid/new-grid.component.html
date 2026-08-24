@@ -1428,7 +1428,7 @@
     </g>
   }
 
-  @if (mechanismSrv.showPathHolder && settings.isShowTraces.value) {
+  @if (tracesVisible()) {
     <g id="pathsHolder">
       @for (joint of mechanismSrv.getJoints(); track joint) {
         <ng-container>

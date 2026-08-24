@@ -2003,7 +2003,13 @@ export class NewGridComponent implements OnDestroy {
     if (this.mechanismSrv.showPathHolder) {
       this.mechanismSrv.onMechUpdateState.next(2);
     }
-    this.mechanismSrv.showPathHolder = false;
+    // Only in Edit, where this holder is the preview a drag puts up and the end
+    // of the gesture is what puts it away. In an analysis mode there is no
+    // gesture to end -- geometry is locked -- and the traces are what the
+    // reader came to look at, so a click on the grid must not take them down.
+    if (!this.tabService.isAnalysisMode()) {
+      this.mechanismSrv.showPathHolder = false;
+    }
 
     // One gesture earns one undo entry. Undo is a stack of URL strings, so
     // saving per pointer-move would fill it with intermediate poses nobody
@@ -3377,6 +3383,19 @@ export class NewGridComponent implements OnDestroy {
    * colour somebody chose is still a louder thing than the machine being
    * analysed.
    */
+  /**
+   * Whether the traced paths are on screen.
+   *
+   * `showPathHolder` is the drag preview's own flag, raised while a joint is
+   * being moved and lowered when it is let go. A joint with Trace Path switched
+   * on is a different thing: its path is the answer, not a preview of one, and
+   * in an analysis mode it stays up whatever the pointer does.
+   */
+  tracesVisible(): boolean {
+    if (!this.settings.isShowTraces.value) return false;
+    return this.mechanismSrv.showPathHolder || this.tabService.isAnalysisMode();
+  }
+
   forceInkOf(force: Force): string | null {
     if (this.mechanismSrv.isPartInert(force.link)) return null;
     return force.color || DEFAULT_FORCE_COLOR;

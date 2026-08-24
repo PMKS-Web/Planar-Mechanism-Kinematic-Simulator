@@ -303,4 +303,63 @@
       text-align: center;
     }
   }
+
+  // ---- the replace / new-tab choice ----------------------------------------
+  // Three weights for three answers: the recommended one filled, the other real
+  // action outlined, and the way out unadorned. Written here rather than taken
+  // from Material's button so the row reads at the same weights as the rest of
+  // this app's chrome.
+  .choiceModal {
+    [mat-dialog-actions] {
+      gap: 8px;
+      padding-top: 8px;
+    }
+
+    .choiceQuiet,
+    .choiceOutlined,
+    .choiceFilled {
+      height: 40px;
+      padding: 0 20px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 15px;
+      cursor: pointer;
+      transition:
+        background-color 0.12s ease-in-out,
+        border-color 0.12s ease-in-out;
+    }
+
+    .choiceQuiet {
+      border: none;
+      background: transparent;
+      color: rgba(0, 0, 0, 0.66);
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.05);
+      }
+    }
+
+    .choiceOutlined {
+      border: 1.5px solid rgba(63, 81, 181, 0.35);
+      background: transparent;
+      color: $indigo-700;
+      font-weight: 500;
+
+      &:hover {
+        border-color: $indigo-500;
+        background: $indigo-50;
+      }
+    }
+
+    .choiceFilled {
+      border: 1.5px solid transparent;
+      background: $indigo-700;
+      color: #fff;
+      font-weight: 500;
+
+      &:hover {
+        background: $indigo-500;
+      }
+    }
+  }
 }

@@ -97,18 +97,19 @@
 <!-- Shown when the grid already holds work: opening a template must not
      silently discard it. Replacing goes through the undo history, so it is
      recoverable either way. -->
+<!-- The title names the mechanism being opened, which is what lets the sentence
+     underneath say only what the reader does not already know: that there is
+     something here to lose, and that losing it is recoverable. -->
 <ng-template #openChoiceDialog>
-  <div class="modal">
-    <h1 mat-dialog-title>There is already a mechanism on the grid.</h1>
+  <div class="modal choiceModal">
+    <h1 mat-dialog-title>Open {{ choosing }}?</h1>
     <div mat-dialog-content>
-      <p>
-        Open the template in a new tab, or replace the current mechanism? Replacing can be undone.
-      </p>
+      <p>There is already a mechanism on the grid. Replacing it can be undone.</p>
     </div>
     <div mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancel</button>
-      <button mat-button [mat-dialog-close]="'new-tab'">Open in a new tab</button>
-      <button mat-button cdkFocusInitial [mat-dialog-close]="'replace'">Replace</button>
+      <button class="choiceQuiet" mat-dialog-close>Cancel</button>
+      <button class="choiceOutlined" [mat-dialog-close]="'new-tab'">New tab</button>
+      <button class="choiceFilled" cdkFocusInitial [mat-dialog-close]="'replace'">Replace</button>
     </div>
   </div>
 </ng-template>

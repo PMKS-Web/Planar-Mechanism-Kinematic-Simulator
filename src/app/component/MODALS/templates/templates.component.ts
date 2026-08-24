@@ -167,11 +167,21 @@ export class TemplatesComponent {
     return `${card.name} ${card.description} ${family}`.toLowerCase().includes(query);
   }
 
+  /**
+   * The mechanism the choice dialog is about.
+   *
+   * The dialog names it in its own title, which is what lets the sentence
+   * underneath stop carrying every piece of information at once.
+   */
+  choosing = '';
+
   openLinkage(linkage: TemplateID | DevTemplateID) {
     const content =
       linkage in DEV_TEMPLATES
         ? DEV_TEMPLATES[linkage as DevTemplateID]
         : TEMPLATE_LINKAGES[linkage as TemplateID];
+    this.choosing =
+      [...TEMPLATE_CARDS, ...DEV_TEMPLATE_CARDS].find((card) => card.id === linkage)?.name ?? '';
 
     // An empty grid has nothing to lose, so load right here instead of
     // spawning a tab the user then has to switch to.
