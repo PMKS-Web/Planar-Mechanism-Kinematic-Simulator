@@ -84,6 +84,14 @@ for (const { id, name } of wanted()) {
   }
   await page.goto(`${BASE}/?${payload}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await waitForReady(page);
+  // Grid, ruling and axes off, exactly as template-thumbnails.mjs shoots the
+  // still. Without it the loop carries the grid while the still does not, so
+  // hovering a card swapped a clean white picture for one with a ruled panel
+  // and two blue axes in it — a border appearing out of nowhere around the
+  // thing the pointer had just landed on.
+  await page.evaluate(() => {
+    ng.getComponent(document.querySelector('app-new-grid')).settings.tempGridDisable = true;
+  });
   // Two real pointer events: the first schedules the change detection a value
   // set from outside Angular would not, the second parks the cursor somewhere
   // no link will light up and print its own name onto the picture.

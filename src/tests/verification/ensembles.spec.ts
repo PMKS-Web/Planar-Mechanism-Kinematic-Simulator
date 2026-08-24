@@ -6,6 +6,7 @@ import {
   walkingPairFixture,
   straightLinePairFixture,
   pumpingFieldFixture,
+  fourBarInversionsFixture,
 } from '../../test-utils/verification/ensemble-fixtures';
 import { partitionMechanisms } from '../../app/model/mechanism/mechanism-partition';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
@@ -182,5 +183,106 @@ describe('three pumps at three rates', () => {
 
   it('carries no mass, being about motion', () => {
     expect(masses(pumpingFieldFixture()).every((mass) => mass === 0)).toBe(true);
+  });
+});
+
+/**
+ * Does this bar go right over, or does it swing and come back?
+ *
+ * Asked of the solved cycle rather than of the lengths, so it is a statement
+ * about the mechanism the template actually opens and not about the Grashof
+ * arithmetic that predicted it. The angles a full rotation visits are spread
+ * all the way round with no gap between neighbouring samples; a rocker leaves
+ * the whole of the rest of the circle empty, so the widest gap separates the
+ * two cleanly with nothing near the boundary.
+ */
+function goesOver(machine: Mechanism, pivot: string, tip: string): boolean {
+  const angles = machine.joints
+    .map((frame) => {
+      const at = frame.find((joint) => joint.id === pivot)!;
+      const end = frame.find((joint) => joint.id === tip)!;
+      return (Math.atan2(end.y - at.y, end.x - at.x) + 2 * Math.PI) % (2 * Math.PI);
+    })
+    .sort((one, other) => one - other);
+  const gaps = angles.map((angle, index) =>
+    index === 0 ? angles[0] + 2 * Math.PI - angles[angles.length - 1] : angle - angles[index - 1]
+  );
+  return Math.max(...gaps) < Math.PI / 6;
+}
+
+describe('one four-bar chain, each link held still in turn', () => {
+  it('comes apart into four machines, every one of them playable', () => {
+    expectSeparateMachines(fourBarInversionsFixture(), 4);
+  });
+
+  it('is the same four bars every time', () => {
+    // The lengths are what make this one chain rather than four linkages that
+    // happen to be drawn together, and they are the premise of every claim
+    // below — so they are measured rather than trusted.
+    const [drag, crankRockerI, doubleRocker, crankRockerII] = machines(fourBarInversionsFixture());
+    const spans = (machine: Mechanism, pairs: [string, string][]): number[] =>
+      pairs.map(([from, to]) => {
+        const frame = machine.joints[0];
+        const a = frame.find((joint) => joint.id === from)!;
+        const b = frame.find((joint) => joint.id === to)!;
+        return Math.round(Math.hypot(a.x - b.x, a.y - b.y) * 100) / 100;
+      });
+    // Each machine's three drawn bars, plus the frame span standing in for the
+    // bar being held. Every list is the same four numbers.
+    expect(
+      spans(drag, [
+        ['A', 'B'],
+        ['B', 'C'],
+        ['C', 'D'],
+        ['A', 'D'],
+      ]).sort()
+    ).toEqual([1, 2, 2.5, 3].sort());
+    expect(
+      spans(crankRockerI, [
+        ['E', 'F'],
+        ['F', 'G'],
+        ['G', 'H'],
+        ['E', 'H'],
+      ]).sort()
+    ).toEqual([1, 2, 2.5, 3].sort());
+    expect(
+      spans(doubleRocker, [
+        ['I', 'J'],
+        ['J', 'K'],
+        ['K', 'L'],
+        ['I', 'L'],
+      ]).sort()
+    ).toEqual([1, 2, 2.5, 3].sort());
+    expect(
+      spans(crankRockerII, [
+        ['M', 'N'],
+        ['N', 'O'],
+        ['O', 'P'],
+        ['M', 'P'],
+      ]).sort()
+    ).toEqual([1, 2, 2.5, 3].sort());
+  });
+
+  it('is a different mechanism each time, which is the whole point', () => {
+    const [drag, crankRockerI, doubleRocker, crankRockerII] = machines(fourBarInversionsFixture());
+
+    // Holding the shortest bar: both grounded bars go over.
+    expect(goesOver(drag, 'A', 'B')).toBe(true);
+    expect(goesOver(drag, 'D', 'C')).toBe(true);
+
+    // Holding a bar beside the shortest: the shortest cranks, the far bar rocks.
+    expect(goesOver(crankRockerI, 'E', 'F')).toBe(true);
+    expect(goesOver(crankRockerI, 'H', 'G')).toBe(false);
+    expect(goesOver(crankRockerII, 'M', 'N')).toBe(true);
+    expect(goesOver(crankRockerII, 'P', 'O')).toBe(false);
+
+    // Holding the bar opposite the shortest: the shortest is now the coupler,
+    // and nothing pinned to the frame can get round at all.
+    expect(goesOver(doubleRocker, 'I', 'J')).toBe(false);
+    expect(goesOver(doubleRocker, 'L', 'K')).toBe(false);
+  });
+
+  it('carries no mass, being about motion', () => {
+    expect(masses(fourBarInversionsFixture()).every((mass) => mass === 0)).toBe(true);
   });
 });

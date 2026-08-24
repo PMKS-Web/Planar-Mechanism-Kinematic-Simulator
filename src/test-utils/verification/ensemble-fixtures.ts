@@ -109,6 +109,34 @@ function place(
   };
 }
 
+/**
+ * Where two circles cross, which is where a four-bar's coupler pin lands.
+ *
+ * `branch` picks which of the two crossings — the same chain assembles two
+ * ways, and taking the wrong one is a mechanism that runs backwards through a
+ * mirror image of the motion it was drawn for.
+ */
+function meet(
+  a: { x: number; y: number },
+  ra: number,
+  b: { x: number; y: number },
+  rb: number,
+  branch: 1 | -1
+): { x: number; y: number } {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const d = Math.hypot(dx, dy);
+  if (d > ra + rb || d < Math.abs(ra - rb)) {
+    throw new Error(`meet: circles ${ra} and ${rb} do not reach across ${d.toFixed(3)}`);
+  }
+  const along = (ra * ra - rb * rb + d * d) / (2 * d);
+  const across = Math.sqrt(Math.max(0, ra * ra - along * along));
+  return {
+    x: a.x + (along * dx - branch * across * dy) / d,
+    y: a.y + (along * dy + branch * across * dx) / d,
+  };
+}
+
 /** Every machine in one drawing, as one fixture. */
 function merge(parts: MechanismFixture[], inputAngVel: number): MechanismFixture {
   return {
@@ -209,6 +237,128 @@ export function straightLinePairFixture(): MechanismFixture {
  * the transport. The rates are close enough that they are plainly the same
  * machine and far enough apart to come out of step within a cycle or two.
  */
+/**
+ * The four-bar chain, and the four mechanisms it is.
+ *
+ * A four-bar has four links, and fixing a different one each time gives four
+ * different machines out of one chain — the classic result about inversion,
+ * and one that a single drawing can only assert. Four drawings of the same
+ * four bars, each holding a different one still, is the whole argument.
+ *
+ * The bars are 1, 2, 3 and 2.5 long in that cyclic order, which satisfies
+ * Grashof (1 + 3 ≤ 2 + 2.5) — so what each inversion turns out to be is
+ * decided by where the shortest bar sits relative to the fixed one:
+ *
+ * | Held still | The shortest is | What it becomes |
+ * | --- | --- | --- |
+ * | L1 (the shortest) | the frame | double crank — both grounded bars go over |
+ * | L2 | beside the frame | crank-rocker |
+ * | L3 (opposite L1) | the coupler | double rocker — neither grounded bar goes over |
+ * | L4 | beside the frame | crank-rocker, the other one |
+ *
+ * The fixed bar is not drawn, because in this app the frame is not a link: a
+ * four-bar is three bars between two ground pins, and which two joints are
+ * pinned *is* the inversion. So each machine shows three of the four bars and
+ * the one that is missing is the one being held.
+ *
+ * Colours and names carry a bar's identity between the four, which is the
+ * point the drawing exists to make — L2 is the same bar whether it is a crank,
+ * a coupler or gone. See template-colors.ts, where they are pinned.
+ */
+export function fourBarInversionsFixture(): MechanismFixture {
+  /** Held still, then the three bars that are left, going round from it. */
+  const inversions: {
+    letters: string;
+    ground: number;
+    crank: number;
+    coupler: number;
+    rocker: number;
+    /** The names of the three drawn bars, in that order. */
+    bars: [string, string, string];
+    theta: number;
+    branch: 1 | -1;
+    at: { x: number; y: number };
+  }[] = [
+    {
+      letters: 'ABCD',
+      ground: 1,
+      crank: 2,
+      coupler: 3,
+      rocker: 2.5,
+      bars: ['L2', 'L3', 'L4'],
+      theta: 100,
+      branch: 1,
+      at: { x: 0, y: 6 },
+    },
+    {
+      letters: 'EFGH',
+      ground: 2,
+      crank: 1,
+      coupler: 2.5,
+      rocker: 3,
+      bars: ['L1', 'L4', 'L3'],
+      theta: 60,
+      branch: 1,
+      at: { x: 9, y: 6 },
+    },
+    {
+      letters: 'IJKL',
+      ground: 3,
+      crank: 2,
+      coupler: 1,
+      rocker: 2.5,
+      bars: ['L2', 'L1', 'L4'],
+      theta: 55,
+      branch: 1,
+      at: { x: 0, y: 0 },
+    },
+    {
+      letters: 'MNOP',
+      ground: 2.5,
+      crank: 1,
+      coupler: 2,
+      rocker: 3,
+      bars: ['L1', 'L2', 'L3'],
+      theta: 60,
+      branch: 1,
+      at: { x: 9, y: 0 },
+    },
+  ];
+
+  const parts: MechanismFixture[] = inversions.map((one) => {
+    const [first, second, third, fourth] = [...one.letters];
+    const pivot = { x: one.at.x, y: one.at.y };
+    const far = { x: one.at.x + one.ground, y: one.at.y };
+    const turn = (one.theta * Math.PI) / 180;
+    const elbow = {
+      x: pivot.x + one.crank * Math.cos(turn),
+      y: pivot.y + one.crank * Math.sin(turn),
+    };
+    const wrist = meet(elbow, one.coupler, far, one.rocker, one.branch);
+    return {
+      joints: [
+        // The left pin drives, and for every inversion but the double rocker
+        // that is a bar which goes right over. The double rocker has no such
+        // bar anywhere, which is what makes it a double rocker — driven here
+        // it swings between its two toggle points instead, which is what the
+        // machine actually does.
+        { id: first, x: pivot.x, y: pivot.y, ground: true, input: true, driveSpeed: LIBRARY_RPM },
+        { id: second, x: elbow.x, y: elbow.y },
+        { id: third, x: wrist.x, y: wrist.y },
+        { id: fourth, x: far.x, y: far.y, ground: true },
+      ],
+      links: [
+        { joints: first + second, name: one.bars[0], mass: 0, moi: 0 },
+        { joints: second + third, name: one.bars[1], mass: 0, moi: 0 },
+        { joints: third + fourth, name: one.bars[2], mass: 0, moi: 0 },
+      ],
+      inputAngVel: radPerSecond(LIBRARY_RPM),
+    };
+  });
+
+  return merge(parts, radPerSecond(LIBRARY_RPM));
+}
+
 export function pumpingFieldFixture(): MechanismFixture {
   const unit = pumpjackFixture();
   const spacing = 13;

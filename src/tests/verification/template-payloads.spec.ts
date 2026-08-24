@@ -13,6 +13,9 @@ import {
   libraryTemplateEntry,
   libraryTemplateMasses,
 } from '../../test-utils/verification/template-fixtures';
+import { libraryTemplateFills, logicalFills } from '../../test-utils/verification/template-colors';
+import { urlGeneratorFor } from '../../test-utils/url-encoding';
+import { RealLink } from '../../app/model/link';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
 import { buildMechanismFixture } from '../fixtures/mechanism-fixtures';
 import { partitionMechanisms } from '../../app/model/mechanism/mechanism-partition';
@@ -44,7 +47,10 @@ function generatedBlock(): string {
       entry.fixture,
       entry.objectScale,
       entry.speed,
-      libraryTemplateMasses(id)
+      libraryTemplateMasses(id),
+      // Colour is the other thing the library decides for itself: a gallery
+      // link is a mechanism to check, a template is a mechanism to read.
+      libraryTemplateFills(id, entry.fixture)
     );
     return `  ${id}:\n    '${payload}',`;
   });
@@ -58,10 +64,56 @@ function replaceBlock(source: string, block: string): string {
   return source.slice(0, from) + block + source.slice(to + END.length);
 }
 
+/**
+ * The five templates that predate the generator, kept to the same colour rule.
+ *
+ * Their geometry is hand-authored and stays that way — there is no fixture to
+ * regenerate them from. But colour is not geometry, and five cards coloured by
+ * whatever order somebody drew them in, sitting in a dialog beside thirty-four
+ * coloured from their structure, is the inconsistency this rule exists to
+ * remove. So the payload is decoded, repainted and re-encoded: everything but
+ * the six colour fields comes back byte-identical, which is what makes it safe
+ * to do to a string nothing else can regenerate.
+ */
+const HAND_AUTHORED = ['4-Bar', 'Watt_I', 'Watt_II', 'Stephenson_III', 'Slider_Crank'] as const;
+
+function recolored(id: string, payload: string): string {
+  const { service, settings } = buildMechanismFixture(payload);
+  // Only the drawn bodies: a slider's block is a Link but not a RealLink, and
+  // it is drawn black rather than in one of the six.
+  const bodies = service.links.filter((link): link is RealLink => link instanceof RealLink);
+  const grounds = new Set(
+    service.joints
+      .filter((joint) => (joint as { ground?: boolean }).ground)
+      .map((joint) => joint.id)
+  );
+  const fills = logicalFills(
+    bodies.map((link) => ({ id: link.id, jointIds: link.joints.map((joint) => joint.id) })),
+    grounds,
+    {},
+    id
+  );
+  bodies.forEach((link) => {
+    const color = fills.get(link.id);
+    if (color) link.fill = color;
+  });
+  return urlGeneratorFor(service, settings).generateUrlQuery();
+}
+
+function replaceHandAuthored(source: string): string {
+  return HAND_AUTHORED.reduce((text, id) => {
+    // The key is quoted only when it is not a bare identifier ('4-Bar' is not).
+    const row = new RegExp(`^( {2}'?${id}'?:\\n {4}')([^']+)(',)$`, 'm');
+    const found = text.match(row);
+    if (!found) throw new Error(`template-linkages.ts has lost its ${id} row`);
+    return text.replace(row, `$1${recolored(id, found[2]).replace(/\\/g, '\\\\')}$3`);
+  }, source);
+}
+
 describe('library template payloads', () => {
   it('match what their verification fixtures encode to', () => {
     const source = readFileSync(SOURCE_PATH, 'utf8');
-    const regenerated = replaceBlock(source, generatedBlock());
+    const regenerated = replaceHandAuthored(replaceBlock(source, generatedBlock()));
     if (process.env['PMKS_WRITE_TEMPLATE_PAYLOADS']) {
       writeFileSync(SOURCE_PATH, regenerated);
       return;

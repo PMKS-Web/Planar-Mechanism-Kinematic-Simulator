@@ -13,26 +13,13 @@
  * means pairing them up -- a force in a colour no link could be would say it
  * belonged to something that is not there.
  */
-/*
- * The six are handed out in this order, so consecutive links are always a
- * different hue rather than a different lightness of the same one.
- *
- * They sit in a narrow band of lightness on purpose. The set they replace ran
- * from a near-white to a near-black: on a white grid the palest two were barely
- * a link at all, they were the only two dark enough to need dark labels while
- * the rest took white ones, and a drawing whose links happened to land on the
- * first and third came out looking like two different drawings. Every one of
- * these reads at the same weight against the grid and takes the same white
- * label, so what tells two links apart is which colour they are, which is the
- * only thing colour is doing here.
- */
 export const PART_COLORS = [
-  '#3f51b5',
-  '#00897b',
-  '#5c6bc0',
-  '#26a69a',
-  '#283593',
-  '#00695c',
+  '#c5cae9',
+  '#303e9f',
+  '#0d125a',
+  '#B2DFDB',
+  '#26A69A',
+  '#00695C',
 ] as const;
 
 /**
@@ -42,7 +29,7 @@ export const PART_COLORS = [
  * always has one swatch ticked and there is nothing in the list that is not
  * also a link colour.
  */
-export const DEFAULT_FORCE_COLOR = '#283593';
+export const DEFAULT_FORCE_COLOR = '#0d125a';
 
 /**
  * One joint colour: what it is drawn in at rest, under the cursor, and picked.
