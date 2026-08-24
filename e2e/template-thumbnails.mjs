@@ -62,6 +62,9 @@ const FILENAMES = {
   Crane_Two_Loads: 'crane-two-loads',
   Locked_Four_Bar: 'locked-four-bar',
   Three_Machines: 'three-machines',
+  Walking_Pair: 'walking-pair',
+  Straight_Line_Pair: 'straight-line-pair',
+  Pumping_Field: 'pumping-field',
 };
 
 /** The generated block of template-linkages.ts, read as id/payload pairs. */

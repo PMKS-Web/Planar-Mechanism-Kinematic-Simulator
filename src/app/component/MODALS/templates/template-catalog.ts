@@ -352,6 +352,33 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'direction.',
     thumbnail: 'assets/gifs/three-machines.png',
   },
+  {
+    id: 'Walking_Pair',
+    name: 'Walking Pair',
+    category: 'machines',
+    description:
+      'Two Jansen legs half a cycle apart: one foot planted while the other swings. A gait is ' +
+      'a relationship between machines.',
+    thumbnail: 'assets/gifs/walking-pair.png',
+  },
+  {
+    id: 'Straight_Line_Pair',
+    name: 'Approximate and Exact',
+    category: 'machines',
+    description:
+      "Chebyshev's line bows and Peaucellier's does not. Side by side the two words mean " +
+      'something you can see.',
+    thumbnail: 'assets/gifs/straight-line-pair.png',
+  },
+  {
+    id: 'Pumping_Field',
+    name: 'Pumping Field',
+    category: 'machines',
+    description:
+      'Three beams on three clocks, drifting out of step the way a real field does — three ' +
+      'playback rows, seen from the grid.',
+    thumbnail: 'assets/gifs/pumping-field.png',
+  },
 ];
 
 /**

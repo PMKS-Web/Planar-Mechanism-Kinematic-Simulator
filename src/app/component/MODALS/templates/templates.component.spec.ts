@@ -142,9 +142,11 @@ describe('library dialog', () => {
   it('searches names and descriptions, and offers the way back when nothing matches', () => {
     const fixture = open();
 
+    // Two cards name the leg now: the one that is a leg, and the pair of them
+    // walking. Both are the right answer to "jansen".
     search(fixture, 'jansen');
     fixture.detectChanges();
-    expect(cards(fixture)).toEqual(['Jansen_Leg']);
+    expect(cards(fixture).sort()).toEqual(['Jansen_Leg', 'Walking_Pair']);
 
     // The words are in the description, not the name.
     search(fixture, 'welded rider');

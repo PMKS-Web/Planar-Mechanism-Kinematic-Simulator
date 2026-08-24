@@ -57,6 +57,11 @@ import {
   bellCrankFixture,
   linearActuatorRockerFixture,
 } from './workshop-fixtures';
+import {
+  walkingPairFixture,
+  straightLinePairFixture,
+  pumpingFieldFixture,
+} from './ensemble-fixtures';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { ActiveObjService } from '../../app/services/active-obj.service';
@@ -638,6 +643,28 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     floatingSlot: false,
     speed: { unitsPerSecond: 2.2 },
     fixture: linearActuatorRockerFixture(1),
+  },
+  {
+    name: 'Walking pair',
+    purpose: 'Two Jansen legs half a cycle apart: one foot planted while the other swings',
+    spec: 'ensembles.spec.ts',
+    floatingSlot: false,
+    objectScale: 7 * MODEL_SCALE,
+    fixture: walkingPairFixture(),
+  },
+  {
+    name: 'Approximate and exact',
+    purpose: "Chebyshev's line bows and Peaucellier's does not — visible only side by side",
+    spec: 'ensembles.spec.ts',
+    floatingSlot: false,
+    fixture: straightLinePairFixture(),
+  },
+  {
+    name: 'Pumping field',
+    purpose: 'Three beams on three clocks, drifting out of step the way a real field does',
+    spec: 'ensembles.spec.ts',
+    floatingSlot: false,
+    fixture: pumpingFieldFixture(),
   },
 ];
 

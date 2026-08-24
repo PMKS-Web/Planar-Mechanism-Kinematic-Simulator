@@ -71,6 +71,9 @@ export const LIBRARY_TEMPLATE_IDS = [
   'Crane_Two_Loads',
   'Locked_Four_Bar',
   'Three_Machines',
+  'Walking_Pair',
+  'Straight_Line_Pair',
+  'Pumping_Field',
 ] as const;
 
 export type LibraryTemplateID = (typeof LIBRARY_TEMPLATE_IDS)[number];
@@ -168,5 +171,11 @@ export const TEMPLATE_LINKAGES: Record<TemplateID, string> = {
     '2P.Ay,1E8.5,0.1011.6A,A,0,0,0.0B,B,Nm,0,0.0C,C,126,lL,0.4D,D,17S,0,0.0E,E,1As,PW,0.0F,F,dq,Uc,0.0G,G,W5,tN,0.0H,H,Bu,G4,0.0I,I,11K,UW,0..YRABH,ABH,0,0,01Zi,bM,c5cae9,A,B,H,,.YRBCFG,BCFG,0,0,jM2,p3C,303e9f,B,C,F,G,,.YRCDEI,CDEI,0,0,1pNm,0550,0d125a,C,D,E,I,,...N_.JB,JC,JD,JE,JF,JG,JIZ',
   Three_Machines:
     '2P.Ay,1E8.5,0.1011.6A,A,0,0,0,,,,2SG.0B,B,0,VG,0.GC,C,bx,Lv,0.4D,D,Fe,0,0.6E,E,1z0,0,0,,,,01z0.0F,F,2Ce,0,0.0G,G,2xW,0,0.6H,H,Fe,1Tm,0,,,,2xW.0I,I,Fe,1jO,0.0J,J,vQ,22e,0.4K,K,16K,1Tm,0.5P,P,2xW,0,0..YRAB,Drag crank,0,0,0,Fe,c5cae9,A,B,,.YRBC,Drag coupler,0,0,I_,Qb,303e9f,B,C,,.YRCD,Drag output,0,0,Qo,Az,0d125a,C,D,,.YREF,Crank,0,0,24q,0,B2DFDB,E,F,,.YRFG,Connecting rod,0,0,2a4,0,26A69A,F,G,,.YRHI,Rocker crank,0,0,Fe,1ba,00695C,H,I,,.YRIJ,Rocker coupler,0,0,aX,1u0,c5cae9,I,J,,.YRJK,Rocker,0,0,-t,1mC,303e9f,J,K,,.YPGP,GP,0,0,0,0,,G,P,,...N_m',
+  Walking_Pair:
+    '2P.1jO,1E8.5,0.1011.6A,A,0,0,0,,,,2SG.0B,B,3gO,0,0.4C,C,09Hm,01vu,0.0D,D,05tE,7ee,0.0E,E,0IGg,1-F,0.0F,F,06b8,0B7B,0.0G,G,0ETW,06sL,0.GH,H,0AYO,0MPj,0.6I,I,adm,0,0,,,,2SG.0J,J,WzO,0,0.4K,K,RM0,01vu,0.0L,L,NDQ,7M8,0.0M,M,IAZ,05Jn,0.0N,N,KhD,08pN,0.0O,O,C-u,0DR3,0.GP,P,SOk,0Hyj,0..YRAB,AB,0,0,1rC,0,c5cae9,A,B,,.YRBD,BD,0,0,016R,3qK,303e9f,B,D,,.YRCDE,CDE,0,0,0B8Z,2ag,0d125a,C,D,E,,.YRBF,BF,0,0,01TO,05Zc,B2DFDB,B,F,,.YRCF,CF,0,0,07xS,06WY,26A69A,C,F,,.YREG,EG,0,0,0GN5,02RZ,00695C,E,G,,.YRFGH,FGH,0,0,0AXh,0DT4,c5cae9,F,G,H,,.YRIJ,IJ,0,0,Yoa,0,303e9f,I,J,,.YRJL,JL,0,0,S5P,3h4,0d125a,J,L,,.YRKLM,KLM,0,0,Mv-,2r,B2DFDB,K,L,M,,.YRJN,JN,0,0,QqI,04Pi,26A69A,J,N,,.YRKN,KN,0,0,O0c,05Me,00695C,K,N,,.YRMO,MO,0,0,FbD,09NQ,c5cae9,M,O,,.YRNOP,NOP,0,0,Khy,0DP2,303e9f,N,O,P,,...N_R',
+  Straight_Line_Pair:
+    '2P.Ay,1E8.5,0.1011.6A,A,0VG,0,0,,,,2SG.0B,B,0Fe,_W,0.0C,C,Fe,_W,0.GD,D,0,_W,0.4E,E,VG,0,0.4G,G,2Ce,0,0.6H,H,2hu,0,0,,,,2SG.0I,I,2xW,R4,0.0J,J,2sj,11r,0.0K,K,3Qh,3X,0.GL,L,3Lu,gI,0..YRAC,AC,0,0,07q,VG,c5cae9,A,C,,.YRBCD,BCD,0,0,0,_W,303e9f,B,C,D,,.YRBE,BE,0,0,7q,VG,0d125a,B,E,,.YRHI,HI,0,0,2pi,DY,B2DFDB,H,I,,.YRGJ,GJ,0,0,2Xg,Wx,26A69A,G,J,,.YRGK,GK,0,0,2pf,1n,00695C,G,K,,.YRJI,JI,0,0,2v6,kT,c5cae9,J,I,,.YRKI,KI,0,0,3B5,FJ,303e9f,K,I,,.YRJL,JL,0,0,36I,s4,0d125a,J,L,,.YRKL,KL,0,0,3OH,Mw,B2DFDB,K,L,,...N_A',
+  Pumping_Field:
+    '2P.Ay,1E8.5,0.1011.4A,A,0gB,0oI,0.0B,B,0QZ,0o1,0.2C,C,0d4,0,0,,,,2SG.4D,D,0,0,0.0E,E,o0,0,0.0F,F,r8,0eW,0.4H,H,2Wz,0oI,0.0I,I,2mb,0o1,0.2J,J,2a4,0,0,,,,1z0.4K,K,3B8,0,0.0L,L,3z8,0,0.0M,M,40G,0eW,0.4O,O,5i5,0oI,0.0P,P,5xj,0o1,0.2Q,Q,5lC,0,0,,,,2xW.4R,R,6MG,0,0.0S,S,78G,0,0.0T,T,7BO,0eW,0.5G,G,r8,0eW,OZ.5N,N,40G,0eW,OZ.5U,U,7BO,0eW,OZ..YRAB,AB,0,0,0YN,0oA,c5cae9,A,B,,.YRBC,BC,0,0,0Wq,0P1,303e9f,B,C,,.YRCDE,CDE,0,0,3f,0,0d125a,C,D,E,,.YREF,EF,0,0,pa,0KG,B2DFDB,E,F,,.YRHI,HI,0,0,2en,0oA,26A69A,H,I,,.YRIJ,IJ,0,0,2gK,0P1,00695C,I,J,,.YRJKL,JKL,0,0,3En,0,c5cae9,J,K,L,,.YRLM,LM,0,0,3_i,0KG,303e9f,L,M,,.YROP,OP,0,0,5pv,0oA,0d125a,O,P,,.YRPQ,PQ,0,0,5rS,0P1,B2DFDB,P,Q,,.YRQRS,QRS,0,0,6Pv,0,26A69A,Q,R,S,,.YRST,ST,0,0,79q,0KG,00695C,S,T,,.YPFG,FG,0,0,0,0,,F,G,,.YPMN,MN,0,0,0,0,,M,N,,.YPTU,TU,0,0,0,0,,T,U,,...N_3',
   // </generated>
 };

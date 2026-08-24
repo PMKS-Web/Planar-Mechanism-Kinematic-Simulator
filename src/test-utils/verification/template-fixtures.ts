@@ -40,6 +40,9 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Crane_Two_Loads: 'Crane carrying two loads',
   Locked_Four_Bar: 'TeachingLab four-bar, locked except the crank',
   Three_Machines: 'Three machines, three drives',
+  Walking_Pair: 'Walking pair',
+  Straight_Line_Pair: 'Approximate and exact',
+  Pumping_Field: 'Pumping field',
 };
 
 /**
