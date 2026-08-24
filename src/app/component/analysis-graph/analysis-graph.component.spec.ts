@@ -36,6 +36,30 @@ import {
 } from './analysis-graph.component';
 import { formatAnalysisValue } from '../../model/analysis-series';
 import { withTestInjector } from '../../../test-utils/mechanism-harness';
+import { fixturePayload } from '../../../test-utils/verification/fixture-gallery';
+import { teachingLabFourBarFixture } from '../../../test-utils/verification/fixtures';
+
+/**
+ * A four-bar that is actually about force: the MATLAB-verified TeachingLab
+ * linkage, with the masses and inertias measured off the real hardware, driven
+ * at 10 RPM.
+ *
+ * Two tests below are about numbers a force analysis produces — one that the
+ * two modes disagree, one that newtons convert to pounds — and both used to
+ * read the `4-Bar` template, which is a kinematics demonstration that happened
+ * to carry a mass of 1. Neither question survives that mechanism being
+ * published massless: with no inertia the modes agree exactly, and a
+ * conversion checked against zero passes whatever it does. So the mechanism is
+ * stated here, and its speed with it.
+ */
+const LOADED_FOUR_BAR = fixturePayload(teachingLabFourBarFixture(), undefined, { rpm: 10 });
+
+/** The largest excursion of a plotted series from zero, ignoring gaps. */
+function peakOf(values: Array<number | null>): number {
+  const finite = values.filter((value): value is number => Number.isFinite(value));
+  expect(finite.length).toBeGreaterThan(values.length / 2);
+  return Math.max(...finite.map(Math.abs));
+}
 
 @Component({
   selector: 'app-analysis-apex-chart',
@@ -240,21 +264,27 @@ describe('AnalysisGraphComponent production fixtures', () => {
   });
 
   it('produces mode-dependent dynamic input effort', () => {
-    const fixture = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
+    const fixture = buildMechanismFixture(LOADED_FOUR_BAR);
     const component = createComponent(fixture);
     const input = fixture.mechanism.joints[0].find(
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
     )!;
     component.determineChart('force', 'static', 'Input Effort', input.id);
     const staticValues = (
-      component.chartOptions.series![0].data as unknown as Array<{ y: number }>
+      component.chartOptions.series![0].data as unknown as Array<{ y: number | null }>
     ).map((point) => point.y);
     component.determineChart('force', 'dynamic', 'Input Effort', input.id);
     const dynamicValues = (
-      component.chartOptions.series![0].data as unknown as Array<{ y: number }>
+      component.chartOptions.series![0].data as unknown as Array<{ y: number | null }>
     ).map((point) => point.y);
 
     expect(dynamicValues.some((value, index) => value !== staticValues[index])).toBe(true);
+    // And not by a hair. The static effort only has to hold the linkage up;
+    // the dynamic one also has to swing these inertias round at 10 RPM, which
+    // costs far more. A mechanism with no mass in it would give one curve
+    // twice over, and would pass the line above but not this one.
+    expect(peakOf(staticValues)).toBeGreaterThan(0);
+    expect(peakOf(dynamicValues)).toBeGreaterThan(10 * peakOf(staticValues));
   });
 
   it('shows a diagnostic instead of an unexplained empty internal-weld reaction graph', () => {
@@ -357,7 +387,9 @@ describe('AnalysisGraphComponent production fixtures', () => {
   });
 
   it('uses matching Newton/lbf labels and values for graph and CSV output', () => {
-    const fixture = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
+    // A loaded mechanism, because a conversion is only worth checking on a
+    // number that is not zero: 0 N is 0 lbf whatever the factor happens to be.
+    const fixture = buildMechanismFixture(LOADED_FOUR_BAR);
     const component = createComponent(fixture);
     const input = fixture.mechanism.joints[0].find(
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
@@ -368,6 +400,7 @@ describe('AnalysisGraphComponent production fixtures', () => {
     }>;
     const finiteIndex = newtonPoints.findIndex((point) => Number.isFinite(point.y));
     const newtonValue = newtonPoints[finiteIndex].y!;
+    expect(Math.abs(newtonValue)).toBeGreaterThan(1);
     expect(component.chartOptions.yaxis!.title!.text).toBe('Force (N)');
 
     fixture.settings.forceUnit.next(ForceUnit.LBF);

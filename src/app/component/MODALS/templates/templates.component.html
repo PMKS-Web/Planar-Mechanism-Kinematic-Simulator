@@ -1,245 +1,96 @@
 <div class="dialog_root" id="templates">
-  <div class="dialog-header">
-    <h1>Linkage Library (Example Linkages)</h1>
-    <button mat-icon-button mat-dialog-close>
-      <mat-icon>close</mat-icon>
-    </button>
-  </div>
+  <!-- Title and filters are outside the scroller on purpose: at thirty-odd
+       mechanisms the way back to another family has to stay on screen. -->
+  <div class="libraryHeader">
+    <div class="titleRow">
+      <h1>Mechanism Library</h1>
+      <button mat-icon-button mat-dialog-close aria-label="Close the library">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
 
-  <div mat-dialog-content id="remove_top_padding">
-    <!-- Drawings for working on the app rather than for learning a linkage.
-         First, because that is where whoever wants them is looking. -->
-    @if (isDevMode()) {
-      <h2 class="section-heading">For Development</h2>
-      <div class="linkage-grid devGrid">
-        <panel-section (click)="openLinkage('Dev_All_Mechanism_Types')">
-          <title-block>Every Kind of Machine</title-block>
-          <img src="assets/gifs/dev-all-machines.png" alt="Every Kind of Machine" />
-          <p class="dev-note">
-            A crank, a ram, a slider and a chain that never reaches ground — every readiness state
-            and every playback row at once.
-          </p>
-          <button mat-flat-button color="primary">Open</button>
-        </panel-section>
-
-        <panel-section (click)="openLinkage('Dev_Object_Gallery')">
-          <title-block>Object Gallery</title-block>
-          <img src="assets/gifs/dev-object-gallery.png" alt="Object Gallery" />
-          <p class="dev-note">
-            Every kind of pin, block, weld, slot and cylinder, with forces. Deliberately not
-            simulatable.
-          </p>
-          <button mat-flat-button color="primary">Open</button>
-        </panel-section>
-
-        <panel-section (click)="openLinkage('Dev_Render_Stress')">
-          <title-block>Render Stress Test</title-block>
-          <img src="assets/gifs/dev-render-stress.png" alt="Render Stress Test" />
-          <p class="dev-note">
-            Ross McSweeney's Running Horse Automata, from MotionGen: forty-five joints and
-            twenty-seven links on one degree of freedom, tracing both hooves.
-          </p>
-          <button mat-flat-button color="primary">Open</button>
-        </panel-section>
+    <div class="filterBar">
+      <div class="chipRow" role="group" aria-label="Filter by category">
+        @for (chip of chips; track chip.id) {
+          <button
+            class="chip"
+            [class.on]="category === chip.id"
+            [attr.aria-pressed]="category === chip.id"
+            (click)="selectCategory(chip.id)"
+          >
+            {{ chip.name }}
+            <!-- The count answers the search too, so a chip never offers cards
+                 the list below would not show. -->
+            <span class="chipCount">{{ chip.count }}</span>
+          </button>
+        }
       </div>
 
-      <h2 class="section-heading">Linkages</h2>
+      <div class="searchBox">
+        <mat-icon>search</mat-icon>
+        <input
+          type="text"
+          placeholder="Search"
+          aria-label="Search the library"
+          [value]="query"
+          (input)="setQuery($event)"
+          (keydown.escape)="escapeSearch($event)"
+        />
+        @if (query !== '') {
+          <button class="clearSearch" (click)="clearQuery()" aria-label="Clear the search">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div mat-dialog-content class="libraryBody">
+    @for (group of groups; track group.id) {
+      <h2 class="sectionHeading">{{ group.name }}</h2>
+
+      <div class="templateGrid">
+        @for (card of group.cards; track card.id) {
+          <!-- The card is the hit area and the Open button is the control: a
+               button inside a button is invalid, so the press is taken here and
+               the button below is what a keyboard reaches. -->
+          <div class="templateCard" [attr.data-template]="card.id" (click)="openLinkage(card.id)">
+            <div class="thumb">
+              <!-- Decorative: the name is right underneath in text, so a screen
+                   reader announcing the filename twice is noise. -->
+              <img class="still" [src]="card.thumbnail" alt="" />
+              @if (card.animation) {
+                <img class="animated" [src]="card.animation" alt="" />
+              }
+
+              <!-- Over the thumbnail, on a band solid enough that the drawing
+                   behind it cannot decide whether the words are readable. -->
+              <div class="caption">
+                <span class="cardName">{{ card.name }}</span>
+                <span class="cardDescription">{{ card.description }}</span>
+              </div>
+            </div>
+
+            <div class="cardActions">
+              <button mat-flat-button color="primary" [attr.aria-label]="'Open ' + card.name">
+                Open
+              </button>
+            </div>
+          </div>
+        }
+      </div>
     }
 
-    <div class="linkage-grid">
-      <panel-section (click)="openLinkage('4-Bar')">
-        <title-block>Four Bar Linkage</title-block>
-        <img src="assets/gifs/fourbar.gif" alt="Fourbar Image" />
-        <img class="static" src="assets/gifs/fourbag.jpg" alt="Fourbar Image" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Watt_I')">
-        <title-block>Watt's Linkage</title-block>
-        <img src="assets/gifs/watt.gif" alt="Watt I Linkage" />
-        <img class="static" src="assets/gifs/watt.jpg" alt="Watt I Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Watt_II')">
-        <title-block>Watt's Linkage II Linkage</title-block>
-        <img src="assets/gifs/watt2.gif" alt="Watt II Linkage" />
-        <img class="static" src="assets/gifs/watt2.jpg" alt="Watt II Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Stephenson_III')">
-        <title-block>Stephenson III Linkage</title-block>
-        <img src="assets/gifs/steph3.gif" alt="Stephenson III Linkage" />
-        <img class="static" src="assets/gifs/steph3.jpg" alt="Stephenson III Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Slider_Crank')">
-        <title-block>Slider Crank</title-block>
-        <img src="assets/gifs/slider.gif" alt="Slider Crank Linkage" />
-        <img class="static" src="assets/gifs/slider.jpg" alt="Slider Crank Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Whitworth_Quick_Return')">
-        <title-block>Whitworth Quick-Return</title-block>
-        <img src="assets/gifs/whitworth.png" alt="Whitworth Quick-Return Linkage" />
-        <img class="static" src="assets/gifs/whitworth.png" alt="Whitworth Quick-Return Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Scotch_Yoke')">
-        <title-block>Scotch Yoke</title-block>
-        <img src="assets/gifs/scotch-yoke.png" alt="Scotch Yoke Linkage" />
-        <img class="static" src="assets/gifs/scotch-yoke.png" alt="Scotch Yoke Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Cylinder_Boom')">
-        <title-block>Cylinder-Driven Boom</title-block>
-        <img src="assets/gifs/cylinder-boom.png" alt="Cylinder-Driven Boom Linkage" />
-        <img
-          class="static"
-          src="assets/gifs/cylinder-boom.png"
-          alt="Cylinder-Driven Boom Linkage"
-        />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Cylinder_Gripper')">
-        <title-block>Gripper</title-block>
-        <img src="assets/gifs/cylinder-gripper.png" alt="Cylinder Gripper Linkage" />
-        <img class="static" src="assets/gifs/cylinder-gripper.png" alt="Cylinder Gripper Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Radial_Engine')">
-        <title-block>Radial Engine</title-block>
-        <img src="assets/gifs/radial-engine.png" alt="Radial Engine Linkage" />
-        <img class="static" src="assets/gifs/radial-engine.png" alt="Radial Engine Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Chebyshev_Straight_Line')">
-        <title-block>Chebyshev Straight-Line</title-block>
-        <img src="assets/gifs/chebyshev.png" alt="Chebyshev Straight-Line Linkage" />
-        <img class="static" src="assets/gifs/chebyshev.png" alt="Chebyshev Straight-Line Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Windshield_Wiper')">
-        <title-block>Windshield Wiper</title-block>
-        <img src="assets/gifs/windshield-wiper.png" alt="Windshield Wiper Linkage" />
-        <img class="static" src="assets/gifs/windshield-wiper.png" alt="Windshield Wiper Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Elliptical_Crank')">
-        <title-block>Elliptical Crank</title-block>
-        <img src="assets/gifs/elliptical-crank.png" alt="Elliptical Crank Linkage" />
-        <img class="static" src="assets/gifs/elliptical-crank.png" alt="Elliptical Crank Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Jansen_Leg')">
-        <title-block>Jansen Leg</title-block>
-        <img src="assets/gifs/jansen-leg.png" alt="Jansen Leg Linkage" />
-        <img class="static" src="assets/gifs/jansen-leg.png" alt="Jansen Leg Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Backhoe_Bucket')">
-        <title-block>Backhoe Bucket</title-block>
-        <img src="assets/gifs/backhoe-bucket.png" alt="Backhoe Bucket Linkage" />
-        <img class="static" src="assets/gifs/backhoe-bucket.png" alt="Backhoe Bucket Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Toggle_Press')">
-        <title-block>Toggle Press</title-block>
-        <img src="assets/gifs/toggle-press.png" alt="Toggle Press Linkage" />
-        <img class="static" src="assets/gifs/toggle-press.png" alt="Toggle Press Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Scissor_Lift')">
-        <title-block>Scissor Lift</title-block>
-        <img src="assets/gifs/scissor-lift.png" alt="Scissor Lift Linkage" />
-        <img class="static" src="assets/gifs/scissor-lift.png" alt="Scissor Lift Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Shaper_Quick_Return')">
-        <title-block>Shaper Quick-Return</title-block>
-        <img src="assets/gifs/shaper-quick-return.png" alt="Shaper Quick-Return Linkage" />
-        <img
-          class="static"
-          src="assets/gifs/shaper-quick-return.png"
-          alt="Shaper Quick-Return Linkage"
-        />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Pedaling_Leg')">
-        <title-block>Pedaling Leg</title-block>
-        <img src="assets/gifs/pedaling-leg.png" alt="Pedaling Leg Linkage" />
-        <img class="static" src="assets/gifs/pedaling-leg.png" alt="Pedaling Leg Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Oscillating_Fan')">
-        <title-block>Oscillating Fan</title-block>
-        <img src="assets/gifs/oscillating-fan.png" alt="Oscillating Fan Linkage" />
-        <img class="static" src="assets/gifs/oscillating-fan.png" alt="Oscillating Fan Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Pumpjack')">
-        <title-block>Pumpjack</title-block>
-        <img src="assets/gifs/pumpjack.png" alt="Pumpjack Linkage" />
-        <img class="static" src="assets/gifs/pumpjack.png" alt="Pumpjack Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Punch_Press')">
-        <title-block>Punch Press</title-block>
-        <img src="assets/gifs/punch-press.png" alt="Punch Press Linkage" />
-        <img class="static" src="assets/gifs/punch-press.png" alt="Punch Press Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Derrick_Crane')">
-        <title-block>Derrick Crane</title-block>
-        <img src="assets/gifs/derrick-crane.png" alt="Derrick Crane Linkage" />
-        <img class="static" src="assets/gifs/derrick-crane.png" alt="Derrick Crane Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Toggle_Clamp')">
-        <title-block>Toggle Clamp</title-block>
-        <img src="assets/gifs/toggle-clamp.png" alt="Toggle Clamp Linkage" />
-        <img class="static" src="assets/gifs/toggle-clamp.png" alt="Toggle Clamp Linkage" />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <panel-section (click)="openLinkage('Offset_Load_Rocker')">
-        <title-block>Offset Load Rocker</title-block>
-        <img src="assets/gifs/offset-load-rocker.png" alt="Offset Load Rocker Linkage" />
-        <img
-          class="static"
-          src="assets/gifs/offset-load-rocker.png"
-          alt="Offset Load Rocker Linkage"
-        />
-        <button mat-flat-button color="primary">Open</button>
-      </panel-section>
-
-      <!--      <panel-section (click)='openLinkage("Force")'>-->
-      <!--        <title-block>Four Bar Linkage with Force</title-block>-->
-      <!--        <img src='assets/gifs/fourbar.gif' alt='Fourbar Image' />-->
-      <!--        <button mat-flat-button color='primary'>Open</button>-->
-      <!--      </panel-section>-->
-    </div>
+    @if (shown === 0) {
+      <div class="emptyState">
+        @if (category === 'all') {
+          <p>Nothing in the library matches “{{ query }}”.</p>
+        } @else {
+          <p>Nothing in {{ categoryName }} matches “{{ query }}”.</p>
+        }
+        <button mat-flat-button color="primary" (click)="showEverything()">Show All</button>
+      </div>
+    }
   </div>
 </div>
 
@@ -248,10 +99,10 @@
      recoverable either way. -->
 <ng-template #openChoiceDialog>
   <div class="modal">
-    <h1 mat-dialog-title>There is already a linkage on the grid.</h1>
+    <h1 mat-dialog-title>There is already a mechanism on the grid.</h1>
     <div mat-dialog-content>
       <p>
-        Open the template in a new tab, or replace the current linkage? Replacing can be undone.
+        Open the template in a new tab, or replace the current mechanism? Replacing can be undone.
       </p>
     </div>
     <div mat-dialog-actions align="end">

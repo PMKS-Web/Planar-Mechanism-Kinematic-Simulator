@@ -58,7 +58,7 @@ if (
   await openTemplates(page);
 }
 const before = await linkCount(page);
-await page.locator('#templates panel-section').first().click();
+await page.locator('#templates [data-template="4-Bar"]').click();
 await page.waitForTimeout(1500);
 const after = await linkCount(page);
 check(
@@ -79,10 +79,10 @@ await page.goto(`${BASE}?${FOUR_BAR}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await page.waitForTimeout(800);
 await openTemplates(page);
-await page.locator('#templates panel-section').nth(1).click(); // Watt I
+await page.locator('#templates [data-template="Watt_I"]').click();
 await page.waitForTimeout(600);
 const dialogVisible = await page
-  .locator('text=already a linkage on the grid')
+  .locator('text=already a mechanism on the grid')
   .isVisible()
   .catch(() => false);
 check('Existing work: choice dialog appears', dialogVisible);
@@ -100,7 +100,7 @@ check(
 
 // Replace swaps the linkage in this window (Watt I has more links than the four-bar).
 const beforeReplace = await linkCount(page);
-await page.locator('#templates panel-section').nth(1).click();
+await page.locator('#templates [data-template="Watt_I"]').click();
 await page.waitForTimeout(600);
 await page.locator('button:has-text("Replace")').click();
 await page.waitForTimeout(1500);
@@ -133,7 +133,7 @@ if (
 ) {
   await openTemplates(page);
 }
-await page.locator('#templates panel-section').first().click();
+await page.locator('#templates [data-template="4-Bar"]').click();
 await page.waitForTimeout(600);
 await page.locator('button:has-text("Open in a new tab")').click();
 await page.waitForTimeout(2000);

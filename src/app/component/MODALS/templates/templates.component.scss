@@ -1,150 +1,303 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
 
+// Everything here lives inside the mixin, which mytheme.scss includes once. The
+// dialog is rendered into Angular's overlay and has to reach Material's own
+// classes, so component-scoped copies of these rules would not bite.
 @mixin css($theme) {
-  // Get the color config from the theme.
   $color-config: mat.m2-get-color-config($theme);
-  // Get the primary color palette from the color-config.
   $typography-config: mat.m2-get-typography-config($theme);
   $primary-palette: map.get($color-config, 'primary');
-  $accent-palette: map.get($color-config, 'accent');
-  $background: map.get($theme, background);
-  $foreground: map.get($theme, foreground);
+
+  $indigo-50: mat.m2-get-color-from-palette($primary-palette, 50);
+  $indigo-500: mat.m2-get-color-from-palette($primary-palette, 500);
+  $indigo-700: mat.m2-get-color-from-palette($primary-palette, 700);
 
   #templates {
-    // The library outgrew the five cards that used to fit on any screen, so the
-    // list scrolls instead of running off the bottom of the dialog. Material's
-    // own 65vh would leave the header floating above a short list; capping the
-    // dialog and letting the content take what is left keeps both honest.
-    .mat-mdc-dialog-content {
-      max-height: calc(85vh - 64px) !important;
-      overflow-y: auto;
-    }
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 
-    title-block {
-      background: white;
-      color: black !important;
-    }
+    // ---- header: title, filter chips, search -------------------------------
 
-    panel-section {
-      //Make the pointer cursor
-      cursor: pointer;
-
-      //If the card (panel-seciotn) is hovered, hide the static image of the GIF
-      &:hover .static {
-        opacity: 0;
-        //Animate the change to opacity
-        transition: opacity 0.3s ease-in-out;
-      }
-
-      .static {
-        position: absolute;
-        bottom: 0px;
-      }
-
-      #normalPanel {
-        background: white !important;
-      }
-
-      //Set cursor to pointer
-      position: relative;
-      display: block;
-      //color: black;
-
-      button {
-        //Position to bottom right of card
-        width: 80px;
-
-        position: absolute;
-        bottom: 10px;
-        right: 10px;
-      }
-
-      img {
-        border-radius: var(--border-radius);
-        padding-bottom: 10px;
-        //blending mode darken
-      }
-
-      // Lifted on hover -- on the card, not on the wrapper around it. The
-      // wrapper is a square box behind a rounded card, so a shadow on it drew a
-      // second, squarer shadow a few pixels out from the card's own.
-      &:hover #normalPanel {
-        @include mat.elevation(4);
-      }
-
-      #normalPanel {
-        transition: box-shadow 0.1s ease-in-out;
-      }
-    }
-
-    .linkage-grid {
-      display: grid;
-      //Make sure items always fill the entire space, make it responsive
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      // Add a 10px gap
-      grid-gap: 20px;
-      padding: 24px;
-      // Not zero: the cards cast a shadow upwards too, and the list scrolls, so
-      // with nothing above them the top row's shadow was cut off square.
-      padding-top: 6px;
-
-      //Set all the cards to the same height
-    }
-
-    #remove_top_padding {
-      padding: 0px;
-    }
-
-    //background-color: mat.get-color-from-palette($primary-palette, 50);
-
-    .dialog-header {
+    .titleRow {
       display: flex;
       justify-content: space-between;
       align-items: center;
-
-      padding: 0;
-      padding-left: 24px;
+      padding: 4px 8px 4px 24px;
 
       h1 {
         margin: 0;
         @include mat.m2-typography-level($typography-config, 'headline-6');
       }
     }
+
+    .filterBar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px 10px 24px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    // The chips wrap rather than scrolling sideways: a category that has slid
+    // off the end of a row is a category nobody finds. A second row is what the
+    // list's own height budget below leaves room for.
+    .chipRow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    // The mode tabs' own shape -- 6px corners, indigo-50 behind an indigo-500
+    // outline when it is the one in force -- because this is the same kind of
+    // control doing the same kind of job.
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+      height: 32px;
+      padding: 0 10px;
+      border: 1.5px solid transparent;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.05);
+      font-family: inherit;
+      font-size: 13px;
+      color: #3c4043;
+      white-space: nowrap;
+      cursor: pointer;
+      transition:
+        background-color 0.12s ease-in-out,
+        border-color 0.12s ease-in-out;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.09);
+      }
+
+      &.on {
+        background: $indigo-50;
+        border-color: $indigo-500;
+        color: $indigo-700;
+      }
+    }
+
+    .chipCount {
+      font-size: 11.5px;
+      color: rgba(0, 0, 0, 0.45);
+    }
+
+    .chip.on .chipCount {
+      color: $indigo-500;
+    }
+
+    .searchBox {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 190px;
+      box-sizing: border-box;
+      height: 32px;
+      padding: 0 8px;
+      border: 1.5px solid rgba(0, 0, 0, 0.12);
+      border-radius: 6px;
+      background: var(--card-surface);
+
+      &:focus-within {
+        border-color: $indigo-500;
+      }
+
+      mat-icon {
+        flex: 0 0 auto;
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+        line-height: 18px;
+        color: rgba(0, 0, 0, 0.45);
+      }
+
+      input {
+        flex: 1 1 auto;
+        min-width: 0;
+        border: none;
+        outline: none;
+        background: transparent;
+        font-family: inherit;
+        font-size: 13.5px;
+        color: #202124;
+      }
+
+      .clearSearch {
+        display: flex;
+        flex: 0 0 auto;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: rgba(0, 0, 0, 0.45);
+        cursor: pointer;
+
+        mat-icon {
+          width: 16px;
+          height: 16px;
+          font-size: 16px;
+          line-height: 16px;
+        }
+      }
+    }
+
+    // ---- the scrolling list -------------------------------------------------
+
+    // The library outgrew the five cards that used to fit on any screen, so the
+    // list scrolls instead of running off the bottom of the dialog. Material's
+    // own 65vh would leave the header floating above a short list; capping the
+    // dialog and letting the content take what is left keeps both honest.
+    //
+    // The subtraction is the title row and the filter bar above it, and the
+    // dialog is opened at 90% of the window -- so the 5vh left over is what
+    // pays for the chips wrapping onto a second row.
+    .libraryBody {
+      max-height: calc(85vh - 96px) !important;
+      overflow-y: auto;
+      padding: 0 !important;
+    }
+
+    // A family's name, on the same left edge as the cards under it -- the
+    // grid's own 24px inset, not a narrower one that leaves the heading hanging
+    // out to the left of everything it names.
+    .sectionHeading {
+      margin: 18px 0 10px;
+      padding: 0 24px;
+      font-size: 15px;
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.55);
+
+      &:first-child {
+        margin-top: 14px;
+      }
+    }
+
+    .templateGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      padding: 0 24px 20px;
+    }
+
+    // ---- one card -----------------------------------------------------------
+
+    .templateCard {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: var(--card-radius);
+      background: var(--card-surface);
+      cursor: pointer;
+      transition: box-shadow 0.12s ease-in-out;
+
+      // Lifted under the pointer, and again for whoever arrived by keyboard:
+      // the app turns Material's focus ring off, so a card that cannot show
+      // where the focus is shows nothing at all.
+      &:hover,
+      &:focus-within {
+        box-shadow: var(--card-shadow);
+      }
+
+      &:focus-within {
+        border-color: $indigo-500;
+      }
+    }
+
+    .thumb {
+      position: relative;
+      height: 220px;
+      overflow: hidden;
+      // Barely off white, so a drawing on a white background still reads as a
+      // picture rather than as part of the card.
+      background: #f6f7f9;
+    }
+
+    .thumb img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      // The bottom inset is the caption's room: the drawing sits above the
+      // words rather than under them.
+      padding: 10px 10px 92px;
+      box-sizing: border-box;
+    }
+
+    // The still is what is there at rest; the loop fades in over it under the
+    // pointer. Only five of the templates have one.
+    .thumb .animated {
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+    }
+
+    .templateCard:hover .animated {
+      opacity: 1;
+    }
+
+    // Over the thumbnail. The band is opaque enough on its own that the
+    // contrast does not depend on the drawing behind it -- a scrim tuned to
+    // these images would be wrong for the next one added.
+    .caption {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 8px 12px 10px;
+      background: rgba(255, 255, 255, 0.95);
+      border-top: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .cardName {
+      font-size: 14px;
+      font-weight: 500;
+      color: #202124;
+    }
+
+    .cardDescription {
+      font-size: 12px;
+      line-height: 16px;
+      color: rgba(0, 0, 0, 0.62);
+      // Three lines is what the reserve above allows for; a longer line would
+      // grow the band up over the drawing.
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .cardActions {
+      display: flex;
+      justify-content: flex-end;
+      padding: 8px 10px;
+
+      button {
+        width: 80px;
+      }
+    }
+
+    // ---- nothing matched ----------------------------------------------------
+
+    .emptyState {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 64px 24px;
+      color: rgba(0, 0, 0, 0.55);
+      text-align: center;
+    }
   }
-}
-
-// A section's name, on the same left edge as the cards under it -- which is
-// the grid's own 24px inset, not a 10px one that left the heading hanging out
-// to the left of everything it names.
-.section-heading {
-  margin: 4px 0 12px;
-  padding: 0 24px;
-  font-size: 15px;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.55);
-}
-
-// A dev card has one still image and a line about it, in flow -- no animated
-// variant to cross-fade to, and so no absolutely-positioned copy landing on
-// top of the words. The bottom padding is the Open button's room.
-.dev-note {
-  // On the card's own text gutter, the one its title sits on: the image runs
-  // to the card's edges, and text that followed it there read as a caption
-  // pressed against the border.
-  margin: 8px 0 0;
-  padding: 0 15px;
-  // Clear of the Open button, which is positioned against the card's bottom
-  // right corner -- text flowing under it is text the button cuts in half.
-  padding-bottom: 52px;
-  font-size: 12px;
-  line-height: 17px;
-  color: rgba(0, 0, 0, 0.55);
-}
-
-.devGrid panel-section img {
-  position: static;
-  width: 100%;
-  height: auto;
-  display: block;
 }

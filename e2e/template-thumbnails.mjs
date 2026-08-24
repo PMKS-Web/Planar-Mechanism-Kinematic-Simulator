@@ -42,7 +42,6 @@ const FILENAMES = {
   Elliptical_Crank: 'elliptical-crank',
   Jansen_Leg: 'jansen-leg',
   Backhoe_Bucket: 'backhoe-bucket',
-  Toggle_Press: 'toggle-press',
   Scissor_Lift: 'scissor-lift',
   Shaper_Quick_Return: 'shaper-quick-return',
   Pedaling_Leg: 'pedaling-leg',
@@ -52,6 +51,17 @@ const FILENAMES = {
   Derrick_Crane: 'derrick-crane',
   Toggle_Clamp: 'toggle-clamp',
   Offset_Load_Rocker: 'offset-load-rocker',
+  Drag_Link: 'drag-link',
+  Bell_Crank: 'bell-crank',
+  Flywheel_Engine: 'flywheel-engine',
+  Screw_Jack: 'screw-jack',
+  Elliptical_Trammel: 'elliptical-trammel',
+  Peaucellier: 'peaucellier',
+  Pantograph: 'pantograph',
+  Double_Butterfly: 'double-butterfly',
+  Crane_Two_Loads: 'crane-two-loads',
+  Locked_Four_Bar: 'locked-four-bar',
+  Three_Machines: 'three-machines',
 };
 
 /** The generated block of template-linkages.ts, read as id/payload pairs. */

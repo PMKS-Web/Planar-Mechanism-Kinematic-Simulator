@@ -19,11 +19,31 @@ import { UrlProcessorService } from 'src/app/services/url-processor.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
 import { DEV_TEMPLATES, DevTemplateID } from './dev-templates';
 import { TemplateID, TEMPLATE_LINKAGES } from './template-linkages';
+import {
+  DEV_TEMPLATE_CARDS,
+  TEMPLATE_CARDS,
+  TEMPLATE_CATEGORIES,
+  TemplateCard,
+  TemplateCategoryID,
+} from './template-catalog';
 import { MatIconButton, MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { CdkScrollable } from '@angular/cdk/scrolling';
-import { PanelSectionComponent } from '../../BLOCKS/panel-section/panel-section.component';
-import { TitleBlock } from '../../BLOCKS/title/title.component';
+
+/** A filter chip: a category, or the `all` one that stands for every category. */
+export interface CategoryChip {
+  id: TemplateCategoryID | 'all';
+  name: string;
+  /** How many cards it would show right now — which the search changes. */
+  count: number;
+}
+
+/** One heading and the cards under it. */
+export interface TemplateGroup {
+  id: TemplateCategoryID;
+  name: string;
+  cards: TemplateCard[];
+}
 
 @Component({
   selector: 'app-templates',
@@ -36,8 +56,6 @@ import { TitleBlock } from '../../BLOCKS/title/title.component';
     MatIcon,
     CdkScrollable,
     MatDialogContent,
-    PanelSectionComponent,
-    TitleBlock,
     MatButton,
     MatDialogTitle,
     MatDialogActions,
@@ -53,12 +71,100 @@ export class TemplatesComponent {
   private urlProcessor = inject(UrlProcessorService);
   private design = inject(SynthesisBuilderService);
 
-  /** Asks whether to replace the linkage already on the grid or open a new tab. */
+  /** Asks whether to replace the mechanism already on the grid or open a new tab. */
   readonly openChoiceDialog = viewChild.required<TemplateRef<unknown>>('openChoiceDialog');
 
-  /** Only a development build offers the drawings that exercise the app. */
-  isDevMode(): boolean {
-    return isDevMode();
+  /** Every card this build offers, in catalog order. */
+  private readonly allCards: readonly TemplateCard[] = isDevMode()
+    ? [...DEV_TEMPLATE_CARDS, ...TEMPLATE_CARDS]
+    : TEMPLATE_CARDS;
+
+  /** Which chip is pressed. `all` shows every group at once. */
+  category: TemplateCategoryID | 'all' = 'all';
+  query = '';
+
+  chips: CategoryChip[] = [];
+  groups: TemplateGroup[] = [];
+
+  constructor() {
+    this.refresh();
+  }
+
+  selectCategory(id: TemplateCategoryID | 'all') {
+    this.category = id;
+    this.refresh();
+  }
+
+  setQuery(event: Event) {
+    this.query = (event.target as HTMLInputElement).value;
+    this.refresh();
+  }
+
+  clearQuery() {
+    this.query = '';
+    this.refresh();
+  }
+
+  /**
+   * Escape empties the search rather than closing the library — but only while
+   * there is something to empty, so a reader who has not typed anything still
+   * gets the one Escape they expect.
+   */
+  escapeSearch(event: Event) {
+    if (this.query === '') return;
+    event.stopPropagation();
+    this.clearQuery();
+  }
+
+  showEverything() {
+    this.category = 'all';
+    this.clearQuery();
+  }
+
+  /** Total cards on screen, so the dialog can say when there are none. */
+  get shown(): number {
+    return this.groups.reduce((total, group) => total + group.cards.length, 0);
+  }
+
+  /** The pressed chip's name, for the line shown when it matches nothing. */
+  get categoryName(): string {
+    return this.chips.find((chip) => chip.id === this.category)?.name ?? 'All';
+  }
+
+  /**
+   * Rebuilds the chips and the groups from the catalog.
+   *
+   * Run on every keystroke rather than filtered in the template: the counts on
+   * the chips answer the search too, so they and the list have to be derived
+   * from the same pass or a chip can promise cards the list does not show.
+   */
+  private refresh() {
+    const matching = this.allCards.filter((card) => this.matches(card));
+
+    this.chips = [{ id: 'all', name: 'All', count: matching.length }];
+    this.groups = [];
+
+    for (const category of TEMPLATE_CATEGORIES) {
+      // A category nothing is filed under is not a category yet: no chip, no
+      // heading. That is what lets one be declared before its first mechanism.
+      if (!this.allCards.some((card) => card.category === category.id)) continue;
+
+      const cards = matching.filter((card) => card.category === category.id);
+      this.chips.push({ id: category.id, name: category.name, count: cards.length });
+
+      if (cards.length > 0 && (this.category === 'all' || this.category === category.id)) {
+        this.groups.push({ id: category.id, name: category.name, cards });
+      }
+    }
+  }
+
+  /** Name, description and family are all worth searching; the id is not. */
+  private matches(card: TemplateCard): boolean {
+    const query = this.query.trim().toLowerCase();
+    if (query === '') return true;
+
+    const family = TEMPLATE_CATEGORIES.find((entry) => entry.id === card.category)?.name ?? '';
+    return `${card.name} ${card.description} ${family}`.toLowerCase().includes(query);
   }
 
   openLinkage(linkage: TemplateID | DevTemplateID) {
@@ -104,7 +210,7 @@ export class TemplatesComponent {
 
   private openHere(content: string) {
     // The same in-place rebuild undo/redo uses. Saved to history, so replacing
-    // an existing linkage is a single undo away from being taken back.
+    // an existing mechanism is a single undo away from being taken back.
     this.urlProcessor.updateFromURL(content, true, true, true);
     this.dialogRef?.close();
   }

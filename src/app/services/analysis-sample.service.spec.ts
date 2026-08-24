@@ -2,9 +2,67 @@ import { RealJoint } from '../model/joint';
 import { MODEL_SCALE } from '../model/render-scale';
 import { TEMPLATE_LINKAGES } from '../component/MODALS/templates/template-linkages';
 import { buildMechanismFixture, MechanismFixture } from '../../tests/fixtures/mechanism-fixtures';
+import { fixturePayload } from '../../test-utils/verification/fixture-gallery';
+import { teachingLabFourBarFixture } from '../../test-utils/verification/fixtures';
+import type { MechanismFixture as VerificationFixture } from '../../test-utils/verification/fixture';
 import { AnalysisSampleService } from './analysis-sample.service';
 import { SettingsService } from './settings.service';
 import { withTestInjector } from '../../test-utils/mechanism-harness';
+
+/** Standard gravity, the value the force solver works to. */
+const GRAVITY = 9.80665;
+
+/**
+ * The four-bar this file solves its kinematics on, stated here rather than
+ * opened from the template library.
+ *
+ * Everything below is a velocity or an acceleration, and both scale with the
+ * speed the input is driven at — so read from a template these numbers moved
+ * whenever somebody republished it at a pace that was nicer to watch. The
+ * geometry is the classic four-bar's and the crank is pinned at 20 RPM *here*,
+ * which is what makes the literals in this file stable.
+ *
+ * This encodes byte-for-byte to what the `4-Bar` template published while it
+ * still ran at 20 RPM, so nothing about the numbers changed when it moved: the
+ * mechanism is the same one, it is just no longer borrowed.
+ */
+const FOUR_BAR_RPM = 20;
+
+const fourBar = (): VerificationFixture => ({
+  joints: [
+    { id: 'A', x: -3.129, y: -2.014, ground: true, input: true },
+    { id: 'B', x: -2.622, y: 0.902 },
+    { id: 'C', x: 3.009, y: 2.08 },
+    { id: 'D', x: 3.341, y: -1.646, ground: true },
+  ],
+  // A gram and a gram-centimetre-squared apiece, which is what the app hands a
+  // link nobody has typed a mass into. Written out because one test below is
+  // about drawing a *small* force smoothly, and a gram is what makes it small.
+  links: [
+    { joints: 'AB', mass: 1, moi: 1 },
+    { joints: 'BC', mass: 1, moi: 1 },
+    { joints: 'CD', mass: 1, moi: 1 },
+  ],
+  // Clockwise, which is the app's default direction and the one the payload
+  // below carries; the payload's speed comes from the `rpm` argument.
+  inputAngVel: (-FOUR_BAR_RPM * Math.PI) / 30,
+});
+
+const FOUR_BAR = fixturePayload(fourBar(), undefined, { rpm: FOUR_BAR_RPM });
+
+/**
+ * A four-bar that is actually about force: the MATLAB-verified TeachingLab
+ * linkage, whose link masses and inertias are measured off real hardware.
+ *
+ * The reaction assertions used to read the plain four-bar above, whose links
+ * weigh a gram and carry nothing — its ground pins answered in hundredths of a
+ * newton, and against a massless drawing the same assertions would have gone
+ * on passing over [0, 0, 0].
+ */
+const LOADED_FOUR_BAR_RPM = 10;
+const LOADED_FOUR_BAR = fixturePayload(teachingLabFourBarFixture(), undefined, {
+  rpm: LOADED_FOUR_BAR_RPM,
+});
 
 /**
  * The numbers here are the ones the graphs plotted before this arithmetic moved
@@ -48,7 +106,7 @@ describe('AnalysisSampleService', () => {
 
   describe('a four-bar driven at its crank', () => {
     beforeEach(() => {
-      fixture = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
+      fixture = buildMechanismFixture(FOUR_BAR);
       service = withTestInjector(
         [{ provide: SettingsService, useValue: fixture.settings }],
         () => new AnalysisSampleService()
@@ -129,26 +187,70 @@ describe('AnalysisSampleService', () => {
       expect(sample(45, 'Angular Link Pos', 'BC')).toEqual([22.288]);
     });
 
+    it('has nothing to say about a graph it does not draw', () => {
+      expect(sample(0, 'ic', 'B')).toEqual([]);
+      expect(sample(0, 'Linear Joint Bogus', 'B')).toEqual([]);
+      expect(sample(9999, 'Linear Joint Pos', 'B')).toEqual([]);
+    });
+  });
+
+  /**
+   * The reactions, read off a mechanism whose links weigh something.
+   *
+   * Nothing below is a copied constant. Each assertion is either a definition —
+   * a magnitude is the hypotenuse of its own two components — or a statement of
+   * statics: an unloaded machine is held up by its ground pins and by nothing
+   * else, so those pins carry its weight and no more. That is a claim a
+   * massless drawing cannot satisfy, which is the point of moving these here.
+   */
+  describe('a four-bar whose links have mass', () => {
+    beforeEach(() => {
+      fixture = buildMechanismFixture(LOADED_FOUR_BAR);
+      service = withTestInjector(
+        [{ provide: SettingsService, useValue: fixture.settings }],
+        () => new AnalysisSampleService()
+      );
+    });
+
+    /** What the whole drawing weighs, in newtons. Masses are entered in grams. */
+    const weightNewtons = () =>
+      fixture.service.links.reduce((total, link) => total + link.mass, 0) * 1e-3 * GRAVITY;
+
     it('reports a joint reaction as x, y and the magnitude of the two', () => {
-      const reaction = force(0, 'static', 'Joint Forces', 'A');
-      expect(reaction).toEqual([0.001, 0.015, 0.015]);
-      expect(reaction[2]).toBeCloseTo(Math.hypot(reaction[0], reaction[1]), 3);
-      expect(force(0, 'dynamic', 'Joint Forces', 'A')).toEqual([-0.01, -0.01, 0.014]);
+      const reaction = exactForce(0, 'static', 'Joint Forces', 'A');
+      expect(reaction[2]).toBeCloseTo(Math.hypot(reaction[0], reaction[1]), 9);
+      // Newtons rather than the float dust a massless drawing would answer with.
+      expect(reaction[2]).toBeGreaterThan(1);
+
+      // A and D are the only two things touching the ground and there is no
+      // load, so between them they hold up exactly the weight of the linkage.
+      const other = exactForce(0, 'static', 'Joint Forces', 'D');
+      expect(weightNewtons()).toBeGreaterThan(0);
+      expect(reaction[0] + other[0]).toBeCloseTo(0, 9);
+      expect(reaction[1] + other[1]).toBeCloseTo(weightNewtons(), 9);
+
+      // Inertia is the whole of the difference between the two modes, and these
+      // are measured inertias turning at 10 RPM: they leave the weight far
+      // behind. Told the same mechanism weighed nothing, the two modes would
+      // agree and this could not pass.
+      expect(exactForce(0, 'dynamic', 'Joint Forces', 'A')[2]).toBeGreaterThan(10 * reaction[2]);
+
       // One value, not three: an input effort is a single quantity.
       expect(force(0, 'static', 'Input Effort', 'A')).toHaveLength(1);
     });
 
     it('reads a reaction from the link asked for, and gaps where that link is absent', () => {
-      expect(force(0, 'static', 'Joint Forces', 'A', 'AB')).toEqual([0.001, 0.015, 0.015]);
-      // C is nowhere near link AB, so that row of the panel has no number to show.
-      expect(force(0, 'static', 'Joint Forces', 'C', 'AB').every(Number.isNaN)).toBe(true);
-      expect(force(0, 'static', 'Joint Forces', 'C', 'AB')).toHaveLength(3);
-    });
+      // Only the crank meets A, so naming it changes nothing but the question.
+      const viaCrank = force(0, 'static', 'Joint Forces', 'A', 'ABH');
+      expect(viaCrank.every(Number.isFinite)).toBe(true);
+      // A number, so that the agreement below is between two readings and not
+      // between two absences.
+      expect(viaCrank[2]).toBeGreaterThan(1);
+      expect(viaCrank).toEqual(force(0, 'static', 'Joint Forces', 'A'));
 
-    it('has nothing to say about a graph it does not draw', () => {
-      expect(sample(0, 'ic', 'B')).toEqual([]);
-      expect(sample(0, 'Linear Joint Bogus', 'B')).toEqual([]);
-      expect(sample(9999, 'Linear Joint Pos', 'B')).toEqual([]);
+      // C is nowhere near link ABH, so that row of the panel has no number to show.
+      expect(force(0, 'static', 'Joint Forces', 'C', 'ABH').every(Number.isNaN)).toBe(true);
+      expect(force(0, 'static', 'Joint Forces', 'C', 'ABH')).toHaveLength(3);
     });
   });
 
@@ -187,7 +289,7 @@ describe('AnalysisSampleService', () => {
     it('still has rates once another machine has been solved after it', () => {
       const boom = fixture;
       // A second machine, built over the top of the first as the service does.
-      buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
+      buildMechanismFixture(FOUR_BAR);
 
       const velocity = service.sampleAt(
         boom.mechanism,
@@ -211,10 +313,15 @@ describe('AnalysisSampleService', () => {
    * A four-bar's joint reactions run to a few hundredths of a newton, so
    * rounding them to a thousandth left about fifty distinct heights across the
    * cycle and the curve climbed them in steps two per cent of its own range.
+   *
+   * The mechanism is the plain four-bar above, and it is the right one here
+   * precisely because a gram is a small force: the case this test is about is a
+   * curve whose whole range a thousandth of a newton is a visible fraction of.
+   * That is a property of the mechanism the spec states, not of any template.
    */
   describe('the precision a curve is drawn at', () => {
     beforeEach(() => {
-      fixture = buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']);
+      fixture = buildMechanismFixture(FOUR_BAR);
       service = withTestInjector(
         [{ provide: SettingsService, useValue: fixture.settings }],
         () => new AnalysisSampleService()

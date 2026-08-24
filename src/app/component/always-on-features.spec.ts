@@ -8,13 +8,11 @@ import { ActiveObjService } from '../services/active-obj.service';
 import { EditPanelComponent } from './edit-panel/edit-panel.component';
 import { SettingsPanelComponent } from './settings-panel/settings-panel.component';
 import { TopBarComponent } from './top-bar/top-bar.component';
-import { TemplatesComponent } from './MODALS/templates/templates.component';
-import { TEMPLATE_IDS } from './MODALS/templates/template-linkages';
 
 describe('always-on force and weld UI', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SettingsPanelComponent, TopBarComponent, EditPanelComponent, TemplatesComponent],
+      imports: [SettingsPanelComponent, TopBarComponent, EditPanelComponent],
       providers: [provideAnimations()],
     }).compileComponents();
   });
@@ -82,29 +80,8 @@ describe('always-on force and weld UI', () => {
     expect(fixture.nativeElement.textContent).toContain('Force Base Frame');
   });
 
-  it('renders every analyzed built-in template as an immediately available action', () => {
-    const templates = TestBed.createComponent(TemplatesComponent);
-    templates.detectChanges();
-    // The library's own grid, not the dev one above it: a development build
-    // offers a few drawings that exist to exercise the app rather than to
-    // teach a linkage, and they answer to nothing here.
-    expect(
-      templates.nativeElement.querySelectorAll('.linkage-grid:not(.devGrid) panel-section').length
-    ).toBe(TEMPLATE_IDS.length);
-    const text = templates.nativeElement.textContent;
-    expect(text).toContain('Four Bar Linkage');
-    expect(text).toContain("Watt's Linkage");
-    expect(text).toContain("Watt's Linkage II");
-    expect(text).toContain('Stephenson III');
-    expect(text).toContain('Slider Crank');
-    expect(text).toContain('Whitworth Quick-Return');
-    expect(text).toContain('Jansen Leg');
-
-    // Every card has to reach a payload: a title with no linkage behind it is
-    // a dead tile, and the click handler is the only thing that would say so.
-    const images: string[] = Array.from(
-      templates.nativeElement.querySelectorAll('panel-section img')
-    ).map((img) => (img as HTMLImageElement).getAttribute('src') ?? '');
-    expect(images.every((src) => src.startsWith('assets/gifs/'))).toBe(true);
-  });
+  // The template library used to be checked here by counting cards and naming a
+  // few of them. It has its own spec now — templates.component.spec.ts — which
+  // checks coverage in both directions instead of against a list of titles that
+  // went stale the moment a card was renamed.
 });

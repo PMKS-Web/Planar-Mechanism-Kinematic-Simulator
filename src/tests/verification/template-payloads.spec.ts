@@ -9,9 +9,17 @@ import {
   TEMPLATE_LINKAGES,
 } from '../../app/component/MODALS/templates/template-linkages';
 import { fixturePayload } from '../../test-utils/verification/fixture-gallery';
-import { libraryTemplateEntry } from '../../test-utils/verification/template-fixtures';
+import {
+  libraryTemplateEntry,
+  libraryTemplateMasses,
+} from '../../test-utils/verification/template-fixtures';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
 import { buildMechanismFixture } from '../fixtures/mechanism-fixtures';
+import { partitionMechanisms } from '../../app/model/mechanism/mechanism-partition';
+import { Mechanism } from '../../app/model/mechanism/mechanism';
+
+/** Any non-zero input: this asks whether a machine solves, not how fast. */
+const SOLVED_INPUT_ANG_VEL = (10 * Math.PI) / 30;
 
 // The library templates are generated, not typed in. A template and the fixture
 // a spec asserts on are the same mechanism, and this is what keeps them that
@@ -30,7 +38,15 @@ function generatedBlock(): string {
     const entry = libraryTemplateEntry(id);
     // The same payload the published gallery links to, drawing scale included:
     // the card and the doc row are the same picture of the same mechanism.
-    return `  ${id}:\n    '${fixturePayload(entry.fixture, entry.objectScale, entry.speed)}',`;
+    // Mass is the one thing the library decides for itself — a doc link opens
+    // the mechanism a spec asserts on, and a template opens a lesson.
+    const payload = fixturePayload(
+      entry.fixture,
+      entry.objectScale,
+      entry.speed,
+      libraryTemplateMasses(id)
+    );
+    return `  ${id}:\n    '${payload}',`;
   });
   return [START, ...entries, END].join('\n');
 }
@@ -63,13 +79,35 @@ describe('every template the library dialog offers', () => {
         expect(decoder.getJoints().length).toBeGreaterThan(1);
       });
 
-      it('reports one degree of freedom and precomputes a cycle', () => {
-        // A template that opens to a linkage the user cannot play is worse than
-        // no template: the dialog promises a working example.
-        const { mechanism } = buildMechanismFixture(TEMPLATE_LINKAGES[id]);
-        expect(mechanism.isMechanismValid()).toBe(true);
-        expect(mechanism.dof).toBe(1);
-        expect(mechanism.joints.length).toBeGreaterThan(20);
+      it('opens as machines the user can play, every one of them', () => {
+        // A template that opens to a mechanism the user cannot play is worse
+        // than no template: the dialog promises a working example.
+        //
+        // Asked of each machine rather than of the drawing, because a drawing
+        // may hold several. Three independent four-bars are three one-DoF
+        // machines and a three-DoF document, and it is the machines the reader
+        // presses play on.
+        const { service } = buildMechanismFixture(TEMPLATE_LINKAGES[id]);
+        const partitioning = partitionMechanisms(service.joints, service.links, service.forces);
+        expect(partitioning.mechanisms.length).toBeGreaterThan(0);
+        expect(partitioning.unassigned.looseJoints.length).toBe(0);
+
+        partitioning.mechanisms.forEach((partition) => {
+          const machine = new Mechanism(
+            partition.joints,
+            partition.links,
+            partition.forces,
+            [],
+            true,
+            'cm',
+            SOLVED_INPUT_ANG_VEL,
+            'adaptive',
+            new Set(partition.ownJoints.map((joint: { id: string }) => joint.id))
+          );
+          expect(machine.dof).toBe(1);
+          expect(machine.isMechanismValid()).toBe(true);
+          expect(machine.joints.length).toBeGreaterThan(20);
+        });
       });
     });
   }
