@@ -7,10 +7,13 @@
  * reader trying to see why a coupler point slows at the top of its stroke is
  * asking about direction, and a curve of magnitude against time cannot show it.
  *
- * A leaf module: pure arithmetic and a palette, no imports. The caller hands
- * in two closures — where the part is at a sample, and what the quantity reads
- * there — so the service graph stays on the service side of the line.
+ * Arithmetic and a palette. Its one import is the analysis series' colours,
+ * which is the point: the arrows and the plots are the same numbers and are
+ * drawn in the same inks. The caller hands in two closures — where the part is
+ * at a sample, and what the quantity reads there — so the service graph stays
+ * on the service side of the line.
  */
+import { ANALYSIS_SERIES_COLORS } from './analysis-series';
 
 /** The three things a part can have drawn on it. */
 export type VectorQuantity = 'velocity' | 'acceleration' | 'force';
@@ -44,13 +47,25 @@ export const PATH_ARROW_COUNT = 24;
  * every arrow in a trace readable as a fraction of the biggest — and keeps the
  * three from being drawn at wildly different sizes on the same picture.
  */
-export const LONGEST_ARROW_FRACTION = 0.12;
+export const LONGEST_ARROW_FRACTION = 0.085;
 
-/** What each quantity is drawn in. None of it a link, joint or force colour. */
+/**
+ * What each quantity is drawn in: the analysis graphs' own series palette.
+ *
+ * These arrows and those plots are the same numbers seen two ways, so a reader
+ * who has learnt a colour on one should meet it on the other. The first cut
+ * used a green and a purple that appear nowhere else in the app, which made
+ * them look like a fourth kind of thing.
+ *
+ * Velocity and acceleration are the pair that can be on together, so they take
+ * the two that carry furthest over indigo bars on a white grid. The palette's
+ * indigo goes to force, which is only ever offered in Force Analysis and so
+ * never shares a drawing with them.
+ */
 export const VECTOR_INK: Record<VectorQuantity, string> = {
-  velocity: '#2e7d32',
-  acceleration: '#6a1b9a',
-  force: '#c62828',
+  velocity: ANALYSIS_SERIES_COLORS.Y,
+  acceleration: ANALYSIS_SERIES_COLORS.Z,
+  force: ANALYSIS_SERIES_COLORS.X,
 };
 
 /** The switch's label, in the menu and anywhere else that names one. */

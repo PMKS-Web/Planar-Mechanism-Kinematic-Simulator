@@ -1059,7 +1059,25 @@ export class MechanismService {
   toggleVectorTrace(part: Joint | Link, quantity: VectorQuantity): void {
     const key = this.vectorKey(part, quantity);
     if (!this.vectorTraceKeys.delete(key)) this.vectorTraceKeys.add(key);
+    this.vectorTraceRevision++;
   }
+
+  /**
+   * Bumped whenever the switch set changes.
+   *
+   * The drawn lists are cached, and switching a trace on moves nothing else:
+   * the pose is where it was, the solve is the one it was, the mode and the tab
+   * have not changed. So without a revision of its own the cache answered with
+   * the list from before the switch was touched, and a trace appeared or
+   * disappeared only once something *else* happened to invalidate it -- which
+   * is exactly the "does not update when toggled, works inconsistently" this
+   * fixes.
+   *
+   * Not bumped by the prune inside `buildVectorTraces`: that runs *during* a
+   * rebuild, and a bump there would make the list it is about to store stale
+   * on arrival and rebuild it forever.
+   */
+  private vectorTraceRevision = 0;
 
   /**
    * Why this part will not take this vector, in the model's own words.
@@ -1132,9 +1150,16 @@ export class MechanismService {
     const tab = this.tabs.getCurrentTab();
     const mode = this.settingsService.forceAnalysisMode.value;
     const held = this.vectorTraceCache;
-    if (!held || held.revision !== this.solveRevision || held.tab !== tab || held.mode !== mode) {
+    if (
+      !held ||
+      held.revision !== this.solveRevision ||
+      held.switches !== this.vectorTraceRevision ||
+      held.tab !== tab ||
+      held.mode !== mode
+    ) {
       this.vectorTraceCache = {
         revision: this.solveRevision,
+        switches: this.vectorTraceRevision,
         tab,
         mode,
         ...this.buildVectorTraces(tab, mode),
@@ -1145,6 +1170,7 @@ export class MechanismService {
 
   private vectorTraceCache?: {
     revision: number;
+    switches: number;
     tab: TabID;
     mode: ForceAnalysisMode;
     list: DrawnVectorTrace[];

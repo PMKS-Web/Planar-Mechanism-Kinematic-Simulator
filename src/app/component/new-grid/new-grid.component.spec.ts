@@ -496,6 +496,41 @@ describe('NewGridComponent vector traces', () => {
     expect(mechanism.vectorTracePaths()).toEqual([]);
   });
 
+  /**
+   * The regression the owner reported as "does not update when toggled, works
+   * inconsistently".
+   *
+   * The drawn list is cached, and switching a trace on moves nothing else --
+   * same pose, same solve, same mode, same tab -- so the cache answered with
+   * the list from before the switch was touched. Every read here happens with
+   * nothing but the switch having changed, which is exactly the case that used
+   * to be served stale.
+   */
+  it('answers a switch the moment it is flipped, and nothing else has to change', () => {
+    const { mechanism, b, c } = analysing();
+
+    mechanism.toggleVectorTrace(b, 'velocity');
+    expect(mechanism.vectorTracePaths().length).toBe(1);
+
+    mechanism.toggleVectorTrace(b, 'velocity');
+    expect(mechanism.vectorTracePaths()).toEqual([]);
+
+    mechanism.toggleVectorTrace(b, 'velocity');
+    expect(mechanism.vectorTracePaths().length).toBe(1);
+
+    // A second quantity on the same part, read between every flip.
+    mechanism.toggleVectorTrace(b, 'acceleration');
+    expect(mechanism.vectorTracePaths().length).toBe(2);
+    mechanism.toggleVectorTrace(b, 'acceleration');
+    expect(mechanism.vectorTracePaths().length).toBe(1);
+
+    // The live arrows are cached against the path list's identity, so they have
+    // to follow it out rather than answering from their own stale copy.
+    expect(mechanism.liveVectorArrows().length).toBe(1);
+    mechanism.toggleVectorTrace(b, 'velocity');
+    expect(mechanism.liveVectorArrows()).toEqual([]);
+  });
+
   it('forgets a switch whose part has been deleted', () => {
     const { mechanism, b } = analysing();
     mechanism.toggleVectorTrace(b, 'velocity');
