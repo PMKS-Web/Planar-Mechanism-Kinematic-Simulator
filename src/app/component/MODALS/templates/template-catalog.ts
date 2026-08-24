@@ -66,16 +66,16 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'The one every other mechanism is a variation of: a crank turns, a rocker swings, and ' +
       'the coupler between them draws a curve.',
-    thumbnail: 'assets/gifs/fourbag.jpg',
-    animation: 'assets/gifs/fourbar.gif',
+    thumbnail: 'assets/gifs/four-bar.png',
+    animation: 'assets/gifs/four-bar.gif',
   },
   {
     id: 'Slider_Crank',
     name: 'Slider-Crank',
     category: 'start',
     description: 'Rotation into a straight push — the engine and the pump both live here.',
-    thumbnail: 'assets/gifs/slider.jpg',
-    animation: 'assets/gifs/slider.gif',
+    thumbnail: 'assets/gifs/slider-crank.png',
+    animation: 'assets/gifs/slider-crank.gif',
   },
   {
     id: 'Drag_Link',
@@ -123,16 +123,16 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Watt I',
     category: 'sixbar',
     description: 'Two four-bars sharing a link, so the output can do what one four-bar cannot.',
-    thumbnail: 'assets/gifs/watt.jpg',
-    animation: 'assets/gifs/watt.gif',
+    thumbnail: 'assets/gifs/watt-i.png',
+    animation: 'assets/gifs/watt-i.gif',
   },
   {
     id: 'Watt_II',
     name: 'Watt II',
     category: 'sixbar',
     description: 'The other Watt chain: its two loops meet at a link rather than at a joint.',
-    thumbnail: 'assets/gifs/watt2.jpg',
-    animation: 'assets/gifs/watt2.gif',
+    thumbnail: 'assets/gifs/watt-ii.png',
+    animation: 'assets/gifs/watt-ii.gif',
   },
   {
     id: 'Stephenson_III',
@@ -140,8 +140,8 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     category: 'sixbar',
     description:
       'A six-bar whose ternary links sit apart, so both loops have to be solved at once.',
-    thumbnail: 'assets/gifs/steph3.jpg',
-    animation: 'assets/gifs/steph3.gif',
+    thumbnail: 'assets/gifs/stephenson-iii.png',
+    animation: 'assets/gifs/stephenson-iii.gif',
   },
   {
     id: 'Double_Butterfly',

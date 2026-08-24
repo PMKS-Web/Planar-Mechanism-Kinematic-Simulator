@@ -6,11 +6,12 @@
 // shared link, and clip the canvas. The image is therefore always the mechanism
 // the card actually opens.
 //
-// Both <img> slots on a card use the same PNG. The five original templates have
-// an animated GIF and a still; these have one still, because a GIF that is not
-// animated is a lie about what the file is.
+// This writes the still a card shows at rest. The loop it fades to under the
+// pointer comes from template-animations.mjs, off the same page and the same
+// clip, so the two land on each other rather than jumping.
 //
 //   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<origin> node e2e/template-thumbnails.mjs
+//   ONLY=Jansen_Leg,Pantograph node e2e/template-thumbnails.mjs
 
 import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -30,8 +31,13 @@ const ASSETS = 'src/assets/gifs';
 const WIDTH = 828;
 const HEIGHT = 520;
 
-/** Template id -> asset basename, matching templates.component.html. */
+/** Template id -> asset basename, matching template-catalog.ts. */
 const FILENAMES = {
+  '4-Bar': 'four-bar',
+  Slider_Crank: 'slider-crank',
+  Watt_I: 'watt-i',
+  Watt_II: 'watt-ii',
+  Stephenson_III: 'stephenson-iii',
   Whitworth_Quick_Return: 'whitworth',
   Scotch_Yoke: 'scotch-yoke',
   Cylinder_Boom: 'cylinder-boom',
@@ -68,14 +74,26 @@ const FILENAMES = {
   Loader_Bucket: 'loader-bucket',
 };
 
-/** The generated block of template-linkages.ts, read as id/payload pairs. */
+// The three dev drawings are not here on purpose. Their payloads were written
+// by hand with a colour on every link, so re-shooting them would not recolour
+// them — the old palette is inside the payload string, under its checksum, and
+// changing it means re-encoding the drawing rather than photographing it.
+
+/**
+ * Every template in template-linkages.ts, read as id/payload pairs.
+ *
+ * All of the file, not just the generated block. The five oldest templates sit
+ * above that block and shipped with hand-drawn stills, so they used to be
+ * skipped here — which left them the only library cards whose picture did not
+ * follow the app. When the link palette changed, they were the five that kept
+ * the old colours.
+ */
 function libraryTemplates() {
   const source = readFileSync(SOURCE, 'utf8');
-  const block = source.slice(source.indexOf('<generated'), source.indexOf('</generated>'));
-  return [...block.matchAll(/^ {2}(\w+):\n {4}'([^']+)',$/gm)].map(([, id, payload]) => ({
-    id,
-    payload,
-  }));
+  const only = process.env.ONLY?.split(',').map((one) => one.trim());
+  return [...source.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)]
+    .map(([, id, payload]) => ({ id, payload }))
+    .filter(({ id }) => !only || only.includes(id));
 }
 
 async function open(url) {
@@ -132,9 +150,9 @@ for (const { id, payload } of libraryTemplates()) {
   );
   await page.waitForTimeout(800);
 
-  // Grid, ruling and axes off, the way the five original cards were shot: at
-  // card size the ruling reads as noise and the mechanism is the subject. This
-  // is the app's own flag for it, the one `fit` already uses.
+  // Grid, ruling and axes off: at card size the ruling reads as noise and the
+  // mechanism is the subject. This is the app's own flag for it, the one `fit`
+  // already uses.
   await page.evaluate(() => {
     ng.getComponent(document.querySelector('app-new-grid')).settings.tempGridDisable = true;
   });
