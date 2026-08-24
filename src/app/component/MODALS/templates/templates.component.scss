@@ -216,9 +216,12 @@
       position: relative;
       height: 220px;
       overflow: hidden;
-      // Barely off white, so a drawing on a white background still reads as a
-      // picture rather than as part of the card.
-      background: #f6f7f9;
+      // The card's own white, not a shade of it. The thumbnails are captures of
+      // the app's own grid, which is white, so any other colour here draws a
+      // rectangle around every drawing — the seam is the panel showing through
+      // the padding that keeps the drawing clear of the caption. The card's
+      // border is what separates the picture from the page.
+      background: var(--card-surface);
     }
 
     .thumb img {
