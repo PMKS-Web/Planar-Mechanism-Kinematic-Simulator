@@ -119,6 +119,7 @@ is why they have them.
 | --- | --- |
 | **joint** | a pin, a slider, a tracer point — anything with an id letter |
 | **link** | a bar between joints |
+| **body** | a link carrying more than two joints — it is not a bar any more |
 | **compound** | several links welded into one rigid body |
 | **ground** | a joint fixed to the frame |
 | **slider** / **block** | a joint that slides, and the black block drawn on it |

@@ -56,6 +56,7 @@ import {
   dragLinkFixture,
   bellCrankFixture,
   linearActuatorRockerFixture,
+  loaderBucketFixture,
 } from './workshop-fixtures';
 import {
   walkingPairFixture,
@@ -643,6 +644,14 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     floatingSlot: false,
     speed: { unitsPerSecond: 2.2 },
     fixture: linearActuatorRockerFixture(1),
+  },
+  {
+    name: 'Loader bucket',
+    purpose: 'Four bars welded into a scoop: a bucket is a shape, and a shape is what a weld makes',
+    spec: 'loader-bucket.spec.ts',
+    floatingSlot: false,
+    speed: { rpm: 10 },
+    fixture: loaderBucketFixture(),
   },
   {
     name: 'Walking pair',

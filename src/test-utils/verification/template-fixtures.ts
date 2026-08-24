@@ -43,6 +43,7 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Walking_Pair: 'Walking pair',
   Straight_Line_Pair: 'Approximate and exact',
   Pumping_Field: 'Pumping field',
+  Loader_Bucket: 'Loader bucket',
 };
 
 /**

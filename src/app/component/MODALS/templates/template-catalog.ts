@@ -85,6 +85,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'The four-bar whose output crank goes round too: move the shortest bar to the frame and ' +
       'the rocker stops rocking.',
     thumbnail: 'assets/gifs/drag-link.png',
+    animation: 'assets/gifs/drag-link.gif',
   },
   {
     id: 'Bell_Crank',
@@ -94,6 +95,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'Two bars welded into one body at a right angle, so a push one way comes out of the far ' +
       'side pointing another.',
     thumbnail: 'assets/gifs/bell-crank.png',
+    animation: 'assets/gifs/bell-crank.gif',
   },
   {
     id: 'Locked_Four_Bar',
@@ -103,6 +105,17 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'Everything pinned but the crank. Lock marks ride the share link, so a class can only ' +
       'drag the handle they are meant to.',
     thumbnail: 'assets/gifs/locked-four-bar.png',
+    animation: 'assets/gifs/locked-four-bar.gif',
+  },
+  {
+    id: 'Loader_Bucket',
+    name: 'Loader Bucket',
+    category: 'start',
+    description:
+      'Four bars welded into one scoop on the end of a lift arm. A bucket is a shape, and a ' +
+      'shape is what welding bars together makes.',
+    thumbnail: 'assets/gifs/loader-bucket.png',
+    animation: 'assets/gifs/loader-bucket.gif',
   },
 
   {
@@ -138,6 +151,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'The eight-bar with no four-bar loop anywhere in it: six joints that will not come apart ' +
       'and have to be solved together.',
     thumbnail: 'assets/gifs/double-butterfly.png',
+    animation: 'assets/gifs/double-butterfly.gif',
   },
 
   {
@@ -146,6 +160,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     category: 'slots',
     description: 'Crank longer than the ground offset, so the lever turns instead of rocking.',
     thumbnail: 'assets/gifs/whitworth.png',
+    animation: 'assets/gifs/whitworth.gif',
   },
   {
     id: 'Shaper_Quick_Return',
@@ -154,6 +169,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'A floating slot handing off to a grounded one: the ram cuts slow and returns fast.',
     thumbnail: 'assets/gifs/shaper-quick-return.png',
+    animation: 'assets/gifs/shaper-quick-return.gif',
   },
   {
     id: 'Scotch_Yoke',
@@ -161,6 +177,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     category: 'slots',
     description: 'A welded rider translating on its guide — pure cosine motion.',
     thumbnail: 'assets/gifs/scotch-yoke.png',
+    animation: 'assets/gifs/scotch-yoke.gif',
   },
   {
     id: 'Radial_Engine',
@@ -168,6 +185,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     category: 'slots',
     description: 'Five sliders on one crank pin; piston stroke is exactly twice the throw.',
     thumbnail: 'assets/gifs/radial-engine.png',
+    animation: 'assets/gifs/radial-engine.gif',
   },
   {
     id: 'Elliptical_Crank',
@@ -176,6 +194,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'A six-bar no chain of dyads reaches: the coupler and its guided end solve together.',
     thumbnail: 'assets/gifs/elliptical-crank.png',
+    animation: 'assets/gifs/elliptical-crank.gif',
   },
   {
     id: 'Flywheel_Engine',
@@ -185,6 +204,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'The one crank drawn as the disc it sweeps, rather than as a bar, driving a piston down ' +
       'its guide.',
     thumbnail: 'assets/gifs/flywheel-engine.png',
+    animation: 'assets/gifs/flywheel-engine.gif',
   },
   {
     id: 'Screw_Jack',
@@ -193,6 +213,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'A plain guided ram with no cylinder skin: its drive is a length per second, not an rpm.',
     thumbnail: 'assets/gifs/screw-jack.png',
+    animation: 'assets/gifs/screw-jack.gif',
   },
   {
     id: 'Elliptical_Trammel',
@@ -202,6 +223,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'No pin touches ground. Two blocks on crossed guides swing the bar between them through a ' +
       'true ellipse.',
     thumbnail: 'assets/gifs/elliptical-trammel.png',
+    animation: 'assets/gifs/elliptical-trammel.gif',
   },
 
   {
@@ -210,6 +232,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     category: 'cylinders',
     description: 'The cylinder is the drive, and the boom follows the law of cosines.',
     thumbnail: 'assets/gifs/cylinder-boom.png',
+    animation: 'assets/gifs/cylinder-boom.gif',
   },
   {
     id: 'Cylinder_Gripper',
@@ -217,6 +240,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     category: 'cylinders',
     description: 'Counter-rotating jaw levers: extending the cylinder pinches them shut.',
     thumbnail: 'assets/gifs/cylinder-gripper.png',
+    animation: 'assets/gifs/cylinder-gripper.gif',
   },
   {
     id: 'Backhoe_Bucket',
@@ -225,6 +249,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'A driven ram feeding an ordinary four-bar: bell crank, link, and the bucket curls.',
     thumbnail: 'assets/gifs/backhoe-bucket.png',
+    animation: 'assets/gifs/backhoe-bucket.gif',
   },
   {
     id: 'Scissor_Lift',
@@ -233,6 +258,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'Ram, supporting block and a slot in the moving platform — three parts, three jobs.',
     thumbnail: 'assets/gifs/scissor-lift.png',
+    animation: 'assets/gifs/scissor-lift.gif',
   },
 
   {
@@ -242,6 +268,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'Approximate straight-line generation: the coupler midpoint runs flat along the top.',
     thumbnail: 'assets/gifs/chebyshev.png',
+    animation: 'assets/gifs/chebyshev.gif',
   },
   {
     id: 'Jansen_Leg',
@@ -250,6 +277,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       "One leg of a Strandbeest — eight bars on Jansen's holy numbers, and the foot walks.",
     thumbnail: 'assets/gifs/jansen-leg.png',
+    animation: 'assets/gifs/jansen-leg.gif',
   },
   {
     id: 'Windshield_Wiper',
@@ -257,6 +285,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     category: 'paths',
     description: 'One motor, two arms: continuous rotation into two bounded sweeps.',
     thumbnail: 'assets/gifs/windshield-wiper.png',
+    animation: 'assets/gifs/windshield-wiper.gif',
   },
   {
     id: 'Peaucellier',
@@ -266,6 +295,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'Exact straight-line generation, where Chebyshev only approximates it: the rhombus ' +
       'inverts a circle into a ruled line.',
     thumbnail: 'assets/gifs/peaucellier.png',
+    animation: 'assets/gifs/peaucellier.gif',
   },
   {
     id: 'Pantograph',
@@ -275,6 +305,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       "Pen and tracer held in line with the pivot, so one draws the other's curve at half the " +
       'size.',
     thumbnail: 'assets/gifs/pantograph.png',
+    animation: 'assets/gifs/pantograph.gif',
   },
 
   {
@@ -284,6 +315,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'A load on the ram: the crank torque spikes where the rod comes into line with the slide.',
     thumbnail: 'assets/gifs/punch-press.png',
+    animation: 'assets/gifs/punch-press.gif',
   },
   {
     id: 'Derrick_Crane',
@@ -292,6 +324,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'A weight far out on a boom held close in — the link carries several times the load.',
     thumbnail: 'assets/gifs/derrick-crane.png',
+    animation: 'assets/gifs/derrick-crane.gif',
   },
   {
     id: 'Toggle_Clamp',
@@ -300,6 +333,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'Where mechanical advantage comes from: the clamping force runs away as the links line up.',
     thumbnail: 'assets/gifs/toggle-clamp.png',
+    animation: 'assets/gifs/toggle-clamp.gif',
   },
   {
     id: 'Offset_Load_Rocker',
@@ -308,6 +342,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'A load off the line of its link is a moment — the term a free-body sketch leaves out.',
     thumbnail: 'assets/gifs/offset-load-rocker.png',
+    animation: 'assets/gifs/offset-load-rocker.gif',
   },
   {
     id: 'Crane_Two_Loads',
@@ -317,6 +352,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'Global against local: the hook hangs vertical whatever the jib does, while the rope pull ' +
       'swings with it.',
     thumbnail: 'assets/gifs/crane-two-loads.png',
+    animation: 'assets/gifs/crane-two-loads.gif',
   },
 
   {
@@ -326,6 +362,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'The motor rides the head it sweeps: the driven pin turns right round, the head does not.',
     thumbnail: 'assets/gifs/oscillating-fan.png',
+    animation: 'assets/gifs/oscillating-fan.gif',
   },
   {
     id: 'Pumpjack',
@@ -334,6 +371,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     description:
       'Driven where the pitman meets the beam, and the output is a straight-line stroke.',
     thumbnail: 'assets/gifs/pumpjack.png',
+    animation: 'assets/gifs/pumpjack.gif',
   },
   {
     id: 'Pedaling_Leg',
@@ -341,6 +379,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     category: 'drives',
     description: 'A driven knee carried by the thigh: one leg can only rock the crank half a turn.',
     thumbnail: 'assets/gifs/pedaling-leg.png',
+    animation: 'assets/gifs/pedaling-leg.gif',
   },
 
   {
@@ -351,6 +390,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'Three machines in one drawing, each on its own playback row at its own speed and ' +
       'direction.',
     thumbnail: 'assets/gifs/three-machines.png',
+    animation: 'assets/gifs/three-machines.gif',
   },
   {
     id: 'Walking_Pair',
@@ -360,6 +400,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'Two Jansen legs half a cycle apart: one foot planted while the other swings. A gait is ' +
       'a relationship between machines.',
     thumbnail: 'assets/gifs/walking-pair.png',
+    animation: 'assets/gifs/walking-pair.gif',
   },
   {
     id: 'Straight_Line_Pair',
@@ -369,6 +410,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       "Chebyshev's line bows and Peaucellier's does not. Side by side the two words mean " +
       'something you can see.',
     thumbnail: 'assets/gifs/straight-line-pair.png',
+    animation: 'assets/gifs/straight-line-pair.gif',
   },
   {
     id: 'Pumping_Field',
@@ -378,6 +420,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'Three beams on three clocks, drifting out of step the way a real field does — three ' +
       'playback rows, seen from the grid.',
     thumbnail: 'assets/gifs/pumping-field.png',
+    animation: 'assets/gifs/pumping-field.gif',
   },
 ];
 

@@ -733,7 +733,11 @@ export class ContextMenuBuilderService {
       return `Barrel and rod · Joints ${ends.join(', ')}`;
     }
     const bar = link as RealLink;
-    const kind = bar.subset.length > 0 ? 'Compound' : 'Bar';
+    // "Bar" is only true of two joints. Past that the link is drawn as a filled
+    // shape and behaves as one rigid body carrying three or more pins, so it is
+    // called what it is rather than what the two-joint case is called.
+    const kind =
+      bar.subset.length > 0 ? 'Compound' : bar.joints.length > 2 ? 'Body' : 'Bar';
     const joints = bar.joints.map((joint) => this.nameOf(joint)).join(', ');
     const locked = this.mechanism.isLockedTarget(bar) ? ' · locked' : '';
     return `${kind} · Joints ${joints}${locked}`;

@@ -287,3 +287,84 @@ export function linearActuatorRockerFixture(scale: number = 1): MechanismFixture
     inputAngVel: SCREW_JACK_SPEED * scale,
   };
 }
+
+/** The scoop, in the bucket's own frame with the arm pin at the origin. */
+const BUCKET = {
+  /** Where the spine bends — an interior joint, carrying no outside link. */
+  knuckle: { x: 1.0, y: -0.2 },
+  /** The tilt link's pin, at the top of the spine. */
+  tilt: { x: 1.8, y: 0.55 },
+  /** The back of the scoop, where the floor is welded on. */
+  heel: { x: 1.35, y: -1.15 },
+  /** The cutting edge. */
+  lip: { x: 2.7, y: -1.35 },
+  arm: 4,
+  armRad: (18 * Math.PI) / 180,
+  // High and close, so the tilt link is short: the shortest bar is then the
+  // bucket's own span, which is not next to the ground, and both grounded bars
+  // rock. A loader arm that went over the top would be a fairground ride.
+  post: { x: 3.2, y: 3.4 },
+};
+
+/**
+ * A loader bucket on a lift arm: four bars fused into one scoop.
+ *
+ * The library's other welded body is a bell crank — two bars at an angle, which
+ * is the smallest weld worth drawing and looks like a bent link. This is what
+ * the feature is actually for: a bucket is not a bar and never was, it is a
+ * shape, and the way to draw a shape here is to weld the bars that outline it
+ * into one body. Four of them, fused at two joints, and the whole outline then
+ * swings as one rigid thing on the end of the arm.
+ *
+ * Both welds are at joints where only the bucket's own bars meet. A weld fuses
+ * everything meeting at its joint, so welding at the arm pin or the tilt pin
+ * would have swallowed the arm or the tilt link into the bucket and left a
+ * different machine — which is why the spine is two bars with a knuckle
+ * between them rather than one bar from pin to pin.
+ *
+ * The arm rocks rather than turning: a loader lifts and dumps, and a bucket
+ * that went over the top would be a fairground ride.
+ */
+export function loaderBucketFixture(): MechanismFixture {
+  const RPM = 10;
+  const pin = {
+    x: BUCKET.arm * Math.cos(BUCKET.armRad),
+    y: BUCKET.arm * Math.sin(BUCKET.armRad),
+  };
+  const at = (local: { x: number; y: number }) => ({ x: pin.x + local.x, y: pin.y + local.y });
+  const knuckle = at(BUCKET.knuckle);
+  const tilt = at(BUCKET.tilt);
+  const heel = at(BUCKET.heel);
+  const lip = at(BUCKET.lip);
+  return {
+    joints: [
+      { id: 'O', x: 0, y: 0, ground: true, input: true, driveSpeed: RPM },
+      { id: 'A', ...pin },
+      { id: 'M', ...knuckle },
+      { id: 'B', ...tilt },
+      { id: 'C', ...heel },
+      { id: 'D', ...lip },
+      { id: 'P', ...BUCKET.post, ground: true },
+    ],
+    links: [
+      { joints: 'OA', mass: 0, moi: 0, name: 'Lift arm' },
+      // The bucket: the outline a user would have drawn as four bars and then
+      // welded at the two joints where only those bars meet.
+      {
+        joints: 'AMBCD',
+        mass: 0,
+        moi: 0,
+        name: 'Bucket',
+        subset: [
+          { joints: 'AM', mass: 0, moi: 0 },
+          { joints: 'MB', mass: 0, moi: 0 },
+          { joints: 'MC', mass: 0, moi: 0 },
+          { joints: 'CD', mass: 0, moi: 0 },
+        ],
+      },
+      { joints: 'BP', mass: 0, moi: 0, name: 'Tilt link' },
+    ],
+    welds: ['M', 'C'],
+    inputAngVel: (RPM * Math.PI) / 30,
+  };
+}

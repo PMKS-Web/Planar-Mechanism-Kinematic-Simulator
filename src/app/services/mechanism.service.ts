@@ -1429,7 +1429,17 @@ export class MechanismService {
   deleteMechanism(index: number): void {
     const partition = this.partitions[index];
     if (!partition) return;
+    // A joint another machine is also built on is not this machine's to take.
+    // Ground pivots are the usual case: two cranks bolted to the same point
+    // each own that joint, so deleting one machine wholesale took the other's
+    // pivot out from under it and left it a chain hanging off nothing.
+    const shared = new Set(
+      this.partitions
+        .filter((other) => other !== partition)
+        .flatMap((other) => other.ownJoints.map((joint) => joint.id))
+    );
     [...partition.ownJoints].forEach((joint) => {
+      if (shared.has(joint.id)) return;
       // A cylinder's joint takes its four siblings with it, and the snapshot
       // above still lists them -- same trap `deleteAll` guards against.
       if (!this.joints.some((live) => live.id === joint.id)) return;

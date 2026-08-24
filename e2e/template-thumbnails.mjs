@@ -65,6 +65,7 @@ const FILENAMES = {
   Walking_Pair: 'walking-pair',
   Straight_Line_Pair: 'straight-line-pair',
   Pumping_Field: 'pumping-field',
+  Loader_Bucket: 'loader-bucket',
 };
 
 /** The generated block of template-linkages.ts, read as id/payload pairs. */

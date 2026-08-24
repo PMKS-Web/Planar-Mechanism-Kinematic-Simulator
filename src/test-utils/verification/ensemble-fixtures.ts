@@ -43,7 +43,9 @@ function place(
   source: MechanismFixture,
   firstLetter: string,
   offset: { x: number; y: number },
-  drive?: { rpm: number }
+  drive?: { rpm: number },
+  /** Turned about its own origin before it is moved, in radians. */
+  turn = 0
 ): MechanismFixture {
   const sliders = source.sliders ?? (source.slider ? [source.slider] : []);
   const oldIds = [...source.joints.map((joint) => joint.id), ...sliders.map((one) => one.prisId)];
@@ -67,12 +69,20 @@ function place(
     subset: link.subset?.map(massless),
   });
 
+  if (turn !== 0 && sliders.some((one) => one.angleRad !== undefined)) {
+    // A grounded guide's direction is a world angle, and turning the joints
+    // without turning it would leave the block sliding across its own slot.
+    throw new Error('place: cannot turn a mechanism with a grounded guide');
+  }
+  const cos = Math.cos(turn);
+  const sin = Math.sin(turn);
+
   return {
     joints: source.joints.map((joint) => ({
       ...joint,
       id: rename(joint.id),
-      x: joint.x + offset.x,
-      y: joint.y + offset.y,
+      x: joint.x * cos - joint.y * sin + offset.x,
+      y: joint.x * sin + joint.y * cos + offset.y,
       ...(joint.input && drive ? { driveSpeed: drive.rpm } : {}),
     })),
     links: source.links.map(massless),
@@ -176,7 +186,17 @@ export function straightLinePairFixture(): MechanismFixture {
     { x: 0, y: 0 },
     { rpm: LIBRARY_RPM }
   );
-  const exact = place(peaucellierFixture(), 'G', { x: 9, y: 0 }, { rpm: LIBRARY_RPM });
+  // Turned a quarter turn so its line runs the same way Chebyshev's does. The
+  // cell rules a line perpendicular to its own ground axis, which is vertical
+  // where it is drawn; two straight lines at right angles to each other are a
+  // poor comparison, and the point of putting them together is the comparison.
+  const exact = place(
+    peaucellierFixture(),
+    'G',
+    { x: 11, y: 1.5 },
+    { rpm: LIBRARY_RPM },
+    -Math.PI / 2
+  );
   return merge([approximate, exact], radPerSecond(LIBRARY_RPM));
 }
 
