@@ -46,6 +46,17 @@ import {
   shaperQuickReturnFixture,
   togglePressFixture,
 } from './library-fixtures';
+import {
+  flywheelSliderCrankFixture,
+  craneWithTwoLoadsFixture,
+  threeMachinesFixture,
+} from './feature-fixtures';
+import { peaucellierFixture, pantographFixture, doubleButterflyFixture } from './classic-fixtures';
+import {
+  dragLinkFixture,
+  bellCrankFixture,
+  linearActuatorRockerFixture,
+} from './workshop-fixtures';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { ActiveObjService } from '../../app/services/active-obj.service';
@@ -103,6 +114,25 @@ function scaleBuiltToModelUnits(built: BuiltMechanism): void {
   });
 }
 
+/**
+ * Take the mass and inertia off a built copy, blocks and welded members
+ * included.
+ *
+ * Every body, not only the bars: the solver hangs a slider block's weight from
+ * gravity too, so a drawing whose only massive part is a block is still a
+ * loaded one.
+ */
+function stripMass(built: BuiltMechanism): void {
+  const strip = (link: Link): void => {
+    link.mass = 0;
+    if (link instanceof RealLink) {
+      link.massMoI = 0;
+      link.subset.forEach(strip);
+    }
+  };
+  built.links.forEach(strip);
+}
+
 export interface GalleryEntry {
   name: string;
   /** What this mechanism is for — one line, as it appears in the published table. */
@@ -131,6 +161,24 @@ export interface GalleryEntry {
   fixture: MechanismFixture;
 }
 
+/**
+ * Whether a published mechanism carries the masses its fixture gives it.
+ *
+ * `buildMechanism` hands every link a mass and a moment of inertia of 1 unless
+ * the fixture says otherwise, gravity is on by default, and weight counts as a
+ * load — so a mechanism published as built reports itself ready for force
+ * analysis whatever it is about. That hands a student who opened a plain
+ * kinematics example a force problem nobody set, which is why the library
+ * publishes massless unless the mechanism *is* about force (see
+ * `FORCE_STUDY_TEMPLATES` in template-fixtures.ts).
+ *
+ * Zeroing happens on the built copy, on the way into the URL, and never on the
+ * fixture: several of these mechanisms are also what the MATLAB force specs
+ * assert reactions against, and taking their mass away in place would destroy
+ * the thing those specs verify.
+ */
+export type PublishedMasses = 'as-built' | 'zeroed';
+
 /** Whichever of the two input speeds a mechanism actually uses. */
 export interface PublishedSpeed {
   /** Turns per minute, for a mechanism driven at a pin. */
@@ -139,6 +187,21 @@ export interface PublishedSpeed {
   unitsPerSecond?: number;
 }
 
+/**
+ * The pace a published mechanism opens at: one cycle in five to eight seconds
+ * of wall-clock time at 1x. Fast enough to see the whole of, slow enough to
+ * follow one part round it.
+ *
+ * A cycle takes 60/RPM seconds when the input turns right round, so a linkage
+ * whose crank does that runs at this number and lands on six seconds. The two
+ * other kinds do not, and each is written out where it appears with the cycle
+ * time it lands on, because the arithmetic is not visible from the number: an
+ * input that only *rocks* covers a fraction of a revolution per cycle and
+ * needs fewer RPM to fill the same seconds, and one driven along a slot is
+ * quoted in length per second and has to be set against its own stroke.
+ */
+const LIBRARY_RPM = 10;
+
 export const FIXTURE_GALLERY: GalleryEntry[] = [
   {
     name: 'Punch press',
@@ -146,6 +209,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
       'A load on the ram: the crank torque spikes where the rod comes into line with the slide',
     spec: 'force-templates.spec.ts',
     floatingSlot: false,
+    speed: { rpm: LIBRARY_RPM },
     fixture: punchPressFixture(),
   },
   {
@@ -153,6 +217,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     purpose: 'A weight far out on a boom held close in: the link carries several times the load',
     spec: 'force-templates.spec.ts',
     floatingSlot: false,
+    speed: { rpm: LIBRARY_RPM },
     fixture: jibCraneFixture(),
   },
   {
@@ -161,6 +226,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
       'Where mechanical advantage comes from: the clamping force runs away as the links line up',
     spec: 'force-templates.spec.ts',
     floatingSlot: false,
+    speed: { rpm: LIBRARY_RPM },
     fixture: toggleClampFixture(),
   },
   {
@@ -168,6 +234,9 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     purpose: 'A load off the line of its link is a moment — the term a free-body sketch leaves out',
     spec: 'force-templates.spec.ts',
     floatingSlot: false,
+    // Non-Grashof, so the input binds and comes back: 309 degrees of command
+    // per cycle rather than 360, and 16 RPM is what puts that at 6.4 s.
+    speed: { rpm: 16 },
     fixture: offsetLoadFourBarFixture(),
   },
   {
@@ -186,7 +255,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     slide: true,
     // A hand's pace. The shared default of 5 cm/s runs this ram end to end in
     // well under a second, which shows a boom that jumps rather than one that
-    // lifts.
+    // lifts. 5.43 cm of travel per raise-and-lower, so this is 5.4 s.
     speed: { unitsPerSecond: 1 },
     fixture: cylinderBoomFixture(),
   },
@@ -204,6 +273,10 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'pinching-gripper.spec.ts',
     floatingSlot: true,
     slide: true,
+    // A stroke of 1.47 cm, out and back, so 0.25 cm/s closes and opens the
+    // jaws in 5.9 s. At the shared default of 5 cm/s it is over in a third of
+    // a second.
+    speed: { unitsPerSecond: 0.25 },
     fixture: pinchingGripperFixture(),
   },
   {
@@ -212,6 +285,8 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'excavator-bucket.spec.ts',
     floatingSlot: true,
     slide: true,
+    // 7.42 cm of ram travel per curl-and-open, so 1.2 cm/s takes 6.2 s.
+    speed: { unitsPerSecond: 1.2 },
     fixture: excavatorBucketFixture(),
   },
   {
@@ -230,6 +305,9 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'scissor-lift.spec.ts',
     floatingSlot: true,
     slide: true,
+    // 7.61 cm of ram travel per lift-and-lower. A big machine is worth
+    // watching at the slow end of the window, so 1 cm/s and 7.6 s.
+    speed: { unitsPerSecond: 1 },
     fixture: scissorLiftFixture(),
   },
   {
@@ -238,6 +316,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'shaper-quick-return.spec.ts',
     floatingSlot: true,
     slide: false,
+    speed: { rpm: LIBRARY_RPM },
     fixture: shaperQuickReturnFixture(),
   },
   {
@@ -270,6 +349,8 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'radial-engine.spec.ts',
     floatingSlot: false,
     slide: false,
+    // Five pistons to follow at once, so the slow end of the window: 7.5 s.
+    speed: { rpm: 8 },
     fixture: radialEngineFixture(),
   },
   {
@@ -279,8 +360,10 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     floatingSlot: false,
     slide: false,
     // Slow, because the point of it is a straight line and a line is something
-    // to be watched being drawn.
-    speed: { rpm: 2 },
+    // to be watched being drawn. The crank rocks through 129 degrees rather
+    // than turning, so a cycle is a third of a revolution of command and 3 RPM
+    // puts it at 7.2 s — the slow end of the window, deliberately.
+    speed: { rpm: 3 },
     fixture: chebyshevStraightLineFixture(),
   },
   {
@@ -289,6 +372,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'windshield-wiper.spec.ts',
     floatingSlot: false,
     slide: false,
+    speed: { rpm: LIBRARY_RPM },
     fixture: windshieldWiperFixture(),
   },
   {
@@ -306,6 +390,9 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     // moves with it: this is "much bigger than usual because the linkage is",
     // not an absolute size anybody measured.
     objectScale: 10 * DEFAULT_OBJECT_SCALE,
+    // Eight bars, and the foot is the only one worth following. The slow end
+    // of the window: 7.5 s a stride.
+    speed: { rpm: 8 },
     fixture: jansenLegFixture(),
   },
   {
@@ -314,6 +401,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'elliptical-crank.spec.ts',
     floatingSlot: false,
     slide: false,
+    speed: { rpm: LIBRARY_RPM },
     fixture: ellipticalCrankFixture(),
   },
   {
@@ -328,6 +416,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     purpose: 'Crank longer than the ground offset, so the lever turns instead of rocking',
     spec: 'slot-kinematics.spec.ts',
     floatingSlot: true,
+    speed: { rpm: LIBRARY_RPM },
     fixture: invertedSliderCrankFixture(WHITWORTH_OFFSET, WHITWORTH_CRANK),
   },
   {
@@ -350,6 +439,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'scotch-yoke.spec.ts, scotch-yoke-kinematics.spec.ts',
     floatingSlot: true,
     slide: true,
+    speed: { rpm: LIBRARY_RPM },
     fixture: scotchYokeFixture(),
   },
   {
@@ -387,6 +477,9 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     purpose: 'A driven knee, carried by the thigh: one leg can only rock the crank half a turn',
     spec: 'pedaling-leg.spec.ts',
     floatingSlot: false,
+    // The knee sweeps 132 degrees and comes back, so a cycle is a third of a
+    // revolution of command: 4 RPM puts it at 5.5 s.
+    speed: { rpm: 4 },
     fixture: pedalingLegFixture(),
   },
   {
@@ -395,6 +488,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
       'The motor rides the head it sweeps: the driven pin turns right round, the head does not',
     spec: 'oscillating-fan.spec.ts',
     floatingSlot: false,
+    speed: { rpm: LIBRARY_RPM },
     fixture: oscillatingFanFixture(),
   },
   {
@@ -402,6 +496,8 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     purpose: 'Driven where the pitman meets the beam, and the output is a straight-line stroke',
     spec: 'pumpjack.spec.ts',
     floatingSlot: false,
+    // 120 degrees of command per nod, out and back, so 3 RPM is 6.7 s.
+    speed: { rpm: 3 },
     fixture: pumpjackFixture(),
   },
   {
@@ -456,6 +552,93 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     floatingSlot: false,
     fixture: twoFourBarsFixture(),
   },
+  {
+    name: 'Engine with a flywheel',
+    purpose:
+      "The library's one circular link: a crank drawn as the disc it sweeps, driving a piston",
+    spec: 'flywheel-slider-crank.spec.ts',
+    floatingSlot: false,
+    fixture: flywheelSliderCrankFixture(),
+  },
+  {
+    name: 'Crane carrying two loads',
+    purpose:
+      'Global against local: the hook stays vertical while the rope pull swings with the jib',
+    spec: 'crane-two-loads.spec.ts',
+    floatingSlot: false,
+    fixture: craneWithTwoLoadsFixture(),
+  },
+  {
+    name: 'Three machines, three drives',
+    purpose: 'M1, M2 and M3 in one drawing, each at its own speed and direction on its own row',
+    spec: 'three-machines.spec.ts',
+    floatingSlot: false,
+    fixture: threeMachinesFixture(),
+  },
+  {
+    name: 'Peaucellier-Lipkin linkage',
+    purpose:
+      'Exact straight-line generation: the rhombus inverts a circle through O into a ruled line',
+    spec: 'peaucellier.spec.ts',
+    floatingSlot: false,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: peaucellierFixture(),
+  },
+  {
+    name: 'Pantograph',
+    purpose: "Pen and tracer in line with the pivot, so one draws the other's curve at half size",
+    spec: 'pantograph.spec.ts',
+    floatingSlot: false,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: pantographFixture(),
+  },
+  {
+    name: 'Double butterfly linkage',
+    purpose: 'The eight-bar with no four-bar loop in it: six joints that only solve together',
+    spec: 'double-butterfly.spec.ts',
+    floatingSlot: false,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: doubleButterflyFixture(),
+  },
+  {
+    name: 'Drag link',
+    purpose:
+      'The four-bar whose output crank goes round too: move the shortest bar to the frame and the rocker stops rocking',
+    spec: 'drag-link.spec.ts',
+    floatingSlot: false,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: dragLinkFixture(),
+  },
+  {
+    name: 'Bell crank',
+    purpose:
+      'Two bars welded at a right angle: a push one way comes out of the far side pointing another',
+    spec: 'bell-crank.spec.ts',
+    floatingSlot: false,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: bellCrankFixture(),
+  },
+  {
+    // The mobility fixture above it is deliberately undriven — its whole point
+    // is what the count says about a linkage held only by its guides. A reader
+    // opening it from the library wants to watch the ellipse, so the published
+    // one drives a slide and carries the tracer that draws it.
+    name: 'Elliptical trammel, driven',
+    purpose:
+      'No pin touches ground: two blocks on crossed guides swing the bar through a true ellipse',
+    spec: 'slot-mobility.spec.ts',
+    floatingSlot: false,
+    speed: { unitsPerSecond: 1.2 },
+    fixture: ellipticalTrammelFixture(true, 1),
+  },
+  {
+    name: 'Screw jack',
+    purpose: 'A plain guided ram, no cylinder skin: the drive is a length per second, not an rpm',
+    spec: 'linear-actuator-rocker.spec.ts',
+    floatingSlot: false,
+    speed: { unitsPerSecond: 2.2 },
+    fixture: linearActuatorRockerFixture(1),
+  },
 ];
 
 /**
@@ -475,7 +658,8 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
 export function fixturePayload(
   fixture: MechanismFixture,
   objectScale: number = DEFAULT_OBJECT_SCALE,
-  speed: PublishedSpeed = {}
+  speed: PublishedSpeed = {},
+  masses: PublishedMasses = 'as-built'
 ): string {
   const previousColors = ColorService.instance;
   const previousScale = SettingsService.objectScale;
@@ -484,6 +668,7 @@ export function fixturePayload(
   try {
     const built = buildMechanism(fixture);
     scaleBuiltToModelUnits(built);
+    if (masses === 'zeroed') stripMass(built);
     // The speeds ride the URL as settings rather than as anything on a joint,
     // so they are set on the service the encoder is about to read. A fresh one
     // per call, so nothing here leaks into the next mechanism's payload.

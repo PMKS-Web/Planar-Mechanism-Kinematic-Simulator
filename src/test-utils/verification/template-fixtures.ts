@@ -1,5 +1,5 @@
 import type { LibraryTemplateID } from '../../app/component/MODALS/templates/template-linkages';
-import { FIXTURE_GALLERY, GalleryEntry } from './fixture-gallery';
+import { FIXTURE_GALLERY, GalleryEntry, PublishedMasses } from './fixture-gallery';
 
 /**
  * Which verification mechanism each library template ships.
@@ -20,7 +20,6 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Elliptical_Crank: 'Elliptical crank',
   Jansen_Leg: 'Jansen leg',
   Backhoe_Bucket: 'Backhoe bucket',
-  Toggle_Press: 'Toggle press',
   Scissor_Lift: 'Scissor lift',
   Shaper_Quick_Return: "Shaper's quick-return drive",
   Pedaling_Leg: 'Leg on a bicycle crank',
@@ -30,7 +29,48 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Derrick_Crane: 'Derrick crane',
   Toggle_Clamp: 'Toggle clamp',
   Offset_Load_Rocker: 'Rocker with an offset load',
+  Drag_Link: 'Drag link',
+  Bell_Crank: 'Bell crank',
+  Flywheel_Engine: 'Engine with a flywheel',
+  Screw_Jack: 'Screw jack',
+  Elliptical_Trammel: 'Elliptical trammel, driven',
+  Peaucellier: 'Peaucellier-Lipkin linkage',
+  Pantograph: 'Pantograph',
+  Double_Butterfly: 'Double butterfly linkage',
+  Crane_Two_Loads: 'Crane carrying two loads',
+  Locked_Four_Bar: 'TeachingLab four-bar, locked except the crank',
+  Three_Machines: 'Three machines, three drives',
 };
+
+/**
+ * The templates that are about force, and so publish with the masses and
+ * inertias their fixtures give them.
+ *
+ * Every other template publishes massless. Weight is a load, so a template
+ * shipped with mass opens ready for force analysis whether or not force is
+ * what it teaches — and a student who opened the Jansen leg to watch it walk
+ * was being handed a force problem nobody set. These four are the ones where
+ * that reading is the lesson: each carries an external load as well, and the
+ * numbers on their links are chosen rather than left at the build default.
+ *
+ * A new template is massless until it is named here, which is the safe way
+ * round: a kinematics example that quietly gained mass is the failure this
+ * list exists to prevent.
+ */
+export const FORCE_STUDY_TEMPLATES: readonly LibraryTemplateID[] = [
+  'Punch_Press',
+  'Derrick_Crane',
+  'Toggle_Clamp',
+  'Offset_Load_Rocker',
+  // Two loads and a counterweighted jib: the one new template that is about
+  // force, so the only new one that keeps the masses its fixture gives it.
+  'Crane_Two_Loads',
+];
+
+/** How a library template's link masses ride its published payload. */
+export function libraryTemplateMasses(id: LibraryTemplateID): PublishedMasses {
+  return FORCE_STUDY_TEMPLATES.includes(id) ? 'as-built' : 'zeroed';
+}
 
 export function libraryTemplateEntry(id: LibraryTemplateID): GalleryEntry {
   const name = LIBRARY_TEMPLATE_SOURCES[id];

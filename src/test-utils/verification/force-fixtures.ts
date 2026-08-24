@@ -154,6 +154,12 @@ export function toggleClampFixture(): MechanismFixture {
  * line between the output link's own two joints. That offset is a moment, and
  * it is the thing a force panel shows that a free-body sketch of the same
  * linkage usually leaves out.
+ *
+ * Nothing here turns. Shortest plus longest is 1.208 + 5 = 6.208 against 3.551
+ * + 2.563 = 6.114 for the other two, so Grashof's inequality fails and every
+ * bar rocks: the input binds at about 130 degrees and comes back. The driven
+ * bar is named for that rather than called a crank, which is what it said
+ * until somebody checked.
  */
 export function offsetLoadFourBarFixture(): MechanismFixture {
   return {
@@ -166,7 +172,7 @@ export function offsetLoadFourBarFixture(): MechanismFixture {
       { id: 'L', x: 5.9, y: 2.9 },
     ],
     links: [
-      { joints: 'AB', mass: 2, moi: 0.05, name: 'Crank' },
+      { joints: 'AB', mass: 2, moi: 0.05, name: 'Input lever' },
       { joints: 'BC', mass: 4, moi: 0.5, name: 'Coupler' },
       { joints: 'CDL', mass: 5, moi: 0.9, name: 'Rocker' },
     ],
