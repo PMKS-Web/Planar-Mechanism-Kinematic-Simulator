@@ -295,6 +295,54 @@ export class MechanismService {
     return this.isPlaying || !this.atStartPose();
   }
 
+  /**
+   * How many joints make a drawing heavy enough to stop solving it in Edit.
+   *
+   * Below this a rebuild is milliseconds and nobody would thank us for the
+   * complication. The render stress test — forty-five joints — takes seconds,
+   * and paid them at every pointer move of a drag.
+   */
+  private static readonly SOLVE_IN_EDIT_UP_TO = 24;
+
+  /** True while the drawing is built but its motion has not been worked out. */
+  private solvingDeferred = false;
+
+  /** For the surfaces that have to say so, and for the gate that undoes it. */
+  get solvingIsDeferred(): boolean {
+    return this.solvingDeferred;
+  }
+
+  /** Set for the one rebuild that `solveNow` asks for. */
+  private forceSolveOnce = false;
+
+  private shouldDeferSolving(): boolean {
+    // The mode gate asks for the solve *before* it switches mode, so at the
+    // moment that matters the app is still in Edit and the test below would
+    // put the work off again -- which is what the flag is for.
+    if (this.forceSolveOnce) {
+      this.forceSolveOnce = false;
+      return false;
+    }
+    if (this.joints.length <= MechanismService.SOLVE_IN_EDIT_UP_TO) return false;
+    // In an analysis mode the answer is the whole point, so it is never
+    // deferred there however large the drawing is.
+    return !this.injector.get(SelectedTabService).isAnalysisMode();
+  }
+
+  /**
+   * Work out the motion now, for a drawing whose solve was put off.
+   *
+   * Called from the one place that needs it before it can decide anything --
+   * pressing an analysis mode -- rather than from a subscription, so the answer
+   * exists before the readiness gate reads it and the mode is not refused for
+   * the want of a solve nobody had asked for yet.
+   */
+  solveNow(): void {
+    if (!this.solvingDeferred) return;
+    this.forceSolveOnce = true;
+    this.updateMechanism();
+  }
+
   updateMechanism(save: boolean = false) {
     // Everything derived from cylinder STRUCTURE (not pose) caches against
     // this: the structures themselves, the drawn marks, the guards. Bumped
@@ -375,6 +423,23 @@ export class MechanismService {
     // time, so nothing else would notice, and the solver would silently drive
     // whichever input it found first while the other kept its badge.
     this.reconcileOneInputPerMechanism();
+    // Solving is the expensive half of a rebuild -- the loops once, then a
+    // position solve at every one of the cycle's samples -- and in Edit nothing
+    // reads the result but the traced-path preview. On a drawing large enough
+    // for that to be seconds rather than milliseconds, it waits until the
+    // reader asks for an analysis, which is the first moment the answer is
+    // actually wanted and a natural place to be kept waiting.
+    if (this.shouldDeferSolving()) {
+      this.solvingDeferred = true;
+      this.mechanisms = [];
+      this.ownSeconds = [];
+      this.ownPlaying = [];
+      this.playbackDirection = [];
+      this.isPlaying = false;
+      this.showPathHolder = false;
+      return;
+    }
+    this.solvingDeferred = false;
     this.mechanisms = this.partitions.map(
       //If the mechanism is simulatable, it will generate loops and all future time steps
       (partition) =>

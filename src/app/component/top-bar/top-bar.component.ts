@@ -326,6 +326,17 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       this.tabs.setTab(tab);
       return;
     }
+    // A large drawing is not solved while it is being edited, so the readiness
+    // below would refuse the mode for the want of an answer nobody had asked
+    // for yet. Asking for it *is* pressing this button, so it happens first.
+    //
+    // No progress message: the solve holds the main thread, so anything said
+    // here would not paint until after it had finished and there was nothing
+    // left to wait for. Telling the reader properly means moving the solve off
+    // the thread, which is its own piece of work.
+    if (this.mechanism.solvingIsDeferred) {
+      this.mechanism.solveNow();
+    }
     if (!this.canAnalyze(tab)) {
       RightPanelComponent.insistOn(setup);
     } else if (this.isActive(tab)) {

@@ -142,6 +142,22 @@
       background: rgba(0, 0, 0, 0.04);
     }
 
+    // Opening the menu moves focus into it, which is what lets a keyboard use
+    // it at all. But a menu opened with the mouse would then draw a ring around
+    // its first row, which reads as "this one is selected" to someone who only
+    // clicked the hamburger. `:focus-visible` is the browser's own answer to
+    // which of the two just happened, so the ring is drawn only for the reader
+    // who needs it.
+    &:focus {
+      outline: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid mat.m2-get-color-from-palette($primary-palette, 500);
+      outline-offset: -2px;
+      background: rgba(0, 0, 0, 0.04);
+    }
+
     &.active {
       color: mat.m2-get-color-from-palette($primary-palette, 500);
       font-weight: 500;
