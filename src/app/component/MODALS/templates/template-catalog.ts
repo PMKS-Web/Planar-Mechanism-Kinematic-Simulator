@@ -211,7 +211,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Screw Jack',
     category: 'slots',
     description:
-      'A plain guided ram with no cylinder skin: its drive is a length per second, not an rpm.',
+      'A plain guided slider with no cylinder drawn round it: its drive is a length per second, not an rpm.',
     thumbnail: 'assets/gifs/screw-jack.png',
     animation: 'assets/gifs/screw-jack.gif',
   },
@@ -247,7 +247,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Backhoe Bucket',
     category: 'cylinders',
     description:
-      'A driven ram feeding an ordinary four-bar: bell crank, link, and the bucket curls.',
+      'A driven cylinder feeding an ordinary four-bar: bell crank, link, and the bucket curls.',
     thumbnail: 'assets/gifs/backhoe-bucket.png',
     animation: 'assets/gifs/backhoe-bucket.gif',
   },
@@ -256,7 +256,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Scissor Lift',
     category: 'cylinders',
     description:
-      'Ram, supporting block and a slot in the moving platform — three parts, three jobs.',
+      'Cylinder, supporting block and a slot in the moving platform — three parts, three jobs.',
     thumbnail: 'assets/gifs/scissor-lift.png',
     animation: 'assets/gifs/scissor-lift.gif',
   },
@@ -313,7 +313,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Punch Press',
     category: 'forces',
     description:
-      'A load on the ram: the crank torque spikes where the rod comes into line with the slide.',
+      'A load on the slide: the crank torque spikes where the rod comes into line with it.',
     thumbnail: 'assets/gifs/punch-press.png',
     animation: 'assets/gifs/punch-press.gif',
   },
@@ -436,7 +436,7 @@ export const DEV_TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Every Kind of Machine',
     category: 'dev',
     description:
-      'A crank, a ram, a slider and a chain that never reaches ground — every readiness state ' +
+      'A crank, a cylinder, a slider and a chain that never reaches ground — every readiness state ' +
       'and every playback row at once.',
     thumbnail: 'assets/gifs/dev-all-machines.png',
   },

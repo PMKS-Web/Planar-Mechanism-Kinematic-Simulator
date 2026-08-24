@@ -48,6 +48,23 @@ done on purpose. The snackbar is the one channel for saying something they
 held still. If a third sentence is needed, the control needs a better label or
 the canvas needs to show it.
 
+**A tooltip says the one or two things the reader cannot work out from what is
+already on screen.** Everything else is padding, and padding is what pushes the
+useful sentence out of the first line. In particular:
+
+| Do not spend a tooltip on | Because |
+| --- | --- |
+| the unit the field is in | it is printed in the field |
+| that the setting is kept in the URL | everything is; the URL *is* the document |
+| how the value is used internally | that is a comment, not a tooltip |
+| the mode the reader is already in | `Available in Edit mode`, read from Edit mode, is the one line that cannot help |
+| a name for a thing the app never draws | `swatch`, `reciprocating mass`, `Right hand rule` — jargon the reader has no way to attach to anything |
+
+`Joint Color` needs `The color of this joint.` and nothing else. A way out
+belongs in a tooltip **only while the control is actually greyed** — build it
+conditionally, the way `SettingsService`'s units note is, so the sentence
+appears for the reader it can help and for nobody else.
+
 ---
 
 ## Naming things
@@ -77,6 +94,13 @@ so no label rewrites itself as it is used:
 | A verb, because it acts | A state, because it describes |
 | --- | --- |
 | `Attach Link`, `Delete Joint`, `Reverse Direction` | `Grounded`, `Driven Input`, `Slider`, `Welded`, `Locked`, `Trace Path`, `Global Frame`, `Drawn as a Disc` |
+
+The Edit panel spells the same states the same way — its toggles read
+`Grounded`, `Slider`, `Welded` and `Trace Path`, not `Ground`, `Weld` or
+`Show Joint Path`. Where the panel has a button rather than a switch it names
+the act without reaching for `Make`: the disc control is `Draw as a Disc` /
+`Draw as a Bar`, which is the right-click menu's `Drawn as a Disc` said as a
+verb.
 
 The Edit panel's toggles already worked this way; the right-click menu followed
 in the context-menu redesign, which is why `Add Ground` / `Remove Ground` no

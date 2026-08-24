@@ -229,7 +229,7 @@ export function copyFor(progress: TutorialProgress): TutorialCopy {
     }
     case 4:
       return {
-        title: 'Make one joint the input',
+        title: 'Drive one of the joints',
         body: `Right-click joint ${target}, the ringed one, and switch on Driven Input. The input is the joint that drives the mechanism. A mechanism needs exactly one.`,
       };
     default:

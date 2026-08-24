@@ -13,56 +13,16 @@
   //Param 4: mechPart: If Joint 'a','b','c'... If Link 'ab','bc','cd'...
   -->
 
-  @if (!this.mechanismService.oneValidMechanismExists()) {
-    <panel-section-collapsible [warning]="true" [expanded]="false" id="placeholderContainer">
-      <title-block
-        alwaysShown
-        icon="expand_more"
-        description="{{
-          mechanismService.invalidReason() ?? 'This mechanism is not valid and cannot be analyzed.'
-        }} Every requirement:"
-      >
-        Analysis Help
-      </title-block>
-      <mat-list class="example-list-wrapping">
-        <mat-list-item lines="3">
-          <span matListItemTitle>Must have one input</span>
-          <span>Mechanisms should have 1 and only one joint defined as a input.</span>
-        </mat-list-item>
-        <mat-list-item lines="2">
-          <span matListItemTitle>At least one joint is grounded</span>
-          <span>An input joint doubles as a ground joint.</span>
-        </mat-list-item>
-        <mat-list-item lines="3">
-          <span matListItemTitle>No orphaned joints</span>
-          <span>
-            Joints that are not a part of any link are orphaned. Remove or connect orphaned joints.
-          </span>
-        </mat-list-item>
-        <mat-list-item lines="3">
-          <span matListItemTitle>No free floating links</span>
-          <span>
-            Links that are not part of a grounded joint are free floating. Remove or connect free
-            floating links.
-          </span>
-        </mat-list-item>
-        <mat-list-item lines="3">
-          <span matListItemTitle>Degrees of freedom must be one</span>
-          <span
-            >DOF = 3*(#_of_Links-1) - 2*(#_of_joints). Count both revolute joints and slider
-            joints.</span
-          >
-        </mat-list-item>
-        <mat-list-item lines="3">
-          <span matListItemTitle>Welded links count as one link</span>
-          <span>
-            If two or more links are welded together at a joint they should only be counted as 1
-            link.
-          </span>
-        </mat-list-item>
-      </mat-list>
-    </panel-section-collapsible>
-  }
+  <!--
+    The mobility checklist that used to stand here is gone. It rendered on
+    `!oneValidMechanismExists()`, and the mode button enters Kinematic Analysis
+    on exactly that same predicate -- so the one state it spoke in was a state
+    this panel could not be reached in. Pressing the mode on an unsolvable
+    drawing opens the setup drawer instead, which names the blocker for the
+    mechanism at fault and offers a button that goes to it. That is where this
+    conversation happens now; the list here was six general conditions written
+    before per-mechanism readiness existed, and nobody could see it to notice.
+  -->
 
   <!--
     A mechanism that runs but cannot use all of a cylinder it contains used to

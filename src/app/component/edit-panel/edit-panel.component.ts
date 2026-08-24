@@ -1773,7 +1773,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     return !!link?.isCircle && link.canBeCircular();
   }
 
-  /** Why Make Circular is unavailable, in terms of this particular link. */
+  /** Why Draw as a Disc is unavailable, in terms of this particular link. */
   whyNotCircular(): string {
     const link = this.activeSrv.selectedLink;
     const grounded = link.joints.filter(
@@ -1781,18 +1781,18 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     );
     const held = link.isCircle ? 'Drawn as a bar: a' : 'A';
     if (link.subset.length > 0) {
-      return `${held} disc is centred on one fixed pin, and a welded compound is drawn from the
+      return `${held} disc is centered on one fixed pin, and a welded compound is drawn from the
         shapes of its parts. Unweld it to draw a part of it as a disc.`;
     }
     if (grounded.length === 0) {
-      return `${held} disc is centred on the pin its link turns about, and this link has no fixed
+      return `${held} disc is centered on the pin its link turns about, and this link has no fixed
         pin. Ground one of its joints to draw it as a disc.`;
     }
     if (grounded.length > 1) {
-      return `${held} disc is centred on the pin its link turns about, and this link is fixed at
+      return `${held} disc is centered on the pin its link turns about, and this link is fixed at
         ${grounded.length} joints, so it does not turn about any of them.`;
     }
-    return `${held} disc is centred on a fixed revolute pin; this link's fixed joint is a slider,
+    return `${held} disc is centered on a fixed revolute pin; this link's fixed joint is a slider,
       which anchors a slot rather than a pivot.`;
   }
 

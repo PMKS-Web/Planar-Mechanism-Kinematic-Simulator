@@ -572,7 +572,7 @@ export class RealLink extends Link {
     return pivots.length === 1 ? pivots[0] : undefined;
   }
 
-  /** Whether Make Circular has anything to act on. */
+  /** Whether Draw as a Disc has anything to act on. */
   canBeCircular(): boolean {
     return this.subset.length === 0 && this.groundPivot() !== undefined;
   }

@@ -107,18 +107,18 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
    */
   readonly help: Record<string, string> = {
     decimals:
-      'How many digits after the point every number keeps. Full writes what the solver produced, which is what to choose if the rounding is going to happen somewhere else.',
+      'How many digits after the point every number keeps. Full writes exactly what the solver produced.',
     files:
-      'One file holds every chosen part of a machine against one time column. Per part writes a file for each, which is easier to chart one at a time and harder to compare across. Either way a machine gets its own file, because two machines run on two clocks.',
+      'One file puts every chosen part of a machine against one time column; per part writes a file each. Either way a machine gets its own file, because two machines run on two clocks.',
     sheets:
-      'By analysis puts kinematics and forces on sheets of their own, so one can be charted without the other’s axis running through it. By part gives every chosen joint and link a sheet.',
+      'By analysis puts kinematics and forces on sheets of their own. By part gives every chosen joint and link a sheet.',
     images:
       'SVG stays sharp at any size and can be opened and edited; PNG drops into a document that will not take a vector. Both carry the PMKS+ mark.',
-    name: 'The stem every file is named from. Where the export writes more than one, what tells them apart is added to it.',
+    name: 'The stem every file is named from. Where more than one is written, what tells them apart is added to it.',
     analysis:
-      'Static solves the mechanism held still at each position, which is the equilibrium a hand calculation gives. In-motion adds the inertia of the moving parts, so a fast machine reads differently from a slow one.',
+      'Static solves the mechanism held still at each position — the equilibrium a hand calculation gives. In-motion adds the inertia of the moving parts.',
     components:
-      'X and Y are the components along the axes. Magnitude is √(X² + Y²) — the size of the vector, without its direction — and only a series that has two components has one to add.',
+      'X and Y are the components along the axes. Magnitude is √(X² + Y²) — the size of the vector, without its direction.',
   };
 
   /**

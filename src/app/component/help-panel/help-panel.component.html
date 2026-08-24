@@ -33,7 +33,7 @@
           <mat-label>Leave a message</mat-label>
           <textarea type="text" matInput formControlName="comment"></textarea>
           @if (commentForm.controls['comment'].hasError('required')) {
-            <mat-error> Message is required </mat-error>
+            <mat-error> Type a message before sending it. </mat-error>
           }
         </mat-form-field>
         <mat-checkbox color="primary" formControlName="response">
@@ -53,7 +53,7 @@
               commentForm.controls['email'].hasError('email') &&
               !commentForm.controls['email'].hasError('required')
             ) {
-              <mat-error> Invalid email address </mat-error>
+              <mat-error> That is not an email address. </mat-error>
             }
           </mat-form-field>
         }

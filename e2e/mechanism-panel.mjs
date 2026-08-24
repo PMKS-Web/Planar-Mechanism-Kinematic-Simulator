@@ -43,7 +43,7 @@ const tab = (name) => page.locator('.tabButton', { hasText: name });
 // pressing the mode you are already in toggles its setup drawer. So reaching
 // the drawer for an enterable mode takes up to two presses, and this asks the
 // drawer itself rather than counting clicks.
-const setupTitleFor = (name) => (name === 'Force' ? 'Force analysis setup' : 'Analysis setup');
+const setupTitleFor = (name) => (name === 'Force' ? 'Force Analysis setup' : 'Analysis setup');
 const openSetupFor = async (name) => {
   for (let press = 0; press < 2; press++) {
     const showing = await page

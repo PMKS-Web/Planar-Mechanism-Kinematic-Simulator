@@ -18,19 +18,19 @@ export type MergeRefusal =
 
 /** What to tell the user when a merge is refused. */
 export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
-  'same-joint': 'A joint cannot be merged into itself',
-  'shares-a-link': 'These joints are on the same link, so merging them would collapse it',
-  prismatic: 'Drop onto the pin of a slider, not onto its slot',
-  'two-sliders': 'Only one of these joints can carry a slider',
+  'same-joint': 'A joint cannot be merged into itself.',
+  'shares-a-link': 'These joints are on the same link, so merging them would collapse it.',
+  prismatic: 'Drop onto the pin of a slider, not onto its slot.',
+  'two-sliders': 'Only one of these joints can carry a slider.',
   'over-constrained':
-    'Merging here would tie the same two joints together twice, over-constraining the linkage',
-  'own-carrier': 'A slider cannot ride on a link it is part of',
-  'not-a-real-joint': 'This joint cannot be merged',
-  'sealed-cylinder': 'A cylinder is one sealed part — attach at its mounts instead',
-  'welded-mount': 'A welded joint cannot merge with a cylinder mount — unweld it first',
+    'Merging here would tie the same two joints together twice, over-constraining the mechanism.',
+  'own-carrier': 'A slider cannot ride on a link it is part of.',
+  'not-a-real-joint': 'This joint cannot be merged.',
+  'sealed-cylinder': 'A cylinder is one sealed part — attach at one of its two joints instead.',
+  'welded-mount': 'A welded joint cannot merge with a cylinder joint — unweld it first.',
   'driven-joint':
-    'A driven joint can only join two bodies — remove the input first, or attach somewhere else',
-  'own-cylinder': 'A cylinder cannot fold onto itself',
+    'A driven joint can only join two bodies — remove the input first, or attach somewhere else.',
+  'own-cylinder': 'A cylinder cannot fold onto itself.',
 };
 
 /**

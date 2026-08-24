@@ -254,7 +254,6 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
 
     expect(fixture.nativeElement.querySelector('#cylinderReachContainer')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('62% of its stroke');
-    expect(fixture.nativeElement.querySelector('#placeholderContainer')).toBeNull();
     fixture.destroy();
   });
 
@@ -286,9 +285,6 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     // panel answered with a full set of cards reading "—" over null plots.
     const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'AB');
     fixtureData.service.mechanisms[0].isMechanismValid = () => false;
-    // The drawing-wide block above the panel is a different question, and the
-    // harness has no reason to answer it.
-    fixtureData.service.invalidReason = () => undefined;
     fixture.detectChanges();
 
     expect(fixture.componentInstance.selectionIsSimulatable).toBe(false);

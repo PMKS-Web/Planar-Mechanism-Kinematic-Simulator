@@ -48,7 +48,7 @@
         <button class="sectionHeader" (click)="massesOpen = !massesOpen">
           <span class="sectionName">Masses</span>
           @if (!inEditMode()) {
-            <span class="sectionHint">Editable in the Edit tab</span>
+            <span class="sectionHint">Editable in Edit mode</span>
           }
           <mat-icon>{{ massesOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
         </button>
@@ -57,7 +57,7 @@
             <div class="massRow head">
               <span>Body</span>
               <span>Mass</span>
-              <span>Rotational inertia</span>
+              <span>Rotational Inertia</span>
               <span></span>
             </div>
             @for (row of massRows(); track row.body.id) {
@@ -117,7 +117,7 @@
       <div class="mechBlock">
         <button class="sectionHeader" (click)="forceOpen = !forceOpen">
           <span class="sectionName">
-            Force analysis
+            Force Analysis
             @if (forceOutstanding > 0) {
               <span class="chip warning">{{ forceOutstanding }} to set</span>
             } @else {

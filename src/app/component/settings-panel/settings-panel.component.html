@@ -9,7 +9,7 @@
         option3="SI (m)"
         [formGroup]="this.settingsForm"
         _formControl="globalunit"
-        tooltip="Select the global units to be used for the analysis. Available in Edit mode."
+        [tooltip]="'The length unit the whole drawing is measured in.' + unitsLockedNote()"
         [disabled]="!unitsEditable()"
         >Global Units
       </radio-block>
@@ -18,14 +18,16 @@
         option2="Radian"
         [formGroup]="this.settingsForm"
         _formControl="angleunit"
-        tooltip="Select the units to be used for angles. This updates units for derived units as well (e.g. angular velocity, etc.) Available in Edit mode."
+        [tooltip]="
+          'The unit for angles, angular velocity and angular acceleration.' + unitsLockedNote()
+        "
         [disabled]="!unitsEditable()"
         >Angle Units
       </radio-block>
       <toggle-block
         [formGroup]="this.settingsForm"
         _formControl="gravity"
-        tooltip="Weight loads every link that has mass. Turn off to analyze forces without gravity. Stored in the URL, so a shared analysis keeps it."
+        tooltip="Weight loads every link that has mass. Turn it off to analyze forces without gravity."
       >
         Gravity
       </toggle-block>
@@ -60,7 +62,7 @@
       <toggle-block
         [formGroup]="this.settingsForm"
         _formControl="snapToAlignment"
-        tooltip="Dragging squares up with a joint it is nearly level with, and says which one. Hold Option to drag free of it."
+        tooltip="Dragging squares a joint up with one it is nearly level with. Hold Option to drag free of it."
       >
         Snap to Alignment
       </toggle-block>
@@ -68,7 +70,7 @@
         type="number"
         [formGroup]="this.settingsForm"
         _formControl="objectScale"
-        tooltip="How big joints, blocks and cylinders are drawn, relative to the links. Takes effect immediately. (Default: 0.7)"
+        tooltip="How big joints, blocks and cylinders are drawn, relative to the links. (Default: 0.7)"
         >Object Scale
       </input-block>
       <button-block icon="auto_fix_normal" [click]="updateObjectScale.bind(this)"

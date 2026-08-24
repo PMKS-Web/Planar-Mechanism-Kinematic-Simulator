@@ -58,25 +58,19 @@ const REPLACE_WARNING = 'synthesis.replace-edited';
 
 const HELP = {
   length:
-    'The length of the end-effector link — the part whose three positions you are designing for. ' +
-    "The four-bar's coupler is pinned to this link, but not necessarily at its ends.",
-  ref:
-    'Which point on the end-effector link the coordinates describe, and the point it turns about: ' +
-    'its back end, its middle, or its front end.',
+    'The length of the end-effector link — the part whose three positions you are designing for.',
+  ref: 'Which point on the end-effector link the coordinates describe, and the point it turns about.',
   duplicate:
     'Copy the last position and offset it slightly — a quick start for three similar positions.',
   branch:
-    'A four-bar can be closed two ways through the same ground pins. Which way it is closed ' +
-    'decides which of the three positions it can pass through without coming apart.',
+    'A four-bar can be closed two ways through the same ground pins, and only one of them ' +
+    'may reach all three positions without coming apart.',
   pin:
     'Which ground pin carries the input. A four-bar that will not turn from one ground pin often ' +
     'turns freely from the other.',
   driver:
     'Adds a crank and coupler sized so one full turn walks the mechanism through all three ' +
     'positions, making it a six-bar a motor can run.',
-  requirements:
-    'What a solution has to satisfy to be listed. Every one you switch on narrows the search; ' +
-    'switching one off widens it.',
 };
 
 @Component({

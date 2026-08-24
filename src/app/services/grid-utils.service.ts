@@ -261,7 +261,7 @@ export class GridUtilsService {
     if (sealed && (joint.id === sealed.barrelFar.id || joint.id === sealed.rodFar.id)) {
       return {
         short: 'part is sealed',
-        long: 'A cylinder is one sealed part, so its joints cannot be fused into a neighbouring body. Attach a link here instead.',
+        long: 'A cylinder is one sealed part, so its joints cannot be fused into a neighboring body. Attach a link here instead.',
       };
     }
     if (joint.input) {

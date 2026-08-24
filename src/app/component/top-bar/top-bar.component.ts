@@ -441,8 +441,8 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
 
   exportTooltip(): string {
     return this.canExport()
-      ? 'Choose parts, columns and a file format'
-      : 'Nothing has been solved yet, so there are no numbers to export';
+      ? 'Choose parts, columns and a file format.'
+      : 'Nothing has been solved yet, so there are no numbers to export.';
   }
 
   exportData(): void {

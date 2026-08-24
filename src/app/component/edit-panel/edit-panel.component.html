@@ -4,7 +4,7 @@
       <title-block
         alwaysShown
         icon="expand_more"
-        description="Stop animation or reset the time slider to 0 to edit."
+        description="Editing is paused. Stop the animation, or step it back to the start, to change the mechanism."
         >Edit Help
       </title-block>
       <img src="assets/gifs/Stop.gif" />
@@ -111,14 +111,14 @@
             [formGroup]="backgroundImageForm"
             _formControl="rotation"
             wide
-            tooltip="How far the picture is turned about its own centre. A counter-clockwise turn is a positive angle (Right hand rule)."
+            tooltip="How far the picture is turned. Counter-clockwise is positive."
             >Rotation
           </input-block>
           <input-block
             [formGroup]="backgroundImageForm"
             _formControl="opacity"
             unit="%"
-            tooltip="How solid the picture is. Fade it back to see the grid and the mechanism through it."
+            tooltip="How solid the picture is. Fade it back to see the mechanism through it."
             >Opacity
           </input-block>
         </collapsible-subseciton>
@@ -162,22 +162,16 @@
           formControl1="xPos"
           formControl2="yPos"
           [formGroup]="jointForm"
-          tooltip="The location of the joint in {{
-            this.settingsService.lengthUnit.value == 0
-              ? 'inches'
-              : this.settingsService.lengthUnit.value == 1
-                ? 'centimeters'
-                : 'meters'
-          }}."
+          tooltip="Where this joint sits on the grid."
         >
           Joint Position
         </dual-input-block>
         <toggle-block
           [formGroup]="jointForm"
           _formControl="ground"
-          tooltip="Ground this joint, making it non-moving."
+          tooltip="Fixes this joint to the frame, so nothing can move it."
         >
-          Ground
+          Grounded
         </toggle-block>
         <!-- The angle belongs to a grounded guide alone: a floating slot's
              direction is the line through two of its carrier's joints, so
@@ -206,9 +200,9 @@
         <toggle-block
           [formGroup]="jointForm"
           _formControl="weld"
-          tooltip="Fuse whatever meets at this joint into one rigid body."
+          tooltip="Fuses whatever meets at this joint into one rigid body."
         >
-          Weld
+          Welded
         </toggle-block>
         <!-- The same block every other button in this panel is built from, so
              its border, its label and its icon take the panel's own colours.
@@ -275,8 +269,8 @@
           <input-block
             [formGroup]="jointForm"
             _formControl="sliderMass"
-            tooltip="The sliding body's mass, concentrated at this pin. Gravity pulls on it, the slot has to take it, and in an in-motion analysis it is the reciprocating mass. Zero is an idealized massless slide."
-            >Slider mass</input-block
+            tooltip="The sliding body's mass, acting at this pin. Zero is an idealized massless slide."
+            >Sliding Body</input-block
           >
         </collapsible-subseciton>
       }
@@ -289,13 +283,13 @@
         <toggle-block
           [formGroup]="jointForm"
           _formControl="curve"
-          tooltip="Show / hide the path the joint takes."
-          >Show Joint Path
+          tooltip="Show / hide the path this joint takes through the cycle."
+          >Trace Path
         </toggle-block>
         <color-picker
           type="joint"
           [joint]="activeSrv.selectedJoint"
-          tooltip="Draw this one joint in its own colour, to tell it apart from the others. The first swatch puts it back to the colour they all share. Travels with the drawing."
+          tooltip="The color of this joint."
           >Joint Color</color-picker
         >
       </collapsible-subseciton>
@@ -361,7 +355,7 @@
           unitFormControl="travelUnit"
           (fieldEntry)="setCylinderRangeOverlay($event === -2 ? undefined : 'travel')"
           [emitterOutputID]="-1"
-          tooltip="How far the rod moves. The picker switches between the stroke itself and the closed and open lengths — one number, three ways of saying it."
+          tooltip="How far the rod moves. The picker reads it as the stroke, or as the closed and open lengths."
           >Travel
         </input-block>
         <input-block
@@ -448,7 +442,7 @@
         <input-block
           [formGroup]="cylinderForm"
           _formControl="headMass"
-          tooltip="The sliding body's mass, concentrated at the pin — the reciprocating mass."
+          tooltip="The sliding body's mass, acting at the pin."
           (mouseenter)="setCylinderPartPreview('head')"
           (mouseleave)="setCylinderPartPreview(undefined)"
           >Sliding Body</input-block
@@ -495,7 +489,7 @@
           formControl1="length"
           formControl2="angle"
           [formGroup]="linkForm"
-          tooltip="The length and angle of this link. A counter-clockwise rotation is a positive angle (Right hand rule)."
+          tooltip="The length and angle of this link. Counter-clockwise is positive."
           (field1Entry)="setShowLinkLengthOverlay($event)"
           (field2Entry)="setShowLinkAngleOverlay($event)"
           [disabled]="activeSrv.selectedLink.joints.length > 2"
@@ -527,7 +521,7 @@
 
              The label follows what is actually on the canvas, not the stored
              choice: a disc whose ground has since been removed is drawn as a
-             bar, and a button reading "Make Bar" over a bar is a puzzle. -->
+             bar, and a button reading "Draw as a Bar" over a bar is a puzzle. -->
         <!-- The reason it cannot be pressed is carried by this wrapper, not by
              the button: a disabled button receives no pointer events, so its
              own tooltip would never open — the one explanation of why it is
@@ -548,10 +542,10 @@
             [tooltip]="
               drawnAsDisc()
                 ? 'Draw this link as an ordinary bar between its joints.'
-                : 'Draw this link as the disc it sweeps, centred on its fixed pin. Its mass and rotational inertia are unchanged.'
+                : 'Draw this link as the disc it sweeps, centered on its fixed pin. Its mass and rotational inertia are unchanged.'
             "
           >
-            {{ drawnAsDisc() ? 'Make Bar' : 'Make Circular' }}
+            {{ drawnAsDisc() ? 'Draw as a Bar' : 'Draw as a Disc' }}
           </button-block>
         </div>
       </collapsible-subseciton>
@@ -565,7 +559,7 @@
         <input-block
           [formGroup]="linkForm"
           _formControl="mass"
-          tooltip="The mass used by force analysis. Zero is an idealized massless bar: gravity and inertia skip it, and rotational inertia reads zero."
+          tooltip="The mass of this link. Zero is an idealized massless bar, which gravity and inertia skip."
           >Mass</input-block
         >
         <!-- Everything below Mass describes how that mass is distributed, so on
@@ -642,7 +636,7 @@
             [formGroup]="linkForm"
             _formControl="massMoI"
             class="moiBlock"
-            tooltip="The mass moment of inertia about the link's center of mass. Derived from the shape as a uniform body until a value is typed."
+            tooltip="Rotational inertia about the link's center of mass. Derived from its shape until you type a value."
             [class.derived]="!activeSrv.selectedLink.moiIsCustom"
             >Rotational Inertia
             <span fieldSuffix class="stateSuffix">
@@ -701,7 +695,7 @@
           formControl1="magnitude"
           formControl2="angle"
           [formGroup]="forceForm"
-          tooltip="The magnitude and angle of this force. A counter-clockwise rotation is a positive angle (Right hand rule)."
+          tooltip="The magnitude and angle of this force. Counter-clockwise is positive."
         >
           Magnitude and Angle
         </dual-input-block>
@@ -718,7 +712,7 @@
         <radio-block
           [formGroup]="forceForm"
           _formControl="isGlobal"
-          tooltip="The frame of reference for the force."
+          tooltip="Global keeps the force pointing the same way. Local turns it with the link it is on."
           option1="Local (Link {{ this.activeSrv.selectedForce.link.name }})"
           option2="Global"
         >
@@ -734,7 +728,7 @@
         <color-picker
           type="force"
           [force]="activeSrv.selectedForce"
-          tooltip="Draw this one force in its own colour, from the same six the links use. Travels with the drawing."
+          tooltip="The color of this force."
           >Force Color</color-picker
         >
       </collapsible-subseciton>

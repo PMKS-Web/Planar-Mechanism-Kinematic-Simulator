@@ -117,7 +117,7 @@ export class AnalysisSetupComponent {
    * Counted rather than listed, because the list is right underneath it.
    */
   get title(): string {
-    return this.mode() === 'force' ? 'Force analysis setup' : 'Analysis setup';
+    return this.mode() === 'force' ? 'Force Analysis setup' : 'Analysis setup';
   }
 
   get summary(): string {
@@ -131,8 +131,8 @@ export class AnalysisSetupComponent {
           : `${blockerText} before forces can be solved.`;
       }
       return warnings > 0
-        ? `Force analysis runs. ${warnings === 1 ? 'One thing below is' : `${warnings} things below are`} worth a look before trusting the numbers.`
-        : 'Force analysis is ready to run.';
+        ? `Force Analysis runs. ${warnings === 1 ? 'One thing below is' : `${warnings} things below are`} worth a look before trusting the numbers.`
+        : 'Force Analysis is ready to run.';
     }
     const all = this.readiness;
     if (all.length === 0) {

@@ -238,6 +238,19 @@ export class SettingsPanelComponent implements OnDestroy {
   }
 
   /**
+   * The way back to a units switch that is greyed out — and nothing at all when
+   * it is not. Told every time, "switch to Edit mode" is read most often by the
+   * reader already standing in Edit mode, where it is the one sentence in the
+   * tooltip that cannot help them.
+   */
+  unitsLockedNote(): string {
+    if (this.unitsEditable()) return '';
+    return this.settingsService.animating.value
+      ? ' Stop the animation to change it.'
+      : ' Switch to Edit mode to change it.';
+  }
+
+  /**
    * The single length-unit switch. Both the Global Units radio and the internal
    * length control funnel here so a unit change always rescales the mechanism's
    * stored geometry, mass, inertia, and forces — never just relabels them.

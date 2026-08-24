@@ -71,7 +71,7 @@ await page.waitForTimeout(600);
 let text = await drawerText();
 record(
   'pressing a mode it cannot enter opens the list',
-  text.includes('Force analysis setup'),
+  text.includes('Force Analysis setup'),
   text
 );
 // Each mode has a drawer of its own: a reader refused by one should not have

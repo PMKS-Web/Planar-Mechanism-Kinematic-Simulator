@@ -8,7 +8,7 @@ import { MODEL_SCALE } from 'src/app/model/render-scale';
 import { CandidateSearch, PosePoint } from './synthesis-candidates';
 
 /*
-Service responsible for storing end effector poses to be synthesized
+Service responsible for storing end-effector poses to be synthesized
 into fourbars. Relevant to the Synthesis tab of the app.
 */
 

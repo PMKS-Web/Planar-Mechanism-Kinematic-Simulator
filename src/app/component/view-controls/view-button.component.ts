@@ -24,7 +24,7 @@ import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-sh
 export class ViewButtonComponent {
   private shortcuts = inject(KeyboardShortcutsService);
 
-  /** What a switch puts on the grid: "Center of Mass", "traced paths". */
+  /** What a switch puts on the grid: "Center of Mass", "Traced Paths". */
   readonly noun = input<string>();
   /** The glyph for each state. The `shown` one is the plain, uncrossed glyph. */
   readonly shownIcon = input<string>();

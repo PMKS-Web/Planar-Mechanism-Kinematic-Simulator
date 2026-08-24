@@ -11,9 +11,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
-import { PanelSectionCollapsibleComponent } from '../BLOCKS/panel-section-collapsible/panel-section-collapsible.component';
 import { TitleBlock } from '../BLOCKS/title/title.component';
-import { MatList, MatListItem, MatListItemTitle } from '@angular/material/list';
 import { MatIcon } from '@angular/material/icon';
 import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
@@ -42,11 +40,7 @@ export interface ForceAnalysisRow {
   styleUrls: ['./analysis-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
-    PanelSectionCollapsibleComponent,
     TitleBlock,
-    MatList,
-    MatListItem,
-    MatListItemTitle,
     MatIcon,
     MechanismPanelComponent,
     PanelSectionComponent,
@@ -185,10 +179,10 @@ export class AnalysisPanelComponent {
     if (driven instanceof PrisJoint) {
       // Toward the two ends the Edit panel's Travel field names: closed and open.
       const direction = signed < 0 ? 'closing' : 'opening';
-      return `The input speed is set to ${speed.toFixed(2)} ${this.linearSpeedUnit}, ${direction}.`;
+      return `Driven at ${speed.toFixed(2)} ${this.linearSpeedUnit}, ${direction}.`;
     }
     const direction = signed < 0 ? 'clockwise' : 'counter-clockwise';
-    return `The input speed is set to ${speed.toFixed(2)} RPM in the ${direction} direction.`;
+    return `Driven at ${speed.toFixed(2)} RPM, ${direction}.`;
   }
 
   /**
@@ -206,9 +200,9 @@ export class AnalysisPanelComponent {
       const name = `Cylinder ${sealed.barrelFar.name || sealed.barrelFar.id}${
         sealed.rodFar.name || sealed.rodFar.id
       }`;
-      return `This can be changed under Expansion Speed in ${name}'s Edit panel.`;
+      return `Change it under Expansion Speed in ${name}'s Edit panel.`;
     }
-    return "This can be changed in the input joint's Edit panel.";
+    return "Change it in the input joint's Edit panel.";
   }
 
   /**

@@ -3195,7 +3195,7 @@ export class MechanismService {
       title: 'A mechanism that runs',
       body:
         runnable.length > 0
-          ? 'Force analysis is solved over a solved cycle, and there is one.'
+          ? 'Forces are solved over a cycle the kinematics already close, and there is one.'
           : 'Forces are solved at each position of a cycle, so the kinematics have to work first. Analysis setup lists what is missing.',
     });
     if (runnable.length === 0) {
