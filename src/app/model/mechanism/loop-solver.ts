@@ -76,6 +76,20 @@ export class LoopSolver {
    * a joint that travels three units as standing still.
    */
   static determineLoops(joints: Joint[], links: Link[]): Loop[] {
+    // Enumerating every walk between every pair of grounds is exponential, and
+    // on a forty-five joint drawing it is two thirds of the cost of a rebuild.
+    // None of it depends on where anything *is*: the walk reads connectivity,
+    // ground and input flags, slot well-formedness, and which links span which
+    // joints. A drag moves joints and changes no topology at all, so it was
+    // paying for the same answer at every pointer move.
+    const signature = this.topologySignature(joints, links);
+    const remembered = this.loopCache.get(signature);
+    if (remembered) {
+      // Fresh all the way down, edges included: a consumer that reorders the
+      // list, or writes to an edge to re-orient it, would otherwise corrupt
+      // every later rebuild of the same drawing.
+      return this.copyOf(remembered);
+    }
     const loops: Loop[] = [];
     const slotNeighbours = this.slotAdjacency(joints);
     const groundJoints: Joint[] = [];
@@ -114,7 +128,55 @@ export class LoopSolver {
         );
       });
     }
-    return this.independent(this.deduplicate(loops));
+    const answer = this.independent(this.deduplicate(loops));
+    // A handful of entries, because a drawing holding several machines asks for
+    // one topology per machine and would otherwise evict itself every rebuild.
+    if (this.loopCache.size >= 12) {
+      this.loopCache.delete(this.loopCache.keys().next().value as string);
+    }
+    this.loopCache.set(signature, this.copyOf(answer));
+    return answer;
+  }
+
+  /** Last few topologies and the loops they came out to. */
+  private static loopCache = new Map<string, Loop[]>();
+
+  /** Loops nothing else holds a reference into. */
+  private static copyOf(loops: Loop[]): Loop[] {
+    return loops.map((loop) => ({ id: loop.id, edges: loop.edges.map((edge) => ({ ...edge })) }));
+  }
+
+  /**
+   * Everything the enumeration reads, and nothing it does not.
+   *
+   * Deliberately conservative: it is cheaper to rebuild loops that did not need
+   * rebuilding than to serve a drawing the loops of a different one. Positions
+   * are the one thing left out, and leaving them out is the whole point.
+   */
+  private static topologySignature(joints: Joint[], links: Link[]): string {
+    const parts: string[] = [];
+    for (const joint of joints) {
+      if (!(joint instanceof RealJoint)) {
+        parts.push(`?${joint.id}`);
+        continue;
+      }
+      const slot =
+        joint instanceof PrisJoint
+          ? `P${joint.isFloating ? 1 : 0}${joint.isSlotWellFormed ? 1 : 0}` +
+            `${joint.slotJointA?.id ?? ''}.${joint.slotJointB?.id ?? ''}.${joint.carrier?.id ?? ''}`
+          : 'R';
+      const linked = joint.connectedJoints.map((one) => one.id).join('.');
+      const holding = joint.links.map((one) => one.id).join('.');
+      parts.push(
+        `${joint.id}|${joint.ground ? 1 : 0}${joint.input ? 1 : 0}${joint.isWelded ? 1 : 0}` +
+          `|${slot}|${linked}|${holding}`
+      );
+    }
+    parts.push('--');
+    for (const link of links) {
+      parts.push(`${link.id}:${link.joints.map((one) => one.id).join('.')}`);
+    }
+    return parts.join(';');
   }
 
   /**
