@@ -430,7 +430,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     category: 'machines',
     description:
       'One chain of four bars, drawn four times with a different bar held still. Each keeps ' +
-      'its colour, so you can watch a crank become a coupler.',
+      'its color, so you can watch a crank become a coupler.',
     thumbnail: 'assets/gifs/four-bar-inversions.png',
     animation: 'assets/gifs/four-bar-inversions.gif',
   },
