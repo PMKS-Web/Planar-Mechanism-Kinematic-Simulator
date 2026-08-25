@@ -51,8 +51,10 @@ their source. Everything browser-driven lives here.
 - `whats-new.mjs` — which of the three welcomes a reader gets, and the two covers that go up while
   a mechanism is being solved: a first visit gets the tutorial and no release notes, a returning
   visit gets the notes once and never again (by the button, by Escape, and across a reload),
-  `?library` beats both and leaves the address bar clean, and the boot splash is up before the app
-  is and gone once it has drawn
+  `?library` beats both and leaves the address bar clean, the boot splash is up before the app is
+  and gone once it has drawn, and the loading cover goes up and comes back down for a template, a
+  `.pmks` file and a `.pmks` file that will not decode -- and does not go up at all when the file
+  picker is dismissed
 
 ## Running
 

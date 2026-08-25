@@ -192,6 +192,72 @@ const seen = (page, selector) =>
   await context.close();
 }
 
+// Opening a `.pmks` file is the other way a whole drawing is replaced, and the
+// one where the cover has somewhere to get stuck: a file that will not decode
+// leaves the reader on the drawing they had, and a cover left standing over it
+// is a window that has stopped answering for good.
+{
+  const { context, page } = await arrive(QUIET_START);
+  // Every appearance and disappearance, in order, so "it went up and came back
+  // down" can be asserted rather than sampled at one moment.
+  await page.evaluate(() => {
+    window.__cover = [];
+    // The last state is held in the closure rather than read back off the list,
+    // so clearing the list between cases does not make the next mutation look
+    // like a change from nothing.
+    let last = Boolean(document.querySelector('.loadingScrim'));
+    new MutationObserver(() => {
+      const present = Boolean(document.querySelector('.loadingScrim'));
+      if (present === last) return;
+      last = present;
+      window.__cover.push(present);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  });
+  const openFile = async (name, contents) => {
+    await page.evaluate(() => window.__cover.splice(0));
+    await page.locator('[aria-label="Project menu"]').click();
+    await page
+      .locator('#projectMenu input[type=file]')
+      .setInputFiles({ name, mimeType: 'text/plain', buffer: Buffer.from(contents) });
+    await page.waitForTimeout(2500);
+    return page.evaluate(() => window.__cover);
+  };
+
+  const good = await openFile('four-bar.pmks', FOUR_BAR);
+  check(
+    'Opening a file raises the cover and puts it back down',
+    good[0] === true && good.at(-1) === false,
+    JSON.stringify(good)
+  );
+  const joints = await page.locator('[id^="joint_"]').count();
+  check('The file actually loaded', joints > 0, `${joints} joints`);
+
+  const bad = await openFile('broken.pmks', 'not-a-pmks-file');
+  check(
+    'A file that will not decode does not strand the cover',
+    bad.at(-1) === false && (await page.locator('.loadingScrim').count()) === 0,
+    JSON.stringify(bad)
+  );
+  check(
+    'and it is reported as a failure, not a success',
+    (await page.getByText(/could not be opened/i).count()) > 0 &&
+      (await page.getByText('Mechanism loaded.').count()) === 0
+  );
+
+  // Dismissing the picker chooses nothing, which is not a load.
+  await page.evaluate(() => window.__cover.splice(0));
+  await page.locator('[aria-label="Project menu"]').click();
+  await page.locator('#projectMenu input[type=file]').dispatchEvent('change');
+  await page.waitForTimeout(400);
+  const cancelled = await page.evaluate(() => window.__cover);
+  check(
+    'Dismissing the file picker raises no cover',
+    cancelled.length === 0,
+    JSON.stringify(cancelled)
+  );
+  await context.close();
+}
+
 await browser.close();
 writeFileSync(`${OUT}/report.json`, JSON.stringify({ results }, null, 2));
 const failed = results.filter((r) => !r.pass).length;
