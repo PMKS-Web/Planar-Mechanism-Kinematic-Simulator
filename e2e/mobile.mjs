@@ -502,6 +502,178 @@ const moved = (a, c) => Math.hypot(c.x - a.x, c.y - a.y);
   await page.waitForTimeout(700);
 }
 
+// --- the cases a second review found the first fixes still let through ------
+await open(payloads['4-Bar']);
+await waitForReady(page).catch(() => undefined);
+await page.waitForTimeout(800);
+
+const modelOf = (id) =>
+  page.evaluate((which) => {
+    const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    const joint = grid.mechanismSrv.joints.find((candidate) => candidate.id === which);
+    return { x: joint.x, y: joint.y };
+  }, id);
+const screenOf = (id) =>
+  page.evaluate((which) => {
+    const rect = document.getElementById('joint_' + which).getBoundingClientRect();
+    return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) };
+  }, id);
+
+// Cancelling the first finger's grip is not enough: the second finger has a
+// pointerdown of its own, and landing on a part takes hold of *that* one.
+{
+  const first = await screenOf('B');
+  const second = await screenOf('C');
+  const beforeB = await modelOf('B');
+  const beforeC = await modelOf('C');
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: first.x, y: first.y, id: 1 }],
+  });
+  await page.waitForTimeout(100);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [
+      { x: first.x, y: first.y, id: 1 },
+      { x: second.x, y: second.y, id: 2 },
+    ],
+  });
+  for (let step = 1; step <= 6; step += 1) {
+    await page.waitForTimeout(60);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [
+        { x: first.x - step * 10, y: first.y - step * 10, id: 1 },
+        { x: second.x + step * 10, y: second.y + step * 10, id: 2 },
+      ],
+    });
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+  await page.waitForTimeout(700);
+  const movedB = Math.hypot((await modelOf('B')).x - beforeB.x, (await modelOf('B')).y - beforeB.y);
+  const movedC = Math.hypot((await modelOf('C')).x - beforeC.x, (await modelOf('C')).y - beforeC.y);
+  record(
+    'a pinch whose second finger lands on a part moves neither',
+    movedB < 0.001 && movedC < 0.001,
+    {
+      movedB,
+      movedC,
+    }
+  );
+}
+
+// The suppression belongs to the finger that opened the menu. Another finger
+// lifting used to spend it, and this finger's own lift then closed the menu.
+{
+  await open();
+  await waitForReady(page).catch(() => undefined);
+  await page.waitForTimeout(700);
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: 150, y: 250, id: 1 }],
+  });
+  await page.waitForTimeout(650);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [
+      { x: 150, y: 250, id: 1 },
+      { x: 300, y: 450, id: 2 },
+    ],
+  });
+  await page.waitForTimeout(120);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchEnd',
+    touchPoints: [{ x: 150, y: 250, id: 1 }],
+  });
+  await page.waitForTimeout(250);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+  await page.waitForTimeout(500);
+  record(
+    'the menu survives a different finger lifting first',
+    (await page.locator('#contextMenu').count()) === 1
+  );
+  await page.keyboard.press('Escape').catch(() => undefined);
+  await page.waitForTimeout(300);
+}
+
+// A position is dragged by a gesture of its own, outside DragStateService, so
+// it had to be told about the pending press separately.
+{
+  await open();
+  await waitForReady(page).catch(() => undefined);
+  await page.waitForTimeout(700);
+  await page.locator('.tabButton').first().click({ force: true });
+  await page.waitForTimeout(900);
+  await page.locator('.sheetHandle').click();
+  await page.waitForTimeout(600);
+  await page.locator('#synthesisPanel .kindCard--on').click({ force: true });
+  await page.waitForTimeout(700);
+  await page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-synthesis-panel')).design.applyDecoded({
+      length: 1000,
+      reference: 'CENTER',
+      endsOnly: true,
+      allowDefect: false,
+      constrain: false,
+      stage: 'working',
+      poses: [
+        { at: { x: 0, y: 0 }, thetaDegrees: 0 },
+        { at: { x: 800, y: 400 }, thetaDegrees: 25 },
+        { at: { x: 1400, y: 1400 }, thetaDegrees: 50 },
+      ],
+    })
+  );
+  await page.waitForTimeout(900);
+  await page.locator('.sheetHandle').click();
+  await page.waitForTimeout(700);
+  const posePos = () =>
+    page.evaluate(() => {
+      const design = window.ng.getComponent(document.querySelector('app-synthesis-panel')).design;
+      const first = Object.keys(design.poses)[0];
+      return { x: design.poses[first].position.x, y: design.poses[first].position.y };
+    });
+  const on = await page.evaluate(() => {
+    const rect = document.querySelector('.synthPose').getBoundingClientRect();
+    return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) };
+  });
+  const before = await posePos();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: on.x, y: on.y, id: 1 }],
+  });
+  await page.waitForTimeout(160);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: on.x + 8, y: on.y, id: 1 }],
+  });
+  await page.waitForTimeout(600);
+  const opened = await page.locator('#contextMenu').count();
+  const stillDragging = await page.evaluate(
+    () => window.ng.getComponent(document.querySelector('app-new-grid')).synthCanvas.dragging
+  );
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+  await page.waitForTimeout(600);
+  const after = await posePos();
+  record('a press on a synthesis position opens its menu', opened === 1);
+  record(
+    'without dragging the position under it',
+    Math.hypot(after.x - before.x, after.y - before.y) < 0.001,
+    {
+      before,
+      after,
+    }
+  );
+  record('and lets go of it', stillDragging === false);
+  await page.keyboard.press('Escape').catch(() => undefined);
+  await page.waitForTimeout(300);
+}
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
 console.log(`\n${results.filter(([, ok]) => ok).length}/${results.length} checks passed`);

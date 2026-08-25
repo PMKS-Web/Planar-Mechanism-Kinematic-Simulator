@@ -60,8 +60,24 @@ export class LongPressDirective implements OnDestroy {
     return this.startedAt !== undefined;
   }
 
+  /**
+   * More than one finger is down, so this is a pinch for as long as that lasts.
+   *
+   * Cancelling the first finger's grip when the second lands is not enough on
+   * its own: the second finger has a `pointerdown` of its own, and if it comes
+   * down on a part it takes hold of *that* one. A pinch that began on one joint
+   * and closed on another dragged the second across the drawing while it
+   * zoomed. Nothing is dragged while two fingers are down, whichever of them
+   * went where.
+   */
+  get pinching(): boolean {
+    return this.down.size > 1;
+  }
+
   private timer?: ReturnType<typeof setTimeout>;
   private startedAt?: { x: number; y: number; id: number; on: Element | null };
+  /** Every finger currently on the glass. */
+  private readonly down = new Set<number>();
 
   constructor() {
     // Outside Angular: a press that comes to nothing -- which is most of them,
@@ -97,6 +113,7 @@ export class LongPressDirective implements OnDestroy {
 
   private onDown = (event: PointerEvent): void => {
     if (event.pointerType === 'mouse') return;
+    this.down.add(event.pointerId);
     // A second finger is a pinch, and a pinch is not a press being held still
     // however still the first finger is. It is not a drag either, so the canvas
     // is told to let go of whatever the first finger had taken.
@@ -126,7 +143,8 @@ export class LongPressDirective implements OnDestroy {
     if (drift > SLOP_PX) this.cancel();
   };
 
-  private cancel = (): void => {
+  private cancel = (event?: Event): void => {
+    if (event instanceof PointerEvent) this.down.delete(event.pointerId);
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = undefined;
     this.startedAt = undefined;
@@ -140,7 +158,7 @@ export class LongPressDirective implements OnDestroy {
     // rather than merely held. Absent on iOS, which is why it is asked for
     // rather than relied on.
     navigator.vibrate?.(10);
-    this.swallowTheTapThatFollows();
+    this.swallowTheTapThatFollows(press.id);
     this.zone.run(() => this.longPress.emit({ x: press.x, y: press.y, target: press.on }));
   }
 
@@ -159,13 +177,22 @@ export class LongPressDirective implements OnDestroy {
    * because svg-pan-zoom halts touch events on the canvas itself, and once for
    * this one lift: a listener left in place would make the canvas untappable.
    */
-  private swallowTheTapThatFollows(): void {
+  private swallowTheTapThatFollows(pointerId: number): void {
     const disarm = () => {
       window.removeEventListener('touchend', suppress, true);
       window.removeEventListener('touchcancel', disarm, true);
       clearTimeout(fuse);
     };
     const suppress = (event: Event) => {
+      // Only the finger that opened the menu. Another finger lifting used to
+      // spend the suppression meant for this one, and then *this* one's lift
+      // sent the compatibility click that closed the menu it had just opened.
+      if (event instanceof TouchEvent && event.changedTouches.length) {
+        const lifted = [...event.changedTouches].some(
+          (touch) => touch.identifier === pointerId || touch.identifier + 1 === pointerId
+        );
+        if (!lifted) return;
+      }
       if (event.cancelable) event.preventDefault();
       disarm();
     };

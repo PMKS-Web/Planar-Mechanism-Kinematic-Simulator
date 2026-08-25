@@ -47,6 +47,20 @@
   // docked to the bottom as well -- so it stands on top of the sheet rather
   // than on the window. The sheet measures itself and publishes
   // `--sheet-height`; zero everywhere else, which leaves the rule above.
+  // A short window cannot hold everything at once. The scrub card grows a row
+  // per machine and, unsynced on a small phone in analysis, three of them plus
+  // the transport left about twelve pixels of canvas between the top strip and
+  // the cluster -- a drawing squeezed to nothing while the reader looked at the
+  // controls for it. The card takes what it can and scrolls the rest, which is
+  // what a list does when the window runs out.
+  @media (max-height: 560px) {
+    .scrubCard {
+      max-height: 40dvh;
+      overflow-y: auto;
+      justify-content: flex-start;
+    }
+  }
+
   @media (max-width: 600px) {
     .playbackRow {
       // Clear of the handle as well as the sheet: the handle rides the sheet's

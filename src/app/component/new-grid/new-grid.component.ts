@@ -1160,7 +1160,15 @@ export class NewGridComponent implements OnDestroy {
     // question and a proposed answer, not parts of the drawing, so nothing
     // here earns a rebuild or an undo entry. The cursor is recorded either
     // way -- the ghost about to be dropped follows it.
-    if (this.showSynthesis() && this.synthCanvas.move(mousePosInSvg)) return;
+    //
+    // Held to the same rule as a joint: a finger that has not yet decided
+    // whether it is a press moves nothing. This path runs before the drag
+    // threshold below and so had to be told separately -- which is why a
+    // tremor on a position moved it eighteen units and then opened its menu
+    // over the top.
+    if (this.showSynthesis() && !this.longPress()?.pressPending) {
+      if (this.synthCanvas.move(mousePosInSvg)) return;
+    }
 
     let deltaMouseX = this.mouseLocation.x - this.lastMouseLocation.x;
     let deltaMouseY = this.mouseLocation.y - this.lastMouseLocation.y;
@@ -1582,7 +1590,8 @@ export class NewGridComponent implements OnDestroy {
     // move the joint the reader was trying to open a menu on -- about thirty
     // model units, silently, before the menu even appeared. The ten pixels is
     // the same on both sides, so exactly one of the two ever happens.
-    if (this.longPress()?.pressPending) return false;
+    const gestures = this.longPress();
+    if (gestures?.pressPending || gestures?.pinching) return false;
     return !(this.timeMouseDown !== undefined && Date.now() - this.timeMouseDown < 100);
   }
 
@@ -1928,6 +1937,22 @@ export class NewGridComponent implements OnDestroy {
   /** Set when a press turned into a menu, so its release places nothing. */
   private pressBecameMenu = false;
 
+  /**
+   * Put down whatever the canvas had hold of, whoever was holding it.
+   *
+   * The three lines the right-button path has always run, plus the synthesis
+   * canvas -- which owns its gesture separately, because a position is a
+   * question about a mechanism rather than part of one, and so is not in
+   * `DragStateService` at all. A press that became a menu over a position left
+   * that position still being dragged underneath it.
+   */
+  private letGoOfEverything(): void {
+    this.dragState.cancel();
+    this.cylinderCreateStart = undefined;
+    this.linkCreateStart = undefined;
+    if (this.showSynthesis()) this.synthCanvas.release();
+  }
+
   onContextMenu($event: MouseEvent) {
     this.lastRightClickCoord.x = $event.clientX;
     this.lastRightClickCoord.y = $event.clientY;
@@ -1958,9 +1983,7 @@ export class NewGridComponent implements OnDestroy {
    * zoom that happened to begin on a joint dragged that joint while it zoomed.
    */
   onPinch() {
-    this.dragState.cancel();
-    this.cylinderCreateStart = undefined;
-    this.linkCreateStart = undefined;
+    this.letGoOfEverything();
   }
 
   onLongPress(press: LongPress) {
@@ -1969,9 +1992,7 @@ export class NewGridComponent implements OnDestroy {
     // with placing armed opened the menu and then dropped a position under it
     // on the way out. Spent by the release that follows.
     this.pressBecameMenu = true;
-    this.dragState.cancel();
-    this.cylinderCreateStart = undefined;
-    this.linkCreateStart = undefined;
+    this.letGoOfEverything();
     (press.target ?? document.getElementById('canvas'))?.dispatchEvent(
       new MouseEvent('contextmenu', {
         bubbles: true,

@@ -192,5 +192,9 @@ export class DragStateService {
     this._link = linkStates.waiting;
     this._force = forceStates.waiting;
     this.backgroundImageHeld = false;
+    // The press is over too. It used to be left latched, so a gesture abandoned
+    // rather than released -- which is what a long press and a pinch both are
+    // -- left the canvas believing a pointer was still down.
+    this.pointerIsDown = false;
   }
 }

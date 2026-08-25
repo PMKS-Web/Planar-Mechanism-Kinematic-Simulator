@@ -333,8 +333,8 @@
       max-height: min(
         48dvh,
         calc(
-          100dvh - #{nav.$top-strip-bottom} -
-            #{nav.$sheet-handle-height} - var(--playback-clearance, #{nav.$playback-clearance})
+          100dvh - #{nav.$top-strip-bottom} - #{nav.$sheet-handle-height} -
+            #{nav.$least-canvas} - var(--playback-clearance, #{nav.$playback-clearance})
         )
       );
       padding-left: nav.$shadow-room;
