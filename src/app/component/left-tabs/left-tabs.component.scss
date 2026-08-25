@@ -423,6 +423,7 @@
   // height of the bar, which clears the 44px minimum in both directions. The
   // rest of the bar stays transparent to the canvas underneath.
   .sheetGrip {
+    position: relative;
     pointer-events: auto;
     display: flex;
     align-items: center;
@@ -430,13 +431,25 @@
     width: 120px;
     height: 100%;
 
+    // A small card carrying the grip, rather than a bare pill with a white halo
+    // around it: the halo was a soft-edged blob sitting on the ruling, and read
+    // as something smudged onto the drawing rather than as a control.
     &::before {
       content: '';
-      width: 44px;
-      height: 5px;
-      border-radius: 3px;
-      background: rgba(0, 0, 0, 0.28);
-      box-shadow: 0 0 0 8px var(--card-surface);
+      width: 56px;
+      height: 20px;
+      border-radius: 10px;
+      background: var(--card-surface);
+      box-shadow: var(--card-shadow);
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      width: 28px;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(0, 0, 0, 0.32);
     }
   }
 }

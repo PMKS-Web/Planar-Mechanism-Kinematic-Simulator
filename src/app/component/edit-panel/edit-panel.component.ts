@@ -9,6 +9,7 @@ import {
   inject,
 } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
+import { ViewportService } from '../../services/viewport.service';
 import { PrisJoint, RealJoint, RevJoint } from 'src/app/model/joint';
 import {
   AbstractControl,
@@ -105,6 +106,17 @@ const INPUT_SPEED_UNITS = [
 })
 export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   activeSrv = inject(ActiveObjService);
+  viewport = inject(ViewportService);
+
+  /**
+   * How this reader opens the menu, in the words their device gives them.
+   *
+   * Sentence-initial, because that is the only place the panel uses it.
+   */
+  get press(): string {
+    return this.viewport.isTouch() ? 'Press and hold on' : 'Right-click';
+  }
+
   protected settingsService = inject(SettingsService);
   private fb = inject(FormBuilder);
   private nup = inject(NumberUnitParserService);
