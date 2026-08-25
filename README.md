@@ -283,6 +283,10 @@ Undo and redo are the same mechanism: the history is an array of these strings, 
 re-decodes an earlier one. So an undo restores the whole drawing at once (geometry, welds, locks,
 masses, colours and the document's settings) rather than reversing one field.
 
+One address does not carry a mechanism: **`app.pmksplus.com/?library`** opens on an empty grid with
+the mechanism library already up. It is the link to hand somebody who wants to browse rather than
+to be shown one particular linkage.
+
 ---
 
 ## Mechanism library

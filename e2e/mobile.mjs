@@ -17,6 +17,7 @@ import { readFileSync } from 'node:fs';
 const playwright = process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright';
 const { chromium, devices } = await import(playwright + '/node_modules/playwright/index.mjs');
 import { waitForReady } from './app-ready.mjs';
+import { startQuiet } from './quiet-start.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://localhost:4200';
 const source = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
@@ -38,7 +39,7 @@ const context = await browser.newContext({ ...devices['iPhone 13'] });
 // Everything below is about layout and gesture. The tutorial opening itself on
 // a first visit is real and checked on its own, at the end, in a context that
 // has never been here.
-await context.addInitScript(() => localStorage.setItem('tutorialSeen', 'true'));
+await startQuiet(context);
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(String(error)));

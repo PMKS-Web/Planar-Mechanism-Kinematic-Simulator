@@ -10,6 +10,7 @@ const { chromium } = await import(
 );
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
+import { startQuiet } from './quiet-start.mjs';
 const OUT = 'artifacts/template-open';
 mkdirSync(OUT, { recursive: true });
 const FOUR_BAR =
@@ -24,7 +25,7 @@ const context = await browser.newContext({ viewport: { width: 1500, height: 950 
 // This is about the library, not about onboarding. A first visit now opens the
 // tutorial by itself, and its card in the drawer is not what these checks are
 // looking at.
-await context.addInitScript(() => localStorage.setItem('tutorialSeen', 'true'));
+await startQuiet(context);
 let newPages = 0;
 context.on('page', () => newPages++);
 
@@ -139,9 +140,13 @@ if (
 }
 await page.locator('#templates [data-template="4-Bar"]').click();
 await page.waitForTimeout(600);
-await page.locator('button:has-text("Open in a new tab")').click();
+// "New Tab", not "Open in a new tab": the choice dialog's buttons were shortened
+// to Cancel / New Tab / Replace, and this check went on quoting the old wording
+// until the locator timed out. It is the button's own words on purpose, like
+// Cancel and Replace above it.
+await page.locator('button:has-text("New Tab")').click();
 await page.waitForTimeout(2000);
-check('Open in a new tab spawns exactly one tab', newPages === 1, `new tabs=${newPages}`);
+check('New Tab spawns exactly one tab', newPages === 1, `new tabs=${newPages}`);
 
 await browser.close();
 writeFileSync(`${OUT}/report.json`, JSON.stringify({ results }, null, 2));

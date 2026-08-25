@@ -173,7 +173,7 @@ export class TutorialPanelComponent implements DoCheck {
   }
 
   openTemplates(): void {
-    this.dialog.open(TemplatesComponent, { height: '90%', width: '90%', autoFocus: false });
+    TemplatesComponent.openIn(this.dialog);
   }
 }
 

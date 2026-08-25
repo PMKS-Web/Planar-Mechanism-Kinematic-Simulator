@@ -48,6 +48,14 @@ their source. Everything browser-driven lives here.
 - `context-menu.mjs` — the right-click menu on every kind of part and in every mode: the fixed Attach/State/Machine ladder with Delete alone at the foot, states written as ticked switches rather than labels that flip, the model's own reason in the right-hand slot of every greyed row (a load at a shared pin, a weld with nothing to fuse, a sealed cylinder, a locked part), the deletion cascades named before the click, the counts beside Lock All and Unlock All, and the analysis modes offering the trace and the way back into Edit and nothing that edits
 - `ui-copy.mjs` — the words themselves, read off the running app: that the Edit panel's toggles carry the state names the right-click menu uses (`Grounded`, `Welded`, `Trace Path`), that no tooltip there runs past two sentences, that the units tooltip names the way out only while the switch is actually greyed, that the analysis checklist no longer prints Gruebler in code notation, and that none of the surfaces it walks uses a word `docs/ui-vocabulary.md` rules out
 
+- `whats-new.mjs` — which of the three welcomes a reader gets, and the two covers that go up while
+  a mechanism is being solved: a first visit gets the tutorial and no release notes, a returning
+  visit gets the notes once and never again (by the button, by Escape, and across a reload),
+  `?library` beats both and leaves the address bar clean, the boot splash is up before the app is
+  and gone once it has drawn, and the loading cover goes up and comes back down for a template, a
+  `.pmks` file and a `.pmks` file that will not decode -- and does not go up at all when the file
+  picker is dismissed
+
 ## Running
 
 Prerequisites: dev server on http://127.0.0.1:4200/ (`npm start`) and a

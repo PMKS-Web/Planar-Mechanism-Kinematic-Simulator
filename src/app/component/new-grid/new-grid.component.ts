@@ -13,6 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { fromEvent } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
 import { TutorialService } from '../../services/tutorial.service';
+import { WhatsNewService } from '../../services/whats-new.service';
 import { UrlProcessorService } from '../../services/url-processor.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { SettingsService } from '../../services/settings.service';
@@ -44,6 +45,7 @@ import { NotificationService } from '../../services/notification.service';
 import { BackgroundImageService, MIN_WIDTH } from '../../services/background-image.service';
 import { CdkContextMenuTrigger } from '@angular/cdk/menu';
 import { MatDialog } from '@angular/material/dialog';
+import { TemplatesComponent } from '../MODALS/templates/templates.component';
 import { Line } from '../../model/line';
 import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
@@ -156,6 +158,7 @@ export class NewGridComponent implements OnDestroy {
   svgGrid = inject(SvgGridService);
   mechanismSrv = inject(MechanismService);
   private tutorial = inject(TutorialService);
+  private whatsNew = inject(WhatsNewService);
   private urlParser = inject(UrlProcessorService);
   gridUtils = inject(GridUtilsService);
   private colors = inject(ColorService);
@@ -295,7 +298,23 @@ export class NewGridComponent implements OnDestroy {
     // After the URL has been decoded -- `UrlProcessorService` does that in its
     // own constructor -- so the tutorial can tell an empty grid from a shared
     // mechanism and stay out of the way of the second.
-    this.tutorial.openOnFirstVisit();
+    //
+    // One welcome, never two stacked. Which one depends on a question the
+    // services answer from opposite ends: has this reader been here before? If
+    // they have, what they need is the list of what moved while they were away;
+    // if they have not, a list of changes is a list of things they never knew,
+    // and the tutorial is the thing that helps.
+    //
+    // Both give way to `?library`, because that is not a guess about who has
+    // arrived -- it is somebody who pressed a button that said where they
+    // wanted to go, and putting anything in front of it answers a question they
+    // did not ask.
+    if (this.urlParser.wantsLibrary) {
+      this.whatsNew.greet({ quietly: true });
+      TemplatesComponent.openIn(this.dialog);
+    } else if (!this.whatsNew.greet()) {
+      this.tutorial.openOnFirstVisit();
+    }
 
     fromEvent(window, 'resize')
       .pipe(takeUntilDestroyed(this.destroyRef))

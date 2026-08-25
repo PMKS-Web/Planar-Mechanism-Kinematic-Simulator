@@ -1,0 +1,11 @@
+@if (loading.busy()) {
+  <!-- `aria-live` rather than a dialog role: this is a report on what the app
+       is doing, not something to be interacted with, and it is gone before
+       anyone could. -->
+  <div class="loadingScrim" role="status" aria-live="polite">
+    <div class="loadingCard">
+      <div class="loadingSpinner" aria-hidden="true"></div>
+      <div class="loadingLabel">{{ loading.label() }}</div>
+    </div>
+  </div>
+}

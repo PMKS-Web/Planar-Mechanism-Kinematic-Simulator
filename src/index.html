@@ -46,6 +46,75 @@
       rel="stylesheet"
     />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+
+    <!--
+      The screen the app shows before it is an app.
+
+      Bootstrapping and then decoding the address takes a few seconds on a
+      mechanism of any size, all of it synchronous, and none of it can put
+      anything on screen: the thread that would paint is the thread doing the
+      solving. So this is painted by the browser out of the HTML, before a line
+      of the bundle has run, and taken down by `AppComponent` once the app has
+      drawn. In between, the window is frozen -- and the frozen thing says
+      PMKS+ rather than being blank white.
+
+      Inline for the same reason. A stylesheet is a request, and the point of
+      this is to be up before anything has been asked for.
+    -->
+    <style>
+      #bootSplash {
+        position: fixed;
+        inset: 0;
+        z-index: 4000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        background: #fff;
+        font-family: Roboto, 'Helvetica Neue', Arial, sans-serif;
+      }
+      #bootSplash .bootMark {
+        font-size: 26px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        color: #3f51b5;
+      }
+      #bootSplash .bootBar {
+        width: 168px;
+        height: 3px;
+        border-radius: 2px;
+        background: rgba(63, 81, 181, 0.18);
+        overflow: hidden;
+      }
+      #bootSplash .bootBar::after {
+        content: '';
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: 2px;
+        background: #3f51b5;
+        animation: bootSlide 1.1s ease-in-out infinite;
+      }
+      #bootSplash .bootWord {
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.55);
+      }
+      @keyframes bootSlide {
+        from {
+          transform: translateX(-100%);
+        }
+        to {
+          transform: translateX(250%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #bootSplash .bootBar::after {
+          animation: none;
+          width: 100%;
+        }
+      }
+    </style>
   </head>
   <!--
     `dvh` rather than `vh`: on a phone `100vh` is the viewport with the address
@@ -58,5 +127,16 @@
     style="width: 100vw; height: 100dvh; overflow: hidden !important"
   >
     <app-root> </app-root>
+    <!--
+      A sibling of `app-root`, not a child of it. Angular empties its host
+      element as soon as the root component renders, which happens *before* the
+      canvas is built and the address decoded -- so a splash living inside it
+      would come down at exactly the moment the freeze begins.
+    -->
+    <div id="bootSplash">
+      <div class="bootMark">PMKS+</div>
+      <div class="bootBar"></div>
+      <div class="bootWord">Starting up</div>
+    </div>
   </body>
 </html>

@@ -36,6 +36,7 @@
 @use 'src/app/component/context-menu/context-menu.component.scss' as context-menu;
 @use 'src/app/component/equation-panel/equation-panel.component.scss' as equation-panel;
 @use 'src/app/component/MODALS/templates/templates.component.scss' as templates;
+@use 'src/app/component/MODALS/whats-new/whats-new.component.scss' as whats-new;
 @use 'src/app/component/not-ready-warning/not-ready-warning.component.scss' as not-ready-warning;
 @use 'src/app/component/bottombar/bottombar.component.scss' as bottombar;
 @use 'src/app/component/notification/notification.component.scss' as notification;
@@ -125,3 +126,4 @@ $my-theme: mat.m2-define-light-theme(
 @include color-picker.css($my-theme);
 
 @include templates.css($my-theme);
+@include whats-new.css($my-theme);

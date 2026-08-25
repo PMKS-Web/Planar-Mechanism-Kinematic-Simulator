@@ -21,6 +21,7 @@ import { UrlGenerationService } from '../../services/url-generation.service';
 import { UrlProcessorService } from '../../services/url-processor.service';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { ExportFlowService } from '../../services/export/export-flow.service';
+import { LoadingService } from 'src/app/services/loading.service';
 import { TemplatesComponent } from '../MODALS/templates/templates.component';
 import { NotificationService } from '../../services/notification.service';
 import { TutorialService } from '../../services/tutorial.service';
@@ -105,6 +106,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   private history = inject(SaveHistoryService);
   private urlGeneration = inject(UrlGenerationService);
   private urlProcessor = inject(UrlProcessorService);
+  private loading = inject(LoadingService);
   private dialog = inject(MatDialog);
   private zone = inject(NgZone);
   private changes = inject(ChangeDetectorRef);
@@ -557,7 +559,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
 
   openTemplates(): void {
     this.closeMenu();
-    this.dialog.open(TemplatesComponent, { height: '90%', width: '90%', autoFocus: false });
+    TemplatesComponent.openIn(this.dialog);
   }
 
   openSettings(): void {
@@ -605,22 +607,36 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     }
     const reader = new FileReader();
     reader.onload = () => {
-      this.urlProcessor.updateFromURL(reader.result as string);
-      // After the decode, and only if it worked. Said first, a corrupt or
-      // old-format file got a green "Mechanism loaded." followed by the
-      // decoder's own sticky failure, over a drawing that had not changed.
-      //
-      // The decoder raises that failure a tick late -- it can run inside its
-      // own constructor, before there is an overlay to open into -- so this
-      // waits the same tick and then asks whether it is on screen.
-      setTimeout(() => {
-        if (this.notify.live.some((one) => one.id === 'url.undecodable')) return;
-        this.notify.success('file.loaded', 'Mechanism loaded.');
-      });
-      // Reset the input so the same file can be opened again.
-      input.value = '';
+      // Behind the cover, and everything below waits on it: solving the
+      // incoming mechanism takes the thread, so an opened file used to be a few
+      // seconds of a window that had stopped answering.
+      this.loading
+        .during('Opening mechanism…', () =>
+          this.urlProcessor.updateFromURL(reader.result as string)
+        )
+        .then(() => this.afterUpload(input))
+        // The cover comes down in `during`'s own `finally`; this is only so a
+        // failed open is a console error rather than an unhandled rejection.
+        .catch((error) => console.error('Unable to open the file', error));
     };
     reader.readAsText(input.files[0]);
+  }
+
+  /** What a finished upload says and tidies, once the drawing is actually in. */
+  private afterUpload(input: HTMLInputElement): void {
+    // After the decode, and only if it worked. Said first, a corrupt or
+    // old-format file got a green "Mechanism loaded." followed by the
+    // decoder's own sticky failure, over a drawing that had not changed.
+    //
+    // The decoder raises that failure a tick late -- it can run inside its
+    // own constructor, before there is an overlay to open into -- so this
+    // waits the same tick and then asks whether it is on screen.
+    setTimeout(() => {
+      if (this.notify.live.some((one) => one.id === 'url.undecodable')) return;
+      this.notify.success('file.loaded', 'Mechanism loaded.');
+    });
+    // Reset the input so the same file can be opened again.
+    input.value = '';
   }
 
   downloadLinkage(): void {
