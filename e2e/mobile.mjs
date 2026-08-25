@@ -206,6 +206,95 @@ const after = await page.evaluate(
 );
 record('a link can be drawn with two taps and a hold', after - before === 2, { before, after });
 
+// --- the gestures the press has to share the canvas with --------------------
+await open(payloads['4-Bar']);
+await waitForReady(page).catch(() => undefined);
+await page.waitForTimeout(800);
+
+const jointModel = (id) =>
+  page.evaluate((which) => {
+    const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    const joint = grid.mechanismSrv.joints.find((candidate) => candidate.id === which);
+    return { x: joint.x, y: joint.y };
+  }, id);
+const jointScreen = (id) =>
+  page.evaluate((which) => {
+    const rect = document.getElementById('joint_' + which).getBoundingClientRect();
+    return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) };
+  }, id);
+
+/** A finger that takes hold of something and moves it. */
+async function dragFinger(from, dx, dy) {
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: from.x, y: from.y, id: 1 }],
+  });
+  for (let step = 1; step <= 8; step += 1) {
+    await page.waitForTimeout(40);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: from.x + (dx * step) / 8, y: from.y + (dy * step) / 8, id: 1 }],
+    });
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+  await page.waitForTimeout(700);
+}
+
+const beforeDrag = await jointModel('B');
+await dragFinger(await jointScreen('B'), 48, -32);
+const afterDrag = await jointModel('B');
+record(
+  'a finger still drags a joint',
+  Math.hypot(afterDrag.x - beforeDrag.x, afterDrag.y - beforeDrag.y) > 0.05,
+  { beforeDrag, afterDrag }
+);
+record('and the drag opened no menu', (await page.locator('#contextMenu').count()) === 0);
+
+// The suppressor that keeps the lift from closing the menu is armed for exactly
+// one lift. Left armed it would make the canvas untappable ever after.
+await hold(120, 250);
+await page.keyboard.press('Escape').catch(() => undefined);
+await page.waitForTimeout(400);
+const beforeSecond = await jointModel('B');
+await dragFinger(await jointScreen('B'), -48, 32);
+const afterSecond = await jointModel('B');
+record(
+  'and the canvas still answers a finger after a long press',
+  Math.hypot(afterSecond.x - beforeSecond.x, afterSecond.y - beforeSecond.y) > 0.05,
+  { beforeSecond, afterSecond }
+);
+
+// A pinch is two fingers holding still for as long as it takes to zoom.
+const pinch = await context.newCDPSession(page);
+await pinch.send('Input.dispatchTouchEvent', {
+  type: 'touchStart',
+  touchPoints: [{ x: 150, y: 250, id: 1 }],
+});
+await page.waitForTimeout(120);
+await pinch.send('Input.dispatchTouchEvent', {
+  type: 'touchStart',
+  touchPoints: [
+    { x: 150, y: 250, id: 1 },
+    { x: 280, y: 400, id: 2 },
+  ],
+});
+await page.waitForTimeout(800);
+const duringPinch = await page.locator('#contextMenu').count();
+await pinch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+await pinch.detach();
+await page.waitForTimeout(400);
+record('two fingers open no menu', duringPinch === 0, { duringPinch });
+
+record(
+  'and nothing is left holding a gesture',
+  await page.evaluate(() => {
+    const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    return grid.dragState.grid === 0 && grid.dragState.joint === 0 && grid.dragState.link === 0;
+  })
+);
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
 console.log(`\n${results.filter(([, ok]) => ok).length}/${results.length} checks passed`);
