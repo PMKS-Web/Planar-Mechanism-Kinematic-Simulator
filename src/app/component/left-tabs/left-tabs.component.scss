@@ -304,8 +304,10 @@
     // having to be told about it separately.
     &.sheet {
       top: auto;
-      // Clear of the status strip, which stays where it is.
-      bottom: nav.$bottom-bar-height;
+      // On top of the controls row, which is on top of the status strip. Both
+      // of those stay where they are; the sheet is the only thing here that
+      // moves, which is what makes its handle worth reaching for.
+      bottom: calc(#{nav.$bottom-bar-height} + var(--controls-height, 0px));
       left: 0;
       right: 0;
       // Beating the animation, which writes 278px or 428px straight onto the
@@ -404,7 +406,9 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: calc(var(--sheet-height, 0px) + #{nav.$bottom-bar-height});
+    bottom: calc(
+      var(--sheet-height, 0px) + var(--controls-height, 0px) + #{nav.$bottom-bar-height}
+    );
     height: nav.$sheet-handle-height;
     display: flex;
     align-items: center;

@@ -12,9 +12,18 @@
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
+import { readFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const FOUR_BAR = Object.fromEntries(
+  [
+    ...readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8').matchAll(
+      /^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm
+    ),
+  ].map(([, id, payload]) => [id, payload.replace(/\\\\/g, '\\')])
+)['4-Bar'];
+
 const OUT = 'artifacts/tutorial';
 
 const passed = [];
@@ -43,18 +52,17 @@ check(
 
 // ---- the offer, hanging off the Edit panel rather than replacing it ----
 
-check('the offer is in the Edit panel', await page.locator('.offer').isVisible());
+// A first visit opens it without being asked. The offer card that used to be
+// the only way in is still here for the reader whose first visit was somebody
+// else's mechanism -- see the shared-link check at the end -- but on a bare
+// grid there is nothing left for them to accept.
+check('a first visit opens the tutorial unasked', await page.locator('.tutorialCard').isVisible());
+check('so the offer has nothing left to offer', (await page.locator('.offer').count()) === 0);
 check(
   'the panel still says what right-click is for',
   (await page.locator('.helpHints').innerText()).includes('Right-click the grid')
 );
-// A question with only one answer keeps getting asked. Declining is as final
-// as finishing: both write the same mark, and the project menu is the way back.
-check('the offer can be declined', await page.locator('.offerDismiss').isVisible());
 await page.screenshot({ path: `${OUT}/01-offer.png` });
-
-await page.locator('.offerButton').click();
-await page.waitForTimeout(700);
 check('the drawer opens on the tutorial', await page.locator('.tutorialCard').isVisible());
 check('the canvas is not covered', (await page.locator('.introjs-overlay').count()) === 0);
 
@@ -311,7 +319,7 @@ await page.screenshot({ path: `${OUT}/07-resume.png` });
   const small = await narrow.newPage();
   await small.goto(BASE, { waitUntil: 'networkidle' });
   await waitForReady(small);
-  await small.locator('.offerButton').click();
+  // Opens itself on a first visit, so there is no offer to accept.
   await small.waitForTimeout(600);
   for (let i = 0; i < 3; i++) {
     await small.locator('.doItButton').click();
@@ -332,32 +340,43 @@ await page.screenshot({ path: `${OUT}/07-resume.png` });
   await narrow.close();
 }
 
-// ---- declining the offer, in a profile that has not met it ----
+// ---- walking out of it, in a profile that has not met it ----
+//
+// Closing the card is what declining used to be: it is the first thing a
+// reader who did not want a tutorial will reach for, and it has to be as final
+// as finishing, or the app asks the same question at every launch.
 {
   const declining = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const shy = await declining.newPage();
   await shy.goto(BASE, { waitUntil: 'networkidle' });
   await waitForReady(shy);
-  await shy.locator('.offerDismiss').click();
+  check('it opened by itself', await shy.locator('.tutorialCard').isVisible());
+  await shy.locator('.closeCard').click();
   await shy.waitForTimeout(700);
-  check('declining takes the offer away', (await shy.locator('.offer').count()) === 0);
-  check('without starting anything', (await shy.locator('.tutorialCard').count()) === 0);
-  check(
-    'and says where it went',
-    /project menu/i.test(
-      await shy
-        .locator('app-notification-stack')
-        .innerText()
-        .catch(() => '')
-    )
-  );
+  check('closing it takes it away', (await shy.locator('.tutorialCard').count()) === 0);
+  check('and does not leave the offer behind either', (await shy.locator('.offer').count()) === 0);
   await shy.reload({ waitUntil: 'networkidle' });
   await waitForReady(shy);
-  check('and it stays gone next time', (await shy.locator('.offer').count()) === 0);
+  check('and it stays gone next time', (await shy.locator('.tutorialCard').count()) === 0);
+  check('including the offer', (await shy.locator('.offer').count()) === 0);
   await shy.locator('.brandCard .iconButton').click();
   await shy.waitForTimeout(350);
   check('but the project menu still has it', await shy.locator('#tutorialButton').isVisible());
   await declining.close();
+}
+
+// ---- arriving at somebody else's mechanism ----
+//
+// The auto-open is suppressed there: a shared link means arriving to look at
+// *that*, and a tutorial about drawing your first bar is an interruption. The
+// offer card is what is left for that reader, once they have a bare grid.
+{
+  const visiting = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const guest = await visiting.newPage();
+  await guest.goto(`${BASE}/?${FOUR_BAR}`, { waitUntil: 'networkidle' });
+  await waitForReady(guest);
+  check('a shared link is not interrupted', (await guest.locator('.tutorialCard').count()) === 0);
+  await visiting.close();
 }
 
 await browser.close();

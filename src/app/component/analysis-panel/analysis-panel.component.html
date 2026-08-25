@@ -108,7 +108,10 @@
           <div class="helpRule"></div>
           <div class="helpHint" role="status">
             <mat-icon>touch_app</mat-icon>
-            <span>Click a joint where separate parts meet, or a grounded one.</span>
+            <span
+              >{{ viewport.isTouch() ? 'Tap' : 'Click' }} a joint where separate parts meet, or a
+              grounded one.</span
+            >
           </div>
         }
         @for (row of jointForceRows(); track row.linkId) {
@@ -244,7 +247,10 @@
           <div class="helpRule"></div>
           <div class="helpHint" role="status">
             <mat-icon>touch_app</mat-icon>
-            <span>Click a part that touches another, or a grounded joint.</span>
+            <span
+              >{{ viewport.isTouch() ? 'Tap' : 'Click' }} a part that touches another, or a grounded
+              joint.</span
+            >
           </div>
         }
         @for (row of linkForceRows(); track row.jointId) {

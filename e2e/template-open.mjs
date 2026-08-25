@@ -21,6 +21,10 @@ const check = (name, pass, detail = '') => {
 };
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1500, height: 950 } });
+// This is about the library, not about onboarding. A first visit now opens the
+// tutorial by itself, and its card in the drawer is not what these checks are
+// looking at.
+await context.addInitScript(() => localStorage.setItem('tutorialSeen', 'true'));
 let newPages = 0;
 context.on('page', () => newPages++);
 

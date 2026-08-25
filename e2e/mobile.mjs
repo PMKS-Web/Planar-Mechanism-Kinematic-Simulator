@@ -35,6 +35,10 @@ const record = (name, ok, detail) => {
 
 const browser = await chromium.launch();
 const context = await browser.newContext({ ...devices['iPhone 13'] });
+// Everything below is about layout and gesture. The tutorial opening itself on
+// a first visit is real and checked on its own, at the end, in a context that
+// has never been here.
+await context.addInitScript(() => localStorage.setItem('tutorialSeen', 'true'));
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(String(error)));
@@ -221,21 +225,30 @@ const cluster = await box('.playbackRow');
 const stripBottom = await page.evaluate(() =>
   Math.round(document.querySelector('.topStrip').getBoundingClientRect().bottom)
 );
-record(
-  'the playback cluster stands clear of the open sheet',
-  cluster.y + cluster.h <= sheet.y + 2,
-  {
-    cluster,
-    sheet,
-  }
-);
-// Standing on the sheet is only right if it is still standing somewhere the
-// reader can reach: a sheet that keeps its share of a short window pushes the
-// transport up under the top strip and then off the top of the screen.
-record('and is still on the screen, below the top strip', cluster.y >= stripBottom, {
+// The other way round from the way this started: the controls are fixed to the
+// bottom and the sheet opens over the canvas above them. A control that changes
+// place when a panel opens is a control the reader has to find twice.
+record('the sheet opens above the controls, not under them', sheet.y + sheet.h <= cluster.y + 2, {
+  cluster,
+  sheet,
+});
+record('and the controls are on screen, below the top strip', cluster.y >= stripBottom, {
   cluster,
   stripBottom,
 });
+record('the controls are one row', cluster.h <= 70, { cluster });
+record('with no scrubber on it', (await page.locator('.scrubCard:visible').count()) === 0);
+
+const rowWhileOpen = cluster.y;
+await page.locator('.sheetHandle').click();
+await page.waitForTimeout(700);
+const rowWhileShut = (await box('.playbackRow')).y;
+record('and they stay put when it shuts', rowWhileOpen === rowWhileShut, {
+  rowWhileOpen,
+  rowWhileShut,
+});
+await page.locator('.sheetHandle').click();
+await page.waitForTimeout(700);
 
 // --- and a bar can be drawn with nothing but taps ---------------------------
 await open();
@@ -674,7 +687,145 @@ const screenOf = (id) =>
   await page.waitForTimeout(300);
 }
 
+// --- tapping a part shows the panel about it --------------------------------
+// On the release, and only for a press that neither travelled nor became a
+// menu: selecting happens on press, so opening on selection raised the sheet
+// over the very joint the finger was still resting on.
+{
+  await open(payloads['4-Bar']);
+  await waitForReady(page).catch(() => undefined);
+  await page.waitForTimeout(900);
+  const sheetHeight = async () => (await box('.panel')).h;
+  const jointPoint = await page.evaluate(() => {
+    const rect = document.getElementById('joint_B').getBoundingClientRect();
+    return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) };
+  });
+  record('the sheet starts shut', (await sheetHeight()) === 0);
+  await tap(jointPoint.x, jointPoint.y);
+  await page.waitForTimeout(700);
+  record('tapping a joint opens it', (await sheetHeight()) > 100);
+
+  await page.locator('.sheetHandle').click();
+  await page.waitForTimeout(700);
+  // Derived from where the drawing actually is rather than scanned for: the
+  // scan kept landing on a link, and a tap on a link is a tap on a part.
+  const bare = await page.evaluate(() => {
+    const parts = [...document.querySelectorAll('[id^="joint_"], [id^="link_"]')].map((el) =>
+      el.getBoundingClientRect()
+    );
+    const strip = document.querySelector('.topStrip').getBoundingClientRect();
+    const top = Math.min(...parts.map((r) => r.top));
+    const y = Math.round((strip.bottom + top) / 2);
+    for (let x = 20; x < window.innerWidth - 20; x += 6) {
+      const el = document.elementFromPoint(x, y);
+      if (el && !el.closest('[id^="joint_"], [id^="link_"]') && el.closest('#canvas')) {
+        return { x, y };
+      }
+    }
+    return null;
+  });
+  record('a patch of bare canvas can be found to tap', bare !== null, { bare });
+  if (bare) {
+    await tap(bare.x, bare.y);
+    await page.waitForTimeout(700);
+    record('tapping bare canvas does not', (await sheetHeight()) === 0, {
+      bare,
+      selected: await page.evaluate(
+        () =>
+          window.ng.getComponent(document.querySelector('app-new-grid')).activeObjService.objType
+      ),
+    });
+  }
+
+  // A drag is not a tap. Shut the sheet first, whatever the step above left.
+  if ((await sheetHeight()) > 0) {
+    await page.locator('.sheetHandle').click();
+    await page.waitForTimeout(700);
+  }
+  const dragFrom = await page.evaluate(() => {
+    const rect = document.getElementById('joint_B').getBoundingClientRect();
+    return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) };
+  });
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: dragFrom.x, y: dragFrom.y, id: 1 }],
+  });
+  for (let step = 1; step <= 8; step += 1) {
+    await page.waitForTimeout(40);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: dragFrom.x + step * 7, y: dragFrom.y - step * 5, id: 1 }],
+    });
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+  await page.waitForTimeout(800);
+  record('dragging a joint does not', (await sheetHeight()) === 0, {
+    height: await sheetHeight(),
+  });
+}
+
+// --- the library, which used to be a column of chips with a box over them ----
+{
+  await open();
+  await waitForReady(page).catch(() => undefined);
+  await page.waitForTimeout(700);
+  await page.locator('.iconButton').first().click();
+  await page.waitForTimeout(400);
+  await page.locator('#templatesButton').click();
+  await page.waitForTimeout(1400);
+  const bars = await page.evaluate(() => {
+    const chips = document.querySelector('.chipRow').getBoundingClientRect();
+    const search = document.querySelector('.searchBox').getBoundingClientRect();
+    const overlapping = !(
+      search.bottom <= chips.top ||
+      search.top >= chips.bottom ||
+      search.right <= chips.left ||
+      search.left >= chips.right
+    );
+    return {
+      overlapping,
+      chipRows: Math.round(chips.height),
+      searchHeight: Math.round(search.height),
+      searchAbove: search.bottom <= chips.top,
+    };
+  });
+  record('the library search does not sit over the categories', !bars.overlapping, bars);
+  record('it is above them, at its own height', bars.searchAbove && bars.searchHeight < 60, bars);
+  record('and the categories are one scrolling row', bars.chipRows < 60, bars);
+  await page.keyboard.press('Escape').catch(() => undefined);
+  await page.waitForTimeout(600);
+}
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
+
+// --- the first visit ---------------------------------------------------------
+// Its own context, because every other check above seeds the flag that says
+// this reader has been here before.
+{
+  const newcomer = await browser.newContext({ ...devices['iPhone 13'] });
+  const firstTime = await newcomer.newPage();
+  await firstTime.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await firstTime.waitForTimeout(3000);
+  record(
+    'a first visit opens the tutorial',
+    (await firstTime.locator('app-tutorial-panel').count()) === 1
+  );
+  await firstTime.close();
+
+  const shared = await newcomer.newPage();
+  await shared.goto(`${BASE}/?${payloads['4-Bar']}`, { waitUntil: 'domcontentloaded' });
+  await shared.waitForTimeout(3000);
+  // Arriving by a shared link means arriving to look at that, and a tutorial
+  // about drawing your first bar is an interruption rather than a welcome.
+  record(
+    'but not over a mechanism someone sent you',
+    (await shared.locator('app-tutorial-panel').count()) === 0
+  );
+  await shared.close();
+  await newcomer.close();
+}
 
 console.log(`\n${results.filter(([, ok]) => ok).length}/${results.length} checks passed`);
 await browser.close();

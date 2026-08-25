@@ -43,10 +43,6 @@
     pointer-events: none;
   }
 
-  // On a phone the mode panel is a sheet across the bottom, and this cluster is
-  // docked to the bottom as well -- so it stands on top of the sheet rather
-  // than on the window. The sheet measures itself and publishes
-  // `--sheet-height`; zero everywhere else, which leaves the rule above.
   // A short window cannot hold everything at once. The scrub card grows a row
   // per machine and, unsynced on a small phone in analysis, three of them plus
   // the transport left about twelve pixels of canvas between the top strip and
@@ -63,9 +59,11 @@
 
   @media (max-width: 600px) {
     .playbackRow {
-      // Clear of the handle as well as the sheet: the handle rides the sheet's
-      // top edge, and a transport standing on the sheet alone covered it.
-      bottom: calc(var(--playback-bottom) + var(--sheet-height, 0px) + #{nav.$sheet-handle-height});
+      // Fixed to the bottom, just above the status strip. The sheet opens over
+      // the canvas *above* this row rather than under it, so nothing here moves
+      // when the panel does -- a control that changes place when a panel opens
+      // is a control the reader has to find twice.
+      bottom: calc(#{nav.$bottom-bar-height} + 6px);
     }
   }
 
@@ -543,6 +541,52 @@
     .playbackRow {
       gap: 8px;
       padding: 0 8px;
+    }
+  }
+  // ---- the phone's one row ------------------------------------------------
+  //
+  // Everything the reader needs while something is running, on one line at the
+  // bottom of the window, with the mode panel opening and closing above it.
+  // Wrapped, the three cards took three rows and about two hundred pixels of a
+  // screen that has six hundred.
+  //
+  // The scrub card is what goes. It is the widest of the three and the one that
+  // cannot usefully shrink -- it carries a row per machine, each with a name, a
+  // direction, two readings and a handle -- and seeking is the part of playback
+  // a phone can most afford to lose. Play, pause, speed and what you can see
+  // are what is left, which is what was asked for.
+  @media (max-width: 600px) {
+    .scrubCard {
+      display: none;
+    }
+
+    // Just above the status strip and staying there: the sheet moves, this does
+    // not. A control that changes place when a panel opens is a control the
+    // reader has to find twice.
+    .playbackRow {
+      flex-wrap: nowrap;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 8px;
+    }
+
+    // The two that remain have to fit 390px between them, which at their desk
+    // sizes they do not by about seventy pixels.
+    .transportCard {
+      gap: 2px;
+      padding: 0 6px;
+      height: 52px;
+    }
+
+    .speedButton,
+    .stopButton {
+      width: 34px;
+      height: 34px;
+    }
+
+    .playButton {
+      width: 40px;
+      height: 40px;
     }
   }
 }

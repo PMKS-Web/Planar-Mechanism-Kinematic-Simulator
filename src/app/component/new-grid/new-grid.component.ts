@@ -18,6 +18,7 @@ import { GridUtilsService } from '../../services/grid-utils.service';
 import { SettingsService } from '../../services/settings.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { LongPress, LongPressDirective } from '../../long-press.directive';
+import { ViewportService } from '../../services/viewport.service';
 import { ContextMenuComponent } from '../context-menu/context-menu.component';
 import { ContextMenuModel, trackContextMenuPointer } from '../context-menu/menu-model';
 import {
@@ -171,6 +172,7 @@ export class NewGridComponent implements OnDestroy {
   private colorService = inject(ColorService);
   nup = inject(NumberUnitParserService);
   dragState = inject(DragStateService);
+  viewport = inject(ViewportService);
   sliderMarks = inject(SliderMarkService);
   bgImage = inject(BackgroundImageService);
   private menuBuilder = inject(ContextMenuBuilderService);
@@ -289,6 +291,11 @@ export class NewGridComponent implements OnDestroy {
 
     const svgElement = document.getElementById('canvas') as HTMLElement;
     this.svgGrid.setNewElement(svgElement);
+
+    // After the URL has been decoded -- `UrlProcessorService` does that in its
+    // own constructor -- so the tutorial can tell an empty grid from a shared
+    // mechanism and stay out of the way of the second.
+    this.tutorial.openOnFirstVisit();
 
     fromEvent(window, 'resize')
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -2004,6 +2011,32 @@ export class NewGridComponent implements OnDestroy {
     );
   }
 
+  /**
+   * Show the panel about the thing that was just tapped.
+   *
+   * On the *release*, and only for a press that neither travelled nor became a
+   * menu. Doing it on selection was tried and is worse than it sounds:
+   * selecting happens on press, so a finger going down on a joint raised the
+   * sheet over that joint while the finger was still on it, and a long press
+   * held there then found the sheet under it rather than the joint it had been
+   * aimed at.
+   *
+   * Only what a panel has something to say about. `Grid` is the press that
+   * landed on bare canvas and cleared the selection, and opening a panel to
+   * say "nothing is selected" is the opposite of what that gesture asked for.
+   */
+  private openPanelForTap($event: MouseEvent): void {
+    if (!this.viewport.isPhone() || this.pressBecameMenu) return;
+    if ($event.button !== 0 || !this.pressDidNotTravel($event)) return;
+    // What the press landed on, recorded when it went down, rather than what is
+    // selected now. The selection is cleared by a tap on bare canvas later in
+    // this same gesture than anything here can read it -- so asking the
+    // selection opened the panel about the joint the reader had just tapped
+    // away from. `String` is the grid: `setLastLeftClick('grid')`.
+    if (this.objectKind(this.lastLeftClick) === 'String') return;
+    this.tabService.sheetExpanded.set(true);
+  }
+
   mouseUp($event: MouseEvent) {
     //This is the mouseUp that is called no matter what is clicked on
     this.bgDrag = undefined;
@@ -2056,6 +2089,12 @@ export class NewGridComponent implements OnDestroy {
     this.heldGestureNotice = undefined;
 
     this.finishMechanismDrag($event);
+
+    // Last, once the press has finished deciding what it selected. Run first,
+    // this read the selection the *previous* gesture left: a tap on bare canvas
+    // clears the selection later in this same method, so the panel opened about
+    // a joint the reader had just tapped away from.
+    this.openPanelForTap($event);
   }
 
   /**

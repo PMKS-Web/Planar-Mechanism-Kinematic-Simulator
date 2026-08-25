@@ -1,5 +1,6 @@
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ViewportService } from '../../services/viewport.service';
 import { ForceAnalysisMode, ForceReactionIndex } from 'src/app/model/mechanism/force-solver';
 import { Mechanism } from 'src/app/model/mechanism/mechanism';
 import { PrisJoint, RealJoint } from 'src/app/model/joint';
@@ -51,6 +52,7 @@ export interface ForceAnalysisRow {
   ],
 })
 export class AnalysisPanelComponent {
+  viewport = inject(ViewportService);
   activeSrv = inject(ActiveObjService);
   private fb = inject(FormBuilder);
   mechanismService = inject(MechanismService);
@@ -83,9 +85,11 @@ export class AnalysisPanelComponent {
    * velocity and acceleration graphs made by the panel that draws reactions.
    */
   get analysisHelpHint(): string {
+    // The verb the reader's device gives them, as everywhere else in the app.
+    const pick = this.viewport.isTouch() ? 'Tap' : 'Click';
     return this.showForce
-      ? 'Click a joint for the reactions it carries, or a link for the forces at its joints. The input joint carries the effort that drives the mechanism.'
-      : 'Click a joint for position, velocity and acceleration graphs, or a link for its angular kinematics.';
+      ? `${pick} a joint for the reactions it carries, or a link for the forces at its joints. The input joint carries the effort that drives the mechanism.`
+      : `${pick} a joint for position, velocity and acceleration graphs, or a link for its angular kinematics.`;
   }
 
   /** The selected joint or link, when the selection is one of those. */

@@ -70,21 +70,8 @@ export class LeftTabsComponent implements AfterViewInit, OnDestroy {
   private tutorial = inject(TutorialService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  /**
-   * Whether the phone sheet is showing its contents or just its handle.
-   *
-   * Collapsed to begin with, and deliberately: a reader arriving on a phone has
-   * come to look at a mechanism, and a panel that takes half the window before
-   * anything has been selected is a panel in the way of the thing it is about.
-   *
-   * Nothing opens it but the handle. Opening it on selection was tried and is
-   * worse than it sounds: selecting happens on *press*, so a finger going down
-   * on a joint raised the sheet over that joint while the finger was still on
-   * it -- and a long press held there then found the sheet under it rather
-   * than the joint it had been aimed at. A panel that moves the thing you are
-   * touching is a panel that has to be asked for.
-   */
-  readonly sheetExpanded = signal(false);
+  /** The sheet's state lives on the tab service: the canvas opens it too. */
+  readonly sheetExpanded = this.tabs.sheetExpanded;
 
   toggleSheet(): void {
     this.sheetExpanded.update((open) => !open);
