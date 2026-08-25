@@ -610,11 +610,14 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       // Behind the cover, and everything below waits on it: solving the
       // incoming mechanism takes the thread, so an opened file used to be a few
       // seconds of a window that had stopped answering.
-      void this.loading
+      this.loading
         .during('Opening mechanism…', () =>
           this.urlProcessor.updateFromURL(reader.result as string)
         )
-        .then(() => this.afterUpload(input));
+        .then(() => this.afterUpload(input))
+        // The cover comes down in `during`'s own `finally`; this is only so a
+        // failed open is a console error rather than an unhandled rejection.
+        .catch((error) => console.error('Unable to open the file', error));
     };
     reader.readAsText(input.files[0]);
   }

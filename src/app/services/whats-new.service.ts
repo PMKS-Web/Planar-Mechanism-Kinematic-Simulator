@@ -71,6 +71,34 @@ export class WhatsNewService {
   }
 
   /**
+   * Decide what this reader is owed on arrival, and do it.
+   *
+   * Returns whether the notes were put up, so the caller knows whether the door
+   * is already occupied. `quietly` is for a caller that has something better to
+   * show -- the `?library` link -- and wants the bookkeeping without the
+   * dialog: a returning reader's notes stay unread and wait for next time.
+   *
+   * The newcomer branch is the important one, and it is not bookkeeping for its
+   * own sake. Whether somebody has been here before is read off marks other
+   * parts of the app leave when a preference is changed, and any of those could
+   * one day come to be written on first load by a change nowhere near this
+   * file -- at which point every new reader would be handed a list of things
+   * that changed before they ever arrived. Writing the version down the moment
+   * a reader with no history walks in makes that impossible: they arrived at
+   * this version, so they are current, and the only notes they can ever be
+   * shown are ones written after today.
+   */
+  greet({ quietly = false } = {}): boolean {
+    if (!this.hasBeenHereBefore()) {
+      this.markRead();
+      return false;
+    }
+    if (quietly || !this.unread) return false;
+    this.show();
+    return true;
+  }
+
+  /**
    * Show them, unconditionally -- the caller decides whether they are due.
    *
    * Shown over a shared mechanism as well as an empty grid, which is where this

@@ -309,9 +309,12 @@ export class NewGridComponent implements OnDestroy {
     // arrived -- it is somebody who pressed a button that said where they
     // wanted to go, and putting anything in front of it answers a question they
     // did not ask.
-    if (this.urlParser.wantsLibrary) TemplatesComponent.openIn(this.dialog);
-    else if (this.whatsNew.unread) this.whatsNew.show();
-    else if (!this.whatsNew.hasBeenHereBefore()) this.tutorial.openOnFirstVisit();
+    if (this.urlParser.wantsLibrary) {
+      this.whatsNew.greet({ quietly: true });
+      TemplatesComponent.openIn(this.dialog);
+    } else if (!this.whatsNew.greet()) {
+      this.tutorial.openOnFirstVisit();
+    }
 
     fromEvent(window, 'resize')
       .pipe(takeUntilDestroyed(this.destroyRef))

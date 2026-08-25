@@ -166,17 +166,28 @@ const seen = (page, selector) =>
   await page.locator('.topStrip .iconButton').first().click();
   await page.locator('.projectMenu #templatesButton').click();
   await page.waitForTimeout(600);
-  // Watched rather than sampled: the whole point is that it appears during a
-  // stretch when nothing else can, and it is gone again in a second or two.
-  const covered = page
-    .locator('.loadingScrim')
-    .waitFor({ state: 'visible', timeout: 4000 })
-    .then(() => true)
-    .catch(() => false);
+  // Recorded rather than polled for. On a warm build a four-bar solves in well
+  // under a poll interval, so `waitFor({state:'visible'})` is a coin toss --
+  // and a check that only fails sometimes is worse than no check. An observer
+  // armed before the click cannot miss it: what is being asserted is that the
+  // cover was in the document at all during the load, which is exactly the
+  // thing that used to be impossible.
+  await page.evaluate(() => {
+    window.__coverSeen = false;
+    new MutationObserver(() => {
+      if (document.querySelector('.loadingScrim')) window.__coverSeen = true;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
   await page.locator('#templates [data-template="Watt_I"]').click();
-  check('Opening a mechanism shows the loading cover', await covered);
-  await page.locator('.loadingScrim').waitFor({ state: 'detached', timeout: 15000 });
-  check('The cover comes down when the mechanism is in', true);
+  await page.waitForTimeout(3000);
+  check(
+    'Opening a mechanism shows the loading cover',
+    await page.evaluate(() => window.__coverSeen)
+  );
+  check(
+    'The cover comes down when the mechanism is in',
+    (await page.locator('.loadingScrim').count()) === 0
+  );
   await page.screenshot({ path: `${OUT}/after-load.png` });
   await context.close();
 }

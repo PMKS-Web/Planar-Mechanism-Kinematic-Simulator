@@ -248,9 +248,15 @@ export class TemplatesComponent {
     // Behind the cover: solving every sample of the incoming mechanism takes
     // the thread for long enough that a bare click on a card looked like a card
     // that did nothing.
-    void this.loading.during('Opening mechanism…', () =>
-      this.urlProcessor.updateFromURL(content, true, true, true)
-    );
+    // Caught rather than left to `void`: `during` puts the cover down in its own
+    // `finally`, so a throw here is already survivable on screen -- but an
+    // unhandled rejection would still be the console's loudest message about a
+    // load that had visibly recovered.
+    this.loading
+      .during('Opening mechanism…', () =>
+        this.urlProcessor.updateFromURL(content, true, true, true)
+      )
+      .catch((error) => console.error('Unable to open the mechanism', error));
   }
 
   private openInNewTab(content: string) {

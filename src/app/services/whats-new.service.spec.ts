@@ -61,6 +61,33 @@ describe('WhatsNewService', () => {
     expect(service().unread).toBe(false);
   });
 
+  it('greets a returning reader with the notes', () => {
+    localStorage.setItem('tutorialSeen', 'true');
+    expect(service().greet()).toBe(true);
+    expect(opened).toBe(1);
+  });
+
+  it('leaves a newcomer current, so notes from before their time cannot reach them', () => {
+    // The evidence of a previous visit is marks other parts of the app write
+    // when a preference changes. If one of those ever came to be written on
+    // first load, a reader who arrived today would be handed a list of what
+    // changed before they existed -- unless today's version is already down
+    // against their name, which is what this does.
+    expect(service().greet()).toBe(false);
+    expect(opened).toBe(0);
+    expect(localStorage.getItem('whatsNewSeen')).toBe(WHATS_NEW_VERSION);
+    localStorage.setItem('snapToGrid', 'false');
+    expect(service().unread).toBe(false);
+  });
+
+  it('greets quietly for a caller with something better to show', () => {
+    localStorage.setItem('tutorialSeen', 'true');
+    expect(service().greet({ quietly: true })).toBe(false);
+    expect(opened).toBe(0);
+    // Unread, so they are still owed them next time.
+    expect(service().unread).toBe(true);
+  });
+
   it('speaks again when there are different notes to give', () => {
     localStorage.setItem('tutorialSeen', 'true');
     localStorage.setItem('whatsNewSeen', '2020.01');
