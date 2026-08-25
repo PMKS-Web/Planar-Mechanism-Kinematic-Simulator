@@ -12,6 +12,9 @@ import { applySynthesisDesign } from './synthesis/synthesis-url';
 import { SynthesisSolutionService } from './synthesis/synthesis-solution.service';
 import { RealLink } from '../model/link';
 
+/** The one query that names a screen instead of describing a mechanism. */
+const LIBRARY_QUERY = 'library';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -23,12 +26,37 @@ export class UrlProcessorService {
   private notify = inject(NotificationService);
   private synthesis = inject(SynthesisBuilderService);
 
+  /**
+   * Whether the address asked for the mechanism library rather than carrying a
+   * mechanism. Read once, by whoever is in a position to open a dialog.
+   *
+   * `?library` is a deep link for the landing page's "Browse the mechanism
+   * library" button, which until now could only drop somebody onto an empty
+   * grid and leave them to find the project menu. It is safe to tell apart from
+   * a real payload because an encoded mechanism always begins with a version
+   * digit and the word does not, and because every payload this app has ever
+   * written ends in a checksum that "library" does not satisfy -- so the worst
+   * case for a collision is the failure that already exists.
+   */
+  readonly wantsLibrary: boolean;
+
   constructor() {
     // the content part of the url (the part after the ?)
     const url = this.getURLContent();
+    this.wantsLibrary = url !== null && url.trim().toLowerCase() === LIBRARY_QUERY;
 
     // update the mechanism from the url
-    this.updateFromURL(url, true, true, true);
+    //
+    // Nothing to decode when the address is asking for a screen, and handing
+    // the word to the decoder would raise "that shared link could not be
+    // opened" over the library the reader just asked for.
+    this.updateFromURL(this.wantsLibrary ? null : url, true, true, true);
+    // The strip that a decode does in its `finally`, for the branch that skips
+    // it: a reload should not be a second trip through the front door, and the
+    // address bar should say what is on screen.
+    if (this.wantsLibrary) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }
 
   // From the full url string, extract the substring after the '?'. If does not exist, return null

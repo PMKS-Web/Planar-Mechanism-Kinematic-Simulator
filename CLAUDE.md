@@ -124,7 +124,7 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 - `SelectedTabService` (`TabID` enum) coordinates the four modes; the Edit and analysis panels operate on whatever `ActiveObjService` says is selected (joint, link, force, mechanism, background image, or synthesis pose).
 - The right drawer is addressed by number through statics on `RightPanelComponent`: 1 Settings, 3 Help, 4 Debug (dev only), 5 `KINEMATIC_SETUP_TAB`, 6 `FORCE_SETUP_TAB`, 7 `EXPORT_TAB`. **Tab 2 (`app-equation-panel`) is unreachable** — nothing calls `tabClicked(2)` and its content is placeholder images. It is unfinished work, not a feature.
 - `SettingsService` exposes document-wide settings as RxJS BehaviorSubjects (units, gravity, grid and snap visibility, object scale). Input **speed and direction are not global** — they belong to the driven joint (`Joint.driveSpeed`), because a drawing can hold several machines; the SettingsService values are only the default a joint falls back to.
-- `component/BLOCKS/` holds the reusable form primitives (input, toggle, radio, dual-input, panel-section, ...) that the panels are composed from; `component/MODALS/` holds the Templates dialog.
+- `component/BLOCKS/` holds the reusable form primitives (input, toggle, radio, dual-input, panel-section, ...) that the panels are composed from; `component/MODALS/` holds the Templates dialog and the release-notes splash.
 - Messages to the user go through `NotificationService`, which replaced the old `NewGridComponent.sendNotification()` static. Some components still talk through statics (e.g. `RightPanelComponent.openTab` / `insistOn`) — grep for the static before assuming a service is the only channel.
 - Four-bar synthesis (generating a linkage from three desired coupler poses) lives in `services/synthesis/`.
 - **Phone layout.** `ViewportService` owns the one breakpoint (600px). Below it the mode panel is a
@@ -134,6 +134,23 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
   canvas turns a held finger into a `contextmenu` event, so the whole right-click menu works on
   touch without a second code path — see `onLongPress` in `new-grid.component.ts`. There is no
   touchscreen warning dialog any more; `e2e/mobile.mjs` is what guards all of this.
+- **Arriving.** Three things can greet a reader and exactly one of them does, decided in
+  `NewGridComponent.ngOnInit`. `?library` wins outright (see below). Otherwise `WhatsNewService`
+  asks whether `localStorage` holds any mark of a previous visit: if it does, the release notes in
+  `model/whats-new.ts` open once and record `whatsNewSeen`; if it does not, the tutorial does.
+  Adding a release note is a row in `WHATS_NEW`, and raising `WHATS_NEW_VERSION` is what makes the
+  dialog speak again.
+- **`?library`** is a deep link for the landing page's "Browse the mechanism library" button:
+  `UrlProcessorService` recognizes it instead of handing it to the decoder, sets `wantsLibrary`,
+  and strips it from the address bar. Every door into the library goes through
+  `TemplatesComponent.openIn`.
+- **Loading indicators.** Decoding a URL solves every sample of the mechanism synchronously, so
+  nothing can paint during it. Two covers answer that: the `#bootSplash` block in `index.html`,
+  painted out of the HTML before the bundle runs and removed by `AppComponent`'s
+  `afterNextRender`; and `LoadingService.during`, which raises `app-loading-overlay`, waits for it
+  to actually reach the glass, and only then runs the work. Anything that replaces the whole
+  drawing goes through `during` -- undo and redo deliberately do not, because a cover flashing on
+  every undo is worse than the wait.
 - Onboarding is the **tutorial**: `services/tutorial.service.ts` with `model/tutorial-steps.ts`, shown by `component/tutorial-panel/` as a card *pinned* in the right drawer above whatever page is open (it is not one of the numbered pages). Its step is derived from the drawing by `progressFor`, never counted, which is what lets it start on a half-built mechanism and follow an undo backwards. It is offered from the Edit panel's empty state, reopened from the project menu, and remembers in `localStorage` (`tutorialSeen`) that it has been finished, dismissed or walked out of. The `intro.js` overlay tour it replaced is gone, dependency and all.
 - The tutorial card asks the drawing for its step from `ngDoCheck`, not a subscription: every edit ends in `updateMechanism`, which publishes on nothing that could be listened to — `onMechUpdateState` carries the *analysis* state, which is why caches elsewhere key on `poseRevision` instead.
 

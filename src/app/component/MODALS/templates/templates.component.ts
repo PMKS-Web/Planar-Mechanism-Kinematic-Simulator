@@ -14,6 +14,7 @@ import {
   MatDialogTitle,
   MatDialogActions,
 } from '@angular/material/dialog';
+import { LoadingService } from 'src/app/services/loading.service';
 import { MechanismService } from 'src/app/services/mechanism.service';
 import { UrlProcessorService } from 'src/app/services/url-processor.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
@@ -62,6 +63,19 @@ export interface TemplateGroup {
   ],
 })
 export class TemplatesComponent {
+  /**
+   * Open the library, at the size everything opens it at.
+   *
+   * A static because there are three ways in now -- the project menu, the
+   * tutorial card and the `?library` link -- and the first two each had their
+   * own copy of the same dimensions. A library that is 90% of the window from
+   * one door and something else from another is one paste away, and nothing
+   * would fail.
+   */
+  static openIn(dialog: MatDialog): MatDialogRef<TemplatesComponent> {
+    return dialog.open(TemplatesComponent, { height: '90%', width: '90%', autoFocus: false });
+  }
+
   private dialogRef = inject<MatDialogRef<TemplatesComponent> | null>(
     MatDialogRef<TemplatesComponent>,
     { optional: true }
@@ -69,6 +83,7 @@ export class TemplatesComponent {
   private dialog = inject(MatDialog);
   private mechanismSrv = inject(MechanismService);
   private urlProcessor = inject(UrlProcessorService);
+  private loading = inject(LoadingService);
   private design = inject(SynthesisBuilderService);
 
   /** Asks whether to replace the mechanism already on the grid or open a new tab. */
@@ -224,10 +239,18 @@ export class TemplatesComponent {
     // Left alone, a velocity vector switched on for one mechanism's B reappears
     // on a completely different mechanism's B.
     this.mechanismSrv.clearVectorTraces();
+    // Closed first, so the wait is watched over the grid rather than over the
+    // library the reader has already finished with.
+    this.dialogRef?.close();
     // The same in-place rebuild undo/redo uses. Saved to history, so replacing
     // an existing mechanism is a single undo away from being taken back.
-    this.urlProcessor.updateFromURL(content, true, true, true);
-    this.dialogRef?.close();
+    //
+    // Behind the cover: solving every sample of the incoming mechanism takes
+    // the thread for long enough that a bare click on a card looked like a card
+    // that did nothing.
+    void this.loading.during('Opening mechanism…', () =>
+      this.urlProcessor.updateFromURL(content, true, true, true)
+    );
   }
 
   private openInNewTab(content: string) {

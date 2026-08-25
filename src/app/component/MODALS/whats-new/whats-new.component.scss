@@ -1,0 +1,208 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+
+// Rendered into Angular's overlay, like the mechanism library, so these rules
+// live in the theme rather than being component-scoped -- a scoped copy would
+// not reach the dialog.
+@mixin css($theme) {
+  $color-config: mat.m2-get-color-config($theme);
+  $typography-config: mat.m2-get-typography-config($theme);
+  $primary-palette: map.get($color-config, 'primary');
+  $indigo-500: mat.m2-get-color-from-palette($primary-palette, 500);
+  $indigo-700: mat.m2-get-color-from-palette($primary-palette, 700);
+
+  // The dialog's own box, so the notes can scroll inside a card that does not.
+  .whatsNewPanel .mat-mdc-dialog-surface {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+  }
+
+  #whatsNew {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    // Tall enough to be worth opening, never taller than the window.
+    max-height: min(78dvh, 760px);
+    width: 560px;
+    max-width: 100%;
+    background: var(--card-surface);
+  }
+
+  .wnHead {
+    flex: 0 0 auto;
+    padding: 20px 20px 14px 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .wnTitleRow {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .wnTitle {
+    margin: 0;
+    @include mat.m2-typography-level($typography-config, 'headline-6');
+  }
+
+  .wnLead {
+    margin: 4px 0 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .wnClose {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+  }
+
+  .wnBody {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 8px 24px 4px;
+  }
+
+  // Icon in its own column so the sentences line up down the left whatever the
+  // glyph is: Material gives every icon the same box, and the titles sitting on
+  // a ragged left edge was the first thing wrong with this.
+  .wnNote {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 0;
+
+    & + .wnNote {
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+    }
+  }
+
+  .wnIcon {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+    line-height: 22px;
+    margin-top: 1px;
+    color: $indigo-500;
+  }
+
+  .wnText {
+    min-width: 0;
+  }
+
+  .wnNoteTitle {
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 20px;
+    color: #2c2c2c;
+  }
+
+  .wnNoteBody {
+    margin: 2px 0 0;
+    font-size: 13.5px;
+    line-height: 19px;
+    color: rgba(0, 0, 0, 0.62);
+  }
+
+  .wnAlsoTitle {
+    padding: 16px 0 4px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: rgba(0, 0, 0, 0.45);
+  }
+
+  .wnAlso {
+    margin: 0;
+    padding: 0 0 8px 18px;
+
+    li {
+      font-size: 13.5px;
+      line-height: 20px;
+      color: rgba(0, 0, 0, 0.62);
+      margin-bottom: 2px;
+    }
+  }
+
+  // A hint that the list keeps going, because the notes are taller than the
+  // card and the scroll happens to land its cut on a divider: read without
+  // this, the last note visible looks like the last note there is.
+  .wnFoot::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 26px;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--card-surface));
+  }
+
+  .wnFoot {
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 24px 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    background: var(--card-surface);
+  }
+
+  .wnGo {
+    border: none;
+    border-radius: 6px;
+    padding: 0 18px;
+    height: 40px;
+    background: $indigo-500;
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+
+    &:hover {
+      background: $indigo-700;
+    }
+  }
+
+  // On a phone the dialog is the window, and the notes are what scrolls in it.
+  @media (max-width: 600px) {
+    #whatsNew {
+      width: 100%;
+      max-height: 86dvh;
+    }
+
+    .wnHead {
+      padding: 16px 12px 12px 16px;
+    }
+
+    .wnBody {
+      padding: 4px 16px;
+    }
+
+    .wnFoot {
+      padding: 10px 16px 14px;
+    }
+
+    .wnGo {
+      width: 100%;
+    }
+  }
+}

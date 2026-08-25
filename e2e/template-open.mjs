@@ -10,6 +10,7 @@ const { chromium } = await import(
 );
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
+import { startQuiet } from './quiet-start.mjs';
 const OUT = 'artifacts/template-open';
 mkdirSync(OUT, { recursive: true });
 const FOUR_BAR =
@@ -24,7 +25,7 @@ const context = await browser.newContext({ viewport: { width: 1500, height: 950 
 // This is about the library, not about onboarding. A first visit now opens the
 // tutorial by itself, and its card in the drawer is not what these checks are
 // looking at.
-await context.addInitScript(() => localStorage.setItem('tutorialSeen', 'true'));
+await startQuiet(context);
 let newPages = 0;
 context.on('page', () => newPages++);
 

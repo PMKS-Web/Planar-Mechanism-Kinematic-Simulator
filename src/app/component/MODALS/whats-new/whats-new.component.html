@@ -1,0 +1,39 @@
+<div class="whatsNew" id="whatsNew">
+  <!-- Head and foot stay put; only the notes between them move. The list is
+       longer than a phone is tall and a reader has to be able to reach the way
+       out without going through all of it. -->
+  <div class="wnHead">
+    <div class="wnTitleRow">
+      <div>
+        <h1 class="wnTitle">Welcome back</h1>
+        <p class="wnLead">PMKS+ has changed quite a bit since you were last here.</p>
+      </div>
+      <button class="wnClose" type="button" (click)="close()" aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="wnBody">
+    @for (note of notes; track note.title) {
+      <div class="wnNote">
+        <mat-icon class="wnIcon">{{ note.icon }}</mat-icon>
+        <div class="wnText">
+          <div class="wnNoteTitle">{{ note.title }}</div>
+          <p class="wnNoteBody">{{ note.body }}</p>
+        </div>
+      </div>
+    }
+
+    <div class="wnAlsoTitle">Also</div>
+    <ul class="wnAlso">
+      @for (line of also; track line) {
+        <li>{{ line }}</li>
+      }
+    </ul>
+  </div>
+
+  <div class="wnFoot">
+    <button class="wnGo" type="button" (click)="close()">Start using it</button>
+  </div>
+</div>

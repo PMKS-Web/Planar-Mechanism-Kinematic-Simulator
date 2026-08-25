@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, afterNextRender, inject } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
 import { NewGridComponent } from './component/new-grid/new-grid.component';
@@ -8,6 +8,7 @@ import { LeftTabsComponent } from './component/left-tabs/left-tabs.component';
 import { PlaybackBarComponent } from './component/playback-bar/playback-bar.component';
 import { RightPanelComponent } from './component/right-panel/right-panel.component';
 import { NotificationComponent } from './component/notification/notification.component';
+import { LoadingOverlayComponent } from './component/loading-overlay/loading-overlay.component';
 
 @Component({
   selector: 'app-root',
@@ -25,6 +26,7 @@ import { NotificationComponent } from './component/notification/notification.com
     PlaybackBarComponent,
     RightPanelComponent,
     NotificationComponent,
+    LoadingOverlayComponent,
   ],
 })
 export class AppComponent {
@@ -152,5 +154,27 @@ export class AppComponent {
       'unlock',
       this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/unlock.svg')
     );
+
+    // Take down the splash `index.html` painted before any of this existed.
+    //
+    // `afterNextRender` rather than a lifecycle hook, because the thing it has
+    // to wait for is not this component: the canvas is built during the first
+    // render and decodes the address while it is, and that is the freeze the
+    // splash is covering. Then a frame, so what replaces it is a drawn app
+    // rather than a flash of empty grid.
+    afterNextRender(() => requestAnimationFrame(() => this.hideBootSplash()));
+  }
+
+  /** Fade it out, then let it go. Idempotent: it can only be removed once. */
+  private hideBootSplash(): void {
+    const splash = document.getElementById('bootSplash');
+    if (!splash) return;
+    splash.style.transition = 'opacity 180ms ease-out';
+    splash.style.opacity = '0';
+    // Not `transitionend`: a reader with reduced motion, or a browser that
+    // never runs the transition because the tab was in the background for it,
+    // would leave a white sheet over the whole app forever. A timer always
+    // fires.
+    setTimeout(() => splash.remove(), 220);
   }
 }

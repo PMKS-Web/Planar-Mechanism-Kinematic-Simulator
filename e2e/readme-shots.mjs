@@ -28,6 +28,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { startQuiet } from './quiet-start.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'docs/images/readme';
@@ -293,7 +294,7 @@ for (const shot of SHOTS) {
   });
   // The tutorial card is offered to a first-time reader and would otherwise sit
   // over the panel in every picture.
-  await context.addInitScript(() => localStorage.setItem('tutorialSeen', 'true'));
+  await startQuiet(context);
   const page = await context.newPage();
   const payload = payloads[shot.template] ?? (shot.template === 'empty' ? '' : shot.template);
   if (shot.template !== 'empty' && !payloads[shot.template] && !payload) {
