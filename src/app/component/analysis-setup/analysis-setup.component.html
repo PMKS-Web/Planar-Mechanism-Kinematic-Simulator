@@ -118,10 +118,13 @@
         <button class="sectionHeader" (click)="forceOpen = !forceOpen">
           <span class="sectionName">
             Force analysis
+            <!-- Outstanding requirements stop force analysis running at all,
+                 so they are red. What is left when none are outstanding is
+                 advice, which is amber. -->
             @if (forceOutstanding > 0) {
-              <span class="chip warning">{{ forceOutstanding }} to set</span>
+              <span class="chip blocker">{{ forceOutstanding }} to set</span>
             } @else {
-              <span class="chip">{{ forceWarnings }} worth a look</span>
+              <span class="chip warning">{{ forceWarnings }} worth a look</span>
             }
           </span>
           <mat-icon>{{ forceOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
@@ -163,7 +166,9 @@
       <button class="sectionHeader muted" (click)="unassignedOpen = !unassignedOpen">
         <span class="sectionName">
           Not in any mechanism
-          <span class="chip">{{ unassigned.length }}</span>
+          <!-- Amber: the machines that do exist still analyse, but part of
+               what has been drawn is not among them. -->
+          <span class="chip warning">{{ unassigned.length }}</span>
         </span>
         <mat-icon>{{ unassignedOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>

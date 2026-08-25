@@ -83,16 +83,16 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
   // The two arms that carry the blades. The drive link and the tie rod between
   // them do different jobs and stay apart.
   Windshield_Wiper: { same: [['BCPT', 'DQU']] },
-  // Everything in it comes in twos, mirrored about the cylinder's axis: the two
-  // arms, and the two short links reaching each of them. The two rails are the
-  // exception — they are not a mirror pair but they are the same part twice, a
-  // fixed guide, so they match for the other reason.
+  // Everything in it comes in twos, mirrored about the ram's axis. The two
+  // drive links meet each other on that axis, at the ram's own pin, so this is
+  // the case where matching a mirror pair beats keeping neighbours apart:
+  // they are one part made twice and should say so.
   Cylinder_Gripper: {
     same: [
-      ['KL', 'OP'],
-      ['GM', 'IT'],
-      ['HQ', 'JV'],
-      ['MQS', 'TVX'],
+      ['BD', 'GI'],
+      ['CE', 'HJ'],
+      ['DEF', 'IJK'],
+      ['AD', 'AI'],
     ],
   },
   // Mirror images about the line the pen rules: the two bars off the fixed
@@ -155,25 +155,55 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
   // exactly the thing this drawing exists to say does not make it a new bar.
   Four_Bar_Inversions: {
     machines: [
-      ['AB', 'BC', 'CD'],
-      ['EF', 'FG', 'GH'],
-      ['IJ', 'JK', 'KL'],
-      ['MN', 'NO', 'OP'],
+      ['AB', 'BC', 'CD', 'AD'],
+      ['EF', 'FG', 'GH', 'EH'],
+      ['IJ', 'JK', 'KL', 'IL'],
+      ['MN', 'NO', 'OP', 'MP'],
     ],
     fixed: {
-      // L1 indigo, L2 teal, L3 navy, L4 dark teal, wherever each turns up.
-      AB: 4,
-      BC: 2,
-      CD: 5,
+      // L1 indigo, L2 teal, L3 navy, L4 dark teal, wherever each turns up —
+      // including where it is the bar being held, which every one of the four
+      // draws. The missing colour is never missing here; what moves is which
+      // one has the ground hatching on it.
+      AB: 1,
+      BC: 4,
+      CD: 2,
+      AD: 5,
       EF: 1,
       FG: 5,
       GH: 2,
+      EH: 4,
       IJ: 4,
-      JK: 1,
+      JK: 2,
       KL: 5,
+      IL: 1,
+      MN: 4,
+      NO: 1,
+      OP: 5,
+      MP: 2,
+    },
+  },
+  // The same argument as the four-bar set, for the chain with a slider in it.
+  // L1 indigo, L2 teal, L3 navy, wherever each turns up; L4 is the block,
+  // which is drawn black and is nobody's colour.
+  Slider_Crank_Inversions: {
+    machines: [
+      ['AB', 'BC'],
+      ['FG', 'EH', 'EF'],
+      ['JK', 'MN', 'JM'],
+      ['PQ', 'QR'],
+    ],
+    fixed: {
+      AB: 4,
+      BC: 2,
+      FG: 2,
+      EH: 1,
+      EF: 4,
+      JK: 4,
       MN: 1,
-      NO: 4,
-      OP: 2,
+      JM: 2,
+      PQ: 2,
+      QR: 4,
     },
   },
   Pumping_Field: {

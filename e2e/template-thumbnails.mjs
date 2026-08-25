@@ -73,6 +73,7 @@ const FILENAMES = {
   Pumping_Field: 'pumping-field',
   Loader_Bucket: 'loader-bucket',
   Four_Bar_Inversions: 'four-bar-inversions',
+  Slider_Crank_Inversions: 'slider-crank-inversions',
 };
 
 // The three dev drawings are not here on purpose. Their payloads were written

@@ -105,6 +105,16 @@ export class TutorialPanelComponent implements DoCheck {
     return blockers === 0 ? 'Ready' : `${blockers} ${blockers === 1 ? 'fix' : 'fixes'}`;
   }
 
+  /**
+   * And in the colour it is wearing, for the same reason.
+   *
+   * A quotation that reads the right number in the wrong colour teaches the
+   * wrong thing about what the colour means.
+   */
+  get chipKind(): 'blocker' | 'ok' {
+    return this.mechanism.blockerCount() === 0 ? 'ok' : 'blocker';
+  }
+
   /** Step four is the one lesson about the app rather than about linkages. */
   get showsChipHint(): boolean {
     return this.tutorial.viewedStep === 4;

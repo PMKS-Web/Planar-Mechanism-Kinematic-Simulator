@@ -219,6 +219,11 @@ export class TemplatesComponent {
   }
 
   private openHere(content: string) {
+    // Vector switches are keyed by joint and link id, and the drawing about to
+    // arrive spells its joints with the same letters as the one being replaced.
+    // Left alone, a velocity vector switched on for one mechanism's B reappears
+    // on a completely different mechanism's B.
+    this.mechanismSrv.clearVectorTraces();
     // The same in-place rebuild undo/redo uses. Saved to history, so replacing
     // an existing mechanism is a single undo away from being taken back.
     this.urlProcessor.updateFromURL(content, true, true, true);

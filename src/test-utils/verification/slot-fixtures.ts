@@ -1161,3 +1161,69 @@ export function windshieldWiperFixture(): MechanismFixture {
     inputAngVel: INPUT_SPEED,
   };
 }
+
+/**
+ * A gripper whose jaws stay parallel, driven by one ram on the centreline.
+ *
+ * The other gripper in this file is a drawing somebody shared, kept for what
+ * it does to the solver. This one is drawn to be a gripper: symmetric about
+ * the ram's axis, and constrained so that the only thing it can do is open and
+ * close.
+ *
+ * Each jaw hangs on a parallelogram — two equal bars from two frame pins to
+ * two pins on the jaw, the span between them equal at both ends. A
+ * parallelogram cannot change the angle of its far side, so the jaw keeps the
+ * attitude it was drawn with however far it swings, and the two jaws close on
+ * each other flat rather than pinching at their tips.
+ *
+ * That is done with pins rather than with a block sliding in a vertical slot,
+ * which is the other way to hold a jaw parallel and the way this was first
+ * drawn. A slide holds it just as well and the solver cannot walk it: a chain
+ * that leaves the frame through one sliding pair and comes back through
+ * another has no pinned joint anywhere for the position walk to start from,
+ * and the mechanism reports a dead position at every pose. Two bars and four
+ * pins say the same thing in a language the solver already speaks.
+ *
+ * Advancing the ram closes the jaws: the drive links run outward from the ram
+ * pin to the near corner of each jaw, so pushing the pin toward the jaws
+ * swings both parallelograms in toward the axis.
+ */
+export function parallelGripperFixture(scale: number = 1): MechanismFixture {
+  const at = (x: number, y: number) => ({ x: x * scale, y: y * scale });
+  /** The frame pins each jaw's parallelogram hangs from. */
+  const NEAR = 2.4;
+  const FAR = 4.2;
+  const ANCHOR = 2.6;
+  /** Where the two hangers put the jaw at rest, 60 degrees off the frame. */
+  const DROP = { x: 0.7, y: -1.212 };
+  const jaw = ANCHOR + DROP.y;
+  return {
+    joints: [
+      // The ram pin: a block on a guide down the axis, and the only thing
+      // driven. Its pin is not welded — the two drive links turn on it.
+      { id: 'A', ...at(0, 0) },
+      { id: 'B', ...at(NEAR, ANCHOR), ground: true },
+      { id: 'C', ...at(FAR, ANCHOR), ground: true },
+      { id: 'D', ...at(NEAR + DROP.x, jaw) },
+      { id: 'E', ...at(FAR + DROP.x, jaw) },
+      { id: 'F', ...at(FAR + DROP.x + 2.6, jaw) },
+      { id: 'G', ...at(NEAR, -ANCHOR), ground: true },
+      { id: 'H', ...at(FAR, -ANCHOR), ground: true },
+      { id: 'I', ...at(NEAR + DROP.x, -jaw) },
+      { id: 'J', ...at(FAR + DROP.x, -jaw) },
+      { id: 'K', ...at(FAR + DROP.x + 2.6, -jaw) },
+    ],
+    links: [
+      { joints: 'BD', name: 'Hanger' },
+      { joints: 'CE', name: 'Hanger' },
+      { joints: 'DEF', name: 'Jaw' },
+      { joints: 'AD' },
+      { joints: 'GI', name: 'Hanger' },
+      { joints: 'HJ', name: 'Hanger' },
+      { joints: 'IJK', name: 'Jaw' },
+      { joints: 'AI' },
+    ],
+    sliders: [{ at: 'A', prisId: 'L', angleRad: 0, input: true }],
+    inputAngVel: INPUT_SPEED * scale,
+  };
+}
