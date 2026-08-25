@@ -327,6 +327,18 @@
     color: rgba(0, 0, 0, 0.54);
     font-size: 12px;
     white-space: nowrap;
+
+    // Quoted from the mode chip, colour included — same three states as the
+    // top strip and the analysis setup drawers.
+    &.blocker {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    &.ok {
+      background: #e6f4ea;
+      color: #137333;
+    }
   }
 
   .cardRule {

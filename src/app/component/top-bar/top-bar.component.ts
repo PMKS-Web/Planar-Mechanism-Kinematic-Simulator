@@ -33,6 +33,12 @@ import { GridUtilsService } from '../../services/grid-utils.service';
 interface TabStatus {
   text: string;
   ready: boolean;
+  /**
+   * What the chip is coloured by: red where something stops the analysis,
+   * amber where it will run but something is worth reading first, green where
+   * there is nothing to say. One vocabulary, here and in the setup drawers.
+   */
+  kind: 'blocker' | 'warning' | 'ok';
 }
 
 /**
@@ -373,18 +379,29 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
 
   statusOf(tab: TabID): TabStatus {
     if (tab === TabID.FORCE) {
-      // Warnings do not count: they do not stop the analysis running.
-      const missing = this.mechanism
-        .forceAnalysisRequirements()
-        .filter((r) => !r.met && !r.warning).length;
-      return missing === 0
-        ? { text: 'Ready', ready: true }
-        : { text: `${missing} to set`, ready: false };
+      // Split rather than filtered away: what is unmet and not a warning stops
+      // the analysis and colours the chip red, and what is only a warning
+      // still has to reach the chip or a mechanism with something odd about it
+      // reads as clear.
+      const outstanding = this.mechanism.forceAnalysisRequirements().filter((r) => !r.met);
+      const missing = outstanding.filter((r) => !r.warning).length;
+      if (missing > 0) return { text: `${missing} to set`, ready: false, kind: 'blocker' };
+      return outstanding.length > 0
+        ? { text: `${outstanding.length} to check`, ready: true, kind: 'warning' }
+        : { text: 'Ready', ready: true, kind: 'ok' };
     }
     const blockers = this.mechanism.blockerCount();
-    return blockers === 0
-      ? { text: 'Ready', ready: true }
-      : { text: `${blockers} ${blockers === 1 ? 'fix' : 'fixes'}`, ready: false };
+    if (blockers > 0) {
+      return {
+        text: `${blockers} ${blockers === 1 ? 'fix' : 'fixes'}`,
+        ready: false,
+        kind: 'blocker',
+      };
+    }
+    const warnings = this.mechanism.warningCount();
+    return warnings > 0
+      ? { text: `${warnings} to check`, ready: true, kind: 'warning' }
+      : { text: 'Ready', ready: true, kind: 'ok' };
   }
 
   /**

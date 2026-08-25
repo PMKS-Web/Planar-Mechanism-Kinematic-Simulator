@@ -1128,6 +1128,23 @@ export class MechanismService {
   }
 
   /**
+   * Forget every vector switch, for a drawing that is not this one any more.
+   *
+   * The keys are joint and link *ids*, which is what lets them survive undo and
+   * redo — those rebuild every part from the URL, so a flag stored on the part
+   * would not come back. The same property is a bug across documents: open a
+   * template while a velocity vector is on joint B and the new drawing's own
+   * B inherits it, having never been asked for. Undo still keeps its switches,
+   * because undo is the same drawing a moment ago; opening a project is a
+   * different drawing that happens to spell its joints with the same letters.
+   */
+  clearVectorTraces(): void {
+    if (this.vectorTraceKeys.size === 0) return;
+    this.vectorTraceKeys.clear();
+    this.vectorTraceRevision++;
+  }
+
+  /**
    * Bumped whenever the switch set changes.
    *
    * The drawn lists are cached, and switching a trace on moves nothing else:
@@ -3319,6 +3336,22 @@ export class MechanismService {
       0
     );
     return inMechanisms + this.unassignedReports().length;
+  }
+
+  /**
+   * How many things are worth a look but stop nothing.
+   *
+   * The counterpart to `blockerCount`, so a chip can tell "nothing to fix" from
+   * "nothing to fix, but read this first". Both are needed to colour one:
+   * green means clear, amber means it will run and something is odd, red means
+   * it will not run.
+   */
+  warningCount(): number {
+    return this.readinessOfEachMechanism().reduce(
+      (total, readiness) =>
+        total + readiness.checks.filter((check) => check.state !== 'blocker').length,
+      0
+    );
   }
 
   invalidReason(): string | undefined {

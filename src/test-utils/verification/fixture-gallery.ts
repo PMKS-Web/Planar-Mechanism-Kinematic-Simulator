@@ -12,6 +12,7 @@ import {
   cylinderBoomFixture,
   cylinderSkinFixture,
   gripperFixture,
+  parallelGripperFixture,
   pinchingGripperFixture,
   ellipticalCrankFixture,
   ellipticalTrammelFixture,
@@ -52,6 +53,7 @@ import {
   threeMachinesFixture,
 } from './feature-fixtures';
 import { peaucellierFixture, pantographFixture, doubleButterflyFixture } from './classic-fixtures';
+import { fourBarInversionsFixture, sliderCrankInversionsFixture } from './inversion-fixtures';
 import {
   dragLinkFixture,
   bellCrankFixture,
@@ -60,7 +62,6 @@ import {
 } from './workshop-fixtures';
 import {
   walkingPairFixture,
-  fourBarInversionsFixture,
   straightLinePairFixture,
   pumpingFieldFixture,
 } from './ensemble-fixtures';
@@ -295,6 +296,13 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     // a second, which is not a mechanism anybody can watch.
     speed: { unitsPerSecond: 0.25 },
     fixture: gripperFixture(),
+  },
+  {
+    name: 'Parallel gripper',
+    purpose: 'Two jaws on parallelograms, closed by one ram: they stay parallel and meet flat',
+    spec: 'parallel-gripper.spec.ts',
+    floatingSlot: false,
+    fixture: parallelGripperFixture(),
   },
   {
     name: 'Gripper the cylinder closes',
@@ -680,9 +688,17 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     name: 'Four-bar inversions',
     purpose:
       'One chain, each of its four links held still in turn — four machines out of four bars',
-    spec: 'ensembles.spec.ts',
+    spec: 'inversions.spec.ts',
     floatingSlot: false,
     fixture: fourBarInversionsFixture(),
+  },
+  {
+    name: 'Slider-crank inversions',
+    purpose: 'The same for a chain with a slider: engine, quick-return, oscillating cylinder, pump',
+    spec: 'inversions.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    fixture: sliderCrankInversionsFixture(),
   },
   {
     name: 'Walking pair',

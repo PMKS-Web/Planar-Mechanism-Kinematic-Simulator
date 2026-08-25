@@ -72,7 +72,7 @@
            so from here on it answers "why can't I?" on its own. -->
       @if (showsChipHint) {
         <div class="hint chipHint">
-          <span class="chip">{{ chipText }}</span>
+          <span class="chip" [class]="chipKind">{{ chipText }}</span>
           <span>
             is the Kinematic Analysis chip counting this step. Press the mode whenever it will not
             run and it lists what is missing.

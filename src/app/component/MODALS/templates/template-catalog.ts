@@ -236,11 +236,11 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
   },
   {
     id: 'Cylinder_Gripper',
-    name: 'Gripper',
-    category: 'cylinders',
+    name: 'Parallel Gripper',
+    category: 'slots',
     description:
-      'A cylinder pushes a plate, and four short links carry that out to two arms. Each arm ' +
-      'rides two rails, so the jaws stay parallel.',
+      'One ram, two jaws, a parallelogram under each. The jaws keep their attitude as they ' +
+      'travel, so they meet flat rather than pinching.',
     thumbnail: 'assets/gifs/cylinder-gripper.png',
     animation: 'assets/gifs/cylinder-gripper.gif',
   },
@@ -433,6 +433,16 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'its colour, so you can watch a crank become a coupler.',
     thumbnail: 'assets/gifs/four-bar-inversions.png',
     animation: 'assets/gifs/four-bar-inversions.gif',
+  },
+  {
+    id: 'Slider_Crank_Inversions',
+    name: 'Slider-Crank Inversions',
+    category: 'machines',
+    description:
+      'The same chain four ways again, this time with a slider in it: an engine, a ' +
+      'quick-return, an oscillating cylinder and a pump.',
+    thumbnail: 'assets/gifs/slider-crank-inversions.png',
+    animation: 'assets/gifs/slider-crank-inversions.gif',
   },
 ];
 

@@ -13,12 +13,11 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Whitworth_Quick_Return: 'Whitworth proportions',
   Scotch_Yoke: 'Scotch yoke',
   Cylinder_Boom: 'Cylinder-driven boom',
-  // The plate-and-rails gripper rather than the counter-rotating levers next to
-  // it in the gallery: a cylinder on the centreline pushes a plate, four short
-  // links carry that out to two arms, and each arm rides two vertical rails so
-  // it stays parallel as it closes. Symmetric, which the levers were not, and
-  // the one mechanism in the library no chain of dyads can solve.
-  Cylinder_Gripper: 'Cylinder-driven gripper',
+  // Symmetric about its ram, and its jaws stay parallel — which the
+  // counter-rotating levers this replaced did not, and which the plate-and-rails
+  // drawing beside it in the gallery only appears to: played back, that one
+  // lifts both arms together and never closes at all.
+  Cylinder_Gripper: 'Parallel gripper',
   Radial_Engine: 'Radial engine, five cylinders',
   Chebyshev_Straight_Line: 'Chebyshev straight-line linkage',
   Windshield_Wiper: 'Windshield wiper',
@@ -50,6 +49,7 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Pumping_Field: 'Pumping field',
   Loader_Bucket: 'Loader bucket',
   Four_Bar_Inversions: 'Four-bar inversions',
+  Slider_Crank_Inversions: 'Slider-crank inversions',
 };
 
 /**

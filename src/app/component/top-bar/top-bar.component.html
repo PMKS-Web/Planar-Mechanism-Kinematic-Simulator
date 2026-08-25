@@ -83,7 +83,7 @@
         <span class="tabLabel short">Kinematic</span>
         <!-- Nothing drawn, nothing to be ready for. -->
         @if (hasStatus()) {
-          <span class="chip" [class.ok]="statusOf(TabID.ANALYZE).ready">{{
+          <span class="chip" [class]="statusOf(TabID.ANALYZE).kind">{{
             statusOf(TabID.ANALYZE).text
           }}</span>
         }
@@ -103,7 +103,7 @@
         <span class="tabLabel short">Force</span>
         <!-- Nothing drawn, nothing to be ready for. -->
         @if (hasStatus()) {
-          <span class="chip" [class.ok]="statusOf(TabID.FORCE).ready">{{
+          <span class="chip" [class]="statusOf(TabID.FORCE).kind">{{
             statusOf(TabID.FORCE).text
           }}</span>
         }
