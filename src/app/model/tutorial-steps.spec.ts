@@ -192,7 +192,7 @@ describe('what the card says', () => {
   // and the tutorial is the first thing a phone is shown.
   it('names the gesture the reader actually has', () => {
     const mouse = copyFor({ step: 1 });
-    const touch = copyFor({ step: 1 }, true);
+    const touch = copyFor({ step: 1 }, { touch: true });
     expect(mouse.body).toContain('Right-click');
     expect(mouse.body).toContain('left-click');
     expect(touch.body).not.toMatch(/right-click/i);
@@ -201,14 +201,19 @@ describe('what the card says', () => {
     expect(touch.body).toContain('tap');
   });
 
-  it('and points at the panel where that reader will find it', () => {
+  // A tablet is the case that separates the two questions: touch, and still
+  // wide enough to keep the side panel. Pointing it at the bottom of the window
+  // for a panel down its left-hand side is what asking only one of them did.
+  it('points at the panel by where the layout put it, not by the pointer', () => {
     expect(copyFor({ step: 1 }).hint).toContain('on the left');
-    expect(copyFor({ step: 1 }, true).hint).toContain('at the bottom');
+    expect(copyFor({ step: 1 }, { touch: true }).hint).toContain('on the left');
+    expect(copyFor({ step: 1 }, { touch: true, sheetPanel: true }).hint).toContain('at the bottom');
+    expect(copyFor({ step: 1 }, { sheetPanel: true }).hint).toContain('at the bottom');
   });
 
   it('leaves no step telling a phone to click', () => {
     for (const step of [1, 2, 3, 4, 5] as TutorialStepId[]) {
-      const copy = copyFor({ step, target: { id: 'A' } as never }, true);
+      const copy = copyFor({ step, target: { id: 'A' } as never }, { touch: true });
       expect(`${copy.title} ${copy.body} ${copy.hint ?? ''}`).not.toMatch(/click/i);
     }
   });

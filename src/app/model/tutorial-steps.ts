@@ -213,10 +213,23 @@ interface Gestures {
   set: string;
   /** What the far end of a new bar follows between the two. */
   pointer: string;
-  /** Where the properties panel is, which is not the same place on a phone. */
-  panel: string;
   /** The glyph beside the first hint. */
   glyph: string;
+}
+
+/**
+ * What the card needs to know about the reader's device.
+ *
+ * Two questions, not one, and an iPad is what proves it: it is a touch device
+ * with no right button *and* it is wide enough to keep the side panel. Asking
+ * only "is this touch" told an iPad to look at the bottom of the window for a
+ * panel that was down its left-hand side.
+ */
+export interface TutorialChrome {
+  /** No right button: the menu is opened by holding. */
+  touch?: boolean;
+  /** Narrow enough that the mode panel is the sheet along the bottom. */
+  sheetPanel?: boolean;
 }
 
 const MOUSE: Gestures = {
@@ -224,7 +237,6 @@ const MOUSE: Gestures = {
   open: 'right-click',
   set: 'left-click',
   pointer: 'your pointer',
-  panel: 'The panel on the left',
   glyph: 'mouse',
 };
 
@@ -233,13 +245,14 @@ const TOUCH: Gestures = {
   open: 'press and hold on',
   set: 'tap',
   pointer: 'your finger',
-  panel: 'The panel at the bottom',
   glyph: 'touch_app',
 };
 
-export function copyFor(progress: TutorialProgress, touch = false): TutorialCopy {
+export function copyFor(progress: TutorialProgress, chrome: TutorialChrome = {}): TutorialCopy {
   const target = progress.target ? nameOf(progress.target) : '';
+  const touch = chrome.touch ?? false;
   const g = touch ? TOUCH : MOUSE;
+  const panel = chrome.sheetPanel ? 'The panel at the bottom' : 'The panel on the left';
   switch (progress.step) {
     case 1:
       return {
@@ -249,7 +262,7 @@ export function copyFor(progress: TutorialProgress, touch = false): TutorialCopy
         // as "drag and release" had readers holding the button down through a
         // move that does not want it held.
         body: `${g.Open} the empty grid and choose Link, under Add. One end is placed where you started and the other follows ${g.pointer} — move to where you want it and ${g.set} to set it.`,
-        hint: `That is how everything is added in PMKS+: ${g.open} whatever you want to add to. ${g.panel} edits whatever you then select.`,
+        hint: `That is how everything is added in PMKS+: ${g.open} whatever you want to add to. ${panel} edits whatever you then select.`,
         hintGlyph: g.glyph,
       };
     case 2:

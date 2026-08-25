@@ -177,7 +177,10 @@ export class TutorialService {
   }
 
   copy(): TutorialCopy {
-    return copyFor(this.viewedProgress(), this.viewport.isTouch());
+    return copyFor(this.viewedProgress(), {
+      touch: this.viewport.isTouch(),
+      sheetPanel: this.viewport.isPhone(),
+    });
   }
 
   /** Whether the step on the card is one the student has already satisfied. */
