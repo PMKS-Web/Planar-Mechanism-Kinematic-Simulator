@@ -32,11 +32,24 @@ import { MODEL_SCALE } from './app/model/render-scale';
  * suite goes red somewhere different every run, which reads as a real
  * intermittent bug and costs an afternoon before it turns out to be a clock.
  *
- * Raised rather than the specs split up: the work is genuine numeric work and
- * a slow test is not a failing one. A test that hangs still fails, four times
- * later than it used to.
+ * Twenty was not enough either. `fixture-gallery` and `template-payloads` both
+ * crossed it on a machine running a production build and a handful of dev
+ * servers alongside the suite — seven red tests that all passed on their own a
+ * minute later. That is the same failure the paragraph above describes, at a
+ * larger number, and the fix is the same: a machine under load is the ordinary
+ * case on a laptop, not the corner.
+ *
+ * Sixty is about twenty times the idle cost of the slowest spec here, which is
+ * enough that crossing it means something is genuinely wrong rather than
+ * merely busy. Raised rather than the specs split up: the work is genuine
+ * numeric work and a slow test is not a failing one. A test that hangs still
+ * fails, later than it used to.
+ *
+ * `hookTimeout` with it: the setup that builds a fixture before a test is the
+ * same work under the same load, and a suite whose hooks time out at five
+ * seconds is red for the same reason its tests were.
  */
-vi.setConfig({ testTimeout: 20000 });
+vi.setConfig({ testTimeout: 60000, hookTimeout: 60000 });
 
 beforeEach(() => {
   SettingsService._objectScale.next(1 * MODEL_SCALE);
