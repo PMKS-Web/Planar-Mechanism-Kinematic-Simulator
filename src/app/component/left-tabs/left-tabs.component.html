@@ -3,11 +3,13 @@
      than into the window. A panel animated off screen reports a rect outside
      the canvas and so takes nothing. -->
 <div
-  data-canvas-inset="left"
+  [attr.data-canvas-inset]="viewport.isPhone() ? 'bottom' : 'left'"
   [@openClose]="
     this.tabs.isTabVisible() ? (this.tabs.isWidePanel() ? 'openWide' : 'open') : 'closed'
   "
   class="panel"
+  [class.sheet]="viewport.isPhone()"
+  [class.collapsed]="viewport.isPhone() && !sheetExpanded()"
   [class.analysis]="this.tabs.isAnalysisMode()"
   [class.behindDrawer]="drawerOpen"
 >
@@ -27,3 +29,20 @@
     </div>
   }
 </div>
+
+<!-- The sheet's own handle, on a phone only.
+     Outside the panel rather than inside it, because the panel scrolls and a
+     handle that scrolls away is a handle nobody can reach. It rides on the
+     sheet's published height, so it sits on the sheet's top edge wherever that
+     edge currently is. -->
+@if (viewport.isPhone() && this.tabs.isTabVisible()) {
+  <button
+    class="sheetHandle"
+    type="button"
+    (click)="toggleSheet()"
+    [attr.aria-expanded]="sheetExpanded()"
+    [attr.aria-label]="sheetExpanded() ? 'Collapse the panel' : 'Expand the panel'"
+  >
+    <span class="sheetGrip"></span>
+  </button>
+}

@@ -17,6 +17,8 @@ import { UrlProcessorService } from '../../services/url-processor.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { SettingsService } from '../../services/settings.service';
 import { ActiveObjService } from '../../services/active-obj.service';
+import { LongPress, LongPressDirective } from '../../long-press.directive';
+import { ViewportService } from '../../services/viewport.service';
 import { ContextMenuComponent } from '../context-menu/context-menu.component';
 import { ContextMenuModel, trackContextMenuPointer } from '../context-menu/menu-model';
 import {
@@ -30,10 +32,8 @@ import { Coord } from '../../model/coord';
 import {
   forceStates,
   gridStates,
-  has_mouse_pointer,
   jointStates,
   linkStates,
-  local_storage_available,
   getDistance,
   AngleUnit,
   radToDeg,
@@ -44,7 +44,6 @@ import { NotificationService } from '../../services/notification.service';
 import { BackgroundImageService, MIN_WIDTH } from '../../services/background-image.service';
 import { CdkContextMenuTrigger } from '@angular/cdk/menu';
 import { MatDialog } from '@angular/material/dialog';
-import { TouchscreenWarningComponent } from '../MODALS/touchscreen-warning/touchscreen-warning.component';
 import { Line } from '../../model/line';
 import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
@@ -151,7 +150,7 @@ const SELECTION_RING_PX = 3;
   templateUrl: './new-grid.component.html',
   styleUrls: ['./new-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CdkContextMenuTrigger, ContextMenuComponent],
+  imports: [CdkContextMenuTrigger, ContextMenuComponent, LongPressDirective],
 })
 export class NewGridComponent implements OnDestroy {
   svgGrid = inject(SvgGridService);
@@ -173,6 +172,7 @@ export class NewGridComponent implements OnDestroy {
   private colorService = inject(ColorService);
   nup = inject(NumberUnitParserService);
   dragState = inject(DragStateService);
+  viewport = inject(ViewportService);
   sliderMarks = inject(SliderMarkService);
   bgImage = inject(BackgroundImageService);
   private menuBuilder = inject(ContextMenuBuilderService);
@@ -292,14 +292,10 @@ export class NewGridComponent implements OnDestroy {
     const svgElement = document.getElementById('canvas') as HTMLElement;
     this.svgGrid.setNewElement(svgElement);
 
-    let dismissWarning = local_storage_available() && localStorage.getItem('dismiss') === 'true';
-
-    // Touchscreen warning for when no mouse pointer
-    if (!dismissWarning && !has_mouse_pointer()) {
-      this.dialog.open(TouchscreenWarningComponent, {
-        autoFocus: false,
-      });
-    }
+    // After the URL has been decoded -- `UrlProcessorService` does that in its
+    // own constructor -- so the tutorial can tell an empty grid from a shared
+    // mechanism and stay out of the way of the second.
+    this.tutorial.openOnFirstVisit();
 
     fromEvent(window, 'resize')
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -1171,7 +1167,15 @@ export class NewGridComponent implements OnDestroy {
     // question and a proposed answer, not parts of the drawing, so nothing
     // here earns a rebuild or an undo entry. The cursor is recorded either
     // way -- the ghost about to be dropped follows it.
-    if (this.showSynthesis() && this.synthCanvas.move(mousePosInSvg)) return;
+    //
+    // Held to the same rule as a joint: a finger that has not yet decided
+    // whether it is a press moves nothing. This path runs before the drag
+    // threshold below and so had to be told separately -- which is why a
+    // tremor on a position moved it eighteen units and then opened its menu
+    // over the top.
+    if (this.showSynthesis() && !this.longPress()?.pressPending) {
+      if (this.synthCanvas.move(mousePosInSvg)) return;
+    }
 
     let deltaMouseX = this.mouseLocation.x - this.lastMouseLocation.x;
     let deltaMouseY = this.mouseLocation.y - this.lastMouseLocation.y;
@@ -1586,6 +1590,15 @@ export class NewGridComponent implements OnDestroy {
     if (getDistance(new Coord(this.startX, this.startY), new Coord($event.x, $event.y)) > 10) {
       this.timeMouseDown = 0;
     }
+    // A finger that has not yet decided whether it is a press holds the drag
+    // off entirely, however long it has been down. The 100ms below is a mouse's
+    // number: a press is a click or it is a drag, and neither takes half a
+    // second. A long press does, and every tremor in that half second used to
+    // move the joint the reader was trying to open a menu on -- about thirty
+    // model units, silently, before the menu even appeared. The ten pixels is
+    // the same on both sides, so exactly one of the two ever happens.
+    const gestures = this.longPress();
+    if (gestures?.pressPending || gestures?.pinching) return false;
     return !(this.timeMouseDown !== undefined && Date.now() - this.timeMouseDown < 100);
   }
 
@@ -1925,9 +1938,103 @@ export class NewGridComponent implements OnDestroy {
    * mechanism is parked mid-cycle greys its editing rows with the reason
    * rather than refusing to open.
    */
+  /** The gesture arbiter on the canvas, asked whether a press is undecided. */
+  private longPress = viewChild(LongPressDirective);
+
+  /** Set when a press turned into a menu, so its release places nothing. */
+  private pressBecameMenu = false;
+
+  /**
+   * Put down whatever the canvas had hold of, whoever was holding it.
+   *
+   * The three lines the right-button path has always run, plus the synthesis
+   * canvas -- which owns its gesture separately, because a position is a
+   * question about a mechanism rather than part of one, and so is not in
+   * `DragStateService` at all. A press that became a menu over a position left
+   * that position still being dragged underneath it.
+   */
+  private letGoOfEverything(): void {
+    this.dragState.cancel();
+    this.cylinderCreateStart = undefined;
+    this.linkCreateStart = undefined;
+    if (this.showSynthesis()) this.synthCanvas.release();
+  }
+
   onContextMenu($event: MouseEvent) {
     this.lastRightClickCoord.x = $event.clientX;
     this.lastRightClickCoord.y = $event.clientY;
+  }
+
+  /**
+   * A finger held still, which is what a touch device has instead of a right
+   * button.
+   *
+   * The press has already started a drag -- `mouseDown` cannot know at the
+   * time whether a finger is going to move -- so the first thing to do is put
+   * that drag down, which is exactly what the right-button case of `mouseDown`
+   * does and for the same reason.
+   *
+   * Then it asks the element under the finger for a `contextmenu`, rather than
+   * building a menu here. Every part on this canvas already answers that event
+   * with `setLastRightClick`, the trigger on the canvas already turns it into
+   * an open menu, and the builder already knows what belongs in one. A second
+   * path to the same menu would be a second path to get wrong -- so a long
+   * press does not *resemble* a right-click, it becomes one.
+   */
+  /**
+   * A second finger, which makes this a pinch.
+   *
+   * The same three things a right-click does, for the same reason: the first
+   * finger has already taken hold of whatever it went down on, and a pinch is
+   * about the view rather than about the mechanism. Without this a two-finger
+   * zoom that happened to begin on a joint dragged that joint while it zoomed.
+   */
+  onPinch() {
+    this.letGoOfEverything();
+  }
+
+  onLongPress(press: LongPress) {
+    // Synthesis places a position on the *release* of a press that did not
+    // travel, and a press held still is exactly that -- so a hold on the canvas
+    // with placing armed opened the menu and then dropped a position under it
+    // on the way out. Spent by the release that follows.
+    this.pressBecameMenu = true;
+    this.letGoOfEverything();
+    (press.target ?? document.getElementById('canvas'))?.dispatchEvent(
+      new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX: press.x,
+        clientY: press.y,
+        button: 2,
+      })
+    );
+  }
+
+  /**
+   * Show the panel about the thing that was just tapped.
+   *
+   * On the *release*, and only for a press that neither travelled nor became a
+   * menu. Doing it on selection was tried and is worse than it sounds:
+   * selecting happens on press, so a finger going down on a joint raised the
+   * sheet over that joint while the finger was still on it, and a long press
+   * held there then found the sheet under it rather than the joint it had been
+   * aimed at.
+   *
+   * Only what a panel has something to say about. `Grid` is the press that
+   * landed on bare canvas and cleared the selection, and opening a panel to
+   * say "nothing is selected" is the opposite of what that gesture asked for.
+   */
+  private openPanelForTap($event: MouseEvent): void {
+    if (!this.viewport.isPhone() || this.pressBecameMenu) return;
+    if ($event.button !== 0 || !this.pressDidNotTravel($event)) return;
+    // What the press landed on, recorded when it went down, rather than what is
+    // selected now. The selection is cleared by a tap on bare canvas later in
+    // this same gesture than anything here can read it -- so asking the
+    // selection opened the panel about the joint the reader had just tapped
+    // away from. `String` is the grid: `setLastLeftClick('grid')`.
+    if (this.objectKind(this.lastLeftClick) === 'String') return;
+    this.tabService.sheetExpanded.set(true);
   }
 
   mouseUp($event: MouseEvent) {
@@ -1947,6 +2054,7 @@ export class NewGridComponent implements OnDestroy {
         $event.button === 0 &&
         !wasDragging &&
         !this.synthPressTaken &&
+        !this.pressBecameMenu &&
         this.synthesisBuilder.armed &&
         this.pressDidNotTravel($event)
       ) {
@@ -1981,6 +2089,12 @@ export class NewGridComponent implements OnDestroy {
     this.heldGestureNotice = undefined;
 
     this.finishMechanismDrag($event);
+
+    // Last, once the press has finished deciding what it selected. Run first,
+    // this read the selection the *previous* gesture left: a tap on bare canvas
+    // clears the selection later in this same method, so the panel opened about
+    // a joint the reader had just tapped away from.
+    this.openPanelForTap($event);
   }
 
   /**
@@ -2233,6 +2347,8 @@ export class NewGridComponent implements OnDestroy {
     // Log the time that the mouse was clicked
     this.timeMouseDown = new Date().getTime();
     this.synthPressTaken = false;
+    // A new press: whatever the last one turned into is behind us.
+    this.pressBecameMenu = false;
     this.dragState.press();
     this.startX = $event.pageX;
     this.startY = $event.pageY;

@@ -1,5 +1,5 @@
 import { RightPanelComponent } from './component/right-panel/right-panel.component';
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { MechanismService } from './services/mechanism.service';
 import { SynthesisBuilderService } from './services/synthesis/synthesis-builder.service';
@@ -26,6 +26,20 @@ export class SelectedTabService {
 
   private _tabNum: BehaviorSubject<TabID>;
   private _tabVisible: BehaviorSubject<boolean>;
+
+  /**
+   * Whether the phone's bottom sheet is showing its contents.
+   *
+   * Here rather than in the component that draws it, because two things ask
+   * for it and only one of them is that component: the sheet's own handle, and
+   * the canvas, which opens it when a tap selects a part. Kept out of the
+   * canvas's reach any other way, that would have to be a static.
+   *
+   * Shut to begin with. A reader arriving on a phone has come to look at a
+   * mechanism, and a panel taking half the window before anything is selected
+   * is a panel in the way of the thing it is about.
+   */
+  readonly sheetExpanded = signal(false);
 
   constructor() {
     this._tabNum = new BehaviorSubject<TabID>(TabID.EDIT);

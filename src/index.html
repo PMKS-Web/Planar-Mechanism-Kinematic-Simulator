@@ -18,7 +18,27 @@
     <title>PMKS+ Web</title>
     <base href="/" />
 
-    <!--    <meta name='viewport' content='width=device-width, initial-scale=1' />-->
+    <!--
+      Without this a phone lays the page out at 980px and scales the result down
+      to fit, which is why PMKS+ has always arrived on a phone as a legible
+      screenshot of itself rather than an app: every control was drawn at about
+      two fifths of its size, putting the mode tabs at roughly 18pt against a
+      44pt minimum.
+
+      Deliberately without `viewport-fit=cover`. Letting the canvas run under the
+      rounded corners looks better in a screenshot and costs a safe-area inset on
+      every card that measures itself from a window edge -- which is the top
+      strip, the status strip, the mode panel, the transport and the view
+      controls, none of which can be checked without the hardware. Left alone,
+      the browser keeps the chrome out of the notch on its own.
+
+      Zoom is deliberately left enabled. A canvas app is tempting to pin at
+      scale 1 because the browser's pinch fights the drawing's own, but taking
+      zoom away from a reader who needs it fails WCAG 1.4.4 for everyone in
+      order to tidy a gesture. The canvas claims its own gestures with
+      `touch-action` instead, which is the narrower fix.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!--    <link rel='icon' type='image/x-icon' href='favicon.ico' />-->
     <link rel="preconnect" href="https://fonts.gstatic.com" />
     <link
@@ -27,10 +47,15 @@
     />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
   </head>
+  <!--
+    `dvh` rather than `vh`: on a phone `100vh` is the viewport with the address
+    bar *hidden*, so the bottom strip and the playback card sat behind the bar
+    until the reader scrolled something -- and nothing here scrolls.
+  -->
   <body
     oncontextmenu="return false;"
     class="mat-typography"
-    style="width: 100vw; height: 100vh; overflow: hidden !important"
+    style="width: 100vw; height: 100dvh; overflow: hidden !important"
   >
     <app-root> </app-root>
   </body>

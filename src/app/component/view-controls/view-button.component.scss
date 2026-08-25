@@ -53,4 +53,13 @@
       background: transparent;
     }
   }
+  // On a phone this row shares one line with the transport, and the two at
+  // their desk sizes want about seventy pixels more than the window has. 34
+  // still clears the size a finger needs; 40 does not fit.
+  @media (max-width: 600px) {
+    .viewButton {
+      width: 34px;
+      height: 34px;
+    }
+  }
 }

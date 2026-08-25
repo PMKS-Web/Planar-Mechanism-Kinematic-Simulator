@@ -24,6 +24,7 @@ import { NumberUnitParserService } from './number-unit-parser.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 import { SvgGridService } from './svg-grid.service';
 import { local_storage_available } from '../model/utils';
+import { ViewportService } from './viewport.service';
 
 /** The velocity the tutorial ends on, frozen at the moment it was read. */
 export interface TutorialReading {
@@ -49,6 +50,7 @@ const SEEN_KEY = 'tutorialSeen';
  */
 @Injectable({ providedIn: 'root' })
 export class TutorialService {
+  private viewport = inject(ViewportService);
   private mechanism = inject(MechanismService);
   private activeObj = inject(ActiveObjService);
   private settings = inject(SettingsService);
@@ -175,7 +177,10 @@ export class TutorialService {
   }
 
   copy(): TutorialCopy {
-    return copyFor(this.viewedProgress());
+    return copyFor(this.viewedProgress(), {
+      touch: this.viewport.isTouch(),
+      sheetPanel: this.viewport.isPhone(),
+    });
   }
 
   /** Whether the step on the card is one the student has already satisfied. */
@@ -262,6 +267,26 @@ export class TutorialService {
   }
 
   // ---------- entering and leaving ----------
+
+  /**
+   * Open it unasked, once, for someone who has never been here.
+   *
+   * The tutorial was only ever offered -- a card in the Edit panel's empty
+   * state, which a reader has to notice and accept. That is the right weight
+   * for a returning user and the wrong one for a first: the app opens on an
+   * empty grid whose one instruction is a gesture nobody has been told about
+   * yet, and the offer sits beside it competing with the drawing for attention.
+   *
+   * Not over someone else's mechanism, though. Arriving by a shared link means
+   * arriving to look at *that*, and a tutorial about drawing your first bar is
+   * an interruption rather than a welcome. The same for a drawing already in
+   * progress, which on this app means a URL that has just been decoded.
+   */
+  openOnFirstVisit(): void {
+    if (this.seen || this.started) return;
+    if (this.mechanism.joints.length > 0 || this.mechanism.links.length > 0) return;
+    this.start();
+  }
 
   start(): void {
     this.started = true;

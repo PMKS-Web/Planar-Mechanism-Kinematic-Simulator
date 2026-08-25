@@ -20,6 +20,14 @@
       padding: 0 6px;
       gap: 2px;
     }
+
+    // On a phone this shares one row with the transport, and the two together
+    // want about seventy pixels more than the window has.
+    @media (max-width: 600px) {
+      height: 52px;
+      padding: 0 4px;
+      gap: 0;
+    }
     background: var(--card-surface);
     border-radius: var(--card-radius);
     z-index: 8;

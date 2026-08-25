@@ -79,3 +79,27 @@ $bottom-bar-height: 26px;
  * the card left 22px under the panel against 12px over it.
  */
 $panel-bottom-clearance: $bottom-bar-height + $frame-inset;
+
+/**
+ * The phone sheet's grab handle.
+ *
+ * Named here because two files need it and they sit on opposite sides of it:
+ * the handle hangs on the sheet's top edge, and the playback cluster has to
+ * stand clear of the handle rather than of the sheet.
+ *
+ * 44px because that is the smallest thing a thumb can be asked to hit. The
+ * pill drawn inside it is 5px tall, which is a mark rather than a target.
+ */
+$sheet-handle-height: 44px;
+
+/**
+ * The least canvas worth leaving on a phone.
+ *
+ * The sheet already gives way to the top strip and the transport, but between
+ * them those two can take the whole window -- three machines unsynced in
+ * analysis on a small phone leaves about twelve pixels, and a drawing squeezed
+ * to twelve pixels is a drawing nobody can see while they work the controls for
+ * it. The sheet gives this up before it gives up anything else, because it is
+ * the one thing here with a handle for opening again.
+ */
+$least-canvas: 120px;

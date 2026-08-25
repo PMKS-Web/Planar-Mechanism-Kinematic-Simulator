@@ -302,6 +302,57 @@
       color: rgba(0, 0, 0, 0.55);
       text-align: center;
     }
+    // ---- the phone -------------------------------------------------------
+    //
+    // Last in the file deliberately: these have the same specificity as the
+    // rules they replace, so they only win by coming after them. Put beside
+    // `.filterBar` where they read best, the search kept its 190px flex-basis
+    // -- which in a column is a height -- and came out as a 190px-tall box.
+    @media (max-width: 600px) {
+      .filterBar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 0 16px 10px 16px;
+      }
+
+      .titleRow {
+        padding-left: 16px;
+      }
+
+      // Above the chips, and the whole width. Beside them it was a box floating
+      // in the middle of a wrapping column, which reads as the dialog being
+      // broken rather than as a search.
+      //
+      // It stays rather than being dropped: forty-four cards in a 280px column
+      // is exactly where typing three letters beats scrolling, and the chips
+      // are the part of this bar that degrades gracefully.
+      .searchBox {
+        flex: 0 0 32px;
+        order: -1;
+      }
+
+      // One row that scrolls, rather than six that do not. Wrapping is right on
+      // a desktop, where the whole set fits in two rows and sliding a category
+      // off the end would hide it for no reason. Here the set is six rows deep
+      // and eats the cards it is meant to be filtering -- and a chip row that
+      // scrolls sideways is a thing every phone user has used.
+      .chipRow {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2px;
+
+        &::-webkit-scrollbar {
+          display: none;
+        }
+      }
+
+      .chip {
+        flex: 0 0 auto;
+      }
+    }
   }
 
   // ---- the replace / new-tab choice ----------------------------------------

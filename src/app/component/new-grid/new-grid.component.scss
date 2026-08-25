@@ -11,6 +11,22 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
+  // Every gesture on the drawing belongs to the drawing. Without this the
+  // browser keeps one-finger pan and two-finger pinch for scrolling the page,
+  // and hammer -- which is wired for exactly those two -- gets a stream the
+  // browser has already half-consumed: a drag that scrolls instead of moving a
+  // joint, and a pinch that zooms the page over a canvas that is also zooming.
+  // Page zoom stays available everywhere else, which is where a reader who
+  // needs it is going to reach for it anyway.
+  #canvas {
+    touch-action: none;
+    // A long press on a phone otherwise raises the selection callout over the
+    // linkage, which lands on top of the menu that press was meant to open.
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
   #activeObjectHighlight {
     fill: mat.m2-get-color-from-palette($accent-palette, 500);
     stroke: mat.m2-get-color-from-palette($accent-palette, 500);
