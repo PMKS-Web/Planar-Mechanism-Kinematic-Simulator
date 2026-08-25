@@ -43,6 +43,18 @@
     pointer-events: none;
   }
 
+  // On a phone the mode panel is a sheet across the bottom, and this cluster is
+  // docked to the bottom as well -- so it stands on top of the sheet rather
+  // than on the window. The sheet measures itself and publishes
+  // `--sheet-height`; zero everywhere else, which leaves the rule above.
+  @media (max-width: 600px) {
+    .playbackRow {
+      // Clear of the handle as well as the sheet: the handle rides the sheet's
+      // top edge, and a transport standing on the sheet alone covered it.
+      bottom: calc(var(--playback-bottom) + var(--sheet-height, 0px) + #{nav.$sheet-handle-height});
+    }
+  }
+
   .transportCard {
     display: flex;
     align-items: center;

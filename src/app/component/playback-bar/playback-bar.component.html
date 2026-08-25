@@ -1,10 +1,16 @@
+<!-- The three cards each declare the edge they take, so `freeCanvasRect` frames
+     the linkage above them. Only the view controls used to, which was near
+     enough while the cluster sat on one line at the bottom right -- and wrong
+     the moment it wrapped, which on a phone it always does: the transport and
+     the scrub card were two rows the drawing knew nothing about, and a ground
+     pivot would be framed neatly behind them. -->
 <div class="playbackRow">
   <!-- In and out from the bottom edge, the way a transport arrives. The view
        controls beside it never move: they say what you can see, which is a
        question every mode has, so they belong in the same corner in all of
        them. -->
   @if (tabs.isAnalysisMode()) {
-    <div class="transportCard" @riseFromBottom>
+    <div class="transportCard" data-canvas-inset="bottom" @riseFromBottom>
       <button
         class="speedButton"
         (click)="cycleSpeed()"
@@ -43,7 +49,7 @@
       </button>
     </div>
 
-    <div class="scrubCard" @riseFromBottom>
+    <div class="scrubCard" data-canvas-inset="bottom" @riseFromBottom>
       <!-- A tab off the top edge of the card, as in the mock, rather than a
            control inside it: it governs the whole card, so it sits on it. -->
       @if (canSync) {

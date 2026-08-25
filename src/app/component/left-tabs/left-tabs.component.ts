@@ -1,11 +1,20 @@
 import { RightPanelComponent } from '../right-panel/right-panel.component';
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  OnDestroy,
+  inject,
+  signal,
+} from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 import { SynthesisPanelComponent } from '../synthesis-panel/synthesis-panel.component';
 import { EditPanelComponent } from '../edit-panel/edit-panel.component';
 import { AnalysisPanelComponent } from '../analysis-panel/analysis-panel.component';
 import { TutorialService } from '../../services/tutorial.service';
+import { ViewportService } from '../../services/viewport.service';
 
 @Component({
   selector: 'app-left-tabs',
@@ -54,9 +63,67 @@ import { TutorialService } from '../../services/tutorial.service';
  * top, so this is now only the drawer they open. It keeps its own slide, which
  * is why it is still a component rather than a bare @if in the shell.
  */
-export class LeftTabsComponent {
+export class LeftTabsComponent implements AfterViewInit, OnDestroy {
   tabs = inject(SelectedTabService);
+  viewport = inject(ViewportService);
   private tutorial = inject(TutorialService);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  /**
+   * Whether the phone sheet is showing its contents or just its handle.
+   *
+   * Collapsed to begin with, and deliberately: a reader arriving on a phone has
+   * come to look at a mechanism, and a panel that takes half the window before
+   * anything has been selected is a panel in the way of the thing it is about.
+   *
+   * Nothing opens it but the handle. Opening it on selection was tried and is
+   * worse than it sounds: selecting happens on *press*, so a finger going down
+   * on a joint raised the sheet over that joint while the finger was still on
+   * it -- and a long press held there then found the sheet under it rather
+   * than the joint it had been aimed at. A panel that moves the thing you are
+   * touching is a panel that has to be asked for.
+   */
+  readonly sheetExpanded = signal(false);
+
+  toggleSheet(): void {
+    this.sheetExpanded.update((open) => !open);
+  }
+
+  /**
+   * How tall the sheet is, for the bottom cluster to stand on.
+   *
+   * The mirror of `publishHeight` in the playback bar, and needed for the same
+   * reason: on a phone the panel is docked to the bottom and the transport and
+   * view controls are docked to the bottom too, so one of them has to be told
+   * how much room the other is taking. Measured rather than assumed, because
+   * the sheet is capped at a fraction of the window and is often shorter than
+   * the cap -- an Edit panel with nothing selected is a few lines.
+   *
+   * There is no loop here even though the panel reads `--playback-clearance`
+   * going the other way: on a phone the sheet's height is its content against a
+   * cap, and it stops asking what the cluster is doing.
+   */
+  ngAfterViewInit(): void {
+    const panel = this.host.nativeElement.querySelector('.panel') as HTMLElement | null;
+    if (!panel || typeof ResizeObserver === 'undefined') return;
+    this.publishHeight(panel);
+    this.heightWatch = new ResizeObserver(() => this.publishHeight(panel));
+    this.heightWatch.observe(panel);
+  }
+
+  ngOnDestroy(): void {
+    this.heightWatch?.disconnect();
+    document.documentElement.style.removeProperty('--sheet-height');
+  }
+
+  private heightWatch?: ResizeObserver;
+
+  private publishHeight(panel: HTMLElement): void {
+    // Zero off the phone layout, where the panel is at the side and the cluster
+    // below it has the bottom of the window to itself.
+    const height = this.viewport.isPhone() ? Math.round(panel.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--sheet-height', `${height}px`);
+  }
 
   public get TabID(): typeof TabID {
     return TabID;

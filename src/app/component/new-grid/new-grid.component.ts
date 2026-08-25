@@ -17,6 +17,7 @@ import { UrlProcessorService } from '../../services/url-processor.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { SettingsService } from '../../services/settings.service';
 import { ActiveObjService } from '../../services/active-obj.service';
+import { LongPress, LongPressDirective } from '../../long-press.directive';
 import { ContextMenuComponent } from '../context-menu/context-menu.component';
 import { ContextMenuModel, trackContextMenuPointer } from '../context-menu/menu-model';
 import {
@@ -30,10 +31,8 @@ import { Coord } from '../../model/coord';
 import {
   forceStates,
   gridStates,
-  has_mouse_pointer,
   jointStates,
   linkStates,
-  local_storage_available,
   getDistance,
   AngleUnit,
   radToDeg,
@@ -44,7 +43,6 @@ import { NotificationService } from '../../services/notification.service';
 import { BackgroundImageService, MIN_WIDTH } from '../../services/background-image.service';
 import { CdkContextMenuTrigger } from '@angular/cdk/menu';
 import { MatDialog } from '@angular/material/dialog';
-import { TouchscreenWarningComponent } from '../MODALS/touchscreen-warning/touchscreen-warning.component';
 import { Line } from '../../model/line';
 import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
@@ -151,7 +149,7 @@ const SELECTION_RING_PX = 3;
   templateUrl: './new-grid.component.html',
   styleUrls: ['./new-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CdkContextMenuTrigger, ContextMenuComponent],
+  imports: [CdkContextMenuTrigger, ContextMenuComponent, LongPressDirective],
 })
 export class NewGridComponent implements OnDestroy {
   svgGrid = inject(SvgGridService);
@@ -291,15 +289,6 @@ export class NewGridComponent implements OnDestroy {
 
     const svgElement = document.getElementById('canvas') as HTMLElement;
     this.svgGrid.setNewElement(svgElement);
-
-    let dismissWarning = local_storage_available() && localStorage.getItem('dismiss') === 'true';
-
-    // Touchscreen warning for when no mouse pointer
-    if (!dismissWarning && !has_mouse_pointer()) {
-      this.dialog.open(TouchscreenWarningComponent, {
-        autoFocus: false,
-      });
-    }
 
     fromEvent(window, 'resize')
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -1928,6 +1917,37 @@ export class NewGridComponent implements OnDestroy {
   onContextMenu($event: MouseEvent) {
     this.lastRightClickCoord.x = $event.clientX;
     this.lastRightClickCoord.y = $event.clientY;
+  }
+
+  /**
+   * A finger held still, which is what a touch device has instead of a right
+   * button.
+   *
+   * The press has already started a drag -- `mouseDown` cannot know at the
+   * time whether a finger is going to move -- so the first thing to do is put
+   * that drag down, which is exactly what the right-button case of `mouseDown`
+   * does and for the same reason.
+   *
+   * Then it asks the element under the finger for a `contextmenu`, rather than
+   * building a menu here. Every part on this canvas already answers that event
+   * with `setLastRightClick`, the trigger on the canvas already turns it into
+   * an open menu, and the builder already knows what belongs in one. A second
+   * path to the same menu would be a second path to get wrong -- so a long
+   * press does not *resemble* a right-click, it becomes one.
+   */
+  onLongPress(press: LongPress) {
+    this.dragState.cancel();
+    this.cylinderCreateStart = undefined;
+    this.linkCreateStart = undefined;
+    (press.target ?? document.getElementById('canvas'))?.dispatchEvent(
+      new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX: press.x,
+        clientY: press.y,
+        button: 2,
+      })
+    );
   }
 
   mouseUp($event: MouseEvent) {

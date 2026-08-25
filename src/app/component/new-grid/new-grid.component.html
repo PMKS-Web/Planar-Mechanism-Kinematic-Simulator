@@ -6,6 +6,8 @@
   [class.geometryLocked]="geometryLocked"
   [cdkContextMenuTriggerFor]="context_menu"
   (contextmenu)="onContextMenu($event)"
+  appLongPress
+  (longPress)="onLongPress($event)"
   (pointermove)="mouseMove($event)"
   (pointerup)="mouseUp($event)"
   (pointerdown)="mouseDown($event)"
@@ -452,9 +454,7 @@
       >
         <image
           [attr.xlink:href]="
-            motor.cw
-              ? '../../../assets/InputArrowCW.svg'
-              : '../../../assets/InputArrowCCW.svg'
+            motor.cw ? '../../../assets/InputArrowCW.svg' : '../../../assets/InputArrowCCW.svg'
           "
           [attr.width]="motorArrowBox.size"
           [attr.x]="motorArrowBox.x"
@@ -1041,85 +1041,83 @@
 
       <!-- The candidate itself, at whatever the transport has been scrubbed to. -->
       @if (showSynthesis()) {
-      <g id="synthesisPreview" pointer-events="none">
-        <!-- Dashed, because it is a proposal. The one moment that matters in
+        <g id="synthesisPreview" pointer-events="none">
+          <!-- Dashed, because it is a proposal. The one moment that matters in
              this mode is Insert, and a solid outline is what says it has
              happened -- so what has not happened yet must not look the same. -->
-        @for (lk of synthCanvas.previewLinks(); track $index) {
-          <path
-            class="synthBar synthBar--proposed"
-            [attr.d]="lk.d"
-            [attr.fill]="lk.color"
-            [attr.stroke]="lk.color"
-            [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
-            [attr.stroke-dasharray]="svgGrid.scaleWithZoom(7) + ' ' + svgGrid.scaleWithZoom(5)"
-          />
-        }
-        <!-- Placed and flipped exactly as the drawing's own ground marks are:
+          @for (lk of synthCanvas.previewLinks(); track $index) {
+            <path
+              class="synthBar synthBar--proposed"
+              [attr.d]="lk.d"
+              [attr.fill]="lk.color"
+              [attr.stroke]="lk.color"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
+              [attr.stroke-dasharray]="svgGrid.scaleWithZoom(7) + ' ' + svgGrid.scaleWithZoom(5)"
+            />
+          }
+          <!-- Placed and flipped exactly as the drawing's own ground marks are:
              the asset is drawn y-down, so it is turned back over inside the
              grid's flip and hung off a wrapper sitting on the pin. -->
-        @for (gd of synthCanvas.previewGrounds(); track gd.id) {
-          <svg [attr.x]="gd.x" [attr.y]="gd.y" width="10" height="10" style="overflow: visible">
-            @if (!gd.input) {
-              <image
-                xlink:href="../../../assets/Ground.svg"
-                [attr.width]="settings.objectScale * 1.2"
-                [attr.height]="settings.objectScale * 1.2"
-                [attr.x]="settings.objectScale * -0.6"
-                [attr.y]="settings.objectScale * -0.35 * 1.2"
-                style="transform: scaleY(-1)"
-              />
-            }
-            <!-- The pin that turns wears the motor's mark, from the same two
+          @for (gd of synthCanvas.previewGrounds(); track gd.id) {
+            <svg [attr.x]="gd.x" [attr.y]="gd.y" width="10" height="10" style="overflow: visible">
+              @if (!gd.input) {
+                <image
+                  xlink:href="../../../assets/Ground.svg"
+                  [attr.width]="settings.objectScale * 1.2"
+                  [attr.height]="settings.objectScale * 1.2"
+                  [attr.x]="settings.objectScale * -0.6"
+                  [attr.y]="settings.objectScale * -0.35 * 1.2"
+                  style="transform: scaleY(-1)"
+                />
+              }
+              <!-- The pin that turns wears the motor's mark, from the same two
                  assets the drawing uses. It is the whole visible answer to
                  "Driven from": without it, swapping the drive pin rearranged
                  nothing a reader could see. -->
-            @if (gd.input) {
-              <image
-                [attr.xlink:href]="
-                  settings.isInputCW.value
-                    ? '../../../assets/InputCW.svg'
-                    : '../../../assets/InputCCW.svg'
-                "
-                [attr.width]="settings.objectScale * 1.2"
-                [attr.height]="settings.objectScale * 1.2"
-                [attr.x]="settings.objectScale * -0.505 * 1.2"
-                [attr.y]="settings.objectScale * -0.435 * 1.2"
-                style="transform: scaleY(-1)"
-              />
-            }
-          </svg>
-        }
-        @for (jt of synthCanvas.previewJoints(); track jt.id) {
-          <circle
-            class="synthPreviewJoint"
-            [attr.cx]="jt.x"
-            [attr.cy]="jt.y"
-            [attr.r]="0.15 * settings.objectScale"
-            [attr.stroke-width]="svgGrid.scaleWithZoom(1.4)"
-          />
-        }
-        <!-- Named, because the panel names them. "Driven from Pin A", "Ground
+              @if (gd.input) {
+                <image
+                  [attr.xlink:href]="
+                    settings.isInputCW.value
+                      ? '../../../assets/InputCW.svg'
+                      : '../../../assets/InputCCW.svg'
+                  "
+                  [attr.width]="settings.objectScale * 1.2"
+                  [attr.height]="settings.objectScale * 1.2"
+                  [attr.x]="settings.objectScale * -0.505 * 1.2"
+                  [attr.y]="settings.objectScale * -0.435 * 1.2"
+                  style="transform: scaleY(-1)"
+                />
+              }
+            </svg>
+          }
+          @for (jt of synthCanvas.previewJoints(); track jt.id) {
+            <circle
+              class="synthPreviewJoint"
+              [attr.cx]="jt.x"
+              [attr.cy]="jt.y"
+              [attr.r]="0.15 * settings.objectScale"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(1.4)"
+            />
+          }
+          <!-- Named, because the panel names them. "Driven from Pin A", "Ground
              A–D", "Coupler B–C" -- every one of those letters was a reference
              to something the drawing never wrote down, so the reader had no way
              to tell which pin or which bar was meant. Drawn whatever the
              show-ids setting says: the panel is talking about them either way. -->
-        <g id="synthesisPreviewTags">
-          @for (jt of synthCanvas.previewJoints(); track jt.id) {
-            <text
-              class="synthPreviewTag"
-              [attr.transform]="
-                'translate(' + jt.x + ',' + jt.y + ') scale(1,-1)'
-              "
-              [attr.x]="svgGrid.scaleWithZoom(11)"
-              [attr.y]="svgGrid.scaleWithZoom(-9)"
-              [style.font-size.px]="svgGrid.scaleWithZoom(13)"
-            >
-              {{ jt.id }}
-            </text>
-          }
+          <g id="synthesisPreviewTags">
+            @for (jt of synthCanvas.previewJoints(); track jt.id) {
+              <text
+                class="synthPreviewTag"
+                [attr.transform]="'translate(' + jt.x + ',' + jt.y + ') scale(1,-1)'"
+                [attr.x]="svgGrid.scaleWithZoom(11)"
+                [attr.y]="svgGrid.scaleWithZoom(-9)"
+                [style.font-size.px]="svgGrid.scaleWithZoom(13)"
+              >
+                {{ jt.id }}
+              </text>
+            }
+          </g>
         </g>
-      </g>
       }
 
       <!-- The positions being designed for, tinted by what the chosen linkage
@@ -1197,11 +1195,19 @@
       <!-- The bar about to be dropped, following the pointer. -->
       @if (showSynthesis() && synthCanvas.ghostBar(); as ghost) {
         <g class="synthGhost" pointer-events="none">
-          <path class="synthBar" [attr.d]="ghost.d" fill="#c5cae9" stroke="#c5cae9"
-            [attr.stroke-width]="svgGrid.scaleWithZoom(3)" />
+          <path
+            class="synthBar"
+            [attr.d]="ghost.d"
+            fill="#c5cae9"
+            stroke="#c5cae9"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          />
           @if (ghost.arrow) {
-            <path class="synthBarArrow" [attr.d]="ghost.arrow"
-              [attr.stroke-width]="svgGrid.scaleWithZoom(2)" />
+            <path
+              class="synthBarArrow"
+              [attr.d]="ghost.arrow"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
+            />
           }
         </g>
       }
@@ -1269,51 +1275,51 @@
            and the shadow left in the other modes is a record of where the
            positions were, not of which solution won. -->
       @if (showSynthesis()) {
-      <g id="synthesisChips" pointer-events="none">
-        @for (chip of synthCanvas.poseChips(); track chip.id) {
-          <!-- Placed in model coordinates, then flipped back so the words read
+        <g id="synthesisChips" pointer-events="none">
+          @for (chip of synthCanvas.poseChips(); track chip.id) {
+            <!-- Placed in model coordinates, then flipped back so the words read
                the right way up inside the grid's own y-flip. A filled pill
                rather than bare text: it is read against whatever the drawing
                puts behind it, and grey words over a link are words nobody can
                read. -->
-          <g [attr.transform]="'translate(' + chip.x + ',' + chip.y + ') scale(1,-1)'">
-            <rect
-              class="synthChip"
-              [class.synthChip--sel]="chip.selected"
-              [attr.x]="svgGrid.scaleWithZoom(-11)"
-              [attr.y]="svgGrid.scaleWithZoom(-16)"
-              [attr.width]="svgGrid.scaleWithZoom(chip.width)"
-              [attr.height]="svgGrid.scaleWithZoom(22)"
-              [attr.rx]="svgGrid.scaleWithZoom(11)"
-              [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
-            />
-            <circle
-              class="synthChipDot"
-              [attr.cx]="0"
-              [attr.cy]="svgGrid.scaleWithZoom(-5)"
-              [attr.r]="svgGrid.scaleWithZoom(7.5)"
-              [attr.fill]="chip.dot"
-            />
-            <text
-              class="synthChipNumber"
-              [attr.x]="0"
-              [attr.y]="svgGrid.scaleWithZoom(-1.5)"
-              [style.font-size.px]="svgGrid.scaleWithZoom(10.5)"
-            >
-              {{ chip.id }}
-            </text>
-            <text
-              class="synthChipText"
-              [attr.x]="svgGrid.scaleWithZoom(12)"
-              y="0"
-              [style.font-size.px]="svgGrid.scaleWithZoom(13)"
-              [class.synthChipText--sel]="chip.selected"
-            >
-              {{ chip.text }}
-            </text>
-          </g>
-        }
-      </g>
+            <g [attr.transform]="'translate(' + chip.x + ',' + chip.y + ') scale(1,-1)'">
+              <rect
+                class="synthChip"
+                [class.synthChip--sel]="chip.selected"
+                [attr.x]="svgGrid.scaleWithZoom(-11)"
+                [attr.y]="svgGrid.scaleWithZoom(-16)"
+                [attr.width]="svgGrid.scaleWithZoom(chip.width)"
+                [attr.height]="svgGrid.scaleWithZoom(22)"
+                [attr.rx]="svgGrid.scaleWithZoom(11)"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+              />
+              <circle
+                class="synthChipDot"
+                [attr.cx]="0"
+                [attr.cy]="svgGrid.scaleWithZoom(-5)"
+                [attr.r]="svgGrid.scaleWithZoom(7.5)"
+                [attr.fill]="chip.dot"
+              />
+              <text
+                class="synthChipNumber"
+                [attr.x]="0"
+                [attr.y]="svgGrid.scaleWithZoom(-1.5)"
+                [style.font-size.px]="svgGrid.scaleWithZoom(10.5)"
+              >
+                {{ chip.id }}
+              </text>
+              <text
+                class="synthChipText"
+                [attr.x]="svgGrid.scaleWithZoom(12)"
+                y="0"
+                [style.font-size.px]="svgGrid.scaleWithZoom(13)"
+                [class.synthChipText--sel]="chip.selected"
+              >
+                {{ chip.text }}
+              </text>
+            </g>
+          }
+        </g>
       }
 
       <!-- What the next click will do, beside the pointer that will do it. -->
@@ -1752,7 +1758,9 @@
                   [attr.r]="0.16 * settings.objectScale"
                   fill="transparent"
                   [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
-                  [attr.stroke-dasharray]="svgGrid.scaleWithZoom(4) + ' ' + svgGrid.scaleWithZoom(3)"
+                  [attr.stroke-dasharray]="
+                    svgGrid.scaleWithZoom(4) + ' ' + svgGrid.scaleWithZoom(3)
+                  "
                 ></circle>
               }
               @for (

@@ -30,6 +30,12 @@ their source. Everything browser-driven lives here.
   open, and the rewind on leaving one
 - `template-open.mjs` — the template library: loads in place on an empty grid, and shows a new-tab / replace / cancel choice (with replace undoable) when the grid already holds work
 - `template-graphs.mjs` — every template in the library, checked for *correct* kinematic graphs: opens each payload, selects each moving joint in the Kinematic mode, reads the plotted series out of `AnalysisGraphComponent` (numbers, not pixels) and cross-checks position against the solved joint positions and velocity/acceleration against difference quotients of the series above them. Reversals and dead centres are identified from the source series and reported by sample index rather than tolerated silently. Exits non-zero on any failure
+- `mobile.mjs` — the phone layout and the gesture that replaces the right button: the page laid
+  out at the phone's own width, a held finger opening the context menu (and the menu surviving
+  the finger lifting), a tap and a swipe opening nothing, the mode panel as a sheet that starts
+  shut and never takes more than half the window, the playback cluster standing clear of it, and
+  a link drawn end to end with two taps and a hold. Runs against an iPhone 13 profile with real
+  touch events; exits non-zero on any failure
 - `readme-shots.mjs` — regenerates the screenshots the project README embeds, into tracked
   `docs/images/readme/`. Not a check: it writes assets, so run it after a change to the chrome
   that appears in one of them. The labelled `interface-map` shot measures each region from the

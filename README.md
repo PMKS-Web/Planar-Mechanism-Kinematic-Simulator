@@ -100,8 +100,9 @@ The canvas is full-bleed and everything else floats over it, in cards.
 The analysis modes are deliberately **read-only**. Playback lives with them, and editing lives
 outside them, because a half-solved mechanism being dragged mid-cycle is a graph that lies.
 
-On a phone or tablet the app says so on first load: an existing linkage opens, runs and can be
-edited from the panels, but the right-click menu that *builds* a new one needs a mouse.
+On a phone the mode panel becomes a sheet along the bottom, pulled up by its handle when you want
+it and out of the way when you do not, and **a held finger opens the right-click menu**, so a
+linkage can be built with taps alone. The canvas pans and pinches as you would expect.
 
 ---
 

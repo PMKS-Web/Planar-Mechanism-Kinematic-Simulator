@@ -79,3 +79,12 @@ $bottom-bar-height: 26px;
  * the card left 22px under the panel against 12px over it.
  */
 $panel-bottom-clearance: $bottom-bar-height + $frame-inset;
+
+/**
+ * The phone sheet's grab handle.
+ *
+ * Named here because two files need it and they sit on opposite sides of it:
+ * the handle hangs on the sheet's top edge, and the playback cluster has to
+ * stand clear of the handle rather than of the sheet.
+ */
+$sheet-handle-height: 28px;

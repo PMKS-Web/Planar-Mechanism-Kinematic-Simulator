@@ -790,10 +790,6 @@ export function circleLineIntersection(
   );
 }
 
-export function has_mouse_pointer() {
-  return matchMedia('(pointer:fine)').matches;
-}
-
 // Whether HTML5's local storage is available
 export function local_storage_available() {
   return typeof Storage !== 'undefined';

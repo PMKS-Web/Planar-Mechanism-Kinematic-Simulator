@@ -290,6 +290,60 @@
       }
     }
 
+    // --- the phone layout ---------------------------------------------
+    //
+    // Below `ViewportService`'s breakpoint the panel stops being a side panel.
+    // At 250px against a 390px window it took two thirds of the screen and the
+    // linkage was framed into the strip left over; at the analysis width there
+    // was no strip left over at all. A sheet along the bottom gives the drawing
+    // the whole width and rather more than half the height, which is the
+    // trade every phone app makes with a panel it cannot shrink.
+    //
+    // `data-canvas-inset` is switched to `bottom` in the template by the same
+    // signal that adds this class, so the framing follows the sheet rather than
+    // having to be told about it separately.
+    &.sheet {
+      top: auto;
+      // Clear of the status strip, which stays where it is.
+      bottom: nav.$bottom-bar-height;
+      left: 0;
+      right: 0;
+      // Beating the animation, which writes 278px or 428px straight onto the
+      // element and would otherwise leave a phone-width sheet standing in a
+      // desktop-width column. The file says so where the states are declared;
+      // this is the other end of that warning.
+      width: auto !important;
+      max-width: 100vw;
+      // Enough to work in, never enough to take the drawing away. `dvh` for
+      // the same reason the body uses it: `vh` on a phone is measured with the
+      // address bar hidden.
+      max-height: 48dvh;
+      padding-left: nav.$shadow-room;
+      z-index: 6;
+
+      // Shut, the sheet is just its handle and a sliver of the card behind it,
+      // so the drawing has the window. The height is a cap rather than a fixed
+      // height so a short panel still only takes what it needs.
+      &.collapsed {
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        overflow: hidden;
+      }
+
+      // The card inside is what a reader sees, and on a phone it takes the
+      // width it is given. Fixed at 250 or 400 it left the sheet two thirds
+      // covered and a third empty -- and at 400 on a 390px window it was the
+      // page that had to scroll sideways.
+      .page1,
+      .page2,
+      .page3 {
+        width: auto;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+    }
+
     // Never wider than the window it is in. The analysis page is 420px, which
     // is wider than a phone, and the page scrolled sideways to show the rest of
     // a card whose rounded corner was off the edge. The cap has to be on the
@@ -321,5 +375,36 @@
     .page3 {
       width: 400px; //Be careful, there are multiple places to change this value
     }
+  }
+
+  // The grab handle for the phone sheet. A wide, shallow target -- the whole
+  // width of the window and 28px of it -- because it is pressed with a thumb
+  // reaching up from the bottom of the phone, and the pill it draws is far too
+  // small to aim at.
+  .sheetHandle {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--sheet-height, 0px) + #{nav.$bottom-bar-height});
+    height: nav.$sheet-handle-height;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    z-index: 7;
+    cursor: pointer;
+    // Only the pill itself takes presses, so the canvas either side of it is
+    // still canvas.
+    pointer-events: none;
+  }
+
+  .sheetGrip {
+    pointer-events: auto;
+    width: 44px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.28);
+    box-shadow: 0 0 0 8px var(--card-surface);
   }
 }
