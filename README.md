@@ -335,7 +335,7 @@ masses, colours and the document's settings) rather than reversing one field.
 
 ## Mechanism library
 
-**39 mechanisms**, in eight families, each one a linkage the verification suite already covers.
+**41 mechanisms**, in eight families, each one a linkage the verification suite already covers.
 The library filters by family and by name; opening one on an empty grid loads it in place, and
 opening one over existing work offers a new tab, a replace (which is undoable), or a cancel.
 
@@ -373,7 +373,7 @@ it.*
 <td align="center"><img src="src/assets/gifs/cylinder-boom.png" width="190" alt="Cylinder-Driven Boom"><br><b>Cylinder-Driven Boom</b></td>
 <td align="center"><img src="src/assets/gifs/backhoe-bucket.png" width="190" alt="Backhoe Bucket"><br><b>Backhoe Bucket</b></td>
 <td align="center"><img src="src/assets/gifs/scissor-lift.png" width="190" alt="Scissor Lift"><br><b>Scissor Lift</b></td>
-<td align="center"><img src="src/assets/gifs/cylinder-gripper.png" width="190" alt="Gripper"><br><b>Gripper</b></td>
+<td align="center"><img src="src/assets/gifs/slider-crank-inversions.png" width="190" alt="Slider-Crank Inversions"><br><b>Slider-Crank Inversions</b></td>
 </tr>
 <tr>
 <td align="center"><img src="src/assets/gifs/chebyshev.png" width="190" alt="Chebyshev Straight-Line"><br><b>Chebyshev Straight-Line</b></td>
@@ -402,12 +402,12 @@ it.*
 | --- | --- |
 | **Start Here** | Four-Bar · Slider-Crank · Drag Link · Bell Crank · Locked Four-Bar · Loader Bucket |
 | **Six-Bars and Harder** | Watt I · Watt II · Stephenson III · Double Butterfly |
-| **Slots and Sliders** | Whitworth Quick-Return · Shaper Quick-Return · Scotch Yoke · Radial Engine · Elliptical Crank · Engine with a Flywheel · Screw Jack · Elliptical Trammel |
-| **Cylinders** | Cylinder-Driven Boom · Gripper · Backhoe Bucket · Scissor Lift |
+| **Slots and Sliders** | Whitworth Quick-Return · Shaper Quick-Return · Scotch Yoke · Radial Engine · Elliptical Crank · Engine with a Flywheel · Screw Jack · Elliptical Trammel · Parallel Gripper |
+| **Cylinders** | Cylinder-Driven Boom · Backhoe Bucket · Scissor Lift |
 | **Paths and Curves** | Chebyshev Straight-Line · Jansen Leg · Windshield Wiper · Peaucellier–Lipkin · Pantograph |
 | **Forces** | Punch Press · Derrick Crane · Toggle Clamp · Offset Load Rocker · Crane with Two Loads |
 | **Unusual Drives** | Oscillating Fan · Pumpjack · Pedaling Leg |
-| **Many Machines** | Three Machines · Walking Pair · Approximate and Exact · Pumping Field |
+| **Many Machines** | Three Machines · Walking Pair · Approximate and Exact · Pumping Field · Four-Bar Inversions · Slider-Crank Inversions |
 
 </details>
 
