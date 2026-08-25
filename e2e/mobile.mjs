@@ -295,6 +295,40 @@ record(
   })
 );
 
+// --- synthesis places by tapping, and still opens a menu on a hold ----------
+// The one place in the app where a plain tap on the canvas *makes* something,
+// so it is the one place a press and a tap could be confused for each other.
+await open();
+await waitForReady(page).catch(() => undefined);
+await page.waitForTimeout(700);
+await page.locator('.tabButton').first().click({ force: true });
+await page.waitForTimeout(900);
+await page.locator('.sheetHandle').click();
+await page.waitForTimeout(600);
+await page.locator('#synthesisPanel .kindCard--on').click({ force: true });
+await page.waitForTimeout(700);
+await page.locator('#synthesisPanel .pill').first().click({ force: true });
+await page.waitForTimeout(500);
+await page.locator('.sheetHandle').click();
+await page.waitForTimeout(600);
+
+const poseCount = () =>
+  page.evaluate(
+    () =>
+      Object.keys(
+        window.ng.getComponent(document.querySelector('app-synthesis-panel')).design.poses
+      ).length
+  );
+await tap(200, 260);
+await page.waitForTimeout(600);
+record('a tap drops a synthesis position', (await poseCount()) === 1);
+
+const inSynthesis = await hold(300, 400);
+record('and a hold there opens the menu instead', inSynthesis.openWhileDown === 1, inSynthesis);
+record('without dropping a second position', (await poseCount()) === 1);
+await page.keyboard.press('Escape').catch(() => undefined);
+await page.waitForTimeout(300);
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
 console.log(`\n${results.filter(([, ok]) => ok).length}/${results.length} checks passed`);
