@@ -115,8 +115,8 @@ rejected value is the moment somebody is most willing to be told.
 ### Feedback form (3)
 
 `Please fill out the form correctly.` ·
-`It looks like you are in a development environment. If this is not the case, please try again later or contact us directly at: gr-pmksplus@wpi.edu` ·
-`Message failed to send. Please try again later or contact us directly at: gr-pmksplus@wpi.edu`
+`It looks like you are in a development environment. If this is not the case, please try again later or contact us directly at: help@pmksplus.com` ·
+`Message failed to send. Please try again later or contact us directly at: help@pmksplus.com`
 
 ### File and URL (2)
 

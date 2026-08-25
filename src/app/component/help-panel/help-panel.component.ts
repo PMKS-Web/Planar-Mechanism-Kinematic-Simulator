@@ -152,7 +152,7 @@ export class HelpPanelComponent {
       console.log(err);
       this.notify.failure(
         'feedback.no-key',
-        'It looks like you are in a development environment. If this is not the case, please try again later or contact us directly at: gr-pmksplus@wpi.edu'
+        'It looks like you are in a development environment. If this is not the case, please try again later or contact us directly at: help@pmksplus.com'
       );
       this.sendingEmail = false;
       return;
@@ -181,7 +181,7 @@ export class HelpPanelComponent {
     }
 
     const params = {
-      to_email: 'gr-pmksplus@wpi.edu',
+      to_email: 'help@pmksplus.com',
       message: this.commentForm.value.comment
         ? this.commentForm.value.comment
         : 'User did not leave a comment',
@@ -203,7 +203,7 @@ export class HelpPanelComponent {
         console.log(error);
         this.notify.failure(
           'feedback.send-failed',
-          'Message failed to send. Please try again later or contact us directly at: gr-pmksplus@wpi.edu'
+          'Message failed to send. Please try again later or contact us directly at: help@pmksplus.com'
         );
         this.sendingEmail = false;
       });

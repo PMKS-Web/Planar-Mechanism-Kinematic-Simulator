@@ -599,7 +599,7 @@ What we ask of a change:
 
 MIT. The full text is in [LICENSE](LICENSE) at the root of this repository.
 
-Questions, bug reports and course-adoption enquiries: **gr-pmksplus@wpi.edu**, or the feedback form
+Questions, bug reports and course-adoption enquiries: **help@pmksplus.com**, or the feedback form
 inside the app (Help / Feedback in the project menu).
 
 ---
