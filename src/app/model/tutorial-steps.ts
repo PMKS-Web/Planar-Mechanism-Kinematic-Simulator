@@ -195,8 +195,51 @@ export interface TutorialCopy {
  * doing it three times leaves three bars that never touch — so the chain is
  * built by attaching to the far end of what is already there.
  */
-export function copyFor(progress: TutorialProgress): TutorialCopy {
+/**
+ * The words for the two gestures the tutorial asks for, and where the panel is.
+ *
+ * The steps are the same on either device -- draw a bar, chain it, ground it,
+ * drive it -- but three of the five open a menu, and a reader with no right
+ * button cannot follow an instruction to right-click. Telling a phone to
+ * right-click is the tutorial telling a student to do something impossible on
+ * the first step, which is a worse first impression than not having a tutorial.
+ */
+interface Gestures {
+  /** Opening the menu, at the start of a sentence. */
+  Open: string;
+  /** The same, mid-sentence. */
+  open: string;
+  /** Setting a point down. */
+  set: string;
+  /** What the far end of a new bar follows between the two. */
+  pointer: string;
+  /** Where the properties panel is, which is not the same place on a phone. */
+  panel: string;
+  /** The glyph beside the first hint. */
+  glyph: string;
+}
+
+const MOUSE: Gestures = {
+  Open: 'Right-click',
+  open: 'right-click',
+  set: 'left-click',
+  pointer: 'your pointer',
+  panel: 'The panel on the left',
+  glyph: 'mouse',
+};
+
+const TOUCH: Gestures = {
+  Open: 'Press and hold on',
+  open: 'press and hold on',
+  set: 'tap',
+  pointer: 'your finger',
+  panel: 'The panel at the bottom',
+  glyph: 'touch_app',
+};
+
+export function copyFor(progress: TutorialProgress, touch = false): TutorialCopy {
   const target = progress.target ? nameOf(progress.target) : '';
+  const g = touch ? TOUCH : MOUSE;
   switch (progress.step) {
     case 1:
       return {
@@ -205,14 +248,14 @@ export function copyFor(progress: TutorialProgress): TutorialCopy {
         // bar's far end follows the pointer between the two, and describing it
         // as "drag and release" had readers holding the button down through a
         // move that does not want it held.
-        body: 'Right-click the empty grid and choose Link, under Add. One end is placed where you clicked and the other follows your pointer — move to where you want it and left-click to set it.',
-        hint: 'Right-click is how everything is added in PMKS+. The panel on the left edits whatever you then select.',
-        hintGlyph: 'mouse',
+        body: `${g.Open} the empty grid and choose Link, under Add. One end is placed where you started and the other follows ${g.pointer} — move to where you want it and ${g.set} to set it.`,
+        hint: `That is how everything is added in PMKS+: ${g.open} whatever you want to add to. ${g.panel} edits whatever you then select.`,
+        hintGlyph: g.glyph,
       };
     case 2:
       return {
         title: 'Extend it into a chain of three',
-        body: 'Right-click the joint at the far end of the bar and choose Link, under Attach, then left-click where the new bar should end. Do that twice, each time from the newest end, so the three links make a chain.',
+        body: `${g.Open} the joint at the far end of the bar and choose Link, under Attach, then ${g.set} where the new bar should end. Do that twice, each time from the newest end, so the three links make a chain.`,
         hint: 'On the grid the group is Add, and the new bar stands on its own. On a joint it is Attach, and the new bar joins the joint that is already there.',
         hintGlyph: 'link',
       };
@@ -221,7 +264,7 @@ export function copyFor(progress: TutorialProgress): TutorialCopy {
       return {
         title: 'Ground the two end joints',
         body:
-          `Right-click joint ${target}, the ringed one, and switch on Grounded. A grounded joint is fixed to the frame.` +
+          `${g.Open} joint ${target}, the ringed one, and switch on Grounded. A grounded joint is fixed to the frame.` +
           (also ? ` Then do the same at joint ${also}, at the other end.` : ''),
         hint: 'A mechanism with nothing grounded floats away.',
         hintGlyph: 'push_pin',
@@ -230,7 +273,7 @@ export function copyFor(progress: TutorialProgress): TutorialCopy {
     case 4:
       return {
         title: 'Drive one of the joints',
-        body: `Right-click joint ${target}, the ringed one, and switch on Driven Input. The input is the joint that drives the mechanism. A mechanism needs exactly one.`,
+        body: `${g.Open} joint ${target}, the ringed one, and switch on Driven Input. The input is the joint that drives the mechanism. A mechanism needs exactly one.`,
       };
     default:
       return {
@@ -238,7 +281,7 @@ export function copyFor(progress: TutorialProgress): TutorialCopy {
         // Named by where it is, not only by what it says: below about 900px the
         // mode tabs give up their labels and a student is looking at four
         // unexplained glyphs.
-        body: 'Switch to Kinematic Analysis — the third mode in the strip along the top — then press Play at the bottom of the window and click a moving joint on the grid.',
+        body: `Switch to Kinematic Analysis — the third mode in the strip along the top — then press Play at the bottom of the window and ${touch ? 'tap' : 'click'} a moving joint on the grid.`,
         hint: 'The reading follows the pose, so scrubbing the handle moves the number.',
         hintGlyph: 'speed',
       };

@@ -1,7 +1,7 @@
 import { RevJoint } from './joint';
 import { Coord } from './coord';
 import { RealLink } from './link';
-import { copyFor, endJoints, linksAreChained, progressFor } from './tutorial-steps';
+import { TutorialStepId, copyFor, endJoints, linksAreChained, progressFor } from './tutorial-steps';
 
 /** One bar between two joints, wired the way the grid wires one. */
 function bar(a: RevJoint, b: RevJoint): RealLink {
@@ -186,5 +186,30 @@ describe('what the card says', () => {
   it('never tells the student to add three links from the grid', () => {
     expect(copyFor({ step: 1 }).body).not.toMatch(/three times/i);
     expect(copyFor({ step: 2 }).body).not.toMatch(/Right-click anywhere/i);
+  });
+
+  // A reader with no right button cannot follow an instruction to right-click,
+  // and the tutorial is the first thing a phone is shown.
+  it('names the gesture the reader actually has', () => {
+    const mouse = copyFor({ step: 1 });
+    const touch = copyFor({ step: 1 }, true);
+    expect(mouse.body).toContain('Right-click');
+    expect(mouse.body).toContain('left-click');
+    expect(touch.body).not.toMatch(/right-click/i);
+    expect(touch.body).not.toMatch(/left-click/i);
+    expect(touch.body).toContain('Press and hold');
+    expect(touch.body).toContain('tap');
+  });
+
+  it('and points at the panel where that reader will find it', () => {
+    expect(copyFor({ step: 1 }).hint).toContain('on the left');
+    expect(copyFor({ step: 1 }, true).hint).toContain('at the bottom');
+  });
+
+  it('leaves no step telling a phone to click', () => {
+    for (const step of [1, 2, 3, 4, 5] as TutorialStepId[]) {
+      const copy = copyFor({ step, target: { id: 'A' } as never }, true);
+      expect(`${copy.title} ${copy.body} ${copy.hint ?? ''}`).not.toMatch(/click/i);
+    }
   });
 });

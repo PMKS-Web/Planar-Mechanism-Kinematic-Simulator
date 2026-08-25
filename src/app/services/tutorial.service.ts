@@ -24,6 +24,7 @@ import { NumberUnitParserService } from './number-unit-parser.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 import { SvgGridService } from './svg-grid.service';
 import { local_storage_available } from '../model/utils';
+import { ViewportService } from './viewport.service';
 
 /** The velocity the tutorial ends on, frozen at the moment it was read. */
 export interface TutorialReading {
@@ -49,6 +50,7 @@ const SEEN_KEY = 'tutorialSeen';
  */
 @Injectable({ providedIn: 'root' })
 export class TutorialService {
+  private viewport = inject(ViewportService);
   private mechanism = inject(MechanismService);
   private activeObj = inject(ActiveObjService);
   private settings = inject(SettingsService);
@@ -175,7 +177,7 @@ export class TutorialService {
   }
 
   copy(): TutorialCopy {
-    return copyFor(this.viewedProgress());
+    return copyFor(this.viewedProgress(), this.viewport.isTouch());
   }
 
   /** Whether the step on the card is one the student has already satisfied. */

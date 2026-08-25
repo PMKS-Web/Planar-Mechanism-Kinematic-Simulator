@@ -29,10 +29,25 @@ export class ViewportService {
   /** True while the window is narrow enough for the phone layout. */
   readonly isPhone = signal(false);
 
+  /**
+   * True where the pointer is a finger rather than a mouse.
+   *
+   * A different question from `isPhone`, and asked for a different reason: the
+   * layout follows the *window*, because a narrow window on a desktop has the
+   * same problem a phone does, while the words for a gesture follow the
+   * *input*. A tablet is wide enough for the side panel and still has no right
+   * button to tell its reader to press.
+   */
+  readonly isTouch = signal(false);
+
   constructor() {
     if (typeof window === 'undefined' || !window.matchMedia) return;
-    const query = window.matchMedia(`(max-width: ${PHONE_MAX_WIDTH}px)`);
-    this.isPhone.set(query.matches);
-    query.addEventListener('change', (event) => this.isPhone.set(event.matches));
+    const narrow = window.matchMedia(`(max-width: ${PHONE_MAX_WIDTH}px)`);
+    this.isPhone.set(narrow.matches);
+    narrow.addEventListener('change', (event) => this.isPhone.set(event.matches));
+
+    const coarse = window.matchMedia('(pointer: coarse)');
+    this.isTouch.set(coarse.matches);
+    coarse.addEventListener('change', (event) => this.isTouch.set(event.matches));
   }
 }
