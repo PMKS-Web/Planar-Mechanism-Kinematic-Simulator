@@ -17,7 +17,8 @@ server.
 
 </div>
 
-![PMKS+ running a Jansen leg, with the foot's position graphed beside it](docs/images/readme/hero.png)
+<img width="2982" height="1970" alt="frame_chrome_mac_light-110" src="https://github.com/user-attachments/assets/4d63252a-63fa-421e-a1b4-eb923cc6aeb7" />
+
 
 ---
 
@@ -619,7 +620,7 @@ Engineering, Oregon State University.
 <tr><td>Dimitrios Tsiakmakis (BS CS '19)</td><td>Praneeth Appikatla (BS CS '19)</td><td>Zhihao Xie (BS RBE '19)</td></tr>
 <tr><td>Albert Nana Beka (BS/MS ME '19)</td><td>Jonathan Andrews (BS RBE '18)</td><td>Brandon Knox (BS RBE '18)</td></tr>
 <tr><td>Guillermo Rivera (BS RBE '18)</td><td>Brad Leach (BS ME '18)</td><td>Garrett Holman (BS ME '18)</td></tr>
-<tr><td>Oluchukwu Okafor (BS ME '18)</td><td>|</td></tr>
+<tr><td>Oluchukwu Okafor (BS ME '18)</td></tr>
 </table>
 
 <div align="center">
