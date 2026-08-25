@@ -30,6 +30,11 @@ their source. Everything browser-driven lives here.
   open, and the rewind on leaving one
 - `template-open.mjs` — the template library: loads in place on an empty grid, and shows a new-tab / replace / cancel choice (with replace undoable) when the grid already holds work
 - `template-graphs.mjs` — every template in the library, checked for *correct* kinematic graphs: opens each payload, selects each moving joint in the Kinematic mode, reads the plotted series out of `AnalysisGraphComponent` (numbers, not pixels) and cross-checks position against the solved joint positions and velocity/acceleration against difference quotients of the series above them. Reversals and dead centres are identified from the source series and reported by sample index rather than tolerated silently. Exits non-zero on any failure
+- `readme-shots.mjs` — regenerates the screenshots the project README embeds, into tracked
+  `docs/images/readme/`. Not a check: it writes assets, so run it after a change to the chrome
+  that appears in one of them. The labelled `interface-map` shot measures each region from the
+  selector it already carries, so a card that moves takes its label with it. `ONLY=hero,templates`
+  retakes part of the set
 - `template-thumbnails.mjs` — regenerates the library cards' images in `src/assets/gifs/` by opening each generated template payload and clipping the canvas. Not a check: it writes assets, so run it after `npm run template-payloads` changes a payload
 - `playback-timing.mjs` — real-time playback: a revolution takes 60/RPM wall-clock seconds, the reported cycle period scales with input speed, and simulation time is held (not the sample index) across a speed change
 - `input-settings-and-playback.mjs` — the input joint's Input Settings section (direction, unit-free speed field, RPM / deg/s / rad/s picker), its removal from global Settings, the time field's width, and that playback interpolates between samples at a slow input speed
