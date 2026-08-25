@@ -65,6 +65,23 @@ export class ExportCatalogService {
   /** Nothing solves for a mechanism that does not run, so nothing is on offer. */
   private unsolved = (part: ExportPart): ExportPart => ({ ...part, available: false });
 
+  /**
+   * A free point carried by one body, in the sense the right-click menu means.
+   *
+   * The same rule `jointKind` applies, and deliberately the same word: a joint
+   * that meets only one link joins nothing, it rides. What makes the test worth
+   * writing out is the exclusions -- a ground pivot, a driven pin or a weld
+   * with a single link is not a tracer, because in each case the more important
+   * thing about the joint has already been said. The weld is the one that is
+   * easy to miss: welding fuses the bars that met here into one compound, so
+   * the joint is left on a single body and looks like a tracer by the count
+   * alone. A slider pin never reaches this test -- the caller has already
+   * spent the note on it -- and a bare slot is not in the list at all.
+   */
+  private isTracer(joint: RealJoint): boolean {
+    return joint.links.length === 1 && !joint.ground && !joint.input && !joint.isWelded;
+  }
+
   /** The three joints a sealed cylinder keeps to itself: no hitbox, no row. */
   private isInsideCylinder(cylinders: Cylinder[], joint: Joint): boolean {
     return cylinders.some(
@@ -103,7 +120,11 @@ export class ExportCatalogService {
     if (joint.ground) notes.push('grounded');
     if (joint.input) notes.push('input');
     if (this.mechanism.sliderFor(joint)) notes.push('slider');
-    if (joint.showCurve) notes.push('tracer point');
+    else if (this.isTracer(joint)) notes.push('tracer');
+    // "Traced", not "tracer point": the row above already spends the word
+    // "tracer" on what a joint *is*, and this is a view of it -- whether its
+    // path is being drawn -- which is a different fact about a different thing.
+    if (joint.showCurve) notes.push('traced');
     const selected = this.mechanism.isSelectedJoint(joint);
     if (selected) notes.push('currently selected');
     return {

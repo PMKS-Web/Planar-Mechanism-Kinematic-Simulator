@@ -65,30 +65,35 @@
           <span class="pickSep"></span>
           <button class="linkButton small" (click)="flow.setParts(group.parts, false)">None</button>
         </div>
-        <div class="rows">
-          @for (part of group.parts; track part.key) {
-            <button
-              class="pickRow"
-              [class.off]="!part.available"
-              [class.on]="flow.isPicked(part)"
-              [class.onGrid]="isOnGrid(part)"
-              [disabled]="!part.available"
-              (click)="flow.togglePart(part)"
-              (mouseenter)="pointAt(part)"
-              (mouseleave)="pointAt(undefined)"
-            >
-              <span class="box" [class.ticked]="flow.isPicked(part)">
-                @if (flow.isPicked(part)) {
-                  <mat-icon>check</mat-icon>
+        <!-- The two kinds of part named, so a long machine reads as two short
+             lists rather than one wall. See `sectionsIn`. -->
+        @for (section of sectionsIn(group); track section.title) {
+          <div class="partKind">{{ section.title }}</div>
+          <div class="rows">
+            @for (part of section.parts; track part.key) {
+              <button
+                class="pickRow"
+                [class.off]="!part.available"
+                [class.on]="flow.isPicked(part)"
+                [class.onGrid]="isOnGrid(part)"
+                [disabled]="!part.available"
+                (click)="flow.togglePart(part)"
+                (mouseenter)="pointAt(part)"
+                (mouseleave)="pointAt(undefined)"
+              >
+                <span class="box" [class.ticked]="flow.isPicked(part)">
+                  @if (flow.isPicked(part)) {
+                    <mat-icon>check</mat-icon>
+                  }
+                </span>
+                <span class="rowName">{{ part.label }}</span>
+                @if (part.note) {
+                  <span class="rowNote">{{ part.note }}</span>
                 }
-              </span>
-              <span class="rowName">{{ part.label }}</span>
-              @if (part.note) {
-                <span class="rowNote">{{ part.note }}</span>
-              }
-            </button>
-          }
-        </div>
+              </button>
+            }
+          </div>
+        }
       }
       @if (groups().length === 0) {
         <p class="empty">

@@ -205,6 +205,23 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
     return this.flow.partGroups().filter((group) => group.parts.length > 0);
   }
 
+  /**
+   * One machine's rows, split into the two kinds of thing they are about.
+   *
+   * A seven-bar arrives here as seventeen unbroken rows, which is a wall: the
+   * reader who wants "the joints" has to find where they stop by reading every
+   * label. The list was already ordered joints-then-links, so this only names
+   * the boundary that was there all along. A heading is dropped rather than
+   * shown empty, so a drawing of nothing but bars is not asked to read the word
+   * "Joints" over a gap.
+   */
+  sectionsIn(group: ExportPartGroup): { title: string; parts: ExportPart[] }[] {
+    return [
+      { title: 'Joints', parts: group.parts.filter((part) => part.kind === 'joint') },
+      { title: 'Links', parts: group.parts.filter((part) => part.kind === 'link') },
+    ].filter((section) => section.parts.length > 0);
+  }
+
   pickedIn(group: ExportPartGroup): number {
     return group.parts.filter((part) => this.flow.isPicked(part)).length;
   }

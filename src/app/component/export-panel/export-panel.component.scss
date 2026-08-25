@@ -211,6 +211,23 @@
       text-overflow: ellipsis;
     }
 
+    // Quieter than the machine's own name directly above it, and quieter than
+    // the rows it heads: it is a divider that happens to be a word, and a
+    // second bold line under `M1` would read as a second machine.
+    .partKind {
+      padding: 8px 15px 2px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: rgba(0, 0, 0, 0.45);
+    }
+
+    // Except the first, which already has the machine's head above it.
+    .mechHead + .partKind {
+      padding-top: 2px;
+    }
+
     .rows {
       display: flex;
       flex-direction: column;

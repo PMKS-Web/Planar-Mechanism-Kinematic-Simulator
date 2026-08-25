@@ -37,8 +37,11 @@ interface TabStatus {
    * What the chip is coloured by: red where something stops the analysis,
    * amber where it will run but something is worth reading first, green where
    * there is nothing to say. One vocabulary, here and in the setup drawers.
+   *
+   * `neutral` is the fourth, and it exists for force analysis alone. See
+   * `statusOf`.
    */
-  kind: 'blocker' | 'warning' | 'ok';
+  kind: 'blocker' | 'warning' | 'ok' | 'neutral';
 }
 
 /**
@@ -380,12 +383,20 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   statusOf(tab: TabID): TabStatus {
     if (tab === TabID.FORCE) {
       // Split rather than filtered away: what is unmet and not a warning stops
-      // the analysis and colours the chip red, and what is only a warning
-      // still has to reach the chip or a mechanism with something odd about it
-      // reads as clear.
+      // the analysis, and what is only a warning still has to reach the chip or
+      // a mechanism with something odd about it reads as clear.
       const outstanding = this.mechanism.forceAnalysisRequirements().filter((r) => !r.met);
       const missing = outstanding.filter((r) => !r.warning).length;
-      if (missing > 0) return { text: `${missing} to set`, ready: false, kind: 'blocker' };
+      // Grey, where kinematics would be red. Forces are the one analysis a
+      // reader can legitimately never want: a mechanism with no masses and no
+      // loads is not a broken mechanism, it is one nobody has asked this
+      // question about. Red on the strip from the first bar drawn until the
+      // last mass typed reads as a fault the whole time, and the reader who is
+      // only ever going to look at motion can never make it go away. So the
+      // count is stated and left grey until the reader engages with forces at
+      // all; from then on -- once something has a mass or a load -- amber and
+      // green mean what they mean everywhere else.
+      if (missing > 0) return { text: `${missing} to set`, ready: false, kind: 'neutral' };
       return outstanding.length > 0
         ? { text: `${outstanding.length} to check`, ready: true, kind: 'warning' }
         : { text: 'Ready', ready: true, kind: 'ok' };
