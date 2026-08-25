@@ -1575,6 +1575,14 @@ export class NewGridComponent implements OnDestroy {
     if (getDistance(new Coord(this.startX, this.startY), new Coord($event.x, $event.y)) > 10) {
       this.timeMouseDown = 0;
     }
+    // A finger that has not yet decided whether it is a press holds the drag
+    // off entirely, however long it has been down. The 100ms below is a mouse's
+    // number: a press is a click or it is a drag, and neither takes half a
+    // second. A long press does, and every tremor in that half second used to
+    // move the joint the reader was trying to open a menu on -- about thirty
+    // model units, silently, before the menu even appeared. The ten pixels is
+    // the same on both sides, so exactly one of the two ever happens.
+    if (this.longPress()?.pressPending) return false;
     return !(this.timeMouseDown !== undefined && Date.now() - this.timeMouseDown < 100);
   }
 
@@ -1914,6 +1922,12 @@ export class NewGridComponent implements OnDestroy {
    * mechanism is parked mid-cycle greys its editing rows with the reason
    * rather than refusing to open.
    */
+  /** The gesture arbiter on the canvas, asked whether a press is undecided. */
+  private longPress = viewChild(LongPressDirective);
+
+  /** Set when a press turned into a menu, so its release places nothing. */
+  private pressBecameMenu = false;
+
   onContextMenu($event: MouseEvent) {
     this.lastRightClickCoord.x = $event.clientX;
     this.lastRightClickCoord.y = $event.clientY;
@@ -1935,7 +1949,26 @@ export class NewGridComponent implements OnDestroy {
    * path to the same menu would be a second path to get wrong -- so a long
    * press does not *resemble* a right-click, it becomes one.
    */
+  /**
+   * A second finger, which makes this a pinch.
+   *
+   * The same three things a right-click does, for the same reason: the first
+   * finger has already taken hold of whatever it went down on, and a pinch is
+   * about the view rather than about the mechanism. Without this a two-finger
+   * zoom that happened to begin on a joint dragged that joint while it zoomed.
+   */
+  onPinch() {
+    this.dragState.cancel();
+    this.cylinderCreateStart = undefined;
+    this.linkCreateStart = undefined;
+  }
+
   onLongPress(press: LongPress) {
+    // Synthesis places a position on the *release* of a press that did not
+    // travel, and a press held still is exactly that -- so a hold on the canvas
+    // with placing armed opened the menu and then dropped a position under it
+    // on the way out. Spent by the release that follows.
+    this.pressBecameMenu = true;
     this.dragState.cancel();
     this.cylinderCreateStart = undefined;
     this.linkCreateStart = undefined;
@@ -1967,6 +2000,7 @@ export class NewGridComponent implements OnDestroy {
         $event.button === 0 &&
         !wasDragging &&
         !this.synthPressTaken &&
+        !this.pressBecameMenu &&
         this.synthesisBuilder.armed &&
         this.pressDidNotTravel($event)
       ) {
@@ -2253,6 +2287,8 @@ export class NewGridComponent implements OnDestroy {
     // Log the time that the mouse was clicked
     this.timeMouseDown = new Date().getTime();
     this.synthPressTaken = false;
+    // A new press: whatever the last one turned into is behind us.
+    this.pressBecameMenu = false;
     this.dragState.press();
     this.startX = $event.pageX;
     this.startY = $event.pageY;

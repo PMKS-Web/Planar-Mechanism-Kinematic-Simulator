@@ -54,24 +54,41 @@ async function hold(x, y, ms = 700) {
   return { openWhileDown, openAfterLift: await page.locator('#contextMenu').count() };
 }
 
-/** A finger that travels, which is a pan and never a press. */
-async function swipe(x, y, dx, dy) {
+/**
+ * A finger that travels, which is a pan and never a press.
+ *
+ * Deliberately slower than the hold threshold: a swipe that finishes inside
+ * half a second proves only that it was quick, and what wants proving is that
+ * travelling is what stops it becoming a press.
+ */
+async function swipe(x, y, dx, dy, steps = 12, gap = 70) {
   const cdp = await context.newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent', {
     type: 'touchStart',
     touchPoints: [{ x, y, id: 1 }],
   });
-  for (let step = 1; step <= 6; step += 1) {
-    await page.waitForTimeout(60);
+  for (let step = 1; step <= steps; step += 1) {
+    await page.waitForTimeout(gap);
     await cdp.send('Input.dispatchTouchEvent', {
       type: 'touchMove',
-      touchPoints: [{ x: x + (dx * step) / 6, y: y + (dy * step) / 6, id: 1 }],
+      touchPoints: [{ x: x + (dx * step) / steps, y: y + (dy * step) / steps, id: 1 }],
     });
   }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await cdp.detach();
   await page.waitForTimeout(350);
 }
+
+/** What pan/zoom is applying, so a gesture can be shown to have moved the view. */
+const canvasTransform = () =>
+  page.evaluate(() => document.querySelector('#canvas g')?.getAttribute('transform') ?? '');
+
+/** Nothing is holding a gesture open. */
+const gestureIdle = () =>
+  page.evaluate(() => {
+    const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    return grid.dragState.grid === 0 && grid.dragState.joint === 0 && grid.dragState.link === 0;
+  });
 
 const tap = async (x, y) => {
   const cdp = await context.newCDPSession(page);
@@ -129,11 +146,20 @@ await page.keyboard.press('Escape').catch(() => undefined);
 await page.waitForTimeout(300);
 
 record('a tap opens nothing', (await hold(200, 480, 120)).openAfterLift === 0);
-await swipe(200, 480, 90, 0);
+record('and leaves nothing holding a gesture', await gestureIdle());
+
+const viewBefore = await canvasTransform();
+await swipe(200, 480, 120, 0);
 record(
   'a swipe opens nothing, because it is a pan',
   (await page.locator('#contextMenu').count()) === 0
 );
+// The swipe above runs well past the half-second hold, so this is travel
+// rejecting the press rather than the gesture merely being over quickly.
+record('and it panned the canvas instead', (await canvasTransform()) !== viewBefore, {
+  viewBefore,
+  now: await canvasTransform(),
+});
 
 // --- the menu is about the part under the finger ----------------------------
 await open(payloads['4-Bar']);
@@ -156,9 +182,19 @@ const collapsed = await box('.panel');
 record('the mode panel starts out of the way', collapsed.h === 0, collapsed);
 record('with a handle to pull it up by', (await page.locator('.sheetHandle').count()) === 1);
 
-await page.locator('.sheetHandle').click();
+// Tapped with a finger and off centre, because the pill it draws is 5px tall
+// and what has to be hittable is the box around it.
+const grip = await page.evaluate(() => {
+  const rect = document.querySelector('.sheetGrip').getBoundingClientRect();
+  return { x: Math.round(rect.x + rect.width * 0.2), y: Math.round(rect.y + rect.height * 0.2) };
+});
+await tap(grip.x, grip.y);
 await page.waitForTimeout(600);
 const expanded = await box('.panel');
+record('the handle takes a finger off the centre of its pill', expanded.h > 100, {
+  grip,
+  expanded,
+});
 record('the handle opens it', expanded.h > 100, expanded);
 record(
   'across the whole width, not in a desktop column',
@@ -182,11 +218,24 @@ await page.locator('.sheetHandle').click();
 await page.waitForTimeout(700);
 const sheet = await box('.panel');
 const cluster = await box('.playbackRow');
+const stripBottom = await page.evaluate(() =>
+  Math.round(document.querySelector('.topStrip').getBoundingClientRect().bottom)
+);
 record(
   'the playback cluster stands clear of the open sheet',
   cluster.y + cluster.h <= sheet.y + 2,
-  { cluster, sheet }
+  {
+    cluster,
+    sheet,
+  }
 );
+// Standing on the sheet is only right if it is still standing somewhere the
+// reader can reach: a sheet that keeps its share of a short window pushes the
+// transport up under the top strip and then off the top of the screen.
+record('and is still on the screen, below the top strip', cluster.y >= stripBottom, {
+  cluster,
+  stripBottom,
+});
 
 // --- and a bar can be drawn with nothing but taps ---------------------------
 await open();
@@ -205,6 +254,7 @@ const after = await page.evaluate(
   () => window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.joints.length
 );
 record('a link can be drawn with two taps and a hold', after - before === 2, { before, after });
+record('and the canvas is not left holding the gesture', await gestureIdle());
 
 // --- the gestures the press has to share the canvas with --------------------
 await open(payloads['4-Bar']);
@@ -328,6 +378,129 @@ record('and a hold there opens the menu instead', inSynthesis.openWhileDown === 
 record('without dropping a second position', (await poseCount()) === 1);
 await page.keyboard.press('Escape').catch(() => undefined);
 await page.waitForTimeout(300);
+
+// --- the ways a press used to move the mechanism behind the reader's back ---
+await open(payloads['4-Bar']);
+await waitForReady(page).catch(() => undefined);
+await page.waitForTimeout(800);
+
+const jointB = () =>
+  page.evaluate(() => {
+    const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    const joint = grid.mechanismSrv.joints.find((candidate) => candidate.id === 'B');
+    return { x: joint.x, y: joint.y };
+  });
+const jointBOnScreen = () =>
+  page.evaluate(() => {
+    const rect = document.getElementById('joint_B').getBoundingClientRect();
+    return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) };
+  });
+const moved = (a, c) => Math.hypot(c.x - a.x, c.y - a.y);
+
+// A finger is never perfectly still. The drag is held off for 100ms or ten
+// pixels, which is a mouse's rule, and a press outlives it by four hundred
+// milliseconds -- so every tremor was moving the joint the reader was trying
+// to open a menu on, before the menu appeared to explain itself.
+{
+  const target = await jointBOnScreen();
+  const before = await jointB();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: target.x, y: target.y, id: 1 }],
+  });
+  await page.waitForTimeout(160);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: target.x + 8, y: target.y, id: 1 }],
+  });
+  await page.waitForTimeout(600);
+  const openedMenu = await page.locator('#contextMenu').count();
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+  await page.waitForTimeout(500);
+  const after = await jointB();
+  record('a press that wobbles still opens the menu', openedMenu === 1);
+  record('and moves nothing while it decides', moved(before, after) < 0.001, { before, after });
+  await page.keyboard.press('Escape').catch(() => undefined);
+  await page.waitForTimeout(400);
+}
+
+// A pinch that happens to start on a joint is about the view, not the joint.
+{
+  const target = await jointBOnScreen();
+  const before = await jointB();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: target.x, y: target.y, id: 1 }],
+  });
+  await page.waitForTimeout(100);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [
+      { x: target.x, y: target.y, id: 1 },
+      { x: target.x + 120, y: target.y + 120, id: 2 },
+    ],
+  });
+  for (let step = 1; step <= 6; step += 1) {
+    await page.waitForTimeout(60);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [
+        { x: target.x - step * 8, y: target.y - step * 8, id: 1 },
+        { x: target.x + 120 + step * 8, y: target.y + 120 + step * 8, id: 2 },
+      ],
+    });
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+  await page.waitForTimeout(600);
+  record('a pinch begun on a joint leaves the joint alone', moved(before, await jointB()) < 0.001, {
+    before,
+    after: await jointB(),
+  });
+}
+
+// A plain tap must not leave the canvas believing the joint is still held. The
+// browser's compatibility mousedown after a touch used to be read as a press
+// with no pointerdown, and answered with a synthetic one nothing ever released.
+{
+  const target = await jointBOnScreen();
+  await tap(target.x, target.y);
+  await page.waitForTimeout(500);
+  record('a tap on a joint lets go of it', await gestureIdle());
+}
+
+// Opening the sheet takes half the window; the drawing has to come out from
+// under it rather than sit behind it.
+//
+// From a fresh load, and that matters. Once a reader has panned or pinched, the
+// canvas remembers the view they chose and holds it against chrome moving --
+// which is right, and is why this cannot be asserted after the gestures above.
+{
+  await open(payloads['4-Bar']);
+  await waitForReady(page).catch(() => undefined);
+  await page.waitForTimeout(900);
+  await page.locator('.sheetHandle').click();
+  await page.waitForTimeout(1000);
+  const sheetTop = (await box('.panel')).y;
+  const lowest = await page.evaluate(() =>
+    Math.round(
+      Math.max(
+        ...[...document.querySelectorAll('[id^="joint_"]')].map(
+          (el) => el.getBoundingClientRect().bottom
+        )
+      )
+    )
+  );
+  record('opening the sheet reframes the drawing above it', lowest <= sheetTop, {
+    lowest,
+    sheetTop,
+  });
+  await page.locator('.sheetHandle').click();
+  await page.waitForTimeout(700);
+}
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 

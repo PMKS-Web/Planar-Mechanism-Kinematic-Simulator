@@ -13,6 +13,7 @@ import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { ActiveObjService } from '../../services/active-obj.service';
+import { CHROME_MOVED } from '../../model/chrome-motion';
 import { SelectedTabService } from '../../selected-tab.service';
 import { TimeUnit } from '../../model/utils';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -159,6 +160,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private heightWatch?: ResizeObserver;
+  private lastClearance = -1;
 
   private publishHeight(row: HTMLElement): void {
     // The card's own height, the gap it floats above the status strip, and one
@@ -171,7 +173,14 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
       Math.round(row.getBoundingClientRect().height) +
       cssPixels(style, BOTTOM_OFFSET_VAR, BOTTOM_OFFSET_FALLBACK) +
       cssPixels(style, CARD_GAP_VAR, CARD_GAP_FALLBACK);
+    if (clearance === this.lastClearance) return;
+    this.lastClearance = clearance;
     document.documentElement.style.setProperty('--playback-clearance', `${clearance}px`);
+    // These cards declare the edge they take, so a change in how much of it
+    // they take has to reach the canvas. The cluster grows on its own account
+    // -- unsyncing gives every machine a row of its own -- and the drawing used
+    // to stay where it was while the scrub card came up over it.
+    CHROME_MOVED.next();
   }
 
   /**

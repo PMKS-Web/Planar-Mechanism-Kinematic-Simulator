@@ -317,7 +317,26 @@
       // Enough to work in, never enough to take the drawing away. `dvh` for
       // the same reason the body uses it: `vh` on a phone is measured with the
       // address bar hidden.
-      max-height: 48dvh;
+      //
+      // The second term is what is actually left once the strip above and the
+      // transport below have taken theirs. Without it a short window -- a small
+      // phone in analysis, where the cluster wraps to three rows -- stacked the
+      // cluster on top of a sheet that was still claiming its 48%, and pushed
+      // the transport up under the top strip and eventually off the screen
+      // entirely. The sheet gives way, because it is the one thing here with a
+      // handle for getting it out of the way.
+      //
+      // No loop, despite `--playback-clearance` being read here and
+      // `--sheet-height` being read there: what is read here is the cluster's
+      // *height*, which is decided by how many machines it has a row for and
+      // never by where the sheet is.
+      max-height: min(
+        48dvh,
+        calc(
+          100dvh - #{nav.$top-strip-bottom} -
+            #{nav.$sheet-handle-height} - var(--playback-clearance, #{nav.$playback-clearance})
+        )
+      );
       padding-left: nav.$shadow-room;
       z-index: 6;
 
@@ -399,12 +418,25 @@
     pointer-events: none;
   }
 
+  // The pill is 44x5 and nobody can hit 5px with a thumb, so what takes the
+  // press is a box around it rather than the pill itself: 120 wide and the full
+  // height of the bar, which clears the 44px minimum in both directions. The
+  // rest of the bar stays transparent to the canvas underneath.
   .sheetGrip {
     pointer-events: auto;
-    width: 44px;
-    height: 5px;
-    border-radius: 3px;
-    background: rgba(0, 0, 0, 0.28);
-    box-shadow: 0 0 0 8px var(--card-surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 120px;
+    height: 100%;
+
+    &::before {
+      content: '';
+      width: 44px;
+      height: 5px;
+      border-radius: 3px;
+      background: rgba(0, 0, 0, 0.28);
+      box-shadow: 0 0 0 8px var(--card-surface);
+    }
   }
 }

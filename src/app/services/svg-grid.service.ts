@@ -162,7 +162,6 @@ export class SvgGridService {
   private MAX_ZOOM: number = 16.5;
   private MIN_ZOOM: number = 0.0002;
 
-
   setNewElement(root: HTMLElement) {
     var eventsHandler;
     const dragState = this.dragState;
@@ -486,8 +485,34 @@ export class SvgGridService {
    */
   private restoreMissingPointerDown(root: HTMLElement) {
     let pressOpened = false;
-    const opened = () => (pressOpened = true);
-    const closed = () => (pressOpened = false);
+    /**
+     * When a finger last touched the canvas.
+     *
+     * Every touch is followed by a compatibility `mousedown`, `mouseup` and
+     * `click` for the benefit of pages written before touch existed. That
+     * mousedown arrives *after* the real pointerup has cleared the flag below,
+     * so this shim read it as a press with no pointerdown and helpfully
+     * supplied one -- opening a gesture that nothing would ever close, because
+     * the compatibility mouseup is not a pointerup either. A tap on a joint
+     * left the canvas believing that joint was still being dragged.
+     *
+     * The shim is for a mouse press that arrives without its pointerdown. A
+     * mousedown moments after a touch is not that; it is the same press told
+     * twice.
+     */
+    let lastTouchAt = 0;
+    const opened = (event: Event) => {
+      pressOpened = true;
+      if (event instanceof PointerEvent && event.pointerType !== 'mouse') {
+        lastTouchAt = Date.now();
+      }
+    };
+    const closed = (event: Event) => {
+      pressOpened = false;
+      if (event instanceof PointerEvent && event.pointerType !== 'mouse') {
+        lastTouchAt = Date.now();
+      }
+    };
     root.addEventListener('pointerdown', opened, true);
     root.addEventListener('pointerup', closed, true);
     root.addEventListener('pointercancel', closed, true);
@@ -498,6 +523,11 @@ export class SvgGridService {
       'mousedown',
       (event: MouseEvent) => {
         if (pressOpened) return;
+        // The compatibility mouse events a browser sends after a touch follow
+        // it within a few hundred milliseconds. Half a second is generous and
+        // costs nothing: the only thing skipped is a synthetic pointerdown for
+        // a press the canvas has already been told about.
+        if (Date.now() - lastTouchAt < 500) return;
         const target = event.target;
         if (!(target instanceof Element)) return;
         target.dispatchEvent(
@@ -985,9 +1015,7 @@ export class SvgGridService {
     const box = drawingScreenBox(DRAWING_LAYERS);
     restoreScenery();
     const canvas = this.canvasBounds();
-    const drawnUnder = (
-      document.querySelector('svg#canvas > g') as SVGGElement | null
-    )?.getCTM();
+    const drawnUnder = (document.querySelector('svg#canvas > g') as SVGGElement | null)?.getCTM();
     if (!box || !canvas || !drawnUnder || !(drawnUnder.a > 0) || !(drawnUnder.d > 0)) return null;
     return {
       x: (box.x - canvas.x - drawnUnder.e) / drawnUnder.a,
@@ -1052,7 +1080,10 @@ export class SvgGridService {
     // corner, and the view merely follows the chrome that moved.
     const offset =
       shown && previous
-        ? { x: centerOf(shown).x - centerOf(previous).x, y: centerOf(shown).y - centerOf(previous).y }
+        ? {
+            x: centerOf(shown).x - centerOf(previous).x,
+            y: centerOf(shown).y - centerOf(previous).y,
+          }
         : null;
     // Judged against where the chrome was when the view was last settled, not
     // against where it is now: a resize is only heard once the window has

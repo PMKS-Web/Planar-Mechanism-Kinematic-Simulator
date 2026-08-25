@@ -15,6 +15,7 @@ import { EditPanelComponent } from '../edit-panel/edit-panel.component';
 import { AnalysisPanelComponent } from '../analysis-panel/analysis-panel.component';
 import { TutorialService } from '../../services/tutorial.service';
 import { ViewportService } from '../../services/viewport.service';
+import { CHROME_MOVED } from '../../model/chrome-motion';
 
 @Component({
   selector: 'app-left-tabs',
@@ -118,11 +119,20 @@ export class LeftTabsComponent implements AfterViewInit, OnDestroy {
 
   private heightWatch?: ResizeObserver;
 
+  private lastPublished = -1;
+
   private publishHeight(panel: HTMLElement): void {
     // Zero off the phone layout, where the panel is at the side and the cluster
     // below it has the bottom of the window to itself.
     const height = this.viewport.isPhone() ? Math.round(panel.getBoundingClientRect().height) : 0;
+    if (height === this.lastPublished) return;
+    this.lastPublished = height;
     document.documentElement.style.setProperty('--sheet-height', `${height}px`);
+    // The sheet is a card over the canvas that has just started taking a
+    // different amount of it, which is exactly what `CHROME_MOVED` is for.
+    // Without this the inset is correct and nothing acts on it: opening the
+    // sheet left the linkage where it was and the sheet came up over it.
+    CHROME_MOVED.next();
   }
 
   public get TabID(): typeof TabID {

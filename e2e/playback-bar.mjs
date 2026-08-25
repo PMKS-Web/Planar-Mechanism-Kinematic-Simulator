@@ -178,7 +178,7 @@ record(
 const strip = await page.locator('#bottomBar').innerText();
 record(
   'the status strip names the mode and the rule',
-  /Kinematic/.test(strip) && /Geometry locked/.test(strip),
+  /Kinematic/.test(strip) && /Read-only here/.test(strip),
   strip
 );
 const clickable = await page.evaluate(

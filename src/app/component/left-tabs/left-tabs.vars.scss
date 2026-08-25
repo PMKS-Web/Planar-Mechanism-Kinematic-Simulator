@@ -86,5 +86,8 @@ $panel-bottom-clearance: $bottom-bar-height + $frame-inset;
  * Named here because two files need it and they sit on opposite sides of it:
  * the handle hangs on the sheet's top edge, and the playback cluster has to
  * stand clear of the handle rather than of the sheet.
+ *
+ * 44px because that is the smallest thing a thumb can be asked to hit. The
+ * pill drawn inside it is 5px tall, which is a mark rather than a target.
  */
-$sheet-handle-height: 28px;
+$sheet-handle-height: 44px;

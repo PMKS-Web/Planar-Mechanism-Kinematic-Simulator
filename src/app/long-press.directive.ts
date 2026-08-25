@@ -37,6 +37,29 @@ export class LongPressDirective implements OnDestroy {
 
   readonly longPress = output<LongPress>();
 
+  /**
+   * A second finger landed, so whatever the first one had taken hold of must be
+   * put down: this is a pinch, and a pinch moves the view rather than the
+   * mechanism.
+   */
+  readonly pinched = output<void>();
+
+  /**
+   * Whether a press is still deciding what it is.
+   *
+   * The canvas asks, because a drag and a press begin identically and only one
+   * of them may happen. The drag is held off for 100ms or ten pixels, whichever
+   * comes first -- tuned for a mouse, where a press is either a quick click or
+   * a deliberate drag. A finger held for half a second passes 100ms long before
+   * the press matures, so every tremor in that half second was dragging the
+   * joint the reader was trying to open a menu on. Ten pixels is the same
+   * number on both sides, so the two never both fire: past it this stops being
+   * a press, and the drag it was holding off takes over.
+   */
+  get pressPending(): boolean {
+    return this.startedAt !== undefined;
+  }
+
   private timer?: ReturnType<typeof setTimeout>;
   private startedAt?: { x: number; y: number; id: number; on: Element | null };
 
@@ -46,32 +69,40 @@ export class LongPressDirective implements OnDestroy {
     // pointermove. Only the press that matures re-enters.
     this.zone.runOutsideAngular(() => {
       const el = this.host.nativeElement;
-      el.addEventListener('pointerdown', this.onDown, { passive: true });
-      el.addEventListener('pointermove', this.onMove, { passive: true });
-      el.addEventListener('pointerup', this.cancel, { passive: true });
-      el.addEventListener('pointercancel', this.cancel, { passive: true });
+      // Capture, not bubble. Parts of the drawing stop propagation on their own
+      // pointerdown -- a synthesis position does, so that dragging it does not
+      // also pan the canvas -- and a press on one of those never reached a
+      // listener waiting on the way back up. Capture runs on the way down,
+      // before anything can decide the event goes no further, so every part of
+      // the canvas can be held rather than only the parts that let events past.
+      el.addEventListener('pointerdown', this.onDown, { passive: true, capture: true });
+      el.addEventListener('pointermove', this.onMove, { passive: true, capture: true });
+      el.addEventListener('pointerup', this.cancel, { passive: true, capture: true });
+      el.addEventListener('pointercancel', this.cancel, { passive: true, capture: true });
       // A press that leaves the canvas is a press that is no longer about
       // anything on it.
-      el.addEventListener('pointerleave', this.cancel, { passive: true });
+      el.addEventListener('pointerleave', this.cancel, { passive: true, capture: true });
     });
   }
 
   ngOnDestroy(): void {
     const el = this.host.nativeElement;
-    el.removeEventListener('pointerdown', this.onDown);
-    el.removeEventListener('pointermove', this.onMove);
-    el.removeEventListener('pointerup', this.cancel);
-    el.removeEventListener('pointercancel', this.cancel);
-    el.removeEventListener('pointerleave', this.cancel);
+    el.removeEventListener('pointerdown', this.onDown, true);
+    el.removeEventListener('pointermove', this.onMove, true);
+    el.removeEventListener('pointerup', this.cancel, true);
+    el.removeEventListener('pointercancel', this.cancel, true);
+    el.removeEventListener('pointerleave', this.cancel, true);
     this.cancel();
   }
 
   private onDown = (event: PointerEvent): void => {
     if (event.pointerType === 'mouse') return;
     // A second finger is a pinch, and a pinch is not a press being held still
-    // however still the first finger is.
+    // however still the first finger is. It is not a drag either, so the canvas
+    // is told to let go of whatever the first finger had taken.
     if (this.startedAt) {
       this.cancel();
+      this.zone.run(() => this.pinched.emit());
       return;
     }
     // The part under the finger *now*, not in half a second's time. Asking
@@ -129,13 +160,21 @@ export class LongPressDirective implements OnDestroy {
    * this one lift: a listener left in place would make the canvas untappable.
    */
   private swallowTheTapThatFollows(): void {
+    const disarm = () => {
+      window.removeEventListener('touchend', suppress, true);
+      window.removeEventListener('touchcancel', disarm, true);
+      clearTimeout(fuse);
+    };
     const suppress = (event: Event) => {
       if (event.cancelable) event.preventDefault();
-      window.removeEventListener('touchend', suppress, true);
+      disarm();
     };
     window.addEventListener('touchend', suppress, { capture: true, passive: false });
-    // A press that is never lifted -- a finger that slides off the glass, a
-    // gesture the browser cancels -- must not leave that listener armed.
-    setTimeout(() => window.removeEventListener('touchend', suppress, true), 4000);
+    // A press that is never lifted -- a finger that slides off the glass, or a
+    // gesture the browser takes back -- would otherwise leave the listener
+    // armed, and the *next* touch would lose the tap it was entitled to. That
+    // showed up as the sheet handle needing two presses after a cancelled one.
+    window.addEventListener('touchcancel', disarm, { capture: true });
+    const fuse = setTimeout(disarm, 4000);
   }
 }
