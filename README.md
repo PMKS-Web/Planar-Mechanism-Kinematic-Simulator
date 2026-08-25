@@ -24,8 +24,9 @@ server.
 
 ## Contents
 
+**Using it**
+
 - [What PMKS+ is](#what-pmks-is)
-- [Philosophy](#philosophy)
 - [The interface](#the-interface)
 - [What you can build](#what-you-can-build)
 - [What you can measure](#what-you-can-measure)
@@ -36,7 +37,11 @@ server.
 - [A URL is the document](#a-url-is-the-document)
 - [Mechanism library](#mechanism-library)
 - [Units, settings and keyboard](#units-settings-and-keyboard)
+
+**Working on it**
+
 - [Verification](#verification)
+- [Philosophy](#philosophy)
 - [How it works](#how-it-works)
 - [Development](#development)
 - [Contributing](#contributing)
@@ -64,61 +69,6 @@ project teams.
 | **Built for** | Kinematics and machine-dynamics coursework: four-bars, six-bars, slider-cranks, quick-returns, linkage-driven machines |
 | **Solves** | Position · velocity · acceleration · static and dynamic joint reactions · required input torque or force |
 | **Costs** | Nothing. MIT-licensed, no sign-in, runs in any modern desktop browser |
-
----
-
-## Philosophy
-
-Four principles have shaped the app since it started: **education, flexibility, collaboration,
-accessibility**. In the code they show up as four fairly specific rules.
-
-### 1. A mechanism is a URL
-
-The whole mechanism packs into one compact URL-safe string: every joint, link, force, weld, lock,
-mass and colour, plus the document settings that go with them. That one encoding does three jobs
-at once: **sharing**, **saving**, and **undo/redo** (an undo step *is* a previous URL, decoded
-again). Nothing is stored on a server, so nothing can be lost, expire, or require a login. Share
-Project hands you the link; the app decodes it on load and then clears it out of the address bar,
-so what you see there is never a stale copy of what is on the grid.
-
-Two things deliberately stay outside it: a **background image**, which is a whole photograph, and
-the preferences that belong to *you* rather than to the drawing, such as snapping and centres of
-mass, which are remembered on the machine instead.
-
-The consequence is a compatibility promise: **the encoding is a public surface**. Changing it
-breaks links other people already sent, so an older build refuses a link written by a newer one
-rather than silently misreading it, and every codec change is defended by round-trip tests.
-
-### 2. Say what is wrong, and say the way out
-
-A greyed-out button that will not explain itself is a dead end for a student. So a refusal in PMKS+
-carries its reason in the same row. Wherever a rule is enforced somewhere real, the row quotes that
-code (`describeActuatorRefusal`, `weldRefusal`, `locksHolding`) rather than restating it, so the
-menu and the model cannot drift apart.
-
-<img alt="Context menus showing refusals: 'unlock first', 'part is sealed'" src="docs/images/context-menu/refusals.png" width="820">
-
-The same rule governs the analysis modes. A mode that cannot run does not go quiet; its tab carries
-a **chip** counting what is missing, and pressing the tab opens a list of exactly what, usually with
-a button that takes you to the part at fault.
-
-### 3. One thing, one name
-
-There is a written vocabulary the whole UI is held to
-([`docs/ui-vocabulary.md`](docs/ui-vocabulary.md)): **Add** on the bare grid, **Attach** on an
-existing part, **Weld**/**Unweld**, **Delete** for everything that is removed. Controls are Title
-Case; everything else is a sentence written to the person, about *their* mechanism, not about the
-program.
-
-> Instead of `Cannot edit while in Synthesis mode` → **`Switch to Edit mode to change the mechanism.`**
-
-### 4. Every claim is checkable
-
-The solvers are verified numerically against MATLAB reference data, and the mechanisms the
-verification suite is built on are **published as clickable links**
-([`docs/fixture-urls.md`](docs/fixture-urls.md)) so a reviewer can open the exact machine a failing
-test is about instead of rebuilding it from coordinates in a spec file. See
-[Verification](#verification).
 
 ---
 
@@ -484,6 +434,64 @@ The gallery is published as URLs because a fixture is a TypeScript object and th
 URLs. Without it, a reviewer has to rebuild a linkage by hand to see what a failing test is about. A
 spec fails if the generated file is stale, so adding a mechanism to the gallery without regenerating
 cannot slip through.
+
+---
+
+## Philosophy
+
+The project has named the same four principles since it started: **education, flexibility,
+collaboration, accessibility**. Stated like that they are a mission statement, and a mission
+statement explains nothing about a codebase. What they actually amount to, in the source, is four
+fairly specific rules, and between them those four explain most of the decisions in the sections
+either side of this one.
+
+### 1. A mechanism is a URL
+
+The whole mechanism packs into one compact URL-safe string: every joint, link, force, weld, lock,
+mass and colour, plus the document settings that go with them. That one encoding does three jobs
+at once: **sharing**, **saving**, and **undo/redo** (an undo step *is* a previous URL, decoded
+again). Nothing is stored on a server, so nothing can be lost, expire, or require a login. Share
+Project hands you the link; the app decodes it on load and then clears it out of the address bar,
+so what you see there is never a stale copy of what is on the grid.
+
+Two things deliberately stay outside it: a **background image**, which is a whole photograph, and
+the preferences that belong to *you* rather than to the drawing, such as snapping and centres of
+mass, which are remembered on the machine instead.
+
+The consequence is a compatibility promise: **the encoding is a public surface**. Changing it
+breaks links other people already sent, so an older build refuses a link written by a newer one
+rather than silently misreading it, and every codec change is defended by round-trip tests.
+
+### 2. Say what is wrong, and say the way out
+
+A greyed-out button that will not explain itself is a dead end for a student. So a refusal in PMKS+
+carries its reason in the same row. Wherever a rule is enforced somewhere real, the row quotes that
+code (`describeActuatorRefusal`, `weldRefusal`, `locksHolding`) rather than restating it, so the
+menu and the model cannot drift apart.
+
+<img alt="Context menus showing refusals: 'unlock first', 'part is sealed'" src="docs/images/context-menu/refusals.png" width="820">
+
+The same rule governs the analysis modes. A mode that cannot run does not go quiet; its tab carries
+a **chip** counting what is missing, and pressing the tab opens a list of exactly what, usually with
+a button that takes you to the part at fault.
+
+### 3. One thing, one name
+
+There is a written vocabulary the whole UI is held to
+([`docs/ui-vocabulary.md`](docs/ui-vocabulary.md)): **Add** on the bare grid, **Attach** on an
+existing part, **Weld**/**Unweld**, **Delete** for everything that is removed. Controls are Title
+Case; everything else is a sentence written to the person, about *their* mechanism, not about the
+program.
+
+> Instead of `Cannot edit while in Synthesis mode` → **`Switch to Edit mode to change the mechanism.`**
+
+### 4. Every claim is checkable
+
+Which is what the section above is for. Two things follow from taking it seriously. The solvers
+are held to numbers produced somewhere else, by something else: MATLAB, at one-degree increments,
+committed rather than fetched. And every mechanism the suite is built on is **published as a
+clickable link** ([`docs/fixture-urls.md`](docs/fixture-urls.md)), so a reviewer can open the
+exact machine a failing test is about instead of rebuilding it from coordinates in a spec file.
 
 ---
 
