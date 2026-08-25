@@ -238,7 +238,9 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     id: 'Cylinder_Gripper',
     name: 'Gripper',
     category: 'cylinders',
-    description: 'Counter-rotating jaw levers: extending the cylinder pinches them shut.',
+    description:
+      'A cylinder pushes a plate, and four short links carry that out to two arms. Each arm ' +
+      'rides two rails, so the jaws stay parallel.',
     thumbnail: 'assets/gifs/cylinder-gripper.png',
     animation: 'assets/gifs/cylinder-gripper.gif',
   },
@@ -421,6 +423,16 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'playback rows, seen from the grid.',
     thumbnail: 'assets/gifs/pumping-field.png',
     animation: 'assets/gifs/pumping-field.gif',
+  },
+  {
+    id: 'Four_Bar_Inversions',
+    name: 'Four-Bar Inversions',
+    category: 'machines',
+    description:
+      'One chain of four bars, drawn four times with a different bar held still. Each keeps ' +
+      'its colour, so you can watch a crank become a coupler.',
+    thumbnail: 'assets/gifs/four-bar-inversions.png',
+    animation: 'assets/gifs/four-bar-inversions.gif',
   },
 ];
 

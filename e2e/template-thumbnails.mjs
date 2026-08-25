@@ -72,6 +72,7 @@ const FILENAMES = {
   Straight_Line_Pair: 'straight-line-pair',
   Pumping_Field: 'pumping-field',
   Loader_Bucket: 'loader-bucket',
+  Four_Bar_Inversions: 'four-bar-inversions',
 };
 
 // The three dev drawings are not here on purpose. Their payloads were written

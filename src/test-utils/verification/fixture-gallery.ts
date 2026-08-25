@@ -60,6 +60,7 @@ import {
 } from './workshop-fixtures';
 import {
   walkingPairFixture,
+  fourBarInversionsFixture,
   straightLinePairFixture,
   pumpingFieldFixture,
 } from './ensemble-fixtures';
@@ -137,6 +138,23 @@ function stripMass(built: BuiltMechanism): void {
     }
   };
   built.links.forEach(strip);
+}
+
+/**
+ * Paint the built links the colours a template chose for itself.
+ *
+ * By link id, which is the joint letters, because that is what the colour
+ * table names and what survives the build. A link the table says nothing about
+ * keeps the colour the cursor gave it.
+ */
+function recolor(links: Link[], fills: Map<string, string>): void {
+  const paint = (link: Link): void => {
+    if (!(link instanceof RealLink)) return;
+    const color = fills.get(link.id);
+    if (color) link.fill = color;
+    link.subset.forEach(paint);
+  };
+  links.forEach(paint);
 }
 
 export interface GalleryEntry {
@@ -271,6 +289,11 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'gripper.spec.ts, anchored-bar-mobility.spec.ts',
     floatingSlot: true,
     slide: true,
+    // 0.74 cm of ram travel, out and back, so 0.25 cm/s opens and closes the
+    // jaws in about six seconds — the pace the rest of the library opens at.
+    // At the shared default of 5 cm/s the whole stroke is over in a third of
+    // a second, which is not a mechanism anybody can watch.
+    speed: { unitsPerSecond: 0.25 },
     fixture: gripperFixture(),
   },
   {
@@ -654,6 +677,14 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     fixture: loaderBucketFixture(),
   },
   {
+    name: 'Four-bar inversions',
+    purpose:
+      'One chain, each of its four links held still in turn — four machines out of four bars',
+    spec: 'ensembles.spec.ts',
+    floatingSlot: false,
+    fixture: fourBarInversionsFixture(),
+  },
+  {
     name: 'Walking pair',
     purpose: 'Two Jansen legs half a cycle apart: one foot planted while the other swings',
     spec: 'ensembles.spec.ts',
@@ -690,12 +721,18 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
  * it is a display setting rather than geometry, and the default is what a fresh
  * app uses. A mechanism whose bars are tens of units long needs a larger one or
  * it renders as hairlines — see the Jansen leg in template-fixtures.ts.
+ *
+ * `fills` overrides the colour cursor for a drawing whose colours mean
+ * something — a library template, where they are chosen from the structure
+ * rather than handed out in build order. See template-colors.ts. The gallery
+ * links published from here pass none and keep the cursor's own order.
  */
 export function fixturePayload(
   fixture: MechanismFixture,
   objectScale: number = DEFAULT_OBJECT_SCALE,
   speed: PublishedSpeed = {},
-  masses: PublishedMasses = 'as-built'
+  masses: PublishedMasses = 'as-built',
+  fills?: Map<string, string>
 ): string {
   const previousColors = ColorService.instance;
   const previousScale = SettingsService.objectScale;
@@ -705,6 +742,7 @@ export function fixturePayload(
     const built = buildMechanism(fixture);
     scaleBuiltToModelUnits(built);
     if (masses === 'zeroed') stripMass(built);
+    if (fills) recolor(built.links, fills);
     // The speeds ride the URL as settings rather than as anything on a joint,
     // so they are set on the service the encoder is about to read. A fresh one
     // per call, so nothing here leaks into the next mechanism's payload.
