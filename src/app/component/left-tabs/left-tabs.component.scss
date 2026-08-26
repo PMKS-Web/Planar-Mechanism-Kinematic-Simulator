@@ -339,7 +339,25 @@
             #{nav.$least-canvas} - var(--playback-clearance, #{nav.$playback-clearance})
         )
       );
-      padding-left: nav.$shadow-room;
+      // On the card line, like the strip along the top -- and the same gap
+      // underneath, so the sheet stands off the controls row by exactly what
+      // the controls row stands off the status strip. It was $shadow-room, so
+      // the sheet's card sat 4px further in than the top bar's cards and 16px
+      // above the row rather than 12.
+      //
+      // The cost is 4px of the card's side shadow, which this box clips. Worth
+      // it: a shadow nobody can name is a poor reason for a card that is
+      // visibly not lined up with the one above it.
+      padding: 0 nav.$card-inset nav.$card-inset;
+      // The slide itself is run from the component rather than declared here.
+      // A CSS transition on `max-height` animates the cap, not the sheet: this
+      // panel is capped at 48dvh and its content is usually well under that, so
+      // most of the range is spent shrinking a cap nothing is touching and the
+      // sheet appears to snap open and then finish moving 3px. The component
+      // animates between the two heights it has actually measured, which is the
+      // whole of the range and none of the slack. A `transform` would have been
+      // simpler still and is not available: the mode panel already carries an
+      // Angular animation that writes `translateX` inline, and inline wins.
       // No room above, unlike every other side. Everywhere else the frame is
       // set back so the card's shadow has somewhere to fall inside a box that
       // clips -- but the sheet's top edge is the one the handle hangs on, and
@@ -348,7 +366,6 @@
       // state and the open one. The card's upward shadow is 8px of haze under a
       // 5px indigo bar; losing it costs nothing anybody can see, and buys a
       // handle that means the same thing in both states.
-      padding-top: 0;
       z-index: 6;
 
       // Shut, the sheet is just its handle and a sliver of the card behind it,
@@ -424,6 +441,12 @@
     align-items: flex-end;
     justify-content: center;
     border: none;
+    // A button, so it arrives with the browser's own padding on it -- 1px top
+    // and bottom in Chrome. Left alone that padding shrank the grip inside it
+    // to 42px and stood the pill 13px off the sheet where every other gap here
+    // is 12: an off-by-one nobody would ever find by reading the stylesheet,
+    // because the number it comes from is not in the stylesheet.
+    padding: 0;
     background: transparent;
     z-index: 7;
     cursor: pointer;

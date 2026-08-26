@@ -63,7 +63,9 @@
       // the canvas *above* this row rather than under it, so nothing here moves
       // when the panel does -- a control that changes place when a panel opens
       // is a control the reader has to find twice.
-      bottom: calc(#{nav.$bottom-bar-height} + 6px);
+      // The one gap above the status strip, matching what the sheet keeps
+      // above this row and the top strip keeps from the window.
+      bottom: calc(#{nav.$bottom-bar-height} + #{nav.$card-inset});
     }
   }
 

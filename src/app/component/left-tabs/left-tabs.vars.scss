@@ -103,11 +103,14 @@ $sheet-handle-height: 44px;
  * own shadow-room. Two different gaps for the same control, and the larger one
  * on the state where the pill is supposed to read as the sheet's own edge.
  *
- * The gap is small on purpose: the pill is the way out of an open sheet, and it
- * should look attached to what it closes.
+ * The one gap, like everything else: the pill stands as far off the sheet as
+ * the sheet stands off the controls row, as the controls row stands off the
+ * status strip, and as the cards along the top stand off the window. Four gaps
+ * that were 12, 16, 6 and 12, which is what made a stack of cards read as a
+ * stack of accidents.
  */
 $sheet-pill-height: 20px;
-$sheet-grip-gap: 6px;
+$sheet-grip-gap: $card-inset;
 
 /**
  * The least canvas worth leaving on a phone.

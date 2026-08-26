@@ -130,7 +130,14 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 - **Phone layout.** `ViewportService` owns the one breakpoint (600px). Below it the mode panel is a
   bottom sheet that starts collapsed and is opened by its handle, and it declares
   `data-canvas-inset="bottom"` so `freeCanvasRect` frames above it rather than beside it. The sheet
-  publishes `--sheet-height`, which the playback cluster stands on. `LongPressDirective` on the
+  publishes `--sheet-height`, and stands on `--controls-top` -- the measured
+  distance from the bottom of the window to the top of the controls row. Every
+  gap in the phone's bottom stack is `$card-inset`, the same one the top strip
+  keeps from the window, and `e2e/mobile.mjs` measures the strip and compares.
+  The sheet slides open and shut from `LeftTabsComponent.slide`, between the two
+  heights it has measured, rather than from a CSS transition on `max-height`:
+  the panel is capped well above its usual content, so a transition on the cap
+  spends most of its time moving a ceiling nothing is touching. `LongPressDirective` on the
   canvas turns a held finger into a `contextmenu` event, so the whole right-click menu works on
   touch without a second code path — see `onLongPress` in `new-grid.component.ts`. There is no
   touchscreen warning dialog any more; `e2e/mobile.mjs` is what guards all of this.

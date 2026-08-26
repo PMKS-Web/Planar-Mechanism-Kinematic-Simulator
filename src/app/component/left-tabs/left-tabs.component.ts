@@ -5,6 +5,9 @@ import {
   Component,
   ElementRef,
   OnDestroy,
+  Injector,
+  afterNextRender,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -16,6 +19,19 @@ import { AnalysisPanelComponent } from '../analysis-panel/analysis-panel.compone
 import { TutorialService } from '../../services/tutorial.service';
 import { ViewportService } from '../../services/viewport.service';
 import { CHROME_MOVED } from '../../model/chrome-motion';
+
+/**
+ * How long after the sheet stops changing size the canvas is re-framed.
+ *
+ * Longer than the slide in left-tabs.component.scss, so one open is one reframe
+ * rather than a reframe a frame.
+ */
+const SETTLE_MS = 280;
+
+/** How long the sheet takes to slide up or down. */
+const SLIDE_MS = 240;
+/** Out fast, in gently: the standard "entering" curve. */
+const SLIDE_EASING = 'cubic-bezier(0.2, 0, 0, 1)';
 
 @Component({
   selector: 'app-left-tabs',
@@ -69,6 +85,9 @@ export class LeftTabsComponent implements AfterViewInit, OnDestroy {
   viewport = inject(ViewportService);
   private tutorial = inject(TutorialService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  // `effect` is created in ngAfterViewInit, which is outside the injection
+  // context it wants, so it is handed one.
+  private injector = inject(Injector);
 
   /** The sheet's state lives on the tab service: the canvas opens it too. */
   readonly sheetExpanded = this.tabs.sheetExpanded;
@@ -97,9 +116,35 @@ export class LeftTabsComponent implements AfterViewInit, OnDestroy {
     this.publishHeight(panel);
     this.heightWatch = new ResizeObserver(() => this.publishHeight(panel));
     this.heightWatch.observe(panel);
+
+    // The first run is the sheet arriving shut, and there is nothing to slide
+    // from.
+    let arriving = true;
+    effect(
+      () => {
+        const open = this.sheetExpanded();
+        if (arriving) {
+          arriving = false;
+          return;
+        }
+        if (!this.viewport.isPhone()) return;
+        // After the render, not in the effect body. `slide` measures where the
+        // sheet has landed, and an effect can run before the class binding that
+        // puts it there: measured too early, opening read 0 as its destination
+        // as well as its origin and skipped itself, while closing happened to
+        // work because both of its numbers were right either way. That is the
+        // shape of bug that looks like "the animation only goes one way".
+        //
+        // Before the paint, though, so the sheet is never shown at full height
+        // for the frame in between.
+        afterNextRender(() => this.slide(panel, open), { injector: this.injector });
+      },
+      { injector: this.injector }
+    );
   }
 
   ngOnDestroy(): void {
+    clearTimeout(this.settle);
     this.heightWatch?.disconnect();
     document.documentElement.style.removeProperty('--sheet-height');
   }
@@ -107,19 +152,72 @@ export class LeftTabsComponent implements AfterViewInit, OnDestroy {
   private heightWatch?: ResizeObserver;
 
   private lastPublished = -1;
+  private settle?: ReturnType<typeof setTimeout>;
 
   private publishHeight(panel: HTMLElement): void {
+    this.write(panel);
+    // Once the sheet has stopped moving, not on every frame of it. The height
+    // is written every frame on purpose -- that is what carries the handle down
+    // with the sheet -- but the sheet slides for 240ms now, and re-framing the
+    // drawing against sixty different rects on the way is both wasted work and
+    // a linkage that crawls while the panel opens. The frame it should settle
+    // into is the one for where the sheet ends up.
+    clearTimeout(this.settle);
+    this.settle = setTimeout(() => {
+      // Measured again first. The observer's last callback lands a few pixels
+      // short of the end of an eased transition -- the tail moves less than a
+      // device pixel a frame -- and the handle hung 3px inside the sheet
+      // because of it, which is exactly the kind of gap this layout is supposed
+      // not to have.
+      this.write(panel);
+      // The sheet is a card over the canvas that has just taken a different
+      // amount of it, which is what `CHROME_MOVED` is for. Without it the inset
+      // is correct and nothing acts on it: opening the sheet left the linkage
+      // where it was and the sheet came up over it.
+      CHROME_MOVED.next();
+    }, SETTLE_MS);
+  }
+
+  /**
+   * Slide the sheet up or down, between the two heights actually measured.
+   *
+   * Not a CSS transition on `max-height`, which is what this looked like it
+   * wanted: the sheet is capped at 48dvh and its content is usually well under
+   * that, so a transition on the cap spends most of its time shrinking a
+   * ceiling nothing is touching -- the sheet appeared to snap open and then
+   * finish moving three pixels. From height to height there is no slack.
+   *
+   * The Web Animations API rather than a class and a `transitionend`: it fills
+   * nothing, so when it ends the stylesheet is back in charge and the sheet is
+   * free to change height with its content. An inline height left behind would
+   * pin the Edit panel at whatever size it happened to be when it opened.
+   *
+   * The handle needs no help. It is placed from the published height, and the
+   * ResizeObserver that publishes it fires through the animation.
+   */
+  private slide(panel: HTMLElement, opening: boolean): void {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // Where it is coming from is the last height published, because by the time
+    // this runs the collapsed class is already on or off and the panel is
+    // already at its destination.
+    const from = opening ? 0 : Math.max(0, this.lastPublished);
+    const to = opening ? Math.round(panel.getBoundingClientRect().height) : 0;
+    if (from === to) return;
+    panel.animate([{ maxHeight: `${from}px` }, { maxHeight: `${to}px` }], {
+      duration: SLIDE_MS,
+      easing: SLIDE_EASING,
+      fill: 'none',
+    });
+  }
+
+  /** Publish the sheet's height, if it has changed since last time. */
+  private write(panel: HTMLElement): void {
     // Zero off the phone layout, where the panel is at the side and the cluster
     // below it has the bottom of the window to itself.
     const height = this.viewport.isPhone() ? Math.round(panel.getBoundingClientRect().height) : 0;
     if (height === this.lastPublished) return;
     this.lastPublished = height;
     document.documentElement.style.setProperty('--sheet-height', `${height}px`);
-    // The sheet is a card over the canvas that has just started taking a
-    // different amount of it, which is exactly what `CHROME_MOVED` is for.
-    // Without this the inset is correct and nothing acts on it: opening the
-    // sheet left the linkage where it was and the sheet came up over it.
-    CHROME_MOVED.next();
   }
 
   public get TabID(): typeof TabID {

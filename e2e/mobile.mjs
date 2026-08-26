@@ -250,7 +250,48 @@ record(
     open: gapOpen,
   }
 );
-record('and close to it, rather than floating over the drawing', gapOpen <= 10, { gapOpen });
+
+/**
+ * The gap the whole layout is built on, read off the top strip.
+ *
+ * Asked of the running app rather than written down, because the point is not
+ * that these gaps are 12px -- it is that they are the *same* gap the cards
+ * along the top keep from the window. A restyle that moved the top strip in or
+ * out should either move all of this with it or fail here.
+ */
+const layoutGap = await page.evaluate(() =>
+  // The strip, not a card inside it: the cards carry their own 6px of padding,
+  // so a button's edge is 18px from the window where the strip's is 12.
+  Math.round(document.querySelector('.topStrip').getBoundingClientRect().left)
+);
+record('and it is the gap the top strip keeps from the window', gapOpen === layoutGap, {
+  gapOpen,
+  layoutGap,
+});
+
+// The three cards stacked up the bottom of the window, and the gap between each
+// pair of them. All one number, or the stack reads as a stack of accidents.
+const stack = await page.evaluate(() => {
+  const r = (sel) => document.querySelector(sel)?.getBoundingClientRect();
+  const card = r('.panel .page1, .panel .page2, .panel .page3');
+  const row = r('.playbackRow');
+  const rowCard = r('.playbackRow > *');
+  const strip = r('app-bottombar > *');
+  return {
+    cardLeft: Math.round(card.left),
+    cardRight: Math.round(window.innerWidth - card.right),
+    cardToRow: Math.round(row.top - card.bottom),
+    rowToStrip: Math.round(strip.top - rowCard.bottom),
+  };
+});
+record('the sheet is inset like the cards above it', stack.cardLeft === layoutGap, stack);
+record('on both sides', stack.cardRight === layoutGap, stack);
+record(
+  'the controls row stands off the sheet by the same gap',
+  stack.cardToRow === layoutGap,
+  stack
+);
+record('and the status strip off the controls row', stack.rowToStrip === layoutGap, stack);
 await page.locator('.sheetHandle').click();
 await page.waitForTimeout(600);
 record('and shuts again', (await box('.panel')).h === 0);
