@@ -38,6 +38,7 @@ import {
   toggleClampFixture,
 } from './force-fixtures';
 import {
+  landingGearFixture,
   excavatorBucketFixture,
   jansenLegFixture,
   oscillatingFanFixture,
@@ -283,6 +284,18 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     // lifts. 5.43 cm of travel per raise-and-lower, so this is 5.4 s.
     speed: { unitsPerSecond: 1 },
     fixture: cylinderBoomFixture(),
+  },
+  {
+    name: 'Aircraft landing gear',
+    purpose:
+      'Two machines, one clock: a ram a side swings each leg out of the belly and stands the aircraft on it',
+    spec: 'landing-gear.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    // Slow enough to watch a leg swing rather than snap. The rams are short and
+    // the default 5 cm/s puts the gear down in under a second.
+    speed: { unitsPerSecond: 0.35 },
+    fixture: landingGearFixture(),
   },
   {
     name: 'Cylinder-driven gripper',

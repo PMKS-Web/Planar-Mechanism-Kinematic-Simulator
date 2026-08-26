@@ -72,6 +72,7 @@ const FILENAMES = {
   Straight_Line_Pair: 'straight-line-pair',
   Pumping_Field: 'pumping-field',
   Loader_Bucket: 'loader-bucket',
+  Landing_Gear: 'landing-gear',
   Four_Bar_Inversions: 'four-bar-inversions',
   Slider_Crank_Inversions: 'slider-crank-inversions',
 };

@@ -48,6 +48,7 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Straight_Line_Pair: 'Approximate and exact',
   Pumping_Field: 'Pumping field',
   Loader_Bucket: 'Loader bucket',
+  Landing_Gear: 'Aircraft landing gear',
   Four_Bar_Inversions: 'Four-bar inversions',
   Slider_Crank_Inversions: 'Slider-crank inversions',
 };

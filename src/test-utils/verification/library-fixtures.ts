@@ -686,3 +686,120 @@ export function scissorLiftFixture(scale: number = 1): MechanismFixture {
     inputAngVel: INPUT_SPEED * scale,
   };
 }
+
+/**
+ * An aircraft's main landing gear, seen head-on.
+ *
+ * Two legs, one each side of the centreline, each hinged on a trunnion in the
+ * fuselage side and swung by its own hydraulic ram. Retracted, a leg lies
+ * inboard under the belly; extended, it falls out and down to stand the
+ * aircraft on its wheels.
+ *
+ * Two machines rather than one, because that is what a real gear is: nothing
+ * mechanical joins the port leg to the starboard one, and each ram is fed its
+ * own line. On one clock they come down together, which is what a reader wants
+ * to watch; unsynced from the playback bar they come down one at a time, which
+ * is what an asymmetric-extension case looks like.
+ *
+ * The stop at the bottom is the ram's own. A leg reaches its down position at
+ * the end of the piston's travel and stays there because there is nowhere
+ * further to go, which is the geometry a downlock formalizes: as the ram comes
+ * towards the line of the trunnion its arm about that pivot shortens, so the
+ * load needed to fold the leg grows without bound near the end of the stroke.
+ * Deliberately not exactly in line at the drawn pose -- collinear is a dead
+ * point, and a template that opened on one would open on a mechanism with two
+ * equally good answers and no reason to prefer either.
+ */
+export const GEAR = {
+  /** Trunnion, out at the fuselage side and a little above the belly line. */
+  trunnion: { x: 2.3, y: 0.2 },
+  /** Trunnion to axle. Shorter than the trunnion is far out, so a retracted
+   *  leg tucks under the belly without the two wheels meeting on the
+   *  centreline. */
+  leg: 2.1,
+  /** How far down the leg the ram takes hold. */
+  ear: 0.45,
+  /** Splay of the extended leg, measured from straight down. */
+  splayRad: (15 * Math.PI) / 180,
+  /**
+   * Where the ram is anchored, as a bearing from the trunnion: inboard of it
+   * and well above, which in a front view is inside the fuselage.
+   *
+   * Solved rather than placed. A cylinder's stroke is a fixed fraction of its
+   * extended length -- the model derives one from the other -- so how far the
+   * leg swings is decided entirely by where this anchor is and how far down the
+   * leg it pulls. Placed by eye, the first draft swung the leg 42 degrees: the
+   * wheel slid sideways under the aircraft instead of coming up into it. These
+   * two numbers are the pair that turns the ram's own travel into 85 degrees,
+   * which is a retraction.
+   *
+   * They also keep the drawn pose 40 degrees clear of the two poses where the
+   * ram comes into line with the trunnion. Those are dead points -- no arm to
+   * pull on, and two equally good answers -- and a draft that opened four
+   * degrees from one solved a single sample and would not run at all.
+   */
+  ramBase: { distance: 1.8, bearingRad: (145 * Math.PI) / 180 },
+  /**
+   * Where the piston sits at the drawn pose, as a fraction of its own travel.
+   *
+   * Near the extended end, because the drawn pose is the gear down: what is
+   * left is the retraction, which is the stroke worth watching.
+   */
+  start: 0.85,
+};
+
+export function landingGearFixture(scale: number = 1): MechanismFixture {
+  const at = (point: { x: number; y: number }) => ({ x: point.x * scale, y: point.y * scale });
+  // One side, written once and mirrored, because a gear that is not symmetric
+  // is a gear somebody typed twice.
+  const side = (hand: 1 | -1) => {
+    const trunnion = { x: hand * GEAR.trunnion.x, y: GEAR.trunnion.y };
+    const down = { x: hand * Math.sin(GEAR.splayRad), y: -Math.cos(GEAR.splayRad) };
+    const along = (distance: number) => ({
+      x: trunnion.x + down.x * distance,
+      y: trunnion.y + down.y * distance,
+    });
+    const mount = {
+      x: trunnion.x + hand * GEAR.ramBase.distance * Math.cos(GEAR.ramBase.bearingRad),
+      y: trunnion.y + GEAR.ramBase.distance * Math.sin(GEAR.ramBase.bearingRad),
+    };
+    const ear = along(GEAR.ear);
+    const { barrelEnd, pin } = cylinderBetween(mount, ear, GEAR.start);
+    return { trunnion, mount, ear, axle: along(GEAR.leg), barrelEnd, pin };
+  };
+  const right = side(1);
+  const left = side(-1);
+
+  return {
+    joints: [
+      // Starboard leg.
+      { id: 'A', ...at(right.trunnion), ground: true },
+      { id: 'B', ...at(right.ear) },
+      { id: 'C', ...at(right.axle), trace: true },
+      { id: 'D', ...at(right.mount), ground: true },
+      { id: 'E', ...at(right.barrelEnd) },
+      { id: 'F', ...at(right.pin) },
+      // Port leg.
+      { id: 'G', ...at(left.trunnion), ground: true },
+      { id: 'H', ...at(left.ear) },
+      { id: 'I', ...at(left.axle), trace: true },
+      { id: 'J', ...at(left.mount), ground: true },
+      { id: 'K', ...at(left.barrelEnd) },
+      { id: 'L', ...at(left.pin) },
+    ],
+    links: [
+      { joints: 'ABC', name: 'Starboard leg' },
+      { joints: 'DE' },
+      { joints: 'BF' },
+      { joints: 'GHI', name: 'Port leg' },
+      { joints: 'JK' },
+      { joints: 'HL' },
+    ],
+    sliders: [
+      { at: 'F', prisId: 'M', on: { carrier: 'DE', a: 'D', b: 'E' }, sealed: true, input: true },
+      { at: 'L', prisId: 'N', on: { carrier: 'JK', a: 'J', b: 'K' }, sealed: true, input: true },
+    ],
+    welds: ['F', 'L'],
+    inputAngVel: INPUT_SPEED * scale,
+  };
+}

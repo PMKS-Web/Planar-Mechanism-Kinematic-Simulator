@@ -291,7 +291,7 @@ to be shown one particular linkage.
 
 ## Mechanism library
 
-**41 mechanisms**, in eight families, each one a linkage the verification suite already covers.
+**42 mechanisms**, in eight families, each one a linkage the verification suite already covers.
 The library filters by family and by name; opening one on an empty grid loads it in place, and
 opening one over existing work offers a new tab, a replace (which is undoable), or a cancel.
 
@@ -326,10 +326,10 @@ it.*
 <td align="center"><img src="src/assets/gifs/screw-jack.png" width="190" alt="Screw Jack"><br><b>Screw Jack</b></td>
 </tr>
 <tr>
+<td align="center"><img src="src/assets/gifs/landing-gear.png" width="190" alt="Aircraft Landing Gear"><br><b>Aircraft Landing Gear</b></td>
 <td align="center"><img src="src/assets/gifs/cylinder-boom.png" width="190" alt="Cylinder-Driven Boom"><br><b>Cylinder-Driven Boom</b></td>
 <td align="center"><img src="src/assets/gifs/backhoe-bucket.png" width="190" alt="Backhoe Bucket"><br><b>Backhoe Bucket</b></td>
 <td align="center"><img src="src/assets/gifs/scissor-lift.png" width="190" alt="Scissor Lift"><br><b>Scissor Lift</b></td>
-<td align="center"><img src="src/assets/gifs/slider-crank-inversions.png" width="190" alt="Slider-Crank Inversions"><br><b>Slider-Crank Inversions</b></td>
 </tr>
 <tr>
 <td align="center"><img src="src/assets/gifs/chebyshev.png" width="190" alt="Chebyshev Straight-Line"><br><b>Chebyshev Straight-Line</b></td>

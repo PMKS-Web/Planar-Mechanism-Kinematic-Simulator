@@ -75,6 +75,8 @@ export const LIBRARY_TEMPLATE_IDS = [
   'Straight_Line_Pair',
   'Pumping_Field',
   'Loader_Bucket',
+  // A pair of machines that happen to be one aircraft's landing gear.
+  'Landing_Gear',
   'Four_Bar_Inversions',
   'Slider_Crank_Inversions',
 ] as const;
@@ -182,6 +184,8 @@ export const TEMPLATE_LINKAGES: Record<TemplateID, string> = {
     '2P.Ay,1E8.5,0.1011.4A,A,0gB,0oI,0.0B,B,0QZ,0o1,0.2C,C,0d4,0,0,,,,2SG.4D,D,0,0,0.0E,E,o0,0,0.0F,F,r8,0eW,0.4H,H,2Wz,0oI,0.0I,I,2mb,0o1,0.2J,J,2a4,0,0,,,,1z0.4K,K,3B8,0,0.0L,L,3z8,0,0.0M,M,40G,0eW,0.4O,O,5i5,0oI,0.0P,P,5xj,0o1,0.2Q,Q,5lC,0,0,,,,2xW.4R,R,6MG,0,0.0S,S,78G,0,0.0T,T,7BO,0eW,0.5G,G,r8,0eW,OZ.5N,N,40G,0eW,OZ.5U,U,7BO,0eW,OZ..YRAB,AB,0,0,0YN,0oA,303e9f,A,B,,.YRBC,BC,0,0,0Wq,0P1,26A69A,B,C,,.YRCDE,CDE,0,0,3f,0,0d125a,C,D,E,,.YREF,EF,0,0,pa,0KG,00695C,E,F,,.YRHI,HI,0,0,2en,0oA,303e9f,H,I,,.YRIJ,IJ,0,0,2gK,0P1,26A69A,I,J,,.YRJKL,JKL,0,0,3En,0,0d125a,J,K,L,,.YRLM,LM,0,0,3_i,0KG,00695C,L,M,,.YROP,OP,0,0,5pv,0oA,303e9f,O,P,,.YRPQ,PQ,0,0,5rS,0P1,26A69A,P,Q,,.YRQRS,QRS,0,0,6Pv,0,0d125a,Q,R,S,,.YRST,ST,0,0,79q,0KG,00695C,S,T,,.YPFG,FG,0,0,0,0,,F,G,,.YPMN,MN,0,0,0,0,,M,N,,.YPTU,TU,0,0,0,0,,T,U,,...N_3',
   Loader_Bucket:
     '2P.Ay,1E8.A,0.1011.6O,O,0,0,0,,,,2SG.0A,A,xS,JK,0.8M,M,1B4,GC,0.0B,B,1Na,Rw,0.8C,C,1GY,1M,0.0D,D,1be,01o,0.4P,P,o0,r8,0..YROA,Lift arm,0,0,Tk,9g,303e9f,O,A,,.YRAMBCD,Bucket,0,0,1Gs,Cc,26A69A,A,M,B,C,D,,AM,MB,MC,CD.YRBP,Tilt link,0,0,14o,eX,0d125a,B,P,,.NRAM,AM,0,0,13G,Hm,26A69A,A,M,,.NRMB,MB,0,0,1HK,M3,26A69A,M,B,,.NRMC,MC,0,0,1Dp,8n,26A69A,M,C,,.NRCD,CD,0,0,1R5,0E,26A69A,C,D,,...N_D',
+  Landing_Gear:
+    '2P.Ay,5U.5,0.1011.4A,A,Zy,38,0.0B,B,bm,03h,0.GC,C,iS,0Sa,0.4D,D,Cw,JG,0.0E,E,NL,9f,0.8F,F,RL,5z,0.4G,G,0Zy,38,0.0H,H,0bm,03h,0.GI,I,0iS,0Sa,0.4J,J,0Cw,JG,0.0K,K,0NL,9f,0.8L,L,0RL,5z,0.ZM,M,RL,5z,0,DE,D,E.ZN,N,0RL,5z,0,JK,J,K..YRABC,Starboard leg,0,0,dO,09j,303e9f,A,B,C,,.YRDE,DE,0,0,I7,ET,0d125a,D,E,,.YRBF,BF,0,0,WZ,19,26A69A,B,F,,.YRGHI,Port leg,0,0,0dO,09j,303e9f,G,H,I,,.YRJK,JK,0,0,0I7,ET,0d125a,J,K,,.YRHL,HL,0,0,0WZ,19,00695C,H,L,,.YPFM,FM,0,0,0,0,,F,M,,.YPLN,LN,0,0,0,0,,L,N,,...N_u',
   Four_Bar_Inversions:
     '2P.Ay,1E8.5,0.1011.6A,A,0,1Tm,0,,,,2SG.0B,B,7q,1hI,0.0C,C,JQ,28J,0.4D,D,d4,1Tm,0.6E,E,2Ce,1Tm,0,,,,2SG.0F,F,2KS,1hI,0.0G,G,2ey,2CY,0.4H,H,2hu,1Tm,0.6I,I,0,0,0,,,,2SG.0J,J,05R,Uo,0.0K,K,fR,TL,0.4L,L,Fe,0,0.6M,M,2Ce,0,0,,,,2SG.0N,N,2UZ,Pc,0.0O,O,2gp,ZK,0.4P,P,2xW,0,0..YRAB,L1,0,0,3w,1aX,303e9f,A,B,,.YRBC,L2,0,0,Dd,1vp,26A69A,B,C,,.YRCD,L3,0,0,TF,1p2,0d125a,C,D,,.YRAD,L4,0,0,JY,1Tm,00695C,A,D,,.YREF,L1,0,0,2GY,1aX,303e9f,E,F,,.YRFG,L4,0,0,2Ui,1xw,00695C,F,G,,.YRGH,L3,0,0,2gQ,1r9,0d125a,G,H,,.YREH,L2,0,0,2SG,1Tm,26A69A,E,H,,.YRIJ,L2,0,0,02k,FP,26A69A,I,J,,.YRJK,L3,0,0,I0,U3,0d125a,J,K,,.YRKL,L4,0,0,SY,Eh,00695C,K,L,,.YRIL,L1,0,0,7q,0,303e9f,I,L,,.YRMN,L2,0,0,2Lc,Cp,26A69A,M,N,,.YRNO,L1,0,0,2ah,UT,303e9f,N,O,,.YROP,L4,0,0,2p9,Hg,00695C,O,P,,.YRMP,L3,0,0,2a4,0,0d125a,M,P,,...N_c',
   Slider_Crank_Inversions:

@@ -71,7 +71,7 @@ export const WHATS_NEW: ReleaseNote[] = [
   },
   {
     icon: 'apps',
-    title: 'Forty-one mechanisms in the library',
+    title: 'Forty-two mechanisms in the library',
     body:
       'There were four. They are searchable now, filed by family, and every card is a picture of ' +
       'the mechanism it opens.',

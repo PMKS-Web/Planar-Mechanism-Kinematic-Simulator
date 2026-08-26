@@ -235,6 +235,16 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     animation: 'assets/gifs/cylinder-boom.gif',
   },
   {
+    id: 'Landing_Gear',
+    name: 'Aircraft Landing Gear',
+    category: 'cylinders',
+    description:
+      'An aircraft head-on: two machines, a ram each, swinging the legs out of the belly and ' +
+      'holding them at full stroke.',
+    thumbnail: 'assets/gifs/landing-gear.png',
+    animation: 'assets/gifs/landing-gear.gif',
+  },
+  {
     id: 'Cylinder_Gripper',
     name: 'Parallel Gripper',
     category: 'slots',
