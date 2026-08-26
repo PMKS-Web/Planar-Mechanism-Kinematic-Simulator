@@ -176,14 +176,33 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     if (clearance === this.lastClearance) return;
     this.lastClearance = clearance;
     document.documentElement.style.setProperty('--playback-clearance', `${clearance}px`);
-    // What the phone's sheet stands on. Not the same number as the clearance
-    // above: that one is what a *side* panel keeps free below itself, measured
-    // from the window's bottom, and this is the height of a row that the sheet
-    // sits directly on top of. Zero when the row is empty, which is every mode
-    // but the two analyses -- otherwise the sheet floats above nothing in Edit.
-    const height = Math.round(row.getBoundingClientRect().height);
-    const controls = height > 0 ? height + cssPixels(style, CARD_GAP_VAR, CARD_GAP_FALLBACK) : 0;
-    document.documentElement.style.setProperty('--controls-height', `${controls}px`);
+    // Where the phone's sheet stands. Not the clearance above: that is what a
+    // *side* panel keeps free below itself, and this is the top edge of the row
+    // the sheet sits directly on.
+    //
+    // The row's top, measured, rather than its height plus a nominal gap. It
+    // used to be height + `--card-gap`, and the difference between that and
+    // where the row really starts -- the 6px it floats above the status strip --
+    // came out on the sheet's handle, which stands on this number: shut, the
+    // pill sat 6px further off the card below it than it did when the sheet was
+    // open. The same control, two gaps, and nothing naming the second one.
+    //
+    // One whole number, too. `--controls-height` was a height, so both readers
+    // wrote `calc($bottom-bar-height + var(...))` and this file had to publish
+    // something that came out right after an addition it could not see. The
+    // rename is deliberate: a reader still performing that addition is reading a
+    // variable that no longer exists, so it falls back to the strip rather than
+    // landing 26px out with nothing to show for it.
+    //
+    // Removed rather than zeroed where there is no row, so the fallback -- the
+    // status strip on its own -- applies. Zeroed, the sheet would sit under it.
+    const box = row.getBoundingClientRect();
+    const root = document.documentElement.style;
+    if (box.height > 0) {
+      root.setProperty('--controls-top', `${Math.round(window.innerHeight - box.top)}px`);
+    } else {
+      root.removeProperty('--controls-top');
+    }
     // These cards declare the edge they take, so a change in how much of it
     // they take has to reach the canvas. The cluster grows on its own account
     // -- unsyncing gives every machine a row of its own -- and the drawing used

@@ -307,7 +307,7 @@
       // On top of the controls row, which is on top of the status strip. Both
       // of those stay where they are; the sheet is the only thing here that
       // moves, which is what makes its handle worth reaching for.
-      bottom: calc(#{nav.$bottom-bar-height} + var(--controls-height, 0px));
+      bottom: var(--controls-top, #{nav.$bottom-bar-height});
       left: 0;
       right: 0;
       // Beating the animation, which writes 278px or 428px straight onto the
@@ -340,6 +340,15 @@
         )
       );
       padding-left: nav.$shadow-room;
+      // No room above, unlike every other side. Everywhere else the frame is
+      // set back so the card's shadow has somewhere to fall inside a box that
+      // clips -- but the sheet's top edge is the one the handle hangs on, and
+      // 16px of padding there put the card 16px below the place the pill was
+      // measured from. That is the whole of the difference between the shut
+      // state and the open one. The card's upward shadow is 8px of haze under a
+      // 5px indigo bar; losing it costs nothing anybody can see, and buys a
+      // handle that means the same thing in both states.
+      padding-top: 0;
       z-index: 6;
 
       // Shut, the sheet is just its handle and a sliver of the card behind it,
@@ -406,12 +415,13 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: calc(
-      var(--sheet-height, 0px) + var(--controls-height, 0px) + #{nav.$bottom-bar-height}
-    );
+    // Its bottom edge is the sheet's top edge -- or, shut, the top of the
+    // controls row. Either way the pill is placed from here, which is what
+    // makes the two states the same.
+    bottom: calc(var(--sheet-height, 0px) + var(--controls-top, #{nav.$bottom-bar-height}));
     height: nav.$sheet-handle-height;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
     border: none;
     background: transparent;
@@ -430,10 +440,19 @@
     position: relative;
     pointer-events: auto;
     display: flex;
-    align-items: center;
+    // The pill at the foot of the target rather than in the middle of it. What
+    // a reader sees is the pill, so it is the pill that has to sit the same
+    // distance above the sheet as it does above the controls row when the sheet
+    // is shut -- and centred in a 44px box it stood 22px clear of both, which
+    // reads as a thing floating near the sheet rather than a thing on it. The
+    // box keeps its full height, so all that grew is the reach *above* the
+    // pill, which is where a thumb coming up the screen arrives first.
+    align-items: flex-end;
     justify-content: center;
     width: 120px;
     height: 100%;
+    padding-bottom: nav.$sheet-grip-gap;
+    box-sizing: border-box;
 
     // A small card carrying the grip, rather than a bare pill with a white halo
     // around it: the halo was a soft-edged blob sitting on the ruling, and read
@@ -441,7 +460,7 @@
     &::before {
       content: '';
       width: 56px;
-      height: 20px;
+      height: nav.$sheet-pill-height;
       border-radius: 10px;
       background: var(--card-surface);
       box-shadow: var(--card-shadow);
@@ -450,6 +469,10 @@
     &::after {
       content: '';
       position: absolute;
+      // Centred on the card above, which is at the foot of the box now rather
+      // than the middle of it. Written from the same two names the card is
+      // placed by, so the line cannot come adrift from the pill it is drawn on.
+      bottom: calc(#{nav.$sheet-grip-gap} + (#{nav.$sheet-pill-height} - 4px) / 2);
       width: 28px;
       height: 4px;
       border-radius: 2px;

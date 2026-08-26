@@ -93,6 +93,23 @@ $panel-bottom-clearance: $bottom-bar-height + $frame-inset;
 $sheet-handle-height: 44px;
 
 /**
+ * The pill the handle draws, and the air under it.
+ *
+ * Named because the same two numbers decide three things that have to agree:
+ * how far the pill floats above the sheet, how far it floats above the controls
+ * row when the sheet is shut, and where the grip line sits inside it. Left as
+ * literals they drifted -- the pill was centred in the 44px target, so it stood
+ * 12px clear when shut and 28px clear when open, the extra 16 being the sheet's
+ * own shadow-room. Two different gaps for the same control, and the larger one
+ * on the state where the pill is supposed to read as the sheet's own edge.
+ *
+ * The gap is small on purpose: the pill is the way out of an open sheet, and it
+ * should look attached to what it closes.
+ */
+$sheet-pill-height: 20px;
+$sheet-grip-gap: 6px;
+
+/**
  * The least canvas worth leaving on a phone.
  *
  * The sheet already gives way to the top strip and the transport, but between

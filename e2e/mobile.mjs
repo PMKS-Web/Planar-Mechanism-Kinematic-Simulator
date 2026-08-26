@@ -187,6 +187,36 @@ const collapsed = await box('.panel');
 record('the mode panel starts out of the way', collapsed.h === 0, collapsed);
 record('with a handle to pull it up by', (await page.locator('.sheetHandle').count()) === 1);
 
+/**
+ * How far the pill floats above whatever is directly beneath it.
+ *
+ * Beneath it is the sheet's card when the sheet is open and the controls row
+ * when it is shut, and the number has to be the same either way: it is one
+ * control, and a control that sits differently in its two states reads as two.
+ * It drifted once already -- the pill was centred in its 44px target and the
+ * sheet's frame carried 16px of shadow-room above its card, so it stood 12px
+ * clear when shut and 28px clear when open.
+ *
+ * Measured off the pill rather than off the target around it, because the
+ * target is deliberately much taller than the pill and it is the pill a reader
+ * is looking at.
+ */
+const pillGap = () =>
+  page.evaluate(() => {
+    const grip = document.querySelector('.sheetGrip');
+    const box = grip.getBoundingClientRect();
+    const pillBottom = box.bottom - parseFloat(getComputedStyle(grip).paddingBottom);
+    const card = document.querySelector('.panel .page1, .panel .page2, .panel .page3');
+    const cardBox = card?.getBoundingClientRect();
+    const below =
+      cardBox && cardBox.height > 0
+        ? cardBox.top
+        : document.querySelector('.playbackRow').getBoundingClientRect().top;
+    return Math.round(below - pillBottom);
+  });
+
+const gapShut = await pillGap();
+
 // Tapped with a finger and off centre, because the pill it draws is 5px tall
 // and what has to be hittable is the box around it.
 const grip = await page.evaluate(() => {
@@ -211,6 +241,16 @@ record(
   expanded.h <= Math.round(0.5 * (await page.evaluate(() => window.innerHeight))) + 2,
   expanded
 );
+const gapOpen = await pillGap();
+record(
+  'the handle sits the same distance off the thing below it in both states',
+  gapShut === gapOpen,
+  {
+    shut: gapShut,
+    open: gapOpen,
+  }
+);
+record('and close to it, rather than floating over the drawing', gapOpen <= 10, { gapOpen });
 await page.locator('.sheetHandle').click();
 await page.waitForTimeout(600);
 record('and shuts again', (await box('.panel')).h === 0);
