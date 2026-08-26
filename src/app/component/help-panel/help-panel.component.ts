@@ -134,6 +134,33 @@ export class HelpPanelComponent {
     return matchTest.join(' ');
   }
 
+  /**
+   * The key this build sends mail with, or nothing if it has none.
+   *
+   * Two ways to have none, and the reader needs the same thing in both: no
+   * function at all, which is a local `ng serve`, and a function that answers
+   * without a key, which is a deploy whose `EMAIL_JS_KEY` was never set.
+   *
+   * The second one used to pass for success. `JSON.stringify({apiKey: undefined})`
+   * is `{}`, so an unconfigured site answers 200 with an empty object, nothing
+   * throws, and the old code went on to initialise EmailJS with `undefined` and
+   * post a message that could not be delivered. What the reader was told was
+   * "Message failed to send. Please try again later" -- an invitation to keep
+   * pressing a button that could never work, about a fault no amount of trying
+   * would clear. Checked here instead, so the one place that knows the key is
+   * missing is the place that says so.
+   */
+  private async mailKey(): Promise<string | undefined> {
+    try {
+      const response = await fetch('/.netlify/functions/getEmailJSKey');
+      const key: unknown = (await response.json())?.apiKey;
+      return typeof key === 'string' && key.length > 0 ? key : undefined;
+    } catch (error) {
+      console.log(error);
+      return undefined;
+    }
+  }
+
   readonly sendCommentEmail = async (): Promise<void> => {
     this.sendingEmail = true;
     if (this.commentForm.invalid) {
@@ -142,17 +169,12 @@ export class HelpPanelComponent {
       return;
     }
 
-    let emailJSKey = '';
-    try {
-      const res = await fetch('/.netlify//functions/getEmailJSKey').then((response) =>
-        response.json()
-      );
-      emailJSKey = res.apiKey;
-    } catch (err) {
-      console.log(err);
+    const emailJSKey = await this.mailKey();
+    if (!emailJSKey) {
       this.notify.failure(
         'feedback.no-key',
-        'It looks like you are in a development environment. If this is not the case, please try again later or contact us directly at: help@pmksplus.com'
+        'This build of PMKS+ has no key for the mail service, so the form cannot send. ' +
+          'Write to help@pmksplus.com instead.'
       );
       this.sendingEmail = false;
       return;
