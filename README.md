@@ -5,13 +5,13 @@
   <img alt="PMKS+" src="docs/images/readme/logo-light.png" width="300">
 </picture>
 
-### Kinematic and force analysis of planar mechanisms, free and in the browser
+### Serious linkage analysis. Zero setup.
 
 **PMKS+** is an open-source simulator for planar linkages, written for the kinematics and
 machine-dynamics classroom. It runs in any browser, needs no account, and stores nothing on a
 server.
 
-[**Open PMKS+**](https://app.pmksplus.com) &nbsp;·&nbsp; [About](https://pmksplus.com) &nbsp;·&nbsp; [Mechanism library](#mechanism-library) &nbsp;·&nbsp; [Verification](#verification) &nbsp;·&nbsp; [Contributing](#contributing)
+[**Open PMKS+**](https://pmksplus.com) &nbsp;·&nbsp; [Mechanism library](#mechanism-library) &nbsp;·&nbsp; [Verification](#verification) &nbsp;·&nbsp; [Contributing](#contributing)
 
 ![License MIT](https://img.shields.io/badge/license-MIT-blue) ![Angular 22](https://img.shields.io/badge/Angular-22-dd0031) ![Node 22.22.3+](https://img.shields.io/badge/Node-22.22.3%20%C2%B7%2024.15%2B-5fa04e) ![No account needed](https://img.shields.io/badge/account-not%20required-brightgreen) ![Verified against MATLAB](https://img.shields.io/badge/solvers-verified%20against%20MATLAB-8a2be2)
 
@@ -65,7 +65,7 @@ project teams.
 
 | | |
 | --- | --- |
-| **Try it** | [app.pmksplus.com](https://app.pmksplus.com) |
+| **Try it** | [pmksplus.com](https://pmksplus.com) |
 | **Built for** | Kinematics and machine-dynamics coursework: four-bars, six-bars, slider-cranks, quick-returns, linkage-driven machines |
 | **Solves** | Position · velocity · acceleration · static and dynamic joint reactions · required input torque or force |
 | **Costs** | Nothing. MIT-licensed, no sign-in, runs in any modern desktop browser |
@@ -638,6 +638,6 @@ Engineering, Oregon State University.
 
 <div align="center">
 
-**[Open PMKS+ →](https://app.pmksplus.com)**
+**[Open PMKS+ →](https://pmksplus.com)**
 
 </div>
