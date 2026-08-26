@@ -27,6 +27,11 @@
       height: 52px;
       padding: 0 4px;
       gap: 0;
+      // The card fills its half of the row on a phone (playback-bar.scss), so
+      // its buttons spread across the width they are given rather than sitting
+      // in a clump at the left of it.
+      flex: 1 1 auto;
+      justify-content: space-evenly;
     }
     background: var(--card-surface);
     border-radius: var(--card-radius);

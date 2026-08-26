@@ -277,11 +277,18 @@ const stack = await page.evaluate(() => {
   const row = r('.playbackRow');
   const rowCard = r('.playbackRow > *');
   const strip = r('app-bottombar > *');
+  // The cards actually in the bottom row, whichever mode is open: the
+  // transport is only there in the two analyses, the view controls always.
+  const inRow = [...document.querySelector('.playbackRow').children].map((child) =>
+    child.getBoundingClientRect()
+  );
   return {
     cardLeft: Math.round(card.left),
     cardRight: Math.round(window.innerWidth - card.right),
     cardToRow: Math.round(row.top - card.bottom),
     rowToStrip: Math.round(strip.top - rowCard.bottom),
+    bottomLeft: Math.round(Math.min(...inRow.map((b) => b.left))),
+    bottomRight: Math.round(window.innerWidth - Math.max(...inRow.map((b) => b.right))),
   };
 });
 record('the sheet is inset like the cards above it', stack.cardLeft === layoutGap, stack);
@@ -292,6 +299,15 @@ record(
   stack
 );
 record('and the status strip off the controls row', stack.rowToStrip === layoutGap, stack);
+// The bottom row used to be centred inside an 8px padding, so its cards sat
+// 23px from the window against the top strip's 12 and the two ends of the
+// screen disagreed about where the margin was.
+record(
+  'the bottom row starts on the same line as the top strip',
+  stack.bottomLeft === layoutGap,
+  stack
+);
+record('and ends on it', stack.bottomRight === layoutGap, stack);
 await page.locator('.sheetHandle').click();
 await page.waitForTimeout(600);
 record('and shuts again', (await box('.panel')).h === 0);

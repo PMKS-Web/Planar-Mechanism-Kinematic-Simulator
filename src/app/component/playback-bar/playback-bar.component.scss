@@ -567,9 +567,31 @@
     // reader has to find twice.
     .playbackRow {
       flex-wrap: nowrap;
-      justify-content: center;
-      gap: 8px;
-      padding: 0 8px;
+      // Edge to edge on the line the top strip runs on, with the gap between
+      // the two cards that the strip keeps between its own. Centred inside an
+      // 8px padding, the cards sat 23px from the window against the strip's 12,
+      // so the two ends of the screen disagreed about where the margin was.
+      //
+      // Filling the row rather than centring in it: at their natural widths
+      // there is no way to have both ends on the card line *and* one gap in the
+      // middle, because the slack has to go somewhere, and a middle gap three
+      // times every other gap is worse than two slightly wider cards. In Edit,
+      // where the transport is not there at all, this is what gives the one
+      // card that is left two edges to line up with.
+      justify-content: space-between;
+      gap: nav.$card-inset;
+      padding: 0 nav.$card-inset;
+
+      .transportCard,
+      > app-view-controls {
+        flex: 1 1 auto;
+      }
+
+      // The host shrink-wraps its card, so growing the host alone grows nothing
+      // a reader can see.
+      > app-view-controls {
+        display: flex;
+      }
     }
 
     // The two that remain have to fit 390px between them, which at their desk
@@ -578,6 +600,9 @@
       gap: 2px;
       padding: 0 6px;
       height: 52px;
+      // Spread rather than clumped at the left, which is where a row of controls
+      // ends up when the box around it grows and nothing tells it otherwise.
+      justify-content: space-evenly;
     }
 
     .speedButton,
