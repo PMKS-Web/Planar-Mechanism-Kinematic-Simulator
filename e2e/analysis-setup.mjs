@@ -53,16 +53,26 @@ async function open(payload) {
 
 // --- a mechanism that runs says so, and stays out of the way ----------------
 await open(payloads['4-Bar']);
-// Weight is a load now: gravity hanging on links that have mass is a complete
-// static problem, so the four-bar as it arrives is ready for force analysis.
-// Turning gravity off is what makes this drawing genuinely unloaded, which is
-// the refusal these three checks are about.
-// Set through the same three steps the Settings toggle uses, not by poking the
-// subject alone: gravity is an edit, and readiness is cached against the
-// rebuild every edit funnels through. A bare `next()` leaves the cached
-// readiness answering for the drawing as it was.
+// Weight is a load: gravity hanging on links that have mass is a complete static
+// problem. But a template arrives massless -- zero is the mass nobody chose, and
+// every link starts there -- so a mass has to be given before gravity is worth
+// switching off. That order is the whole point of what follows. The drawer only
+// offers to turn gravity back on where doing so would settle the matter by
+// itself, which means where something already has mass to be pulled on; with
+// every link at zero, turning gravity on would fix nothing and the sentence says
+// so instead ("turn gravity on in Settings *and give a link mass*").
+//
+// This used to skip the mass and expect the button anyway, on the strength of a
+// comment claiming the four-bar arrives ready. It does not, and the button was
+// correctly withheld.
+//
+// Set through the same three steps the Settings toggle and the mass field use,
+// not by poking the subject alone: both are edits, and readiness is cached
+// against the rebuild every edit funnels through. A bare `next()` leaves the
+// cached readiness answering for the drawing as it was.
 await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.mechanismSrv.links[0].mass = 1;
   grid.settings.isGravity.next(false);
   grid.mechanismSrv.updateMechanism(true);
 });
@@ -82,7 +92,7 @@ record(
   text
 );
 // The wall is "nothing loads this mechanism". The way out is named in the
-// sentence either way, and here -- everything drawn, one switch in another
+// sentence either way, and here -- a body with mass drawn, one switch in another
 // panel standing in the way -- the panel walks it for the reader.
 record('naming the way out rather than only the wall', /Turn On Gravity/.test(text), text);
 await page
