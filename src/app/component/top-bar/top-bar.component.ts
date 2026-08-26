@@ -488,8 +488,13 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     this.history.redo();
   }
 
-  toggleMenu(): void {
-    this.menuOpen ? this.closeMenu() : this.openMenu();
+  toggleMenu(event: MouseEvent): void {
+    // A button activated from the keyboard reports a click with no pointer
+    // behind it: `pointerType` is empty and `detail` is 0, where a real press
+    // of any kind names its device and counts itself. That is the only place
+    // the modality is knowable, so it is read here and remembered.
+    const pointer = (event as PointerEvent).pointerType;
+    this.menuOpen ? this.closeMenu() : this.openMenu(!pointer && event.detail === 0);
   }
 
   /**
@@ -501,13 +506,35 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * sight -- Delete removing a joint nobody could see, Escape deselecting
    * instead of closing this. The menu holds the keys while it is up
    * (`onMenuKey`) and gives focus back to the trigger when it goes.
+   *
+   * Whether that focus is *drawn* is a separate question, and `menuByKeyboard`
+   * is this component's answer to it.
    */
-  private openMenu(): void {
+  private openMenu(fromKeyboard: boolean): void {
     this.menuReturn = document.activeElement as HTMLElement | null;
+    this.menuByKeyboard = fromKeyboard;
     this.menuOpen = true;
     // After the pass that renders it. There is nothing to focus until then.
     setTimeout(() => this.menuItems()[0]?.focus());
   }
+
+  /**
+   * Whether to draw the ring around the row that has focus.
+   *
+   * This used to be left to `:focus-visible`, on the reasoning that the browser
+   * knows better than we do which of a click and a keypress just happened. It
+   * does, except immediately after a page load: with no interaction recorded
+   * yet, a script moving focus is treated as keyboard work, so the first menu
+   * opened after a refresh drew a ring around New Project and every menu opened
+   * after that did not. A highlight that appears only on the first try reads as
+   * a bug in whatever it is highlighting.
+   *
+   * The component does not have to guess. It knows how the menu was opened,
+   * because it handled the event that opened it, and it knows when a reader who
+   * opened it with the mouse reaches for the arrow keys -- at which point the
+   * ring is exactly what they need and it comes back.
+   */
+  menuByKeyboard = false;
 
   /** Where focus was when the menu took it, so closing can hand it back. */
   private menuReturn: HTMLElement | null = null;
@@ -546,6 +573,9 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     const items = this.menuItems();
     if (items.length === 0) return;
     event.preventDefault();
+    // Opened with the mouse or not, this reader is steering with the keyboard
+    // now, and needs to see where they are.
+    this.menuByKeyboard = true;
     const at = items.indexOf(document.activeElement as HTMLElement);
     const next = at === -1 ? (step === 1 ? 0 : items.length - 1) : at + step;
     items[(next + items.length) % items.length].focus();

@@ -142,12 +142,12 @@
       background: rgba(0, 0, 0, 0.04);
     }
 
-    // Opening the menu moves focus into it, which is what lets a keyboard use
-    // it at all. But a menu opened with the mouse would then draw a ring around
-    // its first row, which reads as "this one is selected" to someone who only
-    // clicked the hamburger. `:focus-visible` is the browser's own answer to
-    // which of the two just happened, so the ring is drawn only for the reader
-    // who needs it.
+    // A ring for the reader who tabbed here, and none for the one who clicked.
+    // Nothing focuses a mode tab but a real Tab press, so `:focus-visible` --
+    // the browser's own answer to which of the two just happened -- is right
+    // here. It is not right for a row of the project menu, which is focused by
+    // script; that comment used to be attached to this rule, and the rules it
+    // described were never written.
     &:focus {
       outline: none;
     }
@@ -388,6 +388,31 @@
     }
 
     &:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    // Opening the menu moves focus into its first row, which is what lets a
+    // keyboard use it at all. Drawn, that focus reads as "this one is selected"
+    // to a reader who only clicked the hamburger -- and until now it was drawn
+    // by the browser, in the browser's own ring, because nothing here said
+    // otherwise.
+    //
+    // `:focus-visible` would be the obvious answer and is the one that was
+    // already going wrong: with no interaction recorded yet, a script moving
+    // focus counts as keyboard work, so the first menu opened after a refresh
+    // was ringed and every one after it was not. A highlight that appears only
+    // on the first try reads as a bug in whatever it is highlighting.
+    //
+    // `byKeyboard` is the component's own answer, taken from the event that
+    // opened the menu (`toggleMenu`) and turned on the moment a reader who
+    // opened it with the mouse reaches for the arrow keys.
+    &:focus {
+      outline: none;
+    }
+
+    .byKeyboard &:focus {
+      outline: 2px solid mat.m2-get-color-from-palette($primary-palette, 500);
+      outline-offset: -2px;
       background: rgba(0, 0, 0, 0.04);
     }
   }

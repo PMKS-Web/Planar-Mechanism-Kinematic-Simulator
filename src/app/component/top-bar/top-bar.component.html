@@ -9,7 +9,7 @@
     <button
       class="iconButton"
       [class.on]="menuOpen"
-      (click)="toggleMenu()"
+      (click)="toggleMenu($event)"
       matTooltip="Project menu"
       matTooltipShowDelay="600"
       aria-label="Project menu"
@@ -161,7 +161,14 @@
 
 @if (menuOpen) {
   <div class="menuScrim" (click)="closeMenu()"></div>
-  <div class="projectMenu" id="projectMenu" #projectMenu (keydown)="onMenuKey($event)" @menuOpen>
+  <div
+    class="projectMenu"
+    id="projectMenu"
+    #projectMenu
+    [class.byKeyboard]="menuByKeyboard"
+    (keydown)="onMenuKey($event)"
+    @menuOpen
+  >
     <button class="menuItem" (click)="newProject()">
       <mat-icon>note_add</mat-icon>New Project
     </button>

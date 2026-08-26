@@ -56,6 +56,12 @@ their source. Everything browser-driven lives here.
   `.pmks` file and a `.pmks` file that will not decode -- and does not go up at all when the file
   picker is dismissed
 
+- `menu-focus.mjs` — who gets a ring round the project menu's first row: opening the menu moves focus
+  into it so the keyboard can reach it, a click draws nothing even on the first menu after a page
+  load, Enter on the trigger draws it, and reaching for the arrow keys after a click brings it back.
+  A fresh context per case on purpose, because the case that was reported only happens before the
+  page has recorded any interaction
+
 ## Running
 
 Prerequisites: dev server on http://127.0.0.1:4200/ (`npm start`) and a
