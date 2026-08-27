@@ -54,6 +54,28 @@ const timeSeconds = async () => parseFloat((await timeField().innerText()).repla
 const speedField = () => page.locator('input-block:has-text("Input Speed") input').first();
 
 /**
+ * Where the joints actually are, in model units.
+ *
+ * Not the SVG markup. That carries the pan/zoom transform, and a fitted view
+ * refits itself -- with an animation -- whenever the mode panel changes width,
+ * which is exactly what switching modes does. Two snapshots taken either side
+ * of a switch then differ by whichever frame of that animation they caught: a
+ * difference about where the camera was, reported as the mechanism having
+ * moved. Settled, the zoom comes back to the same number; sampled a moment too
+ * early, it is 5% out.
+ *
+ * The claim these checks make is about the pose, so they read the pose, which
+ * no camera animation touches.
+ */
+const pose = () =>
+  page.evaluate(() =>
+    ng
+      .getComponent(document.querySelector('app-new-grid'))
+      .mechanismSrv.joints.map((joint) => `${joint.id}:${joint.x.toFixed(6)},${joint.y.toFixed(6)}`)
+      .join(' ')
+  );
+
+/**
  * Drag the handle to a place along the input's travel.
  *
  * The transport is a position now, not a clock: there is no time to type into,
@@ -211,11 +233,11 @@ try {
   // suite; what matters here is that the round trip cannot move the start pose.
   await setInputSpeed(20);
   await openKinematic();
-  const zeroPose = await page.locator('svg').first().innerHTML();
+  const zeroPose = await pose();
 
   await seekAlong(0.5);
   const seekedTime = await timeSeconds();
-  const seekedPose = await page.locator('svg').first().innerHTML();
+  const seekedPose = await pose();
 
   check(
     'seeking to a non-zero time moves the mechanism',
@@ -231,7 +253,7 @@ try {
   await setInputSpeed(20);
   await openKinematic();
   const rewoundTime = await timeSeconds();
-  const rewoundPose = await page.locator('svg').first().innerHTML();
+  const rewoundPose = await pose();
 
   check('leaving Kinematic rewinds to time zero', Math.abs(rewoundTime) < 0.02, { rewoundTime });
   check(
