@@ -147,7 +147,7 @@ export class UrlProcessorService {
           this.settingsSrv,
           this.activeObj
         );
-        builder.build(updateSettings);
+        builder.build(updateSettings, continuingHistory);
         // After the mechanism, because a design is about a machine that is not
         // on the grid yet and so has nothing in the build to wait for -- but
         // before the rebuild below, so the panel and the canvas come up

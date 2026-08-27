@@ -227,7 +227,7 @@ export class MechanismBuilder {
     });
   }
 
-  public build(updateSettings: boolean = true): void {
+  public build(updateSettings: boolean = true, restorePlayhead: boolean = true): void {
     // Build Joints from JointData
     let joints: Joint[] = this.transcoder
       .getJoints()
@@ -408,7 +408,29 @@ export class MechanismBuilder {
       );
     }
 
-    this.mechanism.mechanismTimeStep = this.transcoder.getIntSetting(IntSetting.TIMESTEP);
+    // Where the playhead stood, which is worth restoring for undo and redo and
+    // is not worth restoring for a mechanism that has just arrived.
+    //
+    // The format stores the start pose and, separately, an *index* into the
+    // cycle solved from it (url-generation.service). That index only names the
+    // pose its author was looking at while the cycle it counts into is the same
+    // cycle -- and samples are spaced by a fixed amount of input travel, so how
+    // many there are follows the range of travel the solver finds. Improve the
+    // solver and every circulating link keeps its number and loses its place:
+    // the six-bar this was found on solves to 53 samples now and 45 under the
+    // test harness's defaults, so its stored 31 lands somewhere its author
+    // never stood. Worse, a reader arriving part-way through the motion cannot
+    // edit at all -- editing is gated on being at the start pose -- and nothing
+    // on screen says why.
+    //
+    // Undo and redo are the case the index is trustworthy in: same mechanism,
+    // same cycle, one step of its own history, and returning the reader to the
+    // frame they were watching is the whole point. Everything else -- the
+    // opening decode, a project, a template -- is a different mechanism
+    // arriving, and it should draw the pose it encodes.
+    this.mechanism.mechanismTimeStep = restorePlayhead
+      ? this.transcoder.getIntSetting(IntSetting.TIMESTEP)
+      : 0;
 
     // Fix visual bug for forces
     this.mechanism.forces.forEach((force) => force.updateInternalValues());
