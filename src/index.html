@@ -19,6 +19,23 @@
     <base href="/" />
 
     <!--
+      Keep the app out of search results, and let the landing page have them.
+
+      pmksplus.com is the page written to be found -- it explains what PMKS+ is
+      to somebody who has not heard of it. This is the app itself, and the two
+      were competing for the same searches while only one of them is an answer
+      to them.
+
+      `follow` rather than `noindex, nofollow`: the links out of here still
+      count, so whatever this page points at keeps whatever it is owed. And it
+      applies to every address the app serves, which is the other half of the
+      point -- a shared mechanism is somebody's drawing at a URL a thousand
+      characters long, and a branch preview is a build nobody meant to publish.
+      Neither belongs in an index.
+    -->
+    <meta name="robots" content="noindex, follow" />
+
+    <!--
       Without this a phone lays the page out at 980px and scales the result down
       to fit, which is why PMKS+ has always arrived on a phone as a legible
       screenshot of itself rather than an app: every control was drawn at about
