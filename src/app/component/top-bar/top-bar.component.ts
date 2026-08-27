@@ -341,13 +341,24 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     // below would refuse the mode for the want of an answer nobody had asked
     // for yet. Asking for it *is* pressing this button, so it happens first.
     //
-    // No progress message: the solve holds the main thread, so anything said
-    // here would not paint until after it had finished and there was nothing
-    // left to wait for. Telling the reader properly means moving the solve off
-    // the thread, which is its own piece of work.
+    // Behind the cover, because that solve holds the main thread for seconds on
+    // a drawing this size -- the render stress test's forty-five joints take
+    // about three -- and a window that neither repaints nor answers a click
+    // reads as a crash rather than as a wait. Saying so at the top of a
+    // synchronous block would not paint, which is the whole reason `during`
+    // exists: it puts the cover up, waits for it to reach the glass, and only
+    // then takes the thread. Nothing here is faster; it is visible.
     if (this.mechanism.solvingIsDeferred) {
-      this.mechanism.solveNow();
+      void this.loading
+        .during('Working out the motion…', () => this.mechanism.solveNow())
+        .then(() => this.openOrRefuse(tab, setup));
+      return;
     }
+    this.openOrRefuse(tab, setup);
+  }
+
+  /** What pressing a mode does once its answer is known to exist. */
+  private openOrRefuse(tab: TabID, setup: number): void {
     if (!this.canAnalyze(tab)) {
       RightPanelComponent.insistOn(setup);
     } else if (this.isActive(tab)) {
