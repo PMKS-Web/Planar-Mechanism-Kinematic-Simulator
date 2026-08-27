@@ -663,7 +663,7 @@ export class SvgGridService {
     // and resizes the drawing to suit it; "Reset view" keeps the drawing and
     // moves the view back to it.
     const fixes = [
-      { label: 'Fit to zoom', run: () => this.updateObjectScale() },
+      { label: 'Fit to zoom', run: () => this.updateObjectScale(true) },
       { label: 'Reset view', run: () => this.scaleToFitLinkage() },
     ];
     if (drawnAt < 5) {
@@ -1377,9 +1377,23 @@ export class SvgGridService {
     return () => layers.forEach((node, index) => (node.style.display = was[index]));
   }
 
-  updateObjectScale() {
-    // Only ever pressed by hand -- from Settings, or from the zoom warning that
-    // offers it -- so it is somebody saying what size they want.
+  /**
+   * Size the marks for the current zoom.
+   *
+   * `pressed` says a person asked for this, which only the two controls that
+   * offer it can know: Settings' own button, and the action on the zoom
+   * warning. The canvas calls this too -- settling the scale before the first
+   * part is drawn on an empty grid -- and the tutorial and the synthesis panel
+   * do the same. Those are the app tidying up, not an answer to anybody, and
+   * they say nothing.
+   *
+   * The distinction was missing when the message below was added, on the
+   * strength of a comment here claiming this was only ever pressed by hand. It
+   * was not, and had not been for some time: the first right-click on an empty
+   * grid opens the menu, Add Link settles the scale, and the reader was told
+   * their marks were already the right size for a button they never touched.
+   */
+  updateObjectScale(pressed = false) {
     SettingsService.objectScaleChosen = true;
     const wanted = Number((MARK_TARGET_PX / this.getZoom()).toFixed(2));
     // Already there, which happens whenever it is pressed twice or pressed at
@@ -1387,7 +1401,7 @@ export class SvgGridService {
     // button must not have: with no drawing to compare against, a reader cannot
     // tell "there was nothing to change" from "this control is broken", and the
     // usual next move is to press it again.
-    if (wanted === SettingsService.objectScale) {
+    if (pressed && wanted === SettingsService.objectScale) {
       // Divided the way the Settings field divides it. What is stored is a
       // model-unit length, about 138 at the default; what the reader typed and
       // can compare against is the 0.7 beside the button. Quoting the stored

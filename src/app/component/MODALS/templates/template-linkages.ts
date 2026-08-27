@@ -147,13 +147,13 @@ export const TEMPLATE_LINKAGES: Record<TemplateID, string> = {
   Pumpjack:
     '2P.Ay,1E8.3,0.1011.4A,A,0gB,0oI,0.0M,M,0QZ,0o1,0.2P,P,0d4,0,0.4S,S,0,0,0.0H,H,o0,0,0.0R,R,r8,0eW,0.5W,W,r8,0eW,OZ..YRAM,AM,0,0,0YN,0oA,303e9f,A,M,,.YRMP,MP,0,0,0Wq,0P1,26A69A,M,P,,.YRPSH,PSH,0,0,3f,0,0d125a,P,S,H,,.YRHR,HR,0,0,pa,0KG,00695C,H,R,,.YPRW,RW,0,0,0,0,,R,W,,...N_Q',
   Punch_Press:
-    '2P.Ay,1E8.A,0.1011.6A,A,0,0,0.0B,B,0,Im,0.0C,C,0,0r8,0.5P,P,0,0r8,OZ..YRAB,Crank,mr0,1E8,0,9O,303e9f,A,B,,.YRBC,Connecting rod,19FW,9n0,0,0HC,26A69A,B,C,,.YPCP,CP,2IV0,0,0,0,,C,P,,..2F1,BC,F1,0,0r8,0,0bW,_W..N_O',
+    '2P.Ay,1E8.A,0.1011.6A,A,0,0,0.0B,B,0,Im,0.0C,C,0,0r8,0.5P,P,0,0r8,OZ..ARAB,Crank,mr0,1E8,0,9O,303e9f,A,B,,.MRBC,Connecting rod,19FW,9n0,0,06Q,26A69A,B,C,,.YPCP,CP,2IV0,0,0,0,,C,P,,..2F1,BC,F1,0,0r8,0,0bW,_W..N_O',
   Derrick_Crane:
-    '2P.Ay,1E8.A,0.1011.4O,O,0,0,0.0C,C,Qv,cP,0.0T,T,rn,1Cp,0.6G,G,YO,09O,0.0K,K,Mp,18,0..YRGK,Luffing crank,mr0,1E8,Sc,048,303e9f,G,K,,.YRCK,Luffing link,19FW,9n0,Os,Jn,26A69A,C,K,,.YROCT,Boom,4a_0,19FW,Qv,cP,0d125a,O,C,T,,..2F1,OCT,F1,rn,1Cp,rn,zB,d4..N_3',
+    '2P.Ay,1E8.A,0.1011.4O,O,0,0,0.0C,C,Qv,cP,0.0T,T,rn,1Cp,0.6G,G,YO,09O,0.0K,K,Mp,18,0..ARGK,Luffing crank,mr0,1E8,Sc,048,303e9f,G,K,,.ARCK,Luffing link,19FW,9n0,Os,Jn,26A69A,C,K,,.MROCT,Boom,4a_0,19FW,LX,Uk,0d125a,O,C,T,,..2F1,OCT,F1,rn,1Cp,rn,zB,d4..N_3',
   Toggle_Clamp:
-    '2P.Ay,1E8.A,0.1011.6H,H,0ee,Ti,0.0E,E,09O,NS,0.0P,P,P0,5U,0.4N,N,0Lu,09O,0..YRHE,Handle,adm,1E8,0P0,Qa,303e9f,H,E,,.YREP,Toggle link,OQW,1z0,7q,ET,26A69A,E,P,,.YRNP,Clamp bar,mr0,4uW,1a,01z,0d125a,N,P,,..2F1,NP,F1,P0,5U,P0,L6,S8..N_k',
+    '2P.Ay,1E8.A,0.1011.6H,H,0ee,Ti,0.0E,E,09O,NS,0.0P,P,P0,5U,0.4N,N,0Lu,09O,0..MRHE,Handle,adm,1E8,0Ti,RW,303e9f,H,E,,.AREP,Toggle link,OQW,1z0,7q,ET,26A69A,E,P,,.ARNP,Clamp bar,mr0,4uW,1a,01z,0d125a,N,P,,..2F1,NP,F1,P0,5U,P0,L6,S8..N_k',
   Offset_Load_Rocker:
-    '2P.Ay,1E8.G,0.1011.6A,A,0,0,0.0B,B,HC,7q,0.0C,C,104,bW,0.4D,D,1E8,0,0.0L,L,1SC,jK,0..YRAB,Input lever,mr0,1E8,8c,3w,303e9f,A,B,,.YRBC,Coupler,1Xg0,CDG,ee,Mg,26A69A,B,C,,.YRCDL,Rocker,1w4W,L_G,1E8,Rd,0d125a,C,D,L,,..2F1,CDL,F1,1SC,jK,1Fi,Zy,NS..N_y',
+    '2P.Ay,1E8.G,0.1011.6A,A,0,0,0.0B,B,HC,7q,0.0C,C,104,bW,0.4D,D,1E8,0,0.0L,L,1SC,jK,0..ARAB,Input lever,mr0,1E8,8c,3w,303e9f,A,B,,.ARBC,Coupler,1Xg0,CDG,ee,Mg,26A69A,B,C,,.ARCDL,Rocker,1w4W,L_G,1E8,Rd,0d125a,C,D,L,,..2F1,CDL,F1,1SC,jK,1Fi,Zy,NS..N_y',
   Drag_Link:
     '2P.Ay,1E8.A,0.1011.6A,A,0,0,0.0B,B,0,YO,0.0C,C,cU,LL,0.4D,D,Fe,0,0..YRAB,AB,0,0,0,HC,303e9f,A,B,,.YRBC,BC,0,0,JF,Rs,26A69A,B,C,,.YRCD,CD,0,0,R3,Ag,0d125a,C,D,,...N_e',
   Bell_Crank:
@@ -171,7 +171,7 @@ export const TEMPLATE_LINKAGES: Record<TemplateID, string> = {
   Double_Butterfly:
     '2P.Ay,1E8.A,0.1011.6A,A,0,0,0.4B,B,1WQ,0,0.0C,C,03I,UK,0.0D,D,Lu,7W,0.0E,E,g2,qg,0.0F,F,1RG,nY,0.0G,G,1Jw,SS,0.0H,H,uk,G6,0.0I,I,18_,0H2,0.0J,J,10Y,W2,0..YRACD,ACD,0,0,6D,Cd,303e9f,A,C,D,,.YRCE,CE,0,0,JO,fV,26A69A,C,E,,.YREFG,EFG,0,0,18P,hZ,00695C,E,F,G,,.YRBFJ,BFJ,0,0,1K4,RC,0d125a,B,F,J,,.YRDHI,DHI,0,0,oX,2C,26A69A,D,H,I,,.YRGH,GH,0,0,16K,MH,B2DFDB,G,H,,.YRIJ,IJ,0,0,14m,7W,00695C,I,J,,...N_N',
   Crane_Two_Loads:
-    '2P.Ay,1E8.5,0.1011.4O,O,0,0,0.0C,C,W9,cJ,0.0T,T,16K,1Jo,0.6G,G,bW,0CW,0,,,,2Ce.0K,K,mB,_,0..YRGK,Luffing crank,mr0,1E8,gr,05n,303e9f,G,K,,.YRCK,Luffing link,19FW,9n0,eA,Jf,26A69A,C,K,,.YROCT,Jib,4a_0,19FW,E4,Gm,0d125a,O,C,T,,..2F1,OCT,F1,16K,1Jo,16K,14A,ee.3F2,OCT,F2,uG,132,kD,t4,S8..N_d',
+    '2P.Ay,1E8.5,0.1011.4O,O,0,0,0.0C,C,W9,cJ,0.0T,T,16K,1Jo,0.6G,G,bW,0CW,0,,,,2Ce.0K,K,mB,_,0..ARGK,Luffing crank,mr0,1E8,gr,05n,303e9f,G,K,,.ARCK,Luffing link,19FW,9n0,eA,Jf,26A69A,C,K,,.YROCT,Jib,4a_0,19FW,E4,Gm,0d125a,O,C,T,,..2F1,OCT,F1,16K,1Jo,16K,14A,ee.3F2,OCT,F2,uG,132,kD,t4,S8..N_d',
   Locked_Four_Bar:
     '2P.Ay,1E8.5,0.1011.6A,A,0,0,0.0B,B,Nm,0,0.0C,C,126,lL,0.4D,D,17S,0,0.0E,E,1As,PW,0.0F,F,dq,Uc,0.0G,G,W5,tN,0.0H,H,Bu,G4,0.0I,I,11K,UW,0..YRABH,ABH,0,0,01Zi,bM,303e9f,A,B,H,,.YRBCFG,BCFG,0,0,jM2,p3C,26A69A,B,C,F,G,,.YRCDEI,CDEI,0,0,1pNm,0550,0d125a,C,D,E,I,,...N_.JB,JC,JD,JE,JF,JG,JIZ',
   Three_Machines:

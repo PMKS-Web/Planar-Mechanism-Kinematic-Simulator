@@ -325,7 +325,9 @@ export class SettingsPanelComponent implements OnDestroy {
   );
 
   updateObjectScale() {
-    this.svgGrid.updateObjectScale();
+    // Pressed: this is the button, so it is the one caller that owes the reader
+    // an answer when there turns out to be nothing to change.
+    this.svgGrid.updateObjectScale(true);
   }
 }
 

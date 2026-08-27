@@ -105,10 +105,35 @@ export const FORCE_STUDY_TEMPLATES: readonly LibraryTemplateID[] = [
  *
  * Not the fixtures themselves, which the MATLAB force specs assert against.
  */
-const FORCE_STUDY_LOADING: PublishedLoading = { mass: 100, load: 0.01 };
+const FORCE_STUDY_SCALING = { mass: 100, load: 0.01 };
+
+/**
+ * What each force study publishes its bodies' mass properties as.
+ *
+ * Mixed on purpose. A reader who opens all five should meet the app's own
+ * default, a centre of mass that has been moved, and a moment of inertia that
+ * has been typed -- because those are the three things the Edit panel offers
+ * and a library where every body is identical teaches none of them.
+ *
+ * The offsets are the ones the machines argue for. A connecting rod carries its
+ * big end at the crank pin and is heavier there; a derrick's boom is heaviest
+ * at its root; a clamp handle is mostly grip. The rocker is left plain, so
+ * there is something to compare the other four against, and the two-load crane
+ * keeps both of its custom numbers: its jib is counterweighted, which is the
+ * whole subject of that drawing, and a counterweighted jib is exactly the case
+ * where the bar formula is the wrong answer.
+ */
+const FORCE_STUDY_BODIES: Record<string, Partial<PublishedLoading>> = {
+  Punch_Press: { offsetCom: { BC: { between: ['B', 'C'], at: 0.35 } } },
+  Derrick_Crane: { offsetCom: { OCT: { between: ['O', 'T'], at: 0.4 } } },
+  Toggle_Clamp: { offsetCom: { HE: { between: ['H', 'E'], at: 0.35 } } },
+  Offset_Load_Rocker: {},
+  Crane_Two_Loads: { keepMoi: ['OCT'] },
+};
 
 export function libraryTemplateMasses(id: LibraryTemplateID): PublishedMasses {
-  return FORCE_STUDY_TEMPLATES.includes(id) ? FORCE_STUDY_LOADING : 'zeroed';
+  if (!FORCE_STUDY_TEMPLATES.includes(id)) return 'zeroed';
+  return { ...FORCE_STUDY_SCALING, ...(FORCE_STUDY_BODIES[id] ?? {}) };
 }
 
 export function libraryTemplateEntry(id: LibraryTemplateID): GalleryEntry {

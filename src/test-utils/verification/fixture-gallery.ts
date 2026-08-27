@@ -164,6 +164,29 @@ function scaleLoading(built: BuiltMechanism, by: PublishedLoading): void {
   };
   built.links.forEach(heavier);
   built.forces.forEach((force) => (force.mag *= by.load));
+
+  // Then hand the mass properties back to the app wherever the fixture was not
+  // actually saying anything: a template opens on the defaults a reader's own
+  // drawing would have, and the two that are deliberately different stand out
+  // because everything around them is not.
+  const keep = new Set(by.keepMoi ?? []);
+  built.links.forEach((link) => {
+    if (!(link instanceof RealLink) || keep.has(link.id)) return;
+    link.moiIsCustom = false;
+    link.comIsCustom = false;
+  });
+
+  Object.entries(by.offsetCom ?? {}).forEach(([id, where]) => {
+    const link = built.links.find((candidate) => candidate.id === id);
+    if (!(link instanceof RealLink)) throw new Error(`No link ${id} to move the CoM of`);
+    const from = link.joints.find((joint) => joint.id === where.between[0]);
+    const to = link.joints.find((joint) => joint.id === where.between[1]);
+    if (!from || !to) throw new Error(`Link ${id} does not join ${where.between.join(' and ')}`);
+    link.placeCustomCoM({
+      x: from.x + (to.x - from.x) * where.at,
+      y: from.y + (to.y - from.y) * where.at,
+    });
+  });
 }
 
 /**
@@ -258,6 +281,28 @@ export interface PublishedLoading {
   mass: number;
   /** Multiplied onto every applied force. */
   load: number;
+  /**
+   * Link ids that keep the moment of inertia their fixture states.
+   *
+   * Everything else is published on the app's own default -- derived from the
+   * skeleton -- because that is what a reader gets when they draw a bar, and
+   * until now the library never showed it. Every fixture link is built custom
+   * (see `buildFixtureLink`) so that the MATLAB numbers survive and the URLs
+   * stay byte-identical, which is right for a verification fixture and wrong
+   * for a teaching example: the Edit panel said "set by you" about a number
+   * nobody had set.
+   */
+  keepMoi?: readonly string[];
+  /**
+   * Bodies whose mass does not sit at the centroid, and where it does sit.
+   *
+   * Given as a fraction along two of the body's own joints rather than as a
+   * coordinate, so it survives the geometry being edited and says what it
+   * means: a connecting rod is heavy at the big end, a boom is heavy at its
+   * root. 0.5 is the midpoint of that pair, which for a two-joint bar is the
+   * centroid the app would derive anyway.
+   */
+  offsetCom?: Record<string, { between: [string, string]; at: number }>;
 }
 
 /** Whichever of the two input speeds a mechanism actually uses. */
