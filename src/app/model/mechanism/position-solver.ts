@@ -534,7 +534,11 @@ export class PositionSolver {
     // reason (§2.9): the walk starts at the input joint and swings its
     // neighbours about it, which assumes the input's own position is known. A
     // floating pin's is not, so it too goes to the constraint set.
-    if (this.registerCylinderDrive(cylinders, inputJoint) || this.registerPinDrive(inputJoint)) {
+    if (
+      this.registerCylinderDrive(cylinders, inputJoint) ||
+      this.registerPinDrive(inputJoint) ||
+      this.registerSlotDrive(inputJoint)
+    ) {
       orderNum = this.orderDeferredJoints(joints, links, orderNum, knownJointsIds);
       this.finishOrder(joints, links, orderNum, knownJointsIds);
       return;
@@ -929,6 +933,21 @@ export class PositionSolver {
       this.cylinderDrive = drive;
       return { kind: 'driven', a: drive.drivenMountId, b: drive.anchorMountId };
     }
+    // A commanded span with no sealed cylinder behind it: a block riding a slot
+    // cut into a moving link (`registerSlotDrive`). The quantity is the same one
+    // -- how far apart two points are, with the rest of the mechanism settled
+    // around it -- so the constraint is the same; only the two points differ,
+    // being the slot's end and the block rather than a barrel's mount and a
+    // rod's. Reading `drivenCylinder` alone missed it, and the ordering then
+    // deferred a mechanism to a constraint set that had not been told what
+    // drives it: no steps, and "Nothing moves when the input turns".
+    if (this.cylinderDrive) {
+      return {
+        kind: 'driven',
+        a: this.cylinderDrive.drivenMountId,
+        b: this.cylinderDrive.anchorMountId,
+      };
+    }
     const pin = this.pinDrive;
     if (pin) {
       return {
@@ -976,6 +995,60 @@ export class PositionSolver {
       // One degree a sample, exactly as a crank turns, so a driven pin closes
       // its cycle on the same 360-sample count.
       step: Math.PI / 180,
+    };
+    return true;
+  }
+
+  /**
+   * Take the input flag on a block riding a slot cut into a moving link as a
+   * command on how far along that slot it sits (§2.4).
+   *
+   * A guide cut into the frame is deliberately left alone: it does not move, so
+   * stepping the block along one settled direction is right for it and cheaper
+   * than asking a constraint set the same question.
+   *
+   * A slot in a moving link is the case that direction cannot describe. The
+   * step used to be taken along the slot's angle at t = 0 and held there, which
+   * never turns the link the slot is cut into -- so the block travelled up a bar
+   * standing still and whatever else held the block absorbed the difference by
+   * changing length. A reader's inverted slider-crank drove this way and its
+   * rocker grew 15% over the cycle while the mechanism reported itself Ready.
+   *
+   * What the drive actually prescribes is a distance: how far the block sits
+   * from one end of the slot, measured along a line that is itself being
+   * solved. That is the same shape of command a driven cylinder gives -- a span
+   * between two points, with everything else settled around it -- so it is
+   * recorded as one, and the constraint set solves the carrier's rotation and
+   * the block's travel together the way §2.7a solves everything else.
+   */
+  private static registerSlotDrive(inputJoint: RealJoint): boolean {
+    if (!(inputJoint instanceof PrisJoint)) {
+      return false;
+    }
+    // Grounded guide, or a cylinder the registration above has already taken.
+    if (inputJoint.ground || inputJoint.carrier === undefined || inputJoint.isSealed) {
+      return false;
+    }
+    // The slot's own end, because the distance from *there* to the block is the
+    // travel along the slot and nothing else. Measured from any other point on
+    // the carrier it would be a chord, which changes with the carrier's shape
+    // rather than with the drive.
+    const anchor = inputJoint.slotJointA;
+    const block = this.blockPartner(inputJoint) ?? inputJoint;
+    if (!anchor || anchor.id === block.id) {
+      return false;
+    }
+    const span = euclideanDistance(anchor.x, anchor.y, block.x, block.y);
+    // A block drawn exactly on the slot's end has no direction to leave it in,
+    // and the span would be a length the solver cannot differentiate.
+    if (span < DEGENERATE_SLOT_TOLERANCE) {
+      return false;
+    }
+    this.cylinderDrive = {
+      anchorMountId: anchor.id,
+      drivenMountId: block.id,
+      span,
+      step: this.drivenSampleStep ?? PRISMATIC_INPUT_STEP,
     };
     return true;
   }
