@@ -119,7 +119,22 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
       'Static solves the mechanism held still at each position — the equilibrium a hand calculation gives. In-motion adds the inertia of the moving parts.',
     components:
       'X and Y are the components along the axes. Magnitude is √(X² + Y²) — the size of the vector, without its direction.',
+    timeSteps:
+      'This mechanism passes through a toggle, where it moves far in very little input. It is solved at a finer step there, so those extra positions sit closer together in time than the rest. Even spacing leaves them out, which is what you want if you are about to difference the columns. Every position writes them all.',
   };
+
+  /**
+   * Whether anything being exported was solved at a finer step somewhere.
+   *
+   * The choice below is only a choice for those: a cycle with no fold in it has
+   * one spacing either way, and offering to make it even would be offering
+   * nothing.
+   */
+  hasUnevenSteps(): boolean {
+    return this.flow
+      .mechanismIndexes()
+      .some((index) => this.mechanism.mechanisms[index]?.hasAddedSamples);
+  }
 
   /**
    * Which glyph says what is about to come down: one file, a few, or a folder.

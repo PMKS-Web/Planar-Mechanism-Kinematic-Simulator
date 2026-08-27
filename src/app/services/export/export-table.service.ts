@@ -162,6 +162,7 @@ export class ExportTableService {
       this.flow.format,
       this.flow.splitPerPart,
       this.flow.withMagnitude,
+      this.flow.uniformRows,
       this.flow.forceMode(),
       this.settings.lengthUnit.value,
       this.settings.angleUnit.value,
@@ -254,7 +255,7 @@ export class ExportTableService {
             name: piece.name,
             suffix: piece.suffix,
             mechanismIndex: index,
-            rows: solved?.isMechanismValid() ? solved.timeNum.length : 0,
+            rows: solved?.isMechanismValid() ? this.exportedSteps(solved).length : 0,
             heads,
             plots: titles.length,
             titles,
@@ -265,12 +266,29 @@ export class ExportTableService {
   }
 
   /** One file's table, sampled a slice at a time. See `tablesAsync`. */
+  /**
+   * The samples a table has rows for.
+   *
+   * Everything solved, unless the reader asked for even spacing and this cycle
+   * was cut finer somewhere -- in which case the samples the look-ahead added
+   * are left out, and what remains is the evenly spaced cycle the walk would
+   * have produced without them.
+   */
+  private exportedSteps(solved: Mechanism): number[] {
+    const steps = solved.timeNum.map((_, step) => step);
+    if (!this.flow.uniformRows || !solved.hasAddedSamples) return steps;
+    const added = solved.addedSamples;
+    return steps.filter((step) => !added[step]);
+  }
+
   private async tableAsync(
     index: number,
     piece: { name: string; suffix: string; parts: ExportPart[]; columns: ExportColumn[] }
   ): Promise<ExportTable> {
     const solved = this.mechanism.mechanisms[index];
-    const times = solved?.isMechanismValid() ? [...solved.timeNum] : [];
+    const times = solved?.isMechanismValid()
+      ? this.exportedSteps(solved).map((step) => solved.timeNum[step])
+      : [];
     const plots = solved ? await this.plotsAsync(solved, index, piece.parts, piece.columns) : [];
     return { ...this.shapeOf(piece.name, piece.suffix, index, times, plots) };
   }
@@ -283,7 +301,9 @@ export class ExportTableService {
     columns: ExportColumn[]
   ): ExportTable {
     const solved = this.mechanism.mechanisms[index];
-    const times = solved?.isMechanismValid() ? [...solved.timeNum] : [];
+    const times = solved?.isMechanismValid()
+      ? this.exportedSteps(solved).map((step) => solved.timeNum[step])
+      : [];
     const plots = solved ? this.plots(solved, index, parts, columns) : [];
     return this.shapeOf(name, suffix, index, times, plots);
   }
@@ -379,7 +399,7 @@ export class ExportTableService {
     // the other is converted on the way to whatever is labelled with the
     // reader's unit -- the same scale the graphs apply.
     const scale = angularScale(series.mechProp, this.settings.angleUnit.value);
-    const rows = solved.timeNum.map((_, step) =>
+    const rows = this.exportedSteps(solved).map((step) =>
       this.samples.sampleAt(
         solved,
         step,

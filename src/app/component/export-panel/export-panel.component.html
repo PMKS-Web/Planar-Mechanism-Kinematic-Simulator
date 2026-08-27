@@ -340,6 +340,28 @@
           </div>
         </div>
       }
+      @if (hasUnevenSteps()) {
+        <div class="barRow">
+          <span class="settingName">Time steps</span>
+          <mat-icon
+            class="label-help"
+            [matTooltip]="help['timeSteps']"
+            matTooltipPosition="above"
+            matTooltipClass="exportTip"
+            matTooltipShowDelay="400"
+            >help_outline</mat-icon
+          >
+          <span class="spacer"></span>
+          <div class="segmented tight">
+            <button [class.on]="flow.uniformRows" (click)="flow.uniformRows = true">
+              Evenly spaced
+            </button>
+            <button [class.on]="!flow.uniformRows" (click)="flow.uniformRows = false">
+              Every position
+            </button>
+          </div>
+        </div>
+      }
     </div>
   }
 

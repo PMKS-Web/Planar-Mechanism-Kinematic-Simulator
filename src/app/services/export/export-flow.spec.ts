@@ -187,6 +187,54 @@ describe('the export drawer', () => {
     expect(table.columns.every((column) => column.length === table.times.length)).toBe(true);
   });
 
+  describe('a cycle that was cut finer through a toggle', () => {
+    /** The six-bar of toggle-subdivision.spec: its fold is solved at a finer step. */
+    const TOGGLE_SIX_BAR =
+      '2P.1jO,1E8.8,2n.1011.6O,O,0,0,0.0A,A,3gO,0,0.4G,G,040G,01L6,0.0B,B,040G,2bR,0.0C,C,0F0c,' +
+      '0kK,0.0D,D,0A33,08Zy,0.0E,E,0ETW,06sL,0.GF,F,0AYO,0MPj,0..MROA,OA,0,0,1rC,0,303e9f,O,A,,.' +
+      'MRAB,AB,0,0,0Ay,1Ij,26A69A,A,B,,.MRGBC,GBC,0,0,07h2,BL,0d125a,G,B,C,,.MRAD,AD,0,0,03CM,' +
+      '04H-,00695C,A,D,,.MRGD,GD,0,0,071g,04yX,303e9f,G,D,,.MRCE,CE,0,0,0El3,03oK,B2DFDB,C,E,,.' +
+      'MRDEF,DEF,0,0,0Bhf,0Ccg,26A69A,D,E,F,,...N_N';
+
+    /** The largest and smallest gap between one row's time and the next. */
+    function gaps(times: number[]): { widest: number; narrowest: number } {
+      const steps = times.slice(1).map((time, at) => time - times[at]);
+      return { widest: Math.max(...steps), narrowest: Math.min(...steps) };
+    }
+
+    it('leaves the extra positions out, so the rows are evenly spaced', () => {
+      const { flow, tables, fixture } = flowFor(TOGGLE_SIX_BAR);
+      pick(flow, 'Joint F');
+      expect(fixture.mechanism.hasAddedSamples).toBe(true);
+      const [table] = tables.tables();
+      // Fewer rows than there are solved positions: the fold's are not written.
+      expect(table.times.length).toBeLessThan(fixture.mechanism.timeNum.length);
+      const { widest, narrowest } = gaps(table.times);
+      expect(widest - narrowest).toBeLessThan(widest * 1e-6);
+      expect(table.columns.every((column) => column.length === table.times.length)).toBe(true);
+    });
+
+    it('writes every one of them when the reader asks for it', () => {
+      const { flow, tables, fixture } = flowFor(TOGGLE_SIX_BAR);
+      pick(flow, 'Joint F');
+      flow.uniformRows = false;
+      const [table] = tables.tables();
+      expect(table.times).toHaveLength(fixture.mechanism.timeNum.length);
+      // And now the gaps do vary, which is the whole reason for the choice.
+      const { widest, narrowest } = gaps(table.times);
+      expect(narrowest).toBeLessThan(widest / 2);
+      expect(table.columns.every((column) => column.length === table.times.length)).toBe(true);
+    });
+
+    it('makes no difference to a mechanism with no fold in it', () => {
+      const { flow, tables } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
+      pick(flow, 'Joint B');
+      const even = tables.tables()[0].times.length;
+      flow.uniformRows = false;
+      expect(tables.tables()[0].times).toHaveLength(even);
+    });
+  });
+
   it('heads a column with the quantity, the part, the component and the unit', () => {
     const { flow, tables } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
     pick(flow, 'Joint B', 'Link AB');

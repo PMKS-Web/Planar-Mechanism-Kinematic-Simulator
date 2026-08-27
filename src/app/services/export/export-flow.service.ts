@@ -50,6 +50,17 @@ export class ExportFlowService {
   splitPerPart = false;
   /** Whether a two-component series also writes its magnitude. */
   withMagnitude = true;
+  /**
+   * Whether the rows are kept at one even spacing in time.
+   *
+   * A cycle that passes through a fold is solved at a finer step there, so its
+   * samples are no longer an even distance apart -- which is right for watching
+   * and wrong for a column of numbers somebody is about to difference. On by
+   * default: the extra solves are left out and what is written is the even
+   * cycle. Turned off, every solved position is written, fold included, and the
+   * gaps between the times vary.
+   */
+  uniformRows = true;
   /** Which kind of picture the Graph images format writes. */
   imageFormat: 'png' | 'svg' = 'png';
   /** Empty until the reader types: the name shown is derived while it is. */
