@@ -21,6 +21,22 @@ import { LONGEST_ARROW_FRACTION, PATH_ARROW_COUNT } from '../../model/vector-tra
  * jsdom has none. Every suite here stands the component up against a stub that
  * maps screen coordinates straight through, so screen and SVG units are equal.
  */
+/**
+ * The real one, put back when this file is done with it.
+ *
+ * The stub below answers `matches: true` to every query, which is what this
+ * suite wants -- and `(pointer: coarse)` is a query, so `ViewportService` reads
+ * the whole app as a touchscreen. Left in place it stayed true for whichever
+ * file ran next in the same environment: the analysis panel's copy tests began
+ * expecting "Click a joint" and reading "Tap a joint", and which of them failed
+ * depended on the order the files happened to run in.
+ */
+const REAL_MATCH_MEDIA = window.matchMedia;
+
+afterAll(() => {
+  window.matchMedia = REAL_MATCH_MEDIA;
+});
+
 async function configureGridTestBed() {
   window.matchMedia = vi.fn().mockReturnValue({
     matches: true,

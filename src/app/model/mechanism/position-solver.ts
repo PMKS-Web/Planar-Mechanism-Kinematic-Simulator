@@ -2268,7 +2268,45 @@ export class PositionSolver {
     });
   }
 
+  /**
+   * Try one sample, and leave nothing behind if it cannot be had.
+   *
+   * The walk writes each joint as it solves it, so a sample that fails part way
+   * through has already moved everything up to the step that refused. That is
+   * fine while the input keeps going -- the next attempt overwrites them all
+   * again -- and it is not fine at the end of a driven part's travel, which is
+   * exactly where a sample fails: `findFullMovementPos` answers a refusal by
+   * reversing, and the reversed step then reads those half-written positions to
+   * decide which of two circle intersections each joint should take.
+   *
+   * A gripper with a jaw either side of one ram showed it. The upper jaw is
+   * solved first, so at each limit it had been moved before the refusal came;
+   * the lower jaw had not. The return leg picked the far intersection for the
+   * upper jaw and the near one for the lower, so the two legs of the stroke ran
+   * on different assembly modes and the mechanism visibly jumped between them
+   * twice a cycle -- while the lower jaw, in the same drawing, retraced
+   * perfectly.
+   *
+   * `pendingSpan` was already committed this way, one field at a time. The
+   * positions are the rest of that same rule.
+   */
   static determinePositionAnalysis(
+    joints: Joint[],
+    links: Link[],
+    forces: Force[],
+    angVelDir: boolean
+  ): boolean {
+    const heldPositions = new Map(this.jointMapPositions);
+    const heldPrior = new Map(this.priorJointPositions);
+    if (this.attemptPositionAnalysis(joints, links, forces, angVelDir)) {
+      return true;
+    }
+    this.jointMapPositions = heldPositions;
+    this.priorJointPositions = heldPrior;
+    return false;
+  }
+
+  private static attemptPositionAnalysis(
     joints: Joint[],
     links: Link[],
     forces: Force[],
