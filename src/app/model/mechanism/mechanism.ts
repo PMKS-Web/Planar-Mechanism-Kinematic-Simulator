@@ -41,6 +41,15 @@ export class Mechanism {
   private _forces: Force[][] = [[]];
   private _ics: InstantCenter[][] = [[]];
   private _timeNum: number[] = [];
+  /**
+   * Which samples the look-ahead added, parallel to the frames.
+   *
+   * A subdivided step still lands on the original spacing at its end, so the
+   * samples marked here are exactly the ones between: drop them and what is
+   * left is the uniform cycle the walk would have produced without
+   * subdividing. That is what lets the export offer uniform row spacing.
+   */
+  private _addedSamples: boolean[] = [];
   private _internalTriangleSimLinkMap = new Map<string, number[]>();
   private forceAnalysisCache = new Map<ForceAnalysisMode, ForceAnalysisSeries>();
 
@@ -384,6 +393,118 @@ export class Mechanism {
   /** One refinement per build, and never again after its fallback re-solve. */
   private refineAttempted = false;
 
+  /**
+   * How far a joint may move between two samples before the step is cut finer.
+   *
+   * Against the drawing's own size, so it means the same thing whatever units
+   * the linkage was drawn in. Five per cent of the span is well clear of
+   * anything a healthy linkage does -- measured over every template, the worst
+   * single sample is Chebyshev's 3.0% and all but three sit under 1% -- and
+   * well under what a toggle produces, which is 31% on the six-bar this was
+   * found on. So a mechanism that moves smoothly is sampled exactly as it was
+   * before, and only a fold pays for the extra solves.
+   */
+  private static readonly JUMP_LIMIT_FRACTION = 0.05;
+
+  /**
+   * The most samples a cycle may hold.
+   *
+   * The cap that used to stand at 750 counted solves, and now counts crank, so
+   * something still has to bound the solves themselves: a fold can always be
+   * asked for one more cut. Well above any cycle that is not subdividing --
+   * the longest template is 363 samples.
+   */
+  private static readonly MAX_SAMPLES = 4000;
+
+  /** The span of the drawing at rest, which the jump limit is a fraction of. */
+  private startingSpan(): number {
+    const start = this._joints[0] ?? [];
+    if (start.length < 2) return 0;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const joint of start) {
+      minX = Math.min(minX, joint.x);
+      maxX = Math.max(maxX, joint.x);
+      minY = Math.min(minY, joint.y);
+      maxY = Math.max(maxY, joint.y);
+    }
+    return Math.hypot(maxX - minX, maxY - minY);
+  }
+
+  /** The furthest any joint has moved from `from` to the pose just solved. */
+  private solvedJump(from: number): number {
+    let worst = 0;
+    for (const joint of this._joints[from] ?? []) {
+      const to = PositionSolver.jointMapPositions.get(joint.id);
+      if (!to) continue;
+      worst = Math.max(worst, Math.hypot(to[0] - joint.x, to[1] - joint.y));
+    }
+    return worst;
+  }
+
+  /**
+   * Solve the sample after `at`, looking ahead before it is kept.
+   *
+   * The solver is asked for the next pose at the full step first. If what comes
+   * back has moved further than a linkage should move in one frame, it is put
+   * back and asked again at half the step, and so on down -- so the extra
+   * solves are spent only where the motion is fast, which is the whole point of
+   * doing it this way rather than sampling the entire cycle finer. Near a
+   * toggle the output moves as roughly the square root of the step, so halving
+   * buys about a factor of 1.4 and it takes several cuts to bring a fold down.
+   *
+   * Sixty-four cuts is the floor, matching the boundary solver's own halving
+   * cap. A fold has no bottom -- the velocity there is genuinely unbounded --
+   * so the last word has to be a limit on the work rather than on the jump.
+   *
+   * Cutting by halves is what keeps the original spacing a *subset* of the
+   * samples: every full step still lands on a sample, which is what lets the
+   * export offer rows at uniform spacing afterwards.
+   *
+   * Returns the fraction of a full step that was actually taken, so the caller
+   * can keep its clock and its count of whole steps.
+   */
+  private solveLookingAhead(
+    at: number,
+    angVelDir: boolean,
+    baseStep: number,
+    jumpLimit: number,
+    subdividing: boolean,
+    room: number
+  ): { solved: boolean; fraction: number } {
+    const FINEST_CUTS = 64;
+    const held = PositionSolver.capturePose();
+    // Never past the next point of the original spacing. The walk has to land
+    // on those points: they are what the counts of whole steps mean, and a
+    // rocking cycle closes only by coming back to the very pose it left, which
+    // it can only do if the way home is over the same points as the way out.
+    // `room` is how much of a whole step is left before the next one, so this
+    // is the coarsest cut that still fits inside it.
+    let cuts = 1;
+    while (1 / cuts > room + 1e-12) cuts *= 2;
+    for (;;) {
+      PositionSolver.revoluteSampleStep = baseStep / cuts;
+      const solved = PositionSolver.determinePositionAnalysis(
+        this._joints[at],
+        this._links[at],
+        this._forces[at],
+        angVelDir
+      );
+      const settled = !solved || !subdividing || cuts >= FINEST_CUTS;
+      if (settled || this.solvedJump(at) <= jumpLimit) {
+        PositionSolver.revoluteSampleStep = baseStep;
+        return { solved, fraction: 1 / cuts };
+      }
+      // Solved, but too far to keep. Stand the solver back on the pose it
+      // stepped from before asking again, or the finer step reads the sample
+      // just rejected as where it is starting from.
+      PositionSolver.restorePose(held);
+      cuts *= 2;
+    }
+  }
+
   private findFullMovementPos(inputAngVel: number, revoluteStep: number = Math.PI / 180) {
     // The loop below flips inputAngVel at each reversal; a re-solve has to
     // start from the speed that was asked for, not the one the loop ended on.
@@ -473,22 +594,57 @@ export class Mechanism {
     // branch, home on the other. Watching only the reference joint missed
     // this (the crank pin is home; the block is not), and the animation
     // teleported at the wrap.
+    // Whole steps of input travel taken. The counts below mean crank, not
+    // solves: a step cut finer still adds up to one of these, so a mechanism
+    // that needs subdividing closes its cycle after the same amount of crank as
+    // one that does not, and the frame cap still counts the same thing it did.
+    let gridSteps = 0;
+    // Signed travel from the start pose, in whole steps. Signed because a
+    // rocker walks back over ground it has covered, and the original spacing
+    // has to be the same set of points in both directions -- measured from
+    // where the walk began rather than from wherever it last turned round.
+    let travel = 0;
+    const startedForward = inputAngVel > 0;
+    /** How much of a whole step is left before the next point of the spacing. */
+    const roomToNextPoint = (): number => {
+      const past = travel - Math.floor(travel);
+      const gap = inputAngVelDirection === startedForward ? 1 - past : past;
+      return gap < 1e-9 ? 1 : gap;
+    };
+    // Which samples subdivision added. Sample 0 is on the spacing by definition.
+    const addedSamples: boolean[] = [false];
+    // The sample a full revolution landed on: with subdivision it is no longer
+    // sample 360, and the seam check and the trim both need the real index.
+    let revolutionSample = STEPS_PER_REVOLUTION;
+    const jumpLimit = this.startingSpan() * Mechanism.JUMP_LIMIT_FRACTION;
+    // Only where the crank spacing is the spacing this mechanism moves by -- a
+    // driven pin or cylinder steps by a field of its own -- and only under
+    // 'adaptive', so the tables the verification suite is stated against keep
+    // their exact one-degree spacing.
+    const canSubdivide =
+      this.sampling === 'adaptive' &&
+      revoluteInput &&
+      PositionSolver.stepsByRevoluteSampleStep &&
+      jumpLimit > 0;
     let revolutionsToClose = 1;
     // One-shot: an abandoned extension rewinds to the very pose that asked for
     // it, and without this it would ask again forever.
     let extensionAbandoned = false;
     const cycleIncomplete = () =>
       revoluteInput && reversals === 0
-        ? currentTimeStamp < STEPS_PER_REVOLUTION * revolutionsToClose
+        ? gridSteps < STEPS_PER_REVOLUTION * revolutionsToClose
         : reversals < 2 || xDiff > TOLERANCE || yDiff > TOLERANCE;
 
     while (!simForward || currentTimeStamp === 0 || cycleIncomplete()) {
-      const possible = PositionSolver.determinePositionAnalysis(
-        this._joints[currentTimeStamp],
-        this._links[currentTimeStamp],
-        this._forces[currentTimeStamp],
-        inputAngVelDirection
+      const attempt = this.solveLookingAhead(
+        currentTimeStamp,
+        inputAngVelDirection,
+        revoluteStep,
+        jumpLimit,
+        canSubdivide,
+        roomToNextPoint()
       );
+      const possible = attempt.solved;
       if (possible) {
         this._joints.push([]);
         this._links.push([]);
@@ -559,18 +715,30 @@ export class Mechanism {
         this.attachForcesToLinks(currentTimeStamp + 1);
         falseTwice = 0;
         currentTimeStamp++;
-        if (curTimeNum + timeNumIncrement <= 0) {
+        if (curTimeNum + timeNumIncrement * attempt.fraction <= 0) {
           timeNumIncrement = timeNumIncrement * -1;
         }
-        curTimeNum = curTimeNum + timeNumIncrement;
+        curTimeNum = curTimeNum + timeNumIncrement * attempt.fraction;
         this._timeNum.push(curTimeNum);
         this._inputAngularVelocities.push(inputAngVel);
-      } else if (revolutionsToClose === 2 && currentTimeStamp >= STEPS_PER_REVOLUTION) {
+        // Halves, so these sums are exact in binary and a sample either lands
+        // on the original spacing or is one subdivision added.
+        gridSteps += attempt.fraction;
+        travel += (inputAngVelDirection === startedForward ? 1 : -1) * attempt.fraction;
+        const onSpacing = Math.abs(travel - Math.round(travel)) < 1e-9;
+        if (onSpacing) {
+          travel = Math.round(travel);
+        }
+        addedSamples.push(!onSpacing);
+        if (onSpacing && Math.abs(gridSteps - STEPS_PER_REVOLUTION) < 1e-9) {
+          revolutionSample = currentTimeStamp;
+        }
+      } else if (revolutionsToClose === 2 && gridSteps >= STEPS_PER_REVOLUTION) {
         // The second revolution could not be solved through. Fall back to the
         // one-revolution cycle and its warned seam rather than losing a
         // mechanism the old behavior kept.
-        this.trimToSample(STEPS_PER_REVOLUTION);
-        currentTimeStamp = STEPS_PER_REVOLUTION;
+        this.trimToSample(revolutionSample);
+        currentTimeStamp = revolutionSample;
         curTimeNum = this._timeNum[currentTimeStamp];
         revolutionsToClose = 1;
         extensionAbandoned = true;
@@ -602,12 +770,15 @@ export class Mechanism {
         reversals === 0 &&
         revolutionsToClose === 1 &&
         !extensionAbandoned &&
-        currentTimeStamp === STEPS_PER_REVOLUTION &&
+        Math.abs(gridSteps - STEPS_PER_REVOLUTION) < 1e-9 &&
         this.seamGapAt(currentTimeStamp) > this.seamTolerance()
       ) {
         revolutionsToClose = 2;
       }
-      if (currentTimeStamp === 750) {
+      // Crank, not solves, so subdividing a fold cannot spend the budget a
+      // cycle has to close in -- with a ceiling on the samples themselves,
+      // because a fold has no bottom and the work has to end somewhere.
+      if (gridSteps >= 750 || this._joints.length > Mechanism.MAX_SAMPLES) {
         // How close it ever came to its starting pose, skipping the first few
         // frames where it is trivially still there. setMechanismInvalid wipes
         // the frames, so this is the last chance to measure.
@@ -645,7 +816,11 @@ export class Mechanism {
       PositionSolver.stepsByRevoluteSampleStep &&
       reversals >= 2
     ) {
-      const samples = this._joints.length - 1;
+      // Whole steps, not frames: the question this asks is how much *arc* the
+      // rocker covered, and a fold that was cut finer adds frames without
+      // adding arc. Counting frames would read a subdivided sliver as a longer
+      // swing than it is and refine it less than it needs.
+      const samples = Math.round(gridSteps);
       const TARGET_SAMPLES = 360;
       // Sixty-four cuts per degree matches the boundary solver's own halving
       // cap, and keeps every sample's motion far above the four decimals a
@@ -676,6 +851,7 @@ export class Mechanism {
         this._links.length = 1;
         this._forces.length = 1;
         this._timeNum.length = 0;
+        this._addedSamples.length = 0;
         // Back to its seed entry, not to nothing: the first speed is pushed by
         // the constructor before this function ever runs, so it is the one
         // entry a re-entry will not put back -- and without it the array runs
@@ -695,6 +871,7 @@ export class Mechanism {
           this._links = [start.links];
           this._forces = [start.forces];
           this._timeNum = [];
+          this._addedSamples = [];
           this._inputAngularVelocities = [start.speed];
           this._requiredLoops = start.loops;
           this.mechanismValid = true;
@@ -706,6 +883,8 @@ export class Mechanism {
       }
     }
 
+    this._addedSamples = addedSamples;
+
     // An extension that ran its full second revolution and is still not home
     // bought nothing: keep the one-revolution cycle the old behavior kept.
     if (
@@ -714,8 +893,8 @@ export class Mechanism {
       revolutionsToClose === 2 &&
       this.seamGapAt(currentTimeStamp) > this.seamTolerance()
     ) {
-      this.trimToSample(STEPS_PER_REVOLUTION);
-      currentTimeStamp = STEPS_PER_REVOLUTION;
+      this.trimToSample(revolutionSample);
+      currentTimeStamp = revolutionSample;
       revolutionsToClose = 1;
     }
 
@@ -737,7 +916,22 @@ export class Mechanism {
   }
 
   /** Drop precomputed samples past `lastSample`, keeping 0..lastSample. */
+  /**
+   * Which samples the look-ahead added, parallel to the frames.
+   *
+   * Empty when nothing was subdivided, which is the ordinary case.
+   */
+  get addedSamples(): boolean[] {
+    return this._addedSamples;
+  }
+
+  /** Whether this cycle needed cutting finer anywhere -- i.e. it passes a fold. */
+  get hasAddedSamples(): boolean {
+    return this._addedSamples.some(Boolean);
+  }
+
   private trimToSample(lastSample: number): void {
+    if (this._addedSamples.length) this._addedSamples.length = lastSample + 1;
     this._joints.length = lastSample + 1;
     this._links.length = lastSample + 1;
     this._forces.length = lastSample + 1;

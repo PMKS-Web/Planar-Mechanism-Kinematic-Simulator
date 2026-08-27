@@ -270,6 +270,12 @@ function isRateUnknown(joint: Joint): joint is RealJoint {
   return joint instanceof RealJoint && (!joint.ground || joint instanceof PrisJoint);
 }
 
+/** What `capturePose` hands back: enough to stand the solver back up. */
+export interface SolverPose {
+  positions: Map<string, number[]>;
+  prior: Map<string, number[]>;
+}
+
 export class PositionSolver {
   static jointMapPositions = new Map<string, Array<number>>();
   /** One step behind jointMapPositions; see concentricSolution. */
@@ -2386,6 +2392,27 @@ export class PositionSolver {
     this.jointMapPositions = heldPositions;
     this.priorJointPositions = heldPrior;
     return false;
+  }
+
+  /**
+   * The pose the solver is standing on, for a caller that may refuse a sample.
+   *
+   * `determinePositionAnalysis` already puts this back when the solver *fails*,
+   * for the reason written above it. A caller that cuts its step finer needs
+   * the same undo for a sample that solved perfectly well and simply landed too
+   * far away to keep -- otherwise the retry reads the rejected sample as the
+   * pose it is stepping from, and picks its circle intersections against it.
+   */
+  static capturePose(): SolverPose {
+    return {
+      positions: new Map(this.jointMapPositions),
+      prior: new Map(this.priorJointPositions),
+    };
+  }
+
+  static restorePose(pose: SolverPose): void {
+    this.jointMapPositions = new Map(pose.positions);
+    this.priorJointPositions = new Map(pose.prior);
   }
 
   private static attemptPositionAnalysis(
