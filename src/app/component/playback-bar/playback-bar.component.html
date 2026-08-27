@@ -99,6 +99,18 @@
                 <span class="rowNote">{{ row.note }}</span>
               }
 
+              <!-- Amber rather than red: the mechanism runs, and runs correctly.
+                   What it is warning about is the linkage, not the answer. -->
+              @if (row.togglePoint) {
+                <span
+                  class="rowToggle"
+                  title="This linkage passes through a toggle, where a very small movement of the input produces a very large one at the output. The motion is solved at a finer step there, and velocities and accelerations near that point are large and change quickly."
+                >
+                  <span class="toggleDot"></span>
+                  Toggle
+                </span>
+              }
+
               <!-- What the handle does when it gets to the end of the track.
                    Grey in both readings: coming round again and turning back
                    are two facts, not a good one and a bad one. -->

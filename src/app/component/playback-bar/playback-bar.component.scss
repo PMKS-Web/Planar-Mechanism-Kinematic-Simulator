@@ -321,6 +321,24 @@
   // Which way the input is going right now, and what it does when it gets to
   // the end of the track. The second is grey in both readings: coming round
   // again and turning back are two facts, not a good one and a bad one.
+  .rowToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+    font-size: 11px;
+    color: #8a6100;
+    white-space: nowrap;
+    cursor: help;
+  }
+
+  .toggleDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #f2b01e;
+  }
+
   .rowNote {
     flex: 0 1 auto;
     min-width: 0;

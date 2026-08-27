@@ -229,6 +229,22 @@ export function readinessOf(
     add({ state: 'warning', title: 'A cylinder cannot use its whole stroke', body: stroke });
   }
 
+  // Only a mechanism that needed cutting finer has one of these, and needing it
+  // is the definition: the walk asks for a finer step exactly where a sample
+  // moved further than a linkage should move in one frame.
+  if (mechanism.hasAddedSamples) {
+    add({
+      state: 'warning',
+      title: 'The linkage passes through a toggle',
+      body:
+        'Somewhere in the cycle this mechanism reaches a position where a very small movement of ' +
+        'the input produces a very large one at the output — a toggle, or dead-centre. The motion ' +
+        'there is solved at a finer step so it can be animated smoothly, but it is genuinely fast: ' +
+        'velocities and accelerations near that point are large and change quickly, and a real ' +
+        'linkage built to this drawing would be hard to control through it.',
+    });
+  }
+
   return {
     id: partition.id,
     ready: mechanism.isMechanismValid() && checks.every((check) => check.state !== 'blocker'),

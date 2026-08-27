@@ -73,6 +73,14 @@ export interface PlaybackRow {
    */
   scrub: number;
   clockwise: boolean;
+  /**
+   * Whether this machine passes through a toggle.
+   *
+   * True exactly when the walk had to cut its step finer somewhere, which is
+   * the same question: it does that where a sample moved further than a linkage
+   * should move in one frame.
+   */
+  togglePoint: boolean;
   /** Which way the input is going right now: "Clockwise", "Closing", ... */
   note: string;
   playing: boolean;
@@ -344,6 +352,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
       // changed on a machine whose input reverses on its own: turning one of
       // those round writes `playbackDirection` and leaves the drive as it was.
       clockwise: this.mechanism.travellingForward(index),
+      togglePoint: mechanism?.hasAddedSamples ?? false,
       note: combined ? '' : this.noteFor(index),
       playing: this.mechanism.isMechanismPlaying(index),
       ownPlay,
