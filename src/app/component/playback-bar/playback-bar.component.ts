@@ -526,23 +526,45 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * One frame along, the way the handle moves it.
+   * One frame along, and round the cycle rather than up against its end.
    *
-   * Through the same seek the scrubber uses, so a keyed step and a nudge of
-   * the handle are the same motion -- and paused first, because a step is a
-   * look at one pose and playback would carry it off before it could be read.
+   * Measured in *time*, which is what a frame is. A machine's own handle
+   * measures how far its input has come -- degrees of crank, centimetres of ram
+   * -- and stepping in those units is only the same motion while the input
+   * never turns round. A ram's travel stops changing at each end of its stroke,
+   * so a step of one frame's worth of travel asked for a position past the end
+   * of the stroke, got the end of the stroke back, and the key stopped working:
+   * `Cylinder_Boom` and `Backhoe_Bucket` moved not at all, `Cylinder_Gripper`
+   * and `Chebyshev_Straight_Line` a couple of frames before sticking. Time has
+   * no turning points, and one frame is the period over the frame count
+   * wherever in the cycle it is taken.
+   *
+   * It also stops the reading being rounded on the way through: the handle's
+   * position is a whole number of thousandths, and a cycle of more than a
+   * thousand frames -- or one merely near it -- loses frames to that rounding.
+   * The combined handle reached 334 of a 359-frame cycle.
+   *
+   * Wrapped, because the cycle is a loop and holding an arrow down should go on
+   * round it. `seekMechanism` wraps seconds itself; the fraction the combined
+   * handle takes is clamped, so it is wrapped here before it is handed over.
+   *
+   * Paused first, because a step is a look at one pose and playback would carry
+   * it off before it could be read.
    */
   stepBy(delta: number): void {
     if (!this.canPlay) return;
     const master = this.rows.find((row) => row.master);
     if (!master) return;
+    const period = this.mechanism.mechanisms[master.leader]?.cyclePeriod ?? 0;
+    if (!(period > 0)) return;
     if (this.mechanism.isPlaying) this.mechanism.setAllPlaying(false);
     const frames = Math.max(this.maxStep, 1);
-    const along = Math.min(1, Math.max(0, master.scrub / 1000 + delta / frames));
+    const now = this.mechanism.secondsOf(master.leader);
+    const next = (((now + (delta * period) / frames) % period) + period) % period;
     if (master.index === -1) {
-      this.mechanism.seekAllAlong(master.leader, along);
+      this.mechanism.seekAllAlong(master.leader, next / period);
     } else {
-      this.mechanism.seekMechanismTo(master.index, along);
+      this.mechanism.seekMechanism(master.leader, next);
     }
     this.publishMotion();
   }
