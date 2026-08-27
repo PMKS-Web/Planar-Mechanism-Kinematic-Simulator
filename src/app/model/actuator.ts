@@ -91,6 +91,24 @@ export function describeActuator(joint: Joint): Actuator | string {
     return `This joint joins ${bodies.length} bodies, so "driven" would not say which pair moves. Drive a joint where exactly two meet.`;
   }
 
+  // A slide is stepped along one fixed direction, settled at t = 0 and held
+  // (`incrementPrisInput`). That is exactly right for a guide cut into the
+  // frame, which does not move, and wrong for a slot cut into a link that does:
+  // commanding travel along last frame's direction never turns the link the
+  // slot is in, so the block slides up a bar that stays where it is and
+  // whatever else holds the block simply stretches. A reader's inverted
+  // slider-crank drove this way and its rocker changed length by 15% over the
+  // cycle, silently, while the app called the mechanism Ready.
+  //
+  // A sealed cylinder is the case that does work, and is exempt: it is driven
+  // by the distance between its two mounts rather than along a direction, which
+  // the solver turns into a circle intersection and solves with everything else
+  // (`drivenCylinderMount`). That is also the way out offered below -- and it is
+  // a real one, because a cylinder is what this drawing is, mechanically.
+  if (joint instanceof PrisJoint && joint.carrier !== undefined && !joint.isSealed) {
+    return 'This slide runs in a slot cut into a moving link, and a driven slide is stepped along a direction that cannot turn with it. Drive the pin that link turns on, or make the slide a cylinder.';
+  }
+
   // Ground first when it is there: a crank's angle is read from the world, not
   // the world's angle from the crank. `incidentBodies` already puts it first.
   const actuator: Actuator = {
@@ -134,6 +152,9 @@ export function describeActuatorRefusal(joint: Joint): { short: string; long: st
   const bodies = incidentBodies(joint).length;
   if (bodies < 2) return { short: 'needs 2 bodies', long };
   if (bodies > 2) return { short: `${bodies} bodies meet`, long };
+  if (joint instanceof PrisJoint && joint.carrier !== undefined && !joint.isSealed) {
+    return { short: 'slot is on a moving link', long };
+  }
   return { short: 'no angle here', long };
 }
 

@@ -496,6 +496,25 @@ export class AnalysisSetupComponent {
     }
   }
 
+  /**
+   * Go and edit the masses, from the table that will not let you.
+   *
+   * The header used to say "Editable in Edit mode", which is a true sentence
+   * and the wrong shape: the reader is looking at the numbers they want to
+   * change and being told, in grey, where the changing happens. It is a
+   * one-press trip and the panel already knows how to make it.
+   *
+   * No part to select, unlike `goTo`: the subject is the table as a whole, so
+   * this opens the mode and the Edit panel's own mass section and leaves the
+   * choosing of a body to the reader.
+   */
+  editMasses(): void {
+    this.tabs.setTab(TabID.EDIT);
+    if (EditPanelComponent.instance) {
+      EditPanelComponent.instance.sectionExpanded['LMass'] = true;
+    }
+  }
+
   nameOf(part: Joint | Link | undefined): string {
     if (!part) return '';
     return (part as RealJoint).name || part.id;
