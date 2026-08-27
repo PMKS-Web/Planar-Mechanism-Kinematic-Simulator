@@ -9,8 +9,8 @@
         option3="SI (m)"
         [formGroup]="this.settingsForm"
         _formControl="globalunit"
-        [tooltip]="'The length unit the whole drawing is measured in.' + unitsLockedNote()"
-        [disabled]="!unitsEditable()"
+        [tooltip]="'The length unit the whole drawing is measured in.' + lockedNote()"
+        [disabled]="!documentEditable()"
         >Global Units
       </radio-block>
       <radio-block
@@ -18,16 +18,18 @@
         option2="Radian"
         [formGroup]="this.settingsForm"
         _formControl="angleunit"
-        [tooltip]="
-          'The unit for angles, angular velocity and angular acceleration.' + unitsLockedNote()
-        "
-        [disabled]="!unitsEditable()"
+        [tooltip]="'The unit for angles, angular velocity and angular acceleration.' + lockedNote()"
+        [disabled]="!documentEditable()"
         >Angle Units
       </radio-block>
       <toggle-block
         [formGroup]="this.settingsForm"
         _formControl="gravity"
-        tooltip="Weight loads every link that has mass. Turn it off to analyze forces without gravity."
+        [tooltip]="
+          'Weight loads every link that has mass. Turn it off to analyze forces without gravity.' +
+          lockedNote()
+        "
+        [disabled]="!documentEditable()"
       >
         Gravity
       </toggle-block>

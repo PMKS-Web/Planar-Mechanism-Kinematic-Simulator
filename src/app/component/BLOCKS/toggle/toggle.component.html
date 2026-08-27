@@ -31,6 +31,10 @@
       </mat-form-field>
     }
     <div class="spacer"></div>
-    <mat-slide-toggle color="primary" [formControlName]="this._formControl()"></mat-slide-toggle>
+    <mat-slide-toggle
+      color="primary"
+      [disabled]="this.disabled()"
+      [formControlName]="this._formControl()"
+    ></mat-slide-toggle>
   </div>
 </div>

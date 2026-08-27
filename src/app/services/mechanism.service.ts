@@ -3020,8 +3020,26 @@ export class MechanismService {
   private readinessCache?: { revision: number; list: MechanismReadiness[] };
 
   private buildReadiness(): MechanismReadiness[] {
-    return this.partitions.map((partition, index) =>
-      readinessOf(partition, this.mechanisms[index], {
+    // Nothing can be said about a machine that has not been solved yet, and on
+    // a large drawing in Edit that is every machine: `shouldDeferSolving` puts
+    // the work off and empties `mechanisms`, leaving `partitions` full. This
+    // indexed the two together and read `.failure` off `undefined`.
+    //
+    // It threw, and because the always-mounted top bar asks for this list once
+    // per mode chip per change-detection pass, it threw again on every pass --
+    // so a 45-joint drawing did not open at all. What the reader saw was the
+    // loading cover staying up forever, which is the app being honest about a
+    // render that never completed and useless about why.
+    //
+    // Guarded per entry rather than only on the flag, because the invariant
+    // that makes indexing safe -- one mechanism per partition, same order --
+    // lives at the other end of `updateMechanism`, and a list that quietly
+    // comes up short is better than a top bar that cannot draw itself.
+    if (this.solvingDeferred) return [];
+    return this.partitions.flatMap((partition, index) => {
+      const mechanism = this.mechanisms[index];
+      if (!mechanism) return [];
+      return readinessOf(partition, mechanism, {
         cylinderName: (sliderId) => {
           const found = this.sealedStructures().find((c) => c.slider.id === sliderId);
           return found ? this.cylinderName(found) : sliderId;
@@ -3050,8 +3068,8 @@ export class MechanismService {
             ? `${magnitude} ${this.nup.unitLabel(this.settingsService.lengthUnit.value)}/s`
             : `${magnitude} RPM ${way}`;
         },
-      })
-    );
+      });
+    });
   }
 
   /**

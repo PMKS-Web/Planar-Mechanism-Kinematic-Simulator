@@ -1381,7 +1381,24 @@ export class SvgGridService {
     // Only ever pressed by hand -- from Settings, or from the zoom warning that
     // offers it -- so it is somebody saying what size they want.
     SettingsService.objectScaleChosen = true;
-    SettingsService._objectScale.next(Number((MARK_TARGET_PX / this.getZoom()).toFixed(2)));
+    const wanted = Number((MARK_TARGET_PX / this.getZoom()).toFixed(2));
+    // Already there, which happens whenever it is pressed twice or pressed at
+    // the zoom it was last used at. Silently doing nothing is the one outcome a
+    // button must not have: with no drawing to compare against, a reader cannot
+    // tell "there was nothing to change" from "this control is broken", and the
+    // usual next move is to press it again.
+    if (wanted === SettingsService.objectScale) {
+      // Divided the way the Settings field divides it. What is stored is a
+      // model-unit length, about 138 at the default; what the reader typed and
+      // can compare against is the 0.7 beside the button. Quoting the stored
+      // number would be quoting a number they have never seen.
+      this.notify.success(
+        'scale.already',
+        `Joints and blocks are already sized for this zoom (${(wanted / MODEL_SCALE).toFixed(2)}).`
+      );
+      return;
+    }
+    SettingsService._objectScale.next(wanted);
     // A link's outline is computed once and cached, and its width is a fraction
     // of this scale -- so a route that changes the scale has to say so, or the
     // bars stay the width they were while every joint, ground mark and arrow

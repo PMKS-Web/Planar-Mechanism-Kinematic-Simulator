@@ -439,33 +439,6 @@
       </g>
     }
   </g>
-  <g id="motorArrowHolder" style="transform: scaleY(-1)" pointer-events="none">
-    @for (motor of drivenPinMotors; track motor.id) {
-      <!-- Placed exactly as the grounded glyph is placed, because it is the
-           same element with the same attributes on an asset that differs only
-           by what has been taken out of it.
-
-           Turned with the case, in the same composition order, so the two are
-           one piece. Drawn upright it read as a label hovering over the motor
-           rather than as part of it: the case swung round with the bar it is
-           bolted to and the arrow inside it did not, which is the one thing a
-           mark meant to say "this is bolted here" must not do. -->
-      <g
-        [attr.transform]="'translate(' + motor.x + ' ' + motor.y + ') rotate(' + motor.angle + ')'"
-      >
-        <image
-          [attr.xlink:href]="
-            motor.cw ? '../../../assets/InputArrowCW.svg' : '../../../assets/InputArrowCCW.svg'
-          "
-          [attr.width]="motorArrowBox.size"
-          [attr.x]="motorArrowBox.x"
-          [attr.y]="motorArrowBox.y"
-          [attr.height]="motorArrowBox.size"
-          style="transform: scaleY(-1)"
-        />
-      </g>
-    }
-  </g>
   <g id="linkHolder" style="transform: scaleY(-1)">
     @for (link of mechanismSrv.getLinks(); track link) {
       <ng-container>
@@ -804,6 +777,43 @@
         <path [attr.d]="ghost.barrel" [attr.fill]="ghost.fill" fill-opacity="0.7" />
         <path [attr.d]="ghost.block" fill="#000000" />
         <path [attr.d]="ghost.rod" [attr.fill]="ghost.fill" fill-opacity="0.7" />
+      </g>
+    }
+  </g>
+  <g id="motorArrowHolder" style="transform: scaleY(-1)" pointer-events="none">
+    @for (motor of drivenPinMotors; track motor.id) {
+      <!-- Placed exactly as the grounded glyph is placed, because it is the
+           same element with the same attributes on an asset that differs only
+           by what has been taken out of it.
+
+           Turned with the case, so the two are one piece. Drawn upright it read
+           as a label hovering over the motor rather than as part of it: the case
+           swung round with the bar it is bolted to and the arrow inside it did
+           not, which is the one thing a mark meant to say "this is bolted here"
+           must not do.
+
+           Above the links, though, where the case below stays under them. The
+           two were drawn together under the links so that the member the motor
+           turns would pass over the arrows exactly as it passes over the case --
+           which is the right reading and made the arrows invisible: a driven
+           floating pin is a pin with two bars meeting on it, and between them
+           they covered the whole mark. The case still tints with the body it is
+           bolted to, which is what made that arrangement worth having; the
+           arrows say which way the thing turns, and a label nobody can see says
+           nothing. Still under `jointHolder`, so the pin itself stays on top. -->
+      <g
+        [attr.transform]="'translate(' + motor.x + ' ' + motor.y + ') rotate(' + motor.angle + ')'"
+      >
+        <image
+          [attr.xlink:href]="
+            motor.cw ? '../../../assets/InputArrowCW.svg' : '../../../assets/InputArrowCCW.svg'
+          "
+          [attr.width]="motorArrowBox.size"
+          [attr.x]="motorArrowBox.x"
+          [attr.y]="motorArrowBox.y"
+          [attr.height]="motorArrowBox.size"
+          style="transform: scaleY(-1)"
+        />
       </g>
     }
   </g>

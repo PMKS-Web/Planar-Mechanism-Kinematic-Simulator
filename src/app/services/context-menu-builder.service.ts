@@ -219,7 +219,7 @@ export class ContextMenuBuilderService {
         groups: [
           {
             label: 'State',
-            rows: [this.traceRow(joint), ...this.vectorRows(joint), ...this.forceGraphRow(joint)],
+            rows: [this.traceRow(joint), ...this.vectorRows(joint)],
           },
           { rows: this.positionRows(handlers, undefined) },
         ],
@@ -445,30 +445,6 @@ export class ContextMenuBuilderService {
       // reader to fix the wrong thing.
       refusal: this.analysisRefusal(part) ?? this.mechanism.vectorTraceRefusal(part, quantity),
     });
-  }
-
-  /** In Force mode only: the joint's own force graphs, and why there are none. */
-  private forceGraphRow(joint: RealJoint): MenuRow[] {
-    if (this.tabs.getCurrentTab() !== TabID.FORCE) return [];
-    return [
-      new MenuRow({
-        label: 'Graph Joint Force',
-        icon: 'balance',
-        material: true,
-        alwaysAllowed: true,
-        action: () => this.activeObj.updateSelectedObj(joint),
-        refusal: this.mechanism.jointHasForceToGraph(joint)
-          ? undefined
-          : // "One part meets it" is only true when that is what is wrong.
-            // On a machine that cannot be analyzed at all, the joint may have
-            // three bodies at it and still no graph, and telling that reader
-            // to attach something would send them to fix the wrong thing.
-            (this.analysisRefusal(joint) ?? {
-              short: 'one part meets it',
-              long: 'Only one part meets this joint, so there is no second body for it to react against and no force to graph.',
-            }),
-      }),
-    ];
   }
 
   private deleteJointRow(joint: RealJoint, sealed: Cylinder | undefined): MenuRow {
@@ -736,8 +712,7 @@ export class ContextMenuBuilderService {
     // "Bar" is only true of two joints. Past that the link is drawn as a filled
     // shape and behaves as one rigid body carrying three or more pins, so it is
     // called what it is rather than what the two-joint case is called.
-    const kind =
-      bar.subset.length > 0 ? 'Compound' : bar.joints.length > 2 ? 'Body' : 'Bar';
+    const kind = bar.subset.length > 0 ? 'Compound' : bar.joints.length > 2 ? 'Body' : 'Bar';
     const joints = bar.joints.map((joint) => this.nameOf(joint)).join(', ');
     const locked = this.mechanism.isLockedTarget(bar) ? ' · locked' : '';
     return `${kind} · Joints ${joints}${locked}`;

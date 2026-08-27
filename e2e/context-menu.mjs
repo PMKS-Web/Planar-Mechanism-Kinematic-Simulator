@@ -308,10 +308,20 @@ await page.keyboard.press('Escape');
 await page.click('text=Force Analysis');
 await page.waitForTimeout(900);
 const forceJoint = await openOn('#joint_T');
+// The reason lives on the vector toggle now. "Graph Joint Force" used to sit
+// beside it and did nothing a left click does not already do -- it selected the
+// joint -- so the reader who wanted the arrows was offered the panel instead,
+// one row under the switch that draws them.
 check(
-  'a tracer has no force to graph, and the row says why',
-  rowNamed(forceJoint, 'Graph Joint Force')?.slot === 'one part meets it',
-  rowNamed(forceJoint, 'Graph Joint Force')
+  'a tracer is not offered force arrows, and the row says why',
+  rowNamed(forceJoint, 'Force Vectors')?.off === true &&
+    !!rowNamed(forceJoint, 'Force Vectors')?.slot,
+  rowNamed(forceJoint, 'Force Vectors')
+);
+check(
+  'and nothing offers to graph what a click already opens',
+  rowNamed(forceJoint, 'Graph Joint Force') === undefined,
+  forceJoint?.rows?.map((one) => one.label)
 );
 check(
   'while the trace stays live: it is a view, not geometry',
@@ -483,9 +493,9 @@ await page.click('text=Force Analysis');
 await page.waitForTimeout(900);
 const sliderForce = await openOn('#joint_B');
 check(
-  'a slider pin is not told it has no force to graph',
-  rowNamed(sliderForce, 'Graph Joint Force')?.off === false,
-  rowNamed(sliderForce, 'Graph Joint Force')
+  'a slider pin is not told it has no force to draw',
+  rowNamed(sliderForce, 'Force Vectors')?.off === false,
+  rowNamed(sliderForce, 'Force Vectors')
 );
 
 check('nothing threw', errors.length === 0, errors.slice(0, 3));

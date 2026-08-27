@@ -233,18 +233,31 @@ export class SettingsPanelComponent implements OnDestroy {
    * changing what a number means underneath either of them is the same class
    * of surprise the lock exists to prevent.
    */
-  unitsEditable(): boolean {
+  /**
+   * Whether the document itself may be changed right now.
+   *
+   * Units and gravity are both inputs to the solve rather than views of it, so
+   * both are settled in Edit and read-only once an analysis is on screen --
+   * changing either would leave the graphs and the vectors describing a
+   * mechanism that no longer exists, without redrawing them.
+   *
+   * Named for the document rather than for the units it was written for: it now
+   * gates the gravity switch too, and a predicate called `unitsEditable`
+   * guarding gravity is the kind of thing that gets un-guarded by someone
+   * tidying up.
+   */
+  documentEditable(): boolean {
     return this.tabs.getCurrentTab() === TabID.EDIT && !this.settingsService.animating.value;
   }
 
   /**
-   * The way back to a units switch that is greyed out — and nothing at all when
-   * it is not. Told every time, "switch to Edit mode" is read most often by the
-   * reader already standing in Edit mode, where it is the one sentence in the
-   * tooltip that cannot help them.
+   * The way back to a switch that is greyed out — and nothing at all when it is
+   * not. Told every time, "switch to Edit mode" is read most often by the reader
+   * already standing in Edit mode, where it is the one sentence in the tooltip
+   * that cannot help them.
    */
-  unitsLockedNote(): string {
-    if (this.unitsEditable()) return '';
+  lockedNote(): string {
+    if (this.documentEditable()) return '';
     return this.settingsService.animating.value
       ? ' Stop the animation to change it.'
       : ' Switch to Edit mode to change it.';
