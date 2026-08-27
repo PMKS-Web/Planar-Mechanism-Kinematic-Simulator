@@ -68,7 +68,7 @@ describe('a boundary-driven six-bar near two assembly modes', () => {
     expect(residuals(system, initial, 0).length).toBe(system.unknownIds.length * 2);
     expect(hasFullColumnRank(system, initial)).toBe(true);
     expect(
-      system.constraints.some((constraint) => ['onLine', 'parallel'].includes(constraint.kind))
+      system.constraints.some((constraint) => ['onLine', 'fixedAngle'].includes(constraint.kind))
     ).toBe(false);
     expect(PositionSolver.unsolvableJoints).toEqual([]);
   });

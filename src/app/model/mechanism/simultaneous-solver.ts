@@ -50,7 +50,25 @@ export type Constraint =
   /** `point` lies on a line fixed in the world. */
   | { kind: 'onFixedLine'; point: string; at: [number, number]; dir: [number, number] }
   /** Two directions stay parallel — what a weld says about a rider and its slot. */
-  | { kind: 'parallel'; a1: string; a2: string; b1: string; b2: string }
+  /**
+   * The angle from `b1`->`b2` round to `a1`->`a2`, held at the value the
+   * drawing was made with rather than at zero.
+   *
+   * A rider welded into a slot need not lie *along* that slot -- it can be
+   * welded across it at any angle, and that angle is what the weld holds. So
+   * the angle is captured from the pose the system is built at, the same way
+   * `distance` captures a length, and `sin`/`cos` carry it. At sin 0, cos 1
+   * this is plain parallelism, which is all a sealed cylinder's rod ever needs.
+   */
+  | {
+      kind: 'fixedAngle';
+      a1: string;
+      a2: string;
+      b1: string;
+      b2: string;
+      sin: number;
+      cos: number;
+    }
   /** A length the drive prescribes, supplied fresh each sample. */
   | { kind: 'driven'; a: string; b: string }
   /**
@@ -171,7 +189,7 @@ export function residuals(
         );
         break;
       }
-      case 'parallel': {
+      case 'fixedAngle': {
         const [a1x, a1y] = at(c.a1);
         const [a2x, a2y] = at(c.a2);
         const [b1x, b1y] = at(c.b1);
@@ -182,7 +200,11 @@ export function residuals(
         const vy = b2y - b1y;
         const uLen = Math.hypot(ux, uy);
         const vLen = Math.hypot(vx, vy);
-        out.push(uLen < 1e-9 || vLen < 1e-9 ? 0 : (ux * vy - uy * vx) / vLen);
+        // Zero when the two directions stand at the captured angle. Scaled by
+        // the slot's length so it reads as the rider's far end missing its
+        // place, in model units, like every other row.
+        const off = c.cos * (ux * vy - uy * vx) + c.sin * (ux * vx + uy * vy);
+        out.push(uLen < 1e-9 || vLen < 1e-9 ? 0 : off / vLen);
         break;
       }
     }
@@ -339,7 +361,7 @@ export function jacobian(
         add(current, c.pivot, -dRdax - dRdwx, -dRday - dRdwy);
         break;
       }
-      case 'parallel': {
+      case 'fixedAngle': {
         const [a1x, a1y] = at(c.a1);
         const [a2x, a2y] = at(c.a2);
         const [b1x, b1y] = at(c.b1);
@@ -349,13 +371,17 @@ export function jacobian(
         const vx = b2x - b1x;
         const vy = b2y - b1y;
         const span = Math.hypot(vx, vy) || 1;
-        const cross = ux * vy - uy * vx;
-        const scaled = cross / (span * span * span);
+        const off = c.cos * (ux * vy - uy * vx) + c.sin * (ux * vx + uy * vy);
+        const scaled = off / (span * span * span);
+        const uxD = (c.cos * vy + c.sin * vx) / span;
+        const uyD = (-c.cos * vx + c.sin * vy) / span;
+        const vxD = (-c.cos * uy + c.sin * ux) / span - scaled * vx;
+        const vyD = (c.cos * ux + c.sin * uy) / span - scaled * vy;
         const current = row();
-        add(current, c.a2, vy / span, -vx / span);
-        add(current, c.a1, -vy / span, vx / span);
-        add(current, c.b2, -uy / span - scaled * vx, ux / span - scaled * vy);
-        add(current, c.b1, uy / span + scaled * vx, -ux / span + scaled * vy);
+        add(current, c.a2, uxD, uyD);
+        add(current, c.a1, -uxD, -uyD);
+        add(current, c.b2, vxD, vyD);
+        add(current, c.b1, -vxD, -vyD);
         break;
       }
     }
@@ -592,7 +618,7 @@ export function boundaryJoints(system: SimultaneousSystem): string[] {
       case 'onFixedLine':
         note(c.point);
         break;
-      case 'parallel':
+      case 'fixedAngle':
         note(c.a1, c.a2, c.b1, c.b2);
         break;
       case 'drivenAngle':
