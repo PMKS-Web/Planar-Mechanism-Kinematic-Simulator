@@ -1,5 +1,10 @@
 import type { LibraryTemplateID } from '../../app/component/MODALS/templates/template-linkages';
-import { FIXTURE_GALLERY, GalleryEntry, PublishedMasses } from './fixture-gallery';
+import {
+  FIXTURE_GALLERY,
+  GalleryEntry,
+  PublishedLoading,
+  PublishedMasses,
+} from './fixture-gallery';
 
 /**
  * Which verification mechanism each library template ships.
@@ -78,9 +83,32 @@ export const FORCE_STUDY_TEMPLATES: readonly LibraryTemplateID[] = [
   'Crane_Two_Loads',
 ];
 
-/** How a library template's link masses ride its published payload. */
+/**
+ * How a library template's masses and loads ride its published payload.
+ *
+ * The force studies used to publish 'as-built', and a reader switching one of
+ * them between Static and In-motion saw the same number twice: on the punch
+ * press, 399.9 N both ways. The mechanisms are drawn at centimetre scale and
+ * turn at 10 RPM, so the inertial term is small -- but what actually hid it was
+ * the load. Four hundred newtons applied to links weighing a few grams makes
+ * the reaction the load and almost nothing else, and no mass anybody would call
+ * reasonable can compete with that: at a hundred times its fixture mass the
+ * punch press still split 391 against 393.
+ *
+ * So both numbers move, and in opposite directions. A hundredfold on the mass
+ * puts these links in the hundreds of grams rather than the single grams, which
+ * is nearer what a machine this shape would be built from; a hundredth on the
+ * load brings the applied force back down to the same order as the weight it is
+ * being carried against. The measured split is then about 21%, which is where
+ * this mechanism's own inertia-to-weight ratio puts the ceiling at 10 RPM --
+ * see `PublishedLoading` for the sweep those two numbers came out of.
+ *
+ * Not the fixtures themselves, which the MATLAB force specs assert against.
+ */
+const FORCE_STUDY_LOADING: PublishedLoading = { mass: 100, load: 0.01 };
+
 export function libraryTemplateMasses(id: LibraryTemplateID): PublishedMasses {
-  return FORCE_STUDY_TEMPLATES.includes(id) ? 'as-built' : 'zeroed';
+  return FORCE_STUDY_TEMPLATES.includes(id) ? FORCE_STUDY_LOADING : 'zeroed';
 }
 
 export function libraryTemplateEntry(id: LibraryTemplateID): GalleryEntry {

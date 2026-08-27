@@ -143,6 +143,30 @@ function stripMass(built: BuiltMechanism): void {
 }
 
 /**
+ * Scale a built mechanism's mass and load together.
+ *
+ * In place on the copy `fixturePayload` has already built, next to `stripMass`
+ * and for the same reason: several of these mechanisms are what the MATLAB
+ * force specs assert reactions against, and changing the numbers in the fixture
+ * itself would destroy the thing those specs verify.
+ *
+ * Inertia is scaled as well as mass so a link that carries a custom moment
+ * keeps it in proportion; a link on the default gets it recomputed from the
+ * skeleton at the next rebuild anyway, to the same number.
+ */
+function scaleLoading(built: BuiltMechanism, by: PublishedLoading): void {
+  const heavier = (link: Link): void => {
+    link.mass *= by.mass;
+    if (link instanceof RealLink) {
+      link.massMoI *= by.mass;
+      link.subset.forEach(heavier);
+    }
+  };
+  built.links.forEach(heavier);
+  built.forces.forEach((force) => (force.mag *= by.load));
+}
+
+/**
  * Paint the built links the colours a template chose for itself.
  *
  * By link id, which is the joint letters, because that is what the colour
@@ -203,7 +227,38 @@ export interface GalleryEntry {
  * assert reactions against, and taking their mass away in place would destroy
  * the thing those specs verify.
  */
-export type PublishedMasses = 'as-built' | 'zeroed';
+export type PublishedMasses = 'as-built' | 'zeroed' | PublishedLoading;
+
+/**
+ * The mass and the load a force study is published at, scaled from its fixture.
+ *
+ * Both together, because separately neither means anything. What decides
+ * whether a reader can *see* the difference between a static answer and an
+ * in-motion one is the size of the inertial term against everything else in the
+ * reaction -- and that is a ratio, not a quantity.
+ *
+ * Measured on the punch press at its published 10 RPM, peak reaction at joint B:
+ *
+ *   as-built                 399.9 N static   399.9 N in-motion    0%
+ *   mass x10                 399.1            399.3                0%
+ *   mass x100                391.2            393.0                0.5%
+ *   mass x100, load /100       8.0              6.2               23%
+ *   mass x500, load /500      43.3             34.1               21%
+ *   mass x2000, load /2000   176.3            139.2               21%
+ *
+ * Mass alone does nothing, because weight is in the static answer too: raising
+ * it raises both sides equally. The load is what was hiding the effect -- 400 N
+ * applied against links weighing grams, so the reaction was the load and almost
+ * nothing else. Once the load stops dominating the split settles at about 21%,
+ * which is the mechanism's own inertia-to-weight ratio at that speed and is as
+ * far as this can go without turning the crank faster.
+ */
+export interface PublishedLoading {
+  /** Multiplied onto every link's mass, and its inertia with it. */
+  mass: number;
+  /** Multiplied onto every applied force. */
+  load: number;
+}
 
 /** Whichever of the two input speeds a mechanism actually uses. */
 export interface PublishedSpeed {
@@ -771,6 +826,7 @@ export function fixturePayload(
     const built = buildMechanism(fixture);
     scaleBuiltToModelUnits(built);
     if (masses === 'zeroed') stripMass(built);
+    else if (masses !== 'as-built') scaleLoading(built, masses);
     if (fills) recolor(built.links, fills);
     // The speeds ride the URL as settings rather than as anything on a joint,
     // so they are set on the service the encoder is about to read. A fresh one
