@@ -108,6 +108,42 @@ export class KinematicsSolver {
     // Last, because all three routes below seed a grounded guide with zero and
     // none of them ever revisits it.
     this.matchGuidesToRiders(simLinks);
+    this.settleFixedLinks(simLinks);
+  }
+
+  /**
+   * The frame, when somebody has drawn it as a link.
+   *
+   * A link pinned to ground at every one of its joints cannot move, so no route
+   * above solves for it -- and the panel went on offering it the same graphs as
+   * anything else, which came back as charts with no data in them. Four of them
+   * in `Four_Bar_Inversions` and two in `Slider_Crank_Inversions`, which draw
+   * their frames rather than leaving them implied: sixty empty series between
+   * them.
+   *
+   * Its kinematics are not missing, though. They are zero, and a flat line
+   * saying so is a truthful answer to "how fast does the frame turn" -- a
+   * better one than an empty chart, and better than refusing the question.
+   * Written here rather than in the sampler because these maps are what every
+   * reader of the solver asks, not only the graphs.
+   */
+  private static settleFixedLinks(simLinks: Link[]): void {
+    for (const link of simLinks) {
+      if (link instanceof SliderBlock || !link.joints.length) continue;
+      if (!link.joints.every((joint) => (joint as RealJoint).ground)) continue;
+      const [first, second] = link.joints;
+      if (second) {
+        const angle = Math.atan2(second.y - first.y, second.x - first.x);
+        this.linkAngPosMap.set(link.id, (angle * 180) / Math.PI);
+      }
+      this.linkAngVelMap.set(link.id, 0);
+      this.linkAngAccMap.set(link.id, 0);
+      if (link instanceof RealLink) {
+        this.linkCoMMap.set(link.id, [link.CoM.x, link.CoM.y]);
+      }
+      this.linkVelMap.set(link.id, [0, 0]);
+      this.linkAccMap.set(link.id, [0, 0]);
+    }
   }
 
   private static solveRates(
