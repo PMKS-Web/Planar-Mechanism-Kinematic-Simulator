@@ -1,5 +1,15 @@
 <panel-section>
-  <title-block [description]="selectionLabel">Edit Selection</title-block>
+  <!-- The same block, and so the same buttons, a one-part selection is headed
+       with: Lock and Delete mean the same thing to eight joints as to one, and
+       a reader who has learned where they are should not learn again. Rename is
+       off, because a group has no one name to change. -->
+  <editable-title-block
+    [renamable]="false"
+    [displayName]="selectionLabel"
+    [lockState]="lockDisplay()"
+    [toggleLockAction]="toggleLock.bind(this)"
+    [deleteAction]="delete.bind(this)"
+  ></editable-title-block>
 
   @if (homogeneousJoints) {
     <collapsible-subseciton titleLabel="Basic Settings" [expanded]="true">
@@ -17,15 +27,20 @@
       >
         Joint Position
       </dual-input-block>
+    </collapsible-subseciton>
+    <collapsible-subseciton titleLabel="Visual Settings" [expanded]="true">
       <toggle-block
         [formGroup]="form"
-        _formControl="locked"
-        dataAction="lock"
-        [mixed]="lockState().kind === 'mixed'"
-        tooltip="A selection containing anything held by a Lock will not transform."
+        _formControl="trace"
+        dataAction="trace"
+        [mixed]="traceState().kind === 'mixed'"
+        tooltip="Show / hide the path each selected joint takes through the cycle."
       >
-        Locked
+        Trace Path
       </toggle-block>
+      <color-picker type="joint" [parts]="joints" tooltip="The color of every selected joint."
+        >Joint Color</color-picker
+      >
     </collapsible-subseciton>
   }
 
@@ -58,15 +73,11 @@
       >
         Mass
       </input-block>
-      <toggle-block
-        [formGroup]="form"
-        _formControl="locked"
-        dataAction="lock"
-        [mixed]="lockState().kind === 'mixed'"
-        tooltip="A selection containing anything held by a Lock will not transform."
+    </collapsible-subseciton>
+    <collapsible-subseciton titleLabel="Visual Settings" [expanded]="true">
+      <color-picker type="link" [parts]="links" tooltip="The color of every selected link."
+        >Link Color</color-picker
       >
-        Locked
-      </toggle-block>
     </collapsible-subseciton>
   }
 
@@ -76,15 +87,6 @@
         Joint and Link Selection — drag the group or use its canvas handles to move, rotate, or
         scale it together. Geometry fields appear when the selection contains one kind of part.
       </p>
-      <toggle-block
-        [formGroup]="form"
-        _formControl="locked"
-        dataAction="lock"
-        [mixed]="lockState().kind === 'mixed'"
-        tooltip="A selection containing anything held by a Lock will not transform."
-      >
-        Locked
-      </toggle-block>
     </collapsible-subseciton>
   }
 
@@ -96,14 +98,6 @@
       tooltip="Copies the selected topology one grid step away."
     >
       Duplicate Selected
-    </button-block>
-    <button-block
-      icon="delete_outline"
-      color="warn"
-      dataAction="delete"
-      [click]="delete.bind(this)"
-    >
-      Delete Selected
     </button-block>
   </div>
 </panel-section>

@@ -16,10 +16,11 @@ import { SettingsService } from '../../services/settings.service';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { ColorPickerComponent } from '../BLOCKS/color-picker/color-picker.component';
 import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
+import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.component';
 import { InputComponent } from '../BLOCKS/input/input.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
-import { TitleBlock } from '../BLOCKS/title/title.component';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 
 /** The Edit drawer used when more than one typed mechanism part is selected. */
@@ -31,10 +32,11 @@ import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
   imports: [
     ButtonComponent,
     CollapsibleSubsecitonComponent,
+    ColorPickerComponent,
     DualInputComponent,
+    EditableTitleComponent,
     InputComponent,
     PanelSectionComponent,
-    TitleBlock,
     ToggleComponent,
   ],
 })
@@ -55,6 +57,7 @@ export class MultiEditPanelComponent implements OnInit {
     length: new FormControl('', { nonNullable: true, updateOn: 'blur' }),
     angle: new FormControl('', { nonNullable: true, updateOn: 'blur' }),
     mass: new FormControl('', { nonNullable: true, updateOn: 'blur' }),
+    trace: new FormControl(false, { nonNullable: true }),
     locked: new FormControl(false, { nonNullable: true }),
   });
 
@@ -74,6 +77,9 @@ export class MultiEditPanelComponent implements OnInit {
     this.form.controls.mass.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((value) => this.commitMass(value));
+    this.form.controls.trace.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.setTracePath(value));
     this.form.controls.locked.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((value) => this.setLocked(value));
@@ -149,6 +155,36 @@ export class MultiEditPanelComponent implements OnInit {
   lockChecked(): boolean {
     const state = this.lockState();
     return state.kind === 'common' && state.value;
+  }
+
+  /**
+   * What the header's padlock shows.
+   *
+   * Mixed reads as unlocked, because pressing it locks the rest -- which is the
+   * useful half of the gesture when some of a group is already held.
+   */
+  lockDisplay(): boolean | 'mixed' {
+    const state = this.lockState();
+    return state.kind === 'mixed' ? 'mixed' : this.lockChecked();
+  }
+
+  toggleLock(): void {
+    this.setLocked(!this.lockChecked());
+    this.form.patchValue({ locked: this.lockChecked() }, { emitEvent: false });
+  }
+
+  traceState(): CommonValue<boolean> {
+    return this.common(this.joints.map((joint) => joint.showCurve === true));
+  }
+
+  traceChecked(): boolean {
+    const state = this.traceState();
+    return state.kind === 'common' && state.value;
+  }
+
+  setTracePath(traced: boolean): void {
+    this.report(this.multi.setTracePath(this.active.selectedPartRefs, traced));
+    this.active.fakeUpdateSelectedObj();
   }
 
   lengthText(value: CommonValue<number>): string {
@@ -264,6 +300,7 @@ export class MultiEditPanelComponent implements OnInit {
         length: this.lengthText(this.linkValue('length')),
         angle: this.angleText(this.linkValue('angle')),
         mass: this.massText(this.linkValue('mass')),
+        trace: this.traceChecked(),
         locked: this.lockChecked(),
       },
       { emitEvent: false }

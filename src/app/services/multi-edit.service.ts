@@ -189,6 +189,27 @@ export class MultiEditService {
     return OK;
   }
 
+  /**
+   * Turn the traced path on or off for every selected joint.
+   *
+   * Undoable and carried in the URL, the same as the one-joint switch: a path a
+   * shared link dropped is a picture the reader thought they had sent.
+   */
+  setTracePath(refs: readonly SelectedPartRef[], traced: boolean): MultiEditResult {
+    const joints = this.joints(refs);
+    if (!joints) {
+      return this.refusal(
+        'selection.joints-only',
+        'joints only',
+        'A traced path can be switched when every selected item is a joint.'
+      );
+    }
+    joints.forEach((joint) => (joint.showCurve = traced));
+    this.mechanism.updateMechanism(true);
+    this.mechanism.onMechUpdateState.next(2);
+    return OK;
+  }
+
   setLocked(refs: readonly SelectedPartRef[], locked: boolean): MultiEditResult {
     const parts = this.parts(refs);
     if (parts.length === 0 || parts.length !== refs.length) {

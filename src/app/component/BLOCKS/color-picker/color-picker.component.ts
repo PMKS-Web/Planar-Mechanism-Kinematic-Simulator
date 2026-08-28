@@ -25,13 +25,57 @@ export class ColorPickerComponent implements OnChanges {
   readonly tooltip = input<string>();
   readonly type = input<string>();
 
+  /**
+   * A whole selection to paint at once, instead of one part.
+   *
+   * The same swatches either way: choosing a colour for eight links is the same
+   * question as choosing one for a single link, so it is asked with the same
+   * control rather than with a second one that would have to be kept looking
+   * alike by hand. When the parts disagree no swatch is ticked -- there is no
+   * one colour to point at -- and pressing one gives them all that colour.
+   */
+  readonly parts = input<readonly (RealLink | Joint | Force)[]>();
+
   ngOnChanges(): void {
     const link = this.link();
     if (link) this.selectedIndex = this.colorService.getIndexFromLinkColor(link.fill);
   }
 
+  /** The index every selected part is already on, or -1 if they differ. */
+  private commonIndex(parts: readonly (RealLink | Joint | Force)[]): number {
+    const indices = parts.map((part) => this.indexOf(part));
+    return indices.every((index) => index === indices[0]) ? (indices[0] ?? -1) : -1;
+  }
+
+  private indexOf(part: RealLink | Joint | Force): number {
+    switch (this.type()) {
+      case 'joint':
+        return this.colorService.getIndexFromJointFamily((part as Joint).colorFamily);
+      case 'force':
+        return this.colorService.getIndexFromForceColor((part as Force).color);
+      default:
+        return this.colorService.getIndexFromLinkColor((part as RealLink).fill);
+    }
+  }
+
+  private paint(part: RealLink | Joint | Force, index: number): void {
+    switch (this.type()) {
+      case 'joint':
+        (part as Joint).colorFamily = this.colorService.getJointFamilyFromIndex(index);
+        break;
+      case 'force':
+        (part as Force).color = this.colorService.getForceColorFromIndex(index);
+        break;
+      default:
+        (part as RealLink).fill = this.colorService.getLinkColorFromIndex(index);
+        break;
+    }
+  }
+
   /** One picker serves whichever part is selected, so the tick is read from it. */
   chosenIndex(): number {
+    const parts = this.parts();
+    if (parts) return parts.length ? this.commonIndex(parts) : -1;
     const joint = this.joint();
     const force = this.force();
     if (this.type() === 'joint' && joint) {
@@ -49,6 +93,14 @@ export class ColorPickerComponent implements OnChanges {
   // A method that handles the click event on a color swatch
   selectColor(index: number) {
     this.selectedIndex = index;
+    const parts = this.parts();
+    if (parts) {
+      parts.forEach((part) => this.paint(part, index));
+      // Undoable and carried in the URL, the same as painting one part: a
+      // colour a shared link dropped would not be worth putting on.
+      this.mechanism.updateMechanism(true);
+      return;
+    }
     const link = this.link();
     const joint = this.joint();
     const force = this.force();

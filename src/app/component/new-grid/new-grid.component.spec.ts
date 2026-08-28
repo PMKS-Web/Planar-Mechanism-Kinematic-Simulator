@@ -495,10 +495,13 @@ describe('NewGridComponent typed multi-selection', () => {
       'e',
       'w',
     ]);
-    const bounds = component.selectionBounds()!;
+    // On the drawn box, which stands off the parts so a grip does not land on
+    // top of the very joint it was derived from.
+    const box = component.selectionBox(component.selectionBounds()!);
     const east = grips.find((grip) => grip.getAttribute('data-selection-grip') === 'e')!;
     const size = component.selectionHandleSize();
-    expect(Number(east.getAttribute('x'))).toBeCloseTo(bounds.maxX - size / 2);
+    expect(Number(east.getAttribute('x'))).toBeCloseTo(box.maxX - size / 2);
+    expect(box.maxX).toBeGreaterThan(component.selectionBounds()!.maxX);
 
     component['beginSelectionGesture']('rotate', new Coord(MODEL_SCALE, MODEL_SCALE));
     expect(NewGridComponent.isSelectionGestureLive()).toBe(true);
@@ -543,18 +546,20 @@ describe('NewGridComponent typed multi-selection', () => {
       .selectionGrips(component.selectionBounds()!)
       .find((grip) => grip.id === 'e')!;
     expect(east.axes).toBe('x');
+    // The anchor is the westmost joint, not the box's west edge, so the side
+    // being held still does not creep by the width of the inset.
     expect(east.anchor).toEqual({ x: 0, y: MODEL_SCALE / 2 });
 
     component['beginSelectionGesture']('scale', new Coord(east.x, east.y), undefined, east);
     component['timeMouseDown'] = 0;
-    const to = new MouseEvent('mousemove', { clientX: 3 * MODEL_SCALE, clientY: MODEL_SCALE / 2 });
-    component.mouseMove(to);
-    component.mouseUp(new MouseEvent('mouseup', { clientX: 3 * MODEL_SCALE }));
+    const pulled = east.x + MODEL_SCALE;
+    component.mouseMove(new MouseEvent('mousemove', { clientX: pulled, clientY: east.y }));
+    component.mouseUp(new MouseEvent('mouseup', { clientX: pulled, clientY: east.y }));
 
-    // Half again as wide, exactly as tall, and the anchored edge did not move.
+    // Wider, exactly as tall, and the anchored joint did not move at all.
     expect(a.x).toBeCloseTo(0);
     expect(a.y).toBeCloseTo(0);
-    expect(b.x).toBeCloseTo(3 * MODEL_SCALE);
+    expect(b.x).toBeGreaterThan(2 * MODEL_SCALE);
     expect(b.y).toBeCloseTo(MODEL_SCALE);
   });
 

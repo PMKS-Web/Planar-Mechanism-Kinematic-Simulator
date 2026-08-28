@@ -217,14 +217,37 @@ check(
 await page.getByRole('button', { name: 'Undo' }).click();
 await page.waitForTimeout(350);
 
-const scale = await centre('[data-selection-handle="scale"]');
+// Eight grips now, four corners and four edge midpoints, so each is asked for
+// by name. The box stands off the parts, which is what keeps a grip from
+// landing on the very joint its position was derived from.
+check(
+  'the box carries a grip on every corner and every edge',
+  (await page.locator('[data-selection-handle="scale"]').count()) === 8
+);
+
+const corner = await centre('[data-selection-grip="ne"]');
 const beforeScale = await joints(['A', 'C']);
-await drag(scale, { x: scale.x + 100, y: scale.y - 65 });
+await drag(corner, { x: corner.x + 100, y: corner.y - 65 });
 const afterScale = await joints(['A', 'C']);
 const distance = (points) => Math.hypot(points.C.x - points.A.x, points.C.y - points.A.y);
+check('a corner grip changes the size of the group', distance(afterScale) > distance(beforeScale));
+await page.getByRole('button', { name: 'Undo' }).click();
+await page.waitForTimeout(350);
+
+// The half a single grip could never do: one dimension, with the other left
+// exactly as it was.
+const spread = async () => {
+  const at = await joints(['A', 'C']);
+  return { x: Math.abs(at.C.x - at.A.x), y: Math.abs(at.C.y - at.A.y) };
+};
+const east = await centre('[data-selection-grip="e"]');
+const beforeStretch = await spread();
+await drag(east, { x: east.x + 110, y: east.y });
+const afterStretch = await spread();
 check(
-  'the scale handle changes relative size uniformly',
-  distance(afterScale) > distance(beforeScale)
+  'an edge grip stretches one dimension and leaves the other alone',
+  afterStretch.x > beforeStretch.x + 1 && Math.abs(afterStretch.y - beforeStretch.y) < 0.5,
+  JSON.stringify({ beforeStretch, afterStretch })
 );
 await page.getByRole('button', { name: 'Undo' }).click();
 await page.waitForTimeout(350);
@@ -376,7 +399,22 @@ check(
 );
 await page.screenshot({ path: `${OUT}/narrow-selection.png`, fullPage: true });
 
-const heldSelected = await centre('#joint_A');
+// A point that is actually on the canvas. In the narrow layout the multi-edit
+// panel is a bottom sheet over the lower half of the grid, and joint A's centre
+// can sit behind it -- a finger held there presses the sheet, so no menu opens
+// and the check reads as a broken long-press rather than an occluded one.
+const heldSelected = await (async () => {
+  for (const id of ['A', 'C']) {
+    const at = await centre(`#joint_${id}`);
+    if (!at) continue;
+    const onTop = await page.evaluate(
+      ({ x, y }) => document.elementFromPoint(x, y)?.closest('[id^="joint_"]')?.id ?? '',
+      at
+    );
+    if (onTop === `joint_${id}`) return at;
+  }
+  return centre('#joint_A');
+})();
 const touch = await context.newCDPSession(page);
 await touch.send('Input.dispatchTouchEvent', {
   type: 'touchStart',

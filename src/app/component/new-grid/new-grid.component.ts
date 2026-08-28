@@ -1063,6 +1063,19 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
+   * How far the drawn box stands off the parts inside it.
+   *
+   * The bounds are the extreme joints themselves, so a box drawn straight
+   * through them puts a grip exactly on top of a joint -- which then swallows
+   * the click that would have selected it, and cuts the joint in half on
+   * screen. Held off by a grip's width, the box reads as being *around* the
+   * selection and every part inside it stays clickable.
+   */
+  selectionInset(): number {
+    return this.selectionHandleSize();
+  }
+
+  /**
    * The eight grips round the box, in model coordinates.
    *
    * Four corners and four edge midpoints, the arrangement every drawing program
@@ -1077,8 +1090,12 @@ export class NewGridComponent implements OnDestroy {
    * which is what makes the cursor names read straight.
    */
   selectionGrips(bounds: SelectionBounds): (SelectionGrip & { x: number; y: number })[] {
-    const midX = (bounds.minX + bounds.maxX) / 2;
-    const midY = (bounds.minY + bounds.maxY) / 2;
+    const box = this.selectionBox(bounds);
+    const midX = (box.minX + box.maxX) / 2;
+    const midY = (box.minY + box.maxY) / 2;
+    // Grips sit on the drawn box; anchors sit on the parts. Pulling the east
+    // grip scales about the westmost joint, not about the box's west edge, so
+    // the side being held still does not creep by the width of the inset.
     const corner = (id: SelectionGripId, x: number, y: number, cursor: string) => ({
       id,
       x,
@@ -1086,19 +1103,19 @@ export class NewGridComponent implements OnDestroy {
       cursor,
       axes: 'both' as const,
       anchor: {
-        x: x === bounds.minX ? bounds.maxX : bounds.minX,
-        y: y === bounds.minY ? bounds.maxY : bounds.minY,
+        x: x === box.minX ? bounds.maxX : bounds.minX,
+        y: y === box.minY ? bounds.maxY : bounds.minY,
       },
     });
     return [
-      corner('nw', bounds.minX, bounds.maxY, 'nwse-resize'),
-      corner('ne', bounds.maxX, bounds.maxY, 'nesw-resize'),
-      corner('se', bounds.maxX, bounds.minY, 'nwse-resize'),
-      corner('sw', bounds.minX, bounds.minY, 'nesw-resize'),
+      corner('nw', box.minX, box.maxY, 'nwse-resize'),
+      corner('ne', box.maxX, box.maxY, 'nesw-resize'),
+      corner('se', box.maxX, box.minY, 'nwse-resize'),
+      corner('sw', box.minX, box.minY, 'nesw-resize'),
       {
         id: 'n',
         x: midX,
-        y: bounds.maxY,
+        y: box.maxY,
         cursor: 'ns-resize',
         axes: 'y',
         anchor: { x: midX, y: bounds.minY },
@@ -1106,14 +1123,14 @@ export class NewGridComponent implements OnDestroy {
       {
         id: 's',
         x: midX,
-        y: bounds.minY,
+        y: box.minY,
         cursor: 'ns-resize',
         axes: 'y',
         anchor: { x: midX, y: bounds.maxY },
       },
       {
         id: 'e',
-        x: bounds.maxX,
+        x: box.maxX,
         y: midY,
         cursor: 'ew-resize',
         axes: 'x',
@@ -1121,13 +1138,24 @@ export class NewGridComponent implements OnDestroy {
       },
       {
         id: 'w',
-        x: bounds.minX,
+        x: box.minX,
         y: midY,
         cursor: 'ew-resize',
         axes: 'x',
         anchor: { x: bounds.maxX, y: midY },
       },
     ];
+  }
+
+  /** The drawn box: the parts' own bounds, held off by the inset. */
+  selectionBox(bounds: SelectionBounds): SelectionBounds {
+    const inset = this.selectionInset();
+    return {
+      minX: bounds.minX - inset,
+      minY: bounds.minY - inset,
+      maxX: bounds.maxX + inset,
+      maxY: bounds.maxY + inset,
+    };
   }
 
   beginSelectionRotate(event: PointerEvent): void {
@@ -2395,7 +2423,15 @@ export class NewGridComponent implements OnDestroy {
     // on the way out. Spent by the release that follows.
     this.pressBecameMenu = true;
     this.letGoOfEverything();
-    (press.target ?? document.getElementById('canvas'))?.dispatchEvent(
+    // Aimed at whatever is under the finger *now*, not at the node the press
+    // began on. Letting go of the gesture above re-renders the canvas, and
+    // Angular replaces the marks it re-creates -- so the captured target is
+    // often a detached node by this line, and an event dispatched into it
+    // bubbles to nothing. The menu then opened with no rows at all, because
+    // nothing had told it what was pressed: a held finger on a selected joint
+    // produced an empty card.
+    const under = document.elementFromPoint(press.x, press.y);
+    (under ?? press.target ?? document.getElementById('canvas'))?.dispatchEvent(
       new MouseEvent('contextmenu', {
         bubbles: true,
         cancelable: true,

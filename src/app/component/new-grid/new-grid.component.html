@@ -991,32 +991,34 @@
        its top edge and the compass names read as they look. -->
   @if (selectionBounds(); as bounds) {
     <g id="selectionTransformOverlay" class="selectionTransform" style="transform: scaleY(-1)">
-      <rect
-        class="selectionBounds"
-        pointer-events="none"
-        [attr.x]="bounds.minX"
-        [attr.y]="bounds.minY"
-        [attr.width]="Math.max(bounds.maxX - bounds.minX, selectionHandleSize())"
-        [attr.height]="Math.max(bounds.maxY - bounds.minY, selectionHandleSize())"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
-        [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
-      />
-      <line
-        class="selectionStem"
-        pointer-events="none"
-        [attr.x1]="(bounds.minX + bounds.maxX) / 2"
-        [attr.y1]="bounds.maxY"
-        [attr.x2]="(bounds.minX + bounds.maxX) / 2"
-        [attr.y2]="bounds.maxY + selectionRotateReach()"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
-      />
+      @if (selectionBox(bounds); as box) {
+        <rect
+          class="selectionBounds"
+          pointer-events="none"
+          [attr.x]="box.minX"
+          [attr.y]="box.minY"
+          [attr.width]="box.maxX - box.minX"
+          [attr.height]="box.maxY - box.minY"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+          [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
+        />
+        <line
+          class="selectionStem"
+          pointer-events="none"
+          [attr.x1]="(box.minX + box.maxX) / 2"
+          [attr.y1]="box.maxY"
+          [attr.x2]="(box.minX + box.maxX) / 2"
+          [attr.y2]="box.maxY + selectionRotateReach()"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+        />
+      }
       <!-- Round, because it swings rather than pulls -- the same distinction the
            underlay's knob makes. -->
       <circle
         class="selectionHandle selectionRotateHandle"
         data-selection-handle="rotate"
         [attr.cx]="(bounds.minX + bounds.maxX) / 2"
-        [attr.cy]="bounds.maxY + selectionRotateReach()"
+        [attr.cy]="selectionBox(bounds).maxY + selectionRotateReach()"
         [attr.r]="selectionHandleSize() * 0.65"
         [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
         cursor="grab"

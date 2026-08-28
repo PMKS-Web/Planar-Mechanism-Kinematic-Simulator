@@ -51,6 +51,18 @@ describe('MultiEditPanelComponent', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  /** The header's padlock, which is the group's Lock. */
+  function headerLock(element: HTMLElement): HTMLButtonElement | null {
+    return ([...element.querySelectorAll('editable-title-block button')].find((button) =>
+      /lock/i.test(button.textContent ?? '')
+    ) ?? null) as HTMLButtonElement | null;
+  }
+
+  /** The header's trash can. */
+  function headerDelete(element: HTMLElement): HTMLButtonElement | null {
+    return element.querySelector('editable-title-block button[aria-label="Delete"]');
+  }
+
   it('shows common joint values and a clear Mixed state, with no bulk rename', () => {
     const a = new RevJoint('A', 0, S);
     const b = new RevJoint('B', 2 * S, S);
@@ -71,7 +83,12 @@ describe('MultiEditPanelComponent', () => {
     expect(element.querySelector('panel-section')).not.toBeNull();
     expect(element.querySelector('dual-input-block')).not.toBeNull();
     expect(element.querySelector('toggle-block')).not.toBeNull();
-    expect(element.querySelectorAll('button-block')).toHaveLength(2);
+    // Duplicate is the only one left in the strip: Lock and Delete are in the
+    // header now, in the same row a one-part selection puts them.
+    expect(element.querySelectorAll('button-block')).toHaveLength(1);
+    expect(element.querySelector('editable-title-block')).not.toBeNull();
+    expect(headerLock(element)).not.toBeNull();
+    expect(headerDelete(element)).not.toBeNull();
     const x = element.querySelector('[data-field="x"]') as HTMLInputElement;
     const y = element.querySelector('[data-field="y"]') as HTMLInputElement;
     expect(element.textContent).toContain('2 joints selected');
@@ -149,9 +166,9 @@ describe('MultiEditPanelComponent', () => {
     expect(element.textContent).toContain('1 joint · 1 link selected');
     expect(element.querySelector('[data-field="x"]')).toBeNull();
     expect(element.querySelector('[data-field="length"]')).toBeNull();
-    expect(element.querySelector('[data-action="lock"]')).not.toBeNull();
     expect(element.querySelector('[data-action="duplicate"]')).not.toBeNull();
-    expect(element.querySelector('[data-action="delete"]')).not.toBeNull();
+    expect(headerLock(element)).not.toBeNull();
+    expect(headerDelete(element)).not.toBeNull();
   });
 
   it('renders differing lock state as Mixed and applies one requested state', () => {
@@ -172,9 +189,11 @@ describe('MultiEditPanelComponent', () => {
     );
 
     const element = render();
-    const lock = element.querySelector('[data-action="lock"]') as HTMLElement;
-    expect(lock.parentElement?.textContent).toContain('Mixed');
-    (lock.querySelector('button') as HTMLButtonElement).click();
+    // Part-locked reads as unlocked on the header padlock, because pressing it
+    // locks the rest -- which is the useful half of the gesture here.
+    const lock = headerLock(element)!;
+    expect(lock.textContent).toContain('Lock');
+    lock.click();
     fixture.detectChanges();
     expect(multi.setLocked).toHaveBeenCalledWith(active.selectedPartRefs, true);
   });

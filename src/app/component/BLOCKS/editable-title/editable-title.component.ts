@@ -43,6 +43,25 @@ export class EditableTitleComponent {
   readonly displayName = input<string>();
   readonly deleteAction = input.required<() => void>();
 
+  /**
+   * Off for a group, which has no one name to change.
+   *
+   * The rest of the row is the point: Lock and Delete mean the same thing to a
+   * selection of eight joints as to one, and a reader who has learned where
+   * they are should not have to learn again. So the group panel heads itself
+   * with this same block rather than with buttons of its own that would have to
+   * be kept looking alike by hand.
+   */
+  readonly renamable = input(true);
+
+  /**
+   * A lock that is not one object's — a group's, where some members may be held
+   * and others not. `'mixed'` shows the open padlock, because pressing it locks
+   * the rest rather than unlocking the ones that are held.
+   */
+  readonly lockState = input<boolean | 'mixed'>();
+  readonly toggleLockAction = input<() => void>();
+
   editMode = false;
 
   newIDForm = this.fb.group({ newID: [''] });
@@ -108,12 +127,24 @@ export class EditableTitleComponent {
     return undefined;
   }
 
+  /** Whether there is a lock to show at all, from either source. */
+  showsLock(): boolean {
+    return this.toggleLockAction() !== undefined || this.lockTarget() !== undefined;
+  }
+
   isLocked(): boolean {
+    const given = this.lockState();
+    if (given !== undefined) return given === true;
     const target = this.lockTarget();
     return target !== undefined && this.mechanismService.isLockedTarget(target);
   }
 
   toggleLock() {
+    const given = this.toggleLockAction();
+    if (given) {
+      given();
+      return;
+    }
     const target = this.lockTarget();
     if (target) this.mechanismService.toggleLock(target);
   }

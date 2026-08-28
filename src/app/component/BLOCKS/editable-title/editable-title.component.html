@@ -2,7 +2,7 @@
   @if (!editMode) {
     <div class="editModeRow">
       <ng-container *ngTemplateOutlet="contentTpl"></ng-container>
-      {{ displayName() ?? activeObjService.getSelectedObj().name }}
+      {{ displayName() ?? activeObjService.getSelectedObj()?.name }}
       <!--            [matTooltipShowDelay]='1000' matTooltipPosition='above'>-->
     </div>
   }
@@ -30,24 +30,26 @@
   <div class="row">
     <!-- One button for both halves of the rename gesture, sized by its wider
          word the same way the lock button is — entering edit mode must not
-         reshuffle the row. -->
-    <button
-      class="mini-buttons blue"
-      mat-stroked-button
-      color="primary"
-      (click)="editMode ? saveNewID() : gotoEditMode()"
-    >
-      @if (editMode) {
-        <mat-icon>check</mat-icon>
-      } @else {
-        <mat-icon svgIcon="edit_outline"></mat-icon>
-      }
-      <span class="labelSwap">
-        <span [style.visibility]="editMode ? 'hidden' : 'visible'">Rename</span>
-        <span [style.visibility]="editMode ? 'visible' : 'hidden'">Save</span>
-      </span>
-    </button>
-    @if (lockTarget()) {
+         reshuffle the row. Absent for a group, which has no one name. -->
+    @if (renamable()) {
+      <button
+        class="mini-buttons blue"
+        mat-stroked-button
+        color="primary"
+        (click)="editMode ? saveNewID() : gotoEditMode()"
+      >
+        @if (editMode) {
+          <mat-icon>check</mat-icon>
+        } @else {
+          <mat-icon svgIcon="edit_outline"></mat-icon>
+        }
+        <span class="labelSwap">
+          <span [style.visibility]="editMode ? 'hidden' : 'visible'">Rename</span>
+          <span [style.visibility]="editMode ? 'visible' : 'hidden'">Save</span>
+        </span>
+      </button>
+    }
+    @if (showsLock()) {
       <!-- The icon states, the label acts: a locked object shows the closed
            padlock beside the word Unlock. Both labels are always in the box,
            one invisible, so the button is sized by the wider word and nothing
