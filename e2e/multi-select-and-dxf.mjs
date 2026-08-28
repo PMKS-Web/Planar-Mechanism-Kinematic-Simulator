@@ -252,6 +252,86 @@ check(
 await page.getByRole('button', { name: 'Undo' }).click();
 await page.waitForTimeout(350);
 
+// Dragged back through the side that is holding still, the selection turns
+// through it rather than stopping flat against it. Which side of A joint C is
+// on is the thing that has to change.
+const sideOfC = async () => {
+  const at = await joints(['A', 'C']);
+  return Math.sign(at.C.x - at.A.x);
+};
+const eastAgain = await centre('[data-selection-grip="e"]');
+const westAnchor = await centre('[data-selection-grip="w"]');
+const beforeFlip = await sideOfC();
+await drag(eastAgain, { x: westAnchor.x - (eastAgain.x - westAnchor.x), y: eastAgain.y });
+const afterFlip = await sideOfC();
+check(
+  'dragging a grip past the far side turns the selection through it',
+  beforeFlip !== 0 && afterFlip === -beforeFlip,
+  JSON.stringify({ beforeFlip, afterFlip })
+);
+await page.screenshot({ path: `${OUT}/flipped-selection.png` });
+await page.getByRole('button', { name: 'Undo' }).click();
+await page.waitForTimeout(350);
+check('one undo puts the flip back', (await sideOfC()) === beforeFlip);
+
+// Arrows move what is selected, by one square of the drawn grid, or five with
+// Option -- and one press is one thing to undo.
+const cells = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  return { minor: grid.svgGrid.minorCellSize, major: grid.svgGrid.majorCellSize };
+});
+const beforeNudge = await joints(['A', 'C', 'O']);
+await page.keyboard.press('ArrowRight');
+await page.waitForTimeout(250);
+const nudged = await joints(['A', 'C', 'O']);
+check(
+  'an arrow moves the whole selection one grid square, and nothing else',
+  Math.abs(nudged.A.x - beforeNudge.A.x - cells.minor) < 1e-6 &&
+    Math.abs(nudged.C.x - beforeNudge.C.x - cells.minor) < 1e-6 &&
+    Math.abs(nudged.O.x - beforeNudge.O.x) < 1e-6,
+  JSON.stringify({ moved: nudged.A.x - beforeNudge.A.x, cell: cells.minor })
+);
+await page.keyboard.press('Alt+ArrowUp');
+await page.waitForTimeout(250);
+const coarse = await joints(['A']);
+check(
+  'Option makes the step a coarse one',
+  Math.abs(coarse.A.y - nudged.A.y - cells.major) < 1e-6,
+  JSON.stringify({ moved: coarse.A.y - nudged.A.y, cell: cells.major })
+);
+await page.getByRole('button', { name: 'Undo' }).click();
+await page.waitForTimeout(400);
+check('one press is one thing to undo', Math.abs((await joints(['A'])).A.y - nudged.A.y) < 1e-6);
+await page.getByRole('button', { name: 'Undo' }).click();
+await page.waitForTimeout(400);
+
+// And with nothing selected they are the transport keys again.
+await page.keyboard.press('Escape');
+await page.waitForTimeout(200);
+const heard = await page.evaluate(async () => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const seen = [];
+  const sub = grid.shortcuts.pressed.subscribe((id) => seen.push(id));
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  sub.unsubscribe();
+  return seen;
+});
+check(
+  'with nothing selected the arrows are the transport keys again',
+  JSON.stringify(heard) === JSON.stringify(['playback.back', 'playback.forward']),
+  JSON.stringify(heard)
+);
+// Put back the selection the Escape above cleared -- what follows is about
+// what a Lock does to a group, and it needs a group.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const [a, c] = ['A', 'C'].map((id) => grid.mechanismSrv.joints.find((j) => j.id === id));
+  grid.activeObjService.replacePartSelection(a);
+  grid.activeObjService.togglePartSelection(c);
+});
+await page.waitForTimeout(250);
+
 await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.mechanismSrv.joints.find((joint) => joint.id === 'C').locked = true;
