@@ -11,6 +11,7 @@ import {
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { LengthUnit } from '../../../model/unit-enums';
+import { centimetersIn } from '../../../services/export/dxf/semantic-dxf';
 import {
   DEFAULT_DXF_EXPORT_OPTIONS,
   DxfDataFile,
@@ -181,6 +182,33 @@ export class DrawingExportComponent {
   touch(patch: Partial<DxfExportChoices>): void {
     this.options = { ...this.options, ...patch };
     this.preset = 'custom';
+  }
+
+  /**
+   * A change no preset has an opinion about: the file's name, its units, its
+   * DXF version. Neither preset sets any of them, so leaving the preset over
+   * one would put a "Reset to Build parts" button on screen offering to undo
+   * something it would not actually undo -- and the file name, in that same
+   * section, never did.
+   */
+  set(patch: Partial<DxfExportChoices>): void {
+    this.options = { ...this.options, ...patch };
+  }
+
+  /**
+   * Change the unit the export is written in, keeping the pin the size it is.
+   *
+   * The pin diameter is a physical hole, typed in whatever unit the file is in.
+   * Left alone, switching to metres turns the 0.6 cm default into a 0.6 m one
+   * beside a field that still reads 0.6, which nobody would catch until the
+   * part came back.
+   */
+  chooseUnit(unit: LengthUnit): void {
+    const factor = centimetersIn(unit) / centimetersIn(this.effectiveUnit);
+    this.set({
+      unit,
+      pinDiameter: Number((this.options.pinDiameter * factor).toPrecision(4)),
+    });
   }
 
   toggle(key: keyof DxfExportChoices): void {

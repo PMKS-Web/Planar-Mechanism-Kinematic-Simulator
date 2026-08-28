@@ -34,7 +34,7 @@ export function writeDxf(document: DxfDocument): string {
     [20, bounds.max.y],
     [30, 0],
     [0, 'ENDSEC'],
-    ...tablePairs(document),
+    ...tablePairs(document, legacy),
     ...blockPairs(document, legacy),
     [0, 'SECTION'],
     [2, 'ENTITIES'],
@@ -45,14 +45,42 @@ export function writeDxf(document: DxfDocument): string {
   return pairs.map(([code, value]) => `${code}\r\n${format(value)}\r\n`).join('');
 }
 
-function tablePairs(document: DxfDocument): Pair[] {
+function tablePairs(document: DxfDocument, legacy: boolean): Pair[] {
+  // R2000 owns every table and record by handle, and names the class each one
+  // belongs to. Leaving them off is readable -- but an auditing importer
+  // repairs the file on the way in, and a file that needs repairing is one
+  // nobody can tell a real problem from. R12 has neither, so it gets neither.
+  let next = 0x10;
+  let owner = '0';
+  const handle = () => (next++).toString(16).toUpperCase();
+  const head = (): Pair[] => {
+    if (legacy) return [];
+    owner = handle();
+    return [
+      [5, owner],
+      [330, '0'],
+      [100, 'AcDbSymbolTable'],
+    ];
+  };
+  // Owned by the table it sits in, and named for the class it belongs to.
+  const record = (kind: string, code: 5 | 105 = 5): Pair[] =>
+    legacy
+      ? []
+      : [
+          [code, handle()],
+          [330, owner],
+          [100, 'AcDbSymbolTableRecord'],
+          [100, `AcDb${kind}TableRecord`],
+        ];
   return [
     [0, 'SECTION'],
     [2, 'TABLES'],
     [0, 'TABLE'],
     [2, 'LTYPE'],
+    ...head(),
     [70, 1],
     [0, 'LTYPE'],
+    ...record('Linetype'),
     [2, 'CONTINUOUS'],
     [70, 0],
     [3, 'Solid line'],
@@ -62,9 +90,11 @@ function tablePairs(document: DxfDocument): Pair[] {
     [0, 'ENDTAB'],
     [0, 'TABLE'],
     [2, 'LAYER'],
+    ...head(),
     [70, document.layers.length],
     ...document.layers.flatMap((layer): Pair[] => [
       [0, 'LAYER'],
+      ...record('Layer'),
       [2, layer.name],
       [70, 0],
       [62, layer.color],
@@ -77,8 +107,10 @@ function tablePairs(document: DxfDocument): Pair[] {
     // size of its dimensions.
     [0, 'TABLE'],
     [2, 'STYLE'],
+    ...head(),
     [70, 1],
     [0, 'STYLE'],
+    ...record('TextStyle'),
     [2, 'STANDARD'],
     [70, 0],
     [40, 0],
@@ -93,8 +125,11 @@ function tablePairs(document: DxfDocument): Pair[] {
     // drawn the same way and an importer has something to resolve against.
     [0, 'TABLE'],
     [2, 'DIMSTYLE'],
+    ...head(),
     [70, 1],
     [0, 'DIMSTYLE'],
+    // A dimension style is the one record handed round by group 105, not 5.
+    ...record('DimStyle', 105),
     [2, 'PMKS'],
     [70, 0],
     [0, 'ENDTAB'],

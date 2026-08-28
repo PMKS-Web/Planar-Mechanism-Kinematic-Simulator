@@ -118,11 +118,38 @@ describe('DxfExportService', () => {
     expect(block.entities.filter((entity) => entity.type === 'LINE').length).toBeGreaterThanOrEqual(
       3
     );
-    // And the picture is drawn where the link is, not at the origin.
+    // And the picture is drawn where the link is, not at the origin. The link
+    // is 2cm by 1cm and this project is in metres.
     const drawn = block.entities.flatMap((entity) =>
       'vertices' in entity ? (entity.vertices as { x: number; y: number }[]) : []
     );
-    expect(drawn.some((point) => Math.hypot(point.x - 2, point.y - 1) < 1)).toBe(true);
+    expect(drawn.some((point) => Math.hypot(point.x - 0.02, point.y - 0.01) < 0.01)).toBe(true);
+  });
+
+  it('converts the geometry into the unit it labels it with', () => {
+    const { service } = setup();
+    const lengthIn = (unit: LengthUnit | undefined) => {
+      const parsed = new DxfParser().parseSync(service.create({ dataFile: 'none', unit }).content)!;
+      const ends = parsed.entities
+        .filter((entity) => entity.type === 'LINE')
+        .map((entity) => (entity as unknown as { vertices: { x: number; y: number }[] }).vertices)
+        .map(([from, to]) => Math.hypot(to.x - from.x, to.y - from.y));
+      return { header: parsed.header['$INSUNITS'], span: Math.max(...ends) };
+    };
+    // The same 2cm-by-1cm link, asked for three ways. Saying metres and then
+    // writing centimetres hands CAD a mechanism a hundred times too big under
+    // a label that looks right.
+    const centimetres = lengthIn(LengthUnit.CM);
+    expect(centimetres.header).toBe(5);
+    expect(centimetres.span).toBeCloseTo(Math.hypot(2, 1), 6);
+
+    const metres = lengthIn(LengthUnit.METER);
+    expect(metres.header).toBe(6);
+    expect(metres.span).toBeCloseTo(Math.hypot(2, 1) / 100, 6);
+
+    const inches = lengthIn(LengthUnit.INCH);
+    expect(inches.header).toBe(1);
+    expect(inches.span).toBeCloseTo(Math.hypot(2, 1) / 2.54, 6);
   });
 
   it('stands the dimension line off square to what it measures', () => {

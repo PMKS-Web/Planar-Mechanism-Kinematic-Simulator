@@ -79,8 +79,14 @@ const LAYERS = [
 /** Convert the editable t=0 model into a fabrication-neutral kinematic sketch. */
 export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
   const choices = { ...NEUTRAL_DXF_OPTIONS, ...(input.options ?? {}) };
-  const unitScale = 1 / MODEL_SCALE;
+  // Model units -> centimetres -> whatever the export is in. Without the last
+  // step the geometry stays in centimetres while `$INSUNITS` says metres, and
+  // CAD receives a mechanism a hundred times too big under a label that looks
+  // right. `symbolScale` -- one centimetre's worth of the export unit, which is
+  // what every glyph and text height is sized in -- always assumed the drawing
+  // had been converted.
   const symbolScale = centimetersIn(input.lengthUnit);
+  const unitScale = symbolScale / MODEL_SCALE;
   // Everything is shifted by one offset, computed once. A linkage drawn a metre
   // from the model origin imports a metre from the part origin otherwise, which
   // is a fight every time somebody builds from one of these.
@@ -626,7 +632,8 @@ function cylinderKey(cylinder: Cylinder): string {
   return `${cylinder.barrelFar.id}|${cylinder.rodFar.id}`;
 }
 
-function centimetersIn(unit: LengthUnit): number {
+/** One centimetre, expressed in `unit`. The whole drawing is sized in these. */
+export function centimetersIn(unit: LengthUnit): number {
   if (unit === LengthUnit.INCH) return 1 / 2.54;
   if (unit === LengthUnit.METER) return 0.01;
   return 1;

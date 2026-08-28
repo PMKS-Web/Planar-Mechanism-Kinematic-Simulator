@@ -35,7 +35,12 @@ describe('ASCII DXF writer', () => {
     expect(first).toContain('$INSUNITS\r\n70\r\n5');
     expect(first).toContain('$EXTMIN\r\n10\r\n-2\r\n20\r\n-5');
     expect(first).toContain('$EXTMAX\r\n10\r\n4.1\r\n20\r\n3.1');
-    expect(first).toContain('LAYER\r\n2\r\nPMKS_LINKS');
+    // Both layers are declared, each as its own record. Not asserted as one
+    // run of bytes: R2000 puts a handle and two subclass markers between the
+    // record and its name, and this test is about the table being there.
+    expect(first).toContain('AcDbLayerTableRecord');
+    expect(first).toContain('PMKS_LINKS');
+    expect(first).toContain('PMKS_JOINTS');
     expect(first).toContain('LWPOLYLINE');
     expect(first.endsWith('0\r\nEOF\r\n')).toBe(true);
     expect(first).not.toMatch(/NaN|Infinity/);

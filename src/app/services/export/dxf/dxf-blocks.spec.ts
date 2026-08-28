@@ -115,6 +115,18 @@ describe('the DXF writer, on the entities the CAD export added', () => {
       expect(modern).not.toContain('VERTEX');
     });
 
+    it('leaves the tables bare too, where R2000 owns them by handle', () => {
+      const text = writeDxf({ ...base, version: 'R12' });
+      expect(text).not.toContain('AcDbSymbolTable');
+      expect(text).toContain('PMKS_LINK_CENTERLINES');
+      // R2000 names and owns every table and record, so an auditing importer
+      // has nothing to repair on the way in.
+      const modern = writeDxf(base);
+      expect(modern).toContain('AcDbSymbolTable');
+      expect(modern).toContain('AcDbLayerTableRecord');
+      expect(modern).toContain('AcDbDimStyleTableRecord');
+    });
+
     it('carries no subclass markers or handles, which R12 predates', () => {
       const text = writeDxf({ ...polyline, version: 'R12' });
       expect(text).not.toContain('AcDb');

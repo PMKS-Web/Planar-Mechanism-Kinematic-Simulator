@@ -453,6 +453,35 @@ check(
 );
 await page.waitForSelector('app-drawing-export', { state: 'detached' });
 
+// Picking a unit converts the drawing into it. Relabelling `$INSUNITS` while
+// the numbers stay in centimetres hands CAD a mechanism a hundred times too
+// big under a label that looks right.
+await openDrawingDialog();
+await page.locator('app-drawing-export [data-section="file"]').click();
+await page.waitForTimeout(300);
+await page
+  .locator('app-drawing-export .field', { hasText: 'Units' })
+  .getByRole('button', { name: 'm', exact: true })
+  .click();
+const stillPreset = await page.locator('app-drawing-export [data-preset="custom"]').count();
+await page.locator('app-drawing-export [data-section="data"]').click();
+await page.waitForTimeout(300);
+await page.locator('app-drawing-export .radioRow', { hasText: 'None' }).first().click();
+await page.waitForTimeout(300);
+const metricPromise = page.waitForEvent('download');
+await page.getByRole('button', { name: 'Export DXF' }).click();
+const metric = readFileSync(await (await metricPromise).path(), 'utf8');
+const extentOf = (text) => Number(/\$EXTMAX\r?\n10\r?\n([-\d.eE]+)/.exec(text)[1]);
+check(
+  'choosing metres converts the drawing rather than just relabelling it',
+  /\$INSUNITS\r?\n70\r?\n6/.test(metric) && Math.abs(extentOf(metric) - extentOf(dxf) / 100) < 1e-9,
+  `cm ${extentOf(dxf)} -> m ${extentOf(metric)}`
+);
+// And no preset has an opinion about units, so choosing one is not a deviation
+// from it -- offering to "reset" would promise to undo something it would not.
+check('choosing a unit does not drop the dialog into Custom', stillPreset === 0);
+await page.waitForSelector('app-drawing-export', { state: 'detached' });
+
 await page.setViewportSize({ width: 390, height: 844 });
 await openDrawingDialog();
 const dialogBox = await page

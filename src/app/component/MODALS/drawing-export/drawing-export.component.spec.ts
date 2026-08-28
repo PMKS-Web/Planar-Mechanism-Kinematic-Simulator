@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { MatTooltip } from '@angular/material/tooltip';
+import { LengthUnit } from '../../../model/unit-enums';
 import {
   DEFAULT_DXF_EXPORT_OPTIONS,
   DxfExportService,
@@ -30,6 +31,7 @@ describe('DrawingExportComponent', () => {
     hasForces: vi.fn().mockReturnValue(false),
     originJointChoices: vi.fn().mockReturnValue([{ id: 'A', name: 'A' }]),
     firstGroundJointName: vi.fn().mockReturnValue('A'),
+    projectUnit: vi.fn().mockReturnValue(LengthUnit.CM),
   };
 
   function render() {
@@ -102,6 +104,27 @@ describe('DrawingExportComponent', () => {
     expect(component.geometrySummary).toContain('joint marks');
     expect(component.dataSummary).toBe('DXF only');
     expect(component.exportLabel).toBe('Export DXF');
+  });
+
+  it('keeps file-level choices out of Custom, and the pin the size it is', () => {
+    const { component, fixture, element } = render();
+    // Neither preset has an opinion about the file's name, its units or its
+    // DXF version, so changing one must not raise a "Reset to Build parts"
+    // offering to undo something it would not undo.
+    component.chooseUnit(LengthUnit.METER);
+    component.set({ version: 'R12' });
+    fixture.detectChanges();
+    expect(component.preset).toBe('build');
+    expect(element.querySelector('.linkButton')).toBeNull();
+    expect(component.effectiveUnit).toBe(LengthUnit.METER);
+    // 0.6 cm is a hole in a part, not the number 0.6.
+    expect(component.options.pinDiameter).toBeCloseTo(0.006, 6);
+    component.chooseUnit(LengthUnit.INCH);
+    expect(component.options.pinDiameter).toBeCloseTo(0.6 / 2.54, 4);
+    // Back where it started, to within the rounding that keeps the field
+    // showing a number somebody could have typed.
+    component.chooseUnit(LengthUnit.CM);
+    expect(component.options.pinDiameter).toBeCloseTo(0.6, 3);
   });
 
   it('greys a control it cannot offer, and says why on the row', () => {

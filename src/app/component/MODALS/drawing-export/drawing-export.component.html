@@ -87,7 +87,7 @@
               @for (choice of unitChoices; track choice.value) {
                 <button
                   [class.on]="effectiveUnit === choice.value"
-                  (click)="touch({ unit: choice.value })"
+                  (click)="chooseUnit(choice.value)"
                 >
                   {{ choice.label }}
                 </button>
@@ -97,13 +97,10 @@
           <div class="field">
             <span class="fieldName">DXF version</span>
             <div class="segmented">
-              <button
-                [class.on]="options.version === 'R2000'"
-                (click)="touch({ version: 'R2000' })"
-              >
+              <button [class.on]="options.version === 'R2000'" (click)="set({ version: 'R2000' })">
                 R2000
               </button>
-              <button [class.on]="options.version === 'R12'" (click)="touch({ version: 'R12' })">
+              <button [class.on]="options.version === 'R12'" (click)="set({ version: 'R12' })">
                 R12
               </button>
             </div>

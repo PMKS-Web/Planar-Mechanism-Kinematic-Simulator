@@ -171,7 +171,10 @@ export class DxfExportService {
 
   /** Whether any joint is set to trace, which is what the paths option needs. */
   hasTracedJoint(): boolean {
-    return this.mechanism.joints.some((joint) => (joint as { showCurve?: boolean }).showCurve);
+    // What will actually come out, not what has been asked for. A joint keeps
+    // its `showCurve` flag while its machine is unsolvable, and offering the
+    // control then produces a ticked box and an empty layer.
+    return this.tracedPaths().length > 0;
   }
 
   /** Whether there is anything at all to export. */
