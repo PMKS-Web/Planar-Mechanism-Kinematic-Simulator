@@ -25,25 +25,16 @@
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
-import { readFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
+import {
+  TEMPLATE_IDS,
+  TEMPLATE_LINKAGES as payloads,
+  assertTemplatesParsed,
+} from './template-payloads.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
-const SRC = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
-const idList = (name) =>
-  [
-    ...(SRC.match(new RegExp(`export const ${name}[^=]*=\\s*\\[([^\\]]*)\\]`))?.[1] ?? '').matchAll(
-      /'([^']+)'/g
-    ),
-  ].map((m) => m[1]);
-const TEMPLATE_IDS = [...idList('BUILT_IN_TEMPLATE_IDS'), ...idList('LIBRARY_TEMPLATE_IDS')];
-const payloads = Object.fromEntries(
-  [...SRC.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [id, p])
-);
-if (!TEMPLATE_IDS.length) {
-  console.error('Could not parse templates from source.');
-  process.exit(2);
-}
+
+assertTemplatesParsed();
 
 const results = [];
 const record = (what, ok, detail) => {
@@ -80,7 +71,11 @@ const sweep = (key, count) =>
         window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
         steps.push(mech.mechanismTimeStep);
       }
-      return { steps, samples: mech.mechanisms[0]?.joints.length ?? 0 };
+      // The transport's own frame count, which belongs to the master machine --
+      // not to `mechanisms[0]`, which in a drawing holding two machines of
+      // different lengths is a different cycle from the one the arrows step.
+      const bar = ng.getComponent(document.querySelector('app-playback-bar'));
+      return { steps, frames: bar?.maxStep ?? 0 };
     },
     [key, count]
   );
@@ -115,8 +110,8 @@ record('stepping back off the start wraps round to the end', wrapped > 300, {
 for (const id of TEMPLATE_IDS) {
   if (!payloads[id]) continue;
   await openInKinematic(id);
-  const { samples } = await sweep('ArrowRight', 0);
-  if (samples <= 1) continue;
+  const { frames } = await sweep('ArrowRight', 0);
+  if (frames <= 1) continue;
 
   // One press per frame of the cycle: a full lap. Three things have to hold --
   // no press leaves the mechanism where it was, every frame is reached, and the
@@ -126,25 +121,29 @@ for (const id of TEMPLATE_IDS) {
   // belongs to the master machine, and a drawing holding two machines of
   // different lengths is a frame out over a lap. That is an off-by-one about
   // whose cycle is being counted, not about whether the key works.
+  //
+  // The transport's frame count is one short of the samples, because the last
+  // sample closes the cycle on the first: those two are one position, and the
+  // arrows step round the positions.
   const lap = (steps, forwards) => {
     const stalled = steps.findIndex((value, index) => index > 0 && value === steps[index - 1]);
     const wrapped = steps.some((value, index) =>
       index === 0 ? false : forwards ? value < steps[index - 1] : value > steps[index - 1]
     );
     return {
-      ok: stalled === -1 && new Set(steps).size === samples && wrapped,
-      detail: { samples, reached: new Set(steps).size, stalledAtPress: stalled, wrapped },
+      ok: stalled === -1 && new Set(steps).size === frames && wrapped,
+      detail: { frames, reached: new Set(steps).size, stalledAtPress: stalled, wrapped },
     };
   };
 
-  const forward = lap((await sweep('ArrowRight', samples)).steps, true);
+  const forward = lap((await sweep('ArrowRight', frames)).steps, true);
   record(
-    `${id}: Right walks all ${samples} frames and comes back round`,
+    `${id}: Right walks all ${frames} frames and comes back round`,
     forward.ok,
     forward.detail
   );
 
-  const backward = lap((await sweep('ArrowLeft', samples)).steps, false);
+  const backward = lap((await sweep('ArrowLeft', frames)).steps, false);
   record(`${id}: Left walks them the other way`, backward.ok, backward.detail);
 }
 

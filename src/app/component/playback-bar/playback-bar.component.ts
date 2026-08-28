@@ -567,13 +567,25 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     const period = this.mechanism.mechanisms[master.leader]?.cyclePeriod ?? 0;
     if (!(period > 0)) return;
     if (this.mechanism.isPlaying) this.mechanism.setAllPlaying(false);
+    // By frame, and asked of the cycle rather than of the clock. Stepping a
+    // fixed amount of time works only while the samples are evenly spread
+    // through the cycle, and it loses the last one either way: a cycle's period
+    // *is* the time of its final sample, so the step that should land on it
+    // computes exactly one period and wraps to zero instead. Asking
+    // `timeAtStep` for the frame reads the sample's own time, whatever the
+    // spacing, and the frame is what an arrow key means.
+    //
+    // Round `frames`, not `frames + 1`: the last sample closes the cycle on the
+    // first, so those two are one position and stepping through both would show
+    // the same pose twice at the seam.
     const frames = Math.max(this.maxStep, 1);
-    const now = this.mechanism.secondsOf(master.leader);
-    const next = (((now + (delta * period) / frames) % period) + period) % period;
+    const current = this.mechanism.mechanismTimeStep;
+    const next = (((current + delta) % frames) + frames) % frames;
+    const seconds = this.mechanism.timeAtStep(next);
     if (master.index === -1) {
-      this.mechanism.seekAllAlong(master.leader, next / period);
+      this.mechanism.seekAllAlong(master.leader, seconds / period);
     } else {
-      this.mechanism.seekMechanism(master.leader, next);
+      this.mechanism.seekMechanism(master.leader, seconds);
     }
     this.publishMotion();
   }
