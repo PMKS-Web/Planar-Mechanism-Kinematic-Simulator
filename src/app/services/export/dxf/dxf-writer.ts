@@ -102,9 +102,6 @@ function entityPairs(entity: DxfEntity): Pair[] {
   if (entity.type === 'CIRCLE') {
     return [...common, ...pointPairs(entity.center, 10), [40, entity.radius]];
   }
-  if (entity.type === 'POINT') {
-    return [...common, ...pointPairs(entity.at, 10)];
-  }
   if (entity.type === 'POLYLINE') {
     // `66` promises the vertices follow; `70` bit 1 closes the loop, which is
     // what makes the run a face an importer can pick rather than an open path.
@@ -176,7 +173,6 @@ function coordinatesOf(entity: DxfEntity): number[] {
   if (entity.type === 'POLYLINE') {
     return entity.points.flatMap((vertex) => [vertex.x, vertex.y, vertex.bulge ?? 0]);
   }
-  if (entity.type === 'POINT') return [entity.at.x, entity.at.y];
   return [entity.at.x, entity.at.y, entity.height];
 }
 

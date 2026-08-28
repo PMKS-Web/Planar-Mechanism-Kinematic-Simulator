@@ -65,8 +65,6 @@ export class DxfExportService {
           defaultInputClockwise: this.settings.isInputCW.value,
           includeLabels: choices.includeLabels,
           includeKinematicAnnotations: choices.includeKinematicAnnotations,
-          includeForces: choices.includeForces,
-          includeConstruction: choices.includeConstruction,
           options: { ...choices, unit },
           tracedPaths: choices.includeTracedPaths ? this.tracedPaths() : [],
         })
@@ -93,6 +91,9 @@ export class DxfExportService {
         : [
             { name: `${stem}-joints.csv`, text: this.jointCsv(unit) },
             { name: `${stem}-links.csv`, text: this.linkCsv(unit) },
+            ...(this.mechanism.forces.length
+              ? [{ name: `${stem}-forces.csv`, text: this.forceCsv(unit) }]
+              : []),
           ];
     const zip = zipStore([
       { name: dxfName, data: utf8(content) },
@@ -128,8 +129,6 @@ export class DxfExportService {
       defaultInputClockwise: this.settings.isInputCW.value,
       includeLabels: choices.includeLabels,
       includeKinematicAnnotations: choices.includeKinematicAnnotations,
-      includeForces: choices.includeForces,
-      includeConstruction: choices.includeConstruction,
       options: { ...choices, unit },
       tracedPaths: choices.includeTracedPaths ? this.tracedPaths() : [],
     });
@@ -182,7 +181,12 @@ export class DxfExportService {
     const dxf = `${stem} (${unitWord(unit)}).dxf`;
     if (choices.dataFile === 'none') return [dxf];
     if (choices.dataFile === 'json') return [dxf, `${stem}.json`];
-    return [dxf, `${stem}-joints.csv`, `${stem}-links.csv`];
+    return [
+      dxf,
+      `${stem}-joints.csv`,
+      `${stem}-links.csv`,
+      ...(this.mechanism.forces.length ? [`${stem}-forces.csv`] : []),
+    ];
   }
 
   /** The project's own unit, which an export uses unless told otherwise. */
@@ -201,11 +205,6 @@ export class DxfExportService {
   /** Whether there is anything at all to export. */
   hasGeometry(): boolean {
     return this.mechanism.joints.length > 0;
-  }
-
-  /** Whether the drawing carries a load, which is what the forces layer needs. */
-  hasForces(): boolean {
-    return this.mechanism.forces.length > 0;
   }
 
   /** The joints a reader may put the origin on. */
@@ -277,6 +276,31 @@ export class DxfExportService {
     return ['id,name,joints,length,mass,inertia', ...rows].join('\r\n') + '\r\n';
   }
 
+  /**
+   * The loads, as numbers rather than as arrows.
+   *
+   * A force arrow in a file somebody is about to extrude is noise: it is not
+   * part of any part, and it lands as sketch geometry tangled into the one the
+   * load happens to sit on. The magnitude and direction are what a reader
+   * actually wants back, and a table is where those belong.
+   */
+  private forceCsv(unit: LengthUnit): string {
+    const rows = this.mechanism.forces.map((force) =>
+      [
+        force.id,
+        force.name,
+        force.link?.id ?? '',
+        inUnit(force.startCoord.x, unit).toFixed(6),
+        inUnit(force.startCoord.y, unit).toFixed(6),
+        inUnit(force.endCoord.x, unit).toFixed(6),
+        inUnit(force.endCoord.y, unit).toFixed(6),
+        String(force.mag),
+        force.local ? 'link' : 'global',
+      ].join(',')
+    );
+    return ['id,name,link,x,y,end_x,end_y,magnitude,frame', ...rows].join('\r\n') + '\r\n';
+  }
+
   private dataJson(unit: LengthUnit): string {
     return JSON.stringify(
       {
@@ -299,6 +323,15 @@ export class DxfExportService {
           length: inUnit(lengthOf(link), unit),
           mass: link.mass,
           inertia: link.massMoI,
+        })),
+        forces: this.mechanism.forces.map((force) => ({
+          id: force.id,
+          name: force.name,
+          link: force.link?.id,
+          at: { x: inUnit(force.startCoord.x, unit), y: inUnit(force.startCoord.y, unit) },
+          to: { x: inUnit(force.endCoord.x, unit), y: inUnit(force.endCoord.y, unit) },
+          magnitude: force.mag,
+          frame: force.local ? 'link' : 'global',
         })),
       },
       null,

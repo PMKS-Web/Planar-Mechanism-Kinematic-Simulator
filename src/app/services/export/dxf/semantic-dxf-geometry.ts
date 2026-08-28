@@ -1,4 +1,4 @@
-import { DxfEntity, DxfLine, DxfPoint } from './dxf-model';
+import { DxfEntity, DxfPoint } from './dxf-model';
 
 export interface SemanticAxis {
   start: DxfPoint;
@@ -148,53 +148,6 @@ export function inputAnnotation(
       },
     },
   ];
-}
-
-export function forceEntities(
-  force: { startCoord: DxfPoint; endCoord: DxfPoint },
-  scale: number,
-  layer: string
-): DxfEntity[] {
-  const start = { x: force.startCoord.x, y: force.startCoord.y };
-  const end = { x: force.endCoord.x, y: force.endCoord.y };
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const length = Math.hypot(dx, dy);
-  if (!(length > 1e-12)) return [{ type: 'POINT', layer, at: start }];
-  const ux = dx / length;
-  const uy = dy / length;
-  const nx = -uy;
-  const ny = ux;
-  const head = Math.min(0.25 * scale, length * 0.3);
-  return [
-    { type: 'LINE', layer, start, end },
-    {
-      type: 'LINE',
-      layer,
-      start: end,
-      end: { x: end.x - ux * head + nx * head * 0.45, y: end.y - uy * head + ny * head * 0.45 },
-    },
-    {
-      type: 'LINE',
-      layer,
-      start: end,
-      end: { x: end.x - ux * head - nx * head * 0.45, y: end.y - uy * head - ny * head * 0.45 },
-    },
-  ];
-}
-
-export function extentTicks(axis: DxfLine, scale: number, layer: string): DxfLine[] {
-  const dx = axis.end.x - axis.start.x;
-  const dy = axis.end.y - axis.start.y;
-  const length = Math.hypot(dx, dy) || 1;
-  const nx = (-dy / length) * 0.12 * scale;
-  const ny = (dx / length) * 0.12 * scale;
-  return [axis.start, axis.end].map((point) => ({
-    type: 'LINE',
-    layer,
-    start: { x: point.x - nx, y: point.y - ny },
-    end: { x: point.x + nx, y: point.y + ny },
-  }));
 }
 
 function opposedAt(first: SemanticAxis, second: SemanticAxis, at: string): boolean {

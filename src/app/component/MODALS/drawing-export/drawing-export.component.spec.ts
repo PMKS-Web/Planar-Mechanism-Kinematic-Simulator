@@ -28,7 +28,6 @@ describe('DrawingExportComponent', () => {
     }),
     hasGeometry: vi.fn().mockReturnValue(true),
     hasTracedJoint: vi.fn().mockReturnValue(true),
-    hasForces: vi.fn().mockReturnValue(false),
     originJointChoices: vi.fn().mockReturnValue([{ id: 'A', name: 'A' }]),
     firstGroundJointName: vi.fn().mockReturnValue('A'),
     projectUnit: vi.fn().mockReturnValue(LengthUnit.CM),
@@ -46,7 +45,6 @@ describe('DrawingExportComponent', () => {
     vi.clearAllMocks();
     exportService.hasGeometry.mockReturnValue(true);
     exportService.hasTracedJoint.mockReturnValue(true);
-    exportService.hasForces.mockReturnValue(false);
     await TestBed.configureTestingModule({ imports: [DrawingExportComponent] })
       .overrideProvider(DxfExportService, { useValue: exportService })
       .compileComponents();

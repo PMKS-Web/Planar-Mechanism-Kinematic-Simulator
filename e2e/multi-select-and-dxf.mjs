@@ -500,42 +500,23 @@ const download = await downloadPromise;
 const downloadPath = await download.path();
 const dxf = readFileSync(downloadPath, 'utf8');
 check(
-  'the download is ASCII R2000 DXF with semantic layers and no SVG/UI artifacts',
-  /\$ACADVER\r?\n1\r?\nAC1015/.test(dxf) &&
+  'the download is ASCII R12 DXF with semantic layers and no SVG/UI artifacts',
+  /\$ACADVER\r?\n1\r?\nAC1009/.test(dxf) &&
     dxf.includes('PMKS_LINK_CENTERLINES') &&
     !/<svg|selectionTransformOverlay|backgroundAndGrid/i.test(dxf)
 );
-await page.waitForSelector('app-drawing-export', { state: 'detached' });
-
-// R12 is not a different header on the same file: it predates LWPOLYLINE and
-// the subclass markers, and a reader old enough to want R12 is exactly the one
-// that stops at either.
-await openDrawingDialog();
-await page.locator('app-drawing-export [data-section="file"]').click();
-await page.waitForTimeout(300);
-await page
-  .locator('app-drawing-export .field', { hasText: 'DXF version' })
-  .getByRole('button', { name: 'R12', exact: true })
-  .click();
-await page.locator('app-drawing-export [data-section="data"]').click();
-await page.waitForTimeout(300);
-await page.locator('app-drawing-export .radioRow', { hasText: 'None' }).first().click();
-await page.waitForTimeout(300);
-const legacyPromise = page.waitForEvent('download');
-await page.getByRole('button', { name: 'Export DXF' }).click();
-const legacy = readFileSync(await (await legacyPromise).path(), 'utf8');
 check(
-  'the R12 download is really R12 — POLYLINE, no LWPOLYLINE, no subclass markers',
-  /\$ACADVER\r?\n1\r?\nAC1009/.test(legacy) &&
-    !legacy.includes('LWPOLYLINE') &&
-    !legacy.includes('AcDb') &&
-    legacy.includes('PMKS_LINK_CENTERLINES')
+  'and carries nothing R12 predates, nor a bare POINT for CAD to mangle',
+  !dxf.includes('AcDb') &&
+    !dxf.includes('LWPOLYLINE') &&
+    !/\r\n0\r\nPOINT\r\n/.test(dxf) &&
+    !dxf.includes('PMKS_FORCES')
 );
 await page.waitForSelector('app-drawing-export', { state: 'detached' });
 
-// Picking a unit converts the drawing into it. Relabelling `$INSUNITS` while
-// the numbers stay in centimetres hands CAD a mechanism a hundred times too
-// big under a label that looks right.
+// Picking a unit converts the drawing into it. Naming a unit while the numbers
+// stay in centimetres hands CAD a mechanism a hundred times too big under a
+// label that looks right.
 await openDrawingDialog();
 await page.locator('app-drawing-export [data-section="file"]').click();
 await page.waitForTimeout(300);
@@ -550,12 +531,20 @@ await page.locator('app-drawing-export .radioRow', { hasText: 'None' }).first().
 await page.waitForTimeout(300);
 const metricPromise = page.waitForEvent('download');
 await page.getByRole('button', { name: 'Export DXF' }).click();
-const metric = readFileSync(await (await metricPromise).path(), 'utf8');
+const metricDownload = await metricPromise;
+const metric = readFileSync(await metricDownload.path(), 'utf8');
 const extentOf = (text) => Number(/\$EXTMAX\r?\n10\r?\n([-\d.eE]+)/.exec(text)[1]);
 check(
   'choosing metres converts the drawing rather than just relabelling it',
-  /\$INSUNITS\r?\n70\r?\n6/.test(metric) && Math.abs(extentOf(metric) - extentOf(dxf) / 100) < 1e-9,
+  Math.abs(extentOf(metric) - extentOf(dxf) / 100) < 1e-9,
   `cm ${extentOf(dxf)} -> m ${extentOf(metric)}`
+);
+// R12 has no header field for units, so the name is where the answer lives --
+// and the import dialog asks for units at exactly the moment it is on screen.
+check(
+  'and says which unit in the name, where the import dialog will ask',
+  metricDownload.suggestedFilename().includes('(m).dxf'),
+  metricDownload.suggestedFilename()
 );
 // And no preset has an opinion about units, so choosing one is not a deviation
 // from it -- offering to "reset" would promise to undo something it would not.

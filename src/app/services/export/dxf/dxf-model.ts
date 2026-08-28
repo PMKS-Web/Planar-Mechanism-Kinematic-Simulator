@@ -25,11 +25,6 @@ export interface DxfCircle extends LayeredEntity {
   radius: number;
 }
 
-export interface DxfPointEntity extends LayeredEntity {
-  type: 'POINT';
-  at: DxfPoint;
-}
-
 /**
  * A vertex of a polyline, and how the run to the next one curves.
  *
@@ -56,7 +51,12 @@ export interface DxfText extends LayeredEntity {
   angleDeg?: number;
 }
 
-export type DxfEntity = DxfLine | DxfCircle | DxfPointEntity | DxfPolyline | DxfText;
+/**
+ * No `POINT`. A sketch importer either drops one or turns it into a stray
+ * sketch point somebody has to clean out by hand, and a circle at the same
+ * place already gives them a centre to snap and mate to.
+ */
+export type DxfEntity = DxfLine | DxfCircle | DxfPolyline | DxfText;
 
 export interface DxfDocument {
   layers: DxfLayer[];

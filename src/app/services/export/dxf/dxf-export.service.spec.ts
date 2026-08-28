@@ -79,16 +79,21 @@ describe('DxfExportService', () => {
     const { service } = setup();
 
     // The dialog opens on "Build parts", so that is what the service does when
-    // it is told nothing: a layer per link, at the origin, holes and dimensions.
-    // The plain reading of the drawing is `NEUTRAL_DXF_OPTIONS`, which is what
-    // the builder assumes and what every other caller gets.
+    // it is told nothing: a layer per link, at the origin, holes, and every
+    // decorative thing off -- annotations, dimensions and traced curves all
+    // land in CAD as extra sketch geometry tangled into the faces the reader
+    // is trying to select. The plain reading of the drawing is
+    // `NEUTRAL_DXF_OPTIONS`, which is what the builder assumes.
     expect(DEFAULT_DXF_EXPORT_OPTIONS).toMatchObject({
       fileName: 'mechanism',
       origin: 'ground',
       jointCircles: 'holes',
       perLinkLayers: true,
-      includeDimensions: true,
+      includeDimensions: false,
+      includeKinematicAnnotations: false,
+      includeTracedPaths: false,
       includeLabels: false,
+      includeNotes: true,
       dataFile: 'csv',
     });
     expect(NEUTRAL_DXF_OPTIONS).toMatchObject({

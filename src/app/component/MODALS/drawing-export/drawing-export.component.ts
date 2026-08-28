@@ -49,8 +49,6 @@ const LAYER_ROWS: LayerRow[] = [
     name: 'Kinematic annotations',
     cad: 'PMKS_KINEMATIC_ANNOTATIONS',
   },
-  { key: 'includeForces', name: 'Forces', cad: 'PMKS_FORCES' },
-  { key: 'includeConstruction', name: 'Construction guides', cad: 'PMKS_CONSTRUCTION' },
   { key: 'includeLabels', name: 'Labels', cad: 'PMKS_LABELS' },
   { key: 'includeNotes', name: 'Notes', cad: 'PMKS_NOTES' },
 ];
@@ -156,9 +154,6 @@ export class DrawingExportComponent {
     if (this.isEmpty) return 'Nothing to export yet — draw a mechanism first.';
     if (key === 'includeTracedPaths' && !this.exportService.hasTracedJoint()) {
       return 'No joint is tracing a path. Turn one on from the Edit panel.';
-    }
-    if (key === 'includeForces' && !this.exportService.hasForces()) {
-      return 'Nothing loads this mechanism. Add a force from the Edit panel.';
     }
     return '';
   }

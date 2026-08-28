@@ -8,8 +8,6 @@ import { DxfDocument, DxfEntity, DxfLayer, DxfLine, DxfPoint } from './dxf-model
 import { DxfExportOptions, NEUTRAL_DXF_OPTIONS } from './dxf-options';
 import {
   consolidateWeldedAxes,
-  extentTicks,
-  forceEntities,
   groundAnnotation,
   inputAnnotation,
   SemanticAxis,
@@ -26,8 +24,6 @@ export const DXF_LAYER = {
   cylinders: 'PMKS_CYLINDERS',
   annotations: 'PMKS_KINEMATIC_ANNOTATIONS',
   labels: 'PMKS_LABELS',
-  forces: 'PMKS_FORCES',
-  construction: 'PMKS_CONSTRUCTION',
 } as const;
 
 /** One joint's coupler curve, already solved, in model units. */
@@ -44,8 +40,6 @@ export interface SemanticDxfInput {
   defaultInputClockwise: boolean;
   includeLabels?: boolean;
   includeKinematicAnnotations?: boolean;
-  includeForces?: boolean;
-  includeConstruction?: boolean;
   /** The rest of what the CAD Export dialog decides. */
   options?: DxfExportOptions;
   /** Solved by the caller: the builder only ever sees the start pose. */
@@ -63,8 +57,6 @@ const LAYERS = [
   { name: DXF_LAYER.cylinders, color: 6 },
   { name: DXF_LAYER.annotations, color: 3 },
   { name: DXF_LAYER.labels, color: 7 },
-  { name: DXF_LAYER.forces, color: 1 },
-  { name: DXF_LAYER.construction, color: 8 },
 ];
 
 /** Convert the editable t=0 model into a fabrication-neutral kinematic sketch. */
@@ -153,19 +145,15 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     .forEach((joint) => {
       if (cylinderInterior.has(joint.id)) return;
       if (joint instanceof PrisJoint) {
-        const axis = slotAxis(joint, point, symbolScale);
-        entities.push(axis);
-        if (input.includeConstruction !== false) {
-          entities.push(...extentTicks(axis, symbolScale, DXF_LAYER.construction));
-        }
+        entities.push(slotAxis(joint, point, symbolScale));
       }
       const pairedPin = blockPins.has(joint.id) && !(joint instanceof PrisJoint);
       if (!pairedPin && (!(joint instanceof RealJoint) || !joint.isWelded)) {
-        // The point is the useful half either way: SolidWorks and Fusion snap
-        // and mate to sketch points, so it is drawn whatever the circle is
-        // doing. The circle is the part a reader chooses -- nothing, the old
-        // 0.08 mark that has to be deleted in CAD, or the hole they will cut.
-        entities.push({ type: 'POINT', layer: DXF_LAYER.joints, at: point(joint) });
+        // A circle and nothing else. A bare POINT is what sketch importers
+        // either drop or turn into stray sketch points that have to be cleaned
+        // out one at a time, and a circle already gives them a centre to snap
+        // and mate to. The reader chooses what the circle *is* -- nothing, a
+        // centre mark, or the hole they will cut.
         const radius =
           choices.jointCircles === 'holes'
             ? (choices.pinDiameter || NEUTRAL_DXF_OPTIONS.pinDiameter) / 2
@@ -181,9 +169,25 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
           });
         }
         if (choices.includeGroundPoints && joint instanceof RealJoint && joint.ground) {
-          // What a CAD user needs is which points do not move. The ground
-          // *symbol* is a drawing convention; this is the fact behind it.
-          entities.push({ type: 'POINT', layer: DXF_LAYER.groundPoints, at: point(joint) });
+          // Which points do not move, as a cross a reader can see and an
+          // importer keeps. The ground *symbol* is a drawing convention; this
+          // is the fact behind it, and it is what says which part to fix.
+          const at = point(joint);
+          const arm = 0.16 * symbolScale;
+          entities.push(
+            {
+              type: 'LINE',
+              layer: DXF_LAYER.groundPoints,
+              start: { x: at.x - arm, y: at.y },
+              end: { x: at.x + arm, y: at.y },
+            },
+            {
+              type: 'LINE',
+              layer: DXF_LAYER.groundPoints,
+              start: { x: at.x, y: at.y - arm },
+              end: { x: at.x, y: at.y + arm },
+            }
+          );
         }
       }
       if (input.includeKinematicAnnotations !== false && joint instanceof RealJoint) {
@@ -215,39 +219,6 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       }
     });
 
-  if (input.includeForces !== false) {
-    input.forces
-      .slice()
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .forEach((force) => {
-        const startCoord = {
-          x: force.startCoord.x * unitScale,
-          y: force.startCoord.y * unitScale,
-        };
-        entities.push(
-          ...forceEntities(
-            {
-              startCoord,
-              endCoord: { x: force.endCoord.x * unitScale, y: force.endCoord.y * unitScale },
-            },
-            symbolScale,
-            DXF_LAYER.forces
-          )
-        );
-        if (input.includeLabels) {
-          entities.push({
-            type: 'TEXT',
-            layer: DXF_LAYER.labels,
-            at: {
-              x: startCoord.x + 0.12 * symbolScale,
-              y: startCoord.y + 0.12 * symbolScale,
-            },
-            height: 0.22 * symbolScale,
-            text: force.name,
-          });
-        }
-      });
-  }
   addLabels(input, axes, cylinders, point, symbolScale, entities);
 
   if (choices.includeTracedPaths) {
@@ -262,7 +233,9 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
         })
       );
   }
-  if (choices.includeSlotTravel) entities.push(...slotTravelPoints(input.joints, point));
+  if (choices.includeSlotTravel) {
+    entities.push(...slotTravelPoints(input.joints, point, symbolScale));
+  }
 
   if (choices.includeDimensions) {
     addDimensions(axes, choices, input.lengthUnit, symbolScale, entities);
@@ -340,18 +313,28 @@ function originShift(
   return { x: 0, y: 0 };
 }
 
-/** Both ends of every slot, so its stroke can be modelled rather than guessed. */
+/**
+ * Both ends of every slot, so its stroke can be modelled rather than guessed.
+ *
+ * Small circles rather than bare points, for the same reason the joints are:
+ * an importer keeps a circle and gives the reader a centre to snap to.
+ */
 function slotTravelPoints(
   joints: Joint[],
-  point: (value: { x: number; y: number }) => DxfPoint
+  point: (value: { x: number; y: number }) => DxfPoint,
+  scale: number
 ): DxfEntity[] {
   return joints
     .filter((joint): joint is PrisJoint => joint instanceof PrisJoint)
     .filter((joint) => joint.isFloating && joint.slotJointA && joint.slotJointB)
-    .flatMap((joint): DxfEntity[] => [
-      { type: 'POINT', layer: DXF_LAYER.slots, at: point(joint.slotJointA!) },
-      { type: 'POINT', layer: DXF_LAYER.slots, at: point(joint.slotJointB!) },
-    ]);
+    .flatMap((joint): DxfEntity[] =>
+      [joint.slotJointA!, joint.slotJointB!].map((end) => ({
+        type: 'CIRCLE',
+        layer: DXF_LAYER.slots,
+        center: point(end),
+        radius: 0.06 * scale,
+      }))
+    );
 }
 
 /**

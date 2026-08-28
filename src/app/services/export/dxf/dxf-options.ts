@@ -40,8 +40,6 @@ export interface DxfExportOptions {
   perLinkLayers?: boolean;
   includeGroundPoints?: boolean;
   includeKinematicAnnotations?: boolean;
-  includeForces?: boolean;
-  includeConstruction?: boolean;
   includeLabels?: boolean;
   includeNotes?: boolean;
 
@@ -59,19 +57,25 @@ export type DxfExportChoices = Required<Omit<DxfExportOptions, 'unit' | 'originJ
  * be assembled from defaults scattered across the screen would not be one.
  */
 export const DXF_PRESETS = {
-  /** One part per link, ready to model from. */
+  /**
+   * One part per link, ready to model from -- and nothing else.
+   *
+   * Everything decorative is off. Annotations, dimensions and traced curves are
+   * all useful to look at and all land in CAD as extra sketch geometry tangled
+   * into the very faces the reader is trying to select and extrude. What is
+   * left is the outline, its holes, a layer apiece, a note saying what the file
+   * is, and the numbers DXF cannot carry.
+   */
   build: {
     origin: 'ground',
     jointCircles: 'holes',
-    includeDimensions: true,
+    includeDimensions: false,
     dimensionStyle: 'entities',
-    includeTracedPaths: true,
+    includeTracedPaths: false,
     includeSlotTravel: true,
     perLinkLayers: true,
     includeGroundPoints: true,
-    includeKinematicAnnotations: true,
-    includeForces: false,
-    includeConstruction: true,
+    includeKinematicAnnotations: false,
     includeLabels: false,
     includeNotes: true,
     dataFile: 'csv',
@@ -86,10 +90,8 @@ export const DXF_PRESETS = {
     includeSlotTravel: false,
     perLinkLayers: false,
     includeGroundPoints: true,
-    includeKinematicAnnotations: false,
-    includeForces: false,
-    includeConstruction: false,
-    includeLabels: false,
+    includeKinematicAnnotations: true,
+    includeLabels: true,
     includeNotes: false,
     dataFile: 'none',
   },
@@ -118,8 +120,6 @@ export const NEUTRAL_DXF_OPTIONS: DxfExportChoices = {
   perLinkLayers: false,
   includeGroundPoints: false,
   includeKinematicAnnotations: true,
-  includeForces: true,
-  includeConstruction: true,
   includeLabels: false,
   includeNotes: false,
   dataFile: 'none',

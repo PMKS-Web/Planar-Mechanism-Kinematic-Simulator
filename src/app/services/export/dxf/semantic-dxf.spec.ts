@@ -65,8 +65,11 @@ describe('semantic DXF centerline geometry', () => {
     // them instead, which is what the import dialog asks for anyway.
     expect(parsed.header['$ACADVER']).toBe('AC1009');
     expect(
-      entitiesOn(parsed.entities, DXF_LAYER.joints).filter((entity) => entity.type === 'POINT')
+      entitiesOn(parsed.entities, DXF_LAYER.joints).filter((entity) => entity.type === 'CIRCLE')
     ).toHaveLength(2);
+    // And nothing else: a bare POINT is what sketch importers drop or turn
+    // into stray points somebody has to clean out one at a time.
+    expect(parsed.entities.every((entity) => entity.type !== 'POINT')).toBe(true);
     expect(entitiesOn(parsed.entities, DXF_LAYER.labels)).toHaveLength(0);
     expect(
       entitiesOn(parsed.entities, DXF_LAYER.annotations).some(
@@ -212,7 +215,7 @@ describe('semantic DXF centerline geometry', () => {
     expect(lines).toHaveLength(3);
   });
 
-  it('exports grounded and floating slot axes with pin centers and extent ticks', () => {
+  it('exports grounded and floating slot axes, with a circle at each pin', () => {
     const a = new RevJoint('A', 0, 0);
     const b = new RevJoint('B', 4 * S, 0);
     const carrier = new RealLink('AB', [a, b]);
@@ -232,7 +235,6 @@ describe('semantic DXF centerline geometry', () => {
       })
     );
     const slots = entitiesOn(parsed.entities, DXF_LAYER.slots) as ILineEntity[];
-    const construction = entitiesOn(parsed.entities, DXF_LAYER.construction);
 
     expect(slots.map(lineEnds)).toContainEqual([
       [0, 0],
@@ -242,11 +244,13 @@ describe('semantic DXF centerline geometry', () => {
       [-2, -3],
       [-2, -1],
     ]);
-    expect(construction).toHaveLength(4);
-    const sliderPoints = entitiesOn(parsed.entities, DXF_LAYER.joints).filter(
-      (entity) => entity.type === 'POINT'
-    ) as IPointEntity[];
-    expect(sliderPoints.map((entity) => [entity.position.x, entity.position.y])).toEqual(
+    // The slot axis itself and nothing else. The extent ticks that used to sit
+    // on a construction layer were four more sketch curves to delete in CAD.
+    expect(slots).toHaveLength(2);
+    const sliderPins = entitiesOn(parsed.entities, DXF_LAYER.joints).filter(
+      (entity) => entity.type === 'CIRCLE'
+    ) as ICircleEntity[];
+    expect(sliderPins.map((entity) => [entity.center.x, entity.center.y])).toEqual(
       expect.arrayContaining([
         [2, 0],
         [-2, -2],
@@ -288,14 +292,14 @@ describe('semantic DXF centerline geometry', () => {
     ]);
     expect(entitiesOn(parsed.entities, DXF_LAYER.links)).toHaveLength(0);
     expect(
-      entitiesOn(parsed.entities, DXF_LAYER.joints).filter((entity) => entity.type === 'POINT')
+      entitiesOn(parsed.entities, DXF_LAYER.joints).filter((entity) => entity.type === 'CIRCLE')
     ).toHaveLength(2);
     const labels = entitiesOn(parsed.entities, DXF_LAYER.labels) as ITextEntity[];
     expect(labels.map((label) => label.text)).not.toEqual(expect.arrayContaining(['B', 'C', 'P']));
     expect(entitiesOn(parsed.entities, DXF_LAYER.annotations).length).toBeGreaterThan(0);
   });
 
-  it('keeps forces and optional semantic annotations on separable layers', () => {
+  it('keeps the optional semantic annotations on separable layers', () => {
     const a = new RevJoint('A', 0, 0, true, true);
     const b = new RevJoint('B', 2 * S, 0);
     const link = new RealLink('AB', [a, b]);
@@ -314,27 +318,28 @@ describe('semantic DXF centerline geometry', () => {
     const withOptions = parsedOf(
       buildSemanticDxf({ ...base, includeLabels: true, includeKinematicAnnotations: true })
     );
-    expect(entitiesOn(withOptions.entities, DXF_LAYER.forces).length).toBeGreaterThan(1);
     expect(entitiesOn(withOptions.entities, DXF_LAYER.annotations).length).toBeGreaterThan(0);
     expect(entitiesOn(withOptions.entities, DXF_LAYER.labels).length).toBeGreaterThan(0);
     expect(
       (entitiesOn(withOptions.entities, DXF_LAYER.labels) as ITextEntity[]).map(
         (entity) => entity.text
       )
-    ).toEqual(expect.arrayContaining(['Coupler', 'Load']));
+    ).toEqual(expect.arrayContaining(['Coupler']));
+    // The load is not drawn at all any more: an arrow in a file somebody is
+    // about to extrude is sketch geometry tangled into a part, and the numbers
+    // behind it are in the companion table instead.
+    expect(
+      withOptions.entities.map((entity) => (entity as { layer?: string }).layer)
+    ).not.toContain('PMKS_FORCES');
 
     const without = parsedOf(
       buildSemanticDxf({
         ...base,
         includeLabels: false,
         includeKinematicAnnotations: false,
-        includeForces: false,
-        includeConstruction: false,
       })
     );
-    expect(entitiesOn(without.entities, DXF_LAYER.forces)).toHaveLength(0);
     expect(entitiesOn(without.entities, DXF_LAYER.annotations)).toHaveLength(0);
     expect(entitiesOn(without.entities, DXF_LAYER.labels)).toHaveLength(0);
-    expect(entitiesOn(without.entities, DXF_LAYER.construction)).toHaveLength(0);
   });
 });
