@@ -36,7 +36,7 @@ describe('DrawingExportComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('mat-checkbox')).toHaveLength(4);
     expect(fixture.nativeElement.querySelector('button[mat-icon-button]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.titleRow > h1')?.textContent).toContain(
-      'Export Drawing'
+      'CAD Export'
     );
     expect(fixture.nativeElement.querySelector('h1[mat-dialog-title]')).toBeNull();
   });

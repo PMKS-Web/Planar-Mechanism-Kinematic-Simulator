@@ -111,7 +111,7 @@ const openProjectMenu = async () => {
 
 const openDrawingDialog = async () => {
   await openProjectMenu();
-  await page.getByRole('button', { name: 'Export Drawing' }).click();
+  await page.getByRole('button', { name: 'CAD Export' }).click();
   await page.waitForSelector('#projectMenu', { state: 'detached' });
   await page.waitForSelector('app-drawing-export', { state: 'visible' });
   await page.waitForTimeout(250);
@@ -325,7 +325,7 @@ check(
 
 await openDrawingDialog();
 check(
-  'Export Drawing explains its start-pose centerline scope and defaults labels off',
+  'CAD Export explains its start-pose centerline scope and defaults labels off',
   (await page.locator('app-drawing-export').innerText()).includes('unsolved start pose') &&
     !(await page.locator('app-drawing-export input[type="checkbox"]').last().isChecked())
 );
@@ -349,7 +349,7 @@ const dialogBox = await page
   .locator('.mat-mdc-dialog-surface:has(app-drawing-export)')
   .boundingBox();
 check(
-  'the Export Drawing flow fits a narrow viewport',
+  'the CAD Export flow fits a narrow viewport',
   !!dialogBox &&
     dialogBox.x >= 0 &&
     dialogBox.x + dialogBox.width <= 390 &&
@@ -357,7 +357,7 @@ check(
   JSON.stringify(dialogBox)
 );
 await page.screenshot({ path: `${OUT}/narrow-dxf-dialog.png`, fullPage: true });
-await page.getByRole('button', { name: 'Close Export Drawing' }).click();
+await page.getByRole('button', { name: 'Close CAD Export' }).click();
 await page.waitForSelector('app-drawing-export', { state: 'detached' });
 await openLibraryReference();
 await page.screenshot({ path: `${OUT}/narrow-library-reference.png`, fullPage: true });
