@@ -1628,6 +1628,21 @@ export class MechanismService {
     this.activeObjService.fakeUpdateSelectedObj();
   }
 
+  /**
+   * Give several selected parts one lock state as one edit.
+   *
+   * This is the batch counterpart of `toggleLock`: it intentionally reuses the
+   * same semantic lock marks, including the single mark that represents a
+   * sealed cylinder, then rebuilds and saves only after every target agrees.
+   */
+  setLocks(targets: readonly (RealJoint | Link | Force)[], locked: boolean): void {
+    const marks = new Set<RealJoint | Force>();
+    targets.forEach((target) => this.lockMarksOf(target).forEach((mark) => marks.add(mark)));
+    marks.forEach((mark) => (mark.locked = locked));
+    this.updateMechanism(true);
+    this.activeObjService.fakeUpdateSelectedObj();
+  }
+
   /** The joint (or force) marks a Lock on this target sets and clears. */
   private lockMarksOf(target: RealJoint | Link | Force): (RealJoint | Force)[] {
     if (target instanceof Force) return [target];
@@ -2035,6 +2050,7 @@ export class MechanismService {
     this.rebuildJointGraph();
     this.reconcileSlots();
     this.reconcileAssemblyWelds();
+    this.activeObjService.reconcilePartSelection(this.joints, this.links);
     PositionSolver.setUpSolvingForces(this.forces);
     this.updateMechanism(save);
     this.onMechUpdateState.next(3);
@@ -5123,8 +5139,9 @@ export class MechanismService {
     }
     if (
       NewGridComponent.debugGetJointState() !== jointStates.dragging &&
-      this.activeObjService.objType == 'Joint' &&
-      joint.id === this.activeObjService.selectedJoint.id
+      (this.activeObjService.objType == 'Joint' ||
+        this.activeObjService.objType == 'MultiSelection') &&
+      this.activeObjService.containsPart({ kind: 'joint', id: joint.id })
     ) {
       return 'joint-selected';
     }
@@ -5241,7 +5258,13 @@ export class MechanismService {
    */
   private nothingIsChosen(): boolean {
     const chosen = this.activeObjService.objType;
-    return chosen !== 'Joint' && chosen !== 'Link' && chosen !== 'Force' && chosen !== 'Mechanism';
+    return (
+      chosen !== 'Joint' &&
+      chosen !== 'Link' &&
+      chosen !== 'MultiSelection' &&
+      chosen !== 'Force' &&
+      chosen !== 'Mechanism'
+    );
   }
 
   /**
@@ -5255,8 +5278,9 @@ export class MechanismService {
   isSelectedJoint(joint: Joint | undefined): boolean {
     return (
       !!joint &&
-      this.activeObjService.objType === 'Joint' &&
-      this.activeObjService.selectedJoint?.id === joint.id
+      (this.activeObjService.objType === 'Joint' ||
+        this.activeObjService.objType === 'MultiSelection') &&
+      this.activeObjService.containsPart({ kind: 'joint', id: joint.id })
     );
   }
 
@@ -5269,12 +5293,13 @@ export class MechanismService {
    * over.
    */
   isSelectedBody(body: Link | undefined): boolean {
-    if (!body || this.activeObjService.objType !== 'Link') return false;
-    const chosen = this.activeObjService.selectedLink;
-    if (!chosen) return false;
-    if (chosen.id === body.id) return true;
-    const cylinder = this.cylinderAt(chosen);
-    return !!cylinder && cylinder === this.cylinderAt(body);
+    if (!body) return false;
+    const choices = this.activeObjService.selectedParts.filter(
+      (part): part is RealLink => part instanceof RealLink
+    );
+    if (choices.some((chosen) => chosen.id === body.id)) return true;
+    const cylinder = this.cylinderAt(body);
+    return !!cylinder && choices.some((chosen) => this.cylinderAt(chosen) === cylinder);
   }
 
   /**
@@ -5320,8 +5345,7 @@ export class MechanismService {
       return 'link-inert';
     }
     if (
-      this.activeObjService.objType == 'Link' &&
-      link.id === this.activeObjService.selectedLink.id
+      this.activeObjService.containsPart({ kind: 'link', id: link.id })
     ) {
       return 'link-selected';
     }

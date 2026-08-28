@@ -2,6 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { MechanismService } from './mechanism.service';
 import { UrlProcessorService } from './url-processor.service';
 import { TEMPLATE_LINKAGES } from '../component/MODALS/templates/template-linkages';
+import { ActiveObjService } from './active-obj.service';
+import { RealLink } from '../model/link';
+import { RealJoint } from '../model/joint';
 
 /**
  * Opening a linkage over one that is already running.
@@ -75,5 +78,41 @@ describe('opening a linkage while another is animating', () => {
     load(LONG);
     expect(mechanism.isPlaying).toBe(false);
     expect(mechanism.mechanismTimeStep).toBe(0);
+  });
+});
+
+describe('transient multi-selection through URL-backed history', () => {
+  let mechanism: MechanismService;
+  let urls: UrlProcessorService;
+  let active: ActiveObjService;
+  const FOUR_BAR = TEMPLATE_LINKAGES['4-Bar'];
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    mechanism = TestBed.inject(MechanismService);
+    urls = TestBed.inject(UrlProcessorService);
+    active = TestBed.inject(ActiveObjService);
+    urls.updateFromURL(FOUR_BAR, false, true, false);
+  });
+
+  it('reconstructs every typed selection identity against newly decoded objects', () => {
+    const joint = mechanism.joints.find(
+      (candidate): candidate is RealJoint => candidate instanceof RealJoint
+    )!;
+    const link = mechanism.links.find(
+      (candidate): candidate is RealLink => candidate instanceof RealLink
+    )!;
+    active.togglePartSelection(joint);
+    active.togglePartSelection(link);
+    const before = active.selectedParts;
+    const refs = active.selectedPartRefs;
+
+    urls.updateFromURL(FOUR_BAR, false, true, false, true);
+
+    expect(active.selectedPartRefs).toEqual(refs);
+    expect(active.selectedParts).toHaveLength(2);
+    expect(active.selectedParts[0]).not.toBe(before[0]);
+    expect(active.selectedParts[1]).not.toBe(before[1]);
+    expect(active.objType).toBe('MultiSelection');
   });
 });

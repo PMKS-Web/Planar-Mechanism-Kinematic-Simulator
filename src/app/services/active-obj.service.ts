@@ -4,6 +4,12 @@ import { Joint, RealJoint } from '../model/joint';
 import { Link, RealLink } from '../model/link';
 import { Coord } from '../model/coord';
 import { SynthesisPose } from './synthesis/synthesis-util';
+import {
+  PartSelectionSnapshot,
+  PartSelectionState,
+  SelectedPart,
+  SelectedPartRef,
+} from '../model/selection';
 
 export type ActiveObjType =
   | 'Nothing'
@@ -13,6 +19,7 @@ export type ActiveObjType =
   | 'Grid'
   | 'SynthesisPose'
   | 'Mechanism'
+  | 'MultiSelection'
   /** The tracing underlay, which is scenery rather than part of the linkage. */
   | 'BackgroundImage';
 
@@ -36,9 +43,27 @@ export class ActiveObjService {
    */
   selectedMechanismIndex: number = -1;
 
+  private readonly partSelection = new PartSelectionState();
+
   constructor() {}
 
   onActiveObjChange = new EventEmitter<string>();
+
+  get selectedParts(): readonly SelectedPart[] {
+    return this.partSelection.parts;
+  }
+
+  get selectedPartRefs(): SelectedPartRef[] {
+    return this.partSelection.refs;
+  }
+
+  get primaryPartRef(): SelectedPartRef | undefined {
+    return this.partSelection.primaryRef;
+  }
+
+  get primaryPart(): SelectedPart | undefined {
+    return this.partSelection.primary;
+  }
 
   getSelectedObj(): RealJoint | Force | RealLink {
     switch (this.objType) {
@@ -48,6 +73,11 @@ export class ActiveObjService {
         return this.selectedForce;
       case 'Link':
         return this.selectedLink;
+      case 'MultiSelection': {
+        const primary = this.primaryPart;
+        if (primary) return primary;
+        throw new Error('No object selected');
+      }
       default:
         throw new Error('No object selected');
     }
@@ -70,6 +100,7 @@ export class ActiveObjService {
    * reads the picture from its own service.
    */
   selectBackgroundImage() {
+    this.resetPartSelection();
     this.selectedMechanismIndex = -1;
     this.objType = 'BackgroundImage';
     this.onActiveObjChange.emit(this.objType);
@@ -77,6 +108,7 @@ export class ActiveObjService {
 
   /** Select a whole machine: everything in it, rather than one part of it. */
   selectMechanism(index: number) {
+    this.resetPartSelection();
     this.selectedMechanismIndex = index;
     this.objType = 'Mechanism';
     this.onActiveObjChange.emit(this.objType);
@@ -92,22 +124,26 @@ export class ActiveObjService {
     this.prevSelectedJoint = this.selectedJoint;
     this.selectedMechanismIndex = -1;
     if (newActiveObj === undefined || newActiveObj === null) {
+      this.resetPartSelection();
       this.objType = 'Grid';
     } else if (newActiveObj instanceof RealJoint) {
-      this.objType = 'Joint';
-      this.selectedJoint = newActiveObj;
+      this.partSelection.replace(newActiveObj);
+      this.syncPartSelection();
     } else if (newActiveObj instanceof RealLink) {
-      this.objType = 'Link';
-      this.selectedLink = newActiveObj;
+      this.partSelection.replace(newActiveObj);
+      this.syncPartSelection();
     } else if (newActiveObj instanceof Force) {
+      this.resetPartSelection();
       this.objType = 'Force';
       this.selectedForce = newActiveObj;
       this.selectedForce.isStartSelected = false;
       this.selectedForce.isEndSelected = false;
     } else if (newActiveObj instanceof SynthesisPose) {
+      this.resetPartSelection();
       this.objType = 'SynthesisPose';
       this.selectedPose = newActiveObj;
     } else if (newActiveObj instanceof Coord) {
+      this.resetPartSelection();
       this.objType = 'Force';
       this.selectedForce = forceParent!;
       this.selectedForce.isStartSelected = false;
@@ -119,5 +155,77 @@ export class ActiveObjService {
       }
     }
     this.onActiveObjChange.emit(this.objType);
+  }
+
+  /** Replace any selected parts with exactly this joint or link. */
+  replacePartSelection(part: SelectedPart): void {
+    this.prevSelectedJoint = this.selectedJoint;
+    this.selectedMechanismIndex = -1;
+    this.partSelection.replace(part);
+    this.syncPartSelection();
+    this.onActiveObjChange.emit(this.objType);
+  }
+
+  /** Add a part, or remove it when it is already selected. */
+  togglePartSelection(part: SelectedPart): void {
+    this.prevSelectedJoint = this.selectedJoint;
+    this.selectedMechanismIndex = -1;
+    this.partSelection.toggle(part);
+    this.syncPartSelection();
+    this.onActiveObjChange.emit(this.objType);
+  }
+
+  containsPart(partOrRef: SelectedPart | SelectedPartRef): boolean {
+    return this.partSelection.contains(partOrRef);
+  }
+
+  clearPartSelection(nextType: 'Grid' | 'Nothing' = 'Grid'): void {
+    this.prevSelectedJoint = this.selectedJoint;
+    this.resetPartSelection();
+    this.selectedMechanismIndex = -1;
+    this.objType = nextType;
+    this.onActiveObjChange.emit(this.objType);
+  }
+
+  snapshotPartSelection(): PartSelectionSnapshot {
+    return this.partSelection.snapshot();
+  }
+
+  restorePartSelection(
+    snapshot: PartSelectionSnapshot,
+    joints: readonly Joint[],
+    links: readonly Link[]
+  ): void {
+    this.partSelection.restore(snapshot, joints, links);
+    this.syncPartSelection();
+    this.onActiveObjChange.emit(this.objType);
+  }
+
+  reconcilePartSelection(joints: readonly Joint[], links: readonly Link[]): void {
+    const snapshot = this.snapshotPartSelection();
+    if (snapshot.refs.length === 0) return;
+    this.restorePartSelection(snapshot, joints, links);
+  }
+
+  private resetPartSelection(): void {
+    this.partSelection.clear();
+  }
+
+  private syncPartSelection(): void {
+    this.selectedParts.forEach((part) => {
+      if (part instanceof RealJoint) this.selectedJoint = part;
+      else this.selectedLink = part;
+    });
+    const primaryPart = this.primaryPart;
+    if (primaryPart instanceof RealJoint) this.selectedJoint = primaryPart;
+    else if (primaryPart instanceof RealLink) this.selectedLink = primaryPart;
+    this.objType =
+      this.selectedParts.length === 0
+        ? 'Grid'
+        : this.selectedParts.length > 1
+          ? 'MultiSelection'
+          : this.selectedParts[0] instanceof RealJoint
+            ? 'Joint'
+            : 'Link';
   }
 }

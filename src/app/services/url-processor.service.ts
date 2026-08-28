@@ -10,7 +10,6 @@ import { SelectedTabService, TabID } from '../selected-tab.service';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { applySynthesisDesign } from './synthesis/synthesis-url';
 import { SynthesisSolutionService } from './synthesis/synthesis-solution.service';
-import { RealLink } from '../model/link';
 
 /** The one query that names a screen instead of describing a mechanism. */
 const LIBRARY_QUERY = 'library';
@@ -117,13 +116,16 @@ export class UrlProcessorService {
     // Selecting something is not an edit. It earns no history entry, so it
     // should not be undone by one.
     //
-    // Named rather than excluded: getSelectedObj() answers for exactly these
-    // three and throws for anything else, so a deny-list turns every selection
-    // kind added later into a crash on Undo. The background image was one --
-    // it is not a mechanism object and has no id to hold.
-    const heldSelection =
-      continuingHistory && ['Joint', 'Link', 'Force'].includes(this.activeObj.objType)
-        ? { type: this.activeObj.objType, id: this.activeObj.getSelectedObj()?.id }
+    // Parts are an ordered typed snapshot, not object references: joint and
+    // link ids may collide, and decoding replaces every selected object.
+    // Forces remain singular, while scenery and screen selections have no
+    // mechanism identity worth carrying through history.
+    const heldPartSelection = continuingHistory
+      ? this.activeObj.snapshotPartSelection()
+      : undefined;
+    const heldForceSelection =
+      continuingHistory && this.activeObj.objType === 'Force'
+        ? this.activeObj.selectedForce?.id
         : undefined;
     mechanismSrv.rewindToStart();
     // The unit the drawing is about to be expressed in decides how big it is on
@@ -217,20 +219,14 @@ export class UrlProcessorService {
     // By id *and* kind: ids are letters handed out alphabetically, so the same
     // letter can name a joint in one state and a link in the next, and a
     // lookup that took the first match would change what the panel is about.
-    if (heldSelection?.id) {
-      const restored =
-        heldSelection.type === 'Joint'
-          ? mechanismSrv.joints.find((joint) => joint.id === heldSelection.id)
-          : heldSelection.type === 'Link'
-            ? // Sub-links included: a weld leaves its constituents selectable,
-              // and they are not in the top-level array.
-              mechanismSrv.links.find(
-                (link) =>
-                  link.id === heldSelection.id ||
-                  (link instanceof RealLink &&
-                    link.subset.some((subset) => subset.id === heldSelection.id))
-              )
-            : mechanismSrv.forces.find((force) => force.id === heldSelection.id);
+    if (heldPartSelection?.refs.length) {
+      this.activeObj.restorePartSelection(
+        heldPartSelection,
+        mechanismSrv.joints,
+        mechanismSrv.links
+      );
+    } else if (heldForceSelection) {
+      const restored = mechanismSrv.forces.find((force) => force.id === heldForceSelection);
       if (restored) this.activeObj.updateSelectedObj(restored);
     }
 

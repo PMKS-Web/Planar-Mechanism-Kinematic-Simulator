@@ -308,7 +308,7 @@ export class GridUtilsService {
     );
   }
 
-  dragJoint(selectedJoint: RealJoint, trueCoord: Coord) {
+  dragJoint(selectedJoint: RealJoint, trueCoord: Coord, rebuild: boolean = true) {
     // The last line of defence, not the first: the canvas refuses at the
     // grab and the panel greys its fields, but every route to "move this
     // joint" — distance fields aimed at a neighbour, the linkage table, a
@@ -364,11 +364,15 @@ export class GridUtilsService {
         if (!moved) break;
       }
       for (const sealed of mounted) {
-        this.dragCylinderMount(sealed, selectedJoint, agreed);
+        this.dragCylinderMount(sealed, selectedJoint, agreed, false);
       }
       // An interior joint (pin, buried barrel end) takes no free move at all:
       // nothing selects one, so a call here is a stray path, and moving it
       // would bend the part.
+      if (rebuild) {
+        this.mechanismSrv.reseatFloatingSliders();
+        this.mechanismSrv.updateMechanism(false);
+      }
       return selectedJoint;
     }
 
@@ -485,8 +489,10 @@ export class GridUtilsService {
     // screen: updateMechanism has already copied the stale position into every
     // solved timestep, so pressing Play snapped the block straight back off its
     // channel.
-    this.mechanismSrv.reseatFloatingSliders();
-    this.mechanismSrv.updateMechanism(false);
+    if (rebuild) {
+      this.mechanismSrv.reseatFloatingSliders();
+      this.mechanismSrv.updateMechanism(false);
+    }
     return selectedJoint;
   }
 
@@ -671,10 +677,15 @@ export class GridUtilsService {
    * to the slot ends. Collinearity holds by construction, so no drag can bend
    * a cylinder.
    */
-  dragCylinderMount(sealed: Cylinder, mount: RealJoint, wanted: Coord): boolean {
+  dragCylinderMount(
+    sealed: Cylinder,
+    mount: RealJoint,
+    wanted: Coord,
+    rebuild: boolean = true
+  ): boolean {
     const pose = this.cylinderMountPose(sealed, mount, wanted);
     if (!pose) return false;
-    this.applyCylinderPose(sealed, pose);
+    this.applyCylinderPose(sealed, pose, rebuild);
     return pose.atMinimum === true;
   }
 
@@ -751,7 +762,7 @@ export class GridUtilsService {
    * One level deep, as `dragLink` is: a third ram bolted to the second follows
    * on the next rebuild rather than in this one.
    */
-  private applyCylinderPose(sealed: Cylinder, pose: CylinderPose): void {
+  private applyCylinderPose(sealed: Cylinder, pose: CylinderPose, rebuild: boolean = true): void {
     // Every other ram's rigid barrel length, read while its geometry is still
     // straight -- rebuilding from a bent intermediate state is what bakes the
     // split in.
@@ -780,8 +791,10 @@ export class GridUtilsService {
       if (carried) this.placeCylinder(other, carried);
     });
 
-    this.mechanismSrv.reseatFloatingSliders();
-    this.mechanismSrv.updateMechanism(false);
+    if (rebuild) {
+      this.mechanismSrv.reseatFloatingSliders();
+      this.mechanismSrv.updateMechanism(false);
+    }
   }
 
   /**
