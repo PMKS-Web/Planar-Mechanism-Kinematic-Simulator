@@ -32,6 +32,8 @@ describe('DrawingExportComponent', () => {
     originJointChoices: vi.fn().mockReturnValue([{ id: 'A', name: 'A' }]),
     firstGroundJointName: vi.fn().mockReturnValue('A'),
     projectUnit: vi.fn().mockReturnValue(LengthUnit.CM),
+    fileNames: vi.fn().mockReturnValue(['mechanism (cm).dxf', 'mechanism-joints.csv']),
+    downloadName: vi.fn().mockReturnValue('mechanism.zip'),
   };
 
   function render() {
@@ -108,11 +110,11 @@ describe('DrawingExportComponent', () => {
 
   it('keeps file-level choices out of Custom, and the pin the size it is', () => {
     const { component, fixture, element } = render();
-    // Neither preset has an opinion about the file's name, its units or its
-    // DXF version, so changing one must not raise a "Reset to Build parts"
-    // offering to undo something it would not undo.
+    // Neither preset has an opinion about the file's name or its units, so
+    // changing one must not raise a "Reset to Build parts" offering to undo
+    // something it would not undo.
     component.chooseUnit(LengthUnit.METER);
-    component.set({ version: 'R12' });
+    component.set({ fileName: 'four-bar' });
     fixture.detectChanges();
     expect(component.preset).toBe('build');
     expect(element.querySelector('.linkButton')).toBeNull();

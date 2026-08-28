@@ -50,10 +50,13 @@ describe('DxfExportService', () => {
     const parsed = new DxfParser().parseSync(file.content);
 
     expect(mechanism.encodeFromStartPose).toHaveBeenCalledOnce();
-    expect(file.name).toBe('mechanism.dxf');
+    // The unit is in the name: R12 has no header field for it, and the import
+    // dialog asks regardless -- so the answer is in front of the reader when
+    // they are being asked.
+    expect(file.name).toBe('mechanism (m).dxf');
     expect(file.mime).toBe('application/dxf;charset=utf-8');
     expect(file.blob.type).toBe(file.mime);
-    expect(parsed?.header['$INSUNITS']).toBe(6);
+    expect(parsed?.header['$ACADVER']).toBe('AC1009');
     expect(parsed?.entities.some((entity) => entity.type === 'LINE')).toBe(true);
   });
 
@@ -63,13 +66,13 @@ describe('DxfExportService', () => {
     const csv = service.create({ dataFile: 'csv' });
     expect(csv.name).toBe('mechanism.zip');
     expect(csv.mime).toBe('application/zip');
-    expect(csv.parts).toEqual(['mechanism.dxf', 'mechanism-joints.csv', 'mechanism-links.csv']);
+    expect(csv.parts).toEqual(['mechanism (m).dxf', 'mechanism-joints.csv', 'mechanism-links.csv']);
     // The DXF is still the content, whatever the delivery: everything that
     // reads a file from this service reads the drawing.
-    expect(csv.content).toContain('AC1015');
+    expect(csv.content).toContain('AC1009');
 
     const json = service.create({ dataFile: 'json' });
-    expect(json.parts).toEqual(['mechanism.dxf', 'mechanism.json']);
+    expect(json.parts).toEqual(['mechanism (m).dxf', 'mechanism.json']);
   });
 
   it('publishes stable UI defaults and sanitizes the requested file name', () => {
@@ -97,59 +100,27 @@ describe('DxfExportService', () => {
     });
     // A data file means two files, so the download is a zip named for the stem.
     expect(service.create({ fileName: '  Lab / linkage.DXF  ' }).name).toBe('Lab_linkage.zip');
-    expect(service.create({ fileName: '///', dataFile: 'none' }).name).toBe('mechanism.dxf');
+    expect(service.create({ fileName: '///', dataFile: 'none' }).name).toBe('mechanism (m).dxf');
   });
 
-  it('draws the picture inside each dimension block, not just the measurement', () => {
+  it('draws each dimension as lines and a number, not as a DIMENSION entity', () => {
     const { service } = setup();
-    const text = service.create({
-      dataFile: 'none',
-      includeDimensions: true,
-      dimensionStyle: 'entities',
-    }).content;
-    const parsed = new DxfParser().parseSync(text)!;
-    const block = parsed.blocks['*D0'];
-    expect(block).toBeDefined();
-    // A reader that redraws the dimension is happy with an empty block; one
-    // that only draws what the block holds -- which is the whole reason anyone
-    // asks for R12 -- would show nothing at all.
-    expect(block.entities.length).toBeGreaterThan(0);
-    expect(block.entities.some((entity) => entity.type === 'TEXT')).toBe(true);
-    expect(block.entities.filter((entity) => entity.type === 'LINE').length).toBeGreaterThanOrEqual(
-      3
+    const parsed = new DxfParser().parseSync(
+      service.create({ dataFile: 'none', includeDimensions: true, dimensionStyle: 'entities' })
+        .content
+    )!;
+    // A real DIMENSION would be worth its machinery -- an anonymous block
+    // apiece, a DIMSTYLE table, a second entity shape -- only if an importer
+    // turned it into something the reader could drive the model from. Fusion
+    // and Onshape do not, so every reader gets the same lines and text.
+    expect(parsed.entities.some((entity) => entity.type === 'DIMENSION')).toBe(false);
+    expect(Object.keys(parsed.blocks ?? {})).toHaveLength(0);
+    const drawn = parsed.entities.filter(
+      (entity) => (entity as { layer?: string }).layer === 'PMKS_DIMENSIONS'
     );
-    // And the picture is drawn where the link is, not at the origin. The link
-    // is 2cm by 1cm and this project is in metres.
-    const drawn = block.entities.flatMap((entity) =>
-      'vertices' in entity ? (entity.vertices as { x: number; y: number }[]) : []
-    );
-    expect(drawn.some((point) => Math.hypot(point.x - 0.02, point.y - 0.01) < 0.01)).toBe(true);
-  });
-
-  it('converts the geometry into the unit it labels it with', () => {
-    const { service } = setup();
-    const lengthIn = (unit: LengthUnit | undefined) => {
-      const parsed = new DxfParser().parseSync(service.create({ dataFile: 'none', unit }).content)!;
-      const ends = parsed.entities
-        .filter((entity) => entity.type === 'LINE')
-        .map((entity) => (entity as unknown as { vertices: { x: number; y: number }[] }).vertices)
-        .map(([from, to]) => Math.hypot(to.x - from.x, to.y - from.y));
-      return { header: parsed.header['$INSUNITS'], span: Math.max(...ends) };
-    };
-    // The same 2cm-by-1cm link, asked for three ways. Saying metres and then
-    // writing centimetres hands CAD a mechanism a hundred times too big under
-    // a label that looks right.
-    const centimetres = lengthIn(LengthUnit.CM);
-    expect(centimetres.header).toBe(5);
-    expect(centimetres.span).toBeCloseTo(Math.hypot(2, 1), 6);
-
-    const metres = lengthIn(LengthUnit.METER);
-    expect(metres.header).toBe(6);
-    expect(metres.span).toBeCloseTo(Math.hypot(2, 1) / 100, 6);
-
-    const inches = lengthIn(LengthUnit.INCH);
-    expect(inches.header).toBe(1);
-    expect(inches.span).toBeCloseTo(Math.hypot(2, 1) / 2.54, 6);
+    expect(drawn.filter((entity) => entity.type === 'LINE').length).toBeGreaterThanOrEqual(3);
+    const label = drawn.find((entity) => entity.type === 'TEXT') as unknown as { text: string };
+    expect(label.text).toMatch(/^[\d.]+ m$/);
   });
 
   it('stands the dimension line off square to what it measures', () => {
@@ -162,15 +133,44 @@ describe('DxfExportService', () => {
       service.create({ dataFile: 'none', includeDimensions: true, dimensionStyle: 'entities' })
         .content
     )!;
-    const dimension = parsed.entities.find((entity) => entity.type === 'DIMENSION') as unknown as {
-      anchorPoint: { x: number; y: number };
-    };
-    expect(Math.abs(dimension.anchorPoint.x)).toBeGreaterThan(0);
-    // And the picture went with it, rather than staying on the link.
-    const drawn = parsed.blocks['*D0'].entities.flatMap((entity) =>
-      'vertices' in entity ? (entity.vertices as { x: number; y: number }[]) : []
+    const drawn = parsed.entities
+      .filter((entity) => (entity as { layer?: string }).layer === 'PMKS_DIMENSIONS')
+      .filter((entity) => entity.type === 'LINE') as unknown as {
+      vertices: { x: number; y: number }[];
+    }[];
+    expect(drawn.length).toBeGreaterThan(0);
+    // Every part of the picture is off the line the link lies on.
+    expect(drawn.some((line) => line.vertices.some((point) => Math.abs(point.x) > 1e-6))).toBe(
+      true
     );
-    expect(drawn.every((point) => point.x === 0)).toBe(false);
+  });
+
+  it('converts the geometry into the unit it names in the file', () => {
+    const { service } = setup();
+    const lengthIn = (unit: LengthUnit | undefined) => {
+      const file = service.create({ dataFile: 'none', unit });
+      const parsed = new DxfParser().parseSync(file.content)!;
+      const ends = parsed.entities
+        .filter((entity) => entity.type === 'LINE')
+        .map((entity) => (entity as unknown as { vertices: { x: number; y: number }[] }).vertices)
+        .map(([from, to]) => Math.hypot(to.x - from.x, to.y - from.y));
+      return { name: file.name, span: Math.max(...ends) };
+    };
+    // The same 2cm-by-1cm link, asked for three ways. Saying metres and then
+    // writing centimetres hands CAD a mechanism a hundred times too big under
+    // a label that looks right -- and R12 has no header field to say which, so
+    // the name is where the answer lives.
+    const centimetres = lengthIn(LengthUnit.CM);
+    expect(centimetres.name).toBe('mechanism (cm).dxf');
+    expect(centimetres.span).toBeCloseTo(Math.hypot(2, 1), 6);
+
+    const metres = lengthIn(LengthUnit.METER);
+    expect(metres.name).toBe('mechanism (m).dxf');
+    expect(metres.span).toBeCloseTo(Math.hypot(2, 1) / 100, 6);
+
+    const inches = lengthIn(LengthUnit.INCH);
+    expect(inches.name).toBe('mechanism (in).dxf');
+    expect(inches.span).toBeCloseTo(Math.hypot(2, 1) / 2.54, 6);
   });
 
   it('is byte-deterministic for unchanged model state and choices', () => {

@@ -50,6 +50,11 @@ export class DxfExportService {
     const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
     const unit = choices.unit ?? this.settings.lengthUnit.value;
     const stem = fileStem(choices.fileName || DEFAULT_DXF_EXPORT_OPTIONS.fileName);
+    // The unit, in the name. R12 has no header field for it, and the import
+    // dialogs in Fusion and Onshape ask for units anyway -- a student who
+    // accepts the default gets a part ten or a hundred times out. The name is
+    // in front of them at exactly the moment they are being asked.
+    const dxfName = `${stem} (${unitWord(unit)}).dxf`;
     const content = this.mechanism.encodeFromStartPose(() =>
       writeDxf(
         buildSemanticDxf({
@@ -68,7 +73,6 @@ export class DxfExportService {
       )
     );
 
-    const dxfName = `${stem}.dxf`;
     if (choices.dataFile === 'none') {
       const mime = 'application/dxf;charset=utf-8';
       return {
@@ -137,11 +141,9 @@ export class DxfExportService {
           ? [entity.start, entity.end]
           : entity.type === 'CIRCLE'
             ? [entity.center]
-            : entity.type === 'LWPOLYLINE'
+            : entity.type === 'POLYLINE'
               ? entity.points
-              : entity.type === 'DIMENSION'
-                ? [entity.from, entity.to]
-                : [entity.at];
+              : [entity.at];
       points.forEach((point) => {
         xs.push(point.x);
         ys.push(point.y);
@@ -155,13 +157,32 @@ export class DxfExportService {
       layers: document.layers.filter((layer) => used.has(layer.name)).length,
       width: xs.length ? Math.max(...xs) - Math.min(...xs) : 0,
       height: ys.length ? Math.max(...ys) - Math.min(...ys) : 0,
-      unit: unit === LengthUnit.INCH ? 'in' : unit === LengthUnit.METER ? 'm' : 'cm',
+      unit: unitWord(unit),
       // The drawing itself, not a picture of a four-bar: the thumbnail is there
       // to catch the two mistakes worth catching -- nothing traced when the
       // reader meant to trace, holes where marks were meant -- and a stylised
       // stand-in catches neither.
       shapes: previewShapes(document.entities, xs, ys),
     };
+  }
+
+  /** What the download itself is called: the drawing, or the zip holding it. */
+  downloadName(options: DxfExportOptions = {}): string {
+    const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
+    const names = this.fileNames(options);
+    if (names.length === 1) return names[0];
+    return `${fileStem(choices.fileName || DEFAULT_DXF_EXPORT_OPTIONS.fileName)}.zip`;
+  }
+
+  /** Exactly what will land in the reader's downloads, unit and all. */
+  fileNames(options: DxfExportOptions = {}): string[] {
+    const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
+    const unit = choices.unit ?? this.settings.lengthUnit.value;
+    const stem = fileStem(choices.fileName || DEFAULT_DXF_EXPORT_OPTIONS.fileName);
+    const dxf = `${stem} (${unitWord(unit)}).dxf`;
+    if (choices.dataFile === 'none') return [dxf];
+    if (choices.dataFile === 'json') return [dxf, `${stem}.json`];
+    return [dxf, `${stem}-joints.csv`, `${stem}-links.csv`];
   }
 
   /** The project's own unit, which an export uses unless told otherwise. */
@@ -260,7 +281,7 @@ export class DxfExportService {
     return JSON.stringify(
       {
         source: 'PMKS+',
-        units: unit === LengthUnit.INCH ? 'in' : unit === LengthUnit.METER ? 'm' : 'cm',
+        units: unitWord(unit),
         pose: 'start',
         joints: this.mechanism.joints.map((joint) => ({
           id: joint.id,
@@ -288,6 +309,13 @@ export class DxfExportService {
   private realLinks(): RealLink[] {
     return this.mechanism.links.filter((link): link is RealLink => link instanceof RealLink);
   }
+}
+
+/** How a unit is written wherever this export names one. */
+export function unitWord(unit: LengthUnit): string {
+  if (unit === LengthUnit.INCH) return 'in';
+  if (unit === LengthUnit.METER) return 'm';
+  return 'cm';
 }
 
 /** Project the document into the preview box, keeping its proportions. */
@@ -319,7 +347,7 @@ function previewShapes(
       strokes.push(
         `M${from.x.toFixed(2)} ${from.y.toFixed(2)}L${to.x.toFixed(2)} ${to.y.toFixed(2)}`
       );
-    } else if (entity['type'] === 'LWPOLYLINE') {
+    } else if (entity['type'] === 'POLYLINE') {
       const points = (entity['points'] as { x: number; y: number }[]).map(at);
       if (points.length > 1) {
         strokes.push(

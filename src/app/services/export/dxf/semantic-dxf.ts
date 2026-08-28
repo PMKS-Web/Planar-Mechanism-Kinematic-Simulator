@@ -4,16 +4,7 @@ import { Joint, PrisJoint, RealJoint } from '../../../model/joint';
 import { Link, RealLink, SliderBlock } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { LengthUnit } from '../../../model/unit-enums';
-import {
-  DxfBlock,
-  DxfDimension,
-  DxfDocument,
-  DxfEntity,
-  DxfLayer,
-  DxfLine,
-  DxfPoint,
-  DxfUnits,
-} from './dxf-model';
+import { DxfDocument, DxfEntity, DxfLayer, DxfLine, DxfPoint } from './dxf-model';
 import { DxfExportOptions, NEUTRAL_DXF_OPTIONS } from './dxf-options';
 import {
   consolidateWeldedAxes,
@@ -264,7 +255,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       .filter((path) => path.points.length >= 2)
       .forEach((path) =>
         entities.push({
-          type: 'LWPOLYLINE',
+          type: 'POLYLINE',
           layer: DXF_LAYER.paths,
           points: path.points.map(point),
           closed: false,
@@ -273,9 +264,8 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
   }
   if (choices.includeSlotTravel) entities.push(...slotTravelPoints(input.joints, point));
 
-  const blocks: DxfBlock[] = [];
   if (choices.includeDimensions) {
-    addDimensions(axes, choices, input.lengthUnit, symbolScale, entities, blocks);
+    addDimensions(axes, choices, input.lengthUnit, symbolScale, entities);
   }
   if (choices.includeNotes) {
     addNotes(input, choices, axes, symbolScale, entities);
@@ -302,13 +292,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     });
   }
 
-  return {
-    units: dxfUnits(input.lengthUnit),
-    layers,
-    entities,
-    blocks,
-    version: choices.version,
-  };
+  return { layers, entities };
 }
 
 /** `PMKS_LINK_AB`, from a link id, with anything unusual in it made safe. */
@@ -371,20 +355,25 @@ function slotTravelPoints(
 }
 
 /**
- * A length on every link, either as a dimension CAD can drive from or as a
- * table of numbers for importers that mangle DIMENSION.
+ * A length on every link, drawn as lines and a number.
+ *
+ * Not as a `DIMENSION` entity: that would be worth the machinery it needs -- an
+ * anonymous block apiece, a DIMSTYLE table, a whole second entity shape -- only
+ * if an importer turned it into something a reader could drive the model from,
+ * and Fusion and Onshape do not. They land it as dumb lines and text at best.
+ * So it is dumb lines and text on purpose, and every reader sees the same thing.
  */
 function addDimensions(
   axes: SemanticAxis[],
   choices: { dimensionStyle: string },
   unit: LengthUnit,
   scale: number,
-  entities: DxfEntity[],
-  blocks: DxfBlock[]
+  entities: DxfEntity[]
 ): void {
   const measured = axes.filter(
     (axis, index) => axes.findIndex((candidate) => candidate.key === axis.key) === index
   );
+  if (!measured.length) return;
   if (choices.dimensionStyle === 'table') {
     measured.forEach((axis, index) =>
       entities.push({
@@ -404,60 +393,49 @@ function addDimensions(
     x: measured.reduce((sum, axis) => sum + (axis.start.x + axis.end.x) / 2, 0) / measured.length,
     y: measured.reduce((sum, axis) => sum + (axis.start.y + axis.end.y) / 2, 0) / measured.length,
   };
-  measured.forEach((axis, index) => {
-    const name = `*D${index}`;
+  measured.forEach((axis) => {
     const midX = (axis.start.x + axis.end.x) / 2;
     const midY = (axis.start.y + axis.end.y) / 2;
     const span = lengthOf(axis);
+    if (span === 0) return;
     // Square to what is being measured, not straight down: a fixed drop in Y
     // is no offset at all for a vertical link, and lays the dimension line
     // along the very centreline it is dimensioning.
     const offset = 0.5 * scale;
-    const normal =
-      span === 0
-        ? { x: 0, y: -1 }
-        : { x: (axis.end.y - axis.start.y) / span, y: -(axis.end.x - axis.start.x) / span };
+    const normal = {
+      x: (axis.end.y - axis.start.y) / span,
+      y: -(axis.end.x - axis.start.x) / span,
+    };
     const outward = normal.x * (midX - heart.x) + normal.y * (midY - heart.y) < 0 ? -1 : 1;
     const across = { x: normal.x * outward, y: normal.y * outward };
-    const at = { x: midX + across.x * offset, y: midY + across.y * offset };
-    const dimension: DxfDimension = {
-      type: 'DIMENSION',
-      layer: DXF_LAYER.dimensions,
-      blockName: name,
-      definition: at,
-      from: axis.start,
-      to: axis.end,
-      textAt: at,
-      text: `${span.toFixed(3)} ${unitWord(unit)}`,
-    };
-    blocks.push({
-      name,
-      base: { x: 0, y: 0 },
-      entities: dimensionPicture(dimension, scale),
-    });
-    entities.push(dimension);
+    entities.push(
+      ...dimensionPicture(
+        {
+          from: axis.start,
+          to: axis.end,
+          at: { x: midX + across.x * offset, y: midY + across.y * offset },
+          text: `${span.toFixed(3)} ${unitWord(unit)}`,
+        },
+        scale
+      )
+    );
   });
 }
 
-/**
- * The lines and text a dimension is actually made of.
- *
- * A DIMENSION entity carries the measurement; the block carries the picture,
- * and the two have to agree. AutoCAD and the modern importers redraw the
- * picture from the measurement and would be happy with an empty block -- but a
- * reader that only draws what the block holds shows nothing at all, which is
- * every reason anyone asks for R12. So the picture is drawn once here and both
- * kinds of reader get the same drawing.
- */
-function dimensionPicture(dimension: DxfDimension, scale: number): DxfEntity[] {
-  const { from, to, definition, textAt, text, layer } = dimension;
+/** The lines and text a dimension is made of. */
+function dimensionPicture(
+  dimension: { from: DxfPoint; to: DxfPoint; at: DxfPoint; text: string },
+  scale: number
+): DxfEntity[] {
+  const { from, to, at, text } = dimension;
+  const layer = DXF_LAYER.dimensions;
   const span = Math.hypot(to.x - from.x, to.y - from.y);
   if (span === 0) return [];
   // Along the measured direction, and square to it.
   const along = { x: (to.x - from.x) / span, y: (to.y - from.y) / span };
   const across = { x: -along.y, y: along.x };
   // How far off the measured line the dimension line sits, signed.
-  const drop = (definition.x - from.x) * across.x + (definition.y - from.y) * across.y;
+  const drop = (at.x - from.x) * across.x + (at.y - from.y) * across.y;
   const offsetBy = (point: DxfPoint, by: number): DxfPoint => ({
     x: point.x + across.x * by,
     y: point.y + across.y * by,
@@ -470,10 +448,10 @@ function dimensionPicture(dimension: DxfDimension, scale: number): DxfEntity[] {
   const line = (a: DxfPoint, b: DxfPoint): DxfEntity => ({ type: 'LINE', layer, start: a, end: b });
   // A slash where the dimension line meets each extension line: an arrowhead
   // is a solid, and a solid is the one thing this writer does not emit.
-  const slash = (at: DxfPoint): DxfEntity =>
+  const slash = (point: DxfPoint): DxfEntity =>
     line(
-      { x: at.x - (along.x + across.x) * tick, y: at.y - (along.y + across.y) * tick },
-      { x: at.x + (along.x + across.x) * tick, y: at.y + (along.y + across.y) * tick }
+      { x: point.x - (along.x + across.x) * tick, y: point.y - (along.y + across.y) * tick },
+      { x: point.x + (along.x + across.x) * tick, y: point.y + (along.y + across.y) * tick }
     );
   return [
     line(offsetBy(from, Math.sign(drop) * gap), offsetBy(startEnd, Math.sign(drop) * overshoot)),
@@ -485,7 +463,7 @@ function dimensionPicture(dimension: DxfDimension, scale: number): DxfEntity[] {
       type: 'TEXT',
       layer,
       // Clear of the dimension line rather than sitting on it.
-      at: offsetBy({ x: textAt.x - along.x * span * 0.2, y: textAt.y - along.y * span * 0.2 }, gap),
+      at: offsetBy({ x: at.x - along.x * span * 0.2, y: at.y - along.y * span * 0.2 }, gap),
       height: 0.22 * scale,
       text,
       angleDeg: (Math.atan2(along.y, along.x) * 180) / Math.PI,
@@ -637,10 +615,4 @@ export function centimetersIn(unit: LengthUnit): number {
   if (unit === LengthUnit.INCH) return 1 / 2.54;
   if (unit === LengthUnit.METER) return 0.01;
   return 1;
-}
-
-function dxfUnits(unit: LengthUnit): DxfUnits {
-  if (unit === LengthUnit.INCH) return 'in';
-  if (unit === LengthUnit.METER) return 'm';
-  return 'cm';
 }

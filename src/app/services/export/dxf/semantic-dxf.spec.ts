@@ -61,14 +61,16 @@ describe('semantic DXF centerline geometry', () => {
       [-2, 3],
       [4, -1],
     ]);
-    expect(parsed.header['$INSUNITS']).toBe(5);
+    // R12 has no header field for units; the file's name and its notes carry
+    // them instead, which is what the import dialog asks for anyway.
+    expect(parsed.header['$ACADVER']).toBe('AC1009');
     expect(
       entitiesOn(parsed.entities, DXF_LAYER.joints).filter((entity) => entity.type === 'POINT')
     ).toHaveLength(2);
     expect(entitiesOn(parsed.entities, DXF_LAYER.labels)).toHaveLength(0);
     expect(
       entitiesOn(parsed.entities, DXF_LAYER.annotations).some(
-        (entity) => entity.type === 'LWPOLYLINE'
+        (entity) => entity.type === 'POLYLINE'
       )
     ).toBe(true);
     expect(Object.keys(parsed.tables.layer.layers)).toEqual(

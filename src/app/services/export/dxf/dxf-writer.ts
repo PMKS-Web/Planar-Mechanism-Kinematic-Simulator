@@ -2,29 +2,28 @@ import { DxfDocument, DxfEntity, DxfPoint } from './dxf-model';
 
 type Pair = readonly [number, string | number];
 
-const UNIT_CODE = { in: 1, cm: 5, m: 6 } as const;
-
 /**
- * A deterministic ASCII writer for the small portable 2D subset PMKS emits.
+ * A deterministic ASCII R12 writer for the small 2D subset PMKS emits.
  *
- * R2000 (`AC1015`) unless the reader asked for R12 (`AC1009`), which is not
- * just a different version string: R12 predates both the subclass markers that
- * tell a modern reader what it is looking at and `LWPOLYLINE` entirely. A file
- * claiming to be R12 while carrying either is one an old reader -- the only
- * reason to ask for R12 -- cannot open, which would make the option worse than
- * not offering it.
+ * R12 (`AC1009`) is the only format written, and that is a decision rather than
+ * a limitation. It is the dialect every CAD program, laser cutter and CAM tool
+ * still reads, precisely because it predates everything that makes a newer file
+ * easy to get wrong: no handles, no subclass markers, no CLASSES section, no
+ * OBJECTS dictionary, no owner bookkeeping. What a newer version would have
+ * bought here is a units hint, a tidier polyline entity, and real `DIMENSION`
+ * entities -- and the importers this export exists for do not turn DXF
+ * dimensions into sketch dimensions anyway, so the one substantial feature pays
+ * off for nobody. The units hint is carried by the file's name and its notes
+ * instead, which the import dialogs make you confirm regardless.
  */
 export function writeDxf(document: DxfDocument): string {
   validate(document);
-  const legacy = document.version === 'R12';
   const bounds = extents(document.entities);
   const pairs: Pair[] = [
     [0, 'SECTION'],
     [2, 'HEADER'],
     [9, '$ACADVER'],
-    [1, document.version === 'R12' ? 'AC1009' : 'AC1015'],
-    [9, '$INSUNITS'],
-    [70, UNIT_CODE[document.units]],
+    [1, 'AC1009'],
     [9, '$EXTMIN'],
     [10, bounds.min.x],
     [20, bounds.min.y],
@@ -34,53 +33,24 @@ export function writeDxf(document: DxfDocument): string {
     [20, bounds.max.y],
     [30, 0],
     [0, 'ENDSEC'],
-    ...tablePairs(document, legacy),
-    ...blockPairs(document, legacy),
+    ...tablePairs(document),
     [0, 'SECTION'],
     [2, 'ENTITIES'],
-    ...document.entities.flatMap((entity, index) => entityPairs(entity, 0x100 + index, legacy)),
+    ...document.entities.flatMap(entityPairs),
     [0, 'ENDSEC'],
     [0, 'EOF'],
   ];
   return pairs.map(([code, value]) => `${code}\r\n${format(value)}\r\n`).join('');
 }
 
-function tablePairs(document: DxfDocument, legacy: boolean): Pair[] {
-  // R2000 owns every table and record by handle, and names the class each one
-  // belongs to. Leaving them off is readable -- but an auditing importer
-  // repairs the file on the way in, and a file that needs repairing is one
-  // nobody can tell a real problem from. R12 has neither, so it gets neither.
-  let next = 0x10;
-  let owner = '0';
-  const handle = () => (next++).toString(16).toUpperCase();
-  const head = (): Pair[] => {
-    if (legacy) return [];
-    owner = handle();
-    return [
-      [5, owner],
-      [330, '0'],
-      [100, 'AcDbSymbolTable'],
-    ];
-  };
-  // Owned by the table it sits in, and named for the class it belongs to.
-  const record = (kind: string, code: 5 | 105 = 5): Pair[] =>
-    legacy
-      ? []
-      : [
-          [code, handle()],
-          [330, owner],
-          [100, 'AcDbSymbolTableRecord'],
-          [100, `AcDb${kind}TableRecord`],
-        ];
+function tablePairs(document: DxfDocument): Pair[] {
   return [
     [0, 'SECTION'],
     [2, 'TABLES'],
     [0, 'TABLE'],
     [2, 'LTYPE'],
-    ...head(),
     [70, 1],
     [0, 'LTYPE'],
-    ...record('Linetype'),
     [2, 'CONTINUOUS'],
     [70, 0],
     [3, 'Solid line'],
@@ -90,11 +60,9 @@ function tablePairs(document: DxfDocument, legacy: boolean): Pair[] {
     [0, 'ENDTAB'],
     [0, 'TABLE'],
     [2, 'LAYER'],
-    ...head(),
     [70, document.layers.length],
     ...document.layers.flatMap((layer): Pair[] => [
       [0, 'LAYER'],
-      ...record('Layer'),
       [2, layer.name],
       [70, 0],
       [62, layer.color],
@@ -107,10 +75,8 @@ function tablePairs(document: DxfDocument, legacy: boolean): Pair[] {
     // size of its dimensions.
     [0, 'TABLE'],
     [2, 'STYLE'],
-    ...head(),
     [70, 1],
     [0, 'STYLE'],
-    ...record('TextStyle'),
     [2, 'STANDARD'],
     [70, 0],
     [40, 0],
@@ -121,171 +87,48 @@ function tablePairs(document: DxfDocument, legacy: boolean): Pair[] {
     [3, 'txt'],
     [4, ''],
     [0, 'ENDTAB'],
-    // Likewise for dimensions: one style, so every dimension in the file is
-    // drawn the same way and an importer has something to resolve against.
-    [0, 'TABLE'],
-    [2, 'DIMSTYLE'],
-    ...head(),
-    [70, 1],
-    [0, 'DIMSTYLE'],
-    // A dimension style is the one record handed round by group 105, not 5.
-    ...record('DimStyle', 105),
-    [2, 'PMKS'],
-    [70, 0],
-    [0, 'ENDTAB'],
     [0, 'ENDSEC'],
   ];
 }
 
-/**
- * The BLOCKS section: reusable symbols, and the anonymous blocks that hold each
- * dimension's drawn picture.
- *
- * Always emitted, even when empty. A file with INSERT or DIMENSION entities and
- * no BLOCKS section is one an importer is entitled to refuse.
- */
-function blockPairs(document: DxfDocument, legacy: boolean): Pair[] {
-  const blocks = document.blocks ?? [];
-  return [
-    [0, 'SECTION'],
-    [2, 'BLOCKS'],
-    ...blocks.flatMap((block, index): Pair[] => [
-      [0, 'BLOCK'],
-      ...(legacy
-        ? []
-        : ([
-            [5, (0x900 + index).toString(16).toUpperCase()],
-            [100, 'AcDbEntity'],
-          ] as Pair[])),
-      [8, '0'],
-      ...(legacy ? [] : ([[100, 'AcDbBlockBegin']] as Pair[])),
-      [2, block.name],
-      [70, block.name.startsWith('*') ? 1 : 0],
-      [10, block.base.x],
-      [20, block.base.y],
-      [30, 0],
-      [3, block.name],
-      [1, ''],
-      ...block.entities.flatMap((entity, at) =>
-        entityPairs(entity, 0x9000 + index * 100 + at, legacy)
-      ),
-      [0, 'ENDBLK'],
-      ...(legacy
-        ? ([[8, '0']] as Pair[])
-        : ([
-            [5, (0x980 + index).toString(16).toUpperCase()],
-            [100, 'AcDbEntity'],
-            [8, '0'],
-            [100, 'AcDbBlockEnd'],
-          ] as Pair[])),
-    ]),
-    [0, 'ENDSEC'],
+function entityPairs(entity: DxfEntity): Pair[] {
+  const common: Pair[] = [
+    [0, entity.type],
+    [8, entity.layer],
   ];
-}
-
-function entityPairs(entity: DxfEntity, handle: number, legacy = false): Pair[] {
-  // R12 has neither handles nor subclass markers. A reader old enough to want
-  // R12 stops at the first group code it does not know.
-  const common: Pair[] = legacy
-    ? [
-        [0, entity.type],
-        [8, entity.layer],
-      ]
-    : [
-        [0, entity.type],
-        [5, handle.toString(16).toUpperCase()],
-        [100, 'AcDbEntity'],
-        [8, entity.layer],
-      ];
-  const subclass = (name: string): Pair[] => (legacy ? [] : [[100, name]]);
   if (entity.type === 'LINE') {
-    return [
-      ...common,
-      ...subclass('AcDbLine'),
-      ...pointPairs(entity.start, 10),
-      ...pointPairs(entity.end, 11),
-    ];
+    return [...common, ...pointPairs(entity.start, 10), ...pointPairs(entity.end, 11)];
   }
   if (entity.type === 'CIRCLE') {
-    return [
-      ...common,
-      ...subclass('AcDbCircle'),
-      ...pointPairs(entity.center, 10),
-      [40, entity.radius],
-    ];
+    return [...common, ...pointPairs(entity.center, 10), [40, entity.radius]];
   }
   if (entity.type === 'POINT') {
-    return [...common, ...subclass('AcDbPoint'), ...pointPairs(entity.at, 10)];
+    return [...common, ...pointPairs(entity.at, 10)];
   }
-  if (entity.type === 'LWPOLYLINE') {
-    if (!legacy) {
-      return [
-        ...common,
-        [100, 'AcDbPolyline'],
-        [90, entity.points.length],
-        [70, entity.closed ? 1 : 0],
-        ...entity.points.flatMap((point) => pointPairs(point, 10, false)),
-      ];
-    }
-    // The old shape: a POLYLINE header, a VERTEX apiece, and a SEQEND to say
-    // the run is over. `66` is the flag that promises the vertices follow.
+  if (entity.type === 'POLYLINE') {
+    // `66` promises the vertices follow; `70` bit 1 closes the loop, which is
+    // what makes the run a face an importer can pick rather than an open path.
     return [
-      [0, 'POLYLINE'],
-      [8, entity.layer],
+      ...common,
       [66, 1],
       [70, entity.closed ? 1 : 0],
       [10, 0],
       [20, 0],
       [30, 0],
-      ...entity.points.flatMap((point): Pair[] => [
+      ...entity.points.flatMap((vertex): Pair[] => [
         [0, 'VERTEX'],
         [8, entity.layer],
-        [10, point.x],
-        [20, point.y],
+        [10, vertex.x],
+        [20, vertex.y],
         [30, 0],
+        ...(vertex.bulge ? ([[42, vertex.bulge]] as Pair[]) : []),
       ]),
       [0, 'SEQEND'],
       [8, entity.layer],
     ];
   }
-  if (entity.type === 'INSERT') {
-    return [
-      ...common,
-      ...subclass('AcDbBlockReference'),
-      [2, entity.name],
-      ...pointPairs(entity.at, 10),
-      [41, entity.scale ?? 1],
-      [42, entity.scale ?? 1],
-      [43, 1],
-      [50, entity.rotationDeg ?? 0],
-    ];
-  }
-  if (entity.type === 'DIMENSION') {
-    return [
-      ...common,
-      ...subclass('AcDbDimension'),
-      [2, entity.blockName],
-      ...pointPairs(entity.definition, 10),
-      [11, entity.textAt.x],
-      [21, entity.textAt.y],
-      [31, 0],
-      // 1 is "aligned"; 32 says the block named above belongs to this
-      // dimension alone, which is true -- each gets its own `*Dn`.
-      [70, 1 + 32],
-      [1, entity.text],
-      [3, 'PMKS'],
-      ...subclass('AcDbAlignedDimension'),
-      [13, entity.from.x],
-      [23, entity.from.y],
-      [33, 0],
-      [14, entity.to.x],
-      [24, entity.to.y],
-      [34, 0],
-    ];
-  }
   return [
     ...common,
-    ...subclass('AcDbText'),
     ...pointPairs(entity.at, 10),
     [40, entity.height],
     [1, entity.text.replace(/[\r\n]+/g, ' ')],
@@ -294,75 +137,80 @@ function entityPairs(entity: DxfEntity, handle: number, legacy = false): Pair[] 
   ];
 }
 
-function pointPairs(point: DxfPoint, xCode: 10 | 11, includeZ = true): Pair[] {
-  const result: Pair[] = [
+function pointPairs(point: DxfPoint, xCode: 10 | 11): Pair[] {
+  return [
     [xCode, point.x],
     [xCode + 10, point.y],
+    [xCode + 20, 0],
   ];
-  if (includeZ) result.push([xCode + 20, 0]);
-  return result;
 }
 
+/**
+ * Refuse to write a drawing that would open as garbage.
+ *
+ * A NaN coordinate is silently accepted by most importers and lands the
+ * geometry somewhere unrecoverable; an entity on an undeclared layer is a file
+ * whose own table does not describe it.
+ */
 function validate(document: DxfDocument): void {
-  const layers = new Set<string>();
-  document.layers.forEach((layer) => {
-    if (!layer.name || layers.has(layer.name))
-      throw new Error('DXF layers must have unique names.');
-    if (!Number.isInteger(layer.color) || layer.color < 1 || layer.color > 255) {
-      throw new Error('DXF layer colors must be AutoCAD color indexes from 1 to 255.');
-    }
-    layers.add(layer.name);
-  });
+  const declared = new Set(document.layers.map((layer) => layer.name));
   document.entities.forEach((entity) => {
-    if (!layers.has(entity.layer))
-      throw new Error(`DXF entity uses missing layer ${entity.layer}.`);
-    entityPoints(entity).forEach(assertFinitePoint);
-    if (entity.type === 'CIRCLE' && !(entity.radius > 0 && Number.isFinite(entity.radius))) {
-      throw new Error('DXF circle radius must be finite and positive.');
+    if (!declared.has(entity.layer)) {
+      throw new Error(`DXF entity on undeclared layer ${entity.layer}`);
     }
-    if (entity.type === 'TEXT' && !(entity.height > 0 && Number.isFinite(entity.height))) {
-      throw new Error('DXF text height must be finite and positive.');
-    }
-    if (entity.type === 'LWPOLYLINE' && entity.points.length < 2) {
-      throw new Error('DXF polylines need at least two points.');
-    }
-  });
-}
-
-function entityPoints(entity: DxfEntity): DxfPoint[] {
-  if (entity.type === 'LINE') return [entity.start, entity.end];
-  if (entity.type === 'CIRCLE') return [entity.center];
-  if (entity.type === 'LWPOLYLINE') return entity.points;
-  if (entity.type === 'DIMENSION')
-    return [entity.definition, entity.from, entity.to, entity.textAt];
-  return [entity.at];
-}
-
-function assertFinitePoint(point: DxfPoint): void {
-  if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
-    throw new Error('DXF coordinates must be finite.');
-  }
-}
-
-function extents(entities: DxfEntity[]): { min: DxfPoint; max: DxfPoint } {
-  if (entities.length === 0) return { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } };
-  const xs: number[] = [];
-  const ys: number[] = [];
-  entities.forEach((entity) => {
-    entityPoints(entity).forEach((point) => {
-      const radius = entity.type === 'CIRCLE' ? entity.radius : 0;
-      xs.push(point.x - radius, point.x + radius);
-      ys.push(point.y - radius, point.y + radius);
+    coordinatesOf(entity).forEach((value) => {
+      if (!Number.isFinite(value)) {
+        throw new Error(`DXF entity with a non-finite coordinate on ${entity.layer}`);
+      }
     });
   });
+}
+
+function coordinatesOf(entity: DxfEntity): number[] {
+  if (entity.type === 'LINE') {
+    return [entity.start.x, entity.start.y, entity.end.x, entity.end.y];
+  }
+  if (entity.type === 'CIRCLE') {
+    return [entity.center.x, entity.center.y, entity.radius];
+  }
+  if (entity.type === 'POLYLINE') {
+    return entity.points.flatMap((vertex) => [vertex.x, vertex.y, vertex.bulge ?? 0]);
+  }
+  if (entity.type === 'POINT') return [entity.at.x, entity.at.y];
+  return [entity.at.x, entity.at.y, entity.height];
+}
+
+function extents(entities: readonly DxfEntity[]): { min: DxfPoint; max: DxfPoint } {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  const add = (x: number, y: number) => {
+    xs.push(x);
+    ys.push(y);
+  };
+  entities.forEach((entity) => {
+    if (entity.type === 'LINE') {
+      add(entity.start.x, entity.start.y);
+      add(entity.end.x, entity.end.y);
+    } else if (entity.type === 'CIRCLE') {
+      add(entity.center.x - entity.radius, entity.center.y - entity.radius);
+      add(entity.center.x + entity.radius, entity.center.y + entity.radius);
+    } else if (entity.type === 'POLYLINE') {
+      entity.points.forEach((vertex) => add(vertex.x, vertex.y));
+    } else {
+      add(entity.at.x, entity.at.y);
+    }
+  });
+  if (!xs.length) return { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } };
   return {
     min: { x: Math.min(...xs), y: Math.min(...ys) },
     max: { x: Math.max(...xs), y: Math.max(...ys) },
   };
 }
 
+/** Six decimals, without an exponent: DXF has no notation for `1e-7`. */
 function format(value: string | number): string {
   if (typeof value === 'string') return value;
-  const rounded = Math.abs(value) < 1e-12 ? 0 : Number(value.toPrecision(12));
-  return String(rounded);
+  if (Number.isInteger(value)) return String(value);
+  const fixed = value.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+  return fixed === '-0' ? '0' : fixed;
 }

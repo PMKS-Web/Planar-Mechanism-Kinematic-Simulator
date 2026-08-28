@@ -22,6 +22,7 @@ import {
   DxfPresetName,
   DxfSummary,
   DXF_PRESETS,
+  unitWord,
 } from '../../../services/export/dxf/dxf-export.service';
 
 /** A row in the Layers checklist: what it is called here, and in CAD. */
@@ -222,8 +223,13 @@ export class DrawingExportComponent {
 
   // --- what each folded section says ----------------------------------------
 
+  /** How this export's unit is spelled wherever the dialog names one. */
+  get unitWord(): string {
+    return unitWord(this.effectiveUnit);
+  }
+
   get fileSummary(): string {
-    return `${this.options.fileName || 'mechanism'}.dxf · ${this.summary.unit}`;
+    return this.exportService.fileNames(this.options)[0];
   }
 
   get geometrySummary(): string {
@@ -293,10 +299,10 @@ export class DrawingExportComponent {
 
   get deliveryLine(): string {
     if (this.isEmpty) return 'The grid is empty.';
-    const stem = this.options.fileName || 'mechanism';
-    return this.options.dataFile === 'none'
-      ? `Downloads as ${stem}.dxf`
-      : `Downloads as ${stem}.zip — DXF + ${this.options.dataFile.toUpperCase()}`;
+    const names = this.exportService.fileNames(this.options);
+    const download = this.exportService.downloadName(this.options);
+    if (names.length === 1) return `Downloads as ${download}`;
+    return `Downloads as ${download} — ${names.join(', ')}`;
   }
 
   get exportLabel(): string {

@@ -99,7 +99,7 @@ export function inputAnnotation(
     const nx = -ty;
     const ny = tx;
     return [
-      { type: 'LWPOLYLINE', layer, points, closed: false },
+      { type: 'POLYLINE', layer, points, closed: false },
       {
         type: 'LINE',
         layer,

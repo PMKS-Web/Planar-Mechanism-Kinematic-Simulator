@@ -5,7 +5,7 @@
       <mat-icon>close</mat-icon>
     </button>
   </div>
-  <p class="subtitle">DXF {{ options.version }} · centerline sketch</p>
+  <p class="subtitle">DXF R12 · centerline sketch</p>
 
   <div mat-dialog-content>
     <!-- The two things that surprise people, said once and quietly: they are
@@ -79,7 +79,7 @@
               (ngModelChange)="options.fileName = $event"
               aria-label="DXF file name"
             />
-            <span class="fieldNote">.dxf</span>
+            <span class="fieldNote">({{ unitWord }}).dxf</span>
           </div>
           <div class="field">
             <span class="fieldName">Units</span>
@@ -93,18 +93,6 @@
                 </button>
               }
             </div>
-          </div>
-          <div class="field">
-            <span class="fieldName">DXF version</span>
-            <div class="segmented">
-              <button [class.on]="options.version === 'R2000'" (click)="set({ version: 'R2000' })">
-                R2000
-              </button>
-              <button [class.on]="options.version === 'R12'" (click)="set({ version: 'R12' })">
-                R12
-              </button>
-            </div>
-            <span class="fieldNote">R12 is for old CAM only</span>
           </div>
         </div>
       }

@@ -21,14 +21,10 @@ export type DxfDimensionStyle = 'entities' | 'table';
 /** The companion file carrying what DXF cannot. */
 export type DxfDataFile = 'none' | 'csv' | 'json';
 
-/** Which DXF the file claims to be. */
-export type DxfVersion = 'R2000' | 'R12';
-
 export interface DxfExportOptions {
   fileName?: string;
   /** Overrides the project's unit for this export only. */
   unit?: LengthUnit;
-  version?: DxfVersion;
 
   origin?: DxfOrigin;
   /** Only read when `origin` is `'joint'`. */
@@ -112,7 +108,6 @@ export type DxfPresetName = keyof typeof DXF_PRESETS;
  */
 export const NEUTRAL_DXF_OPTIONS: DxfExportChoices = {
   fileName: 'mechanism',
-  version: 'R2000',
   pinDiameter: 0.6,
   origin: 'model',
   jointCircles: 'marks',
