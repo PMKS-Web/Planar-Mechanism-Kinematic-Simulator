@@ -8,7 +8,11 @@ import { MODEL_SCALE } from '../../../model/render-scale';
 import { LengthUnit } from '../../../model/unit-enums';
 import { MechanismService } from '../../mechanism.service';
 import { SettingsService } from '../../settings.service';
-import { DEFAULT_DXF_EXPORT_OPTIONS, DxfExportService } from './dxf-export.service';
+import {
+  DEFAULT_DXF_EXPORT_OPTIONS,
+  DxfExportService,
+  NEUTRAL_DXF_OPTIONS,
+} from './dxf-export.service';
 
 describe('DxfExportService', () => {
   function setup() {
@@ -40,7 +44,9 @@ describe('DxfExportService', () => {
   it('exports the entire editable drawing through the start-pose boundary', () => {
     const { service, mechanism } = setup();
 
-    const file = service.create();
+    // Without the companion file, so this is about the DXF and the boundary
+    // rather than about how two files are packed; the zip has its own test.
+    const file = service.create({ dataFile: 'none' });
     const parsed = new DxfParser().parseSync(file.content);
 
     expect(mechanism.encodeFromStartPose).toHaveBeenCalledOnce();
@@ -51,18 +57,47 @@ describe('DxfExportService', () => {
     expect(parsed?.entities.some((entity) => entity.type === 'LINE')).toBe(true);
   });
 
+  it('packs the companion table beside the drawing, and says which files those are', () => {
+    const { service } = setup();
+
+    const csv = service.create({ dataFile: 'csv' });
+    expect(csv.name).toBe('mechanism.zip');
+    expect(csv.mime).toBe('application/zip');
+    expect(csv.parts).toEqual(['mechanism.dxf', 'mechanism-joints.csv', 'mechanism-links.csv']);
+    // The DXF is still the content, whatever the delivery: everything that
+    // reads a file from this service reads the drawing.
+    expect(csv.content).toContain('AC1015');
+
+    const json = service.create({ dataFile: 'json' });
+    expect(json.parts).toEqual(['mechanism.dxf', 'mechanism.json']);
+  });
+
   it('publishes stable UI defaults and sanitizes the requested file name', () => {
     const { service } = setup();
 
-    expect(DEFAULT_DXF_EXPORT_OPTIONS).toEqual({
+    // The dialog opens on "Build parts", so that is what the service does when
+    // it is told nothing: a layer per link, at the origin, holes and dimensions.
+    // The plain reading of the drawing is `NEUTRAL_DXF_OPTIONS`, which is what
+    // the builder assumes and what every other caller gets.
+    expect(DEFAULT_DXF_EXPORT_OPTIONS).toMatchObject({
       fileName: 'mechanism',
+      origin: 'ground',
+      jointCircles: 'holes',
+      perLinkLayers: true,
+      includeDimensions: true,
       includeLabels: false,
-      includeKinematicAnnotations: true,
-      includeForces: true,
-      includeConstruction: true,
+      dataFile: 'csv',
     });
-    expect(service.create({ fileName: '  Lab / linkage.DXF  ' }).name).toBe('Lab_linkage.dxf');
-    expect(service.create({ fileName: '///' }).name).toBe('mechanism.dxf');
+    expect(NEUTRAL_DXF_OPTIONS).toMatchObject({
+      origin: 'model',
+      jointCircles: 'marks',
+      perLinkLayers: false,
+      includeDimensions: false,
+      dataFile: 'none',
+    });
+    // A data file means two files, so the download is a zip named for the stem.
+    expect(service.create({ fileName: '  Lab / linkage.DXF  ' }).name).toBe('Lab_linkage.zip');
+    expect(service.create({ fileName: '///', dataFile: 'none' }).name).toBe('mechanism.dxf');
   });
 
   it('is byte-deterministic for unchanged model state and choices', () => {

@@ -5,65 +5,327 @@
       <mat-icon>close</mat-icon>
     </button>
   </div>
-  <p class="subtitle">DXF R2000 · semantic centerline sketch</p>
+  <p class="subtitle">DXF {{ options.version }} · centerline sketch</p>
 
   <div mat-dialog-content>
+    <!-- The two things that surprise people, said once and quietly: they are
+         the scope of the feature, not a problem with it. -->
     <div class="scopeNote">
       <mat-icon>architecture</mat-icon>
-      <div>
-        <strong>Built from the unsolved start pose</strong>
-        <span>
-          Exports mechanism geometry in the project’s current units and global coordinates. Visible
-          circles mark joint centers; they are not fabrication hole diameters.
-        </span>
-      </div>
+      <p>
+        <strong>Built from the start pose.</strong> Exports mechanism geometry in the project’s
+        units — kinematic centerlines, not fabrication profiles.
+      </p>
     </div>
 
-    <mat-form-field class="fileField" appearance="fill">
-      <mat-label>File Name</mat-label>
-      <input matInput [(ngModel)]="options.fileName" aria-label="DXF file name" />
-      <span matTextSuffix>.dxf</span>
-    </mat-form-field>
+    <!-- The one question most readers should answer, and the only one they
+         have to. Each preset carries nine of the ten decisions below. -->
+    <div class="presetHead">
+      <span class="presetTitle">What is this for?</span>
+      @if (isCustom) {
+        <button class="linkButton" (click)="pick('build')">Reset to Build parts</button>
+      }
+    </div>
 
-    <fieldset>
-      <legend>Layers to Include</legend>
-      <mat-checkbox [(ngModel)]="options.includeKinematicAnnotations">
-        <span>
-          <strong>Kinematic annotations</strong>
-          <small>Ground symbols and input direction arrows</small>
+    <div class="presetCards">
+      <button
+        class="presetCard"
+        [class.on]="preset === 'build'"
+        data-preset="build"
+        (click)="pick('build')"
+      >
+        <span class="presetName">
+          <mat-icon>precision_manufacturing</mat-icon>Build parts in CAD
         </span>
-      </mat-checkbox>
-      <mat-checkbox [(ngModel)]="options.includeForces">
-        <span>
-          <strong>Forces</strong>
-          <small>Force vectors on their own CAD layer</small>
-        </span>
-      </mat-checkbox>
-      <mat-checkbox [(ngModel)]="options.includeConstruction">
-        <span>
-          <strong>Construction geometry</strong>
-          <small>Slot extent ticks and semantic guides useful for CAD editing</small>
-        </span>
-      </mat-checkbox>
-      <mat-checkbox [(ngModel)]="options.includeLabels">
-        <span>
-          <strong>Labels</strong>
-          <small>Joint and body names; off by default for a clean sketch</small>
-        </span>
-      </mat-checkbox>
-    </fieldset>
+        <span class="presetNote">A layer per link, at the origin, with pin holes and dimensions.</span>
+      </button>
+      <button
+        class="presetCard"
+        [class.on]="preset === 'reference'"
+        data-preset="reference"
+        (click)="pick('reference')"
+      >
+        <span class="presetName"> <mat-icon>draw</mat-icon>Reference sketch </span>
+        <span class="presetNote"
+          >One layer, model coordinates, joint marks only — for tracing over.</span
+        >
+      </button>
+      <!-- Not a third card: nobody picks Custom, they arrive in it. -->
+      @if (isCustom) {
+        <div class="customBanner" data-preset="custom">
+          <mat-icon>tune</mat-icon>
+          <span class="customName">Custom</span>
+          <span class="customNote">— your own mix of the settings below</span>
+        </div>
+      }
+    </div>
 
-    <p class="footnote">
-      This export is a kinematic centerline drawing, not a fabrication profile. Add physical widths,
-      holes, tolerances, and material details in CAD.
-    </p>
+    <div class="sections">
+      <!-- File ------------------------------------------------------------ -->
+      <button class="sectionHead" data-section="file" (click)="open.file = !open.file">
+        <mat-icon [class.open]="open.file">chevron_right</mat-icon>
+        <span class="sectionName">File</span>
+        <span class="sectionSummary">{{ fileSummary }}</span>
+      </button>
+      @if (open.file) {
+        <div class="sectionBody">
+          <div class="field">
+            <span class="fieldName">File name</span>
+            <input
+              class="textInput"
+              [ngModel]="options.fileName"
+              (ngModelChange)="options.fileName = $event"
+              aria-label="DXF file name"
+            />
+            <span class="fieldNote">.dxf</span>
+          </div>
+          <div class="field">
+            <span class="fieldName">Units</span>
+            <div class="segmented">
+              @for (choice of unitChoices; track choice.value) {
+                <button
+                  [class.on]="(options.unit ?? summary.unit) === choice.value"
+                  (click)="touch({ unit: choice.value })"
+                >
+                  {{ choice.label }}
+                </button>
+              }
+            </div>
+          </div>
+          <div class="field">
+            <span class="fieldName">DXF version</span>
+            <div class="segmented">
+              <button [class.on]="options.version === 'R2000'" (click)="touch({ version: 'R2000' })">
+                R2000
+              </button>
+              <button [class.on]="options.version === 'R12'" (click)="touch({ version: 'R12' })">
+                R12
+              </button>
+            </div>
+            <span class="fieldNote">R12 is for old CAM only</span>
+          </div>
+        </div>
+      }
+
+      <!-- Geometry -------------------------------------------------------- -->
+      <button
+        class="sectionHead"
+        data-section="geometry"
+        (click)="open.geometry = !open.geometry"
+      >
+        <mat-icon [class.open]="open.geometry">chevron_right</mat-icon>
+        <span class="sectionName">Geometry</span>
+        <span class="sectionSummary">{{ geometrySummary }}</span>
+      </button>
+      @if (open.geometry) {
+        <div class="sectionBody">
+          <div class="group">
+            <span class="groupName">Origin — the point that lands on (0, 0)</span>
+            @for (choice of originChoices; track choice.value) {
+              <button class="radioRow" (click)="touch({ origin: choice.value })">
+                <span class="radio" [class.on]="options.origin === choice.value"></span>
+                <span class="radioLabel">{{ choice.label }}</span>
+              </button>
+            }
+            @if (options.origin === 'joint') {
+              <div class="subField">
+                <span class="fieldName">Joint</span>
+                <div class="segmented">
+                  @for (joint of jointChoices(); track joint.id) {
+                    <button
+                      [class.on]="originJointLabel === joint.id"
+                      (click)="touch({ originJointId: joint.id })"
+                    >
+                      {{ joint.name }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="group">
+            <span class="groupName">Joint circles</span>
+            @for (choice of circleChoices; track choice.value) {
+              <button class="radioRow" (click)="touch({ jointCircles: choice.value })">
+                <span class="radio" [class.on]="options.jointCircles === choice.value"></span>
+                <span class="radioLabel">{{ choice.label }}</span>
+              </button>
+            }
+            @if (options.jointCircles === 'holes') {
+              <div class="subField">
+                <span class="fieldName">Pin diameter</span>
+                <input
+                  class="textInput narrow"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  [ngModel]="options.pinDiameter"
+                  (ngModelChange)="touch({ pinDiameter: +$event })"
+                  aria-label="Pin diameter"
+                />
+                <span class="fieldNote">{{ summary.unit }} · every joint</span>
+              </div>
+            }
+          </div>
+
+          <div class="group">
+            <div class="checkRow" [attr.title]="reasonFor('includeDimensions')">
+              <button (click)="toggle('includeDimensions')">
+                <span class="check" [class.on]="isOn('includeDimensions')">
+                  <mat-icon>check</mat-icon>
+                </span>
+                <span class="checkText">
+                  <span class="checkName">Link dimensions</span>
+                  <span class="checkNote">Aligned DIMENSION entities between joint centres.</span>
+                </span>
+              </button>
+            </div>
+            @if (options.includeDimensions) {
+              <div class="subField">
+                <span class="fieldName">Style</span>
+                <div class="segmented">
+                  <button
+                    [class.on]="options.dimensionStyle === 'entities'"
+                    (click)="touch({ dimensionStyle: 'entities' })"
+                  >
+                    Dimension entities
+                  </button>
+                  <button
+                    [class.on]="options.dimensionStyle === 'table'"
+                    (click)="touch({ dimensionStyle: 'table' })"
+                  >
+                    Text table
+                  </button>
+                </div>
+              </div>
+            }
+            <!-- Greyed rows say why, and the reason hangs on the row rather
+                 than on the button: a disabled button takes no pointer events,
+                 so its own tooltip would be the one nobody could reach. -->
+            <div
+              class="checkRow"
+              [class.blocked]="blocked('includeTracedPaths')"
+              [attr.title]="reasonFor('includeTracedPaths')"
+              data-check="tracedPaths"
+            >
+              <button
+                [disabled]="blocked('includeTracedPaths')"
+                (click)="toggle('includeTracedPaths')"
+              >
+                <span
+                  class="check"
+                  [class.on]="isOn('includeTracedPaths')"
+                  [class.off]="blocked('includeTracedPaths')"
+                >
+                  <mat-icon>check</mat-icon>
+                </span>
+                <span class="checkText">
+                  <span class="checkName">Traced paths</span>
+                  <span class="checkNote">Coupler curves as polylines.</span>
+                </span>
+              </button>
+            </div>
+            <div class="checkRow" [attr.title]="reasonFor('includeSlotTravel')">
+              <button (click)="toggle('includeSlotTravel')">
+                <span class="check" [class.on]="isOn('includeSlotTravel')">
+                  <mat-icon>check</mat-icon>
+                </span>
+                <span class="checkText">
+                  <span class="checkName">Slot travel</span>
+                  <span class="checkNote">Slot axis with explicit start and end points.</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Layers ---------------------------------------------------------- -->
+      <button class="sectionHead" data-section="layers" (click)="open.layers = !open.layers">
+        <mat-icon [class.open]="open.layers">chevron_right</mat-icon>
+        <span class="sectionName">Layers</span>
+        <span class="sectionSummary">{{ layersSummary }}</span>
+      </button>
+      @if (open.layers) {
+        <div class="sectionBody tight">
+          <!-- Named as they will appear in CAD, so what is ticked here can be
+               matched to what shows up there. -->
+          @for (row of layerRows; track row.name) {
+            <div
+              class="checkRow"
+              [class.blocked]="layerBlocked(row)"
+              [attr.title]="layerReason(row)"
+            >
+              <button [disabled]="layerBlocked(row)" (click)="toggleLayer(row)">
+                <span
+                  class="check"
+                  [class.on]="layerOn(row)"
+                  [class.off]="layerBlocked(row) && !row.fixed"
+                >
+                  <mat-icon>check</mat-icon>
+                </span>
+                <span class="checkName">{{ row.name }}</span>
+                <span class="spacer"></span>
+                <span class="cadName">{{ row.cad }}</span>
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Data ------------------------------------------------------------ -->
+      <button class="sectionHead" data-section="data" (click)="open.data = !open.data">
+        <mat-icon [class.open]="open.data">chevron_right</mat-icon>
+        <span class="sectionName">Data</span>
+        <span class="sectionSummary">{{ dataSummary }}</span>
+      </button>
+      @if (open.data) {
+        <div class="sectionBody">
+          <span class="groupName"
+            >A companion table of joints and links — the numbers DXF cannot carry.</span
+          >
+          @for (choice of dataChoices; track choice.value) {
+            <button class="radioRow" (click)="touch({ dataFile: choice.value })">
+              <span class="radio" [class.on]="options.dataFile === choice.value"></span>
+              <span class="checkText">
+                <span class="radioLabel">{{ choice.label }}</span>
+                <span class="checkNote">{{ choice.note }}</span>
+              </span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- What is about to come down, against the button that sends it. The
+       thumbnail is the drawing itself, so it catches the two mistakes worth
+       catching: nothing traced, or holes where marks were meant. -->
+  <div class="footerStrip">
+    <div class="preview">
+      <svg viewBox="0 0 118 88" width="118" height="88" aria-hidden="true">
+        @if (isEmpty) {
+          <path d="M20 20 H98 V68 H20 Z" class="previewEmpty" />
+        } @else {
+          <path [attr.d]="summary.shapes.strokes" class="previewStroke" />
+          @for (hole of summary.shapes.holes; track $index) {
+            <circle [attr.cx]="hole.cx" [attr.cy]="hole.cy" [attr.r]="hole.r" class="previewHole" />
+          }
+        }
+      </svg>
+    </div>
+    <div class="footerText">
+      <div class="liveSummary">{{ liveSummary }}</div>
+      <div class="deliveryLine">{{ deliveryLine }}</div>
+    </div>
   </div>
 
   <div mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cancel</button>
-    <button mat-flat-button color="primary" (click)="download()">
+    <button mat-flat-button color="primary" [disabled]="isEmpty" (click)="download()">
       <mat-icon>download</mat-icon>
-      Export DXF
+      {{ exportLabel }}
     </button>
   </div>
 </div>

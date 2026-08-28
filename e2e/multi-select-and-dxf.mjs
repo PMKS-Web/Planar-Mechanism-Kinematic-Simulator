@@ -325,11 +325,37 @@ check(
 
 await openDrawingDialog();
 check(
-  'CAD Export explains its start-pose centerline scope and defaults labels off',
-  (await page.locator('app-drawing-export').innerText()).includes('unsolved start pose') &&
-    !(await page.locator('app-drawing-export input[type="checkbox"]').last().isChecked())
+  'CAD Export explains its start-pose centerline scope and opens on Build parts',
+  (await page.locator('app-drawing-export').innerText()).includes('start pose') &&
+    (await page.locator('app-drawing-export [data-preset="build"]').getAttribute('class')).includes(
+      'on'
+    ) &&
+    (await page.locator('app-drawing-export [data-preset="custom"]').count()) === 0
+);
+// Every section says what it holds before it is opened, which is what lets a
+// reader confirm the whole stack without opening any of it.
+check(
+  'each folded section carries its own summary',
+  (await page.locator('app-drawing-export .sectionSummary').allInnerTexts()).every(
+    (text) => text.trim().length > 0
+  ),
+  JSON.stringify(await page.locator('app-drawing-export .sectionSummary').allInnerTexts())
+);
+await page.locator('app-drawing-export [data-section="layers"]').click();
+await page.waitForTimeout(300);
+const labelsRow = page.locator('app-drawing-export .checkRow', { hasText: 'Labels' }).first();
+check(
+  'labels are off by default, for a clean sketch',
+  !(await labelsRow.locator('.check').getAttribute('class')).includes('on')
 );
 await page.screenshot({ path: `${OUT}/desktop-dxf-dialog.png`, fullPage: true });
+
+// Without the companion table, so the download is the drawing itself rather
+// than the zip the two files would need. The zip has its own unit test.
+await page.locator('app-drawing-export [data-section="data"]').click();
+await page.waitForTimeout(300);
+await page.locator('app-drawing-export .radioRow', { hasText: 'None' }).first().click();
+await page.waitForTimeout(300);
 const downloadPromise = page.waitForEvent('download');
 await page.getByRole('button', { name: 'Export DXF' }).click();
 const download = await downloadPromise;

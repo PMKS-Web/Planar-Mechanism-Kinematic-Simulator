@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButton, MatIconButton } from '@angular/material/button';
-import { MatCheckbox } from '@angular/material/checkbox';
 import {
   MatDialog,
   MatDialogActions,
@@ -10,14 +9,60 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
-import { MatFormField, MatLabel, MatSuffix } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
+import { LengthUnit } from '../../../model/unit-enums';
 import {
   DEFAULT_DXF_EXPORT_OPTIONS,
-  DxfExportOptions,
+  DxfDataFile,
+  DxfExportChoices,
   DxfExportService,
+  DxfJointCircles,
+  DxfOrigin,
+  DxfPresetName,
+  DxfSummary,
+  DXF_PRESETS,
 } from '../../../services/export/dxf/dxf-export.service';
 
+/** A row in the Layers checklist: what it is called here, and in CAD. */
+interface LayerRow {
+  /** Absent for the two that are always written. */
+  key?: keyof DxfExportChoices;
+  name: string;
+  cad: string;
+  /** Shown ticked and unpressable, with this as the reason. */
+  fixed?: string;
+}
+
+const LAYER_ROWS: LayerRow[] = [
+  { key: 'perLinkLayers', name: 'One layer per link', cad: 'PMKS_LINK_*' },
+  {
+    name: 'Link centrelines',
+    cad: 'PMKS_LINK_CENTERLINES',
+    fixed: 'Always included — a drawing without centrelines is empty.',
+  },
+  { name: 'Joint centres', cad: 'PMKS_JOINT_CENTERS', fixed: 'Always included.' },
+  { key: 'includeGroundPoints', name: 'Ground points', cad: 'PMKS_GROUND_POINTS' },
+  {
+    key: 'includeKinematicAnnotations',
+    name: 'Kinematic annotations',
+    cad: 'PMKS_KINEMATIC_ANNOTATIONS',
+  },
+  { key: 'includeForces', name: 'Forces', cad: 'PMKS_FORCES' },
+  { key: 'includeConstruction', name: 'Construction guides', cad: 'PMKS_CONSTRUCTION' },
+  { key: 'includeLabels', name: 'Labels', cad: 'PMKS_LABELS' },
+  { key: 'includeNotes', name: 'Notes', cad: 'PMKS_NOTES' },
+];
+
+/**
+ * The CAD Export dialog.
+ *
+ * A destination first, the detail folded behind four summaries, and a live
+ * count with a thumbnail above the button. The argument, which the brief in
+ * `docs/cad-export-design.md` makes at length: this is not a DXF options panel.
+ * A reader is trying to get a linkage into SolidWorks and build a part per
+ * link, and eleven checkboxes with no recommended path would be a worse screen
+ * than the four it replaced. So one question carries nine of the ten decisions,
+ * and the detail is there for the reader who wants it.
+ */
 @Component({
   selector: 'app-drawing-export',
   templateUrl: './drawing-export.component.html',
@@ -26,16 +71,11 @@ import {
   imports: [
     FormsModule,
     MatButton,
-    MatCheckbox,
     MatDialogActions,
     MatDialogClose,
     MatDialogContent,
-    MatFormField,
     MatIcon,
     MatIconButton,
-    MatInput,
-    MatLabel,
-    MatSuffix,
   ],
 })
 export class DrawingExportComponent {
@@ -53,9 +93,178 @@ export class DrawingExportComponent {
     { optional: true }
   );
 
-  options: Required<DxfExportOptions> = { ...DEFAULT_DXF_EXPORT_OPTIONS };
+  options: DxfExportChoices = { ...DEFAULT_DXF_EXPORT_OPTIONS };
+  preset: DxfPresetName | 'custom' = 'build';
+
+  open = { file: false, geometry: false, layers: false, data: false };
+
+  readonly layerRows = LAYER_ROWS;
+  readonly unitChoices: { label: string; value: LengthUnit }[] = [
+    { label: 'cm', value: LengthUnit.CM },
+    { label: 'm', value: LengthUnit.METER },
+    { label: 'in', value: LengthUnit.INCH },
+  ];
+  readonly originChoices: { label: string; value: DxfOrigin }[] = [
+    { label: 'Keep model coordinates', value: 'model' },
+    { label: 'First ground joint', value: 'ground' },
+    { label: 'Centre of drawing', value: 'center' },
+    { label: 'Choose a joint…', value: 'joint' },
+  ];
+  readonly circleChoices: { label: string; value: DxfJointCircles }[] = [
+    { label: 'None (points only)', value: 'none' },
+    { label: 'Marks only', value: 'marks' },
+    { label: 'Pin holes at Ø', value: 'holes' },
+  ];
+  readonly dataChoices: { label: string; note: string; value: DxfDataFile }[] = [
+    { label: 'None', note: 'The DXF on its own.', value: 'none' },
+    { label: 'CSV', note: 'Joint table and link table, two sheets.', value: 'csv' },
+    { label: 'JSON', note: 'The same tables, one structured file.', value: 'json' },
+  ];
+
+  // --- what the drawing can offer -------------------------------------------
+
+  get isEmpty(): boolean {
+    return !this.exportService.hasGeometry();
+  }
+
+  get isCustom(): boolean {
+    return this.preset === 'custom';
+  }
+
+  jointChoices(): { id: string; name: string }[] {
+    return this.exportService.originJointChoices();
+  }
+
+  /** Why a row is greyed, or nothing. The rule the rest of the app follows. */
+  reasonFor(key: keyof DxfExportChoices): string {
+    if (this.isEmpty) return 'Nothing to export yet — draw a mechanism first.';
+    if (key === 'includeTracedPaths' && !this.exportService.hasTracedJoint()) {
+      return 'No joint is tracing a path. Turn one on from the Edit panel.';
+    }
+    if (key === 'includeForces' && !this.exportService.hasForces()) {
+      return 'Nothing loads this mechanism. Add a force from the Edit panel.';
+    }
+    return '';
+  }
+
+  blocked(key: keyof DxfExportChoices): boolean {
+    return this.reasonFor(key) !== '';
+  }
+
+  // --- choosing -------------------------------------------------------------
+
+  pick(name: DxfPresetName): void {
+    this.options = { ...this.options, ...DXF_PRESETS[name] };
+    this.preset = name;
+  }
+
+  /**
+   * Any change to the detail below means the reader has left the preset.
+   *
+   * The values are kept rather than reset: Custom is a description of where
+   * they are, not a mode they switched into.
+   */
+  touch(patch: Partial<DxfExportChoices>): void {
+    this.options = { ...this.options, ...patch };
+    this.preset = 'custom';
+  }
+
+  toggle(key: keyof DxfExportChoices): void {
+    if (this.blocked(key)) return;
+    this.touch({ [key]: !this.options[key] } as Partial<DxfExportChoices>);
+  }
+
+  isOn(key: keyof DxfExportChoices): boolean {
+    return this.options[key] === true;
+  }
+
+  // --- what each folded section says ----------------------------------------
+
+  get fileSummary(): string {
+    return `${this.options.fileName || 'mechanism'}.dxf · ${this.summary.unit}`;
+  }
+
+  get geometrySummary(): string {
+    const origin =
+      this.options.origin === 'model'
+        ? 'model coordinates'
+        : this.options.origin === 'center'
+          ? 'origin at centre'
+          : `origin at ${this.originJointLabel}`;
+    const circles =
+      this.options.jointCircles === 'none'
+        ? 'points only'
+        : this.options.jointCircles === 'marks'
+          ? 'joint marks'
+          : `Ø${this.options.pinDiameter} ${this.summary.unit} holes`;
+    return `${origin} · ${circles}`;
+  }
+
+  get originJointLabel(): string {
+    if (this.options.origin === 'joint') {
+      return this.options.originJointId ?? this.jointChoices()[0]?.id ?? 'A';
+    }
+    return this.exportService.firstGroundJointName() ?? 'ground';
+  }
+
+  get layersSummary(): string {
+    const on = LAYER_ROWS.filter(
+      (row) => row.fixed || (row.key !== undefined && this.isOn(row.key) && !this.blocked(row.key))
+    ).length;
+    return `${on} of ${LAYER_ROWS.length} included`;
+  }
+
+  /** Whether a layer row shows a tick. */
+  layerOn(row: LayerRow): boolean {
+    return row.fixed !== undefined || (row.key !== undefined && this.isOn(row.key));
+  }
+
+  layerBlocked(row: LayerRow): boolean {
+    return row.fixed !== undefined || (row.key !== undefined && this.blocked(row.key));
+  }
+
+  layerReason(row: LayerRow): string {
+    return row.fixed ?? (row.key ? this.reasonFor(row.key) : '');
+  }
+
+  toggleLayer(row: LayerRow): void {
+    if (row.key && !row.fixed) this.toggle(row.key);
+  }
+
+  get dataSummary(): string {
+    return this.options.dataFile === 'none'
+      ? 'DXF only'
+      : `DXF + ${this.options.dataFile.toUpperCase()} (zip)`;
+  }
+
+  // --- the footer -----------------------------------------------------------
+
+  get summary(): DxfSummary {
+    return this.exportService.summarize(this.options);
+  }
+
+  get liveSummary(): string {
+    if (this.isEmpty) return 'Nothing to export yet — draw a mechanism first.';
+    const { entities, layers, width, height, unit } = this.summary;
+    return `${entities} entities · ${layers} layers · ${width.toFixed(0)} × ${height.toFixed(0)} ${unit}`;
+  }
+
+  get deliveryLine(): string {
+    if (this.isEmpty) return 'The grid is empty.';
+    const stem = this.options.fileName || 'mechanism';
+    return this.options.dataFile === 'none'
+      ? `Downloads as ${stem}.dxf`
+      : `Downloads as ${stem}.zip — DXF + ${this.options.dataFile.toUpperCase()}`;
+  }
+
+  get exportLabel(): string {
+    return this.options.dataFile === 'none'
+      ? 'Export DXF'
+      : `Export DXF + ${this.options.dataFile.toUpperCase()}`;
+  }
 
   download(): void {
+    if (this.isEmpty) return;
     const file = this.exportService.create(this.options);
     const url = URL.createObjectURL(file.blob);
     const anchor = document.createElement('a');

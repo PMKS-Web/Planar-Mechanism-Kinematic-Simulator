@@ -101,9 +101,37 @@ export const DXF_PRESETS = {
 
 export type DxfPresetName = keyof typeof DXF_PRESETS;
 
-export const DEFAULT_DXF_EXPORT_OPTIONS: DxfExportChoices = {
+/**
+ * What the builder assumes when it is told nothing.
+ *
+ * Deliberately the plainest reading of the drawing rather than the useful one:
+ * coordinates as drawn, centre marks rather than holes, one centreline layer.
+ * The opinion belongs to the screen -- a reader picking "Build parts" is what
+ * moves the origin and cuts the holes -- and a primitive that arrived with that
+ * opinion baked in would be one every other caller had to argue with.
+ */
+export const NEUTRAL_DXF_OPTIONS: DxfExportChoices = {
   fileName: 'mechanism',
   version: 'R2000',
   pinDiameter: 0.6,
+  origin: 'model',
+  jointCircles: 'marks',
+  includeDimensions: false,
+  dimensionStyle: 'entities',
+  includeTracedPaths: false,
+  includeSlotTravel: false,
+  perLinkLayers: false,
+  includeGroundPoints: false,
+  includeKinematicAnnotations: true,
+  includeForces: true,
+  includeConstruction: true,
+  includeLabels: false,
+  includeNotes: false,
+  dataFile: 'none',
+};
+
+/** Where the dialog starts: the destination most readers are heading for. */
+export const DEFAULT_DXF_EXPORT_OPTIONS: DxfExportChoices = {
+  ...NEUTRAL_DXF_OPTIONS,
   ...DXF_PRESETS.build,
 };

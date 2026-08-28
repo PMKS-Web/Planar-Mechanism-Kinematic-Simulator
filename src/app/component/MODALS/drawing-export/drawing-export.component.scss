@@ -1,122 +1,596 @@
+// The CAD Export dialog. Four folded sections between a pair of preset cards
+// and a footer that says what is about to come down -- the arrangement the
+// brief argues for in docs/cad-export-design.md, and the designer drew.
+//
+// A plain component stylesheet rather than a theme mixin, as this component has
+// always been: the indigo below is the app's own primary, written out because
+// the dialog is the only thing wearing it here and a mixin would put its rules
+// in the global sheet for one overlay.
+$primary: #3f51b5;
+$primary-mid: #5c6bc0;
+$primary-dark: #303f9f;
+$primary-tint: #e8eaf6;
+$primary-wash: #f5f6fb;
+$primary-pale: #c5cae9;
+$rule: #eceef5;
+
 .drawingExport {
-  min-width: 0;
-}
-
-.titleRow {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 8px 4px 24px;
-}
+  flex-direction: column;
+  max-height: inherit;
+  color: rgba(0, 0, 0, 0.87);
 
-h1 {
-  margin: 0;
-  font-family: Roboto, sans-serif;
-  font-size: 20px;
-  font-weight: 500;
-  line-height: 32px;
-}
-
-.subtitle {
-  margin: 0;
-  padding: 0 24px 4px;
-  color: rgba(0, 0, 0, 0.58);
-  font-size: 13px;
-}
-
-.close {
-  color: #000;
-}
-
-[mat-dialog-content] {
-  padding-top: 16px;
-}
-
-.scopeNote {
-  display: flex;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  background: #eef0fb;
-  color: #27306f;
-}
-
-.scopeNote div,
-.scopeNote span {
-  display: block;
-}
-
-.scopeNote span {
-  margin-top: 3px;
-  font-size: 12px;
-  line-height: 17px;
-}
-
-legend {
-  color: rgba(0, 0, 0, 0.68);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.fileField {
-  width: 100%;
-  margin-top: 18px;
-}
-
-fieldset {
-  display: grid;
-  gap: 4px;
-  margin: 18px 0 0;
-  padding: 0;
-  border: 0;
-}
-
-legend {
-  margin-bottom: 6px;
-}
-
-fieldset mat-checkbox {
-  display: flex;
-  padding: 3px 0;
-}
-
-fieldset strong,
-fieldset small {
-  display: block;
-}
-
-fieldset strong {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-fieldset small {
-  margin-top: 2px;
-  color: rgba(0, 0, 0, 0.55);
-  font-size: 12px;
-}
-
-.footnote {
-  margin: 14px 0 0;
-  color: rgba(0, 0, 0, 0.55);
-  font-size: 12px;
-  line-height: 17px;
-}
-
-[mat-dialog-actions] button mat-icon {
-  margin-right: 6px;
-}
-
-@media (max-width: 480px) {
   .titleRow {
-    padding-left: 16px;
-  }
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px 4px 24px;
 
-  [mat-dialog-content] {
-    padding-inline: 18px;
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 500;
+      line-height: 32px;
+      letter-spacing: 0.0125em;
+    }
   }
 
   .subtitle {
-    padding-inline: 18px;
+    margin: 0;
+    padding: 0 24px 12px;
+    color: rgba(0, 0, 0, 0.58);
+    font-size: 13px;
+  }
+
+  // Settled, not an alert: this is the scope of the feature.
+  .scopeNote {
+    display: flex;
+    gap: 10px;
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    border-radius: 5px;
+    background: $primary-wash;
+    color: #3a4166;
+
+    mat-icon {
+      flex: 0 0 auto;
+      color: $primary;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 17px;
+    }
+  }
+
+  .presetHead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 6px;
+
+    .presetTitle {
+      font-size: 14px;
+      font-weight: 500;
+      color: #2c2c2c;
+    }
+  }
+
+  .linkButton {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    color: $primary;
+    cursor: pointer;
+  }
+
+  // Cards rather than a segmented control: the line of description is what
+  // makes the choice answerable without opening anything.
+  .presetCards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .presetCard {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1 1 190px;
+    min-width: 0;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    border: 1.5px solid rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+    background: #fff;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &.on {
+      border-color: $primary;
+      background: $primary-tint;
+    }
+
+    .presetName {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: #2c2c2c;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: $primary;
+      }
+    }
+
+    .presetNote {
+      font-size: 11.5px;
+      line-height: 15px;
+      color: rgba(0, 0, 0, 0.55);
+    }
+  }
+
+  .customBanner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 100%;
+    padding: 8px 10px;
+    box-sizing: border-box;
+    border: 1.5px solid $primary;
+    border-radius: 6px;
+    background: $primary-tint;
+    color: $primary-dark;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    .customName {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .customNote {
+      font-size: 12px;
+      color: $primary;
+    }
+  }
+
+  .sections {
+    margin: 16px -24px 0;
+    border-top: 1px solid $rule;
+  }
+
+  // Each header carries its own answers, so the reader can confirm the whole
+  // stack without opening any of it.
+  .sectionHead {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 24px;
+    border: 0;
+    border-bottom: 1px solid $rule;
+    background: #fff;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: #f4f5f9;
+    }
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: rgba(0, 0, 0, 0.45);
+      transition: transform 0.15s ease-in-out;
+
+      &.open {
+        transform: rotate(90deg);
+      }
+    }
+
+    .sectionName {
+      flex: 0 0 auto;
+      font-size: 14px;
+      color: #2c2c2c;
+    }
+
+    .sectionSummary {
+      flex: 1 1 auto;
+      min-width: 0;
+      text-align: right;
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.5);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .sectionBody {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 14px 24px 16px;
+    border-bottom: 1px solid $rule;
+    background: #fcfcfe;
+
+    &.tight {
+      gap: 0;
+      padding: 10px 24px 14px;
+    }
+  }
+
+  .group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    + .group {
+      padding-top: 12px;
+      border-top: 1px solid $rule;
+    }
+  }
+
+  .groupName {
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .field,
+  .subField {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .subField {
+    padding-left: 28px;
+  }
+
+  .fieldName {
+    flex: 0 0 auto;
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .field .fieldName {
+    flex-basis: 92px;
+  }
+
+  .fieldNote {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.45);
+  }
+
+  .textInput {
+    flex: 1 1 140px;
+    min-width: 0;
+    height: 32px;
+    padding: 0 8px;
+    border: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.42);
+    border-radius: 4px 4px 0 0;
+    background: #f0f1f5;
+    box-sizing: border-box;
+    font: inherit;
+    font-size: 14px;
+    color: #2c2c2c;
+
+    &.narrow {
+      flex: 0 0 62px;
+      height: 28px;
+    }
+  }
+
+  .segmented {
+    display: flex;
+    height: 30px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 4px;
+    overflow: hidden;
+
+    button {
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      border: 0;
+      border-left: 1px solid rgba(0, 0, 0, 0.12);
+      background: #fff;
+      font: inherit;
+      font-size: 13px;
+      color: #2c2c2c;
+      cursor: pointer;
+
+      &:first-child {
+        border-left: 0;
+      }
+
+      &.on {
+        background: $primary-mid;
+        color: #fff;
+      }
+    }
+  }
+
+  .radioRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .radio {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    border: 2px solid rgba(0, 0, 0, 0.54);
+    border-radius: 50%;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+
+    &.on {
+      border-color: $primary;
+      background: $primary;
+
+      &::after {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #fff;
+      }
+    }
+  }
+
+  .radioLabel {
+    font-size: 14px;
+    color: #2c2c2c;
+  }
+
+  .checkRow {
+    display: flex;
+    border-radius: 4px;
+
+    &.blocked {
+      background: #fafafc;
+      cursor: help;
+    }
+
+    > button {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      width: 100%;
+      padding: 5px 4px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+
+      &:disabled {
+        cursor: default;
+        // Out of the way, so the hover lands on the row that carries the
+        // reason rather than on a button that cannot receive it.
+        pointer-events: none;
+      }
+    }
+  }
+
+  .check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    border: 2px solid rgba(0, 0, 0, 0.54);
+    border-radius: 2px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    background: #f4f4f7;
+    color: #fff;
+
+    mat-icon {
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+      visibility: hidden;
+    }
+
+    &.on {
+      border-color: $primary;
+      background: $primary;
+
+      mat-icon {
+        visibility: visible;
+      }
+    }
+
+    &.off {
+      border-color: rgba(0, 0, 0, 0.2);
+      background: #f4f4f7;
+    }
+
+    &.on.off {
+      background: $primary-pale;
+    }
+  }
+
+  .checkText {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .checkName {
+    font-size: 14px;
+    color: #2c2c2c;
+  }
+
+  .blocked .checkName {
+    color: rgba(0, 0, 0, 0.38);
+  }
+
+  .checkNote {
+    font-size: 12px;
+    line-height: 16px;
+    color: rgba(0, 0, 0, 0.5);
+  }
+
+  .spacer {
+    flex: 1 1 auto;
+  }
+
+  // The layer's name in CAD, so what is ticked here can be matched to what
+  // shows up there.
+  .cadName {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: rgba(0, 0, 0, 0.42);
+    white-space: nowrap;
+  }
+
+  // Against the button, because it answers a question asked at the moment of
+  // pressing it -- and a right-hand rail would lose it on the phone.
+  .footerStrip {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 24px;
+    background: #f7f8fc;
+  }
+
+  .preview {
+    flex: 0 0 auto;
+    width: 120px;
+    height: 90px;
+    border: 1px solid #e2e4ee;
+    border-radius: 4px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .previewStroke {
+    fill: none;
+    stroke: $primary;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+  }
+
+  .previewHole {
+    fill: #fff;
+    stroke: #263238;
+    stroke-width: 1.2;
+  }
+
+  .previewEmpty {
+    fill: none;
+    stroke: #e2e4ee;
+    stroke-width: 3;
+    stroke-dasharray: 8 8;
+  }
+
+  .footerText {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .liveSummary {
+    font-size: 12.5px;
+    color: rgba(0, 0, 0, 0.7);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .deliveryLine {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.5);
+  }
+
+  [mat-dialog-content] {
+    padding: 0 24px;
+    overflow-y: auto;
+  }
+
+  [mat-dialog-actions] {
+    min-height: 52px;
+    padding: 8px 16px;
+    border-top: 1px solid $rule;
+    margin: 0;
+  }
+
+  // On a phone the sections are what make this survive: the cards stack, the
+  // summaries keep their ellipsis, and nothing scrolls sideways.
+  @media (max-width: 600px) {
+    .titleRow,
+    .subtitle,
+    [mat-dialog-content] {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    .sections {
+      margin-left: -16px;
+      margin-right: -16px;
+    }
+
+    .sectionHead,
+    .sectionBody {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    .footerStrip {
+      padding: 10px 16px;
+      gap: 10px;
+    }
+
+    .preview {
+      width: 84px;
+      height: 63px;
+
+      svg {
+        width: 84px;
+        height: 63px;
+      }
+    }
+
+    .presetCard {
+      flex-basis: 100%;
+    }
   }
 }
