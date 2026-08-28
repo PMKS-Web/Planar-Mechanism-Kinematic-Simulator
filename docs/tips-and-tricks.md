@@ -1,0 +1,346 @@
+# Tips and tricks
+
+Things that cost somebody an hour to find out. Read it before your first change, and **add to it
+whenever something surprises you** — a surprise you do not write down is one the next person pays
+for again.
+
+This is not the architecture tour. `README.md` and `CLAUDE.md` say what the app *is*; this says how
+to work on it without stepping in the same holes.
+
+---
+
+## Contents
+
+- [Environment](#environment)
+- [Running the app](#running-the-app)
+- [Unit tests](#unit-tests)
+- [Browser tests](#browser-tests)
+- [Getting inside the running app](#getting-inside-the-running-app)
+- [Formatting, and why you should not just run Prettier](#formatting-and-why-you-should-not-just-run-prettier)
+- [Angular and build gotchas](#angular-and-build-gotchas)
+- [SCSS gotchas](#scss-gotchas)
+- [Domain facts worth knowing before you debug](#domain-facts-worth-knowing-before-you-debug)
+- [Deploys, domains and surrounding services](#deploys-domains-and-surrounding-services)
+- [Working out whether a failure is yours](#working-out-whether-a-failure-is-yours)
+
+---
+
+## Environment
+
+**Node** 22.22.3+, 24.15+ or 26+ — the range the Angular 22 toolchain declares. `npm ci` for a
+clean install.
+
+**Playwright lives outside the repo.** It is deliberately not a devDependency, because it would
+bloat deploy installs. The e2e scripts look for it at `/tmp/pmks-playwright`, overridable with
+`PMKS_PLAYWRIGHT_DIR`:
+
+```bash
+mkdir -p /tmp/pmks-playwright && cd /tmp/pmks-playwright && npm i playwright gif-encoder pngjs && npx playwright install chromium
+```
+
+**`/tmp` is cleared on reboot**, so that install disappears and every browser suite starts failing
+with a module-not-found. Reinstalling is the first thing to try.
+
+**Two suites need more than Chromium.** `playback-loop-indicator` compares the same bar across
+engines, so it needs Firefox and WebKit too, and reports three confusing failures without them:
+
+```bash
+cd /tmp/pmks-playwright && npx playwright install firefox webkit
+```
+
+**One suite needs a native helper.** `real-mouse-slots` drives the actual system cursor and refuses
+to run unless `MOUSECTL` points at a compiled `e2e/tools/mousectl.swift`. It is opt-in; a bare
+"Error: set MOUSECTL" is the test declining, not the app breaking.
+
+**macOS has no `timeout`.** A loop written as `timeout 240 node e2e/thing.mjs` fails with
+`command not found` and reads as a test failure. Use `gtimeout` from coreutils, or nothing.
+
+---
+
+## Running the app
+
+```bash
+npm start          # http://localhost:4200
+```
+
+**Use `localhost`, not `127.0.0.1`.** The dev server binds the hostname, so
+`PMKS_BASE_URL=http://127.0.0.1:4200` fails to connect while `http://localhost:4200` works. Several
+e2e scripts default to `127.0.0.1`, which is fine when they start their own server and wrong when
+you point them at yours. Pass `PMKS_BASE_URL=http://localhost:<port>` and the problem goes away.
+
+**Do not gate a script on the tail of the serve log.** This looks reasonable and hangs forever:
+
+```bash
+until tail -3 serve.log | grep -q "generation complete"; do sleep 3; done   # ← don't
+```
+
+The builder prints `generation complete` and then follows it with `Stylesheet update sent to
+client(s)` and friends, so within a few seconds the last three lines no longer contain the phrase.
+Ask the port whether it is up instead:
+
+```bash
+until curl -sf -o /dev/null http://localhost:4200/; do sleep 2; done
+```
+
+---
+
+## Unit tests
+
+```bash
+npm test -- --watch=false      # drop the flag for watch mode
+```
+
+Vitest with jsdom, driven by `@angular/build:unit-test`, but the specs are written in Jasmine style
+with globals from `vitest/globals`.
+
+**Run them through `npm test`, not through `vitest` directly.** `npx vitest run some.spec.ts` dies
+with `window is not defined` from inside `svg-pan-zoom`: the Angular builder supplies the jsdom
+environment and the setup files, and a bare Vitest invocation has neither.
+
+**`console.log` in a spec goes nowhere.** The harness swallows it. To see a value, fail on it:
+
+```ts
+expect(JSON.stringify(whatever, null, 1)).toBe('SHOW-ME');
+```
+
+The assertion diff prints the object. Delete it when you are done.
+
+**Vitest errors on a spec file containing no tests**, so a file you have commented out fails the
+run rather than being skipped.
+
+**`tsc --noEmit` is noisy in a way that hides real errors.** `tsconfig.json` does not include the
+spec files, so a plain typecheck prints hundreds of `Cannot find name 'describe'`. Filter them, or
+you will scroll past the three lines that matter:
+
+```bash
+npx tsc -p tsconfig.json --noEmit 2>&1 | grep -vE "\.spec\.ts|test-utils|getEmailJSKey"
+```
+
+---
+
+## Browser tests
+
+They are plain Node scripts in `e2e/*.mjs`, run one at a time, printing `PASS`/`FAIL` lines and
+exiting non-zero if anything failed. There is no runner.
+
+```bash
+PMKS_BASE_URL=http://localhost:4200 node e2e/playback-bar.mjs
+```
+
+**Never re-parse `template-linkages.ts`.** Import the shared reader:
+
+```js
+import { TEMPLATE_IDS, TEMPLATE_LINKAGES, ALL_LINKAGES, assertTemplatesParsed } from './template-payloads.mjs';
+```
+
+Every script used to carry its own regular expression and they were not all right. The file has
+payloads on the key's line or the next, split across `+`-joined pieces, with comments throughout —
+including one containing an apostrophe, which offset the quote pairing of the id-list pattern and
+silently reduced "every template" to 18 of the 42. `ALL_LINKAGES` adds the three dev drawings, and
+unescapes the backslashes two of them contain. Call `assertTemplatesParsed()` in anything that
+sweeps.
+
+**Some suites rewrite tracked files.** `template-animations`, `template-thumbnails`, `readme-shots`
+and `shot` regenerate GIFs and PNGs under `src/assets/gifs` and `docs/images`. Running them dirties
+the working tree, and a careless `git add -A` commits twenty binary files nobody asked for:
+
+```bash
+git checkout -- src/assets docs        # after running any of those
+```
+
+Both accept `ONLY=<template-id>` to do one drawing instead of all of them.
+
+**Screenshots and reports** land in `artifacts/`, which is gitignored. Look at them; an exit code
+tells you a check failed, not what the page looked like.
+
+**Force analysis needs a load.** Only five templates have one — `Punch_Press`, `Derrick_Crane`,
+`Toggle_Clamp`, `Offset_Load_Rocker`, `Crane_Two_Loads`. Every other drawing reports "A load to
+react against" unmet, the export drawer asks three questions instead of four, and any test that
+expects the Forces step will be disappointed. `Punch_Press` is usually what you want: it has a load
+*and* a slider.
+
+---
+
+## Getting inside the running app
+
+From a Playwright `page.evaluate`, Angular's global is the way in. This is how most of the e2e
+suites read state, and it is far steadier than scraping the DOM:
+
+```js
+const grid = ng.getComponent(document.querySelector('app-new-grid'));
+grid.mechanismSrv      // MechanismService: joints, links, forces, mechanisms, partitions
+grid.settings          // SettingsService: units, gravity, isShowCOM, isSnapToGrid, objectScale
+grid.svgGrid           // SvgGridService: zoomIn(), minorCellSize, snapToGrid()
+grid.activeObjService  // what is selected
+grid.tabService        // setTab(TabID)
+```
+
+Other components worth reaching for:
+
+```js
+ng.getComponent(document.querySelector('app-playback-bar'))   // maxStep, rows, stepBy()
+ng.getComponent(document.querySelector('app-synthesis-panel')) // design, solution
+ng.getComponent(document.querySelector('app-export-panel'))
+```
+
+`TabID` is `0` Synthesis, `1` Edit, `2` Kinematic analysis, `3` Force analysis. The number keys do
+the same thing from the keyboard, and pressing `3` is often less trouble than clicking a tab.
+
+**Prefer the model over the picture.** A check written against joint coordinates survives a theme
+change, a re-layout and a pan-zoom animation; one written against SVG markup does not. `playback-timing`
+used to compare whole SVG strings and failed a third of the time on the camera settling.
+
+---
+
+## Formatting, and why you should not just run Prettier
+
+**About fifty source files and six e2e files predate the Prettier config.** Running
+`prettier --write` across one of them reformats code you did not write, and your actual change
+disappears into three hundred lines of reflow.
+
+Format only files you edited, **and only if they were already clean**. To find out:
+
+```bash
+git stash push -u -- path/to/file
+npx prettier --check path/to/file
+git stash pop
+```
+
+The unformatted e2e files, as of this writing, are `cylinder-drag`, `phase1-drag`,
+`phase2-floating-slot`, `phase3-slide`, `synthesis-redesign` and `template-animations`. Edit those
+by hand and leave them unformatted.
+
+A blanket `npx prettier --write "e2e/*.mjs"` will quietly reformat four files you never touched.
+Check `git status` afterwards and revert anything you did not mean to change.
+
+`.prettierignore` deliberately excludes Markdown — Prettier pads every table cell and rewrites
+`*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment.
+
+---
+
+## Angular and build gotchas
+
+- **Fully standalone.** No `AppModule`, no `NgModule` anywhere. A component spec imports the
+  component itself, never a declaring module.
+- **Default change detection**, not `OnPush`. That is the house style; matching it matters more
+  than the theoretical win.
+- **No runtime `require()`.** The esbuild `application` builder does not support it. ES imports
+  only.
+- **`outputPath.browser` is pinned to `""`** so the build stays flat at `dist/pmksweb`, which is
+  what Netlify publishes.
+- **Circular service dependencies are broken with `injector.get(...)` at call time**, in
+  `MechanismService`, `SaveHistoryService` and `UrlProcessorService`. Adding a constructor injection
+  between those three will bite.
+- **Not everything goes through a service.** Some components still talk through statics —
+  `RightPanelComponent.openTab`, `insistOn`. Grep for the static before assuming a service is the
+  only channel.
+
+---
+
+## SCSS gotchas
+
+**There is more than one `@media (max-width: 600px)` block in a file.** `playback-bar.component.scss`
+has two, hundreds of lines apart, and the later one wins. A rule added to the first that already
+exists in the second does nothing at all, and looks correct while doing it.
+
+**Check where a block sits before adding to it.** The phone layout is spread over several media
+blocks by concern, not gathered in one place.
+
+**The phone's spacing is a single value.** Every gap in the bottom stack is `$card-inset`, the same
+one the top strip keeps from the window, and `e2e/mobile.mjs` measures the strip and compares. Do
+not adjust a gap there to make something fit — shrink the thing instead.
+
+**The phone layout was fitted to 390px.** `top-strip-states` also exercises 360, where thirty fewer
+pixels are available; anything you add to the bottom row has to survive that.
+
+---
+
+## Domain facts worth knowing before you debug
+
+- **`MODEL_SCALE` is 200** (`model/render-scale.ts`) — model units per centimetre. A coordinate of
+  600 is 3 cm. Most solver code is in model units and most panel code is in the reader's unit.
+- **`partition.joints` are the same objects as the editable drawing** (not copies), and `animate()`
+  mutates them in place. If something reads the "drawing" while the mechanism is not at timestep 0,
+  it reads an animated pose.
+- **`partition.joints` vs `partition.ownJoints`**: the first is everything the solver must be handed,
+  shared frame pieces included; the second is what that machine is actually made of. "Is this mine?"
+  is `ownJoints`.
+- **Do not assume mechanism index 0.** One drawing can hold several machines, each with its own
+  input, speed and playback row. Ask `partitions`. `mechanisms[0]` is not necessarily the master —
+  `masterMechanism()` is, and the transport steps by *its* frame count.
+- **A cycle's last sample repeats the first**, and the period *is* the last sample's time. A step
+  that lands exactly on the period wraps to zero, so the final frame is reachable only by accident
+  unless you index frames rather than add time.
+- **Samples are one degree of crank apart**, except where a fold made the walk cut finer — see
+  `Mechanism.addedSamples`. Time per sample is therefore not always uniform; `stepAtTime` and
+  `timeAtStep` binary-search the real sample times, and code that divides the period by the frame
+  count is making an assumption.
+- **Editing is gated on being at the start pose.** `isAtStartPose()` is false while playing or at a
+  non-zero timestep, and the Edit panel and several menu rows go quiet. If a UI test cannot edit,
+  check the playhead before checking the feature.
+- **A big drawing arrives unsolved.** Past 24 joints solving is deferred out of Edit and paid when
+  an analysis mode is pressed, behind the loading cover. `mechanisms` being empty in Edit is normal
+  for those.
+- **Only two templates draw their frame as a link** — `Four_Bar_Inversions` and
+  `Slider_Crank_Inversions` — so all-ground links are rare and easy to forget about.
+
+---
+
+## Deploys, domains and surrounding services
+
+- **Production is [app.pmksplus.com](https://app.pmksplus.com)**, deployed from `main`. **Never
+  push to `main`** unless someone has told you to: a commit there ships.
+- **The Netlify site is named `pmksprod`.** Branch previews are
+  `https://[BRANCHNAME]--pmksprod.netlify.app`. The older `--pmks.netlify.app` pattern 404s, and
+  the wrong hostname looks exactly like a broken deploy.
+- **`version` in `package.json` is what the bottom bar shows**, via `environments/environment*.ts`.
+  It is bumped by hand, in the PR that ships a release.
+- **The feedback form needs a serverless key.** `netlify/functions/getEmailJSKey.ts` supplies it
+  from `EMAIL_JS_KEY`. A branch deploy without that variable set reports that the build has no mail
+  key — which is the honest message, not a failure to send. EmailJS also keeps a domain allow-list,
+  so a new preview hostname can be refused even with the key present.
+- **`docs/fixture-urls.md` is generated** from `FIXTURE_GALLERY` by `npm run fixture-urls`, and a
+  spec fails if it is stale. Regenerate against a deploy preview when a reviewer needs to click a
+  mechanism that uses a feature which has not shipped:
+
+  ```bash
+  PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksprod.netlify.app npm run fixture-urls
+  ```
+
+- **The mechanism library's payloads are generated** by `npm run template-payloads` from the
+  verification fixtures, so a template cannot quietly become a different linkage than the tests
+  cover. Do not hand-edit the generated block.
+
+---
+
+## Working out whether a failure is yours
+
+The suite has carried stale failures for weeks at a time, so a red run does not mean you broke it.
+Before spending an afternoon on one, ask git:
+
+```bash
+git stash push -u
+PMKS_BASE_URL=http://localhost:4200 node e2e/the-suite.mjs   # does it fail here too?
+git stash pop
+```
+
+If it fails identically without your changes, it was already broken — say so, and decide separately
+whether to fix it.
+
+To bisect a *product* change rather than a test change, stash only the file you suspect:
+
+```bash
+git stash push -u -- src/app/component/new-grid/new-grid.component.ts
+```
+
+**A stale test usually looks like one of these**, all of which have happened here:
+
+- a selector or `aria-label` whose wording drifted (`traced` → `Show Traced Paths`);
+- a member that was renamed or removed (`synthesisBuilder`, `swapDrivePin`);
+- a behaviour deliberately replaced, with the new one covered by a different file;
+- a drag distance or coordinate tuned against a layout that has since moved;
+- an assertion that depends on a template happening to have some property — a pale link, a load, a
+  particular sample count — which a later change took away.
+
+When you find one, fix it to assert the rule rather than the coincidence. A check that computes what
+the answer should be cannot be invalidated by a palette or a template.

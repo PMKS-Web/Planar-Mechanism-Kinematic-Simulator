@@ -8,6 +8,15 @@ PMKS+ (Planar Mechanism Kinematic Simulator Plus) — an educational Angular 22 
 
 Requires Node ≥22.22 (or 24.x). The esbuild `application` builder is used; `outputPath.browser` is pinned to `""` so output stays flat at `dist/pmksweb` for the Netlify publish dir. Runtime `require()` calls are not supported by the bundler — use ES imports.
 
+## Read this first
+
+[`docs/tips-and-tricks.md`](docs/tips-and-tricks.md) collects the things that cost somebody an hour
+to find out: where Playwright is installed and why it vanishes, which e2e suites rewrite tracked
+files, why `npx vitest` fails where `npm test` works, which hostname the dev server answers on, the
+two `@media (max-width: 600px)` blocks in one stylesheet where the later silently wins, and how to
+tell a failure you caused from one that was already there. Read it before your first change, and
+**add to it whenever something surprises you.**
+
 ## Commands
 
 - `npm start` — dev server at http://localhost:4200 (live reload)

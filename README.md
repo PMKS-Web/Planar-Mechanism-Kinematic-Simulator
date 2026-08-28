@@ -40,6 +40,7 @@ server.
 
 **Working on it**
 
+- [Tips and tricks](#tips-and-tricks)
 - [Verification](#verification)
 - [Philosophy](#philosophy)
 - [How it works](#how-it-works)
@@ -406,6 +407,19 @@ table for its keys, so a hint can never drift from the key that fires it.
 
 ---
 
+## Tips and tricks
+
+**Read [`docs/tips-and-tricks.md`](docs/tips-and-tricks.md) before your first change.** It is the
+collected surprises: where Playwright has to be installed and why it disappears, which suites
+rewrite tracked files, why `npx vitest` fails when `npm test` works, which hostname the dev server
+actually answers on, the two `@media (max-width: 600px)` blocks in one stylesheet where the later
+one silently wins, and how to tell a failure you caused from one that was already there.
+
+**Add to it as you learn.** A surprise nobody writes down is one the next person pays for again, so
+when something costs you an hour, spend two more minutes putting it there.
+
+---
+
 ## Verification
 
 The solvers are not trusted because they look right.
@@ -570,6 +584,10 @@ installs.
 **On formatting:** about fifty files predate the Prettier config. Format only the files you actually
 edited. Running Prettier across an untouched file rewrites code you did not write and buries your
 change.
+
+The rest of what is worth knowing before you start — where Playwright lives, which suites rewrite
+tracked files, which hostname the dev server answers on — is in
+[`docs/tips-and-tricks.md`](docs/tips-and-tricks.md).
 
 ### Branches and deploys
 
