@@ -21,6 +21,7 @@ to work on it without stepping in the same holes.
 - [SCSS gotchas](#scss-gotchas)
 - [Domain facts worth knowing before you debug](#domain-facts-worth-knowing-before-you-debug)
 - [Deploys, domains and surrounding services](#deploys-domains-and-surrounding-services)
+- [Checking an exported file](#checking-an-exported-file)
 - [Working out whether a failure is yours](#working-out-whether-a-failure-is-yours)
 
 ---
@@ -152,6 +153,12 @@ Both accept `ONLY=<template-id>` to do one drawing instead of all of them.
 
 **Screenshots and reports** land in `artifacts/`, which is gitignored. Look at them; an exit code
 tells you a check failed, not what the page looked like.
+
+**`getByText` is a substring match, and the dialogs have hint text.** `.getByText('R12')` in the
+CAD Export dialog matches both the R12 button and the note "R12 is for old CAM only" beside it, and
+Playwright's strict mode fails the run rather than picking one. Reach for
+`getByRole('button', { name: 'R12', exact: true })` when a short label also appears inside a
+sentence nearby.
 
 **Force analysis needs a load.** Only five templates have one — `Punch_Press`, `Derrick_Crane`,
 `Toggle_Clamp`, `Offset_Load_Rocker`, `Crane_Two_Loads`. Every other drawing reports "A load to
@@ -310,6 +317,29 @@ pixels are available; anything you add to the bottom row has to survive that.
 - **The mechanism library's payloads are generated** by `npm run template-payloads` from the
   verification fixtures, so a template cannot quietly become a different linkage than the tests
   cover. Do not hand-edit the generated block.
+
+---
+
+## Checking an exported file
+
+**Draw it.** A DXF or SVG export can pass every assertion you thought to write and still be wrong
+in a way that is obvious the moment you look at it. Two real examples, both caught by rendering and
+neither by a test: every `DIMENSION` named an anonymous block that was emitted *empty* (AutoCAD and
+Fusion redraw the picture from the measurement and never complained, but a reader that draws only
+the block shows nothing -- which is the entire reason the R12 option exists), and the dimension line
+was offset a fixed distance in -Y, so on a vertical link it lay exactly along the centreline it was
+dimensioning.
+
+Parse the download with `dxf-parser` (it is already a dependency, at
+`node_modules/dxf-parser/dist/dxf-parser.js` -- there is no `index.js`), flatten the entities *and*
+every block's contents into line segments, emit an SVG, and screenshot it. Remember DXF's Y axis
+points up and SVG's points down, so negate Y or the drawing arrives upside down. Keep the script in
+the scratchpad rather than `e2e/`; what belongs in `e2e/` is the assertion the picture taught you to
+write.
+
+**R12 is not a header string.** `AC1009` predates `LWPOLYLINE`, the `100` subclass markers and
+entity handles. A file claiming R12 while carrying any of them is one an old reader -- the only
+reason anybody asks for R12 -- stops on. `writeDxf` switches all three on `document.version`.
 
 ---
 
