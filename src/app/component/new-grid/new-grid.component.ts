@@ -1325,7 +1325,7 @@ export class NewGridComponent implements OnDestroy {
           // the same way a bar does, measured on the mount the ram is named
           // from.
           const mount = bodyCylinder.barrelFar;
-          const target = this.placeDraggedBody(mount, mousePosInSvg);
+          const target = this.placeDraggedBody(mount, mousePosInSvg, $event.altKey);
           this.gridUtils.dragCylinder(bodyCylinder, target.x - mount.x, target.y - mount.y);
           this.linkDragAnchor = mousePosInSvg;
           this.dragState.noteMechanismModified();
@@ -1339,7 +1339,7 @@ export class NewGridComponent implements OnDestroy {
           // rounds to no move at all, and a link asked frame by frame would sit
           // on its corner for ever.
           const reference = this.activeObjService.selectedLink.joints[0];
-          const landed = this.placeDraggedBody(reference, mousePosInSvg);
+          const landed = this.placeDraggedBody(reference, mousePosInSvg, $event.altKey);
           this.gridUtils.dragLink(
             this.activeObjService.selectedLink,
             landed.x - reference.x,
@@ -1753,7 +1753,11 @@ export class NewGridComponent implements OnDestroy {
    * A joint dragged on its own still squares up and still lands on the grid:
    * there the thing that snaps is the thing in your hand.
    */
-  private placeDraggedBody(reference: { x: number; y: number }, cursor: Coord): Coord {
+  private placeDraggedBody(
+    reference: { x: number; y: number },
+    cursor: Coord,
+    suspended = false
+  ): Coord {
     // Measured from the press, not from this first qualifying move: the moves
     // held back below the click threshold are still part of the gesture, and
     // starting the sum after them leaves the body trailing the cursor by
@@ -1764,7 +1768,17 @@ export class NewGridComponent implements OnDestroy {
     };
     const held = this.bodyDragOrigin;
     this.axisSnapGuides = [];
-    return new Coord(held.at.x + (cursor.x - held.from.x), held.at.y + (cursor.y - held.from.y));
+    const wanted = new Coord(
+      held.at.x + (cursor.x - held.from.x),
+      held.at.y + (cursor.y - held.from.y)
+    );
+    // On a corner, the same as a dragged joint. The measuring above exists for
+    // this: a body asked frame by frame rounds a few units of travel to no
+    // travel at all and never leaves the corner it is on -- which is what the
+    // note above is about, and the rounding it is about was never applied.
+    // Only the reference joint lands there; the rest of the body keeps its own
+    // shape, because a bar has the length it has.
+    return this.svgGrid.snapToGrid(wanted, suspended);
   }
 
   /** Lines showing which joints a drag has just squared itself against. */

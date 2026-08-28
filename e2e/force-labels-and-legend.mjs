@@ -64,13 +64,26 @@ const titles = () =>
     [...document.querySelectorAll('.graphTitle')].map((el) => el.textContent.trim())
   );
 
-// --- A block is named by the joint a reader can point at ---------------------
+// --- A slider names the bodies a reader can point at -------------------------
+//
+// This used to expect a graph called "Force on Block at C". The block is not
+// named at all any more: a pin, its block and its slot are three bodies to the
+// solver and one thing to a reader, the block's force at the pin is the bar's
+// force negated, so the pin carries both numbers and nothing is named after a
+// body nobody has seen. `export-flow` asserts the same rule from the other
+// side, that no row offered for a slider says "Block".
+//
+// What is left of the original sentence is the half that still holds: the
+// hidden joint does not appear either.
 await openForce('Slider_Crank');
 await select('C');
 const atBlock = await titles();
 record(
-  'the block at a slider is named by its own joint, not by the hidden one',
-  atBlock.includes('Force on Block at C') && !atBlock.some((one) => /Link CD/.test(one)),
+  'a slider names the bodies a reader can point at, and not the hidden ones',
+  atBlock.includes('Force on Link BC') &&
+    atBlock.length > 0 &&
+    !atBlock.some((one) => /Block/.test(one)) &&
+    !atBlock.some((one) => /\bC?D\b/.test(one)),
   atBlock
 );
 

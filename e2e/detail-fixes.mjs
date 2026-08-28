@@ -376,7 +376,10 @@ record(
 const traces = await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const button = [...document.querySelectorAll('.viewControls .viewButton')].find((node) =>
-    (node.getAttribute('aria-label') ?? '').includes('traced')
+    // Case-insensitively: the label reads "Show Traced Paths", and matching
+    // the lowercase word found nothing, so the switch this section is about
+    // was never pressed and the run died on the undefined element.
+    /traced/i.test(node.getAttribute('aria-label') ?? '')
   );
   const drawn = () => document.querySelectorAll('#pathsHolder path').length;
   if (!button) return null;
@@ -389,7 +392,10 @@ const traces = await page.evaluate(() => {
 await page.waitForTimeout(900);
 const tracesAfter = await page.evaluate(() => {
   const button = [...document.querySelectorAll('.viewControls .viewButton')].find((node) =>
-    (node.getAttribute('aria-label') ?? '').includes('traced')
+    // Case-insensitively: the label reads "Show Traced Paths", and matching
+    // the lowercase word found nothing, so the switch this section is about
+    // was never pressed and the run died on the undefined element.
+    /traced/i.test(node.getAttribute('aria-label') ?? '')
   );
   const drawn = () => document.querySelectorAll('#pathsHolder path').length;
   const withTraces = drawn();
@@ -458,9 +464,14 @@ const switches = async () => (await buttons()).slice(0, 3);
 
 await load(payloads['4-Bar']);
 await page.evaluate(() => {
-  // One joint tracing, so all three switches have something to act on.
+  // One joint tracing and one link with a weight, so all three switches have
+  // something to act on. The mass was missing: a four-bar's bars are massless
+  // as drawn, so Center of Mass stayed disabled and its glyph carried the
+  // greyed-out ink rather than the one the other two share -- which is a
+  // different sentence from the one this section is checking.
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.mechanismSrv.joints[1].showCurve = true;
+  grid.mechanismSrv.links[0].mass = 1;
   grid.mechanismSrv.updateMechanism();
 });
 await page.waitForTimeout(700);

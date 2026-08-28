@@ -634,4 +634,25 @@
       height: 40px;
     }
   }
+
+  // The same thirty pixels, taken off the other card in the row. Below this the
+  // two of them at their phone sizes want more than the window has, and what
+  // overflowed was the page itself: `top-strip-states` found a document that
+  // scrolled sideways by a pixel at 360.
+  @media (max-width: 380px) {
+    .transportCard {
+      padding: 0 4px;
+    }
+
+    .speedButton,
+    .stopButton {
+      width: 30px;
+      height: 30px;
+    }
+
+    .playButton {
+      width: 36px;
+      height: 36px;
+    }
+  }
 }

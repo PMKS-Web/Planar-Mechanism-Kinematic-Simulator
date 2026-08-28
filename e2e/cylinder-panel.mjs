@@ -89,10 +89,16 @@ await page.keyboard.press('Enter');
 await page.waitForTimeout(700);
 out.fractional = await rows();
 
-// 3 · an unreachable typed length must say it was held
+// 3 · a stroke shorter than the barrel allows must say it was held
+//
+// Asked of Travel, not of "Starts at". A start the ram cannot reach used to be
+// refused as well, and is not any more: barrel and rod can no longer disagree
+// with the stroke, so an impossible ram cannot be described and the floor on
+// the stroke is the one failure a cylinder has left (edit-panel,
+// `resizeCylinderTo`). Typing an unreachable start now simply makes a very
+// short ram, with nothing held and nothing to say.
 await load();
-await setUnit('Starts at', 'len');
-await setField('Starts at', '0.4');
+await setField('Travel', '0.01');
 await page.keyboard.press('Enter');
 await page.waitForTimeout(700);
 out.tooShort = await rows();

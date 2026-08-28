@@ -1,9 +1,17 @@
 /**
- * The two things brought over from PMKS-Refactor, driven through the app:
- * Make Circular on a crank, and the driver dyad that turns a synthesised
- * four-bar into a six-bar a motor can run.
+ * Make Circular on a crank, driven through the app.
  *
- *   PMKS_BASE_URL=http://127.0.0.1:4200 node e2e/circular-link-and-driver.mjs
+ * One of the two things brought over from PMKS-Refactor. The other was the
+ * driver dyad, and the section that covered it used to live here: it set three
+ * poses on the synthesis panel's model and expected a four-bar to appear on the
+ * grid, which is what that mode did before the redesign. It does not any more
+ * -- three positions are placed, an explicit search offers the four-bars that
+ * pass through them, and one reaches the drawing when Insert says so -- and the
+ * two panel members it drove, `synthesisBuilder` and `swapDrivePin`, no longer
+ * exist. `synthesis-redesign.mjs` covers that flow against the API it has now,
+ * driver and all, so the section was removed rather than rewritten twice.
+ *
+ *   PMKS_BASE_URL=http://127.0.0.1:4200 node e2e/circular-link.mjs
  */
 const { chromium } = await import('/tmp/pmks-playwright/node_modules/playwright/index.mjs');
 import { waitForReady } from './app-ready.mjs';
@@ -164,130 +172,9 @@ const running = await page.evaluate(() => {
 check('it is still a disc while running', running.arcs === 2 && running.sides === 0, running.d);
 await shot('2-running');
 
-// -------------------------------------------------------------- synthesis
-await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-await waitForReady(page);
-
-// Synthesis tab, then three poses via the panel's own model.
-await page.evaluate(() => {
-  // TabID.SYNTHESIZE is 0.
-  ng.getComponent(document.querySelector('app-left-tabs')).tabs.setTab(0);
-});
-await page.waitForTimeout(600);
-await shot('3-synthesis-tab');
-
-stage = 'synthesis-poses';
-const posed = await page.evaluate(() => {
-  const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
-  if (!panel) return { ok: false };
-  const b = panel.design;
-  [1, 2, 3].forEach((i) => b.isPoseDefined(i) || b.createPose(i));
-  const at = [
-    [-2, 1, 20],
-    [0, 2.2, 45],
-    [2.4, 1.4, 70],
-  ];
-  [1, 2, 3].forEach((i) => {
-    const [x, y, deg] = at[i - 1];
-    b.poses[i].position = new b.poses[i].position.constructor(x * 200, y * 200);
-    b.poses[i].thetaDegrees = deg;
-  });
-  b.valueChanges.next(true);
-  return {
-    ok: true,
-    links: panel.mechanismSrv.links.length,
-    joints: panel.mechanismSrv.joints.length,
-  };
-});
-check(
-  'three poses synthesise a four-bar',
-  posed.ok && posed.links === 3,
-  `${posed.links} links, ${posed.joints} joints`
-);
-await page.waitForTimeout(500);
-await shot('4-fourbar');
-
-const driverState = () =>
-  page.evaluate(() => {
-    const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
-    const m = panel.mechanismSrv;
-    return {
-      links: m.links.length,
-      joints: m.joints.length,
-      grounds: m.joints.filter((j) => j.ground).length,
-      inputs: m.joints.filter((j) => j.input).length,
-      refusal: panel.synthesisBuilder.driverRefusal ?? null,
-      wanted: panel.synthesisBuilder.driverWanted,
-      valid: m.mechanisms[0]?.mechanismValid,
-      frames: m.mechanisms[0]?.joints?.length ?? 0,
-    };
-  });
-
-stage = 'four-bar';
-const fourBar = await driverState();
-check(
-  'the four-bar is driven from one ground pin',
-  fourBar.inputs === 1 && fourBar.grounds === 2,
-  `${fourBar.inputs} input, ${fourBar.grounds} ground`
-);
-
-await page.evaluate(() =>
-  ng.getComponent(document.querySelector('app-synthesis-panel')).toggleDriver()
-);
-await page.waitForTimeout(900);
-stage = 'six-bar';
-const sixBar = await driverState();
-check(
-  'adding a driver makes it a six-bar',
-  sixBar.links === 5 && sixBar.joints === 6 && sixBar.grounds === 3,
-  `${sixBar.links} links, ${sixBar.joints} joints, ${sixBar.grounds} grounds, refusal=${sixBar.refusal}`
-);
-check('the drive moved to the new pin', sixBar.inputs === 1, `${sixBar.inputs} inputs`);
-check('the six-bar solves', sixBar.valid === true, `valid=${sixBar.valid} frames=${sixBar.frames}`);
-check(
-  'one full turn of the driver, not a stub of one',
-  sixBar.frames > 100,
-  `${sixBar.frames} frames`
-);
-await shot('5-sixbar');
-
-await page.evaluate(() =>
-  ng.getComponent(document.querySelector('app-synthesis-panel')).swapDrivePin()
-);
-await page.waitForTimeout(900);
-stage = 'swap-pin';
-const swapped = await driverState();
-check(
-  'swapping the drive pin rebuilds it whole',
-  swapped.links === 5 && swapped.joints === 6,
-  `${swapped.links} links, ${swapped.joints} joints, refusal=${swapped.refusal}`
-);
-await shot('6-swapped');
-
-await page.evaluate(() =>
-  ng.getComponent(document.querySelector('app-synthesis-panel')).toggleDriver()
-);
-await page.waitForTimeout(900);
-stage = 'driver-removed';
-const removed = await driverState();
-check(
-  'removing the driver leaves the four-bar behind',
-  removed.links === 3 && removed.joints === 4 && removed.inputs === 1,
-  `${removed.links} links, ${removed.joints} joints`
-);
-await shot('7-driver-removed');
-
-// One console error predates this branch: setting up three synthesis poses
-// draws a path the browser rejects for a frame, and it reproduces identically
-// on multi-mechanism-redesign at b3f9e08. Named rather than ignored, so that a
-// second copy of it — or any other error — still fails this run.
-const KNOWN_BEFORE_THIS_BRANCH = /^\[synthesis-poses\] Error: Invalid SVG path number$/;
-const unexpected = errors.filter((e) => !KNOWN_BEFORE_THIS_BRANCH.test(e));
-check(
-  'no page errors beyond the one that predates this work',
-  unexpected.length === 0,
-  unexpected.slice(0, 6).join('\n        ')
-);
+// The one error that used to be allowed here belonged to the synthesis poses,
+// and went out with them, so nothing is excused any more.
+check('no page errors', errors.length === 0, errors.slice(0, 6).join('\n        '));
 
 await browser.close();
 const failed = checks.filter((c) => !c.pass);

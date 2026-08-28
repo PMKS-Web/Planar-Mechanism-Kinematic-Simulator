@@ -209,8 +209,27 @@ const type = await page.evaluate(() => {
   const svg = document.querySelector('#canvas') ?? document.querySelector('svg');
   const perUnit = Math.abs(svg.querySelector('g').getScreenCTM().a);
   const px = (node) => +(parseFloat(getComputedStyle(node).fontSize) * perUnit).toFixed(1);
+  // Each label against the body it is written on, paired by the name it
+  // carries, so the rule can be checked rather than the coincidence that this
+  // drawing happens to hold both a pale body and a dark one.
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const lum = (hex) => {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex ?? '');
+    if (!m) return null;
+    const [r, g, b] = [0, 2, 4].map((at) => parseInt(m[1].slice(at, at + 2), 16) / 255);
+    const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  };
+  const bodies = grid.mechanismSrv.getLinks().map((link) => ({
+    name: grid.linkDisplayName(link),
+    fill: link.fill ?? null,
+    lum: lum(link.fill),
+    inert: grid.mechanismSrv.isPartInert(link),
+  }));
   return {
+    bodies,
     labels: [...document.querySelectorAll('#linkTagHolder text')].map((text) => ({
+      name: text.textContent.trim(),
       ink: text.getAttribute('fill'),
       opacity: text.getAttribute('fill-opacity'),
       size: px(text),
@@ -224,12 +243,27 @@ const type = await page.evaluate(() => {
     tagFontSize: ng.getComponent(document.querySelector('app-new-grid')).tagFontSize,
   };
 });
+// The rule, not a drawing that happens to show both answers. It used to insist
+// on seeing black and white in the same picture, which held only while this
+// template had a pale body in it: the palette moved, Stephenson III went dark
+// throughout, and five white labels -- every one of them correct -- failed a
+// check about contrast.
+const bodyOf = (label) => type.bodies.find((body) => body.name === label.name);
+const wrongInk = type.labels.filter((label) => {
+  const body = bodyOf(label);
+  if (!body || body.inert || body.lum === null) return false;
+  // Clear of the threshold either way, so the band where the choice is a
+  // judgement call is left to the app rather than second-guessed here.
+  if (body.lum < 0.25) return label.ink !== 'white';
+  if (body.lum > 0.65) return label.ink !== 'black';
+  return false;
+});
 record(
   'each label is inked black or white, whichever its body can be read against',
   type.labels.length > 0 &&
     type.labels.every((label) => ['black', 'white'].includes(label.ink)) &&
-    new Set(type.labels.map((label) => label.ink)).size === 2,
-  type.labels
+    wrongInk.length === 0,
+  { wrongInk, labels: type.labels, bodies: type.bodies }
 );
 record(
   'at 55%, so it sits on the body rather than over it',

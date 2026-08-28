@@ -102,7 +102,13 @@ const posed = await drag(40, 30, 'inside-travel');
 // 2 · pushed hard toward the barrel mount: past the retracted stop, the ram shrinks.
 const shrunk = await drag(150, 240, 'past-retracted');
 // 3 · and pulled away again, past the extended stop, where it grows.
-const grown = await drag(-330, -180, 'past-extended');
+//
+// Far enough to actually get there. The rod mount is part of the boom, so how
+// much span a pull buys is the linkage's business, not the cursor's: -330,-180
+// left the ram at a span still inside its own travel, where only the pin moves
+// and the size is meant to stay put. The ram grows from -600,-350 -- barrel
+// 576 to 667 units, travel 2.82 to 3.28 cm.
+const grown = await drag(-600, -350, 'past-extended');
 // 4 · from a fresh template, the rod mount pushed almost the whole way onto the
 //     barrel's own, which is well past the floor whatever the ram measures.
 //     Aimed at the mount by name rather than moved by a count of pixels: how

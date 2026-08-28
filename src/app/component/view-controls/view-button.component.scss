@@ -62,4 +62,17 @@
       height: 34px;
     }
   }
+
+  // Those sizes were fitted to 390px, which is the phone the layout was written
+  // on. A 360px one is thirty narrower, and thirteen of those thirty came off
+  // the end of this card: the row cannot take them back, because its gap and
+  // its margin are the same `$card-inset` the top strip keeps and `mobile.mjs`
+  // measures, and neither card can shrink below the buttons inside it. So the
+  // buttons give the width up, only on the windows that need it.
+  @media (max-width: 380px) {
+    .viewButton {
+      width: 30px;
+      height: 30px;
+    }
+  }
 }
