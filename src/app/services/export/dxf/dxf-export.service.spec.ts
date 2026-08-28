@@ -100,6 +100,52 @@ describe('DxfExportService', () => {
     expect(service.create({ fileName: '///', dataFile: 'none' }).name).toBe('mechanism.dxf');
   });
 
+  it('draws the picture inside each dimension block, not just the measurement', () => {
+    const { service } = setup();
+    const text = service.create({
+      dataFile: 'none',
+      includeDimensions: true,
+      dimensionStyle: 'entities',
+    }).content;
+    const parsed = new DxfParser().parseSync(text)!;
+    const block = parsed.blocks['*D0'];
+    expect(block).toBeDefined();
+    // A reader that redraws the dimension is happy with an empty block; one
+    // that only draws what the block holds -- which is the whole reason anyone
+    // asks for R12 -- would show nothing at all.
+    expect(block.entities.length).toBeGreaterThan(0);
+    expect(block.entities.some((entity) => entity.type === 'TEXT')).toBe(true);
+    expect(block.entities.filter((entity) => entity.type === 'LINE').length).toBeGreaterThanOrEqual(
+      3
+    );
+    // And the picture is drawn where the link is, not at the origin.
+    const drawn = block.entities.flatMap((entity) =>
+      'vertices' in entity ? (entity.vertices as { x: number; y: number }[]) : []
+    );
+    expect(drawn.some((point) => Math.hypot(point.x - 2, point.y - 1) < 1)).toBe(true);
+  });
+
+  it('stands the dimension line off square to what it measures', () => {
+    const { service, mechanism } = setup();
+    // Straight up from the origin: the case a fixed drop in Y gets wrong, by
+    // laying the dimension along the very centreline it is dimensioning.
+    mechanism.joints[1].x = 0;
+    mechanism.joints[1].y = 2 * MODEL_SCALE;
+    const parsed = new DxfParser().parseSync(
+      service.create({ dataFile: 'none', includeDimensions: true, dimensionStyle: 'entities' })
+        .content
+    )!;
+    const dimension = parsed.entities.find((entity) => entity.type === 'DIMENSION') as unknown as {
+      anchorPoint: { x: number; y: number };
+    };
+    expect(Math.abs(dimension.anchorPoint.x)).toBeGreaterThan(0);
+    // And the picture went with it, rather than staying on the link.
+    const drawn = parsed.blocks['*D0'].entities.flatMap((entity) =>
+      'vertices' in entity ? (entity.vertices as { x: number; y: number }[]) : []
+    );
+    expect(drawn.every((point) => point.x === 0)).toBe(false);
+  });
+
   it('is byte-deterministic for unchanged model state and choices', () => {
     const { service } = setup();
     const options = { fileName: 'drawing', includeLabels: true };

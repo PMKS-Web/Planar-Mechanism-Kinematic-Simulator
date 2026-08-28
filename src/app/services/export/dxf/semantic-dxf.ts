@@ -6,6 +6,7 @@ import { MODEL_SCALE } from '../../../model/render-scale';
 import { LengthUnit } from '../../../model/unit-enums';
 import {
   DxfBlock,
+  DxfDimension,
   DxfDocument,
   DxfEntity,
   DxfLayer,
@@ -390,23 +391,100 @@ function addDimensions(
     );
     return;
   }
+  // The middle of everything being measured, so each dimension can be pushed
+  // away from it. Offsetting them all to the same hand puts them inside the
+  // linkage, crossing each other and the links they belong to.
+  const heart = {
+    x: measured.reduce((sum, axis) => sum + (axis.start.x + axis.end.x) / 2, 0) / measured.length,
+    y: measured.reduce((sum, axis) => sum + (axis.start.y + axis.end.y) / 2, 0) / measured.length,
+  };
   measured.forEach((axis, index) => {
     const name = `*D${index}`;
-    blocks.push({ name, base: { x: 0, y: 0 }, entities: [] });
     const midX = (axis.start.x + axis.end.x) / 2;
     const midY = (axis.start.y + axis.end.y) / 2;
+    const span = lengthOf(axis);
+    // Square to what is being measured, not straight down: a fixed drop in Y
+    // is no offset at all for a vertical link, and lays the dimension line
+    // along the very centreline it is dimensioning.
     const offset = 0.5 * scale;
-    entities.push({
+    const normal =
+      span === 0
+        ? { x: 0, y: -1 }
+        : { x: (axis.end.y - axis.start.y) / span, y: -(axis.end.x - axis.start.x) / span };
+    const outward = normal.x * (midX - heart.x) + normal.y * (midY - heart.y) < 0 ? -1 : 1;
+    const across = { x: normal.x * outward, y: normal.y * outward };
+    const at = { x: midX + across.x * offset, y: midY + across.y * offset };
+    const dimension: DxfDimension = {
       type: 'DIMENSION',
       layer: DXF_LAYER.dimensions,
       blockName: name,
-      definition: { x: midX, y: midY - offset },
+      definition: at,
       from: axis.start,
       to: axis.end,
-      textAt: { x: midX, y: midY - offset },
-      text: `${lengthOf(axis).toFixed(3)} ${unitWord(unit)}`,
+      textAt: at,
+      text: `${span.toFixed(3)} ${unitWord(unit)}`,
+    };
+    blocks.push({
+      name,
+      base: { x: 0, y: 0 },
+      entities: dimensionPicture(dimension, scale),
     });
+    entities.push(dimension);
   });
+}
+
+/**
+ * The lines and text a dimension is actually made of.
+ *
+ * A DIMENSION entity carries the measurement; the block carries the picture,
+ * and the two have to agree. AutoCAD and the modern importers redraw the
+ * picture from the measurement and would be happy with an empty block -- but a
+ * reader that only draws what the block holds shows nothing at all, which is
+ * every reason anyone asks for R12. So the picture is drawn once here and both
+ * kinds of reader get the same drawing.
+ */
+function dimensionPicture(dimension: DxfDimension, scale: number): DxfEntity[] {
+  const { from, to, definition, textAt, text, layer } = dimension;
+  const span = Math.hypot(to.x - from.x, to.y - from.y);
+  if (span === 0) return [];
+  // Along the measured direction, and square to it.
+  const along = { x: (to.x - from.x) / span, y: (to.y - from.y) / span };
+  const across = { x: -along.y, y: along.x };
+  // How far off the measured line the dimension line sits, signed.
+  const drop = (definition.x - from.x) * across.x + (definition.y - from.y) * across.y;
+  const offsetBy = (point: DxfPoint, by: number): DxfPoint => ({
+    x: point.x + across.x * by,
+    y: point.y + across.y * by,
+  });
+  const startEnd = offsetBy(from, drop);
+  const finishEnd = offsetBy(to, drop);
+  const gap = 0.06 * scale;
+  const overshoot = 0.1 * scale;
+  const tick = 0.08 * scale;
+  const line = (a: DxfPoint, b: DxfPoint): DxfEntity => ({ type: 'LINE', layer, start: a, end: b });
+  // A slash where the dimension line meets each extension line: an arrowhead
+  // is a solid, and a solid is the one thing this writer does not emit.
+  const slash = (at: DxfPoint): DxfEntity =>
+    line(
+      { x: at.x - (along.x + across.x) * tick, y: at.y - (along.y + across.y) * tick },
+      { x: at.x + (along.x + across.x) * tick, y: at.y + (along.y + across.y) * tick }
+    );
+  return [
+    line(offsetBy(from, Math.sign(drop) * gap), offsetBy(startEnd, Math.sign(drop) * overshoot)),
+    line(offsetBy(to, Math.sign(drop) * gap), offsetBy(finishEnd, Math.sign(drop) * overshoot)),
+    line(startEnd, finishEnd),
+    slash(startEnd),
+    slash(finishEnd),
+    {
+      type: 'TEXT',
+      layer,
+      // Clear of the dimension line rather than sitting on it.
+      at: offsetBy({ x: textAt.x - along.x * span * 0.2, y: textAt.y - along.y * span * 0.2 }, gap),
+      height: 0.22 * scale,
+      text,
+      angleDeg: (Math.atan2(along.y, along.x) * 180) / Math.PI,
+    },
+  ];
 }
 
 function lengthOf(axis: SemanticAxis): number {

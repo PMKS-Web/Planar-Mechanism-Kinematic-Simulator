@@ -234,8 +234,8 @@ function entityPairs(entity: DxfEntity, handle: number, legacy = false): Pair[] 
       [11, entity.textAt.x],
       [21, entity.textAt.y],
       [31, 0],
-      // 1 is "aligned", and 32 says the text sits where 11 puts it rather than
-      // wherever the importer would have chosen.
+      // 1 is "aligned"; 32 says the block named above belongs to this
+      // dimension alone, which is true -- each gets its own `*Dn`.
       [70, 1 + 32],
       [1, entity.text],
       [3, 'PMKS'],
