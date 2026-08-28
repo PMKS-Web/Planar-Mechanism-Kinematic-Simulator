@@ -1,6 +1,6 @@
 import { Injectable, NgZone, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, map } from 'rxjs';
 
 /**
  * Everything a key can ask for. The string is the shortcut's identity: the
@@ -25,6 +25,10 @@ export type ShortcutId =
   | 'edit.lock'
   | 'edit.deselect'
   | 'edit.delete'
+  | 'edit.nudgeLeft'
+  | 'edit.nudgeRight'
+  | 'edit.nudgeUp'
+  | 'edit.nudgeDown'
   | 'history.undo'
   | 'history.redo'
   | 'app.settings'
@@ -42,7 +46,36 @@ export interface Shortcut {
   match: string[];
   /** Whether Ctrl (or Command) has to be down. Undefined means "must not be". */
   meta?: boolean;
+  /**
+   * Matched, but not given a row of its own where the set is listed.
+   *
+   * Four arrow keys are four shortcuts to the dispatcher and one line to a
+   * reader, so three of the four hide behind the row that names all of them.
+   */
+  hidden?: boolean;
 }
+
+/** A shortcut, with the keystroke that asked for it. */
+export interface ShortcutPress {
+  id: ShortcutId;
+  event: KeyboardEvent;
+}
+
+/** What the three arrow shortcuts after the first repeat. */
+const NUDGE = {
+  section: 'Editing',
+  label: 'Nudge what is selected',
+  keys: '← → ↑ ↓',
+  hidden: true,
+} as const;
+
+/** Each arrow's two meanings. Left and right have somewhere to fall back to. */
+const ARROWS: Record<string, { nudge: ShortcutId; playback?: ShortcutId }> = {
+  arrowleft: { nudge: 'edit.nudgeLeft', playback: 'playback.back' },
+  arrowright: { nudge: 'edit.nudgeRight', playback: 'playback.forward' },
+  arrowup: { nudge: 'edit.nudgeUp' },
+  arrowdown: { nudge: 'edit.nudgeDown' },
+};
 
 /** Command on a Mac, Ctrl everywhere else -- shown the way the platform writes it. */
 function onAMac(): boolean {
@@ -69,12 +102,37 @@ function onAMac(): boolean {
 export class KeyboardShortcutsService {
   private zone = inject(NgZone);
   private dialog = inject(MatDialog);
-  private readonly presses = new Subject<ShortcutId>();
+  private readonly presses = new Subject<ShortcutPress>();
 
   /** Fires when a shortcut's keys are pressed anywhere outside a text field. */
-  readonly pressed: Observable<ShortcutId> = this.presses.asObservable();
+  readonly pressed: Observable<ShortcutId> = this.presses.pipe(map((press) => press.id));
+
+  /**
+   * The same presses, carrying the keystroke.
+   *
+   * For the actions whose *size* depends on a modifier rather than their
+   * identity: a nudge is the same action held coarse, not a second shortcut.
+   */
+  readonly pressedKeys: Observable<ShortcutPress> = this.presses.asObservable();
+
+  /**
+   * Whether an arrow would move something on the canvas right now.
+   *
+   * The arrows mean two things -- step a frame, or nudge what is selected --
+   * and one keystroke can only be one shortcut, so the choice has to be made
+   * here. What it may not do is make it *itself*: whether a selection can be
+   * moved is a question with a long answer that the canvas already owns, so
+   * the canvas hands that answer over and this only asks.
+   */
+  private arrowsNudge: () => boolean = () => false;
+
+  whenArrowsNudge(predicate: () => boolean): void {
+    this.arrowsNudge = predicate;
+  }
 
   private readonly mod = onAMac() ? '⌘' : 'Ctrl';
+  /** The same key by its two names: Option on a Mac, Alt on every keyboard else. */
+  private readonly alt = onAMac() ? 'Option' : 'Alt';
 
   readonly shortcuts: Shortcut[] = [
     { id: 'mode.synthesis', section: 'Modes', label: 'Synthesis', keys: '1', match: ['1'] },
@@ -155,6 +213,16 @@ export class KeyboardShortcutsService {
       match: ['delete', 'backspace'],
     },
     {
+      id: 'edit.nudgeLeft',
+      section: 'Editing',
+      label: `Nudge what is selected (${this.alt} for a coarser step)`,
+      keys: '← → ↑ ↓',
+      match: ['arrowleft'],
+    },
+    { id: 'edit.nudgeRight', ...NUDGE, match: ['arrowright'] },
+    { id: 'edit.nudgeUp', ...NUDGE, match: ['arrowup'] },
+    { id: 'edit.nudgeDown', ...NUDGE, match: ['arrowdown'] },
+    {
       id: 'history.undo',
       section: 'Editing',
       label: 'Undo',
@@ -225,7 +293,7 @@ export class KeyboardShortcutsService {
     }
     return sections.map((section) => ({
       section,
-      shortcuts: this.shortcuts.filter((one) => one.section === section),
+      shortcuts: this.shortcuts.filter((one) => one.section === section && !one.hidden),
     }));
   }
 
@@ -245,15 +313,23 @@ export class KeyboardShortcutsService {
     const held = event.ctrlKey || event.metaKey;
     // Redo is Undo's key with Shift, as well as its own -- so it is looked for
     // first, or the plain Undo match would swallow it.
-    const found =
-      held && key === 'z' && event.shiftKey
-        ? this.shortcuts.find((one) => one.id === 'history.redo')
-        : this.shortcuts.find((one) => one.match.includes(key) && !!one.meta === held);
-    if (!found) return;
+    // The arrows are two shortcuts on one key and are settled before the table
+    // is searched, or whichever of the two is listed first would take them all.
+    const arrow = !held ? ARROWS[key] : undefined;
+    const wanted = arrow
+      ? this.arrowsNudge()
+        ? arrow.nudge
+        : arrow.playback
+      : held && key === 'z' && event.shiftKey
+        ? 'history.redo'
+        : this.shortcuts.find((one) => one.match.includes(key) && !!one.meta === held)?.id;
+    // Up and Down mean nothing with no selection to move, so they fall through
+    // to whatever the browser does with them rather than being swallowed.
+    if (!wanted) return;
     // A shortcut that reached us is a shortcut we are answering: Space would
     // otherwise scroll the page and Command-Z would reach the browser's own.
     event.preventDefault();
-    this.zone.run(() => this.presses.next(found.id));
+    this.zone.run(() => this.presses.next({ id: wanted, event }));
   }
 
   /**

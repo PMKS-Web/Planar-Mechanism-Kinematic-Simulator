@@ -341,9 +341,15 @@ export class NewGridComponent implements OnDestroy {
     viewChild.required<ElementRef<HTMLInputElement>>('backgroundImageInput');
 
   ngOnInit() {
-    this.shortcuts.pressed
+    this.shortcuts.pressedKeys
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((id) => this.onShortcut(id));
+      .subscribe(({ id, event }) => this.onShortcut(id, event));
+    // What an arrow means depends on whether there is anything here to move.
+    // The service asks; the answer is this canvas's to give, because the rules
+    // about when a drawing may be edited already live here.
+    this.shortcuts.whenArrowsNudge(
+      () => this.canEditNow() && this.activeObjService.selectedParts.length > 0
+    );
 
     const svgElement = document.getElementById('canvas') as HTMLElement;
     this.svgGrid.setNewElement(svgElement);
@@ -1283,7 +1289,15 @@ export class NewGridComponent implements OnDestroy {
         // distance for the ratio to be taken against. Held at 1 rather than
         // refused, so a row of joints all at one y still drags sideways.
         if (Math.abs(from) < 1e-6) return 1;
-        return Math.max(0.05, to / from);
+        const ratio = to / from;
+        // Past the anchor the ratio goes negative and the selection turns
+        // through it, which is what dragging a grip across the far side is
+        // asking for. Only the neighbourhood of zero is held off: that is the
+        // one place with no way back, since a selection with no width cannot
+        // be widened again.
+        const smallest = 0.05;
+        if (ratio <= -smallest || ratio >= smallest) return ratio;
+        return ratio < 0 ? -smallest : smallest;
       };
       const startX = gesture.pointerStart.x - grip.anchor.x;
       const startY = gesture.pointerStart.y - grip.anchor.y;
@@ -1319,6 +1333,45 @@ export class NewGridComponent implements OnDestroy {
     this.activeObjService.fakeUpdateSelectedObj();
     this.showPathWhileDragging(this.activeObjService.primaryPart);
     return true;
+  }
+
+  /**
+   * Move the selection by one square of the drawn grid, or five with Option.
+   *
+   * The same closure, the same locks and the same one-undo-per-change as
+   * dragging it: an arrow is a drag nobody had to be steady for, and a reader
+   * who cannot hold a joint still is exactly who it is for. Sized in grid
+   * squares rather than model units so the step is something on screen -- what
+   * moves is what the reader can see it move past.
+   *
+   * `dy` is positive upwards, as the model is: the canvas draws with y flipped
+   * and the arrow keys are named for the drawing.
+   */
+  private nudgeSelection(dx: number, dy: number, coarse: boolean): void {
+    if (!this.canEditNow()) return;
+    const selected = this.activeObjService.selectedParts;
+    if (selected.length === 0) return;
+    const step = coarse ? this.svgGrid.majorCellSize : this.svgGrid.minorCellSize;
+    if (!(step > 0)) return;
+    const snapshot = captureSelectionTransform(
+      selected,
+      this.mechanismSrv.joints,
+      this.mechanismSrv.links
+    );
+    const result = snapshot.apply({ translation: { x: dx * step, y: dy * step } });
+    if (!result.applied) {
+      const names = result.lockedJointIds.join(', ');
+      this.notify.refusal(
+        'selection.transform-locked',
+        `The selection is held by ${names || 'a Lock'}. Unlock it before moving the group.`
+      );
+      return;
+    }
+    this.mechanismSrv.reseatFloatingSliders();
+    this.mechanismSrv.updateMechanism(false);
+    this.mechanismSrv.onMechUpdateState.next(2);
+    this.activeObjService.fakeUpdateSelectedObj();
+    this.mechanismSrv.save();
   }
 
   private finishSelectionGesture(): boolean {
@@ -4464,8 +4517,22 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /** Answer the shortcuts whose action is the canvas's own. */
-  private onShortcut(id: ShortcutId): void {
+  // The keystroke is optional because only the nudges read it: every other
+  // shortcut is the same action whatever was held down with it.
+  private onShortcut(id: ShortcutId, event?: KeyboardEvent): void {
     switch (id) {
+      case 'edit.nudgeLeft':
+        this.nudgeSelection(-1, 0, event?.altKey === true);
+        return;
+      case 'edit.nudgeRight':
+        this.nudgeSelection(1, 0, event?.altKey === true);
+        return;
+      case 'edit.nudgeUp':
+        this.nudgeSelection(0, 1, event?.altKey === true);
+        return;
+      case 'edit.nudgeDown':
+        this.nudgeSelection(0, -1, event?.altKey === true);
+        return;
       case 'edit.deselect':
         this.activeObjService.updateSelectedObj(undefined);
         return;

@@ -697,6 +697,11 @@ export class SvgGridService {
     return this.cellSize / MINOR_DIVISIONS;
   }
 
+  /** The spacing of the labelled lines -- five of the smallest squares. */
+  get majorCellSize(): number {
+    return this.cellSize;
+  }
+
   /**
    * The nearest corner of the drawn grid, if snapping is on.
    *

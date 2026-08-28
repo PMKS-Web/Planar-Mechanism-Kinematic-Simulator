@@ -85,8 +85,12 @@ describe('top bar modes', () => {
     ready(false);
     // Through the service's own subject, so what runs is the component's
     // subscription rather than a copy of the rule written here.
-    const keys = bar.shortcuts as unknown as { presses: { next(id: string): void } };
-    keys.presses.next('mode.kinematic');
+    const keys = bar.shortcuts as unknown as {
+      presses: { next(press: { id: string; event?: KeyboardEvent }): void };
+    };
+    // The press carries the keystroke as well as the id now, because a nudge
+    // is the same shortcut held coarse rather than a second one.
+    keys.presses.next({ id: 'mode.kinematic' });
     expect(tabs.getCurrentTab()).toBe(TabID.EDIT);
     expect(RightPanelComponent.openTab).toBe(KINEMATIC);
   });
