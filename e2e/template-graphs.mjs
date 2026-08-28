@@ -47,7 +47,7 @@
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://127.0.0.1:4200/';
@@ -57,26 +57,9 @@ mkdirSync(OUT, { recursive: true });
 // ---------------------------------------------------------------------------
 // Templates, read from the shipping source so this cannot drift from it.
 // ---------------------------------------------------------------------------
-const SRC = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
-const idList = (name) =>
-  [
-    ...(SRC.match(new RegExp(`export const ${name}[^=]*=\\s*\\[([^\\]]*)\\]`))?.[1] ?? '').matchAll(
-      /'([^']+)'/g
-    ),
-  ].map((m) => m[1]);
-const TEMPLATE_IDS = [...idList('BUILT_IN_TEMPLATE_IDS'), ...idList('LIBRARY_TEMPLATE_IDS')];
-const payloadBlock = SRC.slice(SRC.indexOf('TEMPLATE_LINKAGES'));
-const TEMPLATE_LINKAGES = Object.fromEntries(
-  [...payloadBlock.matchAll(/^\s*'?([A-Za-z0-9_-]+)'?:\s*\n?\s*'([^']+)',/gm)].map((m) => [
-    m[1],
-    m[2],
-  ])
-);
-const absent = TEMPLATE_IDS.filter((id) => !TEMPLATE_LINKAGES[id]);
-if (!TEMPLATE_IDS.length || absent.length) {
-  console.error('Could not parse templates from source. missing:', absent);
-  process.exit(2);
-}
+import { TEMPLATE_IDS, TEMPLATE_LINKAGES, assertTemplatesParsed } from './template-payloads.mjs';
+
+assertTemplatesParsed();
 const ONLY = process.env.PMKS_ONLY ? process.env.PMKS_ONLY.split(',') : null;
 const IDS = ONLY ? TEMPLATE_IDS.filter((id) => ONLY.includes(id)) : TEMPLATE_IDS;
 
