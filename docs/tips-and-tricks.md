@@ -260,6 +260,21 @@ not adjust a gap there to make something fit — shrink the thing instead.
 **The phone layout was fitted to 390px.** `top-strip-states` also exercises 360, where thirty fewer
 pixels are available; anything you add to the bottom row has to survive that.
 
+**Some "component" stylesheets are global.** A file under `component/` that is written as
+`@mixin css($theme)` and included from `src/mytheme.scss` emits its rules into the *global*
+stylesheet, under bare class names, scoped to nothing. `analysis-setup.component.scss` is one:
+its `.check`, `.checkText` and `.sectionName` reach every other component that happens to use
+those names, and its `.check { padding-top: 10px }` is why the CAD Export dialog's tick sat five
+pixels low. A component rule wins wherever it *declares* the property and nowhere else, so a
+defensive `padding: 0` is what fixes one of these -- leaving a property unset is what lets the
+global one through.
+
+Two ways to catch it. Statically, list the class names a globally-included sheet styles and grep
+the other templates for them. Empirically, and much better, ask the browser which rules actually
+match: walk `document.styleSheets`, skip selectors containing `_ngcontent` (those are the
+component's own) and `.mat-`/`.cdk-`, and call `el.matches(rule.selectorText)` for every element
+under your component. Anything that comes back is reaching you from outside.
+
 ---
 
 ## Domain facts worth knowing before you debug
