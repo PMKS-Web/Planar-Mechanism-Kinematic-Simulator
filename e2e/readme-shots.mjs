@@ -22,7 +22,7 @@
  * development build exposes.
  */
 
-import { readFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
@@ -33,13 +33,7 @@ import { startQuiet } from './quiet-start.mjs';
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'docs/images/readme';
 
-const source = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
-const payloads = Object.fromEntries(
-  [...source.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [
-    id,
-    p.replace(/\\\\/g, '\\'),
-  ])
-);
+import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 
 /** One picture: what to open, what to do, and where to point the camera. */
 const SHOTS = [

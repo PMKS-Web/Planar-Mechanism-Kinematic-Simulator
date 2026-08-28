@@ -12,7 +12,7 @@
  *   PMKS_BASE_URL=<origin> node e2e/playback-loop-indicator.mjs
  */
 
-import { readFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 
 const playwright = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
@@ -24,10 +24,7 @@ const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/playback-loop-indicator';
 mkdirSync(OUT, { recursive: true });
 
-const source = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
-const payloads = Object.fromEntries(
-  [...source.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [id, p])
-);
+import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 
 /** Two four-bars side by side, each with its own drive: one drawing, two clocks. */
 const TWO_FOUR_BARS =

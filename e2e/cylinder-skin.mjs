@@ -11,17 +11,12 @@
  *   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<origin> node e2e/cylinder-skin.mjs
  */
 
-import { readFileSync } from 'node:fs';
-
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
-const src = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
-const payloads = Object.fromEntries(
-  [...src.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [id, p])
-);
+import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 import { waitForReady } from './app-ready.mjs';
 
 const ctx = await chromium.launchPersistentContext('/tmp/pmks-chrome-cylskin', {

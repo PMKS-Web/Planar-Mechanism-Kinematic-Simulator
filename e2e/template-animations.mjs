@@ -27,9 +27,11 @@ const { chromium } = await import(PLAYWRIGHT + '/node_modules/playwright/index.m
 const { default: GIFEncoder } = await import(PLAYWRIGHT + '/node_modules/gif-encoder/lib/GIFEncoder.js');
 const { PNG } = await import(PLAYWRIGHT + '/node_modules/pngjs/lib/png.js');
 import { waitForReady } from './app-ready.mjs';
+import { TEMPLATE_LINKAGES, assertTemplatesParsed } from './template-payloads.mjs';
+
+assertTemplatesParsed();
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
-const SOURCE = 'src/app/component/MODALS/templates/template-linkages.ts';
 const CATALOG = 'src/app/component/MODALS/templates/template-catalog.ts';
 const ASSETS = 'src/assets/gifs';
 
@@ -59,21 +61,10 @@ function wanted() {
     .filter(({ id }) => !only || only.includes(id));
 }
 
-/** The generated block of template-linkages.ts, read as id/payload pairs. */
-function payloads() {
-  const source = readFileSync(SOURCE, 'utf8');
-  return Object.fromEntries(
-    [...source.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, payload]) => [
-      id,
-      payload,
-    ])
-  );
-}
-
 const scratch = mkdtempSync(join(tmpdir(), 'pmks-anim-'));
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
-const all = payloads();
+const all = TEMPLATE_LINKAGES;
 const written = [];
 
 for (const { id, name } of wanted()) {

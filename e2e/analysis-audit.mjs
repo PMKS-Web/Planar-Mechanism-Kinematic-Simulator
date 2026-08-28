@@ -16,23 +16,22 @@
  *   SHOTS=1 node e2e/analysis-audit.mjs        # screenshot every panel state
  */
 
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
-const source = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
-const payloads = Object.fromEntries(
-  [...source.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [id, p])
-);
+import {
+  TEMPLATE_IDS,
+  TEMPLATE_LINKAGES as payloads,
+  assertTemplatesParsed,
+} from './template-payloads.mjs';
 import { waitForReady } from './app-ready.mjs';
-const ids = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8')
-  .match(/export const (?:BUILT_IN|LIBRARY)_TEMPLATE_IDS = \[([^\]]*)\]/g)
-  .flatMap((block) => [...block.matchAll(/'([\w-]+)'/g)].map((m) => m[1]));
 
-const MECHANISMS = (process.env.ONLY?.split(',') ?? ids).filter((id) => payloads[id]);
+assertTemplatesParsed();
+const MECHANISMS = (process.env.ONLY?.split(',') ?? TEMPLATE_IDS).filter((id) => payloads[id]);
 const SHOTS = !!process.env.SHOTS;
 mkdirSync('artifacts/analysis-audit', { recursive: true });
 

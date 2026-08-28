@@ -7,12 +7,13 @@
 //
 //   PMKS_PLAYWRIGHT_DIR=<dir> node e2e/phase4-gestures.mjs
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
 const OUT = 'artifacts/phase4-gestures';
@@ -485,11 +486,7 @@ const UNSEALED_SLIDE =
 // units outside it, which stopped being a cylinder the day barrel and rod had
 // to match, and the check then failed for a reason that had nothing to do with
 // what it was testing.
-const SEALED_CYLINDER =
-  '?' +
-  readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8').match(
-    /Cylinder_Boom:\s*\n\s*'([^']+)'/
-  )[1];
+const SEALED_CYLINDER = '?' + TEMPLATE_LINKAGES['Cylinder_Boom'];
 
 // A hand-built (unsealed) welded slide never wears the skin any more, and the
 // Auto/Cylinder/Slotted picker is gone from the app entirely.

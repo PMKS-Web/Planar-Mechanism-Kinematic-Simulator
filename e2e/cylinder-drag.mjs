@@ -13,16 +13,16 @@
  *   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<origin> node e2e/cylinder-drag.mjs
  */
 
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
-const SOURCE = 'src/app/component/MODALS/templates/template-linkages.ts';
-const payload = readFileSync(SOURCE, 'utf8').match(/Cylinder_Boom:\s*\n\s*'([^']+)'/)[1];
+const payload = TEMPLATE_LINKAGES['Cylinder_Boom'];
 
 mkdirSync('artifacts/cylinder-drag', { recursive: true });
 

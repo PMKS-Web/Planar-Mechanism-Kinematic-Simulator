@@ -7,7 +7,7 @@
  *   PMKS_BASE_URL=<origin> node e2e/shot.mjs <name> <steps...>
  */
 
-import { readFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
@@ -15,15 +15,7 @@ const { chromium } = await import(
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
-const source = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
-const dev = readFileSync('src/app/component/MODALS/templates/dev-templates.ts', 'utf8');
-const payloads = Object.fromEntries(
-  [...(source + dev).matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [
-    id,
-    // A backslash in the payload is written escaped in the TypeScript source.
-    p.replace(/\\\\/g, '\\'),
-  ])
-);
+import { ALL_LINKAGES as payloads } from './template-payloads.mjs';
 
 const [name, template, ...steps] = process.argv.slice(2);
 mkdirSync('artifacts/shots', { recursive: true });

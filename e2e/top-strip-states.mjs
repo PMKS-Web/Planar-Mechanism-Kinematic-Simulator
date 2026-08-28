@@ -19,18 +19,13 @@
  *   PMKS_BASE_URL=<origin> node e2e/top-strip-states.mjs
  */
 
-import { readFileSync } from 'node:fs';
-
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
-const source = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
-const payloads = Object.fromEntries(
-  [...source.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [id, p])
-);
+import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 
 /** Two joints and a bar: in no mechanism, so nothing about it is ready. */
 const LONE_BAR =

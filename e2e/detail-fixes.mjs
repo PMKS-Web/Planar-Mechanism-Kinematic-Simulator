@@ -8,22 +8,13 @@
  *   PMKS_BASE_URL=<origin> node e2e/detail-fixes.mjs
  */
 
-import { readFileSync } from 'node:fs';
-
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
-const source = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
-const dev = readFileSync('src/app/component/MODALS/templates/dev-templates.ts', 'utf8');
-const payloads = Object.fromEntries(
-  [...(source + dev).matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [
-    id,
-    p.replace(/\\\\/g, '\\'),
-  ])
-);
+import { ALL_LINKAGES as payloads } from './template-payloads.mjs';
 
 /**
  * Three machines in one drawing: a ram, a rocker and a crank, with the ram

@@ -10,18 +10,15 @@
  *   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<origin> node e2e/cylinder-panel.mjs
  */
 
-import { readFileSync } from 'node:fs';
-
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
-const payload = readFileSync(
-  'src/app/component/MODALS/templates/template-linkages.ts',
-  'utf8'
-).match(/Cylinder_Boom:\s*\n\s*'([^']+)'/)[1];
+import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
+
+const payload = TEMPLATE_LINKAGES['Cylinder_Boom'];
 const ctx = await chromium.launchPersistentContext('/tmp/pmks-chrome-reg', {
   headless: true,
   viewport: { width: 1600, height: 1000 },

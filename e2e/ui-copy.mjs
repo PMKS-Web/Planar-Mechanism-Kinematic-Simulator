@@ -19,15 +19,7 @@ const { chromium } = await import(
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
-const source = [
-  'src/app/component/MODALS/templates/template-linkages.ts',
-  'src/app/component/MODALS/templates/dev-templates.ts',
-]
-  .map((file) => readFileSync(file, 'utf8'))
-  .join('\n');
-const payloads = Object.fromEntries(
-  [...source.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [id, p])
-);
+import { ALL_LINKAGES as payloads } from './template-payloads.mjs';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });

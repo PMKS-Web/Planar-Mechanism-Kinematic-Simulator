@@ -13,7 +13,7 @@
 //   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<origin> node e2e/template-thumbnails.mjs
 //   ONLY=Jansen_Leg,Pantograph node e2e/template-thumbnails.mjs
 
-import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -22,9 +22,15 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import {
+  TEMPLATE_LINKAGES,
+  TEMPLATE_LINKAGES as payloads,
+  assertTemplatesParsed,
+} from './template-payloads.mjs';
+
+assertTemplatesParsed();
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
-const SOURCE = 'src/app/component/MODALS/templates/template-linkages.ts';
 const ASSETS = 'src/assets/gifs';
 
 /** The existing cards' images, matched so the grid stays even. */
@@ -92,10 +98,9 @@ const FILENAMES = {
  * the old colours.
  */
 function libraryTemplates() {
-  const source = readFileSync(SOURCE, 'utf8');
   const only = process.env.ONLY?.split(',').map((one) => one.trim());
-  return [...source.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)]
-    .map(([, id, payload]) => ({ id, payload }))
+  return Object.entries(TEMPLATE_LINKAGES)
+    .map(([id, payload]) => ({ id, payload }))
     .filter(({ id }) => !only || only.includes(id));
 }
 

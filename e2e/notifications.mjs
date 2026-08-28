@@ -10,8 +10,6 @@
  *   PMKS_BASE_URL=<origin> node e2e/notifications.mjs
  */
 
-import { readFileSync } from 'node:fs';
-
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
@@ -19,10 +17,9 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
 
-const templates = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
-const FOUR_BAR = Object.fromEntries(
-  [...templates.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [id, p])
-)['4-Bar'];
+import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
+
+const FOUR_BAR = TEMPLATE_LINKAGES['4-Bar'];
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });

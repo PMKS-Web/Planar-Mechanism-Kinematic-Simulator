@@ -7,19 +7,13 @@
  */
 const { chromium } = await import('/tmp/pmks-playwright/node_modules/playwright/index.mjs');
 import { waitForReady } from './app-ready.mjs';
-import { readFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
 const SHOTS = new URL('../artifacts/screenshots/', import.meta.url).pathname;
 mkdirSync(SHOTS, { recursive: true });
 
-const source = readFileSync(
-  new URL('../src/app/component/MODALS/templates/template-linkages.ts', import.meta.url).pathname,
-  'utf8'
-);
-const payloads = Object.fromEntries(
-  [...source.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [id, p])
-);
+import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 
 const checks = [];
 const check = (name, pass, detail = '') => {

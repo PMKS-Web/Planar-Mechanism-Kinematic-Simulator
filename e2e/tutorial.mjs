@@ -12,17 +12,11 @@
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
-import { readFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
+import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
-const FOUR_BAR = Object.fromEntries(
-  [
-    ...readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8').matchAll(
-      /^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm
-    ),
-  ].map(([, id, payload]) => [id, payload.replace(/\\\\/g, '\\')])
-)['4-Bar'];
+const FOUR_BAR = TEMPLATE_LINKAGES['4-Bar'];
 
 const OUT = 'artifacts/tutorial';
 

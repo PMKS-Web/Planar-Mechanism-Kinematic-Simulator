@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs';
 
 const SOURCE = 'src/app/component/MODALS/templates/template-linkages.ts';
+const DEV_SOURCE = 'src/app/component/MODALS/templates/dev-templates.ts';
 const SRC = readFileSync(SOURCE, 'utf8');
 
 /** Lines of a block with the comment-only ones taken out. */
@@ -39,27 +40,45 @@ export const BUILT_IN_TEMPLATE_IDS = idsOf('BUILT_IN_TEMPLATE_IDS');
 export const LIBRARY_TEMPLATE_IDS = idsOf('LIBRARY_TEMPLATE_IDS');
 export const TEMPLATE_IDS = [...BUILT_IN_TEMPLATE_IDS, ...LIBRARY_TEMPLATE_IDS];
 
-/** Every id in the map, to its URL. */
-export const TEMPLATE_LINKAGES = (() => {
-  const block = SRC.slice(SRC.indexOf('TEMPLATE_LINKAGES'));
+/**
+ * The id-to-URL map in one `Record<...>` of a source file.
+ *
+ * A backslash is written escaped in the TypeScript, so it is unescaped on the
+ * way out -- no template payload has one, but two of the dev drawings do, and a
+ * script that opened the escaped form got a URL the decoder refuses.
+ */
+function linkagesIn(source, constant) {
+  const block = source.slice(source.indexOf(constant));
   const body = block.slice(block.indexOf('{') + 1, block.indexOf('\n};'));
   const found = {};
   let key = null;
   let pieces = [];
   const quoted = (line) => [...line.matchAll(/'([^']*)'/g)].map((match) => match[1]);
+  const keep = () => {
+    if (key) found[key] = pieces.join('').replace(/\\\\/g, '\\');
+  };
   for (const line of withoutComments(body)) {
     const opening = line.match(/^ {2}'?([A-Za-z0-9_-]+)'?:\s*(.*)$/);
     if (opening) {
-      if (key) found[key] = pieces.join('');
+      keep();
       key = opening[1];
       pieces = quoted(opening[2]);
     } else if (key) {
       pieces.push(...quoted(line));
     }
   }
-  if (key) found[key] = pieces.join('');
+  keep();
   return found;
-})();
+}
+
+/** Every template id, to its URL. */
+export const TEMPLATE_LINKAGES = linkagesIn(SRC, 'TEMPLATE_LINKAGES');
+
+/** The three development drawings, which are not offered in the library. */
+export const DEV_TEMPLATE_LINKAGES = linkagesIn(readFileSync(DEV_SOURCE, 'utf8'), 'DEV_TEMPLATES');
+
+/** Both, for the scripts that used to read the two files concatenated. */
+export const ALL_LINKAGES = { ...TEMPLATE_LINKAGES, ...DEV_TEMPLATE_LINKAGES };
 
 /** Fail loudly rather than testing a handful of templates and calling it all. */
 export function assertTemplatesParsed() {
