@@ -341,6 +341,17 @@ write.
 entity handles. A file claiming R12 while carrying any of them is one an old reader -- the only
 reason anybody asks for R12 -- stops on. `writeDxf` switches all three on `document.version`.
 
+**Audit it with `ezdxf`.** `dxf-parser` tells you the file parses; it does not tell you an importer
+will accept it without quietly repairing it first. Install `ezdxf` into a throwaway venv in the
+scratchpad and run `ezdxf.recover.readfile`, then print `auditor.fixes` as well as `auditor.errors`
+-- a clean parse with four silent `INVALID_TABLE_HANDLE` repairs is how the R2000 tables went a
+long time without their handles. Both versions should report zero of each.
+
+**Check the units convert, not just that they are labelled.** `$INSUNITS` and the coordinates are
+written by different code. Export the same drawing as cm, m and in, and check `$EXTMAX` scales by
+1, 1/100 and 1/2.54 -- it did not, for a while, and the file looked completely correct until you
+measured something in CAD.
+
 ---
 
 ## Working out whether a failure is yours
