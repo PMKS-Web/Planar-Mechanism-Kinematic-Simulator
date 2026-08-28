@@ -66,6 +66,7 @@ import { ColorPickerComponent } from '../BLOCKS/color-picker/color-picker.compon
 import { DualButtonComponent } from '../BLOCKS/dual-button/dual-button.component';
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
 import { MatTooltip } from '@angular/material/tooltip';
+import { MultiEditPanelComponent } from '../multi-edit-panel/multi-edit-panel.component';
 
 /**
  * Input Settings unit choices, in the order the picker shows them. The labels
@@ -102,6 +103,7 @@ const INPUT_SPEED_UNITS = [
     ColorPickerComponent,
     DualButtonComponent,
     RadioComponent,
+    MultiEditPanelComponent,
   ],
 })
 export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {

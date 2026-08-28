@@ -395,6 +395,155 @@ describe('NewGridComponent drag gestures', () => {
   });
 });
 
+describe('NewGridComponent typed multi-selection', () => {
+  beforeEach(configureGridTestBed);
+
+  function setUpSelection() {
+    const mechanism = TestBed.inject(MechanismService);
+    const a = new RevJoint('A', 0, 0);
+    const b = new RevJoint('B', 2 * MODEL_SCALE, 0);
+    const link = new RealLink('A', [a, b]); // Deliberate joint/link id collision.
+    a.links = [link];
+    b.links = [link];
+    mechanism.joints = [a, b];
+    mechanism.links = [link];
+    const fixture = TestBed.createComponent(NewGridComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    return { fixture, component, mechanism, active: TestBed.inject(ActiveObjService), a, b, link };
+  }
+
+  it('Meta-click toggles typed parts on macOS and plain click replaces them', () => {
+    const { component, active, a, link } = setUpSelection();
+    const oldPlatform = navigator.platform;
+    Object.defineProperty(navigator, 'platform', { configurable: true, value: 'MacIntel' });
+    try {
+      component.setLastLeftClick(a, new MouseEvent('pointerdown', { metaKey: true }));
+      component.setLastLeftClick(link, new MouseEvent('pointerdown', { metaKey: true }));
+      expect(active.selectedPartRefs).toEqual([
+        { kind: 'joint', id: 'A' },
+        { kind: 'link', id: 'A' },
+      ]);
+
+      component.setLastLeftClick(a, new MouseEvent('pointerdown', { metaKey: true }));
+      expect(active.selectedPartRefs).toEqual([{ kind: 'link', id: 'A' }]);
+
+      component.setLastLeftClick(a, new MouseEvent('pointerdown'));
+      expect(active.selectedPartRefs).toEqual([{ kind: 'joint', id: 'A' }]);
+    } finally {
+      Object.defineProperty(navigator, 'platform', { configurable: true, value: oldPlatform });
+    }
+  });
+
+  it('preserves an existing multi-selection for an inside right-click and replaces it outside', () => {
+    const { component, active, a, b, link } = setUpSelection();
+    active.replacePartSelection(a);
+    active.togglePartSelection(link);
+    const oldPlatform = navigator.platform;
+    Object.defineProperty(navigator, 'platform', { configurable: true, value: 'MacIntel' });
+    try {
+      component.setLastLeftClick(a, new MouseEvent('pointerdown', { button: 0, ctrlKey: true }));
+      component.mouseDown(new MouseEvent('mousedown', { button: 0, ctrlKey: true }));
+      component.setLastRightClick(a, new MouseEvent('contextmenu', { button: 2, ctrlKey: true }));
+      component.mouseUp(new MouseEvent('mouseup', { button: 0, ctrlKey: true }));
+      expect(active.selectedPartRefs).toHaveLength(2);
+
+      component.setLastRightClick(b, new MouseEvent('contextmenu', { ctrlKey: true }));
+      expect(active.selectedPartRefs).toEqual([{ kind: 'joint', id: 'B' }]);
+    } finally {
+      Object.defineProperty(navigator, 'platform', { configurable: true, value: oldPlatform });
+    }
+  });
+
+  it('translates a multi-selection from a gesture-start snapshot and saves once', () => {
+    const { component, active, mechanism, a, b } = setUpSelection();
+    active.replacePartSelection(a);
+    active.togglePartSelection(b);
+    const save = vi.spyOn(mechanism, 'save').mockImplementation(() => {});
+
+    component.setLastLeftClick(a, new MouseEvent('pointerdown'));
+    component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 0, clientY: 0 }));
+    component['timeMouseDown'] = 0;
+    component.mouseMove(new MouseEvent('mousemove', { clientX: 10, clientY: 5 }));
+    component.mouseMove(new MouseEvent('mousemove', { clientX: 20, clientY: 10 }));
+    component.mouseUp(new MouseEvent('mouseup', { button: 0, clientX: 20, clientY: 10 }));
+
+    expect([a.x, a.y]).toEqual([20, 10]);
+    expect([b.x, b.y]).toEqual([2 * MODEL_SCALE + 20, 10]);
+    expect(active.selectedPartRefs).toHaveLength(2);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('turns and uniformly scales around the group bounds through the overlay handles', () => {
+    const { component, fixture, active, a, b } = setUpSelection();
+    active.replacePartSelection(a);
+    active.togglePartSelection(b);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-selection-handle="rotate"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-selection-handle="scale"]')).not.toBeNull();
+
+    component['beginSelectionGesture']('rotate', new Coord(MODEL_SCALE, MODEL_SCALE));
+    component['timeMouseDown'] = 0;
+    component.mouseMove(new MouseEvent('mousemove', { clientX: 2 * MODEL_SCALE, clientY: 0 }));
+    component.mouseUp(new MouseEvent('mouseup', { clientX: 2 * MODEL_SCALE, clientY: 0 }));
+    expect(a.x).toBeCloseTo(MODEL_SCALE);
+    expect(a.y).toBeCloseTo(MODEL_SCALE);
+    expect(b.x).toBeCloseTo(MODEL_SCALE);
+    expect(b.y).toBeCloseTo(-MODEL_SCALE);
+
+    component['beginSelectionGesture']('scale', new Coord(2 * MODEL_SCALE, 0));
+    component['timeMouseDown'] = 0;
+    component.mouseMove(new MouseEvent('mousemove', { clientX: 3 * MODEL_SCALE, clientY: 0 }));
+    component.mouseUp(new MouseEvent('mouseup', { clientX: 3 * MODEL_SCALE, clientY: 0 }));
+    expect(a.y).toBeCloseTo(2 * MODEL_SCALE);
+    expect(b.y).toBeCloseTo(-2 * MODEL_SCALE);
+  });
+
+  it('refuses the whole transform when one canonical member is locked', () => {
+    const { component, active, mechanism, a, b } = setUpSelection();
+    active.replacePartSelection(a);
+    active.togglePartSelection(b);
+    b.locked = true;
+    mechanism.updateMechanism(false);
+    const save = vi.spyOn(mechanism, 'save').mockImplementation(() => {});
+
+    component.setLastLeftClick(a, new MouseEvent('pointerdown'));
+    component.mouseDown(new MouseEvent('mousedown', { button: 0 }));
+    component['timeMouseDown'] = 0;
+    component.mouseMove(new MouseEvent('mousemove', { clientX: 30, clientY: 20 }));
+    component.mouseUp(new MouseEvent('mouseup', { clientX: 30, clientY: 20 }));
+
+    expect([a.x, a.y, b.x, b.y]).toEqual([0, 0, 2 * MODEL_SCALE, 0]);
+    expect(active.selectedPartRefs).toHaveLength(2);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('collapses to one item when a selected group member is plainly clicked without dragging', () => {
+    const { component, active, a, b } = setUpSelection();
+    active.replacePartSelection(a);
+    active.togglePartSelection(b);
+
+    component.setLastLeftClick(a, new MouseEvent('pointerdown'));
+    component.mouseDown(new MouseEvent('mousedown', { button: 0 }));
+    component.mouseUp(new MouseEvent('mouseup', { button: 0 }));
+
+    expect(active.selectedPartRefs).toEqual([{ kind: 'joint', id: 'A' }]);
+  });
+
+  it('clears on Escape and an unmodified blank-canvas click', () => {
+    const { component, active, a, b } = setUpSelection();
+    active.replacePartSelection(a);
+    active.togglePartSelection(b);
+    component['onShortcut']('edit.deselect');
+    expect(active.selectedPartRefs).toEqual([]);
+
+    active.replacePartSelection(a);
+    active.togglePartSelection(b);
+    component.setLastLeftClick('grid', new MouseEvent('pointerdown'));
+    expect(active.selectedPartRefs).toEqual([]);
+  });
+});
+
 describe('NewGridComponent keyboard shortcuts', () => {
   beforeEach(configureGridTestBed);
 

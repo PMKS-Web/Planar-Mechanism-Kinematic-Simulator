@@ -95,7 +95,7 @@
     <g
       id="backgroundAndGrid"
       (contextmenu)="setLastRightClick('grid')"
-      (pointerdown)="setLastLeftClick('grid')"
+      (pointerdown)="setLastLeftClick('grid', $event)"
     >
       <!--  The Background-->
       <rect
@@ -539,7 +539,7 @@
               class="slider-block"
               [class.link-inert]="mechanismSrv.isPartInert(item.mark.pin)"
               cursor="move"
-              (pointerdown)="setLastLeftClick(item.mark.pin)"
+              (pointerdown)="setLastLeftClick(item.mark.pin, $event)"
               (contextmenu)="setLastRightClick(item.mark.pin)"
             >
               <!-- The block stays #000 even when the slider has nowhere to
@@ -878,7 +878,7 @@
           (pointerover)="joint.showHighlight = true"
           (pointerout)="joint.showHighlight = false"
           (contextmenu)="setLastRightClick(joint)"
-          (pointerdown)="setLastLeftClick(joint)"
+          (pointerdown)="setLastLeftClick(joint, $event)"
           width="20"
           height="20"
           style="overflow: visible"
@@ -980,6 +980,51 @@
       }
     }
   </g>
+
+  @if (selectionBounds(); as bounds) {
+    <g id="selectionTransformOverlay" class="selectionTransform" style="transform: scaleY(-1)">
+      <rect
+        class="selectionBounds"
+        pointer-events="none"
+        [attr.x]="bounds.minX"
+        [attr.y]="bounds.minY"
+        [attr.width]="Math.max(bounds.maxX - bounds.minX, selectionHandleSize())"
+        [attr.height]="Math.max(bounds.maxY - bounds.minY, selectionHandleSize())"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+        [attr.stroke-dasharray]="svgGrid.scaleWithZoom(7) + ' ' + svgGrid.scaleWithZoom(4)"
+      />
+      <line
+        class="selectionStem"
+        pointer-events="none"
+        [attr.x1]="(bounds.minX + bounds.maxX) / 2"
+        [attr.y1]="bounds.maxY"
+        [attr.x2]="(bounds.minX + bounds.maxX) / 2"
+        [attr.y2]="bounds.maxY + selectionRotateReach()"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+      />
+      <circle
+        class="selectionHandle selectionRotateHandle"
+        data-selection-handle="rotate"
+        [attr.cx]="(bounds.minX + bounds.maxX) / 2"
+        [attr.cy]="bounds.maxY + selectionRotateReach()"
+        [attr.r]="selectionHandleSize() / 2"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+        cursor="grab"
+        (pointerdown)="beginSelectionHandle($event, 'rotate')"
+      />
+      <rect
+        class="selectionHandle selectionScaleHandle"
+        data-selection-handle="scale"
+        [attr.x]="bounds.maxX - selectionHandleSize() / 2"
+        [attr.y]="bounds.maxY - selectionHandleSize() / 2"
+        [attr.width]="selectionHandleSize()"
+        [attr.height]="selectionHandleSize()"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+        cursor="nwse-resize"
+        (pointerdown)="beginSelectionHandle($event, 'scale')"
+      />
+    </g>
+  }
 
   <!-- Synthesis draws its own scene: the positions being designed for, the
        candidate linkage being looked at, and the handles that move either. All

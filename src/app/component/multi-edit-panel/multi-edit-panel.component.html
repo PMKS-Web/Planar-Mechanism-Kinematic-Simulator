@@ -1,0 +1,112 @@
+<section class="multiPanel" aria-label="Multiple selection editor">
+  <header>
+    <div class="title">Edit Selection</div>
+    <div class="count">{{ selectionLabel }}</div>
+  </header>
+
+  @if (homogeneousJoints) {
+    <section class="panelGroup" aria-labelledby="joint-position-heading">
+      <h3 id="joint-position-heading">Joint Position</h3>
+      <p class="explain">A value entered here aligns every selected joint to that coordinate.</p>
+      <div class="fieldPair">
+        <label>
+          <span>X</span>
+          <input
+            data-field="x"
+            [value]="lengthText(jointValue('x'))"
+            [placeholder]="placeholder(jointValue('x'))"
+            (change)="commitJointCoordinate('x', $any($event.target).value)"
+          />
+        </label>
+        <label>
+          <span>Y</span>
+          <input
+            data-field="y"
+            [value]="lengthText(jointValue('y'))"
+            [placeholder]="placeholder(jointValue('y'))"
+            (change)="commitJointCoordinate('y', $any($event.target).value)"
+          />
+        </label>
+      </div>
+    </section>
+  }
+
+  @if (homogeneousLinks) {
+    <section class="panelGroup" aria-labelledby="link-geometry-heading">
+      <h3 id="link-geometry-heading">Link Geometry</h3>
+      @if (ordinaryBinaryLinks) {
+        <p class="explain">Each link keeps the same anchor that its one-item editor uses.</p>
+        <div class="fieldPair">
+          <label>
+            <span>Length</span>
+            <input
+              data-field="length"
+              [value]="lengthText(linkValue('length'))"
+              [placeholder]="placeholder(linkValue('length'))"
+              (change)="commitLinkGeometry('length', $any($event.target).value)"
+            />
+          </label>
+          <label>
+            <span>Angle</span>
+            <input
+              data-field="angle"
+              [value]="angleText(linkValue('angle'))"
+              [placeholder]="placeholder(linkValue('angle'))"
+              (change)="commitLinkGeometry('angle', $any($event.target).value)"
+            />
+          </label>
+        </div>
+      } @else {
+        <p class="unavailable">Length and angle need ordinary two-joint links.</p>
+      }
+      <label class="wideField">
+        <span>Mass</span>
+        <input
+          data-field="mass"
+          [value]="massText(linkValue('mass'))"
+          [placeholder]="placeholder(linkValue('mass'))"
+          (change)="commitMass($any($event.target).value)"
+        />
+      </label>
+    </section>
+  }
+
+  @if (!homogeneousJoints && !homogeneousLinks) {
+    <section class="panelGroup sharedOnly">
+      <h3>Joint and Link Selection</h3>
+      <p class="explain">
+        Drag the selection or use its canvas handles to move, rotate, or scale it together. Geometry
+        fields appear when the selection contains one kind of part.
+      </p>
+    </section>
+  }
+
+  <section class="panelGroup stateGroup">
+    <h3>State</h3>
+    <label class="lockRow">
+      <input
+        type="checkbox"
+        data-action="lock"
+        [checked]="lockChecked()"
+        [indeterminate]="lockState().kind === 'mixed'"
+        (change)="setLocked($any($event.target).checked)"
+      />
+      <span>Locked</span>
+      @if (lockState().kind === 'mixed') {
+        <span class="mixedTag">Mixed</span>
+      }
+    </label>
+    <p class="explain">A selection containing anything held by a Lock will not transform.</p>
+  </section>
+
+  <section class="actions" aria-label="Selection actions">
+    <button data-action="duplicate" (click)="duplicate()">
+      <mat-icon>content_copy</mat-icon>
+      Duplicate Selected
+    </button>
+    <button class="danger" data-action="delete" (click)="delete()">
+      <mat-icon>delete_outline</mat-icon>
+      Delete Selected
+    </button>
+  </section>
+</section>

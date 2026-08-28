@@ -19,6 +19,7 @@ import { wireGraph } from '../../test-utils/mechanism-harness';
 import { RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { MODEL_SCALE } from '../model/render-scale';
+import { SelectionBatchService } from './selection-batch.service';
 
 /**
  * What the right-click menu offers, and what it says when it cannot.
@@ -47,6 +48,8 @@ const noHandlers: MenuHandlers = {
   backgroundImage: () => {},
   deletePosition: () => {},
   deleteAllPositions: () => {},
+  duplicateSelected: () => {},
+  deleteSelected: () => {},
 };
 
 function createBuilderHarness() {
@@ -66,6 +69,7 @@ function createBuilderHarness() {
       { provide: MechanismService, deps: [] },
       { provide: KeyboardShortcutsService, useValue: keysStub },
       { provide: ContextMenuBuilderService, deps: [] },
+      { provide: SelectionBatchService, deps: [MechanismService] },
     ],
   });
   return {
@@ -73,6 +77,7 @@ function createBuilderHarness() {
     mechanism: injector.get(MechanismService),
     tabs: injector.get(SelectedTabService),
     synthesis: injector.get(SynthesisBuilderService),
+    active: injector.get(ActiveObjService),
   };
 }
 
@@ -111,6 +116,42 @@ describe('the right-click menu', () => {
   beforeEach(() => {
     harness = createBuilderHarness();
     harness.tabs.setTab(TabID.EDIT);
+  });
+
+  describe('multi-selection target', () => {
+    it('preserves group scope and offers count-aware atomic actions', () => {
+      const parts = fourBar(harness.mechanism);
+      harness.active.replacePartSelection(parts.a);
+      harness.active.togglePartSelection(parts.coupler);
+      const duplicateSelected = vi.fn();
+      const deleteSelected = vi.fn();
+      const model = harness.builder.build(parts.a, {
+        ...noHandlers,
+        duplicateSelected,
+        deleteSelected,
+      });
+
+      expect(model.header?.title).toBe('2 Selected Parts');
+      expect(labels(model)).toContain('Duplicate Selected (2)');
+      expect(labels(model)).toContain('Delete Selected (2)');
+      row(model, 'Duplicate Selected (2)')!.action();
+      row(model, 'Delete Selected (2)')!.action();
+      expect(duplicateSelected).toHaveBeenCalledTimes(1);
+      expect(deleteSelected).toHaveBeenCalledTimes(1);
+    });
+
+    it('quotes an atomic lock refusal for destructive group actions', () => {
+      const parts = fourBar(harness.mechanism);
+      parts.a.locked = true;
+      harness.mechanism.updateMechanism(false);
+      harness.active.replacePartSelection(parts.a);
+      harness.active.togglePartSelection(parts.coupler);
+
+      const model = harness.builder.build(parts.a, noHandlers);
+
+      expect(row(model, 'Delete Selected (2)')!.refusal?.short).toBe('unlock first');
+      expect(row(model, 'Delete Selected (2)')!.refusal?.long).toContain('locked');
+    });
   });
 
   describe('the ladder', () => {

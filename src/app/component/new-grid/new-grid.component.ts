@@ -57,6 +57,7 @@ import { ColorService } from '../../services/color.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { EditPanelComponent } from '../edit-panel/edit-panel.component';
 import { DragStateService } from '../../services/drag-state.service';
+import { SelectionBatchService } from '../../services/selection-batch.service';
 import {
   Channel,
   CylinderMark,
@@ -120,6 +121,13 @@ import { SvgArrowComponent } from '../svg-arrow/svg-arrow.component';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 import { INK_FLIPS_AT, luminanceOf } from '../../model/contrast';
 import { DEFAULT_FORCE_COLOR, SELECTION_RING } from '../../model/joint-colors';
+import { isAdditiveSelectionGesture, SelectedPart } from '../../model/selection';
+import {
+  captureSelectionTransform,
+  canonicalSelectionClosure,
+  SelectionBounds,
+  SelectionTransformSnapshot,
+} from '../../model/selection-transform';
 
 /** Which corner of the tracing underlay a resize gesture is holding. */
 type BackgroundImageCorner = 'tl' | 'tr' | 'bl' | 'br';
@@ -155,6 +163,7 @@ const SELECTION_RING_PX = 3;
   imports: [CdkContextMenuTrigger, ContextMenuComponent, LongPressDirective],
 })
 export class NewGridComponent implements OnDestroy {
+  readonly Math = Math;
   svgGrid = inject(SvgGridService);
   mechanismSrv = inject(MechanismService);
   private tutorial = inject(TutorialService);
@@ -179,6 +188,7 @@ export class NewGridComponent implements OnDestroy {
   sliderMarks = inject(SliderMarkService);
   bgImage = inject(BackgroundImageService);
   private menuBuilder = inject(ContextMenuBuilderService);
+  private selectionBatch = inject(SelectionBatchService);
   /**
    * For the subscriptions taken in `ngOnInit`, which is outside the injection
    * context `takeUntilDestroyed` reads by default. Their sources are root
@@ -210,6 +220,23 @@ export class NewGridComponent implements OnDestroy {
 
   public lastLeftClick: Joint | Link | Force | string | SynthesisPose = '';
   lastLeftClickType: string = 'Nothing';
+
+  /** A selected-member click is held until release so the same press can become a group drag. */
+  private pendingPartReplacement?: SelectedPart;
+  /** An additive press edits membership only; it never starts a drag underneath itself. */
+  private selectionTogglePress = false;
+
+  private selectionGesture?: {
+    snapshot: SelectionTransformSnapshot;
+    mode: 'translate' | 'rotate' | 'scale';
+    pointerStart: Coord;
+    startAngle: number;
+    startDistance: number;
+    changed: boolean;
+    attempted: boolean;
+    refusalShown: boolean;
+    replaceOnClick?: SelectedPart;
+  };
 
   /**
    * The joint the one being dragged would merge into on release, or undefined.
@@ -434,7 +461,35 @@ export class NewGridComponent implements OnDestroy {
       backgroundImage: () => this.openBackgroundImage(),
       deletePosition: (id) => this.deleteSynthesisPosition(id),
       deleteAllPositions: () => this.deleteAllSynthesisPositions(),
+      duplicateSelected: () => this.duplicateSelected(),
+      deleteSelected: () => this.deleteSelectedParts(),
     };
+  }
+
+  private duplicateSelected(): void {
+    const step = this.svgGrid.minorCellSize || MODEL_SCALE;
+    const result = this.selectionBatch.duplicateSelected(this.activeObjService.selectedPartRefs, {
+      x: step,
+      y: step,
+    });
+    if (!result.ok) {
+      this.notify.refusal(result.refusal.code, result.refusal.message);
+      return;
+    }
+    this.activeObjService.restorePartSelection(
+      { refs: result.selection, primary: result.selection.at(-1) },
+      this.mechanismSrv.joints,
+      this.mechanismSrv.links
+    );
+  }
+
+  private deleteSelectedParts(): void {
+    const result = this.selectionBatch.deleteSelected(this.activeObjService.selectedPartRefs);
+    if (!result.ok) {
+      this.notify.refusal(result.refusal.code, result.refusal.message);
+      return;
+    }
+    this.activeObjService.clearPartSelection();
   }
 
   /** Take one position away, or all of them, and record it as one step. */
@@ -859,7 +914,22 @@ export class NewGridComponent implements OnDestroy {
       this.tabService.getCurrentTab() === TabID.EDIT &&
       (clickedObj instanceof Joint || clickedObj instanceof Link || clickedObj instanceof Force)
     ) {
-      this.activeObjService.updateSelectedObj(clickedObj);
+      if (
+        (clickedObj instanceof RealJoint || clickedObj instanceof RealLink) &&
+        this.activeObjService.containsPart(clickedObj)
+      ) {
+        // A menu opened inside a group acts on the group. In particular, a
+        // macOS Control-click must not collapse the selection before the
+        // contextmenu event arrives. Cancel the undecided left-button gesture
+        // as well: Control-click produces both on macOS, and its later release
+        // must not collapse the group after this menu preserves it.
+        this.selectionGesture = undefined;
+        this.pendingPartReplacement = undefined;
+        this.selectionTogglePress = false;
+        this.dragState.cancel();
+      } else {
+        this.activeObjService.updateSelectedObj(clickedObj);
+      }
     }
 
     switch (this.objectKind(clickedObj)) {
@@ -884,6 +954,8 @@ export class NewGridComponent implements OnDestroy {
       return;
     }
     this.lastLeftClick = clickedObj;
+    this.selectionTogglePress = false;
+    this.pendingPartReplacement = undefined;
     switch (this.objectKind(clickedObj)) {
       case 'Force':
         this.lastLeftClickType = 'Force';
@@ -909,7 +981,175 @@ export class NewGridComponent implements OnDestroy {
         this.lastLeftClickType = 'Unknown';
         console.error('Unknown object type clicked');
     }
+    if (event && event.button !== 0) return;
+    if (
+      this.tabService.getCurrentTab() === TabID.EDIT &&
+      (clickedObj instanceof RealJoint || clickedObj instanceof RealLink)
+    ) {
+      if (
+        isAdditiveSelectionGesture(
+          { ctrlKey: event?.ctrlKey ?? false, metaKey: event?.metaKey ?? false },
+          navigator.platform
+        )
+      ) {
+        this.activeObjService.togglePartSelection(clickedObj);
+        this.selectionTogglePress = true;
+      } else if (
+        this.activeObjService.objType === 'MultiSelection' &&
+        this.activeObjService.containsPart(clickedObj)
+      ) {
+        this.pendingPartReplacement = clickedObj;
+      } else {
+        this.activeObjService.replacePartSelection(clickedObj);
+      }
+      return;
+    }
+    if (
+      this.tabService.getCurrentTab() === TabID.EDIT &&
+      typeof clickedObj === 'string' &&
+      !(event?.ctrlKey || event?.metaKey)
+    ) {
+      this.activeObjService.clearPartSelection();
+      return;
+    }
     this.activeObjService.updateSelectedObj(clickedObj);
+  }
+
+  selectionBounds(): SelectionBounds | undefined {
+    if (
+      this.activeObjService.selectedParts.length < 2 ||
+      this.tabService.getCurrentTab() !== TabID.EDIT ||
+      this.mechanismSrv.isPlaying ||
+      this.mechanismSrv.mechanismTimeStep !== 0
+    ) {
+      return undefined;
+    }
+    const closure = canonicalSelectionClosure(
+      this.activeObjService.selectedParts,
+      this.mechanismSrv.joints,
+      this.mechanismSrv.links
+    );
+    if (closure.joints.length === 0) return undefined;
+    const xs = closure.joints.map((joint) => joint.x);
+    const ys = closure.joints.map((joint) => joint.y);
+    return {
+      minX: Math.min(...xs),
+      minY: Math.min(...ys),
+      maxX: Math.max(...xs),
+      maxY: Math.max(...ys),
+    };
+  }
+
+  selectionHandleSize(): number {
+    return this.svgGrid.scaleWithZoom(12);
+  }
+
+  selectionRotateReach(): number {
+    return this.svgGrid.scaleWithZoom(34);
+  }
+
+  beginSelectionHandle(event: PointerEvent, mode: 'rotate' | 'scale'): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.timeMouseDown = Date.now();
+    this.startX = event.pageX;
+    this.startY = event.pageY;
+    this.dragState.press();
+    const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
+    this.beginSelectionGesture(mode, at);
+    this.holdPointer(event);
+  }
+
+  private beginSelectionGesture(
+    mode: 'translate' | 'rotate' | 'scale',
+    pointer: Coord,
+    replaceOnClick?: SelectedPart
+  ): void {
+    const snapshot = captureSelectionTransform(
+      this.activeObjService.selectedParts,
+      this.mechanismSrv.joints,
+      this.mechanismSrv.links
+    );
+    this.selectionGesture = {
+      snapshot,
+      mode,
+      pointerStart: new Coord(pointer.x, pointer.y),
+      startAngle: Math.atan2(pointer.y - snapshot.pivot.y, pointer.x - snapshot.pivot.x),
+      startDistance: Math.max(getDistance(pointer, snapshot.pivot), 1e-9),
+      changed: false,
+      attempted: false,
+      refusalShown: false,
+      replaceOnClick,
+    };
+  }
+
+  private moveSelectionGesture(pointer: Coord, event: MouseEvent): boolean {
+    const gesture = this.selectionGesture;
+    if (!gesture) return false;
+    if (!this.canEditNow() || !this.pastDragThreshold(event)) return true;
+    gesture.attempted = true;
+
+    let transform:
+      { translation: { x: number; y: number } } | { rotation: number } | { scale: number };
+    if (gesture.mode === 'translate') {
+      const wanted = new Coord(
+        gesture.snapshot.pivot.x + pointer.x - gesture.pointerStart.x,
+        gesture.snapshot.pivot.y + pointer.y - gesture.pointerStart.y
+      );
+      const landed = this.svgGrid.snapToGrid(wanted, event.altKey);
+      transform = {
+        translation: {
+          x: landed.x - gesture.snapshot.pivot.x,
+          y: landed.y - gesture.snapshot.pivot.y,
+        },
+      };
+    } else if (gesture.mode === 'rotate') {
+      transform = {
+        rotation:
+          Math.atan2(pointer.y - gesture.snapshot.pivot.y, pointer.x - gesture.snapshot.pivot.x) -
+          gesture.startAngle,
+      };
+    } else {
+      transform = {
+        scale: Math.max(0.05, getDistance(pointer, gesture.snapshot.pivot) / gesture.startDistance),
+      };
+    }
+
+    const result = gesture.snapshot.apply(transform);
+    if (!result.applied) {
+      if (!gesture.refusalShown) {
+        gesture.refusalShown = true;
+        const names = result.lockedJointIds.join(', ');
+        this.notify.refusal(
+          'selection.transform-locked',
+          `The selection is held by ${names || 'a Lock'}. Unlock it before transforming the group.`
+        );
+      }
+      return true;
+    }
+    gesture.changed = true;
+    this.mechanismSrv.reseatFloatingSliders();
+    this.mechanismSrv.updateMechanism(false);
+    this.mechanismSrv.onMechUpdateState.next(2);
+    this.activeObjService.fakeUpdateSelectedObj();
+    this.showPathWhileDragging(this.activeObjService.primaryPart);
+    return true;
+  }
+
+  private finishSelectionGesture(): boolean {
+    const gesture = this.selectionGesture;
+    if (!gesture) return false;
+    this.selectionGesture = undefined;
+    this.dragState.release();
+    if (gesture.changed) {
+      this.mechanismSrv.save();
+    } else if (!gesture.attempted && gesture.replaceOnClick) {
+      this.activeObjService.replacePartSelection(gesture.replaceOnClick);
+    }
+    this.pendingPartReplacement = undefined;
+    this.selectionTogglePress = false;
+    return true;
   }
 
   addJoint() {
@@ -1195,6 +1435,8 @@ export class NewGridComponent implements OnDestroy {
     if (this.showSynthesis() && !this.longPress()?.pressPending) {
       if (this.synthCanvas.move(mousePosInSvg)) return;
     }
+
+    if (this.moveSelectionGesture(mousePosInSvg, $event)) return;
 
     let deltaMouseX = this.mouseLocation.x - this.lastMouseLocation.x;
     let deltaMouseY = this.mouseLocation.y - this.lastMouseLocation.y;
@@ -1988,6 +2230,9 @@ export class NewGridComponent implements OnDestroy {
    */
   private letGoOfEverything(): void {
     this.dragState.cancel();
+    this.selectionGesture = undefined;
+    this.pendingPartReplacement = undefined;
+    this.selectionTogglePress = false;
     this.cylinderCreateStart = undefined;
     this.linkCreateStart = undefined;
     if (this.showSynthesis()) this.synthCanvas.release();
@@ -2121,7 +2366,7 @@ export class NewGridComponent implements OnDestroy {
     // click deserves no scolding.
     this.heldGestureNotice = undefined;
 
-    this.finishMechanismDrag($event);
+    if (!this.finishSelectionGesture()) this.finishMechanismDrag($event);
 
     // Last, once the press has finished deciding what it selected. Run first,
     // this read the selection the *previous* gesture left: a tap on bare canvas
@@ -2268,7 +2513,11 @@ export class NewGridComponent implements OnDestroy {
     // Only a drag. A creation gesture is armed by the menu and committed by the
     // next click, with no pointer held down in between: releasing it here would
     // cancel the rubber band whenever a button anywhere else was pressed.
-    if (event && this.dragState.isDragging) this.finishMechanismDrag(event);
+    if (this.selectionGesture) {
+      this.finishSelectionGesture();
+    } else if (event && this.dragState.isDragging) {
+      this.finishMechanismDrag(event);
+    }
   }
 
   /**
@@ -2397,6 +2646,16 @@ export class NewGridComponent implements OnDestroy {
     // unrelated pointer event came last — a jump on grab.
     this.linkDragAnchor = mousePosInSvg;
     this.bodyDragOrigin = undefined;
+
+    if ($event.button === 0 && this.selectionTogglePress) return;
+    if (
+      $event.button === 0 &&
+      this.activeObjService.objType === 'MultiSelection' &&
+      this.pendingPartReplacement
+    ) {
+      this.beginSelectionGesture('translate', mousePosInSvg, this.pendingPartReplacement);
+      return;
+    }
 
     switch ($event.button) {
       case 0: // Handle Left-Click on canvas
@@ -4057,6 +4316,12 @@ export class NewGridComponent implements OnDestroy {
     // nothing at all — so asking it before checking turned "there is nothing to
     // lock" into an uncaught error on a fresh grid.
     const kind = this.activeObjService.objType;
+    if (kind === 'MultiSelection') {
+      const parts = this.activeObjService.selectedParts;
+      const allLocked = parts.every((part) => this.mechanismSrv.isLockedTarget(part));
+      this.mechanismSrv.setLocks(parts, !allLocked);
+      return;
+    }
     if (kind !== 'Joint' && kind !== 'Link' && kind !== 'Force') {
       this.notify.refusal(
         'lock.nothing-selected',
@@ -4079,6 +4344,9 @@ export class NewGridComponent implements OnDestroy {
    */
   private deleteSelection(): void {
     switch (this.activeObjService.objType) {
+      case 'MultiSelection':
+        this.deleteSelectedParts();
+        break;
       case 'Joint':
         this.mechanismSrv.deleteJoint();
         break;

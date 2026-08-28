@@ -20,6 +20,7 @@ import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 import { VectorQuantity, VECTOR_ICON, VECTOR_LABEL } from '../model/vector-trace';
+import { SelectionBatchService } from './selection-batch.service';
 
 /** What the canvas does when a row asks for a gesture rather than an edit. */
 export interface MenuHandlers {
@@ -30,6 +31,8 @@ export interface MenuHandlers {
   backgroundImage(): void;
   deletePosition(id: number): void;
   deleteAllPositions(): void;
+  duplicateSelected(): void;
+  deleteSelected(): void;
 }
 
 /** Anything the right-click can land on. */
@@ -58,6 +61,7 @@ export class ContextMenuBuilderService {
   private keys = inject(KeyboardShortcutsService);
   private synthesis = inject(SynthesisBuilderService);
   private tabs = inject(SelectedTabService);
+  private selectionBatch = inject(SelectionBatchService);
 
   build(target: MenuTarget, handlers: MenuHandlers): ContextMenuModel {
     const model = this.buildFor(target, handlers);
@@ -75,10 +79,76 @@ export class ContextMenuBuilderService {
         ? { groups: [] }
         : { header: { title: 'Grid', subtitle: this.gridSubtitle() }, groups: [{ rows }] };
     }
+    if (
+      this.tabs.getCurrentTab() === TabID.EDIT &&
+      (target instanceof RealJoint || target instanceof RealLink) &&
+      this.activeObj.selectedParts.length > 1 &&
+      this.activeObj.containsPart(target)
+    ) {
+      return this.forSelection(handlers);
+    }
     if (target instanceof Force) return this.forForce(target);
     if (target instanceof Link) return this.forLink(target, handlers);
     if (target instanceof Joint) return this.forJoint(target, handlers);
     return this.forGrid(handlers);
+  }
+
+  private forSelection(handlers: MenuHandlers): ContextMenuModel {
+    const refs = this.activeObj.selectedPartRefs;
+    const count = refs.length;
+    const parts = this.activeObj.selectedParts;
+    const locked = parts.map((part) => this.mechanism.isLockedTarget(part));
+    const allLocked = locked.every(Boolean);
+    const someLocked = locked.some(Boolean);
+    const duplicate = this.selectionBatch.duplicateRefusal(refs);
+    const remove = this.selectionBatch.deleteRefusal(refs);
+    const refusal = (value: typeof duplicate): MenuRefusal | undefined =>
+      value ? { short: value.short, long: value.message } : undefined;
+    return {
+      header: {
+        title: `${count} Selected Parts`,
+        subtitle: `${parts.filter((part) => part instanceof RealJoint).length} joints · ${parts.filter((part) => part instanceof RealLink).length} links`,
+      },
+      groups: [
+        {
+          label: 'State',
+          rows: [
+            new MenuRow({
+              label: 'Locked',
+              icon: 'lock',
+              kind: 'toggle',
+              checked: allLocked,
+              hint: someLocked && !allLocked ? 'Mixed' : undefined,
+              action: () => this.mechanism.setLocks(parts, !allLocked),
+            }),
+          ],
+        },
+        {
+          label: 'Actions',
+          rows: [
+            new MenuRow({
+              label: `Duplicate Selected (${count})`,
+              icon: 'content_copy',
+              material: true,
+              action: () => handlers.duplicateSelected(),
+              refusal: refusal(duplicate),
+            }),
+          ],
+        },
+        {
+          rows: [
+            new MenuRow({
+              label: `Delete Selected (${count})`,
+              icon: 'remove',
+              destructive: true,
+              shortcut: this.keys.keysFor('edit.delete'),
+              action: () => handlers.deleteSelected(),
+              refusal: refusal(remove),
+            }),
+          ],
+        },
+      ],
+    };
   }
 
   // ------------------------------------------------------------------ grid
