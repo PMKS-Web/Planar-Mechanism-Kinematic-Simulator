@@ -587,6 +587,11 @@ const inCm = await alignment();
 // the picture has to be carried along by the same factor or it is left the
 // conversion's worth of wrong size against the very linkage it is under.
 const openSettings = async () => {
+  // Only when it is not already showing. The drawer's rows toggle -- a reader
+  // pressing Settings a second time is asking for it to go away -- so a helper
+  // called twice in a row opened the panel and then closed it again, and the
+  // line after this one went looking for a component that had just left.
+  if ((await page.locator('app-settings-panel').count()) > 0) return;
   await page.locator('.topStrip .iconButton').first().click();
   await page.locator('.menuItem', { hasText: 'Settings' }).first().click();
   await page.waitForTimeout(600);
