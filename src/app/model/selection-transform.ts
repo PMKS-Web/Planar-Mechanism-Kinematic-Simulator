@@ -153,12 +153,17 @@ export class SelectionTransformSnapshot {
     const scaleX = typeof scale === 'number' ? scale : scale.x;
     const scaleY = typeof scale === 'number' ? scale : scale.y;
     const pivot = transform.pivot ?? this.pivot;
+    // Negative is allowed: dragging a grip past the point it scales away from
+    // turns the selection through that point, which is what pulling a grip
+    // across the far side asks for. Zero is the one value refused -- it
+    // collapses the selection onto a point or a line, and nothing about where
+    // the parts were survives to bring them back.
     if (
       ![translation.x, translation.y, rotation, scaleX, scaleY, pivot.x, pivot.y].every(
         Number.isFinite
       ) ||
-      !(scaleX > 0) ||
-      !(scaleY > 0)
+      scaleX === 0 ||
+      scaleY === 0
     ) {
       return { applied: false, lockedJointIds: [], reason: 'invalid-transform' };
     }
@@ -180,7 +185,13 @@ export class SelectionTransformSnapshot {
       joint.y = at.y;
     });
     this.groundedSlotAngles.forEach((angle, slot) => {
-      slot.angle_rad = angle + rotation;
+      // Through the same map its joints went through, not just the turn. A
+      // squashed box changes the bearing of a slot lying across it, and a
+      // flipped one reverses it -- a slot left at its old angle would send its
+      // block off the line its own joints now sit on.
+      const alongX = scaleX * Math.cos(angle);
+      const alongY = scaleY * Math.sin(angle);
+      slot.angle_rad = Math.atan2(alongX * sin + alongY * cos, alongX * cos - alongY * sin);
     });
     this.bodies.forEach((body) => this.applyBody(body, mapPoint));
     this.visualOrder

@@ -231,6 +231,63 @@ describe('selection affine snapshot', () => {
     expect(slider.slotAngle).toBeCloseTo(Math.PI / 2, 10);
   });
 
+  it('turns the selection through the anchor when a scale goes negative', () => {
+    const scene = twoBars();
+    // Off the axis, so a mirror can be told from a half turn.
+    scene.c.y = 3;
+    const snapshot = captureSelectionTransform([scene.ab, scene.bc], scene.joints, scene.links);
+
+    // Dragged back through the point it scales away from: the parts land on
+    // the far side of it rather than stopping flat against it.
+    const result = snapshot.apply({ scale: { x: -1, y: 1 }, pivot: { x: 0, y: 0 } });
+
+    expect(result.applied).toBe(true);
+    expect(scene.a.x).toBeCloseTo(0, 10);
+    expect(scene.b.x).toBeCloseTo(-2, 10);
+    expect(scene.c.x).toBeCloseTo(-4, 10);
+    // One axis only: C keeps the height it had, so this is a mirror and not a
+    // half turn dressed as one.
+    expect(scene.c.y).toBeCloseTo(3, 10);
+  });
+
+  it('refuses the one scale with no way back', () => {
+    const scene = twoBars();
+    const snapshot = captureSelectionTransform([scene.ab], scene.joints, scene.links);
+
+    // Zero puts every joint on one point or one line, and nothing about where
+    // they were survives to bring them back.
+    expect(snapshot.apply({ scale: 0 }).applied).toBe(false);
+    expect(snapshot.apply({ scale: Number.NaN }).applied).toBe(false);
+    const flattened = snapshot.apply({ scale: { x: 0, y: 1 } });
+    expect(flattened.applied).toBe(false);
+    if (!flattened.applied) expect(flattened.reason).toBe('invalid-transform');
+    expect([scene.a.x, scene.a.y]).toEqual([0, 0]);
+    expect([scene.b.x, scene.b.y]).toEqual([2, 0]);
+  });
+
+  it('carries a grounded slot axis through the whole map, not only the turn', () => {
+    const pin = new RevJoint('A', 2, 0);
+    const slider = new PrisJoint('P', 2, 0);
+    slider.groundAt(0);
+    const block = new SliderBlock('AP', [pin, slider]);
+    pin.links.push(block);
+    slider.links.push(block);
+    const snapshot = captureSelectionTransform([pin], [pin, slider], [block]);
+
+    // Mirrored about x = 0: a slot lying along +x now lies along -x. Left at
+    // its old bearing it would send its block off the line its own joints are
+    // on, which is what a flip made visible.
+    snapshot.apply({ scale: { x: -1, y: 1 }, pivot: { x: 0, y: 0 } });
+    expect(Math.abs(slider.slotAngle)).toBeCloseTo(Math.PI, 10);
+
+    // And a squash turns it too: a 45-degree slot flattened by half in y comes
+    // out at atan(0.5).
+    slider.angle_rad = Math.PI / 4;
+    const squashed = captureSelectionTransform([pin], [pin, slider], [block]);
+    squashed.apply({ scale: { x: 1, y: 0.5 }, pivot: { x: 0, y: 0 } });
+    expect(slider.slotAngle).toBeCloseTo(Math.atan2(0.5, 1), 10);
+  });
+
   it('keeps all hidden cylinder geometry collinear and the block coincident', () => {
     const part = cylinder();
     const snapshot = captureSelectionTransform([part.rod], part.joints, part.links);
