@@ -17,10 +17,7 @@ const { chromium } = await import(
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
-const source = readFileSync('src/app/component/MODALS/templates/template-linkages.ts', 'utf8');
-const payloads = Object.fromEntries(
-  [...source.matchAll(/^ {2}'?([\w-]+)'?:\n {4}'([^']+)',$/gm)].map(([, id, p]) => [id, p])
-);
+import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 
 /** Two four-bars side by side, each with its own drive: one drawing, two clocks. */
 const TWO_FOUR_BARS =
@@ -140,12 +137,15 @@ record(
 await page.locator('.nextButton').click();
 await page.waitForTimeout(400);
 const step2 = await drawer().innerText();
-// Forces are a step of their own now, not a tab inside the columns.
+// Forces are a step of their own now, not a tab inside the columns -- and a
+// step only asked of a drawing that has a load on it. This four-bar has none,
+// so three questions is the whole of it; the fourth is checked on the punch
+// press below, which does.
 record(
   'the drawer asks a question per rule mark, with no tabs inside one of them',
   (await drawer().locator('.stepName').allInnerTexts())
     .map((mark) => mark.replace(/^check\s*/, '').trim())
-    .join(' | ') === '1. Parts | 2. Kinematics | 3. Forces | 4. File' &&
+    .join(' | ') === '1. Parts | 2. Kinematics | 3. File' &&
     (await drawer().locator('.tabs').count()) === 0,
   await drawer().locator('.stepName').allInnerTexts()
 );
@@ -457,29 +457,52 @@ record(
   yokeParts
 );
 
+// --- the forces question, on a drawing that has forces ----------------------
+// The yoke above cannot answer this one: force analysis needs a load to react
+// against, and a template with no load on it is never asked about forces at
+// all. The punch press has one, and a slider, which is what this is about.
+//
 // A slider is one thing to a reader: a pin, its block and its slot are three
 // bodies to the solver, and the block's force at the pin is the bar's force
 // negated. So the pin carries both numbers, and nothing is named after a body
 // or a joint nobody has seen.
+await page.goto(`${BASE}/?${payloads['Punch_Press']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+await page.waitForTimeout(700);
+await openDrawer();
+record(
+  'a drawing with a load on it is asked a fourth question, about forces',
+  (await drawer().locator('.stepName').allInnerTexts())
+    .map((mark) => mark.replace(/^check\s*/, '').trim())
+    .join(' | ') === '1. Parts | 2. Kinematics | 3. Forces | 4. File',
+  await drawer().locator('.stepName').allInnerTexts()
+);
+const pressInvisible = await page.evaluate(() =>
+  [...document.querySelectorAll('[id^="joint_"]')]
+    .filter((marker) => marker.getBoundingClientRect().width === 0)
+    .map((marker) => 'Joint ' + marker.id.replace('joint_', ''))
+);
 await drawer().locator('.linkButton', { hasText: 'Select All' }).click();
 await page.waitForTimeout(300);
 await page.locator('.nextButton').click();
 await page.waitForTimeout(500);
 await page.locator('.nextButton').click();
 await page.waitForTimeout(500);
-const yokeForces = await drawer().locator('.pickRow .rowName').allInnerTexts();
+const pressForces = await drawer().locator('.pickRow .rowName').allInnerTexts();
 record(
   'a slider is one row, with the force in its bar and the force in its slot',
-  yokeForces.length > 0 &&
-    !yokeForces.some((name) => /Block|Joint E|Joint F/.test(name)) &&
-    yokeForces.some((name) => name.includes('the ground') || name.includes('the slider')),
-  yokeForces
+  pressForces.length > 0 &&
+    !pressForces.some((name) => /Block/.test(name)) &&
+    !pressForces.some((name) => pressInvisible.some((hidden) => name.includes(hidden))) &&
+    pressForces.some((name) => name.includes('the ground') || name.includes('the slider')),
+  { pressForces, pressInvisible }
 );
 record(
   'and no reaction is offered twice',
-  new Set(yokeForces).size === yokeForces.length ||
-    yokeForces.length === (await drawer().locator('.pickRow').count()),
-  yokeForces
+  new Set(pressForces).size === pressForces.length ||
+    pressForces.length === (await drawer().locator('.pickRow').count()),
+  pressForces
 );
 await goToParts();
 
