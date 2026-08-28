@@ -1728,12 +1728,13 @@
       @for (link of mechanismSrv.getLinks(); track link) {
         @if (showsCoM(link)) {
           <svg style="overflow: visible">
-            <!-- The standard mark, drawn to be read over whatever is beneath it.
-                 Two of the four quarters are filled and the other two are not
-                 painted at all, so the link's own colour shows through where the
-                 white used to be, and everything is half opaque. The outline is
-                 the same four wedges stroked rather than a circle drawn beside
-                 them -- one set of coordinates, so it cannot land anywhere else. -->
+            <!-- The standard mark: four quarters, two black and two white, the
+                 way every textbook and every other package draws it. The white
+                 pair used to be left unpainted so the body's colour showed
+                 through, which reads as a different symbol on every link and as
+                 no symbol at all on a pale one. The outline is the same four
+                 wedges stroked rather than a circle drawn beside them -- one set
+                 of coordinates, so it cannot land anywhere else. -->
             <!-- The shape's own centre, kept visible while the CoM mark is
                  placed elsewhere: the custom position is an offset from
                  exactly this point. -->
@@ -1785,7 +1786,7 @@
               ) {
                 <path
                   [attr.d]="quarter"
-                  [attr.fill]="$index % 2 === 0 ? 'black' : 'none'"
+                  [attr.fill]="$index % 2 === 0 ? 'black' : 'white'"
                   fill-opacity="0.45"
                   stroke="black"
                   stroke-opacity="0.45"

@@ -104,7 +104,11 @@
             @if (massEditable()) {
               <div class="dotLegend">
                 <span class="dot"></span> from shape <span class="dot filled"></span> set by you
-                <button class="resetAll" [disabled]="!anyBodyIsCustom()" (click)="resetAllBodies()">
+                <button
+                  class="resetAll"
+                  [disabled]="!anyInertiaIsCustom()"
+                  (click)="resetAllInertia()"
+                >
                   Reset All
                 </button>
               </div>

@@ -412,19 +412,26 @@ export class AnalysisSetupComponent {
     return this.tabs.getCurrentTab() === TabID.EDIT;
   }
 
-  anyBodyIsCustom(): boolean {
-    return this.mechanism.links.some(
-      (link) => link instanceof RealLink && (link.moiIsCustom || link.comIsCustom)
-    );
+  anyInertiaIsCustom(): boolean {
+    return this.mechanism.links.some((link) => link instanceof RealLink && link.moiIsCustom);
   }
 
-  resetAllBodies(): void {
+  /**
+   * Put every rotational inertia back to the one its shape implies.
+   *
+   * Inertia only. This is the button under a table of masses and inertias, and
+   * the legend beside it explains the mark on the inertia column, so that is
+   * the column it undoes. It used to clear the centres of mass as well --
+   * moving weight around the drawing from a control that says nothing about
+   * where any of it sits, and taking work with it that is placed a link at a
+   * time on the canvas. A centre of mass is put back from the link's own panel,
+   * where it was moved.
+   */
+  resetAllInertia(): void {
     if (!this.massEditable()) return;
     for (const link of this.mechanism.links) {
       if (link instanceof RealLink) {
         link.moiIsCustom = false;
-        link.comIsCustom = false;
-        link.comOffset = undefined;
       }
     }
     this.mechanism.updateMechanism(true);
