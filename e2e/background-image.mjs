@@ -111,8 +111,8 @@ await page.mouse.click(emptyGrid.x, emptyGrid.y, { button: 'right' });
 await page.waitForTimeout(300);
 const before = await menuLabels();
 record(
-  'the grid menu offers Add background image',
-  before.some((label) => label === 'Add background image'),
+  'the grid menu offers Background Image',
+  before.some((label) => label === 'Background Image'),
   before
 );
 await closeMenu();
@@ -258,10 +258,14 @@ record(
 await page.mouse.click(overPicture.x, overPicture.y, { button: 'right' });
 await page.waitForTimeout(300);
 const withPicture = await menuLabels();
+// One row serves both states now -- it adds a picture when there is none and
+// opens the one there is otherwise -- so there is no longer an "Add" wording to
+// watch turn into an "Edit" one. What is still worth checking is that a
+// right-click over the picture reaches the grid menu at all rather than being
+// swallowed by the picture's own move surface, and that the row is on it.
 record(
-  'a right-click on the picture opens the grid menu, now offering Edit',
-  withPicture.some((label) => label === 'Background Image') &&
-    !withPicture.some((label) => label === 'Add background image'),
+  'a right-click on the picture opens the grid menu, with the picture row on it',
+  withPicture.some((label) => label === 'Background Image'),
   withPicture
 );
 await page.locator('#contextMenu .cm-row', { hasText: 'Background Image' }).first().click();
@@ -714,7 +718,7 @@ await page.waitForTimeout(300);
 const after = await menuLabels();
 record(
   'and the menu goes back to offering Add',
-  after.some((label) => label === 'Add background image'),
+  after.some((label) => label === 'Background Image'),
   after
 );
 await closeMenu();

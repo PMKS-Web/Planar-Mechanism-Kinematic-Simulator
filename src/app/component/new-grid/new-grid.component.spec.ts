@@ -522,6 +522,42 @@ describe('NewGridComponent typed multi-selection', () => {
     expect(b.y).toBeCloseTo(-2 * MODEL_SCALE);
   });
 
+  it('turns in fifteen-degree steps, and freely while Alt is held', () => {
+    const { component, fixture, active, a, b } = setUpSelection();
+    active.replacePartSelection(a);
+    active.togglePartSelection(b);
+    fixture.detectChanges();
+
+    // A and B lie along y = 0 either side of the pivot, so the bar's own angle
+    // is the turn that was applied.
+    const barAngle = () => Math.atan2(b.y - a.y, b.x - a.x);
+    const turnTo = (radians: number, alt: boolean) => {
+      const pivot = component.selectionBounds()!;
+      const at = {
+        x: (pivot.minX + pivot.maxX) / 2 + MODEL_SCALE * Math.cos(radians),
+        y: (pivot.minY + pivot.maxY) / 2 + MODEL_SCALE * Math.sin(radians),
+      };
+      component['beginSelectionGesture']('rotate', new Coord(at.x + MODEL_SCALE, at.y));
+      component['timeMouseDown'] = 0;
+      component.mouseMove(
+        new MouseEvent('mousemove', { clientX: at.x, clientY: at.y, altKey: alt })
+      );
+      component.mouseUp(new MouseEvent('mouseup', { clientX: at.x, clientY: at.y }));
+    };
+
+    // Asked for something between two steps; lands on one of them.
+    turnTo(Math.PI / 9, false); // 20 degrees
+    const snapped = barAngle();
+    const step = Math.PI / 12;
+    expect(Math.abs(snapped / step - Math.round(snapped / step))).toBeLessThan(1e-6);
+
+    // Alt hands the angle back, so a linkage can be put anywhere it has to go.
+    const before = barAngle();
+    turnTo(Math.PI / 9 + 0.07, true);
+    const free = barAngle() - before;
+    expect(Math.abs(free / step - Math.round(free / step))).toBeGreaterThan(1e-3);
+  });
+
   it('an edge grip stretches one dimension and leaves the other alone', () => {
     const mechanism = TestBed.inject(MechanismService);
     // A box with both a width and a height, which the two-joint fixture above

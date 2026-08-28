@@ -133,6 +133,16 @@ import {
 /** Which corner of the tracing underlay a resize gesture is holding. */
 type BackgroundImageCorner = 'tl' | 'tr' | 'bl' | 'br';
 
+/**
+ * The angle a turn gesture clicks round in, unless Alt suspends it.
+ *
+ * Fifteen degrees: quarter turns and the common skews land exactly, which is
+ * most of what squaring anything to a grid actually needs. Shared by the
+ * tracing underlay and a group selection, because a reader who has learned what
+ * the turn knob does on one should not find the other behaving differently.
+ */
+export const ROTATION_SNAP_RAD = Math.PI / 12;
+
 /** Where a selection grip sits on the box, named as it appears on screen. */
 export type SelectionGripId = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 
@@ -756,10 +766,9 @@ export class NewGridComponent implements OnDestroy {
     if (this.bgDrag.grabAngleRad !== undefined) {
       const turned =
         Math.atan2(at.y - image.centerY, at.x - image.centerX) - this.bgDrag.grabAngleRad;
-      // Quarter turns and the common skews land exactly, which is most of what
-      // squaring a photograph to a grid actually needs. Alt suspends it, the
-      // same key that suspends snapping everywhere else on this canvas.
-      const step = Math.PI / 12; // 15 degrees
+      // Alt suspends it, the same key that suspends snapping everywhere else on
+      // this canvas.
+      const step = ROTATION_SNAP_RAD;
       this.bgImage.place({
         rotationRad: this.snapSuspended ? turned : Math.round(turned / step) * step,
       });
@@ -1251,9 +1260,16 @@ export class NewGridComponent implements OnDestroy {
         },
       };
     } else if (gesture.mode === 'rotate') {
-      const rotation =
+      const turned =
         Math.atan2(pointer.y - gesture.snapshot.pivot.y, pointer.x - gesture.snapshot.pivot.x) -
         gesture.startAngle;
+      // The turn *since the grab*, not an absolute bearing: a group has no
+      // orientation of its own to be square to, so the increments are counted
+      // from wherever the reader took hold of it. Alt suspends them, as it does
+      // for the underlay's knob and for snapping to the grid.
+      const rotation = event.altKey
+        ? turned
+        : Math.round(turned / ROTATION_SNAP_RAD) * ROTATION_SNAP_RAD;
       gesture.liveRotation = rotation;
       transform = { rotation };
     } else if (gesture.grip) {
