@@ -211,6 +211,8 @@ $rule: #eceef5;
 
     .sectionName {
       flex: 0 0 auto;
+      display: block;
+      padding: 0;
       font-size: 14px;
       color: #2c2c2c;
     }
@@ -408,6 +410,13 @@ $rule: #eceef5;
     }
   }
 
+  // `padding` and `gap` are stated rather than left at nothing, and so are the
+  // two below: `analysis-setup.component.scss` is a theme mixin, so its rules
+  // land in the *global* stylesheet under bare class names, and `.check`,
+  // `.checkText` and `.sectionName` are three of them. Its `.check` carries
+  // `padding-top: 10px`, which pushed the tick five pixels down its own box.
+  // A component rule wins wherever it declares the property and nowhere else,
+  // so the answer is to declare it.
   .check {
     display: flex;
     align-items: center;
@@ -415,6 +424,8 @@ $rule: #eceef5;
     width: 18px;
     height: 18px;
     margin-top: 2px;
+    padding: 0;
+    gap: 0;
     border: 2px solid rgba(0, 0, 0, 0.54);
     border-radius: 2px;
     box-sizing: border-box;
@@ -422,10 +433,16 @@ $rule: #eceef5;
     background: #f4f4f7;
     color: #fff;
 
+    // Sized to the 14px the two borders leave inside an 18px box, not to the
+    // box: a 15px glyph is a pixel too wide for it, and flex answers that by
+    // shrinking the element while the drawing keeps its width -- so the tick
+    // came out clipped down its right-hand edge and sitting off centre.
     mat-icon {
-      font-size: 15px;
-      width: 15px;
-      height: 15px;
+      flex: 0 0 auto;
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+      line-height: 14px;
       visibility: hidden;
     }
 
@@ -452,6 +469,7 @@ $rule: #eceef5;
     display: flex;
     flex-direction: column;
     gap: 1px;
+    margin: 0;
   }
 
   .checkName {
