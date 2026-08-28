@@ -58,9 +58,9 @@ describe('MultiEditPanelComponent', () => {
     ) ?? null) as HTMLButtonElement | null;
   }
 
-  /** The header's trash can. */
+  /** The header's trash can, which a group names rather than leaving as a square. */
   function headerDelete(element: HTMLElement): HTMLButtonElement | null {
-    return element.querySelector('editable-title-block button[aria-label="Delete"]');
+    return element.querySelector('editable-title-block button[aria-label="Delete All"]');
   }
 
   it('shows common joint values and a clear Mixed state, with no bulk rename', () => {

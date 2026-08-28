@@ -69,18 +69,23 @@
         </span>
       </button>
     }
-    <!-- Icon only: three labels no longer fit the row, and a red trash can
-         beside Rename and Lock says everything the word did. -->
+    <!-- Icon only where three labels no longer fit the row: a red trash can
+         beside Rename and Lock says everything the word did. Named where there
+         is room, so it is not a lone square beside a stretched button. -->
     <button
-      class="mini-buttons red iconOnly"
+      class="mini-buttons red"
+      [class.iconOnly]="!deleteLabel()"
       mat-stroked-button
       color="warn"
-      aria-label="Delete"
-      matTooltip="Delete"
+      [attr.aria-label]="deleteLabel() ?? 'Delete'"
+      [matTooltip]="deleteLabel() ?? 'Delete'"
       matTooltipShowDelay="600"
       (click)="deleteAction()()"
     >
       <mat-icon svgIcon="remove"></mat-icon>
+      @if (deleteLabel(); as label) {
+        <span>{{ label }}</span>
+      }
     </button>
   </div>
 </div>

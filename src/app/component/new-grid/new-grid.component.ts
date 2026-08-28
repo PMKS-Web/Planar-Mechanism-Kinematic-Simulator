@@ -250,6 +250,8 @@ export class NewGridComponent implements OnDestroy {
     replaceOnClick?: SelectedPart;
     /** Which grip is held, and the corner or edge it is pulling away from. */
     grip?: SelectionGrip;
+    /** How far a turn has come, so the box can be drawn turning with it. */
+    liveRotation?: number;
   };
 
   /**
@@ -1030,6 +1032,13 @@ export class NewGridComponent implements OnDestroy {
   }
 
   selectionBounds(): SelectionBounds | undefined {
+    // Mid-turn, the box the gesture started with, turned by `selectionSpin`
+    // below. Re-fitting an upright box around the parts every frame made the
+    // box breathe in and out as they swung -- it was measuring the drawing
+    // rather than holding it, which is not what a hand on a turn knob expects.
+    // Let go, and the box goes back to being the upright one that fits.
+    const turning = this.selectionGesture;
+    if (turning?.mode === 'rotate') return turning.snapshot.bounds;
     if (
       this.activeObjService.selectedParts.length < 2 ||
       this.tabService.getCurrentTab() !== TabID.EDIT ||
@@ -1147,6 +1156,20 @@ export class NewGridComponent implements OnDestroy {
     ];
   }
 
+  /**
+   * The turn the box is in the middle of, as an SVG transform, or nothing.
+   *
+   * Applied to the whole overlay -- box, grips and knob together -- so the
+   * frame stays rigidly on the parts while they swing, the way a hand expects
+   * of something it has hold of.
+   */
+  selectionSpin(): string | null {
+    const gesture = this.selectionGesture;
+    if (gesture?.mode !== 'rotate' || !gesture.liveRotation) return null;
+    const degrees = (gesture.liveRotation * 180) / Math.PI;
+    return `rotate(${degrees} ${gesture.snapshot.pivot.x} ${gesture.snapshot.pivot.y})`;
+  }
+
   /** The drawn box: the parts' own bounds, held off by the inset. */
   selectionBox(bounds: SelectionBounds): SelectionBounds {
     const inset = this.selectionInset();
@@ -1228,11 +1251,11 @@ export class NewGridComponent implements OnDestroy {
         },
       };
     } else if (gesture.mode === 'rotate') {
-      transform = {
-        rotation:
-          Math.atan2(pointer.y - gesture.snapshot.pivot.y, pointer.x - gesture.snapshot.pivot.x) -
-          gesture.startAngle,
-      };
+      const rotation =
+        Math.atan2(pointer.y - gesture.snapshot.pivot.y, pointer.x - gesture.snapshot.pivot.x) -
+        gesture.startAngle;
+      gesture.liveRotation = rotation;
+      transform = { rotation };
     } else if (gesture.grip) {
       // Away from the opposite corner or edge, which is the point that holds
       // still: a grip drags the side it is on and leaves the far side where the

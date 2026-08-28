@@ -55,6 +55,16 @@ export class EditableTitleComponent {
   readonly renamable = input(true);
 
   /**
+   * A word for the trash can, for a row that has room for one.
+   *
+   * Icon-only is right when Rename and Lock are already taking the row: three
+   * labels do not fit. With Rename gone the row has a gap, and a lone square
+   * next to a button stretched across the rest of the width is a lopsided pair
+   * -- so a group names its delete, and the two share the row evenly.
+   */
+  readonly deleteLabel = input<string>();
+
+  /**
    * A lock that is not one object's — a group's, where some members may be held
    * and others not. `'mixed'` shows the open padlock, because pressing it locks
    * the rest rather than unlocking the ones that are held.

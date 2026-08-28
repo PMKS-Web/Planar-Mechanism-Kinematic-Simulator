@@ -991,53 +991,55 @@
        its top edge and the compass names read as they look. -->
   @if (selectionBounds(); as bounds) {
     <g id="selectionTransformOverlay" class="selectionTransform" style="transform: scaleY(-1)">
-      @if (selectionBox(bounds); as box) {
-        <rect
-          class="selectionBounds"
-          pointer-events="none"
-          [attr.x]="box.minX"
-          [attr.y]="box.minY"
-          [attr.width]="box.maxX - box.minX"
-          [attr.height]="box.maxY - box.minY"
-          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
-          [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
-        />
-        <line
-          class="selectionStem"
-          pointer-events="none"
-          [attr.x1]="(box.minX + box.maxX) / 2"
-          [attr.y1]="box.maxY"
-          [attr.x2]="(box.minX + box.maxX) / 2"
-          [attr.y2]="box.maxY + selectionRotateReach()"
-          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
-        />
-      }
-      <!-- Round, because it swings rather than pulls -- the same distinction the
+      <g [attr.transform]="selectionSpin()">
+        @if (selectionBox(bounds); as box) {
+          <rect
+            class="selectionBounds"
+            pointer-events="none"
+            [attr.x]="box.minX"
+            [attr.y]="box.minY"
+            [attr.width]="box.maxX - box.minX"
+            [attr.height]="box.maxY - box.minY"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+            [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
+          />
+          <line
+            class="selectionStem"
+            pointer-events="none"
+            [attr.x1]="(box.minX + box.maxX) / 2"
+            [attr.y1]="box.maxY"
+            [attr.x2]="(box.minX + box.maxX) / 2"
+            [attr.y2]="box.maxY + selectionRotateReach()"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+          />
+        }
+        <!-- Round, because it swings rather than pulls -- the same distinction the
            underlay's knob makes. -->
-      <circle
-        class="selectionHandle selectionRotateHandle"
-        data-selection-handle="rotate"
-        [attr.cx]="(bounds.minX + bounds.maxX) / 2"
-        [attr.cy]="selectionBox(bounds).maxY + selectionRotateReach()"
-        [attr.r]="selectionHandleSize() * 0.65"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
-        cursor="grab"
-        (pointerdown)="beginSelectionRotate($event)"
-      />
-      @for (grip of selectionGrips(bounds); track grip.id) {
-        <rect
-          class="selectionHandle selectionScaleHandle"
-          data-selection-handle="scale"
-          [attr.data-selection-grip]="grip.id"
-          [attr.x]="grip.x - selectionHandleSize() / 2"
-          [attr.y]="grip.y - selectionHandleSize() / 2"
-          [attr.width]="selectionHandleSize()"
-          [attr.height]="selectionHandleSize()"
+        <circle
+          class="selectionHandle selectionRotateHandle"
+          data-selection-handle="rotate"
+          [attr.cx]="(bounds.minX + bounds.maxX) / 2"
+          [attr.cy]="selectionBox(bounds).maxY + selectionRotateReach()"
+          [attr.r]="selectionHandleSize() * 0.65"
           [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
-          [attr.cursor]="grip.cursor"
-          (pointerdown)="beginSelectionScale($event, grip)"
+          cursor="grab"
+          (pointerdown)="beginSelectionRotate($event)"
         />
-      }
+        @for (grip of selectionGrips(bounds); track grip.id) {
+          <rect
+            class="selectionHandle selectionScaleHandle"
+            data-selection-handle="scale"
+            [attr.data-selection-grip]="grip.id"
+            [attr.x]="grip.x - selectionHandleSize() / 2"
+            [attr.y]="grip.y - selectionHandleSize() / 2"
+            [attr.width]="selectionHandleSize()"
+            [attr.height]="selectionHandleSize()"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+            [attr.cursor]="grip.cursor"
+            (pointerdown)="beginSelectionScale($event, grip)"
+          />
+        }
+      </g>
     </g>
   }
 
