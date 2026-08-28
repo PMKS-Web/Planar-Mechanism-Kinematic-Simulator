@@ -37,7 +37,9 @@
         <span class="presetName">
           <mat-icon>precision_manufacturing</mat-icon>Build parts in CAD
         </span>
-        <span class="presetNote">A layer per link, at the origin, with pin holes and dimensions.</span>
+        <span class="presetNote"
+          >A layer per link, at the origin, with pin holes and dimensions.</span
+        >
       </button>
       <button
         class="presetCard"
@@ -84,7 +86,7 @@
             <div class="segmented">
               @for (choice of unitChoices; track choice.value) {
                 <button
-                  [class.on]="(options.unit ?? summary.unit) === choice.value"
+                  [class.on]="effectiveUnit === choice.value"
                   (click)="touch({ unit: choice.value })"
                 >
                   {{ choice.label }}
@@ -95,7 +97,10 @@
           <div class="field">
             <span class="fieldName">DXF version</span>
             <div class="segmented">
-              <button [class.on]="options.version === 'R2000'" (click)="touch({ version: 'R2000' })">
+              <button
+                [class.on]="options.version === 'R2000'"
+                (click)="touch({ version: 'R2000' })"
+              >
                 R2000
               </button>
               <button [class.on]="options.version === 'R12'" (click)="touch({ version: 'R12' })">
@@ -108,11 +113,7 @@
       }
 
       <!-- Geometry -------------------------------------------------------- -->
-      <button
-        class="sectionHead"
-        data-section="geometry"
-        (click)="open.geometry = !open.geometry"
-      >
+      <button class="sectionHead" data-section="geometry" (click)="open.geometry = !open.geometry">
         <mat-icon [class.open]="open.geometry">chevron_right</mat-icon>
         <span class="sectionName">Geometry</span>
         <span class="sectionSummary">{{ geometrySummary }}</span>
@@ -170,7 +171,7 @@
           </div>
 
           <div class="group">
-            <div class="checkRow" [attr.title]="reasonFor('includeDimensions')">
+            <div class="checkRow">
               <button (click)="toggle('includeDimensions')">
                 <span class="check" [class.on]="isOn('includeDimensions')">
                   <mat-icon>check</mat-icon>
@@ -206,7 +207,11 @@
             <div
               class="checkRow"
               [class.blocked]="blocked('includeTracedPaths')"
-              [attr.title]="reasonFor('includeTracedPaths')"
+              [matTooltip]="reasonFor('includeTracedPaths')"
+              [matTooltipDisabled]="!blocked('includeTracedPaths')"
+              matTooltipPosition="above"
+              matTooltipShowDelay="400"
+              [attr.title]="null"
               data-check="tracedPaths"
             >
               <button
@@ -226,7 +231,7 @@
                 </span>
               </button>
             </div>
-            <div class="checkRow" [attr.title]="reasonFor('includeSlotTravel')">
+            <div class="checkRow">
               <button (click)="toggle('includeSlotTravel')">
                 <span class="check" [class.on]="isOn('includeSlotTravel')">
                   <mat-icon>check</mat-icon>
@@ -255,14 +260,13 @@
             <div
               class="checkRow"
               [class.blocked]="layerBlocked(row)"
-              [attr.title]="layerReason(row)"
+              [matTooltip]="layerReason(row)"
+              [matTooltipDisabled]="!layerReason(row)"
+              matTooltipPosition="above"
+              matTooltipShowDelay="400"
             >
               <button [disabled]="layerBlocked(row)" (click)="toggleLayer(row)">
-                <span
-                  class="check"
-                  [class.on]="layerOn(row)"
-                  [class.off]="layerBlocked(row) && !row.fixed"
-                >
+                <span class="check" [class.on]="layerOn(row)" [class.off]="layerBlocked(row)">
                   <mat-icon>check</mat-icon>
                 </span>
                 <span class="checkName">{{ row.name }}</span>

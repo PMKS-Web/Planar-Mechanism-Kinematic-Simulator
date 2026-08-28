@@ -341,6 +341,26 @@ check(
   ),
   JSON.stringify(await page.locator('app-drawing-export .sectionSummary').allInnerTexts())
 );
+// The File section opens on a unit already chosen. It follows the project
+// until a reader picks one, and showing none selected read as a required
+// field nobody had filled in.
+await page.locator('app-drawing-export [data-section="file"]').click();
+await page.waitForTimeout(300);
+const unitButtons = page
+  .locator('app-drawing-export .field', { hasText: 'Units' })
+  .locator('button');
+const unitClasses = await unitButtons.evaluateAll((nodes) =>
+  nodes.map((node) => ({ label: node.textContent.trim(), on: node.classList.contains('on') }))
+);
+check(
+  'a unit is selected on arrival, matching the project',
+  unitClasses.filter((unit) => unit.on).length === 1,
+  JSON.stringify(unitClasses)
+);
+await page.screenshot({ path: `${OUT}/dxf-file-section.png` });
+await page.locator('app-drawing-export [data-section="file"]').click();
+await page.waitForTimeout(250);
+
 await page.locator('app-drawing-export [data-section="layers"]').click();
 await page.waitForTimeout(300);
 const labelsRow = page.locator('app-drawing-export .checkRow', { hasText: 'Labels' }).first();
@@ -348,6 +368,44 @@ check(
   'labels are off by default, for a clean sketch',
   !(await labelsRow.locator('.check').getAttribute('class')).includes('on')
 );
+// The two rows that are always written are ticked and unpressable, and have to
+// look it: a full-strength tick beside grey text reads as a control that
+// simply stopped responding.
+const fixedRow = page
+  .locator('app-drawing-export .checkRow', { hasText: 'Link centrelines' })
+  .first();
+const fixedCheck = await fixedRow.locator('.check').getAttribute('class');
+check(
+  'an always-on layer is ticked in the muted way, not at full strength',
+  fixedCheck.includes('on') && fixedCheck.includes('off'),
+  fixedCheck
+);
+await page.screenshot({ path: `${OUT}/dxf-layers-section.png` });
+
+// A greyed row explains itself on hover. The cursor already promised a
+// tooltip; the native `title` never arrived, so this is the app's own.
+await page.locator('app-drawing-export [data-section="layers"]').click();
+await page.locator('app-drawing-export [data-section="geometry"]').click();
+await page.waitForTimeout(300);
+const tracedRow = page.locator('app-drawing-export [data-check="tracedPaths"]');
+const tracedBlocked = (await tracedRow.getAttribute('class')).includes('blocked');
+if (tracedBlocked) {
+  await tracedRow.hover();
+  await page.waitForTimeout(900);
+  const tip = await page.locator('.mat-mdc-tooltip').allInnerTexts();
+  check(
+    'the greyed Traced paths row actually shows its reason on hover',
+    tip.join(' ').includes('No joint is tracing a path'),
+    JSON.stringify(tip)
+  );
+  await page.screenshot({ path: `${OUT}/dxf-blocked-tooltip.png` });
+  await page.mouse.move(10, 10);
+  await page.waitForTimeout(300);
+} else {
+  check('the greyed Traced paths row actually shows its reason on hover', false, 'row not blocked');
+}
+await page.locator('app-drawing-export [data-section="geometry"]').click();
+await page.waitForTimeout(250);
 await page.screenshot({ path: `${OUT}/desktop-dxf-dialog.png`, fullPage: true });
 
 // Without the companion table, so the download is the drawing itself rather
@@ -366,6 +424,32 @@ check(
   /\$ACADVER\r?\n1\r?\nAC1015/.test(dxf) &&
     dxf.includes('PMKS_LINK_CENTERLINES') &&
     !/<svg|selectionTransformOverlay|backgroundAndGrid/i.test(dxf)
+);
+await page.waitForSelector('app-drawing-export', { state: 'detached' });
+
+// R12 is not a different header on the same file: it predates LWPOLYLINE and
+// the subclass markers, and a reader old enough to want R12 is exactly the one
+// that stops at either.
+await openDrawingDialog();
+await page.locator('app-drawing-export [data-section="file"]').click();
+await page.waitForTimeout(300);
+await page
+  .locator('app-drawing-export .field', { hasText: 'DXF version' })
+  .getByRole('button', { name: 'R12', exact: true })
+  .click();
+await page.locator('app-drawing-export [data-section="data"]').click();
+await page.waitForTimeout(300);
+await page.locator('app-drawing-export .radioRow', { hasText: 'None' }).first().click();
+await page.waitForTimeout(300);
+const legacyPromise = page.waitForEvent('download');
+await page.getByRole('button', { name: 'Export DXF' }).click();
+const legacy = readFileSync(await (await legacyPromise).path(), 'utf8');
+check(
+  'the R12 download is really R12 — POLYLINE, no LWPOLYLINE, no subclass markers',
+  /\$ACADVER\r?\n1\r?\nAC1009/.test(legacy) &&
+    !legacy.includes('LWPOLYLINE') &&
+    !legacy.includes('AcDb') &&
+    legacy.includes('PMKS_LINK_CENTERLINES')
 );
 await page.waitForSelector('app-drawing-export', { state: 'detached' });
 

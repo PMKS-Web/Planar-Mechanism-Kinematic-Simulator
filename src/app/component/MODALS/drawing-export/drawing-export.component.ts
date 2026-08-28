@@ -9,6 +9,7 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
 import { LengthUnit } from '../../../model/unit-enums';
 import {
   DEFAULT_DXF_EXPORT_OPTIONS,
@@ -76,6 +77,7 @@ const LAYER_ROWS: LayerRow[] = [
     MatDialogContent,
     MatIcon,
     MatIconButton,
+    MatTooltip,
   ],
 })
 export class DrawingExportComponent {
@@ -129,6 +131,18 @@ export class DrawingExportComponent {
 
   get isCustom(): boolean {
     return this.preset === 'custom';
+  }
+
+  /**
+   * The unit this export is in.
+   *
+   * `options.unit` is only set once a reader has chosen one; until then the
+   * export follows the project. The segmented control compares against this
+   * rather than against the word in the summary -- comparing a `LengthUnit` to
+   * the string 'cm' is never true, which is why no unit looked selected.
+   */
+  get effectiveUnit(): LengthUnit {
+    return this.options.unit ?? this.exportService.projectUnit();
   }
 
   jointChoices(): { id: string; name: string }[] {

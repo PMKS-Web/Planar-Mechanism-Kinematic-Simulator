@@ -164,6 +164,11 @@ export class DxfExportService {
     };
   }
 
+  /** The project's own unit, which an export uses unless told otherwise. */
+  projectUnit(): LengthUnit {
+    return this.settings.lengthUnit.value;
+  }
+
   /** Whether any joint is set to trace, which is what the paths option needs. */
   hasTracedJoint(): boolean {
     return this.mechanism.joints.some((joint) => (joint as { showCurve?: boolean }).showCurve);

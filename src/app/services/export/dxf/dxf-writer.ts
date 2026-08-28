@@ -4,9 +4,19 @@ type Pair = readonly [number, string | number];
 
 const UNIT_CODE = { in: 1, cm: 5, m: 6 } as const;
 
-/** A deterministic ASCII R2000 writer for the small portable 2D subset PMKS emits. */
+/**
+ * A deterministic ASCII writer for the small portable 2D subset PMKS emits.
+ *
+ * R2000 (`AC1015`) unless the reader asked for R12 (`AC1009`), which is not
+ * just a different version string: R12 predates both the subclass markers that
+ * tell a modern reader what it is looking at and `LWPOLYLINE` entirely. A file
+ * claiming to be R12 while carrying either is one an old reader -- the only
+ * reason to ask for R12 -- cannot open, which would make the option worse than
+ * not offering it.
+ */
 export function writeDxf(document: DxfDocument): string {
   validate(document);
+  const legacy = document.version === 'R12';
   const bounds = extents(document.entities);
   const pairs: Pair[] = [
     [0, 'SECTION'],
@@ -25,10 +35,10 @@ export function writeDxf(document: DxfDocument): string {
     [30, 0],
     [0, 'ENDSEC'],
     ...tablePairs(document),
-    ...blockPairs(document),
+    ...blockPairs(document, legacy),
     [0, 'SECTION'],
     [2, 'ENTITIES'],
-    ...document.entities.flatMap((entity, index) => entityPairs(entity, 0x100 + index)),
+    ...document.entities.flatMap((entity, index) => entityPairs(entity, 0x100 + index, legacy)),
     [0, 'ENDSEC'],
     [0, 'EOF'],
   ];
@@ -99,17 +109,21 @@ function tablePairs(document: DxfDocument): Pair[] {
  * Always emitted, even when empty. A file with INSERT or DIMENSION entities and
  * no BLOCKS section is one an importer is entitled to refuse.
  */
-function blockPairs(document: DxfDocument): Pair[] {
+function blockPairs(document: DxfDocument, legacy: boolean): Pair[] {
   const blocks = document.blocks ?? [];
   return [
     [0, 'SECTION'],
     [2, 'BLOCKS'],
     ...blocks.flatMap((block, index): Pair[] => [
       [0, 'BLOCK'],
-      [5, (0x900 + index).toString(16).toUpperCase()],
-      [100, 'AcDbEntity'],
+      ...(legacy
+        ? []
+        : ([
+            [5, (0x900 + index).toString(16).toUpperCase()],
+            [100, 'AcDbEntity'],
+          ] as Pair[])),
       [8, '0'],
-      [100, 'AcDbBlockBegin'],
+      ...(legacy ? [] : ([[100, 'AcDbBlockBegin']] as Pair[])),
       [2, block.name],
       [70, block.name.startsWith('*') ? 1 : 0],
       [10, block.base.x],
@@ -117,51 +131,92 @@ function blockPairs(document: DxfDocument): Pair[] {
       [30, 0],
       [3, block.name],
       [1, ''],
-      ...block.entities.flatMap((entity, at) => entityPairs(entity, 0x9000 + index * 100 + at)),
+      ...block.entities.flatMap((entity, at) =>
+        entityPairs(entity, 0x9000 + index * 100 + at, legacy)
+      ),
       [0, 'ENDBLK'],
-      [5, (0x980 + index).toString(16).toUpperCase()],
-      [100, 'AcDbEntity'],
-      [8, '0'],
-      [100, 'AcDbBlockEnd'],
+      ...(legacy
+        ? ([[8, '0']] as Pair[])
+        : ([
+            [5, (0x980 + index).toString(16).toUpperCase()],
+            [100, 'AcDbEntity'],
+            [8, '0'],
+            [100, 'AcDbBlockEnd'],
+          ] as Pair[])),
     ]),
     [0, 'ENDSEC'],
   ];
 }
 
-function entityPairs(entity: DxfEntity, handle: number): Pair[] {
-  const common: Pair[] = [
-    [0, entity.type],
-    [5, handle.toString(16).toUpperCase()],
-    [100, 'AcDbEntity'],
-    [8, entity.layer],
-  ];
+function entityPairs(entity: DxfEntity, handle: number, legacy = false): Pair[] {
+  // R12 has neither handles nor subclass markers. A reader old enough to want
+  // R12 stops at the first group code it does not know.
+  const common: Pair[] = legacy
+    ? [
+        [0, entity.type],
+        [8, entity.layer],
+      ]
+    : [
+        [0, entity.type],
+        [5, handle.toString(16).toUpperCase()],
+        [100, 'AcDbEntity'],
+        [8, entity.layer],
+      ];
+  const subclass = (name: string): Pair[] => (legacy ? [] : [[100, name]]);
   if (entity.type === 'LINE') {
     return [
       ...common,
-      [100, 'AcDbLine'],
+      ...subclass('AcDbLine'),
       ...pointPairs(entity.start, 10),
       ...pointPairs(entity.end, 11),
     ];
   }
   if (entity.type === 'CIRCLE') {
-    return [...common, [100, 'AcDbCircle'], ...pointPairs(entity.center, 10), [40, entity.radius]];
-  }
-  if (entity.type === 'POINT') {
-    return [...common, [100, 'AcDbPoint'], ...pointPairs(entity.at, 10)];
-  }
-  if (entity.type === 'LWPOLYLINE') {
     return [
       ...common,
-      [100, 'AcDbPolyline'],
-      [90, entity.points.length],
+      ...subclass('AcDbCircle'),
+      ...pointPairs(entity.center, 10),
+      [40, entity.radius],
+    ];
+  }
+  if (entity.type === 'POINT') {
+    return [...common, ...subclass('AcDbPoint'), ...pointPairs(entity.at, 10)];
+  }
+  if (entity.type === 'LWPOLYLINE') {
+    if (!legacy) {
+      return [
+        ...common,
+        [100, 'AcDbPolyline'],
+        [90, entity.points.length],
+        [70, entity.closed ? 1 : 0],
+        ...entity.points.flatMap((point) => pointPairs(point, 10, false)),
+      ];
+    }
+    // The old shape: a POLYLINE header, a VERTEX apiece, and a SEQEND to say
+    // the run is over. `66` is the flag that promises the vertices follow.
+    return [
+      [0, 'POLYLINE'],
+      [8, entity.layer],
+      [66, 1],
       [70, entity.closed ? 1 : 0],
-      ...entity.points.flatMap((point) => pointPairs(point, 10, false)),
+      [10, 0],
+      [20, 0],
+      [30, 0],
+      ...entity.points.flatMap((point): Pair[] => [
+        [0, 'VERTEX'],
+        [8, entity.layer],
+        [10, point.x],
+        [20, point.y],
+        [30, 0],
+      ]),
+      [0, 'SEQEND'],
+      [8, entity.layer],
     ];
   }
   if (entity.type === 'INSERT') {
     return [
       ...common,
-      [100, 'AcDbBlockReference'],
+      ...subclass('AcDbBlockReference'),
       [2, entity.name],
       ...pointPairs(entity.at, 10),
       [41, entity.scale ?? 1],
@@ -173,7 +228,7 @@ function entityPairs(entity: DxfEntity, handle: number): Pair[] {
   if (entity.type === 'DIMENSION') {
     return [
       ...common,
-      [100, 'AcDbDimension'],
+      ...subclass('AcDbDimension'),
       [2, entity.blockName],
       ...pointPairs(entity.definition, 10),
       [11, entity.textAt.x],
@@ -184,7 +239,7 @@ function entityPairs(entity: DxfEntity, handle: number): Pair[] {
       [70, 1 + 32],
       [1, entity.text],
       [3, 'PMKS'],
-      [100, 'AcDbAlignedDimension'],
+      ...subclass('AcDbAlignedDimension'),
       [13, entity.from.x],
       [23, entity.from.y],
       [33, 0],
@@ -195,7 +250,7 @@ function entityPairs(entity: DxfEntity, handle: number): Pair[] {
   }
   return [
     ...common,
-    [100, 'AcDbText'],
+    ...subclass('AcDbText'),
     ...pointPairs(entity.at, 10),
     [40, entity.height],
     [1, entity.text.replace(/[\r\n]+/g, ' ')],

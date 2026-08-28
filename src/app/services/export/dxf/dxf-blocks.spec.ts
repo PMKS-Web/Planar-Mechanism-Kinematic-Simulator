@@ -81,9 +81,54 @@ describe('the DXF writer, on the entities the CAD export added', () => {
     expect(dimension!['text']).toBe('6.00 cm');
   });
 
-  it('says R12 in the header when the older format was asked for', () => {
-    expect(writeDxf({ ...base, version: 'R12' })).toContain('AC1009');
-    expect(writeDxf(base)).toContain('AC1015');
+  describe('R12', () => {
+    const polyline: DxfDocument = {
+      ...base,
+      entities: [
+        {
+          type: 'LWPOLYLINE',
+          layer: 'PMKS_LINK_CENTERLINES',
+          points: [
+            { x: 0, y: 0 },
+            { x: 2, y: 3 },
+            { x: 5, y: 1 },
+          ],
+          closed: false,
+        },
+      ],
+    };
+
+    it('says so in the header', () => {
+      expect(writeDxf({ ...base, version: 'R12' })).toContain('AC1009');
+      expect(writeDxf(base)).toContain('AC1015');
+    });
+
+    it('writes the old POLYLINE shape, because R12 has no LWPOLYLINE', () => {
+      const text = writeDxf({ ...polyline, version: 'R12' });
+      expect(text).toContain('POLYLINE');
+      expect(text).not.toContain('LWPOLYLINE');
+      expect(text).toContain('VERTEX');
+      expect(text).toContain('SEQEND');
+      // R2000 keeps the modern one, which is a single entity.
+      const modern = writeDxf(polyline);
+      expect(modern).toContain('LWPOLYLINE');
+      expect(modern).not.toContain('VERTEX');
+    });
+
+    it('carries no subclass markers or handles, which R12 predates', () => {
+      const text = writeDxf({ ...polyline, version: 'R12' });
+      expect(text).not.toContain('AcDb');
+      expect(writeDxf(polyline)).toContain('AcDbPolyline');
+    });
+
+    it('is still readable, vertices and all', () => {
+      const parsed = new DxfParser().parseSync(writeDxf({ ...polyline, version: 'R12' }))!;
+      expect(parsed).not.toBeNull();
+      const drawn = parsed.entities.find((entity) => entity.type === 'POLYLINE') as
+        { vertices?: unknown[] } | undefined;
+      expect(drawn).toBeDefined();
+      expect(drawn!.vertices).toHaveLength(3);
+    });
   });
 
   it('names a text style, so labels do not import at a size nobody chose', () => {

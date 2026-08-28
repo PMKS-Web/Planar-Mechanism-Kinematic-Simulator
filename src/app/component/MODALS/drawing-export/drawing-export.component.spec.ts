@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { MatTooltip } from '@angular/material/tooltip';
 import {
   DEFAULT_DXF_EXPORT_OPTIONS,
   DxfExportService,
@@ -109,7 +111,15 @@ describe('DrawingExportComponent', () => {
     fixture.detectChanges();
     const row = element.querySelector('[data-check="tracedPaths"]') as HTMLElement;
     expect(row.className).toContain('blocked');
-    expect(row.getAttribute('title')).toContain('No joint is tracing a path');
+    // The reason hangs on the row, through the same tooltip the rest of the app
+    // uses: a disabled button takes no pointer events, so a tooltip on the
+    // button would be the one explanation nobody could reach.
+    const tooltip = fixture.debugElement
+      .queryAll(By.directive(MatTooltip))
+      .map((found) => found.injector.get(MatTooltip))
+      .find((instance) => /No joint is tracing a path/.test(instance.message as string));
+    expect(tooltip).toBeDefined();
+    expect(tooltip!.disabled).toBe(false);
     // Pressing it does nothing rather than half-doing something.
     const before = component.options.includeTracedPaths;
     component.toggle('includeTracedPaths');
