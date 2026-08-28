@@ -272,6 +272,31 @@
     pointer-events: none;
   }
 
+  // A multi-selection is the third thing on this canvas that is placed rather
+  // than drawn, and it is moved by the same box-and-grips gesture as the
+  // underlay, so it wears the same accent -- written beside those rules rather
+  // than away from them, because the two are only right while they match.
+  .selectionTransform {
+    .selectionBounds,
+    .selectionStem {
+      fill: none;
+      stroke: mat.m2-get-color-from-palette($accent-palette, 500);
+      vector-effect: non-scaling-stroke;
+    }
+
+    // Filled, and white-edged, so a grip is findable over a dark link the way
+    // the underlay's are over a dark photograph.
+    .selectionHandle {
+      fill: mat.m2-get-color-from-palette($accent-palette, 500);
+      stroke: #fff;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .selectionHandle:hover {
+      fill: mat.m2-get-color-from-palette($accent-palette, 700);
+    }
+  }
+
   // --- Synthesis on the canvas -------------------------------------------
   //
   // The positions being designed for wear the same accent the tracing underlay
@@ -709,22 +734,4 @@
   }
 }
 
-.selectionTransform {
-  .selectionBounds,
-  .selectionStem {
-    fill: none;
-    stroke: #5e35b1;
-    vector-effect: non-scaling-stroke;
-  }
 
-  .selectionHandle {
-    fill: #fff;
-    stroke: #5e35b1;
-    vector-effect: non-scaling-stroke;
-    filter: drop-shadow(0 1px 2px rgba(30, 22, 55, 0.3));
-  }
-
-  .selectionHandle:hover {
-    fill: #ede7f6;
-  }
-}

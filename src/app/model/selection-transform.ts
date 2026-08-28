@@ -17,7 +17,16 @@ export interface SelectionBounds {
 export interface SelectionAffineTransform {
   translation?: { x: number; y: number };
   rotation?: number;
-  scale?: number;
+  /**
+   * One number scales both axes together; a pair scales each on its own.
+   *
+   * A pair is what the edge grips ask for -- pulling the right edge should
+   * widen the selection without making it taller. It stays an affine map either
+   * way, so collinear things stay collinear: a cylinder's three joints are
+   * still on one line after the box has been squashed, which is the property
+   * that makes this safe to offer at all.
+   */
+  scale?: number | { x: number; y: number };
   pivot?: { x: number; y: number };
 }
 
@@ -141,18 +150,23 @@ export class SelectionTransformSnapshot {
     const translation = transform.translation ?? { x: 0, y: 0 };
     const rotation = transform.rotation ?? 0;
     const scale = transform.scale ?? 1;
+    const scaleX = typeof scale === 'number' ? scale : scale.x;
+    const scaleY = typeof scale === 'number' ? scale : scale.y;
     const pivot = transform.pivot ?? this.pivot;
     if (
-      ![translation.x, translation.y, rotation, scale, pivot.x, pivot.y].every(Number.isFinite) ||
-      !(scale > 0)
+      ![translation.x, translation.y, rotation, scaleX, scaleY, pivot.x, pivot.y].every(
+        Number.isFinite
+      ) ||
+      !(scaleX > 0) ||
+      !(scaleY > 0)
     ) {
       return { applied: false, lockedJointIds: [], reason: 'invalid-transform' };
     }
     const cos = Math.cos(rotation);
     const sin = Math.sin(rotation);
     const mapPoint = (point: { x: number; y: number }) => {
-      const x = (point.x - pivot.x) * scale;
-      const y = (point.y - pivot.y) * scale;
+      const x = (point.x - pivot.x) * scaleX;
+      const y = (point.y - pivot.y) * scaleY;
       return {
         x: pivot.x + x * cos - y * sin + translation.x,
         y: pivot.y + x * sin + y * cos + translation.y,

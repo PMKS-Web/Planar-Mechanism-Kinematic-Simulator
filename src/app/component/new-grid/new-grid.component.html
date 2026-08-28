@@ -981,6 +981,14 @@
     }
   </g>
 
+  <!-- The box round a multi-selection, wearing the same broken accent outline
+       and the same filled grips as the tracing underlay. Both are a thing being
+       placed on the grid rather than a part of it, and both are moved by the
+       same box-and-grips gesture, so they say so the same way.
+
+       Eight grips and a knob: corners take both dimensions, edges take the one
+       they face. Drawn inside the canvas's y-flip, so the box's greatest y is
+       its top edge and the compass names read as they look. -->
   @if (selectionBounds(); as bounds) {
     <g id="selectionTransformOverlay" class="selectionTransform" style="transform: scaleY(-1)">
       <rect
@@ -991,7 +999,7 @@
         [attr.width]="Math.max(bounds.maxX - bounds.minX, selectionHandleSize())"
         [attr.height]="Math.max(bounds.maxY - bounds.minY, selectionHandleSize())"
         [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
-        [attr.stroke-dasharray]="svgGrid.scaleWithZoom(7) + ' ' + svgGrid.scaleWithZoom(4)"
+        [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
       />
       <line
         class="selectionStem"
@@ -1002,27 +1010,32 @@
         [attr.y2]="bounds.maxY + selectionRotateReach()"
         [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
       />
+      <!-- Round, because it swings rather than pulls -- the same distinction the
+           underlay's knob makes. -->
       <circle
         class="selectionHandle selectionRotateHandle"
         data-selection-handle="rotate"
         [attr.cx]="(bounds.minX + bounds.maxX) / 2"
         [attr.cy]="bounds.maxY + selectionRotateReach()"
-        [attr.r]="selectionHandleSize() / 2"
+        [attr.r]="selectionHandleSize() * 0.65"
         [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
         cursor="grab"
-        (pointerdown)="beginSelectionHandle($event, 'rotate')"
+        (pointerdown)="beginSelectionRotate($event)"
       />
-      <rect
-        class="selectionHandle selectionScaleHandle"
-        data-selection-handle="scale"
-        [attr.x]="bounds.maxX + selectionHandleSize() / 2"
-        [attr.y]="bounds.minY - selectionHandleSize() * 1.5"
-        [attr.width]="selectionHandleSize()"
-        [attr.height]="selectionHandleSize()"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
-        cursor="nwse-resize"
-        (pointerdown)="beginSelectionHandle($event, 'scale')"
-      />
+      @for (grip of selectionGrips(bounds); track grip.id) {
+        <rect
+          class="selectionHandle selectionScaleHandle"
+          data-selection-handle="scale"
+          [attr.data-selection-grip]="grip.id"
+          [attr.x]="grip.x - selectionHandleSize() / 2"
+          [attr.y]="grip.y - selectionHandleSize() / 2"
+          [attr.width]="selectionHandleSize()"
+          [attr.height]="selectionHandleSize()"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+          [attr.cursor]="grip.cursor"
+          (pointerdown)="beginSelectionScale($event, grip)"
+        />
+      }
     </g>
   }
 

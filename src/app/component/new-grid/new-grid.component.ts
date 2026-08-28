@@ -125,12 +125,24 @@ import { isAdditiveSelectionGesture, SelectedPart } from '../../model/selection'
 import {
   captureSelectionTransform,
   canonicalSelectionClosure,
+  SelectionAffineTransform,
   SelectionBounds,
   SelectionTransformSnapshot,
 } from '../../model/selection-transform';
 
 /** Which corner of the tracing underlay a resize gesture is holding. */
 type BackgroundImageCorner = 'tl' | 'tr' | 'bl' | 'br';
+
+/** Where a selection grip sits on the box, named as it appears on screen. */
+export type SelectionGripId = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+
+/** A grip, the axes it stretches, and the point it stretches away from. */
+export interface SelectionGrip {
+  id: SelectionGripId;
+  cursor: string;
+  axes: 'x' | 'y' | 'both';
+  anchor: { x: number; y: number };
+}
 
 /** A driven pin's motor, in the frame of the body its case is bolted to. */
 interface DrivenPinMotor {
@@ -236,6 +248,8 @@ export class NewGridComponent implements OnDestroy {
     attempted: boolean;
     refusalShown: boolean;
     replaceOnClick?: SelectedPart;
+    /** Which grip is held, and the corner or edge it is pulling away from. */
+    grip?: SelectionGrip;
   };
 
   /**
@@ -1048,7 +1062,87 @@ export class NewGridComponent implements OnDestroy {
     return this.svgGrid.scaleWithZoom(34);
   }
 
-  beginSelectionHandle(event: PointerEvent, mode: 'rotate' | 'scale'): void {
+  /**
+   * The eight grips round the box, in model coordinates.
+   *
+   * Four corners and four edge midpoints, the arrangement every drawing program
+   * uses, so a reader who has resized a rectangle anywhere else already knows
+   * which one does what: a corner takes both dimensions, an edge takes the one
+   * it faces. Each carries the point it scales *away* from -- the opposite
+   * corner or edge -- because that is the point that must not move while the
+   * grip is dragged.
+   *
+   * Named for where they sit on screen. The overlay is drawn inside the canvas's
+   * y-flip, so the box's greatest y is its top edge and `n` is the top grip,
+   * which is what makes the cursor names read straight.
+   */
+  selectionGrips(bounds: SelectionBounds): (SelectionGrip & { x: number; y: number })[] {
+    const midX = (bounds.minX + bounds.maxX) / 2;
+    const midY = (bounds.minY + bounds.maxY) / 2;
+    const corner = (id: SelectionGripId, x: number, y: number, cursor: string) => ({
+      id,
+      x,
+      y,
+      cursor,
+      axes: 'both' as const,
+      anchor: {
+        x: x === bounds.minX ? bounds.maxX : bounds.minX,
+        y: y === bounds.minY ? bounds.maxY : bounds.minY,
+      },
+    });
+    return [
+      corner('nw', bounds.minX, bounds.maxY, 'nwse-resize'),
+      corner('ne', bounds.maxX, bounds.maxY, 'nesw-resize'),
+      corner('se', bounds.maxX, bounds.minY, 'nwse-resize'),
+      corner('sw', bounds.minX, bounds.minY, 'nesw-resize'),
+      {
+        id: 'n',
+        x: midX,
+        y: bounds.maxY,
+        cursor: 'ns-resize',
+        axes: 'y',
+        anchor: { x: midX, y: bounds.minY },
+      },
+      {
+        id: 's',
+        x: midX,
+        y: bounds.minY,
+        cursor: 'ns-resize',
+        axes: 'y',
+        anchor: { x: midX, y: bounds.maxY },
+      },
+      {
+        id: 'e',
+        x: bounds.maxX,
+        y: midY,
+        cursor: 'ew-resize',
+        axes: 'x',
+        anchor: { x: bounds.minX, y: midY },
+      },
+      {
+        id: 'w',
+        x: bounds.minX,
+        y: midY,
+        cursor: 'ew-resize',
+        axes: 'x',
+        anchor: { x: bounds.maxX, y: midY },
+      },
+    ];
+  }
+
+  beginSelectionRotate(event: PointerEvent): void {
+    this.beginSelectionHandle(event, 'rotate');
+  }
+
+  beginSelectionScale(event: PointerEvent, grip: SelectionGrip): void {
+    this.beginSelectionHandle(event, 'scale', grip);
+  }
+
+  private beginSelectionHandle(
+    event: PointerEvent,
+    mode: 'rotate' | 'scale',
+    grip?: SelectionGrip
+  ): void {
     if (event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
@@ -1057,14 +1151,15 @@ export class NewGridComponent implements OnDestroy {
     this.startY = event.pageY;
     this.dragState.press();
     const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
-    this.beginSelectionGesture(mode, at);
+    this.beginSelectionGesture(mode, at, undefined, grip);
     this.holdPointer(event);
   }
 
   private beginSelectionGesture(
     mode: 'translate' | 'rotate' | 'scale',
     pointer: Coord,
-    replaceOnClick?: SelectedPart
+    replaceOnClick?: SelectedPart,
+    grip?: SelectionGrip
   ): void {
     const snapshot = captureSelectionTransform(
       this.activeObjService.selectedParts,
@@ -1081,6 +1176,7 @@ export class NewGridComponent implements OnDestroy {
       attempted: false,
       refusalShown: false,
       replaceOnClick,
+      grip,
     };
   }
 
@@ -1090,8 +1186,7 @@ export class NewGridComponent implements OnDestroy {
     if (!this.canEditNow() || !this.pastDragThreshold(event)) return true;
     gesture.attempted = true;
 
-    let transform:
-      { translation: { x: number; y: number } } | { rotation: number } | { scale: number };
+    let transform: SelectionAffineTransform;
     if (gesture.mode === 'translate') {
       const wanted = new Coord(
         gesture.snapshot.pivot.x + pointer.x - gesture.pointerStart.x,
@@ -1109,6 +1204,28 @@ export class NewGridComponent implements OnDestroy {
         rotation:
           Math.atan2(pointer.y - gesture.snapshot.pivot.y, pointer.x - gesture.snapshot.pivot.x) -
           gesture.startAngle,
+      };
+    } else if (gesture.grip) {
+      // Away from the opposite corner or edge, which is the point that holds
+      // still: a grip drags the side it is on and leaves the far side where the
+      // reader put it. An edge grip reports 1 for the axis it does not face, so
+      // pulling the right edge widens the box without making it taller.
+      const grip = gesture.grip;
+      const reach = (from: number, to: number) => {
+        // A box with no width cannot be widened by pulling on it -- there is no
+        // distance for the ratio to be taken against. Held at 1 rather than
+        // refused, so a row of joints all at one y still drags sideways.
+        if (Math.abs(from) < 1e-6) return 1;
+        return Math.max(0.05, to / from);
+      };
+      const startX = gesture.pointerStart.x - grip.anchor.x;
+      const startY = gesture.pointerStart.y - grip.anchor.y;
+      transform = {
+        pivot: grip.anchor,
+        scale: {
+          x: grip.axes === 'y' ? 1 : reach(startX, pointer.x - grip.anchor.x),
+          y: grip.axes === 'x' ? 1 : reach(startY, pointer.y - grip.anchor.y),
+        },
       };
     } else {
       transform = {

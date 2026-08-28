@@ -480,13 +480,25 @@ describe('NewGridComponent typed multi-selection', () => {
     active.togglePartSelection(b);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-selection-handle="rotate"]')).not.toBeNull();
-    const scaleHandle = fixture.nativeElement.querySelector(
-      '[data-selection-handle="scale"]'
-    ) as SVGRectElement;
-    expect(scaleHandle).not.toBeNull();
-    expect(Number(scaleHandle.getAttribute('x'))).toBeGreaterThan(
-      component.selectionBounds()!.maxX
-    );
+    // Eight grips, on the box rather than beside it: four corners and four edge
+    // midpoints, the arrangement every drawing program uses.
+    const grips = [
+      ...fixture.nativeElement.querySelectorAll('[data-selection-handle="scale"]'),
+    ] as SVGRectElement[];
+    expect(grips.map((grip) => grip.getAttribute('data-selection-grip'))).toEqual([
+      'nw',
+      'ne',
+      'se',
+      'sw',
+      'n',
+      's',
+      'e',
+      'w',
+    ]);
+    const bounds = component.selectionBounds()!;
+    const east = grips.find((grip) => grip.getAttribute('data-selection-grip') === 'e')!;
+    const size = component.selectionHandleSize();
+    expect(Number(east.getAttribute('x'))).toBeCloseTo(bounds.maxX - size / 2);
 
     component['beginSelectionGesture']('rotate', new Coord(MODEL_SCALE, MODEL_SCALE));
     expect(NewGridComponent.isSelectionGestureLive()).toBe(true);
@@ -505,6 +517,45 @@ describe('NewGridComponent typed multi-selection', () => {
     component.mouseUp(new MouseEvent('mouseup', { clientX: 3 * MODEL_SCALE, clientY: 0 }));
     expect(a.y).toBeCloseTo(2 * MODEL_SCALE);
     expect(b.y).toBeCloseTo(-2 * MODEL_SCALE);
+  });
+
+  it('an edge grip stretches one dimension and leaves the other alone', () => {
+    const mechanism = TestBed.inject(MechanismService);
+    // A box with both a width and a height, which the two-joint fixture above
+    // does not have: an edge grip is only a different thing from a corner one
+    // when there is a second dimension for it to leave alone.
+    const a = new RevJoint('A', 0, 0);
+    const b = new RevJoint('B', 2 * MODEL_SCALE, MODEL_SCALE);
+    const link = new RealLink('AB', [a, b]);
+    a.links = [link];
+    b.links = [link];
+    mechanism.joints = [a, b];
+    mechanism.links = [link];
+    const fixture = TestBed.createComponent(NewGridComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    const active = TestBed.inject(ActiveObjService);
+    active.replacePartSelection(a);
+    active.togglePartSelection(b);
+    fixture.detectChanges();
+
+    const east = component
+      .selectionGrips(component.selectionBounds()!)
+      .find((grip) => grip.id === 'e')!;
+    expect(east.axes).toBe('x');
+    expect(east.anchor).toEqual({ x: 0, y: MODEL_SCALE / 2 });
+
+    component['beginSelectionGesture']('scale', new Coord(east.x, east.y), undefined, east);
+    component['timeMouseDown'] = 0;
+    const to = new MouseEvent('mousemove', { clientX: 3 * MODEL_SCALE, clientY: MODEL_SCALE / 2 });
+    component.mouseMove(to);
+    component.mouseUp(new MouseEvent('mouseup', { clientX: 3 * MODEL_SCALE }));
+
+    // Half again as wide, exactly as tall, and the anchored edge did not move.
+    expect(a.x).toBeCloseTo(0);
+    expect(a.y).toBeCloseTo(0);
+    expect(b.x).toBeCloseTo(3 * MODEL_SCALE);
+    expect(b.y).toBeCloseTo(MODEL_SCALE);
   });
 
   it('refuses the whole transform when one canonical member is locked', () => {
