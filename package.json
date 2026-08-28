@@ -46,6 +46,7 @@
     "@types/hammerjs": "^2.0.41",
     "@types/hull.js": "^1.0.2",
     "@types/node": "^24.13.2",
+    "dxf-parser": "^1.1.2",
     "jsdom": "^29.1.1",
     "typescript": "~6.0.3",
     "vitest": "^4.1.9"

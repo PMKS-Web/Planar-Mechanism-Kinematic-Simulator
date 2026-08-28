@@ -1,0 +1,155 @@
+.drawingExport {
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 20px 0 24px;
+}
+
+h1[mat-dialog-title] {
+  margin: 0;
+  padding: 0;
+  font-size: 24px;
+}
+
+.subtitle {
+  margin: 3px 0 0;
+  color: rgba(0, 0, 0, 0.58);
+  font-size: 13px;
+}
+
+.close {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  place-items: center;
+}
+
+[mat-dialog-content] {
+  padding-top: 16px;
+}
+
+.scopeNote {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #eef0fb;
+  color: #27306f;
+}
+
+.scopeNote div,
+.scopeNote span {
+  display: block;
+}
+
+.scopeNote span {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.fileField {
+  display: block;
+  margin-top: 18px;
+}
+
+.fileField > span,
+legend {
+  color: rgba(0, 0, 0, 0.68);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fileInput {
+  display: flex;
+  align-items: center;
+  height: 38px;
+  margin-top: 6px;
+  overflow: hidden;
+  border: 1px solid #c5cae9;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.fileInput input {
+  min-width: 0;
+  flex: 1;
+  align-self: stretch;
+  padding: 0 10px;
+  border: 0;
+  outline: 0;
+  font: inherit;
+}
+
+.fileInput span {
+  padding: 0 10px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+fieldset {
+  display: grid;
+  gap: 4px;
+  margin: 18px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  margin-bottom: 6px;
+}
+
+fieldset label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 4px;
+}
+
+fieldset input {
+  margin-top: 2px;
+}
+
+fieldset strong,
+fieldset small {
+  display: block;
+}
+
+fieldset strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+fieldset small {
+  margin-top: 2px;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+}
+
+.footnote {
+  margin: 14px 0 0;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+[mat-dialog-actions] button mat-icon {
+  margin-right: 6px;
+}
+
+@media (max-width: 480px) {
+  .titleRow {
+    padding: 16px 14px 0 18px;
+  }
+
+  [mat-dialog-content] {
+    padding-inline: 18px;
+  }
+}

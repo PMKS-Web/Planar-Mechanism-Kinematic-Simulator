@@ -29,6 +29,7 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
+import { DrawingExportComponent } from '../MODALS/drawing-export/drawing-export.component';
 
 /** A mode's chip: whether that analysis can be entered, and what is missing. */
 interface TabStatus {
@@ -601,6 +602,11 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   openTemplates(): void {
     this.closeMenu();
     TemplatesComponent.openIn(this.dialog);
+  }
+
+  exportDrawing(): void {
+    this.closeMenu();
+    DrawingExportComponent.openIn(this.dialog);
   }
 
   openSettings(): void {

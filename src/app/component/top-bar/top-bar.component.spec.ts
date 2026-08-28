@@ -5,6 +5,8 @@ import { MechanismService } from '../../services/mechanism.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { TopBarComponent } from './top-bar.component';
+import { MatDialog } from '@angular/material/dialog';
+import { DrawingExportComponent } from '../MODALS/drawing-export/drawing-export.component';
 
 /**
  * One button per mode, and one press meaning three different things.
@@ -113,5 +115,19 @@ describe('top bar modes', () => {
     const buttons = [...fixture.nativeElement.querySelectorAll('.tabButton')];
     expect(buttons.length).toBe(4);
     expect(buttons.every((one: HTMLElement) => one.getAttribute('tabindex') === null)).toBe(true);
+  });
+
+  it('opens a separate semantic drawing export flow from the project menu', () => {
+    const dialog = TestBed.inject(MatDialog);
+    const open = vi.spyOn(dialog, 'open').mockReturnValue({} as never);
+    bar.menuOpen = true;
+
+    bar.exportDrawing();
+
+    expect(bar.menuOpen).toBe(false);
+    expect(open).toHaveBeenCalledWith(
+      DrawingExportComponent,
+      expect.objectContaining({ autoFocus: 'dialog' })
+    );
   });
 });

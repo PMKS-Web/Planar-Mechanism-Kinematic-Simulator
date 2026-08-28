@@ -1,0 +1,77 @@
+<div class="drawingExport">
+  <div class="titleRow">
+    <div>
+      <h1 mat-dialog-title>Export Drawing</h1>
+      <p class="subtitle">DXF R2000 · semantic centerline sketch</p>
+    </div>
+    <button class="close" mat-dialog-close aria-label="Close Export Drawing">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div mat-dialog-content>
+    <div class="scopeNote">
+      <mat-icon>architecture</mat-icon>
+      <div>
+        <strong>Built from the unsolved start pose</strong>
+        <span>
+          Exports mechanism geometry in the project’s current units and global coordinates. Visible
+          circles mark joint centers; they are not fabrication hole diameters.
+        </span>
+      </div>
+    </div>
+
+    <label class="fileField">
+      <span>File Name</span>
+      <div class="fileInput">
+        <input [(ngModel)]="options.fileName" aria-label="DXF file name" />
+        <span>.dxf</span>
+      </div>
+    </label>
+
+    <fieldset>
+      <legend>Layers to Include</legend>
+      <label>
+        <input type="checkbox" [(ngModel)]="options.includeKinematicAnnotations" />
+        <span>
+          <strong>Kinematic annotations</strong>
+          <small>Ground symbols and input direction arrows</small>
+        </span>
+      </label>
+      <label>
+        <input type="checkbox" [(ngModel)]="options.includeForces" />
+        <span>
+          <strong>Forces</strong>
+          <small>Force vectors on their own CAD layer</small>
+        </span>
+      </label>
+      <label>
+        <input type="checkbox" [(ngModel)]="options.includeConstruction" />
+        <span>
+          <strong>Construction geometry</strong>
+          <small>Slot extent ticks and semantic guides useful for CAD editing</small>
+        </span>
+      </label>
+      <label>
+        <input type="checkbox" [(ngModel)]="options.includeLabels" />
+        <span>
+          <strong>Labels</strong>
+          <small>Joint and body names; off by default for a clean sketch</small>
+        </span>
+      </label>
+    </fieldset>
+
+    <p class="footnote">
+      This export is a kinematic centerline drawing, not a fabrication profile. Add physical widths,
+      holes, tolerances, and material details in CAD.
+    </p>
+  </div>
+
+  <div mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close>Cancel</button>
+    <button mat-flat-button color="primary" (click)="download()">
+      <mat-icon>download</mat-icon>
+      Export DXF
+    </button>
+  </div>
+</div>
