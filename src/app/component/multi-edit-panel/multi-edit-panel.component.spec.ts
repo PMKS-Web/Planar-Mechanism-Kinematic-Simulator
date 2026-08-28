@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { RevJoint } from '../../model/joint';
 import { RealLink } from '../../model/link';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -33,7 +34,10 @@ describe('MultiEditPanelComponent', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    await TestBed.configureTestingModule({ imports: [MultiEditPanelComponent] })
+    await TestBed.configureTestingModule({
+      imports: [MultiEditPanelComponent],
+      providers: [provideNoopAnimations()],
+    })
       .overrideProvider(MultiEditService, { useValue: multi })
       .overrideProvider(SelectionBatchService, { useValue: batch })
       .compileComponents();
@@ -64,6 +68,10 @@ describe('MultiEditPanelComponent', () => {
     );
 
     const element = render();
+    expect(element.querySelector('panel-section')).not.toBeNull();
+    expect(element.querySelector('dual-input-block')).not.toBeNull();
+    expect(element.querySelector('toggle-block')).not.toBeNull();
+    expect(element.querySelectorAll('button-block')).toHaveLength(2);
     const x = element.querySelector('[data-field="x"]') as HTMLInputElement;
     const y = element.querySelector('[data-field="y"]') as HTMLInputElement;
     expect(element.textContent).toContain('2 joints selected');
@@ -146,7 +154,7 @@ describe('MultiEditPanelComponent', () => {
     expect(element.querySelector('[data-action="delete"]')).not.toBeNull();
   });
 
-  it('renders differing lock state as indeterminate and applies one requested state', () => {
+  it('renders differing lock state as Mixed and applies one requested state', () => {
     const a = new RevJoint('A', 0, 0);
     const b = new RevJoint('B', S, 0);
     a.locked = true;
@@ -164,10 +172,10 @@ describe('MultiEditPanelComponent', () => {
     );
 
     const element = render();
-    const lock = element.querySelector('[data-action="lock"]') as HTMLInputElement;
-    expect(lock.indeterminate).toBe(true);
-    lock.checked = true;
-    lock.dispatchEvent(new Event('change'));
+    const lock = element.querySelector('[data-action="lock"]') as HTMLElement;
+    expect(lock.parentElement?.textContent).toContain('Mixed');
+    (lock.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
     expect(multi.setLocked).toHaveBeenCalledWith(active.selectedPartRefs, true);
   });
 });

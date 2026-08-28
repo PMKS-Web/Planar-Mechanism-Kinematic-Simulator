@@ -1,161 +1,17 @@
-.multiPanel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  color: rgba(0, 0, 0, 0.87);
-}
-
-header,
-.panelGroup,
-.actions {
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(31, 38, 61, 0.14);
-}
-
-header {
-  padding: 13px 15px 12px;
-}
-
-.title {
-  font-size: 20px;
-  font-weight: 500;
-}
-
-.count {
-  margin-top: 2px;
-  color: rgba(0, 0, 0, 0.6);
-  font-size: 13px;
-}
-
-.panelGroup {
-  padding: 12px 15px 14px;
-}
-
-h3 {
-  margin: 0 0 7px;
-  color: #303f9f;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.explain,
-.unavailable {
+.multiNote {
   margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: #f0f1f5;
   color: rgba(0, 0, 0, 0.58);
   font-size: 12px;
   line-height: 17px;
+  text-wrap: pretty;
 }
 
-.unavailable {
-  padding: 7px 9px;
-  border-radius: 5px;
-  background: #f3f4f8;
-}
-
-.fieldPair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 9px;
-}
-
-label span,
-.wideField span {
-  display: block;
-  margin-bottom: 4px;
-  color: rgba(0, 0, 0, 0.66);
-  font-size: 12px;
-}
-
-input:not([type='checkbox']) {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  height: 34px;
-  padding: 0 9px;
-  border: 1px solid #c5cae9;
-  border-radius: 5px;
-  background: #fafbff;
-  font: inherit;
-}
-
-input::placeholder {
-  color: #7a708f;
-  font-style: italic;
-  opacity: 1;
-}
-
-.wideField {
-  display: block;
-  margin-top: 10px;
-}
-
-.lockRow {
+.multiActions {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 30px;
-}
-
-.lockRow span {
-  margin: 0;
-  font-size: 14px;
-}
-
-.mixedTag {
-  margin-left: auto !important;
-  padding: 2px 7px;
-  border-radius: 10px;
-  background: #ede7f6;
-  color: #5e35b1 !important;
-  font-size: 11px !important;
-}
-
-.stateGroup .explain {
-  margin: 6px 0 0 25px;
-}
-
-.actions {
-  display: grid;
-  gap: 8px;
-  padding: 12px 15px;
-}
-
-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 36px;
-  border: 1px solid #3f51b5;
-  border-radius: 6px;
-  background: #fff;
-  color: #303f9f;
-  cursor: pointer;
-  font:
-    500 13px Roboto,
-    sans-serif;
-}
-
-button.danger {
-  border-color: #c62828;
-  color: #b71c1c;
-}
-
-button mat-icon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-}
-
-@media (max-width: 480px) {
-  .fieldPair {
-    gap: 7px;
-  }
-
-  header,
-  .panelGroup,
-  .actions {
-    border-radius: 6px;
-  }
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 15px 12px;
 }

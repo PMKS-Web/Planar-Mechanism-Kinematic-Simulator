@@ -480,12 +480,20 @@ describe('NewGridComponent typed multi-selection', () => {
     active.togglePartSelection(b);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-selection-handle="rotate"]')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-selection-handle="scale"]')).not.toBeNull();
+    const scaleHandle = fixture.nativeElement.querySelector(
+      '[data-selection-handle="scale"]'
+    ) as SVGRectElement;
+    expect(scaleHandle).not.toBeNull();
+    expect(Number(scaleHandle.getAttribute('x'))).toBeGreaterThan(
+      component.selectionBounds()!.maxX
+    );
 
     component['beginSelectionGesture']('rotate', new Coord(MODEL_SCALE, MODEL_SCALE));
+    expect(NewGridComponent.isSelectionGestureLive()).toBe(true);
     component['timeMouseDown'] = 0;
     component.mouseMove(new MouseEvent('mousemove', { clientX: 2 * MODEL_SCALE, clientY: 0 }));
     component.mouseUp(new MouseEvent('mouseup', { clientX: 2 * MODEL_SCALE, clientY: 0 }));
+    expect(NewGridComponent.isSelectionGestureLive()).toBe(false);
     expect(a.x).toBeCloseTo(MODEL_SCALE);
     expect(a.y).toBeCloseTo(MODEL_SCALE);
     expect(b.x).toBeCloseTo(MODEL_SCALE);

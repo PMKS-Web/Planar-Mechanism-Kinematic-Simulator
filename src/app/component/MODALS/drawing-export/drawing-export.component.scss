@@ -4,32 +4,28 @@
 
 .titleRow {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  padding: 20px 20px 0 24px;
+  padding: 4px 8px 4px 24px;
 }
 
-h1[mat-dialog-title] {
+h1 {
   margin: 0;
-  padding: 0;
-  font-size: 24px;
+  font-family: Roboto, sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 32px;
 }
 
 .subtitle {
-  margin: 3px 0 0;
+  margin: 0;
+  padding: 0 24px 4px;
   color: rgba(0, 0, 0, 0.58);
   font-size: 13px;
 }
 
 .close {
-  display: grid;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-  place-items: center;
+  color: #000;
 }
 
 [mat-dialog-content] {
@@ -56,42 +52,15 @@ h1[mat-dialog-title] {
   line-height: 17px;
 }
 
-.fileField {
-  display: block;
-  margin-top: 18px;
-}
-
-.fileField > span,
 legend {
   color: rgba(0, 0, 0, 0.68);
   font-size: 13px;
   font-weight: 600;
 }
 
-.fileInput {
-  display: flex;
-  align-items: center;
-  height: 38px;
-  margin-top: 6px;
-  overflow: hidden;
-  border: 1px solid #c5cae9;
-  border-radius: 6px;
-  background: #fff;
-}
-
-.fileInput input {
-  min-width: 0;
-  flex: 1;
-  align-self: stretch;
-  padding: 0 10px;
-  border: 0;
-  outline: 0;
-  font: inherit;
-}
-
-.fileInput span {
-  padding: 0 10px;
-  color: rgba(0, 0, 0, 0.5);
+.fileField {
+  width: 100%;
+  margin-top: 18px;
 }
 
 fieldset {
@@ -106,15 +75,9 @@ legend {
   margin-bottom: 6px;
 }
 
-fieldset label {
+fieldset mat-checkbox {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 7px 4px;
-}
-
-fieldset input {
-  margin-top: 2px;
+  padding: 3px 0;
 }
 
 fieldset strong,
@@ -146,10 +109,14 @@ fieldset small {
 
 @media (max-width: 480px) {
   .titleRow {
-    padding: 16px 14px 0 18px;
+    padding-left: 16px;
   }
 
   [mat-dialog-content] {
+    padding-inline: 18px;
+  }
+
+  .subtitle {
     padding-inline: 18px;
   }
 }

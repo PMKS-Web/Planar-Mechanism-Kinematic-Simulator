@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { MatIcon } from '@angular/material/icon';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { FormControl, FormGroup } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RealJoint } from '../../model/joint';
 import { RealLink } from '../../model/link';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -13,6 +14,13 @@ import { NumberUnitParserService } from '../../services/number-unit-parser.servi
 import { SelectionBatchService } from '../../services/selection-batch.service';
 import { SettingsService } from '../../services/settings.service';
 import { SvgGridService } from '../../services/svg-grid.service';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
+import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
+import { InputComponent } from '../BLOCKS/input/input.component';
+import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
+import { TitleBlock } from '../BLOCKS/title/title.component';
+import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 
 /** The Edit drawer used when more than one typed mechanism part is selected. */
 @Component({
@@ -20,9 +28,17 @@ import { SvgGridService } from '../../services/svg-grid.service';
   templateUrl: './multi-edit-panel.component.html',
   styleUrls: ['./multi-edit-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon],
+  imports: [
+    ButtonComponent,
+    CollapsibleSubsecitonComponent,
+    DualInputComponent,
+    InputComponent,
+    PanelSectionComponent,
+    TitleBlock,
+    ToggleComponent,
+  ],
 })
-export class MultiEditPanelComponent {
+export class MultiEditPanelComponent implements OnInit {
   readonly active = inject(ActiveObjService);
   private mechanism = inject(MechanismService);
   private multi = inject(MultiEditService);
@@ -31,6 +47,44 @@ export class MultiEditPanelComponent {
   private settings = inject(SettingsService);
   private notify = inject(NotificationService);
   private svgGrid = inject(SvgGridService);
+  private destroyRef = inject(DestroyRef);
+
+  readonly form = new FormGroup({
+    x: new FormControl('', { nonNullable: true, updateOn: 'blur' }),
+    y: new FormControl('', { nonNullable: true, updateOn: 'blur' }),
+    length: new FormControl('', { nonNullable: true, updateOn: 'blur' }),
+    angle: new FormControl('', { nonNullable: true, updateOn: 'blur' }),
+    mass: new FormControl('', { nonNullable: true, updateOn: 'blur' }),
+    locked: new FormControl(false, { nonNullable: true }),
+  });
+
+  constructor() {
+    this.form.controls.x.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.commitJointCoordinate('x', value));
+    this.form.controls.y.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.commitJointCoordinate('y', value));
+    this.form.controls.length.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.commitLinkGeometry('length', value));
+    this.form.controls.angle.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.commitLinkGeometry('angle', value));
+    this.form.controls.mass.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.commitMass(value));
+    this.form.controls.locked.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.setLocked(value));
+    this.active.onActiveObjChange
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.syncForm());
+  }
+
+  ngOnInit(): void {
+    this.syncForm();
+  }
 
   get joints(): RealJoint[] {
     return this.active.selectedParts.filter((part): part is RealJoint => part instanceof RealJoint);
@@ -157,6 +211,7 @@ export class MultiEditPanelComponent {
 
   setLocked(locked: boolean): void {
     this.report(this.multi.setLocked(this.active.selectedPartRefs, locked));
+    this.active.fakeUpdateSelectedObj();
   }
 
   duplicate(): void {
@@ -199,5 +254,19 @@ export class MultiEditPanelComponent {
       default:
         return MassUnit.GRAM;
     }
+  }
+
+  private syncForm(): void {
+    this.form.patchValue(
+      {
+        x: this.lengthText(this.jointValue('x')),
+        y: this.lengthText(this.jointValue('y')),
+        length: this.lengthText(this.linkValue('length')),
+        angle: this.angleText(this.linkValue('angle')),
+        mass: this.massText(this.linkValue('mass')),
+        locked: this.lockChecked(),
+      },
+      { emitEvent: false }
+    );
   }
 }

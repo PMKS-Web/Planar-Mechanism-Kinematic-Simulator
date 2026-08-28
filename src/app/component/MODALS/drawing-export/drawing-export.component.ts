@@ -1,15 +1,17 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatButton } from '@angular/material/button';
+import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatCheckbox } from '@angular/material/checkbox';
 import {
   MatDialog,
   MatDialogActions,
   MatDialogClose,
   MatDialogContent,
   MatDialogRef,
-  MatDialogTitle,
 } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
+import { MatFormField, MatLabel, MatSuffix } from '@angular/material/form-field';
+import { MatInput } from '@angular/material/input';
 import {
   DEFAULT_DXF_EXPORT_OPTIONS,
   DxfExportOptions,
@@ -24,11 +26,16 @@ import {
   imports: [
     FormsModule,
     MatButton,
+    MatCheckbox,
     MatDialogActions,
     MatDialogClose,
     MatDialogContent,
-    MatDialogTitle,
+    MatFormField,
     MatIcon,
+    MatIconButton,
+    MatInput,
+    MatLabel,
+    MatSuffix,
   ],
 })
 export class DrawingExportComponent {

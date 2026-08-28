@@ -20,6 +20,7 @@ export class ButtonComponent {
 
   @Input() customIcon: string | undefined;
   readonly disabled = input<boolean>(false);
+  readonly dataAction = input<string>();
   /**
    * Said on hover, the way every other block in the panels says it. On the
    * button itself rather than on a help icon beside it: a button is its own

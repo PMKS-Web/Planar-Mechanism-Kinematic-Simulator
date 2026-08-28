@@ -32,6 +32,13 @@ describe('DrawingExportComponent', () => {
     });
     expect(fixture.nativeElement.textContent).toContain('start pose');
     expect(fixture.nativeElement.textContent).toContain('centerline');
+    expect(fixture.nativeElement.querySelector('mat-form-field')).not.toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('mat-checkbox')).toHaveLength(4);
+    expect(fixture.nativeElement.querySelector('button[mat-icon-button]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.titleRow > h1')?.textContent).toContain(
+      'Export Drawing'
+    );
+    expect(fixture.nativeElement.querySelector('h1[mat-dialog-title]')).toBeNull();
   });
 
   it('downloads exactly the selected semantic DXF options', () => {

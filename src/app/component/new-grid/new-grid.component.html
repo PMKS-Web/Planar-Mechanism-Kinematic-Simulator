@@ -1015,8 +1015,8 @@
       <rect
         class="selectionHandle selectionScaleHandle"
         data-selection-handle="scale"
-        [attr.x]="bounds.maxX - selectionHandleSize() / 2"
-        [attr.y]="bounds.maxY - selectionHandleSize() / 2"
+        [attr.x]="bounds.maxX + selectionHandleSize() / 2"
+        [attr.y]="bounds.minY - selectionHandleSize() * 1.5"
         [attr.width]="selectionHandleSize()"
         [attr.height]="selectionHandleSize()"
         [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"

@@ -1,4 +1,13 @@
-import { Output, EventEmitter, booleanAttribute, Component, Input, ChangeDetectionStrategy, input, output } from '@angular/core';
+import {
+  Output,
+  EventEmitter,
+  booleanAttribute,
+  Component,
+  Input,
+  ChangeDetectionStrategy,
+  input,
+  output,
+} from '@angular/core';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -19,6 +28,11 @@ export class DualInputComponent {
   readonly label2 = input<string>('Y');
   readonly formControl2 = input.required<string>();
   readonly formGroup = input.required<FormGroup>();
+  /** Optional mixed-value copy and test hooks for bulk-edit forms. */
+  readonly placeholder1 = input<string>('');
+  readonly placeholder2 = input<string>('');
+  readonly dataField1 = input<string>();
+  readonly dataField2 = input<string>();
   @Input() formSubGroup: string | undefined;
   /**
    * Drop the label/help header row: for a pair whose caption is provided by

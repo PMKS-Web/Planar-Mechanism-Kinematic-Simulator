@@ -571,7 +571,11 @@ export class SvgGridService {
     // It used to be recognised by what was last clicked, which never stopped
     // being a pose: the canvas could not be panned again until something else
     // was selected.
-    if (this.dragState.isDragging || NewGridComponent.isSynthesisGestureLive()) {
+    if (
+      this.dragState.isDragging ||
+      NewGridComponent.isSynthesisGestureLive() ||
+      NewGridComponent.isSelectionGestureLive()
+    ) {
       return oldPan;
     }
     return newPan;

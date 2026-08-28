@@ -43,6 +43,9 @@ export class InputComponent {
   readonly tooltip = input<string>();
   @Input() _formControl!: string;
   @Input() formGroup!: FormGroup;
+  /** Optional mixed-value copy and test hook for bulk-edit forms. */
+  readonly placeholder = input<string>('');
+  readonly dataField = input<string>();
   /**
    * Turns the static unit suffix into a picker sharing the field's fill, for
    * values whose unit the user chooses rather than types. Needs unitFormControl.

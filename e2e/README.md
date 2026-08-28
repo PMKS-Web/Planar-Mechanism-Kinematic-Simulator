@@ -62,6 +62,10 @@ their source. Everything browser-driven lives here.
   A fresh context per case on purpose, because the case that was reported only happens before the
   page has recorded any interaction
 
+- `multi-select-and-dxf.mjs` — real Ctrl/Command selection, macOS Control-click, blank/Escape/plain
+  replacement, group drag/rotate/scale with one-step history and Lock refusal, atomic duplicate/delete,
+  plus desktop/narrow visual checks and a downloaded semantic DXF smoke test
+
 ## Running
 
 Prerequisites: dev server on http://127.0.0.1:4200/ (`npm start`) and a

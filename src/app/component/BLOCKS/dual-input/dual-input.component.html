@@ -32,6 +32,8 @@
           #field1
           (keyup.enter)="field1.blur()"
           [formControlName]="this.formControl1()"
+          [placeholder]="placeholder1()"
+          [attr.data-field]="dataField1()"
         />
       </mat-form-field>
       <div class="spacer"></div>
@@ -57,6 +59,8 @@
           #field2
           (keyup.enter)="field2.blur()"
           [formControlName]="this.formControl2()"
+          [placeholder]="placeholder2()"
+          [attr.data-field]="dataField2()"
         />
       </mat-form-field>
     }
@@ -78,6 +82,8 @@
           #field1
           (keyup.enter)="field1.blur()"
           [formControlName]="this.formControl1()"
+          [placeholder]="placeholder1()"
+          [attr.data-field]="dataField1()"
         />
       </mat-form-field>
       <div class="spacer"></div>
@@ -102,6 +108,8 @@
           #field2
           (keyup.enter)="field2.blur()"
           [formControlName]="this.formControl2()"
+          [placeholder]="placeholder2()"
+          [attr.data-field]="dataField2()"
         />
       </mat-form-field>
     }

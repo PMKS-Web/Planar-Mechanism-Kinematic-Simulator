@@ -1,13 +1,11 @@
 <div class="drawingExport">
   <div class="titleRow">
-    <div>
-      <h1 mat-dialog-title>Export Drawing</h1>
-      <p class="subtitle">DXF R2000 · semantic centerline sketch</p>
-    </div>
-    <button class="close" mat-dialog-close aria-label="Close Export Drawing">
+    <h1>Export Drawing</h1>
+    <button class="close" mat-icon-button mat-dialog-close aria-label="Close Export Drawing">
       <mat-icon>close</mat-icon>
     </button>
   </div>
+  <p class="subtitle">DXF R2000 · semantic centerline sketch</p>
 
   <div mat-dialog-content>
     <div class="scopeNote">
@@ -21,44 +19,38 @@
       </div>
     </div>
 
-    <label class="fileField">
-      <span>File Name</span>
-      <div class="fileInput">
-        <input [(ngModel)]="options.fileName" aria-label="DXF file name" />
-        <span>.dxf</span>
-      </div>
-    </label>
+    <mat-form-field class="fileField" appearance="fill">
+      <mat-label>File Name</mat-label>
+      <input matInput [(ngModel)]="options.fileName" aria-label="DXF file name" />
+      <span matTextSuffix>.dxf</span>
+    </mat-form-field>
 
     <fieldset>
       <legend>Layers to Include</legend>
-      <label>
-        <input type="checkbox" [(ngModel)]="options.includeKinematicAnnotations" />
+      <mat-checkbox [(ngModel)]="options.includeKinematicAnnotations">
         <span>
           <strong>Kinematic annotations</strong>
           <small>Ground symbols and input direction arrows</small>
         </span>
-      </label>
-      <label>
-        <input type="checkbox" [(ngModel)]="options.includeForces" />
+      </mat-checkbox>
+      <mat-checkbox [(ngModel)]="options.includeForces">
         <span>
           <strong>Forces</strong>
           <small>Force vectors on their own CAD layer</small>
         </span>
-      </label>
-      <label>
-        <input type="checkbox" [(ngModel)]="options.includeConstruction" />
+      </mat-checkbox>
+      <mat-checkbox [(ngModel)]="options.includeConstruction">
         <span>
           <strong>Construction geometry</strong>
           <small>Slot extent ticks and semantic guides useful for CAD editing</small>
         </span>
-      </label>
-      <label>
-        <input type="checkbox" [(ngModel)]="options.includeLabels" />
+      </mat-checkbox>
+      <mat-checkbox [(ngModel)]="options.includeLabels">
         <span>
           <strong>Labels</strong>
           <small>Joint and body names; off by default for a clean sketch</small>
         </span>
-      </label>
+      </mat-checkbox>
     </fieldset>
 
     <p class="footnote">

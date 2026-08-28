@@ -35,6 +35,10 @@
       color="primary"
       [disabled]="this.disabled()"
       [formControlName]="this._formControl()"
+      [attr.data-action]="dataAction()"
     ></mat-slide-toggle>
+    @if (mixed()) {
+      <span class="mixed-state">Mixed</span>
+    }
   </div>
 </div>

@@ -32,6 +32,9 @@ export class ToggleComponent {
   readonly tooltip = input<string>();
   readonly formGroup = input.required<FormGroup>();
   readonly _formControl = input.required<string>();
+  /** Bulk forms can name the control and state that its selected values differ. */
+  readonly dataAction = input<string>();
+  readonly mixed = input<boolean>(false);
 
   /**
    * Greys the switch out, like `radio-block`'s input of the same name.

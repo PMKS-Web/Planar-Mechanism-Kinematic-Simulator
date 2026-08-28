@@ -10,6 +10,7 @@
     [matTooltip]="this.tooltip() ?? ''"
     [matTooltipDisabled]="!this.tooltip()"
     [matTooltipShowDelay]="1000"
+    [attr.data-action]="dataAction()"
   >
     @if (icon && !customIcon) {
       <mat-icon>{{ icon }}</mat-icon>

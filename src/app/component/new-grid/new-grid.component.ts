@@ -2531,6 +2531,11 @@ export class NewGridComponent implements OnDestroy {
     return this.instance?.synthCanvas.dragging ?? false;
   }
 
+  /** A group transform owns the pointer even though it does not use the legacy drag enums. */
+  static isSelectionGestureLive(): boolean {
+    return this.instance?.selectionGesture !== undefined;
+  }
+
   // --- Synthesis on the canvas -------------------------------------------
   //
   // Thin plumbing only: every handler turns a screen point into a model point
