@@ -196,23 +196,19 @@ describe('semantic DXF centerline geometry', () => {
     );
     const lines = (entitiesOn(parsed.entities, DXF_LAYER.links) as ILineEntity[]).map(lineEnds);
 
-    expect(lines).toEqual(
-      expect.arrayContaining([
-        [
-          [0, 0],
-          [2, 0],
-        ],
-        [
-          [0, 0],
-          [0, 2],
-        ],
-        [
-          [10, -3],
-          [12, -3],
-        ],
-      ])
-    );
-    expect(lines).toHaveLength(3);
+    // A three-joint body is a closed triangle, not two lines meeting at
+    // whichever joint happened to be first. Drawn as a star out of joint[0] it
+    // came out as an open corner -- neither the part nor anything a reader
+    // would recognise as one.
+    const edges = lines.map((ends) => JSON.stringify(ends.slice().sort()));
+    const has = (from: number[], to: number[]) => edges.includes(JSON.stringify([from, to].sort()));
+    expect(has([0, 0], [2, 0])).toBe(true);
+    expect(has([2, 0], [0, 2])).toBe(true);
+    expect(has([0, 2], [0, 0])).toBe(true);
+    expect(has([10, -3], [12, -3])).toBe(true);
+    // Three edges round the triangle and one for the separate bar, with the
+    // defensive duplicate link contributing nothing.
+    expect(lines).toHaveLength(4);
   });
 
   it('exports grounded and floating slot axes, with a circle at each pin', () => {
@@ -234,7 +230,8 @@ describe('semantic DXF centerline geometry', () => {
         defaultInputClockwise: true,
       })
     );
-    const slots = entitiesOn(parsed.entities, DXF_LAYER.slots) as ILineEntity[];
+    const onSlots = entitiesOn(parsed.entities, DXF_LAYER.slots);
+    const slots = onSlots.filter((entity) => entity.type === 'LINE') as ILineEntity[];
 
     expect(slots.map(lineEnds)).toContainEqual([
       [0, 0],
@@ -244,9 +241,11 @@ describe('semantic DXF centerline geometry', () => {
       [-2, -3],
       [-2, -1],
     ]);
-    // The slot axis itself and nothing else. The extent ticks that used to sit
-    // on a construction layer were four more sketch curves to delete in CAD.
+    // The axis, and the block riding on it. Without the block a sliding pair is
+    // one more line among lines, and nothing separates "slides along here" from
+    // "another bar happens to lie here".
     expect(slots).toHaveLength(2);
+    expect(onSlots.filter((entity) => entity.type === 'POLYLINE')).toHaveLength(2);
     const sliderPins = entitiesOn(parsed.entities, DXF_LAYER.joints).filter(
       (entity) => entity.type === 'CIRCLE'
     ) as ICircleEntity[];
@@ -284,12 +283,17 @@ describe('semantic DXF centerline geometry', () => {
       })
     );
 
-    const cylinders = entitiesOn(parsed.entities, DXF_LAYER.cylinders) as ILineEntity[];
+    const onCylinders = entitiesOn(parsed.entities, DXF_LAYER.cylinders);
+    const cylinders = onCylinders.filter((entity) => entity.type === 'LINE') as ILineEntity[];
     expect(cylinders).toHaveLength(1);
     expect(lineEnds(cylinders[0])).toEqual([
       [-4, 0],
       [5, 0],
     ]);
+    // And the barrel drawn as a body beside it: which half is the sleeve and
+    // which is the rod is the whole point of a cylinder, and a plain line
+    // between two mounts says neither.
+    expect(onCylinders.filter((entity) => entity.type === 'POLYLINE')).toHaveLength(1);
     expect(entitiesOn(parsed.entities, DXF_LAYER.links)).toHaveLength(0);
     expect(
       entitiesOn(parsed.entities, DXF_LAYER.joints).filter((entity) => entity.type === 'CIRCLE')

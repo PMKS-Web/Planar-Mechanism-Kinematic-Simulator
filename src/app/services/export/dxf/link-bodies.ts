@@ -15,6 +15,22 @@ import { DxfEntity, DxfPoint, DxfPolyline, DxfVertex } from './dxf-model';
  * asked for in a form something other than an SVG path can read.
  */
 
+/**
+ * A cross at a joint that is welded rather than pinned.
+ *
+ * The canvas draws exactly this mark, and the drawing needs it for the same
+ * reason: a welded joint and a pinned one look identical once they are both
+ * just a point on a part, and they are opposite things. One turns and one is
+ * solid. A weld gets no hole -- drilling one would invite a bearing into a
+ * place that must never move.
+ */
+export function weldMark(at: DxfPoint, reach: number, layer: string): DxfEntity[] {
+  return [
+    { type: 'LINE', layer, start: { x: at.x - reach, y: at.y }, end: { x: at.x + reach, y: at.y } },
+    { type: 'LINE', layer, start: { x: at.x, y: at.y - reach }, end: { x: at.x, y: at.y + reach } },
+  ];
+}
+
 /** A quarter circle, as a polyline vertex wants it: `tan(90deg / 4)`. */
 const QUARTER = Math.tan(Math.PI / 8);
 
@@ -59,6 +75,15 @@ export interface LinkBodyInput {
   pinRadius: number;
   /** `PMKS_LINK_AB` for a link, or the shared layer when they are not split. */
   layerFor: (link: RealLink) => string;
+  /**
+   * Links that are drawn as something else and must not get a generic body.
+   *
+   * A sealed cylinder's barrel and rod are exported as a sleeve and a rod with
+   * a bore between them; drawing the plain link outline as well put two
+   * overlapping parts on top of each other and made the whole assembly
+   * unreadable.
+   */
+  drawnElsewhere?: ReadonlySet<string>;
 }
 
 /**
@@ -75,6 +100,7 @@ export function linkBodies(input: LinkBodyInput): {
   const entities: DxfEntity[] = [];
   const missing: RealLink[] = [];
   bodyLinks(input.links).forEach((link) => {
+    if (input.drawnElsewhere?.has(link.id)) return;
     const layer = input.layerFor(link);
     const loops = link.outlineLoops();
     if (loops.length === 0) {
@@ -95,18 +121,22 @@ export function linkBodies(input: LinkBodyInput): {
     // The holes belong to the part, not to a shared joint layer: a face with
     // its holes already in it extrudes into a finished body in one step, and a
     // joint two links share needs the same hole cut in each of them.
-    if (input.pinRadius > 0) {
-      link.joints
-        .filter((joint) => !(joint instanceof PrisJoint))
-        .forEach((joint) =>
-          entities.push({
-            type: 'CIRCLE',
-            layer,
-            center: input.point(joint),
-            radius: input.pinRadius,
-          })
-        );
-    }
+    link.joints
+      .filter((joint) => !(joint instanceof PrisJoint))
+      .forEach((joint) => {
+        const at = input.point(joint);
+        // A welded joint is not a bearing. It gets the cross the canvas draws
+        // there instead of a hole, so a reader can see which corners of this
+        // part turn and which are solid -- and does not drill the ones that
+        // are solid.
+        if (isWelded(joint)) {
+          entities.push(...weldMark(at, input.scale * 0.1, layer));
+          return;
+        }
+        if (input.pinRadius > 0) {
+          entities.push({ type: 'CIRCLE', layer, center: at, radius: input.pinRadius });
+        }
+      });
   });
   return { entities, missing };
 }
@@ -203,21 +233,43 @@ export function cylinderParts(
   rodLayer: string
 ): DxfEntity[] {
   if (!(bodyHalf > 0)) return [];
-  const sleeveHalf = bodyHalf * 2;
-  const boreHalf = bodyHalf;
-  const rodHalf = bodyHalf * 0.6;
+  // Stepped rather than two bars of a similar width lying on each other, which
+  // is what made a cylinder unreadable: nothing said which piece was the body,
+  // which was the moving part, or what slid inside what. Sleeve, bore, piston
+  // and rod each sit a clear step inside the last.
+  const sleeveHalf = bodyHalf * 2.2;
+  const boreHalf = bodyHalf * 1.4;
+  const pistonHalf = bodyHalf * 1.25;
+  const rodHalf = bodyHalf * 0.55;
   const hole = (centre: DxfPoint, layer: string, limit: number): DxfEntity[] =>
     pinRadius > 0
       ? [{ type: 'CIRCLE', layer, center: centre, radius: Math.min(pinRadius, limit) }]
       : [];
+  // How far the piston sits from the mouth, so the head has somewhere to be.
+  const span = Math.hypot(at.barrelNear.x - at.barrelFar.x, at.barrelNear.y - at.barrelFar.y) || 1;
+  const along = {
+    x: (at.barrelNear.x - at.barrelFar.x) / span,
+    y: (at.barrelNear.y - at.barrelFar.y) / span,
+  };
+  const headBack = {
+    x: at.pin.x - along.x * pistonHalf,
+    y: at.pin.y - along.y * pistonHalf,
+  };
+  const headFront = {
+    x: at.pin.x + along.x * pistonHalf,
+    y: at.pin.y + along.y * pistonHalf,
+  };
   return [
-    // The sleeve and the bore through it. An outer loop with an inner one is a
+    // The sleeve, and the bore through it. An outer loop with an inner one is a
     // tube once extruded, which is what the rod has to slide in.
     capsule(at.barrelFar, at.barrelNear, sleeveHalf, sleeveLayer),
     capsule(at.barrelFar, at.barrelNear, boreHalf, sleeveLayer),
-    ...hole(at.barrelFar, sleeveLayer, sleeveHalf * 0.5),
-    // The rod, from where it is buried in the sleeve out to its own mount.
+    ...hole(at.barrelFar, sleeveLayer, sleeveHalf * 0.4),
+    // The rod, and the piston head on the end of it that the bore holds. The
+    // head is what makes the drawing say "this slides in that" rather than
+    // "these two happen to overlap".
     capsule(at.pin, at.rodFar, rodHalf, rodLayer),
+    capsule(headBack, headFront, pistonHalf, rodLayer),
     ...hole(at.rodFar, rodLayer, rodHalf * 0.6),
   ];
 }
@@ -337,6 +389,11 @@ function nominalTravel(joint: PrisJoint): {
     from: { x: joint.x - dx, y: joint.y - dy },
     to: { x: joint.x + dx, y: joint.y + dy },
   };
+}
+
+/** Whether a joint is welded solid rather than free to turn. */
+export function isWelded(joint: unknown): boolean {
+  return (joint as { isWelded?: boolean }).isWelded === true;
 }
 
 /** The links that are bodies in their own right: leaves, and no slider blocks. */

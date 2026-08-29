@@ -7,8 +7,10 @@ import { LengthUnit } from '../../../model/unit-enums';
 import { DxfDocument, DxfEntity, DxfLayer, DxfLine, DxfPoint } from './dxf-model';
 import { DxfExportOptions, NEUTRAL_DXF_OPTIONS } from './dxf-options';
 import {
+  capsule,
   cylinderParts,
   defaultPinDiameter,
+  weldMark,
   groundPlate,
   linkBodies,
   linkBodyWidth,
@@ -59,6 +61,8 @@ export interface SemanticDxfInput {
   tracedPaths?: TracedPath[];
   /** How far each slot's block really travels, measured over the solved cycle. */
   slotTravels?: SlotTravel[];
+  /** Joint ids per machine, so each gets a plate of its own rather than one. */
+  groundGroups?: string[][];
 }
 
 const LAYERS = [
@@ -134,6 +138,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       scale: symbolScale,
       pinRadius,
       layerFor: (link) => (choices.perLinkLayers ? layerNameFor(link.id) : DXF_LAYER.links),
+      drawnElsewhere: cylinderBodies,
     });
     entities.push(...bodies.entities);
     bodyLoops = bodies.entities.filter((entity) => entity.type === 'POLYLINE').length;
@@ -189,6 +194,12 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
         );
       } else {
         entities.push({ type: 'LINE', layer: DXF_LAYER.cylinders, start, end });
+        // The barrel drawn as a body, so a cylinder is not one more bar. Which
+        // half is the sleeve and which is the rod is the whole point of it, and
+        // a plain line between two mounts says neither.
+        entities.push(
+          capsule(start, point(cylinder.barrelNear), 0.12 * symbolScale, DXF_LAYER.cylinders)
+        );
       }
       if (input.includeKinematicAnnotations !== false && cylinder.slider.input) {
         const clockwise =
@@ -239,6 +250,11 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
           );
         } else {
           entities.push(slotAxis(joint, point, symbolScale));
+          // The block, so a sliding pair is not one more line among lines. The
+          // canvas draws a rectangle on the slot; this is the same rectangle,
+          // and it is the only thing separating "slides along here" from
+          // "another bar happens to lie here".
+          entities.push(...blockMark(joint, point, symbolScale, DXF_LAYER.slots));
         }
       }
       const pairedPin = blockPins.has(joint.id) && !(joint instanceof PrisJoint);
@@ -267,26 +283,30 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
           });
         }
         if (choices.includeGroundPoints && joint instanceof RealJoint && joint.ground) {
-          // Which points do not move, as a cross a reader can see and an
-          // importer keeps. The ground *symbol* is a drawing convention; this
-          // is the fact behind it, and it is what says which part to fix.
+          // Which points do not move. A triangle rather than a cross, because
+          // the cross means *welded* -- and a mark that means two opposite
+          // things is worse than no mark. This is the same triangle the canvas
+          // hatches under a grounded joint.
           const at = point(joint);
-          const arm = 0.16 * symbolScale;
-          entities.push(
-            {
-              type: 'LINE',
-              layer: DXF_LAYER.groundPoints,
-              start: { x: at.x - arm, y: at.y },
-              end: { x: at.x + arm, y: at.y },
-            },
-            {
-              type: 'LINE',
-              layer: DXF_LAYER.groundPoints,
-              start: { x: at.x, y: at.y - arm },
-              end: { x: at.x, y: at.y + arm },
-            }
-          );
+          const arm = 0.18 * symbolScale;
+          entities.push({
+            type: 'POLYLINE',
+            layer: DXF_LAYER.groundPoints,
+            closed: true,
+            points: [
+              { x: at.x, y: at.y },
+              { x: at.x - arm, y: at.y - arm * 1.4 },
+              { x: at.x + arm, y: at.y - arm * 1.4 },
+            ],
+          });
         }
+      }
+      // The same cross the bodies get, and the same one the canvas draws. A
+      // welded joint has no circle here -- correctly, it is not a bearing --
+      // but nothing said so, and a reader could not tell a rigid corner from a
+      // missing one.
+      if (joint instanceof RealJoint && joint.isWelded && !cylinderInterior.has(joint.id)) {
+        entities.push(...weldMark(point(joint), 0.1 * symbolScale, DXF_LAYER.joints));
       }
       if (input.includeKinematicAnnotations !== false && joint instanceof RealJoint) {
         const at = point(joint);
@@ -335,26 +355,26 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     entities.push(...slotTravelPoints(input.joints, point, symbolScale));
   }
   if (choices.includeGroundPlate) {
-    const fixed = input.joints.filter((joint) => joint instanceof RealJoint && joint.ground);
-    // A grounded slot is cut *into* this plate, so the plate has to reach the
-    // whole stroke -- otherwise the slot runs off the end of the part holding
-    // it, which is a drawing nobody can build from.
-    const carried = input.joints
-      .filter((joint): joint is PrisJoint => joint instanceof PrisJoint && !joint.isFloating)
-      .flatMap((joint) => {
-        const travel = (input.slotTravels ?? []).find((one) => one.jointId === joint.id);
-        return travel ? [travel.from, travel.to] : [];
-      });
-    entities.push(
-      ...groundPlate(
-        [...fixed, ...carried],
+    // One plate per machine. A drawing can hold several mechanisms side by
+    // side, and a single box round every fixed pin in all of them is a plate
+    // the size of the whole drawing, lying across the parts it is meant to sit
+    // under. Which pins belong together is a question the partitioner already
+    // answers.
+    const machines =
+      input.groundGroups && input.groundGroups.length > 0
+        ? input.groundGroups
+        : [input.joints.map((joint) => joint.id)];
+    machines.forEach((ids) => {
+      const mine = new Set(ids);
+      addGroundPlate(
+        input.joints.filter((joint) => mine.has(joint.id)),
+        input,
         point,
         symbolScale,
         pinRadius,
-        DXF_LAYER.groundPlate,
-        fixed
-      )
-    );
+        entities
+      );
+    });
   }
 
   if (choices.includeDimensions) {
@@ -474,6 +494,56 @@ function originShift(
     if (grounded) return at(grounded);
   }
   return { x: 0, y: 0 };
+}
+
+/** The plate under one machine's fixed pins, reaching round any slot it holds. */
+function addGroundPlate(
+  mine: Joint[],
+  input: SemanticDxfInput,
+  point: (value: { x: number; y: number }) => DxfPoint,
+  scale: number,
+  pinRadius: number,
+  entities: DxfEntity[]
+): void {
+  const fixed = mine.filter((joint) => joint instanceof RealJoint && joint.ground);
+  if (fixed.length === 0) return;
+  // A grounded slot is cut *into* this plate, so the plate has to reach the
+  // whole stroke -- otherwise the slot runs off the end of the part holding it,
+  // which is a drawing nobody can build from.
+  const carried = mine
+    .filter((joint): joint is PrisJoint => joint instanceof PrisJoint && !joint.isFloating)
+    .flatMap((joint) => {
+      const travel = (input.slotTravels ?? []).find((one) => one.jointId === joint.id);
+      return travel ? [travel.from, travel.to] : [];
+    });
+  entities.push(
+    ...groundPlate([...fixed, ...carried], point, scale, pinRadius, DXF_LAYER.groundPlate, fixed)
+  );
+}
+
+/** The rectangle a slider block is, drawn square to its own slot. */
+function blockMark(
+  joint: PrisJoint,
+  point: (value: { x: number; y: number }) => DxfPoint,
+  scale: number,
+  layer: string
+): DxfEntity[] {
+  const at = point(joint);
+  const angle = joint.slotAngle;
+  const along = { x: Math.cos(angle) * 0.22 * scale, y: Math.sin(angle) * 0.22 * scale };
+  const across = { x: -Math.sin(angle) * 0.12 * scale, y: Math.cos(angle) * 0.12 * scale };
+  const corner = (a: number, b: number) => ({
+    x: at.x + along.x * a + across.x * b,
+    y: at.y + along.y * a + across.y * b,
+  });
+  return [
+    {
+      type: 'POLYLINE',
+      layer,
+      closed: true,
+      points: [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)],
+    },
+  ];
 }
 
 /**
@@ -684,16 +754,46 @@ function semanticAxes(
     .filter((link): link is RealLink => link instanceof RealLink && !excluded.has(link.id))
     .filter((link) => link.joints.length >= 2)
     .sort((a, b) => a.id.localeCompare(b.id))
-    .flatMap((link) =>
-      link.joints.slice(1).map((joint) => ({
-        start: point(link.joints[0]),
-        end: point(joint),
-        startId: link.joints[0].id,
-        endId: joint.id,
+    .flatMap((link) => {
+      // The closed shape of the link, not a star out of whichever joint
+      // happens to be first. A three-joint link is a triangle and a four-joint
+      // link is a quadrilateral -- drawn from joint[0] to each of the others,
+      // a triangle came out as two lines meeting at a point and a quadrilateral
+      // as a fan, which is neither the part nor anything a reader recognises.
+      const ring = outlineOrder(link.joints);
+      const edges = ring.length === 2 ? [[ring[0], ring[1]]] : closedRing(ring);
+      return edges.map(([from, to]) => ({
+        start: point(from),
+        end: point(to),
+        startId: from.id,
+        endId: to.id,
         key: link.id,
         label: link.name,
-      }))
-    );
+      }));
+    });
+}
+
+/**
+ * A link's joints in the order its outline runs through them.
+ *
+ * By angle about their own centre, which is the hull order for the convex
+ * shapes a link body always is -- and the order the canvas draws them in.
+ */
+function outlineOrder(joints: readonly Joint[]): Joint[] {
+  if (joints.length < 3) return [...joints];
+  const middle = {
+    x: joints.reduce((sum, joint) => sum + joint.x, 0) / joints.length,
+    y: joints.reduce((sum, joint) => sum + joint.y, 0) / joints.length,
+  };
+  return [...joints].sort(
+    (a, b) =>
+      Math.atan2(a.y - middle.y, a.x - middle.x) - Math.atan2(b.y - middle.y, b.x - middle.x)
+  );
+}
+
+/** Every edge of a closed ring, last joint back round to the first. */
+function closedRing(ring: Joint[]): [Joint, Joint][] {
+  return ring.map((joint, index): [Joint, Joint] => [joint, ring[(index + 1) % ring.length]]);
 }
 
 function leavesOf(link: Link): Link[] {

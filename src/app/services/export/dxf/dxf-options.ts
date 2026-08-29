@@ -29,11 +29,22 @@ export type DxfLinkBodies = 'centerlines' | 'outlines';
 /** How link lengths are written down. */
 export type DxfDimensionStyle = 'entities' | 'table';
 
+/** Which drawing format the file is written in. */
+export type DxfFileFormat = 'dxf' | 'svg';
+
 /** The companion file carrying what DXF cannot. */
 export type DxfDataFile = 'none' | 'csv' | 'json';
 
 export interface DxfExportOptions {
   fileName?: string;
+  /**
+   * DXF for CAD, SVG for a laser cutter or a drawing program.
+   *
+   * The same drawing either way -- closed loops, a layer per part, holes cut
+   * into the profile that carries them -- because the format is a writer over
+   * one document rather than a second pipeline.
+   */
+  fileFormat?: DxfFileFormat;
   /** Overrides the project's unit for this export only. */
   unit?: LengthUnit;
 
@@ -136,6 +147,7 @@ export type DxfPresetName = keyof typeof DXF_PRESETS;
  */
 export const NEUTRAL_DXF_OPTIONS: DxfExportChoices = {
   fileName: 'mechanism',
+  fileFormat: 'dxf',
   origin: 'model',
   jointCircles: 'marks',
   linkBodies: 'centerlines',

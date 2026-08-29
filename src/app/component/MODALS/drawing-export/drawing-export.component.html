@@ -5,7 +5,7 @@
       <mat-icon>close</mat-icon>
     </button>
   </div>
-  <p class="subtitle">DXF R12 · {{ subtitleShape }}</p>
+  <p class="subtitle">{{ formatName }} · {{ subtitleShape }}</p>
 
   <div mat-dialog-content>
     <!-- The two things that surprise people, said once and quietly: they are
@@ -79,7 +79,21 @@
               (ngModelChange)="options.fileName = $event"
               aria-label="DXF file name"
             />
-            <span class="fieldNote">({{ unitWord }}).dxf</span>
+            <span class="fieldNote">({{ unitWord }}).{{ options.fileFormat }}</span>
+          </div>
+          <div class="field">
+            <span class="fieldName">Format</span>
+            <div class="segmented">
+              @for (choice of formatChoices; track choice.value) {
+                <button
+                  [class.on]="options.fileFormat === choice.value"
+                  (click)="set({ fileFormat: choice.value })"
+                >
+                  {{ choice.label }}
+                </button>
+              }
+            </div>
+            <span class="fieldNote">{{ formatNote }}</span>
           </div>
           <div class="field">
             <span class="fieldName">Units</span>

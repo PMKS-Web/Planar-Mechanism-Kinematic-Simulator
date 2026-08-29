@@ -12,6 +12,7 @@ import { sealedCylinderStructures } from '../../../model/cylinder';
 import { defaultPinDiameter, linkBodyWidth, SlotTravel } from './link-bodies';
 import { buildSemanticDxf, centimetersIn, TracedPath } from './semantic-dxf';
 import { writeDxf } from './dxf-writer';
+import { writeSvg } from './svg-writer';
 
 export * from './dxf-options';
 
@@ -56,9 +57,13 @@ export class DxfExportService {
     // dialogs in Fusion and Onshape ask for units anyway -- a student who
     // accepts the default gets a part ten or a hundred times out. The name is
     // in front of them at exactly the moment they are being asked.
-    const dxfName = `${stem} (${unitWord(unit)}).dxf`;
+    const dxfName = `${stem} (${unitWord(unit)}).${choices.fileFormat === 'svg' ? 'svg' : 'dxf'}`;
+    const write = (document: ReturnType<typeof buildSemanticDxf>) =>
+      choices.fileFormat === 'svg'
+        ? writeSvg(document, unitWord(unit) as 'cm' | 'm' | 'in')
+        : writeDxf(document);
     const content = this.mechanism.encodeFromStartPose(() =>
-      writeDxf(
+      write(
         buildSemanticDxf({
           joints: this.mechanism.joints,
           links: this.mechanism.links,
@@ -70,12 +75,16 @@ export class DxfExportService {
           options: { ...choices, unit },
           tracedPaths: choices.includeTracedPaths ? this.tracedPaths() : [],
           slotTravels: this.slotTravels(),
+          groundGroups: this.groundGroups(),
         })
       )
     );
 
     if (choices.dataFile === 'none') {
-      const mime = 'application/dxf;charset=utf-8';
+      const mime =
+        choices.fileFormat === 'svg'
+          ? 'image/svg+xml;charset=utf-8'
+          : 'application/dxf;charset=utf-8';
       return {
         name: dxfName,
         mime,
@@ -146,6 +155,7 @@ export class DxfExportService {
       options: { ...choices, unit },
       tracedPaths: choices.includeTracedPaths ? this.tracedPaths() : [],
       slotTravels: this.slotTravels(),
+      groundGroups: this.groundGroups(),
     });
     const xs: number[] = [];
     const ys: number[] = [];
@@ -193,7 +203,7 @@ export class DxfExportService {
     const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
     const unit = choices.unit ?? this.settings.lengthUnit.value;
     const stem = fileStem(choices.fileName || DEFAULT_DXF_EXPORT_OPTIONS.fileName);
-    const dxf = `${stem} (${unitWord(unit)}).dxf`;
+    const dxf = `${stem} (${unitWord(unit)}).${choices.fileFormat === 'svg' ? 'svg' : 'dxf'}`;
     if (choices.dataFile === 'none') return [dxf];
     if (choices.dataFile === 'json') return [dxf, `${stem}.json`, 'README.txt'];
     return [
@@ -348,6 +358,19 @@ export class DxfExportService {
         return { jointId, from, to };
       })
       .filter((travel) => travel.from !== travel.to);
+  }
+
+  /**
+   * Which joints belong to which machine.
+   *
+   * A drawing can hold several mechanisms side by side, and each wants a base
+   * plate of its own -- one box round every fixed pin in all of them is a plate
+   * the size of the drawing. The partitioner already knows the answer.
+   */
+  private groundGroups(): string[][] {
+    return (this.mechanism.partitions ?? [])
+      .map((partition) => (partition.ownJoints ?? []).map((joint: Joint) => joint.id))
+      .filter((ids) => ids.length > 0);
   }
 
   private jointCsv(unit: LengthUnit): string {
@@ -525,6 +548,7 @@ function handoffNotes(
     perLinkLayers: boolean;
     includeGroundPlate: boolean;
     dataFile: string;
+    fileFormat: string;
   },
   has: { cylinders: boolean; slots: boolean }
 ): string {
@@ -536,10 +560,18 @@ function handoffNotes(
     'PMKS+ CAD export',
     '=================',
     '',
-    `This drawing is in ${word}. R12 (AC1009) has no header field for units, so the`,
-    'unit is in the file name instead -- and every program below asks you to choose',
-    `one on import. Choose ${word}, or the parts come out ten or a hundred times the`,
-    'wrong size.',
+    ...(choices.fileFormat === 'svg'
+      ? [
+          `This drawing is an SVG in ${word}, and it carries its own physical size --`,
+          'open it in a laser cutter or a drawing program and it is already the size it',
+          'was drawn. Each part is a layer; the closed outlines are what you cut.',
+        ]
+      : [
+          `This drawing is in ${word}. R12 (AC1009) has no header field for units, so`,
+          'the unit is in the file name instead -- and every program below asks you to',
+          `choose one on import. Choose ${word}, or the parts come out ten or a hundred`,
+          'times the wrong size.',
+        ]),
     '',
     ...(parts
       ? [
@@ -612,6 +644,12 @@ function handoffNotes(
     '   constraint on each shared pair of holes.',
     '4. Fix the base component and drag the input, or set up a Motion simulation',
     '   with revolute joints on the concentric pairs.',
+    '',
+    'Reading the marks',
+    '-----------------',
+    'A circle is a pin: those two parts turn against each other, and the hole is',
+    'where the pin goes. A cross is a weld -- solid, no hole, and the pieces either',
+    'side of it are one part. A small triangle marks a joint fixed to the frame.',
     '',
     'What DXF cannot carry',
     '---------------------',

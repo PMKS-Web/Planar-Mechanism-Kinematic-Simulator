@@ -34,9 +34,13 @@ describe('the parts a mechanism is made of', () => {
         return Math.max(...ys) - Math.min(...ys);
       };
       expect(width(sleeve[0])).toBeGreaterThan(width(sleeve[1]));
-      expect(rod).toHaveLength(1);
-      // The rod fits down the bore.
-      expect(width(rod[0])).toBeLessThan(width(sleeve[1]));
+      // The rod, and the piston head on the end of it. The head is what makes
+      // the drawing say "this slides in that" rather than "these two overlap".
+      expect(rod).toHaveLength(2);
+      const [thin, head] = rod.slice().sort((a, b) => width(a) - width(b));
+      expect(width(thin)).toBeLessThan(width(head));
+      // Both fit down the bore, the head only just.
+      expect(width(head)).toBeLessThan(width(sleeve[1]));
       // A pin at each mount, which is what the assembly hangs off.
       expect(entities.filter((entity) => entity.type === 'CIRCLE')).toHaveLength(2);
     });

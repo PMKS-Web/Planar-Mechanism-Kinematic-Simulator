@@ -17,6 +17,7 @@ import {
   DxfDataFile,
   DxfExportChoices,
   DxfExportService,
+  DxfFileFormat,
   DxfJointCircles,
   DxfLinkBodies,
   DxfOrigin,
@@ -128,6 +129,10 @@ export class DrawingExportComponent {
     { label: 'First ground joint', value: 'ground' },
     { label: 'Centre of drawing', value: 'center' },
     { label: 'Choose a joint…', value: 'joint' },
+  ];
+  readonly formatChoices: { label: string; value: DxfFileFormat }[] = [
+    { label: 'DXF', value: 'dxf' },
+    { label: 'SVG', value: 'svg' },
   ];
   readonly bodyChoices: { label: string; note: string; value: DxfLinkBodies }[] = [
     {
@@ -265,6 +270,16 @@ export class DrawingExportComponent {
 
   // --- what each folded section says ----------------------------------------
 
+  /** The format, as the subtitle names it. */
+  get formatName(): string {
+    return this.options.fileFormat === 'svg' ? 'SVG' : 'DXF R12';
+  }
+
+  /** What each format is for, in the words of somebody choosing between them. */
+  get formatNote(): string {
+    return this.options.fileFormat === 'svg' ? 'For laser cutters and drawing programs' : 'For CAD';
+  }
+
   /** What kind of drawing this will be, said under the title. */
   get subtitleShape(): string {
     return this.options.linkBodies === 'outlines' ? 'part outlines' : 'centreline sketch';
@@ -360,9 +375,10 @@ export class DrawingExportComponent {
   }
 
   get exportLabel(): string {
+    const drawing = this.options.fileFormat === 'svg' ? 'SVG' : 'DXF';
     return this.options.dataFile === 'none'
-      ? 'Export DXF'
-      : `Export DXF + ${this.options.dataFile.toUpperCase()}`;
+      ? `Export ${drawing}`
+      : `Export ${drawing} + ${this.options.dataFile.toUpperCase()}`;
   }
 
   download(): void {
