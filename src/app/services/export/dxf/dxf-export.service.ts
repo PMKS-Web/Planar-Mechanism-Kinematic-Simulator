@@ -8,8 +8,8 @@ import { SettingsService } from '../../settings.service';
 import { utf8, zipStore } from '../zip';
 import { DEFAULT_DXF_EXPORT_OPTIONS, DxfExportOptions } from './dxf-options';
 import { DxfEntity } from './dxf-model';
-import { SlotTravel } from './link-bodies';
-import { buildSemanticDxf, TracedPath } from './semantic-dxf';
+import { defaultPinDiameter, linkBodyWidth, SlotTravel } from './link-bodies';
+import { buildSemanticDxf, centimetersIn, TracedPath } from './semantic-dxf';
 import { writeDxf } from './dxf-writer';
 
 export * from './dxf-options';
@@ -97,7 +97,10 @@ export class DxfExportService {
               ? [{ name: `${stem}-forces.csv`, text: this.forceCsv(unit) }]
               : []),
           ];
-    extras.push({ name: 'README.txt', text: handoffNotes(unit, choices) });
+    extras.push({
+      name: 'README.txt',
+      text: handoffNotes(unit, { ...choices, pinDiameter: this.pinDiameter(options) }),
+    });
     const zip = zipStore([
       { name: dxfName, data: utf8(content) },
       ...extras.map((extra) => ({ name: extra.name, data: utf8(extra.text) })),
@@ -207,14 +210,27 @@ export class DxfExportService {
     const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
     if (choices.jointCircles !== 'holes' || choices.linkBodies !== 'outlines') return '';
     const unit = choices.unit ?? this.settings.lengthUnit.value;
-    // Half the drawn body width: the same number the outline's corner radius is.
-    const bodyWidth = inUnit((SettingsService.objectScale / 4) * 2, unit);
-    const pin = choices.pinDiameter || DEFAULT_DXF_EXPORT_OPTIONS.pinDiameter;
+    const bodyWidth = inUnit(linkBodyWidth(), unit);
+    const pin = this.pinDiameter(options);
     if (!(bodyWidth > 0) || pin < bodyWidth) return '';
     return (
       `Ø${pin} ${unitWord(unit)} pins are wider than the ${bodyWidth.toFixed(2)} ` +
       `${unitWord(unit)} link bodies — the holes will break out of the parts.`
     );
+  }
+
+  /**
+   * The hole this export will cut, chosen or derived.
+   *
+   * Derived means half the width the link bodies are being drawn at, which is
+   * the only answer that can be right: a fixed default sits next to bodies of
+   * whatever width the canvas happens to be using, and 0.6 beside a 0.13-wide
+   * bar is a hole with no part left around it.
+   */
+  pinDiameter(options: DxfExportOptions = {}): number {
+    const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
+    const unit = choices.unit ?? this.settings.lengthUnit.value;
+    return choices.pinDiameter ?? defaultPinDiameter(centimetersIn(unit) / MODEL_SCALE);
   }
 
   /** The project's own unit, which an export uses unless told otherwise. */
@@ -503,9 +519,9 @@ function handoffNotes(
     '=================',
     '',
     `This drawing is in ${word}. R12 (AC1009) has no header field for units, so the`,
-    'unit is in the file name instead -- and Fusion and Onshape both ask you to',
-    `choose one on import. Choose ${word}, or the parts come out ten or a hundred`,
-    'times the wrong size.',
+    'unit is in the file name instead -- and every program below asks you to choose',
+    `one on import. Choose ${word}, or the parts come out ten or a hundred times the`,
+    'wrong size.',
     '',
     parts
       ? 'Each link is one closed outline on its own layer (PMKS_LINK_*), with its pin'
@@ -535,14 +551,39 @@ function handoffNotes(
     '   a circular edge, which is why the holes are here rather than centre marks.',
     '4. Fix the base part and drag or drive the input.',
     '',
+    'In SolidWorks',
+    '-------------',
+    '1. Open the .dxf directly. The DXF/DWG import wizard runs: choose "Import to a',
+    '   new part" as a 2D sketch, and set the units on the same page.',
+    '2. The wizard lists the layers. Bring in one PMKS_LINK_* layer per part, or',
+    '   import them all and split the sketch afterwards -- one layer is one part.',
+    '3. Extrude each closed profile a few mm. The holes are in the profile already.',
+    '4. In an assembly, mate each shared pin with a Concentric mate between the two',
+    '   hole faces, plus a Coincident mate on the flat faces to keep the parts in',
+    '   plane. Fix the base part, then drag the input link or add a motor.',
+    '',
+    'In NX',
+    '-----',
+    '1. File > Import > AutoCAD DXF/DWG. Choose the file, set the units, and import',
+    '   into a new part as curves.',
+    '2. The layers arrive as NX layers. Extrude each closed loop a few mm -- the',
+    '   section selection will pick up the outline and its holes together.',
+    '3. In an assembly, add Touch/Align constraints on the faces and a Concentric',
+    '   constraint on each shared pair of holes.',
+    '4. Fix the base component and drag the input, or set up a Motion simulation',
+    '   with revolute joints on the concentric pairs.',
+    '',
     'What DXF cannot carry',
     '---------------------',
     'Joints, mates, motion and mass. Those are in the companion tables beside this',
     'file, and in PMKS+ itself. What the drawing does carry is exact hole positions',
     'shared between mating parts, which is the part that is tedious to redo by hand.',
+    'In every program above, the concentric or revolute pairing is the one thing you',
+    'still have to say -- the geometry is already lined up for it.',
     '',
-    `Pin holes are ${choices.pinDiameter} ${word} across. If your pins are a different`,
-    'size, change it in the export dialog -- easier than editing every sketch.',
+    `Pin holes are ${choices.pinDiameter} ${word} across, which is half the width of`,
+    'the link bodies unless you chose otherwise. If your pins are a different size,',
+    'change it in the export dialog -- easier than editing every sketch.',
   ]
     .filter((line, index, all) => line !== '' || all[index - 1] !== '')
     .join('\r\n')

@@ -300,8 +300,10 @@ $rule: #eceef5;
     font-size: 14px;
     color: #2c2c2c;
 
+    // Wide enough for a derived pin diameter, which is not a round number:
+    // 62px clipped the last digit of "0.067".
     &.narrow {
-      flex: 0 0 62px;
+      flex: 0 0 76px;
       height: 28px;
     }
   }

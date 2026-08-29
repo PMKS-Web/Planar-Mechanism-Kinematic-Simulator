@@ -34,6 +34,7 @@ describe('DrawingExportComponent', () => {
     fileNames: vi.fn().mockReturnValue(['mechanism (cm).dxf', 'mechanism-joints.csv']),
     downloadName: vi.fn().mockReturnValue('mechanism.zip'),
     pinWarning: vi.fn().mockReturnValue(''),
+    pinDiameter: vi.fn().mockReturnValue(0.13),
   };
 
   function render() {
@@ -119,7 +120,14 @@ describe('DrawingExportComponent', () => {
     expect(component.preset).toBe('build');
     expect(element.querySelector('.linkButton')).toBeNull();
     expect(component.effectiveUnit).toBe(LengthUnit.METER);
-    // 0.6 cm is a hole in a part, not the number 0.6.
+    // A pin nobody chose is derived from the drawing and already follows the
+    // unit, so changing units leaves it unset rather than pinning it down.
+    expect(component.options.pinDiameter).toBeUndefined();
+
+    // One that was typed is a physical hole, and keeps its size across units.
+    component.chooseUnit(LengthUnit.CM);
+    component.touch({ pinDiameter: 0.6 });
+    component.chooseUnit(LengthUnit.METER);
     expect(component.options.pinDiameter).toBeCloseTo(0.006, 6);
     component.chooseUnit(LengthUnit.INCH);
     expect(component.options.pinDiameter).toBeCloseTo(0.6 / 2.54, 4);

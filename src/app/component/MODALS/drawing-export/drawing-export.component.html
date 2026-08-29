@@ -174,11 +174,16 @@
                   type="number"
                   min="0"
                   step="0.1"
-                  [ngModel]="options.pinDiameter"
+                  [ngModel]="effectivePinDiameter"
                   (ngModelChange)="touch({ pinDiameter: +$event })"
                   aria-label="Pin diameter"
                 />
-                <span class="fieldNote">{{ summary.unit }} · every joint</span>
+                <span class="fieldNote">
+                  {{ unitWord }} · every joint
+                  @if (options.pinDiameter === undefined) {
+                    · sized to fit the parts
+                  }
+                </span>
               </div>
             }
           </div>

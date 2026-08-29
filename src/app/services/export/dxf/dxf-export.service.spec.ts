@@ -7,6 +7,7 @@ import { RealLink } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { LengthUnit } from '../../../model/unit-enums';
 import { MechanismService } from '../../mechanism.service';
+import { linkBodyWidth } from './link-bodies';
 import { SettingsService } from '../../settings.service';
 import {
   DEFAULT_DXF_EXPORT_OPTIONS,
@@ -222,14 +223,29 @@ describe('DxfExportService', () => {
     ).toHaveLength(0);
   });
 
-  it('says so when the pins would break out of the parts', () => {
+  it('sizes the pin to the parts unless somebody chooses one', () => {
     const { service } = setup();
-    // The bodies are the width the canvas draws them, which is a display
-    // convention; the pin is whatever was typed. Together the defaults can cut
-    // a hole wider than the bar holding it, and the file looks fine until
-    // somebody extrudes it.
+    // Half the width the bodies are drawn at, which leaves a quarter of the
+    // width as material either side. A fixed default cannot be right: the
+    // bodies are whatever width the canvas happens to be using, and the old
+    // 0.6 beside a 0.13-wide bar was a hole with no part left around it.
+    const derived = service.pinDiameter();
+    // Model units -> centimetres -> metres, which is what this project is in.
+    const bodyWidth = linkBodyWidth() / MODEL_SCALE / 100;
+    expect(derived).toBeGreaterThan(0);
+    expect(derived).toBeLessThan(bodyWidth);
+    expect(derived).toBeCloseTo(bodyWidth / 2, 3);
+    // It follows the unit, because it is a physical hole rather than a number.
+    expect(service.pinDiameter({ unit: LengthUnit.CM })).toBeCloseTo(derived * 100, 3);
+    // And a chosen one is used as given.
+    expect(service.pinDiameter({ pinDiameter: 0.42 })).toBe(0.42);
+  });
+
+  it('says so when a chosen pin would break out of the parts', () => {
+    const { service } = setup();
     expect(service.pinWarning({ pinDiameter: 10 })).toContain('wider than');
-    expect(service.pinWarning({ pinDiameter: 1e-6 })).toBe('');
+    // The default no longer can, which is the point of deriving it.
+    expect(service.pinWarning()).toBe('');
     // Only when there is a body for it to break out of.
     expect(service.pinWarning({ pinDiameter: 10, linkBodies: 'centerlines' })).toBe('');
     expect(service.pinWarning({ pinDiameter: 10, jointCircles: 'marks' })).toBe('');

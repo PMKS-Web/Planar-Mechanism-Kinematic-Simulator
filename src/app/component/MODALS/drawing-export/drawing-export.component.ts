@@ -158,6 +158,17 @@ export class DrawingExportComponent {
     return this.options.unit ?? this.exportService.projectUnit();
   }
 
+  /**
+   * The hole this export will cut, chosen or derived.
+   *
+   * Same shape as `effectiveUnit` and for the same reason: the field shows what
+   * will happen, whether or not anybody has typed into it. Derived means half
+   * the width the link bodies are drawn at, so the hole fits the part.
+   */
+  get effectivePinDiameter(): number {
+    return this.exportService.pinDiameter(this.options);
+  }
+
   jointChoices(): { id: string; name: string }[] {
     return this.exportService.originJointChoices();
   }
@@ -213,6 +224,13 @@ export class DrawingExportComponent {
    * part came back.
    */
   chooseUnit(unit: LengthUnit): void {
+    // A pin nobody has chosen is derived from the drawing and already follows
+    // the unit, so there is nothing to rescale -- and rescaling it would pin it
+    // to a number, which is exactly what "unset" is avoiding.
+    if (this.options.pinDiameter === undefined) {
+      this.set({ unit });
+      return;
+    }
     const factor = centimetersIn(unit) / centimetersIn(this.effectiveUnit);
     this.set({
       unit,
@@ -258,7 +276,7 @@ export class DrawingExportComponent {
         ? 'points only'
         : this.options.jointCircles === 'marks'
           ? 'joint marks'
-          : `Ø${this.options.pinDiameter} ${this.summary.unit} holes`;
+          : `Ø${this.effectivePinDiameter} ${this.summary.unit} holes`;
     return `${bodies} · ${origin} · ${circles}`;
   }
 

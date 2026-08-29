@@ -6,7 +6,13 @@ import { MODEL_SCALE } from '../../../model/render-scale';
 import { LengthUnit } from '../../../model/unit-enums';
 import { DxfDocument, DxfEntity, DxfLayer, DxfLine, DxfPoint } from './dxf-model';
 import { DxfExportOptions, NEUTRAL_DXF_OPTIONS } from './dxf-options';
-import { groundPlate, linkBodies, SlotTravel, slotProfile } from './link-bodies';
+import {
+  defaultPinDiameter,
+  groundPlate,
+  linkBodies,
+  SlotTravel,
+  slotProfile,
+} from './link-bodies';
 import {
   consolidateWeldedAxes,
   groundAnnotation,
@@ -77,6 +83,10 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
   // had been converted.
   const symbolScale = centimetersIn(input.lengthUnit);
   const unitScale = symbolScale / MODEL_SCALE;
+  // Resolved once, here, so the drawing, the notes and the dialog all quote the
+  // same hole. Unset means "whatever fits the parts", which cannot be a
+  // constant: the bodies are whatever width the canvas is drawing them at.
+  const pinDiameter = choices.pinDiameter ?? defaultPinDiameter(unitScale);
   // Everything is shifted by one offset, computed once. A linkage drawn a metre
   // from the model origin imports a metre from the part origin otherwise, which
   // is a fight every time somebody builds from one of these.
@@ -104,10 +114,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       .filter((joint): joint is RealJoint => joint instanceof RealJoint && joint.isWelded)
       .map((joint) => joint.id)
   );
-  const pinRadius =
-    choices.jointCircles === 'holes'
-      ? (choices.pinDiameter || NEUTRAL_DXF_OPTIONS.pinDiameter) / 2
-      : 0;
+  const pinRadius = choices.jointCircles === 'holes' ? pinDiameter / 2 : 0;
   // Outlines instead of centrelines, when the reader is building rather than
   // tracing. A link that has no outline to give -- every joint collapsed onto
   // one point -- keeps its centreline, so it does not silently vanish.
@@ -312,7 +319,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     addDimensions(axes, choices, input.lengthUnit, symbolScale, entities);
   }
   if (choices.includeNotes) {
-    addNotes(input, choices, axes, symbolScale, entities);
+    addNotes(input, { ...choices, pinDiameter }, axes, symbolScale, entities);
   }
 
   // A layer per link, which is the one that changes the reader's day: Fusion

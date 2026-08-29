@@ -1,6 +1,7 @@
 import { PrisJoint } from '../../../model/joint';
 import { Link, RealLink, SliderBlock } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
+import { SettingsService } from '../../settings.service';
 import { DxfEntity, DxfPoint, DxfVertex } from './dxf-model';
 
 /**
@@ -16,6 +17,37 @@ import { DxfEntity, DxfPoint, DxfVertex } from './dxf-model';
 
 /** A quarter circle, as a polyline vertex wants it: `tan(90deg / 4)`. */
 const QUARTER = Math.tan(Math.PI / 8);
+
+/**
+ * How much of a bar's width its pin hole takes, when nobody has said.
+ *
+ * Half, which leaves a quarter of the width as material either side of the
+ * hole. Any more and the end of the link is a ring rather than a lug.
+ */
+const PIN_SHARE = 0.5;
+
+/** How wide the drawn link bodies are, in model units. */
+export function linkBodyWidth(): number {
+  // The same number the outline's corner radius is built from -- the bodies are
+  // drawn as a bar of this width with a semicircular cap at each end.
+  return (SettingsService.objectScale / 4) * 2;
+}
+
+/**
+ * The hole to cut when the reader has not chosen one.
+ *
+ * Derived from the drawing rather than fixed, because a fixed number cannot be
+ * right: the bodies are whatever width the canvas is drawing them at, and a
+ * default of 0.6 next to a 0.13-wide bar is a hole with no part left around it.
+ * Rounded to two figures so the field shows a number somebody could have typed.
+ *
+ * `unitScale` converts model units to the export's, which is what makes this
+ * answer the same physical hole whichever unit the file is written in.
+ */
+export function defaultPinDiameter(unitScale: number): number {
+  const across = linkBodyWidth() * PIN_SHARE * unitScale;
+  return across > 0 ? Number(across.toPrecision(2)) : 0;
+}
 
 export interface LinkBodyInput {
   links: Link[];

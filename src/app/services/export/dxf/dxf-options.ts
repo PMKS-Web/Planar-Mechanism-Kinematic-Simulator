@@ -44,7 +44,13 @@ export interface DxfExportOptions {
   linkBodies?: DxfLinkBodies;
   /** A plate under the grounded pins, so the assembly has a base to fix. */
   includeGroundPlate?: boolean;
-  /** In the export's unit, not model units. Only read for `'holes'`. */
+  /**
+   * In the export's unit, not model units. Only read for `'holes'`.
+   *
+   * Unset means "whatever fits the parts" -- half the width the link bodies are
+   * being drawn at. A number fixed here could not be right, because the bodies
+   * are whatever width the canvas is drawing them at.
+   */
   pinDiameter?: number;
   includeDimensions?: boolean;
   dimensionStyle?: DxfDimensionStyle;
@@ -60,8 +66,10 @@ export interface DxfExportOptions {
   dataFile?: DxfDataFile;
 }
 
-export type DxfExportChoices = Required<Omit<DxfExportOptions, 'unit' | 'originJointId'>> &
-  Pick<DxfExportOptions, 'unit' | 'originJointId'>;
+export type DxfExportChoices = Required<
+  Omit<DxfExportOptions, 'unit' | 'originJointId' | 'pinDiameter'>
+> &
+  Pick<DxfExportOptions, 'unit' | 'originJointId' | 'pinDiameter'>;
 
 /**
  * The two destinations the dialog offers, and the ten decisions each one makes.
@@ -128,7 +136,6 @@ export type DxfPresetName = keyof typeof DXF_PRESETS;
  */
 export const NEUTRAL_DXF_OPTIONS: DxfExportChoices = {
   fileName: 'mechanism',
-  pinDiameter: 0.6,
   origin: 'model',
   jointCircles: 'marks',
   linkBodies: 'centerlines',
