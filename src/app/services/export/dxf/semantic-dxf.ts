@@ -7,9 +7,11 @@ import { LengthUnit } from '../../../model/unit-enums';
 import { DxfDocument, DxfEntity, DxfLayer, DxfLine, DxfPoint } from './dxf-model';
 import { DxfExportOptions, NEUTRAL_DXF_OPTIONS } from './dxf-options';
 import {
+  cylinderParts,
   defaultPinDiameter,
   groundPlate,
   linkBodies,
+  linkBodyWidth,
   SlotTravel,
   slotProfile,
 } from './link-bodies';
@@ -31,6 +33,8 @@ export const DXF_LAYER = {
   slots: 'PMKS_SLOTS',
   blocks: 'PMKS_SLIDER_BLOCKS',
   cylinders: 'PMKS_CYLINDERS',
+  sleeves: 'PMKS_CYLINDER_SLEEVES',
+  rods: 'PMKS_CYLINDER_RODS',
   annotations: 'PMKS_KINEMATIC_ANNOTATIONS',
   labels: 'PMKS_LABELS',
 } as const;
@@ -68,6 +72,8 @@ const LAYERS = [
   { name: DXF_LAYER.slots, color: 4 },
   { name: DXF_LAYER.blocks, color: 4 },
   { name: DXF_LAYER.cylinders, color: 6 },
+  { name: DXF_LAYER.sleeves, color: 6 },
+  { name: DXF_LAYER.rods, color: 6 },
   { name: DXF_LAYER.annotations, color: 3 },
   { name: DXF_LAYER.labels, color: 7 },
 ];
@@ -119,6 +125,8 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
   // tracing. A link that has no outline to give -- every joint collapsed onto
   // one point -- keeps its centreline, so it does not silently vanish.
   const drawnAsBody = new Set<string>();
+  let bodyLoops = 0;
+  let collapsedBodies = 0;
   if (choices.linkBodies === 'outlines') {
     const bodies = linkBodies({
       links: input.links,
@@ -128,9 +136,19 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       layerFor: (link) => (choices.perLinkLayers ? layerNameFor(link.id) : DXF_LAYER.links),
     });
     entities.push(...bodies.entities);
+    bodyLoops = bodies.entities.filter((entity) => entity.type === 'POLYLINE').length;
+    collapsedBodies = bodies.missing.length;
     const collapsed = new Set(bodies.missing.map((link) => link.id));
     input.links.forEach((link) => {
-      if (link instanceof RealLink && !collapsed.has(link.id)) drawnAsBody.add(link.id);
+      if (!(link instanceof RealLink) || collapsed.has(link.id)) return;
+      // The leaves as well as the compound. A welded body is drawn once, whole,
+      // but the centreline axes are still counted per leaf -- so `CDE` was
+      // suppressed while `CD` and `DE` came through and were handed layers of
+      // their own, and the file offered two PMKS_LINK_* layers holding a bare
+      // line each. A reader taking one sketch per layer got two with nothing in
+      // them to extrude.
+      leavesOf(link).forEach((leaf) => drawnAsBody.add(leaf.id));
+      drawnAsBody.add(link.id);
     });
   }
   entities.push(
@@ -150,12 +168,28 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     .forEach((cylinder) => {
       const start = point(cylinder.barrelFar);
       const end = point(cylinder.rodFar);
-      entities.push({
-        type: 'LINE',
-        layer: DXF_LAYER.cylinders,
-        start,
-        end,
-      });
+      if (choices.linkBodies === 'outlines') {
+        // The sleeve and the rod, rather than a line between the two mounts.
+        // That line is neither of the parts and cannot be extruded, which left
+        // every cylinder in the drawing as the one thing a reader could not
+        // build.
+        entities.push(
+          ...cylinderParts(
+            {
+              barrelFar: start,
+              barrelNear: point(cylinder.barrelNear),
+              pin: point(cylinder.pin),
+              rodFar: end,
+            },
+            (linkBodyWidth() * unitScale) / 2,
+            pinRadius,
+            DXF_LAYER.sleeves,
+            DXF_LAYER.rods
+          )
+        );
+      } else {
+        entities.push({ type: 'LINE', layer: DXF_LAYER.cylinders, start, end });
+      }
       if (input.includeKinematicAnnotations !== false && cylinder.slider.input) {
         const clockwise =
           cylinder.slider.driveSpeed === 0
@@ -184,6 +218,10 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       if (cylinderInterior.has(joint.id)) return;
       if (joint instanceof PrisJoint) {
         if (choices.linkBodies === 'outlines') {
+          // On the layer of the part the slot is cut *into*, not a slots layer
+          // of its own. "One sketch per layer, extrude each" turns a lone
+          // capsule into a solid shaped like the slot; sharing the carrier's
+          // layer makes it an inner loop of that part, which is a hole.
           entities.push(
             ...slotProfile(
               joint,
@@ -191,8 +229,12 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
               point,
               symbolScale,
               pinRadius,
-              DXF_LAYER.slots,
-              DXF_LAYER.blocks
+              slotCarrierLayer(joint, input.links, choices, DXF_LAYER.groundPlate),
+              DXF_LAYER.blocks,
+              // A slot cut into a link has to leave material in a body the
+              // canvas draws as a thin bar. One cut into the ground plate has
+              // a whole plate around it and needs no such restraint.
+              joint.isFloating ? linkBodyWidth() * unitScale : Infinity
             )
           );
         } else {
@@ -319,7 +361,18 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     addDimensions(axes, choices, input.lengthUnit, symbolScale, entities);
   }
   if (choices.includeNotes) {
-    addNotes(input, { ...choices, pinDiameter }, axes, symbolScale, entities);
+    addNotes(
+      input,
+      {
+        ...choices,
+        pinDiameter,
+        bodyCount: bodyLoops,
+        centrelineCount: collapsedBodies,
+      },
+      axes,
+      symbolScale,
+      entities
+    );
   }
 
   // A layer per link, which is the one that changes the reader's day: Fusion
@@ -348,6 +401,34 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
   }
 
   return { layers, entities };
+}
+
+/**
+ * The layer of the part a slot is cut into.
+ *
+ * A floating slot is cut into the link carrying its two slot joints; a grounded
+ * one is cut into the ground plate. Either way it has to share the layer with
+ * the body it perforates, or an importer builds it as a part instead of
+ * removing it from one.
+ */
+function slotCarrierLayer(
+  joint: PrisJoint,
+  links: Link[],
+  choices: { perLinkLayers: boolean; includeGroundPlate: boolean },
+  groundLayer: string
+): string {
+  if (joint.isFloating && joint.slotJointA && joint.slotJointB) {
+    const carrier = links.find(
+      (link): link is RealLink =>
+        link instanceof RealLink &&
+        link.joints.some((one) => one.id === joint.slotJointA!.id) &&
+        link.joints.some((one) => one.id === joint.slotJointB!.id)
+    );
+    if (carrier) return choices.perLinkLayers ? layerNameFor(carrier.id) : DXF_LAYER.links;
+  }
+  // A grounded slot with no plate to cut it into has nowhere better to go than
+  // the slots layer -- and the reader has said they do not want a base part.
+  return choices.includeGroundPlate ? groundLayer : DXF_LAYER.slots;
 }
 
 /** `PMKS_LINK_AB`, from a link id, with anything unusual in it made safe. */
@@ -543,7 +624,14 @@ function lengthOf(axis: SemanticAxis): number {
 /** What the file is, in the file, for whoever opens it a year from now. */
 function addNotes(
   input: SemanticDxfInput,
-  choices: { origin: string; jointCircles: string; pinDiameter: number; linkBodies: string },
+  choices: {
+    origin: string;
+    jointCircles: string;
+    pinDiameter: number;
+    linkBodies: string;
+    bodyCount: number;
+    centrelineCount: number;
+  },
   axes: SemanticAxis[],
   scale: number,
   entities: DxfEntity[]
@@ -558,8 +646,15 @@ function addNotes(
     choices.jointCircles === 'holes'
       ? `Joint circles are pin holes, ${choices.pinDiameter} ${unitWord(input.lengthUnit)} diameter`
       : 'Joint circles are centre marks, not hole diameters',
+    // Counted rather than promised: a link whose joints have collapsed onto one
+    // point has no outline to give and keeps its centreline, and a note saying
+    // every link is a closed outline would be wrong about exactly the link a
+    // reader is about to go looking for.
     outlines
-      ? 'One closed outline per link, on its own layer, holes included'
+      ? `${choices.bodyCount} closed outline${choices.bodyCount === 1 ? '' : 's'}` +
+        (choices.centrelineCount > 0
+          ? `, and ${choices.centrelineCount} link${choices.centrelineCount === 1 ? '' : 's'} with no outline to give, left as centrelines`
+          : ', one per link')
       : `${axes.length} centreline${axes.length === 1 ? '' : 's'}`,
   ];
   lines.forEach((text, index) =>

@@ -113,6 +113,69 @@ for (const id of wanted) {
     (entity) => entity.type === 'CIRCLE' && /^PMKS_LINK_/.test(entity.layer)
   );
   check(`${id} cuts a hole in the parts`, holes.length > 0, `${holes.length} holes`);
+
+  // A PMKS_LINK_* layer holding only a line is a part layer with nothing in it
+  // to extrude. Welded compounds used to leave one per leaf.
+  const perLayer = {};
+  for (const entity of parsed.entities) {
+    if (/^PMKS_LINK_/.test(entity.layer)) (perLayer[entity.layer] ??= []).push(entity.type);
+  }
+  const phantom = Object.entries(perLayer)
+    .filter(([, types]) => !types.includes('POLYLINE'))
+    .map(([layer]) => layer);
+  check(`${id} has no part layer without a part in it`, phantom.length === 0, phantom.join(', '));
+
+  // The header has to enclose what the file draws, arcs included: a bulge
+  // leaves its own chord behind, and an importer fitting the view to the
+  // header clips whatever pokes out.
+  const reach = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+  const put = (x, y) => {
+    reach.minX = Math.min(reach.minX, x);
+    reach.maxX = Math.max(reach.maxX, x);
+    reach.minY = Math.min(reach.minY, y);
+    reach.maxY = Math.max(reach.maxY, y);
+  };
+  for (const entity of parsed.entities) {
+    if (entity.type === 'CIRCLE') {
+      put(entity.center.x - entity.radius, entity.center.y - entity.radius);
+      put(entity.center.x + entity.radius, entity.center.y + entity.radius);
+      continue;
+    }
+    if (!entity.vertices) {
+      if (entity.startPoint) put(entity.startPoint.x, entity.startPoint.y);
+      continue;
+    }
+    for (let index = 0; index < entity.vertices.length; index++) {
+      const from = entity.vertices[index];
+      const to = entity.vertices[(index + 1) % entity.vertices.length];
+      put(from.x, from.y);
+      if (!from.bulge || (!entity.shape && index === entity.vertices.length - 1)) continue;
+      const swept = 4 * Math.atan(from.bulge);
+      const chord = Math.hypot(to.x - from.x, to.y - from.y);
+      if (!chord) continue;
+      const radius = chord / (2 * Math.sin(Math.abs(swept) / 2));
+      const height =
+        Math.sqrt(Math.max(0, radius ** 2 - (chord / 2) ** 2)) *
+        Math.sign(Math.cos(swept / 2)) *
+        Math.sign(swept);
+      const cx = (from.x + to.x) / 2 - ((to.y - from.y) / chord) * height;
+      const cy = (from.y + to.y) / 2 + ((to.x - from.x) / chord) * height;
+      const start = Math.atan2(from.y - cy, from.x - cx);
+      for (let step = 0; step <= 200; step++) {
+        const at = start + (swept * step) / 200;
+        put(cx + radius * Math.cos(at), cy + radius * Math.sin(at));
+      }
+    }
+  }
+  const low = parsed.header['$EXTMIN'];
+  const high = parsed.header['$EXTMAX'];
+  const escaped = Math.max(
+    low.x - reach.minX,
+    low.y - reach.minY,
+    reach.maxX - high.x,
+    reach.maxY - high.y
+  );
+  check(`${id} header extents enclose the drawing`, escaped <= 1e-6, `out by ${escaped}`);
   console.log(
     `  ok   ${id.padEnd(28)} ${bodies.length} bodies · ${holes.length} holes · ${declared.size} layers`
   );

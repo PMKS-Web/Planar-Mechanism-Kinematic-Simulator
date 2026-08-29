@@ -8,6 +8,7 @@ import { SettingsService } from '../../settings.service';
 import { utf8, zipStore } from '../zip';
 import { DEFAULT_DXF_EXPORT_OPTIONS, DxfExportOptions } from './dxf-options';
 import { DxfEntity } from './dxf-model';
+import { sealedCylinderStructures } from '../../../model/cylinder';
 import { defaultPinDiameter, linkBodyWidth, SlotTravel } from './link-bodies';
 import { buildSemanticDxf, centimetersIn, TracedPath } from './semantic-dxf';
 import { writeDxf } from './dxf-writer';
@@ -99,7 +100,14 @@ export class DxfExportService {
           ];
     extras.push({
       name: 'README.txt',
-      text: handoffNotes(unit, { ...choices, pinDiameter: this.pinDiameter(options) }),
+      text: handoffNotes(
+        unit,
+        { ...choices, pinDiameter: this.pinDiameter(options) },
+        {
+          cylinders: sealedCylinderStructures(this.mechanism.joints).length > 0,
+          slots: this.mechanism.joints.some((joint) => joint instanceof PrisJoint),
+        }
+      ),
     });
     const zip = zipStore([
       { name: dxfName, data: utf8(content) },
@@ -510,10 +518,20 @@ function previewShapes(
  */
 function handoffNotes(
   unit: LengthUnit,
-  choices: { linkBodies: string; pinDiameter: number }
+  choices: {
+    linkBodies: string;
+    pinDiameter: number;
+    jointCircles: string;
+    perLinkLayers: boolean;
+    includeGroundPlate: boolean;
+    dataFile: string;
+  },
+  has: { cylinders: boolean; slots: boolean }
 ): string {
   const word = unitWord(unit);
   const parts = choices.linkBodies === 'outlines';
+  const holes = choices.jointCircles === 'holes';
+  const tables = choices.dataFile !== 'none';
   return [
     'PMKS+ CAD export',
     '=================',
@@ -523,13 +541,30 @@ function handoffNotes(
     `one on import. Choose ${word}, or the parts come out ten or a hundred times the`,
     'wrong size.',
     '',
-    parts
-      ? 'Each link is one closed outline on its own layer (PMKS_LINK_*), with its pin'
-      : 'Each link is a centreline on PMKS_LINK_CENTERLINES. Centrelines cannot be',
-    parts
-      ? 'holes already cut. PMKS_GROUND_PLATE is the base part. PMKS_SLOTS and'
-      : 'extruded -- re-export with "Closed outlines" if you meant to build from this.',
-    parts ? 'PMKS_SLIDER_BLOCKS are the sliding pair, where there is one.' : '',
+    ...(parts
+      ? [
+          `Each link is one closed outline${choices.perLinkLayers ? ' on its own layer (PMKS_LINK_*)' : ''},`,
+          holes
+            ? 'with its pin holes already cut into the same profile.'
+            : 'with no holes cut -- you chose centre marks rather than pin holes.',
+          ...(choices.includeGroundPlate ? ['PMKS_GROUND_PLATE is the base part.'] : []),
+          ...(has.slots
+            ? [
+                'The slot is cut into the part that carries it; PMKS_SLIDER_BLOCKS is what',
+                'slides in it.',
+              ]
+            : []),
+          ...(has.cylinders
+            ? [
+                'PMKS_CYLINDER_SLEEVES and PMKS_CYLINDER_RODS are the two halves of each',
+                'actuator; the sleeve is a tube, so extrude between its two loops.',
+              ]
+            : []),
+        ]
+      : [
+          'Each link is a centreline on PMKS_LINK_CENTERLINES. A centreline cannot be',
+          'extruded -- re-export with "Closed outlines" if you meant to build from this.',
+        ]),
     '',
     'In Fusion',
     '---------',
@@ -538,8 +573,12 @@ function handoffNotes(
     '2. Extrude each link sketch a few mm. The holes are already in the profile, so',
     '   each one comes out as a finished body.',
     '3. Assemble the bodies as components, then Assemble > Joint > Revolute, picking',
-    '   the two hole centres that share a pin. The joints CSV beside this file says',
-    '   which links meet at which joint.',
+    tables
+      ? '   the two hole centres that share a pin. The joints table beside this file'
+      : '   the two hole centres that share a pin. Re-export with a data file if you',
+    tables
+      ? '   says which links meet at which joint.'
+      : '   want a table of which links meet where.',
     '4. Ground the base part, then drive the input joint and run a motion study.',
     '',
     'In Onshape',
@@ -554,9 +593,9 @@ function handoffNotes(
     'In SolidWorks',
     '-------------',
     '1. Open the .dxf directly. The DXF/DWG import wizard runs: choose "Import to a',
-    '   new part" as a 2D sketch, and set the units on the same page.',
-    '2. The wizard lists the layers. Bring in one PMKS_LINK_* layer per part, or',
-    '   import them all and split the sketch afterwards -- one layer is one part.',
+    '   new part" as a 2D sketch. Units are on the Document Settings page further on.',
+    '2. The wizard lists the layers, with an option to put each on its own sketch.',
+    '   Use it -- one layer is one part.',
     '3. Extrude each closed profile a few mm. The holes are in the profile already.',
     '4. In an assembly, mate each shared pin with a Concentric mate between the two',
     '   hole faces, plus a Coincident mate on the flat faces to keep the parts in',
@@ -564,10 +603,11 @@ function handoffNotes(
     '',
     'In NX',
     '-----',
-    '1. File > Import > AutoCAD DXF/DWG. Choose the file, set the units, and import',
-    '   into a new part as curves.',
-    '2. The layers arrive as NX layers. Extrude each closed loop a few mm -- the',
-    '   section selection will pick up the outline and its holes together.',
+    '1. File > Import > AutoCAD DXF/DWG, into a new part as curves. NX imports in',
+    `   millimetres or inches, so a ${word} file needs an explicit scale on the way in`,
+    `   (${word} to mm is x${unit === LengthUnit.METER ? '1000' : unit === LengthUnit.INCH ? '25.4' : '10'}) or the part arrives the wrong size.`,
+    '2. The layers arrive as NX layers. Extrude each closed loop a few mm; select the',
+    '   outline and its holes together so the holes come out as holes.',
     '3. In an assembly, add Touch/Align constraints on the faces and a Concentric',
     '   constraint on each shared pair of holes.',
     '4. Fix the base component and drag the input, or set up a Motion simulation',

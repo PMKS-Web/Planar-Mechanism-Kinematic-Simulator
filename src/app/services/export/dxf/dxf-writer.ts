@@ -191,7 +191,18 @@ function extents(entities: readonly DxfEntity[]): { min: DxfPoint; max: DxfPoint
       add(entity.center.x - entity.radius, entity.center.y - entity.radius);
       add(entity.center.x + entity.radius, entity.center.y + entity.radius);
     } else if (entity.type === 'POLYLINE') {
-      entity.points.forEach((vertex) => add(vertex.x, vertex.y));
+      // The vertices *and* what the arcs between them sweep past. A bulge
+      // reaches outside its own chord by design -- that is what makes it a
+      // rounded corner -- so extents taken from the vertices alone stop short
+      // of the drawing they claim to bound, and an importer fitting the view
+      // to them clips it.
+      entity.points.forEach((vertex, index) => {
+        add(vertex.x, vertex.y);
+        const next = entity.points[(index + 1) % entity.points.length];
+        const last = index === entity.points.length - 1;
+        if (!vertex.bulge || (last && !entity.closed)) return;
+        arcExtremes(vertex, next, vertex.bulge).forEach((at) => add(at.x, at.y));
+      });
     } else {
       add(entity.at.x, entity.at.y);
     }
@@ -201,6 +212,40 @@ function extents(entities: readonly DxfEntity[]): { min: DxfPoint; max: DxfPoint
     min: { x: Math.min(...xs), y: Math.min(...ys) },
     max: { x: Math.max(...xs), y: Math.max(...ys) },
   };
+}
+
+/**
+ * The points a bulge arc reaches furthest at, exactly.
+ *
+ * The two ends, plus whichever of the four compass extremes of its circle the
+ * arc actually sweeps through -- that is where a curve leaves its own chord
+ * behind. Solved rather than sampled: sampling an arc at some step size misses
+ * the apex by however much falls between two samples, which is small enough to
+ * look right and still leave the header claiming a box the drawing pokes out of.
+ */
+function arcExtremes(from: DxfPoint, to: DxfPoint, bulge: number): DxfPoint[] {
+  const swept = 4 * Math.atan(bulge);
+  const chord = Math.hypot(to.x - from.x, to.y - from.y);
+  if (!chord || !Number.isFinite(swept) || swept === 0) return [];
+  const radius = chord / (2 * Math.sin(Math.abs(swept) / 2));
+  const height =
+    Math.sqrt(Math.max(0, radius * radius - (chord / 2) ** 2)) *
+    Math.sign(Math.cos(swept / 2)) *
+    Math.sign(swept);
+  const centerX = (from.x + to.x) / 2 - ((to.y - from.y) / chord) * height;
+  const centerY = (from.y + to.y) / 2 + ((to.x - from.x) / chord) * height;
+  const start = Math.atan2(from.y - centerY, from.x - centerX);
+  const found: DxfPoint[] = [];
+  for (let quarter = -4; quarter <= 4; quarter++) {
+    const at = (quarter * Math.PI) / 2;
+    // How far round from the start this compass point lies, in the direction
+    // the arc actually turns.
+    const along = swept > 0 ? at - start : start - at;
+    const turned = ((along % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    if (turned > Math.abs(swept)) continue;
+    found.push({ x: centerX + radius * Math.cos(at), y: centerY + radius * Math.sin(at) });
+  }
+  return found;
 }
 
 /** Six decimals, without an exponent: DXF has no notation for `1e-7`. */

@@ -2,7 +2,7 @@ import { PrisJoint } from '../../../model/joint';
 import { Link, RealLink, SliderBlock } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { SettingsService } from '../../settings.service';
-import { DxfEntity, DxfPoint, DxfVertex } from './dxf-model';
+import { DxfEntity, DxfPoint, DxfPolyline, DxfVertex } from './dxf-model';
 
 /**
  * The parts, rather than the picture of them.
@@ -126,45 +126,115 @@ export function slotProfile(
   scale: number,
   pinRadius: number,
   slotLayer: string,
-  blockLayer: string
+  blockLayer: string,
+  /** How wide the part being cut is, so the slot leaves material in it. */
+  carrierWidth = Infinity
 ): DxfEntity[] {
-  const ends = travel ?? nominalTravel(joint);
+  // A measured travel is the block's path *through the world*, which is the
+  // slot only when the slot is bolted to the world. A slot cut into a moving
+  // link has a frame of its own: the carrier swings while the block slides, so
+  // the world path is some curve across the drawing that says nothing about
+  // which way the slot points. Scotch Yoke's slot is vertical and its pin's
+  // world excursion is horizontal -- taking the measurement there turned the
+  // slot through ninety degrees and laid it outside the yoke entirely.
+  const ends = joint.isFloating ? nominalTravel(joint) : (travel ?? nominalTravel(joint));
   const from = point(ends.from);
   const to = point(ends.to);
   const span = Math.hypot(to.x - from.x, to.y - from.y);
   if (span === 0) return [];
-  const half = Math.max(pinRadius, 0.06 * scale);
+  // Narrow enough to leave material either side of it. A slot cut into a link
+  // the canvas draws as a thin schematic bar is otherwise the whole bar, and
+  // the part extrudes to nothing -- the same gap between a drawing and a part
+  // that the pin diameter has. Half the carrier's width, as the pins are.
+  const half = Math.min(Math.max(pinRadius, 0.06 * scale), carrierWidth / 4);
+  if (!(half > 0)) return [];
   const along = { x: (to.x - from.x) / span, y: (to.y - from.y) / span };
   const across = { x: -along.y * half, y: along.x * half };
-  // Down one side, round the end, back the other side, round the other end.
-  // The run is clockwise -- the left-hand side first -- so an end cap that
-  // bulges outward is a negative bulge. Positive turns them inward and the
-  // slot comes out as two facing brackets rather than a shape.
   return [
-    {
-      type: 'POLYLINE',
-      layer: slotLayer,
-      closed: true,
-      points: [
-        { x: from.x + across.x, y: from.y + across.y },
-        { x: to.x + across.x, y: to.y + across.y, bulge: -1 },
-        { x: to.x - across.x, y: to.y - across.y },
-        { x: from.x - across.x, y: from.y - across.y, bulge: -1 },
-      ],
-    },
+    capsule(from, to, half, slotLayer),
     // Something to put in the slot. The canvas draws no block outline of its
     // own, so this one is nominal: square to the slot, as wide as it is, and
     // centred where the block sits at the start pose. It is a part a reader can
     // extrude and mate, which an empty slot is not.
-    ...blockProfile(point(joint), along, half, blockLayer),
+    ...blockProfile(point(joint), along, half, pinRadius, blockLayer),
+  ];
+}
+
+/**
+ * A rounded bar from one point to the other: down one side, round the end,
+ * back, round the other.
+ *
+ * The run is clockwise -- the left-hand side first -- so an end cap that bulges
+ * outward is a *negative* bulge. Positive turns them inward and the shape comes
+ * out as two facing brackets rather than a body.
+ */
+export function capsule(from: DxfPoint, to: DxfPoint, half: number, layer: string): DxfPolyline {
+  const span = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+  const across = { x: (-(to.y - from.y) / span) * half, y: ((to.x - from.x) / span) * half };
+  return {
+    type: 'POLYLINE',
+    layer,
+    closed: true,
+    points: [
+      { x: from.x + across.x, y: from.y + across.y },
+      { x: to.x + across.x, y: to.y + across.y, bulge: -1 },
+      { x: to.x - across.x, y: to.y - across.y },
+      { x: from.x - across.x, y: from.y - across.y, bulge: -1 },
+    ],
+  };
+}
+
+/**
+ * The two parts a sealed cylinder is actually made of.
+ *
+ * A cylinder used to export as a single centreline between its two mounts,
+ * which is neither of its parts and cannot be extruded. It is an actuator: a
+ * sleeve pinned at one end, a rod pinned at the other, sliding inside it. The
+ * model already knows where all four of those points are, so where the parts
+ * *reach* is read from the mechanism rather than invented. How thick they are
+ * is invented, because the canvas draws a cylinder as a line -- those widths
+ * are nominal and proportional to the link bodies, as the slider block is.
+ */
+export function cylinderParts(
+  at: { barrelFar: DxfPoint; barrelNear: DxfPoint; pin: DxfPoint; rodFar: DxfPoint },
+  bodyHalf: number,
+  pinRadius: number,
+  sleeveLayer: string,
+  rodLayer: string
+): DxfEntity[] {
+  if (!(bodyHalf > 0)) return [];
+  const sleeveHalf = bodyHalf * 2;
+  const boreHalf = bodyHalf;
+  const rodHalf = bodyHalf * 0.6;
+  const hole = (centre: DxfPoint, layer: string, limit: number): DxfEntity[] =>
+    pinRadius > 0
+      ? [{ type: 'CIRCLE', layer, center: centre, radius: Math.min(pinRadius, limit) }]
+      : [];
+  return [
+    // The sleeve and the bore through it. An outer loop with an inner one is a
+    // tube once extruded, which is what the rod has to slide in.
+    capsule(at.barrelFar, at.barrelNear, sleeveHalf, sleeveLayer),
+    capsule(at.barrelFar, at.barrelNear, boreHalf, sleeveLayer),
+    ...hole(at.barrelFar, sleeveLayer, sleeveHalf * 0.5),
+    // The rod, from where it is buried in the sleeve out to its own mount.
+    capsule(at.pin, at.rodFar, rodHalf, rodLayer),
+    ...hole(at.rodFar, rodLayer, rodHalf * 0.6),
   ];
 }
 
 /** A square block on the slot, twice as long as the slot is wide. */
-function blockProfile(at: DxfPoint, along: DxfPoint, half: number, layer: string): DxfEntity[] {
-  const reach = half * 2;
-  const long = { x: along.x * reach, y: along.y * reach };
-  const wide = { x: -along.y * reach, y: along.x * reach };
+function blockProfile(
+  at: DxfPoint,
+  along: DxfPoint,
+  half: number,
+  pinRadius: number,
+  layer: string
+): DxfEntity[] {
+  // As wide as the slot it rides in -- `half` is the slot's half width, so
+  // reaching `half` either side spans it exactly. Reaching `half * 2` made a
+  // block twice the width of its own slot, which is a part that cannot go in.
+  const long = { x: along.x * half * 2, y: along.y * half * 2 };
+  const wide = { x: -along.y * half, y: along.x * half };
   return [
     {
       type: 'POLYLINE',
@@ -177,6 +247,10 @@ function blockProfile(at: DxfPoint, along: DxfPoint, half: number, layer: string
         { x: at.x - long.x + wide.x, y: at.y - long.y + wide.y },
       ],
     },
+    // The pin joining the block to the link it drives. The shared joint layer
+    // suppresses its circle because the bodies carry their own holes -- and
+    // this body was the one that never got one.
+    ...(pinRadius > 0 ? [{ type: 'CIRCLE' as const, layer, center: at, radius: pinRadius }] : []),
   ];
 }
 

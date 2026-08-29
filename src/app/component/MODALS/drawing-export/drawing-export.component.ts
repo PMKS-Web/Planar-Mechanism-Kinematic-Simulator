@@ -34,6 +34,8 @@ interface LayerRow {
   cad: string;
   /** Shown ticked and unpressable, with this as the reason. */
   fixed?: string;
+  /** Only written when the links are drawn this way. */
+  onlyWith?: DxfLinkBodies;
 }
 
 const LAYER_ROWS: LayerRow[] = [
@@ -41,9 +43,18 @@ const LAYER_ROWS: LayerRow[] = [
   {
     name: 'Link centrelines',
     cad: 'PMKS_LINK_CENTERLINES',
+    // Only when the links *are* centrelines. Exported as outlines they are not
+    // written at all, and the row said "Always included" over a layer that was
+    // not in the file.
     fixed: 'Always included — a drawing without centrelines is empty.',
+    onlyWith: 'centerlines',
   },
-  { name: 'Joint centres', cad: 'PMKS_JOINT_CENTERS', fixed: 'Always included.' },
+  {
+    name: 'Joint centres',
+    cad: 'PMKS_JOINT_CENTERS',
+    fixed: 'Always included.',
+    onlyWith: 'centerlines',
+  },
   { key: 'includeGroundPoints', name: 'Ground points', cad: 'PMKS_GROUND_POINTS' },
   {
     key: 'includeKinematicAnnotations',
@@ -101,7 +112,12 @@ export class DrawingExportComponent {
 
   open = { file: false, geometry: false, layers: false, data: false };
 
-  readonly layerRows = LAYER_ROWS;
+  /** The layers this export will actually contain, in the order they appear. */
+  get layerRows(): LayerRow[] {
+    return LAYER_ROWS.filter(
+      (row) => row.onlyWith === undefined || row.onlyWith === this.options.linkBodies
+    );
+  }
   readonly unitChoices: { label: string; value: LengthUnit }[] = [
     { label: 'cm', value: LengthUnit.CM },
     { label: 'm', value: LengthUnit.METER },
@@ -126,7 +142,7 @@ export class DrawingExportComponent {
     },
   ];
   readonly circleChoices: { label: string; value: DxfJointCircles }[] = [
-    { label: 'None (points only)', value: 'none' },
+    { label: 'None', value: 'none' },
     { label: 'Marks only', value: 'marks' },
     { label: 'Pin holes at Ø', value: 'holes' },
   ];
@@ -288,10 +304,11 @@ export class DrawingExportComponent {
   }
 
   get layersSummary(): string {
-    const on = LAYER_ROWS.filter(
+    const rows = this.layerRows;
+    const on = rows.filter(
       (row) => row.fixed || (row.key !== undefined && this.isOn(row.key) && !this.blocked(row.key))
     ).length;
-    return `${on} of ${LAYER_ROWS.length} included`;
+    return `${on} of ${rows.length} included`;
   }
 
   /** Whether a layer row shows a tick. */
