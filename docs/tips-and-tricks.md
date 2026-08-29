@@ -246,6 +246,52 @@ Check `git status` afterwards and revert anything you did not mean to change.
 
 ## SCSS gotchas
 
+**A panel's `styleUrls` does not scope it. The `@mixin` does the opposite.** 39 of the 43 component
+stylesheets are written as `@mixin css($theme)` and `@include`d from `src/mytheme.scss`, and a mixin
+emits nothing where it is declared — so the `styleUrls` entry on the component is inert and every
+rule in the mixin lands in the *global* stylesheet exactly as written. `.check { padding-top: 10px }`
+inside `some-panel.component.scss` styles every `.check` in the app. Which panel wins a shared name
+is decided by the order of the `@include` lines at the bottom of `mytheme.scss`; the later one wins
+ties.
+
+Rules written *outside* the mixin — `edit-panel.component.scss` has 32 of them — get both
+treatments: Angular emits an `_ngcontent`-attributed copy from `styleUrls`, and `mytheme.scss` emits
+an unscoped copy from the `@use`. The attributed copy wins, so the global one is dead weight that
+still leaks.
+
+This has bitten more than once, as a panel whose spacing is set by a panel it has nothing to do
+with. `analysis-setup` is scoped now; fourteen bare class names are still shared across components —
+`.row`, `.label-help`, `.chip`, `.cardActions`, the six `.help*`, `.mechHead`, `.nextButton`,
+`.rowNote`, `.stepBar` — some deliberately (`blocks.common.scss` and the help panel exist to be
+shared) and some not. Read the shipped rules rather than the sources to tell which is which. Guard
+the cross-origin sheets and recurse into `@media`, or you will miss most of them:
+
+```js
+const all = [];
+const walk = (rules) => { for (const r of rules) { if (r.selectorText) all.push(r.selectorText); if (r.cssRules) walk(r.cssRules); } };
+for (const s of document.styleSheets) { try { walk(s.cssRules); } catch { /* Google Fonts */ } }
+```
+
+**Scope such a file with `:where(app-thing) { ... }`, not `app-thing { ... }`.** `:where()`
+contributes no specificity, so every rule keeps exactly the weight it had and nothing starts or
+stops winning. A bare element wrapper adds a type selector to all of them at once, which sounds
+harmless and is not: rules that had been quietly losing to Angular Material start winning, and the
+panel changes appearance in a commit that was supposed to be a no-op.
+
+**A `/* */` comment directly inside a wrapper emits an empty rule.** Sass opens the parent to place
+a loud comment, so `:where(app-thing) { }` appears in the bundle once per comment. Use `//` for
+comments at a wrapper's top level.
+
+**Not every leaked rule is doing anything.** Before treating a shared name as load-bearing, check
+whether the receiving component already overrides it — `mechanism-panel` writes
+`.mechanismPanel .sectionHeader` and `edit-panel` writes `.massArea .dot`, both of which outrank the
+bare rule and were covering its whole rendered appearance. Not every declaration, though:
+`mechanism-panel` never restated `min-height`, and only got away with it because it pins `height`.
+The way to find out is to diff computed styles before and after, not to read the two stylesheets and
+reason about them. Diff the *properties*, not screenshots — the canvas camera settles differently
+between runs, so a pixel comparison of this app has a noise floor in the tens of thousands of pixels
+and will bury a real one-property change.
+
 **There is more than one `@media (max-width: 600px)` block in a file.** `playback-bar.component.scss`
 has two, hundreds of lines apart, and the later one wins. A rule added to the first that already
 exists in the second does nothing at all, and looks correct while doing it.

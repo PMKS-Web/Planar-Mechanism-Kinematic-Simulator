@@ -5,497 +5,515 @@
   $color-config: mat.m2-get-color-config($theme);
   $primary-palette: map.get($color-config, 'primary');
 
-  // Its own card, because this panel is not built from panel-sections and the
-  // drawer behind it deliberately draws nothing: one card per panel, never a
-  // card inside a card.
-  // The card owns the scroll and keeps its title, exactly as `panel-section`
-  // does for every panel built out of blocks. This one is not, because it is a
-  // single card rather than a stack of sections -- so it has to say the same
-  // three things itself rather than inherit them.
-  .setup {
-    display: flex;
-    flex-direction: column;
-    // Ends under its last section, and only runs on when there is more list
-    // than room -- at which point the drawer's own cap stops it a gap above
-    // the view controls and this card takes over the scrolling. A card held
-    // open to the full height of the window on a drawing with one short list
-    // in it is mostly empty white.
-    height: auto;
-    max-height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    // Its sticky head is raised above this card's own contents and no further,
-    // so it cannot come out over the drawer's close button beside it.
-    isolation: isolate;
-    padding-bottom: 8px;
-    background: var(--card-surface);
-    border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
-    // 5px, matching the 5px accent bar above it: a border's inner edge is
-    // rounded by the corner radius minus the border width, so any radius wider
-    // than the bar curves the bar's underside. The floating chrome has no bar
-    // and keeps the wider corner.
-    border-radius: var(--border-radius);
-    box-shadow: var(--card-shadow);
-  }
-
-  // Everything in the card is laid out at the card's own width, and stays
-  // there: a sticky head that could shrink would slide out from over a list
-  // wider than itself.
-  .setup > * {
-    width: 100%;
-    box-sizing: border-box;
-    flex: 0 0 auto;
-  }
-
-  .setupHead {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    padding: 12px 15px 12px;
-    background: var(--card-surface);
-    box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0);
-    transition: box-shadow 0.15s ease-in-out;
-  }
-
-  // Something above, out of sight: the list runs under the head, and without
-  // this a scrolled card read as a card that simply started there.
-  .setup.scrolled > .setupHead {
-    box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0.35);
-  }
-
-  .setupTitle {
-    font-size: 20px;
-    font-weight: 500;
-    line-height: 28px;
-  }
-
-  .setupSummary {
-    font-size: 14px;
-    line-height: 20px;
-    color: rgba(0, 0, 0, 0.6);
-    margin: 6px 0 0;
-  }
-
-  .sectionHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    /* Padding inside the 100%, not on top of it: content-box pushed the
-       right-hand element 15px past the drawer's edge and sliced it off. */
-    box-sizing: border-box;
-    min-height: 40px;
-    padding: 0 15px;
-    border: none;
-    border-top: 1px solid #eceef5;
-    background: transparent;
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 500;
-    color: mat.m2-get-color-from-palette($primary-palette, 500);
-    cursor: pointer;
-    text-align: left;
-
-    &.muted {
-      color: #5f6368;
+  // Scoped to the element, because this file is a mixin included from
+  // `mytheme.scss`: without the wrapper every rule below lands in the global
+  // stylesheet under a bare class name, and names like `.check`, `.chip`,
+  // `.dot`, `.num`, `.fact` and `.sectionHeader` are ordinary enough that other
+  // panels use them for their own things and quietly inherit whatever this
+  // panel happens to say. It reached `app-mechanism-panel`, `app-edit-panel`,
+  // `app-top-bar` and `app-synthesis-panel`, each of which was covering the
+  // borrowed rules with one of its own -- which is luck, not design. The
+  // component renders nothing through a CDK overlay or a portal, so everything
+  // it styles is inside its own element.
+  //
+  // `:where` rather than the bare element, because it weighs nothing: a plain
+  // wrapper adds a type selector to all 77 rules below at once and hands them
+  // fights they have been losing since they were written -- the check icons
+  // would jump from Material's 24px to the 19px asked for here. Correcting
+  // those is a change to how the drawer looks, which is not what scoping is for.
+  :where(app-analysis-setup) {
+    // Its own card, because this panel is not built from panel-sections and the
+    // drawer behind it deliberately draws nothing: one card per panel, never a
+    // card inside a card.
+    // The card owns the scroll and keeps its title, exactly as `panel-section`
+    // does for every panel built out of blocks. This one is not, because it is a
+    // single card rather than a stack of sections -- so it has to say the same
+    // three things itself rather than inherit them.
+    .setup {
+      display: flex;
+      flex-direction: column;
+      // Ends under its last section, and only runs on when there is more list
+      // than room -- at which point the drawer's own cap stops it a gap above
+      // the view controls and this card takes over the scrolling. A card held
+      // open to the full height of the window on a drawing with one short list
+      // in it is mostly empty white.
+      height: auto;
+      max-height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      // Its sticky head is raised above this card's own contents and no further,
+      // so it cannot come out over the drawer's close button beside it.
+      isolation: isolate;
+      padding-bottom: 8px;
+      background: var(--card-surface);
+      border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
+      // 5px, matching the 5px accent bar above it: a border's inner edge is
+      // rounded by the corner radius minus the border width, so any radius wider
+      // than the bar curves the bar's underside. The floating chrome has no bar
+      // and keeps the wider corner.
+      border-radius: var(--border-radius);
+      box-shadow: var(--card-shadow);
     }
 
-    &:hover {
-      background: rgba(0, 0, 0, 0.02);
-    }
-  }
-
-  .sectionName {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 0;
-  }
-
-  .mechLink {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    text-decoration-color: rgba(63, 81, 181, 0.35);
-    cursor: pointer;
-  }
-
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    height: 20px;
-    padding: 0 8px;
-    border-radius: 10px;
-    background: #eef0f4;
-    color: #5f6368;
-    font-size: 12px;
-    font-weight: 400;
-
-    &.blocker {
-      background: #fce8e6;
-      color: #c5221f;
-    }
-
-    &.warning {
-      background: #fef3e0;
-      color: #b26a00;
-    }
-
-    &.ok {
-      background: #e6f4ea;
-      color: #137333;
-    }
-  }
-
-  .factGrid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px 12px;
-    padding: 10px 15px 4px;
-  }
-
-  .fact {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
-  }
-
-  .factLabel {
-    font-size: 11px;
-    color: rgba(0, 0, 0, 0.45);
-  }
-
-  .factValue {
-    font-size: 13px;
-    color: #2c2c2c;
-  }
-
-  .checkList {
-    padding: 4px 15px 14px;
-  }
-
-  .check {
-    display: flex;
-    gap: 10px;
-    padding-top: 10px;
-  }
-
-  .checkIcon {
-    flex: 0 0 auto;
-    width: 19px;
-    height: 19px;
-    font-size: 19px;
-    line-height: 19px;
-
-    &.blocker {
-      color: #d93025;
-    }
-
-    &.warning {
-      color: #b26a00;
-    }
-
-    &.muted {
-      color: rgba(0, 0, 0, 0.4);
-    }
-  }
-
-  .checkBody {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .checkTitle {
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .checkText {
-    font-size: 12px;
-    line-height: 18px;
-    color: rgba(0, 0, 0, 0.6);
-    margin: 2px 0 0;
-
-    &.note {
-      margin: 4px 0 0;
-    }
-  }
-
-  .massTable {
-    padding: 4px 16px 12px;
-  }
-
-  .massRow {
-    display: grid;
-    /* Mass earns the room a value like "10.00 lbm" needs; the name column
-       gives it up — names are short and ellipsis covers the rare long one. */
-    grid-template-columns: minmax(40px, 1fr) 76px 118px 16px;
-
-    /* Grid items default to min-width auto, so a field's own content forces
-       its column wide and shoves the jump arrows off the drawer. */
-    > * {
-      min-width: 0;
-    }
-    gap: 4px;
-    align-items: center;
-    padding: 3px 0;
-    font-size: 13px;
-
-    &.head {
-      font-size: 9px;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: rgba(0, 0, 0, 0.5);
-      font-weight: 600;
-      padding-bottom: 5px;
-      margin-bottom: 3px;
-      white-space: nowrap;
-      /* The rule belongs under the header, where the mock draws it — not
-         under the legend, where a line reads as underlining the caption. */
-      border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-    }
-
-    /* The whole weightless row mutes as one thing: label, both fields. */
-    &.weightless .massName {
-      color: rgba(0, 0, 0, 0.4);
-    }
-    &.weightless .cellField .customInput {
-      color: rgba(0, 0, 0, 0.35);
-    }
-  }
-
-  .num {
-    text-align: right;
-  }
-
-  .massName {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .massMoI {
-    color: rgba(0, 0, 0, 0.6);
-  }
-
-  /* The table's cells ARE the shared input component; the only difference
-     is size, so size is the only thing written here. Label and help are the
-     row's own columns, so the component's header parts hide. */
-  .cellField {
-    min-width: 0;
-
-    .customInput {
-      font-size: 12.5px;
-    }
-
-    #input-block .label,
-    #input-block .label-help,
-    #input-block .spacer {
-      display: none;
-    }
-
-    #input-block .row {
-      gap: 0;
-    }
-
-    #input-block .customInputForm .mat-mdc-text-field-wrapper {
+    // Everything in the card is laid out at the card's own width, and stays
+    // there: a sticky head that could shrink would slide out from over a list
+    // wider than itself.
+    .setup > * {
       width: 100%;
-      padding: 0 7px;
+      box-sizing: border-box;
+      flex: 0 0 auto;
     }
 
-    &.derived .customInput {
-      color: rgba(0, 0, 0, 0.5);
+    .setupHead {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 12px 15px 12px;
+      background: var(--card-surface);
+      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0);
+      transition: box-shadow 0.15s ease-in-out;
     }
-  }
 
-  .dot {
-    display: inline-block;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    border: 1.5px solid #9fa8da;
-    background: transparent;
-    flex: none;
-  }
+    // Something above, out of sight: the list runs under the head, and without
+    // this a scrolled card read as a card that simply started there.
+    .setup.scrolled > .setupHead {
+      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0.35);
+    }
 
-  .dot.filled {
-    background: #3f51b5;
-    border-color: #3f51b5;
-  }
-
-  .stateSuffix {
-    display: inline-flex;
-    align-items: center;
-    margin-left: 4px;
-  }
-
-  .dotLegend {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin: 0;
-    padding: 8px 0 0;
-    font-size: 10.5px;
-    color: rgba(0, 0, 0, 0.55);
-    border-bottom: none;
-
-    .resetAll {
-      margin-left: auto;
-      border: none;
-      background: none;
-      color: #3f51b5;
-      font: inherit;
+    .setupTitle {
+      font-size: 20px;
       font-weight: 500;
-      cursor: pointer;
-      padding: 0;
+      line-height: 28px;
+    }
 
-      &:disabled {
-        color: rgba(0, 0, 0, 0.3);
-        cursor: default;
+    .setupSummary {
+      font-size: 14px;
+      line-height: 20px;
+      color: rgba(0, 0, 0, 0.6);
+      margin: 6px 0 0;
+    }
+
+    .sectionHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      /* Padding inside the 100%, not on top of it: content-box pushed the
+         right-hand element 15px past the drawer's edge and sliced it off. */
+      box-sizing: border-box;
+      min-height: 40px;
+      padding: 0 15px;
+      border: none;
+      border-top: 1px solid #eceef5;
+      background: transparent;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 500;
+      color: mat.m2-get-color-from-palette($primary-palette, 500);
+      cursor: pointer;
+      text-align: left;
+
+      &.muted {
+        color: #5f6368;
+      }
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.02);
       }
     }
-  }
 
-  .rowJump {
-    border: none;
-    background: none;
-    padding: 0;
-    cursor: pointer;
-    color: rgba(0, 0, 0, 0.4);
-    display: inline-flex;
-    justify-content: center;
-    width: 22px;
-
-    mat-icon {
-      font-size: 16px;
-      width: 16px;
-      height: 16px;
+    .sectionName {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
     }
-    &:hover {
-      color: #3f51b5;
+
+    .mechLink {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      text-decoration-color: rgba(63, 81, 181, 0.35);
+      cursor: pointer;
     }
-  }
 
-  .sectionHeader .actionButton.slim {
-    margin: 0 0 0 auto;
-    height: 24px;
-    padding: 0 8px;
-    font-size: 11.5px;
-    flex: none;
-    white-space: nowrap;
-  }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      padding: 0 8px;
+      border-radius: 10px;
+      background: #eef0f4;
+      color: #5f6368;
+      font-size: 12px;
+      font-weight: 400;
 
-  /* The header is a row of controls now, not one button, so the two halves that
-     fold it carry the padding and the hit area the header used to have. */
-  .sectionHeaderRow {
-    padding: 0;
-    gap: 8px;
-  }
+      &.blocker {
+        background: #fce8e6;
+        color: #c5221f;
+      }
 
-  .sectionToggle {
-    display: flex;
-    align-items: center;
-    min-height: 40px;
-    border: none;
-    background: transparent;
-    font: inherit;
-    color: inherit;
-    cursor: pointer;
-    padding: 0;
-  }
+      &.warning {
+        background: #fef3e0;
+        color: #b26a00;
+      }
 
-  /* The name's half takes the slack, so pressing anywhere along the empty
-     middle still folds the section the way pressing the header always did. */
-  .sectionHeaderRow > .sectionToggle:first-child {
-    flex: 1 1 auto;
-    padding-left: 15px;
-    min-width: 0;
-  }
+      &.ok {
+        background: #e6f4ea;
+        color: #137333;
+      }
+    }
 
-  .sectionHeaderRow > .sectionToggle.chevron {
-    padding-right: 15px;
-  }
+    .factGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 12px;
+      padding: 10px 15px 4px;
+    }
 
-  /* A statement, not a control: where the editing lives, said quietly, and
-     shrinkable so the drawer's edge never slices it. */
-  .sectionHeader .sectionHint {
-    margin-left: auto;
-    font-size: 11.5px;
-    color: rgba(0, 0, 0, 0.5);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-    flex: 0 1 auto;
-  }
+    .fact {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      min-width: 0;
+    }
 
-  /* Read-only: the mock washes the whole table out — names, values, fills —
-     rather than leaving rows that merely cannot be clicked. */
-  .massTable.readonly {
+    .factLabel {
+      font-size: 11px;
+      color: rgba(0, 0, 0, 0.45);
+    }
+
+    .factValue {
+      font-size: 13px;
+      color: #2c2c2c;
+    }
+
+    .checkList {
+      padding: 4px 15px 14px;
+    }
+
+    .check {
+      display: flex;
+      gap: 10px;
+      padding-top: 10px;
+    }
+
+    .checkIcon {
+      flex: 0 0 auto;
+      width: 19px;
+      height: 19px;
+      font-size: 19px;
+      line-height: 19px;
+
+      &.blocker {
+        color: #d93025;
+      }
+
+      &.warning {
+        color: #b26a00;
+      }
+
+      &.muted {
+        color: rgba(0, 0, 0, 0.4);
+      }
+    }
+
+    .checkBody {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .checkTitle {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .checkText {
+      font-size: 12px;
+      line-height: 18px;
+      color: rgba(0, 0, 0, 0.6);
+      margin: 2px 0 0;
+
+      &.note {
+        margin: 4px 0 0;
+      }
+    }
+
+    .massTable {
+      padding: 4px 16px 12px;
+    }
+
+    .massRow {
+      display: grid;
+      /* Mass earns the room a value like "10.00 lbm" needs; the name column
+         gives it up — names are short and ellipsis covers the rare long one. */
+      grid-template-columns: minmax(40px, 1fr) 76px 118px 16px;
+
+      /* Grid items default to min-width auto, so a field's own content forces
+         its column wide and shoves the jump arrows off the drawer. */
+      > * {
+        min-width: 0;
+      }
+      gap: 4px;
+      align-items: center;
+      padding: 3px 0;
+      font-size: 13px;
+
+      &.head {
+        font-size: 9px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.5);
+        font-weight: 600;
+        padding-bottom: 5px;
+        margin-bottom: 3px;
+        white-space: nowrap;
+        /* The rule belongs under the header, where the mock draws it — not
+           under the legend, where a line reads as underlining the caption. */
+        border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+      }
+
+      /* The whole weightless row mutes as one thing: label, both fields. */
+      &.weightless .massName {
+        color: rgba(0, 0, 0, 0.4);
+      }
+      &.weightless .cellField .customInput {
+        color: rgba(0, 0, 0, 0.35);
+      }
+    }
+
+    .num {
+      text-align: right;
+    }
+
     .massName {
-      color: rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
-    .cellField .customInput {
-      color: rgba(0, 0, 0, 0.45);
+
+    .massMoI {
+      color: rgba(0, 0, 0, 0.6);
     }
-  }
 
-  /* The one thing left to do, so it is filled rather than outlined: the quiet
-     outline buttons above it belong to individual checks, and this belongs to
-     the whole drawer. */
-  .enterRow {
-    padding: 12px 15px 4px;
-    border-top: 1px solid #eceef5;
-  }
+    // The table's cells ARE the shared input component; the only difference
+    // is size, so size is the only thing written here. Label and help are the
+    // row's own columns, so the component's header parts hide.
+    .cellField {
+      min-width: 0;
 
-  .enterButton {
-    width: 100%;
-    height: 36px;
-    border: none;
-    border-radius: 4px;
-    background: mat.m2-get-color-from-palette($primary-palette, 500);
-    color: #fff;
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
+      .customInput {
+        font-size: 12.5px;
+      }
 
-    &:hover {
-      background: mat.m2-get-color-from-palette($primary-palette, 700);
+      #input-block .label,
+      #input-block .label-help,
+      #input-block .spacer {
+        display: none;
+      }
+
+      #input-block .row {
+        gap: 0;
+      }
+
+      #input-block .customInputForm .mat-mdc-text-field-wrapper {
+        width: 100%;
+        padding: 0 7px;
+      }
+
+      &.derived .customInput {
+        color: rgba(0, 0, 0, 0.5);
+      }
     }
-  }
 
-  .actionButton {
-    margin-top: 10px;
-    height: 32px;
-    padding: 0 14px;
-    border: 1px solid mat.m2-get-color-from-palette($primary-palette, 500);
-    border-radius: 4px;
-    background: #fff;
-    color: mat.m2-get-color-from-palette($primary-palette, 500);
-    font-family: inherit;
-    font-size: 13px;
-    cursor: pointer;
-
-    &:hover {
-      background: mat.m2-get-color-from-palette($primary-palette, 50);
+    .dot {
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      border: 1.5px solid #9fa8da;
+      background: transparent;
+      flex: none;
     }
-  }
-}
 
-.checkIcon.blocker {
-  color: #b3261e;
-}
+    .dot.filled {
+      background: #3f51b5;
+      border-color: #3f51b5;
+    }
 
-.sevTag {
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-weight: 600;
-  color: #b3261e;
-  margin-left: 6px;
+    .stateSuffix {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 4px;
+    }
 
-  &.warn {
-    color: #9a6a00;
+    .dotLegend {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
+      padding: 8px 0 0;
+      font-size: 10.5px;
+      color: rgba(0, 0, 0, 0.55);
+      border-bottom: none;
+
+      .resetAll {
+        margin-left: auto;
+        border: none;
+        background: none;
+        color: #3f51b5;
+        font: inherit;
+        font-weight: 500;
+        cursor: pointer;
+        padding: 0;
+
+        &:disabled {
+          color: rgba(0, 0, 0, 0.3);
+          cursor: default;
+        }
+      }
+    }
+
+    .rowJump {
+      border: none;
+      background: none;
+      padding: 0;
+      cursor: pointer;
+      color: rgba(0, 0, 0, 0.4);
+      display: inline-flex;
+      justify-content: center;
+      width: 22px;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+      &:hover {
+        color: #3f51b5;
+      }
+    }
+
+    .sectionHeader .actionButton.slim {
+      margin: 0 0 0 auto;
+      height: 24px;
+      padding: 0 8px;
+      font-size: 11.5px;
+      flex: none;
+      white-space: nowrap;
+    }
+
+    // The header is a row of controls now, not one button, so the two halves that
+    // fold it carry the padding and the hit area the header used to have.
+    .sectionHeaderRow {
+      padding: 0;
+      gap: 8px;
+    }
+
+    .sectionToggle {
+      display: flex;
+      align-items: center;
+      min-height: 40px;
+      border: none;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    // The name's half takes the slack, so pressing anywhere along the empty
+    // middle still folds the section the way pressing the header always did.
+    .sectionHeaderRow > .sectionToggle:first-child {
+      flex: 1 1 auto;
+      padding-left: 15px;
+      min-width: 0;
+    }
+
+    .sectionHeaderRow > .sectionToggle.chevron {
+      padding-right: 15px;
+    }
+
+    // A statement, not a control: where the editing lives, said quietly, and
+    // shrinkable so the drawer's edge never slices it.
+    .sectionHeader .sectionHint {
+      margin-left: auto;
+      font-size: 11.5px;
+      color: rgba(0, 0, 0, 0.5);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex: 0 1 auto;
+    }
+
+    // Read-only: the mock washes the whole table out — names, values, fills —
+    // rather than leaving rows that merely cannot be clicked.
+    .massTable.readonly {
+      .massName {
+        color: rgba(0, 0, 0, 0.45);
+      }
+      .cellField .customInput {
+        color: rgba(0, 0, 0, 0.45);
+      }
+    }
+
+    // The one thing left to do, so it is filled rather than outlined: the quiet
+    // outline buttons above it belong to individual checks, and this belongs to
+    // the whole drawer.
+    .enterRow {
+      padding: 12px 15px 4px;
+      border-top: 1px solid #eceef5;
+    }
+
+    .enterButton {
+      width: 100%;
+      height: 36px;
+      border: none;
+      border-radius: 4px;
+      background: mat.m2-get-color-from-palette($primary-palette, 500);
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+
+      &:hover {
+        background: mat.m2-get-color-from-palette($primary-palette, 700);
+      }
+    }
+
+    .actionButton {
+      margin-top: 10px;
+      height: 32px;
+      padding: 0 14px;
+      border: 1px solid mat.m2-get-color-from-palette($primary-palette, 500);
+      border-radius: 4px;
+      background: #fff;
+      color: mat.m2-get-color-from-palette($primary-palette, 500);
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+
+      &:hover {
+        background: mat.m2-get-color-from-palette($primary-palette, 50);
+      }
+    }
+
+    .checkIcon.blocker {
+      color: #b3261e;
+    }
+
+    .sevTag {
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: #b3261e;
+      margin-left: 6px;
+
+      &.warn {
+        color: #9a6a00;
+      }
+    }
   }
 }
