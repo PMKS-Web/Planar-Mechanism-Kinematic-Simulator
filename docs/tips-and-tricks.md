@@ -352,15 +352,43 @@ points up and SVG's points down, so negate Y or the drawing arrives upside down.
 the scratchpad rather than `e2e/`; what belongs in `e2e/` is the assertion the picture taught you to
 write.
 
-**R12 is not a header string.** `AC1009` predates `LWPOLYLINE`, the `100` subclass markers and
-entity handles. A file claiming R12 while carrying any of them is one an old reader -- the only
-reason anybody asks for R12 -- stops on. `writeDxf` switches all three on `document.version`.
+**R12 is the only format PMKS writes, on purpose.** `AC1009` predates `LWPOLYLINE`, the `100`
+subclass markers, entity handles, the CLASSES section and the OBJECTS dictionary -- which is exactly
+why every CAD program, laser cutter and CAM tool still reads it, and why it is hard to get wrong.
+The R2000 path was deleted rather than fixed: what it bought was a units hint, a tidier polyline
+entity, and real `DIMENSION` entities, and Fusion and Onshape do not turn a DXF dimension into a
+sketch dimension anyway. The units hint lives in the file's *name* now (`mechanism (cm).dxf`) and in
+its notes layer, because both importers make you choose units regardless.
 
-**Audit it with `ezdxf`.** `dxf-parser` tells you the file parses; it does not tell you an importer
-will accept it without quietly repairing it first. Install `ezdxf` into a throwaway venv in the
-scratchpad and run `ezdxf.recover.readfile`, then print `auditor.fixes` as well as `auditor.errors`
--- a clean parse with four silent `INVALID_TABLE_HANDLE` repairs is how the R2000 tables went a
-long time without their handles. Both versions should report zero of each.
+**Arcs ride on polyline vertices.** A rounded link outline is one closed `POLYLINE` whose vertices
+carry a `bulge` -- `tan(theta / 4)`, signed counter-clockwise. That is what lets a part arrive as a
+face CAD can pick and extrude rather than a heap of lines and arcs to stitch. `RealLink.outlineLoops()`
+is where the canvas's own geometry gets translated; the sign follows the ring's winding rather than
+the arc's endpoints, because a half circle's start and end angles are the same pair whichever way
+round it goes.
+
+**Two checks run themselves; the third is yours.**
+`src/app/services/export/dxf/gallery-round-trip.spec.ts` exports every `FIXTURE_GALLERY` mechanism
+in both presets and parses it back. `e2e/dxf-sweep.mjs` does the same through the real dialog for
+all 42 templates -- which is the only way to reach the solved slot travels and the file names -- and
+leaves every DXF in `artifacts/dxf-sweep/`.
+
+**Then audit those files with `ezdxf`.** `dxf-parser` tells you the file parses; it does not tell
+you an importer will accept it without quietly repairing it first. Install `ezdxf` into a throwaway
+venv in the scratchpad and print `auditor.fixes` as well as `auditor.errors`:
+
+```python
+import sys, ezdxf
+from ezdxf import recover
+for path in sys.argv[1:]:
+    doc, auditor = recover.readfile(path)
+    print(path, doc.dxfversion, len(auditor.errors), len(auditor.fixes))
+```
+
+A clean parse with four silent `INVALID_TABLE_HANDLE` repairs is how the old R2000 tables went a
+long time without their handles. Every file should report zero of each. Once a release, import one
+into Fusion or Onshape by hand as well -- translator strictness is the one thing no parser here can
+stand in for.
 
 **Check the units convert, not just that they are labelled.** `$INSUNITS` and the coordinates are
 written by different code. Export the same drawing as cm, m and in, and check `$EXTMAX` scales by

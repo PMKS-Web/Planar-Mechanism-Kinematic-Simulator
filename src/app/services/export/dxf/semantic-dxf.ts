@@ -322,17 +322,21 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
   // that is not a link body still lives on it.
   const layers: DxfLayer[] = [...LAYERS];
   if (choices.perLinkLayers) {
-    const perLink = new Map<string, string>();
-    axes.forEach((axis) => perLink.set(axis.key, layerNameFor(axis.key)));
-    perLink.forEach((name) => {
-      if (!layers.some((layer) => layer.name === name)) layers.push({ name, color: 7 });
-    });
     const axisKeyAt = new Map<string, string>();
     axes.forEach((axis) => axisKeyAt.set(edgeKey(axis.start, axis.end), axis.key));
     entities.forEach((entity) => {
       if (entity.type !== 'LINE' || entity.layer !== DXF_LAYER.links) return;
       const key = axisKeyAt.get(edgeKey(entity.start, entity.end));
       if (key) entity.layer = layerNameFor(key);
+    });
+    // Declared from what is actually drawn, not from the centreline axes. The
+    // bodies come from a different list -- a cylinder's barrel and rod are two
+    // parts to build and one line to draw, so they have layers no axis names,
+    // and the file described a drawing it did not contain.
+    new Set(entities.map((entity) => entity.layer)).forEach((name) => {
+      if (name.startsWith('PMKS_LINK_') && !layers.some((layer) => layer.name === name)) {
+        layers.push({ name, color: 7 });
+      }
     });
   }
 
