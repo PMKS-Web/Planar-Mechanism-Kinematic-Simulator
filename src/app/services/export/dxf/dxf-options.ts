@@ -15,6 +15,17 @@ export type DxfOrigin = 'model' | 'ground' | 'center' | 'joint';
 /** What is drawn at a joint centre. */
 export type DxfJointCircles = 'none' | 'marks' | 'holes';
 
+/**
+ * What a link is drawn as.
+ *
+ * `centerlines` is a picture of the mechanism: one line per link, which is what
+ * a reader traces over. `outlines` is the shape of the part -- the same rounded
+ * body the canvas draws, as a closed loop with its pin holes already in it, so
+ * CAD can pick the face and extrude it. A centreline cannot be extruded, which
+ * is the whole difference between a drawing and a part.
+ */
+export type DxfLinkBodies = 'centerlines' | 'outlines';
+
 /** How link lengths are written down. */
 export type DxfDimensionStyle = 'entities' | 'table';
 
@@ -30,6 +41,9 @@ export interface DxfExportOptions {
   /** Only read when `origin` is `'joint'`. */
   originJointId?: string;
   jointCircles?: DxfJointCircles;
+  linkBodies?: DxfLinkBodies;
+  /** A plate under the grounded pins, so the assembly has a base to fix. */
+  includeGroundPlate?: boolean;
   /** In the export's unit, not model units. Only read for `'holes'`. */
   pinDiameter?: number;
   includeDimensions?: boolean;
@@ -69,6 +83,8 @@ export const DXF_PRESETS = {
   build: {
     origin: 'ground',
     jointCircles: 'holes',
+    linkBodies: 'outlines',
+    includeGroundPlate: true,
     includeDimensions: false,
     dimensionStyle: 'entities',
     includeTracedPaths: false,
@@ -84,6 +100,8 @@ export const DXF_PRESETS = {
   reference: {
     origin: 'model',
     jointCircles: 'marks',
+    linkBodies: 'centerlines',
+    includeGroundPlate: false,
     includeDimensions: false,
     dimensionStyle: 'entities',
     includeTracedPaths: true,
@@ -113,6 +131,8 @@ export const NEUTRAL_DXF_OPTIONS: DxfExportChoices = {
   pinDiameter: 0.6,
   origin: 'model',
   jointCircles: 'marks',
+  linkBodies: 'centerlines',
+  includeGroundPlate: false,
   includeDimensions: false,
   dimensionStyle: 'entities',
   includeTracedPaths: false,

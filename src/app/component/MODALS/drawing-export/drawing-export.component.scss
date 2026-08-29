@@ -559,6 +559,24 @@ $rule: #eceef5;
     color: rgba(0, 0, 0, 0.5);
   }
 
+  // Amber rather than red: the export will work, the part will not.
+  .warningLine {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    font-size: 12px;
+    line-height: 16px;
+    color: #a35c00;
+
+    mat-icon {
+      flex: 0 0 auto;
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+      line-height: 15px;
+    }
+  }
+
   [mat-dialog-content] {
     padding: 0 24px;
     overflow-y: auto;

@@ -5,7 +5,7 @@
       <mat-icon>close</mat-icon>
     </button>
   </div>
-  <p class="subtitle">DXF R12 · centerline sketch</p>
+  <p class="subtitle">DXF R12 · {{ subtitleShape }}</p>
 
   <div mat-dialog-content>
     <!-- The two things that surprise people, said once and quietly: they are
@@ -13,8 +13,8 @@
     <div class="scopeNote">
       <mat-icon>architecture</mat-icon>
       <p>
-        <strong>Built from the start pose.</strong> Exports mechanism geometry in the project’s
-        units — kinematic centerlines, not fabrication profiles.
+        <strong>Built from the start pose.</strong> One sketch layer per part, in the project’s
+        units — the shapes the canvas draws, not a toleranced fabrication drawing.
       </p>
     </div>
 
@@ -38,7 +38,7 @@
           <mat-icon>precision_manufacturing</mat-icon>Build parts in CAD
         </span>
         <span class="presetNote"
-          >A layer per link, at the origin, with pin holes and dimensions.</span
+          >A closed outline per link, with its pin holes, at the origin.</span
         >
       </button>
       <button
@@ -105,6 +105,34 @@
       </button>
       @if (open.geometry) {
         <div class="sectionBody">
+          <div class="group">
+            <span class="groupName">Links are drawn as</span>
+            @for (choice of bodyChoices; track choice.value) {
+              <button class="radioRow" (click)="touch({ linkBodies: choice.value })">
+                <span class="radio" [class.on]="options.linkBodies === choice.value"></span>
+                <span class="checkText">
+                  <span class="radioLabel">{{ choice.label }}</span>
+                  <span class="checkNote">{{ choice.note }}</span>
+                </span>
+              </button>
+            }
+            @if (options.linkBodies === 'outlines') {
+              <div class="checkRow">
+                <button (click)="toggle('includeGroundPlate')">
+                  <span class="check" [class.on]="isOn('includeGroundPlate')">
+                    <mat-icon>check</mat-icon>
+                  </span>
+                  <span class="checkText">
+                    <span class="checkName">Ground plate</span>
+                    <span class="checkNote"
+                      >A base part holding the fixed pins, to anchor the assembly.</span
+                    >
+                  </span>
+                </button>
+              </div>
+            }
+          </div>
+
           <div class="group">
             <span class="groupName">Origin — the point that lands on (0, 0)</span>
             @for (choice of originChoices; track choice.value) {
@@ -307,6 +335,9 @@
     <div class="footerText">
       <div class="liveSummary">{{ liveSummary }}</div>
       <div class="deliveryLine">{{ deliveryLine }}</div>
+      @if (warning) {
+        <div class="warningLine"><mat-icon>warning</mat-icon>{{ warning }}</div>
+      }
     </div>
   </div>
 

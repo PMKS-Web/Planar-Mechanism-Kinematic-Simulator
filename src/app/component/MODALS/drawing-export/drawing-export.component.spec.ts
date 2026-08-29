@@ -33,6 +33,7 @@ describe('DrawingExportComponent', () => {
     projectUnit: vi.fn().mockReturnValue(LengthUnit.CM),
     fileNames: vi.fn().mockReturnValue(['mechanism (cm).dxf', 'mechanism-joints.csv']),
     downloadName: vi.fn().mockReturnValue('mechanism.zip'),
+    pinWarning: vi.fn().mockReturnValue(''),
   };
 
   function render() {
@@ -62,7 +63,8 @@ describe('DrawingExportComponent', () => {
     expect(element.querySelectorAll('.sectionHead')).toHaveLength(4);
     expect(element.querySelectorAll('.sectionBody')).toHaveLength(0);
     expect(element.textContent).toContain('start pose');
-    expect(element.textContent).toContain('centerline');
+    // The default is parts now, not a picture of them.
+    expect(element.textContent).toContain('part outlines');
     expect(element.querySelector('.titleRow > h1')?.textContent).toContain('CAD Export');
   });
 

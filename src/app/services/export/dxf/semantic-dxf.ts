@@ -6,6 +6,7 @@ import { MODEL_SCALE } from '../../../model/render-scale';
 import { LengthUnit } from '../../../model/unit-enums';
 import { DxfDocument, DxfEntity, DxfLayer, DxfLine, DxfPoint } from './dxf-model';
 import { DxfExportOptions, NEUTRAL_DXF_OPTIONS } from './dxf-options';
+import { groundPlate, linkBodies, SlotTravel, slotProfile } from './link-bodies';
 import {
   consolidateWeldedAxes,
   groundAnnotation,
@@ -15,12 +16,14 @@ import {
 
 export const DXF_LAYER = {
   links: 'PMKS_LINK_CENTERLINES',
+  groundPlate: 'PMKS_GROUND_PLATE',
   groundPoints: 'PMKS_GROUND_POINTS',
   dimensions: 'PMKS_DIMENSIONS',
   paths: 'PMKS_TRACED_PATHS',
   notes: 'PMKS_NOTES',
   joints: 'PMKS_JOINT_CENTERS',
   slots: 'PMKS_SLOTS',
+  blocks: 'PMKS_SLIDER_BLOCKS',
   cylinders: 'PMKS_CYLINDERS',
   annotations: 'PMKS_KINEMATIC_ANNOTATIONS',
   labels: 'PMKS_LABELS',
@@ -44,16 +47,20 @@ export interface SemanticDxfInput {
   options?: DxfExportOptions;
   /** Solved by the caller: the builder only ever sees the start pose. */
   tracedPaths?: TracedPath[];
+  /** How far each slot's block really travels, measured over the solved cycle. */
+  slotTravels?: SlotTravel[];
 }
 
 const LAYERS = [
   { name: DXF_LAYER.links, color: 7 },
+  { name: DXF_LAYER.groundPlate, color: 9 },
   { name: DXF_LAYER.groundPoints, color: 5 },
   { name: DXF_LAYER.dimensions, color: 8 },
   { name: DXF_LAYER.paths, color: 4 },
   { name: DXF_LAYER.notes, color: 7 },
   { name: DXF_LAYER.joints, color: 2 },
   { name: DXF_LAYER.slots, color: 4 },
+  { name: DXF_LAYER.blocks, color: 4 },
   { name: DXF_LAYER.cylinders, color: 6 },
   { name: DXF_LAYER.annotations, color: 3 },
   { name: DXF_LAYER.labels, color: 7 },
@@ -97,13 +104,37 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       .filter((joint): joint is RealJoint => joint instanceof RealJoint && joint.isWelded)
       .map((joint) => joint.id)
   );
+  const pinRadius =
+    choices.jointCircles === 'holes'
+      ? (choices.pinDiameter || NEUTRAL_DXF_OPTIONS.pinDiameter) / 2
+      : 0;
+  // Outlines instead of centrelines, when the reader is building rather than
+  // tracing. A link that has no outline to give -- every joint collapsed onto
+  // one point -- keeps its centreline, so it does not silently vanish.
+  const drawnAsBody = new Set<string>();
+  if (choices.linkBodies === 'outlines') {
+    const bodies = linkBodies({
+      links: input.links,
+      point,
+      scale: symbolScale,
+      pinRadius,
+      layerFor: (link) => (choices.perLinkLayers ? layerNameFor(link.id) : DXF_LAYER.links),
+    });
+    entities.push(...bodies.entities);
+    const collapsed = new Set(bodies.missing.map((link) => link.id));
+    input.links.forEach((link) => {
+      if (link instanceof RealLink && !collapsed.has(link.id)) drawnAsBody.add(link.id);
+    });
+  }
   entities.push(
-    ...consolidateWeldedAxes(axes, welded).map((axis): DxfLine => ({
-      type: 'LINE',
-      layer: DXF_LAYER.links,
-      start: axis.start,
-      end: axis.end,
-    }))
+    ...consolidateWeldedAxes(axes, welded)
+      .filter((axis) => !drawnAsBody.has(axis.key))
+      .map((axis): DxfLine => ({
+        type: 'LINE',
+        layer: DXF_LAYER.links,
+        start: axis.start,
+        end: axis.end,
+      }))
   );
 
   cylinders
@@ -145,7 +176,21 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     .forEach((joint) => {
       if (cylinderInterior.has(joint.id)) return;
       if (joint instanceof PrisJoint) {
-        entities.push(slotAxis(joint, point, symbolScale));
+        if (choices.linkBodies === 'outlines') {
+          entities.push(
+            ...slotProfile(
+              joint,
+              (input.slotTravels ?? []).find((travel) => travel.jointId === joint.id),
+              point,
+              symbolScale,
+              pinRadius,
+              DXF_LAYER.slots,
+              DXF_LAYER.blocks
+            )
+          );
+        } else {
+          entities.push(slotAxis(joint, point, symbolScale));
+        }
       }
       const pairedPin = blockPins.has(joint.id) && !(joint instanceof PrisJoint);
       if (!pairedPin && (!(joint instanceof RealJoint) || !joint.isWelded)) {
@@ -154,9 +199,13 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
         // out one at a time, and a circle already gives them a centre to snap
         // and mate to. The reader chooses what the circle *is* -- nothing, a
         // centre mark, or the hole they will cut.
+        // A hole already cut into every body it belongs to is not cut again on
+        // a shared layer: two circles on one centre is one to delete in CAD.
         const radius =
           choices.jointCircles === 'holes'
-            ? (choices.pinDiameter || NEUTRAL_DXF_OPTIONS.pinDiameter) / 2
+            ? drawnAsBody.size > 0
+              ? 0
+              : pinRadius
             : choices.jointCircles === 'marks'
               ? 0.08 * symbolScale
               : 0;
@@ -235,6 +284,28 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
   }
   if (choices.includeSlotTravel) {
     entities.push(...slotTravelPoints(input.joints, point, symbolScale));
+  }
+  if (choices.includeGroundPlate) {
+    const fixed = input.joints.filter((joint) => joint instanceof RealJoint && joint.ground);
+    // A grounded slot is cut *into* this plate, so the plate has to reach the
+    // whole stroke -- otherwise the slot runs off the end of the part holding
+    // it, which is a drawing nobody can build from.
+    const carried = input.joints
+      .filter((joint): joint is PrisJoint => joint instanceof PrisJoint && !joint.isFloating)
+      .flatMap((joint) => {
+        const travel = (input.slotTravels ?? []).find((one) => one.jointId === joint.id);
+        return travel ? [travel.from, travel.to] : [];
+      });
+    entities.push(
+      ...groundPlate(
+        [...fixed, ...carried],
+        point,
+        symbolScale,
+        pinRadius,
+        DXF_LAYER.groundPlate,
+        fixed
+      )
+    );
   }
 
   if (choices.includeDimensions) {
@@ -461,19 +532,24 @@ function lengthOf(axis: SemanticAxis): number {
 /** What the file is, in the file, for whoever opens it a year from now. */
 function addNotes(
   input: SemanticDxfInput,
-  choices: { origin: string; jointCircles: string; pinDiameter: number },
+  choices: { origin: string; jointCircles: string; pinDiameter: number; linkBodies: string },
   axes: SemanticAxis[],
   scale: number,
   entities: DxfEntity[]
 ): void {
+  const outlines = choices.linkBodies === 'outlines';
   const lines = [
-    'PMKS+ CAD export - kinematic centerlines from the start pose',
+    `PMKS+ CAD export - ${outlines ? 'part outlines' : 'kinematic centerlines'} from the start pose`,
+    // R12 has no header field for units, so this and the file's name are where
+    // the answer lives -- and the import dialog will ask.
     `Units: ${unitWord(input.lengthUnit)}`,
     `Origin: ${choices.origin === 'model' ? 'as drawn' : 'moved to ' + choices.origin}`,
     choices.jointCircles === 'holes'
       ? `Joint circles are pin holes, ${choices.pinDiameter} ${unitWord(input.lengthUnit)} diameter`
       : 'Joint circles are centre marks, not hole diameters',
-    `${axes.length} centreline${axes.length === 1 ? '' : 's'}`,
+    outlines
+      ? 'One closed outline per link, on its own layer, holes included'
+      : `${axes.length} centreline${axes.length === 1 ? '' : 's'}`,
   ];
   lines.forEach((text, index) =>
     entities.push({

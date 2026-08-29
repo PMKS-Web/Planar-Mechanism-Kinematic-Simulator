@@ -8,6 +8,7 @@ import { SettingsService } from '../../settings.service';
 import { utf8, zipStore } from '../zip';
 import { DEFAULT_DXF_EXPORT_OPTIONS, DxfExportOptions } from './dxf-options';
 import { DxfEntity } from './dxf-model';
+import { SlotTravel } from './link-bodies';
 import { buildSemanticDxf, TracedPath } from './semantic-dxf';
 import { writeDxf } from './dxf-writer';
 
@@ -67,6 +68,7 @@ export class DxfExportService {
           includeKinematicAnnotations: choices.includeKinematicAnnotations,
           options: { ...choices, unit },
           tracedPaths: choices.includeTracedPaths ? this.tracedPaths() : [],
+          slotTravels: this.slotTravels(),
         })
       )
     );
@@ -131,6 +133,7 @@ export class DxfExportService {
       includeKinematicAnnotations: choices.includeKinematicAnnotations,
       options: { ...choices, unit },
       tracedPaths: choices.includeTracedPaths ? this.tracedPaths() : [],
+      slotTravels: this.slotTravels(),
     });
     const xs: number[] = [];
     const ys: number[] = [];
@@ -189,6 +192,29 @@ export class DxfExportService {
     ];
   }
 
+  /**
+   * A hole wider than the part it is cut in, or nothing.
+   *
+   * The link bodies are the width the canvas draws them, which is a display
+   * convention rather than a fabrication one -- and the default pin is 0.6 of
+   * whatever unit the project is in. Put together, the default settings can cut
+   * a hole four times wider than the bar holding it, and the file looks
+   * perfectly reasonable until somebody tries to extrude it.
+   */
+  pinWarning(options: DxfExportOptions = {}): string {
+    const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
+    if (choices.jointCircles !== 'holes' || choices.linkBodies !== 'outlines') return '';
+    const unit = choices.unit ?? this.settings.lengthUnit.value;
+    // Half the drawn body width: the same number the outline's corner radius is.
+    const bodyWidth = inUnit((SettingsService.objectScale / 4) * 2, unit);
+    const pin = choices.pinDiameter || DEFAULT_DXF_EXPORT_OPTIONS.pinDiameter;
+    if (!(bodyWidth > 0) || pin < bodyWidth) return '';
+    return (
+      `Ø${pin} ${unitWord(unit)} pins are wider than the ${bodyWidth.toFixed(2)} ` +
+      `${unitWord(unit)} link bodies — the holes will break out of the parts.`
+    );
+  }
+
   /** The project's own unit, which an export uses unless told otherwise. */
   projectUnit(): LengthUnit {
     return this.settings.lengthUnit.value;
@@ -245,6 +271,57 @@ export class DxfExportService {
       });
     });
     return [...paths].map(([jointId, points]) => ({ jointId, points }));
+  }
+
+  /**
+   * How far each slot's block actually travels, over the whole cycle.
+   *
+   * A grounded slot has no length of its own at the start pose -- how long it
+   * has to be is a fact about the solved motion. Read off the same solved
+   * frames the traced curves come from, so the slot in the file is exactly the
+   * stroke the mechanism was solved with rather than a guess a reader has to
+   * check afterwards.
+   */
+  private slotTravels(): SlotTravel[] {
+    const solved = (this.mechanism.mechanisms ?? []).filter((machine) =>
+      machine.isMechanismValid()
+    );
+    const seen = new Map<string, { x: number; y: number }[]>();
+    solved.forEach((machine) =>
+      machine.joints.forEach((frame) =>
+        frame.forEach((joint) => {
+          if (!(joint instanceof PrisJoint)) return;
+          const seenAt = seen.get(joint.id) ?? [];
+          seenAt.push({ x: joint.x, y: joint.y });
+          seen.set(joint.id, seenAt);
+        })
+      )
+    );
+    return [...seen]
+      .map(([jointId, at]) => {
+        // The two extremes along the slot's own direction, which is the pair
+        // furthest apart -- the block only ever moves on one line.
+        let from = at[0];
+        let to = at[0];
+        let widest = 0;
+        at.forEach((candidate) => {
+          const reach = Math.hypot(candidate.x - at[0].x, candidate.y - at[0].y);
+          if (reach > widest) {
+            widest = reach;
+            to = candidate;
+          }
+        });
+        widest = 0;
+        at.forEach((candidate) => {
+          const reach = Math.hypot(candidate.x - to.x, candidate.y - to.y);
+          if (reach > widest) {
+            widest = reach;
+            from = candidate;
+          }
+        });
+        return { jointId, from, to };
+      })
+      .filter((travel) => travel.from !== travel.to);
   }
 
   private jointCsv(unit: LengthUnit): string {

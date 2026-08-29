@@ -18,6 +18,7 @@ import {
   DxfExportChoices,
   DxfExportService,
   DxfJointCircles,
+  DxfLinkBodies,
   DxfOrigin,
   DxfPresetName,
   DxfSummary,
@@ -111,6 +112,18 @@ export class DrawingExportComponent {
     { label: 'First ground joint', value: 'ground' },
     { label: 'Centre of drawing', value: 'center' },
     { label: 'Choose a joint…', value: 'joint' },
+  ];
+  readonly bodyChoices: { label: string; note: string; value: DxfLinkBodies }[] = [
+    {
+      label: 'Closed outlines',
+      note: 'The part shape, with its pin holes — a face CAD can extrude.',
+      value: 'outlines',
+    },
+    {
+      label: 'Centrelines',
+      note: 'One line per link. A drawing to trace over, not a part.',
+      value: 'centerlines',
+    },
   ];
   readonly circleChoices: { label: string; value: DxfJointCircles }[] = [
     { label: 'None (points only)', value: 'none' },
@@ -218,6 +231,11 @@ export class DrawingExportComponent {
 
   // --- what each folded section says ----------------------------------------
 
+  /** What kind of drawing this will be, said under the title. */
+  get subtitleShape(): string {
+    return this.options.linkBodies === 'outlines' ? 'part outlines' : 'centreline sketch';
+  }
+
   /** How this export's unit is spelled wherever the dialog names one. */
   get unitWord(): string {
     return unitWord(this.effectiveUnit);
@@ -228,6 +246,7 @@ export class DrawingExportComponent {
   }
 
   get geometrySummary(): string {
+    const bodies = this.options.linkBodies === 'outlines' ? 'outlines' : 'centrelines';
     const origin =
       this.options.origin === 'model'
         ? 'model coordinates'
@@ -240,7 +259,7 @@ export class DrawingExportComponent {
         : this.options.jointCircles === 'marks'
           ? 'joint marks'
           : `Ø${this.options.pinDiameter} ${this.summary.unit} holes`;
-    return `${origin} · ${circles}`;
+    return `${bodies} · ${origin} · ${circles}`;
   }
 
   get originJointLabel(): string {
@@ -290,6 +309,11 @@ export class DrawingExportComponent {
     if (this.isEmpty) return 'Nothing to export yet — draw a mechanism first.';
     const { entities, layers, width, height, unit } = this.summary;
     return `${entities} entities · ${layers} layers · ${width.toFixed(0)} × ${height.toFixed(0)} ${unit}`;
+  }
+
+  /** A hole wider than the part it is cut in, said where the reader is looking. */
+  get warning(): string {
+    return this.isEmpty ? '' : this.exportService.pinWarning(this.options);
   }
 
   get deliveryLine(): string {

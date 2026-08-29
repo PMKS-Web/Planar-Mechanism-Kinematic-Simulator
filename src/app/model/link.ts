@@ -142,6 +142,16 @@ export class RealLink extends Link {
 
   public initialExternalLines: Line[] = [];
 
+  /**
+   * The closed rings a compound outline is made of, kept alongside the path.
+   *
+   * `externalLines` flattens every ring into one list, which is all the canvas
+   * needs -- but a reader who wants to *extrude* this has to know where one
+   * loop ends and the next begins, or two separate bodies arrive joined by a
+   * line that is not part of either.
+   */
+  private compoundRings: number[][][] = [];
+
   //For debugging:
   public unqiqueRandomID: string =
     Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -256,8 +266,7 @@ export class RealLink extends Link {
       for (let i = 0; i < this.joints.length; i++) {
         for (let j = i + 1; j < this.joints.length; j++) {
           const span =
-            (this.joints[i].x - this.joints[j].x) ** 2 +
-            (this.joints[i].y - this.joints[j].y) ** 2;
+            (this.joints[i].x - this.joints[j].x) ** 2 + (this.joints[i].y - this.joints[j].y) ** 2;
           if (span > longest) {
             longest = span;
             a = this.joints[i];
@@ -485,6 +494,7 @@ export class RealLink extends Link {
       linkSubset.map((link) => link.d),
       SettingsService.objectScale / 4
     );
+    this.compoundRings = geometry.rings;
     this.externalLines = geometry.rings.flatMap((ring) =>
       ring.slice(0, -1).map((point, index) => {
         const next = ring[index + 1];
@@ -499,6 +509,82 @@ export class RealLink extends Link {
 
   getPathString(): string {
     return this.subset.length === 0 ? this.getSimplePathString() : this.getCompoundPathString();
+  }
+
+  /**
+   * This link's outline as closed loops, in model coordinates.
+   *
+   * The same shape the canvas draws, said in a way something other than an SVG
+   * path can use: a run of vertices per loop, each carrying the bulge of the
+   * arc leading to the next one -- zero for a straight edge, the tangent of a
+   * quarter of the included angle for a rounded corner. That is exactly what a
+   * DXF polyline wants, and it is what turns "a picture of a linkage" into a
+   * face somebody can select and extrude.
+   *
+   * Empty when there is no outline to give: a bar whose joints have collapsed
+   * onto one point has no shape, and a caller should fall back to the
+   * centreline rather than draw nothing.
+   */
+  outlineLoops(): { x: number; y: number; bulge: number }[][] {
+    if (this.subset.length > 0) {
+      return this.compoundRings
+        .filter((ring) => ring.length > 3)
+        .map((ring) => ring.slice(0, -1).map((point) => ({ x: point[0], y: point[1], bulge: 0 })));
+    }
+    if (this.drawnAsDisc) {
+      const centre = this.groundPivot();
+      if (centre === undefined) return [];
+      const reach = this.joints.reduce(
+        (far, joint) => Math.max(far, getDistance(centre, joint)),
+        0
+      );
+      const radius = reach + SettingsService.objectScale / 4;
+      // A circle, as a polyline: two semicircles, which is how DXF says a
+      // round closed profile without leaving the one entity type.
+      return [
+        [
+          { x: centre.x - radius, y: centre.y, bulge: 1 },
+          { x: centre.x + radius, y: centre.y, bulge: 1 },
+        ],
+      ];
+    }
+    if (this.externalLines.length < 2) return [];
+    // Every corner of an outline bulges outward, so the sign follows the ring's
+    // winding rather than the arc's own endpoints. It has to: an end cap is a
+    // half circle, and a half circle's start and end angles are the same pair
+    // whichever way round it goes.
+    const outward = RealLink.ringWinding(this.externalLines);
+    return [
+      this.externalLines.map((line) => ({
+        x: line.startPosition.x,
+        y: line.startPosition.y,
+        bulge: line instanceof Arc ? outward * Math.abs(RealLink.arcBulge(line)) : 0,
+      })),
+    ];
+  }
+
+  /** +1 when the ring runs counter-clockwise, -1 when it runs the other way. */
+  private static ringWinding(ring: Line[]): number {
+    const twiceArea = ring.reduce(
+      (sum, line) =>
+        sum +
+        (line.startPosition.x * line.endPosition.y - line.endPosition.x * line.startPosition.y),
+      0
+    );
+    return twiceArea >= 0 ? 1 : -1;
+  }
+
+  /** `tan(theta / 4)` for the arc's included angle -- what a DXF vertex wants. */
+  private static arcBulge(arc: Arc): number {
+    const fromAngle = Math.atan2(
+      arc.startPosition.y - arc.center.y,
+      arc.startPosition.x - arc.center.x
+    );
+    const toAngle = Math.atan2(arc.endPosition.y - arc.center.y, arc.endPosition.x - arc.center.x);
+    let swept = toAngle - fromAngle;
+    while (swept <= -Math.PI) swept += 2 * Math.PI;
+    while (swept > Math.PI) swept -= 2 * Math.PI;
+    return Math.tan(swept / 4);
   }
 
   getHullPoints(): number[][] {

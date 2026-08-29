@@ -405,7 +405,7 @@ check(
 
 await openDrawingDialog();
 check(
-  'CAD Export explains its start-pose centerline scope and opens on Build parts',
+  'CAD Export explains its start-pose scope and opens on Build parts',
   (await page.locator('app-drawing-export').innerText()).includes('start pose') &&
     (await page.locator('app-drawing-export [data-preset="build"]').getAttribute('class')).includes(
       'on'

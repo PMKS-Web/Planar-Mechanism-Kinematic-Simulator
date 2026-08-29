@@ -46,7 +46,7 @@ describe('DxfExportService', () => {
 
     // Without the companion file, so this is about the DXF and the boundary
     // rather than about how two files are packed; the zip has its own test.
-    const file = service.create({ dataFile: 'none' });
+    const file = service.create({ dataFile: 'none', linkBodies: 'centerlines' });
     const parsed = new DxfParser().parseSync(file.content);
 
     expect(mechanism.encodeFromStartPose).toHaveBeenCalledOnce();
@@ -153,7 +153,7 @@ describe('DxfExportService', () => {
   it('converts the geometry into the unit it names in the file', () => {
     const { service } = setup();
     const lengthIn = (unit: LengthUnit | undefined) => {
-      const file = service.create({ dataFile: 'none', unit });
+      const file = service.create({ dataFile: 'none', unit, linkBodies: 'centerlines' });
       const parsed = new DxfParser().parseSync(file.content)!;
       const ends = parsed.entities
         .filter((entity) => entity.type === 'LINE')
@@ -176,6 +176,55 @@ describe('DxfExportService', () => {
     const inches = lengthIn(LengthUnit.INCH);
     expect(inches.name).toBe('mechanism (in).dxf');
     expect(inches.span).toBeCloseTo(Math.hypot(2, 1) / 2.54, 6);
+  });
+
+  it('draws each link as a closed outline with its holes already in it', () => {
+    const { service } = setup();
+    const parsed = new DxfParser().parseSync(service.create({ dataFile: 'none' }).content)!;
+    const body = parsed.entities.find((entity) => entity.type === 'POLYLINE') as unknown as {
+      layer: string;
+      shape: boolean;
+      vertices: { x: number; y: number; bulge?: number }[];
+    };
+    // A centreline cannot be extruded. This is the same rounded bar the canvas
+    // draws, closed, so CAD has a face to pick.
+    expect(body).toBeDefined();
+    expect(body.shape).toBe(true);
+    expect(body.layer).toBe('PMKS_LINK_AB');
+    expect(body.vertices.some((vertex) => (vertex.bulge ?? 0) !== 0)).toBe(true);
+    // The holes are on the part's own layer, not a shared one: a face with its
+    // holes in it extrudes into a finished body in one step.
+    const holes = parsed.entities.filter(
+      (entity) =>
+        entity.type === 'CIRCLE' && (entity as { layer?: string }).layer === 'PMKS_LINK_AB'
+    );
+    expect(holes).toHaveLength(2);
+    // And the shared joint layer does not cut them a second time.
+    expect(
+      parsed.entities.filter(
+        (entity) => (entity as { layer?: string }).layer === 'PMKS_JOINT_CENTERS'
+      )
+    ).toHaveLength(0);
+    // No centreline underneath: one line per link on top of the body it
+    // describes is one more thing to delete in CAD.
+    expect(
+      parsed.entities.filter(
+        (entity) => (entity as { layer?: string }).layer === 'PMKS_LINK_CENTERLINES'
+      )
+    ).toHaveLength(0);
+  });
+
+  it('says so when the pins would break out of the parts', () => {
+    const { service } = setup();
+    // The bodies are the width the canvas draws them, which is a display
+    // convention; the pin is whatever was typed. Together the defaults can cut
+    // a hole wider than the bar holding it, and the file looks fine until
+    // somebody extrudes it.
+    expect(service.pinWarning({ pinDiameter: 10 })).toContain('wider than');
+    expect(service.pinWarning({ pinDiameter: 1e-6 })).toBe('');
+    // Only when there is a body for it to break out of.
+    expect(service.pinWarning({ pinDiameter: 10, linkBodies: 'centerlines' })).toBe('');
+    expect(service.pinWarning({ pinDiameter: 10, jointCircles: 'marks' })).toBe('');
   });
 
   it('is byte-deterministic for unchanged model state and choices', () => {
