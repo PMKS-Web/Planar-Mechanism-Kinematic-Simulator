@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { PrisJoint, RealJoint } from '../../../model/joint';
+import { Joint, PrisJoint, RealJoint } from '../../../model/joint';
 import { RealLink } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { LengthUnit } from '../../../model/unit-enums';
@@ -97,6 +97,7 @@ export class DxfExportService {
               ? [{ name: `${stem}-forces.csv`, text: this.forceCsv(unit) }]
               : []),
           ];
+    extras.push({ name: 'README.txt', text: handoffNotes(unit, choices) });
     const zip = zipStore([
       { name: dxfName, data: utf8(content) },
       ...extras.map((extra) => ({ name: extra.name, data: utf8(extra.text) })),
@@ -183,12 +184,13 @@ export class DxfExportService {
     const stem = fileStem(choices.fileName || DEFAULT_DXF_EXPORT_OPTIONS.fileName);
     const dxf = `${stem} (${unitWord(unit)}).dxf`;
     if (choices.dataFile === 'none') return [dxf];
-    if (choices.dataFile === 'json') return [dxf, `${stem}.json`];
+    if (choices.dataFile === 'json') return [dxf, `${stem}.json`, 'README.txt'];
     return [
       dxf,
       `${stem}-joints.csv`,
       `${stem}-links.csv`,
       ...(this.mechanism.forces.length ? [`${stem}-forces.csv`] : []),
+      'README.txt',
     ];
   }
 
@@ -334,9 +336,13 @@ export class DxfExportService {
         inUnit(joint.y, unit).toFixed(6),
         joint instanceof RealJoint && joint.ground ? 'yes' : 'no',
         joint instanceof RealJoint && joint.input ? 'yes' : 'no',
+        // Which parts meet here: DXF cannot say that a hole in one layer and a
+        // hole in another are the same pin, and that is exactly what somebody
+        // checking an assembly against this table needs to know.
+        connectedLinks(joint).join(' '),
       ].join(',')
     );
-    return ['id,name,type,x,y,grounded,input', ...rows].join('\r\n') + '\r\n';
+    return ['id,name,type,x,y,grounded,input,links', ...rows].join('\r\n') + '\r\n';
   }
 
   private linkCsv(unit: LengthUnit): string {
@@ -392,6 +398,7 @@ export class DxfExportService {
           y: inUnit(joint.y, unit),
           grounded: joint instanceof RealJoint && joint.ground,
           input: joint instanceof RealJoint && joint.input,
+          links: connectedLinks(joint),
         })),
         links: this.realLinks().map((link) => ({
           id: link.id,
@@ -474,6 +481,81 @@ function previewShapes(
     }
   });
   return { strokes: strokes.join(''), holes };
+}
+
+/**
+ * What to do with the file, in the file.
+ *
+ * DXF carries geometry and nothing else -- no joints, no mates, no assembly.
+ * Making the holes exact and the parts separable is as far as the format goes,
+ * and the last stretch is a handful of steps in whichever program the reader
+ * opens next. Written down beside the drawing rather than in the dialog they
+ * have already closed by then.
+ */
+function handoffNotes(
+  unit: LengthUnit,
+  choices: { linkBodies: string; pinDiameter: number }
+): string {
+  const word = unitWord(unit);
+  const parts = choices.linkBodies === 'outlines';
+  return [
+    'PMKS+ CAD export',
+    '=================',
+    '',
+    `This drawing is in ${word}. R12 (AC1009) has no header field for units, so the`,
+    'unit is in the file name instead -- and Fusion and Onshape both ask you to',
+    `choose one on import. Choose ${word}, or the parts come out ten or a hundred`,
+    'times the wrong size.',
+    '',
+    parts
+      ? 'Each link is one closed outline on its own layer (PMKS_LINK_*), with its pin'
+      : 'Each link is a centreline on PMKS_LINK_CENTERLINES. Centrelines cannot be',
+    parts
+      ? 'holes already cut. PMKS_GROUND_PLATE is the base part. PMKS_SLOTS and'
+      : 'extruded -- re-export with "Closed outlines" if you meant to build from this.',
+    parts ? 'PMKS_SLIDER_BLOCKS are the sliding pair, where there is one.' : '',
+    '',
+    'In Fusion',
+    '---------',
+    '1. Insert > Insert DXF. Pick a plane, set the units, and turn on the option to',
+    '   make one sketch per layer.',
+    '2. Extrude each link sketch a few mm. The holes are already in the profile, so',
+    '   each one comes out as a finished body.',
+    '3. Assemble the bodies as components, then Assemble > Joint > Revolute, picking',
+    '   the two hole centres that share a pin. The joints CSV beside this file says',
+    '   which links meet at which joint.',
+    '4. Ground the base part, then drive the input joint and run a motion study.',
+    '',
+    'In Onshape',
+    '----------',
+    '1. Import the DXF into a Part Studio and choose the units when asked.',
+    '2. Extrude each closed region a few mm.',
+    '3. In an Assembly, insert the parts and add Revolute mates, snapping the mate',
+    '   connectors to the hole centres -- Onshape offers a connector at the centre of',
+    '   a circular edge, which is why the holes are here rather than centre marks.',
+    '4. Fix the base part and drag or drive the input.',
+    '',
+    'What DXF cannot carry',
+    '---------------------',
+    'Joints, mates, motion and mass. Those are in the companion tables beside this',
+    'file, and in PMKS+ itself. What the drawing does carry is exact hole positions',
+    'shared between mating parts, which is the part that is tedious to redo by hand.',
+    '',
+    `Pin holes are ${choices.pinDiameter} ${word} across. If your pins are a different`,
+    'size, change it in the export dialog -- easier than editing every sketch.',
+  ]
+    .filter((line, index, all) => line !== '' || all[index - 1] !== '')
+    .join('\r\n')
+    .concat('\r\n');
+}
+
+/** The links that meet at a joint, by id, in a stable order. */
+function connectedLinks(joint: Joint): string[] {
+  const links = joint instanceof RealJoint ? joint.links : [];
+  return links
+    .map((link) => link.id)
+    .filter((id, index, all) => all.indexOf(id) === index)
+    .sort();
 }
 
 function lengthOf(link: RealLink): number {

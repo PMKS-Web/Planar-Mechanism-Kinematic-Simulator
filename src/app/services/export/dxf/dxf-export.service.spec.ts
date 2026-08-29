@@ -66,13 +66,21 @@ describe('DxfExportService', () => {
     const csv = service.create({ dataFile: 'csv' });
     expect(csv.name).toBe('mechanism.zip');
     expect(csv.mime).toBe('application/zip');
-    expect(csv.parts).toEqual(['mechanism (m).dxf', 'mechanism-joints.csv', 'mechanism-links.csv']);
+    // A README travels with it: DXF carries geometry and nothing else, and the
+    // last stretch into a moving assembly is a handful of steps in whichever
+    // program the reader opens next.
+    expect(csv.parts).toEqual([
+      'mechanism (m).dxf',
+      'mechanism-joints.csv',
+      'mechanism-links.csv',
+      'README.txt',
+    ]);
     // The DXF is still the content, whatever the delivery: everything that
     // reads a file from this service reads the drawing.
     expect(csv.content).toContain('AC1009');
 
     const json = service.create({ dataFile: 'json' });
-    expect(json.parts).toEqual(['mechanism (m).dxf', 'mechanism.json']);
+    expect(json.parts).toEqual(['mechanism (m).dxf', 'mechanism.json', 'README.txt']);
   });
 
   it('publishes stable UI defaults and sanitizes the requested file name', () => {
@@ -225,6 +233,17 @@ describe('DxfExportService', () => {
     // Only when there is a body for it to break out of.
     expect(service.pinWarning({ pinDiameter: 10, linkBodies: 'centerlines' })).toBe('');
     expect(service.pinWarning({ pinDiameter: 10, jointCircles: 'marks' })).toBe('');
+  });
+
+  it('says which links meet at each joint, which DXF cannot', () => {
+    const { service } = setup();
+    const table = service['jointCsv'](LengthUnit.CM) as string;
+    const [heading, ...rows] = table.trim().split('\r\n');
+    expect(heading.endsWith(',links')).toBe(true);
+    // Two holes in two layers are the same pin only if something says so.
+    expect(rows[0].endsWith(',AB')).toBe(true);
+    const json = JSON.parse(service['dataJson'](LengthUnit.CM) as string);
+    expect(json.joints[0].links).toEqual(['AB']);
   });
 
   it('is byte-deterministic for unchanged model state and choices', () => {
