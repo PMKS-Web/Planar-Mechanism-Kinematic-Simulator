@@ -272,6 +272,18 @@ const walk = (rules) => { for (const r of rules) { if (r.selectorText) all.push(
 for (const s of document.styleSheets) { try { walk(s.cssRules); } catch { /* Google Fonts */ } }
 ```
 
+To ask the narrower question — *what is reaching into the component I am working on* — filter those
+rules to the ones that actually match it: skip selectors containing `_ngcontent` (the component's
+own) and `.mat-`/`.cdk-`, then call `el.matches(rule.selectorText)` for every element under it.
+Anything that comes back is coming from outside. That is how `.check { padding-top: 10px }` from
+`analysis-setup` was found sitting five pixels under the CAD Export dialog's tick.
+
+**Declaring a property is what protects you from a leak, if you are not scoping it.** A component
+rule wins wherever it *declares* the property and nowhere else, so the defensive `padding: 0` in
+`drawing-export.component.scss` is the fix for one of these — leaving a property unset is what lets
+the global one through. Scoping the offending sheet is the better fix where you can afford the
+verification; the defensive one is what to reach for when you cannot.
+
 **Scope such a file with `:where(app-thing) { ... }`, not `app-thing { ... }`.** `:where()`
 contributes no specificity, so every rule keeps exactly the weight it had and nothing starts or
 stops winning. A bare element wrapper adds a type selector to all of them at once, which sounds
@@ -305,21 +317,6 @@ not adjust a gap there to make something fit — shrink the thing instead.
 
 **The phone layout was fitted to 390px.** `top-strip-states` also exercises 360, where thirty fewer
 pixels are available; anything you add to the bottom row has to survive that.
-
-**Some "component" stylesheets are global.** A file under `component/` that is written as
-`@mixin css($theme)` and included from `src/mytheme.scss` emits its rules into the *global*
-stylesheet, under bare class names, scoped to nothing. `analysis-setup.component.scss` is one:
-its `.check`, `.checkText` and `.sectionName` reach every other component that happens to use
-those names, and its `.check { padding-top: 10px }` is why the CAD Export dialog's tick sat five
-pixels low. A component rule wins wherever it *declares* the property and nowhere else, so a
-defensive `padding: 0` is what fixes one of these -- leaving a property unset is what lets the
-global one through.
-
-Two ways to catch it. Statically, list the class names a globally-included sheet styles and grep
-the other templates for them. Empirically, and much better, ask the browser which rules actually
-match: walk `document.styleSheets`, skip selectors containing `_ngcontent` (those are the
-component's own) and `.mat-`/`.cdk-`, and call `el.matches(rule.selectorText)` for every element
-under your component. Anything that comes back is reaching you from outside.
 
 ---
 

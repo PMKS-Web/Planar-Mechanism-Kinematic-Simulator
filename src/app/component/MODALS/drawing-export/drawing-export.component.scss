@@ -413,12 +413,14 @@ $rule: #eceef5;
   }
 
   // `padding` and `gap` are stated rather than left at nothing, and so are the
-  // two below: `analysis-setup.component.scss` is a theme mixin, so its rules
-  // land in the *global* stylesheet under bare class names, and `.check`,
-  // `.checkText` and `.sectionName` are three of them. Its `.check` carries
-  // `padding-top: 10px`, which pushed the tick five pixels down its own box.
-  // A component rule wins wherever it declares the property and nowhere else,
-  // so the answer is to declare it.
+  // two below. `analysis-setup.component.scss` used to put a bare `.check`
+  // carrying `padding-top: 10px` into the global stylesheet, which pushed this
+  // tick five pixels down its own box; that sheet is scoped now, so nothing is
+  // reaching in today. The declarations stay because 39 of the 43 component
+  // stylesheets are still emitted globally, and `.check`, `.checkText` and
+  // `.sectionName` are exactly the kind of name a second panel picks. A
+  // component rule wins wherever it declares a property and nowhere else, so
+  // declaring them is what keeps this box the size it looks.
   .check {
     display: flex;
     align-items: center;
