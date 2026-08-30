@@ -3,9 +3,14 @@ import { Force } from '../../../model/force';
 import { Joint, PrisJoint, RealJoint } from '../../../model/joint';
 import { Link, RealLink, SliderBlock } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
-import { LengthUnit } from '../../../model/unit-enums';
+
 import { DxfDocument, DxfEntity, DxfLayer, DxfLine, DxfPoint } from './dxf-model';
-import { DxfExportOptions, NEUTRAL_DXF_OPTIONS } from './dxf-options';
+import {
+  DxfExportOptions,
+  DxfExportUnit,
+  NEUTRAL_DXF_OPTIONS,
+  unitsPerCentimeter,
+} from './dxf-options';
 import {
   capsule,
   cylinderParts,
@@ -51,7 +56,7 @@ export interface SemanticDxfInput {
   joints: Joint[];
   links: Link[];
   forces: Force[];
-  lengthUnit: LengthUnit;
+  lengthUnit: DxfExportUnit;
   defaultInputClockwise: boolean;
   includeLabels?: boolean;
   includeKinematicAnnotations?: boolean;
@@ -582,7 +587,7 @@ function slotTravelPoints(
 function addDimensions(
   axes: SemanticAxis[],
   choices: { dimensionStyle: string },
-  unit: LengthUnit,
+  unit: DxfExportUnit,
   scale: number,
   entities: DxfEntity[]
 ): void {
@@ -727,21 +732,50 @@ function addNotes(
           : ', one per link')
       : `${axes.length} centreline${axes.length === 1 ? '' : 's'}`,
   ];
+  // Under the drawing, wherever the drawing turned out to be. Placed at a fixed
+  // offset from the origin they landed in the middle of it: the origin is
+  // whatever the reader chose to move it to, and the mechanism is wherever it
+  // was drawn -- the two have nothing to do with each other.
+  const below = restingPlace(entities, scale);
   lines.forEach((text, index) =>
     entities.push({
       type: 'TEXT',
       layer: DXF_LAYER.notes,
-      at: { x: 0, y: -(index + 1) * 0.35 * scale - 3 * scale },
+      at: { x: below.x, y: below.y - index * 0.35 * scale },
       height: 0.2 * scale,
       text,
     })
   );
 }
 
-function unitWord(unit: LengthUnit): string {
-  if (unit === LengthUnit.INCH) return 'in';
-  if (unit === LengthUnit.METER) return 'm';
-  return 'cm';
+/** The bottom-left of what has been drawn so far, with a gap under it. */
+function restingPlace(entities: readonly DxfEntity[], scale: number): DxfPoint {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  entities.forEach((entity) => {
+    if (entity.type === 'LINE') {
+      xs.push(entity.start.x, entity.end.x);
+      ys.push(entity.start.y, entity.end.y);
+    } else if (entity.type === 'CIRCLE') {
+      xs.push(entity.center.x - entity.radius);
+      ys.push(entity.center.y - entity.radius);
+    } else if (entity.type === 'POLYLINE') {
+      entity.points.forEach((vertex) => {
+        xs.push(vertex.x);
+        ys.push(vertex.y);
+      });
+    } else {
+      xs.push(entity.at.x);
+      ys.push(entity.at.y);
+    }
+  });
+  if (!xs.length) return { x: 0, y: -scale };
+  return { x: Math.min(...xs), y: Math.min(...ys) - 0.8 * scale };
+}
+
+/** The unit as it is written wherever the drawing names one. */
+function unitWord(unit: DxfExportUnit): string {
+  return unit;
 }
 
 function semanticAxes(
@@ -876,8 +910,6 @@ function cylinderKey(cylinder: Cylinder): string {
 }
 
 /** One centimetre, expressed in `unit`. The whole drawing is sized in these. */
-export function centimetersIn(unit: LengthUnit): number {
-  if (unit === LengthUnit.INCH) return 1 / 2.54;
-  if (unit === LengthUnit.METER) return 0.01;
-  return 1;
+export function centimetersIn(unit: DxfExportUnit): number {
+  return unitsPerCentimeter(unit);
 }

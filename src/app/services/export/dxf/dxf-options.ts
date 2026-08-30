@@ -1,6 +1,33 @@
 import { LengthUnit } from '../../../model/unit-enums';
 
 /**
+ * The units this export can be written in.
+ *
+ * Its own list rather than the app's `LengthUnit`, because millimetres belong
+ * here and nowhere else: they are what every CAD importer defaults to and what
+ * a drawing is dimensioned in, but the app has no millimetre and giving it one
+ * would reach into the mass and inertia units that pair with each length, the
+ * settings panel, and every URL ever shared. An export unit is a property of
+ * the file, not of the project.
+ */
+export type DxfExportUnit = 'mm' | 'cm' | 'm' | 'in';
+
+/** How many of `unit` make one centimetre. The whole drawing is sized in these. */
+export function unitsPerCentimeter(unit: DxfExportUnit): number {
+  if (unit === 'mm') return 10;
+  if (unit === 'm') return 0.01;
+  if (unit === 'in') return 1 / 2.54;
+  return 1;
+}
+
+/** The export unit a project's own length unit corresponds to. */
+export function exportUnitOf(unit: LengthUnit): DxfExportUnit {
+  if (unit === LengthUnit.INCH) return 'in';
+  if (unit === LengthUnit.METER) return 'm';
+  return 'cm';
+}
+
+/**
  * What the CAD Export dialog decides, in one place.
  *
  * The screen asks as few questions as it can get away with -- a destination,
@@ -46,7 +73,7 @@ export interface DxfExportOptions {
    */
   fileFormat?: DxfFileFormat;
   /** Overrides the project's unit for this export only. */
-  unit?: LengthUnit;
+  unit?: DxfExportUnit;
 
   origin?: DxfOrigin;
   /** Only read when `origin` is `'joint'`. */

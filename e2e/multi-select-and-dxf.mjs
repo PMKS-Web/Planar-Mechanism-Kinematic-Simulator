@@ -448,9 +448,23 @@ check(
   'labels are off by default, for a clean sketch',
   !(await labelsRow.locator('.check').getAttribute('class')).includes('on')
 );
-// The two rows that are always written are ticked and unpressable, and have to
-// look it: a full-strength tick beside grey text reads as a control that
-// simply stopped responding.
+// The list names what the file will hold and nothing else. Exported as
+// outlines there is no centreline layer and no shared joint layer, and both
+// used to sit here ticked and captioned "Always included" over a file that
+// contained neither.
+const layerNames = await page.locator('app-drawing-export .checkRow .checkName').allInnerTexts();
+check(
+  'the layer list does not offer layers this export will not write',
+  !layerNames.includes('Link centrelines') && !layerNames.includes('Joint centres'),
+  layerNames.join(', ')
+);
+await page.screenshot({ path: `${OUT}/dxf-layers-section.png` });
+
+// They come back for the preset that does write them -- and there they are
+// ticked and unpressable, which has to *look* unpressable: a full-strength
+// tick beside grey text reads as a control that simply stopped responding.
+await page.locator('app-drawing-export [data-preset="reference"]').click();
+await page.waitForTimeout(300);
 const fixedRow = page
   .locator('app-drawing-export .checkRow', { hasText: 'Link centrelines' })
   .first();
@@ -460,7 +474,8 @@ check(
   fixedCheck.includes('on') && fixedCheck.includes('off'),
   fixedCheck
 );
-await page.screenshot({ path: `${OUT}/dxf-layers-section.png` });
+await page.locator('app-drawing-export [data-preset="build"]').click();
+await page.waitForTimeout(300);
 
 // A greyed row explains itself on hover. The cursor already promised a
 // tooltip; the native `title` never arrived, so this is the app's own.
@@ -545,6 +560,50 @@ check(
   'and says which unit in the name, where the import dialog will ask',
   metricDownload.suggestedFilename().includes('(m).dxf'),
   metricDownload.suggestedFilename()
+);
+await page.waitForSelector('app-drawing-export', { state: 'detached' });
+
+// Millimetres, which is what every CAD importer defaults to -- and SVG, which
+// is the same drawing written for a laser cutter rather than for CAD.
+await openDrawingDialog();
+await page.locator('app-drawing-export [data-section="file"]').click();
+await page.waitForTimeout(300);
+await page
+  .locator('app-drawing-export .field', { hasText: 'Format' })
+  .getByRole('button', { name: 'SVG', exact: true })
+  .click();
+await page
+  .locator('app-drawing-export .field', { hasText: 'Units' })
+  .getByRole('button', { name: 'mm', exact: true })
+  .click();
+await page.waitForTimeout(200);
+check(
+  'nothing on screen still says DXF once SVG is chosen',
+  !(await page.locator('app-drawing-export').innerText())
+    .replace(/\bDXF\b(?=\s*SVG)/, '')
+    .includes('DXF only') &&
+    (await page.locator('button[mat-flat-button]').innerText()).includes('SVG'),
+  await page.locator('button[mat-flat-button]').innerText()
+);
+await page.locator('app-drawing-export [data-section="data"]').click();
+await page.waitForTimeout(300);
+await page.locator('app-drawing-export .radioRow', { hasText: 'None' }).first().click();
+await page.waitForTimeout(300);
+const svgPromise = page.waitForEvent('download');
+await page.locator('button[mat-flat-button]').click();
+const svgDownload = await svgPromise;
+const svgText = readFileSync(await svgDownload.path(), 'utf8');
+check(
+  'the SVG comes down in millimetres, carrying its own physical size',
+  svgDownload.suggestedFilename() === 'mechanism (mm).svg' &&
+    /width="[\d.]+mm"/.test(svgText) &&
+    svgText.includes('<svg') &&
+    !/NaN|Infinity/.test(svgText),
+  svgDownload.suggestedFilename()
+);
+check(
+  'and keeps a layer per part, which is what one sketch per part depends on',
+  /<g id="PMKS_LINK_[A-Za-z0-9_]+"/.test(svgText)
 );
 // And no preset has an opinion about units, so choosing one is not a deviation
 // from it -- offering to "reset" would promise to undo something it would not.

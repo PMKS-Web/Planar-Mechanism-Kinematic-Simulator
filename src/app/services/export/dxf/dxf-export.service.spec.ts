@@ -161,7 +161,7 @@ describe('DxfExportService', () => {
 
   it('converts the geometry into the unit it names in the file', () => {
     const { service } = setup();
-    const lengthIn = (unit: LengthUnit | undefined) => {
+    const lengthIn = (unit: 'mm' | 'cm' | 'm' | 'in' | undefined) => {
       const file = service.create({ dataFile: 'none', unit, linkBodies: 'centerlines' });
       const parsed = new DxfParser().parseSync(file.content)!;
       const ends = parsed.entities
@@ -174,17 +174,52 @@ describe('DxfExportService', () => {
     // writing centimetres hands CAD a mechanism a hundred times too big under
     // a label that looks right -- and R12 has no header field to say which, so
     // the name is where the answer lives.
-    const centimetres = lengthIn(LengthUnit.CM);
+    const centimetres = lengthIn('cm');
     expect(centimetres.name).toBe('mechanism (cm).dxf');
     expect(centimetres.span).toBeCloseTo(Math.hypot(2, 1), 6);
 
-    const metres = lengthIn(LengthUnit.METER);
+    const metres = lengthIn('m');
     expect(metres.name).toBe('mechanism (m).dxf');
     expect(metres.span).toBeCloseTo(Math.hypot(2, 1) / 100, 6);
 
-    const inches = lengthIn(LengthUnit.INCH);
+    const inches = lengthIn('in');
     expect(inches.name).toBe('mechanism (in).dxf');
     expect(inches.span).toBeCloseTo(Math.hypot(2, 1) / 2.54, 6);
+
+    // Millimetres, which is what a CAD importer defaults to and what a drawing
+    // is dimensioned in. It belongs to the export rather than to the project:
+    // the app has no millimetre, and giving it one would reach into the mass
+    // and inertia units that pair with each length.
+    const millimetres = lengthIn('mm');
+    expect(millimetres.name).toBe('mechanism (mm).dxf');
+    expect(millimetres.span).toBeCloseTo(Math.hypot(2, 1) * 10, 6);
+  });
+
+  it('puts the notes under the drawing, wherever the drawing turned out to be', () => {
+    const { service } = setup();
+    // Placed at a fixed offset from the origin they landed in the middle of
+    // it: the origin is wherever the reader moved it to and the mechanism is
+    // wherever it was drawn, and the two have nothing to do with each other.
+    const parsed = new DxfParser().parseSync(
+      service.create({ dataFile: 'none', includeNotes: true }).content
+    )!;
+    const notes = parsed.entities.filter(
+      (entity) => (entity as { layer?: string }).layer === 'PMKS_NOTES'
+    ) as unknown as { startPoint: { x: number; y: number } }[];
+    expect(notes.length).toBeGreaterThan(0);
+    const drawing = parsed.entities
+      .filter((entity) => (entity as { layer?: string }).layer !== 'PMKS_NOTES')
+      .flatMap((entity) => {
+        const parts = entity as unknown as {
+          vertices?: { y: number }[];
+          center?: { y: number };
+          radius?: number;
+        };
+        if (parts.center) return [parts.center.y - (parts.radius ?? 0)];
+        return (parts.vertices ?? []).map((vertex) => vertex.y);
+      });
+    const lowest = Math.min(...drawing);
+    notes.forEach((note) => expect(note.startPoint.y).toBeLessThan(lowest));
   });
 
   it('draws each link as a closed outline with its holes already in it', () => {
@@ -236,7 +271,7 @@ describe('DxfExportService', () => {
     expect(derived).toBeLessThan(bodyWidth);
     expect(derived).toBeCloseTo(bodyWidth / 2, 3);
     // It follows the unit, because it is a physical hole rather than a number.
-    expect(service.pinDiameter({ unit: LengthUnit.CM })).toBeCloseTo(derived * 100, 3);
+    expect(service.pinDiameter({ unit: 'cm' })).toBeCloseTo(derived * 100, 3);
     // And a chosen one is used as given.
     expect(service.pinDiameter({ pinDiameter: 0.42 })).toBe(0.42);
   });
@@ -253,12 +288,12 @@ describe('DxfExportService', () => {
 
   it('says which links meet at each joint, which DXF cannot', () => {
     const { service } = setup();
-    const table = service['jointCsv'](LengthUnit.CM) as string;
+    const table = service['jointCsv']('cm') as string;
     const [heading, ...rows] = table.trim().split('\r\n');
     expect(heading.endsWith(',links')).toBe(true);
     // Two holes in two layers are the same pin only if something says so.
     expect(rows[0].endsWith(',AB')).toBe(true);
-    const json = JSON.parse(service['dataJson'](LengthUnit.CM) as string);
+    const json = JSON.parse(service['dataJson']('cm') as string);
     expect(json.joints[0].links).toEqual(['AB']);
   });
 

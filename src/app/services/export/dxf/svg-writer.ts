@@ -1,4 +1,5 @@
 import { DxfDocument, DxfEntity, DxfPoint, DxfVertex } from './dxf-model';
+import { DxfExportUnit } from './dxf-options';
 
 /**
  * The same drawing, written as SVG.
@@ -14,17 +15,17 @@ import { DxfDocument, DxfEntity, DxfPoint, DxfVertex } from './dxf-model';
  * viewBox in drawing units means the thing prints and cuts at the size it was
  * drawn, with no import dialog to get wrong.
  */
-export function writeSvg(document: DxfDocument, units: 'cm' | 'm' | 'in'): string {
+export function writeSvg(document: DxfDocument, units: DxfExportUnit): string {
   const bounds = extents(document.entities);
   const pad = span(bounds) * 0.02 || 1;
   const minX = bounds.min.x - pad;
   const minY = bounds.min.y - pad;
   const width = bounds.max.x - bounds.min.x + pad * 2;
   const height = bounds.max.y - bounds.min.y + pad * 2;
-  // SVG has no metre, so a metric drawing is stated in centimetres. The number
-  // changes; the physical size does not.
-  const physical =
-    units === 'in' ? { per: 1, suffix: 'in' } : { per: units === 'm' ? 100 : 1, suffix: 'cm' };
+  // SVG knows millimetres, centimetres and inches, but not metres -- so a
+  // drawing in metres is stated in centimetres. The number changes; the
+  // physical size does not.
+  const physical = units === 'm' ? { per: 100, suffix: 'cm' } : { per: 1, suffix: units };
   const stroke = span(bounds) / 600 || 0.01;
   const byLayer = new Map<string, DxfEntity[]>();
   document.entities.forEach((entity) => {

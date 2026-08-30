@@ -77,7 +77,7 @@
               class="textInput"
               [ngModel]="options.fileName"
               (ngModelChange)="options.fileName = $event"
-              aria-label="DXF file name"
+              aria-label="Export file name"
             />
             <span class="fieldNote">({{ unitWord }}).{{ options.fileFormat }}</span>
           </div>
@@ -319,7 +319,7 @@
       @if (open.data) {
         <div class="sectionBody">
           <span class="groupName"
-            >A companion table of joints and links — the numbers DXF cannot carry.</span
+            >A companion table of joints and links — the numbers a drawing cannot carry.</span
           >
           @for (choice of dataChoices; track choice.value) {
             <button class="radioRow" (click)="touch({ dataFile: choice.value })">

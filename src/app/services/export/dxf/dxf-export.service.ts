@@ -2,15 +2,20 @@ import { inject, Injectable } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../../../model/joint';
 import { RealLink } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
-import { LengthUnit } from '../../../model/unit-enums';
 import { MechanismService } from '../../mechanism.service';
 import { SettingsService } from '../../settings.service';
 import { utf8, zipStore } from '../zip';
-import { DEFAULT_DXF_EXPORT_OPTIONS, DxfExportOptions } from './dxf-options';
+import {
+  DEFAULT_DXF_EXPORT_OPTIONS,
+  DxfExportOptions,
+  DxfExportUnit,
+  exportUnitOf,
+  unitsPerCentimeter,
+} from './dxf-options';
 import { DxfEntity } from './dxf-model';
 import { sealedCylinderStructures } from '../../../model/cylinder';
 import { defaultPinDiameter, linkBodyWidth, SlotTravel } from './link-bodies';
-import { buildSemanticDxf, centimetersIn, TracedPath } from './semantic-dxf';
+import { buildSemanticDxf, TracedPath } from './semantic-dxf';
 import { writeDxf } from './dxf-writer';
 import { writeSvg } from './svg-writer';
 
@@ -51,7 +56,7 @@ export class DxfExportService {
 
   create(options: DxfExportOptions = {}): DxfExportFile {
     const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
-    const unit = choices.unit ?? this.settings.lengthUnit.value;
+    const unit = choices.unit ?? exportUnitOf(this.settings.lengthUnit.value);
     const stem = fileStem(choices.fileName || DEFAULT_DXF_EXPORT_OPTIONS.fileName);
     // The unit, in the name. R12 has no header field for it, and the import
     // dialogs in Fusion and Onshape ask for units anyway -- a student who
@@ -59,9 +64,7 @@ export class DxfExportService {
     // in front of them at exactly the moment they are being asked.
     const dxfName = `${stem} (${unitWord(unit)}).${choices.fileFormat === 'svg' ? 'svg' : 'dxf'}`;
     const write = (document: ReturnType<typeof buildSemanticDxf>) =>
-      choices.fileFormat === 'svg'
-        ? writeSvg(document, unitWord(unit) as 'cm' | 'm' | 'in')
-        : writeDxf(document);
+      choices.fileFormat === 'svg' ? writeSvg(document, unit) : writeDxf(document);
     const content = this.mechanism.encodeFromStartPose(() =>
       write(
         buildSemanticDxf({
@@ -143,7 +146,7 @@ export class DxfExportService {
    */
   summarize(options: DxfExportOptions = {}): DxfSummary {
     const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
-    const unit = choices.unit ?? this.settings.lengthUnit.value;
+    const unit = choices.unit ?? exportUnitOf(this.settings.lengthUnit.value);
     const document = buildSemanticDxf({
       joints: this.mechanism.joints,
       links: this.mechanism.links,
@@ -201,7 +204,7 @@ export class DxfExportService {
   /** Exactly what will land in the reader's downloads, unit and all. */
   fileNames(options: DxfExportOptions = {}): string[] {
     const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
-    const unit = choices.unit ?? this.settings.lengthUnit.value;
+    const unit = choices.unit ?? exportUnitOf(this.settings.lengthUnit.value);
     const stem = fileStem(choices.fileName || DEFAULT_DXF_EXPORT_OPTIONS.fileName);
     const dxf = `${stem} (${unitWord(unit)}).${choices.fileFormat === 'svg' ? 'svg' : 'dxf'}`;
     if (choices.dataFile === 'none') return [dxf];
@@ -227,7 +230,7 @@ export class DxfExportService {
   pinWarning(options: DxfExportOptions = {}): string {
     const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
     if (choices.jointCircles !== 'holes' || choices.linkBodies !== 'outlines') return '';
-    const unit = choices.unit ?? this.settings.lengthUnit.value;
+    const unit = choices.unit ?? exportUnitOf(this.settings.lengthUnit.value);
     const bodyWidth = inUnit(linkBodyWidth(), unit);
     const pin = this.pinDiameter(options);
     if (!(bodyWidth > 0) || pin < bodyWidth) return '';
@@ -247,13 +250,13 @@ export class DxfExportService {
    */
   pinDiameter(options: DxfExportOptions = {}): number {
     const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
-    const unit = choices.unit ?? this.settings.lengthUnit.value;
-    return choices.pinDiameter ?? defaultPinDiameter(centimetersIn(unit) / MODEL_SCALE);
+    const unit = choices.unit ?? exportUnitOf(this.settings.lengthUnit.value);
+    return choices.pinDiameter ?? defaultPinDiameter(unitsPerCentimeter(unit) / MODEL_SCALE);
   }
 
   /** The project's own unit, which an export uses unless told otherwise. */
-  projectUnit(): LengthUnit {
-    return this.settings.lengthUnit.value;
+  projectUnit(): DxfExportUnit {
+    return exportUnitOf(this.settings.lengthUnit.value);
   }
 
   /** Whether any joint is set to trace, which is what the paths option needs. */
@@ -373,7 +376,7 @@ export class DxfExportService {
       .filter((ids) => ids.length > 0);
   }
 
-  private jointCsv(unit: LengthUnit): string {
+  private jointCsv(unit: DxfExportUnit): string {
     const rows = this.mechanism.joints.map((joint) =>
       [
         joint.id,
@@ -392,7 +395,7 @@ export class DxfExportService {
     return ['id,name,type,x,y,grounded,input,links', ...rows].join('\r\n') + '\r\n';
   }
 
-  private linkCsv(unit: LengthUnit): string {
+  private linkCsv(unit: DxfExportUnit): string {
     const rows = this.realLinks().map((link) =>
       [
         link.id,
@@ -414,7 +417,7 @@ export class DxfExportService {
    * load happens to sit on. The magnitude and direction are what a reader
    * actually wants back, and a table is where those belong.
    */
-  private forceCsv(unit: LengthUnit): string {
+  private forceCsv(unit: DxfExportUnit): string {
     const rows = this.mechanism.forces.map((force) =>
       [
         force.id,
@@ -431,7 +434,7 @@ export class DxfExportService {
     return ['id,name,link,x,y,end_x,end_y,magnitude,frame', ...rows].join('\r\n') + '\r\n';
   }
 
-  private dataJson(unit: LengthUnit): string {
+  private dataJson(unit: DxfExportUnit): string {
     return JSON.stringify(
       {
         source: 'PMKS+',
@@ -476,10 +479,8 @@ export class DxfExportService {
 }
 
 /** How a unit is written wherever this export names one. */
-export function unitWord(unit: LengthUnit): string {
-  if (unit === LengthUnit.INCH) return 'in';
-  if (unit === LengthUnit.METER) return 'm';
-  return 'cm';
+export function unitWord(unit: DxfExportUnit): string {
+  return unit;
 }
 
 /** Project the document into the preview box, keeping its proportions. */
@@ -540,7 +541,7 @@ function previewShapes(
  * have already closed by then.
  */
 function handoffNotes(
-  unit: LengthUnit,
+  unit: DxfExportUnit,
   choices: {
     linkBodies: string;
     pinDiameter: number;
@@ -598,66 +599,90 @@ function handoffNotes(
           'extruded -- re-export with "Closed outlines" if you meant to build from this.',
         ]),
     '',
-    'In Fusion',
-    '---------',
-    '1. Insert > Insert DXF. Pick a plane, set the units, and turn on the option to',
-    '   make one sketch per layer.',
-    '2. Extrude each link sketch a few mm. The holes are already in the profile, so',
-    '   each one comes out as a finished body.',
-    '3. Assemble the bodies as components, then Assemble > Joint > Revolute, picking',
-    tables
-      ? '   the two hole centres that share a pin. The joints table beside this file'
-      : '   the two hole centres that share a pin. Re-export with a data file if you',
-    tables
-      ? '   says which links meet at which joint.'
-      : '   want a table of which links meet where.',
-    '4. Ground the base part, then drive the input joint and run a motion study.',
-    '',
-    'In Onshape',
-    '----------',
-    '1. Import the DXF into a Part Studio and choose the units when asked.',
-    '2. Extrude each closed region a few mm.',
-    '3. In an Assembly, insert the parts and add Revolute mates, snapping the mate',
-    '   connectors to the hole centres -- Onshape offers a connector at the centre of',
-    '   a circular edge, which is why the holes are here rather than centre marks.',
-    '4. Fix the base part and drag or drive the input.',
-    '',
-    'In SolidWorks',
-    '-------------',
-    '1. Open the .dxf directly. The DXF/DWG import wizard runs: choose "Import to a',
-    '   new part" as a 2D sketch. Units are on the Document Settings page further on.',
-    '2. The wizard lists the layers, with an option to put each on its own sketch.',
-    '   Use it -- one layer is one part.',
-    '3. Extrude each closed profile a few mm. The holes are in the profile already.',
-    '4. In an assembly, mate each shared pin with a Concentric mate between the two',
-    '   hole faces, plus a Coincident mate on the flat faces to keep the parts in',
-    '   plane. Fix the base part, then drag the input link or add a motor.',
-    '',
-    'In NX',
-    '-----',
-    '1. File > Import > AutoCAD DXF/DWG, into a new part as curves. NX imports in',
-    `   millimetres or inches, so a ${word} file needs an explicit scale on the way in`,
-    `   (${word} to mm is x${unit === LengthUnit.METER ? '1000' : unit === LengthUnit.INCH ? '25.4' : '10'}) or the part arrives the wrong size.`,
-    '2. The layers arrive as NX layers. Extrude each closed loop a few mm; select the',
-    '   outline and its holes together so the holes come out as holes.',
-    '3. In an assembly, add Touch/Align constraints on the faces and a Concentric',
-    '   constraint on each shared pair of holes.',
-    '4. Fix the base component and drag the input, or set up a Motion simulation',
-    '   with revolute joints on the concentric pairs.',
-    '',
+    ...(choices.fileFormat === 'svg'
+      ? [
+          'Cutting it',
+          '----------',
+          '1. Open the SVG in your cutter software, Inkscape or Illustrator. It already',
+          '   carries its size, so there is no scale to set and nothing to get wrong.',
+          '2. Each part is a layer. The closed outlines are the cuts; the circles inside',
+          '   them are the holes, and they are already positioned to match between parts.',
+          '3. The crosses and triangles are marks rather than cuts -- see below. Delete',
+          '   the notes and mark layers before sending it to a machine.',
+          '',
+          'Into CAD instead',
+          '----------------',
+          'Fusion (Insert > Insert SVG) and Onshape both take an SVG into a sketch, but',
+          'both ask for a scale on the way in and neither reads the layers as separate',
+          'sketches. If you are going on to build parts and assemble them, export DXF',
+          'instead -- that is what the layer-per-part arrangement is for.',
+        ]
+      : [
+          'In Fusion',
+          '---------',
+          '1. Insert > Insert DXF. Pick a plane, set the units, and turn on the option to',
+          '   make one sketch per layer.',
+          '2. Extrude each link sketch a few mm. The holes are already in the profile, so',
+          '   each one comes out as a finished body.',
+          '3. Assemble the bodies as components, then Assemble > Joint > Revolute, picking',
+          tables
+            ? '   the two hole centres that share a pin. The joints table beside this file'
+            : '   the two hole centres that share a pin. Re-export with a data file if you',
+          tables
+            ? '   says which links meet at which joint.'
+            : '   want a table of which links meet where.',
+          '4. Ground the base part, then drive the input joint and run a motion study.',
+          '',
+          'In Onshape',
+          '----------',
+          '1. Import the DXF into a Part Studio and choose the units when asked.',
+          '2. Extrude each closed region a few mm.',
+          '3. In an Assembly, insert the parts and add Revolute mates, snapping the mate',
+          '   connectors to the hole centres -- Onshape offers a connector at the centre of',
+          '   a circular edge, which is why the holes are here rather than centre marks.',
+          '4. Fix the base part and drag or drive the input.',
+          '',
+          'In SolidWorks',
+          '-------------',
+          '1. Open the .dxf directly. The DXF/DWG import wizard runs: choose "Import to a',
+          '   new part" as a 2D sketch. Units are on the Document Settings page further on.',
+          '2. The wizard lists the layers, with an option to put each on its own sketch.',
+          '   Use it -- one layer is one part.',
+          '3. Extrude each closed profile a few mm. The holes are in the profile already.',
+          '4. In an assembly, mate each shared pin with a Concentric mate between the two',
+          '   hole faces, plus a Coincident mate on the flat faces to keep the parts in',
+          '   plane. Fix the base part, then drag the input link or add a motor.',
+          '',
+          'In NX',
+          '-----',
+          '1. File > Import > AutoCAD DXF/DWG, into a new part as curves. NX imports in',
+          `   millimetres or inches, so a ${word} file needs an explicit scale on the way in`,
+          ...(word === 'mm'
+            ? ['   -- this file is already in millimetres, so no scaling is needed.']
+            : [
+                `   (${word} to mm is x${unit === 'm' ? '1000' : unit === 'in' ? '25.4' : '10'}) or the part arrives the wrong size.`,
+              ]),
+          '2. The layers arrive as NX layers. Extrude each closed loop a few mm; select the',
+          '   outline and its holes together so the holes come out as holes.',
+          '3. In an assembly, add Touch/Align constraints on the faces and a Concentric',
+          '   constraint on each shared pair of holes.',
+          '4. Fix the base component and drag the input, or set up a Motion simulation',
+          '   with revolute joints on the concentric pairs.',
+          '',
+        ]),
     'Reading the marks',
     '-----------------',
     'A circle is a pin: those two parts turn against each other, and the hole is',
     'where the pin goes. A cross is a weld -- solid, no hole, and the pieces either',
     'side of it are one part. A small triangle marks a joint fixed to the frame.',
     '',
-    'What DXF cannot carry',
-    '---------------------',
+    'What a drawing cannot carry',
+    '---------------------------',
     'Joints, mates, motion and mass. Those are in the companion tables beside this',
     'file, and in PMKS+ itself. What the drawing does carry is exact hole positions',
     'shared between mating parts, which is the part that is tedious to redo by hand.',
-    'In every program above, the concentric or revolute pairing is the one thing you',
-    'still have to say -- the geometry is already lined up for it.',
+    'The pairing is the one thing left to say -- the geometry is already lined up',
+    'for it.',
     '',
     `Pin holes are ${choices.pinDiameter} ${word} across, which is half the width of`,
     'the link bodies unless you chose otherwise. If your pins are a different size,',
@@ -682,11 +707,8 @@ function lengthOf(link: RealLink): number {
   return a && b ? Math.hypot(b.x - a.x, b.y - a.y) : 0;
 }
 
-function inUnit(model: number, unit: LengthUnit): number {
-  const cm = model / MODEL_SCALE;
-  if (unit === LengthUnit.INCH) return cm / 2.54;
-  if (unit === LengthUnit.METER) return cm / 100;
-  return cm;
+function inUnit(model: number, unit: DxfExportUnit): number {
+  return (model / MODEL_SCALE) * unitsPerCentimeter(unit);
 }
 
 function fileStem(requested: string): string {

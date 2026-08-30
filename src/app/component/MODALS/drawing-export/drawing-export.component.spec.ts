@@ -1,7 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { MatTooltip } from '@angular/material/tooltip';
-import { LengthUnit } from '../../../model/unit-enums';
 import {
   DEFAULT_DXF_EXPORT_OPTIONS,
   DxfExportService,
@@ -30,7 +29,7 @@ describe('DrawingExportComponent', () => {
     hasTracedJoint: vi.fn().mockReturnValue(true),
     originJointChoices: vi.fn().mockReturnValue([{ id: 'A', name: 'A' }]),
     firstGroundJointName: vi.fn().mockReturnValue('A'),
-    projectUnit: vi.fn().mockReturnValue(LengthUnit.CM),
+    projectUnit: vi.fn().mockReturnValue('cm'),
     fileNames: vi.fn().mockReturnValue(['mechanism (cm).dxf', 'mechanism-joints.csv']),
     downloadName: vi.fn().mockReturnValue('mechanism.zip'),
     pinWarning: vi.fn().mockReturnValue(''),
@@ -114,26 +113,26 @@ describe('DrawingExportComponent', () => {
     // Neither preset has an opinion about the file's name or its units, so
     // changing one must not raise a "Reset to Build parts" offering to undo
     // something it would not undo.
-    component.chooseUnit(LengthUnit.METER);
+    component.chooseUnit('m');
     component.set({ fileName: 'four-bar' });
     fixture.detectChanges();
     expect(component.preset).toBe('build');
     expect(element.querySelector('.linkButton')).toBeNull();
-    expect(component.effectiveUnit).toBe(LengthUnit.METER);
+    expect(component.effectiveUnit).toBe('m');
     // A pin nobody chose is derived from the drawing and already follows the
     // unit, so changing units leaves it unset rather than pinning it down.
     expect(component.options.pinDiameter).toBeUndefined();
 
     // One that was typed is a physical hole, and keeps its size across units.
-    component.chooseUnit(LengthUnit.CM);
+    component.chooseUnit('cm');
     component.touch({ pinDiameter: 0.6 });
-    component.chooseUnit(LengthUnit.METER);
+    component.chooseUnit('m');
     expect(component.options.pinDiameter).toBeCloseTo(0.006, 6);
-    component.chooseUnit(LengthUnit.INCH);
+    component.chooseUnit('in');
     expect(component.options.pinDiameter).toBeCloseTo(0.6 / 2.54, 4);
     // Back where it started, to within the rounding that keeps the field
     // showing a number somebody could have typed.
-    component.chooseUnit(LengthUnit.CM);
+    component.chooseUnit('cm');
     expect(component.options.pinDiameter).toBeCloseTo(0.6, 3);
   });
 

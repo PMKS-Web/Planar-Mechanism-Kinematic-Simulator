@@ -50,7 +50,7 @@ describe('every published mechanism, exported and parsed back', () => {
             joints: built.joints,
             links: built.links,
             forces: built.forces,
-            lengthUnit: LengthUnit.CM,
+            lengthUnit: 'cm',
             defaultInputClockwise: false,
             options: { ...NEUTRAL_DXF_OPTIONS, ...preset.choices },
           })
@@ -103,7 +103,7 @@ describe('every published mechanism, exported and parsed back', () => {
         joints: built.joints,
         links: built.links,
         forces: built.forces,
-        lengthUnit: LengthUnit.CM,
+        lengthUnit: 'cm',
         defaultInputClockwise: false,
         options: { ...NEUTRAL_DXF_OPTIONS, ...DXF_PRESETS.build },
       });

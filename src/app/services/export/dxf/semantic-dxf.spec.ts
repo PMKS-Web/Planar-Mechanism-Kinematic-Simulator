@@ -14,7 +14,7 @@ import { RealLink, SliderBlock } from '../../../model/link';
 import { LengthUnit } from '../../../model/unit-enums';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { BASIC_CENTERLINE_GOLDEN } from '../../../../test-data/dxf/basic-centerline.golden';
-import { buildSemanticDxf, DXF_LAYER } from './semantic-dxf';
+import { buildSemanticDxf, DXF_LAYER, SemanticDxfInput } from './semantic-dxf';
 import { writeDxf } from './dxf-writer';
 
 const S = MODEL_SCALE;
@@ -51,7 +51,7 @@ describe('semantic DXF centerline geometry', () => {
       joints: [a, b],
       links: [link],
       forces: [],
-      lengthUnit: LengthUnit.CM,
+      lengthUnit: 'cm',
       defaultInputClockwise: true,
     });
     const parsed = parsedOf(document);
@@ -85,7 +85,7 @@ describe('semantic DXF centerline geometry', () => {
         joints: [a, b],
         links: [link],
         forces: [],
-        lengthUnit: LengthUnit.CM,
+        lengthUnit: 'cm',
         defaultInputClockwise: true,
         includeKinematicAnnotations: false,
       })
@@ -117,7 +117,7 @@ describe('semantic DXF centerline geometry', () => {
           joints: [a, b],
           links: [link],
           forces: [],
-          lengthUnit: LengthUnit.CM,
+          lengthUnit: 'cm',
           defaultInputClockwise: true,
         })
       )
@@ -141,7 +141,7 @@ describe('semantic DXF centerline geometry', () => {
         joints: [a, b, c, d],
         links: [compound],
         forces: [],
-        lengthUnit: LengthUnit.CM,
+        lengthUnit: 'cm',
         defaultInputClockwise: true,
       })
     );
@@ -190,7 +190,7 @@ describe('semantic DXF centerline geometry', () => {
         // A defensive duplicate must not duplicate the linework.
         links: [body, separate, body],
         forces: [],
-        lengthUnit: LengthUnit.CM,
+        lengthUnit: 'cm',
         defaultInputClockwise: true,
       })
     );
@@ -226,7 +226,7 @@ describe('semantic DXF centerline geometry', () => {
         joints: [a, b, floating, grounded],
         links: [carrier],
         forces: [],
-        lengthUnit: LengthUnit.CM,
+        lengthUnit: 'cm',
         defaultInputClockwise: true,
       })
     );
@@ -277,7 +277,7 @@ describe('semantic DXF centerline geometry', () => {
         joints: [barrelFar, barrelNear, pin, rodFar, slider],
         links: [barrel, rod, block],
         forces: [],
-        lengthUnit: LengthUnit.CM,
+        lengthUnit: 'cm',
         defaultInputClockwise: true,
         includeLabels: true,
       })
@@ -311,11 +311,11 @@ describe('semantic DXF centerline geometry', () => {
     wire(link);
     const force = new Force('F1', link, new Coord(S, 0), new Coord(S, 2 * S));
     force.name = 'Load';
-    const base = {
+    const base: SemanticDxfInput = {
       joints: [a, b],
       links: [link],
       forces: [force],
-      lengthUnit: LengthUnit.INCH,
+      lengthUnit: 'in',
       defaultInputClockwise: false,
     };
 

@@ -10,13 +10,13 @@ import {
 } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
-import { LengthUnit } from '../../../model/unit-enums';
-import { centimetersIn } from '../../../services/export/dxf/semantic-dxf';
+import { unitsPerCentimeter } from '../../../services/export/dxf/dxf-options';
 import {
   DEFAULT_DXF_EXPORT_OPTIONS,
   DxfDataFile,
   DxfExportChoices,
   DxfExportService,
+  DxfExportUnit,
   DxfFileFormat,
   DxfJointCircles,
   DxfLinkBodies,
@@ -119,10 +119,13 @@ export class DrawingExportComponent {
       (row) => row.onlyWith === undefined || row.onlyWith === this.options.linkBodies
     );
   }
-  readonly unitChoices: { label: string; value: LengthUnit }[] = [
-    { label: 'cm', value: LengthUnit.CM },
-    { label: 'm', value: LengthUnit.METER },
-    { label: 'in', value: LengthUnit.INCH },
+  // Millimetres first: it is what CAD importers default to and what a drawing
+  // is dimensioned in, whatever the project happens to be drawn in.
+  readonly unitChoices: { label: string; value: DxfExportUnit }[] = [
+    { label: 'mm', value: 'mm' },
+    { label: 'cm', value: 'cm' },
+    { label: 'm', value: 'm' },
+    { label: 'in', value: 'in' },
   ];
   readonly originChoices: { label: string; value: DxfOrigin }[] = [
     { label: 'Keep model coordinates', value: 'model' },
@@ -152,7 +155,9 @@ export class DrawingExportComponent {
     { label: 'Pin holes at Ø', value: 'holes' },
   ];
   readonly dataChoices: { label: string; note: string; value: DxfDataFile }[] = [
-    { label: 'None', note: 'The DXF on its own.', value: 'none' },
+    // The drawing's own name, because "the DXF on its own" was on screen while
+    // an SVG was being written.
+    { label: 'None', note: 'The drawing on its own.', value: 'none' },
     { label: 'CSV', note: 'Joint table and link table, two sheets.', value: 'csv' },
     { label: 'JSON', note: 'The same tables, one structured file.', value: 'json' },
   ];
@@ -175,7 +180,7 @@ export class DrawingExportComponent {
    * rather than against the word in the summary -- comparing a `LengthUnit` to
    * the string 'cm' is never true, which is why no unit looked selected.
    */
-  get effectiveUnit(): LengthUnit {
+  get effectiveUnit(): DxfExportUnit {
     return this.options.unit ?? this.exportService.projectUnit();
   }
 
@@ -227,7 +232,7 @@ export class DrawingExportComponent {
 
   /**
    * A change no preset has an opinion about: the file's name, its units, its
-   * DXF version. Neither preset sets any of them, so leaving the preset over
+   * format. Neither preset sets any of them, so leaving the preset over
    * one would put a "Reset to Build parts" button on screen offering to undo
    * something it would not actually undo -- and the file name, in that same
    * section, never did.
@@ -244,7 +249,7 @@ export class DrawingExportComponent {
    * beside a field that still reads 0.6, which nobody would catch until the
    * part came back.
    */
-  chooseUnit(unit: LengthUnit): void {
+  chooseUnit(unit: DxfExportUnit): void {
     // A pin nobody has chosen is derived from the drawing and already follows
     // the unit, so there is nothing to rescale -- and rescaling it would pin it
     // to a number, which is exactly what "unset" is avoiding.
@@ -252,7 +257,7 @@ export class DrawingExportComponent {
       this.set({ unit });
       return;
     }
-    const factor = centimetersIn(unit) / centimetersIn(this.effectiveUnit);
+    const factor = unitsPerCentimeter(unit) / unitsPerCentimeter(this.effectiveUnit);
     this.set({
       unit,
       pinDiameter: Number((this.options.pinDiameter * factor).toPrecision(4)),
@@ -269,6 +274,11 @@ export class DrawingExportComponent {
   }
 
   // --- what each folded section says ----------------------------------------
+
+  /** The format's name, for every sentence that has to say which file this is. */
+  get formatWord(): string {
+    return this.options.fileFormat === 'svg' ? 'SVG' : 'DXF';
+  }
 
   /** The format, as the subtitle names it. */
   get formatName(): string {
@@ -345,8 +355,8 @@ export class DrawingExportComponent {
 
   get dataSummary(): string {
     return this.options.dataFile === 'none'
-      ? 'DXF only'
-      : `DXF + ${this.options.dataFile.toUpperCase()} (zip)`;
+      ? `${this.formatWord} only`
+      : `${this.formatWord} + ${this.options.dataFile.toUpperCase()} (zip)`;
   }
 
   // --- the footer -----------------------------------------------------------
@@ -375,10 +385,9 @@ export class DrawingExportComponent {
   }
 
   get exportLabel(): string {
-    const drawing = this.options.fileFormat === 'svg' ? 'SVG' : 'DXF';
     return this.options.dataFile === 'none'
-      ? `Export ${drawing}`
-      : `Export ${drawing} + ${this.options.dataFile.toUpperCase()}`;
+      ? `Export ${this.formatWord}`
+      : `Export ${this.formatWord} + ${this.options.dataFile.toUpperCase()}`;
   }
 
   download(): void {
