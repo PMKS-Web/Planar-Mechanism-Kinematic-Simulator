@@ -751,14 +751,30 @@ describe('NewGridComponent vector traces', () => {
     expect(longest).toBeCloseTo(span * LONGEST_ARROW_FRACTION, 3);
   });
 
-  it('keeps each mode to the vectors that mode is about', () => {
+  it('carries a rate across both analysis modes, and draws nothing in Edit', () => {
     const { mechanism, b } = analyzing();
     mechanism.toggleVectorTrace(b, 'velocity');
     expect(mechanism.vectorTracePaths().length).toBe(1);
+    // Motion is the same in either analysis mode, so crossing into Force keeps
+    // the arrows. Losing them there was exactly when a reader wanted to see a
+    // reaction and the acceleration behind it at once.
     TestBed.inject(SelectedTabService).setTab(TabID.FORCE);
-    expect(mechanism.vectorTracePaths()).toEqual([]);
+    expect(mechanism.vectorTracePaths().length).toBe(1);
+    // Edit is not a reading of the mechanism, so it draws none of them.
     TestBed.inject(SelectedTabService).setTab(TabID.EDIT);
     expect(mechanism.vectorTracePaths()).toEqual([]);
+  });
+
+  it('never draws a force outside the mode that solves it', () => {
+    const { mechanism, b } = analyzing();
+    mechanism.toggleVectorTrace(b, 'velocity');
+    TestBed.inject(SelectedTabService).setTab(TabID.FORCE);
+    mechanism.toggleVectorTrace(b, 'force');
+    // Whatever this fixture can solve, Kinematic shows the rate and never the
+    // reaction: a force is only computed in Force.
+    TestBed.inject(SelectedTabService).setTab(TabID.ANALYZE);
+    const drawn = mechanism.vectorTracePaths();
+    expect(drawn.map((one) => one.quantity)).toEqual(['velocity']);
   });
 
   /**

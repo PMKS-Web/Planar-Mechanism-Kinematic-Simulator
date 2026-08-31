@@ -269,6 +269,20 @@ export class KeyboardShortcutsService {
     );
   }
 
+  /**
+   * Whether a keystroke is this shortcut.
+   *
+   * The same test the dispatcher uses, exposed for the few places that have to
+   * answer a key themselves -- a popover that stops every other shortcut still
+   * owes the ones it prints on its own rows.
+   */
+  matches(id: ShortcutId, event: KeyboardEvent): boolean {
+    const found = this.shortcuts.find((one) => one.id === id);
+    if (!found) return false;
+    const held = event.ctrlKey || event.metaKey;
+    return found.match.includes(event.key.toLowerCase()) && !!found.meta === held;
+  }
+
   /** The keys for a control's tooltip, or nothing if it has no shortcut. */
   keysFor(id: ShortcutId): string {
     return this.shortcuts.find((one) => one.id === id)?.keys ?? '';

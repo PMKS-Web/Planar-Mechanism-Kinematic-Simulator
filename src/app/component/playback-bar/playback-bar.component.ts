@@ -21,6 +21,7 @@ import { MatIcon } from '@angular/material/icon';
 import { ViewControlsComponent } from '../view-controls/view-controls.component';
 import { MatTooltip } from '@angular/material/tooltip';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
+import { ShortcutTipDirective } from '../../shortcut-tip.directive';
 
 /** What the stylesheet is asked for, and what to assume if it has not loaded. */
 const BOTTOM_OFFSET_VAR = '--playback-bottom';
@@ -129,7 +130,7 @@ export interface PlaybackRow {
     ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, MatTooltip, ViewControlsComponent],
+  imports: [ShortcutTipDirective, MatIcon, MatTooltip, ViewControlsComponent],
 })
 export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   mechanism = inject(MechanismService);

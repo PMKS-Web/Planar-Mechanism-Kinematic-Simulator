@@ -2,10 +2,15 @@
   @if (!noHeader()) {
     <div class="row">
       <span class="label {{ disabled() ? 'disabled' : '' }}"><ng-content></ng-content></span>
+      <!-- Still there while the field is disabled, but plainly not offering
+           anything: suppressing only the tooltip left a mark that took the
+           accent under the cursor and then answered nothing, which is an
+           affordance promising an explanation it does not have. -->
       <mat-icon
         matTooltip="{{ this.tooltip() }}"
         matTooltipShowDelay="400"
         class="label-help"
+        [class.inert]="disabled()"
         [matTooltipDisabled]="disabled()"
         >help_outline
       </mat-icon>

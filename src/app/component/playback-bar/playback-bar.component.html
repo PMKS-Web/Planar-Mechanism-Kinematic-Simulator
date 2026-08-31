@@ -15,9 +15,8 @@
         class="speedButton"
         (click)="cycleSpeed()"
         [disabled]="!canPlay"
-        [matTooltip]="shortcuts.tip('Playback speed', 'playback.speed')"
-        matTooltipPosition="above"
-        matTooltipShowDelay="600"
+        appShortcutTip="Playback speed"
+        shortcutTipFor="playback.speed"
       >
         {{ speed }}x
       </button>
@@ -26,9 +25,8 @@
         [class.live]="canPlay"
         (click)="play()"
         [disabled]="!canPlay"
-        [matTooltip]="shortcuts.tip(playing ? 'Pause' : 'Play', 'playback.toggle')"
-        matTooltipPosition="above"
-        matTooltipShowDelay="600"
+        [appShortcutTip]="playing ? 'Pause' : 'Play'"
+        shortcutTipFor="playback.toggle"
         [attr.aria-label]="playing ? 'Pause' : 'Play'"
       >
         <mat-icon>{{ playing ? 'pause' : 'play_arrow' }}</mat-icon>

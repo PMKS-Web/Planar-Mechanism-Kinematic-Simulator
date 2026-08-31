@@ -1280,9 +1280,13 @@ export class MechanismService {
         this.vectorTraceKeys.delete(key);
         continue;
       }
-      // Each mode draws what it is about, so a velocity switched on in
-      // Kinematic does not clutter the force picture.
-      if (tab !== (quantity === 'force' ? TabID.FORCE : TabID.ANALYZE)) continue;
+      // Motion is the same in both analysis modes, so velocity and acceleration
+      // are drawn in either -- switching one on in Kinematic and crossing to
+      // Force used to lose it, which is exactly when a reader wants to see the
+      // two together. A force is only solved in Force, so it stays there.
+      const shownIn: TabID[] =
+        quantity === 'force' ? [TabID.FORCE] : [TabID.ANALYZE, TabID.FORCE];
+      if (!shownIn.includes(tab)) continue;
       const shape = this.vectorShapeOf(part, quantity, mode);
       if (!shape) continue;
       list.push({ key, quantity, ink: VECTOR_INK[quantity], d: shape.d });

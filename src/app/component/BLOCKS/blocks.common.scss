@@ -90,6 +90,19 @@
     &:hover {
       color: mat.m2-get-color-from-palette($primary-palette, 500);
     }
+
+    // A mark with nothing to say. It stays, so the row keeps its shape and a
+    // reader can see there is an explanation once the field is live -- but it
+    // stops answering the pointer, because taking the accent and then saying
+    // nothing is the part that reads as broken.
+    &.inert {
+      color: rgba(0, 0, 0, 0.16);
+      cursor: default;
+
+      &:hover {
+        color: rgba(0, 0, 0, 0.16);
+      }
+    }
   }
 
   .label-help {

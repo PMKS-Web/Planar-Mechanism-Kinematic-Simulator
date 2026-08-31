@@ -3,9 +3,8 @@
   [class.on]="shown()"
   [disabled]="disabled()"
   (click)="pressed.emit()"
-  [matTooltip]="tip()"
-  matTooltipPosition="above"
-  [matTooltipShowDelay]="600"
+  [appShortcutTip]="tip()"
+  [shortcutTipFor]="shortcut()"
   [attr.aria-label]="label()"
   [attr.aria-pressed]="noun() ? shown() : null"
 >

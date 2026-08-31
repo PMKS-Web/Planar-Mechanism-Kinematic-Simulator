@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
-import { MatTooltip } from '@angular/material/tooltip';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
+import { ShortcutTipDirective } from '../../shortcut-tip.directive';
 
 /**
  * One button in the view controls, in both kinds it comes in: a switch that
@@ -19,7 +19,7 @@ import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-sh
   templateUrl: './view-button.component.html',
   styleUrls: ['./view-button.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, MatTooltip],
+  imports: [ShortcutTipDirective, MatIcon],
 })
 export class ViewButtonComponent {
   private shortcuts = inject(KeyboardShortcutsService);
@@ -55,14 +55,15 @@ export class ViewButtonComponent {
    */
   readonly label = computed(() => this.tooltip() ?? `Show ${this.noun()}`);
 
-  /** The tooltip names what pressing it would do, which is the other state. */
-  readonly tip = computed(() => {
-    const name = this.noun()
-      ? `${this.shown() ? 'Hide' : 'Show'} ${this.noun()}`
-      : (this.tooltip() ?? '');
-    const id = this.shortcut();
-    return id ? this.shortcuts.tip(name, id) : name;
-  });
+  /**
+   * The tooltip names what pressing it would do, which is the other state.
+   *
+   * Prose only: the shortcut is drawn as a key cap by `appShortcutTip`, at the
+   * end, rather than written into this sentence in brackets.
+   */
+  readonly tip = computed(() =>
+    this.noun() ? `${this.shown() ? 'Hide' : 'Show'} ${this.noun()}` : (this.tooltip() ?? '')
+  );
 
   /** The glyph draws the grid as it is: the crossed-out one means hidden. */
   readonly glyph = computed(() => (this.shown() ? this.shownIcon() : this.hiddenIcon()) ?? '');

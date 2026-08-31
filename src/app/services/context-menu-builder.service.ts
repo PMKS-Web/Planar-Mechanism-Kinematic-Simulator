@@ -489,11 +489,17 @@ export class ContextMenuBuilderService {
    */
   private vectorRows(part: RealJoint | RealLink): MenuRow[] {
     const tab = this.tabs.getCurrentTab();
+    // Velocity and acceleration in both analysis modes, because they are facts
+    // about the motion and the motion is the same in either -- a reader
+    // checking what a joint carries usually wants to know which way it is
+    // accelerating while they do it, and used to have to leave the mode to
+    // find out. Force stays in Force, where it is the thing being solved.
+    const motion: VectorQuantity[] = ['velocity', 'acceleration'];
     const quantities: VectorQuantity[] =
       tab === TabID.ANALYZE
-        ? ['velocity', 'acceleration']
-        : tab === TabID.FORCE && part instanceof RealJoint
-          ? ['force']
+        ? motion
+        : tab === TabID.FORCE
+          ? [...motion, ...(part instanceof RealJoint ? (['force'] as VectorQuantity[]) : [])]
           : [];
     return quantities.map((quantity) => this.vectorRow(part, quantity));
   }

@@ -30,6 +30,7 @@ import { MatIcon } from '@angular/material/icon';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { DrawingExportComponent } from '../MODALS/drawing-export/drawing-export.component';
+import { ShortcutTipDirective } from '../../shortcut-tip.directive';
 
 /** A mode's chip: whether that analysis can be entered, and what is missing. */
 interface TabStatus {
@@ -45,6 +46,9 @@ interface TabStatus {
    */
   kind: 'blocker' | 'warning' | 'ok' | 'neutral';
 }
+
+/** The shortcuts the project menu prints on its own rows, and so must honor. */
+const MENU_SHORTCUTS: ShortcutId[] = ['app.settings', 'app.help'];
 
 /**
  * The strip across the top: what may be done to the mechanism, and whether it
@@ -99,7 +103,7 @@ interface TabStatus {
       ]),
     ]),
   ],
-  imports: [MatTooltip, MatIcon],
+  imports: [ShortcutTipDirective, MatTooltip, MatIcon],
 })
 export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestroy {
   tabs = inject(SelectedTabService);
@@ -447,14 +451,13 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * the reader cannot see -- so the tooltip says it rather than leaving them to
    * find out by pressing.
    */
-  tipFor(tab: TabID, name: string, id: ShortcutId): string {
-    const tip = this.shortcuts.tip(name, id);
-    if (this.canAnalyze(tab) && !this.isActive(tab)) return tip;
+  tipFor(tab: TabID, name: string): string {
+    if (this.canAnalyze(tab) && !this.isActive(tab)) return name;
     const shown =
       this.canAnalyze(tab) &&
       RightPanelComponent.isOpen &&
       RightPanelComponent.openTab === this.setupTabFor(tab);
-    return `${tip}. ${shown ? 'Hides' : 'Shows'} what this mode needs.`;
+    return `${name}. ${shown ? 'Hides' : 'Shows'} what this mode needs.`;
   }
 
   // Not while the mechanism is running: undo replays a URL, and replacing the
@@ -575,6 +578,16 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    */
   onMenuKey(event: KeyboardEvent): void {
     event.stopPropagation();
+    // Except the menu's own two. Their keys are printed on the rows, and a
+    // shortcut a reader is looking straight at should work where they are
+    // looking -- the rest stay blocked because the card is over the canvas and
+    // most of them edit what is underneath it.
+    const own = MENU_SHORTCUTS.find((id) => this.shortcuts.matches(id, event));
+    if (own) {
+      event.preventDefault();
+      this.keyed[own]?.();
+      return;
+    }
     if (event.key === 'Escape') {
       event.preventDefault();
       this.closeMenu();

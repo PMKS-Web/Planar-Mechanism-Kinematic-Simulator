@@ -14,6 +14,7 @@ import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { KeyboardShortcutsService } from '../../../services/keyboard-shortcuts.service';
+import { ShortcutTipDirective } from '../../../shortcut-tip.directive';
 
 @Component({
   selector: 'editable-title-block',
@@ -21,6 +22,7 @@ import { KeyboardShortcutsService } from '../../../services/keyboard-shortcuts.s
   styleUrls: ['./editable-title.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    ShortcutTipDirective,
     NgTemplateOutlet,
     FormsModule,
     ReactiveFormsModule,

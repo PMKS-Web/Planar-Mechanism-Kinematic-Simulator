@@ -455,26 +455,36 @@ describe('the right-click menu', () => {
       expect(model.header?.crossing?.icon).toBe('edit_outline');
     });
 
-    it('offers each mode the vectors that mode is about', () => {
+    it('offers the two rates in both analysis modes, and the force only in Force', () => {
       const parts = fourBar(harness.mechanism);
+      // Motion is the same in either mode, and a reader checking what a joint
+      // carries usually wants to know which way it is accelerating while they
+      // do it. A force is only solved in Force, so it stays there.
+      const vectorRows = (part: Parameters<typeof harness.builder.build>[0]) =>
+        labels(harness.builder.build(part, noHandlers)).filter((one) => one.endsWith('Vectors'));
       harness.tabs.setTab(TabID.FORCE);
-      expect(labels(harness.builder.build(parts.a, noHandlers))).toContain('Force Vectors');
-      expect(labels(harness.builder.build(parts.a, noHandlers))).not.toContain('Velocity Vectors');
-      harness.tabs.setTab(TabID.ANALYZE);
-      expect(labels(harness.builder.build(parts.a, noHandlers))).not.toContain('Force Vectors');
-    });
-
-    it('offers a link the two rates at its CoM, and no force of its own', () => {
-      const parts = fourBar(harness.mechanism);
-      harness.tabs.setTab(TabID.ANALYZE);
-      expect(labels(harness.builder.build(parts.coupler, noHandlers))).toEqual([
+      expect(vectorRows(parts.a)).toEqual([
         'Velocity Vectors',
         'Acceleration Vectors',
+        'Force Vectors',
       ]);
+      harness.tabs.setTab(TabID.ANALYZE);
+      expect(vectorRows(parts.a)).toEqual(['Velocity Vectors', 'Acceleration Vectors']);
+    });
+
+    it('offers a link the two rates at its CoM in either mode, and no force of its own', () => {
+      const parts = fourBar(harness.mechanism);
+      const rates = ['Velocity Vectors', 'Acceleration Vectors'];
+      const vectorRows = () =>
+        labels(harness.builder.build(parts.coupler, noHandlers)).filter((one) =>
+          one.endsWith('Vectors')
+        );
+      harness.tabs.setTab(TabID.ANALYZE);
+      expect(vectorRows()).toEqual(rates);
       // A reaction is carried at a joint, so the row is absent rather than
       // grayed — a fact about the kind of part, not about this drawing.
       harness.tabs.setTab(TabID.FORCE);
-      expect(labels(harness.builder.build(parts.coupler, noHandlers))).toEqual([]);
+      expect(vectorRows()).toEqual(rates);
     });
 
     it('grays a vector on a machine that does not solve, with its own reason', () => {

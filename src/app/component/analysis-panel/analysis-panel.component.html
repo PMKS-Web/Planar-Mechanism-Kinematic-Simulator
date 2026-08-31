@@ -191,12 +191,15 @@
           [expanded]="isExpanded('LAngAcc')"
           (expandedChange)="graphExpanded['LAngAcc'] = $event"
         ></app-analysis-graph-section>
+        <!-- Spelled out, because this is the first place the abbreviation
+             appears: the rows under it are already labeled "CoM", so the
+             heading is where a reader finds out what that stands for. -->
         <div
           class="graphGroupHeading"
           (mouseenter)="highlightCoM(true)"
           (mouseleave)="highlightCoM(false)"
         >
-          CoM
+          Center of Mass (CoM)
         </div>
         <app-analysis-graph-section
           label="Position of {{ selectedBodyLabel }}'s CoM"

@@ -76,3 +76,10 @@ input {
   text-align: left;
   line-height: 16px;
 }
+
+// A shortcut tooltip is a label, never a target. Without this the panel takes
+// the pointer the moment it appears under the cursor, the control loses its
+// hover, and the tip flickers itself out of existence.
+.shortcutTipPanel {
+  pointer-events: none;
+}

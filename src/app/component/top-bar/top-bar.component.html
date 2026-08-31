@@ -11,7 +11,6 @@
       [class.on]="menuOpen"
       (click)="toggleMenu($event)"
       matTooltip="Project menu"
-      matTooltipShowDelay="600"
       aria-label="Project menu"
       aria-controls="projectMenu"
       [attr.aria-expanded]="menuOpen"
@@ -39,8 +38,8 @@
         aria-label="Synthesis"
       >
         <mat-icon
-          [matTooltip]="shortcuts.tip('Synthesis', 'mode.synthesis')"
-          matTooltipShowDelay="600"
+          appShortcutTip="Synthesis"
+          shortcutTipFor="mode.synthesis"
           svgIcon="synthesis"
         ></mat-icon>
         <span class="tabLabel">Synthesis</span>
@@ -53,8 +52,8 @@
         aria-label="Edit"
       >
         <mat-icon
-          [matTooltip]="shortcuts.tip('Edit', 'mode.edit')"
-          matTooltipShowDelay="600"
+          appShortcutTip="Edit"
+          shortcutTipFor="mode.edit"
           svgIcon="edit_outline"
         ></mat-icon>
         <span class="tabLabel">Edit</span>
@@ -75,8 +74,8 @@
         [class.notReady]="!canAnalyze(TabID.ANALYZE)"
         (click)="select(TabID.ANALYZE)"
         [attr.aria-label]="nameOf(TabID.ANALYZE, 'Kinematic Analysis')"
-        [matTooltip]="tipFor(TabID.ANALYZE, 'Kinematic Analysis', 'mode.kinematic')"
-        matTooltipShowDelay="600"
+        [appShortcutTip]="tipFor(TabID.ANALYZE, 'Kinematic Analysis')"
+        shortcutTipFor="mode.kinematic"
       >
         <mat-icon>query_stats</mat-icon>
         <span class="tabLabel long">Kinematic Analysis</span>
@@ -95,8 +94,8 @@
         [class.notReady]="!canAnalyze(TabID.FORCE)"
         (click)="select(TabID.FORCE)"
         [attr.aria-label]="nameOf(TabID.FORCE, 'Force Analysis')"
-        [matTooltip]="tipFor(TabID.FORCE, 'Force Analysis', 'mode.force')"
-        matTooltipShowDelay="600"
+        [appShortcutTip]="tipFor(TabID.FORCE, 'Force Analysis')"
+        shortcutTipFor="mode.force"
       >
         <mat-icon>balance</mat-icon>
         <span class="tabLabel long">Force Analysis</span>
@@ -122,8 +121,8 @@
           class="historyButton"
           (click)="undo()"
           [disabled]="!canUndo()"
-          [matTooltip]="shortcuts.tip('Undo', 'history.undo')"
-          matTooltipShowDelay="600"
+          appShortcutTip="Undo"
+          shortcutTipFor="history.undo"
           aria-label="Undo"
         >
           <mat-icon>undo</mat-icon>
@@ -133,8 +132,8 @@
           class="historyButton"
           (click)="redo()"
           [disabled]="!canRedo()"
-          [matTooltip]="shortcuts.tip('Redo', 'history.redo')"
-          matTooltipShowDelay="600"
+          appShortcutTip="Redo"
+          shortcutTipFor="history.redo"
           aria-label="Redo"
         >
           <mat-icon>redo</mat-icon>
@@ -148,7 +147,6 @@
           (click)="exportData()"
           [disabled]="!canExport()"
           [matTooltip]="exportTooltip()"
-          matTooltipShowDelay="600"
           aria-label="Export data"
         >
           <mat-icon>download</mat-icon>
@@ -183,25 +181,16 @@
       <mat-icon>architecture</mat-icon>CAD Export
     </button>
     <div class="menuDivider"></div>
-    <button
-      class="menuItem"
-      (click)="openSettings()"
-      [matTooltip]="shortcuts.tip('Settings', 'app.settings')"
-      matTooltipShowDelay="600"
-    >
+    <button class="menuItem" (click)="openSettings()">
       <mat-icon>settings</mat-icon>Settings
+      <kbd class="menuKeys">{{ shortcuts.keysFor('app.settings') }}</kbd>
     </button>
     <button class="menuItem" id="tutorialButton" (click)="openTutorial()">
       <mat-icon>school</mat-icon>Tutorial
     </button>
-    <button
-      class="menuItem"
-      id="helpButton"
-      (click)="openHelp()"
-      [matTooltip]="shortcuts.tip('Help', 'app.help')"
-      matTooltipShowDelay="600"
-    >
+    <button class="menuItem" id="helpButton" (click)="openHelp()">
       <mat-icon>help</mat-icon>Help / Feedback
+      <kbd class="menuKeys">{{ shortcuts.keysFor('app.help') }}</kbd>
     </button>
     @if (isDevMode()) {
       <button class="menuItem" (click)="openDebug()"><mat-icon>bug_report</mat-icon>Debug</button>
