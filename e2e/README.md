@@ -20,6 +20,17 @@ their source. Everything browser-driven lives here.
   bare grid) across several mechanisms: each enabled item is clicked, the model and drawing are read
   back, and it is undone. Catches the silent click — enabled, pressed, and nothing happened and
   nothing was said. `ONLY=4-Bar,Cylinder_Boom` narrows it
+- `edit-playback.mjs` — Gate 1 of `docs/edit-mode-playback-plan.md`: the transport as chrome (on
+  screen and inert over an empty grid, no bar animation when the drawing changes), the Edit panel
+  that stays instead of vanishing, the mode-switch table edge by edge, and every former edit gate
+  giving one answer
+- `posed-editing.mjs` — Gates 2 and 3: a drag at a paused pose staging and re-anchoring, the ghost
+  warning while the hand is still moving, the snackbar when the start does move, undo rewinding,
+  Set-This-Pose-as-Start, grab-to-pause, and cursor tracking measured at both poses
+- `posed-editing-adversarial.mjs` — the other half: gestures that are *not* edits and must not
+  become them. A view gesture ending a center-of-mass drag, a pinch after a drag has begun, and a
+  synced two-machine drawing edited on the machine that is not the master. Every check here started
+  as a defect
 - `phase1-drag.mjs` — drag gestures: joint snap ring and merge, merging onto a slider's pin,
   refusing an over-constraining merge, whole-link drag, one undo entry per gesture,
   click-without-nudge, the canvas staying put after a merge, and an analysis mode refusing drags.
