@@ -544,5 +544,48 @@ describe('the right-click menu', () => {
       // A trace is a view of the mechanism, not a change to it.
       expect(row(model, 'Trace Path')!.disabled).toBe(false);
     });
+
+    /** A driven crank-rocker lettered from `from`, appended at `offset`. */
+    function crankRocker(mechanism: MechanismService, from: string, offset: number) {
+      const letter = (n: number) => String.fromCharCode(from.charCodeAt(0) + n);
+      const at: [number, number][] = [
+        [offset, 0],
+        [offset, S],
+        [offset + 3 * S, 2 * S],
+        [offset + 4 * S, 0],
+      ];
+      const joints = at.map(([x, y], i) => new RevJoint(letter(i), x, y));
+      joints[0].ground = true;
+      joints[3].ground = true;
+      joints[0].input = true;
+      const links = [0, 1, 2].map(
+        (i) => new RealLink(joints[i].id + joints[i + 1].id, [joints[i], joints[i + 1]], 1, 1)
+      );
+      mechanism.joints.push(...joints);
+      mechanism.links.push(...links);
+      return { joints, links };
+    }
+
+    it('greys with a reason of its own when an unsynced machine is parked off zero', () => {
+      // Scrubbing a non-master row leaves the shared clock at zero, so this
+      // used to pass the clock check and offer live edit rows against a
+      // displaced pose that undo — gated on isAnimating() — refused to fix.
+      const first = crankRocker(harness.mechanism, 'A', 0);
+      crankRocker(harness.mechanism, 'E', 10 * S);
+      wireGraph(harness.mechanism);
+      harness.mechanism.updateMechanism();
+      expect(harness.mechanism.mechanisms.map((m) => m.isMechanismValid())).toEqual([true, true]);
+
+      harness.mechanism.setSyncMechanisms(false);
+      const other = harness.mechanism.masterMechanismIndex() === 0 ? 1 : 0;
+      harness.mechanism.seekMechanism(other, harness.mechanism.mechanisms[other].cyclePeriod / 3);
+      expect(harness.mechanism.isPlaying).toBe(false);
+      expect(harness.mechanism.mechanismTimeStep).toBe(0);
+
+      const model = harness.builder.build(first.joints[1], noHandlers);
+      expect(row(model, 'Grounded')!.refusal!.short).toBe('a machine is mid-cycle');
+      // The view rows stay live, exactly as they do at a non-zero step.
+      expect(row(model, 'Trace Path')!.disabled).toBe(false);
+    });
   });
 });

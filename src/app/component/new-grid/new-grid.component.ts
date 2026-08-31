@@ -627,8 +627,7 @@ export class NewGridComponent implements OnDestroy {
     return (
       this.activeObjService.objType === 'BackgroundImage' &&
       this.tabService.getCurrentTab() === TabID.EDIT &&
-      !this.mechanismSrv.isPlaying &&
-      this.mechanismSrv.mechanismTimeStep === 0 &&
+      !this.mechanismSrv.isAnimating() &&
       !this.settings.tempGridDisable
     );
   }
@@ -2057,10 +2056,10 @@ export class NewGridComponent implements OnDestroy {
    * a fifth place saying the same word.
    */
   private canEditNow(): boolean {
-    if (this.mechanismSrv.isPlaying) {
-      return false;
-    }
-    if (this.mechanismSrv.mechanismTimeStep !== 0) {
+    // `isAnimating()`, not the shared clock: with the machines unsynced, one
+    // row can be scrubbed mid-cycle while `mechanismTimeStep` still reads
+    // zero, and a drag against that displaced pose writes it into the drawing.
+    if (this.mechanismSrv.isAnimating()) {
       return false;
     }
     if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {

@@ -1009,14 +1009,23 @@ export class ContextMenuBuilderService {
    * untouched, and the rest say what to do about it rather than vanishing.
    */
   private freezeWhileRunning(model: ContextMenuModel): ContextMenuModel {
-    const running = this.mechanism.isPlaying;
-    if (!running && this.mechanism.mechanismTimeStep === 0) return model;
-    const refusal: MenuRefusal = running
+    // The service's `isAnimating()`, not the shared clock: unsynced, a row can
+    // be scrubbed mid-cycle while `mechanismTimeStep` still reads zero. That
+    // third state gets its own words, because "not at the start" over a
+    // drawing whose transport reads 0:00 sends the reader to a scrubber that
+    // already looks parked.
+    if (!this.mechanism.isAnimating()) return model;
+    const refusal: MenuRefusal = this.mechanism.isPlaying
       ? { short: 'animation running', long: 'Pause the animation to change the mechanism.' }
-      : {
-          short: 'not at the start',
-          long: 'The mechanism is parked mid-cycle. Return it to the start to change it.',
-        };
+      : this.mechanism.mechanismTimeStep !== 0
+        ? {
+            short: 'not at the start',
+            long: 'The mechanism is parked mid-cycle. Return it to the start to change it.',
+          }
+        : {
+            short: 'a machine is mid-cycle',
+            long: 'One of the machines is parked away from its start. Return every machine to the start to change the drawing.',
+          };
     model.groups.forEach((group) =>
       group.rows.forEach((row) => {
         if (!row.alwaysAllowed && !row.refusal) row.refusal = refusal;

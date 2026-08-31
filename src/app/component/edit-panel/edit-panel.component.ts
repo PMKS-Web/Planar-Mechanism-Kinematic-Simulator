@@ -178,7 +178,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   }
 
   hideEditPanel() {
-    return this.mechanismService.isPlaying || this.mechanismService.mechanismTimeStep !== 0;
+    // The service's answer, not the shared clock: unsynced, a machine can be
+    // parked mid-cycle while `mechanismTimeStep` reads zero, and the panel
+    // must go quiet then too — the same rule the canvas and menu quote.
+    return this.mechanismService.isAnimating();
   }
 
   /** Unit choices for the Input Speed field's inline picker. */

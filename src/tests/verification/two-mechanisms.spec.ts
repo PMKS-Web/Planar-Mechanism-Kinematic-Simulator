@@ -5,6 +5,7 @@ import { RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { MechanismService } from '../../app/services/mechanism.service';
+import { GridUtilsService } from '../../app/services/grid-utils.service';
 
 /**
  * Two machines in one drawing, each solved on its own.
@@ -179,6 +180,27 @@ describe('two four-bars in one drawing', () => {
     const startSample = service.mechanisms[0].joints[0].find((joint) => joint.id === 'B')!;
     expect(startSample.x).toBeCloseTo(rest.x, 6);
     expect(startSample.y).toBeCloseTo(rest.y, 6);
+  });
+
+  it('closes every edit gate while an unsynced row is parked off zero', () => {
+    // The canvas drag, the Edit panel and the context menu all quote
+    // isAnimating(), and undo quotes it through canRestoreHistory. They used
+    // to read the shared clock instead, which stays at zero when only a
+    // non-master row is scrubbed — so edits were allowed against a displaced
+    // pose that the blocked undo could not take back.
+    const { service, injector } = twoFourBars();
+
+    service.setSyncMechanisms(false);
+    const other = service.masterMechanismIndex() === 0 ? 1 : 0;
+    service.seekMechanism(other, service.mechanisms[other].cyclePeriod / 3);
+
+    // The state the global-clock gates misread as "parked at the start".
+    expect(service.isPlaying).toBe(false);
+    expect(service.mechanismTimeStep).toBe(0);
+
+    expect(service.isAnimating()).toBe(true);
+    expect(service.isAtStartPose()).toBe(false);
+    expect(injector.get(GridUtilsService).canRestoreHistory()).toBe(false);
   });
 
   it('moves both when the shared clock advances, each on its own frames', () => {
