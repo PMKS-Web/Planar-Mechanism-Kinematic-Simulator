@@ -56,10 +56,17 @@ export interface MachineAnchor {
    * coordinates outright. Direction separates them before shape has to.
    */
   readonly heading: 1 | -1;
-  /** The joint the angle is measured to, for an angle anchor. */
-  readonly referenceId?: string;
-  /** The unit direction the travel is measured along, for a length anchor. */
-  readonly axis?: { readonly x: number; readonly y: number };
+  /**
+   * How the coordinate is measured, kept whole.
+   *
+   * This used to be two of the rule's fields copied out by hand, and the two it
+   * copied were the ones a grounded crank needs. Everything a *floating*
+   * actuator needs -- the body its freedom is measured against, the carrier a
+   * moving slot is cut into -- was dropped on the way in and invented again on
+   * the way out, so those machines were read against a different quantity than
+   * the one their anchor was taken in and reported their own start unreachable.
+   */
+  readonly rule: CoordinateRule;
   /** Every owned joint's t = 0 position, for telling one leg from the other. */
   readonly seed: ReadonlyMap<string, { x: number; y: number }>;
 }

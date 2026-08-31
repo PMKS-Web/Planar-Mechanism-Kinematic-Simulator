@@ -404,7 +404,13 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
       id: name ?? this.nameOf(index),
       // The start of the cycle is where the handle reads zero, by construction:
       // re-anchoring is what makes that true after an edit at a pose.
-      anchorAt: combined ? undefined : 0,
+      //
+      // The combined row gets one too. It stands for several cycles at once,
+      // and every one of them starts where its own handle reads zero -- so the
+      // mark is as true there as on a machine's own row, and leaving it off
+      // meant a synced drawing, and every drawing on a phone, had the concept
+      // with nothing pointing at it.
+      anchorAt: 0,
       index: combined ? -1 : index,
       leader: index,
       isMechanism: !combined,

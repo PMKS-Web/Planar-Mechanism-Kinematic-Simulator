@@ -5179,12 +5179,10 @@ export class MechanismService {
   /** Whether this machine is still measured the way its anchor was taken. */
   private ruleStillHolds(index: number, anchor: MachineAnchor): boolean {
     const rule = this.currentRuleFor(index);
-    return (
-      rule !== undefined &&
-      rule.jointId === anchor.jointId &&
-      rule.kind === anchor.kind &&
-      rule.referenceId === anchor.referenceId
-    );
+    // Every part of it, compared as one. Naming the fields here was how the
+    // floating-actuator halves went missing in the first place: a comparison
+    // that lists what it checks silently stops checking whatever is added next.
+    return rule !== undefined && JSON.stringify(rule) === JSON.stringify(anchor.rule);
   }
 
   /** How this machine's input is measured right now, from the drawing. */
@@ -5216,8 +5214,7 @@ export class MechanismService {
       kind: rule.kind,
       coordinate: first,
       heading: next !== undefined && next < first ? -1 : 1,
-      referenceId: rule.referenceId,
-      axis: rule.axis,
+      rule,
       seed: new Map(frames.joints[0].map((joint) => [joint.id, { x: joint.x, y: joint.y }])),
     };
   }
@@ -5230,25 +5227,23 @@ export class MechanismService {
    * explaining afterwards.
    */
   anchorIsReachable(index: number): boolean {
-    // A machine with nothing to anchor is not "reachable"; it is not a question.
-    if (!this.anchorOf(index)) return true;
-    // A machine that cannot be solved at all certainly cannot reach its start,
-    // and it draws no ghost -- so reading the ghost's absence as a yes was a
-    // yes to the very case the warning exists for.
+    // Validity first. A machine that cannot be solved at all certainly cannot
+    // reach its start -- and losing the drive is one of the ways to get there,
+    // which also loses the anchor, so asking about the anchor first answered
+    // "not a question" for the very case the warning exists for.
     if (!this.mechanisms[index]?.isMechanismValid()) return false;
+    // A machine that runs and has nothing anchored is not unreachable; there is
+    // simply nothing being asked.
+    if (!this.anchorOf(index)) return true;
     const ghost = this.startPoseGhosts().find((one) => one.index === index);
     // Otherwise the ghost's own answer, so the thing on screen and the thing a
     // caller asks cannot come from two different lookups.
     return ghost ? ghost.reachable : false;
   }
 
-  private ruleFor(anchor: MachineAnchor) {
-    return {
-      jointId: anchor.jointId,
-      kind: anchor.kind,
-      referenceId: anchor.referenceId,
-      axis: anchor.axis,
-    };
+  /** The rule the anchor was taken in, whole -- not rebuilt from parts of it. */
+  private ruleFor(anchor: MachineAnchor): CoordinateRule {
+    return anchor.rule;
   }
 
   /**

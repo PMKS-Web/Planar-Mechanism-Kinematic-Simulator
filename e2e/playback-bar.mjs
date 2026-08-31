@@ -42,8 +42,10 @@ const jointAt = (id) =>
 await page.goto(`${BASE}/?${payloads['4-Bar']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 
-// --- the transport belongs to the analysis modes ----------------------------
-record('Edit has no transport', (await page.locator('.playButton').count()) === 0);
+// --- the transport is chrome, not an analysis-mode fitting -------------------
+// It used to belong to the analyses alone, which cost a mode switch every time
+// a reader wanted to watch the thing they were building.
+record('Edit has a transport', (await page.locator('.playButton').count()) === 1);
 
 await tab('Kinematic').click();
 await page.waitForTimeout(800);

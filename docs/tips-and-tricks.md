@@ -427,6 +427,15 @@ pixels are available; anything you add to the bottom row has to survive that.
 - **Drop anchors before the rebuild, not after.** `UrlProcessorService` calls `forgetAnchors()`
   ahead of `finishStructuralEdit`; after it, the call threw away the anchors that rebuild had just
   taken, and every freshly opened mechanism had none until its first edit.
+- **Every path that abandons a gesture must abandon its staging.** `letGoOfEverything` is the one
+  a pinch and a long press take, and a `seedFromDisplay` left behind outlives the gesture: the next
+  ambient rebuild reads "seed this machine from what is drawn" and the displaced pose becomes the
+  design. Four unrelated Playwright suites failed on that one leak, none of them about posed
+  editing.
+- **A comparison that lists the fields it checks stops checking whatever is added next.** The
+  anchor copied two fields out of its `CoordinateRule` -- the two a grounded crank needs -- so the
+  floating-actuator halves added later were dropped on the way in and invented on the way out. It
+  carries the whole rule now and compares it whole.
 - **Slipping a wrapper div into a panel breaks its scroll.** The mode panels are a chain of flex
   items that give up their height so the card inside can cap itself at `max-height: 100%` and
   scroll its own contents. A plain `<div>` inserted anywhere in that chain leaves the percentage

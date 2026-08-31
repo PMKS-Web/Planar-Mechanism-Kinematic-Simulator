@@ -1,5 +1,6 @@
 import { buildMechanism } from '../../../test-utils/verification/fixture';
 import { teachingLabFourBarFixture } from '../../../test-utils/verification/fixtures';
+import { cylinderBoomFixture } from '../../../test-utils/verification/slot-fixtures';
 import { RealJoint } from '../joint';
 import {
   coordinateIn,
@@ -119,6 +120,37 @@ describe('the start-pose anchor', () => {
     };
     expect(reachAnchor([undefined, undefined], nowhere, frames)).toBeNull();
     expect(reachAnchor([], nowhere, frames)).toBeNull();
+  });
+
+  it('measures a moving slot in its carrier, not in the world', () => {
+    // A grounded crank's angle can be read straight off the world, and every
+    // actuator was read that way at first. A cylinder's cannot: its slot is cut
+    // into a body that moves, so the world projection of the block's position
+    // is a number the drive does not control -- it changes when the boom swings
+    // even though the ram has not moved -- and an anchor stored in it names the
+    // wrong quantity the moment anything else in the drawing does.
+    const built = buildMechanism(cylinderBoomFixture());
+    const driven = built.joints.find((joint) => (joint as RealJoint).input) as RealJoint;
+    const rule = coordinateRuleFor(driven)!;
+    expect(rule.kind).toBe('length');
+    expect(rule.carrierIds).toBeDefined();
+
+    // Turn the whole assembly about the origin without sliding the ram, and the
+    // coordinate must not move. Read against the world it moves by hundreds of
+    // model units, which is the entire defect.
+    const at = new Map(built.joints.map((joint) => [joint.id, { x: joint.x, y: joint.y }]));
+    const before = coordinateIn(rule, (id) => at.get(id))!;
+    const turn = 0.7;
+    const spun = new Map(
+      [...at].map(([id, point]) => [
+        id,
+        {
+          x: point.x * Math.cos(turn) - point.y * Math.sin(turn),
+          y: point.x * Math.sin(turn) + point.y * Math.cos(turn),
+        },
+      ])
+    );
+    expect(coordinateIn(rule, (id) => spun.get(id))!).toBeCloseTo(before, 6);
   });
 
   it('names a machine by everything it owns, not by one joint', () => {

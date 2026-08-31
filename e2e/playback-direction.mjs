@@ -119,18 +119,26 @@ await page.locator('.transportCard .playButton').click();
 await page.waitForTimeout(300);
 
 // --- the start pose is untouched by any of it -------------------------------
+//
+// Asked of sample 0 of the solved cycle, which *is* t = 0, rather than of the
+// editable joints. Those were a fair proxy while switching to Edit always
+// rewound: the drawn pose and the start pose were the same thing there. Edit
+// keeps the pose now, so reading the drawn joints would report every deliberate
+// mid-cycle pause as a start pose that had moved -- and stop reporting the
+// thing this check is named for.
 await page.locator('.tabButton', { hasText: 'Edit' }).click();
 await page.waitForTimeout(900);
-const home = await page.evaluate(() => {
-  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
-  return srv.joints.map((j) => `${j.id}:${j.x.toFixed(2)},${j.y.toFixed(2)}`).join(' ');
-});
+const startPose = () =>
+  page.evaluate(() => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    return srv.mechanisms[0].joints[0]
+      .map((j) => `${j.id}:${j.x.toFixed(2)},${j.y.toFixed(2)}`)
+      .join(' ');
+  });
+const home = await startPose();
 await page.goto(`${BASE}/?${payloads['4-Bar']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
-const fresh = await page.evaluate(() => {
-  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
-  return srv.joints.map((j) => `${j.id}:${j.x.toFixed(2)},${j.y.toFixed(2)}`).join(' ');
-});
+const fresh = await startPose();
 record('reversing never moved the pose the drawing starts from', home === fresh, { home, fresh });
 
 // --- master and rows agree ---------------------------------------------------

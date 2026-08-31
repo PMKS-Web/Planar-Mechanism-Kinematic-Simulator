@@ -1243,11 +1243,22 @@ export class NewGridComponent implements OnDestroy {
       this.mechanismSrv.links
     );
     // A group transform is a geometry gesture like any other, so it stages the
-    // same way. The first part decides which machine: a selection spanning two
-    // is refused its staging and simply edits at the start, as it did before.
-    this.mechanismSrv.beginPosedEdit(
-      this.activeObjService.selectedParts[0] as Joint | Link | Force
+    // same way -- but only where there is one machine to stage. Handing over
+    // the first selected part staged *its* machine and left the rest of the
+    // selection unstaged: the transform reported itself applied while the
+    // members in other machines were restored to their own starts by the same
+    // rebuild, so they moved and snapped back.
+    //
+    // A selection spanning machines is refused its staging outright. What that
+    // means for the reader is that a group across two machines is edited at the
+    // start pose, as it was before any of this existed.
+    const parts = this.activeObjService.selectedParts;
+    const machines = new Set(
+      parts.map((part) => this.mechanismSrv.indexOfMechanismContaining(part as Joint | Link | Force))
     );
+    if (machines.size === 1 && parts.length > 0) {
+      this.mechanismSrv.beginPosedEdit(parts[0] as Joint | Link | Force);
+    }
     this.selectionGesture = {
       snapshot,
       mode,
@@ -1383,10 +1394,26 @@ export class NewGridComponent implements OnDestroy {
       );
       return;
     }
+    // A nudge is a drag by another route, so it stages and commits like one. It
+    // did not, and at a displaced pose that made it a no-op: the arrow moved
+    // the joints, the rebuild restored them to t = 0 on its way past, and a key
+    // the permission model had just allowed did nothing at all.
+    const machines = new Set(
+      selected.map((part) => this.mechanismSrv.indexOfMechanismContaining(part as Joint | Link))
+    );
+    const staged = machines.size === 1 && this.mechanismSrv.beginPosedEdit(selected[0] as Joint);
     this.mechanismSrv.reseatFloatingSliders();
     this.mechanismSrv.updateMechanism(false);
     this.mechanismSrv.onMechUpdateState.next(2);
     this.activeObjService.fakeUpdateSelectedObj();
+    if (staged) {
+      this.closePosedEdit(true, false);
+      if (this.posedEditSaved) {
+        this.posedEditSaved = false;
+        return;
+      }
+      this.posedEditSaved = false;
+    }
     this.mechanismSrv.save();
   }
 
@@ -2584,6 +2611,11 @@ export class NewGridComponent implements OnDestroy {
    */
   private letGoOfEverything(): void {
     this.dragState.cancel();
+    // Including a staged posed edit. This is the path a pinch and a long press
+    // take, and staging left behind outlives the gesture -- the next ambient
+    // rebuild then reads "seed this machine from what is drawn" and turns the
+    // displaced pose into the design. Letting go means letting go of that too.
+    this.mechanismSrv.cancelPosedEdit();
     this.selectionGesture = undefined;
     this.pendingPartReplacement = undefined;
     this.selectionTogglePress = false;
