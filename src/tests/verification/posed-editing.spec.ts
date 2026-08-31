@@ -4,6 +4,7 @@ import '../../app/model/joint';
 import { RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
+import { DragStateService } from '../../app/services/drag-state.service';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { LengthUnit } from '../../app/model/utils';
@@ -305,6 +306,63 @@ describe('editing at a displaced pose', () => {
     expect(joints[1].isWelded).toBe(true);
     expect(saveCount() - before).toBe(1);
     expect(service.posedEditKey).toBeNull();
+  });
+
+  it('closes a staging nobody is holding, before the rebuild can use it', () => {
+    // The guard that replaced three rounds of hunting for paths that forget to
+    // close their staging. A gesture opened with a pointer down and then
+    // abandoned -- escape, a right click, a mode key, tabbing away -- leaves
+    // the machine marked "seed this one from what is drawn", and the next
+    // ambient rebuild makes the displaced pose the design.
+    const harness = createMechanismHarness();
+    const parts = fourBar(harness.service, 'A', 0);
+    const service = harness.service;
+    const drag = harness.injector.get(DragStateService);
+    service.updateMechanism();
+    displace(service);
+    const anchored = startCoordinate(service, 0);
+
+    // A pointer goes down, the gesture stages and moves something...
+    drag.press();
+    expect(service.beginPosedEdit(parts.joints[1])).toBe(true);
+    parts.joints[1].x += 0.3;
+    service.updateMechanism();
+    // ...and then the gesture dies without anyone closing it.
+    drag.cancel();
+    expect(service.posedEditKey).not.toBeNull();
+
+    // The next rebuild is where that would have become the design.
+    service.updateMechanism();
+    expect(service.posedEditKey).toBeNull();
+    expect(startCoordinate(service, 0)).toBeCloseTo(anchored, 1);
+  });
+
+  it('takes one entry for a delete held mid-drag, not two', () => {
+    // A delete is identity-addressed, so it closes any staging first. And a
+    // gesture abandoned by one must forfeit what it earned: the credits used to
+    // survive `DragState.cancel`, so the later release spent them on a second
+    // entry and the first Undo took back half of what the reader saw happen.
+    const harness = createMechanismHarness();
+    const parts = fourBar(harness.service, 'A', 0);
+    const service = harness.service;
+    const drag = harness.injector.get(DragStateService);
+    service.updateMechanism();
+    displace(service);
+
+    drag.press();
+    expect(service.beginPosedEdit(parts.joints[1])).toBe(true);
+    parts.joints[1].x += 0.3;
+    service.updateMechanism();
+
+    const before = harness.saveCount();
+    service.activeObjService.updateSelectedObj(parts.joints[2]);
+    service.deleteJoint();
+    expect(harness.saveCount() - before).toBe(1);
+    expect(service.posedEditKey).toBeNull();
+
+    // And the release that follows has nothing left to spend.
+    const outcome = drag.release();
+    expect(outcome.save).toBe(false);
   });
 
   it('stages one machine at a time and no more', () => {
