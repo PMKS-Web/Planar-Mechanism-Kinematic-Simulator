@@ -2674,33 +2674,72 @@ export class NewGridComponent implements OnDestroy {
    * that turns out to have been about the view can put back what it moved on
    * the way to finding that out.
    */
-  private beforeDrag?: { id: string; x: number; y: number }[];
+  private beforeDrag?: {
+    joints: { id: string; x: number; y: number }[];
+    /**
+     * And the forces. A load's endpoints are stored coordinates, not something
+     * re-derived from the link it rides on -- so putting the joints back left
+     * every force where the drag had dragged it, and a phone's view gesture
+     * moved sample zero by a hundred and sixty units with nothing to undo it.
+     */
+    forces: { id: string; sx: number; sy: number; ex: number; ey: number }[];
+  };
 
   private rememberBeforeDrag(): void {
-    this.beforeDrag = this.mechanismSrv.joints.map((joint) => ({
-      id: joint.id,
-      x: joint.x,
-      y: joint.y,
-    }));
+    this.beforeDrag = {
+      joints: this.mechanismSrv.joints.map((joint) => ({
+        id: joint.id,
+        x: joint.x,
+        y: joint.y,
+      })),
+      forces: this.mechanismSrv.forces.map((force) => ({
+        id: force.id,
+        sx: force.startCoord.x,
+        sy: force.startCoord.y,
+        ex: force.endCoord.x,
+        ey: force.endCoord.y,
+      })),
+    };
   }
 
   private putBackTheDrag(): void {
     const was = this.beforeDrag;
     this.beforeDrag = undefined;
     if (!was || !this.dragState.isDragging) return;
-    const at = new Map(was.map((joint) => [joint.id, joint]));
+    const joints = new Map(was.joints.map((joint) => [joint.id, joint]));
+    const forces = new Map(was.forces.map((force) => [force.id, force]));
+    let moved = false;
     this.mechanismSrv.joints.forEach((joint) => {
-      const back = at.get(joint.id);
+      const back = joints.get(joint.id);
       if (!back) return;
+      if (joint.x !== back.x || joint.y !== back.y) moved = true;
       joint.x = back.x;
       joint.y = back.y;
     });
-    this.mechanismSrv.updateMechanism();
+    this.mechanismSrv.forces.forEach((force) => {
+      const back = forces.get(force.id);
+      if (!back) return;
+      if (force.startCoord.x !== back.sx || force.startCoord.y !== back.sy) moved = true;
+      force.startCoord.x = back.sx;
+      force.startCoord.y = back.sy;
+      force.endCoord.x = back.ex;
+      force.endCoord.y = back.ey;
+      force.forceLine = force.createForceLine(force.startCoord, force.endCoord);
+      force.forceArrow = force.createForceArrow(force.startCoord, force.endCoord);
+    });
+    // Only where something actually moved. `isDragging` is true from the
+    // pointer going down, so a press that never travelled -- a pinch that began
+    // on a joint and simply zoomed -- was being "restored" and re-solved, and a
+    // re-solve of an unchanged drawing still rewrites its coordinates in the
+    // last few decimal places.
+    if (moved) this.mechanismSrv.updateMechanism();
   }
 
   private letGoOfEverything(): void {
     this.beforeDrag = undefined;
     this.linkCreateFrom = undefined;
+    this.endComDrag?.();
+    this.endComDrag = undefined;
     this.dragState.cancel();
     // Including a staged posed edit. This is the path a pinch and a long press
     // take, and staging left behind outlives the gesture -- the next ambient
@@ -4006,6 +4045,7 @@ export class NewGridComponent implements OnDestroy {
     }
     this.draggingCoMLink = link;
     let moved = false;
+    let savedElsewhere = false;
     const move = (e: PointerEvent) => {
       // Asked every move, not once at the grab. A gesture that began while the
       // gates were open went on writing through a mode switch and through Play:
@@ -4015,6 +4055,11 @@ export class NewGridComponent implements OnDestroy {
       // one press away -- left the panel showing Unlock and the lock marks
       // drawn while the mark kept following the pointer.
       if (!this.permission.may('properties') || this.mechanismSrv.isLockedTarget(link)) {
+        // A Lock applied mid-gesture has already written the state it locked,
+        // so the end of this gesture must not write it again: the two entries
+        // were byte-identical, and the first Undo was a visible no-op that
+        // could not take the lock back either.
+        savedElsewhere = this.mechanismSrv.isLockedTarget(link);
         up();
         return;
       }
@@ -4028,6 +4073,7 @@ export class NewGridComponent implements OnDestroy {
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
+      this.endComDrag = undefined;
       if (this.draggingCoMLink === undefined) return;
       this.draggingCoMLink = undefined;
       // Nothing to write down for a grab that never moved -- and for one cut
@@ -4036,13 +4082,20 @@ export class NewGridComponent implements OnDestroy {
       if (!moved) return;
       // One undo step for the whole gesture, then the panel re-reads its
       // fields the same way a unit change makes it re-read them.
-      this.mechanismSrv.updateMechanism(true);
+      this.mechanismSrv.updateMechanism(!savedElsewhere);
       this.mechanismSrv.onMechUpdateState.next(2);
       this.activeObjService.fakeUpdateSelectedObj();
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
+    // And a way to end it from outside. A pointer released in another tab sends
+    // no `pointerup` here, so the listeners stayed on and the mark followed the
+    // next buttonless move across the window.
+    this.endComDrag = up;
   }
+
+  /** Ends the CoM gesture, for the paths that hear about a release it does not. */
+  private endComDrag?: () => void;
 
   /** Say why a locked link's center of mass will not follow the pointer. */
   private refuseLockedCoM(link: RealLink): void {
