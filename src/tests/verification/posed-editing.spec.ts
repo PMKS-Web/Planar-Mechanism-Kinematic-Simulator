@@ -213,6 +213,52 @@ describe('editing at a displaced pose', () => {
     expect(service.secondsOf(1)).toBeCloseTo(neighborClock, 6);
   });
 
+  it('cannot be left staged, whatever abandons the gesture', () => {
+    // Every leak found so far has been the same shape: a path that let go of a
+    // gesture without letting go of its staging, after which the next ambient
+    // rebuild read "seed this machine from what is drawn" and the displaced
+    // pose became the design. Two of those leaks were found by review, and one
+    // of them broke four Playwright suites that have nothing to do with this
+    // feature. So the property is asserted directly: staged, then abandoned,
+    // then rebuilt, and t = 0 has not moved.
+    const { service, joints } = oneBar();
+    displace(service);
+    const before = startPoses(service);
+
+    expect(service.beginPosedEdit(joints[1])).toBe(true);
+    joints[1].x += 0.3;
+    service.cancelPosedEdit();
+    service.updateMechanism();
+    expect(service.posedEditKey).toBeNull();
+    expect(startPoses(service)).toBe(before);
+
+    // And several rebuilds later, because a leak that survives one rebuild
+    // survives all of them.
+    service.updateMechanism();
+    service.updateMechanism(true);
+    expect(startPoses(service)).toBe(before);
+  });
+
+  it('stages one machine at a time and no more', () => {
+    // A second `beginPosedEdit` while one is open must not take the staging
+    // from the first: whichever machine is put back on its anchor at the
+    // commit, the other would have been left seeded from what is drawn.
+    const harness = createMechanismHarness();
+    const first = fourBar(harness.service, 'A', 0);
+    const second = fourBar(harness.service, 'E', 10);
+    const service = harness.service;
+    service.updateMechanism();
+    service.setSyncMechanisms(false);
+    service.seekMechanism(0, service.mechanisms[0].cyclePeriod / 3);
+    service.seekMechanism(1, service.mechanisms[1].cyclePeriod / 4);
+
+    expect(service.beginPosedEdit(first.joints[1])).toBe(true);
+    const staged = service.posedEditKey;
+    expect(service.beginPosedEdit(second.joints[1])).toBe(false);
+    expect(service.posedEditKey).toBe(staged);
+    service.cancelPosedEdit();
+  });
+
   // ---- what the model refuses to stage -------------------------------------
 
   it('stages nothing at the start pose, where the drawing already is its design', () => {

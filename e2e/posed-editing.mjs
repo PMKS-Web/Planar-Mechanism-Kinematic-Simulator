@@ -375,6 +375,64 @@ await displace();
   });
 }
 
+// ---- 8. nothing is ever left staged ------------------------------------
+//
+// The property every leak found so far has broken, checked at the surface the
+// leaks were in: whatever ends a gesture -- a release, an escape, a menu, a
+// mode switch -- the canvas must not still be holding a machine open.
+
+await fresh();
+await displace();
+{
+  const grab = await jointAt('B');
+  const ways = [];
+
+  // Escape mid-drag.
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  await page.mouse.move(grab.x + 30, grab.y - 20, { steps: 4 });
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  ways.push(['escape', (await look()).posedKey]);
+
+  // A right-click, which opens a menu on top of an undecided press.
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  await page.mouse.move(grab.x + 20, grab.y, { steps: 3 });
+  await page.mouse.click(grab.x + 20, grab.y, { button: 'right' });
+  await page.mouse.up();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
+  ways.push(['right-click', (await look()).posedKey]);
+
+  // And a mode switch out from under a press.
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  await page.mouse.move(grab.x + 20, grab.y, { steps: 3 });
+  await page.getByRole('button', { name: 'Kinematic', exact: false }).first().click();
+  await page.waitForTimeout(400);
+  await page.mouse.up();
+  await page.getByRole('button', { name: 'Edit', exact: false }).first().click();
+  await page.waitForTimeout(400);
+  await page.waitForTimeout(500);
+  ways.push(['mode switch', (await look()).posedKey]);
+
+  record(
+    'no gesture leaves a machine staged',
+    ways.every(([, key]) => key === null),
+    ways
+  );
+
+  // And the start pose survived all of it.
+  await page
+    .locator('.stopButton')
+    .click()
+    .catch(() => {});
+  await page.waitForTimeout(700);
+  record('and the start pose survived all of it', (await look()).atStart, await look());
+}
+
 record('no page errors', errors.length === 0, errors.slice(0, 3));
 
 await browser.close();
