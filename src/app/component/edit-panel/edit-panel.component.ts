@@ -124,7 +124,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   private nup = inject(NumberUnitParserService);
   mechanismService = inject(MechanismService);
   /** The one place that says whether an edit may happen, and in what words. */
-  private permission = inject(EditPermissionService);
+  /** Read from the template too: the CoM frame selector is not a form control. */
+  readonly permission = inject(EditPermissionService);
   gridUtils = inject(GridUtilsService);
   bgImage = inject(BackgroundImageService);
   private notify = inject(NotificationService);
@@ -230,12 +231,16 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   private freezePoseBoundFields(): void {
     const frozen = !this.permission.may('placement');
     if (!frozen) {
-      // Exactly what this froze, and nothing else. A blanket enable would undo
-      // the *lock* rules that ran a moment ago and hand back a field a Lock is
-      // holding -- two authorities over one control, with the last writer
-      // winning by accident.
-      this.frozenByPose.forEach((control) => control.enable({ emitEvent: false }));
+      // Exactly what this froze, and nothing else -- and then the lock rules
+      // again, because a control can be held by both. Enabling only its own set
+      // was not enough: a Lock applied *while displaced* was recorded by
+      // `syncLockDisabledFields` on a control this had already disabled, so it
+      // was never in that set, and returning to the start handed back a field
+      // the lock was still holding.
+      const held = [...this.frozenByPose];
       this.frozenByPose.clear();
+      held.forEach((control) => control.enable({ emitEvent: false }));
+      this.syncLockDisabledFields();
       return;
     }
     const freeze = (group: FormGroup, names: string[]) =>

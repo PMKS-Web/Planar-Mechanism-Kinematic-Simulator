@@ -101,9 +101,20 @@ const jointAt = async (id) => {
   return found;
 };
 
-await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['4-Bar']}`);
-await page.getByRole('button', { name: 'Edit', exact: false }).first().click();
-await page.waitForTimeout(400);
+/**
+ * The four-bar as it comes out of the URL, in Edit.
+ *
+ * Called between the independent blocks below rather than letting them run on
+ * from each other: a check that begins on whatever the last drag left behind is
+ * a check whose subject nobody chose.
+ */
+async function fresh() {
+  await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['4-Bar']}`);
+  await page.getByRole('button', { name: 'Edit', exact: false }).first().click();
+  await page.waitForTimeout(400);
+}
+
+await fresh();
 
 // ---- 1. the ghost -------------------------------------------------------
 
@@ -271,6 +282,98 @@ record('the ghost is a target', (await page.locator('.startGhost').count()) === 
 await page.locator('.startGhost .ghostGrab').first().click({ force: true });
 await page.waitForTimeout(900);
 record('pressing it goes back to the start', (await look()).atStart, await look());
+
+// ---- 2b. dragging past what the linkage can do --------------------------
+//
+// The half of Gate 2 a reachable drag cannot show: the ghost warning while the
+// hand is still moving, the chance to drag back out of it, and the snackbar
+// that narrates a start which actually moved.
+
+/**
+ * Drag until the ghost warns, rather than by a fixed distance.
+ *
+ * How far a joint has to travel before its linkage stops being able to start
+ * where it did depends on the linkage, the zoom and where the pose put it. A
+ * fixed number of pixels either falls short -- and the check passes for the
+ * wrong reason, having proved only that a drag landed -- or leaves the window.
+ */
+async function dragUntilWarned(from, limit = 24) {
+  const path = [];
+  for (let step = 1; step <= limit; step++) {
+    const at = { x: from.x + step * 24, y: from.y - step * 12 };
+    await page.mouse.move(at.x, at.y, { steps: 2 });
+    path.push(at);
+    await page.waitForTimeout(45);
+    if ((await page.locator('.startGhost.unreachable').count()) === 1) return path;
+  }
+  return null;
+}
+
+await fresh();
+await displace();
+{
+  const grab = await jointAt('B');
+  await page.mouse.click(grab.x, grab.y);
+  await page.waitForTimeout(250);
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  const path = await dragUntilWarned(grab);
+  record('the ghost warns while the hand is still moving', path !== null, { path: path?.length });
+  await page.screenshot({ path: `${SHOTS}/2b-warned.png` });
+
+  // Dragged back, the warning goes -- which is the point of it being live.
+  // Driven by the warning on the way home as well as on the way out: how far
+  // back the linkage has to come is the same unknown in both directions, and a
+  // retrace of the outward path assumes the joint went exactly where it was
+  // told, which a snap or a constraint is free to decide otherwise.
+  let cleared = false;
+  for (let step = 0; step <= 30 && !cleared; step++) {
+    await page.mouse.move(grab.x - step * 12, grab.y + step * 6, { steps: 2 });
+    await page.waitForTimeout(50);
+    cleared = (await page.locator('.startGhost.unreachable').count()) === 0;
+  }
+  record('and clears again when the linkage comes back', cleared, {
+    stillWarning: await page.locator('.startGhost.unreachable').count(),
+  });
+  await page.mouse.up();
+  await page.waitForTimeout(700);
+  record(
+    'releasing there says nothing, because nothing moved',
+    (await page.locator('.notification').count()) === 0
+  );
+}
+
+// Released while warned: the edit lands, the start moves, and it is narrated.
+await fresh();
+await displace();
+{
+  const before = await look();
+  const grab = await jointAt('B');
+  await page.mouse.click(grab.x, grab.y);
+  await page.waitForTimeout(250);
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  const path = await dragUntilWarned(grab);
+  record('it can be dragged out of reach again', path !== null);
+  await page.mouse.up();
+  await page.waitForTimeout(900);
+  const said = await page
+    .locator('.notification')
+    .innerText()
+    .catch(() => '');
+  record(
+    'releasing while warned says the start has moved',
+    /no longer reach its original start/i.test(said),
+    said.slice(0, 160)
+  );
+  await page.screenshot({ path: `${SHOTS}/2c-snackbar.png` });
+  // And the edit landed rather than being reverted for anchor reasons.
+  const after = await look();
+  record('with the edit kept, not reverted', after.crank !== before.crank, {
+    before: before.crank,
+    after: after.crank,
+  });
+}
 
 record('no page errors', errors.length === 0, errors.slice(0, 3));
 

@@ -483,11 +483,14 @@
             <circle [attr.cx]="pin.x" [attr.cy]="pin.y" [attr.r]="svgGrid.scaleWithZoom(4)" />
           }
           @if (ghostWarns(ghost)) {
+            <!-- Above the skeleton rather than on its first pin, which is
+                 usually a grounded joint with a hatched base drawn over it --
+                 the word "start" ended up behind the hatching. -->
             <text
               class="startGhostTag"
               pointer-events="none"
-              [attr.x]="ghost.pins[0].x"
-              [attr.y]="-ghost.pins[0].y"
+              [attr.x]="ghostTagAt(ghost).x"
+              [attr.y]="-ghostTagAt(ghost).y"
               [attr.font-size]="svgGrid.scaleWithZoom(13)"
               transform="scale(1,-1)"
             >

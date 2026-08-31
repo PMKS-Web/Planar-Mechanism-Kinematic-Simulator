@@ -1395,11 +1395,18 @@ export class NewGridComponent implements OnDestroy {
     if (!gesture) return false;
     this.selectionGesture = undefined;
     this.dragState.release();
-    if (gesture.changed) {
+    // A group gesture stages a posed edit like any other, so it has to close
+    // one. Left open, the staging outlived the gesture -- and the next ambient
+    // rebuild, seeing a machine still marked "seed this one from what is
+    // drawn", turned the displaced pose into the design. That is the ratchet,
+    // reached by a click that moved nothing.
+    this.closePosedEdit(gesture.changed, false);
+    if (gesture.changed && !this.posedEditSaved) {
       this.mechanismSrv.save();
     } else if (!gesture.attempted && gesture.replaceOnClick) {
       this.activeObjService.replacePartSelection(gesture.replaceOnClick);
     }
+    this.posedEditSaved = false;
     this.pendingPartReplacement = undefined;
     this.selectionTogglePress = false;
     return true;
@@ -2134,7 +2141,18 @@ export class NewGridComponent implements OnDestroy {
    * right way round, because the commit is what it is warning about.
    */
   private ghostDoubts = new Map<number, number>();
+  private ghostDoubtsAt = -1;
   private static readonly GHOST_SETTLES_AFTER = 3;
+
+  /** Above the skeleton, clear of whatever is drawn on its joints. */
+  ghostTagAt(ghost: StartPoseGhost): { x: number; y: number } {
+    const xs = ghost.pins.map((pin) => pin.x);
+    const ys = ghost.pins.map((pin) => pin.y);
+    return {
+      x: (Math.min(...xs) + Math.max(...xs)) / 2,
+      y: Math.max(...ys) + this.svgGrid.scaleWithZoom(18),
+    };
+  }
 
   /** Press the picture of the start pose to go there. */
   goToStart(ghost: StartPoseGhost): void {
@@ -2147,10 +2165,29 @@ export class NewGridComponent implements OnDestroy {
   }
 
   ghostWarns(ghost: StartPoseGhost): boolean {
-    const seen = this.ghostDoubts.get(ghost.index) ?? 0;
-    const next = ghost.reachable ? 0 : seen + 1;
-    this.ghostDoubts.set(ghost.index, next);
-    return next >= NewGridComponent.GHOST_SETTLES_AFTER;
+    this.settleGhostDoubts();
+    return (this.ghostDoubts.get(ghost.index) ?? 0) >= NewGridComponent.GHOST_SETTLES_AFTER;
+  }
+
+  /**
+   * Advance the doubt counters once per solve, not once per read.
+   *
+   * A getter the template calls must be a *question*, not a step. Counting
+   * inside `ghostWarns` made it both: Angular checks an expression, then checks
+   * it again to prove nothing moved, and the second read had already been
+   * counted -- so the answer changed between the two and a drag past the
+   * boundary raised NG0100.
+   *
+   * Keyed on the solve, which is what the ghosts themselves are cached against,
+   * so the count and the thing it is counting cannot fall out of step.
+   */
+  private settleGhostDoubts(): void {
+    if (this.ghostDoubtsAt === this.mechanismSrv.solveRevision) return;
+    this.ghostDoubtsAt = this.mechanismSrv.solveRevision;
+    this.mechanismSrv.startPoseGhosts().forEach((ghost) => {
+      const seen = this.ghostDoubts.get(ghost.index) ?? 0;
+      this.ghostDoubts.set(ghost.index, ghost.reachable ? 0 : seen + 1);
+    });
   }
 
   /**

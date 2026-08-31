@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  DoCheck,
+  OnInit,
+  inject,
+} from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RealJoint } from '../../model/joint';
@@ -7,6 +14,7 @@ import { MODEL_SCALE } from '../../model/render-scale';
 import { CommonValue, aggregateCommonValue } from '../../model/selection';
 import { AngleUnit, LengthUnit, MassUnit } from '../../model/utils';
 import { ActiveObjService } from '../../services/active-obj.service';
+import { EditPermissionService } from '../../services/edit-permission.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { MultiEditResult, MultiEditService } from '../../services/multi-edit.service';
 import { NotificationService } from '../../services/notification.service';
@@ -40,7 +48,7 @@ import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
     ToggleComponent,
   ],
 })
-export class MultiEditPanelComponent implements OnInit {
+export class MultiEditPanelComponent implements OnInit, DoCheck {
   readonly active = inject(ActiveObjService);
   private mechanism = inject(MechanismService);
   private multi = inject(MultiEditService);
@@ -50,6 +58,29 @@ export class MultiEditPanelComponent implements OnInit {
   private notify = inject(NotificationService);
   private svgGrid = inject(SvgGridService);
   private destroyRef = inject(DestroyRef);
+  private permission = inject(EditPermissionService);
+
+  /**
+   * Freeze the pose-bound fields while the mechanism is away from its start.
+   *
+   * The single-part panel does this on its own controls; this one is a separate
+   * component inside the same body, and the body's `inert` only covers the
+   * states where *nothing* may be touched. Paused mid-cycle, X, Y, length,
+   * angle and mass are as pose-bound here as they are there -- and each writes
+   * through `valueChanges`, so an unfrozen field is a live one.
+   *
+   * Trace and Locked are left alone: both are addressed by identity and neither
+   * carries a pose.
+   */
+  ngDoCheck(): void {
+    const frozen = !this.permission.may('placement');
+    (['x', 'y', 'length', 'angle', 'mass'] as const).forEach((name) => {
+      const control = this.form.controls[name];
+      if (frozen === control.disabled) return;
+      if (frozen) control.disable({ emitEvent: false });
+      else control.enable({ emitEvent: false });
+    });
+  }
 
   readonly form = new FormGroup({
     x: new FormControl('', { nonNullable: true, updateOn: 'blur' }),

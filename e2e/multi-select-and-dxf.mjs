@@ -670,8 +670,24 @@ await page.screenshot({ path: `${OUT}/narrow-selection.png`, fullPage: true });
 // panel is a bottom sheet over the lower half of the grid, and joint A's center
 // can sit behind it -- a finger held there presses the sheet, so no menu opens
 // and the check reads as a broken long-press rather than an occluded one.
+// Framed for the space that is actually free first. The narrow layout's bottom
+// stack grew a row when the shared scrub card came back, and a drawing framed
+// before that is a drawing whose lower half is now behind the sheet.
+await page.getByRole('button', { name: 'Reset View' }).click();
+await page.waitForTimeout(900);
+
+// Every selected joint, not two named ones. The phone's bottom stack grew a
+// second row when the shared scrub card came back, which lifted the sheet and
+// put both A and C behind it -- so the fallback pressed the sheet and the check
+// failed as though the long-press were broken.
 const heldSelected = await (async () => {
-  for (const id of ['A', 'C']) {
+  const selected = await page.evaluate(() => {
+    const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    return grid.activeObjService.selectedParts
+      .filter((part) => 'links' in part)
+      .map((part) => part.id);
+  });
+  for (const id of [...selected, 'A', 'C']) {
     const at = await center(`#joint_${id}`);
     if (!at) continue;
     const onTop = await page.evaluate(
@@ -680,8 +696,9 @@ const heldSelected = await (async () => {
     );
     if (onTop === `joint_${id}`) return at;
   }
-  return center('#joint_A');
+  return null;
 })();
+if (!heldSelected) throw new Error('no selected joint is reachable on the narrow layout');
 const touch = await context.newCDPSession(page);
 await touch.send('Input.dispatchTouchEvent', {
   type: 'touchStart',

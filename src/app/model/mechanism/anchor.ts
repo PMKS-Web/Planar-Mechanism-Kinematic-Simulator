@@ -84,8 +84,30 @@ export function topologyOf(ownJoints: Joint[]): string {
 export interface CoordinateRule {
   readonly jointId: string;
   readonly kind: 'angle' | 'length';
+  /** A joint on the driven body, giving the direction that body points. */
   readonly referenceId?: string;
+  /**
+   * A joint on the body the freedom is measured *against*, where that body is
+   * not the world.
+   *
+   * A grounded crank's angle can be read straight off the world, and this did
+   * exactly that for every actuator at first. A *floating* pin is the case that
+   * breaks it: neither body is the world, and what the input prescribes is the
+   * angle between them -- so a world bearing there moves when the other body
+   * moves, and the anchor names a quantity the drive does not control.
+   */
+  readonly againstId?: string;
+  /** The unit direction the travel is measured along, for a fixed slot. */
   readonly axis?: { readonly x: number; readonly y: number };
+  /**
+   * Two joints on the carrier a floating slot is cut into.
+   *
+   * The slot's direction is fixed in the *carrier*, not in the world, so the
+   * axis is re-read from the carrier in every pose rather than stored: stored
+   * as a world vector it would rotate out from under the anchor the moment the
+   * carrier turned.
+   */
+  readonly carrierIds?: readonly [string, string];
 }
 
 /** How to measure this machine's input, or nothing when it has no drivable one. */
@@ -100,7 +122,23 @@ export function coordinateRuleFor(joint: Joint): CoordinateRule | undefined {
     const reference =
       actuator.drivenBody === GROUND_BODY ? undefined : angleReference(actuator.drivenBody, driven);
     if (!reference) return undefined;
-    return { jointId: driven.id, kind: 'angle', referenceId: reference.id };
+    // And the body it is measured *against*, when that is not the world. An
+    // input prescribes a relative freedom between two bodies; against ground
+    // the world's own axis stands in for the second, and against a moving
+    // carrier nothing does.
+    const against =
+      actuator.referenceBody === GROUND_BODY
+        ? undefined
+        : angleReference(actuator.referenceBody, driven);
+    return { jointId: driven.id, kind: 'angle', referenceId: reference.id, againstId: against?.id };
+  }
+  if (!(driven instanceof PrisJoint)) return undefined;
+  const carrier = driven.carrier;
+  if (carrier) {
+    const ends = carrier.joints.filter((member) => member.id !== driven.id);
+    if (ends.length >= 2) {
+      return { jointId: driven.id, kind: 'length', carrierIds: [ends[0].id, ends[1].id] };
+    }
   }
   const axis = slotAxis(driven);
   return axis ? { jointId: driven.id, kind: 'length', axis } : undefined;
@@ -131,7 +169,25 @@ export function coordinateIn(
   if (rule.kind === 'angle') {
     const reference = rule.referenceId ? where(rule.referenceId) : undefined;
     if (!reference) return undefined;
-    return Math.atan2(reference.y - at.y, reference.x - at.x);
+    const driven = Math.atan2(reference.y - at.y, reference.x - at.x);
+    if (!rule.againstId) return driven;
+    // Relative, where the other body is not the world: the angle the input
+    // actually prescribes, which a world bearing only equals while the body it
+    // is measured against holds still.
+    const against = where(rule.againstId);
+    if (!against) return undefined;
+    return driven - Math.atan2(against.y - at.y, against.x - at.x);
+  }
+  if (rule.carrierIds) {
+    const from = where(rule.carrierIds[0]);
+    const to = where(rule.carrierIds[1]);
+    if (!from || !to) return undefined;
+    const length = Math.hypot(to.x - from.x, to.y - from.y);
+    if (!(length > 0)) return undefined;
+    // How far along its carrier the block has slid, measured from the carrier's
+    // own end in the carrier's own direction -- a quantity a moving carrier
+    // cannot change, where a world projection is one it can.
+    return ((at.x - from.x) * (to.x - from.x) + (at.y - from.y) * (to.y - from.y)) / length;
   }
   const axis = rule.axis;
   return axis ? at.x * axis.x + at.y * axis.y : undefined;
@@ -289,6 +345,19 @@ function seedDistance(
 }
 
 /**
+ * Where a machine was when a posed edit was committed.
+ *
+ * The same three things an anchor carries, and for the same reason: putting the
+ * display back where the reader's hand was is the identical lookup as finding
+ * the anchor, and a coordinate alone names two poses on a reversing cycle.
+ */
+export interface CommitPose {
+  readonly coordinate: number;
+  readonly heading: 1 | -1;
+  readonly seed: ReadonlyMap<string, { x: number; y: number }>;
+}
+
+/**
  * A machine's start pose, drawn as a skeleton under the mechanism.
  *
  * Bars rather than the solid outlines the real linkage wears: two solid
@@ -309,4 +378,30 @@ export interface StartPoseGhost {
    * is a better answer than a message explaining what already happened.
    */
   readonly reachable: boolean;
+}
+
+/**
+ * One frame of a cycle, part way between two samples.
+ *
+ * The same interpolation `applyMechanismPose` does, in the terms the anchor
+ * lookup answers in -- so the pose the ghost draws is exactly the pose the
+ * commit would land on.
+ */
+export function blendFrame(
+  frames: Joint[][],
+  index: number,
+  blend: number
+): { id: string; x: number; y: number }[] {
+  const from = frames[index];
+  const to = frames[Math.min(index + 1, frames.length - 1)];
+  if (!from) return [];
+  const ahead = new Map(to.map((joint) => [joint.id, joint]));
+  return from.map((joint) => {
+    const next = ahead.get(joint.id) ?? joint;
+    return {
+      id: joint.id,
+      x: joint.x + (next.x - joint.x) * blend,
+      y: joint.y + (next.y - joint.y) * blend,
+    };
+  });
 }

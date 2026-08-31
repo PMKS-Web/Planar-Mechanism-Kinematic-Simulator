@@ -104,7 +104,6 @@ export class UrlProcessorService {
     // where the new linkage had more joints than the old, indexed past the end
     // of the samples and got NaN. Rewinding here, while frames and joints still
     // belong to each other, leaves that call with nothing left to do.
-    const heldStep = mechanismSrv.mechanismTimeStep;
     // What is selected right now, so a step through history can put it back.
     //
     // Selection rides along in the same URL the history is made of, so undo
@@ -258,15 +257,19 @@ export class UrlProcessorService {
     // different cycle that may not even have forty samples; and the jump moves
     // only the shared clock, leaving unsynced machines where they were.
     //
-    // Pose is not part of history; edits are. So the older drawing arrives at
-    // its own start, eased there rather than cut, and every anchor is dropped
-    // and re-read from it -- a history or URL load is authoritative, and no
-    // anchor outlives one.
-    if (continuingHistory && heldStep > 0) {
-      setTimeout(() => {
-        mechanismSrv.easeToStart();
-      }, 0);
-    }
+    // Pose is not part of history; edits are. The jump is simply gone: the
+    // restored drawing arrives at its own start, because `rewindToStart` above
+    // parked the outgoing one before it was replaced and nothing moves it
+    // afterwards.
+    //
+    // There is no ease to run either, and the call that was written here was
+    // one: easing implies a pose to travel from, and the geometry that pose
+    // belonged to no longer exists by this point -- so it could only ever find
+    // the drawing already at zero and return, while reading like a promise
+    // that it did not keep.
+    //
+    // Anchors are dropped just above, before the rebuild rather than after it:
+    // a history or URL load is authoritative, and no anchor outlives one.
 
     // A drawing that arrives while an analysis mode is open, and that nothing
     // in can be analyzed, leaves the reader in a mode with no graphs, no

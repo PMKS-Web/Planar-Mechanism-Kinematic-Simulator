@@ -5,6 +5,7 @@ import {
   stephensonIiiEx2Fixture,
   teachingLabFourBarFixture,
   teachingLabSliderCrankFixture,
+  nearlyNonGrashofFixture,
   twoFourBarsFixture,
   wattIFixture,
 } from './fixtures';
@@ -694,6 +695,14 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'watt-i.spec.ts',
     floatingSlot: false,
     fixture: wattIFixture(),
+  },
+  {
+    name: 'Crank on the edge of Grashof',
+    purpose:
+      'One drag from being a rocker: where a posed edit can put the start pose out of reach',
+    spec: 'posed-editing.spec.ts',
+    floatingSlot: false,
+    fixture: nearlyNonGrashofFixture(),
   },
   {
     name: 'Two four-bars',

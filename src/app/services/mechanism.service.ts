@@ -46,8 +46,11 @@ import {
 import { BehaviorSubject, Subject } from 'rxjs';
 import { GridUtilsService } from './grid-utils.service';
 import {
+  CommitPose,
+  CoordinateRule,
   MachineAnchor,
   StartPoseGhost,
+  blendFrame,
   coordinateRuleFor,
   coordinatesAcross,
   reachAnchor,
@@ -322,6 +325,17 @@ export class MechanismService {
 
   /** Set for the one rebuild that `solveNow` asks for. */
   private forceSolveOnce = false;
+
+  /**
+   * Whether a rebuild in Edit would put this drawing's solve off.
+   *
+   * The standing property of the drawing, where `solvingDeferred` is the state
+   * of the last rebuild -- which `solveNow` clears and the next edit sets
+   * again.
+   */
+  private editWouldDeferSolving(): boolean {
+    return this.joints.length > MechanismService.SOLVE_IN_EDIT_UP_TO;
+  }
 
   private shouldDeferSolving(): boolean {
     // The mode gate asks for the solve *before* it switches mode, so at the
@@ -5143,6 +5157,15 @@ export class MechanismService {
       if (!frames?.isMechanismValid()) return;
       const key = topologyOf(partition.ownJoints);
       alive.add(key);
+      // The owned set is not the whole identity. Move the drive from one joint
+      // to another and the set is unchanged, while the anchor's coordinate now
+      // names a joint that is no longer driven -- so it would be read against
+      // the wrong quantity and the start would land anywhere. The stored rule
+      // has to still be the rule this machine is measured by.
+      const held = this.anchors.get(key);
+      if (held && !this.ruleStillHolds(index, held)) {
+        this.anchors.delete(key);
+      }
       if (!this.anchors.has(key)) {
         const taken = this.anchorFor(index);
         if (taken) this.anchors.set(key, taken);
@@ -5151,6 +5174,25 @@ export class MechanismService {
     this.anchors.forEach((_, key) => {
       if (!alive.has(key)) this.anchors.delete(key);
     });
+  }
+
+  /** Whether this machine is still measured the way its anchor was taken. */
+  private ruleStillHolds(index: number, anchor: MachineAnchor): boolean {
+    const rule = this.currentRuleFor(index);
+    return (
+      rule !== undefined &&
+      rule.jointId === anchor.jointId &&
+      rule.kind === anchor.kind &&
+      rule.referenceId === anchor.referenceId
+    );
+  }
+
+  /** How this machine's input is measured right now, from the drawing. */
+  private currentRuleFor(index: number): CoordinateRule | undefined {
+    const driven = this.partitions[index]?.ownJoints.find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
+    return driven ? coordinateRuleFor(driven) : undefined;
   }
 
   /** Read one machine's anchor off its solved cycle. */
@@ -5188,11 +5230,16 @@ export class MechanismService {
    * explaining afterwards.
    */
   anchorIsReachable(index: number): boolean {
-    const anchor = this.anchorOf(index);
-    const frames = this.mechanisms[index];
-    if (!anchor || !frames?.isMechanismValid()) return true;
-    const rule = this.ruleFor(anchor);
-    return reachAnchor(coordinatesAcross(rule, frames.joints), anchor, frames.joints) !== null;
+    // A machine with nothing to anchor is not "reachable"; it is not a question.
+    if (!this.anchorOf(index)) return true;
+    // A machine that cannot be solved at all certainly cannot reach its start,
+    // and it draws no ghost -- so reading the ghost's absence as a yes was a
+    // yes to the very case the warning exists for.
+    if (!this.mechanisms[index]?.isMechanismValid()) return false;
+    const ghost = this.startPoseGhosts().find((one) => one.index === index);
+    // Otherwise the ghost's own answer, so the thing on screen and the thing a
+    // caller asks cannot come from two different lookups.
+    return ghost ? ghost.reachable : false;
   }
 
   private ruleFor(anchor: MachineAnchor) {
@@ -5214,7 +5261,13 @@ export class MechanismService {
    * per commit" is the exact cost the deferral exists to refuse.
    */
   beginPosedEdit(part: Joint | Link | Force): boolean {
-    if (this.seedFromDisplay || this.isAtStartPose() || this.solvingDeferred) return false;
+    if (this.seedFromDisplay || this.isAtStartPose()) return false;
+    // Not merely "is the solve deferred right now". Pressing Play works a large
+    // drawing's motion out, which clears the flag -- and then the next rebuild
+    // in Edit defers again and takes the cycle away, leaving a posed edit with
+    // nothing to re-anchor against. The question is whether this drawing is one
+    // that Edit solves at all.
+    if (this.solvingDeferred || this.editWouldDeferSolving()) return false;
     const index = this.indexOfMechanismContaining(part);
     if (index === -1 || !this.mechanisms[index]?.isMechanismValid()) return false;
     this.seedFromDisplay = topologyOf(this.partitions[index].ownJoints);
@@ -5261,8 +5314,20 @@ export class MechanismService {
       return { reanchored: false, lost: this.partitions[index]?.id ?? `M${index + 1}` };
     }
     // Where the reader's hand is, so the display can be put back on it. Taken
-    // before the arrays move, because it is a property of the pose they hold.
-    const commitCoordinate = coordinates[0];
+    // before the arrays move, because it is a property of the pose they hold --
+    // and taken whole: the coordinate says *where* along the input's travel,
+    // and the heading and the pose say which of the two legs that passes
+    // through it the reader was actually on.
+    const commitPose: CommitPose | undefined =
+      coordinates[0] === undefined
+        ? undefined
+        : {
+            coordinate: coordinates[0],
+            heading: (coordinates[1] !== undefined && coordinates[1] < coordinates[0]
+              ? -1
+              : 1) as 1 | -1,
+            seed: new Map(frames.joints[0].map((joint) => [joint.id, { x: joint.x, y: joint.y }])),
+          };
     const times = frames.timeNum ?? [];
     const anchored =
       times[reach.index] +
@@ -5274,24 +5339,26 @@ export class MechanismService {
     this.seedFromDisplay = key;
     this.updateMechanism(true);
     this.seedFromDisplay = null;
-    this.seekToCoordinate(key, commitCoordinate);
+    this.seekToCoordinate(key, commitPose);
     return { reanchored: true };
   }
 
   /** Put a machine back at the input value the reader was editing at. */
-  private seekToCoordinate(key: string, coordinate: number | undefined): void {
-    if (coordinate === undefined) return;
+  private seekToCoordinate(key: string, where: CommitPose | undefined): void {
+    if (where === undefined) return;
     const index = this.partitions.findIndex((partition) => topologyOf(partition.ownJoints) === key);
     const frames = this.mechanisms[index];
     const anchor = this.anchors.get(key) ?? this.anchorFor(index);
     if (index === -1 || !anchor || !frames?.isMechanismValid()) return;
     const rule = this.ruleFor(anchor);
     const coordinates = coordinatesAcross(rule, frames.joints);
-    const reach = reachAnchor(
-      coordinates,
-      { ...anchor, coordinate, seed: anchor.seed },
-      frames.joints
-    );
+    // The *edited* leg, not the anchor's. A reversing input passes every value
+    // in its range twice, and reusing the anchor's heading and seed picked
+    // whichever occurrence t = 0 sits on -- so a small edit on a screw jack's
+    // return leg came back re-anchored and correct, and then jumped the input
+    // to the far side of its stroke. Which leg the reader was on is a property
+    // of the pose they were editing at, so it is measured from that pose.
+    const reach = reachAnchor(coordinates, { ...anchor, ...where }, frames.joints);
     if (!reach) return;
     const times = frames.timeNum ?? [];
     const seconds =
@@ -5358,7 +5425,21 @@ export class MechanismService {
     return this.partitions.flatMap((partition, index) => {
       const frames = this.mechanisms[index];
       if (!frames?.isMechanismValid()) return [];
-      const start = frames.joints[0];
+      // The *anchored* pose, not sample 0. While a posed edit is staged, sample
+      // 0 is the pose under the reader's hand -- so a ghost drawn from it drew
+      // the mechanism on top of itself and claimed that was the start. The
+      // anchor's own lookup answers both questions at once, which is what makes
+      // the warning on screen and the outcome at the commit agree by
+      // construction rather than by two pieces of arithmetic being kept in step.
+      const anchor = this.anchorOf(index);
+      const reach = anchor
+        ? reachAnchor(
+            coordinatesAcross(this.ruleFor(anchor), frames.joints),
+            anchor,
+            frames.joints
+          )
+        : null;
+      const start = reach ? blendFrame(frames.joints, reach.index, reach.blend) : frames.joints[0];
       if (!start?.length) return [];
       const at = new Map(start.map((joint) => [joint.id, joint]));
       const bars: { x1: number; y1: number; x2: number; y2: number }[] = [];
@@ -5379,7 +5460,7 @@ export class MechanismService {
           index,
           bars,
           pins: start.map((joint) => ({ x: joint.x, y: joint.y })),
-          reachable: this.anchorIsReachable(index),
+          reachable: anchor === undefined || reach !== null,
         },
       ];
     });

@@ -633,8 +633,14 @@
                  binding is unchanged and so is never re-applied, leaving the
                  control reading Centroid over a link held some other way. An
                  option that knows itself to be the selected one cannot drift. -->
+                <!-- Not a form control, so the pose freeze that disables the
+                     fields around it does not reach here on its own. It has to:
+                     the frame decides what the two numbers below mean, and
+                     picking one at a displaced pose captures an offset from the
+                     pose on screen rather than from the design. -->
                 <select
                   class="comFrameSelect"
+                  [disabled]="!permission.may('properties')"
                   (change)="setComFrame($any($event.target).value)"
                   title="What the center of mass is held against while you edit, and the frame the two numbers below are read in. Centroid rides the link; Global grid keeps its place on the drawing; a joint follows that pin alone. Once the mechanism runs it rides the link either way."
                 >

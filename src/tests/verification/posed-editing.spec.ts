@@ -6,7 +6,10 @@ import { RealLink } from '../../app/model/link';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { SettingsService } from '../../app/services/settings.service';
+import { LengthUnit } from '../../app/model/utils';
 import { coordinateRuleFor, coordinatesAcross } from '../../app/model/mechanism/anchor';
+import { nearlyNonGrashofFixture } from '../../test-utils/verification/fixtures';
+import { MechanismFixture, buildMechanism } from '../../test-utils/verification/fixture';
 
 /**
  * Editing at a pose other than the one the drawing starts in.
@@ -55,6 +58,18 @@ describe('editing at a displaced pose', () => {
     return { ...harness, ...parts };
   }
 
+  /**
+   * Put a published fixture into a real service, so a spec can name the same
+   * mechanism a reader can open from `docs/fixture-urls.md`.
+   */
+  function buildFixtureInto(service: MechanismService, fixture: MechanismFixture): RealJoint[] {
+    const built = buildMechanism(fixture);
+    service.joints = built.joints;
+    service.links = built.links;
+    service.forces = built.forces;
+    return built.joints.filter((joint): joint is RealJoint => joint instanceof RealJoint);
+  }
+
   /** Every machine's t = 0, to the digit, which is what a ratchet moves. */
   function startPoses(service: MechanismService): string {
     return JSON.stringify(
@@ -88,6 +103,8 @@ describe('editing at a displaced pose', () => {
     displace(service);
     const before = startPoses(service);
 
+    // Every trigger that genuinely rebuilds, one at a time, so a failure names
+    // the one that broke it.
     settings.isGravity.next(!settings.isGravity.value);
     service.updateMechanism();
     expect(startPoses(service)).toBe(before);
@@ -96,8 +113,23 @@ describe('editing at a displaced pose', () => {
     service.updateMechanism();
     expect(startPoses(service)).toBe(before);
 
+    // A unit change re-expresses every length in the drawing and re-solves it.
+    settings.lengthUnit.next(LengthUnit.INCH);
     service.updateMechanism();
     expect(startPoses(service)).toBe(before);
+    settings.lengthUnit.next(LengthUnit.CM);
+    service.updateMechanism();
+    expect(startPoses(service)).toBe(before);
+
+    // Force normalization and the sealed-cylinder pass both run inside every
+    // rebuild; a bare one exercises them.
+    service.updateMechanism();
+    expect(startPoses(service)).toBe(before);
+
+    // And a save, which parks the drawing at t = 0 to encode and puts it back.
+    service.updateMechanism(true);
+    expect(startPoses(service)).toBe(before);
+    expect(service.isAtStartPose()).toBe(false);
   });
 
   // ---- the edit survives, and so does the anchor ---------------------------
@@ -251,6 +283,114 @@ describe('editing at a displaced pose', () => {
     // the rule: the way back is Undo, and the entry beside it holds both the
     // old geometry and the old start.
     expect(joints[1].x).toBeGreaterThan(30);
+  });
+
+  // ---- the published mechanism this is all about ---------------------------
+
+  it('re-anchors a crank sitting on the edge of Grashof', () => {
+    // The published mechanism, edited at a pose. Its links are 1.85, 2.75, 3.45
+    // and 4.20: shortest plus longest is 6.05 against 6.20 for the other two,
+    // so the crank turns all the way round by a margin of 0.15 and a reader can
+    // open the URL and push it off that edge by hand.
+    //
+    // What it does *not* prove is the anchor going out of reach, and it is
+    // worth saying why rather than leaving a reader to assume it does. Losing
+    // Grashof is not that event: the anchor is a crank angle, a rotating crank
+    // passes every angle, and a rocker's range still contains the pose the
+    // mechanism was drawn in. The start goes out of reach when the new limits
+    // exclude it, which is covered where it actually reproduces -- by the
+    // commit-pose test above, and on screen by `e2e/posed-editing.mjs`, which
+    // drags until the ghost warns rather than by a figure worked out in advance.
+    const harness = createMechanismHarness();
+    const built = buildFixtureInto(harness.service, nearlyNonGrashofFixture());
+    harness.service.updateMechanism();
+    expect(harness.service.mechanisms[0].isMechanismValid()).toBe(true);
+    const anchoredBefore = startCoordinate(harness.service, 0);
+
+    const pivot = built.find((joint) => joint.id === 'A')!;
+    const crankEnd = built.find((joint) => joint.id === 'B')!;
+    const crankLength = () => Math.hypot(crankEnd.x - pivot.x, crankEnd.y - pivot.y);
+    const was = crankLength();
+
+    displace(harness.service);
+    expect(harness.service.beginPosedEdit(crankEnd)).toBe(true);
+    crankEnd.y += was * 0.2;
+    harness.service.updateMechanism();
+    expect(harness.service.finishPosedEdit().reanchored).toBe(true);
+
+    // Changed, not grown: at a displaced pose the crank's far pin is somewhere
+    // on its circle, so pulling it in +y is as likely to shorten the bar as to
+    // lengthen it. What matters is that the edit landed.
+    expect(Math.abs(crankLength() - was)).toBeGreaterThan(was * 0.05);
+    expect(startCoordinate(harness.service, 0)).toBeCloseTo(anchoredBefore, 1);
+  });
+
+  // ---- the indicator and the commit tell the same story --------------------
+
+  it('warns before it commits, and only when the commit will move the start', () => {
+    // The honesty check the plan's Gate 2 asks for. The ghost's warning and the
+    // commit's outcome are the same lookup by construction now -- this is what
+    // holds them to it, because "by construction" is a claim about code that
+    // can stop being true.
+    const { service, joints } = oneBar();
+    displace(service);
+    expect(service.beginPosedEdit(joints[1])).toBe(true);
+
+    // Somewhere the linkage still assembles: no warning, and the commit
+    // re-anchors.
+    joints[1].x += 0.2;
+    service.updateMechanism();
+    expect(service.anchorIsReachable(0)).toBe(true);
+    expect(service.finishPosedEdit().reanchored).toBe(true);
+
+    // And somewhere it does not.
+    displace(service);
+    expect(service.beginPosedEdit(joints[1])).toBe(true);
+    joints[1].x += 40;
+    service.updateMechanism();
+    const warned = !service.anchorIsReachable(0);
+    const outcome = service.finishPosedEdit();
+    expect(warned).toBe(true);
+    expect(outcome.reanchored).toBe(false);
+    // Named, so the message the reader gets says which machine moved.
+    expect(outcome.lost).toBeDefined();
+  });
+
+  it('draws the ghost at the anchored pose, not at the pose being dragged', () => {
+    // While a posed edit is staged, sample 0 of the provisional cycle is the
+    // pose under the reader's hand. A ghost drawn from it draws the mechanism
+    // on top of itself and calls that the start -- which is exactly the picture
+    // that would have made the reader believe nothing had moved.
+    const { service, joints } = oneBar();
+    displace(service);
+    const shown = joints.map((joint) => ({ id: joint.id, x: joint.x, y: joint.y }));
+    expect(service.beginPosedEdit(joints[1])).toBe(true);
+    joints[1].x += 0.2;
+    service.updateMechanism();
+
+    const ghost = service.startPoseGhosts()[0];
+    expect(ghost).toBeDefined();
+    // The ghost is somewhere else entirely from the drawn pose.
+    const apart = ghost.pins.map((pin, index) =>
+      Math.hypot(pin.x - shown[index].x, pin.y - shown[index].y)
+    );
+    expect(Math.max(...apart)).toBeGreaterThan(0.2);
+    service.finishPosedEdit();
+  });
+
+  it('gives up an anchor whose joint stopped being the driven one', () => {
+    // The owned-joint set is unchanged when the drive moves from one joint to
+    // another, so a key built from it alone kept an anchor naming a joint that
+    // is no longer driven -- read against the wrong quantity, and the start
+    // would land anywhere.
+    const { service, joints } = oneBar();
+    const first = service.anchorOf(0);
+    expect(first?.jointId).toBe(joints[0].id);
+
+    joints[0].input = false;
+    joints[3].input = true;
+    service.updateMechanism();
+    expect(service.anchorOf(0)?.jointId).toBe(joints[3].id);
   });
 
   it('drops an anchor when the machine it named stops existing', () => {

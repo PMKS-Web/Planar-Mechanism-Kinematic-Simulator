@@ -427,6 +427,20 @@ pixels are available; anything you add to the bottom row has to survive that.
 - **Drop anchors before the rebuild, not after.** `UrlProcessorService` calls `forgetAnchors()`
   ahead of `finishStructuralEdit`; after it, the call threw away the anchors that rebuild had just
   taken, and every freshly opened mechanism had none until its first edit.
+- **A getter the template calls must be a question, not a step.** The ghost's warning counter was
+  advanced inside the getter that read it, so Angular's second check -- the one that proves nothing
+  moved -- got a different answer, and every drag past the Grashof boundary raised `NG0100`. Key
+  such a counter on `solveRevision` and advance it once per solve.
+- **"No ghost" is not "reachable".** A machine that cannot be solved draws no ghost, and reading
+  that absence as a yes said yes to the exact case the warning exists for.
+- **An actuator's coordinate is a *relative* freedom.** A grounded crank's angle can be read off
+  the world; a floating pin's cannot, because neither of its bodies is the world. Same for a slot
+  cut into a moving link: the axis is fixed in the carrier, so it is re-read from the carrier in
+  every pose rather than stored as a world vector.
+- **Losing Grashof is not the same event as losing the anchor.** A rotating crank passes every
+  angle, and a rocker's range still contains the pose the mechanism was drawn in. The start goes
+  out of reach when the *new limits* exclude it, which depends on where in the cycle the edit was
+  made -- so drive such a test by `anchorIsReachable`, never by a distance worked out in advance.
 - **Grab-to-pause fires in `setLastLeftClick`, before the gesture is classified.** That is
   deliberate: what follows is a drag, a tap or a long press, and every one of them wants the
   machine standing still. It is also why touch needs no second code path.

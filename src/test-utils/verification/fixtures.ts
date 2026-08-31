@@ -211,3 +211,34 @@ export function twoFourBarsFixture(): MechanismFixture {
     inputAngVel: INPUT_SPEED,
   };
 }
+
+/**
+ * A crank-rocker one edit away from being neither.
+ *
+ * Its links are 1.85, 2.75, 3.45 and 4.20: shortest plus longest is 6.05
+ * against 6.20 for the other two, so Grashof holds by 0.15 and a crank about a
+ * third longer breaks it.
+ *
+ * Grashof's condition -- whether the shortest link can turn all the way round
+ * -- is a comparison between four lengths, so it is always one drag from
+ * changing. This one sits close enough to the boundary that lengthening the
+ * crank a little crosses it, which is the mainline case for an anchor becoming
+ * unreachable (`docs/edit-mode-playback-plan.md` §6.1): the input that used to
+ * go round now rocks between limits, and the value the cycle started at is
+ * outside them.
+ *
+ * Published so a reader can open the mechanism the test is about and try the
+ * drag themselves, rather than rebuilding it from a spec by hand.
+ */
+export function nearlyNonGrashofFixture(): MechanismFixture {
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true, input: true },
+      { id: 'B', x: 0, y: 1.85 },
+      { id: 'C', x: 2.5, y: 3.0 },
+      { id: 'D', x: 4.2, y: 0, ground: true },
+    ],
+    links: [{ joints: 'AB' }, { joints: 'BC' }, { joints: 'CD' }],
+    inputAngVel: INPUT_SPEED,
+  };
+}
