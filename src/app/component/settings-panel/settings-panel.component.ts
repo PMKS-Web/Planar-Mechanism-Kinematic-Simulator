@@ -268,10 +268,13 @@ export class SettingsPanelComponent implements OnDestroy {
    * that cannot help them.
    */
   lockedNote(): string {
-    if (this.documentEditable()) return '';
-    return this.settingsService.animating.value
-      ? ' Stop the animation to change it.'
-      : ' Switch to Edit mode to change it.';
+    const refusal = this.permission.refusal('properties');
+    if (!refusal) return '';
+    // The model's own sentence, so the way out named here is the one that
+    // actually applies. Reading `settings.animating` -- which the transport's
+    // master controls push and a *row* play does not -- told a reader watching
+    // one machine of several to switch to Edit mode, standing in Edit mode.
+    return ` ${refusal.long}`;
   }
 
   /**

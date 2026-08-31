@@ -187,6 +187,13 @@ export class DragStateService {
    * middle- and right-button paths, and by creation gestures that get refused.
    */
   cancel(): void {
+    // Everything the gesture had, including what it had *earned*. The credits
+    // used to survive a cancel, so a drag abandoned by a delete left them for
+    // the next release to spend: the delete minted one entry, the release
+    // minted a second, and the first Undo took back only half of what the
+    // reader had just seen happen.
+    this.pointerMoved = false;
+    this.mechanismModified = false;
     this._grid = gridStates.waiting;
     this._joint = jointStates.waiting;
     this._link = linkStates.waiting;

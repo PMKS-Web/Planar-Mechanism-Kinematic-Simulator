@@ -427,6 +427,13 @@ pixels are available; anything you add to the bottom row has to survive that.
 - **Drop anchors before the rebuild, not after.** `UrlProcessorService` calls `forgetAnchors()`
   ahead of `finishStructuralEdit`; after it, the call threw away the anchors that rebuild had just
   taken, and every freshly opened mechanism had none until its first edit.
+- **The staging closes itself.** Three rounds of review each found another path that ended a
+  gesture without closing its posed edit -- Escape, a right or middle click, a mode key, Space,
+  tabbing away, a delete held mid-drag. Rather than a fourth list of paths to keep in step,
+  `updateMechanism` refuses to run with a staging behind it that no gesture owns:
+  `closeStaleStaging` settles it first. A staging opened without a pointer (a menu action, a test)
+  closes itself and is never treated as abandoned, and a deliberate commit says so with
+  `committingPosedEdit`, because by then the pointer is already up.
 - **Cancelling a posed edit is a commit without the save, not a `= null`.** Every pointer move has
   already solved a provisional cycle whose sample 0 is the pose under the hand, so a machine merely
   unstaged has the displaced pose as its canonical t = 0. But only settle when a rebuild *has* run

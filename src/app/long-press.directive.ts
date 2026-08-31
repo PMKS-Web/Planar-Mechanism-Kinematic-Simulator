@@ -117,7 +117,13 @@ export class LongPressDirective implements OnDestroy {
     // A second finger is a pinch, and a pinch is not a press being held still
     // however still the first finger is. It is not a drag either, so the canvas
     // is told to let go of whatever the first finger had taken.
-    if (this.startedAt) {
+    //
+    // Asked of how many fingers are down, not of whether the first one is still
+    // undecided. Past the slop the first finger is a *drag*, which clears
+    // `startedAt` -- so a real pinch, where one finger always moves before the
+    // other lands, was not recognized as one at all: the drag went on running
+    // under the second finger and committed on release.
+    if (this.down.size > 1) {
       this.cancel();
       this.zone.run(() => this.pinched.emit());
       return;

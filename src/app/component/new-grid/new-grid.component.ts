@@ -525,6 +525,11 @@ export class NewGridComponent implements OnDestroy {
   }
 
   private deleteSelectedParts(): void {
+    // A delete is identity-addressed: it applies to the design and says nothing
+    // about the pose. Held mid-drag it was neither -- the staged machine stayed
+    // seeded from the display, so a neighbor came out at the provisional
+    // coordinate rather than its own.
+    this.mechanismSrv.cancelPosedEdit();
     const result = this.selectionBatch.deleteSelected(this.activeObjService.selectedPartRefs);
     if (!result.ok) {
       this.notify.refusal(result.refusal.code, result.refusal.message);
@@ -1261,7 +1266,7 @@ export class NewGridComponent implements OnDestroy {
     // A selection spanning machines is refused its staging outright. What that
     // means for the reader is that a group across two machines is edited at the
     // start pose, as it was before any of this existed.
-    this.stageSelection();
+    if (!this.stageSelection()) return;
     this.selectionGesture = {
       snapshot,
       mode,
@@ -1383,6 +1388,11 @@ export class NewGridComponent implements OnDestroy {
     if (selected.length === 0) return;
     const step = coarse ? this.svgGrid.majorCellSize : this.svgGrid.minorCellSize;
     if (!(step > 0)) return;
+    // Before anything moves. Staging is where a selection spanning two machines
+    // is refused, and asking after the transform had been applied left both
+    // joints a grid step from where they started, with a refusal on screen
+    // saying nothing had happened and no entry in the history to take it back.
+    if (!this.stageSelection()) return;
     const snapshot = captureSelectionTransform(
       selected,
       this.mechanismSrv.joints,
@@ -1401,7 +1411,6 @@ export class NewGridComponent implements OnDestroy {
     // did not, and at a displaced pose that made it a no-op: the arrow moved
     // the joints, the rebuild restored them to t = 0 on its way past, and a key
     // the permission model had just allowed did nothing at all.
-    if (!this.stageSelection()) return;
     const staged = this.mechanismSrv.posedEditKey !== null;
     this.mechanismSrv.reseatFloatingSliders();
     this.mechanismSrv.updateMechanism(false);
@@ -1446,6 +1455,15 @@ export class NewGridComponent implements OnDestroy {
   }
 
   private finishSelectionGesture(): boolean {
+    this.mechanismSrv.committingPosedEdit = true;
+    try {
+      return this.finishSelectionGestureNow();
+    } finally {
+      this.mechanismSrv.committingPosedEdit = false;
+    }
+  }
+
+  private finishSelectionGestureNow(): boolean {
     const gesture = this.selectionGesture;
     if (!gesture) return false;
     this.selectionGesture = undefined;
@@ -2806,6 +2824,18 @@ export class NewGridComponent implements OnDestroy {
    * has to commit the same drag rather than leave it in flight.
    */
   private finishMechanismDrag($event: MouseEvent): void {
+    // Said out loud, because the pointer is already up by the time the commit
+    // runs and the service's stale-staging guard would otherwise read that as
+    // an abandoned gesture.
+    this.mechanismSrv.committingPosedEdit = true;
+    try {
+      this.finishMechanismDragNow($event);
+    } finally {
+      this.mechanismSrv.committingPosedEdit = false;
+    }
+  }
+
+  private finishMechanismDragNow($event: MouseEvent): void {
     // Resolve the drop before releasing: the snap target is only meaningful
     // while the drag it belongs to is still in flight.
     const merged = this.completePendingJointMerge($event);
@@ -3129,10 +3159,42 @@ export class NewGridComponent implements OnDestroy {
     // Wrapped here rather than at each of the six commits inside, because they
     // are branches of one gesture and it is the gesture that captures a pose.
     if (this.dragState.grid !== gridStates.waiting && !this.mechanismSrv.isAtStartPose()) {
+      // A link drawn between two machines fuses them, and mid-cycle the two
+      // halves are at different places in their own cycles -- so the body it
+      // makes is half one and half the other, exactly what the merge and
+      // slot-cut refusals exist to prevent. Refused the same way, and offered
+      // again at the start pose where both halves mean the same thing.
+      if (this.creationWouldCrossMachines()) {
+        this.notify.refusal(
+          'merge.crosses-machines',
+          MERGE_REFUSAL_MESSAGES['crosses-machines']
+        );
+        this.dragState.cancel();
+        this.linkCreateStart = undefined;
+        return;
+      }
       this.mechanismSrv.capturingPose(this.creationAnchorPart(), () => this.mouseDownNow($event));
       return;
     }
     this.mouseDownNow($event);
+  }
+
+  /**
+   * Whether the part this creation gesture started from and the one it is about
+   * to land on belong to two different machines.
+   *
+   * The staged machine is whichever end the canvas has selected; the other end
+   * is not staged, so it would be restored to its own start by the same rebuild
+   * that keeps the first at the reader's pose.
+   */
+  private creationWouldCrossMachines(): boolean {
+    const from = this.creationAnchorPart();
+    const onto = this.lastLeftClick;
+    if (!from || typeof onto === 'string' || onto instanceof SynthesisPose) return false;
+    if (!(onto instanceof Joint || onto instanceof Link)) return false;
+    const a = this.mechanismSrv.indexOfMechanismContaining(from);
+    const b = this.mechanismSrv.indexOfMechanismContaining(onto);
+    return a !== -1 && b !== -1 && a !== b;
   }
 
   /** The part a creation gesture is growing from, if it is growing from one. */
@@ -3863,17 +3925,32 @@ export class NewGridComponent implements OnDestroy {
       return;
     }
     this.draggingCoMLink = link;
+    let moved = false;
     const move = (e: PointerEvent) => {
+      // Asked every move, not once at the grab. A gesture that began while the
+      // gates were open went on writing through a mode switch and through Play:
+      // the mark followed the pointer with every visible surface saying the
+      // drawing was read-only, and the release saved it.
+      if (!this.permission.may('properties')) {
+        up();
+        return;
+      }
       const pos = this.svgGrid.screenToSVGfromXY(e.clientX, e.clientY);
       const placed = e.altKey ? pos : this.snapComToJointLines(link, pos);
       link.placeCustomCoM({ x: placed.x, y: placed.y });
+      moved = true;
       // So the panel's X/Y read the drag as it happens, like a force's do.
       this.activeObjService.fakeUpdateSelectedObj();
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
+      if (this.draggingCoMLink === undefined) return;
       this.draggingCoMLink = undefined;
+      // Nothing to write down for a grab that never moved -- and for one cut
+      // short by the gates closing under it, what it already wrote is the last
+      // position it was allowed to write.
+      if (!moved) return;
       // One undo step for the whole gesture, then the panel re-reads its
       // fields the same way a unit change makes it re-read them.
       this.mechanismSrv.updateMechanism(true);

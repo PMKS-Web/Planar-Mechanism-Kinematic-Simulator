@@ -405,6 +405,17 @@ export class MechanismService {
         },
       ])
     );
+    // A staging with no gesture behind it is stale, and the rebuild about to
+    // run is exactly where that becomes a corrupted design: the machine is
+    // still marked "seed this one from what is drawn", so the displaced pose
+    // becomes t = 0.
+    //
+    // Every path that ends a gesture is supposed to close its staging, and
+    // three rounds of review found three that did not -- Escape, a right or
+    // middle click, a mode key, Space, tabbing away. Rather than a fourth list
+    // of paths to keep in step, the invariant is enforced where it is needed:
+    // no pointer down, no commit in flight, no staging.
+    this.closeStaleStaging();
     if (this.seedFromDisplay) this.stagedRebuilt = true;
     this.restoreStartPose();
 
@@ -1574,6 +1585,11 @@ export class MechanismService {
    * copies of a cascade this destructive is one copy too many.
    */
   deleteMechanism(index: number): void {
+    // Identity-addressed (plan §6.2): this applies to the design and says
+    // nothing about the pose, so any staging a gesture left open is closed
+    // first -- held mid-drag, the staged machine stayed seeded from the display
+    // and a neighbor came out at the provisional coordinate rather than its own.
+    this.cancelPosedEdit();
     const partition = this.partitions[index];
     if (!partition) return;
     // A joint another machine is also built on is not this machine's to take.
@@ -2444,6 +2460,11 @@ export class MechanismService {
    * of its own once the last one is gone — see `deleteMechanism`.
    */
   deleteJoint(save: boolean = true, ignoreLocks: boolean = false) {
+    // Identity-addressed (plan §6.2): this applies to the design and says
+    // nothing about the pose, so any staging a gesture left open is closed
+    // first -- held mid-drag, the staged machine stayed seeded from the display
+    // and a neighbor came out at the provisional coordinate rather than its own.
+    this.cancelPosedEdit();
     // A joint some earlier cascade already took. The generic path below indexes
     // into `this.joints` without re-checking, so -1 there is a TypeError on one
     // line and a `splice(-1, 1)` -- which removes the *last* element, not none
@@ -2896,6 +2917,11 @@ export class MechanismService {
   }
 
   deleteForce(force: Force = this.activeObjService.selectedForce) {
+    // Identity-addressed (plan §6.2): this applies to the design and says
+    // nothing about the pose, so any staging a gesture left open is closed
+    // first -- held mid-drag, the staged machine stayed seeded from the display
+    // and a neighbor came out at the provisional coordinate rather than its own.
+    this.cancelPosedEdit();
     if (!force) return;
     if (this.blockedByLock(force)) return;
     this.detachForce(force);
@@ -2994,6 +3020,11 @@ export class MechanismService {
   }
 
   deleteLink() {
+    // Identity-addressed (plan §6.2): this applies to the design and says
+    // nothing about the pose, so any staging a gesture left open is closed
+    // first -- held mid-drag, the staged machine stayed seeded from the display
+    // and a neighbor came out at the provisional coordinate rather than its own.
+    this.cancelPosedEdit();
     const link = this.activeObjService.selectedLink;
     if (this.blockedByLock(link)) return;
     // Deleting any member of a sealed cylinder — barrel, rod, block, or a
@@ -5294,6 +5325,7 @@ export class MechanismService {
     if (index === -1 || !this.mechanisms[index]?.isMechanismValid()) return false;
     this.seedFromDisplay = topologyOf(this.partitions[index].ownJoints);
     this.stagedRebuilt = false;
+    this.stagedByPointer = this.injector.get(DragStateService).isPointerDown;
     return true;
   }
 
@@ -5368,6 +5400,53 @@ export class MechanismService {
   /** Whether a rebuild has run since the current gesture staged its machine. */
   private stagedRebuilt = false;
 
+  /** Set while a commit or a cancel is itself rebuilding, so it is left alone. */
+  private settling = false;
+
+  /**
+   * Whether a gesture is still holding the staging it opened.
+   *
+   * A pointer that is down, or a commit the canvas has said it is in the middle
+   * of. Anything else means the gesture is over and nobody closed it.
+   */
+  private gestureIsLive(): boolean {
+    if (this.settling || this.committingPosedEdit) return true;
+    // Staged with no pointer involved at all -- a menu action, or a caller in a
+    // test -- closes itself and is nobody's abandoned gesture.
+    if (!this.stagedByPointer) return true;
+    return this.injector.get(DragStateService).isPointerDown;
+  }
+
+  /** Whether the staging was opened by a pointer that has since to come up. */
+  private stagedByPointer = false;
+
+  private closeStaleStaging(): void {
+    if (!this.seedFromDisplay || this.gestureIsLive()) return;
+    const key = this.seedFromDisplay;
+    this.seedFromDisplay = null;
+    const rebuilt = this.stagedRebuilt;
+    this.stagedRebuilt = false;
+    // Nothing was solved from the displayed pose, so there is nothing to put
+    // back -- and settling would re-seek the reader off the pose they are on.
+    if (!rebuilt) return;
+    this.settling = true;
+    try {
+      this.settleToAnchor(key, false);
+    } finally {
+      this.settling = false;
+    }
+  }
+
+  /**
+   * Set by the canvas while it closes a posed edit on purpose.
+   *
+   * The commit runs after the drop is wholly resolved, which is after the
+   * pointer is up -- so without this the guard above would read that as an
+   * abandoned gesture and settle it early, taking the commit's own snackbar and
+   * its re-seek with it.
+   */
+  committingPosedEdit = false;
+
   /**
    * Close a posed edit: put the design back on the machine's anchor.
    *
@@ -5398,6 +5477,19 @@ export class MechanismService {
    * nothing was committed.
    */
   private settleToAnchor(key: string, committing: boolean): { reanchored: boolean; lost?: string } {
+    const wasSettling = this.settling;
+    this.settling = true;
+    try {
+      return this.settleToAnchorNow(key, committing);
+    } finally {
+      this.settling = wasSettling;
+    }
+  }
+
+  private settleToAnchorNow(
+    key: string,
+    committing: boolean
+  ): { reanchored: boolean; lost?: string } {
     const index = this.partitions.findIndex((partition) => topologyOf(partition.ownJoints) === key);
     const frames = this.mechanisms[index];
     const anchor = this.anchors.get(key);
@@ -5490,6 +5582,11 @@ export class MechanismService {
     const key = topologyOf(this.partitions[index].ownJoints);
     this.anchors.delete(key);
     this.seedFromDisplay = key;
+    // Not a pointer gesture, so the stale-staging guard must not read the
+    // pointer being up as this having been abandoned -- it would close the
+    // staging before the rebuild that is the whole point of the call.
+    this.stagedByPointer = false;
+    this.stagedRebuilt = false;
     this.updateMechanism(true);
     this.seedFromDisplay = null;
     // And the clock with it. The rebuild holds each machine's elapsed seconds
