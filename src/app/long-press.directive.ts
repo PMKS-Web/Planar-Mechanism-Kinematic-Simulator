@@ -124,6 +124,13 @@ export class LongPressDirective implements OnDestroy {
     // other lands, was not recognized as one at all: the drag went on running
     // under the second finger and committed on release.
     if (this.down.size > 1) {
+      // And it goes no further. Left to continue, the second finger's own
+      // pointerdown reached whatever was under it *after* the cleanup and
+      // started a fresh gesture: a force handle or the center-of-mass mark went
+      // live again, and the pinch that was supposed to be about the view moved
+      // them both.
+      event.preventDefault();
+      event.stopPropagation();
       this.cancel();
       this.zone.run(() => this.pinched.emit());
       return;

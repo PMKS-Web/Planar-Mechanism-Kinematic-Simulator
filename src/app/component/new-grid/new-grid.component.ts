@@ -2735,10 +2735,18 @@ export class NewGridComponent implements OnDestroy {
     if (moved) this.mechanismSrv.updateMechanism();
   }
 
-  private letGoOfEverything(): void {
+  /**
+   * Put down whatever the canvas had hold of.
+   *
+   * `revert` for the callers that are not a release at all -- a pinch, a long
+   * press, a window losing focus. Those gestures never decided anything, so
+   * what the pointer moved on the way to being recognized is put back rather
+   * than committed.
+   */
+  private letGoOfEverything(revert = false): void {
     this.beforeDrag = undefined;
     this.linkCreateFrom = undefined;
-    this.endComDrag?.();
+    this.endComDrag?.(revert);
     this.endComDrag = undefined;
     this.dragState.cancel();
     // Including a staged posed edit. This is the path a pinch and a long press
@@ -2792,7 +2800,7 @@ export class NewGridComponent implements OnDestroy {
     // the anchor: an edit the reader never asked for, and could not undo,
     // because a view gesture mints no entry to undo with.
     this.putBackTheDrag();
-    this.letGoOfEverything();
+    this.letGoOfEverything(true);
   }
 
   onLongPress(press: LongPress) {
@@ -2801,7 +2809,8 @@ export class NewGridComponent implements OnDestroy {
     // with placing armed opened the menu and then dropped a position under it
     // on the way out. Spent by the release that follows.
     this.pressBecameMenu = true;
-    this.letGoOfEverything();
+    this.putBackTheDrag();
+    this.letGoOfEverything(true);
     // Aimed at whatever is under the finger *now*, not at the node the press
     // began on. Letting go of the gesture above re-renders the canvas, and
     // Angular replaces the marks it re-creates -- so the captured target is
@@ -3139,7 +3148,7 @@ export class NewGridComponent implements OnDestroy {
       // Then everything is put down, which also stops the canvas believing a
       // finger is still held -- the flag the stale-staging guard reads.
       this.putBackTheDrag();
-      this.letGoOfEverything();
+      this.letGoOfEverything(true);
     }
   }
 
@@ -3664,6 +3673,10 @@ export class NewGridComponent implements OnDestroy {
           case 'Force':
             console.log('force is last left click');
             this.mechanismSrv.beginPosedEdit(this.activeObjService.selectedForce);
+            // Snapshotted like a joint drag: a force's endpoints are stored
+            // coordinates, so a pinch that interrupted one left the endpoint
+            // where the drag had put it with nothing to undo it.
+            this.rememberBeforeDrag();
             switch (this.dragState.force) {
               case forceStates.waiting:
                 if (this.activeObjService.selectedForce.locked) {
@@ -4044,6 +4057,7 @@ export class NewGridComponent implements OnDestroy {
       return;
     }
     this.draggingCoMLink = link;
+    const started = { x: link.CoM.x, y: link.CoM.y };
     let moved = false;
     let savedElsewhere = false;
     const move = (e: PointerEvent) => {
@@ -4091,11 +4105,23 @@ export class NewGridComponent implements OnDestroy {
     // And a way to end it from outside. A pointer released in another tab sends
     // no `pointerup` here, so the listeners stayed on and the mark followed the
     // next buttonless move across the window.
-    this.endComDrag = up;
+    this.endComDrag = (revert) => {
+      if (revert && moved) {
+        // The gesture never finished, so nothing was decided. Same rule the
+        // joints follow: what a view gesture moved on its way to being
+        // recognized is put back, not committed.
+        link.placeCustomCoM({ x: started.x, y: started.y });
+        moved = false;
+      }
+      up();
+    };
   }
 
-  /** Ends the CoM gesture, for the paths that hear about a release it does not. */
-  private endComDrag?: () => void;
+  /**
+   * Ends the CoM gesture from outside, for the paths that hear about a release
+   * it does not -- and, with `revert`, for the ones that were never a release.
+   */
+  private endComDrag?: (revert?: boolean) => void;
 
   /** Say why a locked link's center of mass will not follow the pointer. */
   private refuseLockedCoM(link: RealLink): void {

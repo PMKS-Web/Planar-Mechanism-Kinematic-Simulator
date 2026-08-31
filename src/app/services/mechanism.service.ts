@@ -956,7 +956,12 @@ export class MechanismService {
       // else's phase -- which, unsynced, is a machine visibly jumping on an
       // edit that had nothing to do with it. Synced, they are all meant to be
       // on the master's clock, and the skip is what puts them there.
-      if (this.syncMechanisms && !(was.seconds > 0)) return;
+      // Except the machine being edited at a pose, whose zero is a statement
+      // rather than an absence: its displayed pose is its provisional t = 0, so
+      // synced it must be taken *off* the master's clock rather than left on
+      // it. Skipped here, the master-time reseek above had already carried it
+      // a third of a cycle from the pose under the reader's hand.
+      if (this.syncMechanisms && !(was.seconds > 0) && index !== this.stagedMachineIndex()) return;
       this.ownSeconds[index] = ((was.seconds % period) + period) % period;
     });
     this.applyPose();

@@ -427,6 +427,10 @@ pixels are available; anything you add to the bottom row has to survive that.
 - **Drop anchors before the rebuild, not after.** `UrlProcessorService` calls `forgetAnchors()`
   ahead of `finishStructuralEdit`; after it, the call threw away the anchors that rebuild had just
   taken, and every freshly opened mechanism had none until its first edit.
+- **Do not run `npm test` and a large Playwright sweep at the same time.** Six heavy fixture,
+  codec and graph specs time out under the load and fail together, which reads exactly like a
+  shared-state bug in whatever you just changed. Re-run the unit suite on a quiet machine before
+  believing it.
 - **A machine being edited at a pose must have its clock read as zero for that rebuild.** Its
   displayed pose *is* its provisional t = 0 while the gesture is in flight, so holding its elapsed
   seconds and laying them back on afterwards moves it that far along a cycle that now starts under
