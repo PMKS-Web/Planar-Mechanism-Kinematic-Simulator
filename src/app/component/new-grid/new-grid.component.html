@@ -482,21 +482,6 @@
           @for (pin of ghost.pins; track $index) {
             <circle [attr.cx]="pin.x" [attr.cy]="pin.y" [attr.r]="svgGrid.scaleWithZoom(4)" />
           }
-          @if (ghostWarns(ghost)) {
-            <!-- Above the skeleton rather than on its first pin, which is
-                 usually a grounded joint with a hatched base drawn over it --
-                 the word "start" ended up behind the hatching. -->
-            <text
-              class="startGhostTag"
-              pointer-events="none"
-              [attr.x]="ghostTagAt(ghost).x"
-              [attr.y]="-ghostTagAt(ghost).y"
-              [attr.font-size]="svgGrid.scaleWithZoom(13)"
-              transform="scale(1,-1)"
-            >
-              start unreachable
-            </text>
-          }
         </g>
       }
     </g>
@@ -1043,6 +1028,31 @@
       }
     }
   </g>
+
+  <!-- The ghost's warning, drawn last so it is readable.
+       Everything else about the ghost belongs *under* the mechanism -- it is a
+       reference, and two solid linkages competing for attention is what the
+       faintness is for. The words are not: put under the links they ended up
+       behind a coupler, and put on the ghost's first pin they ended up behind a
+       grounded joint's hatching. A label nobody can read is worse than no
+       label, because the state it names is still true. -->
+  @if (showStartGhost()) {
+    <g id="startGhostTags" style="transform: scaleY(-1)" pointer-events="none">
+      @for (ghost of startGhosts(); track ghost.index) {
+        @if (ghostWarns(ghost)) {
+          <text
+            class="startGhostTag"
+            [attr.x]="ghostTagAt(ghost).x"
+            [attr.y]="-ghostTagAt(ghost).y"
+            [attr.font-size]="svgGrid.scaleWithZoom(13)"
+            transform="scale(1,-1)"
+          >
+            start unreachable
+          </text>
+        }
+      }
+    </g>
+  }
 
   <!-- The box round a multi-selection, wearing the same broken accent outline
        and the same filled grips as the tracing underlay. Both are a thing being

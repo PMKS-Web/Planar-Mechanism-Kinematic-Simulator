@@ -436,13 +436,16 @@
     // The drag has taken the linkage somewhere its original start no longer
     // exists. Amber rather than red: nothing is broken, and letting go here is
     // allowed -- it just moves the start, which is what the tag says.
+    // Dimmed amber, not bright: it is still a reference under the mechanism,
+    // and at full strength it took the eye off the linkage the reader has hold
+    // of -- which is the thing they need to see to drag back out of this.
     &.unreachable {
-      line {
-        stroke: rgba(230, 145, 0, 0.75);
+      line:not(.ghostGrab) {
+        stroke: rgba(230, 145, 0, 0.5);
       }
 
       circle {
-        fill: rgba(230, 145, 0, 0.75);
+        fill: rgba(230, 145, 0, 0.5);
       }
     }
   }

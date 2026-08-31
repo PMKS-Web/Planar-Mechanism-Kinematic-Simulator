@@ -2144,13 +2144,19 @@ export class NewGridComponent implements OnDestroy {
   private ghostDoubtsAt = -1;
   private static readonly GHOST_SETTLES_AFTER = 3;
 
-  /** Above the skeleton, clear of whatever is drawn on its joints. */
+  /**
+   * Above the skeleton, clear of everything drawn on it.
+   *
+   * Centered over the ghost's own span and lifted off its topmost pin, rather
+   * than pinned to one joint: whichever joint that is, something is drawn on it
+   * -- a ground's hatching, an input's motor box -- and the words went behind.
+   */
   ghostTagAt(ghost: StartPoseGhost): { x: number; y: number } {
     const xs = ghost.pins.map((pin) => pin.x);
     const ys = ghost.pins.map((pin) => pin.y);
     return {
       x: (Math.min(...xs) + Math.max(...xs)) / 2,
-      y: Math.max(...ys) + this.svgGrid.scaleWithZoom(18),
+      y: Math.max(...ys) + this.svgGrid.scaleWithZoom(26),
     };
   }
 

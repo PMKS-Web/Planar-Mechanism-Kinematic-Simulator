@@ -5398,9 +5398,21 @@ export class MechanismService {
   forgetAnchors(): void {
     this.anchors.clear();
     this.ghostCache = undefined;
+    this.lastGoodGhost.clear();
   }
 
   private ghostCache?: { revision: number; list: StartPoseGhost[] };
+
+  /**
+   * The last pose each machine's ghost could actually be drawn at.
+   *
+   * Kept so the warning state has something to show. Cleared with the anchors,
+   * because a drawing that has just arrived has no history worth holding.
+   */
+  private lastGoodGhost = new Map<
+    string,
+    { bars: { x1: number; y1: number; x2: number; y2: number }[]; pins: { x: number; y: number }[] }
+  >();
 
   /**
    * A faint skeleton of where each machine starts, for the machines that are
@@ -5422,7 +5434,7 @@ export class MechanismService {
   }
 
   private buildGhosts(): StartPoseGhost[] {
-    return this.partitions.flatMap((partition, index) => {
+    return this.partitions.flatMap((partition, index): StartPoseGhost[] => {
       const frames = this.mechanisms[index];
       if (!frames?.isMechanismValid()) return [];
       // The *anchored* pose, not sample 0. While a posed edit is staged, sample
@@ -5439,7 +5451,17 @@ export class MechanismService {
             frames.joints
           )
         : null;
-      const start = reach ? blendFrame(frames.joints, reach.index, reach.blend) : frames.joints[0];
+      const key = topologyOf(partition.ownJoints);
+      // Out of reach, there is no anchored pose to draw -- and falling back to
+      // sample 0 draws the mechanism on top of itself, so the ghost disappears
+      // at exactly the moment it is warning about. The last pose it *could*
+      // reach is held instead: that is where the start was, which is the thing
+      // the reader is about to lose and the thing dragging back recovers.
+      if (!reach) {
+        const held = this.lastGoodGhost.get(key);
+        return held ? [{ index, bars: held.bars, pins: held.pins, reachable: false }] : [];
+      }
+      const start = blendFrame(frames.joints, reach.index, reach.blend);
       if (!start?.length) return [];
       const at = new Map(start.map((joint) => [joint.id, joint]));
       const bars: { x1: number; y1: number; x2: number; y2: number }[] = [];
@@ -5455,14 +5477,9 @@ export class MechanismService {
           }
         }
       });
-      return [
-        {
-          index,
-          bars,
-          pins: start.map((joint) => ({ x: joint.x, y: joint.y })),
-          reachable: anchor === undefined || reach !== null,
-        },
-      ];
+      const pins = start.map((joint) => ({ x: joint.x, y: joint.y }));
+      this.lastGoodGhost.set(key, { bars, pins });
+      return [{ index, bars, pins, reachable: true }];
     });
   }
 
