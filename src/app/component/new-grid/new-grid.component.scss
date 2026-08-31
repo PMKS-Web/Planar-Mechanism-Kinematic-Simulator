@@ -406,6 +406,24 @@
   // second solid linkage: two solid linkages on one grid compete for the
   // reader's attention and only one of them is the thing being edited.
   .startGhost {
+    // A target, not decoration: it is the most obvious thing in the window to
+    // press when what you want is to go back to the start.
+    cursor: pointer;
+
+    // The hit area: invisible, and the only part of the ghost with a stroke
+    // wide enough to be aimed at with a finger.
+    .ghostGrab {
+      stroke: transparent;
+      stroke-linecap: round;
+    }
+
+    &:hover line:not(.ghostGrab),
+    &:hover circle {
+      // The same ink, less transparent. A ghost that changed color on hover
+      // would read as a second state of the warning below it.
+      opacity: 1;
+    }
+
     line {
       stroke: rgba(63, 81, 181, 0.32);
       stroke-linecap: round;

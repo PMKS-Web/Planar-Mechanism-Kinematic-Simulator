@@ -182,6 +182,17 @@
           </div>
 
           <div class="trackWell">
+            <!-- Where this machine's cycle starts. The anchor is a thing the
+                 reader has to hold now -- an edit at a pose puts the design
+                 back on it -- and a concept with no mark on the control that
+                 measures the cycle is one they have to take on trust. -->
+            @if (row.anchorAt !== undefined) {
+              <span
+                class="anchorMark"
+                [style.--at.%]="row.anchorAt / 10"
+                title="Where this machine's cycle starts"
+              ></span>
+            }
             <!-- The handle likewise: moving one machine along its own travel is
                  watching it, not picking it. -->
             <input

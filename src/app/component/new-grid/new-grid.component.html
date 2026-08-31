@@ -446,10 +446,31 @@
        exists, the ghost goes amber, and dragging back recovers it. That is a
        better answer than a message explaining what already happened. -->
   @if (showStartGhost()) {
-    <g id="startGhostHolder" style="transform: scaleY(-1)" pointer-events="none">
+    <g id="startGhostHolder" style="transform: scaleY(-1)">
       @for (ghost of startGhosts(); track ghost.index) {
-        <g class="startGhost" [class.unreachable]="ghostWarns(ghost)">
+        <!-- The ghost is also the way back to it. A picture of where the
+             machine starts, standing next to the machine, is the most obvious
+             thing in the window to press when what you want is to go there --
+             so it is a target rather than decoration. The bars carry the press;
+             the warning tag does not, because it is a label. -->
+        <g
+          class="startGhost"
+          [class.unreachable]="ghostWarns(ghost)"
+          (click)="goToStart(ghost)"
+          [attr.aria-label]="'Back to the start pose'"
+        >
           @for (bar of ghost.bars; track $index) {
+            <!-- The line the reader sees is two pixels wide, which is a hard
+                 thing to hit. A transparent one several times that, drawn
+                 under it, is what actually takes the press. -->
+            <line
+              class="ghostGrab"
+              [attr.x1]="bar.x1"
+              [attr.y1]="bar.y1"
+              [attr.x2]="bar.x2"
+              [attr.y2]="bar.y2"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(14)"
+            />
             <line
               [attr.x1]="bar.x1"
               [attr.y1]="bar.y1"
@@ -464,6 +485,7 @@
           @if (ghostWarns(ghost)) {
             <text
               class="startGhostTag"
+              pointer-events="none"
               [attr.x]="ghost.pins[0].x"
               [attr.y]="-ghost.pins[0].y"
               [attr.font-size]="svgGrid.scaleWithZoom(13)"

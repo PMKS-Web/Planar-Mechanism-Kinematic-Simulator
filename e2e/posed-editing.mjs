@@ -201,6 +201,77 @@ record(
   { was: displaced.startPose?.[1], now: promoted.startPose?.[1] }
 );
 
+// ---- 6. grab-to-pause (Gate 3) -----------------------------------------
+
+// Slowed right down first. A crank at ten rpm crosses a joint's own width in
+// well under the time it takes to read its position and put the pointer there,
+// so aiming at where it *was* is a press on empty canvas -- which is a fact
+// about aiming at a moving target, not about the app.
+await page.evaluate(() => {
+  const srv = window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  const driven = srv.joints.find((joint) => joint.input);
+  driven.driveSpeed = 0.5;
+  srv.updateMechanism();
+});
+await page.waitForTimeout(400);
+
+// Already parked at the start, because promoting a pose is what put it there.
+await page.locator('.playButton').click();
+await page.waitForTimeout(1400);
+record('it is running', (await look()).atStart === false);
+
+// The frame shown at pointer-down, read before the press so there is something
+// to compare the pause against.
+const grabbed = await jointAt('B');
+const shownAtGrab = await page.evaluate(() => {
+  const srv = window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  return srv.secondsOf(0);
+});
+await page.mouse.move(grabbed.x, grabbed.y);
+await page.mouse.down();
+await page.waitForTimeout(250);
+const held = await page.evaluate(() => {
+  const srv = window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  return { playing: srv.isPlaying, seconds: srv.secondsOf(0) };
+});
+await page.mouse.up();
+await page.waitForTimeout(300);
+record('taking hold of a moving part stops it', held.playing === false, held);
+// Within a frame of where it was: the pause happens at pointer-down, before
+// the gesture is even classified, so nothing can have advanced in between.
+record('and it stops on the frame that was showing', Math.abs(held.seconds - shownAtGrab) < 0.1, {
+  shownAtGrab,
+  held,
+});
+await page.screenshot({ path: `${SHOTS}/5-grabbed.png` });
+
+// Panning must not stop the show: only a movable part is a grab.
+await page.locator('.playButton').click();
+await page.waitForTimeout(700);
+await page.mouse.move(1200, 200);
+await page.mouse.down();
+await page.mouse.move(1240, 230, { steps: 5 });
+await page.mouse.up();
+await page.waitForTimeout(250);
+record(
+  'a press on empty canvas does not',
+  await page.evaluate(
+    () => window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.isPlaying
+  )
+);
+await page.locator('.playButton').click();
+await page.waitForTimeout(300);
+
+// ---- 7. the anchor affordances -----------------------------------------
+
+record('the track marks where the cycle starts', (await page.locator('.anchorMark').count()) >= 1);
+
+await displace();
+record('the ghost is a target', (await page.locator('.startGhost').count()) === 1);
+await page.locator('.startGhost .ghostGrab').first().click({ force: true });
+await page.waitForTimeout(900);
+record('pressing it goes back to the start', (await look()).atStart, await look());
+
 record('no page errors', errors.length === 0, errors.slice(0, 3));
 
 await browser.close();

@@ -467,6 +467,24 @@
     margin: 0 4px;
   }
 
+  // A tick under the track, not on it: the track carries the handle and how far
+  // it has come, and a second mark drawn among them would read as a third piece
+  // of the same reading rather than as a fixed point the cycle is measured from.
+  .anchorMark {
+    position: absolute;
+    left: var(--at, 0%);
+    bottom: 0;
+    width: 2px;
+    height: 6px;
+    margin-left: -1px;
+    border-radius: 1px;
+    // Dark enough to read against the filled half of the track, which is the
+    // same indigo: at the left end -- where re-anchoring keeps it -- the two
+    // would otherwise be one shape.
+    background: #303f9f;
+    pointer-events: none;
+  }
+
   // Drawn rather than themed, and drawn to look like what the platform was
   // drawing. Left to the browser, `accent-color` colors the traveled part
   // and the handle but the track keeps a 1px rim -- a gray line above and

@@ -995,6 +995,7 @@ export class NewGridComponent implements OnDestroy {
     ) {
       return;
     }
+    this.grabToPause(clickedObj);
     this.lastLeftClick = clickedObj;
     this.selectionTogglePress = false;
     this.pendingPartReplacement = undefined;
@@ -2080,6 +2081,29 @@ export class NewGridComponent implements OnDestroy {
     return this.permission.may('drag');
   }
 
+  /**
+   * Taking hold of a moving part stops it, at the frame it was showing.
+   *
+   * The last piece of the video-scrubbing instinct: "pause, then edit" becomes
+   * one motion, and it is the same rule on both pointers. Before the gesture is
+   * classified, deliberately -- what happens next is a drag, a tap or a long
+   * press, and every one of them wants the machine standing still. The gesture
+   * arbiter downstream is untouched: no drag has begun until the threshold
+   * passes, so a finger's tremor pauses and never edits, and resuming is one
+   * tap on Play.
+   *
+   * Only a movable part. Panning must not stop the show, so a press on empty
+   * canvas is not a grab -- and neither is one in an analysis mode, where the
+   * geometry is locked and a press is how a part is picked for its graphs.
+   */
+  private grabToPause(clickedObj: Joint | Link | string | Force | SynthesisPose): void {
+    if (!this.mechanismSrv.isPlaying) return;
+    if (this.permission.modeLocksGeometry()) return;
+    if (typeof clickedObj === 'string' || clickedObj instanceof SynthesisPose) return;
+    this.mechanismSrv.pauseInPlace();
+    this.settings.animating.next(false);
+  }
+
   // ---- the start-pose ghost (docs/edit-mode-playback-plan.md §6.1) ---------
 
   /**
@@ -2111,6 +2135,16 @@ export class NewGridComponent implements OnDestroy {
    */
   private ghostDoubts = new Map<number, number>();
   private static readonly GHOST_SETTLES_AFTER = 3;
+
+  /** Press the picture of the start pose to go there. */
+  goToStart(ghost: StartPoseGhost): void {
+    this.mechanismSrv.pauseInPlace();
+    this.settings.animating.next(false);
+    this.mechanismSrv.easeToStart();
+    // A press that landed on the ghost was never a press on the grid, so the
+    // selection it would otherwise have cleared stays where the reader put it.
+    this.dragState.cancel();
+  }
 
   ghostWarns(ghost: StartPoseGhost): boolean {
     const seen = this.ghostDoubts.get(ghost.index) ?? 0;

@@ -598,6 +598,43 @@ const moved = (a, c) => Math.hypot(c.x - a.x, c.y - a.y);
   await page.waitForTimeout(400);
 }
 
+// A finger laid on a moving part stops it, at the frame it was showing --
+// exactly as a mouse press does. This is the whole of Gate 3's touch half: one
+// rule on both pointers, and the gesture that follows classifies as a tap, a
+// drag or a long press against a machine that is now standing still.
+{
+  // Slowed right down first, because aiming at where a joint *was* is a press
+  // on empty canvas -- a fact about moving targets, not about the app.
+  await page.evaluate(() => {
+    const srv = window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const driven = srv.joints.find((joint) => joint.input);
+    driven.driveSpeed = 0.5;
+    srv.updateMechanism();
+    srv.setAllPlaying(true);
+  });
+  await page.waitForTimeout(900);
+  const running = await page.evaluate(
+    () => window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.isPlaying
+  );
+  record('the mechanism is running before the grab', running);
+
+  const target = await jointBOnScreen();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: target.x, y: target.y, id: 1 }],
+  });
+  await page.waitForTimeout(200);
+  const held = await page.evaluate(
+    () => window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.isPlaying
+  );
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+  await page.waitForTimeout(300);
+  record('a finger on a moving joint stops it', held === false, { held });
+  record('and no drag has begun', await gestureIdle());
+}
+
 // A pinch that happens to start on a joint is about the view, not the joint.
 {
   const target = await jointBOnScreen();

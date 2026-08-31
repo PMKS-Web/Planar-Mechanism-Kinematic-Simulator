@@ -427,6 +427,12 @@ pixels are available; anything you add to the bottom row has to survive that.
 - **Drop anchors before the rebuild, not after.** `UrlProcessorService` calls `forgetAnchors()`
   ahead of `finishStructuralEdit`; after it, the call threw away the anchors that rebuild had just
   taken, and every freshly opened mechanism had none until its first edit.
+- **Grab-to-pause fires in `setLastLeftClick`, before the gesture is classified.** That is
+  deliberate: what follows is a drag, a tap or a long press, and every one of them wants the
+  machine standing still. It is also why touch needs no second code path.
+- **Aiming at a moving joint in a test is a press on empty canvas.** A crank at ten rpm crosses a
+  joint's own width in less time than it takes to read its position and put the pointer there, and
+  the miss reads exactly like the app refusing the gesture. Set `driveSpeed` low first.
 - **A four-bar a third of the way round its cycle puts a joint several hundred pixels below the
   window.** A Playwright press aimed there lands on nothing and reads exactly like the drag being
   refused. Re-frame (the Reset View control) after seeking, before aiming at anything.

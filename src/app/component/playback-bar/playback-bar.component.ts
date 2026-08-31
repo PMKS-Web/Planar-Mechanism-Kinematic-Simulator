@@ -78,6 +78,17 @@ export interface PlaybackRow {
   scrub: number;
   clockwise: boolean;
   /**
+   * Where along the track this machine's cycle starts, 0-1000, or nothing.
+   *
+   * Always zero today, and marked anyway: the anchor is a concept the reader
+   * now has to hold -- an edit at a pose puts the design back on it, and "Set
+   * This Pose as Start" moves it -- and a concept with no mark on the one
+   * control that measures the cycle is one the reader has to take on trust.
+   * Nothing for the combined row, which stands for several cycles at once and
+   * so has no single start to point at.
+   */
+  anchorAt?: number;
+  /**
    * Whether this machine passes through a toggle.
    *
    * True exactly when the walk had to cut its step finer somewhere, which is
@@ -391,6 +402,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     const combined = name !== undefined;
     return {
       id: name ?? this.nameOf(index),
+      // The start of the cycle is where the handle reads zero, by construction:
+      // re-anchoring is what makes that true after an edit at a pose.
+      anchorAt: combined ? undefined : 0,
       index: combined ? -1 : index,
       leader: index,
       isMechanism: !combined,
