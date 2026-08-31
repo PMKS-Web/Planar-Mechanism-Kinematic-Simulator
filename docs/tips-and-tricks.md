@@ -427,6 +427,12 @@ pixels are available; anything you add to the bottom row has to survive that.
 - **Drop anchors before the rebuild, not after.** `UrlProcessorService` calls `forgetAnchors()`
   ahead of `finishStructuralEdit`; after it, the call threw away the anchors that rebuild had just
   taken, and every freshly opened mechanism had none until its first edit.
+- **Slipping a wrapper div into a panel breaks its scroll.** The mode panels are a chain of flex
+  items that give up their height so the card inside can cap itself at `max-height: 100%` and
+  scroll its own contents. A plain `<div>` inserted anywhere in that chain leaves the percentage
+  nothing definite to resolve against, and on a short window the card overflows its frame instead
+  of scrolling -- visible only below about 600px tall. Any new wrapper needs
+  `flex: 1 1 auto; min-height: 0`.
 - **A getter the template calls must be a question, not a step.** The ghost's warning counter was
   advanced inside the getter that read it, so Angular's second check -- the one that proves nothing
   moved -- got a different answer, and every drag past the Grashof boundary raised `NG0100`. Key

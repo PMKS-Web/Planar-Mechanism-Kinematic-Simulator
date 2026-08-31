@@ -30,9 +30,18 @@
 
   // The sections used to be the wrapper's own children, so they inherit its
   // column and its gap rather than being restacked by the freeze.
+  //
+  // And its *sizing*, which is the part that is easy to miss: `#editWrapper` is
+  // a flex item that gives up its height, and the card inside caps itself at
+  // `max-height: 100%` so it can scroll its own contents. Slipping a plain div
+  // between them broke that chain -- the percentage had nothing definite to
+  // resolve against, so on a short window the card overflowed its frame instead
+  // of scrolling, and its sticky title had nothing passing under it.
   .editBody {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
     gap: 10px;
   }
 
