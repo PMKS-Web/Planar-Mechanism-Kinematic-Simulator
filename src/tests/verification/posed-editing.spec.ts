@@ -396,6 +396,37 @@ describe('editing at a displaced pose', () => {
     expect(startCoordinate(service, 0)).toBeCloseTo(anchored, 1);
   });
 
+  it('holds the edited machine at its own pose in a synced drawing too', () => {
+    // Its zero is a statement, not an absence: while the gesture is in flight
+    // the displayed pose *is* its provisional t = 0. Synced, `restoreOwnTimes`
+    // treats a zero as "leave it on the master's clock" -- which is right for
+    // every machine except this one, and carried the edited machine away from
+    // the pose under the reader's hand by a third of a cycle.
+    const harness = createMechanismHarness();
+    fourBar(harness.service, 'A', 0);
+    const second = fourBar(harness.service, 'E', 10);
+    const service = harness.service;
+    service.updateMechanism();
+    expect(service.mechanisms).toHaveLength(2);
+    expect(service.syncMechanisms).toBe(true);
+
+    // Both machines a third of the way round, on the one shared clock.
+    service.animate(service.stepAtTime(service.cyclePeriod() / 3));
+    expect(service.isAtStartPose()).toBe(false);
+
+    // Edit the second machine, which is not the master.
+    expect(service.beginPosedEdit(second.joints[1])).toBe(true);
+    const under = { x: second.joints[1].x, y: second.joints[1].y };
+    second.joints[1].x += 0.3;
+    const asked = { x: second.joints[1].x, y: second.joints[1].y };
+    service.updateMechanism();
+
+    // The joint is where the gesture put it, not a third of a cycle beyond it.
+    const drift = Math.hypot(second.joints[1].x - asked.x, second.joints[1].y - asked.y);
+    expect(drift).toBeLessThan(Math.hypot(asked.x - under.x, asked.y - under.y) + 0.05);
+    service.finishPosedEdit();
+  });
+
   it('stages one machine at a time and no more', () => {
     // A second `beginPosedEdit` while one is open must not take the staging
     // from the first: whichever machine is put back on its anchor at the
