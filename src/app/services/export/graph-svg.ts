@@ -73,7 +73,7 @@ export function plotSvg(plot: ExportPlot, times: number[], options: PlotSvgOptio
   // ends drew a straight line through the very positions it has no answer for.
   const curves = plot.series
     .map((series, at) => {
-      const colour = COLORS[at] ?? COLORS[0];
+      const color = COLORS[at] ?? COLORS[0];
       return runsOf(series.values)
         .map((run) => {
           const points = run
@@ -83,8 +83,8 @@ export function plotSvg(plot: ExportPlot, times: number[], options: PlotSvgOptio
           return run.length === 1
             ? `<circle cx="${round(x(run[0]))}" cy="${round(
                 y(series.values[run[0]])
-              )}" r="1.4" fill="${colour}"/>`
-            : `<polyline points="${points}" fill="none" stroke="${colour}" stroke-width="1.8" stroke-linejoin="round"/>`;
+              )}" r="1.4" fill="${color}"/>`
+            : `<polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"/>`;
         })
         .join('');
     })
@@ -130,7 +130,7 @@ export function plotSvg(plot: ExportPlot, times: number[], options: PlotSvgOptio
   );
 }
 
-/** The series names, in their own colours, under the title. */
+/** The series names, in their own colors, under the title. */
 function legend(plot: ExportPlot, left: number): string {
   let at = left;
   return plot.series
@@ -176,7 +176,7 @@ function pad(low: number, high: number): [number, number] {
 /**
  * How many decimals an axis label needs, read off the range rather than the tick.
  *
- * Per tick, a value that is float noise beside its neighbours -- 9.2e-6 on an
+ * Per tick, a value that is float noise beside its neighbors -- 9.2e-6 on an
  * axis running to 7 -- came out in scientific notation, which read as a real
  * quantity of its own. What matters is how far apart the labels are.
  */

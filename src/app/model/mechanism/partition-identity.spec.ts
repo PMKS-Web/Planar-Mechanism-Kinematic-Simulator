@@ -88,7 +88,7 @@ describe('naming a machine so it survives a rebuild', () => {
 });
 
 /**
- * A machine has to be solved against frame it shares with its neighbours, and
+ * A machine has to be solved against frame it shares with its neighbors, and
  * the far ends of those pieces are somebody else's joints — including,
  * sometimes, somebody else's driven pin.
  */

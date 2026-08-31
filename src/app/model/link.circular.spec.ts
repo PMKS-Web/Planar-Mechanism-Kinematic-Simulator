@@ -5,8 +5,8 @@ import { SettingsService } from '../services/settings.service';
 /**
  * A crank drawn as the disc it sweeps.
  *
- * The rule the drawing rests on is that a disc needs a centre, and the only
- * centre a link can offer without being asked is the one pin it turns about.
+ * The rule the drawing rests on is that a disc needs a center, and the only
+ * center a link can offer without being asked is the one pin it turns about.
  * Everything here is about that rule holding when the mechanism changes under
  * it -- the flag outlives a ground being removed, so the answer has to come
  * from the joints every time rather than from what was true when it was set.
@@ -40,7 +40,7 @@ describe('a link drawn as a circle', () => {
   it('is offered on a grounded crank and nowhere else', () => {
     expect(crank().link.canBeCircular()).toBe(true);
 
-    // No ground: a coupler has no fixed centre, so no disc to draw about.
+    // No ground: a coupler has no fixed center, so no disc to draw about.
     const floating = new RealLink('AB', [new RevJoint('A', 0, 0), new RevJoint('B', 3, 4)]);
     expect(floating.canBeCircular()).toBe(false);
 
@@ -94,7 +94,7 @@ describe('a link drawn as a circle', () => {
     expect(numbersIn(link.d)[0]).toBeCloseTo(ground.x - radius, 6);
   });
 
-  it('comes back as a bar when the ground it was centred on is removed', () => {
+  it('comes back as a bar when the ground it was centerd on is removed', () => {
     const { link, ground } = crank();
     link.isCircle = true;
     link.reComputeDPath();
@@ -138,7 +138,7 @@ describe('a link drawn as a circle', () => {
 
     // The same circle, though not the same string: the copy is the original
     // rigidly rotated, so the path now starts at a different point of the same
-    // rim. Centre and radius are what "the same disc" means.
+    // rim. Center and radius are what "the same disc" means.
     const turned = numbersIn(moved.d);
     const radius = 5 + SettingsService.objectScale / 4;
     expect(turned[2]).toBeCloseTo(radius, 6);

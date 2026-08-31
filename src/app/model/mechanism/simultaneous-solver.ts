@@ -98,7 +98,7 @@ const MAX_ITERATIONS = 60;
  *
  * Plain Newton is the wrong tool here and fails on exactly the mechanisms this
  * solver exists for. A toggle clamp works *because* it passes close to a
- * dead-centre — that is where its mechanical advantage comes from — and near
+ * dead-center — that is where its mechanical advantage comes from — and near
  * one the Jacobian is nearly singular, so an undamped step is enormous and
  * lands somewhere unrelated. Damping turns the step back toward steepest
  * descent exactly as far as it needs to, and no further.
@@ -396,7 +396,7 @@ export function jacobian(
  * Compared against columns already scaled to unit length, so it is a ratio
  * rather than a length and means the same thing whatever the mechanism is
  * measured in. Set well above the 1e-16 where float noise lives and well below
- * anything a real linkage produces away from a dead-centre.
+ * anything a real linkage produces away from a dead-center.
  */
 const RANK_TOLERANCE = 1e-7;
 
@@ -405,9 +405,9 @@ const RANK_TOLERANCE = 1e-7;
  * leaving a direction they are free to drift along.
  *
  * Counting rows is not enough. A square system whose Jacobian loses a column is
- * a mechanism at a dead-centre, or one whose constraints say the same thing
+ * a mechanism at a dead-center, or one whose constraints say the same thing
  * twice — and Levenberg–Marquardt will happily return *an* answer for it, drawn
- * from whichever direction the damping happened to favour. That answer is a
+ * from whichever direction the damping happened to favor. That answer is a
  * picture of a linkage the user did not build, which is the one outcome worth
  * refusing over.
  *
@@ -659,7 +659,7 @@ export function boundaryJoints(system: SimultaneousSystem): string[] {
  * mechanism is on if it is near the direction the branch was pointing.
  *
  * Returns nothing at a pose where the constraints cannot be differentiated —
- * a dead-centre, where the branch has no direction to predict.
+ * a dead-center, where the branch has no direction to predict.
  */
 export function boundaryTangent(
   system: SimultaneousSystem,

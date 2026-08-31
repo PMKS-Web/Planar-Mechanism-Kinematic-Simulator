@@ -63,7 +63,7 @@ function masses(fixture: MechanismFixture): number[] {
  * Asked of the solved cycle rather than of the lengths, so it is a statement
  * about the mechanism the template actually opens and not about the Grashof
  * arithmetic that predicted it. The angles a full rotation visits are spread
- * all the way round with no gap between neighbouring samples; a rocker leaves
+ * all the way round with no gap between neighboring samples; a rocker leaves
  * the whole of the rest of the circle empty, so the widest gap separates the
  * two cleanly with nothing near the boundary.
  */

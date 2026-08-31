@@ -138,7 +138,7 @@ describe('a cylinder-driven gripper', () => {
     expect(travel).toBeGreaterThan(0.2);
 
     const jumps = gaps.slice(1).map((gap, i) => Math.abs(gap - gaps[i]));
-    // Smoothness measured against the neighbouring steps rather than against
+    // Smoothness measured against the neighboring steps rather than against
     // the average of them all. The linkage has a genuine knee — it is drawn on
     // its own toggle, and just off it the jaws move some seven times faster
     // than they do out at full extension — so the mean step over the run is not

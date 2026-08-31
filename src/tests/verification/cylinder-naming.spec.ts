@@ -8,7 +8,7 @@ import { RealJoint } from '../../app/model/joint';
  * A ram is five joints and shows two of them.
  *
  * The three inside it — the barrel's near end, the pin, the slider — are never
- * drawn, labelled or listed, so spending a letter on each ran a drawing through
+ * drawn, labeled or listed, so spending a letter on each ran a drawing through
  * the alphabet three times faster than the joints anyone could see.
  */
 function drawCylinder() {

@@ -773,7 +773,7 @@ export function circleLineIntersection(
   dirY: number
 ): [number, number][] | undefined {
   // Substituting `P + t*u` into `(x - h)^2 + (y - k)^2 = r^2` gives
-  // `t^2 + 2(d.u)t + (|d|^2 - r^2) = 0`, where `d = P - centre`.
+  // `t^2 + 2(d.u)t + (|d|^2 - r^2) = 0`, where `d = P - center`.
   const dx = pointX - h;
   const dy = pointY - k;
   const b = 2 * (dx * dirX + dy * dirY);

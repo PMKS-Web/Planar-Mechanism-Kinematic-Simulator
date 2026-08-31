@@ -711,7 +711,7 @@ describe('NewGridComponent keyboard shortcuts', () => {
 describe('NewGridComponent vector traces', () => {
   beforeEach(configureGridTestBed);
 
-  function analysing() {
+  function analyzing() {
     const mechanism = TestBed.inject(MechanismService);
     const scene = twoBars(mechanism);
     TestBed.inject(SelectedTabService).setTab(TabID.ANALYZE);
@@ -719,13 +719,13 @@ describe('NewGridComponent vector traces', () => {
   }
 
   it('draws nothing until a part is switched on', () => {
-    const { mechanism } = analysing();
+    const { mechanism } = analyzing();
     expect(mechanism.anyVectorTrace).toBe(false);
     expect(mechanism.vectorTracePaths()).toEqual([]);
   });
 
   it('spaces arrows along the whole cycle, and puts one at the pose', () => {
-    const { mechanism, b } = analysing();
+    const { mechanism, b } = analyzing();
     mechanism.toggleVectorTrace(b, 'velocity');
 
     const [trace] = mechanism.vectorTracePaths();
@@ -741,7 +741,7 @@ describe('NewGridComponent vector traces', () => {
   });
 
   it('scales the biggest arrow of a cycle against the size of the machine', () => {
-    const { mechanism, b } = analysing();
+    const { mechanism, b } = analyzing();
     mechanism.toggleVectorTrace(b, 'velocity');
     const longest = Math.max(...shaftLengths(mechanism.vectorTracePaths()[0].d));
     // The crank sweeps a circle of radius sqrt(50) about the origin, so its
@@ -752,7 +752,7 @@ describe('NewGridComponent vector traces', () => {
   });
 
   it('keeps each mode to the vectors that mode is about', () => {
-    const { mechanism, b } = analysing();
+    const { mechanism, b } = analyzing();
     mechanism.toggleVectorTrace(b, 'velocity');
     expect(mechanism.vectorTracePaths().length).toBe(1);
     TestBed.inject(SelectedTabService).setTab(TabID.FORCE);
@@ -772,7 +772,7 @@ describe('NewGridComponent vector traces', () => {
    * to be served stale.
    */
   it('answers a switch the moment it is flipped, and nothing else has to change', () => {
-    const { mechanism, b, c } = analysing();
+    const { mechanism, b, c } = analyzing();
 
     mechanism.toggleVectorTrace(b, 'velocity');
     expect(mechanism.vectorTracePaths().length).toBe(1);
@@ -797,7 +797,7 @@ describe('NewGridComponent vector traces', () => {
   });
 
   it('forgets a switch whose part has been deleted', () => {
-    const { mechanism, b } = analysing();
+    const { mechanism, b } = analyzing();
     mechanism.toggleVectorTrace(b, 'velocity');
     mechanism.joints = mechanism.joints.filter((joint) => joint.id !== 'B');
     expect(mechanism.vectorTracePaths()).toEqual([]);

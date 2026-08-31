@@ -8,7 +8,7 @@ import { smallestArcContaining } from './driver-dyad';
  *
  * Three positions of a rigid body fix, for any point on that body, three
  * positions of that point -- and three points determine a circle. So the
- * centre of that circle is a ground pivot the point can be pinned to, and the
+ * center of that circle is a ground pivot the point can be pinned to, and the
  * radius is the link that holds it. Do that for two points on the body and the
  * result is a four-bar that closes exactly at all three positions.
  *
@@ -16,7 +16,7 @@ import { smallestArcContaining } from './driver-dyad';
  * synthesis used to produce exactly one linkage: the two points it used were
  * the ends of the end-effector link. But the coupler does not have to be
  * pinned at the ends. Sliding the two pins along the link -- or past it --
- * moves both circle centres and gives a genuinely different machine through
+ * moves both circle centers and gives a genuinely different machine through
  * the same three positions. Enumerating those is what turns synthesis from
  * "here is the answer" into "here are the answers, compare them".
  *
@@ -138,7 +138,7 @@ export interface CandidateResult {
   rejections: CandidateRejections;
 }
 
-/** The centre of the circle through three points, or nothing if they line up. */
+/** The center of the circle through three points, or nothing if they line up. */
 export function circumcenter(p1: Coord, p2: Coord, p3: Coord): Coord | null {
   const d = 2 * (p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y));
   if (Math.abs(d) < 1e-9) return null;
@@ -336,7 +336,7 @@ function intoTravel(
 /**
  * What this candidate can actually do with the three positions.
  *
- * The circumcentre construction makes the loop close exactly at all three --
+ * The circumcenter construction makes the loop close exactly at all three --
  * that is what it is for -- so the question is never whether a position is
  * reached. It is whether all three are reached on ONE assembly. A position
  * that only closes on the other intersection can be got to only by taking the
@@ -416,7 +416,7 @@ export function assess(cand: FourBarCandidate): void {
  *
  * The same four bars, read from the far end: what was the rocker becomes the
  * crank. A four-bar that will not turn from one ground pin often turns freely
- * from the other, so this is a real second machine rather than a relabelling,
+ * from the other, so this is a real second machine rather than a relabeling,
  * and it is re-assessed as one.
  */
 export function drivenFromFarPin(cand: FourBarCandidate): FourBarCandidate {
@@ -441,7 +441,7 @@ export function drivenFromFarPin(cand: FourBarCandidate): FourBarCandidate {
  * Which letter belongs to each field of a candidate.
  *
  * A pin keeps its name when you change which end drives. Reading the linkage
- * from the far pin puts pin D in the field called `A`, and labelling by the
+ * from the far pin puts pin D in the field called `A`, and labeling by the
  * field meant choosing "Driven from Pin D" drew the motor beside a pin marked
  * A and renamed every bar in the dimensions list -- so the one control whose
  * whole job is to say which pin drives was the control that made the letters
@@ -492,7 +492,7 @@ function describePins(uA: number, uB: number, length: number, unit: string): str
  *
  * "Buildable" is doing real work here: the construction has an answer for
  * almost every pair of pins, but as the three positions approach a straight
- * line the circle centres run off towards infinity, and a ground pivot a
+ * line the circle centers run off towards infinity, and a ground pivot a
  * hundred link-lengths away is not a machine anybody can make. Those are
  * counted rather than silently dropped, so the panel can say which way the
  * positions need to move.
@@ -519,7 +519,7 @@ export function enumerateCandidates(search: CandidateSearch): CandidateResult {
     );
   }
 
-  const centre = new Coord(
+  const center = new Coord(
     poses.reduce((sum, p) => sum + (p.back.x + p.front.x) / 2, 0) / 3,
     poses.reduce((sum, p) => sum + (p.back.y + p.front.y) / 2, 0) / 3
   );
@@ -545,8 +545,8 @@ export function enumerateCandidates(search: CandidateSearch): CandidateResult {
     const r2 = D.getDistanceTo(ptsB[0]);
     const g = A.getDistanceTo(D);
     if (
-      A.getDistanceTo(centre) > reach ||
-      D.getDistanceTo(centre) > reach ||
+      A.getDistanceTo(center) > reach ||
+      D.getDistanceTo(center) > reach ||
       r1 > reach ||
       r2 > reach ||
       g > reach

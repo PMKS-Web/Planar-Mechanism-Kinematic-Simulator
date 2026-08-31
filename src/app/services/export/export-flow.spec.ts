@@ -138,7 +138,7 @@ describe('the export drawer', () => {
     // Switching between Static and In-motion happens *on* this step, and the
     // in-motion analysis can legitimately solve no frames at all -- so the step
     // a reader is standing on can leave the list under them. It had no
-    // neighbours then: Back disappeared and Next threw them back to question 1.
+    // neighbors then: Back disappeared and Next threw them back to question 1.
     const { flow, fixture } = flowFor(LEGACY_FORCE_MECHANISM, { forces: true });
     flow.goTo('forces');
     expect(flow.stepNumber()).toBe(3);

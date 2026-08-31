@@ -100,7 +100,7 @@ export interface ExportColumn {
   label: string;
   /** Shown at the end of the row; a hint, not the head the file carries. */
   unit: string;
-  /** `Centre of mass` writes three series from one tick. */
+  /** `Center of mass` writes three series from one tick. */
   series: ExportSeries[];
   /**
    * The keys of the parts this one tick asks the question of.

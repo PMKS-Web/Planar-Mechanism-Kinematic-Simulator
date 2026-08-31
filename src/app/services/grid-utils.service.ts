@@ -27,7 +27,7 @@ import { ColorService } from './color.service';
 /**
  * Map a point from one two-joint frame to another, letting the frame stretch.
  *
- * A neighbour of a link drag is deformed rather than moved: its reference
+ * A neighbor of a link drag is deformed rather than moved: its reference
  * joints change separation as well as direction. A rigid transform would hold
  * the load's absolute distance from the first joint and slide it off the end of
  * a shortened link, so the frame's scale has to come along too. That keeps the
@@ -86,9 +86,9 @@ export class GridUtilsService {
    *
    * Both surfaces that offer undo — the top bar's buttons and the keyboard
    * shortcut — quote this, so they cannot answer differently. They used to:
-   * the buttons greyed while the mechanism was animating, the shortcut did
+   * the buttons grayed while the mechanism was animating, the shortcut did
    * not, and in the window where the mechanism is paused away from timestep 0
-   * Ctrl+Z replayed a URL under a displaced pose beside two greyed buttons
+   * Ctrl+Z replayed a URL under a displaced pose beside two grayed buttons
    * that refused to. It lives here, on a service both can reach, rather than
    * on either of them.
    */
@@ -183,7 +183,7 @@ export class GridUtilsService {
    * Whether the Input control may be used on this joint.
    *
    * Lives here so the Edit panel and the right-click menu ask the same
-   * question. They had drifted: the menu still greyed Ground out on a slider
+   * question. They had drifted: the menu still grayed Ground out on a slider
    * and Weld out on a joint the reconciler would refuse, both of which the
    * panel deliberately stopped doing in §4.1 — Ground and Slider are
    * independent axes of the 2x2 now, and a refusal is explained rather than
@@ -216,14 +216,14 @@ export class GridUtilsService {
    *
    * Structural rule only: a weld fuses what meets at a joint, so a joint with
    * fewer than two links — a tracer, a bar's free end — has nothing to fuse and
-   * the control is greyed rather than offered-then-refused. A grounded or
+   * the control is grayed rather than offered-then-refused. A grounded or
    * driven joint keeps the enabled control and gets the model's refusal with
    * its reason (§4.1's explained-refusal rule); an already-welded joint stays
    * enabled because the same control is how it is unwelded.
    */
   canToggleWeld(joint: Joint): boolean {
     if (!(joint instanceof RealJoint)) return false;
-    // A cylinder mount cannot weld: welding a mount into a neighbouring
+    // A cylinder mount cannot weld: welding a mount into a neighboring
     // compound opened more edge cases than it was worth. Attach by revolute.
     const sealed = this.mechanismSrv.cylinderAt(joint);
     if (
@@ -235,8 +235,8 @@ export class GridUtilsService {
     }
     // A weld is the statement that the bodies at this joint do not move
     // relative to each other, and an input is the statement that they do. Both
-    // at once is not a state the model can honour, so the control that would
-    // create it is greyed -- the same rule from the other side as
+    // at once is not a state the model can honor, so the control that would
+    // create it is grayed -- the same rule from the other side as
     // `describeActuator` refusing to drive a welded joint. Unwelding stays
     // available, since that direction resolves the contradiction.
     if (joint.input && !joint.isWelded) {
@@ -246,10 +246,10 @@ export class GridUtilsService {
   }
 
   /**
-   * Why Weld is greyed on this joint, short and long.
+   * Why Weld is grayed on this joint, short and long.
    *
    * The branches of `canToggleWeld`, read back out. The control and its reason
-   * come from one place so a menu cannot grey a row it has no explanation for,
+   * come from one place so a menu cannot gray a row it has no explanation for,
    * or explain one it left enabled.
    */
   weldRefusal(joint: Joint): { short: string; long: string } | undefined {
@@ -309,9 +309,9 @@ export class GridUtilsService {
   }
 
   dragJoint(selectedJoint: RealJoint, trueCoord: Coord, rebuild: boolean = true) {
-    // The last line of defence, not the first: the canvas refuses at the
-    // grab and the panel greys its fields, but every route to "move this
-    // joint" — distance fields aimed at a neighbour, the linkage table, a
+    // The last line of defense, not the first: the canvas refuses at the
+    // grab and the panel grays its fields, but every route to "move this
+    // joint" — distance fields aimed at a neighbor, the linkage table, a
     // caller not yet written — lands here, and a held joint holds whoever
     // asks.
     if (this.frozenJointIds().has(selectedJoint.id)) {
@@ -387,7 +387,7 @@ export class GridUtilsService {
           if (l instanceof SliderBlock) {
             //If the joint is a slider, then the joint is the second joint in the link must follow the first joint
             // -1 once the block has been taken apart under an in-flight drag.
-            // The gesture is cancelled on delete, but a pointer move can still
+            // The gesture is canceled on delete, but a pointer move can still
             // arrive first, and writing through -1 throws.
             const jointIndex = l.joints.findIndex((jt) => jt.id !== selectedJoint.id);
             if (jointIndex >= 0) {
@@ -402,7 +402,7 @@ export class GridUtilsService {
           const jointIndex = l.joints.findIndex((jt) => jt.id === selectedJoint.id);
           l.joints[jointIndex].x = roundNumber(trueCoord.x, 6);
           l.joints[jointIndex].y = roundNumber(trueCoord.y, 6);
-          // A dragged joint deforms the link, so an auto centre of mass
+          // A dragged joint deforms the link, so an auto center of mass
           // follows the geometry. A custom one stays where its author put it:
           // there is no rigid motion to carry it, and guessing would move a
           // number somebody chose.
@@ -415,7 +415,7 @@ export class GridUtilsService {
           if (l.subset.length > 0) {
             l.subset.forEach((slink) => {
               let subLink = slink as RealLink;
-              // Same rule as the root: a member's hand-placed centre survives
+              // Same rule as the root: a member's hand-placed center survives
               // for the unweld that will one day restore it.
               if (!subLink.comIsCustom) {
                 subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
@@ -500,9 +500,9 @@ export class GridUtilsService {
    * Translate a whole link, and everything rigidly attached to it, by (dx, dy).
    *
    * A link drag is a rigid translation, which is a stronger statement than "drag
-   * each of its joints in turn": the link's own centre of mass and forces move
+   * each of its joints in turn": the link's own center of mass and forces move
    * with the body exactly, rather than being re-derived from the new joint
-   * positions. Only the *neighbouring* links genuinely change shape, so those
+   * positions. Only the *neighboring* links genuinely change shape, so those
    * are the ones that get recomputed.
    */
   dragLink(selectedLink: Link, dx: number, dy: number) {
@@ -536,10 +536,10 @@ export class GridUtilsService {
     selectedLink: Link,
     mapPoint: (x: number, y: number) => { x: number; y: number }
   ) {
-    // A neighbour's forces are placed relative to its own two reference joints,
+    // A neighbor's forces are placed relative to its own two reference joints,
     // so where they end up depends on where those joints were before the move.
     // Captured up front, because the move is about to overwrite them.
-    const neighbours = this.mechanismSrv.links
+    const neighbors = this.mechanismSrv.links
       .filter((link): link is RealLink => link !== selectedLink && link instanceof RealLink)
       .map((link) => ({
         link,
@@ -547,7 +547,7 @@ export class GridUtilsService {
       }));
 
     // Member lengths of every sealed cylinder, captured while the geometry is
-    // still straight: a neighbour drag can carry one mount along, and the
+    // still straight: a neighbor drag can carry one mount along, and the
     // re-pose below has to rebuild from the rigid lengths, not from the bent
     // intermediate state.
     const carriedCylinders = sealedCylinderStructures(this.mechanismSrv.joints).map((sealed) => ({
@@ -585,17 +585,17 @@ export class GridUtilsService {
     }
 
     // Any other link holding one of the moved joints has been deformed, not
-    // translated, so its shape and centre of mass follow from where its joints
+    // translated, so its shape and center of mass follow from where its joints
     // now are. Its forces do not: a load is fixed to the body it acts on, and
     // leaving it at its old world position would silently move it to a
     // different point of the link. Carry each one through the same change of
     // reference frame the link's own geometry goes through.
-    neighbours.forEach(({ link, from }) => {
+    neighbors.forEach(({ link, from }) => {
       if (!link.joints.some((joint) => movedJointIDs.has(joint.id))) return;
       this.reframeDeformedLink(link, from);
     });
 
-    // A neighbour drag that carried a cylinder mount along re-poses that
+    // A neighbor drag that carried a cylinder mount along re-poses that
     // cylinder about its other mount, so the part follows its mount instead
     // of bending (§ cylinder 6). A cylinder whose own pin moved was dragged
     // as a body — every member translated together, nothing to repair.
@@ -730,7 +730,7 @@ export class GridUtilsService {
    * says "be this size" and the mount goes wherever that puts it. Sent through
    * the drag instead, a longer stroke at the same position asks for a span that
    * usually still lies inside the *old* stroke's travel — so the layout would
-   * dutifully keep the old size and slide the piston, and a field labelled
+   * dutifully keep the old size and slide the piston, and a field labeled
    * Travel would change the position and not the travel.
    */
   resizeCylinder(sealed: Cylinder, stroke: number, start: number): void {
@@ -800,7 +800,7 @@ export class GridUtilsService {
   /**
    * Land a pose on the assembly's five joints (the slider rides the pin),
    * then rebuild what depends on them — member links, genuinely deformed
-   * neighbours, and their forces, by the same frame-carrying rule dragLink
+   * neighbors, and their forces, by the same frame-carrying rule dragLink
    * applies.
    */
   private placeCylinder(sealed: Cylinder, pose: CylinderPose): Set<string> {
@@ -838,8 +838,8 @@ export class GridUtilsService {
    * Carry one deformed link's fixed points through its change of frame.
    *
    * A link holding a joint that moved has been deformed, not translated, so its
-   * outline and an automatic centre of mass follow from where its joints now
-   * are. Its forces do not, and neither does a custom centre of mass: those are
+   * outline and an automatic center of mass follow from where its joints now
+   * are. Its forces do not, and neither does a custom center of mass: those are
    * points somebody fixed to *this body*, and leaving them at their old world
    * position silently moves them to a different point of the link. A frame too
    * degenerate to transport through leaves them untouched.
@@ -900,8 +900,8 @@ export class GridUtilsService {
       force.moveDirectionHandle(new Coord(end.x, end.y));
     });
     if (!(link instanceof RealLink)) return;
-    const centre = mapPoint(link.CoM.x, link.CoM.y);
-    link.CoM = new Coord(centre.x, centre.y);
+    const center = mapPoint(link.CoM.x, link.CoM.y);
+    link.CoM = new Coord(center.x, center.y);
     link.updateCoMDs();
     link.updateLengthAndAngle();
     PositionSolver.setUpInitialJointLocations(link.joints);

@@ -26,7 +26,7 @@ const PARALLELOGRAM_FOUR_BAR =
 
 // The same linkage reduced to a square: every link is 5 units, so the crank is as
 // long as the ground and joint B passes exactly through ground joint D once per
-// revolution. There the two circles locating C share a centre and C is undefined;
+// revolution. There the two circles locating C share a center and C is undefined;
 // half a turn later they are externally tangent. Both are singular, and neither is
 // a toggle — a parallelogram rotates straight through.
 const SQUARE_FOUR_BAR =

@@ -4,7 +4,7 @@
  * The old menu was a flat `cMenuItem[]`: eight equally weighted rows with
  * Delete at the top, labels that rewrote themselves as the object changed
  * ("Add Ground" becoming "Remove Ground"), and three different ways of saying
- * no -- hidden here, greyed silently there, offered-and-then-refused by a
+ * no -- hidden here, grayed silently there, offered-and-then-refused by a
  * snackbar somewhere else.
  *
  * This is the shape the redesign asks for instead. A menu is a header naming
@@ -34,7 +34,7 @@ export class MenuRow {
   action!: () => void;
   /** For a toggle: whether the state it names is on. */
   checked = false;
-  /** Set when the row is greyed. Its presence *is* the disabled flag. */
+  /** Set when the row is grayed. Its presence *is* the disabled flag. */
   refusal?: MenuRefusal;
   /** Keys from the shortcut registry, so a hint cannot drift from its key. */
   shortcut?: string;
@@ -80,7 +80,7 @@ export class MenuRow {
   }
 }
 
-/** One rung of the ladder. The label is dropped on an unlabelled footer. */
+/** One rung of the ladder. The label is dropped on an unlabeled footer. */
 export interface MenuGroup {
   /** Upper-cased in the stylesheet; written here as a plain word. */
   label?: string;

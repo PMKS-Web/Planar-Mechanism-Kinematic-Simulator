@@ -91,7 +91,7 @@ describe('a weld and an input at the same joint', () => {
   it('cannot both be true, whichever is asked for first', () => {
     // A weld says the bodies at this joint do not move relative to each other;
     // an input says they do. The model refuses to drive a welded joint, and the
-    // Weld control is greyed on a driven one -- the same rule from both sides,
+    // Weld control is grayed on a driven one -- the same rule from both sides,
     // so neither surface can create a state the other forbids.
     const pin = new RevJoint('C', 0, 0);
     bar('AC', [new RevJoint('A', -1, 0), pin]);

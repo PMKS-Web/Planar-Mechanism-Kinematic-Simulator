@@ -396,7 +396,7 @@ export class ExportTableService {
     const mode = this.flow.forceMode();
     const mechPart = series.mechPart || part.id;
     // The solver hands angles out in degrees and rates in radians, so one or
-    // the other is converted on the way to whatever is labelled with the
+    // the other is converted on the way to whatever is labeled with the
     // reader's unit -- the same scale the graphs apply.
     const scale = angularScale(series.mechProp, this.settings.angleUnit.value);
     const rows = this.exportedSteps(solved).map((step) =>

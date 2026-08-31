@@ -90,10 +90,10 @@ const LAYERS = [
 /** Convert the editable t=0 model into a fabrication-neutral kinematic sketch. */
 export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
   const choices = { ...NEUTRAL_DXF_OPTIONS, ...(input.options ?? {}) };
-  // Model units -> centimetres -> whatever the export is in. Without the last
-  // step the geometry stays in centimetres while `$INSUNITS` says metres, and
+  // Model units -> centimeters -> whatever the export is in. Without the last
+  // step the geometry stays in centimeters while `$INSUNITS` says meters, and
   // CAD receives a mechanism a hundred times too big under a label that looks
-  // right. `symbolScale` -- one centimetre's worth of the export unit, which is
+  // right. `symbolScale` -- one centimeter's worth of the export unit, which is
   // what every glyph and text height is sized in -- always assumed the drawing
   // had been converted.
   const symbolScale = centimetersIn(input.lengthUnit);
@@ -102,8 +102,8 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
   // same hole. Unset means "whatever fits the parts", which cannot be a
   // constant: the bodies are whatever width the canvas is drawing them at.
   const pinDiameter = choices.pinDiameter ?? defaultPinDiameter(unitScale);
-  // Everything is shifted by one offset, computed once. A linkage drawn a metre
-  // from the model origin imports a metre from the part origin otherwise, which
+  // Everything is shifted by one offset, computed once. A linkage drawn a meter
+  // from the model origin imports a meter from the part origin otherwise, which
   // is a fight every time somebody builds from one of these.
   const shift = originShift(input, choices, unitScale);
   const point = (joint: { x: number; y: number }): DxfPoint => ({
@@ -130,9 +130,9 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       .map((joint) => joint.id)
   );
   const pinRadius = choices.jointCircles === 'holes' ? pinDiameter / 2 : 0;
-  // Outlines instead of centrelines, when the reader is building rather than
+  // Outlines instead of centerlines, when the reader is building rather than
   // tracing. A link that has no outline to give -- every joint collapsed onto
-  // one point -- keeps its centreline, so it does not silently vanish.
+  // one point -- keeps its centerline, so it does not silently vanish.
   const drawnAsBody = new Set<string>();
   let bodyLoops = 0;
   let collapsedBodies = 0;
@@ -152,7 +152,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     input.links.forEach((link) => {
       if (!(link instanceof RealLink) || collapsed.has(link.id)) return;
       // The leaves as well as the compound. A welded body is drawn once, whole,
-      // but the centreline axes are still counted per leaf -- so `CDE` was
+      // but the centerline axes are still counted per leaf -- so `CDE` was
       // suppressed while `CD` and `DE` came through and were handed layers of
       // their own, and the file offered two PMKS_LINK_* layers holding a bare
       // line each. A reader taking one sketch per layer got two with nothing in
@@ -266,11 +266,11 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       if (!pairedPin && (!(joint instanceof RealJoint) || !joint.isWelded)) {
         // A circle and nothing else. A bare POINT is what sketch importers
         // either drop or turn into stray sketch points that have to be cleaned
-        // out one at a time, and a circle already gives them a centre to snap
+        // out one at a time, and a circle already gives them a center to snap
         // and mate to. The reader chooses what the circle *is* -- nothing, a
-        // centre mark, or the hole they will cut.
+        // center mark, or the hole they will cut.
         // A hole already cut into every body it belongs to is not cut again on
-        // a shared layer: two circles on one centre is one to delete in CAD.
+        // a shared layer: two circles on one center is one to delete in CAD.
         const radius =
           choices.jointCircles === 'holes'
             ? drawnAsBody.size > 0
@@ -392,7 +392,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
         ...choices,
         pinDiameter,
         bodyCount: bodyLoops,
-        centrelineCount: collapsedBodies,
+        centerlineCount: collapsedBodies,
       },
       axes,
       symbolScale,
@@ -403,7 +403,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
   // A layer per link, which is the one that changes the reader's day: Fusion
   // makes a sketch per layer and SolidWorks imports them selectively, so this
   // is what lets them get one part per link without separating anything by
-  // hand. The shared centreline layer stays defined either way -- everything
+  // hand. The shared centerline layer stays defined either way -- everything
   // that is not a link body still lives on it.
   const layers: DxfLayer[] = [...LAYERS];
   if (choices.perLinkLayers) {
@@ -414,7 +414,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       const key = axisKeyAt.get(edgeKey(entity.start, entity.end));
       if (key) entity.layer = layerNameFor(key);
     });
-    // Declared from what is actually drawn, not from the centreline axes. The
+    // Declared from what is actually drawn, not from the centerline axes. The
     // bodies come from a different list -- a cylinder's barrel and rod are two
     // parts to build and one line to draw, so they have layers no axis names,
     // and the file described a drawing it did not contain.
@@ -552,10 +552,10 @@ function blockMark(
 }
 
 /**
- * Both ends of every slot, so its stroke can be modelled rather than guessed.
+ * Both ends of every slot, so its stroke can be modeled rather than guessed.
  *
  * Small circles rather than bare points, for the same reason the joints are:
- * an importer keeps a circle and gives the reader a centre to snap to.
+ * an importer keeps a circle and gives the reader a center to snap to.
  */
 function slotTravelPoints(
   joints: Joint[],
@@ -621,7 +621,7 @@ function addDimensions(
     if (span === 0) return;
     // Square to what is being measured, not straight down: a fixed drop in Y
     // is no offset at all for a vertical link, and lays the dimension line
-    // along the very centreline it is dimensioning.
+    // along the very centerline it is dimensioning.
     const offset = 0.5 * scale;
     const normal = {
       x: (axis.end.y - axis.start.y) / span,
@@ -705,7 +705,7 @@ function addNotes(
     pinDiameter: number;
     linkBodies: string;
     bodyCount: number;
-    centrelineCount: number;
+    centerlineCount: number;
   },
   axes: SemanticAxis[],
   scale: number,
@@ -720,17 +720,17 @@ function addNotes(
     `Origin: ${choices.origin === 'model' ? 'as drawn' : 'moved to ' + choices.origin}`,
     choices.jointCircles === 'holes'
       ? `Joint circles are pin holes, ${choices.pinDiameter} ${unitWord(input.lengthUnit)} diameter`
-      : 'Joint circles are centre marks, not hole diameters',
+      : 'Joint circles are center marks, not hole diameters',
     // Counted rather than promised: a link whose joints have collapsed onto one
-    // point has no outline to give and keeps its centreline, and a note saying
+    // point has no outline to give and keeps its centerline, and a note saying
     // every link is a closed outline would be wrong about exactly the link a
     // reader is about to go looking for.
     outlines
       ? `${choices.bodyCount} closed outline${choices.bodyCount === 1 ? '' : 's'}` +
-        (choices.centrelineCount > 0
-          ? `, and ${choices.centrelineCount} link${choices.centrelineCount === 1 ? '' : 's'} with no outline to give, left as centrelines`
+        (choices.centerlineCount > 0
+          ? `, and ${choices.centerlineCount} link${choices.centerlineCount === 1 ? '' : 's'} with no outline to give, left as centerlines`
           : ', one per link')
-      : `${axes.length} centreline${axes.length === 1 ? '' : 's'}`,
+      : `${axes.length} centerline${axes.length === 1 ? '' : 's'}`,
   ];
   // Under the drawing, wherever the drawing turned out to be. Placed at a fixed
   // offset from the origin they landed in the middle of it: the origin is
@@ -793,7 +793,7 @@ function semanticAxes(
       // happens to be first. A three-joint link is a triangle and a four-joint
       // link is a quadrilateral -- drawn from joint[0] to each of the others,
       // a triangle came out as two lines meeting at a point and a quadrilateral
-      // as a fan, which is neither the part nor anything a reader recognises.
+      // as a fan, which is neither the part nor anything a reader recognizes.
       const ring = outlineOrder(link.joints);
       const edges = ring.length === 2 ? [[ring[0], ring[1]]] : closedRing(ring);
       return edges.map(([from, to]) => ({
@@ -810,7 +810,7 @@ function semanticAxes(
 /**
  * A link's joints in the order its outline runs through them.
  *
- * By angle about their own centre, which is the hull order for the convex
+ * By angle about their own center, which is the hull order for the convex
  * shapes a link body always is -- and the order the canvas draws them in.
  */
 function outlineOrder(joints: readonly Joint[]): Joint[] {
@@ -909,7 +909,7 @@ function cylinderKey(cylinder: Cylinder): string {
   return `${cylinder.barrelFar.id}|${cylinder.rodFar.id}`;
 }
 
-/** One centimetre, expressed in `unit`. The whole drawing is sized in these. */
+/** One centimeter, expressed in `unit`. The whole drawing is sized in these. */
 export function centimetersIn(unit: DxfExportUnit): number {
   return unitsPerCentimeter(unit);
 }

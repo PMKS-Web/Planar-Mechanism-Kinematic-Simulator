@@ -7,8 +7,8 @@
 $accent: 5px;
 
 @mixin css($theme) {
-  // Which colour each kind is written in. Only the accent and the glyph are
-  // coloured -- the sentence stays the app's text colour, because a red
+  // Which color each kind is written in. Only the accent and the glyph are
+  // colored -- the sentence stays the app's text color, because a red
   // sentence is harder to read and the glyph has already said which of the
   // four this is.
   $kinds: (
@@ -34,7 +34,7 @@ $accent: 5px;
     pointer-events: none;
   }
 
-  // Everything on one centre line. The glyph, the sentence, the buttons and the
+  // Everything on one center line. The glyph, the sentence, the buttons and the
   // close were each aligned by a different rule -- flex-start plus a 1px nudge,
   // align-self: center, and a -2px margin -- so no two of them agreed on where
   // the middle was. One rule for the row, and nothing overriding it.
@@ -59,7 +59,7 @@ $accent: 5px;
   }
 
   // Material gives mat-icon a 24px box whatever the glyph inside it is, so the
-  // glyph has to be centred in the box the box actually is, not left to sit at
+  // glyph has to be centerd in the box the box actually is, not left to sit at
   // the top of it.
   //
   // The element is named as well as the class deliberately. `.mat-icon` sets
@@ -76,7 +76,7 @@ $accent: 5px;
     width: 20px;
     height: 20px;
     font-size: 20px;
-    // A Material Icons glyph is not centred on its own baseline: the ink runs
+    // A Material Icons glyph is not centerd on its own baseline: the ink runs
     // from one twelfth of the font size above the baseline to eleven twelfths
     // above it. Centring the *line box* therefore leaves the ink high by half
     // the difference, so the box is given the ink's own height and the glyph is
@@ -100,7 +100,7 @@ $accent: 5px;
     margin-left: -6px;
   }
 
-  // Reads as the message's own verb, so it takes the message's own colour.
+  // Reads as the message's own verb, so it takes the message's own color.
   .notificationAction {
     flex: 0 0 auto;
     display: flex;
@@ -123,7 +123,7 @@ $accent: 5px;
     }
   }
 
-  // Small and grey: it is the way out of a message, not part of what the
+  // Small and gray: it is the way out of a message, not part of what the
   // message says.
   .notificationClose {
     flex: 0 0 auto;

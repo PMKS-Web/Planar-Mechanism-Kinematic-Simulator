@@ -195,8 +195,8 @@ const lengthBefore = Math.hypot(before.c.x - before.b.x, before.c.y - before.b.y
 const bScreen = await jointOnScreen('B');
 const cScreen = await jointOnScreen('C');
 // A third of the way along, not the middle: a selected link wears its
-// centre-of-mass handle at its centroid, which for a two-joint bar is exactly
-// the middle -- so a grab there takes hold of the centre of mass rather than
+// center-of-mass handle at its centroid, which for a two-joint bar is exactly
+// the middle -- so a grab there takes hold of the center of mass rather than
 // the body. Anywhere else on the bar is the body.
 const grab = {
   x: bScreen.x + (cScreen.x - bScreen.x) / 3,
@@ -248,8 +248,8 @@ record(
 );
 
 // --- No back door: dragJoint itself holds a held joint ---------------------
-// The canvas gate and the panel's greyed fields are UI; every route to "move
-// this joint" — a neighbour's distance field, the linkage table — lands on
+// The canvas gate and the panel's grayed fields are UI; every route to "move
+// this joint" — a neighbor's distance field, the linkage table — lands on
 // dragJoint, so dragJoint is where the lock has to hold whoever asks.
 
 const cHeld = await jointModel('C');

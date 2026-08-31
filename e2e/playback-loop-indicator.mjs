@@ -198,14 +198,14 @@ const panel = await page
 record('the selection reaches the analysis panel', /Mechanism M1/.test(panel), panel.slice(0, 160));
 
 // --- the handle's bar is drawn, not themed ----------------------------------
-// The reported defect: left to the browser the track keeps a 1px rim, a grey
+// The reported defect: left to the browser the track keeps a 1px rim, a gray
 // line above and below the bar. Read out of the composited pixels rather than
 // out of the CSS, because what was wrong was what the browser painted.
 await page.goto(`${BASE}/?${payloads['Cylinder_Boom']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await kinematic();
 
-// The element holds the handle, so the bar is the 8px centred inside it. One
+// The element holds the handle, so the bar is the 8px centerd inside it. One
 // row above and one below are taken too, which is where the rim used to be.
 const bar = await page.locator('.rowScrubber').boundingBox();
 const strip = await page.screenshot({
@@ -230,21 +230,21 @@ const columns = await page.evaluate(async (encoded) => {
     }
     return rows;
   };
-  return { travelled: column(8), ahead: column(bitmap.width - 8) };
+  return { traveled: column(8), ahead: column(bitmap.width - 8) };
 }, strip.toString('base64'));
 // Row 0 and row 9 are the row's own fill; rows 1-8 are the bar. A rim would
-// show as a colour of its own at the top or the bottom of the bar.
+// show as a color of its own at the top or the bottom of the bar.
 const bandOf = (column) => new Set(column.slice(1, 9));
 record(
-  'the bar is one colour top to bottom, with no rim above or below it',
-  bandOf(columns.travelled).size === 1 &&
+  'the bar is one color top to bottom, with no rim above or below it',
+  bandOf(columns.traveled).size === 1 &&
     bandOf(columns.ahead).size === 1 &&
-    columns.travelled[0] === columns.ahead[0],
+    columns.traveled[0] === columns.ahead[0],
   columns
 );
 record(
-  'and the part already travelled is the part that is filled',
-  columns.travelled[3] !== columns.ahead[3],
+  'and the part already traveled is the part that is filled',
+  columns.traveled[3] !== columns.ahead[3],
   columns
 );
 
@@ -387,7 +387,7 @@ for (const engine of engines) {
     }),
   });
   const engineBar = await enginePage.locator('.rowScrubber').boundingBox();
-  // Halfway along, so the shot holds both what is travelled and what is ahead.
+  // Halfway along, so the shot holds both what is traveled and what is ahead.
   await enginePage.mouse.click(engineBar.x + engineBar.width / 2, engineBar.y + 10);
   await enginePage.waitForTimeout(600);
   const shot = await enginePage.screenshot({
@@ -415,7 +415,7 @@ for (const engine of engines) {
         }
         return rows.join(' / ');
       };
-      return { travelled: column(8), ahead: column(bitmap.width - 8) };
+      return { traveled: column(8), ahead: column(bitmap.width - 8) };
     }, shot.toString('base64')),
   };
   await engineBrowser.close();
@@ -425,7 +425,7 @@ record(
   'every engine paints the same bar, and none of them puts a rim on it',
   seen.length === engines.length &&
     new Set(seen.map((one) => JSON.stringify(one))).size === 1 &&
-    seen[0].band.travelled !== seen[0].band.ahead,
+    seen[0].band.traveled !== seen[0].band.ahead,
   painted
 );
 

@@ -283,7 +283,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       title: {
         text: 'Time (seconds)',
         // Up beside the two ends rather than on a line of its own below them,
-        // and centred between them: Apex centres it on the whole canvas, which
+        // and centerd between them: Apex centers it on the whole canvas, which
         // the y axis's own labels make eight pixels wider on the left.
         offsetY: -20,
         offsetX: -8,
@@ -362,7 +362,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   /**
    * What this graph plots, in words.
    *
-   * Its own controls are labelled "X" and "Y", which say nothing on their own:
+   * Its own controls are labeled "X" and "Y", which say nothing on their own:
    * a panel showing six graphs offers a dozen checkboxes all called the same
    * two things. The graph itself is a canvas with no text in it at all.
    */
@@ -375,7 +375,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   get graphSummary(): string {
     const names = this.displayedSeries
       .map((series) => series.name)
-      // The internal names stay X/Y/Z so visibility and colour keep working;
+      // The internal names stay X/Y/Z so visibility and color keep working;
       // read out, "Z" promises an out-of-plane component a planar mechanism
       // does not have. A reader who cannot see the legend hears this instead
       // of it, so it has to say what the legend says.
@@ -531,7 +531,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
   seriesLabel(key: 'x' | 'y' | 'z'): string {
     // The third series is always the magnitude of the other two -- a planar
     // mechanism has no third component, and force analysis returns hypot(x, y)
-    // here exactly as the kinematic series do. It was labelled "Z" in force
+    // here exactly as the kinematic series do. It was labeled "Z" in force
     // mode, which promised an out-of-plane reaction that does not exist.
     return key === 'z' ? 'Magnitude' : key.toUpperCase();
   }

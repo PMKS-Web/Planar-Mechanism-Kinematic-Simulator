@@ -26,7 +26,7 @@ export class Force {
   /** Locked in place while editing: neither handle nor the body may be dragged. */
   public locked: boolean = false;
   /**
-   * What this one force is drawn in, or '' for the colour they all share.
+   * What this one force is drawn in, or '' for the color they all share.
    *
    * From the same six the links use, because a force belongs to a link and
    * reading a drawing means pairing them up. Per force rather than per drawing

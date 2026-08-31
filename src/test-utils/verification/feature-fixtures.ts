@@ -2,7 +2,7 @@ import { MechanismFixture } from './fixture';
 
 // Mechanisms built for the features of the app the library had no example of:
 // a link drawn as a disc, a drawing carrying more than one load, a load held in
-// its link's frame, a centre of mass placed off the centroid, and — the big one
+// its link's frame, a center of mass placed off the centroid, and — the big one
 // — several machines in one drawing, each on its own drive.
 //
 // Everything here is an ordinary machine. A feature demonstration whose linkage
@@ -23,8 +23,8 @@ import { MechanismFixture } from './fixture';
 const radPerSecond = (rpm: number) => (rpm * Math.PI) / 30;
 
 /**
- * One root of a pair of circles, as a dyad is located: centre `a` at radius
- * `ra`, centre `b` at radius `rb`.
+ * One root of a pair of circles, as a dyad is located: center `a` at radius
+ * `ra`, center `b` at radius `rb`.
  *
  * `side` picks between the two roots — which is the assembly mode, and the
  * difference between the linkage meant and its mirror. Written once here
@@ -63,7 +63,7 @@ const ENGINE = { rim: 1.4, throw: 1, rod: 3.6 };
  * the circle that reaches its outermost joint, so without a joint out at the
  * rim the flywheel would be no bigger than the crank throw. It sits opposite
  * the crank pin, where an engine puts its counterweight. The rod is long
- * enough that the piston at inner dead centre clears the rim rather than
+ * enough that the piston at inner dead center clears the rim rather than
  * disappearing behind it.
  *
  * Kinematics only, so every mass is zero.
@@ -82,7 +82,7 @@ export function flywheelSliderCrankFixture(): MechanismFixture {
       { joints: 'ABR', mass: 0, moi: 0, name: 'Flywheel', circle: true },
       { joints: 'BC', mass: 0, moi: 0, name: 'Connecting rod' },
     ],
-    // The bore, on the crankshaft's own centreline.
+    // The bore, on the crankshaft's own centerline.
     slider: { at: 'C', prisId: 'P', angleRad: 0, pistonMass: 0 },
     inputAngVel: radPerSecond(RPM),
   };
@@ -119,9 +119,9 @@ const CRANE = {
  * other, and the jib sweeps about fifty degrees, which is enough for the local
  * one to visibly part company with the global one.
  *
- * The jib is also the library's one link whose centre of mass is not at its
+ * The jib is also the library's one link whose center of mass is not at its
  * centroid: a counterweighted jib balances well inside the middle of its own
- * length, and a hand-placed centre of mass is what says so. It is held against
+ * length, and a hand-placed center of mass is what says so. It is held against
  * the link (the default anchor), because a counterweight is bolted to the jib
  * and rides it — which is exactly what the analysis needs, since the mass at
  * that point is what the inertia terms are computed about.
@@ -222,7 +222,7 @@ export function threeMachinesFixture(): MechanismFixture {
   const dragPin = { x: dragGround.x, y: dragGround.y + 2 };
   const dragCoupler = dyad(dragPin, 2.5, dragOut, 2, 1);
 
-  // M2, ten units along. Crank 1, rod 3, bore on the crankshaft centreline.
+  // M2, ten units along. Crank 1, rod 3, bore on the crankshaft centerline.
   // Kept on y = 0: the bore and the rod below are written against that line.
   const sliderGround = { x: 8, y: 0 };
 

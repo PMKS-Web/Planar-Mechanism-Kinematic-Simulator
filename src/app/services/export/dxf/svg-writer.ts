@@ -11,7 +11,7 @@ import { DxfExportUnit } from './dxf-options';
  * being kept in step.
  *
  * SVG is what a laser cutter, an Illustrator user and a browser all read, and
- * unlike DXF it carries a real physical size: `width` in centimetres against a
+ * unlike DXF it carries a real physical size: `width` in centimeters against a
  * viewBox in drawing units means the thing prints and cuts at the size it was
  * drawn, with no import dialog to get wrong.
  */
@@ -22,8 +22,8 @@ export function writeSvg(document: DxfDocument, units: DxfExportUnit): string {
   const minY = bounds.min.y - pad;
   const width = bounds.max.x - bounds.min.x + pad * 2;
   const height = bounds.max.y - bounds.min.y + pad * 2;
-  // SVG knows millimetres, centimetres and inches, but not metres -- so a
-  // drawing in metres is stated in centimetres. The number changes; the
+  // SVG knows millimeters, centimeters and inches, but not meters -- so a
+  // drawing in meters is stated in centimeters. The number changes; the
   // physical size does not.
   const physical = units === 'm' ? { per: 100, suffix: 'cm' } : { per: 1, suffix: units };
   const stroke = span(bounds) / 600 || 0.01;
@@ -42,7 +42,7 @@ export function writeSvg(document: DxfDocument, units: DxfExportUnit): string {
       // group everywhere else.
       return (
         `    <g id="${escape(layer.name)}" inkscape:groupmode="layer" ` +
-        `inkscape:label="${escape(layer.name)}" stroke="${colourOf(layer.color)}">\n` +
+        `inkscape:label="${escape(layer.name)}" stroke="${colorOf(layer.color)}">\n` +
         `      ${drawn}\n    </g>`
       );
     });
@@ -109,8 +109,8 @@ function pathOf(points: readonly DxfVertex[], closed: boolean): string {
   return parts.join(' ');
 }
 
-/** The handful of AutoCAD colour indices this export actually uses. */
-function colourOf(index: number): string {
+/** The handful of AutoCAD color indices this export actually uses. */
+function colorOf(index: number): string {
   const known: Record<number, string> = {
     1: '#d33',
     2: '#cc0',

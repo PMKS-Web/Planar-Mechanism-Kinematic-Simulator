@@ -11,14 +11,14 @@ import { StringTranscoder } from './string-transcoder';
 import { MODEL_SCALE } from '../../model/render-scale';
 
 /**
- * What a hand-placed centre of mass is held against travels in the same
+ * What a hand-placed center of mass is held against travels in the same
  * trailing section the lock marks use -- tagged references to objects the URL
  * already carries, which is exactly what these are. The 'C' tag is one no lock
  * uses, so the two share a list without either being able to read the other's
  * entries.
  *
  * As with locks, the section is written only when there is something to say,
- * so a drawing whose centres all ride their own links encodes to the bytes it
+ * so a drawing whose centers all ride their own links encodes to the bytes it
  * did before any of this existed.
  */
 
@@ -76,7 +76,7 @@ describe('a center-of-mass anchor in the URL', () => {
   });
 
   it('writes nothing when every center rides its own link', () => {
-    // A hand-placed centre held the way one always was records nothing: that
+    // A hand-placed center held the way one always was records nothing: that
     // is the spelling every URL in circulation already has.
     expect(body(encode('centroid'))).not.toContain('.C');
 
@@ -102,7 +102,7 @@ describe('a center-of-mass anchor in the URL', () => {
 
   it('refuses an anchor on a pin the link does not hold', () => {
     // Fail closed, as the lock section does: a reference that does not resolve
-    // would otherwise decode as a centre quietly held against nothing.
+    // would otherwise decode as a center quietly held against nothing.
     const decoder = new StringTranscoder();
     expect(() => decoder.decodeURL(encode({ joint: 'B' }).replace('CJAB~B', 'CJAB~Z'))).toThrow();
     expect(() => decoder.decodeURL(encode('grid').replace('CGAB', 'CGZZ'))).toThrow();

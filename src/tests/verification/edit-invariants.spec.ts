@@ -207,7 +207,7 @@ describe('undo', () => {
 
   it('puts back a joint that was deleted', () => {
     // Deleting a joint wrote no history at all: the joint went, Undo stayed
-    // greyed out, and Ctrl+Z did nothing. The tail of `deleteJoint` had asked
+    // grayed out, and Ctrl+Z did nothing. The tail of `deleteJoint` had asked
     // not to save since back when it read `updateMechanism()`, whose save flag
     // is off by default — so the flag was never a decision, just the default
     // carried forward through a refactor that made it explicit.

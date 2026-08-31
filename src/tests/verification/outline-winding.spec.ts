@@ -35,7 +35,7 @@ describe('which joints are corners of the outline', () => {
       WIDTH
     ).join('');
 
-  it('drops a joint sitting on the line between its neighbours', () => {
+  it('drops a joint sitting on the line between its neighbors', () => {
     // Drag any joint of a three-joint link onto the line of the other two and
     // this is what `hull` hands back. Kept as a corner, the offset edge arrives
     // at it, turns through a semicircle, and leaves along the same line -- the

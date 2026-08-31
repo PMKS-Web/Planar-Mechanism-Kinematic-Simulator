@@ -287,7 +287,7 @@ for (const [tag, name] of FROM_GALLERY) {
   // set reads as "unchanged" no matter what the app does.
   const drawnBox = () =>
     page.evaluate(() => {
-      // Every block's own centre, not the group's bounding box. The group is
+      // Every block's own center, not the group's bounding box. The group is
       // sized by the rails, which do not move, so a block sliding inside one
       // leaves the box identical -- and a mechanism with no blocks at all
       // gives an empty group, whose box is 0x0 and equally unchanging. Both

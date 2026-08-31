@@ -721,7 +721,7 @@ export function motionGenGripperFixture(scale: number = 1): MechanismFixture {
  * the surplus rods does not fix it. A body with two pins on two parallel rails
  * is exactly what makes the mechanism over-constrained, and it is also a
  * permanent tangency for the closed-form primitives: locating the second pin
- * means intersecting a circle with a line whose distance from the centre is the
+ * means intersecting a circle with a line whose distance from the center is the
  * radius, at every pose. The mobility count comes out at one and the solver
  * still reverses on the first step, because the discriminant sits on zero and
  * rounding decides the sign.
@@ -1061,7 +1061,7 @@ export function runningHorseFixture(): MechanismFixture {
  * and the two blades sweep together.
  */
 export const WIPER = {
-  /** Centre distance between the two wiper spindles. */
+  /** Center distance between the two wiper spindles. */
   spindles: 6,
   /** Blade reach, spindle to tip. */
   blade: 5,
@@ -1086,7 +1086,7 @@ export const WIPER = {
  *
  * Six bars, one freedom. It was a single crank-rocker before, with the "blade"
  * drawn as an extension of the rocker: correct as a crank-rocker demonstration
- * and not recognisable as a wiper. What makes this one worth having in the
+ * and not recognizable as a wiper. What makes this one worth having in the
  * library is the parallel pair, which is the part of a real wiper that is
  * actually a linkage problem.
  *
@@ -1163,7 +1163,7 @@ export function windshieldWiperFixture(): MechanismFixture {
 }
 
 /**
- * A gripper whose jaws stay parallel, driven by one ram on the centreline.
+ * A gripper whose jaws stay parallel, driven by one ram on the centerline.
  *
  * The other gripper in this file is a drawing somebody shared, kept for what
  * it does to the solver. This one is drawn to be a gripper: symmetric about

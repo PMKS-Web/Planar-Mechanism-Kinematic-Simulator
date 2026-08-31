@@ -233,7 +233,7 @@ export class SynthesisBuilderService {
    */
   updatePosesFromForm(form: { [key: string]: string | null | undefined }): boolean {
     // if length is a number and positive, update length
-    const [success, maybeLength] = this.nup.parseModelLengthString(
+    const [success, maybeLength] = this.nup.parseModelengthString(
       form['length']!,
       this.settings.lengthUnit.getValue()
     );
@@ -246,11 +246,11 @@ export class SynthesisBuilderService {
       const xText = typed(`p${i}x`);
       const yText = typed(`p${i}y`);
       const thetaText = typed(`p${i}theta`);
-      const [successX, maybeX] = this.nup.parseModelLengthString(
+      const [successX, maybeX] = this.nup.parseModelengthString(
         xText,
         this.settings.lengthUnit.getValue()
       );
-      const [successY, maybeY] = this.nup.parseModelLengthString(
+      const [successY, maybeY] = this.nup.parseModelengthString(
         yText,
         this.settings.lengthUnit.getValue()
       );
@@ -449,7 +449,7 @@ export class SynthesisBuilderService {
    * Rescale everything held as a model length, when the document changes units.
    *
    * The drawing's own geometry is multiplied by the same factor, and the design
-   * has to travel with it: positions typed in centimetres are the very same
+   * has to travel with it: positions typed in centimeters are the very same
    * numbers after a switch to inches, and left alone they are then read as
    * inches and no longer line up with the machine they were used to build.
    */

@@ -599,7 +599,7 @@ export class NewGridComponent implements OnDestroy {
    * Rebuild the menu for whatever was just right-clicked.
    *
    * The whole of the decision — which rows, which of them are switches, which
-   * are greyed and why — lives in `ContextMenuBuilderService`, which reads the
+   * are grayed and why — lives in `ContextMenuBuilderService`, which reads the
    * answers out of the model that enforces them.
    */
   updateContextMenuItems() {
@@ -620,7 +620,7 @@ export class NewGridComponent implements OnDestroy {
    * The last one is not about the panel at all. `tempGridDisable` is the flag
    * "Fit to zoom" sets while it measures the drawing, and an outline the size
    * of the picture counts towards that box exactly as the picture would -- the
-   * fit framed a hundred-centimetre photograph and left the linkage too small
+   * fit framed a hundred-centimeter photograph and left the linkage too small
    * to work on.
    */
   editingBackgroundImage(): boolean {
@@ -632,7 +632,7 @@ export class NewGridComponent implements OnDestroy {
     );
   }
 
-  /** Half a centimetre of screen, whatever the zoom: a grabbable corner. */
+  /** Half a centimeter of screen, whatever the zoom: a grabbable corner. */
   backgroundImageHandleSize(): number {
     return this.svgGrid.scaleWithZoom(10);
   }
@@ -672,7 +672,7 @@ export class NewGridComponent implements OnDestroy {
    */
   private bgDrag?: {
     corner?: BackgroundImageCorner;
-    /** For a move: model-space offset from the pointer to the picture's centre. */
+    /** For a move: model-space offset from the pointer to the picture's center. */
     grabOffset?: Coord;
     /** For a resize: the corner that stays where it is, in model coordinates. */
     anchor?: Coord;
@@ -700,7 +700,7 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * How far along the picture's own axes a corner sits from its centre: +1 to
+   * How far along the picture's own axes a corner sits from its center: +1 to
    * the right and up in the picture's frame, whatever the picture is turned to.
    */
   private cornerSigns(corner: BackgroundImageCorner): { alongX: number; alongY: number } {
@@ -715,7 +715,7 @@ export class NewGridComponent implements OnDestroy {
     if (!image || !this.editingBackgroundImage() || !this.isPrimaryPress(event)) return;
     event.stopPropagation();
     // The opposite corner is what the drag pivots on, and it is held in world
-    // coordinates: the resize moves the centre, and the picture may be turned,
+    // coordinates: the resize moves the center, and the picture may be turned,
     // so an anchor remembered in the picture's own frame would not stay put.
     const { alongX, alongY } = this.cornerSigns(corner);
     const axes = this.backgroundImageAxes(image);
@@ -915,7 +915,7 @@ export class NewGridComponent implements OnDestroy {
       barrel: barrelPath(r, -creation.pinFromMount, creation.barrelLength - creation.pinFromMount),
       rod: rodBodyPath(r, creation.rodLength, cylinderHeadHalf(creation.barrelLength, r)),
       block: cylinderBlockPath(r, cylinderHeadHalf(creation.barrelLength, r)),
-      // The colour the barrel will be handed when the click builds it, which
+      // The color the barrel will be handed when the click builds it, which
       // the rod then wears too.
       fill: this.nextLinkColor,
     };
@@ -1291,7 +1291,7 @@ export class NewGridComponent implements OnDestroy {
         const ratio = to / from;
         // Past the anchor the ratio goes negative and the selection turns
         // through it, which is what dragging a grip across the far side is
-        // asking for. Only the neighbourhood of zero is held off: that is the
+        // asking for. Only the neighborhood of zero is held off: that is the
         // one place with no way back, since a selection with no width cannot
         // be widened again.
         const smallest = 0.05;
@@ -1404,7 +1404,7 @@ export class NewGridComponent implements OnDestroy {
    * Named rather than inferred, because the row that starts this is on the
    * joint's menu as well as the link's: a load at a joint belongs to the one
    * link that meets there, and the joint is not itself a body that can carry
-   * one. Where several links meet, the menu greys the row instead of guessing.
+   * one. Where several links meet, the menu grays the row instead of guessing.
    */
   createForce(onLink: RealLink) {
     this.forceCreateOn = onLink;
@@ -1455,10 +1455,10 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * The colour the next link created will wear.
+   * The color the next link created will wear.
    *
    * A cylinder's barrel is the first link its gesture builds, and its rod wears
-   * the barrel's fill — one part, one colour — so both gestures preview the
+   * the barrel's fill — one part, one color — so both gestures preview the
    * same answer.
    */
   get nextLinkColor(): string {
@@ -1688,7 +1688,7 @@ export class NewGridComponent implements OnDestroy {
       this.dragState.isPointerDown &&
       (this.canEditNow() || this.geometryLocked) &&
       this.pastDragThreshold($event) &&
-      // Travelled, not merely held: `pastDragThreshold` also calls a press held
+      // Traveled, not merely held: `pastDragThreshold` also calls a press held
       // for a tenth of a second a drag, and a hand resting on the button while
       // the pointer twitches a pixel has not tried to move anything.
       !this.pressDidNotTravel($event)
@@ -1897,7 +1897,7 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Refuse a drag the analysis modes cannot honour, and name the way out.
+   * Refuse a drag the analysis modes cannot honor, and name the way out.
    *
    * On a long cooldown on purpose. It is a fact about the mode rather than
    * about this part, so it is learned once — and a reader who has read it and
@@ -1922,7 +1922,7 @@ export class NewGridComponent implements OnDestroy {
   readonly lockGlyphPath = 'M7 10V7a5 5 0 0 1 10 0v3h2.5v11h-15V10H7Zm2 0h6V7a3 3 0 0 0-6 0v3Z';
 
   /**
-   * Dead centre of the joint, unflipped: the joint layer draws in the y-up
+   * Dead center of the joint, unflipped: the joint layer draws in the y-up
    * model frame (scaleY(-1) on the holder), so the badge flips itself back
    * to keep the padlock upright. The glyph sits inside the joint's own
    * circle, so the circle's fill keeps saying what it always says — cream,
@@ -1933,16 +1933,16 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * The shoulder position, for badges whose centre spot is already taken: a
-   * force's anchor is a small dark disc a centred glyph would vanish into,
-   * and a welded joint's plus-mark is the very thing a centred chip covered.
+   * The shoulder position, for badges whose center spot is already taken: a
+   * force's anchor is a small dark disc a centerd glyph would vanish into,
+   * and a welded joint's plus-mark is the very thing a centerd chip covered.
    */
   offsetLockBadgeTransform(): string {
     const offset = 0.19 * this.settings.objectScale;
     return `translate(${offset}, ${offset}) scale(1,-1)`;
   }
 
-  /** Centre the 24-unit glyph on the badge point, sized to the drawing. */
+  /** Center the 24-unit glyph on the badge point, sized to the drawing. */
   lockGlyphTransform(): string {
     const scale = (0.17 * this.settings.objectScale) / 24;
     return `scale(${scale}) translate(-12, -13.5)`;
@@ -2224,7 +2224,7 @@ export class NewGridComponent implements OnDestroy {
    * of the two helps a joint drag gets, and for the same reason in both cases:
    * they act on the body's reference joint, which is whichever joint the link
    * is named from -- not the point under the hand. So the guide line appeared
-   * at a corner the reader was not holding, naming a neighbour they had not
+   * at a corner the reader was not holding, naming a neighbor they had not
    * aimed at, and the body jumped a fraction of a grid square sideways to put
    * one of its several joints on a corner the others could not reach anyway.
    *
@@ -2278,7 +2278,7 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Pull a free drag onto a neighbour's axis when it is nearly on it.
+   * Pull a free drag onto a neighbor's axis when it is nearly on it.
    *
    * Only a free drag: a block is already constrained to its slot, and a capture
    * has a target of its own, so snapping either would be a second opinion about
@@ -2325,7 +2325,7 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * How close to a bar's centreline the cursor must get to cut a slot there.
+   * How close to a bar's centerline the cursor must get to cut a slot there.
    *
    * Half the bar's own width, so the drop has to be genuinely over the body
    * rather than merely near it — a slot is a hole through the bar, and offering
@@ -2340,7 +2340,7 @@ export class NewGridComponent implements OnDestroy {
    *
    * Not a stand-in: the previewed channel is pushed through the same path
    * subtraction a committed slot uses, so the hover state is pixel-identical to
-   * the result and its legibility cannot depend on the carrier's random colour.
+   * the result and its legibility cannot depend on the carrier's random color.
    */
   public slotCandidate?: SlotDropCandidate;
 
@@ -2446,7 +2446,7 @@ export class NewGridComponent implements OnDestroy {
    * element under the pointer fired first — including whether it contains
    * anything at all. The menu is open in every mode now: the analysis modes
    * get the trace switch and the way back into Edit, and Edit while the
-   * mechanism is parked mid-cycle greys its editing rows with the reason
+   * mechanism is parked mid-cycle grays its editing rows with the reason
    * rather than refusing to open.
    */
   /** The gesture arbiter on the canvas, asked whether a press is undecided. */
@@ -2536,7 +2536,7 @@ export class NewGridComponent implements OnDestroy {
   /**
    * Show the panel about the thing that was just tapped.
    *
-   * On the *release*, and only for a press that neither travelled nor became a
+   * On the *release*, and only for a press that neither traveled nor became a
    * menu. Doing it on selection was tried and is worse than it sounds:
    * selecting happens on press, so a finger going down on a joint raised the
    * sheet over that joint while the finger was still on it, and a long press
@@ -2991,10 +2991,10 @@ export class NewGridComponent implements OnDestroy {
                 joint1.connectedJoints.push(joint2);
                 joint2.connectedJoints.push(joint1);
                 // Through the same door every other creation gesture uses: this is
-                // where a link is given its colour, and the two branches that built
+                // where a link is given its color, and the two branches that built
                 // one directly skipped it. The link came out in RealLink's own
-                // stand-in grey -- and the ghost the gesture had just drawn was in
-                // the palette colour it was promised, so the bar changed colour at
+                // stand-in gray -- and the ghost the gesture had just drawn was in
+                // the palette color it was promised, so the bar changed color at
                 // the moment of the click.
                 link = this.gridUtils.createRealLink(joint1.id + joint2.id, [joint1, joint2]);
                 joint1.links.push(link);
@@ -3131,10 +3131,10 @@ export class NewGridComponent implements OnDestroy {
                 joint1.connectedJoints.push(joint2);
                 joint2.connectedJoints.push(joint1);
                 // Through the same door every other creation gesture uses: this is
-                // where a link is given its colour, and the two branches that built
+                // where a link is given its color, and the two branches that built
                 // one directly skipped it. The link came out in RealLink's own
-                // stand-in grey -- and the ghost the gesture had just drawn was in
-                // the palette colour it was promised, so the bar changed colour at
+                // stand-in gray -- and the ghost the gesture had just drawn was in
+                // the palette color it was promised, so the bar changed color at
                 // the moment of the click.
                 link = this.gridUtils.createRealLink(joint1.id + joint2.id, [joint1, joint2]);
                 joint1.links.push(link);
@@ -3477,7 +3477,7 @@ export class NewGridComponent implements OnDestroy {
    * Keyed on the pose as well as the structure. A mark is a drawing of where
    * the joints *are*, and against the structure revision alone the skin stayed
    * painted where the mechanism was built while the linkage under it animated.
-   * And on the paint, because a skin wears its barrel's colour: without it the
+   * And on the paint, because a skin wears its barrel's color: without it the
    * Visual Settings picker moved its own swatch and repainted nothing.
    */
   get cylinderList(): CylinderMark[] {
@@ -3522,9 +3522,9 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * The centre-of-mass distance being pointed at in the Edit panel, drawn
+   * The center-of-mass distance being pointed at in the Edit panel, drawn
    * where it is measured: from the chosen frame's zero, along one axis, to
-   * the link's centre of mass. The panel hands the points over because the
+   * the link's center of mass. The panel hands the points over because the
    * frame choice lives there, not here.
    */
   comMeasure?: {
@@ -3543,7 +3543,7 @@ export class NewGridComponent implements OnDestroy {
 
   /**
    * The selected link's CoM mark is a handle, not just a glyph: drag it to
-   * place a custom centre of mass, exactly as typing in the panel's X/Y
+   * place a custom center of mass, exactly as typing in the panel's X/Y
    * would. Only the selected link's mark — a whole canvas of grabbable
    * marks would fight the links they sit on for every click.
    */
@@ -3558,7 +3558,7 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Where the shape's own centre sits, for a link whose CoM was placed
+   * Where the shape's own center sits, for a link whose CoM was placed
    * elsewhere: the custom mark is defined as an offset from this point, so
    * the point deserves to be visible while the mark is off wandering.
    */
@@ -3598,8 +3598,8 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * A dragged centre snaps to the lines a reader would put it on: the
-   * centreline of a bar, each side of a triangle — every joint-pair segment
+   * A dragged center snaps to the lines a reader would put it on: the
+   * centerline of a bar, each side of a triangle — every joint-pair segment
    * of the link. Alt suspends it, like every other snap on the canvas.
    */
   private snapComToJointLines(link: RealLink, pos: Coord): { x: number; y: number } {
@@ -3724,7 +3724,7 @@ export class NewGridComponent implements OnDestroy {
       showsPosition,
       label: showsPosition
         ? `${Math.round(size.start * 1000) / 10}%`
-        : this.nup.formatModelLength(size.stroke, this.settings.lengthUnit.getValue()),
+        : this.nup.formatModelength(size.stroke, this.settings.lengthUnit.getValue()),
     };
   }
 
@@ -3862,7 +3862,7 @@ export class NewGridComponent implements OnDestroy {
    *
    * A block is above the carrier it slides in; a link is above the block it is
    * pinned to. Emitting each assembly as a unit — block, then its riders — can
-   * only honour those two while no link is ever both a carrier and a rider, and
+   * only honor those two while no link is ever both a carrier and a rider, and
    * the Scotch yoke's yoke is exactly that. It also put one assembly's block
    * over another's rider whenever the two shared a link, which is what a pair
    * of dangling blocks on one bar looks like. Ordering by depth is the same two
@@ -3978,16 +3978,16 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * The colour one joint is drawn in, or nothing for the family they all share.
+   * The color one joint is drawn in, or nothing for the family they all share.
    *
-   * A family is three colours, one per state, so this follows the state rather
+   * A family is three colors, one per state, so this follows the state rather
    * than standing aside from it -- that is what keeps a joint reading as one
    * object resting, pointed at and picked. Amber returns nothing at all: it is
-   * what the stylesheet already draws, so a drawing nobody has coloured is
+   * what the stylesheet already draws, so a drawing nobody has colored is
    * drawn by exactly the rules it always was.
    *
-   * The greyed-out analysis state is the one exception. Scenery is scenery
-   * whatever colour it would otherwise be.
+   * The grayed-out analysis state is the one exception. Scenery is scenery
+   * whatever color it would otherwise be.
    */
   jointFillOf(joint: Joint): string | null {
     if (!joint.colorFamily) return null;
@@ -4003,9 +4003,9 @@ export class NewGridComponent implements OnDestroy {
    * The ring a selected joint wears inside its own edge, if it needs one.
    *
    * Amber is what "picked" means everywhere in the app, and a joint in another
-   * family keeps its own colour rather than borrowing it -- so the fill says
+   * family keeps its own color rather than borrowing it -- so the fill says
    * which joint this is and the ring says it is the selected one. A joint
-   * already drawn in amber needs no ring: its picked colour is the ring colour.
+   * already drawn in amber needs no ring: its picked color is the ring color.
    */
   selectionRingOn(joint: Joint): string | null {
     if (!joint.colorFamily) return null;
@@ -4033,12 +4033,12 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * The colour one force is drawn in -- line, arrowhead and anchor together.
+   * The color one force is drawn in -- line, arrowhead and anchor together.
    *
    * Nothing in an analysis mode where the force is scenery: a load on a body
-   * this analysis has nothing to say about is greyed with the body, and a
-   * colour somebody chose is still a louder thing than the machine being
-   * analysed.
+   * this analysis has nothing to say about is grayed with the body, and a
+   * color somebody chose is still a louder thing than the machine being
+   * analyzed.
    */
   /**
    * Whether the traced paths are on screen.
@@ -4062,10 +4062,10 @@ export class NewGridComponent implements OnDestroy {
    * The ink the "this is not attached to anything" marks are drawn in.
    *
    * Red on the canvas means "fix this", which is a thing to do in Edit. In an
-   * analysis mode the same geometry is scenery -- greyed out, not analysed, not
+   * analysis mode the same geometry is scenery -- grayed out, not analyzed, not
    * even selectable -- so a red ring around it is the loudest thing on a canvas
    * about something the reader cannot act on and did not ask about. It goes
-   * grey with the rest of the body it marks.
+   * gray with the rest of the body it marks.
    */
   get orphanMarkInk(): string {
     return this.tabService.isAnalysisMode() ? '#b6bac6' : '#F44336';
@@ -4109,17 +4109,17 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Whether this link's centre-of-mass mark is on screen right now.
+   * Whether this link's center-of-mass mark is on screen right now.
    *
    * The view toggle governs it, but a massless link is excused: mass starts at
-   * zero until someone chooses one, and a centre-of-mass mark on a link with no
+   * zero until someone chooses one, and a center-of-mass mark on a link with no
    * mass points at a property the link does not have. The preview (hovering
-   * the analysis panel's centre-of-mass heading) still shows it, because there
+   * the analysis panel's center-of-mass heading) still shows it, because there
    * the reader is asking about exactly that property.
    */
   showsCoM(link: Link): boolean {
     if (this.settings.previewCoMLinkId === link.id) return true;
-    // A slider block carries mass but has no centre-of-mass mark to draw --
+    // A slider block carries mass but has no center-of-mass mark to draw --
     // getLinkProp declines it -- so asking for one drew four undefined
     // quarters. The rule is a body with a mass, and a block is not one of the
     // bodies this mark is about.
@@ -4131,7 +4131,7 @@ export class NewGridComponent implements OnDestroy {
    *
    * The anchor is the average of the joints the link is made of, which is
    * inside the hull they describe -- and the body is drawn around that hull, so
-   * it is inside the body. Not the centre of mass, which is a physical property
+   * it is inside the body. Not the center of mass, which is a physical property
    * with a field of its own in the Edit panel: a link told its mass sits out at
    * one end is a link whose name was written off the metal.
    *
@@ -4140,7 +4140,7 @@ export class NewGridComponent implements OnDestroy {
    * so the name goes in the middle of its biggest part, which is inside the
    * union because that part is. And a bar carrying a slot is drawn as a rail
    * with a channel down it, so the name goes in the channel, in full black:
-   * there is no body colour behind it there to be read against.
+   * there is no body color behind it there to be read against.
    */
   linkLabelStyle(link: Link): {
     x: number;
@@ -4198,19 +4198,19 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Black or white, whichever the link's own colour can be read against.
+   * Black or white, whichever the link's own color can be read against.
    *
    * The label sits on the body it names, and the bodies run from pale mint to
    * navy, so one ink cannot serve them all. Through `contrast.ts`, which is
    * where the joint mark and the swatch picker get the same answer: this used
-   * to do its own luminance and flip at its own threshold, so a band of greys
+   * to do its own luminance and flip at its own threshold, so a band of grays
    * took dark ink on the mark and light ink on the name beside it.
    */
   linkLabelInk(link: Link): string {
     // A body the analysis modes have nothing to say about is drawn in one pale
-    // grey whatever colour it was given, so its name is read against that grey
-    // rather than against the colour it no longer wears. A dark link's white
-    // name went invisible the moment the body went grey under it.
+    // gray whatever color it was given, so its name is read against that gray
+    // rather than against the color it no longer wears. A dark link's white
+    // name went invisible the moment the body went gray under it.
     if (this.mechanismSrv.isPartInert(link)) return 'black';
     const fill = (link as { fill?: string }).fill ?? '#ffffff';
     return luminanceOf(fill) > INK_FLIPS_AT ? 'black' : 'white';
@@ -4291,7 +4291,7 @@ export class NewGridComponent implements OnDestroy {
    *
    * A union rather than a black box laid behind: the motor's case *is* part of
    * the body it is bolted to, and drawing it as a separate shape in a separate
-   * colour says the opposite -- that it is an ornament sitting on the joint.
+   * color says the opposite -- that it is an ornament sitting on the joint.
    * Same Boolean and the same fillet a welded compound uses, so a motor reads
    * as the app's other rigid attachments read.
    */
@@ -4324,8 +4324,8 @@ export class NewGridComponent implements OnDestroy {
    *
    * The link already fills even-odd, so appending a channel subpath subtracts
    * it, and the link's own stroke then traces the new edge in the link's own
-   * colour — the channel is a hole in the bar rather than a lighter shape laid
-   * on top, which is what keeps its legibility independent of the random colour
+   * color — the channel is a hole in the bar rather than a lighter shape laid
+   * on top, which is what keeps its legibility independent of the random color
    * that bar happens to have. A bar carrying two slots simply gets two
    * subpaths.
    */
@@ -4350,7 +4350,7 @@ export class NewGridComponent implements OnDestroy {
    * The slot being previewed goes through the same subtraction a committed one
    * does, rather than being drawn as a stand-in on top. Two reasons: the hover
    * state is then pixel-identical to the result, and a real hole has no
-   * legibility to lose against a link colour it cannot predict -- every
+   * legibility to lose against a link color it cannot predict -- every
    * stand-in considered (a white fill, an outline, an amber highlight) fell
    * below contrast on part of the palette, because the palette is random.
    */
@@ -4434,13 +4434,13 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Every link's colour, as one string.
+   * Every link's color, as one string.
    *
-   * A mark can be painted in a link's own colour — a Slide's weld plate is its
-   * rider's, a cylinder's skin is its barrel's — so recolouring changes a mark
+   * A mark can be painted in a link's own color — a Slide's weld plate is its
+   * rider's, a cylinder's skin is its barrel's — so recoloring changes a mark
    * while moving nothing at all. Every cache down here is keyed on where things
-   * *are*, and a colour is the one edit that changes what is drawn without
-   * changing that, so it has to be in the key or the panel shows the new colour
+   * *are*, and a color is the one edit that changes what is drawn without
+   * changing that, so it has to be in the key or the panel shows the new color
    * beside a canvas still wearing the old one.
    */
   private linkPaint(): string {
@@ -4538,7 +4538,7 @@ export class NewGridComponent implements OnDestroy {
       case 'edit.delete':
         // Every key that changes the drawing is held outside Edit, not just
         // the two that had the check. An analysis mode is a reading of a
-        // finished mechanism: it hides the lock marks, greys the panels and
+        // finished mechanism: it hides the lock marks, grays the panels and
         // takes Undo away -- and Delete was still going through, removing a
         // joint from a drawing the reader was in the middle of measuring, with
         // no way back short of leaving the mode.
@@ -4553,7 +4553,7 @@ export class NewGridComponent implements OnDestroy {
       case 'history.redo':
         // Nothing to take back in the analysis modes, which is why the buttons
         // are not there either -- and nothing to take back under a running or
-        // parked-away-from-start mechanism, which is why they grey. The same
+        // parked-away-from-start mechanism, which is why they gray. The same
         // predicate the buttons quote, so the key and the button cannot give
         // two answers in the same session.
         if (!this.gridUtils.canRestoreHistory()) return;

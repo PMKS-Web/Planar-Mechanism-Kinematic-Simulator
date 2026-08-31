@@ -56,7 +56,7 @@ describe('GridUtilsService.dragLink', () => {
     expect([scene.c.x, scene.c.y]).toEqual([5.5, 2.5]);
   });
 
-  it('leaves the joints of neighbouring links where they were', () => {
+  it('leaves the joints of neighboring links where they were', () => {
     const scene = createFourBar();
 
     scene.grid.dragLink(scene.bc, 1.5, -0.5);
@@ -65,9 +65,9 @@ describe('GridUtilsService.dragLink', () => {
     expect([scene.d.x, scene.d.y]).toEqual([5, 0]);
   });
 
-  // A translation is rigid, so the body's own centre of mass moves with it. A
+  // A translation is rigid, so the body's own center of mass moves with it. A
   // link whose CoM the user placed by hand must not have it silently re-derived.
-  it('carries a hand-placed centre of mass along instead of recomputing it', () => {
+  it('carries a hand-placed center of mass along instead of recomputing it', () => {
     const scene = createFourBar();
     scene.bc.CoM = new Coord(1, 2.9);
     // Placing it by hand is exactly what the custom flag records.
@@ -78,7 +78,7 @@ describe('GridUtilsService.dragLink', () => {
     expect([scene.bc.CoM.x, scene.bc.CoM.y]).toEqual([2.5, 2.4]);
   });
 
-  it('recomputes a neighbouring link, which was deformed rather than moved', () => {
+  it('recomputes a neighboring link, which was deformed rather than moved', () => {
     const scene = createFourBar();
 
     scene.grid.dragLink(scene.bc, 1.5, -0.5);
@@ -103,7 +103,7 @@ describe('GridUtilsService.dragLink', () => {
   // A load is fixed to the body it acts on. Leaving it at its old world
   // position while the link deforms under it would silently move it to a
   // different point of the link, and the drag saves that as the real load.
-  it('carries a force on a neighbouring link with the link it is attached to', () => {
+  it('carries a force on a neighboring link with the link it is attached to', () => {
     const scene = createFourBar();
     // Halfway along AB, which runs from A(0,0) to B(0,2).
     const force = new Force('F1', scene.ab, new Coord(0, 1), new Coord(1, 1), false, true, 10);
@@ -228,7 +228,7 @@ describe('GridUtilsService.rotateLink', () => {
     expect(force.endCoord.y - force.startCoord.y).toBeCloseTo(1, 6);
   });
 
-  it('deforms the neighbours rather than carrying them', () => {
+  it('deforms the neighbors rather than carrying them', () => {
     const scene = createFourBar();
 
     scene.grid.rotateLink(scene.bc, new Coord(scene.b.x, scene.b.y), QUARTER);

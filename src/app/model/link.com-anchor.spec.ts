@@ -4,7 +4,7 @@ import { Coord } from './coord';
 import { SettingsService } from '../services/settings.service';
 
 /**
- * What a hand-placed centre of mass is held against while the mechanism is
+ * What a hand-placed center of mass is held against while the mechanism is
  * being edited.
  *
  * The three answers differ only when the link moves, so every test here places
@@ -13,7 +13,7 @@ import { SettingsService } from '../services/settings.service';
  * user dragged something" throughout.
  */
 
-/** A bar from (0,0) to (10,0), with its centre of mass placed at (4,3). */
+/** A bar from (0,0) to (10,0), with its center of mass placed at (4,3). */
 function bar(): { link: RealLink; a: RevJoint; b: RevJoint } {
   const a = new RevJoint('A', 0, 0);
   const b = new RevJoint('B', 10, 0);

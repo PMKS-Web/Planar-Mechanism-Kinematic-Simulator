@@ -37,7 +37,7 @@ page.on('console', (message) => {
   if (message.type() === 'error') errors.push(message.text());
 });
 
-const centre = async (selector) => {
+const center = async (selector) => {
   const box = await page.locator(selector).boundingBox();
   if (!box) throw new Error(`No visible ${selector}`);
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -60,7 +60,7 @@ const joints = (ids) =>
   }, ids);
 
 const clickWith = async (selector, key) => {
-  const at = await centre(selector);
+  const at = await center(selector);
   const modifiers = key === 'Control' ? { ctrlKey: true } : { metaKey: true };
   await page.locator(selector).dispatchEvent('pointerdown', {
     bubbles: true,
@@ -183,7 +183,7 @@ check('an unmodified blank-canvas click clears the selection', (await selection(
 await page.click('#joint_A');
 await clickWith('#joint_C', 'Control');
 const beforeDrag = await joints(['A', 'C']);
-const grab = await centre('#joint_A');
+const grab = await center('#joint_A');
 await drag(grab, { x: grab.x + 90, y: grab.y - 55 });
 const afterDrag = await joints(['A', 'C']);
 const deltaA = { x: afterDrag.A.x - beforeDrag.A.x, y: afterDrag.A.y - beforeDrag.A.y };
@@ -205,7 +205,7 @@ check(
 await page.getByRole('button', { name: 'Redo' }).click();
 await page.waitForTimeout(450);
 
-const rotate = await centre('[data-selection-handle="rotate"]');
+const rotate = await center('[data-selection-handle="rotate"]');
 const vectorBeforeRotate = await joints(['A', 'C']);
 await drag(rotate, { x: rotate.x + 95, y: rotate.y + 50 });
 const vectorAfterRotate = await joints(['A', 'C']);
@@ -225,7 +225,7 @@ check(
   (await page.locator('[data-selection-handle="scale"]').count()) === 8
 );
 
-const corner = await centre('[data-selection-grip="ne"]');
+const corner = await center('[data-selection-grip="ne"]');
 const beforeScale = await joints(['A', 'C']);
 await drag(corner, { x: corner.x + 100, y: corner.y - 65 });
 const afterScale = await joints(['A', 'C']);
@@ -240,7 +240,7 @@ const spread = async () => {
   const at = await joints(['A', 'C']);
   return { x: Math.abs(at.C.x - at.A.x), y: Math.abs(at.C.y - at.A.y) };
 };
-const east = await centre('[data-selection-grip="e"]');
+const east = await center('[data-selection-grip="e"]');
 const beforeStretch = await spread();
 await drag(east, { x: east.x + 110, y: east.y });
 const afterStretch = await spread();
@@ -259,8 +259,8 @@ const sideOfC = async () => {
   const at = await joints(['A', 'C']);
   return Math.sign(at.C.x - at.A.x);
 };
-const eastAgain = await centre('[data-selection-grip="e"]');
-const westAnchor = await centre('[data-selection-grip="w"]');
+const eastAgain = await center('[data-selection-grip="e"]');
+const westAnchor = await center('[data-selection-grip="w"]');
 const beforeFlip = await sideOfC();
 await drag(eastAgain, { x: westAnchor.x - (eastAgain.x - westAnchor.x), y: eastAgain.y });
 const afterFlip = await sideOfC();
@@ -338,7 +338,7 @@ await page.evaluate(() => {
   grid.mechanismSrv.updateMechanism(false);
 });
 const beforeLockedDrag = await joints(['A', 'C']);
-const lockedGrab = await centre('#joint_A');
+const lockedGrab = await center('#joint_A');
 await drag(lockedGrab, { x: lockedGrab.x + 80, y: lockedGrab.y + 30 });
 check(
   'a Lock anywhere in the canonical closure refuses the whole transform',
@@ -352,7 +352,7 @@ await page.evaluate(() => {
 
 await page.screenshot({ path: `${OUT}/desktop-selection.png`, fullPage: true });
 
-const inside = await centre('#joint_A');
+const inside = await center('#joint_A');
 await page.mouse.click(inside.x, inside.y, { button: 'right' });
 await page.waitForTimeout(200);
 check(
@@ -388,7 +388,7 @@ check(
 const copiedIds = copiedSelection.map((ref) => ref.split(':')[1]);
 await page.click(`#joint_${copiedIds[0]}`);
 await clickWith(`#joint_${copiedIds[1]}`, 'Control');
-const copiedAt = await centre(`#joint_${copiedIds[1]}`);
+const copiedAt = await center(`#joint_${copiedIds[1]}`);
 await page.mouse.click(copiedAt.x, copiedAt.y, { button: 'right' });
 await page.getByText('Delete Selected (2)', { exact: true }).click();
 await page.waitForTimeout(450);
@@ -449,24 +449,24 @@ check(
   !(await labelsRow.locator('.check').getAttribute('class')).includes('on')
 );
 // The list names what the file will hold and nothing else. Exported as
-// outlines there is no centreline layer and no shared joint layer, and both
+// outlines there is no centerline layer and no shared joint layer, and both
 // used to sit here ticked and captioned "Always included" over a file that
 // contained neither.
 const layerNames = await page.locator('app-drawing-export .checkRow .checkName').allInnerTexts();
 check(
   'the layer list does not offer layers this export will not write',
-  !layerNames.includes('Link centrelines') && !layerNames.includes('Joint centres'),
+  !layerNames.includes('Link centerlines') && !layerNames.includes('Joint centers'),
   layerNames.join(', ')
 );
 await page.screenshot({ path: `${OUT}/dxf-layers-section.png` });
 
 // They come back for the preset that does write them -- and there they are
 // ticked and unpressable, which has to *look* unpressable: a full-strength
-// tick beside grey text reads as a control that simply stopped responding.
+// tick beside gray text reads as a control that simply stopped responding.
 await page.locator('app-drawing-export [data-preset="reference"]').click();
 await page.waitForTimeout(300);
 const fixedRow = page
-  .locator('app-drawing-export .checkRow', { hasText: 'Link centrelines' })
+  .locator('app-drawing-export .checkRow', { hasText: 'Link centerlines' })
   .first();
 const fixedCheck = await fixedRow.locator('.check').getAttribute('class');
 check(
@@ -477,7 +477,7 @@ check(
 await page.locator('app-drawing-export [data-preset="build"]').click();
 await page.waitForTimeout(300);
 
-// A greyed row explains itself on hover. The cursor already promised a
+// A grayed row explains itself on hover. The cursor already promised a
 // tooltip; the native `title` never arrived, so this is the app's own.
 await page.locator('app-drawing-export [data-section="layers"]').click();
 await page.locator('app-drawing-export [data-section="geometry"]').click();
@@ -489,7 +489,7 @@ if (tracedBlocked) {
   await page.waitForTimeout(900);
   const tip = await page.locator('.mat-mdc-tooltip').allInnerTexts();
   check(
-    'the greyed Traced paths row actually shows its reason on hover',
+    'the grayed Traced paths row actually shows its reason on hover',
     tip.join(' ').includes('No joint is tracing a path'),
     JSON.stringify(tip)
   );
@@ -497,7 +497,7 @@ if (tracedBlocked) {
   await page.mouse.move(10, 10);
   await page.waitForTimeout(300);
 } else {
-  check('the greyed Traced paths row actually shows its reason on hover', false, 'row not blocked');
+  check('the grayed Traced paths row actually shows its reason on hover', false, 'row not blocked');
 }
 await page.locator('app-drawing-export [data-section="geometry"]').click();
 await page.waitForTimeout(250);
@@ -530,7 +530,7 @@ check(
 await page.waitForSelector('app-drawing-export', { state: 'detached' });
 
 // Picking a unit converts the drawing into it. Naming a unit while the numbers
-// stay in centimetres hands CAD a mechanism a hundred times too big under a
+// stay in centimeters hands CAD a mechanism a hundred times too big under a
 // label that looks right.
 await openDrawingDialog();
 await page.locator('app-drawing-export [data-section="file"]').click();
@@ -550,7 +550,7 @@ const metricDownload = await metricPromise;
 const metric = readFileSync(await metricDownload.path(), 'utf8');
 const extentOf = (text) => Number(/\$EXTMAX\r?\n10\r?\n([-\d.eE]+)/.exec(text)[1]);
 check(
-  'choosing metres converts the drawing rather than just relabelling it',
+  'choosing meters converts the drawing rather than just relabeling it',
   Math.abs(extentOf(metric) - extentOf(dxf) / 100) < 1e-9,
   `cm ${extentOf(dxf)} -> m ${extentOf(metric)}`
 );
@@ -563,7 +563,7 @@ check(
 );
 await page.waitForSelector('app-drawing-export', { state: 'detached' });
 
-// Millimetres, which is what every CAD importer defaults to -- and SVG, which
+// Millimeters, which is what every CAD importer defaults to -- and SVG, which
 // is the same drawing written for a laser cutter rather than for CAD.
 await openDrawingDialog();
 await page.locator('app-drawing-export [data-section="file"]').click();
@@ -594,7 +594,7 @@ await page.locator('button[mat-flat-button]').click();
 const svgDownload = await svgPromise;
 const svgText = readFileSync(await svgDownload.path(), 'utf8');
 check(
-  'the SVG comes down in millimetres, carrying its own physical size',
+  'the SVG comes down in millimeters, carrying its own physical size',
   svgDownload.suggestedFilename() === 'mechanism (mm).svg' &&
     /width="[\d.]+mm"/.test(svgText) &&
     svgText.includes('<svg') &&
@@ -667,12 +667,12 @@ check(
 await page.screenshot({ path: `${OUT}/narrow-selection.png`, fullPage: true });
 
 // A point that is actually on the canvas. In the narrow layout the multi-edit
-// panel is a bottom sheet over the lower half of the grid, and joint A's centre
+// panel is a bottom sheet over the lower half of the grid, and joint A's center
 // can sit behind it -- a finger held there presses the sheet, so no menu opens
 // and the check reads as a broken long-press rather than an occluded one.
 const heldSelected = await (async () => {
   for (const id of ['A', 'C']) {
-    const at = await centre(`#joint_${id}`);
+    const at = await center(`#joint_${id}`);
     if (!at) continue;
     const onTop = await page.evaluate(
       ({ x, y }) => document.elementFromPoint(x, y)?.closest('[id^="joint_"]')?.id ?? '',
@@ -680,7 +680,7 @@ const heldSelected = await (async () => {
     );
     if (onTop === `joint_${id}`) return at;
   }
-  return centre('#joint_A');
+  return center('#joint_A');
 })();
 const touch = await context.newCDPSession(page);
 await touch.send('Input.dispatchTouchEvent', {
@@ -720,7 +720,7 @@ await macPage.addInitScript(() => {
   Object.defineProperty(navigator, 'platform', { configurable: true, value: 'MacIntel' });
 });
 await openMechanism(macPage, BASE + FOURBAR);
-const macCentre = async (selector) => {
+const macCenter = async (selector) => {
   const box = await macPage.locator(selector).boundingBox();
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 };
@@ -734,7 +734,7 @@ const macSelection = () =>
     return grid.activeObjService.selectedPartRefs.map((ref) => `${ref.kind}:${ref.id}`);
   });
 check('Command-click toggles on macOS', (await macSelection()).length === 2);
-const macA = await macCentre('#joint_A');
+const macA = await macCenter('#joint_A');
 await macPage.keyboard.down('Control');
 await macPage.mouse.move(macA.x, macA.y);
 await macPage.mouse.down();

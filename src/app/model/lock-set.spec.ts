@@ -13,7 +13,7 @@ const S = MODEL_SCALE;
  * translation: marks spread along consequence, not membership. The directed
  * cases — a mount that stays free while an interior joint seals the part, a
  * floating pin that holds its own place without holding its channel — are
- * exactly the ones a symmetric "travelling group" closure gets wrong.
+ * exactly the ones a symmetric "traveling group" closure gets wrong.
  */
 
 function fourBar() {

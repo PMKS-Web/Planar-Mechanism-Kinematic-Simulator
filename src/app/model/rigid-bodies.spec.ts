@@ -34,7 +34,7 @@ describe('rigid bodies', () => {
   });
 
   // Keyed by joint ids rather than by body, so the same redundancy is still
-  // recognisable after an edit that renames or fuses the bodies holding it.
+  // recognizable after an edit that renames or fuses the bodies holding it.
   it('reports which joints are held twice, and nothing when none are', () => {
     const [a, b, c] = ['A', 'B', 'C'].map(at);
     const twice = new RealLink('AB', [a, b]);

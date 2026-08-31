@@ -35,7 +35,7 @@ const fourBar = (): VerificationFixture => ({
     { id: 'C', x: 3.009, y: 2.08 },
     { id: 'D', x: 3.341, y: -1.646, ground: true },
   ],
-  // A gram and a gram-centimetre-squared apiece, which is what the app hands a
+  // A gram and a gram-centimeter-squared apiece, which is what the app hands a
   // link nobody has typed a mass into. Written out because one test below is
   // about drawing a *small* force smoothly, and a gram is what makes it small.
   links: [
@@ -181,7 +181,7 @@ describe('AnalysisSampleService', () => {
       expect(sample(0, 'Angular Link Vel', 'AB')).toEqual([-2.094]);
     });
 
-    it('plots a coupler by its centre of mass and its own angle', () => {
+    it('plots a coupler by its center of mass and its own angle', () => {
       expect(sample(0, "Linear Link's CoM Pos", 'BC')).toEqual([0.194, 1.491]);
       expect(sample(0, 'Angular Link Pos', 'BC')).toEqual([11.816]);
       expect(sample(45, 'Angular Link Pos', 'BC')).toEqual([22.288]);

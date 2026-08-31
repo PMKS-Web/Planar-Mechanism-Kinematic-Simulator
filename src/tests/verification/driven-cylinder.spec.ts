@@ -172,7 +172,7 @@ describe('a boom driven by its cylinder', () => {
       .map((sample, i) => Math.sign(sample.span - samples[i].span))
       .filter((direction, i, all) => i > 0 && direction !== all[i - 1]).length;
     const step = Math.abs(samples[1].span - samples[0].span);
-    const travelled =
+    const traveled =
       Math.max(...samples.map((s) => s.pinAlong)) - Math.min(...samples.map((s) => s.pinAlong));
 
     // Out to one end of the travel, back across to the other, home again.
@@ -181,7 +181,7 @@ describe('a boom driven by its cylinder', () => {
     // sample grid is anchored where the part was drawn rather than at a limit,
     // so the two partial steps at the ends are not taken -- which is also why
     // the cycle can come out two samples short of 2 x SAMPLES_PER_STROKE.
-    expect(travelled).toBeGreaterThan(SAMPLES_PER_STROKE * step - 2 * step);
+    expect(traveled).toBeGreaterThan(SAMPLES_PER_STROKE * step - 2 * step);
     expect(frames - 1).toBeGreaterThanOrEqual(2 * SAMPLES_PER_STROKE - 2);
     expect(frames - 1).toBeLessThanOrEqual(2 * SAMPLES_PER_STROKE);
   });
@@ -223,11 +223,11 @@ describe('a boom driven by its cylinder', () => {
     // Seconds per sample is the step divided by the speed. Doubling the speed
     // has to halve the period and change nothing else -- the property the
     // angular pi/30 conversion silently broke for a linear input.
-    const travelled = samples
+    const traveled = samples
       .slice(1)
       .reduce((sum, sample, i) => sum + Math.abs(sample.span - samples[i].span), 0);
 
-    expect(period).toBeCloseTo(travelled / EXTENSION_SPEED, 6);
+    expect(period).toBeCloseTo(traveled / EXTENSION_SPEED, 6);
   });
 });
 

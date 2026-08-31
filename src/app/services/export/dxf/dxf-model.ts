@@ -54,7 +54,7 @@ export interface DxfText extends LayeredEntity {
 /**
  * No `POINT`. A sketch importer either drops one or turns it into a stray
  * sketch point somebody has to clean out by hand, and a circle at the same
- * place already gives them a centre to snap and mate to.
+ * place already gives them a center to snap and mate to.
  */
 export type DxfEntity = DxfLine | DxfCircle | DxfPolyline | DxfText;
 

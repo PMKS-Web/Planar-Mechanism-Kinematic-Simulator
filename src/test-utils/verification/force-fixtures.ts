@@ -8,7 +8,7 @@ import { MechanismFixture } from './fixture';
  * question to the force analysis:
  *
  * - the **punch press** asks what a crank has to push with, and answers with
- *   the classic near-bottom-dead-centre spike;
+ *   the classic near-bottom-dead-center spike;
  * - the **jib crane** asks what holding still costs, and answers with pin
  *   reactions several times the weight hanging off the end;
  * - the **toggle clamp** asks where mechanical advantage comes from, and
@@ -56,7 +56,7 @@ export function punchPressFixture(): MechanismFixture {
  * Two earlier shapes did not work, and both failures are worth keeping. A boom
  * held by a *tie bar* is what a crane looks like in a drawing and is a
  * structure, not a mechanism — two bars and the ground make a triangle, and a
- * triangle has nothing to analyse. Luffing it with a **ram** moves, but the
+ * triangle has nothing to analyze. Luffing it with a **ram** moves, but the
  * force analysis of the day reported an unsupported topology for a sealed
  * cylinder (it solves one now — see cylinder-forces.spec.ts), and a force
  * demonstration whose force panel is empty is not one.

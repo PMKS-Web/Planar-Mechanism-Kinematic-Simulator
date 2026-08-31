@@ -4,7 +4,7 @@ import { MODEL_SCALE } from '../../../model/render-scale';
 import { DxfPolyline } from './dxf-model';
 import { cylinderParts, groundPlate, slotProfile } from './link-bodies';
 
-/** Model units straight through, so the numbers below read as centimetres. */
+/** Model units straight through, so the numbers below read as centimeters. */
 const point = (at: { x: number; y: number }) => ({ x: at.x / MODEL_SCALE, y: at.y / MODEL_SCALE });
 
 const loopsIn = (entities: ReturnType<typeof groundPlate>, layer: string) =>
@@ -81,7 +81,7 @@ describe('the parts a mechanism is made of', () => {
       expect(Math.max(...xs)).toBeCloseTo(5, 6);
 
       // A grounded slot has no length of its own at the start pose, so without
-      // a measurement it falls back to a nominal centimetre either way.
+      // a measurement it falls back to a nominal centimeter either way.
       const guessed = loopsIn(
         slotProfile(joint, undefined, point, 1, 0.3, 'SLOT', 'BLOCK'),
         'SLOT'

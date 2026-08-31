@@ -5,7 +5,7 @@
  * takes — used to appear in the setup drawer beside the blockers, which meant
  * the same six numbers in two places and no way to act on the mechanism as a
  * thing. They live in its own panel now, and this checks the two routes to it:
- * the transport chip while analysing, and the drawer's own name in either mode,
+ * the transport chip while analyzing, and the drawer's own name in either mode,
  * which is the only route Edit has.
  *
  *   PMKS_BASE_URL=<origin> node e2e/mechanism-panel.mjs

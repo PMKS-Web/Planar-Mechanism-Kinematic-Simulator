@@ -19,7 +19,7 @@
   // outer corner where it overhung the rounded edge and the accent bar. Every
   // panel in here was written before the drawer could be closed from inside
   // it, so none of them leaves room for this -- these are the drawer's own
-  // 10px inset plus the card's 8px gutter, and the title row's centre line.
+  // 10px inset plus the card's 8px gutter, and the title row's center line.
   // The same air on all three sides the button has a free edge on: above it to
   // the accent bar, right of it to the card's edge, below it to the rule under
   // the title. Centring it on the title's text instead got the middle one right

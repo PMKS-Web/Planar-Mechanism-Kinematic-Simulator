@@ -127,8 +127,8 @@
     }
   }
 
-  // Behind, here, ahead — three weights of the one colour rather than three
-  // colours, because they are one measure being read left to right. Each is
+  // Behind, here, ahead — three weights of the one color rather than three
+  // colors, because they are one measure being read left to right. Each is
   // also the way to that step, so the bar is a control and has the hit height
   // to be one without the line itself getting any thicker.
   .stepBar {
@@ -187,7 +187,7 @@
     }
   }
 
-  // A row rather than an inline run, so the tick sits on the title's own centre
+  // A row rather than an inline run, so the tick sits on the title's own center
   // line whatever the two are sized at. Baseline-aligning a 16px glyph against
   // 14px text put it a third of a line high.
   .stepTitle {
@@ -308,7 +308,7 @@
     }
   }
 
-  // The quoted chip sits above its sentence's first line rather than centred
+  // The quoted chip sits above its sentence's first line rather than centerd
   // against a paragraph it is two lines shorter than.
   .chipHint {
     align-items: flex-start;
@@ -328,7 +328,7 @@
     font-size: 12px;
     white-space: nowrap;
 
-    // Quoted from the mode chip, colour included — same three states as the
+    // Quoted from the mode chip, color included — same three states as the
     // top strip and the analysis setup drawers.
     &.blocker {
       background: #fce8e6;

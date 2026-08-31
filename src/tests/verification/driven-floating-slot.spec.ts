@@ -11,7 +11,7 @@ import { UrlProcessorService } from '../../app/services/url-processor.service';
  * A driven slide used to be stepped along one direction, settled at t = 0 and
  * held. That is right for a guide cut into the frame and wrong for a slot cut
  * into a moving link: the command never turned the link the slot was in, so the
- * block travelled up a bar standing still and whatever else held the block
+ * block traveled up a bar standing still and whatever else held the block
  * absorbed the difference by changing length.
  *
  * Both drawings below are inverted slider-cranks a reader sent in -- a bar

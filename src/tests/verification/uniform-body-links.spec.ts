@@ -97,7 +97,7 @@ describe('auto mass properties on the editable mechanism', () => {
   });
 });
 
-describe('a placed centre of mass rides the link', () => {
+describe('a placed center of mass rides the link', () => {
   it('keeps its offset through a translation of the whole link', () => {
     const harness = createMechanismHarness();
     const [ab] = twoBarChain(harness);
@@ -142,7 +142,7 @@ describe('a placed centre of mass rides the link', () => {
   });
 });
 
-describe('a placed centre of mass survives a unit change', () => {
+describe('a placed center of mass survives a unit change', () => {
   it('scales with the geometry instead of reading a stale offset', () => {
     // The offset is stored in model lengths; a cm→m conversion rescales the
     // joints and the point, and the offset has to be re-read from the scaled

@@ -323,7 +323,7 @@ export class ForceSolver {
       if (!assembly.slider.ground && !assembly.slider.isFloating) continue;
       // A settled weld has fused every rider into one compound. Mid-edit, the
       // riders can still be several distinct bodies, and one couple cannot
-      // speak for all of them — refuse rather than pick a favourite.
+      // speak for all of them — refuse rather than pick a favorite.
       const riderRoots = new Set(assembly.riders.map((leaf) => this.rootBody(bodies, leaf)));
       const rider = riderRoots.size === 1 ? [...riderRoots][0] : undefined;
       const carrier = assembly.slider.isFloating

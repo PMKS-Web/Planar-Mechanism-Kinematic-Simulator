@@ -579,7 +579,7 @@ function handoffNotes(
           `Each link is one closed outline${choices.perLinkLayers ? ' on its own layer (PMKS_LINK_*)' : ''},`,
           holes
             ? 'with its pin holes already cut into the same profile.'
-            : 'with no holes cut -- you chose centre marks rather than pin holes.',
+            : 'with no holes cut -- you chose center marks rather than pin holes.',
           ...(choices.includeGroundPlate ? ['PMKS_GROUND_PLATE is the base part.'] : []),
           ...(has.slots
             ? [
@@ -595,7 +595,7 @@ function handoffNotes(
             : []),
         ]
       : [
-          'Each link is a centreline on PMKS_LINK_CENTERLINES. A centreline cannot be',
+          'Each link is a centerline on PMKS_LINK_CENTERLINES. A centerline cannot be',
           'extruded -- re-export with "Closed outlines" if you meant to build from this.',
         ]),
     '',
@@ -626,8 +626,8 @@ function handoffNotes(
           '   each one comes out as a finished body.',
           '3. Assemble the bodies as components, then Assemble > Joint > Revolute, picking',
           tables
-            ? '   the two hole centres that share a pin. The joints table beside this file'
-            : '   the two hole centres that share a pin. Re-export with a data file if you',
+            ? '   the two hole centers that share a pin. The joints table beside this file'
+            : '   the two hole centers that share a pin. Re-export with a data file if you',
           tables
             ? '   says which links meet at which joint.'
             : '   want a table of which links meet where.',
@@ -638,8 +638,8 @@ function handoffNotes(
           '1. Import the DXF into a Part Studio and choose the units when asked.',
           '2. Extrude each closed region a few mm.',
           '3. In an Assembly, insert the parts and add Revolute mates, snapping the mate',
-          '   connectors to the hole centres -- Onshape offers a connector at the centre of',
-          '   a circular edge, which is why the holes are here rather than centre marks.',
+          '   connectors to the hole centers -- Onshape offers a connector at the center of',
+          '   a circular edge, which is why the holes are here rather than center marks.',
           '4. Fix the base part and drag or drive the input.',
           '',
           'In SolidWorks',
@@ -656,9 +656,9 @@ function handoffNotes(
           'In NX',
           '-----',
           '1. File > Import > AutoCAD DXF/DWG, into a new part as curves. NX imports in',
-          `   millimetres or inches, so a ${word} file needs an explicit scale on the way in`,
+          `   millimeters or inches, so a ${word} file needs an explicit scale on the way in`,
           ...(word === 'mm'
-            ? ['   -- this file is already in millimetres, so no scaling is needed.']
+            ? ['   -- this file is already in millimeters, so no scaling is needed.']
             : [
                 `   (${word} to mm is x${unit === 'm' ? '1000' : unit === 'in' ? '25.4' : '10'}) or the part arrives the wrong size.`,
               ]),

@@ -77,7 +77,7 @@
         height: 18px;
         font-size: 18px;
         // The ligature icon (Save's check) is text; give it the box's own
-        // line height so it centres like the svg icons do.
+        // line height so it centers like the svg icons do.
         line-height: 18px;
         // Material gives outlined-button icons a -4px left margin on the
         // assumption a label follows; in this tight row it just shoves every
@@ -88,7 +88,7 @@
         // An inline svg sits on the text baseline, which grows the icon box
         // by the font's descender and floats every glyph high — and lets a
         // content change re-evaluate the line box, which is a wobble. A block
-        // box is 18x18, centred, and inert.
+        // box is 18x18, centerd, and inert.
         svg {
           display: block;
         }
@@ -107,7 +107,7 @@
     }
 
     // The trash can carries Delete alone, so it stays a compact square
-    // instead of stretching with the labelled two.
+    // instead of stretching with the labeled two.
     .mini-buttons.iconOnly {
       flex: 0 0 auto;
       min-width: 34px;

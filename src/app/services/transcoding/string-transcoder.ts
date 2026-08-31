@@ -442,11 +442,11 @@ export class StringTranscoder extends GenericTranscoder {
       activeObjString;
 
     // Written only when there is something to say, so a URL with no locks and
-    // no re-anchored centre of mass stays byte-identical to one written before
+    // no re-anchored center of mass stays byte-identical to one written before
     // either existed — the same bargain the slot triple and the per-joint
     // drive speed struck.
     //
-    // Centre-of-mass anchors share this section rather than opening a second
+    // Center-of-mass anchors share this section rather than opening a second
     // one, because they are the same shape of thing: a tagged reference to an
     // object the URL already carries. Their tag is 'C', which no lock uses, so
     // the two are told apart on the way in and neither can be mistaken for the
@@ -457,9 +457,9 @@ export class StringTranscoder extends GenericTranscoder {
     // anchor there is nothing for them to resolve against -- which is exactly
     // why they can be validated on their own numbers alone.
     // A fourth kind of tagged reference, 'K', for a part asked to be drawn in a
-    // colour of its own: 'KJ<joint>~<family>' and 'KF<force>~<rrggbb>'. Only
-    // the parts that were asked, so a drawing where nobody chose a colour says
-    // nothing about colour.
+    // color of its own: 'KJ<joint>~<family>' and 'KF<force>~<rrggbb>'. Only
+    // the parts that were asked, so a drawing where nobody chose a color says
+    // nothing about color.
     const trailing = [
       ...this.lockedIds,
       ...this.comAnchors,
@@ -579,7 +579,7 @@ export class StringTranscoder extends GenericTranscoder {
 
     // The trailing section: type-tagged ids, absent on every URL written before
     // locks existed — and "absent" simply means the disassembler is empty.
-    // 'C' entries are centre-of-mass anchors and go to their own list, so the
+    // 'C' entries are center-of-mass anchors and go to their own list, so the
     // lock validator below never has to know they exist.
     while (!sd.isEmpty()) {
       let entry = sd.nextToken(',');
@@ -679,9 +679,9 @@ export class StringTranscoder extends GenericTranscoder {
   }
 
   /*
-    Every colour must name a part this URL carries, and say something about it
+    Every color must name a part this URL carries, and say something about it
     this build understands. Refused rather than dropped, for the same reason a
-    lock reference is: a URL saying something this build cannot honour would
+    lock reference is: a URL saying something this build cannot honor would
     open as a different drawing than the one that was shared. A joint family the
     reader does not have is exactly that -- and the default family's id is empty
     and never written, so an entry naming it is a URL saying nothing twice.
@@ -698,7 +698,7 @@ export class StringTranscoder extends GenericTranscoder {
           : kind === 'F'
             ? forceIDs.has(id) && /^[0-9a-fA-F]{6}$/.test(value ?? '')
             : false;
-      if (!known) throw new Error('URL colours a part it does not carry');
+      if (!known) throw new Error('URL colors a part it does not carry');
     });
   }
 

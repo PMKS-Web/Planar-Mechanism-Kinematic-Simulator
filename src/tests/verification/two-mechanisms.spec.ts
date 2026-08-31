@@ -10,10 +10,10 @@ import { GridUtilsService } from '../../app/services/grid-utils.service';
 /**
  * Two machines in one drawing, each solved on its own.
  *
- * The behaviour this protects is not that a second linkage can be drawn — it
+ * The behavior this protects is not that a second linkage can be drawn — it
  * always could — but that drawing it no longer breaks the first. Everything
  * used to go into one Mechanism, so a second four-bar took the document to
- * 2 degrees of freedom and *both* stopped simulating; the way to analyse one
+ * 2 degrees of freedom and *both* stopped simulating; the way to analyze one
  * was to delete the other.
  */
 describe('two four-bars in one drawing', () => {

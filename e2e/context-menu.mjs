@@ -3,12 +3,12 @@
  *
  * The menu used to be one flat list of up to eight equally weighted rows with
  * Delete at the top, labels that rewrote themselves as the object changed, and
- * three different ways of saying no -- hidden here, greyed silently there,
+ * three different ways of saying no -- hidden here, grayed silently there,
  * clickable-and-then-refused somewhere else. What is checked here is the
  * promise the redesign makes instead: a fixed ladder, states written as states,
- * and one availability rule with the model's own reason on every greyed row.
+ * and one availability rule with the model's own reason on every grayed row.
  *
- * The reasons matter more than the rows. A row greyed for the wrong reason
+ * The reasons matter more than the rows. A row grayed for the wrong reason
  * sends a student to fix the wrong thing, so the assertions read the text in
  * the right-hand slot rather than just the disabled flag.
  *
@@ -77,8 +77,8 @@ const rowNamed = (menu, label) => menu?.rows.find((one) => one.label === label);
 /**
  * Right-click a point that is actually on the element.
  *
- * Not simply its bounding-box centre: the left card is 250px wide and 400px in
- * the analysis modes, and a part drawn near the left edge has its centre under
+ * Not simply its bounding-box center: the left card is 250px wide and 400px in
+ * the analysis modes, and a part drawn near the left edge has its center under
  * that card — the click then lands on the panel and no menu opens at all,
  * which reads as the menu being broken rather than the aim being off.
  */
@@ -93,15 +93,15 @@ async function openOn(selector) {
       const hit = document.elementFromPoint(x, y);
       return !!hit && (hit === node || node.contains(hit) || hit.closest(sel) === node);
     };
-    const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-    if (owns(centre.x, centre.y)) return centre;
+    const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    if (owns(center.x, center.y)) return center;
     for (const fx of [0.7, 0.3, 0.85, 0.15]) {
       for (const fy of [0.5, 0.3, 0.7]) {
         const spot = { x: box.x + box.width * fx, y: box.y + box.height * fy };
         if (owns(spot.x, spot.y)) return spot;
       }
     }
-    return centre;
+    return center;
   }, selector);
   if (!at) return null;
   await page.mouse.click(at.x, at.y, { button: 'right' });
@@ -216,7 +216,7 @@ check(
   { subtitle: groundO?.subtitle, grounded: rowNamed(groundO, 'Grounded') }
 );
 check(
-  'a weld with nothing to fuse is greyed with the reason',
+  'a weld with nothing to fuse is grayed with the reason',
   rowNamed(groundO, 'Welded')?.slot === 'needs 2 links',
   rowNamed(groundO, 'Welded')
 );
@@ -339,7 +339,7 @@ check(
   cylinderJoint?.subtitle
 );
 check(
-  'a sealed part cannot be welded into a neighbour',
+  'a sealed part cannot be welded into a neighbor',
   rowNamed(cylinderJoint, 'Welded')?.slot === 'part is sealed',
   rowNamed(cylinderJoint, 'Welded')
 );
@@ -349,7 +349,7 @@ check(
   ownDelete(cylinderJoint)?.label
 );
 check(
-  'a cylinder joint takes no block: the row is absent, not greyed',
+  'a cylinder joint takes no block: the row is absent, not grayed',
   !rowNamed(cylinderJoint, 'Slider'),
   cylinderJoint?.rows.map((one) => one.label)
 );

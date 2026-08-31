@@ -84,7 +84,7 @@ const FILENAMES = {
 };
 
 // The three dev drawings are not here on purpose. Their payloads were written
-// by hand with a colour on every link, so re-shooting them would not recolour
+// by hand with a color on every link, so re-shooting them would not recolor
 // them — the old palette is inside the payload string, under its checksum, and
 // changing it means re-encoding the drawing rather than photographing it.
 
@@ -95,7 +95,7 @@ const FILENAMES = {
  * above that block and shipped with hand-drawn stills, so they used to be
  * skipped here — which left them the only library cards whose picture did not
  * follow the app. When the link palette changed, they were the five that kept
- * the old colours.
+ * the old colors.
  */
 function libraryTemplates() {
   const only = process.env.ONLY?.split(',').map((one) => one.trim());
@@ -152,7 +152,7 @@ for (const { id, payload } of libraryTemplates()) {
   if (!model.joints) throw new Error(`${id} decoded to nothing`);
 
   // The same fit a shared link gets; re-run because the first one races the
-  // initial layout, and an off-centre thumbnail is the usual result.
+  // initial layout, and an off-center thumbnail is the usual result.
   await page.evaluate(() =>
     ng.getComponent(document.querySelector('app-new-grid')).svgGrid.scaleToFitLinkage()
   );
@@ -174,7 +174,7 @@ for (const { id, payload } of libraryTemplates()) {
   // off into the corner: the second move schedules change detection just as
   // well and leaves nothing under the cursor.
   await page.mouse.move(4, 4);
-  // The panels float over the canvas, so a clip centred on the mechanism can
+  // The panels float over the canvas, so a clip centerd on the mechanism can
   // still catch a corner of one. They are overlays and hiding them moves
   // nothing.
   await page.addStyleTag({

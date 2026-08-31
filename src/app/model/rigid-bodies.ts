@@ -74,7 +74,7 @@ export function groupRigidBodies<T extends JointedBody>(
 
 /**
  * Every set of joints that two bodies both hold rigidly, keyed by the joint ids
- * so the same redundancy is recognisable across an edit that renames bodies.
+ * so the same redundancy is recognizable across an edit that renames bodies.
  *
  * Callers compare the set before an edit with the set after it. Asking only
  * "is anything redundant now?" would blame an edit for a condition the

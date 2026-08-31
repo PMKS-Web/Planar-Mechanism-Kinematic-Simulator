@@ -3,8 +3,8 @@
  *
  * `template-graphs.mjs` already checks the *joint* kinematic graphs numerically,
  * against difference quotients of the plotted positions. This walks the rest:
- * the link graphs (centre-of-mass motion and angular motion), the force panels,
- * and the instant-centre view — the panels nothing has ever opened in anger.
+ * the link graphs (center-of-mass motion and angular motion), the force panels,
+ * and the instant-center view — the panels nothing has ever opened in anger.
  *
  * The checks here are deliberately coarse. A graph that renders blank, a series
  * with a hole in it, a part that visibly turns while its angular velocity reads

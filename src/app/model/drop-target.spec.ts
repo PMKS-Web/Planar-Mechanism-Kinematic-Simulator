@@ -260,7 +260,7 @@ describe('resolving the joint a drag is aimed at', () => {
   });
 
   // Nearest wins outright: a refused joint under the cursor must not be stepped
-  // over in favour of a legal one further away, or the red ring would appear on
+  // over in favor of a legal one further away, or the red ring would appear on
   // a joint the user is not pointing at.
   it('takes the nearest joint even when a legal one sits just behind it', () => {
     const { dragged, refused, joints } = scene();

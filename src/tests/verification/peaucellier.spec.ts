@@ -45,7 +45,7 @@ describe('the Peaucellier-Lipkin straight-line linkage', () => {
 
     const first = frames[0];
     // The crank equal to the ground offset is the whole inversion trick: it is
-    // what puts the driven pin on a circle *through* the centre O.
+    // what puts the driven pin on a circle *through* the center O.
     expect(span(at(first, 'O'), at(first, 'C'))).toBeCloseTo(crank, 6);
     expect(span(at(first, 'C'), at(first, 'P'))).toBeCloseTo(crank, 6);
     expect(span(at(first, 'O'), at(first, 'A'))).toBeCloseTo(long, 6);
@@ -83,8 +83,8 @@ describe('the Peaucellier-Lipkin straight-line linkage', () => {
     // long arms enforce and the reason the output is a line rather than a curve.
     const power = long ** 2 - side ** 2;
     for (const frame of frames) {
-      const centre = at(frame, 'O');
-      const product = span(centre, at(frame, 'P')) * span(centre, at(frame, 'Q'));
+      const center = at(frame, 'O');
+      const product = span(center, at(frame, 'P')) * span(center, at(frame, 'Q'));
       expect(Math.abs(product - power)).toBeLessThan(1e-2);
     }
   });

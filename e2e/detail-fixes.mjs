@@ -2,7 +2,7 @@
  * The small things, in a browser.
  *
  * Each of these is a fix a reader reported by pointing at the screen, and each
- * is invisible to a unit test: what a cursor turns into, what colour a warning
+ * is invisible to a unit test: what a cursor turns into, what color a warning
  * is in a mode that cannot act on it, whether a panel keeps its scroll.
  *
  *   PMKS_BASE_URL=<origin> node e2e/detail-fixes.mjs
@@ -24,7 +24,7 @@ import { ALL_LINKAGES as payloads } from './template-payloads.mjs';
 const THREE_MACHINES =
   '2O.Ay,Fe.5,4x.1011.4O,O,0,0,0.0C,C,YJ,qG,0.4G,G,ku,0,0.0N,N,aM,hl,0.8P,P,ir,8X,0.ZS,S,ir,8X,0,GN,G,N.0T,T,nJ,oD,0.0U,U,1Nd,dn,0.6V,V,1ca,jH,0,,,,1E8.6W,W,J-,1GP,0.0X,X,PF,1dt,0.0Y,Y,rW,1g7,0.4Z,Z,-P,1FX,0.0%5B,%5B,1Tk,16n,0.0%5C,%5C,1ft,1bA,0.0%5E,%5E,1pZ,1Gc,0.0_,_,1_5,_W,0.0%60,%60,2AU,1OV,0.1a,a,2AU,1OV,0..YROC,OC,Fe,Fe,HA,Q8,c5cae9,O,C,,.YRGN,GN,Fe,Fe,fd,Lu,303e9f,G,N,,.YRPC,PC,Fe,Fe,da,UO,0d125a,P,C,,.YPPS,PS,Fe,0,0,0,,P,S,,.YRGT,GT,Fe,Fe,m5,P7,c5cae9,G,T,,.YRTU,TU,Fe,Fe,14T,i-,303e9f,T,U,,.YRUV,UV,Fe,Fe,1V5,gX,0d125a,U,V,,.YRWX,WX,Fe,Fe,Md,1S8,B2DFDB,W,X,,.YRXY,XY,Fe,Fe,dN,1f0,26A69A,X,Y,,.YRYZ,YZ,Fe,Fe,wS,1Sr,00695C,Y,Z,,.YR%5B%5C,%5B%5C,Fe,Fe,1Zp,1Lz,c5cae9,%5B,%5C,,.YR_%60,_%60,Fe,Fe,24I,1BV,B2DFDB,_,%60,,.YP%60a,%60a,Fe,0,0,0,,%60,a,,...N_b';
 
-/** Two joints and a bar: in no mechanism, so nothing about it can be analysed. */
+/** Two joints and a bar: in no mechanism, so nothing about it can be analyzed. */
 const LONE_BAR =
   '2P.Zz,1E8.5,0.1011.0A,A,2UW,9v,0.0B,B,3E8,1Zn,0..YRAB,AB,Fe,Fe,2sK,sr,303e9f,A,B,,...N_P';
 
@@ -134,19 +134,19 @@ const editing = await inkIn(null);
 record('a loose joint is marked in red while it can be fixed', editing.ink === '#F44336', editing);
 record('and the parts say they can be dragged', editing.cursor === 'move', editing);
 
-const analysing = await inkIn('Kinematic');
+const analyzing = await inkIn('Kinematic');
 record(
-  'the same mark goes grey once the mode cannot act on it',
-  analysing.ink !== '#F44336',
-  analysing
+  'the same mark goes gray once the mode cannot act on it',
+  analyzing.ink !== '#F44336',
+  analyzing
 );
 record(
   'and the cursor stops offering a drag that will not happen',
-  analysing.cursor === 'pointer',
-  analysing
+  analyzing.cursor === 'pointer',
+  analyzing
 );
 
-// --- a drawing that cannot be analysed sends you back to Edit --------------
+// --- a drawing that cannot be analyzed sends you back to Edit --------------
 await load(payloads['4-Bar']);
 await page.locator('.tabButton', { hasText: 'Kinematic' }).click({ force: true });
 await page.waitForTimeout(700);
@@ -168,7 +168,7 @@ const nowEditing = await page.evaluate(() => {
   return { analysis: bar.tabs.isAnalysisMode(), valid: bar.mechanism.oneValidMechanismExists() };
 });
 record(
-  'opening a drawing nothing can be analysed in leaves the analysis modes',
+  'opening a drawing nothing can be analyzed in leaves the analysis modes',
   wasAnalysing && !nowEditing.valid && !nowEditing.analysis,
   { wasAnalysing, nowEditing }
 );
@@ -405,7 +405,7 @@ const tracesAfter = await page.evaluate(() => {
 await page.waitForTimeout(500);
 const hidden = await page.evaluate(() => document.querySelectorAll('#pathsHolder path').length);
 record(
-  'with nothing tracing, the traces switch is greyed',
+  'with nothing tracing, the traces switch is grayed',
   traces?.disabledWithNone === true,
   traces
 );
@@ -444,8 +444,8 @@ const buttons = () =>
         disabled: button.disabled,
         tinted: getComputedStyle(button).backgroundColor !== 'rgba(0, 0, 0, 0)',
         ink: getComputedStyle(icon).color,
-        // A glyph that names its own colour ignores the button's, which is how
-        // the traced-paths switch stayed black in a row that had greyed out.
+        // A glyph that names its own color ignores the button's, which is how
+        // the traced-paths switch stayed black in a row that had grayed out.
         // Painted geometry only. A <clipPath> child is used for its shape and
         // never drawn, and the export tool leaves a fill="white" on it that
         // means nothing -- counting those would fail an icon that is fine.
@@ -467,7 +467,7 @@ await page.evaluate(() => {
   // One joint tracing and one link with a weight, so all three switches have
   // something to act on. The mass was missing: a four-bar's bars are massless
   // as drawn, so Center of Mass stayed disabled and its glyph carried the
-  // greyed-out ink rather than the one the other two share -- which is a
+  // grayed-out ink rather than the one the other two share -- which is a
   // different sentence from the one this section is checking.
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.mechanismSrv.joints[1].showCurve = true;
@@ -491,7 +491,7 @@ record(
   asDrawn.map((s) => `${s.glyph}:${s.on}`)
 );
 record(
-  'and the tint alone carries it -- every glyph is the same grey',
+  'and the tint alone carries it -- every glyph is the same gray',
   asDrawn.every((s) => s.tinted === s.on) && new Set(asDrawn.map((s) => s.ink)).size === 1,
   asDrawn.map((s) => `${s.name} tint=${s.tinted} ink=${s.ink}`)
 );
@@ -506,7 +506,7 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(700);
 const idle = await switches();
-// A slider block has a mass and no centre-of-mass mark, so it must not make
+// A slider block has a mass and no center-of-mass mark, so it must not make
 // the switch look useful.
 await load(payloads['4-Bar']);
 const blockOnly = await page.evaluate(() => {
@@ -520,7 +520,7 @@ const blockOnly = await page.evaluate(() => {
   return { hasBlock: !!block, disabled: button.disabled };
 });
 record(
-  'a mass on a slider block does not make the centre-of-mass switch look useful',
+  'a mass on a slider block does not make the center-of-mass switch look useful',
   !blockOnly.hasBlock || blockOnly.disabled,
   blockOnly
 );
@@ -551,7 +551,7 @@ await page.evaluate(() => {
 await page.waitForTimeout(700);
 const idleAgain = await switches();
 record(
-  'a switch that would change nothing is greyed',
+  'a switch that would change nothing is grayed',
   idleAgain[0].disabled && idleAgain[2].disabled && !idleAgain[1].disabled,
   idleAgain.map((s) => `${s.name}=${s.disabled}`)
 );
@@ -572,14 +572,14 @@ record(
 await load();
 const onEmpty = await buttons();
 record(
-  'with nothing drawn, all three switches are greyed and the view actions are not',
+  'with nothing drawn, all three switches are grayed and the view actions are not',
   onEmpty.slice(0, 3).every((b) => b.disabled) && onEmpty.slice(3).every((b) => !b.disabled),
   onEmpty.map((b) => `${b.name}=${b.disabled}`)
 );
-// The check above passes on colour alone; this is the one that catches a glyph
+// The check above passes on color alone; this is the one that catches a glyph
 // painting itself, which no computed style on the button would show.
 record(
-  'and every glyph takes the button ink rather than naming its own colour',
+  'and every glyph takes the button ink rather than naming its own color',
   onEmpty.every((b) => !b.selfPainted) &&
     new Set(onEmpty.slice(0, 3).map((b) => b.ink)).size === 1 &&
     new Set(onEmpty.slice(3).map((b) => b.ink)).size === 1,
@@ -810,8 +810,8 @@ record(
 );
 await page.setViewportSize({ width: 1500, height: 950 });
 
-// --- one help mark, one behaviour ------------------------------------------
-// The mark beside a field used to be a pale grey glyph that did not answer the
+// --- one help mark, one behavior ------------------------------------------
+// The mark beside a field used to be a pale gray glyph that did not answer the
 // pointer and waited a full second before saying anything; the export drawer's
 // lit up and spoke at once. A reader who has learned what it means in one panel
 // has learned it in all of them.
@@ -833,14 +833,14 @@ record(
 );
 
 const help = page.locator('.label-help').first();
-const restColour = await help.evaluate((mark) => getComputedStyle(mark).color);
+const restColor = await help.evaluate((mark) => getComputedStyle(mark).color);
 await help.hover();
 await page.waitForTimeout(650);
 record(
   'and answers the pointer, then says what it is for',
-  (await help.evaluate((mark) => getComputedStyle(mark).color)) !== restColour &&
+  (await help.evaluate((mark) => getComputedStyle(mark).color)) !== restColor &&
     (await page.locator('.mat-mdc-tooltip').count()) === 1,
-  { restColour, hovered: await help.evaluate((mark) => getComputedStyle(mark).color) }
+  { restColor, hovered: await help.evaluate((mark) => getComputedStyle(mark).color) }
 );
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));

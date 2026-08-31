@@ -136,7 +136,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
         this.claimWheel();
         // Deliberately not invalidating here. Moving a position changes the
         // answer, not the question, and the search keeps up with it on its own
-        // -- being sent back to Generate for a one-millimetre nudge made the
+        // -- being sent back to Generate for a one-millimeter nudge made the
         // button the thing the reader spent the session pressing. The sites
         // that really do change the question say so themselves.
         this.solution.changed.next();
@@ -245,7 +245,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   // --- units ---------------------------------------------------------------
 
   private lengthText(model: number): string {
-    return this.nup.formatModelLength(model, this.settings.lengthUnit.getValue());
+    return this.nup.formatModelength(model, this.settings.lengthUnit.getValue());
   }
 
   private angleText(degrees: number): string {
@@ -314,7 +314,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     // who types one anyway is still understood.
     const parsed = (['rx', 'ry', 'rw', 'rh'] as const).map((key) => {
       const typed = (this.regionForm.get(key)!.value ?? '').trim();
-      return this.nup.parseModelLengthString(
+      return this.nup.parseModelengthString(
         /[a-z]/i.test(typed) ? typed : `${typed} ${this.lengthUnit}`,
         unit
       );
@@ -701,7 +701,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
    */
   get primaryIsGenerate(): boolean {
     // Named for the step that is coming even before it can be taken. With two
-    // positions placed the button used to read "Replace on grid", greyed --
+    // positions placed the button used to read "Replace on grid", grayed --
     // which is true and useless: what is actually next is the search, and the
     // reader is one position away from it.
     return !this.solution.generated;

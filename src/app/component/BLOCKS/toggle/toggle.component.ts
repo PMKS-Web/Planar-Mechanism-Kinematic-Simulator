@@ -37,7 +37,7 @@ export class ToggleComponent {
   readonly mixed = input<boolean>(false);
 
   /**
-   * Greys the switch out, like `radio-block`'s input of the same name.
+   * Grays the switch out, like `radio-block`'s input of the same name.
    *
    * `disableInput` beside it is a different question -- that one is about the
    * optional number field this block can carry, not about the switch.

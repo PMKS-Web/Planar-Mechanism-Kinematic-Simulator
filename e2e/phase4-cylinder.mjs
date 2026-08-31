@@ -57,7 +57,7 @@ function model() {
   });
 }
 
-/** Screen centre of a rendered joint circle. */
+/** Screen center of a rendered joint circle. */
 async function jointOnScreen(id) {
   return page.evaluate((jointId) => {
     const node = document.querySelector(`#joint_${jointId}`);
@@ -99,7 +99,7 @@ checkThat(
 await page.mouse.click(abort.x + 90, abort.y + 40, { button: 'middle' });
 await page.waitForTimeout(300);
 checkThat(
-  'cancelling leaves no ghost and no mechanism',
+  'canceling leaves no ghost and no mechanism',
   (await page.locator('.cylinder-preview').count()) === 0 && (await model()).joints.length === 0
 );
 
@@ -360,7 +360,7 @@ const mountMenu = await page.evaluate(() => {
 checkThat(
   // The deletion names what it takes rather than saying only "Delete Joint",
   // and a block is structurally off the table on a sealed part, so that row is
-  // absent rather than greyed.
+  // absent rather than grayed.
   'the mount menu names the cylinder in its Delete and offers no Slider',
   mountMenu.some((i) => i.label.startsWith('Delete Joint and Cylinder')) &&
     mountMenu.every((i) => i.label !== 'Slider'),

@@ -440,7 +440,7 @@ $rule: #eceef5;
     // Sized to the 14px the two borders leave inside an 18px box, not to the
     // box: a 15px glyph is a pixel too wide for it, and flex answers that by
     // shrinking the element while the drawing keeps its width -- so the tick
-    // came out clipped down its right-hand edge and sitting off centre.
+    // came out clipped down its right-hand edge and sitting off center.
     mat-icon {
       flex: 0 0 auto;
       font-size: 14px;

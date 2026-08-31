@@ -28,7 +28,7 @@
       // Every glyph takes the button's ink, whether it is a Material ligature
       // or one of the app's own SVGs. Two of those SVGs used to paint
       // themselves black, so they stayed black while the button around them
-      // greyed out -- one switch in a row of three that would not go quiet.
+      // grayed out -- one switch in a row of three that would not go quiet.
       color: inherit;
       fill: currentColor;
     }
@@ -38,8 +38,8 @@
     }
 
     // On means a tint behind the glyph, and nothing else. The glyph itself
-    // stays the same grey in both states: it is drawing what is on the grid,
-    // so having it change colour as well made two signals out of one, and the
+    // stays the same gray in both states: it is drawing what is on the grid,
+    // so having it change color as well made two signals out of one, and the
     // three switches disagreed about which of them carried the state.
     &.on {
       background: #eef1fc;

@@ -136,7 +136,7 @@ describe('DrawingExportComponent', () => {
     expect(component.options.pinDiameter).toBeCloseTo(0.6, 3);
   });
 
-  it('greys a control it cannot offer, and says why on the row', () => {
+  it('grays a control it cannot offer, and says why on the row', () => {
     exportService.hasTracedJoint.mockReturnValue(false);
     const { component, fixture, element } = render();
     (element.querySelector('[data-section="geometry"]') as HTMLButtonElement).click();

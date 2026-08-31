@@ -1,13 +1,13 @@
 /**
  * The plate that makes a Slide read as one body with its rider (§2.8 rule 4).
  *
- * A Slide's block is the same #000 block a Slot has — there is no colour
+ * A Slide's block is the same #000 block a Slot has — there is no color
  * derivation anywhere in the mark system. What makes it look like the rider's
  * body is a second, purely visual plate in the rider's own paint at the link's
  * own alpha, drawn over the black and welded to the rider with filleted
  * internal angles. That is the vocabulary a welded joint already uses, so the
  * cue is borrowed rather than invented, and it works for any random palette
- * because it is literally the rider's colour rather than a function of it.
+ * because it is literally the rider's color rather than a function of it.
  *
  * The block underneath never changes. Toggling the plate off is exactly the
  * difference between a Slide and a Slot.
@@ -44,13 +44,13 @@ export function weldPlateFillets(r: number, riderAngle: number): string[] {
     if (!exit) continue;
 
     // Which way the plate's surface continues from the corner: along the block
-    // edge, away from the rider. The rider's own centreline crosses the same
+    // edge, away from the rider. The rider's own centerline crosses the same
     // edge line, and the corner always lies to one side of it.
     const tangent = exit.horizontal ? { x: 1, y: 0 } : { x: 0, y: 1 };
-    const centreline = centrelineOnEdge(d, exit, alongHalf, acrossHalf);
-    if (centreline === undefined) continue;
+    const centerline = centerlineOnEdge(d, exit, alongHalf, acrossHalf);
+    if (centerline === undefined) continue;
     const along = exit.point.x * tangent.x + exit.point.y * tangent.y;
-    const away = Math.sign(along - centreline);
+    const away = Math.sign(along - centerline);
     if (away === 0) continue;
 
     const c = exit.point;
@@ -99,10 +99,10 @@ function exitPoint(
 }
 
 /**
- * Where the rider's centreline crosses the line containing the corner's edge,
- * measured along that edge. Undefined when the centreline runs parallel to it.
+ * Where the rider's centerline crosses the line containing the corner's edge,
+ * measured along that edge. Undefined when the centerline runs parallel to it.
  */
-function centrelineOnEdge(
+function centerlineOnEdge(
   d: { x: number; y: number },
   exit: Exit,
   alongHalf: number,

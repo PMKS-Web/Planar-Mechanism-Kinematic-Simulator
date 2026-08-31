@@ -52,7 +52,7 @@ function dyadicallyReachable(fixture: MechanismFixture): Set<string> {
     // The actuator carries its own link round exactly, so the whole body counts.
     ...drivenBody.joints,
   ]);
-  const neighboursOf = (id: string) => {
+  const neighborsOf = (id: string) => {
     const found = new Set<string>();
     for (const link of fixture.links) {
       if (!link.joints.includes(id)) continue;
@@ -65,7 +65,7 @@ function dyadicallyReachable(fixture: MechanismFixture): Set<string> {
     progressed = false;
     for (const joint of fixture.joints) {
       if (known.has(joint.id)) continue;
-      const references = [...neighboursOf(joint.id)].filter((id) => known.has(id));
+      const references = [...neighborsOf(joint.id)].filter((id) => known.has(id));
       if (references.length >= 2) {
         known.add(joint.id);
         progressed = true;
@@ -104,7 +104,7 @@ describe('the double butterfly linkage', () => {
     const fixture = doubleButterflyFixture();
     const reached = dyadicallyReachable(fixture);
     // The drive places its own link and stops. Every other joint has exactly one
-    // already-known neighbour, so no dyad anywhere in the linkage can fire.
+    // already-known neighbor, so no dyad anywhere in the linkage can fire.
     expect([...reached].sort()).toEqual(['A', 'B', 'C', 'D']);
 
     // The same walk on a linkage that *is* a chain of dyads, so a bug that
@@ -155,7 +155,7 @@ describe('the double butterfly linkage', () => {
       ).toBeGreaterThan(1);
 
       const steps = path.slice(1).map((joint, i) => span(joint, path[i]));
-      // Judged against the neighbouring steps rather than the average: the
+      // Judged against the neighboring steps rather than the average: the
       // linkage genuinely speeds up and slows down over a turn. What a Newton
       // solve falling to another root looks like is a step with no relation to
       // the ones either side of it, and that is orders of magnitude, not a

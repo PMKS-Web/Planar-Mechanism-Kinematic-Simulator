@@ -108,7 +108,7 @@ for (const mechanism of MECHANISMS) {
       (total, path) => total + Number(path.getAttribute('data-channels')),
       0
     ),
-    // The block is #000 in every slider cell — no colour derivation anywhere.
+    // The block is #000 in every slider cell — no color derivation anywhere.
     blockFills: [...document.querySelectorAll('#sliderHolder .slider-block path')].map((p) =>
       p.getAttribute('fill')
     ),
@@ -133,11 +133,11 @@ for (const mechanism of MECHANISMS) {
 }
 
 // ------------------------------------------ the plate follows its rider's paint
-console.log('\nrecolouring a rider repaints its weld plate');
-// A Slide's plate is painted in the rider's own colour -- that is the whole
-// mechanism by which it reads as the same body. Recolouring a link changes a
+console.log('\nrecoloring a rider repaints its weld plate');
+// A Slide's plate is painted in the rider's own color -- that is the whole
+// mechanism by which it reads as the same body. Recoloring a link changes a
 // mark while moving nothing, so a glyph cache keyed only on positions leaves
-// the plate showing a colour the link no longer has.
+// the plate showing a color the link no longer has.
 await page.goto(BASE + MECHANISMS[0].query, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await page.waitForSelector('#sliderHolder', { state: 'attached', timeout: 15000 });
@@ -148,11 +148,11 @@ const plateFill = () =>
   page.locator('#sliderHolder .slider-plate path').first().getAttribute('fill');
 const wasFill = await plateFill();
 
-// Driving the recolour needs Angular's debug globals, which exist only in a
+// Driving the recolor needs Angular's debug globals, which exist only in a
 // development build. Skipped rather than failed against a deploy preview: the
 // check is about cache invalidation, and a production bundle cannot be asked.
-const recolourable = await page.evaluate(() => typeof window.ng?.getComponent === 'function');
-if (recolourable) {
+const recolorable = await page.evaluate(() => typeof window.ng?.getComponent === 'function');
+if (recolorable) {
   await page.evaluate(() => {
     const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
     grid.mechanismSrv.getLinks().find((link) => link.id === 'CD').fill = '#00695C';
@@ -160,26 +160,26 @@ if (recolourable) {
   });
   await page.waitForTimeout(500);
 } else {
-  console.log("  SKIP  the weld plate follows its rider's colour (needs a dev build)");
+  console.log("  SKIP  the weld plate follows its rider's color (needs a dev build)");
 }
-const nowFill = recolourable ? await plateFill() : null;
+const nowFill = recolorable ? await plateFill() : null;
 
 // Recorded as skipped rather than passed when it could not be run: a check that
 // reports success without executing turns a production regression green.
-if (recolourable) {
+if (recolorable) {
   const repainted = wasFill !== nowFill && nowFill === '#00695C';
   results.push({
     scenario: 'scotch-yoke',
-    label: 'the weld plate follows its rider\u2019s colour',
+    label: 'the weld plate follows its rider\u2019s color',
     actual: `${wasFill} -> ${nowFill}`,
     expected: `${wasFill} -> #00695C`,
     ok: repainted,
   });
   console.log(
-    `  ${repainted ? 'PASS' : 'FAIL'}  the weld plate follows its rider's colour: ${wasFill} -> ${nowFill}`
+    `  ${repainted ? 'PASS' : 'FAIL'}  the weld plate follows its rider's color: ${wasFill} -> ${nowFill}`
   );
 }
-await page.screenshot({ path: `${OUT}/recoloured-plate.png` });
+await page.screenshot({ path: `${OUT}/recolored-plate.png` });
 
 await browser.close();
 

@@ -31,21 +31,21 @@ const record = (what, ok, detail) => {
 /**
  * How wide the linkage actually is on screen, which is what a reader sees.
  *
- * Measured joint centre to joint centre, not from the painted bounding box:
+ * Measured joint center to joint center, not from the painted bounding box:
  * stroke width follows the object-scale setting, which a unit change also
  * moves, and that would show up here as a change in size that is not one.
  */
 const onScreen = () =>
   page.evaluate(() => {
-    const centres = [
+    const centers = [
       ...document.querySelectorAll('#jointHolder circle, [id^="joint_"] circle'),
     ].map((circle) => {
       const box = circle.getBoundingClientRect();
       return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
     });
-    const xs = centres.map((c) => c.x);
+    const xs = centers.map((c) => c.x);
     return {
-      count: centres.length,
+      count: centers.length,
       span: +(Math.max(...xs) - Math.min(...xs)).toFixed(1),
       left: +Math.min(...xs).toFixed(1),
     };

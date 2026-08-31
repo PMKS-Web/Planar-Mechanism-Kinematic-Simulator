@@ -42,7 +42,7 @@ describe('sizing the driver dyad for a synthesised four-bar', () => {
     for (const pose of poses) {
       const reach = reachTo(dyad, pose);
       // Strictly inside, not merely within: a pose sitting on a turning point
-      // is reached at dead centre, where the six-bar has no velocity.
+      // is reached at dead center, where the six-bar has no velocity.
       expect(reach).toBeGreaterThan(shortest);
       expect(reach).toBeLessThan(longest);
     }

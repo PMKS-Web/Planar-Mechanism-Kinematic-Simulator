@@ -225,7 +225,7 @@ describe('poseFromStrokeAndStart: the edit the span rule cannot express', () => 
   it('changes the size while holding the position', () => {
     // The bug this exists to prevent: at start 0.5 a stroke of 12 spans
     // 18 + LOCK, which lies inside the *old* stroke-10 travel [10, 20] + LOCK.
-    // Routed through the span rule, a field labelled Travel would have held the
+    // Routed through the span rule, a field labeled Travel would have held the
     // size at 10 and moved the piston to 80% instead.
     const asked = poseFromStrokeAndStart({ x: 0, y: 0 }, 0, 12, 0.5, R);
     expect(cylinderStroke(dist(asked.barrelFar, asked.barrelNear), R)).toBeCloseTo(12, 9);

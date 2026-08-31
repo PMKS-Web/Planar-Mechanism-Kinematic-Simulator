@@ -96,7 +96,7 @@ for (const mech of MECHANISMS) {
   // The transport is only rendered in an analysis mode.
   await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
   await page.waitForTimeout(1200);
-  // A mechanism that cannot be analysed used to get a disabled transport; the
+  // A mechanism that cannot be analyzed used to get a disabled transport; the
   // mode now refuses to open at all, so an absent play button is the same
   // failure and has to be read as one rather than waited on.
   const play = page.locator('.playButton').first();

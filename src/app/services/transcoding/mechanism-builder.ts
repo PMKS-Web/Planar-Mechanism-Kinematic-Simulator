@@ -101,7 +101,7 @@ export class MechanismBuilder {
       link.comIsCustom = linkData.comIsCustom;
       link.fill = linkData.color;
       // The joints are all built before any link is (they have to be — a link
-      // is named by the ones it holds), so the ground pin a disc is centred on
+      // is named by the ones it holds), so the ground pin a disc is centerd on
       // is already known here and the outline can be built for real rather
       // than as a bar to be corrected on the next update.
       if (linkData.isCircle) {
@@ -264,7 +264,7 @@ export class MechanismBuilder {
     // re-applied above. The transcoder has already refused any reference that
     // does not resolve, so a miss here is builder/transcoder skew.
     //
-    // 'L' is honoured as the shortcut it always was: marks live on joints
+    // 'L' is honored as the shortcut it always was: marks live on joints
     // only, so a link reference marks each of the link's joints. New URLs
     // spell those marks out as 'J' references directly.
     this.transcoder.getLockedIds().forEach((lockedId) => {
@@ -289,8 +289,8 @@ export class MechanismBuilder {
       }
     });
 
-    // Put the chosen colours back. Undo and redo replay URLs, so this is what
-    // keeps a coloured part coloured through one -- the same reason the locks
+    // Put the chosen colors back. Undo and redo replay URLs, so this is what
+    // keeps a colored part colored through one -- the same reason the locks
     // above are re-armed. The transcoder has already refused any reference that
     // does not resolve.
     this.transcoder.getPartColors().forEach((entry: string) => {
@@ -304,7 +304,7 @@ export class MechanismBuilder {
       }
     });
 
-    // What each hand-placed centre of mass is held against. The URL carries
+    // What each hand-placed center of mass is held against. The URL carries
     // where the point is and the anchor says what it is measured from, so the
     // offset between the two is captured here, against the geometry just
     // decoded. Not left to the first update as the centroid anchor's is: that
@@ -321,7 +321,7 @@ export class MechanismBuilder {
     });
 
     // A sealed cylinder's parts always follow their own shapes. Nothing that
-    // shipped ever let anyone choose their inertia or centres — the values in
+    // shipped ever let anyone choose their inertia or centers — the values in
     // circulating URLs are fixture defaults — so decoding migrates the parts
     // to auto rather than freezing numbers nobody picked. Masses stay exactly
     // as stored: mass carries no flag and is always somebody's choice. After

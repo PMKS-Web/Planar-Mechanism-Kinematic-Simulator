@@ -25,7 +25,7 @@ import { SettingsService } from '../../app/services/settings.service';
 // zero, and PMKS+ reports zero.
 //
 // It nevertheless moves, because the plate does not in fact turn, so the four
-// constraints are not independent. Recognising that needs a rank test on the
+// constraints are not independent. Recognizing that needs a rank test on the
 // constraint Jacobian rather than a count of joints and bodies, which is a
 // different mobility criterion from the one this engine implements (plan
 // docs/joint-types-plan.md, the DOF rules in mechanism.ts).

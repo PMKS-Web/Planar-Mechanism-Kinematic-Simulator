@@ -8,7 +8,7 @@
 //
 //   1. the block sits on its pin
 //   2. the block's long axis runs along the slot
-//   3. a floating slot's channel is centred between the joints that define it,
+//   3. a floating slot's channel is centerd between the joints that define it,
 //      and points the same way
 //   4. a weld plate reaches the joint its rider reaches
 //
@@ -203,11 +203,11 @@ const violations = () =>
       // slot's frame, so the raw numbers are not model coordinates there.
       const first = toModel(carrier, nums[0], nums[1]);
       const opposite = toModel(carrier, nums[9], nums[10]);
-      const centre = [(first[0] + opposite[0]) / 2, (first[1] + opposite[1]) / 2];
+      const center = [(first[0] + opposite[0]) / 2, (first[1] + opposite[1]) / 2];
       const want = [(a.x + b.x) / 2, (a.y + b.y) / 2];
-      if (Math.hypot(centre[0] - want[0], centre[1] - want[1]) > 0.05) {
+      if (Math.hypot(center[0] - want[0], center[1] - want[1]) > 0.05) {
         bad.push(
-          `${slider.id}: channel centre ${centre.map((n) => n.toFixed(2))} not slot midpoint ${want.map((n) => n.toFixed(2))}`
+          `${slider.id}: channel center ${center.map((n) => n.toFixed(2))} not slot midpoint ${want.map((n) => n.toFixed(2))}`
         );
       }
     }
@@ -255,7 +255,7 @@ async function load(query) {
   await page.waitForTimeout(600);
 }
 
-const centreOf = (selector) =>
+const centerOf = (selector) =>
   page.evaluate((sel) => {
     const node = document.querySelector(sel);
     if (!node) return null;
@@ -264,11 +264,11 @@ const centreOf = (selector) =>
   }, selector);
 
 /**
- * A point genuinely on a link's body. A link's bounding-box centre is mostly the
+ * A point genuinely on a link's body. A link's bounding-box center is mostly the
  * empty space inside its hull once it has three joints, so aiming there grabs
  * the canvas instead.
  */
-const centreOfLink = (id) =>
+const centerOfLink = (id) =>
   page.evaluate((linkId) => {
     const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
     const link = grid.mechanismSrv.getLinks().find((l) => l.id === linkId);
@@ -315,7 +315,7 @@ for (const [name, query] of Object.entries(MECHANISMS)) {
       [0, 90, '-y'],
       [0, -90, '+y'],
     ]) {
-      const at = await centreOf(`#${id}`);
+      const at = await centerOf(`#${id}`);
       if (!at) continue;
       await drag(at, dx, dy);
       const bad = await violations();
@@ -346,7 +346,7 @@ for (const [name, query] of Object.entries(MECHANISMS)) {
       [0, -70, '+y'],
       [0, 70, '-y'],
     ]) {
-      const at = await centreOfLink(id);
+      const at = await centerOfLink(id);
       if (!at) continue;
       await drag(at, dx, dy);
       const bad = await violations();
@@ -374,7 +374,7 @@ for (const [name, query] of Object.entries(MECHANISMS)) {
     return slider ? `joint_${slider.slotJointA.id}` : null;
   });
   if (slotJoint) {
-    const at = await centreOf(`#${slotJoint}`);
+    const at = await centerOf(`#${slotJoint}`);
     if (at) await drag(at, 110, -80);
     const framed = await page.evaluate(() => {
       const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
@@ -438,7 +438,7 @@ for (const [name, query] of Object.entries(MECHANISMS)) {
   });
   if (unrelated.length) {
     const before = await sliderPoseNow();
-    const at = await centreOf(`#${unrelated[0]}`);
+    const at = await centerOf(`#${unrelated[0]}`);
     if (at) await drag(at, 80, 0);
     const after = await sliderPoseNow();
     checkThat(

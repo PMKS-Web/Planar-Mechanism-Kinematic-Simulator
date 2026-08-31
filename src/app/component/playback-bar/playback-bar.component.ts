@@ -38,7 +38,7 @@ function cssPixels(style: CSSStyleDeclaration, name: string, fallback: number): 
 /**
  * What the input does when it reaches the end of its track.
  *
- * Two facts, not a good one and a bad one, so both are drawn in the same grey:
+ * Two facts, not a good one and a bad one, so both are drawn in the same gray:
  * a crank comes round again, a ram turns back. On the combined row one of these
  * stands for every machine that behaves that way, which is why the words are
  * carried rather than derived from a flag at the point of drawing.
@@ -88,7 +88,7 @@ export interface PlaybackRow {
   ownPlay: boolean;
   /**
    * What happens at the end of the cycle: one entry for a machine, and for the
-   * combined row one per behaviour present among the machines it stands for.
+   * combined row one per behavior present among the machines it stands for.
    */
   ends: CycleEnd[];
   period: number;
@@ -351,7 +351,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
       // the word can never disagree. Read off the drive alone, the glyph never
       // changed on a machine whose input reverses on its own: turning one of
       // those round writes `playbackDirection` and leaves the drive as it was.
-      clockwise: this.mechanism.travellingForward(index),
+      clockwise: this.mechanism.travelingForward(index),
       togglePoint: mechanism?.hasAddedSamples ?? false,
       note: combined ? '' : this.noteFor(index),
       playing: this.mechanism.isMechanismPlaying(index),
@@ -388,7 +388,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Which way the input is travelling at this moment, in words.
+   * Which way the input is traveling at this moment, in words.
    *
    * A linear drive extends and retracts; a rotary one turns one way or the
    * other. "Reciprocating" said only that the machine was of a kind that turns
@@ -396,7 +396,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   private noteFor(index: number): string {
     const profile = this.mechanism.driveProfileOf(index);
-    const outward = this.mechanism.travellingForward(index);
+    const outward = this.mechanism.travelingForward(index);
     if (profile?.linear) {
       return outward ? 'Opening' : 'Closing';
     }
@@ -511,7 +511,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   /**
    * The same fact about several machines at once.
    *
-   * Grouped by behaviour rather than listed per machine: what the reader wants
+   * Grouped by behavior rather than listed per machine: what the reader wants
    * from the combined row is how many kinds of ending there are, and with one
    * kind the names are noise -- the row is already called All.
    */
@@ -538,7 +538,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    * One frame along, and round the cycle rather than up against its end.
    *
    * Measured in *time*, which is what a frame is. A machine's own handle
-   * measures how far its input has come -- degrees of crank, centimetres of ram
+   * measures how far its input has come -- degrees of crank, centimeters of ram
    * -- and stepping in those units is only the same motion while the input
    * never turns round. A ram's travel stops changing at each end of its stroke,
    * so a step of one frame's worth of travel asked for a position past the end

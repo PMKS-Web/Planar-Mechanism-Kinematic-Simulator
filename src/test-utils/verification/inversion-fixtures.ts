@@ -93,7 +93,7 @@ function merge(parts: MechanismFixture[], inputAngVel: number): MechanismFixture
  * anchored-bar-mobility.spec.ts). That is what lets all four bars appear in
  * every one of the four, with only the ground hatching moving.
  *
- * Colours and names carry a bar's identity between the four, which is the
+ * Colors and names carry a bar's identity between the four, which is the
  * point the drawing exists to make: L2 is the same bar whether it is a crank,
  * a coupler or the frame. They are pinned in template-colors.ts.
  */
@@ -248,7 +248,7 @@ export function sliderCrankInversionsFixture(): MechanismFixture {
       { id: 'B', ...engineElbow },
       {
         id: 'C',
-        // In line with the crank centre, so the chain has no offset in any of
+        // In line with the crank center, so the chain has no offset in any of
         // the four. The block runs on the frame's own axis.
         x: engineElbow.x + Math.sqrt(ROD * ROD - (engineElbow.y - engineAt.y) ** 2),
         y: engineAt.y,
@@ -267,12 +267,12 @@ export function sliderCrankInversionsFixture(): MechanismFixture {
   // circle the block runs on and the bar goes right over.
   const whitworthAt = { x: 9.6, y: 6.5 };
   const whitworthPivot = whitworthAt;
-  const whitworthCentre = { x: whitworthAt.x + CRANK, y: whitworthAt.y };
-  const whitworthBlock = along(whitworthCentre, turned(1, 60), ROD);
+  const whitworthCenter = { x: whitworthAt.x + CRANK, y: whitworthAt.y };
+  const whitworthBlock = along(whitworthCenter, turned(1, 60), ROD);
   const whitworth: MechanismFixture = {
     joints: [
       { id: 'E', ...whitworthPivot, ground: true },
-      { id: 'F', ...whitworthCentre, ground: true, input: true, driveSpeed: LIBRARY_RPM },
+      { id: 'F', ...whitworthCenter, ground: true, input: true, driveSpeed: LIBRARY_RPM },
       { id: 'G', ...whitworthBlock },
       {
         id: 'H',
@@ -295,12 +295,12 @@ export function sliderCrankInversionsFixture(): MechanismFixture {
   // the pivot is outside the block's circle, so the slotted bar — the cylinder
   // — rocks on its trunnion rather than going over.
   const cylinderAt = { x: 0, y: 0 };
-  const cylinderCentre = cylinderAt;
+  const cylinderCenter = cylinderAt;
   const trunnion = { x: cylinderAt.x + ROD, y: cylinderAt.y };
-  const cylinderBlock = along(cylinderCentre, turned(1, 140), CRANK);
+  const cylinderBlock = along(cylinderCenter, turned(1, 140), CRANK);
   const oscillating: MechanismFixture = {
     joints: [
-      { id: 'J', ...cylinderCentre, ground: true, input: true, driveSpeed: LIBRARY_RPM },
+      { id: 'J', ...cylinderCenter, ground: true, input: true, driveSpeed: LIBRARY_RPM },
       { id: 'K', ...cylinderBlock },
       { id: 'M', ...trunnion, ground: true },
       { id: 'N', ...along(trunnion, unit(trunnion, cylinderBlock), ROD + CRANK + 0.6) },

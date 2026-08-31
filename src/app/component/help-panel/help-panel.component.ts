@@ -143,7 +143,7 @@ export class HelpPanelComponent {
    *
    * The second one used to pass for success. `JSON.stringify({apiKey: undefined})`
    * is `{}`, so an unconfigured site answers 200 with an empty object, nothing
-   * throws, and the old code went on to initialise EmailJS with `undefined` and
+   * throws, and the old code went on to initialize EmailJS with `undefined` and
    * post a message that could not be delivered. What the reader was told was
    * "Message failed to send. Please try again later" -- an invitation to keep
    * pressing a button that could never work, about a fault no amount of trying

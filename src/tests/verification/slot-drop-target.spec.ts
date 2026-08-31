@@ -26,7 +26,7 @@ describe('dropping a joint onto a link', () => {
   it('cuts a slot on the pair whose segment the drop is nearest', () => {
     // A ternary link: three joints, three candidate pairs. The drop sits beside
     // the B-C edge, so that is the pair -- not A-B, which is longer and closer
-    // to the link's centre.
+    // to the link's center.
     const a = joint('A', 0, 0);
     const b = joint('B', 10, 0);
     const c = joint('C', 10, 10);

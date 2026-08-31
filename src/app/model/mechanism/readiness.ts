@@ -238,7 +238,7 @@ export function readinessOf(
       title: 'The linkage passes through a toggle',
       body:
         'Somewhere in the cycle this mechanism reaches a position where a very small movement of ' +
-        'the input produces a very large one at the output — a toggle, or dead-centre. The motion ' +
+        'the input produces a very large one at the output — a toggle, or dead-center. The motion ' +
         'there is solved at a finer step so it can be animated smoothly, but it is genuinely fast: ' +
         'velocities and accelerations near that point are large and change quickly, and a real ' +
         'linkage built to this drawing would be hard to control through it.',
@@ -266,7 +266,7 @@ function factsOf(
   helpers: ReadinessHelpers
 ): MechanismFact[] {
   // Its own, not everything it is handed: a shared frame piece carries the
-  // neighbour's driven pin along with it, and naming that as this machine's
+  // neighbor's driven pin along with it, and naming that as this machine's
   // "Driven joint" pointed the reader at a joint in another mechanism.
   const driven = partition.ownJoints.find((joint) => joint instanceof RealJoint && joint.input) as
     RealJoint | undefined;

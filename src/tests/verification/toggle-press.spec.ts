@@ -105,7 +105,7 @@ describe('a toggle press closed by a hydraulic ram', () => {
   });
 
   it('drives the knee toward the dead point and stops short of it', () => {
-    // Past 270 degrees the press goes over-centre and starts opening again. The
+    // Past 270 degrees the press goes over-center and starts opening again. The
     // ram's stops are placed so it never gets there -- and never quite reaches
     // the singular depth either.
     const knees = samples.map((sample) => sample.knee);

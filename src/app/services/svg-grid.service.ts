@@ -32,7 +32,7 @@ import { CHROME_MOVED } from '../model/chrome-motion';
 const MINOR_DIVISIONS = 5;
 import { LengthUnit } from '../model/unit-enums';
 
-/** One of each unit, in centimetres. The only ratio this file needs. */
+/** One of each unit, in centimeters. The only ratio this file needs. */
 const LENGTH_IN_CM: Record<LengthUnit, number> = {
   [LengthUnit.CM]: 1,
   [LengthUnit.METER]: 100,
@@ -568,7 +568,7 @@ export class SvgGridService {
     // because the content moved with the cursor.
     // Synthesis runs its gestures outside the state machine -- a position is a
     // question about a machine, not part of one -- so it is asked separately.
-    // It used to be recognised by what was last clicked, which never stopped
+    // It used to be recognized by what was last clicked, which never stopped
     // being a pose: the canvas could not be panned again until something else
     // was selected.
     if (
@@ -697,7 +697,7 @@ export class SvgGridService {
     return this.cellSize / MINOR_DIVISIONS;
   }
 
-  /** The spacing of the labelled lines -- five of the smallest squares. */
+  /** The spacing of the labeled lines -- five of the smallest squares. */
   get majorCellSize(): number {
     return this.cellSize;
   }
@@ -721,11 +721,11 @@ export class SvgGridService {
   }
 
   /**
-   * How far apart the labelled lines go at this zoom.
+   * How far apart the labeled lines go at this zoom.
    *
    * One, two or five of whatever decade fits, which is the ladder every graph
    * paper and plotting library climbs: 0.5, 1, 2, 5, 10, 20, 50. Five minor
-   * lines to a major, so the labelled lines land on round numbers and the
+   * lines to a major, so the labeled lines land on round numbers and the
    * grid subdivides at a steady rate rather than in jumps.
    *
    * It used to halve and quarter its way down from a fixed starting size,
@@ -751,7 +751,7 @@ export class SvgGridService {
   /**
    * The buttons zoom about the middle of the free canvas rather than the middle
    * of the window, which is where the library puts it. Zooming about a point
-   * behind the panel walked a centred drawing sideways under it, a little
+   * behind the panel walked a centerd drawing sideways under it, a little
    * further with every press.
    */
   zoomIn() {
@@ -802,7 +802,7 @@ export class SvgGridService {
    * — animating that is a zoom-in on every single load.
    *
    * Either way it is also where the drawn marks get a size to suit the result:
-   * a Jansen leg is nearly two metres across, and joints drawn at the size a
+   * a Jansen leg is nearly two meters across, and joints drawn at the size a
    * new project starts with come out as specks. Only when the author never
    * chose a size of their own -- a drawing that carries one means it.
    */
@@ -957,7 +957,7 @@ export class SvgGridService {
    * Give the drawn marks a size to suit the mechanism, if nobody has chosen one.
    * Returns whether anything changed.
    *
-   * A Jansen leg is nearly two metres across and its joints at the size a new
+   * A Jansen leg is nearly two meters across and its joints at the size a new
    * project starts with come out as specks -- which is what the "links are
    * drawn far smaller than the grid" warning was firing on load to say.
    *
@@ -1355,12 +1355,12 @@ export class SvgGridService {
    * can land before Angular has acted on the flag -- which went unnoticed while
    * the only thing it hid was the grid ruling, drawn to the viewport and so
    * never bigger than the box anyway. A background image is as big as the user
-   * made it, and a hundred-centimetre photograph got framed instead of the
+   * made it, and a hundred-centimeter photograph got framed instead of the
    * linkage. Hidden straight on the element, so it is gone by the next
    * statement rather than by the next render.
    *
-   * Centre-of-mass marks are in the list for the same reason. A mark is a
-   * decoration a few pixels wide, but it sits wherever its link's centre of
+   * Center-of-mass marks are in the list for the same reason. A mark is a
+   * decoration a few pixels wide, but it sits wherever its link's center of
    * mass is, and a hand-placed one can be anywhere at all -- a URL carrying a
    * point 90,000 units off framed that instead of the mechanism, at a zoom
    * where the whole linkage drew as a single pixel and every joint became

@@ -78,13 +78,13 @@ function model() {
  */
 function drawnGeometry() {
   return page.evaluate(() => {
-    const centre = (selector) => {
+    const center = (selector) => {
       const box = document.querySelector(selector)?.getBoundingClientRect();
       return box ? { x: box.x + box.width / 2, y: box.y + box.height / 2 } : null;
     };
     const skin = document.querySelector('.cylinder-mark')?.getBoundingClientRect();
     return {
-      tip: centre('#joint_C'),
+      tip: center('#joint_C'),
       skin: skin
         ? { x: +skin.x.toFixed(1), y: +skin.y.toFixed(1), w: +skin.width.toFixed(1) }
         : null,

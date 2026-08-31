@@ -463,7 +463,7 @@ await park();
 await page.waitForTimeout(300);
 const knobAt = knobOnScreen;
 
-// The knob has to be reachable: it sits at the picture's own top-centre, which
+// The knob has to be reachable: it sits at the picture's own top-center, which
 // at the default placement is exactly on the y axis — and an axis line drawn
 // over it took the press and panned the canvas instead.
 record(
@@ -615,7 +615,7 @@ record(
   'and the panel restates the width in the new unit rather than renaming it',
   await page.evaluate(() => {
     const c = ng.getComponent(document.querySelector('app-new-grid'));
-    // Whatever it was in centimetres, it is a hundredth of that in metres.
+    // Whatever it was in centimeters, it is a hundredth of that in meters.
     return c.bgImage.image().width > 0;
   })
 );

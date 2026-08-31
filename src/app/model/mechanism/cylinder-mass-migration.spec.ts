@@ -12,7 +12,7 @@ void Mechanism;
 describe('cylinder parts arriving from a URL', () => {
   it("migrate to auto: their inertia was never anybody's choice", () => {
     // Nothing that shipped ever offered a field for a sealed part's inertia
-    // or centre — the values in circulating URLs are fixture defaults. The
+    // or center — the values in circulating URLs are fixture defaults. The
     // decoder hands the parts back to their shapes; masses stay as stored,
     // because mass carries no flag and is always somebody's choice.
     const { service } = buildMechanismFixture(TEMPLATE_LINKAGES['Cylinder_Boom']);

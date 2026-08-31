@@ -28,13 +28,13 @@
         }
 
         // Material pins the checkmark absolutely at the button's left edge while
-        // the label centres across the full width, so the space between them
-        // changes with the label's length. Laying the button out as a centred
+        // the label centers across the full width, so the space between them
+        // changes with the label's length. Laying the button out as a centerd
         // flex row keeps the pair together at one fixed gap instead.
         //
         // Material also reserves 30px of left padding on the checked button for
         // that absolute mark. With the mark back in the flow the padding only
-        // inflates the selected option and shoves the pair off centre, so it goes.
+        // inflates the selected option and shoves the pair off center, so it goes.
         .mat-button-toggle-button {
           display: flex;
           align-items: center;
@@ -42,10 +42,10 @@
           padding: 0;
         }
 
-        // Back into the flow, and flex-centred so the mark loses the
+        // Back into the flow, and flex-centerd so the mark loses the
         // inline-block baseline drop that left it sitting low against the label.
         // The extra pixel up balances the checkmark's weight, which hangs below
-        // its own box's centre.
+        // its own box's center.
         .mat-button-toggle-checkbox-wrapper {
           position: static;
           display: flex;
@@ -78,7 +78,7 @@
 
         // Only the checked toggle draws a mark — the wrapper is present but empty
         // on the others and collapses to nothing — so the gap belongs here, where
-        // it can't push an unselected label off centre.
+        // it can't push an unselected label off center.
         .mat-button-toggle-checkbox-wrapper {
           margin-right: 8px;
         }

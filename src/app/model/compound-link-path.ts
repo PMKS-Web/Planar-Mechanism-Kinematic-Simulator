@@ -38,7 +38,7 @@ export function buildCompoundPath(leafPaths: string[], filletRadius: number): Co
  * A carrier subtracts its channels by appending them to its own path and
  * filling even-odd, which is exactly right for one channel and wrong for two
  * that cross: the crossing is inside both, so it is wound three times, comes
- * out odd, and fills back in — a carrier-coloured diamond sitting in the middle
+ * out odd, and fills back in — a carrier-colored diamond sitting in the middle
  * of the X with both capsule outlines stroked straight through it. Unioning
  * first turns the pair into a single ring, which even-odd then subtracts whole.
  *

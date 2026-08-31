@@ -33,7 +33,7 @@ export type DriveForward = (joint: RealJoint) => boolean;
 export interface WeldPlate {
   /**
    * The rider's own paint, redrawn over the black block so a Slide reads as one
-   * body with it. Visual only: `fill` is the link's colour, never a function of
+   * body with it. Visual only: `fill` is the link's color, never a function of
    * it, so a random palette can never break the cue (§2.8 rule 4).
    */
   fill: string;
@@ -74,7 +74,7 @@ export interface SliderMark {
   id: string;
   /**
    * The pin the block sits on. The block is a far bigger target than the joint
-   * marker at its centre, so the canvas lets a drag start on it and hands the
+   * marker at its center, so the canvas lets a drag start on it and hands the
    * gesture to the pin -- the two are coincident, so it is the same grab.
    */
   pin: Joint;
@@ -114,7 +114,7 @@ export interface SliderMark {
  * A channel window. `path` is in the carrier's own drawing frame so it can be
  * appended to the carrier's path data and subtracted by its even-odd fill --
  * which also makes the carrier's existing stroke trace the new edge in the
- * carrier's own colour, exactly as §2.8 rule 7 asks, with nothing added.
+ * carrier's own color, exactly as §2.8 rule 7 asks, with nothing added.
  */
 export interface Channel {
   carrierId: string;
@@ -323,7 +323,7 @@ export class SliderMarkService {
    * The channels cut into `carrier`, expressed in the slot's own frame so they
    * can be appended to a path already drawn there.
    *
-   * The frame is centred on the pin with +x along the slot, so a model point is
+   * The frame is centerd on the pin with +x along the slot, so a model point is
    * carried into it by subtracting the pin and turning by the slot angle.
    */
   private channelsInLocalFrame(
@@ -404,7 +404,7 @@ export class SliderMarkService {
       barrel: barrelPath(r, anchor, mouth),
       barrelFill: (found.barrel as RealLink).fill ?? '#000000',
       rod: rodBodyPath(r, rodReach, headHalf),
-      // One part, one colour: the rod wears the barrel's fill, always.
+      // One part, one color: the rod wears the barrel's fill, always.
       rodFill: (found.barrel as RealLink).fill ?? '#000000',
       block: cylinderBlockPath(r, headHalf),
       contour: cylinderContourPath(r, anchor, mouth, rodReach),
@@ -650,7 +650,7 @@ export class SliderMarkService {
   /**
    * Where a grounded guide sits and how far it runs, in world coordinates.
    *
-   * Centred on the middle of the block's travel rather than on its resting
+   * Centerd on the middle of the block's travel rather than on its resting
    * point, so the block is inside its own track wherever the cycle takes it.
    */
   private bandFor(

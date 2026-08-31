@@ -102,7 +102,7 @@ PrisJoint (grounded) = { ground: true, angle_rad: world angle }   ← unchanged
 ```
 
 Why no offset is needed: every mechanism in scope has its slot collinear with two of the carrier's
-joints — Whitworth (pivot → far pin), Geneva (centre → rim), oscillating cylinder (pivot → piston
+joints — Whitworth (pivot → far pin), Geneva (center → rim), oscillating cylinder (pivot → piston
 pin), hydraulic cylinder (pin → pin), Oldham (one joint pair per slot). The offset only existed
 because an earlier draft measured the slot against a link's *global* axis, which is derived from
 `joints[0]`/`joints[1]` ([`link.ts:275-276`](../src/app/model/link.ts)) and therefore unstable
@@ -185,19 +185,19 @@ draggable. Rule is "collapsed skins expand on selection", so future skins inheri
 
 Five composable primitives, not twelve hand-drawn glyphs: hatch, block, channel, marker, arrow.
 
-**Link colours are randomly generated per link and carry no meaning.** Nothing in the grammar may
-depend on which colour a link has. Carrier and rider are distinguished *structurally*: the slot is
+**Link colors are randomly generated per link and carry no meaning.** Nothing in the grammar may
+depend on which color a link has. Carrier and rider are distinguished *structurally*: the slot is
 a hole in the carrier, the block sits in the hole, the rider attaches at the marker.
 
 - circle marker = rotation allowed · `+` marker = welded/rigid
 - hatching = the other body is ground; a link body in its place = the other body is a moving link
 - **Slot**: block is a fixed dark neutral — it is its own body (`SliderBlock`) and belongs to no
-  link, so it must not borrow a link colour
-- **Slide**: block is a **darkened derivative of the rider's colour** — same hue, forced low
-  lightness. That preserves "same colour family ⇒ same body" without depending on *which* colour
+  link, so it must not borrow a link color
+- **Slide**: block is a **darkened derivative of the rider's color** — same hue, forced low
+  lightness. That preserves "same color family ⇒ same body" without depending on *which* color
   the rider got, and it guarantees the block is dark enough for the next rule.
 - arrow = the driven freedom; curved for rotation, straight for translation; **always white**.
-  This is why both block treatments are forced dark: a white arrow on a randomly-coloured light
+  This is why both block treatments are forced dark: a white arrow on a randomly-colored light
   block would be invisible.
 - the selection ring stays purely interaction state (`getJointCSSClass`,
   [`mechanism.service.ts:1353-1373`](../src/app/services/mechanism.service.ts)) — never overloaded
@@ -425,7 +425,7 @@ is about to happen *before* the drop rather than after it.
 
 While a capture is held the two joints sit on the same point, so their names overlap into a smudge.
 One label replaces both and names the merge — `B → D` — which is also the only place the canvas says
-*which of the two survives*. The arrow points the way the joint travelled, and is latched when the
+*which of the two survives*. The arrow points the way the joint traveled, and is latched when the
 ring appears: recomputing it per frame would flip it as the cursor wandered across the target, and
 by then the joint has been parked on top of it anyway, so there is nothing left to read from.
 
@@ -450,13 +450,13 @@ percentage of the joint's own fill-box rather than the prototype's 7px, because 
 inside the zoomed SVG grows with the canvas transform instead of holding its proportion.
 
 **1.3** treats a link drag as a rigid translation rather than as "drag each joint in turn". That
-distinction is visible: the body's own centre of mass and forces translate exactly, so a
-hand-placed CoM survives, while only the *neighbouring* links are deformed and recomputed.
+distinction is visible: the body's own center of mass and forces translate exactly, so a
+hand-placed CoM survives, while only the *neighboring* links are deformed and recomputed.
 
-A neighbour's **forces** are recomputed too, and that is easy to get wrong twice over. A load is
+A neighbor's **forces** are recomputed too, and that is easy to get wrong twice over. A load is
 fixed to the body it acts on, so leaving it at its old world position silently slides it to a
 different point of the link — and the drag saves that as the real load. But the transform has to
-scale as well as rotate: a neighbour is *deformed*, its two reference joints changing separation,
+scale as well as rotate: a neighbor is *deformed*, its two reference joints changing separation,
 so the rigid transform used elsewhere for link geometry would hold the load's absolute distance
 from the joint and walk it off the end of a shortened link. `pointThroughFrame` scales with the
 frame, which is the invariant `dragJoint` already preserves for a binary link.
@@ -563,7 +563,7 @@ Kinematic loops are now lists of typed edges rather than strings of joint letter
 let a slot appear in a loop at all — see
 [`floating-slot-kinematics-design.md`](floating-slot-kinematics-design.md).
 
-**2.11 (instant centres): de-scoped, not parked.** Pre-implementation review for 2.9 found the IC
+**2.11 (instant centers): de-scoped, not parked.** Pre-implementation review for 2.9 found the IC
 solver is dead code: nothing imports `ic-solver.ts` (the only references are a commented-out import
 and call at [`mechanism.ts:7`](../src/app/model/mechanism/mechanism.ts) and `:547`),
 `MechanismService.ics` is initialized empty and never filled, and no spec exercises it. The
@@ -607,7 +607,7 @@ The general case — neither slot joint known, or no solved joint on `L` — doe
 hand to the §2.7a strategy, which in v1 reports unsolvable.
 
 **2.7 is the structural one.** `detJointOrder` is a single-pass DFS that emits a
-`circleLineIntersectionPoints` step as soon as it sees a `PrisJoint` neighbour — safe today
+`circleLineIntersectionPoints` step as soon as it sees a `PrisJoint` neighbor — safe today
 because a grounded slot is known before the walk starts. It now has to choose between the forward
 and inverse primitives based on what is already known, and may reach either before its
 prerequisites. Wrap the walk in repeat-until-no-progress. That also gives a real error path for
@@ -650,7 +650,7 @@ The shape the section anticipated was right, and three things about it were not 
   weld keeps a rider parallel to the slot it rides, and the drive prescribes one length. The
   gripper comes out as 36 residuals in 36 unknowns.
 - **Newton is the wrong solver, and fails on exactly the mechanisms this exists for.** A toggle
-  clamp works *because* it sits near a dead-centre, and there the Jacobian is nearly singular:
+  clamp works *because* it sits near a dead-center, and there the Jacobian is nearly singular:
   undamped steps fly off, and a finite-difference Jacobian is not accurate enough to recover.
   Levenberg–Marquardt with an analytic Jacobian converges; both were needed, and the second only
   became visible once the first was in place.
@@ -756,7 +756,7 @@ belongs with the cylinder in Phase 5. Encoding round-trips regardless; only solv
 
 Slide still needs **no new type bit**: `isPrismatic` + `isWelded` are both already in `JointData`
 ([`transcoder-data.ts:19-32`](../src/app/services/transcoding/transcoder-data.ts)). But that is a
-statement about *encoding*, not about behaviour — the assembly invariants of §2.10 are what make the
+statement about *encoding*, not about behavior — the assembly invariants of §2.10 are what make the
 pair meaningful, and they must be asserted rather than assumed.
 
 > **Gate 3:** Scotch yoke matches `x = r cos θ`, `ẋ = −rω sin θ`, `ẍ = −rω² cos θ`; all four 2×2
@@ -781,7 +781,7 @@ pair meaningful, and they must be asserted rather than assumed.
 
 | # | Task |
 | --- | --- |
-| 4.1 | Panel: Slider + Weld toggles; read-only `Slot on: Link 3 (joints B–C)`; the angle field appears **only for grounded** sliders, labelled "from +x axis" |
+| 4.1 | Panel: Slider + Weld toggles; read-only `Slot on: Link 3 (joints B–C)`; the angle field appears **only for grounded** sliders, labeled "from +x axis" |
 | 4.2 | Canvas: the twelve glyphs, composed from the five primitives |
 | 4.3 | Creation gesture: drop a joint onto a link between two of its joints → slot on that link, defined by that pair. **Pair resolution:** unambiguous on a binary link; on a link with *n* joints there are up to *n*(*n*−1)/2 candidate pairs, so pick the segment whose line the drop point is nearest and show which pair is about to be chosen before release |
 | 4.4 | Slot drag: block along the slot sets s₀ — **that is the only slot-specific drag** |
@@ -797,7 +797,7 @@ restores them. Today they are destroyed.
 **§2.4 deletes work here.** With the slot defined by two of the carrier's joints, there is no
 rotate-the-slot handle and no snapping — you change a floating slot's direction by dragging its
 defining joints, which is ordinary joint dragging from Phase 1. The angle field disappears for
-floating sliders entirely, and with it the "which reference frame is this number in?" labelling
+floating sliders entirely, and with it the "which reference frame is this number in?" labeling
 problem.
 
 **One drag changes one quantity.** Block-drag moves s₀ and nothing else.
@@ -880,7 +880,7 @@ Decide which entry point is canonical: the joint panel's Driven toggle, or the l
   block's sliding joint with `instanceof RealJoint`, matched the pin first and bailed, so no driven
   block has ever been seeded with a velocity. Fixed for a grounded guide. Deliberately left
   unseeded for a slot on a moving carrier: there the block's absolute velocity is the carrier's
-  plus the sliding rate, and seeding the rate alone reports a cylinder mount as travelling through
+  plus the sliding rate, and seeding the rate alone reports a cylinder mount as traveling through
   ground it is being carried over. **A cylinder-driven mechanism has correct positions and playback
   and no velocity analysis** — that pairing is Phase 6's, alongside the floating pin.
 - **5.5 stops at the labels.** A cylinder's direction button and the analysis header now say
@@ -959,7 +959,7 @@ them independent. A door with two hinges counts the same way and opens anyway.
 | --- | --- |
 | 7.1 | Mobility from the **rank of the constraint Jacobian** — unknowns minus rank — instead of a joint-and-body count |
 | 7.2 | A scaled QR or SVD, because the rank tolerance *is* the problem: too tight reads a real mechanism as rigid, too loose reads a rigid frame as mobile |
-| 7.3 | Sample rank at more than the drawn pose. Rank drops at a dead centre too, so a one-pose answer changes as the user drags a joint |
+| 7.3 | Sample rank at more than the drawn pose. Rank drops at a dead center too, so a one-pose answer changes as the user drags a joint |
 | 7.4 | Gate it: Gruebler stays the fast path, and the rank test runs only where the count comes out 0 or negative — which is where it is wrong and nowhere else |
 
 The machinery is mostly built. [`simultaneous-solver.ts`](../src/app/model/mechanism/simultaneous-solver.ts)
@@ -970,7 +970,7 @@ closed-form path bit-identically; this changes what is *reported as mobile*, nev
 **A second defect hides behind the first, and is not fixed by this.** A body with two pins on two
 parallel rails is both what makes the gripper over-constrained *and* a permanent tangency for the
 closed-form primitives — locating the second pin intersects a circle with a line whose distance from
-the centre is exactly the radius, at every pose rather than at one of them, so the discriminant sits
+the center is exactly the radius, at every pose rather than at one of them, so the discriminant sits
 on zero and rounding decides its sign. Counting it correctly does not make it solvable.
 [`pivoting-gripper.spec.ts`](../src/tests/verification/pivoting-gripper.spec.ts) is the same gripper
 with the rails taken off the jaws, and runs; the two are published as URLs to open side by side.
@@ -1028,11 +1028,11 @@ is one size number and one position number, and its only remaining failure is be
   ever safe because it was the identity, and it still is.
 - **The three-phase drag and the layout function turned out to be the same function.** Inside the
   ram's travel a span moves only the piston; past a stop it resizes with both halves equal. So
-  `flexLayout` was replaced rather than supplemented, and the behaviour applies to both mounts and
-  to a mount a neighbour carries.
+  `flexLayout` was replaced rather than supplemented, and the behavior applies to both mounts and
+  to a mount a neighbor carries.
 - **Size and pose needed separate entry points.** Asked for a longer stroke at the same position,
   the resulting span usually still lies inside the *old* stroke's travel, so the span rule would
-  hold the size and slide the piston instead — a field labelled Travel changing the position.
+  hold the size and slide the piston instead — a field labeled Travel changing the position.
 - **There is no bore any more, only a clearance.** It was 13.28 R — twice a slot inset plus the whole
   piston head — on the reading that a channel needs a margin at each end and the head never leaves
   it. Neither holds for a sealed part: the barrel is a closed body and no slot is ever drawn, and a
@@ -1066,17 +1066,17 @@ is one size number and one position number, and its only remaining failure is be
 - **Merging a cylinder mount destroyed the ram.** The merge rebuilt every link the joint was in but
   left the slot cut into the barrel naming a joint that no longer existed. General to every floating
   slot, not to cylinders — it was only invisible because no gesture depended on it.
-- **Analyze had no cylinder branch**, so selecting the body analysed its *barrel* and offered force
+- **Analyze had no cylinder branch**, so selecting the body analyzed its *barrel* and offered force
   at an interior joint the canvas gives no hitbox to.
 - **The weld guard and the model disagreed.** Both guards were probed: a cylinder cannot reach a
-  welded compound by any route, so `twoJointLeaf` is defence rather than a supported shape, and
+  welded compound by any route, so `twoJointLeaf` is defense rather than a supported shape, and
   `cylinder-weld-guards.spec.ts` pins both so the comments cannot drift again.
 - **No Edit panel field anywhere wrote an undo entry.** Every typed edit is one undo step now,
   wherever it was typed.
 
 **Still open:**
 
-- Welding a cylinder mount's neighbour can take the mechanism to −2 degrees of freedom with no
+- Welding a cylinder mount's neighbor can take the mechanism to −2 degrees of freedom with no
   snackbar at the moment of the weld. The DOF readout and Analyze both say so, so the user is told;
   a warning at the gesture is an addition rather than a fix.
 
@@ -1097,7 +1097,7 @@ is one size number and one position number, and its only remaining failure is be
 | 7 | Cylinder-driven boom | driven | driven floating Slide + linear timing | law of cosines |
 | 8 | Four-bar driven at its coupler–rocker pin | — | driven floating Pin, actuator record | same coupler curve as the crank-driven four-bar |
 | 9 | #2 with a load | — | force reaction direction **and** carrier-side incidence | MATLAB free-body; assert reactions are equal and opposite across the slot |
-| 10 | ~~#2 instant centres~~ | — | ~~IC solver~~ | **De-scoped with 2.11** — the IC solver is dead code; nothing to verify |
+| 10 | ~~#2 instant centers~~ | — | ~~IC solver~~ | **De-scoped with 2.11** — the IC solver is dead code; nothing to verify |
 
 Case 5 exists because 2, 3, and 4 are all the inverse direction (§2.5a) and would leave the forward
 primitive untested.
@@ -1164,7 +1164,7 @@ cylinders exist.
 1. ~~**Grounded pin riding a moving slot**~~ — **resolved.** This is not an edge case; it is the
    same inverse direction that Whitworth, the oscillating cylinder, the Scotch yoke, and Geneva all
    need. §2.5a promotes the inverse primitive into Phase 2 as first-class work. The retry loop
-   itself has **no direction** — it only reorders; what is directional is the step catalogue, which
+   itself has **no direction** — it only reorders; what is directional is the step catalog, which
    is why "run it both ways" was never a thing that could be switched on. Cases the closed-form
    inverse primitive cannot reduce still hand to the §2.7a strategy.
 2. **General inverse cases.** The primitive in §2.5a assumes the slot's anchor is a known joint of

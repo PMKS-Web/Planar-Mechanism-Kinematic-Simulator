@@ -43,7 +43,7 @@
     // of them says which one only if the card does.
     .cm-header {
       display: flex;
-      // Centred against the whole two-line block rather than hung off the
+      // Centerd against the whole two-line block rather than hung off the
       // title: the icon is about the part, not about its name.
       align-items: center;
       gap: 8px;
@@ -185,7 +185,7 @@
       white-space: nowrap;
     }
 
-    // Greyed, with the reason beside it. Never clickable-and-then-refused.
+    // Grayed, with the reason beside it. Never clickable-and-then-refused.
     .cm-row--off {
       color: rgba(0, 0, 0, 0.32);
       cursor: default;

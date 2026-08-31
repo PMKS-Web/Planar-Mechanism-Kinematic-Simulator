@@ -36,7 +36,7 @@
  *     not about the app.
  *   - non-differentiable poses are identified from the *source* series alone —
  *     a reversal (a driven cylinder hitting its stroke end, a rocker at a
- *     limit) leaves position with a corner, and a dead centre leaves velocity
+ *     limit) leaves position with a corner, and a dead center leaves velocity
  *     unbounded. Both show up as the two one-sided slopes disagreeing wildly.
  *     A disagreement within two samples of such a kink is reported by index
  *     rather than counted as a failure; a disagreement anywhere else fails.
@@ -81,7 +81,7 @@ const KINK_FACTOR = 0.5;
 // A disagreement this close to a kink is the kink's doing: curvature is
 // unbounded there and no stencil reaching across it means anything.
 const KINK_REACH = 2;
-// Kinked samples cluster: one reversal blurs over several neighbouring samples,
+// Kinked samples cluster: one reversal blurs over several neighboring samples,
 // so what is counted is the number of distinct non-differentiable *events*. A
 // mechanism has one or two per cycle; a series full of them is a broken series
 // wearing a disguise.
@@ -313,7 +313,7 @@ async function openKinematicRows() {
 }
 
 /**
- * Click a joint. Joint hit areas overlap, so a click can land on a neighbour;
+ * Click a joint. Joint hit areas overlap, so a click can land on a neighbor;
  * when it does, fall back to dispatching the same pointerdown the template
  * binds, on the intended element. Returns how the selection was made.
  */

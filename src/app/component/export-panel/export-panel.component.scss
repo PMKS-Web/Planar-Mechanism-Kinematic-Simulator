@@ -161,7 +161,7 @@
     //
     // Named for this panel, and saying `border: none` out loud. It was called
     // `.dot`, which the mass table's legend also calls its own marks -- so this
-    // one came out as a grey pip inside that legend's lavender ring, and the
+    // one came out as a gray pip inside that legend's lavender ring, and the
     // two ends of the same row disagreed about what a dot looks like.
     .pickSep {
       flex: 0 0 auto;
@@ -237,7 +237,7 @@
       display: flex;
       align-items: center;
       // Said out loud, because a button's own alignment is not a flex row's:
-      // left to itself the browser centres the name between the box and the note.
+      // left to itself the browser centers the name between the box and the note.
       justify-content: flex-start;
       gap: 12px;
       width: 100%;
@@ -262,7 +262,7 @@
         }
       }
 
-      // Nothing to give, so nothing to tick: greyed rather than hidden, because
+      // Nothing to give, so nothing to tick: grayed rather than hidden, because
       // a reader looking for Joint A should find out why it is not on offer.
       &.off {
         cursor: default;

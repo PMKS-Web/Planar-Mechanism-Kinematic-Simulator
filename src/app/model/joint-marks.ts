@@ -3,7 +3,7 @@
  *
  * Eight base marks composed from five primitives — hatch, channel, block,
  * marker, arrow — plus one additive driven overlay. Nothing here reads a link
- * colour, and every dimension is a multiple of R, the joint's own radius
+ * color, and every dimension is a multiple of R, the joint's own radius
  * (0.15 · objectScale). A pixel offset would grow with the canvas transform;
  * this module exists so no caller is tempted to write one.
  *
@@ -28,7 +28,7 @@ export const MARK = {
   blockAcrossHalf: 1.525,
   blockCorner: 0.34,
 
-  /** Channel: a 2.3R window subtracted from the carrier, outlined in its colour. */
+  /** Channel: a 2.3R window subtracted from the carrier, outlined in its color. */
   channelHalfWidth: 1.15,
 
   /**
@@ -80,7 +80,7 @@ export const MARK = {
    * A slot stops short of the joints that define it, leaving a visible margin
    * of bar between the end of the channel and the joint it stops short of.
    *
-   * At 1.8R the channel's end cap landed 0.27 objectScale from the joint centre
+   * At 1.8R the channel's end cap landed 0.27 objectScale from the joint center
    * and the joint's own circle is 0.2 — the two touched, and the bar read as
    * cut through rather than slotted. 2.8R clears the circle by most of its own
    * radius, which is the margin the reference drawing shows.
@@ -119,8 +119,8 @@ export const MARK = {
  * multiples of R, and the rail marks are the one place in the app where a
  * stroke is in model units rather than screen pixels. They are stated here, not
  * only in the template, because the hatch geometry has to know its own weight:
- * a round cap is centred on the point it caps, so a tick whose root sits on the
- * rail's centreline puts half its width on the far side of the line.
+ * a round cap is centerd on the point it caps, so a tick whose root sits on the
+ * rail's centerline puts half its width on the far side of the line.
  */
 export const GROUND_STROKE = {
   rail: (1.2 * 4) / 157 / 0.15,
@@ -184,7 +184,7 @@ export const CYLINDER = {
  * about and cut square at the mouth the rod slides through.
  *
  * `anchor` and `mouth` are the barrel's two ends in the mark's frame, which is
- * centred on the *pin* with +x toward the rod — so the anchor is behind the
+ * centerd on the *pin* with +x toward the rod — so the anchor is behind the
  * piston (negative) and the mouth ahead of it (positive), and the barrel
  * straddles the piston rather than stopping at it.
  *
@@ -330,7 +330,7 @@ export interface Segment {
 }
 
 /**
- * A capsule whose end-cap centres sit at x0 and x1 on the local x axis. This is
+ * A capsule whose end-cap centers sit at x0 and x1 on the local x axis. This is
  * the shape of both a link bar and the channel cut into one, which is why a
  * channel reads as a hole in the carrier rather than as a separate object.
  */
@@ -345,13 +345,13 @@ export function capsulePath(x0: number, x1: number, halfWidth: number): string {
  *
  * That is how the channel becomes a real hole: the carrier is filled even-odd,
  * so a subpath inside it is subtracted, and the carrier's existing stroke then
- * traces the new edge in the carrier's own colour with no second element. A
+ * traces the new edge in the carrier's own color with no second element. A
  * mask would do the same job, but an SVG mask big enough to cover any pan or
  * zoom makes the browser rasterize a surface that size and downsample the whole
  * canvas with it.
  */
 export function orientedCapsulePath(
-  centre: { x: number; y: number },
+  center: { x: number; y: number },
   angle: number,
   halfLength: number,
   halfWidth: number
@@ -359,7 +359,7 @@ export function orientedCapsulePath(
   const u = { x: Math.cos(angle), y: Math.sin(angle) };
   const n = { x: -u.y, y: u.x };
   const at = (along: number, across: number) =>
-    `${centre.x + along * u.x + across * n.x} ${centre.y + along * u.y + across * n.y}`;
+    `${center.x + along * u.x + across * n.x} ${center.y + along * u.y + across * n.y}`;
   const h = halfWidth;
   return (
     `M ${at(-halfLength, -h)} L ${at(halfLength, -h)} ` +
@@ -369,7 +369,7 @@ export function orientedCapsulePath(
   );
 }
 
-/** The block, centred on the joint, long axis along the slot. Always #000. */
+/** The block, centerd on the joint, long axis along the slot. Always #000. */
 export function blockPath(r: number): string {
   const a = MARK.blockAlongHalf * r;
   const c = MARK.blockAcrossHalf * r;
@@ -418,9 +418,9 @@ export function plusPath(r: number): string {
 }
 
 /**
- * The channel window, centred on the slot's midpoint and running `halfLength`
+ * The channel window, centerd on the slot's midpoint and running `halfLength`
  * each way. Callers subtract this from the carrier's fill and stroke its
- * outline in the carrier's own colour; both come from the same path so the
+ * outline in the carrier's own color; both come from the same path so the
  * hole and its edge can never disagree.
  */
 export function channelPath(r: number, halfLength: number): string {
@@ -508,7 +508,7 @@ export function railGeometry(
   // the same world, so they have to look the same. There a hatch stroke starts
   // on the far edge of the baseline and its cap projects back to just past the
   // baseline's middle — hatch and line overlap, with no daylight between them.
-  // Rooted on the centreline instead, as this was, the cap hangs half the
+  // Rooted on the centerline instead, as this was, the cap hangs half the
   // hatch's width over the block's side and the hatching reads as piercing its
   // own rail; backed off far enough to be tangent to the edge, it reads as
   // floating clear of it. Neither is what a ground symbol looks like.
@@ -539,7 +539,7 @@ export function railGeometry(
   const phase = worldPhase(place, pitch);
   const ticks: Segment[] = [];
   for (let x = Math.ceil((start + phase) / pitch) * pitch - phase; x <= halfLength; x += pitch) {
-    // The station on the guide's own centreline, which is what a coincident
+    // The station on the guide's own centerline, which is what a coincident
     // guide's reach has to be measured against: compared at the tick's root
     // instead, the two guides' claims overlap by the root's own offset and
     // leave a station hatched by neither.
@@ -677,7 +677,7 @@ function sliceSegment(segment: Segment, from: number, to: number): Segment {
 
 /**
  * The straight arrows of a driven slider: one each way along the slot, clear
- * of the block's centre so the marker sits between them.
+ * of the block's center so the marker sits between them.
  *
  * `leading` is the way the block sets off, as a sign along the slot. That arrow
  * is drawn larger, because two identical arrows say only "this one translates"
@@ -738,11 +738,11 @@ function roundedRect(x: number, y: number, w: number, h: number, k: number): str
  * needs both shapes in the same coordinates, and a case drawn separately and
  * laid on top is exactly the two-shapes-pretending-to-be-one this replaces.
  */
-export function motorBodyAt(r: number, centre: { x: number; y: number }, along: number): string {
+export function motorBodyAt(r: number, center: { x: number; y: number }, along: number): string {
   const cos = Math.cos(along);
   const sin = Math.sin(along);
   const place = (x: number, y: number) =>
-    `${centre.x + x * cos - y * sin} ${centre.y + x * sin + y * cos}`;
+    `${center.x + x * cos - y * sin} ${center.y + x * sin + y * cos}`;
 
   const path = motorBodyPath(r);
   const tokens = path.match(/[MLHVQAZ]|-?\d*\.?\d+(?:e[-+]?\d+)?/gi) ?? [];

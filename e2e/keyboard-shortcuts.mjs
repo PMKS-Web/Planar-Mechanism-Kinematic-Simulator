@@ -29,8 +29,8 @@ await page.goto(`${BASE}/?${payloads['4-Bar']}`, { waitUntil: 'domcontentloaded'
 await waitForReady(page);
 await page.waitForTimeout(500);
 
-/** The joint's centre on screen: the canvas places from where the mouse is. */
-const centreOf = (id) =>
+/** The joint's center on screen: the canvas places from where the mouse is. */
+const centerOf = (id) =>
   page.evaluate((jointId) => {
     const el = document.querySelector(`#joint_${jointId}`)?.closest('svg[x]');
     const box = el.getBoundingClientRect();
@@ -41,10 +41,10 @@ const clickJoint = async (id) => {
   // Aimed only once the joint has stopped moving. Leaving an analysis mode
   // winds the linkage back to its start pose, and a click aimed while that is
   // still running lands where the joint was rather than where it is.
-  let at = await centreOf(id);
+  let at = await centerOf(id);
   for (let tries = 0; tries < 20; tries++) {
     await page.waitForTimeout(100);
-    const now = await centreOf(id);
+    const now = await centerOf(id);
     if (Math.hypot(now.x - at.x, now.y - at.y) < 0.5) break;
     at = now;
   }
@@ -113,8 +113,8 @@ await press('l');
 record('L turns the joint IDs off and on', (await state()).ids !== ids);
 await press('l');
 
-// A traced path needs a joint that traces one, so the switch is greyed here
-// and the key must be greyed with it.
+// A traced path needs a joint that traces one, so the switch is grayed here
+// and the key must be grayed with it.
 const paths = (await state()).paths;
 await press('p');
 record('P leaves traced paths alone while no joint traces one', (await state()).paths === paths);
@@ -160,7 +160,7 @@ record('a comma opens Settings', (await state()).drawer === 1, await state());
 
 // --- A key that changes the drawing is an Edit key ---------------------------
 // An analysis mode is a reading of a finished mechanism: it hides the lock
-// marks, greys the panels, and takes Undo away. A key that edits anyway leaves
+// marks, grays the panels, and takes Undo away. A key that edits anyway leaves
 // a change there is no way back from without leaving the mode.
 await clickJoint('B');
 const beforeAnalysis = await state();

@@ -324,7 +324,7 @@ export class KinematicsSolver {
    * Rates for a mechanism solved by the constraint set, if it was one.
    *
    * Joint rates come straight from differentiating the constraints. A body's
-   * angular rate then follows from any two of its joints, and its centre of
+   * angular rate then follows from any two of its joints, and its center of
    * mass from that -- the same relations the loop solver ends with, read off a
    * solved motion rather than assembled into a matrix.
    */
@@ -510,7 +510,7 @@ export class KinematicsSolver {
         // is fixed in the world. On a slot cut into a moving link the block's
         // absolute velocity is the carrier's plus the sliding rate, and
         // writing the sliding rate alone would report a cylinder's mount as
-        // travelling through ground it is actually being carried over. Phase 5
+        // traveling through ground it is actually being carried over. Phase 5
         // drives such a cylinder's *positions*; its velocity analysis is left
         // unseeded rather than seeded wrongly, and is Phase 6 work.
         if (realJoint.ground) {
@@ -849,7 +849,7 @@ export class KinematicsSolver {
   }
 
   /**
-   * Carry the carrier's solved rotation out to its own joints and centre of mass.
+   * Carry the carrier's solved rotation out to its own joints and center of mass.
    *
    * Propagation starts from whichever carrier joint already has motion, not
    * from the slot's anchor. Which of the two slot joints becomes `slotJointA`

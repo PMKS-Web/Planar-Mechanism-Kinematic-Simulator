@@ -54,7 +54,7 @@ $red: #e53935;
 
       mat-icon {
         /* Material's icon box is 24px around an 18px glyph laid out at the top;
-         every icon here is inline beside text, so the box centres its own
+         every icon here is inline beside text, so the box centers its own
          contents rather than the row centring a box with air in it. */
         display: inline-flex;
         align-items: center;
@@ -338,7 +338,7 @@ $red: #e53935;
           color: rgba(0, 0, 0, 0.72);
           cursor: pointer;
 
-          /* Greyed with the switch beside it: a driver that will not fit
+          /* Grayed with the switch beside it: a driver that will not fit
              these positions is not something to press. */
           &:disabled {
             color: rgba(0, 0, 0, 0.35);
@@ -398,7 +398,7 @@ $red: #e53935;
           color: rgba(0, 0, 0, 0.26);
         }
 
-        /* A row that has not been placed yet still shows its shape, greyed. */
+        /* A row that has not been placed yet still shows its shape, grayed. */
         &[disabled] {
           -webkit-text-fill-color: rgba(0, 0, 0, 0.3);
           color: rgba(0, 0, 0, 0.3);

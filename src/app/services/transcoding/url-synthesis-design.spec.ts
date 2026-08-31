@@ -187,7 +187,7 @@ describe('a synthesis design in the URL', () => {
     expect(() => decodeInto(doubled)).toThrowError(/repeats a synthesis entry/);
   });
 
-  it('refuses an entry it does not recognise', () => {
+  it('refuses an entry it does not recognize', () => {
     const url = encode(worked());
     expect(() => decodeInto(url.replace('SD~', 'SZ~'))).toThrowError(/unknown synthesis entry/);
   });

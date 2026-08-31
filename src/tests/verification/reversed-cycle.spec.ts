@@ -220,12 +220,12 @@ describe('Reversing a drive', () => {
     // the crank angle by walking the samples, so reading the drive's new sign
     // there mirrored the whole track and threw the transport handle to the far
     // end of a machine that had not moved; and the direction label XORs the
-    // drive sign with the way playback runs, which cancelled to "unchanged"
+    // drive sign with the way playback runs, which canceled to "unchanged"
     // once reversing flipped both.
     const { service } = load(TEMPLATE_LINKAGES['4-Bar']);
     service.animate(40, false);
     const travelWas = service.travelOf(0);
-    const forwardWas = service.travellingForward(0);
+    const forwardWas = service.travelingForward(0);
     expect(travelWas).toBeDefined();
 
     expect(service.reverseDrive(0)).toBe(true);
@@ -233,12 +233,12 @@ describe('Reversing a drive', () => {
     // The crank is at the same angle: nothing has moved.
     expect(service.travelOf(0)!).toBeCloseTo(travelWas!, 6);
     // ...and it is now turning the other way.
-    expect(service.travellingForward(0)).toBe(!forwardWas);
+    expect(service.travelingForward(0)).toBe(!forwardWas);
 
     // Twice round is where it started, in every respect.
     service.reverseDrive(0);
     expect(service.travelOf(0)!).toBeCloseTo(travelWas!, 6);
-    expect(service.travellingForward(0)).toBe(forwardWas);
+    expect(service.travelingForward(0)).toBe(forwardWas);
   });
 
   it('stays reversed through an ordinary edit, rather than turning back', () => {
@@ -254,11 +254,11 @@ describe('Reversing a drive', () => {
           (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
         )!
       );
-    const wasForward = service.travellingForward(0);
+    const wasForward = service.travelingForward(0);
     const wasSpeed = drivenSpeed();
 
     service.reverseDrive(0);
-    expect(service.travellingForward(0)).toBe(!wasForward);
+    expect(service.travelingForward(0)).toBe(!wasForward);
     expect(Math.sign(drivenSpeed())).toBe(-Math.sign(wasSpeed));
 
     // Any edit at all: this is the funnel every one of them goes through.
@@ -266,7 +266,7 @@ describe('Reversing a drive', () => {
 
     // Still reversed, and the drive and the motion still agree with each other.
     expect(Math.sign(drivenSpeed())).toBe(-Math.sign(wasSpeed));
-    expect(service.travellingForward(0)).toBe(!wasForward);
+    expect(service.travelingForward(0)).toBe(!wasForward);
     expect(service.mechanisms[0].framesRunBackwards).toBe(false);
     expect(service.directionOf(0)).toBe(1);
   });

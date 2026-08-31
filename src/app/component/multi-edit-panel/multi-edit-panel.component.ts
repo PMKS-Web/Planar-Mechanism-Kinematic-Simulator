@@ -189,7 +189,7 @@ export class MultiEditPanelComponent implements OnInit {
 
   lengthText(value: CommonValue<number>): string {
     return value.kind === 'common'
-      ? this.nup.formatModelLength(value.value, this.settings.lengthUnit.value)
+      ? this.nup.formatModelength(value.value, this.settings.lengthUnit.value)
       : '';
   }
 
@@ -212,7 +212,7 @@ export class MultiEditPanelComponent implements OnInit {
   }
 
   commitJointCoordinate(axis: 'x' | 'y', text: string): void {
-    const [valid, value] = this.nup.parseModelLengthString(text, this.settings.lengthUnit.value);
+    const [valid, value] = this.nup.parseModelengthString(text, this.settings.lengthUnit.value);
     if (!valid) return this.invalid('length', 'Enter a coordinate with a valid length unit.');
     this.report(this.multi.assignJointCoordinate(this.active.selectedPartRefs, axis, value));
     this.active.fakeUpdateSelectedObj();
@@ -220,7 +220,7 @@ export class MultiEditPanelComponent implements OnInit {
 
   commitLinkGeometry(field: 'length' | 'angle', text: string): void {
     if (field === 'length') {
-      const [valid, value] = this.nup.parseModelLengthString(text, this.settings.lengthUnit.value);
+      const [valid, value] = this.nup.parseModelengthString(text, this.settings.lengthUnit.value);
       if (!valid || !(value > 0))
         return this.invalid('length', 'Link length must be greater than zero.');
       this.report(this.multi.assignLinkGeometry(this.active.selectedPartRefs, field, value));

@@ -60,7 +60,7 @@ export function driveProfileOf(mechanism: Mechanism, ram?: RamEnds): DriveProfil
   const linear = frames[0][at] instanceof PrisJoint;
   // A ram is measured by how far out its rod is, not by how far its slider has
   // moved from wherever the drawing put it: the two run opposite ways as often
-  // as not, and the second one has no name a reader would recognise. Anything
+  // as not, and the second one has no name a reader would recognize. Anything
   // else linear has no extension to speak of, so it is measured along the line
   // it slides on.
   const raw = linear ? ((ram && lengthOf(frames, ram)) ?? strokeOf(frames, at)) : turnOf(mechanism);
@@ -196,7 +196,7 @@ export function sampleAlong(profile: DriveProfile, along: number, near: number):
  * A drag is continuous and the samples are not: a degree of crank is a couple
  * of pixels of track, so snapping to the nearest one holds the drawing still
  * for two pixels and then jumps it. Interpolating between the sample found and
- * its neighbour on the side the reader is pointing lets the drawing follow the
+ * its neighbor on the side the reader is pointing lets the drawing follow the
  * hand.
  */
 export function fractionalSampleAlong(profile: DriveProfile, along: number, near: number): number {
@@ -204,7 +204,7 @@ export function fractionalSampleAlong(profile: DriveProfile, along: number, near
   const last = profile.along.length - 1;
   if (last <= 0) return 0;
   const here = profile.along[at];
-  // Toward whichever neighbour lies on the side the reader asked for.
+  // Toward whichever neighbor lies on the side the reader asked for.
   const step = along > here ? 1 : -1;
   const next = at + step;
   if (next < 0 || next > last) return at;

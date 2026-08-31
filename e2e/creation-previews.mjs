@@ -2,14 +2,14 @@
  * What the creation gestures promise, and what they deliver.
  *
  * Drawing a link or a cylinder shows a ghost under the cursor. A ghost is a
- * promise about what the next click will make, so the colour it wears has to be
- * the colour the part turns out to be — otherwise the promise is broken at the
+ * promise about what the next click will make, so the color it wears has to be
+ * the color the part turns out to be — otherwise the promise is broken at the
  * exact moment it is kept, which is the one moment a user is looking.
  *
- * The colour comes from a cursor that advances every time a link is built, so
+ * The color comes from a cursor that advances every time a link is built, so
  * two things have to hold together: the ghost has to *peek* at that cursor
- * rather than take from it — a cancelled gesture must not shuffle every colour
- * after it — and consecutive parts have to come out in consecutive colours.
+ * rather than take from it — a canceled gesture must not shuffle every color
+ * after it — and consecutive parts have to come out in consecutive colors.
  *
  *   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<origin> node e2e/creation-previews.mjs
  */
@@ -72,8 +72,8 @@ async function draw(kind, jointId, to) {
   const before = await linkIds();
   await page.mouse.click(at.x + to.dx, at.y + to.dy);
   await page.waitForTimeout(1200);
-  // What the user actually sees a cylinder wearing is its *barrel's* colour:
-  // the rod is drawn in it too, because one part gets one colour.
+  // What the user actually sees a cylinder wearing is its *barrel's* color:
+  // the rod is drawn in it too, because one part gets one color.
   const delivered = await page.evaluate((prev) => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
     const fresh = grid.mechanismSrv.links.filter((link) => !prev.includes(link.id));
@@ -85,7 +85,7 @@ async function draw(kind, jointId, to) {
 await page.goto(`${BASE}/?${payloads['4-Bar']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 
-// --- a gesture that is abandoned must not spend a colour --------------------
+// --- a gesture that is abandoned must not spend a color --------------------
 const beforeCancel = await page.evaluate(
   () => ng.getComponent(document.querySelector('app-new-grid')).nextLinkColor
 );
@@ -111,7 +111,7 @@ await page.waitForTimeout(500);
 const afterCancel = await page.evaluate(
   () => ng.getComponent(document.querySelector('app-new-grid')).nextLinkColor
 );
-record('an abandoned gesture does not spend a colour', beforeCancel === afterCancel, {
+record('an abandoned gesture does not spend a color', beforeCancel === afterCancel, {
   beforeCancel,
   afterCancel,
 });
@@ -122,14 +122,14 @@ await waitForReady(page);
 
 const firstLink = await draw('link', 'C', { dx: -300, dy: 260 });
 record(
-  'the link ghost wears the colour the link is built with',
+  'the link ghost wears the color the link is built with',
   !!firstLink.promised && firstLink.delivered.includes(firstLink.promised),
   firstLink
 );
 
 const secondLink = await draw('link', 'D', { dx: -180, dy: 170 });
 record(
-  'and the next one promises the next colour, not the same one again',
+  'and the next one promises the next color, not the same one again',
   !!secondLink.promised &&
     secondLink.delivered.includes(secondLink.promised) &&
     secondLink.promised !== firstLink.promised,
@@ -140,7 +140,7 @@ await page.goto(`${BASE}/?${payloads['4-Bar']}`, { waitUntil: 'domcontentloaded'
 await waitForReady(page);
 const ram = await draw('cylinder', 'C', { dx: -300, dy: 260 });
 record(
-  'the cylinder ghost wears the colour its barrel is built with',
+  'the cylinder ghost wears the color its barrel is built with',
   !!ram.promised && ram.delivered.includes(ram.promised),
   ram
 );

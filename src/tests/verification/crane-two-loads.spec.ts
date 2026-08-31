@@ -88,7 +88,7 @@ describe('the jib crane carrying two loads', () => {
   });
 
   it('balances the jib well inside its own centroid', () => {
-    // A counterweighted jib. Nothing else in the library has a centre of mass
+    // A counterweighted jib. Nothing else in the library has a center of mass
     // away from the centroid, and the difference is the point.
     expect(jib.comIsCustom).toBe(true);
     const centroid = uniformBodyOf(jib.joints).centroid;

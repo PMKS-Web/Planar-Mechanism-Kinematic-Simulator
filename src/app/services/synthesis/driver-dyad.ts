@@ -35,7 +35,7 @@ const TAU = Math.PI * 2;
 
 /** How far past the outermost poses the driver carries the linkage, as a
  *  fraction of the arc between them. Poses sitting exactly at the turning
- *  points would be reached only at dead centre, where the six-bar has no
+ *  points would be reached only at dead center, where the six-bar has no
  *  velocity and drawing it looks like a stall. */
 const OVERTRAVEL = 0.08;
 

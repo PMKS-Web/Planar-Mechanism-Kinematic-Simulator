@@ -13,15 +13,15 @@ import { StringTranscoder } from './string-transcoder';
 import { MODEL_SCALE } from '../../model/render-scale';
 
 /**
- * A part drawn in a colour of its own travels in the trailing section
- * the lock marks and the centre-of-mass anchors already share: a tagged
+ * A part drawn in a color of its own travels in the trailing section
+ * the lock marks and the center-of-mass anchors already share: a tagged
  * reference to an object the URL carries. Its tag is 'K', which none of the
- * others uses, and what follows is the family's id rather than a colour -- a
+ * others uses, and what follows is the family's id rather than a color -- a
  * joint is drawn resting, pointed at and picked, and the URL names the set
  * rather than one member of it.
  *
  * It is in the URL rather than kept on this machine because undo and redo are
- * a stack of these strings -- a colour written anywhere else would be wiped by
+ * a stack of these strings -- a color written anywhere else would be wiped by
  * the first undo -- and because which pin a reader is being pointed at is a
  * fact about the drawing, so a shared link should carry it.
  */
@@ -67,7 +67,7 @@ function body(encoded: string): string {
 const familyOf = (opened: { joints: Joint[] }, id: string) =>
   opened.joints.find((joint) => joint.id === id)!.colorFamily;
 
-describe('a joint colour in the URL', () => {
+describe('a joint color in the URL', () => {
   it('round-trips the family onto the joint it names', () => {
     const opened = decode(encode({ B: 'd' }));
     expect(familyOf(opened, 'B')).toBe('d');
@@ -104,9 +104,9 @@ describe('a joint colour in the URL', () => {
     expect((opened.links[0] as RealLink).id).toBe('AB');
   });
 
-  it('refuses a colour on a joint the URL does not carry', () => {
+  it('refuses a color on a joint the URL does not carry', () => {
     // Fail closed, as the lock and anchor sections do: a reference that does
-    // not resolve would otherwise decode as a colour quietly dropped, and the
+    // not resolve would otherwise decode as a color quietly dropped, and the
     // reader would be looking at a different drawing than the one shared.
     const decoder = new StringTranscoder();
     expect(() => decoder.decodeURL(encode({ B: 'o' }).replace('KJB~', 'KJZ~'))).toThrow();
@@ -121,7 +121,7 @@ describe('a joint colour in the URL', () => {
   });
 });
 
-describe('a force colour in the URL', () => {
+describe('a force color in the URL', () => {
   function loaded(color: string) {
     const parts = source({});
     const force = new Force('F1', parts.links[0] as RealLink, new Coord(0, 0), new Coord(S, S));
@@ -136,19 +136,19 @@ describe('a force colour in the URL', () => {
     ).generateUrlQuery();
   }
 
-  it('round-trips the colour onto the force it names', () => {
+  it('round-trips the color onto the force it names', () => {
     const opened = decode(encodeForce('#26A69A')) as unknown as { forces: Force[] };
     expect(opened.forces[0].color).toBe('#26A69A');
   });
 
-  it('says nothing about a force drawn in the colour they all share', () => {
+  it('says nothing about a force drawn in the color they all share', () => {
     // Including one that has been set to it by hand: what is written is the
     // difference from the default, not the fact that somebody opened a picker.
     expect(body(encodeForce(''))).not.toContain('.K');
     expect(body(encodeForce(DEFAULT_FORCE_COLOR))).toBe(body(encodeForce('')));
   });
 
-  it('shares the section with a joint colour without either reading the other', () => {
+  it('shares the section with a joint color without either reading the other', () => {
     const both = loaded('#00695C');
     both.joints[1].colorFamily = 'd';
     const encoded = urlGeneratorFor(
@@ -158,14 +158,14 @@ describe('a force colour in the URL', () => {
 
     // Written exactly as the palette spells it: the link records have
     // carried these six strings verbatim since long before this section, and a
-    // colour that changed case between them would stop matching.
+    // color that changed case between them would stop matching.
     expect(body(encoded)).toContain('.KJB~d,KFF1~00695C');
     const opened = decode(encoded) as unknown as { joints: Joint[]; forces: Force[] };
     expect(familyOf(opened, 'B')).toBe('d');
     expect(opened.forces[0].color).toBe('#00695C');
   });
 
-  it('refuses a colour on a force the URL does not carry', () => {
+  it('refuses a color on a force the URL does not carry', () => {
     const decoder = new StringTranscoder();
     expect(() => decoder.decodeURL(encodeForce('#26A69A').replace('KFF1~', 'KFZZ~'))).toThrow();
     expect(() => decoder.decodeURL(encodeForce('#26A69A').replace('~26A69A', '~teal'))).toThrow();

@@ -11,7 +11,7 @@
  * For each mechanism it walks every joint, every link, every force and the bare
  * grid; opens the context menu; and for each *enabled* item clicks it, reads the
  * model and the drawing back, and undoes. Disabled items are recorded but not
- * clicked — greying is itself an answer, and a legitimate one.
+ * clicked — graying is itself an answer, and a legitimate one.
  *
  *   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<origin> node e2e/interaction-sweep.mjs
  *   ONLY=4-Bar,Cylinder_Boom node e2e/interaction-sweep.mjs     # narrow it

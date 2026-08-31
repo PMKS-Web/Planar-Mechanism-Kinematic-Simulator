@@ -14,7 +14,7 @@ import { SettingsService } from '../../app/services/settings.service';
 // counter-rotate, and the whole of what makes that happen here is that the one
 // coupler is attached on *opposite* sides of the two pivots.
 //
-// Asserted as behaviour rather than as coordinates: extending has to close the
+// Asserted as behavior rather than as coordinates: extending has to close the
 // jaws, all the way, without them passing through each other.
 
 const S = MODEL_SCALE;

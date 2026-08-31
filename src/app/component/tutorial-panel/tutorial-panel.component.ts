@@ -106,10 +106,10 @@ export class TutorialPanelComponent implements DoCheck {
   }
 
   /**
-   * And in the colour it is wearing, for the same reason.
+   * And in the color it is wearing, for the same reason.
    *
-   * A quotation that reads the right number in the wrong colour teaches the
-   * wrong thing about what the colour means.
+   * A quotation that reads the right number in the wrong color teaches the
+   * wrong thing about what the color means.
    */
   get chipKind(): 'blocker' | 'ok' {
     return this.mechanism.blockerCount() === 0 ? 'ok' : 'blocker';

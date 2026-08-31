@@ -7,7 +7,7 @@ import { DxfEntity, DxfPoint, DxfPolyline, DxfVertex } from './dxf-model';
 /**
  * The parts, rather than the picture of them.
  *
- * A centreline cannot be extruded. What a student needs in order to get from
+ * A centerline cannot be extruded. What a student needs in order to get from
  * this export to a moving assembly is one closed outline per link with its pin
  * holes already cut, on its own layer -- then the CAD flow is: insert, one
  * sketch per layer, extrude each, drop revolute joints on the holes. The
@@ -69,7 +69,7 @@ export interface LinkBodyInput {
   links: Link[];
   /** Model -> export units, and the origin shift, already folded together. */
   point: (at: { x: number; y: number }) => DxfPoint;
-  /** How far one centimetre reaches in the export's units. */
+  /** How far one centimeter reaches in the export's units. */
   scale: number;
   /** Radius of the hole cut at every pin, or zero for no hole. */
   pinRadius: number;
@@ -90,7 +90,7 @@ export interface LinkBodyInput {
  * One closed loop per link body, plus a hole at each of its pins.
  *
  * Links whose outline has collapsed -- every joint landed on one point -- are
- * returned as `missing`, so the caller can fall back to the centreline for
+ * returned as `missing`, so the caller can fall back to the centerline for
  * those rather than dropping them out of the drawing entirely.
  */
 export function linkBodies(input: LinkBodyInput): {
@@ -146,7 +146,7 @@ export function linkBodies(input: LinkBodyInput): {
  *
  * The travel plus a pin's width at each end, closed with a half circle -- the
  * shape somebody would machine. Without it the sliding pair is only implied,
- * and a reader modelling from this has to invent the slot themselves and hope
+ * and a reader modeling from this has to invent the slot themselves and hope
  * they invent the same one the mechanism was solved with.
  */
 export function slotProfile(
@@ -184,7 +184,7 @@ export function slotProfile(
     capsule(from, to, half, slotLayer),
     // Something to put in the slot. The canvas draws no block outline of its
     // own, so this one is nominal: square to the slot, as wide as it is, and
-    // centred where the block sits at the start pose. It is a part a reader can
+    // centerd where the block sits at the start pose. It is a part a reader can
     // extrude and mate, which an empty slot is not.
     ...blockProfile(point(joint), along, half, pinRadius, blockLayer),
   ];
@@ -217,7 +217,7 @@ export function capsule(from: DxfPoint, to: DxfPoint, half: number, layer: strin
 /**
  * The two parts a sealed cylinder is actually made of.
  *
- * A cylinder used to export as a single centreline between its two mounts,
+ * A cylinder used to export as a single centerline between its two mounts,
  * which is neither of its parts and cannot be extruded. It is an actuator: a
  * sleeve pinned at one end, a rod pinned at the other, sliding inside it. The
  * model already knows where all four of those points are, so where the parts
@@ -241,9 +241,9 @@ export function cylinderParts(
   const boreHalf = bodyHalf * 1.4;
   const pistonHalf = bodyHalf * 1.25;
   const rodHalf = bodyHalf * 0.55;
-  const hole = (centre: DxfPoint, layer: string, limit: number): DxfEntity[] =>
+  const hole = (center: DxfPoint, layer: string, limit: number): DxfEntity[] =>
     pinRadius > 0
-      ? [{ type: 'CIRCLE', layer, center: centre, radius: Math.min(pinRadius, limit) }]
+      ? [{ type: 'CIRCLE', layer, center: center, radius: Math.min(pinRadius, limit) }]
       : [];
   // How far the piston sits from the mouth, so the head has somewhere to be.
   const span = Math.hypot(at.barrelNear.x - at.barrelFar.x, at.barrelNear.y - at.barrelFar.y) || 1;
@@ -373,7 +373,7 @@ export interface SlotTravel {
  * A floating slot is defined by the two joints it slides between, so it knows
  * its own extent. A grounded one does not -- its length is whatever the block
  * happens to need, which is a fact about the solved cycle rather than about the
- * start pose. One centimetre either way is a placeholder, and the caller should
+ * start pose. One centimeter either way is a placeholder, and the caller should
  * pass the measured travel instead wherever the mechanism has been solved.
  */
 function nominalTravel(joint: PrisJoint): {

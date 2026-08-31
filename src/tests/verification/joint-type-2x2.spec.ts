@@ -10,7 +10,7 @@ import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 //
 // The 2x2 is {no slider, slider} x {not welded, welded} = Pin, compound, Slot,
 // Slide (§2.1). It is a hypercube rather than a type list, which is the whole
-// argument for two independent toggles over a three-way picker: neighbours are
+// argument for two independent toggles over a three-way picker: neighbors are
 // one click, diagonals are two, and no combination is unreachable.
 
 interface Scene {

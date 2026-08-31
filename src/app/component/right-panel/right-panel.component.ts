@@ -72,7 +72,7 @@ import { MatIcon } from '@angular/material/icon';
       // on the frame's own timing.
       transition('sole => void', [animate('0.3s ease-in-out', style({ opacity: 1 }))]),
       // Unless the tutorial's card is holding the frame open, in which case
-      // nothing is travelling and the page has to leave on its own.
+      // nothing is traveling and the page has to leave on its own.
       transition('held => void', [animate('0.2s ease-in-out', style({ opacity: 0 }))]),
     ]),
   ],
@@ -134,7 +134,7 @@ export class RightPanelComponent implements DoCheck {
    * against are not the same problem, and a reader refused by one mode should
    * not have to read past the other mode's list to find out why.
    *
-   * Numbered like their neighbours because that is how this panel has always
+   * Numbered like their neighbors because that is how this panel has always
    * been addressed; named because "5" at a call site says nothing.
    */
   static readonly KINEMATIC_SETUP_TAB = 5;

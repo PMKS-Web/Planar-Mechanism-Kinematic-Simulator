@@ -11,7 +11,7 @@ import { NotificationService } from '../../services/notification.service';
  * `fetch` threw, which is the wrong question. A site with the function deployed
  * and `EMAIL_JS_KEY` unset answers 200 with `{}` -- because
  * `JSON.stringify({apiKey: undefined})` drops the field -- so nothing threw,
- * EmailJS was initialised with `undefined`, and the reader was told the message
+ * EmailJS was initialized with `undefined`, and the reader was told the message
  * had failed to send and to try again later. It was never going to send, and
  * trying again was never going to help. That is the case this file exists for.
  */

@@ -78,7 +78,7 @@ describe('every cell of the 2x2', () => {
 
   it('rebuilds a Slide that the reconcile pass then leaves alone', () => {
     // A rebuilt Slide has a weld flag and no compound, which is exactly the
-    // shape the strip rule looks for. It must recognise the assembly instead.
+    // shape the strip rule looks for. It must recognize the assembly instead.
     const { service, active } = createMechanismHarness();
     const decoder = new StringTranscoder();
     decoder.decodeURL(fixturePayload(scotchYokeFixture()));

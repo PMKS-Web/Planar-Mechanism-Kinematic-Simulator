@@ -2,7 +2,7 @@
  * The pictures in the README, regenerated from the running app.
  *
  * A README screenshot goes stale the moment the chrome moves, and the only
- * defence is to make retaking it cheap. Every image the README embeds is
+ * defense is to make retaking it cheap. Every image the README embeds is
  * listed here as a template payload plus a short script of things to do
  * before the shutter, so the whole set is one command:
  *
@@ -254,7 +254,7 @@ async function annotate(page) {
       let x = place[0] + region.nudge[0];
       let y = place[1] + region.nudge[1];
       // Nudges are chosen by eye against today's layout; this is the safety net
-      // for the day one of them stops being clear of its neighbour.
+      // for the day one of them stops being clear of its neighbor.
       const hits = (a, b) =>
         a.x < b.x + b.w + 6 &&
         a.x + size.width + 6 > b.x &&

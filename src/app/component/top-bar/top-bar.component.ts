@@ -36,7 +36,7 @@ interface TabStatus {
   text: string;
   ready: boolean;
   /**
-   * What the chip is coloured by: red where something stops the analysis,
+   * What the chip is colored by: red where something stops the analysis,
    * amber where it will run but something is worth reading first, green where
    * there is nothing to say. One vocabulary, here and in the setup drawers.
    *
@@ -55,7 +55,7 @@ interface TabStatus {
  * what anyone is doing most of the time, so it folds into one menu and the
  * modes take the space instead.
  *
- * Both analysis tabs stay pressable even when they cannot be entered. A greyed
+ * Both analysis tabs stay pressable even when they cannot be entered. A grayed
  * tab provokes exactly the question "why not?" and is the one control unable to
  * answer it; pressing these opens the setup list, which is the answer.
  *
@@ -133,7 +133,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * spelled out -- so they throw words away long before the window has run out
    * of room for them. This asks the strip.
    */
-  labelLevel = 3;
+  labelevel = 3;
   /**
    * The room and the labels the current level was chosen for.
    *
@@ -232,8 +232,8 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       (best, want, at) => (want <= strip.clientWidth ? Math.max(best, at) : best),
       0
     );
-    if (level !== this.labelLevel) {
-      this.labelLevel = level;
+    if (level !== this.labelevel) {
+      this.labelevel = level;
       this.changes.detectChanges();
     }
   }
@@ -283,7 +283,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   }
 
   private scheduleHighlight(): void {
-    // Coalesce rather than restart. Cancelling the pending frame on every
+    // Coalesce rather than restart. Canceling the pending frame on every
     // checked pass means a busy app -- playback runs change detection every
     // frame -- cancels the measurement before it can ever run, and the
     // highlight sits on whichever tab was active last time things went quiet.
@@ -401,13 +401,13 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       // a mechanism with something odd about it reads as clear.
       const outstanding = this.mechanism.forceAnalysisRequirements().filter((r) => !r.met);
       const missing = outstanding.filter((r) => !r.warning).length;
-      // Grey, where kinematics would be red. Forces are the one analysis a
+      // Gray, where kinematics would be red. Forces are the one analysis a
       // reader can legitimately never want: a mechanism with no masses and no
       // loads is not a broken mechanism, it is one nobody has asked this
       // question about. Red on the strip from the first bar drawn until the
       // last mass typed reads as a fault the whole time, and the reader who is
       // only ever going to look at motion can never make it go away. So the
-      // count is stated and left grey until the reader engages with forces at
+      // count is stated and left gray until the reader engages with forces at
       // all; from then on -- once something has a mass or a load -- amber and
       // green mean what they mean everywhere else.
       if (missing > 0) return { text: `${missing} to set`, ready: false, kind: 'neutral' };
@@ -646,7 +646,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     this.analytics.logEvent('upload_file');
     this.closeMenu();
     const input = $event.target as HTMLInputElement;
-    // Silently. This fires when the picker is dismissed, and cancelling a
+    // Silently. This fires when the picker is dismissed, and canceling a
     // dialogue is not a thing that went wrong -- the reader closed it knowing
     // full well that they had chosen nothing.
     if (!input.files || input.files.length !== 1) {

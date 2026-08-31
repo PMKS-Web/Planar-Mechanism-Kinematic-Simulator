@@ -12,7 +12,7 @@ import { MatInput } from '@angular/material/input';
  * label row, plus the state suffix: a hollow dot for a value that follows
  * the shape, a filled one with a clear for a value somebody typed.
  *
- * Exists because the centre-of-mass pair needs the marker inside each field
+ * Exists because the center-of-mass pair needs the marker inside each field
  * and the shared dual-input could not take it without a template rework;
  * this is the smaller honest component.
  */

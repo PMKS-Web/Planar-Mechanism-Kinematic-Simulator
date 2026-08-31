@@ -60,7 +60,7 @@ function meet(
 export const PEAUCELLIER = {
   /** Half the distance the driving pin travels, and also the ground offset. */
   crank: 2,
-  /** The two long arms from the fixed centre O to opposite rhombus corners. */
+  /** The two long arms from the fixed center O to opposite rhombus corners. */
   long: 5,
   /** Every side of the rhombus. */
   side: 2.5,
@@ -79,7 +79,7 @@ export const PEAUCELLIER = {
  * *inverter*. Whatever the pose, |OP| · |OQ| = long² - side², so Q is the
  * inverse of P in a circle about O. The crank is then chosen the length of the
  * ground offset, which is what forces P onto a circle *through* O — and the
- * inverse of a circle through the centre of inversion is a straight line.
+ * inverse of a circle through the center of inversion is a straight line.
  *
  * Eight bars counting the frame: the crank, the two long arms, and the four
  * sides of the rhombus. Every one of the six joints is reachable from two
@@ -96,7 +96,7 @@ export const PEAUCELLIER = {
  */
 export function peaucellierFixture(): MechanismFixture {
   const { crank, long, side, drawnRad } = PEAUCELLIER;
-  const centre = { x: 0, y: 0 };
+  const center = { x: 0, y: 0 };
   const pivot = { x: crank, y: 0 };
   // The crank pin, on a circle of radius `crank` about a pivot `crank` from O.
   const pin = {
@@ -121,7 +121,7 @@ export function peaucellierFixture(): MechanismFixture {
 
   return {
     joints: [
-      { id: 'O', ...centre, ground: true },
+      { id: 'O', ...center, ground: true },
       { id: 'C', ...pivot, ground: true, input: true },
       { id: 'P', ...pin },
       { id: 'A', ...upper },
@@ -241,7 +241,7 @@ export function pantographFixture(): MechanismFixture {
  *
  * That is exactly what makes it worth opening here. Turning the input places C
  * and D and nothing else: every one of the six remaining joints has only one
- * already-known neighbour, so the ordering walk that solves the rest of the
+ * already-known neighbor, so the ordering walk that solves the rest of the
  * library places nothing at all, and the six settle together under
  * `simultaneous-solver.ts` instead. The Jansen leg has one more bar than this
  * and solves in closed form; this one cannot.
@@ -256,7 +256,7 @@ export function pantographFixture(): MechanismFixture {
  * pose and the fifteen bar lengths follow from it. What the pose was chosen for
  * is that the crank turns *all the way round*, which is not automatic here and
  * is not what most drawings of this topology do: they rock a little way and
- * jam. It also has to sit clear of every dead-centre, since the solver refuses
+ * jam. It also has to sit clear of every dead-center, since the solver refuses
  * a constraint set whose Jacobian loses a column where it is drawn, and away
  * from the poses where a chain runs nearly straight, where the six joints move
  * far in one sample and the run stops looking like a mechanism.

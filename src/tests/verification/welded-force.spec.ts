@@ -104,10 +104,10 @@ describe('welded five-bar force regression', () => {
 
     for (const mode of ['static', 'dynamic'] as const) {
       const weldedResult = welded.getForceAnalysis(mode);
-      const unsplitResult = unsplit.getForceAnalysis(mode);
-      expect(weldedResult.frames).toHaveLength(unsplitResult.frames.length);
+      const unsplitersult = unsplit.getForceAnalysis(mode);
+      expect(weldedResult.frames).toHaveLength(unsplitersult.frames.length);
       weldedResult.frames.forEach((frame, index) => {
-        const equivalent = unsplitResult.frames[index];
+        const equivalent = unsplitersult.frames[index];
         expect(frame.status).toBe(equivalent.status);
         if (frame.status !== 'ok' || equivalent.status !== 'ok') return;
         expect(frame.inputEffort!.valueSI).toBeCloseTo(equivalent.inputEffort!.valueSI, 9);

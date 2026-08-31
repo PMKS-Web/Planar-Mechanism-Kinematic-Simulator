@@ -2,7 +2,7 @@
 // the playback card and the project menu cannot drift apart.
 //
 // Everything is measured from the *card*, which is what a reader sees. A card
-// is $card-inset from the window and from its neighbour -- always that, in
+// is $card-inset from the window and from its neighbor -- always that, in
 // every direction. The frames the scrolling cards live in are set back by
 // $shadow-room so the card's own shadow has somewhere to fall inside a box that
 // clips; that is why the frame numbers are not round.
@@ -98,7 +98,7 @@ $sheet-handle-height: 44px;
  * Named because the same two numbers decide three things that have to agree:
  * how far the pill floats above the sheet, how far it floats above the controls
  * row when the sheet is shut, and where the grip line sits inside it. Left as
- * literals they drifted -- the pill was centred in the 44px target, so it stood
+ * literals they drifted -- the pill was centerd in the 44px target, so it stood
  * 12px clear when shut and 28px clear when open, the extra 16 being the sheet's
  * own shadow-room. Two different gaps for the same control, and the larger one
  * on the state where the pill is supposed to read as the sheet's own edge.

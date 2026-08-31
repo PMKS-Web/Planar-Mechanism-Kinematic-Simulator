@@ -1,10 +1,10 @@
 import { AngleUnit } from './unit-enums';
 
 /**
- * The colour of each analysis series, in one place.
+ * The color of each analysis series, in one place.
  *
  * A graph, its legend and the collapsed header that previews its values all
- * have to agree about which colour means X, so the answer lives beside the
+ * have to agree about which color means X, so the answer lives beside the
  * model rather than inside whichever component happened to need it first.
  */
 export const ANALYSIS_SERIES_COLORS = {
@@ -32,7 +32,7 @@ export function formatAnalysisValue(value: number): string {
 }
 
 /**
- * What an angular series has to be multiplied by to be in the unit it is labelled with.
+ * What an angular series has to be multiplied by to be in the unit it is labeled with.
  *
  * The solver does not hand these out in one unit. A link's angle is converted
  * to degrees as it is recorded; its angular velocity and acceleration are left

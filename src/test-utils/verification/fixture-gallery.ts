@@ -190,11 +190,11 @@ function scaleLoading(built: BuiltMechanism, by: PublishedLoading): void {
 }
 
 /**
- * Paint the built links the colours a template chose for itself.
+ * Paint the built links the colors a template chose for itself.
  *
- * By link id, which is the joint letters, because that is what the colour
+ * By link id, which is the joint letters, because that is what the color
  * table names and what survives the build. A link the table says nothing about
- * keeps the colour the cursor gave it.
+ * keeps the color the cursor gave it.
  */
 function recolor(links: Link[], fills: Map<string, string>): void {
   const paint = (link: Link): void => {
@@ -226,7 +226,7 @@ export interface GalleryEntry {
   objectScale?: number;
   /**
    * How fast this mechanism opens running, when the shared default is wrong for
-   * it. A stroke of a few centimetres crossed at the default 5 cm/s is over
+   * it. A stroke of a few centimeters crossed at the default 5 cm/s is over
    * before it can be watched, and a demonstration of a straight line is worth
    * nothing at a speed nobody can follow.
    */
@@ -841,7 +841,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
  * Encode a fixture into the query string the app decodes on load.
  *
  * Two pieces of global state are pinned first and put back afterwards: the link
- * colour cursor, and the object scale. Both are process-wide, so without this a
+ * color cursor, and the object scale. Both are process-wide, so without this a
  * payload depends on what every earlier spec happened to do — the table would
  * differ between a full suite run and a single-file one, and the drift check
  * would fail for reasons with nothing to do with the mechanisms.
@@ -851,7 +851,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
  * app uses. A mechanism whose bars are tens of units long needs a larger one or
  * it renders as hairlines — see the Jansen leg in template-fixtures.ts.
  *
- * `fills` overrides the colour cursor for a drawing whose colours mean
+ * `fills` overrides the color cursor for a drawing whose colors mean
  * something — a library template, where they are chosen from the structure
  * rather than handed out in build order. See template-colors.ts. The gallery
  * links published from here pass none and keep the cursor's own order.

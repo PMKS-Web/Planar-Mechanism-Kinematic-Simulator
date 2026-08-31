@@ -14,7 +14,7 @@ import { scotchYokeFixture } from '../../test-utils/verification/slot-fixtures';
 
 // The resolver is the single answer to "which bodies does this weld make
 // rigid?" (docs/phase-3-slide-spec.md §3.0). Everything downstream reads it, so
-// the states it must and must not recognise are asserted here rather than
+// the states it must and must not recognize are asserted here rather than
 // rediscovered by each consumer.
 
 function jointNamed(built: ReturnType<typeof buildMechanism>, id: string): RealJoint {

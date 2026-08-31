@@ -35,7 +35,7 @@ export const JANSEN = {
 /**
  * One leg of a Strandbeest: an eight-bar whose foot walks.
  *
- * Labelling convention — there are several equivalent ones, so this is the one
+ * Labeling convention — there are several equivalent ones, so this is the one
  * the coordinates below were computed from, with `a`..`m` the holy numbers:
  *
  * - `O` is the crank axis at the origin and the input; `G` is the frame pivot
@@ -243,7 +243,7 @@ export const TOGGLE = {
  * enormously hard, which is the whole reason toggle presses exist.
  *
  * The mounts and the drawn knee angle are placed so the ram's stops bracket
- * that behaviour without reaching it. The knee sweeps 205.6 to 262.1 degrees,
+ * that behavior without reaching it. The knee sweeps 205.6 to 262.1 degrees,
  * where 270 is the dead point, and the slider descends from -3.45 to -7.93
  * against a dead-point depth of exactly -8. The last five degrees of that
  * 56-degree sweep are worth under 3% of the slider's travel, and the first half
@@ -441,7 +441,7 @@ export function pedalingLegFixture(): MechanismFixture {
  * stopping, no two bars in the loop may ever come into line, and that pins the
  * arm and the link to within a crank throw or so of each other — which is why
  * the gearbox sits well out along the head rather than tucked against the
- * pivot. `shaftOffRad` then puts it off the head's centre line, so that the
+ * pivot. `shaftOffRad` then puts it off the head's center line, so that the
  * head is a body with a shape rather than three points on a line.
  */
 export const FAN = {
@@ -452,7 +452,7 @@ export const FAN = {
   /** Crank throw on the gearbox output. */
   crank: 1,
   link: 4.4,
-  /** Pivot to the blade hub, and how far off the head's centre line the shaft sits. */
+  /** Pivot to the blade hub, and how far off the head's center line the shaft sits. */
   nose: 5.6,
   shaftOffRad: (-30 * Math.PI) / 180,
 } as const;
@@ -581,7 +581,7 @@ export function pumpjackFixture(): MechanismFixture {
   };
   const pin = meet(crankshaft, PUMPJACK.crank, tail, PUMPJACK.pitman, -1);
   // The rod hangs from the horsehead to a block in the stuffing box, which is
-  // on the wellhead's centre line.
+  // on the wellhead's center line.
   const drop = Math.sqrt(PUMPJACK.rod ** 2 - (PUMPJACK.wellhead - horsehead.x) ** 2);
   return {
     joints: [
@@ -690,7 +690,7 @@ export function scissorLiftFixture(scale: number = 1): MechanismFixture {
 /**
  * An aircraft's main landing gear, seen head-on.
  *
- * Two legs, one each side of the centreline, each hinged on a trunnion in the
+ * Two legs, one each side of the centerline, each hinged on a trunnion in the
  * fuselage side and swung by its own hydraulic ram. Retracted, a leg lies
  * inboard under the belly; extended, it falls out and down to stand the
  * aircraft on its wheels.
@@ -715,7 +715,7 @@ export const GEAR = {
   trunnion: { x: 2.3, y: 0.2 },
   /** Trunnion to axle. Shorter than the trunnion is far out, so a retracted
    *  leg tucks under the belly without the two wheels meeting on the
-   *  centreline. */
+   *  centerline. */
   leg: 2.1,
   /** How far down the leg the ram takes hold. */
   ear: 0.45,

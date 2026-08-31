@@ -7,7 +7,7 @@ list at the bottom instead.
 
 > **This describes the old system.** What replaced it is in
 > `src/app/services/notification.service.ts`: four kinds (`success`, `refusal`,
-> `warning`, `failure`), each with its own colour, glyph, and answer to whether
+> `warning`, `failure`), each with its own color, glyph, and answer to whether
 > it takes itself away; a cooldown per message id rather than one for the whole
 > app; up to three on screen at once; and an optional action, so a message that
 > knows the fix can carry it. Every message below now has an id. The faults
@@ -16,7 +16,7 @@ list at the bottom instead.
 Two surfaces existed:
 
 - `NewGridComponent.sendNotification(text, rateLimitMS?)` — everything below
-  except one. Top-centre, white, 4s, no icon, no dismiss.
+  except one. Top-center, white, 4s, no icon, no dismiss.
 - `UrlProcessorService` opened its own `MatSnackBar` directly, without the
   `my-custom-snackbar` class or the rate limit.
 
@@ -120,7 +120,7 @@ rejected value is the moment somebody is most willing to be told.
 
 ### File and URL (2)
 
-`No file selected` — Project menu → Open, cancelled ·
+`No file selected` — Project menu → Open, canceled ·
 `Unable to load the shared mechanism URL.` — a share link that will not decode
 (the one message that bypasses `sendNotification` entirely)
 
@@ -185,8 +185,8 @@ Fixed:
 - **The cooldown is per message id**, and starts unarmed. Two different
   refusals in the same second both speak; the same one twice speaks once; a
   message asking for a long quiet period can speak the moment the page loads.
-- **The four kinds look different** — colour on the glyph and the left edge,
-  the sentence in the app's own text colour.
+- **The four kinds look different** — color on the glyph and the left edge,
+  the sentence in the app's own text color.
 - **Warnings and failures wait to be dismissed**; successes and refusals take
   themselves away. Everything has a close button.
 - **One path.** `UrlProcessorService` goes through the service like everything
@@ -218,7 +218,7 @@ Removed entirely:
 Reworded or removed:
 
 - `No file selected` — **gone**. It fired when the file picker was dismissed,
-  and cancelling a dialogue is not a thing that went wrong.
+  and canceling a dialogue is not a thing that went wrong.
 - The two zoom warnings no longer name buttons; they say what is wrong and
   where to fix it.
 - `Mechanism URL copied. If you make additional changes, copy the URL again.` →

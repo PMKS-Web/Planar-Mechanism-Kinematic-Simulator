@@ -12,7 +12,7 @@ import {
 // `ground` means two different things, and the velocity analysis used to read
 // only one of them. On a RevJoint it says the point is fixed in the world; on a
 // PrisJoint it says only that the *guide* is fixed, and the joint itself is the
-// block's coordinate travelling along that guide. The initializer seeds every
+// block's coordinate traveling along that guide. The initializer seeds every
 // grounded joint with zero rates, so a grounded guide was reported stationary
 // while the pin welded through it -- the same point -- was reported moving.
 //

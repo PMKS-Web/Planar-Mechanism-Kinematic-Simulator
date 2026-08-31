@@ -63,7 +63,7 @@ export class LongPressDirective implements OnDestroy {
   /**
    * More than one finger is down, so this is a pinch for as long as that lasts.
    *
-   * Cancelling the first finger's grip when the second lands is not enough on
+   * Canceling the first finger's grip when the second lands is not enough on
    * its own: the second finger has a `pointerdown` of its own, and if it comes
    * down on a part it takes hold of *that* one. A pinch that began on one joint
    * and closed on another dragged the second across the drawing while it
@@ -200,7 +200,7 @@ export class LongPressDirective implements OnDestroy {
     // A press that is never lifted -- a finger that slides off the glass, or a
     // gesture the browser takes back -- would otherwise leave the listener
     // armed, and the *next* touch would lose the tap it was entitled to. That
-    // showed up as the sheet handle needing two presses after a cancelled one.
+    // showed up as the sheet handle needing two presses after a canceled one.
     window.addEventListener('touchcancel', disarm, { capture: true });
     const fuse = setTimeout(disarm, 4000);
   }

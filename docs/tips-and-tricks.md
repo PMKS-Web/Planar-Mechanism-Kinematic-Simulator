@@ -16,6 +16,7 @@ to work on it without stepping in the same holes.
 - [Unit tests](#unit-tests)
 - [Browser tests](#browser-tests)
 - [Getting inside the running app](#getting-inside-the-running-app)
+- [Spelling: American, everywhere](#spelling-american-everywhere)
 - [Formatting, and why you should not just run Prettier](#formatting-and-why-you-should-not-just-run-prettier)
 - [Angular and build gotchas](#angular-and-build-gotchas)
 - [SCSS gotchas](#scss-gotchas)
@@ -199,6 +200,44 @@ used to compare whole SVG strings and failed a third of the time on the camera s
 
 ---
 
+## Spelling: American, everywhere
+
+**Comments, user-facing strings, identifiers, docs and test names are all American English.**
+Not a style preference so much as a consistency one: `centre` and `center` are the same word to a
+reader and two different symbols to `grep`, and a codebase holding both means every search for one
+of them quietly misses half the answers. It is worse in identifiers, where `colourOf` and `colorOf`
+are two functions nobody meant to write.
+
+The words this codebase has actually got wrong at least once, with the American form to use:
+
+| Write | Not |
+| --- | --- |
+| center, centered, centering, centerline | centre, centred, centring, centreline |
+| color, colored, coloring | colour, coloured, colouring |
+| gray, grayed | grey, greyed |
+| neighbor, neighboring | neighbour, neighbouring |
+| behavior | behaviour |
+| meter, centimeter, millimeter | metre, centimetre, millimetre |
+| analyze, analyzed, analyzing | analyse, analysed, analysing |
+| normalize, initialize, serialize, recognize, organize | normalise, initialise, serialise, recognise, organise |
+| labeled, labeling, modeled, modeling, traveled, canceled | labelled, labelling, modelled, modelling, travelled, cancelled |
+| catalog, program, license, defense, favor, honor, artifact | catalogue, programme, licence, defence, favour, honour, artefact |
+| while, among | whilst, amongst |
+
+Two that look like exceptions and are not:
+
+- **`analyses` is correct** when it is the plural of *analysis* — "the two analyses need it". It is
+  wrong only as a verb, where American English writes *analyzes*. A blind `analyse` -> `analyze`
+  replacement breaks the noun, so that one word has to be read rather than swept.
+- **`cancellation` keeps both `l`s** in American English, though `canceled` and `canceling` drop
+  one. Replacing the stem `cancell` -> `cancel` produces `cancelation`, which is wrong.
+
+Sweeping the repo is a one-liner per word, but do it on stems that no American word contains --
+`programme` -> `program` applied as a stem turns `programmed` into `programd`. When in doubt,
+anchor the pattern with `\b` and list the forms.
+
+---
+
 ## Formatting, and why you should not just run Prettier
 
 **About fifty source files and six e2e files predate the Prettier config.** Running
@@ -322,7 +361,7 @@ pixels are available; anything you add to the bottom row has to survive that.
 
 ## Domain facts worth knowing before you debug
 
-- **`MODEL_SCALE` is 200** (`model/render-scale.ts`) — model units per centimetre. A coordinate of
+- **`MODEL_SCALE` is 200** (`model/render-scale.ts`) — model units per centimeter. A coordinate of
   600 is 3 cm. Most solver code is in model units and most panel code is in the reader's unit.
 - **`partition.joints` are the same objects as the editable drawing** (not copies), and `animate()`
   mutates them in place. If something reads the "drawing" while the mechanism is not at timestep 0,
@@ -385,7 +424,7 @@ in a way that is obvious the moment you look at it. Two real examples, both caug
 neither by a test: every `DIMENSION` named an anonymous block that was emitted *empty* (AutoCAD and
 Fusion redraw the picture from the measurement and never complained, but a reader that draws only
 the block shows nothing -- which is the entire reason the R12 option exists), and the dimension line
-was offset a fixed distance in -Y, so on a vertical link it lay exactly along the centreline it was
+was offset a fixed distance in -Y, so on a vertical link it lay exactly along the centerline it was
 dimensioning.
 
 Parse the download with `dxf-parser` (it is already a dependency, at
@@ -433,7 +472,7 @@ long time without their handles. Every file should report zero of each. Once a r
 into Fusion or Onshape by hand as well -- translator strictness is the one thing no parser here can
 stand in for.
 
-**Check the units convert, not just that they are labelled.** `$INSUNITS` and the coordinates are
+**Check the units convert, not just that they are labeled.** `$INSUNITS` and the coordinates are
 written by different code. Export the same drawing as cm, m and in, and check `$EXTMAX` scales by
 1, 1/100 and 1/2.54 -- it did not, for a while, and the file looked completely correct until you
 measured something in CAD.
@@ -464,7 +503,7 @@ git stash push -u -- src/app/component/new-grid/new-grid.component.ts
 
 - a selector or `aria-label` whose wording drifted (`traced` → `Show Traced Paths`);
 - a member that was renamed or removed (`synthesisBuilder`, `swapDrivePin`);
-- a behaviour deliberately replaced, with the new one covered by a different file;
+- a behavior deliberately replaced, with the new one covered by a different file;
 - a drag distance or coordinate tuned against a layout that has since moved;
 - an assertion that depends on a template happening to have some property — a pale link, a load, a
   particular sample count — which a later change took away.

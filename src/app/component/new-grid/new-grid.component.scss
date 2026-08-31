@@ -62,10 +62,10 @@
     }
   }
 
-  // The grid is a background, and reads as one: two greys a shade apart, the
+  // The grid is a background, and reads as one: two grays a shade apart, the
   // minor one barely there, and the axes the only line on it with any weight.
-  // Both were black at a hairline width, which is a grey the browser chooses
-  // rather than one the app does -- and a different grey at every zoom level.
+  // Both were black at a hairline width, which is a gray the browser chooses
+  // rather than one the app does -- and a different gray at every zoom level.
   .gridLineMinor {
     stroke: #f2f2f4;
   }
@@ -122,7 +122,7 @@
     stroke: mat.m2-get-color-from-palette($primary-palette, 900);
   }
 
-  // What a joint is drawn in when it has not been given a colour of its own.
+  // What a joint is drawn in when it has not been given a color of its own.
   // A joint that has been keeps these rules for everything but the fill, which
   // it carries inline -- so the shadow, and every state that means something
   // other than "resting", still say the same thing on every joint.
@@ -144,9 +144,9 @@
   }
 
   // Drawn on a joint rather than beside it, so its ink follows the joint's own
-  // colour -- a dark pin needs a light padlock or the mark disappears into what
+  // color -- a dark pin needs a light padlock or the mark disappears into what
   // it is sitting on. The component picks which; this is the default, for a
-  // joint drawn in the pale colour it has always been drawn in.
+  // joint drawn in the pale color it has always been drawn in.
   .lockBadge {
     .lockGlyph {
       fill: #263238;
@@ -201,7 +201,7 @@
   }
 
   // Scenery in the analysis modes: still drawn, so the reader can see it is
-  // there, but grey and out of the way of the machine being analysed.
+  // there, but gray and out of the way of the machine being analyzed.
   .link-inert {
     fill: #c4c7d0 !important;
     stroke: #c4c7d0 !important;
@@ -230,7 +230,7 @@
   }
 
   // Geometry is frozen in the analysis modes, so the four-headed move cursor is
-  // an offer the mode will not honour: the drag it promises does nothing. These
+  // an offer the mode will not honor: the drag it promises does nothing. These
   // parts can still be *clicked*, to choose what the panel graphs, which is
   // what a pointer says.
   #canvas.geometryLocked [cursor='move'] {
@@ -310,13 +310,13 @@
 
   // Positions, previewed solutions and ghosts are all drawn the way the drawing
   // draws a link: a filled outline at a quarter of the object scale, the same
-  // 0.7 fill opacity, and a stroke of its own colour. They used to be strokes on
+  // 0.7 fill opacity, and a stroke of its own color. They used to be strokes on
   // a line, which came out the same width by arithmetic and subtly unlike every
   // other bar on the canvas.
   .synthBar {
     fill-opacity: 0.7;
 
-    // A solution that is only proposed. Its fill is the colour it will be
+    // A solution that is only proposed. Its fill is the color it will be
     // built in, so the reader can see what they are choosing; its outline is
     // broken, so an inserted linkage -- drawn solid, by the drawing's own
     // renderer -- cannot be mistaken for one that is still an offer.
@@ -462,7 +462,7 @@
 
   // What the chosen linkage does with each position, said beside it. A filled
   // pill, because it is read against whatever the drawing happens to put behind
-  // it -- grey words over a link are words nobody can read.
+  // it -- gray words over a link are words nobody can read.
   .synthChip {
     fill: #fff;
     stroke: rgba(0, 0, 0, 0.12);

@@ -76,8 +76,8 @@ await page.locator('.dirButton').first().click();
 await page.waitForTimeout(400);
 const after = await state();
 record('reversing does not stop it being resumable', after.playing === false, { before, after });
-// Within a model unit, which is a two-hundredth of a centimetre: the mirrored
-// cycle lands on the neighbouring sample, so "did not move" is a question about
+// Within a model unit, which is a two-hundredth of a centimeter: the mirrored
+// cycle lands on the neighboring sample, so "did not move" is a question about
 // pixels rather than about the fourteenth decimal place.
 const moved = Math.max(
   ...before.pose.map(([x, y], i) => Math.hypot(after.pose[i][0] - x, after.pose[i][1] - y))

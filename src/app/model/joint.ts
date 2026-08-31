@@ -34,7 +34,7 @@ export class Joint extends Coord {
   }
 
   /**
-   * Which colour family this one joint is drawn in -- see JOINT_FAMILIES --
+   * Which color family this one joint is drawn in -- see JOINT_FAMILIES --
    * or '' for the amber every joint shares.
    *
    * Per joint rather than per drawing because the point of it is to tell one

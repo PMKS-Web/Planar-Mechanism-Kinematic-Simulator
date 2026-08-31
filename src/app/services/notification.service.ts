@@ -76,7 +76,7 @@ const MAX_STACK = 3;
  * not about wording. It kept a single `lastNotificationTime` for the whole
  * app, so an unrelated message a moment earlier silenced the next one — two
  * different refusals in the same second showed only the first. And it
- * initialised that timestamp to the moment the canvas was constructed, so any
+ * initialized that timestamp to the moment the canvas was constructed, so any
  * message asking for a long quiet period was muted for that period *from page
  * load*: the two zoom warnings could not appear in the first twenty seconds of
  * a session, which is when zooming happens.

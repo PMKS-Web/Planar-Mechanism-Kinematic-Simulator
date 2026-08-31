@@ -138,12 +138,12 @@ export function cylinderCollinearTolerance(): number {
 /**
  * The two-joint leaf of a possibly-compound link that satisfies `keep`.
  *
- * A mount welded into a neighbouring link would absorb the barrel (or rod) into
+ * A mount welded into a neighboring link would absorb the barrel (or rod) into
  * a compound; the member bar still exists as a subset leaf, and the skin has to
  * keep describing that bar rather than the whole compound.
  *
- * **Nothing in the app can currently produce that**, and this is defence rather
- * than a supported shape. Two rules close it: `canToggleWeld` greys the Weld
+ * **Nothing in the app can currently produce that**, and this is defense rather
+ * than a supported shape. Two rules close it: `canToggleWeld` grays the Weld
  * control on a mount, and `refuseJointMerge` answers `welded-mount` to a merge
  * that would carry a weld onto one. `cylinder-weld-guards.spec.ts` pins both,
  * because if either is relaxed this path starts running for real — and it is
@@ -169,7 +169,7 @@ export function resolveCylinder(joint: Joint, tolerance?: number): Cylinder | un
  *
  * Split from the geometric half deliberately. Everything that *protects* a
  * sealed assembly — drag routing, permanence guards, the delete cascade, the
- * normalization pass — has to keep recognising it even while its geometry is
+ * normalization pass — has to keep recognizing it even while its geometry is
  * momentarily wrong, or the guards fail open at exactly the moment they are
  * needed and a stray write tears the part for good. That is how a fast mount
  * drag used to break a cylinder: one clamped frame stopped resolving, the
@@ -186,7 +186,7 @@ function describeCylinderStructure(joint: Joint): Cylinder | string {
   const pin = assembly.weldJoint;
   const slotA = assembly.slider.slotJointA!;
   const slotB = assembly.slider.slotJointB!;
-  // A mount welded into a neighbouring link turns the carrier (or rider) into
+  // A mount welded into a neighboring link turns the carrier (or rider) into
   // a compound; the member bar survives as a subset leaf and stays the thing
   // the skin describes.
   const rod = twoJointLeaf(assembly.riders[0], (leaf) =>
@@ -332,7 +332,7 @@ export function cylinderOfLink(joints: Joint[], link: Link | undefined): Cylinde
   const containsMember = (candidate: Link, cylinder: Cylinder): boolean => {
     const memberIds = [cylinder.barrel.id, cylinder.rod.id, cylinder.block.id];
     if (memberIds.includes(candidate.id)) return true;
-    // A compound that swallowed the barrel (a mount welded into a neighbour)
+    // A compound that swallowed the barrel (a mount welded into a neighbor)
     // still owns a member, so deleting it cascades the same way.
     return (
       candidate instanceof RealLink && candidate.subset.some((leaf) => memberIds.includes(leaf.id))
@@ -754,7 +754,7 @@ export function layoutCylinder(
  * Size and pose are two different edits. Asked for a longer stroke at the same
  * start, the resulting span usually still lies *inside* the old stroke's own
  * travel — so the span rule, doing exactly what it is meant to, would hold the
- * old size and slide the piston instead. A field labelled Travel would then
+ * old size and slide the piston instead. A field labeled Travel would then
  * quietly change the position and not the travel.
  *
  * The barrel mount is held and the rod mount moves, because the barrel mount is

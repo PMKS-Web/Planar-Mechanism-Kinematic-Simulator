@@ -38,7 +38,7 @@ describe('the flywheel slider-crank', () => {
   it('reciprocates the piston over the stroke the throw gives it', () => {
     const wrist = built.mechanism.joints.map((frame) => frame.find((joint) => joint.id === 'C')!);
     const travel = wrist.map((joint) => joint.x);
-    // Twice the throw, and never off the bore's own centreline.
+    // Twice the throw, and never off the bore's own centerline.
     expect(Math.max(...travel) - Math.min(...travel)).toBeCloseTo(2, 3);
     wrist.forEach((joint) => expect(joint.y).toBeCloseTo(0, 6));
   });
@@ -52,7 +52,7 @@ describe('the flywheel slider-crank', () => {
     expect((built.links.find((link) => link.id === 'BC') as RealLink).isCircle).toBe(false);
   });
 
-  it('keeps the piston clear of the rim at inner dead centre', () => {
+  it('keeps the piston clear of the rim at inner dead center', () => {
     // A flywheel wide enough to be a flywheel can swallow the piston. The disc
     // reaches its outermost joint; the piston's nearest approach must be past
     // it, or the drawing shows a rod vanishing into a plate.

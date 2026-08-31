@@ -1,5 +1,5 @@
 /**
- * Whether a mark drawn on a colour should be dark or light.
+ * Whether a mark drawn on a color should be dark or light.
  *
  * A leaf with no imports, because both the canvas and the swatch picker need
  * the same answer and neither should be reaching into the other for it.
@@ -13,5 +13,5 @@ export function luminanceOf(color: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-/** Above this, a colour takes dark ink; below it, light. */
+/** Above this, a color takes dark ink; below it, light. */
 export const INK_FLIPS_AT = 0.55;

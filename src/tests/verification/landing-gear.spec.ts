@@ -130,7 +130,7 @@ describe('aircraft landing gear', () => {
     const up = wheel.reduce((highest, point) => (point.y > highest.y ? point : highest), wheel[0]);
     // Up: the retracted wheel is more than a leg's-length above the extended one.
     expect(up.y - down.y).toBeGreaterThan(GEAR.leg * MODEL_SCALE * 0.6);
-    // And inboard: it ends nearer the centreline than the trunnion it hangs from.
+    // And inboard: it ends nearer the centerline than the trunnion it hangs from.
     expect(Math.abs(up.x)).toBeLessThan(Math.abs(at(fixture, 'A').x));
     // The starting pose is the gear down, so the card opens on an aircraft
     // standing on its wheels rather than on one with the gear half up.

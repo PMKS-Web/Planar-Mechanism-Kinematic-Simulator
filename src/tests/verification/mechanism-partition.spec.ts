@@ -10,7 +10,7 @@ import { FIXTURE_GALLERY } from '../../test-utils/verification/fixture-gallery';
  *
  * The rule that does the work is that ground anchors without connecting. Let a
  * grounded joint join the bodies that meet at it and every grounded chain in
- * the drawing merges into one component — which is not a modelling nicety but
+ * the drawing merges into one component — which is not a modeling nicety but
  * the difference between "two mechanisms, each 1-DoF and ready" and "one
  * 2-DoF mechanism that refuses to simulate".
  */

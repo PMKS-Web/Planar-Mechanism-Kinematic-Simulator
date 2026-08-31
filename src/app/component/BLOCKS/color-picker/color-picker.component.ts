@@ -28,11 +28,11 @@ export class ColorPickerComponent implements OnChanges {
   /**
    * A whole selection to paint at once, instead of one part.
    *
-   * The same swatches either way: choosing a colour for eight links is the same
+   * The same swatches either way: choosing a color for eight links is the same
    * question as choosing one for a single link, so it is asked with the same
    * control rather than with a second one that would have to be kept looking
    * alike by hand. When the parts disagree no swatch is ticked -- there is no
-   * one colour to point at -- and pressing one gives them all that colour.
+   * one color to point at -- and pressing one gives them all that color.
    */
   readonly parts = input<readonly (RealLink | Joint | Force)[]>();
 
@@ -97,7 +97,7 @@ export class ColorPickerComponent implements OnChanges {
     if (parts) {
       parts.forEach((part) => this.paint(part, index));
       // Undoable and carried in the URL, the same as painting one part: a
-      // colour a shared link dropped would not be worth putting on.
+      // color a shared link dropped would not be worth putting on.
       this.mechanism.updateMechanism(true);
       return;
     }
@@ -116,7 +116,7 @@ export class ColorPickerComponent implements OnChanges {
         // empty -- so choosing it means "stop being different", and the URL
         // goes back to saying nothing about this joint.
         joint.colorFamily = this.colorService.getJointFamilyFromIndex(index);
-        // Undoable, and carried in the URL: a colour that a shared link dropped,
+        // Undoable, and carried in the URL: a color that a shared link dropped,
         // or that one undo wiped, would not be worth putting on.
         this.mechanism.updateMechanism(true);
         break;
@@ -156,8 +156,8 @@ export class ColorPickerComponent implements OnChanges {
    */
   tickInk(color: string): string {
     // Against the middle of the swatch, which is what the tick is drawn over --
-    // not the ring around it, which is a different colour on every joint family
-    // and would have put a white tick on four pale centres.
+    // not the ring around it, which is a different color on every joint family
+    // and would have put a white tick on four pale centers.
     return luminanceOf(color) > INK_FLIPS_AT ? '#263238' : '#ffffff';
   }
 }

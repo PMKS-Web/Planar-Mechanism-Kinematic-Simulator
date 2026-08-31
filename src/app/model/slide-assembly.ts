@@ -35,7 +35,7 @@ export interface SlideAssembly {
  * The weld path needs this: it has to choose which kind of weld to make
  * *before* setting the flag, and re-deriving "does this carry a block?" there
  * would let a shape the resolver rejects — a pin with two blocks, say — take
- * the assembly path and produce a weld nothing downstream recognises.
+ * the assembly path and produce a weld nothing downstream recognizes.
  */
 export function isSlideCandidate(joint: Joint): boolean {
   return resolveStructure(joint) !== undefined;

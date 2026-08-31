@@ -56,7 +56,7 @@ async function hold(x, y, ms = 700) {
  *
  * Deliberately slower than the hold threshold: a swipe that finishes inside
  * half a second proves only that it was quick, and what wants proving is that
- * travelling is what stops it becoming a press.
+ * traveling is what stops it becoming a press.
  */
 async function swipe(x, y, dx, dy, steps = 12, gap = 70) {
   const cdp = await context.newCDPSession(page);
@@ -185,7 +185,7 @@ record('with a handle to pull it up by', (await page.locator('.sheetHandle').cou
  * Beneath it is the sheet's card when the sheet is open and the controls row
  * when it is shut, and the number has to be the same either way: it is one
  * control, and a control that sits differently in its two states reads as two.
- * It drifted once already -- the pill was centred in its 44px target and the
+ * It drifted once already -- the pill was centerd in its 44px target and the
  * sheet's frame carried 16px of shadow-room above its card, so it stood 12px
  * clear when shut and 28px clear when open.
  *
@@ -209,7 +209,7 @@ const pillGap = () =>
 
 const gapShut = await pillGap();
 
-// Tapped with a finger and off centre, because the pill it draws is 5px tall
+// Tapped with a finger and off center, because the pill it draws is 5px tall
 // and what has to be hittable is the box around it.
 const grip = await page.evaluate(() => {
   const rect = document.querySelector('.sheetGrip').getBoundingClientRect();
@@ -218,7 +218,7 @@ const grip = await page.evaluate(() => {
 await tap(grip.x, grip.y);
 await page.waitForTimeout(600);
 const expanded = await box('.panel');
-record('the handle takes a finger off the centre of its pill', expanded.h > 100, {
+record('the handle takes a finger off the center of its pill', expanded.h > 100, {
   grip,
   expanded,
 });
@@ -291,7 +291,7 @@ record(
   stack
 );
 record('and the status strip off the controls row', stack.rowToStrip === layoutGap, stack);
-// The bottom row used to be centred inside an 8px padding, so its cards sat
+// The bottom row used to be centerd inside an 8px padding, so its cards sat
 // 23px from the window against the top strip's 12 and the two ends of the
 // screen disagreed about where the margin was.
 record(
@@ -622,7 +622,7 @@ const screenOf = (id) =>
     return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) };
   }, id);
 
-// Cancelling the first finger's grip is not enough: the second finger has a
+// Canceling the first finger's grip is not enough: the second finger has a
 // pointerdown of its own, and landing on a part takes hold of *that* one.
 {
   const first = await screenOf('B');
@@ -778,7 +778,7 @@ const screenOf = (id) =>
 }
 
 // --- tapping a part shows the panel about it --------------------------------
-// On the release, and only for a press that neither travelled nor became a
+// On the release, and only for a press that neither traveled nor became a
 // menu: selecting happens on press, so opening on selection raised the sheet
 // over the very joint the finger was still resting on.
 {

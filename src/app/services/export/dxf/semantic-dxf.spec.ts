@@ -199,7 +199,7 @@ describe('semantic DXF centerline geometry', () => {
     // A three-joint body is a closed triangle, not two lines meeting at
     // whichever joint happened to be first. Drawn as a star out of joint[0] it
     // came out as an open corner -- neither the part nor anything a reader
-    // would recognise as one.
+    // would recognize as one.
     const edges = lines.map((ends) => JSON.stringify(ends.slice().sort()));
     const has = (from: number[], to: number[]) => edges.includes(JSON.stringify([from, to].sort()));
     expect(has([0, 0], [2, 0])).toBe(true);

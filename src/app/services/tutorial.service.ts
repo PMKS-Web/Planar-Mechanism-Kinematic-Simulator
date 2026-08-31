@@ -522,7 +522,7 @@ export class TutorialService {
     const box = canvas?.getBoundingClientRect();
     if (!box || box.width === 0 || box.height === 0) {
       // No canvas to ask -- a test harness, or a call before the view exists.
-      // The default view is centred on the origin and about twenty units wide.
+      // The default view is centerd on the origin and about twenty units wide.
       return { x: 0, y: 0, width: 20 * MODEL_SCALE, height: 12 * MODEL_SCALE };
     }
 
@@ -619,7 +619,7 @@ export class TutorialService {
     // Until the step is satisfied, rather than a fixed two passes. `toggleGround`
     // is a toggle: on a drawing that already had one end grounded, the first
     // pass finished the step and the second one took the *next* step's target
-    // -- an already-grounded joint -- and un-grounded it. The two cancelled, and
+    // -- an already-grounded joint -- and un-grounded it. The two canceled, and
     // from the outside the button did nothing at all.
     //
     // One at a time and through the panel's own call, which resolves sliders and

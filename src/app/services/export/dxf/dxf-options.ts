@@ -3,16 +3,16 @@ import { LengthUnit } from '../../../model/unit-enums';
 /**
  * The units this export can be written in.
  *
- * Its own list rather than the app's `LengthUnit`, because millimetres belong
+ * Its own list rather than the app's `LengthUnit`, because millimeters belong
  * here and nowhere else: they are what every CAD importer defaults to and what
- * a drawing is dimensioned in, but the app has no millimetre and giving it one
+ * a drawing is dimensioned in, but the app has no millimeter and giving it one
  * would reach into the mass and inertia units that pair with each length, the
  * settings panel, and every URL ever shared. An export unit is a property of
  * the file, not of the project.
  */
 export type DxfExportUnit = 'mm' | 'cm' | 'm' | 'in';
 
-/** How many of `unit` make one centimetre. The whole drawing is sized in these. */
+/** How many of `unit` make one centimeter. The whole drawing is sized in these. */
 export function unitsPerCentimeter(unit: DxfExportUnit): number {
   if (unit === 'mm') return 10;
   if (unit === 'm') return 0.01;
@@ -39,7 +39,7 @@ export function exportUnitOf(unit: LengthUnit): DxfExportUnit {
 /** Which point of the drawing lands on (0, 0). */
 export type DxfOrigin = 'model' | 'ground' | 'center' | 'joint';
 
-/** What is drawn at a joint centre. */
+/** What is drawn at a joint center. */
 export type DxfJointCircles = 'none' | 'marks' | 'holes';
 
 /**
@@ -48,7 +48,7 @@ export type DxfJointCircles = 'none' | 'marks' | 'holes';
  * `centerlines` is a picture of the mechanism: one line per link, which is what
  * a reader traces over. `outlines` is the shape of the part -- the same rounded
  * body the canvas draws, as a closed loop with its pin holes already in it, so
- * CAD can pick the face and extrude it. A centreline cannot be extruded, which
+ * CAD can pick the face and extrude it. A centerline cannot be extruded, which
  * is the whole difference between a drawing and a part.
  */
 export type DxfLinkBodies = 'centerlines' | 'outlines';
@@ -167,7 +167,7 @@ export type DxfPresetName = keyof typeof DXF_PRESETS;
  * What the builder assumes when it is told nothing.
  *
  * Deliberately the plainest reading of the drawing rather than the useful one:
- * coordinates as drawn, centre marks rather than holes, one centreline layer.
+ * coordinates as drawn, center marks rather than holes, one centerline layer.
  * The opinion belongs to the screen -- a reader picking "Build parts" is what
  * moves the origin and cuts the holes -- and a primitive that arrived with that
  * opinion baked in would be one every other caller had to argue with.

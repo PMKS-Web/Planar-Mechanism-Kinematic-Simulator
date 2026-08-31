@@ -15,7 +15,7 @@ export class Line {
   public static linkColorIndex: number = 0;
   //For debugging
   //Pick a random color from the list
-  color: string = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'lightgrey'][
+  color: string = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'lightgray'][
     Line.linkColorIndex++ % 8
   ];
 

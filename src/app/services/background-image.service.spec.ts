@@ -44,14 +44,14 @@ describe('BackgroundImageService', () => {
       expect(service.heightOf(service.image()!)).toBe(5 * MODEL_SCALE);
     });
 
-    it('places the left edge half a width left of centre', () => {
+    it('places the left edge half a width left of center', () => {
       const image = placed({ centerX: 3 * MODEL_SCALE });
       expect(service.leftOf(image)).toBe(MODEL_SCALE);
     });
 
     /**
      * The image layer is drawn unflipped while the model has y up, so a picture
-     * centred above the axis has to be at a negative SVG y. Getting this
+     * centerd above the axis has to be at a negative SVG y. Getting this
      * backwards mirrors the underlay about the x axis, which is invisible on a
      * symmetric picture and wrong on every other one.
      */
@@ -130,7 +130,7 @@ describe('BackgroundImageService', () => {
     it('restates the placement in the new unit', () => {
       settings.lengthUnit.next(LengthUnit.METER);
       const image = service.image()!;
-      // A centimetre is a hundredth of a metre, so every number is too.
+      // A centimeter is a hundredth of a meter, so every number is too.
       expect(image.centerX).toBeCloseTo(0.03 * MODEL_SCALE, 6);
       expect(image.centerY).toBeCloseTo(-0.01 * MODEL_SCALE, 6);
       expect(image.width).toBeCloseTo(0.04 * MODEL_SCALE, 6);
@@ -168,7 +168,7 @@ describe('BackgroundImageService', () => {
       expect(service.transformOf(image)).toBe(`rotate(0, ${2 * MODEL_SCALE}, ${-MODEL_SCALE})`);
     });
 
-    it('goes to SVG the other way round, about the picture’s own centre', () => {
+    it('goes to SVG the other way round, about the picture’s own center', () => {
       const image = placed({ centerX: 0, centerY: 2 * MODEL_SCALE, rotationRad: Math.PI / 2 });
       expect(service.transformOf(image)).toBe(`rotate(-90, 0, ${-2 * MODEL_SCALE})`);
     });

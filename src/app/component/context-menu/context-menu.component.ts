@@ -40,7 +40,7 @@ export class ContextMenuComponent {
   constructor() {
     // A shortcut acts on the selection, not on the card, and the card is a
     // snapshot: pressing K with a joint's menu open locked the joint and left
-    // the menu showing the unlocked state, with a Delete row that was greyed
+    // the menu showing the unlocked state, with a Delete row that was grayed
     // for a lock that had just been set, or live for one that had. Delete did
     // it behind the card. So any shortcut closes the card, and the next
     // right-click builds it again from what is now true.
@@ -88,7 +88,7 @@ export class ContextMenuComponent {
     return !model.header && menuIsEmpty(model);
   }
 
-  /** Greyed is greyed: a row that says why it cannot be used does not act. */
+  /** Grayed is grayed: a row that says why it cannot be used does not act. */
   run(row: MenuRow): void {
     if (row.disabled) return;
     row.action();

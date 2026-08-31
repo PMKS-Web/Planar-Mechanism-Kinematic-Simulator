@@ -26,17 +26,17 @@
   border-color: #3f51b5;
 }
 
-/* The suffix rides the field's visible centre, not the text baseline. The
+/* The suffix rides the field's visible center, not the text baseline. The
    app squeezes the 56px MDC flex row into a 30px wrapper, so centring in
    the flex row lands below the field — anchor to the top like the input
-   does (6px in, 18px line) and centre a ~14px suffix inside that band. */
+   does (6px in, 18px line) and center a ~14px suffix inside that band. */
 .state-input-host .mat-mdc-form-field-icon-suffix,
 .state-input-host .mat-mdc-form-field-text-suffix {
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
   /* A fixed band the height and offset of the input's own line, so the
-     content centres whether it is a lone 7px dot or a dot with a 14px ✕. */
+     content centers whether it is a lone 7px dot or a dot with a 14px ✕. */
   margin-top: 6px;
   height: 18px;
 }

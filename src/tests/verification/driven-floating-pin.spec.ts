@@ -39,7 +39,7 @@ describe('a four-bar driven at its coupler-rocker pin', () => {
   const fromPin = couplerCurve('C');
 
   it('solves at all', () => {
-    // The ordering walk starts at the input joint and swings its neighbours
+    // The ordering walk starts at the input joint and swings its neighbors
     // about it, which assumes the input's position is known. A floating pin's
     // is not, so before Phase 6 this mechanism could not be driven here.
     expect(fromPin.length).toBeGreaterThan(20);
@@ -106,7 +106,7 @@ describe('a driven pin that a later edit made ambiguous', () => {
   // pin and the mechanism went on claiming to be valid. The toggle refuses a
   // three-body joint, but nothing stopped an edit *after* the toggle -- and the
   // walk then fell through to the primitive that swings a driven joint's
-  // neighbours about it, which is only meaningful when the joint itself is
+  // neighbors about it, which is only meaningful when the joint itself is
   // held. It is not: the pin floats. The animation showed it standing still
   // while the links reaching it tore.
 

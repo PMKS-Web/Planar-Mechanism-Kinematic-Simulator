@@ -25,15 +25,15 @@ const document: DxfDocument = {
 describe('the SVG writer', () => {
   it('carries the physical size, which is the thing DXF cannot', () => {
     const svg = writeSvg(document, 'cm');
-    // Width in real centimetres against a viewBox in drawing units: the part
+    // Width in real centimeters against a viewBox in drawing units: the part
     // prints and cuts at the size it was drawn, with no import dialog to get
-    // wrong. A metre drawing says the same size in centimetres, because SVG
-    // has no metre.
+    // wrong. A meter drawing says the same size in centimeters, because SVG
+    // has no meter.
     expect(svg).toMatch(/width="[\d.]+cm"/);
     const metric = writeSvg(document, 'm');
     const asCm = Number(/width="([\d.]+)cm"/.exec(metric)![1]);
-    const asCentimetres = Number(/width="([\d.]+)cm"/.exec(svg)![1]);
-    expect(asCm).toBeCloseTo(asCentimetres * 100, 4);
+    const asCentimeters = Number(/width="([\d.]+)cm"/.exec(svg)![1]);
+    expect(asCm).toBeCloseTo(asCentimeters * 100, 4);
     expect(writeSvg(document, 'in')).toMatch(/width="[\d.]+in"/);
   });
 

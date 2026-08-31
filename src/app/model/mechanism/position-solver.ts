@@ -79,7 +79,7 @@ const STROKE_TOLERANCE = 1e-3;
 const POSE_RECALL_TOLERANCE = 1e-4;
 
 /**
- * How close two solve-circle centres must be to count as coincident. Joint
+ * How close two solve-circle centers must be to count as coincident. Joint
  * positions are rounded to four decimals each timestep, so the bound is absolute
  * rather than mechanism-scale relative — matching circleCircleIntersection's own
  * tangent tolerance.
@@ -424,7 +424,7 @@ export class PositionSolver {
    * graph, a dynamic force analysis. With one mechanism in a drawing that was
    * safe. With three, the last one solved owns them, and a graph asked about
    * the first one was answered out of the third one's constraints: it found no
-   * drive it recognised, fell through to the loop formulation, and came back
+   * drive it recognized, fell through to the loop formulation, and came back
    * with nothing at all. Every velocity and acceleration graph of a
    * cylinder-driven machine standing beside another machine was empty.
    */
@@ -534,11 +534,11 @@ export class PositionSolver {
     const driven = this.drivenBody(inputJoint);
     const tracer_joints: Joint[] = [];
     // A driven cylinder commands a length between two mounts rather than a step
-    // taken by a neighbour of the input joint, so the drive loop below has
+    // taken by a neighbor of the input joint, so the drive loop below has
     // nothing to say about it; the deferred sweep places both mounts instead.
     // A driven *pin* that is not grounded is the same situation for a different
     // reason (§2.9): the walk starts at the input joint and swings its
-    // neighbours about it, which assumes the input's own position is known. A
+    // neighbors about it, which assumes the input's own position is known. A
     // floating pin's is not, so it too goes to the constraint set.
     if (
       this.registerCylinderDrive(cylinders, inputJoint) ||
@@ -567,7 +567,7 @@ export class PositionSolver {
 
     // A floating input the actuator record cannot describe -- three bodies at
     // the joint, say, which "driven" does not say which pair of. The drive loop
-    // below would swing this joint's neighbours *about* it, which is only
+    // below would swing this joint's neighbors *about* it, which is only
     // meaningful when the joint itself is held: for a grounded crank it is, and
     // for a floating pin nothing holds it at all. Left to fall through, the
     // mechanism reported itself valid and animated a pin that never moved,
@@ -643,7 +643,7 @@ export class PositionSolver {
     if (pending.length > 0) {
       const system = this.buildSimultaneousSystem(joints, links, [
         ...pending,
-        ...this.travellingGrounds(links, pending),
+        ...this.travelingGrounds(links, pending),
       ]);
       if (system) {
         this.simultaneousSystem = system;
@@ -678,14 +678,14 @@ export class PositionSolver {
    * set regardless, because every closed-form primitive that reads a slot
    * expects to find it there and the walk's existing orderings are verified.
    */
-  private static travellingGrounds(links: Link[], pending: string[]): string[] {
+  private static travelingGrounds(links: Link[], pending: string[]): string[] {
     const riders = new Set(pending);
     // Being seeded as known says nothing about a grounded slot -- every one of
     // them is -- so what has to be checked is whether a step already writes it.
     // Solving the same joint twice in one timestep would leave whichever step
     // ran last holding the answer, silently.
     const ordered = new Set([...this.jointNumOrderSolverMap.values()].flat());
-    const travelling: string[] = [];
+    const traveling: string[] = [];
     for (const link of links) {
       // The zero-length block, and only it: two joints, one of them the slot.
       if (!(link instanceof SliderBlock) || link.joints.length !== 2) continue;
@@ -693,9 +693,9 @@ export class PositionSolver {
       const rider = link.joints.find((member) => !(member instanceof PrisJoint));
       if (!(slot instanceof PrisJoint) || !rider) continue;
       if (!slot.ground || ordered.has(slot.id) || !riders.has(rider.id)) continue;
-      travelling.push(slot.id);
+      traveling.push(slot.id);
     }
-    return travelling;
+    return traveling;
   }
 
   /**
@@ -854,7 +854,7 @@ export class PositionSolver {
    * have to number exactly the unknown coordinates — counted as *residuals*,
    * since a coincidence is two rows and reads as one constraint — and the
    * Jacobian has to keep every column at the pose the mechanism was drawn in.
-   * A linkage drawn at a dead-centre is refused by that and is meant to be.
+   * A linkage drawn at a dead-center is refused by that and is meant to be.
    */
   private static boundaryDrivenSystem(
     joints: Joint[],
@@ -1024,7 +1024,7 @@ export class PositionSolver {
    *
    * A slot in a moving link is the case that direction cannot describe. The
    * step used to be taken along the slot's angle at t = 0 and held there, which
-   * never turns the link the slot is cut into -- so the block travelled up a bar
+   * never turns the link the slot is cut into -- so the block traveled up a bar
    * standing still and whatever else held the block absorbed the difference by
    * changing length. A reader's inverted slider-crank drove this way and its
    * rocker grew 15% over the cycle while the mechanism reported itself Ready.
@@ -1129,7 +1129,7 @@ export class PositionSolver {
    * driven. Which one is not something the model says, so the first non-block
    * link on the joint is taken and the rest are left to the solver — the same
    * arbitrary-but-consistent choice `incrementRevInput` was already making when
-   * it picked a neighbour to measure the crank radius from.
+   * it picked a neighbor to measure the crank radius from.
    */
   private static drivenBody(inputJoint: RealJoint): Set<string> {
     const body = inputJoint.links.find(
@@ -1394,7 +1394,7 @@ export class PositionSolver {
       system.unknownIds.map((id) => [id, [...this.jointMapPositions.get(id)!]])
     );
     // A mechanism can be drawn exactly on a limit of its own travel — a toggle
-    // clamp usually is, since the clamped pose is the dead-centre. The solve
+    // clamp usually is, since the clamped pose is the dead-center. The solve
     // there is singular and cannot converge, so settle at the nearest command
     // that *can* be reached instead. The offsets below are thousandths of a
     // sample, and the pose moves by a few thousandths of a unit with them.
@@ -1725,7 +1725,7 @@ export class PositionSolver {
    * Drive the commanded length from one value to another, in as many goes as
    * it takes.
    *
-   * One jump is right almost always. It is wrong approaching a dead-centre,
+   * One jump is right almost always. It is wrong approaching a dead-center,
    * where a short command moves the mechanism a long way: the seed then lands
    * outside the basin the answer is in and the solve stalls, which reads as a
    * limit the mechanism does not actually have. Walking the same interval in
@@ -2168,7 +2168,7 @@ export class PositionSolver {
     if (!slotA || !slotB || !known.includes(slotA.id) || !known.includes(slotB.id)) {
       return undefined;
     }
-    // The rider still needs one known neighbour to fix its distance along the
+    // The rider still needs one known neighbor to fix its distance along the
     // slot; the slot alone leaves it free to slide.
     const reference = joint.connectedJoints.find(
       (candidate) => candidate.id !== slider.id && known.includes(candidate.id)
@@ -2265,7 +2265,7 @@ export class PositionSolver {
           prev_joint_index,
           known_joint_index,
         ]);
-        // Two circles centred on two joints of the *same* body as this one are
+        // Two circles centerd on two joints of the *same* body as this one are
         // that body's own two sides, and they meet at a shallow angle -- exactly
         // tangentially where the three joints are in line, as they are on every
         // straight bar with a pin part way along it. Carrying the joint in the
@@ -2573,7 +2573,7 @@ export class PositionSolver {
      * How far from the channel's midpoint a block's pin may get.
      *
      * The channel is inset from the joints that define it, and its ends are
-     * round: the cap centre is the last place a pin can sit with the block
+     * round: the cap center is the last place a pin can sit with the block
      * still wholly inside the slot, so that is the limit.
      *
      * The inset is an absolute number of joint radii, which only means
@@ -2604,7 +2604,7 @@ export class PositionSolver {
       const separation = Math.hypot(dx, dy);
       if (!(separation > 0)) continue;
       // Measured from the channel's midpoint, and bounded by the channel's own
-      // half-length — which is where its rounded end cap is centred. So a block
+      // half-length — which is where its rounded end cap is centerd. So a block
       // stops with its pin concentric with that arc: the last pose in which the
       // block is fully inside the slot rather than hanging out of the end of it.
       // Asking the drawing's own function is what keeps the limit and the
@@ -2659,23 +2659,23 @@ export class PositionSolver {
    *
    * When a crank is as long as the ground link, the moving pivot passes exactly
    * through the far ground pivot once a revolution. Both circles that locate the
-   * next joint then share a centre, so every point on that circle satisfies the
+   * next joint then share a center, so every point on that circle satisfies the
    * link lengths and the intersection is undefined — the solver used to report
    * "no solution", which findFullMovementPos reads as a toggle and answers by
    * reversing the input. A parallelogram has no toggle there; it rotates straight
    * through. Momentum is what disambiguates, so extrapolate the joint's motion and
    * project the prediction back onto the circle it has to stay on.
    *
-   * Returns undefined when the centres are apart, i.e. the ordinary case.
+   * Returns undefined when the centers are apart, i.e. the ordinary case.
    */
   private static concentricSolution(
     j1: Joint,
     j2: Joint,
     unknownJoint: Joint
   ): number[] | undefined {
-    const centre1 = this.jointMapPositions.get(j1.id) ?? [j1.x, j1.y];
-    const centre2 = this.jointMapPositions.get(j2.id) ?? [j2.x, j2.y];
-    if (Math.hypot(centre2[0] - centre1[0], centre2[1] - centre1[1]) > CONCENTRIC_TOLERANCE) {
+    const center1 = this.jointMapPositions.get(j1.id) ?? [j1.x, j1.y];
+    const center2 = this.jointMapPositions.get(j2.id) ?? [j2.x, j2.y];
+    if (Math.hypot(center2[0] - center1[0], center2[1] - center1[1]) > CONCENTRIC_TOLERANCE) {
       return undefined;
     }
 
@@ -2690,19 +2690,19 @@ export class PositionSolver {
     const prior = this.priorJointPositions.get(unknownJoint.id) ?? current;
     const predicted = [2 * current[0] - prior[0], 2 * current[1] - prior[1]];
 
-    let towardX = predicted[0] - centre1[0];
-    let towardY = predicted[1] - centre1[1];
+    let towardX = predicted[0] - center1[0];
+    let towardY = predicted[1] - center1[1];
     let reach = Math.hypot(towardX, towardY);
     if (reach < 1e-9) {
-      // The prediction landed on the centre; fall back to the current heading.
-      towardX = current[0] - centre1[0];
-      towardY = current[1] - centre1[1];
+      // The prediction landed on the center; fall back to the current heading.
+      towardX = current[0] - center1[0];
+      towardY = current[1] - center1[1];
       reach = Math.hypot(towardX, towardY);
       if (reach < 1e-9) {
         return undefined;
       }
     }
-    return [centre1[0] + (towardX / reach) * radius, centre1[1] + (towardY / reach) * radius];
+    return [center1[0] + (towardX / reach) * radius, center1[1] + (towardY / reach) * radius];
   }
 
   /**
@@ -2865,16 +2865,16 @@ export class PositionSolver {
     return true;
   }
 
-  /** Intersections of the joint's slot line with the circle centred on `j1`. */
+  /** Intersections of the joint's slot line with the circle centerd on `j1`. */
   private static slotSolutions(j1: Joint, unknownJoint: Joint): [number, number][] | undefined {
     const line = this.resolveSlotLine(unknownJoint.id);
     if (!line) {
       return undefined;
     }
     const radius = this.jointDistMap.get(unknownJoint.id + ',' + j1.id)!;
-    const [centreX, centreY] = this.jointMapPositions.get(j1.id)!;
+    const [centerX, centerY] = this.jointMapPositions.get(j1.id)!;
     const [[pointX, pointY], [dirX, dirY]] = line;
-    return circleLineIntersection(radius, centreX, centreY, pointX, pointY, dirX, dirY);
+    return circleLineIntersection(radius, centerX, centerY, pointX, pointY, dirX, dirY);
   }
 
   /**

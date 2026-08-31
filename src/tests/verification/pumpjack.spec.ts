@@ -131,9 +131,9 @@ describe('a walking-beam pumping unit, driven at the pitman pin', () => {
     // the only excursion in the cycle.
     const depth = samples.map((sample) => sample.rod.y);
     const stroke = Math.max(...depth) - Math.min(...depth);
-    const travelled = depth.slice(1).reduce((sum, y, i) => sum + Math.abs(y - depth[i]), 0);
-    expect(travelled / stroke).toBeGreaterThan(1.95);
-    expect(travelled / stroke).toBeLessThan(2.15);
+    const traveled = depth.slice(1).reduce((sum, y, i) => sum + Math.abs(y - depth[i]), 0);
+    expect(traveled / stroke).toBeGreaterThan(1.95);
+    expect(traveled / stroke).toBeLessThan(2.15);
   });
 
   it('rocks the crank rather than turning it', () => {

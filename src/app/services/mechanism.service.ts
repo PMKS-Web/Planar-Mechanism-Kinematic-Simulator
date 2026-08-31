@@ -501,7 +501,7 @@ export class MechanismService {
    * prismatic input is a different quantity, not another unit of the same one:
    * its speed is length per second, so it comes from its own setting and never
    * meets the pi/30 conversion -- which used to run on it anyway, leaving a
-   * driven block travelling at a tenth of the speed the panel reported. What it
+   * driven block traveling at a tenth of the speed the panel reported. What it
    * does need is the MODEL_SCALE the solvers measure length in; an angular
    * speed has no length in it to want one.
    *
@@ -512,7 +512,7 @@ export class MechanismService {
   private inputVelocityFor(partition: MechanismPartition): number {
     // Its own joints, not everything it is handed to solve against: a frame
     // piece shared with the machine next door carries that machine's driven
-    // pin, and asking `joints` handed this one the neighbour's speed.
+    // pin, and asking `joints` handed this one the neighbor's speed.
     const driven = partition.ownJoints.find((j) => j instanceof RealJoint && j.input) as
       RealJoint | undefined;
     const signed = this.driveSpeedOf(driven);
@@ -645,7 +645,7 @@ export class MechanismService {
    * Which machine each part belongs to, worked out once per rebuild.
    *
    * This question is asked of every joint and every link on every change
-   * detection pass -- the canvas asks it to decide each part's colour, the
+   * detection pass -- the canvas asks it to decide each part's color, the
    * panels ask it to decide whose clock they are reading -- and answering it by
    * searching the partitions is quadratic in the size of the drawing. On a
    * forty-five joint linkage that was tens of thousands of id comparisons per
@@ -747,7 +747,7 @@ export class MechanismService {
    * anything analysable" is the wrong question to ask about the joint under
    * the pointer: a drawing can hold a four-bar that runs and a half-drawn
    * chain that does not, and offering analysis from the half-drawn one is an
-   * offer the analysis modes will not honour.
+   * offer the analysis modes will not honor.
    */
   readinessOfPart(part: Joint | Link | Force): MechanismReadiness | undefined {
     const index = this.indexOfMechanismContaining(part);
@@ -762,7 +762,7 @@ export class MechanismService {
    * in `joint.links` (the slider rides the bar rather than being one of its
    * members), so counting links says one body meets a joint where the solver
    * generates a reaction against two. The panel reads the index; so does this,
-   * or the menu greys a row the panel would have filled.
+   * or the menu grays a row the panel would have filled.
    */
   jointHasForceToGraph(joint: Joint): boolean {
     if (!(joint instanceof RealJoint)) return false;
@@ -973,7 +973,7 @@ export class MechanismService {
       // so it rescales with the geometry exactly as a coordinate does. An rpm
       // drive is angular and scale-invariant, which is what hid this: only the
       // rams were wrong, and by the whole unit factor -- a ram set to 2 cm/s
-      // came out of a switch to metres running at 2 m/s, a hundred times its
+      // came out of a switch to meters running at 2 m/s, a hundred times its
       // stroke rate, with the panel still reading 2.
       if (joint instanceof PrisJoint && joint.driveSpeed !== 0) {
         joint.driveSpeed *= lengthScale;
@@ -985,7 +985,7 @@ export class MechanismService {
       this.settingsService.linearInputSpeed.value * lengthScale
     );
     // The synthesis design is drawn in the same lengths, and it outlives the
-    // mechanism built from it: leave it alone and poses laid out in centimetres
+    // mechanism built from it: leave it alone and poses laid out in centimeters
     // are reread as inches the next time the reader opens Synthesis.
     this.design.convertLengths(lengthScale);
 
@@ -1508,7 +1508,7 @@ export class MechanismService {
    * this is a wholesale act aimed at the machine rather than at one of its
    * parts. Left guarded, the loop deleted every unlocked joint and stopped at
    * the locked ones, leaving a half-machine of orphans behind -- a worse
-   * outcome than either honouring the locks or ignoring them.
+   * outcome than either honoring the locks or ignoring them.
    *
    * Lives here rather than on the panel that used to own it because the
    * right-click menu offers the same act on any part of the machine, and two
@@ -1629,7 +1629,7 @@ export class MechanismService {
     // there is no second, link-level ledger to keep in agreement.
     this.lockMarksOf(target).forEach((mark) => (mark.locked = !wasLocked));
     this.updateMechanism(true);
-    // The panel's position fields grey out against the frozen set, and that
+    // The panel's position fields gray out against the frozen set, and that
     // set just changed under the same selection — re-announce it so they ask.
     this.activeObjService.fakeUpdateSelectedObj();
   }
@@ -1697,7 +1697,7 @@ export class MechanismService {
    * edit worth stopping outright rather than warning about. The rule lives
    * here rather than in the menu that shows it, because the menu is not the
    * only way to delete something: the Delete key and the panel's own button
-   * reach the same joint, and a greyed row beside a live keystroke is a rule
+   * reach the same joint, and a grayed row beside a live keystroke is a rule
    * that only looks enforced.
    */
   deleteRefusal(target: RealJoint | Link | Force): string | undefined {
@@ -1815,12 +1815,12 @@ export class MechanismService {
    * carries none of its forces and none of its locks, and is not welded to
    * anything. A duplicate that arrived already attached would be a different
    * mechanism rather than a second copy of the same bar, and there is no
-   * reading of "duplicate" that says which of the original's neighbours the
+   * reading of "duplicate" that says which of the original's neighbors the
    * copy should have inherited.
    */
   duplicateLink(link: RealLink): void {
     // A compound is several links and the welds between them, and a cylinder
-    // part belongs to an assembly; neither copies as one link. The menu greys
+    // part belongs to an assembly; neither copies as one link. The menu grays
     // the row for both rather than accepting the click and doing nothing.
     if (!this.canDuplicate(link)) return;
     const source = link.joints.filter((joint): joint is RealJoint => joint instanceof RealJoint);
@@ -2420,10 +2420,10 @@ export class MechanismService {
         return;
       }
     }
-    // Deleting a joint of a NEIGHBOUR welded to a mount must not take the
+    // Deleting a joint of a NEIGHBOR welded to a mount must not take the
     // cylinder with it: dismantling the compound through the generic path
     // stripped the seal. Unweld the mount first, so the compound dissolves
-    // back into the neighbour's own bar — which is what the deletion then
+    // back into the neighbor's own bar — which is what the deletion then
     // operates on — and the cylinder stands untouched.
     const doomed = this.activeObjService.selectedJoint;
     for (const cyl of this.sealedStructures()) {
@@ -3120,7 +3120,7 @@ export class MechanismService {
         link.massMoI = 0;
         link.moiIsCustom = false;
       }
-      // A link drawn as a disc that has since lost the pin the disc was centred
+      // A link drawn as a disc that has since lost the pin the disc was centerd
       // on -- or been given one back. Nothing else would notice: an outline is
       // only rebuilt when something asks it to, and grounding a joint asks
       // about the joint. Left alone, a crank kept its disc after its ground was
@@ -3274,7 +3274,7 @@ export class MechanismService {
             'One of these mechanisms has no determinate force-equilibrium model.'),
     });
 
-    // Only the links of machines that could actually be analysed. A massless
+    // Only the links of machines that could actually be analyzed. A massless
     // bar in some unrelated -- or unassigned -- corner of the drawing used to
     // block force analysis for a perfectly good mechanism.
     const analysable = new Set(
@@ -3362,11 +3362,11 @@ export class MechanismService {
   }
 
   /**
-   * How many things stand between the drawing and being analysed.
+   * How many things stand between the drawing and being analyzed.
    *
    * Geometry that is in no mechanism counts. Without it a drawing of two
    * joints and a bar -- which is in no mechanism, has no input and cannot be
-   * analysed at all -- reported nothing to fix, because there was no mechanism
+   * analyzed at all -- reported nothing to fix, because there was no mechanism
    * for anything to be wrong with, and the chip read "Ready".
    */
   blockerCount(): number {
@@ -3382,7 +3382,7 @@ export class MechanismService {
    * How many things are worth a look but stop nothing.
    *
    * The counterpart to `blockerCount`, so a chip can tell "nothing to fix" from
-   * "nothing to fix, but read this first". Both are needed to colour one:
+   * "nothing to fix, but read this first". Both are needed to color one:
    * green means clear, amber means it will run and something is odd, red means
    * it will not run.
    */
@@ -3630,7 +3630,7 @@ export class MechanismService {
     // A weld says everything meeting here is one rigid body. A ram's mount
     // arriving would be a third body inside that statement without being part
     // of it, and the reconcilers then disagree about what the compound is —
-    // which is a broken mechanism rather than a refused edit. The menu greys
+    // which is a broken mechanism rather than a refused edit. The menu grays
     // the item out; this is the same rule where the edit actually happens, so
     // no other caller can get round it.
     if (mountAt?.isWelded) {
@@ -3645,7 +3645,7 @@ export class MechanismService {
     // A ram is five joints and shows two of them. The mounts are what the
     // reader points at, names and reads back out of a panel, so they take
     // letters; the barrel's near end, the pin and the slider are inside the
-    // part and are never drawn, labelled or listed. Spending a letter on each
+    // part and are never drawn, labeled or listed. Spending a letter on each
     // of those ran a drawing through the alphabet three times faster than the
     // joints anyone could see, and it was the hidden ones that pushed the
     // visible ones into punctuation.
@@ -3735,7 +3735,7 @@ export class MechanismService {
     // A gesture in flight targets objects about to stop existing.
     this.injector.get(DragStateService).cancel();
 
-    // A mount welded into a neighbouring compound has to come apart first, so
+    // A mount welded into a neighboring compound has to come apart first, so
     // the member links are top-level again and can be removed cleanly. The
     // sealed pin's own weld is not a compound and needs no unweld.
     [sealed.barrelFar, sealed.rodFar].forEach((mount) => {
@@ -3765,7 +3765,7 @@ export class MechanismService {
     // they still name the ram's links and its interior joints. Nothing noticed
     // while this was the last step of a deletion — the rebuild reads the link
     // list, not the joint's copy of it — but any code that walks a joint's own
-    // neighbours afterwards is walking to objects that no longer exist. The
+    // neighbors afterwards is walking to objects that no longer exist. The
     // generic joint deletion does exactly that, and looked up a joint that had
     // been removed a moment earlier.
     const liveLinks = new Set(this.links.map((link) => link.id));
@@ -4069,7 +4069,7 @@ export class MechanismService {
 
   toggleSlider() {
     // No member of a sealed cylinder can gain or lose a block: the slider IS
-    // the cylinder (§ cylinder 4). The panel and menu grey the control on the
+    // the cylinder (§ cylinder 4). The panel and menu gray the control on the
     // mounts; this is the rule they are both fronting.
     if (this.cylinderAt(this.activeObjService.selectedJoint)) {
       this.notify.refusal(
@@ -4502,7 +4502,7 @@ export class MechanismService {
       return;
     }
     // Every machine at *its own* time zero, bypassing the clocks entirely.
-    // Going through applyPose would have honoured the private clocks while
+    // Going through applyPose would have honored the private clocks while
     // unsynced and left each mechanism wherever its own scrubber was -- and
     // since this runs immediately before a rebuild deep-copies the editable
     // joints as t = 0, that silently redefines the start pose as wherever
@@ -4794,7 +4794,7 @@ export class MechanismService {
    *
    * The combined handle measures *time*, where a single machine's own handle
    * measures how far along its input has come. That is the right thing for one
-   * machine -- degrees of crank, centimetres of ram -- but there is no such
+   * machine -- degrees of crank, centimeters of ram -- but there is no such
    * thing as the input position of three machines at once, and the leader's own
    * is worse than useless when the leader rocks: a rocking input passes through
    * the same position twice per cycle, so "where the handle is" answered with
@@ -4819,14 +4819,14 @@ export class MechanismService {
    * around when it reaches the end of its stroke, and those are not the same
    * moment. Playback running backwards flips the answer again.
    */
-  travellingForward(index: number): boolean {
+  travelingForward(index: number): boolean {
     const profile = this.driveProfileOf(index);
     const mechanism = this.mechanisms[index];
     const forwardDrive = (mechanism?.inputAngularVelocities[0] ?? 0) < 0;
     // Which way playback runs *through the frames*, which is not the same as
     // which way it runs through the cycle once the drive has been turned round:
     // reversing walks the frames backwards precisely so the machine goes
-    // forwards along its new direction, and counting both flips cancelled them.
+    // forwards along its new direction, and counting both flips canceled them.
     const rewinding = this.directionOf(index) < 0 !== (mechanism?.framesRunBackwards ?? false);
     if (!profile || !mechanism || profile.continuous) {
       return forwardDrive !== rewinding;
@@ -5178,7 +5178,7 @@ export class MechanismService {
    *
    * A machine that cannot be simulated has no cycle, no graphs and no row in
    * the transport, so in an analysis mode it is scenery: drawn so the reader
-   * can see it is still there, greyed so they can see it is not part of the
+   * can see it is still there, grayed so they can see it is not part of the
    * question, and not selectable, because every panel behind a selection is
    * about a machine that runs.
    */
@@ -5403,7 +5403,7 @@ export class MechanismService {
     // links has nothing to fuse. `weldTopology` refuses this shape too (via
     // `canBeWelded`), but that refusal is one layer down and shared with other
     // rules; this guard is the mutation's own front door, so no caller — the
-    // panel greys its toggle, but a stray programmatic call cannot be greyed —
+    // panel grays its toggle, but a stray programmatic call cannot be grayed —
     // can reach the restructure with a degenerate joint.
     if (!(joint instanceof RealJoint) || joint.links.length < 2) return;
 
@@ -5479,7 +5479,7 @@ export class MechanismService {
     // The same structural test the resolver applies, rather than "has a block".
     // A shape the resolver rejects -- two blocks on one pin, a block with a
     // stray third joint -- would otherwise take the assembly path and produce a
-    // weld nothing downstream recognises, which the reconcile would then strip.
+    // weld nothing downstream recognizes, which the reconcile would then strip.
     if (!isSlideCandidate(joint)) {
       return this.weldJointTopology(joint);
     }
@@ -5500,7 +5500,7 @@ export class MechanismService {
     if (!joint.isWelded) return false;
     // The sealed pin's weld is what makes a cylinder one part; it never comes
     // off (§ cylinder 4). Only the pin resolves here — a welded *mount* has no
-    // block of its own, so unwelding a mount out of a neighbouring compound
+    // block of its own, so unwelding a mount out of a neighboring compound
     // stays legal.
     if (structuralCylinderAt(joint)) return false;
     const compound = this.compoundAt(joint);

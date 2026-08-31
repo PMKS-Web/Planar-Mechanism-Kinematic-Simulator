@@ -3,29 +3,29 @@ import { PART_COLORS } from '../../app/model/joint-colors';
 import type { FixtureLink, MechanismFixture } from './fixture';
 
 /**
- * What colour each link of a library template is drawn in.
+ * What color each link of a library template is drawn in.
  *
- * The app hands colours out round-robin as links are drawn, which is right for
- * somebody building a mechanism — the next link is always a different colour
+ * The app hands colors out round-robin as links are drawn, which is right for
+ * somebody building a mechanism — the next link is always a different color
  * from the last one — and wrong for a template, where the drawing is finished
- * and the colours are the only labelling it has. Round-robin made the two arms
- * of the windshield wiper different colours and the two rods pushing them the
+ * and the colors are the only labeling it has. Round-robin made the two arms
+ * of the windshield wiper different colors and the two rods pushing them the
  * same one, which is exactly backwards from how the linkage reads.
  *
- * So a template's colours are decided here, from its structure, by three rules:
+ * So a template's colors are decided here, from its structure, by three rules:
  *
  *  1. **Links pinned to the frame wear indigo; links that float wear teal.**
  *     The palette is three indigos and three teals, so this costs nothing and
  *     tells you at a glance which parts are anchored and which are carried.
- *  2. **Parts that do the same job share a colour** — the five con-rods of the
+ *  2. **Parts that do the same job share a color** — the five con-rods of the
  *     radial engine, the two wiper arms, the mirrored halves of Peaucellier's
  *     cell, the parallel sides of the pantograph. That is the `same` table.
- *  3. **Parts that meet wear different colours**, or a pin joint reads as a
+ *  3. **Parts that meet wear different colors**, or a pin joint reads as a
  *     weld. Rule 2 wins where the two disagree: two mirror-image bars meeting
  *     on the mirror line should match, and that is worth more than the pin.
  *
  * Within a family the shades are spent mid, dark, pale, so the two palest
- * colours only appear on a drawing with enough links to need them. They are
+ * colors only appear on a drawing with enough links to need them. They are
  * nearly the background, and a mechanism whose crank was one of them read as
  * having three links rather than four.
  */
@@ -46,13 +46,13 @@ export interface TemplateParts {
    * The independent machines in a drawing that holds more than one, as lists
    * of link ids.
    *
-   * Each is coloured from the top of the palette on its own, so three copies
+   * Each is colored from the top of the palette on its own, so three copies
    * of the same pump come out identical instead of the second starting
    * wherever the first ran out. Two machines never touch, so nothing is lost
-   * by giving them the same colours.
+   * by giving them the same colors.
    */
   machines?: string[][];
-  /** Groups of links that are one part of the drawing and share one colour. */
+  /** Groups of links that are one part of the drawing and share one color. */
   same?: string[][];
   /**
    * A link pinned to one of the six, by index, overruling everything above.
@@ -61,7 +61,7 @@ export interface TemplateParts {
    * are the same part; they do not know which part the drawing is *about*, and
    * a mechanism named after the one link that came out palest is a picture
    * that has lost its subject. Keyed by the link, or by the first member of a
-   * group. Use it where the rule is wrong about a drawing, not to hand-colour
+   * group. Use it where the rule is wrong about a drawing, not to hand-color
    * a drawing the rule got right.
    */
   fixed?: Record<string, number>;
@@ -72,12 +72,12 @@ export interface TemplateParts {
  *
  * Only what a reader would notice: a group here is a claim that two links do
  * the same job, and a wrong claim is worse than no claim. Everything absent is
- * coloured by the two structural rules alone.
+ * colored by the two structural rules alone.
  */
 const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
   // Five identical con-rods on one crankpin. They all meet at the hub, so this
   // is rule 2 overruling rule 3 — and it should: they are one part, made five
-  // times, and colouring them apart would invent a difference the engine does
+  // times, and coloring them apart would invent a difference the engine does
   // not have.
   Radial_Engine: { same: [['AB', 'AC', 'AD', 'AE', 'AF']] },
   // The two arms that carry the blades. The drive link and the tie rod between
@@ -85,7 +85,7 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
   Windshield_Wiper: { same: [['BCPT', 'DQU']] },
   // Everything in it comes in twos, mirrored about the ram's axis. The two
   // drive links meet each other on that axis, at the ram's own pin, so this is
-  // the case where matching a mirror pair beats keeping neighbours apart:
+  // the case where matching a mirror pair beats keeping neighbors apart:
   // they are one part made twice and should say so.
   Cylinder_Gripper: {
     same: [
@@ -96,7 +96,7 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
     ],
   },
   // Mirror images about the line the pen rules: the two bars off the fixed
-  // pivot, then the near and far pairs of the rhombus. Colouring the halves
+  // pivot, then the near and far pairs of the rhombus. Coloring the halves
   // alike is what makes the symmetry — the whole reason the linkage works —
   // visible in a still picture.
   Peaucellier: {
@@ -126,7 +126,7 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
       ['HI', 'IJ', 'JK'],
     ],
   },
-  // Two legs of one gait: same linkage, half a cycle apart. Identical colours
+  // Two legs of one gait: same linkage, half a cycle apart. Identical colors
   // are what make it read as one animal rather than two mechanisms.
   Walking_Pair: {
     machines: [
@@ -134,7 +134,7 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
       ['IJ', 'JL', 'KLM', 'JN', 'KN', 'MO', 'NOP'],
     ],
   },
-  // Chebyshev beside Peaucellier, each coloured as its own template is, so the
+  // Chebyshev beside Peaucellier, each colored as its own template is, so the
   // comparison is between the paths and not between two palettes.
   Straight_Line_Pair: {
     machines: [
@@ -147,10 +147,10 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
       ['JL', 'KL'],
     ],
   },
-  // The one drawing where colour carries an argument rather than a structure.
+  // The one drawing where color carries an argument rather than a structure.
   // It is the same four bars four times, and what changes is which one is
-  // held still — so a bar keeps its colour across all four, and the missing
-  // colour in each is the bar being held. The anchored/floating rule would say
+  // held still — so a bar keeps its color across all four, and the missing
+  // color in each is the bar being held. The anchored/floating rule would say
   // the opposite: it would repaint a bar every time its job changed, which is
   // exactly the thing this drawing exists to say does not make it a new bar.
   Four_Bar_Inversions: {
@@ -163,7 +163,7 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
     fixed: {
       // L1 indigo, L2 teal, L3 navy, L4 dark teal, wherever each turns up —
       // including where it is the bar being held, which every one of the four
-      // draws. The missing colour is never missing here; what moves is which
+      // draws. The missing color is never missing here; what moves is which
       // one has the ground hatching on it.
       AB: 1,
       BC: 4,
@@ -185,7 +185,7 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
   },
   // The same argument as the four-bar set, for the chain with a slider in it.
   // L1 indigo, L2 teal, L3 navy, wherever each turns up; L4 is the block,
-  // which is drawn black and is nobody's colour.
+  // which is drawn black and is nobody's color.
   Slider_Crank_Inversions: {
     machines: [
       ['AB', 'BC'],
@@ -216,10 +216,10 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
 };
 
 /**
- * A link, reduced to what deciding its colour needs.
+ * A link, reduced to what deciding its color needs.
  *
  * Both a fixture spec and a decoded drawing can say this much, which is what
- * lets the five hand-authored templates be coloured by the same rule as the
+ * lets the five hand-authored templates be colored by the same rule as the
  * generated ones without either side learning the other's shape.
  */
 export interface ColorableLink {
@@ -227,7 +227,7 @@ export interface ColorableLink {
   jointIds: string[];
 }
 
-/** One coloured thing: a link, or several links that are one part. */
+/** One colored thing: a link, or several links that are one part. */
 interface Unit {
   links: string[];
   anchored: boolean;
@@ -238,7 +238,7 @@ interface Unit {
 const meets = (one: Unit, other: Unit): boolean =>
   [...one.joints].some((joint) => other.joints.has(joint));
 
-/** The colour of every link in a library template, keyed by link id. */
+/** The color of every link in a library template, keyed by link id. */
 export function libraryTemplateFills(
   id: LibraryTemplateID,
   fixture: MechanismFixture
@@ -250,8 +250,8 @@ export function libraryTemplateFills(
     TEMPLATE_PARTS[id] ?? {},
     id
   );
-  // A compound's members take the body's colour: welded they are drawn as one
-  // shape, so a subset in some other colour is a colour nobody can see that
+  // A compound's members take the body's color: welded they are drawn as one
+  // shape, so a subset in some other color is a color nobody can see that
   // would surface the moment the weld came off.
   const spread = (link: FixtureLink): void =>
     link.subset?.forEach((member) => {
@@ -299,18 +299,18 @@ export function logicalFills(
     const used = new Map<number, number>();
     for (const unit of units) {
       const family = unit.anchored ? ANCHORED : FLOATING;
-      const neighbours = new Set(
+      const neighbors = new Set(
         units
           .filter((other) => chosen.has(other) && meets(unit, other))
           .map((other) => chosen.get(other)!)
       );
       // Rule 3 first; then the shade worn by the fewest other parts, so a
       // drawing spreads across the palette instead of pairing things that are
-      // not pairs. The pale shade loses to any of that: repeating a colour on
+      // not pairs. The pale shade loses to any of that: repeating a color on
       // two parts at opposite ends of a drawing costs less than making one of
-      // them disappear, so it is taken only when a neighbour holds every other
+      // them disappear, so it is taken only when a neighbor holds every other
       // shade in the family.
-      const free = family.filter((shade) => !neighbours.has(shade));
+      const free = family.filter((shade) => !neighbors.has(shade));
       const pin = parts.fixed?.[unit.links[0]];
       const rank = (shade: number): number =>
         (shade === family[family.length - 1] ? 1000 : 0) + (used.get(shade) ?? 0);
@@ -331,8 +331,8 @@ export function logicalFills(
 /**
  * A pin overrules the rules, so it is the one place they cannot protect you.
  *
- * `fixed` skips the neighbour check by design, which means a pin can quietly
- * paint a link the same colour as something it is joined to — the exact fault
+ * `fixed` skips the neighbor check by design, which means a pin can quietly
+ * paint a link the same color as something it is joined to — the exact fault
  * this file exists to remove, reintroduced by the escape hatch from it. Groups
  * are allowed to do that and pins are not: a group is a claim that two links
  * are one part, and a pin is only a claim about a shade.
@@ -350,7 +350,7 @@ function checkPins(
     );
     if (clash) {
       throw new Error(
-        `${label}: ${unit.links.join('/')} is pinned to the colour ${clash.links.join('/')} ` +
+        `${label}: ${unit.links.join('/')} is pinned to the color ${clash.links.join('/')} ` +
           'already wears, and they are joined'
       );
     }
@@ -362,7 +362,7 @@ function checkPins(
  *
  * A link id is a string of joint letters, so a template whose geometry moves
  * renames its links, and a `same` group naming the old id would silently stop
- * grouping anything. Loud here rather than a colour nobody notices went wrong.
+ * grouping anything. Loud here rather than a color nobody notices went wrong.
  */
 function checkTable(
   id: string,

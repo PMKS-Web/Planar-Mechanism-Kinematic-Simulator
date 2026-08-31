@@ -221,7 +221,7 @@ describe('every solution offered can be driven through what it claims', () => {
   /**
    * The shortest arc containing three directions, worked out independently.
    *
-   * Sorted, then the widest gap between neighbours removed: what is left is the
+   * Sorted, then the widest gap between neighbors removed: what is left is the
    * arc, and it is not in general the span between the smallest and the largest.
    */
   function shortestArc(anglesDeg: number[]): { from: number; to: number } {

@@ -22,7 +22,7 @@ export interface BackgroundImage {
   /** How wide the picture is drawn, in model units. Height follows the ratio. */
   width: number;
   /**
-   * How far the picture is turned about its own centre, in radians,
+   * How far the picture is turned about its own center, in radians,
    * counter-clockwise-positive — the same sense as every other angle in the
    * app. A photograph is rarely taken square to the mechanism in it.
    */
@@ -62,7 +62,7 @@ export class BackgroundImageService {
   constructor() {
     // A change of length unit rescales every stored coordinate in the drawing,
     // so a picture whose placement stayed put would be left at the conversion
-    // factor's worth of wrong size — a linkage traced in centimetres came back
+    // factor's worth of wrong size — a linkage traced in centimeters came back
     // a hundred times too small against its own photograph.
     //
     // Watched here rather than patched into the settings panel because a unit
@@ -103,14 +103,14 @@ export class BackgroundImageService {
    * The picture's top edge in SVG coordinates.
    *
    * The image layer is drawn unflipped, so a model y of +2 is an SVG y of -2 —
-   * which is why this negates the centre rather than adding to it.
+   * which is why this negates the center rather than adding to it.
    */
   topOf(image: BackgroundImage): number {
     return -image.centerY - this.heightOf(image) / 2;
   }
 
   /**
-   * The turn, as an SVG transform about the picture's own centre.
+   * The turn, as an SVG transform about the picture's own center.
    *
    * Negated: the stored angle is counter-clockwise-positive like every other
    * angle in the app, and SVG's rotate is clockwise-positive because its y
@@ -123,7 +123,7 @@ export class BackgroundImageService {
   }
 
   /**
-   * Read a chosen file and place it, centred on the origin, sized to `fitWidth`.
+   * Read a chosen file and place it, centerd on the origin, sized to `fitWidth`.
    *
    * Rejects rather than guesses on anything it cannot decode: a broken data URL
    * drawn into the canvas is an invisible failure, and the caller turns this

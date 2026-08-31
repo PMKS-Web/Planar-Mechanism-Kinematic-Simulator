@@ -88,7 +88,7 @@ export const FORCE_STUDY_TEMPLATES: readonly LibraryTemplateID[] = [
  *
  * The force studies used to publish 'as-built', and a reader switching one of
  * them between Static and In-motion saw the same number twice: on the punch
- * press, 399.9 N both ways. The mechanisms are drawn at centimetre scale and
+ * press, 399.9 N both ways. The mechanisms are drawn at centimeter scale and
  * turn at 10 RPM, so the inertial term is small -- but what actually hid it was
  * the load. Four hundred newtons applied to links weighing a few grams makes
  * the reaction the load and almost nothing else, and no mass anybody would call
@@ -111,7 +111,7 @@ const FORCE_STUDY_SCALING = { mass: 100, load: 0.01 };
  * What each force study publishes its bodies' mass properties as.
  *
  * Mixed on purpose. A reader who opens all five should meet the app's own
- * default, a centre of mass that has been moved, and a moment of inertia that
+ * default, a center of mass that has been moved, and a moment of inertia that
  * has been typed -- because those are the three things the Edit panel offers
  * and a library where every body is identical teaches none of them.
  *

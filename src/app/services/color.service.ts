@@ -32,13 +32,13 @@ export class ColorService {
    * The families a joint can be drawn in, each a set of three.
    *
    * A joint is drawn resting, pointed at and picked, and those only read as one
-   * object in three moods if they come from one family -- so choosing a colour
+   * object in three moods if they come from one family -- so choosing a color
    * for a joint chooses all three at once, not a fill.
    *
    * Amber through brown: warm, complementary to the indigo and teal the links
    * are drawn in, and none of it competing with the link palette. Amber is
    * first and is what every joint is drawn in until somebody says otherwise,
-   * so the same row that puts a colour on a joint takes it off again.
+   * so the same row that puts a color on a joint takes it off again.
    */
   private jointFamilies: readonly JointFamily[] = JOINT_FAMILIES;
 
@@ -76,13 +76,13 @@ export class ColorService {
   }
 
   /**
-   * The colour the next link will be, without taking it.
+   * The color the next link will be, without taking it.
    *
    * For the previews the creation gestures draw. A ghost is a promise about
-   * what the click will make, and a ghost in some other colour than the part
+   * what the click will make, and a ghost in some other color than the part
    * turns out to be is a promise broken at the moment it is kept — but asking
-   * for the colour the ordinary way would spend it, so a cancelled gesture
-   * would silently shuffle every colour after it.
+   * for the color the ordinary way would spend it, so a canceled gesture
+   * would silently shuffle every color after it.
    */
   public peekNextLinkColor(): string {
     return this.linkColorOptions[this.linkLastColorIndex];
@@ -101,7 +101,7 @@ export class ColorService {
   }
 
   getIndexFromForceColor(fill: string) {
-    // An empty colour is the default, which is one of the six -- so the picker
+    // An empty color is the default, which is one of the six -- so the picker
     // always has exactly one swatch ticked, whether or not anybody has chosen.
     const wanted = (fill || DEFAULT_FORCE_COLOR).toLowerCase();
     const at = this.forceColorOptions.findIndex((option) => option.toLowerCase() === wanted);

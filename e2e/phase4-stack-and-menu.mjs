@@ -145,15 +145,15 @@ check(
   JSON.stringify(menu)
 );
 check(
-  'Weld is offered, and refused with a reason rather than greyed',
+  'Weld is offered, and refused with a reason rather than grayed',
   item('Weld') ? !item('Weld').disabled : !!item('Unweld') && !item('Unweld').disabled,
   JSON.stringify(menu)
 );
 check('Input follows the panel rule on a slider', item('Input') && !item('Input').disabled);
 
-// --- weld is greyed where there is nothing to fuse ------------------------
+// --- weld is grayed where there is nothing to fuse ------------------------
 // E connects exactly one link (EF), so a weld has nothing to restructure; the
-// menu item and the panel's toggle both grey out through the same predicate.
+// menu item and the panel's toggle both gray out through the same predicate.
 await clickJoint('E');
 const menuE = await page.evaluate(() => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
@@ -173,7 +173,7 @@ const menuE = await page.evaluate(() => {
 });
 const weldE = menuE.items.find((m) => String(m.label).includes('Weld'));
 check(
-  'Weld is greyed on a joint with one link',
+  'Weld is grayed on a joint with one link',
   menuE.links === 1 && !!weldE && weldE.disabled === true,
   JSON.stringify(menuE)
 );

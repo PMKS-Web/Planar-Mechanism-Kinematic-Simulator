@@ -31,7 +31,7 @@ export enum Shape {
 }
 
 /**
- * What a hand-placed centre of mass is held against. See RealLink.comAnchor.
+ * What a hand-placed center of mass is held against. See RealLink.comAnchor.
  */
 export type ComAnchor = 'centroid' | 'grid' | { joint: string };
 
@@ -161,7 +161,7 @@ export class RealLink extends Link {
   public static debugDesiredJointsIDs: unknown;
   public lastSelectedSublink: Link | null = null;
   /**
-   * Whether the author chose this link's moment of inertia / centre of mass,
+   * Whether the author chose this link's moment of inertia / center of mass,
    * or left them to follow the geometry (a uniform body over the joints,
    * re-derived at every update). Custom values hold still; auto values move
    * with the mechanism. Old URLs decode as custom-everything, which preserves
@@ -178,9 +178,9 @@ export class RealLink extends Link {
    * not change because someone changed its picture; the Edit panel says so
    * where the numbers are, rather than leaving the difference to be guessed.
    *
-   * Only a link with exactly one ground pin can honour it, because the disc
-   * is centred on the pin the link turns about and a link with no such pin
-   * has no centre to offer. `canBeCircular` is that question; the flag is
+   * Only a link with exactly one ground pin can honor it, because the disc
+   * is centerd on the pin the link turns about and a link with no such pin
+   * has no center to offer. `canBeCircular` is that question; the flag is
    * simply ignored while the answer is no, so a link that loses its ground
    * comes back as a bar and returns to a disc if it is grounded again.
    */
@@ -196,7 +196,7 @@ export class RealLink extends Link {
    */
   public drawnAsDisc = false;
   /**
-   * A hand-placed centre of mass, held against the link's own frame: along
+   * A hand-placed center of mass, held against the link's own frame: along
    * and across the unit direction joints[0]→joints[1], measured from the
    * uniform-body centroid. "Stored against the centroid" is what lets a
    * placed point ride the link through drags, rotations and deformations —
@@ -206,7 +206,7 @@ export class RealLink extends Link {
   public comOffset?: { along: number; across: number; frame: [string, string] };
 
   /**
-   * What a hand-placed centre of mass is held against while the mechanism is
+   * What a hand-placed center of mass is held against while the mechanism is
    * being edited.
    *
    *   'centroid'  the link itself — the point rides every drag, turn and
@@ -216,9 +216,9 @@ export class RealLink extends Link {
    *   {joint}     one pin — the point follows that pin's position and nothing
    *               else, so turning the link about it does not move it.
    *
-   * Editing only. Once the mechanism runs, the centre of mass is a point of the
+   * Editing only. Once the mechanism runs, the center of mass is a point of the
    * body and rides it like any other: the solved timesteps carry it rigidly
-   * (Mechanism.transportPoint), which is what makes it a centre of mass at all
+   * (Mechanism.transportPoint), which is what makes it a center of mass at all
    * rather than a mark on the page that inertia would be wrong about.
    */
   public comAnchor: ComAnchor = 'centroid';
@@ -288,7 +288,7 @@ export class RealLink extends Link {
     };
   }
 
-  /** Place the centre of mass by hand: flags it custom and captures the offset. */
+  /** Place the center of mass by hand: flags it custom and captures the offset. */
   placeCustomCoM(point: { x: number; y: number }): void {
     this.comIsCustom = true;
     this._CoM = new Coord(point.x, point.y);
@@ -473,7 +473,7 @@ export class RealLink extends Link {
     this.drawnAsDisc = false;
     // A sealed cylinder's rod welded into this compound is drawn by the skin,
     // above the block; the compound repeating it drew the same bar twice, one
-    // copy on the wrong side of the block. The leaf is recognised through its
+    // copy on the wrong side of the block. The leaf is recognized through its
     // pin: the joint that shares a SliderBlock with a sealed slider.
     const isSealedRodLeaf = (leaf: RealLink) =>
       leaf.joints.length === 2 &&
@@ -523,7 +523,7 @@ export class RealLink extends Link {
    *
    * Empty when there is no outline to give: a bar whose joints have collapsed
    * onto one point has no shape, and a caller should fall back to the
-   * centreline rather than draw nothing.
+   * centerline rather than draw nothing.
    */
   outlineLoops(): { x: number; y: number; bulge: number }[][] {
     if (this.subset.length > 0) {
@@ -532,10 +532,10 @@ export class RealLink extends Link {
         .map((ring) => ring.slice(0, -1).map((point) => ({ x: point[0], y: point[1], bulge: 0 })));
     }
     if (this.drawnAsDisc) {
-      const centre = this.groundPivot();
-      if (centre === undefined) return [];
+      const center = this.groundPivot();
+      if (center === undefined) return [];
       const reach = this.joints.reduce(
-        (far, joint) => Math.max(far, getDistance(centre, joint)),
+        (far, joint) => Math.max(far, getDistance(center, joint)),
         0
       );
       const radius = reach + SettingsService.objectScale / 4;
@@ -543,8 +543,8 @@ export class RealLink extends Link {
       // round closed profile without leaving the one entity type.
       return [
         [
-          { x: centre.x - radius, y: centre.y, bulge: 1 },
-          { x: centre.x + radius, y: centre.y, bulge: 1 },
+          { x: center.x - radius, y: center.y, bulge: 1 },
+          { x: center.x + radius, y: center.y, bulge: 1 },
         ],
       ];
     }
@@ -646,9 +646,9 @@ export class RealLink extends Link {
    * The pin a circular link turns about, or nothing when it has no single one.
    *
    * Exactly one ground, and a revolute one: two grounds make a frame that does
-   * not turn at all, none makes a coupler with no fixed centre to draw about,
+   * not turn at all, none makes a coupler with no fixed center to draw about,
    * and a prismatic ground anchors a slot rather than a pivot. Each of those
-   * would need a different answer to "centred where?", and a disc drawn about
+   * would need a different answer to "centerd where?", and a disc drawn about
    * a guess is worse than the bar it replaced.
    */
   groundPivot(): Joint | undefined {
@@ -666,17 +666,17 @@ export class RealLink extends Link {
   /**
    * The disc a circular link is drawn as, or nothing when it is not one.
    *
-   * Centred on the ground pin, and wide enough to reach the outermost joint's
+   * Centerd on the ground pin, and wide enough to reach the outermost joint's
    * end cap — the same half-width every bar is drawn with — so the disc covers
    * exactly the ground the bar covered and no pin ends up outside its own link.
    */
   private circularOutline(): string | undefined {
     if (!this.isCircle) return undefined;
-    const centre = this.groundPivot();
-    if (centre === undefined) return undefined;
-    const reach = this.joints.reduce((far, joint) => Math.max(far, getDistance(centre, joint)), 0);
+    const center = this.groundPivot();
+    if (center === undefined) return undefined;
+    const reach = this.joints.reduce((far, joint) => Math.max(far, getDistance(center, joint)), 0);
     const radius = reach + SettingsService.objectScale / 4;
-    const { x, y } = centre;
+    const { x, y } = center;
     return (
       `M ${x - radius} ${y} A ${radius} ${radius} 0 0 1 ${x + radius} ${y} ` +
       `A ${radius} ${radius} 0 0 1 ${x - radius} ${y} Z `
@@ -741,7 +741,7 @@ export class RealLink extends Link {
     // arrive, turn through a semicircle it does not need, and leave along the
     // same line, folding the outline back over itself. Even-odd fill then
     // cancels the doubled region and draws it white, which is the thin white
-    // sliver that flickers in and out as a joint is dragged past its neighbours.
+    // sliver that flickers in and out as a joint is dragged past its neighbors.
     desiredJointsIDs = withoutCollinearVertices(desiredJointsIDs, allJoints, jointIDtoIndex, width);
     let d = '';
 
@@ -1041,7 +1041,7 @@ export class RealLink extends Link {
 
   updateCoMDs() {
     //This is such a bad way of doing this. Just import the SVG file from the assets folder and use that instead of constructing the exact same thing every time.
-    // Small. The mark says where the centre of mass is; at the size it was, on
+    // Small. The mark says where the center of mass is; at the size it was, on
     // a drawing with several links, it was the loudest thing on the canvas.
     const radius = SettingsService.objectScale * 0.11;
     this._CoM_d1 =

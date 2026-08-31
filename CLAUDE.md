@@ -11,7 +11,10 @@ Requires Node ≥22.22 (or 24.x). The esbuild `application` builder is used; `ou
 ## Read this first
 
 [`docs/tips-and-tricks.md`](docs/tips-and-tricks.md) collects the things that cost somebody an hour
-to find out: where Playwright is installed and why it vanishes, which e2e suites rewrite tracked
+to find out — including the
+[spelling rule](docs/tips-and-tricks.md#spelling-american-everywhere): this codebase is American
+English throughout, in identifiers as well as prose, because `centre` and `center` are one word to a
+reader and two symbols to `grep`. Also: where Playwright is installed and why it vanishes, which e2e suites rewrite tracked
 files, why `npx vitest` fails where `npm test` works, which hostname the dev server answers on, the
 two `@media (max-width: 600px)` blocks in one stylesheet where the later silently wins, and how to
 tell a failure you caused from one that was already there. Read it before your first change, and
@@ -121,15 +124,15 @@ Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), 
 | Top strip | `app-top-bar` | project menu + logo · the four **mode tabs**, each with a readiness chip · a corner card that is Undo/Redo in Synthesis/Edit and swaps to **Export Data** in the analysis modes |
 | Left card (below the strip, `left: 0`) | `app-left-tabs` | the current mode's panel — Synthesis form, Edit properties, or Analysis graphs. 250px, widening to 400px in analysis |
 | Canvas (full bleed, behind everything) | `app-new-grid` | grid, right-click context menus, drag |
-| Bottom centre | `app-playback-bar` | transport card (speed · play/pause · stop-to-start) and a scrub card with **one row per machine** |
-| Bottom right | `app-view-controls` | centre of mass · joint IDs · traced paths ‖ zoom out · zoom in · reset view |
+| Bottom center | `app-playback-bar` | transport card (speed · play/pause · stop-to-start) and a scrub card with **one row per machine** |
+| Bottom right | `app-view-controls` | center of mass · joint IDs · traced paths ‖ zoom out · zoom in · reset view |
 | Bottom strip | `app-bottombar` | mode name · status · cursor coords · units |
 | Right drawer | `app-right-panel` | Settings, Help/Feedback, the two analysis setups, Export Data |
 
 The **modes are tabs in the top strip, not a left rail**, and there are four of them — Synthesis, Edit, Kinematic Analysis, Force Analysis (`TabID`) — not three. The left card is that mode's panel.
 
 - `AppComponent` is just a shell that registers SVG icons; `component/new-grid/new-grid.component.ts` is the real center — the SVG canvas handling the mouse/touch interaction state machine, with pan/zoom via `SvgGridService` (svg-pan-zoom + hammerjs).
-- The right-click menu is **built in a service, not in the canvas**: `services/context-menu-builder.service.ts` turns whatever was right-clicked, plus the current mode, into a `ContextMenuModel` (`component/context-menu/menu-model.ts`), and `component/context-menu/` renders it. Every greyed row quotes the model that enforces it — `describeActuatorRefusal` in `model/actuator.ts`, `weldRefusal` in `grid-utils`, `locksHolding` in `model/lock-set.ts` — rather than restating the rule, so the menu, the panel and the drag ring cannot disagree. New rows belong in the builder; the canvas only supplies the gesture handlers (`MenuHandlers`).
+- The right-click menu is **built in a service, not in the canvas**: `services/context-menu-builder.service.ts` turns whatever was right-clicked, plus the current mode, into a `ContextMenuModel` (`component/context-menu/menu-model.ts`), and `component/context-menu/` renders it. Every grayed row quotes the model that enforces it — `describeActuatorRefusal` in `model/actuator.ts`, `weldRefusal` in `grid-utils`, `locksHolding` in `model/lock-set.ts` — rather than restating the rule, so the menu, the panel and the drag ring cannot disagree. New rows belong in the builder; the canvas only supplies the gesture handlers (`MenuHandlers`).
 - `SelectedTabService` (`TabID` enum) coordinates the four modes; the Edit and analysis panels operate on whatever `ActiveObjService` says is selected (joint, link, force, mechanism, background image, or synthesis pose).
 - The right drawer is addressed by number through statics on `RightPanelComponent`: 1 Settings, 3 Help, 4 Debug (dev only), 5 `KINEMATIC_SETUP_TAB`, 6 `FORCE_SETUP_TAB`, 7 `EXPORT_TAB`. **Tab 2 (`app-equation-panel`) is unreachable** — nothing calls `tabClicked(2)` and its content is placeholder images. It is unfinished work, not a feature.
 - `SettingsService` exposes document-wide settings as RxJS BehaviorSubjects (units, gravity, grid and snap visibility, object scale). Input **speed and direction are not global** — they belong to the driven joint (`Joint.driveSpeed`), because a drawing can hold several machines; the SettingsService values are only the default a joint falls back to.

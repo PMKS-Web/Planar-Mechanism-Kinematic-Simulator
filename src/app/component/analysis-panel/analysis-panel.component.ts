@@ -471,7 +471,7 @@ export class AnalysisPanelComponent {
   /**
    * What to call the selected body.
    *
-   * A cylinder is drawn, selected and edited as one part, so analysing it under
+   * A cylinder is drawn, selected and edited as one part, so analyzing it under
    * the name of its barrel link contradicts everything else the app says about
    * it -- the canvas outlines the whole ram while the panel headed itself
    * "Analysis for Link GN".

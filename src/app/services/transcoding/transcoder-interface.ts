@@ -32,7 +32,7 @@ export abstract class GenericTranscoder {
    */
   protected lockedIds: string[] = [];
   /**
-   * Which links hold their centre of mass against something other than
+   * Which links hold their center of mass against something other than
    * themselves, as tagged references sharing the lock section. See
    * StringTranscoder for the spelling.
    */
@@ -48,15 +48,15 @@ export abstract class GenericTranscoder {
    */
   protected synthesisMarks: string[] = [];
   /**
-   * Parts drawn in a colour of their own, as tagged references sharing the same
-   * trailing section: 'KJ' + joint id + '~' + colour family, and 'KF' + force
+   * Parts drawn in a color of their own, as tagged references sharing the same
+   * trailing section: 'KJ' + joint id + '~' + color family, and 'KF' + force
    * id + '~' + six hex digits. Two kinds under one tag, told apart by the
-   * second character, the way the centre-of-mass anchors already are.
+   * second character, the way the center-of-mass anchors already are.
    *
    * In the URL rather than kept on this machine because it is a fact about the
    * drawing -- which part the reader is being asked to look at -- and because
-   * undo and redo are a stack of these strings, so a colour left out of them
-   * would be wiped by the next undo. Link colours are not here: those have
+   * undo and redo are a stack of these strings, so a color left out of them
+   * would be wiped by the next undo. Link colors are not here: those have
    * ridden in the link's own record since long before this section existed.
    */
   protected partColors: string[] = [];

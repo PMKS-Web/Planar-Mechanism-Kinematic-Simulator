@@ -61,10 +61,10 @@ describe('circumcenter', () => {
     const p1 = new Coord(0, 0);
     const p2 = new Coord(4 * S, 1 * S);
     const p3 = new Coord(1 * S, 5 * S);
-    const centre = circumcenter(p1, p2, p3)!;
-    expect(centre).not.toBeNull();
-    expect(distance(centre, p2)).toBeCloseTo(distance(centre, p1), 3);
-    expect(distance(centre, p3)).toBeCloseTo(distance(centre, p1), 3);
+    const center = circumcenter(p1, p2, p3)!;
+    expect(center).not.toBeNull();
+    expect(distance(center, p2)).toBeCloseTo(distance(center, p1), 3);
+    expect(distance(center, p3)).toBeCloseTo(distance(center, p1), 3);
   });
 
   it('has no answer for three points on one line', () => {

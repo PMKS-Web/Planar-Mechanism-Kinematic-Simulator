@@ -88,7 +88,7 @@
 }
 
 // The one thing about this feature a user cannot discover by trying it: the
-// picture is not in the link they are about to share. Same quiet grey as the
+// picture is not in the link they are about to share. Same quiet gray as the
 // other read-only notes in this panel.
 .bgNote {
   font-size: 12px;
@@ -175,7 +175,7 @@
 /* --- Derived-vs-typed state, worn by the app's own input fields ----------
    The fields themselves are input-block / dual-input-block — the exact
    component every other panel value uses — with the state dot and the clear
-   projected into their suffix slot, and grey text when the value follows the
+   projected into their suffix slot, and gray text when the value follows the
    shape. */
 .massArea .dotLegend {
   display: flex;
@@ -215,7 +215,7 @@
   pointer-events: none;
 }
 
-/* Sits under the two derived mass fields it qualifies, in the legend's own grey
+/* Sits under the two derived mass fields it qualifies, in the legend's own gray
    so it reads as the same aside rather than as a warning about a problem. */
 .shapeNote {
   margin: 6px 0 0;
@@ -292,7 +292,7 @@
   }
 }
 
-/* Grey means derived; the components' own ink means typed. */
+/* Gray means derived; the components' own ink means typed. */
 .massArea input-block.derived .customInput,
 .massArea dual-input-block.derived .customInput {
   color: rgba(0, 0, 0, 0.5);
@@ -350,7 +350,7 @@
   display: none;
 }
 
-/* Rotational Inertia breaks the centre line: its value carries a unit and
+/* Rotational Inertia breaks the center line: its value carries a unit and
    needs the room, so its field expands leftward while still ending on the
    panel's shared right edge. */
 .massArea input-block.moiBlock #input-block:not(.state-input-host) .customInputForm {
@@ -361,21 +361,21 @@
   width: 148px;
 }
 
-/* Grey means derived, in the pair too. */
+/* Gray means derived, in the pair too. */
 .massArea .comPairRow.derived .customInput {
   color: rgba(0, 0, 0, 0.5);
 }
 
 
 /* The mock's one field column: Mass, the frame select and Rotational
-   Inertia share one width, one left edge and one right edge — the centre
+   Inertia share one width, one left edge and one right edge — the center
    line of the panel. The id out-ranks the base #input-block width. */
 .massArea #input-block .customInputForm .mat-mdc-text-field-wrapper {
   width: 112px;
   max-width: 100%;
 }
 
-/* The dot and its ✕ sit on the field's visible centre, not the baseline.
+/* The dot and its ✕ sit on the field's visible center, not the baseline.
    Same anchoring as state-input: the 30px wrapper clips MDC's 56px flex
    row, so top-anchor and offset instead of flex centring. */
 .massArea #input-block .mat-mdc-form-field-icon-suffix,
@@ -384,7 +384,7 @@
   align-items: center;
   align-self: flex-start;
   /* A fixed band the height and offset of the input's own line, so the
-     content centres whether it is a lone 7px dot or a dot with a 14px ✕. */
+     content centers whether it is a lone 7px dot or a dot with a 14px ✕. */
   margin-top: 6px;
   height: 18px;
 }

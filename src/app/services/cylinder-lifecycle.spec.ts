@@ -154,29 +154,29 @@ describe('permanence of a sealed cylinder', () => {
 
 describe('deleting a cylinder cascades to the whole assembly', () => {
   /** The ram, plus a bar hanging off its rod mount. */
-  function cylinderWithNeighbour() {
+  function cylinderWithNeighbor() {
     const h = harnessWithCylinder();
     const e = new RevJoint('Z', h.sealed.rodFar.x + 100, h.sealed.rodFar.y);
-    const neighbour = new RealLink(h.sealed.rodFar.id + 'Z', [h.sealed.rodFar, e]);
+    const neighbor = new RealLink(h.sealed.rodFar.id + 'Z', [h.sealed.rodFar, e]);
     h.service.joints.push(e);
-    h.service.links.push(neighbour);
+    h.service.links.push(neighbor);
     wireGraph(h.service);
-    return { ...h, neighbour };
+    return { ...h, neighbor };
   }
 
   // Two different asks, two different answers, and the labels say which is
   // which: a mount's own menu offers "Delete Cylinder", while the panel's
   // Delete acts on whatever is selected — here, the joint.
-  it('from a mount via Delete Cylinder, keeping the mount while a neighbour holds it', () => {
-    const h = cylinderWithNeighbour();
+  it('from a mount via Delete Cylinder, keeping the mount while a neighbor holds it', () => {
+    const h = cylinderWithNeighbor();
     const savesBefore = h.saveCount();
 
     h.active.updateSelectedObj(h.sealed.rodFar);
     h.service.deleteCylinder();
 
     expect(sealedCylinders(h.service.joints)).toHaveLength(0);
-    expect(h.service.links.map((link) => link.id)).toEqual([h.neighbour.id]);
-    // The rod mount survives on the neighbour; every other member is gone.
+    expect(h.service.links.map((link) => link.id)).toEqual([h.neighbor.id]);
+    // The rod mount survives on the neighbor; every other member is gone.
     const ids = h.service.joints.map((joint) => joint.id).sort();
     expect(ids).toEqual([h.sealed.rodFar.id, 'Z'].sort());
     expect(h.saveCount()).toBe(savesBefore + 1);
@@ -184,9 +184,9 @@ describe('deleting a cylinder cascades to the whole assembly', () => {
 
   it('from a mount via Delete Joint, taking the joint and what cannot stand without it', () => {
     // Asked to delete the *joint*, the app used to delete only the ram and
-    // leave the joint sitting on its neighbour — so the thing that was selected
+    // leave the joint sitting on its neighbor — so the thing that was selected
     // was the one thing still there afterwards.
-    const h = cylinderWithNeighbour();
+    const h = cylinderWithNeighbor();
 
     h.active.updateSelectedObj(h.sealed.rodFar);
     h.service.deleteJoint();
@@ -288,7 +288,7 @@ describe('the invariant: no write can leave a sealed cylinder bent', () => {
     // a ram whose rod no longer matches it. The invariant is enforced where
     // cylinders are *built* — creation, drag, panel — and the geometric test is
     // the tripwire for everything else, so what has to happen here is that the
-    // part stops being recognised rather than being drawn as a cylinder it is
+    // part stops being recognized rather than being drawn as a cylinder it is
     // not. It stays a cylinder structurally, which is what keeps the guards on
     // it while it is wrong.
     const h = harnessWithCylinder();
@@ -314,7 +314,7 @@ describe('the invariant: no write can leave a sealed cylinder bent', () => {
     });
   });
 
-  it('keeps recognising the assembly structurally while it is bent', () => {
+  it('keeps recognizing the assembly structurally while it is bent', () => {
     // The guards and drag routing must not fail open mid-repair — that lapse
     // is exactly how a fast drag used to tear a cylinder for good.
     const h = harnessWithCylinder();
@@ -325,13 +325,13 @@ describe('the invariant: no write can leave a sealed cylinder bent', () => {
   });
 });
 
-describe('a mount welded into a neighbouring link', () => {
+describe('a mount welded into a neighboring link', () => {
   function weldedMount() {
     const h = harnessWithCylinder();
     const e = new RevJoint('Z', h.sealed.rodFar.x + 100, h.sealed.rodFar.y);
-    const neighbour = new RealLink(h.sealed.rodFar.id + 'Z', [h.sealed.rodFar, e]);
+    const neighbor = new RealLink(h.sealed.rodFar.id + 'Z', [h.sealed.rodFar, e]);
     h.service.joints.push(e);
-    h.service.links.push(neighbour);
+    h.service.links.push(neighbor);
     wireGraph(h.service);
     h.active.updateSelectedObj(h.sealed.rodFar);
     h.service.weldJoint();
@@ -368,13 +368,13 @@ describe('a mount welded into a neighbouring link', () => {
     expect(sealedCylinders(h.service.joints)).toHaveLength(1);
   });
 
-  it('still cascades a delete, unwelding the mount so the neighbour survives', () => {
+  it('still cascades a delete, unwelding the mount so the neighbor survives', () => {
     const h = weldedMount();
 
     h.service.deleteCylinder(resolve(h));
 
     expect(sealedCylinders(h.service.joints)).toHaveLength(0);
-    // The neighbour bar came back out of the compound intact.
+    // The neighbor bar came back out of the compound intact.
     expect(h.service.links.map((link) => link.id)).toEqual([h.sealed.rodFar.id + 'Z']);
     expect(h.service.joints.map((joint) => joint.id).sort()).toEqual(
       [h.sealed.rodFar.id, 'Z'].sort()

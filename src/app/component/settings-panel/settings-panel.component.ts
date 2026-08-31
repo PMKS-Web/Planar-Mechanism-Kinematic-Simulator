@@ -251,7 +251,7 @@ export class SettingsPanelComponent implements OnDestroy {
   }
 
   /**
-   * The way back to a switch that is greyed out — and nothing at all when it is
+   * The way back to a switch that is grayed out — and nothing at all when it is
    * not. Told every time, "switch to Edit mode" is read most often by the reader
    * already standing in Edit mode, where it is the one sentence in the tooltip
    * that cannot help them.

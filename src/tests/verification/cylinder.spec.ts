@@ -12,7 +12,7 @@ import { MODEL_SCALE } from '../../app/model/render-scale';
 const S = MODEL_SCALE;
 
 // §2.7. A piston is not a new joint type -- it is a Slide whose rod and barrel
-// happen to line up, drawn as the part an engineer would recognise. The test is
+// happen to line up, drawn as the part an engineer would recognize. The test is
 // therefore the shape, not a flag, and everything that is not that shape has to
 // keep the ordinary block-in-a-channel drawing.
 
@@ -48,7 +48,7 @@ function piston(options: { rodAt?: [number, number]; barrelFarAt?: [number, numb
   return { p, t, m, n, slider, barrel, rod, block };
 }
 
-describe('recognising a cylinder', () => {
+describe('recognizing a cylinder', () => {
   it('sees a Slide whose rod and barrel line up', () => {
     const scene = piston();
 

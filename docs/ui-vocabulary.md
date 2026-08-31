@@ -23,7 +23,7 @@ One carve-out: the **action chips on a notification** stay sentence case, becaus
 written as the end of the sentence above them — `Keep it, insert a new one` is a phrase, not
 a control name, and Title Case makes it absurd.
 
-**Spell American.** `analyze`, `analyzed`, `analyzing` — never `analyse`. The noun is
+**Spell American.** `analyze`, `analyzed`, `analyzing` — never `analyze`. The noun is
 `Analysis`, which is spelled the same either way, and it is what named the modes.
 
 **Write to the person, about their mechanism.** Not about the program.
@@ -61,7 +61,7 @@ useful sentence out of the first line. In particular:
 | a name for a thing the app never draws | `swatch`, `reciprocating mass`, `Right hand rule` — jargon the reader has no way to attach to anything |
 
 `Joint Color` needs `The color of this joint.` and nothing else. A way out
-belongs in a tooltip **only while the control is actually greyed** — build it
+belongs in a tooltip **only while the control is actually grayed** — build it
 conditionally, the way `SettingsService`'s units note is, so the sentence
 appears for the reader it can help and for nobody else.
 
@@ -111,7 +111,7 @@ once and repeating it down five rows says nothing new.
 
 ### Refusals wear their reason
 
-A control a reader could reasonably expect is **greyed with the reason beside
+A control a reader could reasonably expect is **grayed with the reason beside
 it**, in three or four lower-case words — `needs 2 links`, `it is driven`,
 `unlock first` — with the model's own longer sentence on hover. A control that
 is *structurally* impossible for that kind of object is **absent**, because a

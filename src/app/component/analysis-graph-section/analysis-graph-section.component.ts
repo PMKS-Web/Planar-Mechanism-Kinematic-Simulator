@@ -259,7 +259,7 @@ export class AnalysisGraphSectionComponent {
    * title is built from.
    *
    * The sample arrives already converted (lbf under English units, and an
-   * input torque in lbf·in or N·m), so a fixed "N" mislabelled every English
+   * input torque in lbf·in or N·m), so a fixed "N" mislabeled every English
    * reading and every torque. Whether the input is driven by a force or a
    * torque is a property of the drive, not of the units, so it is read off the
    * solved frames rather than guessed from the joint.

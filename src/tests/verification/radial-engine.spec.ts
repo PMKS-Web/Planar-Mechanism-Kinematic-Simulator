@@ -72,7 +72,7 @@ describe('a five-cylinder radial engine', () => {
 
   it('fires its cylinders evenly around the turn', () => {
     // What makes it radial rather than five engines: each piston reaches top
-    // dead centre when the crank points down its own axis, so the peaks are
+    // dead center when the crank points down its own axis, so the peaks are
     // one cylinder's share of the cycle apart.
     const peak = (piston: string, axis: number) => {
       const along = Array.from(

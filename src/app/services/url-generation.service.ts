@@ -181,7 +181,7 @@ export class UrlGenerationService {
 
       // Lock marks, as type-tagged references. Only joints and forces carry
       // marks — locking a link is a shortcut that marks its joints — but the
-      // decoder still honours 'L' references from earlier spellings.
+      // decoder still honors 'L' references from earlier spellings.
       encoder.setLockedIds([
         ...this.mechanism.joints
           .filter((joint): joint is RealJoint => joint instanceof RealJoint && joint.locked)
@@ -189,7 +189,7 @@ export class UrlGenerationService {
         ...this.mechanism.forces.filter((force) => force.locked).map((force) => 'F' + force.id),
       ]);
 
-      // Where a hand-placed centre of mass is held. Only the links that answer
+      // Where a hand-placed center of mass is held. Only the links that answer
       // something other than "against the link itself", which is the answer
       // every link gave before this was a choice.
       encoder.setComAnchors(
@@ -205,8 +205,8 @@ export class UrlGenerationService {
           )
       );
 
-      // Which parts wear a colour of their own. Only those, and only where the
-      // colour is not the one they would be drawn in anyway: a drawing where
+      // Which parts wear a color of their own. Only those, and only where the
+      // color is not the one they would be drawn in anyway: a drawing where
       // nobody chose is byte-identical to one written before this was possible.
       encoder.setPartColors([
         ...this.mechanism.joints

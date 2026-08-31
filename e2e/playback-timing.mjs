@@ -90,7 +90,7 @@ const readPose = () =>
  * Compared with a tolerance rather than for equality: changing the input speed
  * re-solves the cycle, and the same pose comes back along a slightly different
  * path of floating-point additions. The gap that made this file fail about one
- * run in three was 0.0034 model units -- a fifty-thousandth of a centimetre,
+ * run in three was 0.0034 model units -- a fifty-thousandth of a centimeter,
  * which is the same pose by any reading of the word.
  */
 const driftBetween = (before, after) => {

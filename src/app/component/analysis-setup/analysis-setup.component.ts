@@ -226,7 +226,7 @@ export class AnalysisSetupComponent {
    * Select the whole machine this section is about.
    *
    * The way to a mechanism's own panel in *either* mode: the transport chip
-   * only exists while analysing, and Edit needs a route too.
+   * only exists while analyzing, and Edit needs a route too.
    */
   select(index: number, event: Event): void {
     event.stopPropagation();
@@ -421,10 +421,10 @@ export class AnalysisSetupComponent {
    *
    * Inertia only. This is the button under a table of masses and inertias, and
    * the legend beside it explains the mark on the inertia column, so that is
-   * the column it undoes. It used to clear the centres of mass as well --
+   * the column it undoes. It used to clear the centers of mass as well --
    * moving weight around the drawing from a control that says nothing about
    * where any of it sits, and taking work with it that is placed a link at a
-   * time on the canvas. A centre of mass is put back from the link's own panel,
+   * time on the canvas. A center of mass is put back from the link's own panel,
    * where it was moved.
    */
   resetAllInertia(): void {
@@ -508,7 +508,7 @@ export class AnalysisSetupComponent {
    *
    * The header used to say "Editable in Edit mode", which is a true sentence
    * and the wrong shape: the reader is looking at the numbers they want to
-   * change and being told, in grey, where the changing happens. It is a
+   * change and being told, in gray, where the changing happens. It is a
    * one-press trip and the panel already knows how to make it.
    *
    * No part to select, unlike `goTo`: the subject is the table as a whole, so

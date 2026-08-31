@@ -141,9 +141,9 @@ export class BottombarComponent {
       return '';
     }
     // Through the one pair that knows the internal scale, like every other
-    // length on screen -- see NumberUnitParserService.formatModelLength.
+    // length on screen -- see NumberUnitParserService.formatModelength.
     const unit = this.settings.lengthUnit.value;
-    return `${this.nup.formatModelLength(at.x, unit)}, ${this.nup.formatModelLength(at.y, unit)}`;
+    return `${this.nup.formatModelength(at.x, unit)}, ${this.nup.formatModelength(at.y, unit)}`;
   }
 
   /**

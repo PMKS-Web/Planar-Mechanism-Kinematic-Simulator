@@ -61,7 +61,7 @@ export class AnalysisSampleService {
    *
    * Returned in the order the graph draws them: X, then Y, then the third
    * series where there is one. An empty array means this service has nothing
-   * to say about that property — an unknown name, an instant-centre graph, or
+   * to say about that property — an unknown name, an instant-center graph, or
    * a sample index the mechanism does not have.
    */
   sampleAt(

@@ -28,7 +28,7 @@ import { SelectionBatchService } from './selection-batch.service';
  * model says". Every refusal below is written somewhere else — in
  * `describeActuator`, in `canToggleWeld`, in `deleteLink`'s orphan rule — and
  * the menu is only allowed to quote them. So the assertions check the reason
- * as well as the greying: a row greyed for the wrong reason is a row that will
+ * as well as the graying: a row grayed for the wrong reason is a row that will
  * send a student to fix the wrong thing.
  */
 
@@ -193,7 +193,7 @@ describe('the right-click menu', () => {
   });
 
   describe('refusals come from the model', () => {
-    it('greys the input on a joint where three bodies meet, and says so', () => {
+    it('grays the input on a joint where three bodies meet, and says so', () => {
       const parts = fourBar(harness.mechanism);
       // A fourth body at A: three links now meet there.
       const extra = new RevJoint('X', -2 * S, 2 * S);
@@ -208,7 +208,7 @@ describe('the right-click menu', () => {
       expect(driven.refusal!.long).toContain('would not say which pair moves');
     });
 
-    it('greys the weld on a joint with nothing to fuse', () => {
+    it('grays the weld on a joint with nothing to fuse', () => {
       const parts = fourBar(harness.mechanism);
       const weld = row(harness.builder.build(parts.t, noHandlers), 'Welded')!;
       expect(weld.disabled).toBe(true);
@@ -219,7 +219,7 @@ describe('the right-click menu', () => {
       const parts = fourBar(harness.mechanism);
       parts.a.input = true;
       const model = harness.builder.build(parts.a, noHandlers);
-      // Weld greys on a driven joint...
+      // Weld grays on a driven joint...
       expect(row(model, 'Welded')!.refusal!.short).toBe('it is driven');
       // ...and the switch that resolves it stays live.
       expect(row(model, 'Driven Input')!.disabled).toBe(false);
@@ -235,7 +235,7 @@ describe('the right-click menu', () => {
       expect(row(harness.builder.build(parts.t, noHandlers), 'Force')!.disabled).toBe(false);
     });
 
-    it('greys a disc on a link with no fixed pin to sweep about', () => {
+    it('grays a disc on a link with no fixed pin to sweep about', () => {
       const parts = fourBar(harness.mechanism);
       const disc = row(harness.builder.build(parts.coupler, noHandlers), 'Drawn as a Disc')!;
       expect(disc.refusal!.short).toBe('needs a fixed pin');
@@ -288,7 +288,7 @@ describe('the right-click menu', () => {
       const model = harness.builder.build('grid', noHandlers);
       expect(row(model, 'Lock All')!.hint).toBe('4 open');
       expect(row(model, 'Unlock All')!.hint).toBe('1 locked');
-      // The pair never both grey at once, so there is always a way out.
+      // The pair never both gray at once, so there is always a way out.
       expect(row(model, 'Lock All')!.disabled).toBe(false);
       expect(row(model, 'Unlock All')!.disabled).toBe(false);
     });
@@ -338,7 +338,7 @@ describe('the right-click menu', () => {
       );
     });
 
-    it('greys the row on a welded compound rather than doing nothing', () => {
+    it('grays the row on a welded compound rather than doing nothing', () => {
       const parts = fourBar(harness.mechanism);
       // A compound: several links and the welds between them.
       (parts.coupler as RealLink).subset = [parts.crank, parts.rocker];
@@ -423,7 +423,7 @@ describe('the right-click menu', () => {
       parts.a.locked = true;
       harness.mechanism.activeObjService.updateSelectedObj(parts.a);
       harness.mechanism.deleteJoint();
-      // The menu greys the row; the Delete key and the panel button reach the
+      // The menu grays the row; the Delete key and the panel button reach the
       // same joint, so the rule has to live where all three can ask it.
       expect(harness.mechanism.joints.some((one) => one.id === 'A')).toBe(true);
       expect(harness.mechanism.deleteRefusal(parts.a)).toContain('locked');
@@ -451,7 +451,7 @@ describe('the right-click menu', () => {
       // rates drawn along it. Nothing here changes the drawing.
       expect(labels(model)).toEqual(['Trace Path', 'Velocity Vectors', 'Acceleration Vectors']);
       // Geometry is frozen there, so Attach and the footer are absent rather
-      // than greyed — and the way back into Edit rides the header.
+      // than grayed — and the way back into Edit rides the header.
       expect(model.header?.crossing?.icon).toBe('edit_outline');
     });
 
@@ -472,12 +472,12 @@ describe('the right-click menu', () => {
         'Acceleration Vectors',
       ]);
       // A reaction is carried at a joint, so the row is absent rather than
-      // greyed — a fact about the kind of part, not about this drawing.
+      // grayed — a fact about the kind of part, not about this drawing.
       harness.tabs.setTab(TabID.FORCE);
       expect(labels(harness.builder.build(parts.coupler, noHandlers))).toEqual([]);
     });
 
-    it('greys a vector on a machine that does not solve, with its own reason', () => {
+    it('grays a vector on a machine that does not solve, with its own reason', () => {
       const parts = fourBar(harness.mechanism);
       harness.mechanism.updateMechanism();
       harness.tabs.setTab(TabID.ANALYZE);
@@ -520,7 +520,7 @@ describe('the right-click menu', () => {
       const inside = harness.builder.build(parts.a, noHandlers).header?.crossing;
       const readiness = harness.mechanism.readinessOfPart(parts.a);
       // Whatever this machine's state is, the crossing agrees with it rather
-      // than with whether *something* on the grid can be analysed.
+      // than with whether *something* on the grid can be analyzed.
       expect(!!inside?.refusal).toBe(!harness.mechanism.isPartSimulatable(parts.a));
       if (inside?.refusal) {
         expect(readiness).toBeDefined();
@@ -536,7 +536,7 @@ describe('the right-click menu', () => {
   });
 
   describe('away from the start pose', () => {
-    it('greys what edits the mechanism and leaves the view alone', () => {
+    it('grays what edits the mechanism and leaves the view alone', () => {
       const parts = fourBar(harness.mechanism);
       harness.mechanism.mechanismTimeStep = 12;
       const model = harness.builder.build(parts.t, noHandlers);
@@ -566,7 +566,7 @@ describe('the right-click menu', () => {
       return { joints, links };
     }
 
-    it('greys with a reason of its own when an unsynced machine is parked off zero', () => {
+    it('grays with a reason of its own when an unsynced machine is parked off zero', () => {
       // Scrubbing a non-master row leaves the shared clock at zero, so this
       // used to pass the clock check and offer live edit rows against a
       // displaced pose that undo — gated on isAnimating() — refused to fix.

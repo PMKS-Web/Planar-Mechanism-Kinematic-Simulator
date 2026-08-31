@@ -669,9 +669,9 @@ check(
   await (async () => {
     /*
       Named for what it establishes, which is agreement across this design --
-      not the greying, because this design never refuses a driver and so never
+      not the graying, because this design never refuses a driver and so never
       turns the switch off. It was called "a driver that cannot be fitted is
-      greyed" while comparing two values that were both false on every sample.
+      grayed" while comparing two values that were both false on every sample.
       A design that does refuse is checked at the end of this file, where one
       is built for the purpose.
     */
@@ -1179,7 +1179,7 @@ const ask = (p, fn) =>
 
 {
   // And beside work that is already there, where A-D are taken and the pins
-  // have to be drawn under whatever letters are actually free. Labelling the
+  // have to be drawn under whatever letters are actually free. Labeling the
   // preview A-D regardless meant it promised D/C/B/A over pins that arrived
   // as E/D/C/B -- every one of the four renamed between being shown and being
   // built.
@@ -1355,13 +1355,13 @@ const ask = (p, fn) =>
       panel.solution.insert();
       const afterFirst = grid.synthCanvas.previewJoints().map((j) => j.id);
       const onGrid = panel.design.ownedJointIds.slice();
-      const labelledAfterInsert = panel.dimensionRows().map((r) => r.label);
+      const labeledAfterInsert = panel.dimensionRows().map((r) => r.label);
       // Now ask for a driver, which makes this a replacement.
       panel.solution.toggleDriver();
       const promised = grid.synthCanvas.previewJoints().map((j) => j.id);
       panel.solution.insert();
       const built = panel.design.ownedJointIds.slice();
-      return { onGrid, afterFirst, labelledAfterInsert, promised, built };
+      return { onGrid, afterFirst, labeledAfterInsert, promised, built };
     }`
   );
   check(
@@ -1374,9 +1374,9 @@ const ask = (p, fn) =>
   check(
     'and the labels do not rename themselves the moment a linkage is inserted',
     outcome.onGrid.length === 4 &&
-      outcome.labelledAfterInsert.some((l) => l.includes(outcome.onGrid[0])) &&
-      outcome.labelledAfterInsert.some((l) => l.includes(outcome.onGrid[3])),
-    { onGrid: outcome.onGrid, labels: outcome.labelledAfterInsert }
+      outcome.labeledAfterInsert.some((l) => l.includes(outcome.onGrid[0])) &&
+      outcome.labeledAfterInsert.some((l) => l.includes(outcome.onGrid[3])),
+    { onGrid: outcome.onGrid, labels: outcome.labeledAfterInsert }
   );
   await p.close();
 }
@@ -1440,7 +1440,7 @@ const ask = (p, fn) =>
 
 {
   /*
-    A design that really does refuse a driver, so the greyed switch is tested
+    A design that really does refuse a driver, so the grayed switch is tested
     against both answers.
 
     The sweep earlier in this file only ever meets designs that accept one, so
@@ -1506,7 +1506,7 @@ const ask = (p, fn) =>
   const near = await read();
   const outcome = { ...present, far, near };
   check(
-    'the switch is actually greyed on a design whose driver is refused',
+    'the switch is actually grayed on a design whose driver is refused',
     !outcome.missing &&
       outcome.far.refused &&
       outcome.far.disabled &&

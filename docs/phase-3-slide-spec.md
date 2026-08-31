@@ -37,7 +37,7 @@ solver work, not a flag check.
 
 ## 2. Baseline: what happens today
 
-The reference mechanism is the Scotch yoke, which is what Gate 3 asks for. Modelled the way the
+The reference mechanism is the Scotch yoke, which is what Gate 3 asks for. Modeled the way the
 app models sliders:
 
 | Object | Value |
@@ -180,7 +180,7 @@ single entry it earns ([`:591-593`](../src/app/services/mechanism.service.ts)). 
 Putting the dispatch in `weldJoint`/`unWeldJoint` instead would leave `mergeJoints` on the
 compound-only pair, which is the failure described below.
 
-Behaviour of the dispatcher when the joint carries a `SliderBlock`:
+Behavior of the dispatcher when the joint carries a `SliderBlock`:
 
 - **Weld.** If ≥2 `RealLink`s meet at the joint, run `weldJointTopology` first so the rider side
   becomes a compound exactly as an ordinary weld does — this is the answer to §7 open question 3,
@@ -405,7 +405,7 @@ With that, what the plan asks for — "acts on the assembly when a slider is pre
 otherwise, never ambiguously" — becomes a unit assertion on `MechanismService` rather than UI work,
 which is where it can actually be pinned down.
 
-One behaviour change to assert rather than discover: `new-grid.component.ts:952-963` reports when a
+One behavior change to assert rather than discover: `new-grid.component.ts:952-963` reports when a
 merge dropped a weld, because `canBeWelded` used to refuse slider-carrying joints. After 3.1 that
 merge **keeps** the weld and the notification stops firing for that case.
 
@@ -432,7 +432,7 @@ So the work is small but not zero:
   support the welded slider at C."* — instead of reporting matrix dimensions.
 - The count guard stays as the backstop it already is.
 - Test pins both the status and the message, and pins that an *unwelded* Slot on the same fixture
-  still analyses normally, so the guard cannot widen unnoticed.
+  still analyzes normally, so the guard cannot widen unnoticed.
 
 *The physics, recorded so §9 does not have to rediscover it.* A prismatic pair transmits a normal
 force **and a couple**. While the block is a free-rotating body with only two equations, the couple
@@ -480,7 +480,7 @@ Phase 5 picks it up with the cylinder, where the driven-prismatic and units work
 | 7 | Floating Slide | names its unsolvable joints; no NaN, no picture |
 | 8 | `toggleSlider` off at a Slide | clears the weld (3.2b), and does not clear a legitimate one |
 | 9 | Every Phase 0–2 fixture | DOF and solved positions unchanged; `Slider_Crank` template still byte-identical |
-| 10 | Scotch yoke statics | refused as `unsupported-topology` naming the joint; the same fixture **unwelded** still analyses normally |
+| 10 | Scotch yoke statics | refused as `unsupported-topology` naming the joint; the same fixture **unwelded** still analyzes normally |
 | 11 | Drag a joint onto a Slide's pin | the Slide survives the merge — flag set, block intact, `slideAssemblyAt` resolves, and `new-grid`'s "weld was dropped" notice does not fire |
 | 12 | Weld a joint holding two `RealLink`s and a block, **reached through a link edge** | the two fuse into a compound *and* bind to the block; `riders` collapses to one; DOF merges compound + block; round-trips; and `ω_rider = α_rider = 0` — the registration path 3.6b(2) covers |
 | 13 | Scotch yoke, sliding joint `F` across the cycle | stays coincident with its pin *and* on its guide line — the two pull opposite ways |

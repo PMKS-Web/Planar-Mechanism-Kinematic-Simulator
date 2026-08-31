@@ -12,13 +12,13 @@
   // because the two engines each want their own pseudo-element for the track.
   // The part ahead of the handle sits as far below the selected row's fill as
   // that fill sits below white, so the bar reads on a chosen row as clearly as
-  // it does on a plain one. The mock's own grey was the platform's, and it
+  // it does on a plain one. The mock's own gray was the platform's, and it
   // disappeared into the highlight.
   $track: linear-gradient(to right, #3f51b5 0 var(--along, 0%), #d5d7e0 var(--along, 0%) 100%);
 
   // Right-aligned in every mode, so the view controls at its right-hand end sit
   // in exactly the same place whatever mode is open. They used to be pushed
-  // there by a growing spacer in Edit and centred with the transport in
+  // there by a growing spacer in Edit and centerd with the transport in
   // analysis, which moved them -- twice, and by different amounts at different
   // window widths.
   .playbackRow {
@@ -319,7 +319,7 @@
   }
 
   // Which way the input is going right now, and what it does when it gets to
-  // the end of the track. The second is grey in both readings: coming round
+  // the end of the track. The second is gray in both readings: coming round
   // again and turning back are two facts, not a good one and a bad one.
   .rowToggle {
     display: inline-flex;
@@ -423,7 +423,7 @@
   }
 
   // Playing is the row's own doing, so its button carries the app's blue; the
-  // direction is a property of the drawing, so its button stays grey.
+  // direction is a property of the drawing, so its button stays gray.
   .rowPlay {
     color: mat.m2-get-color-from-palette($primary-palette, 500);
 
@@ -447,7 +447,7 @@
   }
 
   // The track sits in a 16px well with the input pinned 6px down it, so the
-  // handle centres on the line rather than on the row. The well is inset the
+  // handle centers on the line rather than on the row. The well is inset the
   // same 4px the label group is, so the handle starts under the name.
   .trackWell {
     position: relative;
@@ -456,8 +456,8 @@
   }
 
   // Drawn rather than themed, and drawn to look like what the platform was
-  // drawing. Left to the browser, `accent-color` colours the travelled part
-  // and the handle but the track keeps a 1px rim -- a grey line above and
+  // drawing. Left to the browser, `accent-color` colors the traveled part
+  // and the handle but the track keeps a 1px rim -- a gray line above and
   // below the bar, a border round the one control here that has one. Taking
   // the painting means saying the rest ourselves: the bar's thickness, the
   // capsule handle macOS drew, and how far along it sits, which is the same
@@ -505,7 +505,7 @@
       box-sizing: border-box;
       width: 24px;
       height: 20px;
-      // Centred on the 8px bar rather than on the element.
+      // Centerd on the 8px bar rather than on the element.
       margin-top: -6px;
       border: 1px solid rgba(0, 0, 0, 0.16);
       border-radius: 10px;
@@ -586,7 +586,7 @@
     .playbackRow {
       flex-wrap: nowrap;
       // Edge to edge on the line the top strip runs on, with the gap between
-      // the two cards that the strip keeps between its own. Centred inside an
+      // the two cards that the strip keeps between its own. Centerd inside an
       // 8px padding, the cards sat 23px from the window against the strip's 12,
       // so the two ends of the screen disagreed about where the margin was.
       //

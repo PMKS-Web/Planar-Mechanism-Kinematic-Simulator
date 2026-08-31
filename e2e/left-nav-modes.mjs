@@ -293,7 +293,7 @@ try {
   // Icon-only squares now, so they are addressed by what they are for rather
   // than by a word that is no longer printed on them.
   const comButton = page.locator('.viewControls .viewButton[aria-label="Show Center of Mass"]');
-  // The view defaults to showing centres of mass, but a mark only appears on a
+  // The view defaults to showing centers of mass, but a mark only appears on a
   // link that has mass: take the weight away and the mark goes with it, give
   // it back and the toggle governs it from there.
   const setMasses = (value) =>

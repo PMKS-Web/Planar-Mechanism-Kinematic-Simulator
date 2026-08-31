@@ -42,16 +42,16 @@ interface LayerRow {
 const LAYER_ROWS: LayerRow[] = [
   { key: 'perLinkLayers', name: 'One layer per link', cad: 'PMKS_LINK_*' },
   {
-    name: 'Link centrelines',
+    name: 'Link centerlines',
     cad: 'PMKS_LINK_CENTERLINES',
-    // Only when the links *are* centrelines. Exported as outlines they are not
+    // Only when the links *are* centerlines. Exported as outlines they are not
     // written at all, and the row said "Always included" over a layer that was
     // not in the file.
-    fixed: 'Always included — a drawing without centrelines is empty.',
+    fixed: 'Always included — a drawing without centerlines is empty.',
     onlyWith: 'centerlines',
   },
   {
-    name: 'Joint centres',
+    name: 'Joint centers',
     cad: 'PMKS_JOINT_CENTERS',
     fixed: 'Always included.',
     onlyWith: 'centerlines',
@@ -119,7 +119,7 @@ export class DrawingExportComponent {
       (row) => row.onlyWith === undefined || row.onlyWith === this.options.linkBodies
     );
   }
-  // Millimetres first: it is what CAD importers default to and what a drawing
+  // Millimeters first: it is what CAD importers default to and what a drawing
   // is dimensioned in, whatever the project happens to be drawn in.
   readonly unitChoices: { label: string; value: DxfExportUnit }[] = [
     { label: 'mm', value: 'mm' },
@@ -130,7 +130,7 @@ export class DrawingExportComponent {
   readonly originChoices: { label: string; value: DxfOrigin }[] = [
     { label: 'Keep model coordinates', value: 'model' },
     { label: 'First ground joint', value: 'ground' },
-    { label: 'Centre of drawing', value: 'center' },
+    { label: 'Center of drawing', value: 'center' },
     { label: 'Choose a joint…', value: 'joint' },
   ];
   readonly formatChoices: { label: string; value: DxfFileFormat }[] = [
@@ -144,7 +144,7 @@ export class DrawingExportComponent {
       value: 'outlines',
     },
     {
-      label: 'Centrelines',
+      label: 'Centerlines',
       note: 'One line per link. A drawing to trace over, not a part.',
       value: 'centerlines',
     },
@@ -199,7 +199,7 @@ export class DrawingExportComponent {
     return this.exportService.originJointChoices();
   }
 
-  /** Why a row is greyed, or nothing. The rule the rest of the app follows. */
+  /** Why a row is grayed, or nothing. The rule the rest of the app follows. */
   reasonFor(key: keyof DxfExportChoices): string {
     if (this.isEmpty) return 'Nothing to export yet — draw a mechanism first.';
     if (key === 'includeTracedPaths' && !this.exportService.hasTracedJoint()) {
@@ -245,7 +245,7 @@ export class DrawingExportComponent {
    * Change the unit the export is written in, keeping the pin the size it is.
    *
    * The pin diameter is a physical hole, typed in whatever unit the file is in.
-   * Left alone, switching to metres turns the 0.6 cm default into a 0.6 m one
+   * Left alone, switching to meters turns the 0.6 cm default into a 0.6 m one
    * beside a field that still reads 0.6, which nobody would catch until the
    * part came back.
    */
@@ -292,7 +292,7 @@ export class DrawingExportComponent {
 
   /** What kind of drawing this will be, said under the title. */
   get subtitleShape(): string {
-    return this.options.linkBodies === 'outlines' ? 'part outlines' : 'centreline sketch';
+    return this.options.linkBodies === 'outlines' ? 'part outlines' : 'centerline sketch';
   }
 
   /** How this export's unit is spelled wherever the dialog names one. */
@@ -305,12 +305,12 @@ export class DrawingExportComponent {
   }
 
   get geometrySummary(): string {
-    const bodies = this.options.linkBodies === 'outlines' ? 'outlines' : 'centrelines';
+    const bodies = this.options.linkBodies === 'outlines' ? 'outlines' : 'centerlines';
     const origin =
       this.options.origin === 'model'
         ? 'model coordinates'
         : this.options.origin === 'center'
-          ? 'origin at centre'
+          ? 'origin at center'
           : `origin at ${this.originJointLabel}`;
     const circles =
       this.options.jointCircles === 'none'

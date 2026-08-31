@@ -86,9 +86,9 @@ export class Mechanism {
     // interpolates between.
     private readonly sampling: 'adaptive' | 'degree' = 'adaptive',
     // Which of `joints` this machine is actually made of. It has to be handed
-    // frame it shares with its neighbours -- an anchored bar a slider runs
+    // frame it shares with its neighbors -- an anchored bar a slider runs
     // along, a fixed link between two frames -- and the far ends of those
-    // pieces are somebody else's joints. Without the distinction a neighbour's
+    // pieces are somebody else's joints. Without the distinction a neighbor's
     // driven pin reads as this machine's input: it is handed the foreign
     // speed, skips the "nothing drives this" blocker, and then solves a
     // mechanism nothing actually turns. Omitted means every joint is its own.

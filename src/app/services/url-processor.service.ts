@@ -250,7 +250,7 @@ export class UrlProcessorService {
     }
 
     // A drawing that arrives while an analysis mode is open, and that nothing
-    // in can be analysed, leaves the reader in a mode with no graphs, no
+    // in can be analyzed, leaves the reader in a mode with no graphs, no
     // transport and no way to fix any of it -- the geometry is locked. Edit is
     // where the work is. Only for a drawing that *arrives*: a step through this
     // mechanism's own history is not a new subject.

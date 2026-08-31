@@ -48,7 +48,7 @@ function generatedBlock(): string {
       entry.objectScale,
       entry.speed,
       libraryTemplateMasses(id),
-      // Colour is the other thing the library decides for itself: a gallery
+      // Color is the other thing the library decides for itself: a gallery
       // link is a mechanism to check, a template is a mechanism to read.
       libraryTemplateFills(id, entry.fixture)
     );
@@ -65,14 +65,14 @@ function replaceBlock(source: string, block: string): string {
 }
 
 /**
- * The five templates that predate the generator, kept to the same colour rule.
+ * The five templates that predate the generator, kept to the same color rule.
  *
  * Their geometry is hand-authored and stays that way — there is no fixture to
- * regenerate them from. But colour is not geometry, and five cards coloured by
+ * regenerate them from. But color is not geometry, and five cards colored by
  * whatever order somebody drew them in, sitting in a dialog beside thirty-four
- * coloured from their structure, is the inconsistency this rule exists to
+ * colored from their structure, is the inconsistency this rule exists to
  * remove. So the payload is decoded, repainted and re-encoded: everything but
- * the six colour fields comes back byte-identical, which is what makes it safe
+ * the six color fields comes back byte-identical, which is what makes it safe
  * to do to a string nothing else can regenerate.
  */
 const HAND_AUTHORED = ['4-Bar', 'Watt_I', 'Watt_II', 'Stephenson_III', 'Slider_Crank'] as const;

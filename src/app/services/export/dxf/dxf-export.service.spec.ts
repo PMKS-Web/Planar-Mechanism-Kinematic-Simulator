@@ -140,7 +140,7 @@ describe('DxfExportService', () => {
   it('stands the dimension line off square to what it measures', () => {
     const { service, mechanism } = setup();
     // Straight up from the origin: the case a fixed drop in Y gets wrong, by
-    // laying the dimension along the very centreline it is dimensioning.
+    // laying the dimension along the very centerline it is dimensioning.
     mechanism.joints[1].x = 0;
     mechanism.joints[1].y = 2 * MODEL_SCALE;
     const parsed = new DxfParser().parseSync(
@@ -170,29 +170,29 @@ describe('DxfExportService', () => {
         .map(([from, to]) => Math.hypot(to.x - from.x, to.y - from.y));
       return { name: file.name, span: Math.max(...ends) };
     };
-    // The same 2cm-by-1cm link, asked for three ways. Saying metres and then
-    // writing centimetres hands CAD a mechanism a hundred times too big under
+    // The same 2cm-by-1cm link, asked for three ways. Saying meters and then
+    // writing centimeters hands CAD a mechanism a hundred times too big under
     // a label that looks right -- and R12 has no header field to say which, so
     // the name is where the answer lives.
-    const centimetres = lengthIn('cm');
-    expect(centimetres.name).toBe('mechanism (cm).dxf');
-    expect(centimetres.span).toBeCloseTo(Math.hypot(2, 1), 6);
+    const centimeters = lengthIn('cm');
+    expect(centimeters.name).toBe('mechanism (cm).dxf');
+    expect(centimeters.span).toBeCloseTo(Math.hypot(2, 1), 6);
 
-    const metres = lengthIn('m');
-    expect(metres.name).toBe('mechanism (m).dxf');
-    expect(metres.span).toBeCloseTo(Math.hypot(2, 1) / 100, 6);
+    const meters = lengthIn('m');
+    expect(meters.name).toBe('mechanism (m).dxf');
+    expect(meters.span).toBeCloseTo(Math.hypot(2, 1) / 100, 6);
 
     const inches = lengthIn('in');
     expect(inches.name).toBe('mechanism (in).dxf');
     expect(inches.span).toBeCloseTo(Math.hypot(2, 1) / 2.54, 6);
 
-    // Millimetres, which is what a CAD importer defaults to and what a drawing
+    // Millimeters, which is what a CAD importer defaults to and what a drawing
     // is dimensioned in. It belongs to the export rather than to the project:
-    // the app has no millimetre, and giving it one would reach into the mass
+    // the app has no millimeter, and giving it one would reach into the mass
     // and inertia units that pair with each length.
-    const millimetres = lengthIn('mm');
-    expect(millimetres.name).toBe('mechanism (mm).dxf');
-    expect(millimetres.span).toBeCloseTo(Math.hypot(2, 1) * 10, 6);
+    const millimeters = lengthIn('mm');
+    expect(millimeters.name).toBe('mechanism (mm).dxf');
+    expect(millimeters.span).toBeCloseTo(Math.hypot(2, 1) * 10, 6);
   });
 
   it('puts the notes under the drawing, wherever the drawing turned out to be', () => {
@@ -230,7 +230,7 @@ describe('DxfExportService', () => {
       shape: boolean;
       vertices: { x: number; y: number; bulge?: number }[];
     };
-    // A centreline cannot be extruded. This is the same rounded bar the canvas
+    // A centerline cannot be extruded. This is the same rounded bar the canvas
     // draws, closed, so CAD has a face to pick.
     expect(body).toBeDefined();
     expect(body.shape).toBe(true);
@@ -249,7 +249,7 @@ describe('DxfExportService', () => {
         (entity) => (entity as { layer?: string }).layer === 'PMKS_JOINT_CENTERS'
       )
     ).toHaveLength(0);
-    // No centreline underneath: one line per link on top of the body it
+    // No centerline underneath: one line per link on top of the body it
     // describes is one more thing to delete in CAD.
     expect(
       parsed.entities.filter(
@@ -265,7 +265,7 @@ describe('DxfExportService', () => {
     // bodies are whatever width the canvas happens to be using, and the old
     // 0.6 beside a 0.13-wide bar was a hole with no part left around it.
     const derived = service.pinDiameter();
-    // Model units -> centimetres -> metres, which is what this project is in.
+    // Model units -> centimeters -> meters, which is what this project is in.
     const bodyWidth = linkBodyWidth() / MODEL_SCALE / 100;
     expect(derived).toBeGreaterThan(0);
     expect(derived).toBeLessThan(bodyWidth);

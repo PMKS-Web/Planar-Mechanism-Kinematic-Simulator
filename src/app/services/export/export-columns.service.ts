@@ -15,7 +15,7 @@ import {
 /**
  * What a chosen set of parts turns out to have numbers for.
  *
- * Split from the catalogue of parts because the two questions have different
+ * Split from the catalog of parts because the two questions have different
  * shapes: what a drawing contains is fixed the moment it is drawn, and what
  * that selection can be asked for changes with every tick.
  */
@@ -40,7 +40,7 @@ export class ExportColumnsService {
     const groups: ExportColumnGroup[] = [];
     const joints = parts.filter((part) => part.kind === 'joint');
     // Bars, and the rods that stand for rams — not slider blocks. The solver
-    // leaves a block out of its angular maps and gives it no centre of mass,
+    // leaves a block out of its angular maps and gives it no center of mass,
     // so a block offered these four choices produced eleven columns of blanks.
     // What a block does have is the reaction it carries, which is the other tab.
     const links = parts.filter((part) => part.kind === 'link' && part.part instanceof RealLink);

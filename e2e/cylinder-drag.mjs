@@ -116,15 +116,15 @@ const grown = await drag(-600, -350, 'past-extended');
 //     the drags above have spent the run changing.
 await page.goto(`${BASE}/?${payload}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
-const centreOf = (id) =>
+const centerOf = (id) =>
   page.evaluate((jointId) => {
     const node = document.querySelector(`#joint_${jointId}`);
     if (!node) return null;
     const box = node.getBoundingClientRect();
     return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   }, id);
-const rodMount = await centreOf('C');
-const barrelMount = await centreOf('G');
+const rodMount = await centerOf('C');
+const barrelMount = await centerOf('G');
 const floored = await drag(
   (barrelMount.x - rodMount.x) * 0.95,
   (barrelMount.y - rodMount.y) * 0.95,

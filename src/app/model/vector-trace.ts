@@ -7,7 +7,7 @@
  * reader trying to see why a coupler point slows at the top of its stroke is
  * asking about direction, and a curve of magnitude against time cannot show it.
  *
- * Arithmetic and a palette. Its one import is the analysis series' colours,
+ * Arithmetic and a palette. Its one import is the analysis series' colors,
  * which is the point: the arrows and the plots are the same numbers and are
  * drawn in the same inks. The caller hands in two closures — where the part is
  * at a sample, and what the quantity reads there — so the service graph stays
@@ -32,7 +32,7 @@ export interface VectorArrow {
  * Not one per solved sample: a cycle is 360 of them and 360 arrows on a path
  * is a black thicket with a curve somewhere inside it. Two dozen is enough for
  * the field to read as a field — the turn of the arrows around the path is
- * visible, and every one of them is far enough from its neighbours to be read
+ * visible, and every one of them is far enough from its neighbors to be read
  * on its own.
  */
 export const PATH_ARROW_COUNT = 24;
@@ -42,7 +42,7 @@ export const PATH_ARROW_COUNT = 24;
  *
  * Velocity is a length per second, acceleration a length per second squared
  * and a force is not a length at all, so none of the three has a size on the
- * drawing until one is chosen. Each is normalised against its own largest
+ * drawing until one is chosen. Each is normalized against its own largest
  * value over the cycle and that largest one is drawn this long, which makes
  * every arrow in a trace readable as a fraction of the biggest — and keeps the
  * three from being drawn at wildly different sizes on the same picture.
@@ -53,7 +53,7 @@ export const LONGEST_ARROW_FRACTION = 0.085;
  * What each quantity is drawn in: the analysis graphs' own series palette.
  *
  * These arrows and those plots are the same numbers seen two ways, so a reader
- * who has learnt a colour on one should meet it on the other. The first cut
+ * who has learnt a color on one should meet it on the other. The first cut
  * used a green and a purple that appear nowhere else in the app, which made
  * them look like a fourth kind of thing.
  *
@@ -189,7 +189,7 @@ export interface VectorTraceShape {
  *
  * The maximum is taken over every solved sample rather than over the two dozen
  * that get an arrow: the live arrow at the current pose is drawn to the same
- * scale, and normalising against a subset would let it grow past the longest
+ * scale, and normalizing against a subset would let it grow past the longest
  * one on the path and look like a spike that is not there.
  */
 export function buildVectorTrace(

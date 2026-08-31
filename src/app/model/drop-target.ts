@@ -61,7 +61,7 @@ export function refuseJointMerge(
   target: Joint,
   /**
    * The full joint list, when the caller has it: it is what lets the mount
-   * rules run (a mount is only recognisable against the whole mechanism).
+   * rules run (a mount is only recognizable against the whole mechanism).
    */
   allJoints?: Joint[]
 ): MergeRefusal | undefined {

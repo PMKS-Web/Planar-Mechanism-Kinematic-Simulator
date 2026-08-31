@@ -52,7 +52,7 @@ async function setStart(value) {
 /**
  * The x extents of the three paths, in the mark's own frame.
  *
- * Every path is emitted centred on the pin with +x toward the rod, so the
+ * Every path is emitted centerd on the pin with +x toward the rod, so the
  * numbers compare directly and there is no transform to undo. Walked by command
  * rather than scraped for numbers: an arc carries five parameters before its
  * endpoint, and a bare scrape reads radii as coordinates.

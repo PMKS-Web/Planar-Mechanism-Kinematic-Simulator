@@ -13,7 +13,7 @@ import { ViewButtonComponent } from './view-button.component';
 import { RealLink } from '../../model/link';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 
-/** The one gap a card keeps from its neighbour (left-tabs.vars.scss). */
+/** The one gap a card keeps from its neighbor (left-tabs.vars.scss). */
 const CARD_GAP = 12;
 
 /**
@@ -35,7 +35,7 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   private shortcuts = inject(KeyboardShortcutsService);
 
   /**
-   * The keys reach the same methods the buttons do, greyed state and all: a
+   * The keys reach the same methods the buttons do, grayed state and all: a
    * switch that would change nothing on the grid is one the key must not
    * change either, or the shortcut and the button would disagree about what
    * the drawing can show.
@@ -86,7 +86,7 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
     }
     if (box.height > 0) {
       // From the bottom of the window to the top of this card, plus the gap a
-      // card keeps from its neighbour.
+      // card keeps from its neighbor.
       const clearance = Math.round(window.innerHeight - box.top) + CARD_GAP;
       style.setProperty('--view-controls-clearance', `${clearance}px`);
     }
@@ -121,12 +121,12 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Nothing on the grid would change, so the switch is greyed.
+   * Nothing on the grid would change, so the switch is grayed.
    *
-   * Greyed rather than hidden: a control that comes and goes as the drawing
+   * Grayed rather than hidden: a control that comes and goes as the drawing
    * does is a control nobody learns the position of. Each button asks about
    * exactly what its own toggle draws — labels want a joint to name, the
-   * centre-of-mass mark wants a link with a mass to have a centre of, and a
+   * center-of-mass mark wants a link with a mass to have a center of, and a
    * path wants a joint that has been asked to trace one.
    */
   noJointExists(): boolean {

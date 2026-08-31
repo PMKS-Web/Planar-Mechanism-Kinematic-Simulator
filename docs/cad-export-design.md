@@ -44,7 +44,7 @@ at ground A, Ø6 mm holes") lets someone confirm without opening anything.
 **Tell them what they are about to get, before they get it.** The single most useful addition beyond
 the controls is a live summary — entity count, layer count, drawing extents and units — updating as
 options change, sitting just above the export button. It answers "did I remember the forces?" and
-"is this in millimetres?" without a round trip through CAD. A small preview thumbnail of the
+"is this in millimeters?" without a round trip through CAD. A small preview thumbnail of the
 exported geometry would be better still, and is worth mocking up even if it ships later.
 
 **Keep the two warnings that are already there, and keep them quiet.** The drawing is the *start
@@ -104,14 +104,14 @@ requirement.
 
 | Control | Type | Default | Notes |
 | --- | --- | --- | --- |
-| **Origin** | Select | `First ground joint` | `Keep model coordinates` · `First ground joint` · `Centre of drawing` · `Choose a joint…`. Moves the whole drawing so that point lands on (0, 0). Without this, a linkage drawn a metre from the origin imports a metre from the part origin, which is a fight every single time. |
+| **Origin** | Select | `First ground joint` | `Keep model coordinates` · `First ground joint` · `Center of drawing` · `Choose a joint…`. Moves the whole drawing so that point lands on (0, 0). Without this, a linkage drawn a meter from the origin imports a meter from the part origin, which is a fight every single time. |
 | **Origin joint** | Select of joint ids | first ground joint | Only when **Origin** is `Choose a joint…`. |
-| **Joint circles** | Radio, 3 options | `Pin holes at Ø` | `None (points only)` · `Marks only` · `Pin holes at Ø`. Today the export draws an 0.08-unit circle that means nothing in CAD and has to be deleted. `Pin holes` makes that circle the hole the reader will actually cut. `Marks only` keeps today's behaviour on a layer that can be switched off. |
+| **Joint circles** | Radio, 3 options | `Pin holes at Ø` | `None (points only)` · `Marks only` · `Pin holes at Ø`. Today the export draws an 0.08-unit circle that means nothing in CAD and has to be deleted. `Pin holes` makes that circle the hole the reader will actually cut. `Marks only` keeps today's behavior on a layer that can be switched off. |
 | **Pin diameter** | Number + unit | `6 mm` (`0.25 in`) | Only when **Joint circles** is `Pin holes at Ø`. One diameter for every joint; per-joint diameters are out of scope. |
-| **Link dimensions** | Checkbox | on | Aligned DIMENSION entities between joint centres. These arrive in SolidWorks and NX as real driven dimensions, so the reader does not retype numbers they can already see. |
+| **Link dimensions** | Checkbox | on | Aligned DIMENSION entities between joint centers. These arrive in SolidWorks and NX as real driven dimensions, so the reader does not retype numbers they can already see. |
 | **Dimension style** | Radio, 2 options | `Dimension entities` | `Dimension entities` · `Text table`. The second writes the same numbers as a block of TEXT on the notes layer, for importers that mangle DIMENSION. Only when **Link dimensions** is on. |
 | **Traced paths** | Checkbox | on | Coupler curves as polylines. Disabled with the reason shown when no joint is set to trace: *"No joint is tracing a path. Turn one on from the Edit panel."* |
-| **Slot travel** | Checkbox | on | Slot axis plus explicit start/end points for every prismatic joint, so the stroke can be modelled rather than inferred. |
+| **Slot travel** | Checkbox | on | Slot axis plus explicit start/end points for every prismatic joint, so the stroke can be modeled rather than inferred. |
 
 ### 3 · Layers — what is included
 
@@ -120,9 +120,9 @@ see here to what they see there.
 
 | Control | Type | Default | CAD layer |
 | --- | --- | --- | --- |
-| **One layer per link** | Checkbox | on | `PMKS_LINK_AB`, `PMKS_LINK_BC`, … instead of one shared centreline layer. This is the highest-value option on the screen: Fusion makes a sketch per layer and SolidWorks imports layers selectively, so this is what lets a reader get one part per link without separating anything by hand. |
-| **Link centrelines** | Checkbox, always on | on | `PMKS_LINK_CENTERLINES` — shown disabled-on, because a drawing without them is empty. |
-| **Joint centres** | Checkbox, always on | on | `PMKS_JOINT_CENTERS` |
+| **One layer per link** | Checkbox | on | `PMKS_LINK_AB`, `PMKS_LINK_BC`, … instead of one shared centerline layer. This is the highest-value option on the screen: Fusion makes a sketch per layer and SolidWorks imports layers selectively, so this is what lets a reader get one part per link without separating anything by hand. |
+| **Link centerlines** | Checkbox, always on | on | `PMKS_LINK_CENTERLINES` — shown disabled-on, because a drawing without them is empty. |
+| **Joint centers** | Checkbox, always on | on | `PMKS_JOINT_CENTERS` |
 | **Ground points** | Checkbox | on | `PMKS_GROUND_POINTS` — bare points at the fixed joints. The ground *symbol* is a drawing convention; what a CAD user needs is which points do not move. |
 | **Kinematic annotations** | Checkbox | on | `PMKS_KINEMATIC_ANNOTATIONS` — ground hatches, input arrows. Exists today. |
 | **Forces** | Checkbox | off | `PMKS_FORCES`. Exists today. Disabled with a reason when the drawing carries no forces. |
@@ -152,7 +152,7 @@ see here to what they see there.
 1. **Default** — Build-parts preset, everything collapsed, summary populated.
 2. **Custom, expanded** — every section open, so the designer can see the full stack at once.
 3. **A control that cannot be used** — Traced paths disabled because nothing traces, with its
-   reason visible. The rule the app already follows elsewhere: a greyed control says *why*, and the
+   reason visible. The rule the app already follows elsewhere: a grayed control says *why*, and the
    explanation is reachable by hover on the row rather than on the disabled control itself, which
    receives no pointer events.
 4. **Nothing to export** — an empty grid. The export button is disabled and the summary reads

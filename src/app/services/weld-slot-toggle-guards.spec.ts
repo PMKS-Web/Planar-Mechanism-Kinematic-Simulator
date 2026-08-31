@@ -236,7 +236,7 @@ describe('weld on a grounded joint', () => {
 
   it('still refuses a driven joint, which is a real contradiction', () => {
     // Unlike ground: a weld says the bodies here do not move relative to each
-    // other and an input says they do. That one is greyed, not silent.
+    // other and an input says they do. That one is grayed, not silent.
     const s = twoBars();
     s.b.input = true;
     expect(s.service.gridUtils.canToggleWeld(s.b)).toBe(false);

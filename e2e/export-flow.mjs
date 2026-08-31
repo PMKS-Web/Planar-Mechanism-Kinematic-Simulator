@@ -691,7 +691,7 @@ record(
   geometry.footBottom > 0 && geometry.footBottom <= geometry.window,
   geometry
 );
-// One mark, one colour: this used to be a grey pip inside the mass table's
+// One mark, one color: this used to be a gray pip inside the mass table's
 // lavender ring, because both were called `.dot`.
 const separator = await drawer()
   .locator('.pickSep')

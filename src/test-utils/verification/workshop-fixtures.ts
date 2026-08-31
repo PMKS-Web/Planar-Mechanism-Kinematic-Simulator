@@ -1,7 +1,7 @@
 import { MechanismFixture } from './fixture';
 
 // Mechanisms that fill holes in the template library rather than holes in the
-// solver. Each one is a machine a workshop would recognise, chosen because the
+// solver. Each one is a machine a workshop would recognize, chosen because the
 // library has no other example of the thing it does: a four-bar whose output
 // crank goes round, a link that is two bars welded together, and a drive that
 // pushes instead of turning.

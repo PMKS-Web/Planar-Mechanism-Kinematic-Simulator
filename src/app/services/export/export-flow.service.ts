@@ -135,7 +135,7 @@ export class ExportFlowService {
       this.cached = this.build();
       // The forces step can stop existing under a reader who is standing on it
       // -- switching to In-motion can leave the solver with no frames -- and a
-      // step that is not in the list has no neighbours: Back disappeared and
+      // step that is not in the list has no neighbors: Back disappeared and
       // Next threw them back to the first question. Fall back to the step
       // before it, which every drawing has.
       if (this.step === 'forces' && !this.cached.forces) this.step = 'kinematics';
@@ -241,17 +241,17 @@ export class ExportFlowService {
   }
 
   /** Which way each of Back and Next leads from here. */
-  private neighbour(by: 1 | -1): ExportStep | undefined {
+  private neighbor(by: 1 | -1): ExportStep | undefined {
     const order = this.steps();
     return order[order.indexOf(this.step) + by];
   }
 
   nextStep(): ExportStep | undefined {
-    return this.neighbour(1);
+    return this.neighbor(1);
   }
 
   previousStep(): ExportStep | undefined {
-    return this.neighbour(-1);
+    return this.neighbor(-1);
   }
 
   // --- the column steps -----------------------------------------------------
@@ -281,7 +281,7 @@ export class ExportFlowService {
   /**
    * What is ticked, defaulting to everything a reader usually wants.
    *
-   * Centre of mass is the one thing left off: it is three more series per link
+   * Center of mass is the one thing left off: it is three more series per link
    * about a point most drawings never move, and a file is easier to widen than
    * to explain.
    */

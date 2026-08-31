@@ -59,7 +59,7 @@ const state = () =>
     invalid: document.body.textContent.includes('nothing to slide along'),
   }));
 
-const centreOf = (id) =>
+const centerOf = (id) =>
   page.evaluate((jointId) => {
     const node = document.querySelector(`#joint_${jointId}`);
     if (!node) return null;
@@ -68,8 +68,8 @@ const centreOf = (id) =>
   }, id);
 
 async function dragJointOnto(from, to, name) {
-  const a = await centreOf(from);
-  const b = typeof to === 'string' ? await centreOf(to) : to;
+  const a = await centerOf(from);
+  const b = typeof to === 'string' ? await centerOf(to) : to;
   if (!a || !b) return { skipped: `no ${from} or ${JSON.stringify(to)}` };
   await page.mouse.move(a.x, a.y);
   await page.mouse.down();

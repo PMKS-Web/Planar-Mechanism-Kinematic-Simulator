@@ -196,7 +196,7 @@ export class ContextMenuBuilderService {
   /**
    * Lock All and Unlock All, each with its own count.
    *
-   * The pair never both grey at once — one of them always has something to do
+   * The pair never both gray at once — one of them always has something to do
    * on a drawing that holds anything — so there is always a way out of a
    * fully locked mechanism.
    */
@@ -326,7 +326,7 @@ export class ContextMenuBuilderService {
       }),
     ];
     // A cylinder's own joints take no third member, so the row is absent there
-    // rather than greyed: that is a fact about the part, not this arrangement.
+    // rather than grayed: that is a fact about the part, not this arrangement.
     if (!this.mechanism.cylinderAt(joint)) {
       rows.push(
         new MenuRow({
@@ -350,7 +350,7 @@ export class ContextMenuBuilderService {
       );
     }
     // A load has to say which body carries it. At a joint two links share there
-    // is no answer, so the row is greyed here and offered on the bar, where the
+    // is no answer, so the row is grayed here and offered on the bar, where the
     // anchor can be placed unambiguously.
     const bars = joint.links.filter((link): link is RealLink => link instanceof RealLink);
     if (bars.length > 0) {
@@ -392,7 +392,7 @@ export class ContextMenuBuilderService {
       }),
     ];
     // A slider on a cylinder's joint is structurally off the table — the
-    // assembly already is one — so it is absent rather than greyed.
+    // assembly already is one — so it is absent rather than grayed.
     if (!sealed) {
       const isSlider = this.gridUtils.isAttachedToSlider(joint);
       rows.push(
@@ -484,7 +484,7 @@ export class ContextMenuBuilderService {
    * reaction — so a reader is never handed a switch that draws something the
    * mode they are in is not asking about. A force is carried at a joint and
    * has no single value for a whole link, so the row is absent on a link
-   * rather than greyed: that is a fact about the kind of part, not about this
+   * rather than grayed: that is a fact about the kind of part, not about this
    * arrangement.
    */
   private vectorRows(part: RealJoint | RealLink): MenuRow[] {
@@ -537,7 +537,7 @@ export class ContextMenuBuilderService {
     // A slider's block is not named: it is drawn *on* this joint rather than
     // beside it, so "and the block at C" describes no second thing the reader
     // can see going. Nor are a cylinder's own members, which the word
-    // "cylinder" already covers -- what is left is the neighbouring bar the
+    // "cylinder" already covers -- what is left is the neighboring bar the
     // mount was also holding, and that one the reader has to be told about.
     const inside = new Set<string>(
       sealed ? [sealed.barrel.id, sealed.rod.id, sealed.block.id] : []
@@ -713,7 +713,7 @@ export class ContextMenuBuilderService {
         action: () => this.mechanism.duplicateLink(link),
         tip: 'Set a free-standing copy of this link down beside it.',
         // A welded compound is several links and the welds between them, so
-        // there is no single link for this to copy. Greyed rather than
+        // there is no single link for this to copy. Grayed rather than
         // hidden: copying one is a thing a reader can reasonably expect, and
         // the row says which link to ask instead.
         refusal: this.mechanism.canDuplicate(link)
@@ -817,9 +817,9 @@ export class ContextMenuBuilderService {
             // used. The frame is a state, so it reads as one.
             new MenuRow({
               label: 'Global Frame',
-              // The app's own force_global glyph carries its own colours, so
+              // The app's own force_global glyph carries its own colors, so
               // it stays blue on an unticked row and reads as already on --
-              // the one icon in the menu that does not take the row's colour.
+              // the one icon in the menu that does not take the row's color.
               icon: 'public',
               material: true,
               kind: 'toggle',
@@ -888,7 +888,7 @@ export class ContextMenuBuilderService {
   private lockRow(target: RealJoint | RealLink | Force, joint: RealJoint | undefined): MenuRow {
     const locked = this.mechanism.isLockedTarget(target);
     // A joint can be held still without carrying a mark of its own: the marks
-    // on its neighbours close over it. The switch says so and names them,
+    // on its neighbors close over it. The switch says so and names them,
     // because the fix is on them rather than here.
     const held = joint && !locked ? this.heldRefusal(joint) : undefined;
     return new MenuRow({
@@ -949,7 +949,7 @@ export class ContextMenuBuilderService {
    *
    * A row of its own would cost height on every menu; this costs none. In the
    * analysis modes it goes back to Edit, which is where the geometry can be
-   * changed; in Edit it goes to Kinematic Analysis, and greys with the
+   * changed; in Edit it goes to Kinematic Analysis, and grays with the
    * readiness reason when there is nothing that can be analyzed yet.
    */
   private crossing(part: Joint | Link | Force) {
@@ -976,7 +976,7 @@ export class ContextMenuBuilderService {
    * A grid can hold a four-bar that runs beside a half-drawn chain that does
    * not, and asking "is anything here analyzable" would offer the crossing
    * from the half-drawn one on the strength of the four-bar next to it. The
-   * modes themselves would then grey that part out on arrival, which is an
+   * modes themselves would then gray that part out on arrival, which is an
    * offer taken back after it was accepted.
    */
   private analysisRefusal(part: Joint | Link | Force): MenuRefusal | undefined {

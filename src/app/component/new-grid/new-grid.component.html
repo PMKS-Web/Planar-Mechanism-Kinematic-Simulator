@@ -419,12 +419,12 @@
   </g>
   <!-- Layer 2 of §2.8: the carrier, with its channel subtracted. The window is a
        real hole rather than a lighter shape laid on top, so it reads as a slot
-       cut through the bar and its legibility cannot depend on the random colour
+       cut through the bar and its legibility cannot depend on the random color
        that bar happens to have. -->
   <!-- A driven joint's motor, in three layers that have to stay in this order.
        The case is drawn black *under* everything: the body it is bolted to is
-       then drawn over it in its own colour at the fill alpha every link uses,
-       which is what tints the case to that body's colour and makes the two read
+       then drawn over it in its own color at the fill alpha every link uses,
+       which is what tints the case to that body's color and makes the two read
        as one part rather than as a box parked on a joint. The arrows sit on the
        case but still under the links, so the member the motor turns passes over
        them exactly as it passes over the case. -->
@@ -505,9 +505,9 @@
   </g>
   <!-- Layers 3-5 of §2.8: the block, then the weld plate that fuses a Slide's
        rider to it, then the arrows. The block is #000 in every one of the four
-       slider cells — there is no colour derivation anywhere in this system. A
-       Slide looks like it shares the rider's colour because the plate above it
-       is painted in the rider's own colour at the link's own alpha, which is
+       slider cells — there is no color derivation anywhere in this system. A
+       Slide looks like it shares the rider's color because the plate above it
+       is painted in the rider's own color at the link's own alpha, which is
        why a random palette can never break the cue. Arrows sit above the plate
        so nothing can tint them: they are always white, and that is only safe
        because what is underneath is always black. -->
@@ -532,7 +532,7 @@
         @switch (item.kind) {
           @case ('block') {
             <!-- Grabbing the block starts a drag on its pin (§4.4). The block is
-                 a far bigger target than the marker at its centre, and the two
+                 a far bigger target than the marker at its center, and the two
                  sit on the same point, so it is the same grab with a better
                  hitbox. -->
             <g
@@ -671,9 +671,9 @@
     @for (cyl of cylinderList; track cyl.id) {
       <g class="cylinder-mark" [attr.transform]="sliderMarks.frame(cyl)">
         <!-- A ram is a body like any other: in an analysis mode, one the mode
-             cannot analyse is scenery and goes grey with the rest of its
+             cannot analyze is scenery and goes gray with the rest of its
              machine. Its skin is painted from its own fill rather than through
-             the link classes, so it was the one part that stayed in colour. -->
+             the link classes, so it was the one part that stayed in color. -->
         <path
           class="cylinder-barrel"
           [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
@@ -772,7 +772,7 @@
       >
         <!-- Same per-path alphas as the committed skin, so the black block
              reads through the rod exactly as it will once built — and the same
-             colour, which is the one the barrel is about to be handed rather
+             color, which is the one the barrel is about to be handed rather
              than a stand-in that changes at the moment of the click. -->
         <path [attr.d]="ghost.barrel" [attr.fill]="ghost.fill" fill-opacity="0.7" />
         <path [attr.d]="ghost.block" fill="#000000" />
@@ -911,7 +911,7 @@
                 [class]="mechanismSrv.getJointCSSClass(joint)"
                 [style.fill]="jointFillOf(joint)"
               />
-              <!-- What "picked" means, on a joint that keeps its own colour
+              <!-- What "picked" means, on a joint that keeps its own color
                    while it is picked. Drawn inside the edge rather than on it,
                    so a selected joint is the same size as an unselected one. -->
               @if (selectionRingOn(joint); as ring) {
@@ -955,7 +955,7 @@
                 "
               >
                 <!-- A plain joint's cream circle is chip enough, and the glyph
-                     sits dead centre on it. A welded joint's plus-mark is its
+                     sits dead center on it. A welded joint's plus-mark is its
                      own message, so the badge steps aside to the shoulder and
                      brings a white chip to stand on. -->
                 @if (gridUtils.getWelded(joint)) {
@@ -1353,7 +1353,7 @@
             <!-- Placed in model coordinates, then flipped back so the words read
                the right way up inside the grid's own y-flip. A filled pill
                rather than bare text: it is read against whatever the drawing
-               puts behind it, and grey words over a link are words nobody can
+               puts behind it, and gray words over a link are words nobody can
                read. -->
             <g [attr.transform]="'translate(' + chip.x + ',' + chip.y + ') scale(1,-1)'">
               <rect
@@ -1563,7 +1563,7 @@
   @for (force of mechanismSrv.getForces(); track force) {
     <!-- A force is something to place, and placing is an Edit job: the analysis
          modes have no panel for one and cannot move it, so it is drawn and
-         nothing more. It also goes grey with the body it acts on, which is what
+         nothing more. It also goes gray with the body it acts on, which is what
          the rest of an unanalysable machine does. -->
     <g
       id="forcesHolder"
@@ -1792,12 +1792,12 @@
           <svg style="overflow: visible">
             <!-- The standard mark: four quarters, two black and two white, the
                  way every textbook and every other package draws it. The white
-                 pair used to be left unpainted so the body's colour showed
+                 pair used to be left unpainted so the body's color showed
                  through, which reads as a different symbol on every link and as
                  no symbol at all on a pale one. The outline is the same four
                  wedges stroked rather than a circle drawn beside them -- one set
                  of coordinates, so it cannot land anywhere else. -->
-            <!-- The shape's own centre, kept visible while the CoM mark is
+            <!-- The shape's own center, kept visible while the CoM mark is
                  placed elsewhere: the custom position is an offset from
                  exactly this point. -->
             @if (comCentroidDot(link); as centroid) {
@@ -1884,7 +1884,7 @@
             !isSecondaryCylinderTag(link) &&
             gridUtils.typeOfLink(link) !== 'P'
           ) {
-            <!-- Both the name and the centre-of-mass mark belong at the centre
+            <!-- Both the name and the center-of-mass mark belong at the center
                  of the link, so when the mark is being shown the name steps up
                  out of its way -- along the name's own up, which on a bar
                  written lengthwise is across the bar. -->
@@ -1992,7 +1992,7 @@
         [attr.font-size]="svgGrid.scaleWithZoom(20)"
       >
         {{
-          this.nup.formatModelLength(
+          this.nup.formatModelength(
             getLengthBetweenOverlayPoints(),
             this.settings.lengthUnit.getValue()
           )
@@ -2036,7 +2036,7 @@
     </g>
   }
   <!-- The distance a CoM field states, drawn where it is measured: from the
-       frame's zero, along the hovered axis, to the centre of mass — whose
+       frame's zero, along the hovered axis, to the center of mass — whose
        mark the same hover previews. -->
   @if (comMeasure && comMeasureValue(comMeasure) > 1e-9 ? comMeasure : null; as measure) {
     <g style="pointer-events: none; transform: scaleY(-1)">
@@ -2070,7 +2070,7 @@
         [attr.y]="-comMeasureLabelPos(measure).y"
         [attr.font-size]="svgGrid.scaleWithZoom(20)"
       >
-        {{ nup.formatModelLength(comMeasureValue(measure), settings.lengthUnit.getValue()) }}
+        {{ nup.formatModelength(comMeasureValue(measure), settings.lengthUnit.getValue()) }}
       </text>
     </g>
   }

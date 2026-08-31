@@ -41,7 +41,7 @@ describe('vector traces', () => {
       expect(trace.scale * trace.largest).toBeCloseTo(100 * LONGEST_ARROW_FRACTION, 6);
     });
 
-    it('normalises each quantity against its own maximum', () => {
+    it('normalizes each quantity against its own maximum', () => {
       const slow = buildVectorTrace(4, straight, straight, 100)!;
       const fast = buildVectorTrace(4, straight, (index) => ({ x: index * 1000, y: 0 }), 100)!;
       // A thousand times the numbers, the same longest arrow on the drawing.

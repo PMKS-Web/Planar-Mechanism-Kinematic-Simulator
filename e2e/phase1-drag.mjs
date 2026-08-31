@@ -70,7 +70,7 @@ async function flushReport() {
 
 /**
  * Joint ids with both their model coordinates (the `x`/`y` attributes on the
- * wrapper svg are joint.x/joint.y) and their screen centres, so a drag can aim
+ * wrapper svg are joint.x/joint.y) and their screen centers, so a drag can aim
  * in screen space and be checked in model space.
  */
 async function jointState(page) {
@@ -321,7 +321,7 @@ await safe('dragging a link body translates all of its joints', async () => {
     { B: [bdx, bdy], C: [cdx, cdy] }
   );
   record(
-    'the grounded joints of neighbouring links stayed put',
+    'the grounded joints of neighboring links stayed put',
     Math.hypot(adx, ady) < 0.05 && Math.hypot(ddx, ddy) < 0.05,
     { A: [adx, ady], D: [ddx, ddy] }
   );
@@ -598,13 +598,13 @@ await safe('a legal target captures the dragged joint under an amber ring', asyn
   // Survivor first, then the joint being folded in, with the arrow reading in
   // the direction of travel: E sits to the right of D, so it comes in leftward.
   record(
-    'the capture is labelled with the merge, not two overlapping names',
+    'the capture is labeled with the merge, not two overlapping names',
     labels.includes('D \u2190 E'),
     {
       merge: labels.filter((l) => /[\u2190\u2192]/.test(l)),
     }
   );
-  record('neither joint is still labelled on its own', !labels.includes('A'), {
+  record('neither joint is still labeled on its own', !labels.includes('A'), {
     labels: labels.filter((l) => l.length <= 2),
   });
 
@@ -867,7 +867,7 @@ await safe('Alt pressed without moving still calls off the merge', async () => {
   record('the ring is gone', (await snapRingCount(page)) === 0);
 });
 
-// --- The merge label points the way the joint travelled --------------------
+// --- The merge label points the way the joint traveled --------------------
 await safe('a joint arriving from the right reverses the arrow', async () => {
   await loadMergeable(page);
   const before = await jointState(page);

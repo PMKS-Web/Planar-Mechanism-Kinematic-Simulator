@@ -7,7 +7,7 @@ import { collinearGuides, orientedCapsulePath, railGeometry } from '../../app/mo
  * A carrier subtracts a channel by appending it to its own path and filling
  * even-odd. That is exactly right for one channel and exactly wrong for two
  * that cross: the crossing lies inside both, so it is wound three times, comes
- * out odd, and fills back in. What renders is a carrier-coloured diamond in the
+ * out odd, and fills back in. What renders is a carrier-colored diamond in the
  * middle of the X with both capsule outlines stroked straight through it.
  *
  * Two grounded guides that cross have the same problem in the hatch layer,
@@ -119,7 +119,7 @@ describe('a grounded guide sharing a line with another', () => {
     }
   });
 
-  it('recognises the same line however far along it the other guide sits', () => {
+  it('recognizes the same line however far along it the other guide sits', () => {
     const own = { x: 0, y: 0, angle: 0, halfLength: 3, halfWidth: 0.3 };
 
     expect(collinearGuides(own, { ...own, x: 40 }, 0.01)).toBe(true);

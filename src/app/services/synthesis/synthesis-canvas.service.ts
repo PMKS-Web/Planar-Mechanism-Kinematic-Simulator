@@ -385,7 +385,7 @@ export class SynthesisCanvasService {
     const r = this.settings.objectScale / 4;
     const bar = (a: Coord, b: Coord, colorIndex: number): PreviewLink => ({
       d: capsulePath(a.x, a.y, b.x, b.y, r),
-      // The colours the linkage will actually be built in, asked of the same
+      // The colors the linkage will actually be built in, asked of the same
       // service `insert` asks, so the preview cannot promise one thing and the
       // drawing deliver another.
       color: this.colors.getLinkColorFromIndex(colorIndex),
@@ -411,7 +411,7 @@ export class SynthesisCanvasService {
     if (!solved) return [];
     // The letters these pins will be built under, which follow the pins rather
     // than the fields: reading from the far pin puts pin D in the field called
-    // A, and labelling by the field renamed half the linkage every time the
+    // A, and labeling by the field renamed half the linkage every time the
     // drive end changed.
     const letter = this.solution.previewLetters();
     const out: PreviewJoint[] = [

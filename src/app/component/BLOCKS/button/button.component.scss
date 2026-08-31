@@ -16,7 +16,7 @@
 
     // Material gives mat-icon a box taller than the glyph it holds (22px
     // against an 18px drawing), and lays that drawing out at the top of it.
-    // The button then centres the box, which leaves the icon itself riding a
+    // The button then centers the box, which leaves the icon itself riding a
     // couple of pixels above the label beside it -- visible on every icon
     // button in the panels, and obvious on one whose glyph is a plain circle.
     // Centring the contents of the box puts the drawing where the box is.
@@ -56,7 +56,7 @@
     }
 
     &:disabled {
-      //background-color: grey;
+      //background-color: gray;
       //cursor: not-allowed;
       mat-icon {
         svg {
@@ -64,7 +64,7 @@
             //fill: rgba(0, 0, 0, 0.6);
             //fill: white;
             //Indigo
-            fill: grey;
+            fill: gray;
             //fill: #F44336;
           }
         }

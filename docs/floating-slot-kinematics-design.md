@@ -180,7 +180,7 @@ could not resolve even if emitted. The typed loop is therefore the open chain in
 To keep step 1 byte-identical, a grounded-slider pair becomes
 `{ kind: 'link', linkId: <sliderBlockId> }` and the existing `switch (link.constructor)` branches
 survive untouched. Folding grounded slots into `kind: 'slot'` with `ω_carrier = 0` is a real
-simplification, but it is a *behavioural* unification and belongs after verification, as optional
+simplification, but it is a *behavioral* unification and belongs after verification, as optional
 cleanup (§8) — never inside the representation swap.
 
 ### 2.6 Loop identity
@@ -221,7 +221,7 @@ Sanity anchor: a grounded slot has `ω₄ = α₄ = 0` and every new term vanish
 
 ## 4. Sequence overview
 
-1. **Representation swap, no behaviour change** (§5). The verified suite must stay green and
+1. **Representation swap, no behavior change** (§5). The verified suite must stay green and
    byte-identical.
 2. + 3. **Slot enumeration and the new equation terms, landed together in one reviewable change**
    (§7), so there is never a state where loops close and the numbers are quietly wrong.
@@ -293,8 +293,8 @@ never wired into the app. **Decision: 2.11 is de-scoped from Phase 2, and the IC
 from Gate 2** (`joint-types-plan.md` records the same). Consequences for this plan:
 
 - `ic-solver.ts` is **untouched by every step here**. It is self-contained and uncalled, so it
-  keeps compiling against `string[]`; converting it "changing no behaviour" would have been hollow
-  anyway — there is no behaviour to preserve and no test to keep green.
+  keeps compiling against `string[]`; converting it "changing no behavior" would have been hollow
+  anyway — there is no behavior to preserve and no test to keep green.
 - The engine-side prerequisite an IC feature would someday need — a per-timestep-correct
   `slotAngle` — is delivered by this plan regardless.
 - If the feature is ever revived, that is its own project: characterization tests first (four-bar
@@ -314,7 +314,7 @@ Do **not** put the carrier into `PrisJoint.links` or `connectedJoints`. That sha
 [`mechanism.ts:1191`](../src/app/model/mechanism/mechanism.ts)); the position solver depends on it,
 and mutating it was the rejected Option A move. Instead, `LoopSolver` builds an internal
 supplemental adjacency before walking: for each `PrisJoint` with `isFloating && isSlotWellFormed`,
-the carrier's joints are offered as neighbours of the slider (and the slider as a neighbour of
+the carrier's joints are offered as neighbors of the slider (and the slider as a neighbor of
 each of them). Crossing that adjacency emits a `slot` edge.
 
 ### 7.2 One edge per crossing, and canonicalization

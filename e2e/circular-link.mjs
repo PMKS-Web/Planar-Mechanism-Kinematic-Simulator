@@ -86,7 +86,7 @@ const crankMenu = await menuLabels(before.id);
 const couplerMenu = await menuLabels(coupler.id);
 // The row is a state now -- "Drawn as a Disc", ticked or not -- rather than a
 // verb whose label flipped between Make Circular and Make Bar. And it is
-// greyed with its reason on a link that cannot take one rather than hidden:
+// grayed with its reason on a link that cannot take one rather than hidden:
 // the menu's one availability rule is that a reader is told why.
 check('the crank is offered a disc', crankMenu.includes('Drawn as a Disc'), crankMenu.join(', '));
 const couplerDisc = await page.evaluate((id) => {

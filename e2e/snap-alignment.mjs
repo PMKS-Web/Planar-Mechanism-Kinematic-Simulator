@@ -1,10 +1,10 @@
 /**
- * Squaring a drag up with its neighbours -- and only where it is asked for.
+ * Squaring a drag up with its neighbors -- and only where it is asked for.
  *
  * A joint dragged nearly level with another one is pulled level, with a guide
  * line saying which one. A whole body dragged by its middle is not: both helps
  * act on the joint the body is named from rather than on the point under the
- * hand, so the guide named a neighbour the reader had not aimed at and the body
+ * hand, so the guide named a neighbor the reader had not aimed at and the body
  * stepped sideways to put one of its several joints on a grid corner.
  *
  * What must hold:
@@ -133,7 +133,7 @@ await load(payloads['4-Bar']);
 record('the settings panel offers it', await setOption('snapToAlignment', true));
 const bar = await dragBodyToward('#linkHolder path', 'A', 'D', 'y');
 record('dragging a bar by its body draws no guide', bar.guides === 0, bar);
-record('and leaves it where the cursor let go, not level with a neighbour', bar.off > 1e-6, bar);
+record('and leaves it where the cursor let go, not level with a neighbor', bar.off > 1e-6, bar);
 // The drag is aimed three units short of level, so a body that has not been
 // pulled anywhere is three units short of level. Anything else -- a nudge onto
 // a grid corner included -- moves it off that. The tolerance is a fiftieth of a

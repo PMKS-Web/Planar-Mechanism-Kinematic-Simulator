@@ -55,7 +55,7 @@ function startingSpan(mechanism: Mechanism): number {
   return Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
 }
 
-/** The furthest any joint moves between two neighbouring samples. */
+/** The furthest any joint moves between two neighboring samples. */
 function worstJump(mechanism: Mechanism): number {
   const frames = mechanism.joints;
   let worst = 0;

@@ -32,7 +32,7 @@ const load = async (id) => {
   await waitForReady(page);
 };
 
-/** Every joint's drawn centre, which is what an edit is supposed to move. */
+/** Every joint's drawn center, which is what an edit is supposed to move. */
 const pose = () =>
   page.evaluate(() =>
     [...document.querySelectorAll('[id^="joint_"]')]
@@ -65,7 +65,7 @@ const record = (what, ok, detail) => {
 };
 
 /**
- * Type into a labelled field of the Edit panel and commit it.
+ * Type into a labeled field of the Edit panel and commit it.
  *
  * Two shapes to look through: a single `input-block` labels its own row, and a
  * `dual-input-block` (joint X/Y, link length and angle) labels each of its two

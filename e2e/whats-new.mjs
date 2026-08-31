@@ -249,11 +249,11 @@ const seen = (page, selector) =>
   await page.locator('[aria-label="Project menu"]').click();
   await page.locator('#projectMenu input[type=file]').dispatchEvent('change');
   await page.waitForTimeout(400);
-  const cancelled = await page.evaluate(() => window.__cover);
+  const canceled = await page.evaluate(() => window.__cover);
   check(
     'Dismissing the file picker raises no cover',
-    cancelled.length === 0,
-    JSON.stringify(cancelled)
+    canceled.length === 0,
+    JSON.stringify(canceled)
   );
   await context.close();
 }

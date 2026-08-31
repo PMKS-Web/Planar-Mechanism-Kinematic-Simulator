@@ -97,7 +97,7 @@ describe('lock marks in the URL', () => {
     expect(opened.forces.every((f) => !f.locked)).toBe(true);
   });
 
-  it("honours an 'L' reference from the earlier spelling by marking the link's joints", () => {
+  it("honors an 'L' reference from the earlier spelling by marking the link's joints", () => {
     // Locks briefly encoded as link references. The decoder keeps reading
     // them — as the shortcut they always were — so any URL shared during
     // that window still opens held.

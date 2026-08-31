@@ -162,7 +162,7 @@ everywhere. Three exceptions:
 
 - `Distance To Joints` — "To" should not be capitalised in title case.
 - `Degress of freedom must be one` — a typo (**Degress**), and sentence case
-  where its neighbours in the same list are Title Case.
+  where its neighbors in the same list are Title Case.
 - `X-Comp` / `Y-Comp` — abbreviated where nothing else is. `X` and `Y` alone
   would match the dual-input blocks everywhere else.
 
@@ -299,7 +299,7 @@ for `playback` and `actuator`. See `docs/ui-vocabulary.md`.
 - `The x and y components of the force in Newtons | lbf.` — the `|` is a
   developer's shorthand for "or", visible to users.
 - `An input joint doubles as a ground joint.` — reads as a statement of fact;
-  it is one of the mobility checklist's conditions, and its neighbours are
+  it is one of the mobility checklist's conditions, and its neighbors are
   phrased as conditions (`At least one joint is grounded`).
 - `Joint T is internal to one welded body and has no independent pin reaction.`
   — shown for any joint with only one link, including a plain tracer point on an

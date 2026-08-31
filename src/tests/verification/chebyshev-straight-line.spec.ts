@@ -74,7 +74,7 @@ describe("Chebyshev's straight-line linkage", () => {
     // lesson of the bound below.
     expect(run).toBeGreaterThan(CHEBYSHEV.coupler);
     expect(Math.abs(slope)).toBeLessThan(0.02);
-    // It strays 0.38% of the distance travelled, which is what "approximate
+    // It strays 0.38% of the distance traveled, which is what "approximate
     // straight-line linkage" means: near enough to teach with, and not exact.
     // The bound is close to where the mechanism lands rather than a round
     // number, because this is the only assertion in the file that can tell the

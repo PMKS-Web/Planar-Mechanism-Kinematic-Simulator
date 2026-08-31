@@ -162,10 +162,10 @@ export class SynthesisSolutionService {
   /**
    * Run the search.
    *
-   * The enumeration is real work -- it constructs a circle centre for every
+   * The enumeration is real work -- it constructs a circle center for every
    * pair of pin positions and then walks a full crank revolution for each
    * candidate -- but on a small design it finishes in well under a tenth of a
-   * second, and a button labelled "Generate solutions" that produces its answer
+   * second, and a button labeled "Generate solutions" that produces its answer
    * in one frame reads as though nothing happened. So the progress state has a
    * floor rather than a fake delay: the search starts immediately, and the bar
    * stays up until it has been visible long enough to be read. A slower search
@@ -557,7 +557,7 @@ export class SynthesisSolutionService {
    * The letters this design's pins will be built under.
    *
    * Asked by the preview as well as by insert, so that what is drawn beside a
-   * pin is what that pin ends up called. Labelling the preview A-D and letting
+   * pin is what that pin ends up called. Labeling the preview A-D and letting
    * insert take the next free letters agreed only on an empty grid: beside one
    * loose joint the preview said D-C-B-A over pins that arrived as E-D-C-B.
    */

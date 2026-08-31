@@ -48,7 +48,7 @@ interface PathStep {
 }
 
 /** A joint the walk may step to, and how it would get there. */
-interface Neighbour {
+interface Neighbor {
   joint: RealJoint;
   viaSliderId?: string;
 }
@@ -91,7 +91,7 @@ export class LoopSolver {
       return this.copyOf(remembered);
     }
     const loops: Loop[] = [];
-    const slotNeighbours = this.slotAdjacency(joints);
+    const slotNeighbors = this.slotAdjacency(joints);
     const groundJoints: Joint[] = [];
     joints.forEach((j) => {
       if (!(j instanceof RealJoint) || !j.ground) {
@@ -106,13 +106,13 @@ export class LoopSolver {
       }
     });
 
-    const neighbourCache = new Map<string, Neighbour[]>();
+    const neighborCache = new Map<string, Neighbor[]>();
     while (groundJoints.length >= 2) {
       const desiredGround = groundJoints.shift()!;
       if (!(desiredGround instanceof RealJoint)) {
         continue;
       }
-      this.neighboursOf(desiredGround, slotNeighbours, neighbourCache).forEach((next) => {
+      this.neighborsOf(desiredGround, slotNeighbors, neighborCache).forEach((next) => {
         this.findGround(
           next.joint,
           groundJoints,
@@ -123,8 +123,8 @@ export class LoopSolver {
           ],
           loops,
           links,
-          slotNeighbours,
-          neighbourCache
+          slotNeighbors,
+          neighborCache
         );
       });
     }
@@ -192,7 +192,7 @@ export class LoopSolver {
    * Independence is settled here, on topology, rather than in the solver: the
    * loops are enumerated once per mechanism and the solver rebuilds its
    * matrices every timestep, and every consumer of `requiredLoops` — the
-   * velocity solver, the force solver, the instant centres — has to be looking
+   * velocity solver, the force solver, the instant centers — has to be looking
    * at the same set or they disagree about what the mechanism is.
    *
    * The test is elimination over GF(2) in the mechanism's cycle space. A loop
@@ -286,8 +286,8 @@ export class LoopSolver {
    * different loop closures, and since the carrier is rigid the walk can still
    * reach its other joints by ordinary link steps.
    */
-  private static slotAdjacency(joints: Joint[]): Map<string, Neighbour[]> {
-    const adjacency = new Map<string, Neighbour[]>();
+  private static slotAdjacency(joints: Joint[]): Map<string, Neighbor[]> {
+    const adjacency = new Map<string, Neighbor[]>();
     const add = (fromId: string, joint: RealJoint, viaSliderId: string) => {
       const existing = adjacency.get(fromId) ?? [];
       existing.push({ joint, viaSliderId });
@@ -315,17 +315,17 @@ export class LoopSolver {
    * fresh, it was a fifth of the time spent enumerating a forty-five joint
    * linkage's loops, and most of its garbage.
    */
-  private static neighboursOf(
+  private static neighborsOf(
     joint: RealJoint,
-    slotNeighbours: Map<string, Neighbour[]>,
-    cache?: Map<string, Neighbour[]>
-  ): Neighbour[] {
+    slotNeighbors: Map<string, Neighbor[]>,
+    cache?: Map<string, Neighbor[]>
+  ): Neighbor[] {
     const known = cache?.get(joint.id);
     if (known) return known;
     const linked = joint.connectedJoints
       .filter((candidate): candidate is RealJoint => candidate instanceof RealJoint)
-      .map((candidate) => ({ joint: candidate }) as Neighbour);
-    const all = [...linked, ...(slotNeighbours.get(joint.id) ?? [])];
+      .map((candidate) => ({ joint: candidate }) as Neighbor);
+    const all = [...linked, ...(slotNeighbors.get(joint.id) ?? [])];
     cache?.set(joint.id, all);
     return all;
   }
@@ -376,13 +376,13 @@ export class LoopSolver {
     path: PathStep[],
     loops: Loop[],
     links: Link[],
-    slotNeighbours: Map<string, Neighbour[]>,
-    neighbourCache: Map<string, Neighbour[]>
+    slotNeighbors: Map<string, Neighbor[]>,
+    neighborCache: Map<string, Neighbor[]>
   ): void {
     if (!(joint instanceof RealJoint)) {
       return;
     }
-    for (const next of this.neighboursOf(joint, slotNeighbours, neighbourCache)) {
+    for (const next of this.neighborsOf(joint, slotNeighbors, neighborCache)) {
       const j = next.joint;
       if (visited.has(j.id)) {
         continue;
@@ -401,16 +401,7 @@ export class LoopSolver {
       } else {
         visited.add(j.id);
         path.push(step);
-        this.findGround(
-          j,
-          groundJoints,
-          visited,
-          path,
-          loops,
-          links,
-          slotNeighbours,
-          neighbourCache
-        );
+        this.findGround(j, groundJoints, visited, path, loops, links, slotNeighbors, neighborCache);
         path.pop();
         visited.delete(j.id);
       }

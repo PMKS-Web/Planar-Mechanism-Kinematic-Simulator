@@ -54,7 +54,7 @@ server.
 ## What PMKS+ is
 
 A **four-bar linkage** is the first machine most mechanical engineering students meet, and the
-first one whose behaviour is genuinely hard to picture. PMKS+ exists for that moment: draw the
+first one whose behavior is genuinely hard to picture. PMKS+ exists for that moment: draw the
 bars, ground two joints, turn one of them, and the coupler curve appears.
 
 It is a single-page web app. Nothing to install, no account, and no server holding your work. The
@@ -77,7 +77,7 @@ project teams.
 
 The canvas is full-bleed and everything else floats over it, in cards.
 
-![The seven regions of the PMKS+ interface, labelled on a running four-bar](docs/images/readme/interface-map.png)
+![The seven regions of the PMKS+ interface, labeled on a running four-bar](docs/images/readme/interface-map.png)
 
 | | Region | Holds |
 | :-: | --- | --- |
@@ -85,7 +85,7 @@ The canvas is full-bleed and everything else floats over it, in cards.
 | **2** | **Mode panel** | The current mode's panel: the Synthesis form, the Edit properties of what is selected, or that part's analysis graphs. 250px wide, widening to 400px in the analysis modes |
 | **3** | **Canvas** | The grid, right-click menus, dragging, pan and zoom. It runs under everything else, and the view frames the linkage into whatever the cards leave free |
 | **4** | **Playback** | Transport (speed · play/pause · return to the start pose) and a scrub card. Analysis modes only |
-| **5** | **View controls** | Centres of mass · joint IDs · traced paths ‖ zoom out · zoom in · reset view |
+| **5** | **View controls** | Centers of mass · joint IDs · traced paths ‖ zoom out · zoom in · reset view |
 | **6** | **Status strip** | Mode · what the mechanism is ready for · cursor position · units |
 | **7** | **Right drawer** | Settings · Help and feedback · either analysis's setup list · the Export flow. One at a time |
 
@@ -95,7 +95,7 @@ The canvas is full-bleed and everything else floats over it, in cards.
 | --- | --- | --- |
 | **Synthesis** | <kbd>1</kbd> | Generate a linkage from three desired positions of a coupler |
 | **Edit** | <kbd>2</kbd> | Draw and change the mechanism. Only available while the animation is paused at the start pose |
-| **Kinematic Analysis** | <kbd>3</kbd> | Position, velocity and acceleration of a joint, or of a link and its centre of mass |
+| **Kinematic Analysis** | <kbd>3</kbd> | Position, velocity and acceleration of a joint, or of a link and its center of mass |
 | **Force Analysis** | <kbd>4</kbd> | Joint reactions and the torque or force the input must supply |
 
 The analysis modes are deliberately **read-only**. Playback lives with them, and editing lives
@@ -129,7 +129,7 @@ because a weld is precisely the statement that two bodies do *not* move relative
 
 | Part | Notes |
 | --- | --- |
-| **Link** | Two or more joints. Length, mass, rotational inertia, centre of mass, colour, and a name |
+| **Link** | Two or more joints. Length, mass, rotational inertia, center of mass, color, and a name |
 | **Compound link** | Weld joints together and the bars become one rigid body: a bell crank, a bucket, a scoop |
 | **Cylinder** | A first-class, menu-created part: barrel, rod and the sealed slide between them, drawn as the part and drivable as one. A slide you build by hand is an ordinary slide, not a cylinder |
 | **Slider** | On a joint that is free to take one, along a guide at any angle |
@@ -157,7 +157,7 @@ cylinder's Edit panel.
 ![Kinematic analysis of a Whitworth quick-return, with position and velocity graphed](docs/images/readme/kinematic-analysis.png)
 
 Select a **joint** for its position, velocity and acceleration. Select a **link** for its angle,
-angular velocity and angular acceleration, plus the same three for its centre of mass. Each graph
+angular velocity and angular acceleration, plus the same three for its center of mass. Each graph
 opens from a one-line read-out that always shows the value **at the pose currently on screen**, so
 scrubbing the handle moves the number.
 
@@ -282,7 +282,7 @@ Numbers can be written to 2, 4 or 6 decimals, or at full solver precision.
 
 Undo and redo are the same mechanism: the history is an array of these strings, and stepping back
 re-decodes an earlier one. So an undo restores the whole drawing at once (geometry, welds, locks,
-masses, colours and the document's settings) rather than reversing one field.
+masses, colors and the document's settings) rather than reversing one field.
 
 One address does not carry a mechanism: **`app.pmksplus.com/?library`** opens on an empty grid with
 the mechanism library already up. It is the link to hand somebody who wants to browse rather than
@@ -396,7 +396,7 @@ scale objects are drawn at. Snapping preferences are remembered on the machine.
 | --- | --- |
 | **Modes** | <kbd>1</kbd> Synthesis · <kbd>2</kbd> Edit · <kbd>3</kbd> Kinematic · <kbd>4</kbd> Force |
 | **Playback** | <kbd>Space</kbd> play/pause · <kbd>←</kbd> <kbd>→</kbd> step a frame · <kbd>S</kbd> cycle speed |
-| **View** | <kbd>+</kbd> <kbd>−</kbd> zoom · <kbd>0</kbd> reset view · <kbd>M</kbd> centres of mass · <kbd>L</kbd> joint IDs · <kbd>P</kbd> traced paths |
+| **View** | <kbd>+</kbd> <kbd>−</kbd> zoom · <kbd>0</kbd> reset view · <kbd>M</kbd> centers of mass · <kbd>L</kbd> joint IDs · <kbd>P</kbd> traced paths |
 | **Editing** | <kbd>K</kbd> lock/unlock · <kbd>Esc</kbd> deselect · <kbd>Delete</kbd> delete · <kbd>Ctrl/⌘ Z</kbd> undo · <kbd>Ctrl/⌘ ⇧ Z</kbd> redo |
 | **General** | <kbd>,</kbd> Settings · <kbd>?</kbd> Help, and this list |
 
@@ -409,7 +409,10 @@ table for its keys, so a hint can never drift from the key that fires it.
 
 ## Tips and tricks
 
-**Read [`docs/tips-and-tricks.md`](docs/tips-and-tricks.md) before your first change.** It is the
+**Read [`docs/tips-and-tricks.md`](docs/tips-and-tricks.md) before your first change.** One rule
+from it applies to every line you write, so it is worth knowing up front: this codebase is
+[American English throughout](docs/tips-and-tricks.md#spelling-american-everywhere) — `center`,
+`color`, `gray`, `analyze` — in identifiers as much as in prose. It is the
 collected surprises: where Playwright has to be installed and why it disappears, which suites
 rewrite tracked files, why `npx vitest` fails when `npm test` works, which hostname the dev server
 actually answers on, the two `@media (max-width: 600px)` blocks in one stylesheet where the later
@@ -428,7 +431,7 @@ The solvers are not trusted because they look right.
 [PMKS-Web/PMKS_Verification](https://github.com/PMKS-Web/PMKS_Verification), namely a slider-crank
 with a tracer, Stephenson III, Watt I and two teaching-lab cases, are rebuilt with the PMKS+ model
 classes and compared row by row against MATLAB output at **one-degree increments of the input
-crank**. Joint and angular kinematics are covered in all five; centre-of-mass kinematics in three;
+crank**. Joint and angular kinematics are covered in all five; center-of-mass kinematics in three;
 full dynamics in two. The data is generated from a pinned commit and committed, so CI needs no
 network.
 
@@ -467,14 +470,14 @@ either side of this one.
 ### 1. A mechanism is a URL
 
 The whole mechanism packs into one compact URL-safe string: every joint, link, force, weld, lock,
-mass and colour, plus the document settings that go with them. That one encoding does three jobs
+mass and color, plus the document settings that go with them. That one encoding does three jobs
 at once: **sharing**, **saving**, and **undo/redo** (an undo step *is* a previous URL, decoded
 again). Nothing is stored on a server, so nothing can be lost, expire, or require a login. Share
 Project hands you the link; the app decodes it on load and then clears it out of the address bar,
 so what you see there is never a stale copy of what is on the grid.
 
 Two things deliberately stay outside it: a **background image**, which is a whole photograph, and
-the preferences that belong to *you* rather than to the drawing, such as snapping and centres of
+the preferences that belong to *you* rather than to the drawing, such as snapping and centers of
 mass, which are remembered on the machine instead.
 
 The consequence is a compatibility promise: **the encoding is a public surface**. Changing it
@@ -483,7 +486,7 @@ rather than silently misreading it, and every codec change is defended by round-
 
 ### 2. Say what is wrong, and say the way out
 
-A greyed-out button that will not explain itself is a dead end for a student. So a refusal in PMKS+
+A grayed-out button that will not explain itself is a dead end for a student. So a refusal in PMKS+
 carries its reason in the same row. Wherever a rule is enforced somewhere real, the row quotes that
 code (`describeActuatorRefusal`, `weldRefusal`, `locksHolding`) rather than restating it, so the
 menu and the model cannot drift apart.

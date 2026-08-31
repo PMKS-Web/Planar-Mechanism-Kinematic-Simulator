@@ -466,7 +466,7 @@ function styles(): string {
   return `
 @page { size: letter; margin: 0.5in; }
 * { box-sizing: border-box; }
-/* A printer drops backgrounds unless it is told not to, which took the colour
+/* A printer drops backgrounds unless it is told not to, which took the color
    out of every legend swatch on the page and left the reader three unnamed
    lines. */
 body { margin: 0; font-family: Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #2c2c2c; -webkit-print-color-adjust: exact; print-color-adjust: exact; }

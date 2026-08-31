@@ -7,7 +7,7 @@ interface PointLike {
 
 /**
  * Hull vertices that are corners, dropping any that sit on the line between
- * their neighbours.
+ * their neighbors.
  *
  * `hull` returns a point lying on an edge as a vertex of that edge, which is
  * defensible for a hull and wrong for an outline: the offset edge arrives at
@@ -15,7 +15,7 @@ interface PointLike {
  * line — so the outline folds back over itself. Filled even-odd, the doubled
  * region cancels and renders *white*, and since a joint only has to pass
  * through the line to produce it, the sliver appears and disappears as a joint
- * is dragged past its neighbours.
+ * is dragged past its neighbors.
  *
  * The tolerance is a fraction of the bar's own width, so a fold too thin to
  * see is removed on the same grounds as one that is exactly flat.

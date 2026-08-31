@@ -62,10 +62,10 @@ export function chainedLinks(links: Link[]): Link[] | undefined {
       const link = queue.pop()!;
       for (const joint of link.joints) {
         if (!(joint instanceof RealJoint)) continue;
-        for (const neighbour of joint.links) {
-          if (!reached.has(neighbour)) {
-            reached.add(neighbour);
-            queue.push(neighbour);
+        for (const neighbor of joint.links) {
+          if (!reached.has(neighbor)) {
+            reached.add(neighbor);
+            queue.push(neighbor);
           }
         }
       }

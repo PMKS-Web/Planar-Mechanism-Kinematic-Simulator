@@ -13,7 +13,7 @@ describe('DragStateService', () => {
     expect(state.joint).toBe(jointStates.creating);
   });
 
-  it('clears every enum when a gesture is cancelled', () => {
+  it('clears every enum when a gesture is canceled', () => {
     const state = new DragStateService();
     state.beginCreatingLinkFromLink();
     state.beginDraggingJoint();

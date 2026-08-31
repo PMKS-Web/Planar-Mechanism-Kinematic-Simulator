@@ -47,8 +47,8 @@ page.on('console', (m) => {
 page.on('pageerror', (e) => consoleErrors.push(String(e)));
 mkdirSync(OUT, { recursive: true });
 
-/** Screen centre of an element, so the mouse aims at what is actually drawn. */
-async function centreOf(selector) {
+/** Screen center of an element, so the mouse aims at what is actually drawn. */
+async function centerOf(selector) {
   return page.evaluate((sel) => {
     const node = document.querySelector(sel);
     if (!node) return null;
@@ -59,7 +59,7 @@ async function centreOf(selector) {
 
 /** The point halfway between two joints — a spot genuinely on the bar. */
 async function midpointOf(a, b) {
-  const [pa, pb] = [await centreOf(a), await centreOf(b)];
+  const [pa, pb] = [await centerOf(a), await centerOf(b)];
   return pa && pb ? { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 } : null;
 }
 
@@ -117,7 +117,7 @@ const before = await sliderState();
 check('starts with no sliders', before.blocks, 0);
 
 // The fit frames the mechanism, not the marks hanging off it. This URL carries
-// a hand-placed centre of mass some 90,000 units away, and framing that drew
+// a hand-placed center of mass some 90,000 units away, and framing that drew
 // the whole four-bar as a single pixel behind the Edit panel -- every gesture
 // below still worked, because they aim at coordinates read from the DOM, but
 // nothing here was clickable by a reader.
@@ -129,10 +129,10 @@ checkThat('and is framed at a size a reader could aim at', drawnJoint > 10, `${d
 // E sits on the coupler CDEI; ABH is a different body, so it is a legal carrier.
 //
 // Aimed at the midpoint of ABH's A-B edge rather than at the link element's
-// bounding-box centre: a three-joint link's bounding box is mostly the empty
+// bounding-box center: a three-joint link's bounding box is mostly the empty
 // space inside its hull, and a slot has to be cut on a bar the cursor is
-// actually over. Aiming at the box centre finds no candidate, correctly.
-const jointE = await centreOf('#joint_E');
+// actually over. Aiming at the box center finds no candidate, correctly.
+const jointE = await centerOf('#joint_E');
 const midAB = await midpointOf('#joint_A', '#joint_B');
 checkThat('found joint E and the A-B edge of ABH', !!jointE && !!midAB);
 
@@ -254,7 +254,7 @@ await page.screenshot({ path: `${OUT}/7-dangling.png` });
 
 // -------------------------------------------------- the dangling repair drag
 console.log('\nrepairing a dangling slider by dragging it onto a link');
-const danglingJoint = await centreOf('#joint_E');
+const danglingJoint = await centerOf('#joint_E');
 const carrier = await midpointOf('#joint_A', '#joint_B');
 if (danglingJoint && carrier) {
   const releaseRepair = await dragTo(danglingJoint, carrier);
@@ -279,7 +279,7 @@ const blockBefore = await page.evaluate(() => {
 
 // The slot runs along A-B, so push the block well past B and check it stops at
 // the end of the channel instead of following the cursor out of its own hole.
-const beyondB = await centreOf('#joint_B');
+const beyondB = await centerOf('#joint_B');
 const beforeDrag = await page.evaluate(
   () => document.querySelector('#edit-panel input, input')?.value ?? null
 );
@@ -335,7 +335,7 @@ checkThat(
 );
 await page.screenshot({ path: `${OUT}/10-angle-edit.png` });
 
-// A weld with nothing to fuse is greyed rather than offered-then-refused:
+// A weld with nothing to fuse is grayed rather than offered-then-refused:
 // joint A connects a single link, so the switch is disabled outright and the
 // state it shows (off) is the state the mechanism is in.
 await load(FOUR_BAR);
@@ -349,7 +349,7 @@ const weldSwitch = page
   .first();
 await weldSwitch.click({ force: true, timeout: 5000 }).catch(() => {});
 await page.waitForTimeout(600);
-checkThat('a weld with nothing to fuse is greyed out', (await weldSwitch.isDisabled()) === true);
+checkThat('a weld with nothing to fuse is grayed out', (await weldSwitch.isDisabled()) === true);
 checkThat('and the switch stays off', (await weldSwitch.getAttribute('aria-checked')) === 'false');
 checkThat(
   'and the joint keeps its circle rather than becoming a plus',
@@ -364,7 +364,7 @@ console.log('\nthe slot stash survives an undo and a redo');
 // joint is destroyed by an undo and a redo that visibly changed nothing, and
 // turning Slider back on then dangles instead of restoring the slot.
 await load(FOUR_BAR);
-const startJoint = await centreOf('#joint_E');
+const startJoint = await centerOf('#joint_E');
 const startBar = await midpointOf('#joint_A', '#joint_B');
 await (
   await dragTo(startJoint, startBar)
@@ -451,7 +451,7 @@ await load(FOUR_BAR);
 const before14 = consoleErrors.length;
 await page.locator('#joint_E').click();
 await page.waitForTimeout(400);
-const doomed = await centreOf('#joint_E');
+const doomed = await centerOf('#joint_E');
 if (doomed) {
   await page.mouse.move(doomed.x, doomed.y);
   await page.mouse.down();
@@ -495,7 +495,7 @@ checkThat(
   'a hand-built welded slide is never skinned',
   (await page.locator('.cylinder-mark').count()) === 0
 );
-const unsealedPin = await centreOf('#joint_C');
+const unsealedPin = await centerOf('#joint_C');
 if (unsealedPin) {
   await page.mouse.click(unsealedPin.x, unsealedPin.y);
   await page.waitForTimeout(400);

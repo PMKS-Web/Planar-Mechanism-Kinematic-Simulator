@@ -83,8 +83,8 @@ describe('the mark system, against the delivered SVGs', () => {
   });
 
   it('overlaps every tick into the rail without piercing it', () => {
-    // A round cap is centred on its own point, so where the tick's line ends is
-    // not where its ink does. Rooted on the rail's centreline it hung half the
+    // A round cap is centerd on its own point, so where the tick's line ends is
+    // not where its ink does. Rooted on the rail's centerline it hung half the
     // hatch's width over the block's side and read as piercing its own rail;
     // held far enough out to be tangent to the edge it read as floating clear.
     // Ground.svg does neither -- its hatch starts on the far edge of the

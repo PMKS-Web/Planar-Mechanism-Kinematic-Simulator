@@ -73,7 +73,7 @@ describe('two slots cut into one carrier', () => {
     expect(worst.size, 'both sliders were measured').toBe(2);
     for (const [id, across] of worst) {
       // A block off its slot is not sliding on anything. The tolerance is the
-      // solver's own rounding, not a licence to drift — measured in user
+      // solver's own rounding, not a license to drift — measured in user
       // units, since the solved coordinates are model units.
       expect(across / MODEL_SCALE, `${id} stays on its slot`).toBeLessThan(1e-3);
     }
