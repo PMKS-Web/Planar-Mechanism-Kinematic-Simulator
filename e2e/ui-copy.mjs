@@ -237,9 +237,12 @@ record(
 await tab('Kinematic').click();
 await page.waitForTimeout(700);
 const inAnalysis = await unitsTip();
+// The permission model's own sentence now, rather than a second one written
+// here: the note used to read a master-only playing flag, so an unsynced row
+// running in Edit was told to switch to Edit mode while standing in it.
 record(
   'and does say the way out once the switch is actually greyed',
-  /Switch to Edit mode to change it\./.test(inAnalysis),
+  /Switch to Edit to change it\./.test(inAnalysis),
   inAnalysis
 );
 await page.screenshot({ path: 'artifacts/ui-copy/tip-angle-units-locked.png' });

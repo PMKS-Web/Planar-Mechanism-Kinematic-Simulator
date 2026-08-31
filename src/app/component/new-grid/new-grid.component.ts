@@ -1738,7 +1738,19 @@ export class NewGridComponent implements OnDestroy {
         return;
     }
     this.linkCreateStart = startCoord;
+    // The part this link is growing *from*, kept rather than re-derived. The
+    // cross-machine guard asked the currently selected joint for the origin,
+    // and by the time the second click lands that is the *destination* -- so
+    // both ends looked like the same machine and a link drawn from a bar in one
+    // machine to a joint in another fused them at two different poses.
+    this.linkCreateFrom =
+      this.lastRightClick instanceof Joint || this.lastRightClick instanceof Link
+        ? this.lastRightClick
+        : undefined;
   }
+
+  /** The part the current Attach Link gesture started from, if it started on one. */
+  private linkCreateFrom?: Joint | Link;
 
   mouseMove($event: MouseEvent) {
     this.snapSuspended = $event.altKey;
@@ -2655,7 +2667,40 @@ export class NewGridComponent implements OnDestroy {
    * `DragStateService` at all. A press that became a menu over a position left
    * that position still being dragged underneath it.
    */
+  /**
+   * Where every joint was when this drag took hold.
+   *
+   * Only the coordinates, and only for a pointer drag: it exists so a gesture
+   * that turns out to have been about the view can put back what it moved on
+   * the way to finding that out.
+   */
+  private beforeDrag?: { id: string; x: number; y: number }[];
+
+  private rememberBeforeDrag(): void {
+    this.beforeDrag = this.mechanismSrv.joints.map((joint) => ({
+      id: joint.id,
+      x: joint.x,
+      y: joint.y,
+    }));
+  }
+
+  private putBackTheDrag(): void {
+    const was = this.beforeDrag;
+    this.beforeDrag = undefined;
+    if (!was || !this.dragState.isDragging) return;
+    const at = new Map(was.map((joint) => [joint.id, joint]));
+    this.mechanismSrv.joints.forEach((joint) => {
+      const back = at.get(joint.id);
+      if (!back) return;
+      joint.x = back.x;
+      joint.y = back.y;
+    });
+    this.mechanismSrv.updateMechanism();
+  }
+
   private letGoOfEverything(): void {
+    this.beforeDrag = undefined;
+    this.linkCreateFrom = undefined;
     this.dragState.cancel();
     // Including a staged posed edit. This is the path a pinch and a long press
     // take, and staging left behind outlives the gesture -- the next ambient
@@ -2667,6 +2712,7 @@ export class NewGridComponent implements OnDestroy {
     this.selectionTogglePress = false;
     this.cylinderCreateStart = undefined;
     this.linkCreateStart = undefined;
+                this.linkCreateFrom = undefined;
     if (this.showSynthesis()) this.synthCanvas.release();
   }
 
@@ -2700,6 +2746,13 @@ export class NewGridComponent implements OnDestroy {
    * zoom that happened to begin on a joint dragged that joint while it zoomed.
    */
   onPinch() {
+    // Put the drawing back first. A pinch is a question about the view, and the
+    // existing rule -- a pinch that begins on a joint leaves the joint alone --
+    // held only while the first finger was still undecided. Past the drag slop
+    // it has already moved something, and letting go merely settled that onto
+    // the anchor: an edit the reader never asked for, and could not undo,
+    // because a view gesture mints no entry to undo with.
+    this.putBackTheDrag();
     this.letGoOfEverything();
   }
 
@@ -3036,6 +3089,13 @@ export class NewGridComponent implements OnDestroy {
       this.finishSelectionGesture();
     } else if (event && this.dragState.isDragging) {
       this.finishMechanismDrag(event);
+    } else if (!event) {
+      // No event means the release never arrived -- the pointer was let go in
+      // another tab, or the window was hidden under it. There is no position to
+      // finish the gesture at, so it is put down rather than committed: the
+      // staging goes back on its anchor, and the canvas stops believing a
+      // finger is still down, which is the flag the stale-staging guard reads.
+      this.letGoOfEverything();
     }
   }
 
@@ -3171,6 +3231,8 @@ export class NewGridComponent implements OnDestroy {
         );
         this.dragState.cancel();
         this.linkCreateStart = undefined;
+                this.linkCreateFrom = undefined;
+        this.linkCreateFrom = undefined;
         return;
       }
       this.mechanismSrv.capturingPose(this.creationAnchorPart(), () => this.mouseDownNow($event));
@@ -3200,6 +3262,7 @@ export class NewGridComponent implements OnDestroy {
   /** The part a creation gesture is growing from, if it is growing from one. */
   private creationAnchorPart(): Joint | Link | Force | undefined {
     if (this.cylinderCreateOn) return this.cylinderCreateOn;
+    if (this.linkCreateFrom) return this.linkCreateFrom;
     // A link grows from wherever the first click landed, which is a coordinate
     // rather than a part -- so the machine is named by what is selected, which
     // for a link drawn from a joint is that joint.
@@ -3287,6 +3350,7 @@ export class NewGridComponent implements OnDestroy {
                 this.mechanismSrv.updateMechanism(true);
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
+                this.linkCreateFrom = undefined;
                 break;
               case gridStates.createJointFromJoint:
                 joint2 = this.mechanismSrv.createRevJoint(
@@ -3307,6 +3371,7 @@ export class NewGridComponent implements OnDestroy {
                 this.mechanismSrv.updateMechanism(true);
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
+                this.linkCreateFrom = undefined;
                 break;
               case gridStates.createJointFromLink:
                 //This is werid bug, ensures that when you use a context menu it always counts as a real click instead of a mis-drag
@@ -3366,6 +3431,7 @@ export class NewGridComponent implements OnDestroy {
                 this.mechanismSrv.updateMechanism(true);
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
+                this.linkCreateFrom = undefined;
                 break;
               case gridStates.createForce:
                 const startCoord = this.svgGrid.screenToSVG(this.lastRightClickCoord);
@@ -3407,6 +3473,7 @@ export class NewGridComponent implements OnDestroy {
                 // PositionSolver.setUpSolvingForces(link.forces); // needed to determine force location when dragging a joint
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
+                this.linkCreateFrom = undefined;
                 break;
               case gridStates.createJointFromJoint:
                 // joint2 = this.createRevJoint(
@@ -3430,6 +3497,7 @@ export class NewGridComponent implements OnDestroy {
                 if (commonLinkCheck) {
                   this.dragState.finishCreating();
                   this.linkCreateStart = undefined;
+                this.linkCreateFrom = undefined;
                   this.notify.refusal(
                     'link.already-joined',
                     'Those two joints are already on one link.'
@@ -3449,6 +3517,7 @@ export class NewGridComponent implements OnDestroy {
                 this.mechanismSrv.updateMechanism(true);
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
+                this.linkCreateFrom = undefined;
                 break;
               case gridStates.createJointFromLink:
                 // TODO: set context Link as a part of joint 1 or joint 2
@@ -3492,6 +3561,7 @@ export class NewGridComponent implements OnDestroy {
                 this.mechanismSrv.updateMechanism(true);
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
+                this.linkCreateFrom = undefined;
                 break;
             }
             switch (this.dragState.joint) {
@@ -3506,6 +3576,7 @@ export class NewGridComponent implements OnDestroy {
                 }
                 this.dragState.beginDraggingJoint();
                 this.mechanismSrv.beginPosedEdit(grabbed);
+                this.rememberBeforeDrag();
                 break;
               }
             }
@@ -3518,6 +3589,7 @@ export class NewGridComponent implements OnDestroy {
               );
               this.dragState.cancel();
               this.linkCreateStart = undefined;
+                this.linkCreateFrom = undefined;
               break;
             }
             if (this.dragState.link === linkStates.waiting) {
@@ -3542,6 +3614,7 @@ export class NewGridComponent implements OnDestroy {
               }
               this.dragState.beginDraggingLink();
               this.mechanismSrv.beginPosedEdit(this.activeObjService.selectedLink);
+              this.rememberBeforeDrag();
             }
             break;
           case 'Force':
@@ -3578,11 +3651,13 @@ export class NewGridComponent implements OnDestroy {
         this.dragState.cancel();
         this.cylinderCreateStart = undefined;
         this.linkCreateStart = undefined;
+                this.linkCreateFrom = undefined;
         return;
       case 2: // Right-Click
         this.dragState.cancel();
         this.cylinderCreateStart = undefined;
         this.linkCreateStart = undefined;
+                this.linkCreateFrom = undefined;
         break;
     }
   }
@@ -3931,7 +4006,10 @@ export class NewGridComponent implements OnDestroy {
       // gates were open went on writing through a mode switch and through Play:
       // the mark followed the pointer with every visible surface saying the
       // drawing was read-only, and the release saved it.
-      if (!this.permission.may('properties')) {
+      // Both, every move. A Lock applied *during* the gesture -- the K key is
+      // one press away -- left the panel showing Unlock and the lock marks
+      // drawn while the mark kept following the pointer.
+      if (!this.permission.may('properties') || this.mechanismSrv.isLockedTarget(link)) {
         up();
         return;
       }

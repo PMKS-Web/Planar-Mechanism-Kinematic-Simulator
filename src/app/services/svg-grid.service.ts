@@ -292,6 +292,20 @@ export class SvgGridService {
     };
     window.addEventListener('pointerup', release, true);
     window.addEventListener('pointercancel', release, true);
+    // And the releases that never arrive at all. A pointer let go in another
+    // tab, or while the window is hidden, sends nothing here -- so the canvas
+    // went on believing a finger was down, and the guard that closes a stale
+    // posed edit reads exactly that flag: it refused to close, and the next
+    // ambient rebuild made the displaced pose the design.
+    //
+    // Treated as a cancel rather than a release, because that is what it is:
+    // nobody finished the gesture, and there is no position to finish it at.
+    const lost = () => NewGridComponent.instance?.releaseCanvasGestures();
+    window.addEventListener('blur', lost);
+    window.addEventListener('pagehide', lost);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) lost();
+    });
   }
 
   /**
