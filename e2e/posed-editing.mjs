@@ -433,6 +433,112 @@ await displace();
   record('and the start pose survived all of it', (await look()).atStart, await look());
 }
 
+// ---- 8b. the joint tracks the cursor, at any pose ----------------------
+//
+// The canvas draws with y flipped, so every drag crosses that boundary twice:
+// screen to model on the way in, model to screen on the way out. A sign error
+// anywhere in that round trip does not merely put the joint in the wrong place,
+// it puts it somewhere that produces a *new* delta on the next move -- which is
+// what jitter is, and why this is measured rather than eyeballed.
+//
+// It caught something real. At a displaced pose the machine's own clock was
+// held across the rebuild and laid back on afterwards -- but its displayed pose
+// is its provisional t = 0 while the gesture is in flight, so every pointer
+// move threw the joint a third of a cycle away from the cursor.
+
+await fresh();
+{
+  /** How far the joint sits from the cursor at each step of a slow drag. */
+  async function trackWhileDragging(dy, snap) {
+    const start = await jointAt('B');
+    await page.mouse.click(start.x, start.y);
+    await page.waitForTimeout(250);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    const offsets = [];
+    let last = start;
+    let reversals = 0;
+    for (let i = 1; i <= 10; i++) {
+      const at = { x: start.x, y: start.y + (dy * i) / 10 };
+      if (!snap) await page.keyboard.down('Alt');
+      await page.mouse.move(at.x, at.y, { steps: 1 });
+      if (!snap) await page.keyboard.up('Alt');
+      await page.waitForTimeout(45);
+      const on = await jointAt('B');
+      offsets.push(on.y - at.y);
+      // The shape jitter takes: the joint moving against a cursor that did not
+      // change direction.
+      if (Math.sign(on.y - last.y) === -Math.sign(dy) && on.y !== last.y) reversals++;
+      last = on;
+    }
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+    return {
+      spread: Math.max(...offsets) - Math.min(...offsets),
+      reversals,
+      travelled: last.y - start.y,
+      asked: dy,
+    };
+  }
+
+  const atStart = await trackWhileDragging(80, false);
+  record('a joint tracks the cursor exactly at the start pose', atStart.spread < 1, atStart);
+  record('and never moves against it', atStart.reversals === 0, atStart);
+
+  await displace();
+  const displacedTrack = await trackWhileDragging(80, false);
+  // A looser offset here on purpose: displaced, the drag can pass near another
+  // joint or a bar and be *captured* by it, which pulls the joint off the
+  // cursor by design. What must not happen is the joint travelling a different
+  // distance than it was asked to, or going backwards.
+  record(
+    'and follows it at a displaced pose too',
+    Math.abs(displacedTrack.travelled - displacedTrack.asked) < 12,
+    displacedTrack
+  );
+  record('and never moves against it there', displacedTrack.reversals === 0, displacedTrack);
+}
+
+// ---- 9. a release that never arrives -----------------------------------
+//
+// A pointer let go in another tab, or the window hidden under it, sends nothing
+// to the page. The canvas went on believing a finger was down -- and that flag
+// is what decides whether a staging is somebody's live gesture or an abandoned
+// one, so the next ambient rebuild made the displaced pose the design.
+
+await fresh();
+await displace();
+{
+  const grab = await jointAt('B');
+  const before = await look();
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  await page.mouse.move(grab.x + 30, grab.y - 20, { steps: 6 });
+
+  // The window loses focus with the button still held, and the release lands
+  // somewhere this page never hears about.
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.waitForTimeout(400);
+  const dropped = await page.evaluate(() => {
+    const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    return { posedKey: grid.mechanismSrv.posedEditKey, down: grid.dragState.isPointerDown };
+  });
+  record('a lost release puts the gesture down', !dropped.posedKey && !dropped.down, dropped);
+
+  // And the rebuild that would have used it cannot.
+  await page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.updateMechanism()
+  );
+  await page.waitForTimeout(400);
+  const after = await look();
+  record(
+    'and the cycle still starts where it started',
+    Math.abs(after.anchorCoordinate - before.anchorCoordinate) < 0.05,
+    { before: before.anchorCoordinate, after: after.anchorCoordinate }
+  );
+  await page.mouse.up();
+}
+
 record('no page errors', errors.length === 0, errors.slice(0, 3));
 
 await browser.close();

@@ -427,6 +427,13 @@ pixels are available; anything you add to the bottom row has to survive that.
 - **Drop anchors before the rebuild, not after.** `UrlProcessorService` calls `forgetAnchors()`
   ahead of `finishStructuralEdit`; after it, the call threw away the anchors that rebuild had just
   taken, and every freshly opened mechanism had none until its first edit.
+- **A machine being edited at a pose must have its clock read as zero for that rebuild.** Its
+  displayed pose *is* its provisional t = 0 while the gesture is in flight, so holding its elapsed
+  seconds and laying them back on afterwards moves it that far along a cycle that now starts under
+  the reader's hand -- on a four-bar two seconds in, every pointer move threw the joint two
+  seconds' worth of motion away from the cursor and the drag flew apart. Measure a drag rather than
+  watching it: the offset between cursor and joint should hold still, and with Alt (snap off) it is
+  0.00px on both axes.
 - **The staging closes itself.** Three rounds of review each found another path that ended a
   gesture without closing its posed edit -- Escape, a right or middle click, a mode key, Space,
   tabbing away, a delete held mid-drag. Rather than a fourth list of paths to keep in step,

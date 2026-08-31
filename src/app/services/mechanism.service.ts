@@ -379,7 +379,15 @@ export class MechanismService {
     // on screen stay consistent with each other across the rebuild. Read it before
     // rewinding, which is what the held time is measured against. The drawn time,
     // not the sample's: during playback it carries the sub-sample fraction.
-    const heldTime = this.currentTimeSeconds();
+    // Zero for the machine being edited at a pose, and its own elapsed seconds
+    // for every other. Its displayed pose *is* its provisional t = 0 while the
+    // gesture is in flight, so holding its clock and laying it back on after the
+    // rebuild moved it that far along a cycle that now starts under the
+    // reader's hand: on a four-bar two seconds in, every pointer move threw the
+    // joint two seconds' worth of motion away from the cursor and the drag flew
+    // apart. The commit puts the display back where the hand was.
+    const editedIndex = this.stagedMachineIndex();
+    const heldTime = editedIndex === this.masterMechanismIndex() ? 0 : this.currentTimeSeconds();
     // Each machine's own place, its own running flag and its own playback
     // direction, kept by *identity* rather than by list position -- see
     // `partitionKey`. Restoring only the shared time put every machine back on
@@ -398,7 +406,7 @@ export class MechanismService {
       this.partitions.map((partition, index) => [
         partitionKey(partition),
         {
-          seconds: this.ownSeconds[index] ?? 0,
+          seconds: index === editedIndex ? 0 : (this.ownSeconds[index] ?? 0),
           playing: this.ownPlaying[index] === true,
           direction: this.playbackDirection[index] === -1 ? -1 : 1,
           compensating: this.mechanisms[index]?.framesRunBackwards === true,
@@ -5193,6 +5201,14 @@ export class MechanismService {
   /** Which machine, if any, is mid-gesture at a displaced pose. */
   get posedEditKey(): string | null {
     return this.seedFromDisplay;
+  }
+
+  /** That machine's index, or -1 when nothing is staged. */
+  private stagedMachineIndex(): number {
+    if (!this.seedFromDisplay) return -1;
+    return this.partitions.findIndex(
+      (partition) => topologyOf(partition.ownJoints) === this.seedFromDisplay
+    );
   }
 
   /** The anchor a machine's cycle starts at, for the surfaces that draw it. */

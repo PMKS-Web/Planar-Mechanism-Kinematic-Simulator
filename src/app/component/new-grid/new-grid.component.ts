@@ -3091,10 +3091,15 @@ export class NewGridComponent implements OnDestroy {
       this.finishMechanismDrag(event);
     } else if (!event) {
       // No event means the release never arrived -- the pointer was let go in
-      // another tab, or the window was hidden under it. There is no position to
-      // finish the gesture at, so it is put down rather than committed: the
-      // staging goes back on its anchor, and the canvas stops believing a
-      // finger is still down, which is the flag the stale-staging guard reads.
+      // another tab, or the window was hidden under it. Nobody finished the
+      // gesture and there is no position to finish it at, so what it moved on
+      // the way is put back, exactly as a pinch's is: an edit committed by a
+      // window losing focus is one the reader never asked for, and a gesture
+      // that never finished mints no entry to undo it with.
+      //
+      // Then everything is put down, which also stops the canvas believing a
+      // finger is still held -- the flag the stale-staging guard reads.
+      this.putBackTheDrag();
       this.letGoOfEverything();
     }
   }

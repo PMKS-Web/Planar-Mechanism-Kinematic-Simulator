@@ -365,6 +365,37 @@ describe('editing at a displaced pose', () => {
     expect(outcome.save).toBe(false);
   });
 
+  it('is put down when the release never arrives', () => {
+    // A pointer let go in another tab, or the window hidden under it, sends
+    // nothing to the page -- so the canvas went on believing a finger was down,
+    // and that flag is exactly what the stale-staging guard reads. It refused
+    // to close, and the next ambient rebuild made the displaced pose the
+    // design.
+    const harness = createMechanismHarness();
+    const parts = fourBar(harness.service, 'A', 0);
+    const service = harness.service;
+    const drag = harness.injector.get(DragStateService);
+    service.updateMechanism();
+    displace(service);
+    const anchored = startCoordinate(service, 0);
+
+    drag.press();
+    expect(service.beginPosedEdit(parts.joints[1])).toBe(true);
+    parts.joints[1].x += 0.3;
+    service.updateMechanism();
+
+    // What the window's blur handler ends up doing: put everything down, as a
+    // cancel rather than a release -- nobody finished the gesture, and there is
+    // no position to finish it at.
+    drag.cancel();
+    service.cancelPosedEdit();
+    expect(drag.isPointerDown).toBe(false);
+    expect(service.posedEditKey).toBeNull();
+
+    service.updateMechanism();
+    expect(startCoordinate(service, 0)).toBeCloseTo(anchored, 1);
+  });
+
   it('stages one machine at a time and no more', () => {
     // A second `beginPosedEdit` while one is open must not take the staging
     // from the first: whichever machine is put back on its anchor at the
