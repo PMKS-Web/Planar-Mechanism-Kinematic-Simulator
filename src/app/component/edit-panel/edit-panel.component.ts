@@ -567,12 +567,12 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   }
 
   /** The Travel field's value, in whichever of its three spellings is selected. */
-  cylinderTravelabel(sealed: Cylinder): string {
+  cylinderTravelLabel(sealed: Cylinder): string {
     const { stroke } = this.cylinderSize(sealed);
     const unit = this.cylinderForm.controls['travelUnit'].value;
     const ends = this.cylinderEnds(stroke);
     const shown = unit === 'ret' ? ends.retracted : unit === 'ext' ? ends.extended : stroke;
-    return this.nup.formatModelength(shown, this.settingsService.lengthUnit.getValue());
+    return this.nup.formatModelLength(shown, this.settingsService.lengthUnit.getValue());
   }
 
   /** The Starts-at field's value: a percentage of the stroke, or the length it puts the ram at. */
@@ -584,7 +584,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       // distance -- the panel would be quietly disagreeing with the drawing.
       return `${Math.round(start * 1000) / 10}`;
     }
-    return this.nup.formatModelength(span, this.settingsService.lengthUnit.getValue());
+    return this.nup.formatModelLength(span, this.settingsService.lengthUnit.getValue());
   }
 
   /**
@@ -710,7 +710,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     const massUnits = this.massUnit();
     this.cylinderForm.patchValue(
       {
-        travel: this.cylinderTravelabel(sealed),
+        travel: this.cylinderTravelLabel(sealed),
         start: this.cylinderStartLabel(sealed),
         angle: this.cylinderAngleLabel(sealed),
         barrelMass: this.nup.formatValueAndUnit(sealed.barrel.mass, massUnits),
@@ -973,14 +973,14 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     this.onDestroySubscriptions.push(
       this.jointForm.controls['xPos'].valueChanges.subscribe((val) => {
         if (this.hideEditPanel()) return;
-        const [success, value] = this.nup.parseModelengthString(
+        const [success, value] = this.nup.parseModelLengthString(
           val!,
           this.settingsService.lengthUnit.getValue()
         );
         if (!success) {
           this.notify.refusal('value.length', NOT_A.length);
           this.jointForm.patchValue({
-            xPos: this.nup.formatModelength(
+            xPos: this.nup.formatModelLength(
               this.activeSrv.selectedJoint.x,
               this.settingsService.lengthUnit.getValue()
             ),
@@ -993,7 +993,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           );
           this.jointForm.patchValue(
             {
-              xPos: this.nup.formatModelength(value, this.settingsService.lengthUnit.getValue()),
+              xPos: this.nup.formatModelLength(value, this.settingsService.lengthUnit.getValue()),
             },
             { emitEvent: false }
           );
@@ -1011,14 +1011,14 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     this.onDestroySubscriptions.push(
       this.jointForm.controls['yPos'].valueChanges.subscribe((val) => {
         if (this.hideEditPanel()) return;
-        const [success, value] = this.nup.parseModelengthString(
+        const [success, value] = this.nup.parseModelLengthString(
           val!,
           this.settingsService.lengthUnit.getValue()
         );
         if (!success) {
           this.notify.refusal('value.length', NOT_A.length);
           this.jointForm.patchValue({
-            yPos: this.nup.formatModelength(
+            yPos: this.nup.formatModelLength(
               this.activeSrv.selectedJoint.y,
               this.settingsService.lengthUnit.getValue()
             ),
@@ -1031,7 +1031,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           );
           this.jointForm.patchValue(
             {
-              yPos: this.nup.formatModelength(value, this.settingsService.lengthUnit.getValue()),
+              yPos: this.nup.formatModelLength(value, this.settingsService.lengthUnit.getValue()),
             },
             { emitEvent: false }
           );
@@ -1233,14 +1233,14 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
     this.onDestroySubscriptions.push(
       this.linkForm.controls['length'].valueChanges.subscribe((val) => {
-        const [success, value] = this.nup.parseModelengthString(
+        const [success, value] = this.nup.parseModelLengthString(
           val!,
           this.settingsService.lengthUnit.getValue()
         );
         if (!success) {
           this.notify.refusal('value.length', NOT_A.length);
           this.linkForm.patchValue({
-            length: this.nup.formatModelength(
+            length: this.nup.formatModelLength(
               this.activeSrv.selectedLink.length,
               this.settingsService.lengthUnit.getValue()
             ),
@@ -1257,7 +1257,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           this.mechanismService.save();
           this.linkForm.patchValue(
             {
-              length: this.nup.formatModelength(value, this.settingsService.lengthUnit.getValue()),
+              length: this.nup.formatModelLength(value, this.settingsService.lengthUnit.getValue()),
             },
             { emitEvent: false }
           );
@@ -1268,7 +1268,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     this.onDestroySubscriptions.push(
       this.cylinderForm.controls['travel'].valueChanges.subscribe((val) => {
         const sealed = this.selectedCylinder;
-        const [success, value] = this.nup.parseModelengthString(
+        const [success, value] = this.nup.parseModelLengthString(
           val!,
           this.settingsService.lengthUnit.getValue()
         );
@@ -1340,7 +1340,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
         // A typed length is the mount-to-mount span, which is exactly what a
         // drag of that mount asks for -- so it takes the same road, and outside
         // the ram's own travel it resizes it in the same way.
-        const [success, value] = this.nup.parseModelengthString(
+        const [success, value] = this.nup.parseModelLengthString(
           val!,
           this.settingsService.lengthUnit.getValue()
         );
@@ -1677,11 +1677,11 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
             : 0;
           this.jointForm.patchValue(
             {
-              xPos: this.nup.formatModelength(
+              xPos: this.nup.formatModelLength(
                 this.activeSrv.selectedJoint.x,
                 this.settingsService.lengthUnit.getValue()
               ),
-              yPos: this.nup.formatModelength(
+              yPos: this.nup.formatModelLength(
                 this.activeSrv.selectedJoint.y,
                 this.settingsService.lengthUnit.getValue()
               ),
@@ -1718,7 +1718,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
           this.patchCylinderForm();
           this.linkForm.patchValue(
             {
-              length: this.nup.formatModelength(
+              length: this.nup.formatModelLength(
                 this.activeSrv.selectedLink.length,
                 this.settingsService.lengthUnit.getValue()
               ),
@@ -1869,9 +1869,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     const unit = this.settingsService.lengthUnit.getValue();
     this.backgroundImageForm.patchValue(
       {
-        centerX: this.nup.formatModelength(image.centerX, unit),
-        centerY: this.nup.formatModelength(image.centerY, unit),
-        width: this.nup.formatModelength(image.width, unit),
+        centerX: this.nup.formatModelLength(image.centerX, unit),
+        centerY: this.nup.formatModelLength(image.centerY, unit),
+        width: this.nup.formatModelLength(image.width, unit),
         rotation: this.nup.formatValueAndUnit(
           this.nup.convertAngle(
             image.rotationRad,
@@ -1898,7 +1898,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     raw: string | null
   ): void {
     if (!this.bgImage.image()) return;
-    const [ok, value] = this.nup.parseModelengthString(
+    const [ok, value] = this.nup.parseModelLengthString(
       raw ?? '',
       this.settingsService.lengthUnit.getValue()
     );
@@ -1907,7 +1907,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     } else if (field === 'width' && value < MIN_WIDTH) {
       this.notify.refusal(
         'bgImage.width',
-        `A background image has to be at least ${this.nup.formatModelength(
+        `A background image has to be at least ${this.nup.formatModelLength(
           MIN_WIDTH,
           this.settingsService.lengthUnit.getValue()
         )} wide.`
@@ -1935,7 +1935,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   }
 
   private updateLinkCenterOfMass(axis: 'x' | 'y', rawValue: string | null): void {
-    const [success, value] = this.nup.parseModelengthString(
+    const [success, value] = this.nup.parseModelLengthString(
       rawValue ?? '',
       this.settingsService.lengthUnit.getValue()
     );
@@ -2222,14 +2222,14 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
       this.otherJoints.push(this.fb.control('', { updateOn: 'blur' }));
       this.otherJoitnsSubscriptions.push(
         this.otherJoints.controls[i * 2].valueChanges.subscribe((val) => {
-          const [success, value] = this.nup.parseModelengthString(
+          const [success, value] = this.nup.parseModelLengthString(
             val!,
             this.settingsService.lengthUnit.getValue()
           );
           if (!success) {
             this.notify.refusal('value.length', NOT_A.length);
             this.otherJoints.controls[i * 2].patchValue(
-              this.nup.formatModelength(
+              this.nup.formatModelLength(
                 this.getDistanceBetweenJoints(this.activeSrv.selectedJoint, joint),
                 this.settingsService.lengthUnit.getValue()
               )
@@ -2238,7 +2238,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
             this.updateDistanceBetweenJoints(this.activeSrv.selectedJoint, joint, value);
             this.mechanismService.onMechUpdateState.next(2);
             this.otherJoints.controls[i * 2].patchValue(
-              this.nup.formatModelength(value, this.settingsService.lengthUnit.getValue()),
+              this.nup.formatModelLength(value, this.settingsService.lengthUnit.getValue()),
               { emitEvent: false }
             );
           }
@@ -2299,7 +2299,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     );
 
     this.otherJoints.controls[otherJointID * 2].setValue(
-      this.nup.formatModelength(distance, this.settingsService.lengthUnit.getValue()),
+      this.nup.formatModelLength(distance, this.settingsService.lengthUnit.getValue()),
       { emitEvent: false }
     );
 

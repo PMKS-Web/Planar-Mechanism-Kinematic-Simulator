@@ -87,7 +87,7 @@ record(
   )
 );
 
-// --- A plain click is a selection, not an offence ---------------------------
+// --- A plain click is a selection, not an offense ---------------------------
 
 const bClick = await jointOnScreen('B');
 await page.mouse.click(bClick.x, bClick.y);

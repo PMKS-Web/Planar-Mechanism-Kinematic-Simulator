@@ -203,16 +203,15 @@ used to compare whole SVG strings and failed a third of the time on the camera s
 ## Spelling: American, everywhere
 
 **Comments, user-facing strings, identifiers, docs and test names are all American English.**
-Not a style preference so much as a consistency one: `centre` and `center` are the same word to a
-reader and two different symbols to `grep`, and a codebase holding both means every search for one
-of them quietly misses half the answers. It is worse in identifiers, where `colourOf` and `colorOf`
-are two functions nobody meant to write.
-
-The words this codebase has actually got wrong at least once, with the American form to use:
+`e2e/ui-copy.mjs` already fails the build on `colour`, `centre`, `neighbour` and `analyse` in
+anything the user can read; the rest is convention. It is a consistency rule rather than a taste
+one: `centre` and `center` are the same word to a reader and two different symbols to `grep`, so a
+codebase holding both quietly answers half of every search. In identifiers it is worse, where
+`colourOf` and `colorOf` are two functions nobody meant to write.
 
 | Write | Not |
 | --- | --- |
-| center, centered, centering, centerline | centre, centred, centering, centreline |
+| center, centered, centering, centerline | centre, centred, centring, centreline |
 | color, colored, coloring | colour, coloured, colouring |
 | gray, grayed | grey, greyed |
 | neighbor, neighboring | neighbour, neighbouring |
@@ -220,32 +219,43 @@ The words this codebase has actually got wrong at least once, with the American 
 | meter, centimeter, millimeter | metre, centimetre, millimetre |
 | analyze, analyzed, analyzing | analyse, analysed, analysing |
 | normalize, initialize, serialize, recognize, organize | normalise, initialise, serialise, recognise, organise |
-| labeled, labeling, modeled, modeling, traveled, canceled | labelled, labelling, modelled, modelling, travelled, cancelled |
-| catalog, program, license, defense, favor, honor, artifact | catalogue, programme, licence, defence, favour, honour, artefact |
+| labeled, modeled, traveled, canceled | labelled, modelled, travelled, cancelled |
+| catalog, program, dialog, license, defense, offense | catalogue, programme, dialogue, licence, defence, offence |
+| favor, honor, artifact, judgment, math, learned | favour, honour, artefact, judgement, maths, learnt |
 | while, among | whilst, amongst |
 
-**A stem swap is not always the whole word.** British English drops the `e` in some inflections
-that American English keeps, so replacing the stem leaves a non-word:
+### Sweeping it, and the three ways that goes wrong
 
-- `centred` -> `centerd`, not `centered`. Swapping `centre` -> `center` produced fifty-five of
-  these, and every one of them compiled and passed the tests, because they were all in prose.
-- `centring` has no `centre` in it at all, so a `centre` -> `center` sweep misses it entirely.
+A find-and-replace over stems is the obvious way to do this and it breaks in three separate ways,
+all of which compile and all of which pass every test, because the damage is in prose and in
+identifiers renamed consistently on both sides:
 
-Both were caught by reading the diff rather than by any check, which is the argument for reading
-the diff. Grep for the American stem followed by a suspicious ending — `centerd`, `colord`,
-`grayd` — after any sweep of this kind.
+- **A stem is not the whole word.** British drops the `e` that American keeps, so `centre` ->
+  `center` turns `centred` into `centerd`. It did, fifty-five times. And `centring` has no `centre`
+  in it at all, so the same sweep misses every one. Put both in an explicit word list ahead of the
+  stem pass.
+- **A stem can span a camelCase boundary.** Case-insensitively, `modell` is inside `ModelLength`,
+  `labell` is inside `labelLevel`, `travell` is inside `cylinderTravelLabel`, and — the one nobody
+  sees coming — `litre` is inside `unsplitResult`. Renaming those produced `formatModelength`,
+  `labelevel`, `cylinderTravelabel` and `unsplitersult`. Reject any match containing a lowercase
+  letter immediately followed by an uppercase one: that hump means the stem only appeared to be
+  there.
+- **A stem can wreck an American word.** `programme` -> `program` applied as a stem turns
+  `programmed` into `programd`; `cancell` -> `cancel` turns `cancellation`, which is correct
+  American, into `cancelation`. Whole-word list for both.
 
-Two that look like exceptions and are not:
+Two words have to be read rather than swept:
 
-- **`analyses` is correct** when it is the plural of *analysis* — "the two analyses need it". It is
-  wrong only as a verb, where American English writes *analyzes*. A blind `analyse` -> `analyze`
-  replacement breaks the noun, so that one word has to be read rather than swept.
-- **`cancellation` keeps both `l`s** in American English, though `canceled` and `canceling` drop
-  one. Replacing the stem `cancell` -> `cancel` produces `cancelation`, which is wrong.
+- **`analyses` is correct** as the plural of *analysis* — "the two analyses need it". It is wrong
+  only as a verb, where American writes *analyzes*.
+- **`cancellation` keeps both `l`s**, even though `canceled` and `canceling` drop one.
 
-Sweeping the repo is a one-liner per word, but do it on stems that no American word contains --
-`programme` -> `program` applied as a stem turns `programmed` into `programd`. When in doubt,
-anchor the pattern with `\b` and list the forms.
+And do not sweep `e2e/ui-copy.mjs`. It is a list of words that must never appear, so rewriting it
+inverts the lint into a ban on the spellings it exists to enforce. That happened, and the check went
+on passing because it was now banning words the app does not use.
+
+Afterwards, grep for the American stem followed by a suspicious ending — `centerd`, `Modelength`,
+`unsplitersult` — and read the diff. Nothing else catches this class of mistake.
 
 ---
 

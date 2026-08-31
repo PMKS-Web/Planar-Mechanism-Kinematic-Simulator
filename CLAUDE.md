@@ -13,8 +13,8 @@ Requires Node ≥22.22 (or 24.x). The esbuild `application` builder is used; `ou
 [`docs/tips-and-tricks.md`](docs/tips-and-tricks.md) collects the things that cost somebody an hour
 to find out — including the
 [spelling rule](docs/tips-and-tricks.md#spelling-american-everywhere): this codebase is American
-English throughout, in identifiers as well as prose, because `centre` and `center` are one word to a
-reader and two symbols to `grep`. Also: where Playwright is installed and why it vanishes, which e2e suites rewrite tracked
+English throughout, in identifiers as well as prose, and `e2e/ui-copy.mjs` fails the build on the
+British forms in anything the user can read. Also: where Playwright is installed and why it vanishes, which e2e suites rewrite tracked
 files, why `npx vitest` fails where `npm test` works, which hostname the dev server answers on, the
 two `@media (max-width: 600px)` blocks in one stylesheet where the later silently wins, and how to
 tell a failure you caused from one that was already there. Read it before your first change, and

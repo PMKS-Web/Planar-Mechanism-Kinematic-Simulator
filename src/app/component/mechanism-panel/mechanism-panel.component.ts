@@ -205,7 +205,7 @@ export class MechanismPanelComponent {
       ends[ends.length - 1].x - ends[0].x,
       ends[ends.length - 1].y - ends[0].y
     );
-    return this.nup.formatModelength(span, this.settings.lengthUnit.value);
+    return this.nup.formatModelLength(span, this.settings.lengthUnit.value);
   }
 
   /** The drawer that answers the question this mode is asking. */

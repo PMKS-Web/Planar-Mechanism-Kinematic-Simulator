@@ -82,15 +82,15 @@ export class NumberUnitParserService {
   /**
    * Format a length held in internal model units (MODEL_SCALE times the user's
    * unit — see render-scale.ts) for display in the user's unit. The one
-   * companion of parseModelengthString: every panel that shows a model length
+   * companion of parseModelLengthString: every panel that shows a model length
    * goes through this pair so the internal scale never reaches the screen.
    */
-  public formatModelength(modelValue: number, units: LengthUnit): string {
+  public formatModelLength(modelValue: number, units: LengthUnit): string {
     return this.formatValueAndUnit(modelValue / MODEL_SCALE, units);
   }
 
   /** Parse user input in user units and return internal model units. */
-  public parseModelengthString(input: string, desiredUnits: LengthUnit): [boolean, number] {
+  public parseModelLengthString(input: string, desiredUnits: LengthUnit): [boolean, number] {
     const [success, value] = this.parseLengthString(input, desiredUnits);
     return [success, value * MODEL_SCALE];
   }

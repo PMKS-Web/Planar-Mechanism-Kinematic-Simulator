@@ -133,7 +133,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * spelled out -- so they throw words away long before the window has run out
    * of room for them. This asks the strip.
    */
-  labelevel = 3;
+  labelLevel = 3;
   /**
    * The room and the labels the current level was chosen for.
    *
@@ -232,8 +232,8 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       (best, want, at) => (want <= strip.clientWidth ? Math.max(best, at) : best),
       0
     );
-    if (level !== this.labelevel) {
-      this.labelevel = level;
+    if (level !== this.labelLevel) {
+      this.labelLevel = level;
       this.changes.detectChanges();
     }
   }
@@ -647,7 +647,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     this.closeMenu();
     const input = $event.target as HTMLInputElement;
     // Silently. This fires when the picker is dismissed, and canceling a
-    // dialogue is not a thing that went wrong -- the reader closed it knowing
+    // dialog is not a thing that went wrong -- the reader closed it knowing
     // full well that they had chosen nothing.
     if (!input.files || input.files.length !== 1) {
       return;

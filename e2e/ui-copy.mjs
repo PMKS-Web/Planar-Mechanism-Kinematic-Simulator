@@ -47,10 +47,10 @@ const BANNED = [
   [/\bram\s+(mount|barrel|rod|joint)/i, 'ram — say cylinder'],
   [/\bsimulation\b/i, 'simulation — say animation'],
   [/\bactuator\b/i, 'actuator — say driven'],
-  [/\bcolor\b/i, 'color — spell American'],
-  [/\bcentered?\b/i, 'centered/center — spell American'],
-  [/\bneighbor/i, 'neighbor — spell American'],
-  [/\banalyse[ds]?\b/i, 'analyze — spell American'],
+  [/\bcolour\b/i, 'colour — spell American'],
+  [/\bcentred?\b/i, 'centred/centre — spell American'],
+  [/\bneighbour/i, 'neighbour — spell American'],
+  [/\banalyse[ds]?\b/i, 'analyse — spell American'],
   [/\bTODO\b/, 'TODO placeholder'],
   [/not available yet/i, 'not available yet — say "Not built yet."'],
   [/\bT\s*=\s*0\b/, 'T=0 — the app calls it the start'],
@@ -102,8 +102,8 @@ async function open(payload) {
 
 const tab = (name) => page.locator('.tabButton', { hasText: name }).first();
 
-/** The center of a joint's own marker, which is what the canvas hit-tests. */
-const centerOf = (id) =>
+/** The centre of a joint's own marker, which is what the canvas hit-tests. */
+const centreOf = (id) =>
   page.evaluate((jointId) => {
     const el = document.querySelector(`#joint_${jointId}`)?.closest('svg[x]');
     const box = el.getBoundingClientRect();
@@ -111,7 +111,7 @@ const centerOf = (id) =>
   }, id);
 
 const clickJoint = async (id) => {
-  const at = await centerOf(id);
+  const at = await centreOf(id);
   await page.mouse.move(at.x, at.y);
   await page.mouse.click(at.x, at.y);
   await page.waitForTimeout(400);
@@ -238,7 +238,7 @@ await tab('Kinematic').click();
 await page.waitForTimeout(700);
 const inAnalysis = await unitsTip();
 record(
-  'and does say the way out once the switch is actually grayed',
+  'and does say the way out once the switch is actually greyed',
   /Switch to Edit mode to change it\./.test(inAnalysis),
   inAnalysis
 );

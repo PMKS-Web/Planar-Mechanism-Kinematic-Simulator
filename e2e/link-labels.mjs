@@ -253,7 +253,7 @@ const wrongInk = type.labels.filter((label) => {
   const body = bodyOf(label);
   if (!body || body.inert || body.lum === null) return false;
   // Clear of the threshold either way, so the band where the choice is a
-  // judgement call is left to the app rather than second-guessed here.
+  // judgment call is left to the app rather than second-guessed here.
   if (body.lum < 0.25) return label.ink !== 'white';
   if (body.lum > 0.65) return label.ink !== 'black';
   return false;

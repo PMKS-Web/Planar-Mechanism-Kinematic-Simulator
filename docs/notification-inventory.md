@@ -218,7 +218,7 @@ Removed entirely:
 Reworded or removed:
 
 - `No file selected` — **gone**. It fired when the file picker was dismissed,
-  and canceling a dialogue is not a thing that went wrong.
+  and canceling a dialog is not a thing that went wrong.
 - The two zoom warnings no longer name buttons; they say what is wrong and
   where to fix it.
 - `Mechanism URL copied. If you make additional changes, copy the URL again.` →

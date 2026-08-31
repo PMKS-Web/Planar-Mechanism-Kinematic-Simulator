@@ -1992,7 +1992,7 @@
         [attr.font-size]="svgGrid.scaleWithZoom(20)"
       >
         {{
-          this.nup.formatModelength(
+          this.nup.formatModelLength(
             getLengthBetweenOverlayPoints(),
             this.settings.lengthUnit.getValue()
           )
@@ -2070,7 +2070,7 @@
         [attr.y]="-comMeasureLabelPos(measure).y"
         [attr.font-size]="svgGrid.scaleWithZoom(20)"
       >
-        {{ nup.formatModelength(comMeasureValue(measure), settings.lengthUnit.getValue()) }}
+        {{ nup.formatModelLength(comMeasureValue(measure), settings.lengthUnit.getValue()) }}
       </text>
     </g>
   }

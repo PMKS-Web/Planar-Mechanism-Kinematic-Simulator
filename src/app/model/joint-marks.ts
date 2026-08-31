@@ -161,7 +161,7 @@ export const CYLINDER = {
   /**
    * The shortest the head is ever drawn: square, as long as it is across.
    *
-   * The real floor on the whole part, and it is a drawing judgement rather than
+   * The real floor on the whole part, and it is a drawing judgment rather than
    * a mechanical one — a head shorter than it is wide stops reading as a head
    * at all, and there is nothing else left holding the size up.
    */

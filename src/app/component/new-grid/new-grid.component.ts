@@ -1881,7 +1881,7 @@ export class NewGridComponent implements OnDestroy {
    * The refusal a press on a held object has earned but not yet been given.
    * Spoken only when the pointer actually tries to move — a plain click is a
    * selection, and selecting a locked object is the way to its own Unlock
-   * button, not an offence. Cleared on release.
+   * button, not an offense. Cleared on release.
    */
   private heldGestureNotice?: () => void;
 
@@ -3724,7 +3724,7 @@ export class NewGridComponent implements OnDestroy {
       showsPosition,
       label: showsPosition
         ? `${Math.round(size.start * 1000) / 10}%`
-        : this.nup.formatModelength(size.stroke, this.settings.lengthUnit.getValue()),
+        : this.nup.formatModelLength(size.stroke, this.settings.lengthUnit.getValue()),
     };
   }
 

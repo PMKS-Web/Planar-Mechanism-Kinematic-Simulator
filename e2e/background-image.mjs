@@ -494,7 +494,7 @@ record(
 );
 await page.screenshot({ path: SHOTS + '15-turned.png' });
 
-// A turned picture still resizes by the corner the hand is holding: the maths
+// A turned picture still resizes by the corner the hand is holding: the math
 // runs in the picture's own frame, so the opposite corner stays put on screen.
 const beforeTurnedResize = await gripsOnScreen();
 await dragBy(beforeTurnedResize[3], 90, 90);

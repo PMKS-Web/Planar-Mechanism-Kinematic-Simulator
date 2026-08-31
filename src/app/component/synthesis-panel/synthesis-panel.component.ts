@@ -245,7 +245,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   // --- units ---------------------------------------------------------------
 
   private lengthText(model: number): string {
-    return this.nup.formatModelength(model, this.settings.lengthUnit.getValue());
+    return this.nup.formatModelLength(model, this.settings.lengthUnit.getValue());
   }
 
   private angleText(degrees: number): string {
@@ -314,7 +314,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     // who types one anyway is still understood.
     const parsed = (['rx', 'ry', 'rw', 'rh'] as const).map((key) => {
       const typed = (this.regionForm.get(key)!.value ?? '').trim();
-      return this.nup.parseModelengthString(
+      return this.nup.parseModelLengthString(
         /[a-z]/i.test(typed) ? typed : `${typed} ${this.lengthUnit}`,
         unit
       );

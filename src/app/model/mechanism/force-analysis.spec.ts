@@ -108,7 +108,7 @@ describe('ForceSolver physical model', () => {
   it('matches welded and unsplit representations and applies the root load once', () => {
     const unsplit = singleBody('m');
     const welded = singleBody('m', true);
-    const unsplitersult = ForceSolver.analyzeFrame(
+    const unsplitResult = ForceSolver.analyzeFrame(
       unsplit.joints,
       unsplit.links,
       'static',
@@ -116,12 +116,12 @@ describe('ForceSolver physical model', () => {
       'm'
     );
     const weldedResult = ForceSolver.analyzeFrame(welded.joints, welded.links, 'static', true, 'm');
-    expectOk(unsplitersult);
+    expectOk(unsplitResult);
     expectOk(weldedResult);
     expect(weldedResult.jointReactions.get('A')).toEqual(
-      expect.arrayContaining(unsplitersult.jointReactions.get('A')!)
+      expect.arrayContaining(unsplitResult.jointReactions.get('A')!)
     );
-    expect(weldedResult.inputEffort!.valueSI).toBeCloseTo(unsplitersult.inputEffort!.valueSI, 12);
+    expect(weldedResult.inputEffort!.valueSI).toBeCloseTo(unsplitResult.inputEffort!.valueSI, 12);
   });
 
   it('adds centripetal inertia dynamically and scales it with speed squared', () => {

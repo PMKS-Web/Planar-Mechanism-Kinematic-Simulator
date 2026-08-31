@@ -53,7 +53,7 @@ export const LONGEST_ARROW_FRACTION = 0.085;
  * What each quantity is drawn in: the analysis graphs' own series palette.
  *
  * These arrows and those plots are the same numbers seen two ways, so a reader
- * who has learnt a color on one should meet it on the other. The first cut
+ * who has learned a color on one should meet it on the other. The first cut
  * used a green and a purple that appear nowhere else in the app, which made
  * them look like a fourth kind of thing.
  *
