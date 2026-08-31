@@ -295,13 +295,15 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   /**
    * The rows this screen shows.
    *
-   * A phone shows the shared row and no more: pose selection is what posed
+   * A phone shows the shared row and no more: parking mid-cycle is what posed
    * editing needs on every platform, but a stack of per-machine rows is the
-   * bottom half of a phone. The master row is the shared one by construction.
+   * bottom half of a phone. `rows` reads a phone as synced, so there is one
+   * row there by construction rather than by filtering -- filtering picked the
+   * *first machine's* private row out of an unsynced set, which controlled one
+   * machine while looking like it controlled the drawing.
    */
   get shownRows(): PlaybackRow[] {
-    const rows = this.rows;
-    return this.viewport.isPhone() ? rows.filter((row) => row.master) : rows;
+    return this.rows;
   }
 
   get speed(): number {
@@ -340,7 +342,13 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     // answer about what is running -- but not one answer about where anything
     // is, because each measures a different thing. The combined row follows the
     // first machine and says nothing about direction.
-    if (this.mechanism.syncMechanisms) {
+    //
+    // A phone reads as synced whether it is or not: the control that unsyncs a
+    // drawing is desktop-only, so a phone that inherited an unsynced state --
+    // from a URL, or from the window being narrowed -- would otherwise get the
+    // *first machine's* private row, labeled M1 and moving only M1, with no
+    // way to reach the others and nothing saying so.
+    if (this.mechanism.syncMechanisms || this.viewport.isPhone()) {
       // The longest cycle in the drawing, so one handle can reach every frame
       // of every machine. Following the first one instead left the slower
       // machines with a stretch at the end of their cycles the handle could

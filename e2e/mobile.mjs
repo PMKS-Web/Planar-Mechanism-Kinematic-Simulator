@@ -361,6 +361,43 @@ record(
 );
 record('and no control that would produce more', (await page.locator('.syncToggle').count()) === 0);
 
+// A phone can arrive at an unsynced drawing without ever having been offered
+// the control that unsyncs one -- from a URL, or from a desktop window being
+// narrowed. Filtering the per-machine rows down to the one marked `master`
+// looked right and was not: it handed back the *first machine's* private row,
+// labeled M1 and moving only M1, with nothing on screen saying the others
+// existed.
+{
+  /** Two four-bars side by side, each with its own drive. */
+  const twoFourBars =
+    '?2P.Ay,1E8.K,0.1011.6A,A,0mv,0VU,0.0B,B,0e_,E6,0.0C,C,l1,WW,0.4D,D,qD,0Pk,0.6E,E,2Y_,0,0.' +
+    '0F,F,2Y_,GJ,0.0G,G,3Jt,Wc,0.4H,H,3aA,0,0..YRAB,AB,Fe,Fe,0ix,08i,c5cae9,A,B,,.' +
+    'YRBC,BC,Fe,Fe,32,NJ,303e9f,B,C,,.YRCD,CD,Fe,Fe,nd,3P,0d125a,C,D,,.' +
+    'AREF,EF,0,0,2Y_,8A,555555,E,F,,.ARFG,FG,0,0,2xQ,OS,555555,F,G,,.' +
+    'ARGH,GH,0,0,3S0,GJ,555555,G,H,,...N_L';
+  await page.goto(BASE + '/' + twoFourBars, { waitUntil: 'domcontentloaded' });
+  await waitForReady(page).catch(() => undefined);
+  await page.waitForTimeout(800);
+  await page.evaluate(() => {
+    const srv = window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    srv.setSyncMechanisms(false);
+  });
+  await page.waitForTimeout(400);
+  const unsynced = await page.evaluate(() => {
+    const bar = window.ng.getComponent(document.querySelector('app-playback-bar'));
+    return {
+      shown: bar.shownRows.map((row) => ({ id: row.id, index: row.index })),
+      machines: bar.mechanism.mechanisms.filter((one) => one.isMechanismValid()).length,
+    };
+  });
+  record('an unsynced drawing still shows one row on a phone', unsynced.shown.length === 1, unsynced);
+  record(
+    'and it stands for every machine rather than the first',
+    unsynced.machines < 2 || unsynced.shown[0].index === -1,
+    unsynced
+  );
+}
+
 const rowWhileOpen = cluster.y;
 await page.locator('.sheetHandle').click();
 await page.waitForTimeout(700);

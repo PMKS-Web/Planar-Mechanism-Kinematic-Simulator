@@ -1,12 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import {
-  EditAction,
-  EditMode,
-  EditRefusal,
-  EditState,
-  displacementRefusal,
-  refusalFor,
-} from '../model/edit-permission';
+import { EditAction, EditMode, EditRefusal, EditState, refusalFor } from '../model/edit-permission';
 import { MechanismService } from './mechanism.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 
@@ -80,8 +73,11 @@ export class EditPermissionService {
    * For the surfaces that answer the mode question themselves and would
    * otherwise refuse twice over -- see `displacementRefusal`.
    */
-  poseRefusal(): EditRefusal | null {
-    return displacementRefusal(this.state());
+  poseRefusal(action: EditAction = 'build'): EditRefusal | null {
+    const state = this.state();
+    // The mode half stripped off, the pose half kept -- including Phase 2's
+    // answer, which is that a geometry gesture at a paused pose is allowed.
+    return refusalFor(action, { ...state, mode: 'edit' });
   }
 
   /** The same question where only yes or no is wanted. */

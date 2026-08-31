@@ -141,6 +141,36 @@ const DISPLACED_UNSYNCED: EditRefusal = {
 };
 
 /**
+ * A typed number at a displaced pose.
+ *
+ * Gestures at a pose are *defined* to mean "put it here, at this pose", and the
+ * app can honor that: the drag lands, and the machine is put back on its anchor
+ * underneath. Numbers are less forgiving. A joint's X and Y are pose
+ * coordinates outright; a link's length reads pose-invariantly but the handler
+ * behind it repositions joints along the *displayed* orientation. Each needs a
+ * written transform back to t = 0 before it can be offered here, and until one
+ * exists the field says so rather than writing the wrong thing quietly.
+ */
+const DISPLACED_TYPING: EditRefusal = {
+  short: 'shown at pose',
+  long: 'These are the values at the pose on screen. Drag on the grid to edit here, or return to the start to type them.',
+  backToStartHelps: true,
+};
+
+/**
+ * A large drawing whose motion has not been worked out.
+ *
+ * Posed editing needs a cycle to anchor against, and re-anchoring costs a solve
+ * per commit -- the exact cost the deferral exists to refuse. At the start pose
+ * these drawings edit exactly as they always did.
+ */
+const DEFERRED_DISPLACED: EditRefusal = {
+  short: 'motion not worked out',
+  long: 'This drawing is large enough that its motion is worked out on request. Press Play, or return to the start to edit it.',
+  backToStartHelps: true,
+};
+
+/**
  * The verdict for one action.
  *
  * Phase 2 of the plan changes what this function returns; it does not change
@@ -162,7 +192,25 @@ export function refusalFor(action: EditAction, state: EditState): EditRefusal | 
     return IN_ANALYSIS;
   }
 
-  return displacementRefusal(state);
+  // Playing is read-only whatever the action. A reader reaching for a joint
+  // that is moving is a fight nothing here can win.
+  if (state.playing) return PLAYING;
+  if (state.atStart) return null;
+
+  // Paused, and away from the start. This is where Phase 2 changed the answers
+  // and nothing else: the surfaces that ask are the same ones, asking the same
+  // way.
+  switch (action) {
+    case 'drag':
+    case 'build':
+    case 'structure':
+    case 'history':
+      return state.solveDeferred ? DEFERRED_DISPLACED : null;
+    default:
+      // Joint X/Y, link angle, masses, forces, cylinders, input speed. Each
+      // waits for its own canonicalization transform (§5.5 of the plan).
+      return DISPLACED_TYPING;
+  }
 }
 
 /**

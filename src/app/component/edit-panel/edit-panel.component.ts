@@ -16,6 +16,7 @@ import {
   AbstractControl,
   FormArray,
   FormBuilder,
+  FormGroup,
   FormsModule,
   ReactiveFormsModule,
 } from '@angular/forms';
@@ -196,6 +197,89 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     return this.banner() !== null;
   }
 
+  /**
+   * Whether the panel as a whole is out of reach.
+   *
+   * Coarser than the banner, and deliberately so. Playing or in an analysis
+   * mode, nothing here may be touched. Merely *paused* away from the start,
+   * Phase 2 allows the structural half -- Grounded, Driven Input, Slider,
+   * Weld, Rename, Lock, Delete are addressed by identity and apply to the
+   * design without needing the pose -- while the numbers below stay frozen,
+   * because each of those needs a written transform back to t = 0 that does
+   * not exist yet.
+   */
+  panelIsFrozen(): boolean {
+    return !this.permission.may('structure');
+  }
+
+  /**
+   * The fields that read a pose rather than a design.
+   *
+   * A joint's X and Y outright. A link's length reads pose-invariantly but its
+   * handler repositions joints along the *displayed* orientation, which at a
+   * displaced pose writes pose geometry. A force's endpoints are world
+   * coordinates when it is global. A cylinder is re-derived from its mounts on
+   * every rebuild. And an input speed moves the visible pose by changing what
+   * the held elapsed seconds land on.
+   *
+   * Frozen from `ngDoCheck` rather than by a template binding, because a
+   * reactive control's disabled state belongs to the control: setting it from
+   * the template is what produces Angular's own warning about the two of them
+   * disagreeing.
+   */
+  private freezePoseBoundFields(): void {
+    const frozen = !this.permission.may('placement');
+    if (!frozen) {
+      // Exactly what this froze, and nothing else. A blanket enable would undo
+      // the *lock* rules that ran a moment ago and hand back a field a Lock is
+      // holding -- two authorities over one control, with the last writer
+      // winning by accident.
+      this.frozenByPose.forEach((control) => control.enable({ emitEvent: false }));
+      this.frozenByPose.clear();
+      return;
+    }
+    const freeze = (group: FormGroup, names: string[]) =>
+      names.forEach((name) => {
+        const control = group.get(name);
+        if (!control || control.disabled) return;
+        control.disable({ emitEvent: false });
+        this.frozenByPose.add(control);
+      });
+    freeze(this.jointForm, [
+      'xPos',
+      'yPos',
+      'prisAngle',
+      'sliderMass',
+      'inputSpeed',
+      'inputSpeedUnit',
+    ]);
+    this.otherJoints.controls.forEach((control) => {
+      if (control.disabled) return;
+      control.disable({ emitEvent: false });
+      this.frozenByPose.add(control);
+    });
+    freeze(this.linkForm, ['length', 'angle', 'mass', 'massMoI', 'comX', 'comY']);
+    freeze(this.forceForm, ['magnitude', 'angle', 'xComp', 'yComp', 'isGlobal']);
+    freeze(this.cylinderForm, [
+      'travel',
+      'travelUnit',
+      'start',
+      'startUnit',
+      'angle',
+      'barrelMass',
+      'rodMass',
+      'headMass',
+    ]);
+  }
+
+  /** The controls this freeze disabled, so unfreezing gives back only those. */
+  private frozenByPose = new Set<AbstractControl>();
+
+  /** Whether the input's direction may be turned round -- it moves the pose. */
+  driveIsFrozen(): boolean {
+    return !this.permission.may('drive');
+  }
+
   /** Whether the banner's own way out would do anything. */
   backToStartHelps(): boolean {
     return this.banner()?.backToStartHelps === true;
@@ -222,6 +306,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    * card is: `animate()` mutates the joints in place and publishes on nothing.
    */
   ngDoCheck(): void {
+    this.freezePoseBoundFields();
     if (!this.editingRefused() || this.activeSrv.objType !== 'Joint') return;
     const joint = this.activeSrv.selectedJoint;
     if (!joint) return;
@@ -529,6 +614,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     if (sealedMount && sliderControl?.enabled) sliderControl.disable({ emitEvent: false });
 
     this.syncLockDisabledFields();
+    // Last, so it is the outer authority: a lock and a displaced pose can both
+    // hold the same field, and the pose freeze must not be undone by the lock
+    // rules deciding that particular field is free.
+    this.freezePoseBoundFields();
   }
 
   /**

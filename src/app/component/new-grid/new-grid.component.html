@@ -439,6 +439,44 @@
       </g>
     }
   </g>
+  <!-- Where each machine starts, drawn under the mechanism while the mechanism
+       is not showing it. Posed editing without this asks a student to reason
+       about a pose they cannot see -- and it is where the warning lives: the
+       moment a drag takes the linkage somewhere its original start no longer
+       exists, the ghost goes amber, and dragging back recovers it. That is a
+       better answer than a message explaining what already happened. -->
+  @if (showStartGhost()) {
+    <g id="startGhostHolder" style="transform: scaleY(-1)" pointer-events="none">
+      @for (ghost of startGhosts(); track ghost.index) {
+        <g class="startGhost" [class.unreachable]="ghostWarns(ghost)">
+          @for (bar of ghost.bars; track $index) {
+            <line
+              [attr.x1]="bar.x1"
+              [attr.y1]="bar.y1"
+              [attr.x2]="bar.x2"
+              [attr.y2]="bar.y2"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
+            />
+          }
+          @for (pin of ghost.pins; track $index) {
+            <circle [attr.cx]="pin.x" [attr.cy]="pin.y" [attr.r]="svgGrid.scaleWithZoom(4)" />
+          }
+          @if (ghostWarns(ghost)) {
+            <text
+              class="startGhostTag"
+              [attr.x]="ghost.pins[0].x"
+              [attr.y]="-ghost.pins[0].y"
+              [attr.font-size]="svgGrid.scaleWithZoom(13)"
+              transform="scale(1,-1)"
+            >
+              start unreachable
+            </text>
+          }
+        </g>
+      }
+    </g>
+  }
+
   <g id="linkHolder" style="transform: scaleY(-1)">
     @for (link of mechanismSrv.getLinks(); track link) {
       <ng-container>

@@ -238,14 +238,33 @@ export class UrlProcessorService {
     // and nothing looked at it. A URL is a compatibility surface: whatever an
     // older version wrote has to keep opening, and has to open as something
     // coherent.
+    // Before the rebuild, not after it. Every anchor is dropped and re-read
+    // from the drawing that has just arrived -- a history step or a URL load is
+    // authoritative, and no anchor outlives one. Dropping them *after*
+    // `finishStructuralEdit` threw away the ones it had just taken, and every
+    // freshly opened mechanism had no anchor at all until its first edit.
+    mechanismSrv.forgetAnchors();
     mechanismSrv.finishStructuralEdit(save);
 
-    // A step within one mechanism's own history goes back to the time it was
-    // taken at; a different mechanism arriving starts at the beginning of its
-    // own cycle, which is the only time in it that means anything yet.
+    // Undo rewinds. A saved URL stores the drawing at its start pose, so this
+    // used to note which sample was showing, rebuild, and jump forward to that
+    // sample again -- a loaded gun that the old rules kept unloaded, because
+    // undo was only legal while parked at the start and the noted index was
+    // always zero.
+    //
+    // Now that an edit at a displaced pose is legal, so is the undo of one, and
+    // the jump is wrong twice over: "sample 40" belonged to the *edited*
+    // drawing's cycle, and the restored drawing is older geometry with a
+    // different cycle that may not even have forty samples; and the jump moves
+    // only the shared clock, leaving unsynced machines where they were.
+    //
+    // Pose is not part of history; edits are. So the older drawing arrives at
+    // its own start, eased there rather than cut, and every anchor is dropped
+    // and re-read from it -- a history or URL load is authoritative, and no
+    // anchor outlives one.
     if (continuingHistory && heldStep > 0) {
       setTimeout(() => {
-        mechanismSrv.animate(heldStep, false);
+        mechanismSrv.easeToStart();
       }, 0);
     }
 

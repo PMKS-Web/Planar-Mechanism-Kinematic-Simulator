@@ -402,6 +402,42 @@
     opacity: 0.3;
   }
 
+  // Where the machine starts, under the machine. A skeleton rather than a
+  // second solid linkage: two solid linkages on one grid compete for the
+  // reader's attention and only one of them is the thing being edited.
+  .startGhost {
+    line {
+      stroke: rgba(63, 81, 181, 0.32);
+      stroke-linecap: round;
+    }
+
+    circle {
+      fill: rgba(63, 81, 181, 0.32);
+    }
+
+    // The drag has taken the linkage somewhere its original start no longer
+    // exists. Amber rather than red: nothing is broken, and letting go here is
+    // allowed -- it just moves the start, which is what the tag says.
+    &.unreachable {
+      line {
+        stroke: rgba(230, 145, 0, 0.75);
+      }
+
+      circle {
+        fill: rgba(230, 145, 0, 0.75);
+      }
+    }
+  }
+
+  .startGhostTag {
+    fill: #b26a00;
+    font-family: Roboto, 'Helvetica Neue', sans-serif;
+    paint-order: stroke;
+    stroke: rgba(255, 255, 255, 0.85);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+
   // Where the middle of the coupler goes over the whole of the travel.
   .synthTrace {
     fill: none;

@@ -19,12 +19,15 @@
     </div>
   }
 
-  <!-- `inert` rather than a disabled attribute on every control: it takes the
-       whole subtree out of pointer, keyboard and focus reach in one place,
-       which is what "read-only" means here. The numbers stay readable on
-       purpose -- watching a joint's coordinates tick is the reason the panel
-       stays at all. -->
-  <div class="editBody" [class.frozen]="editingRefused()" [attr.inert]="editingRefused() || null">
+  <!-- Two levels, because the answers differ. Playing or in an analysis mode
+       nothing here may be touched, and `inert` takes the whole subtree out of
+       pointer, keyboard and focus reach in one attribute. Merely paused away
+       from the start, the structural half is live -- Grounded, Driven Input,
+       Weld, Rename, Delete apply to the design without needing the pose -- and
+       only the pose-bound fields are frozen, which the component does on the
+       controls themselves. The numbers stay readable either way: watching a
+       joint's coordinates tick is the reason the panel stays at all. -->
+  <div class="editBody" [class.frozen]="panelIsFrozen()" [attr.inert]="panelIsFrozen() || null">
     @if (this.activeSrv.objType == 'MultiSelection') {
       <app-multi-edit-panel></app-multi-edit-panel>
     }
@@ -256,7 +259,14 @@
               <!-- A driven block translates; it has no sense of rotation and no
                  RPM. Both controls read the drive's kind rather than assuming
                  the rotational one. -->
-              <button-block [icon]="inputDirectionIcon" [click]="flipInputDirection.bind(this)"
+              <!-- Turning the drive round re-samples the same geometry onto a
+                   different time axis, so at a displaced pose it moves what is
+                   on screen -- which is the one thing a posed edit must not do
+                   behind the reader's back. -->
+              <button-block
+                [icon]="inputDirectionIcon"
+                [disabled]="driveIsFrozen()"
+                [click]="flipInputDirection.bind(this)"
                 >{{ inputDirectionLabel }}
               </button-block>
               @if (isSliderInput) {
@@ -424,7 +434,7 @@
             >
               <button-block
                 [icon]="inputDirectionIcon"
-                [disabled]="cylinderDirectionForced"
+                [disabled]="cylinderDirectionForced || driveIsFrozen()"
                 [click]="flipInputDirection.bind(this)"
                 >{{ inputDirectionLabel }}
               </button-block>

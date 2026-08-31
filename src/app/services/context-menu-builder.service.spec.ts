@@ -80,6 +80,9 @@ function createBuilderHarness() {
     tabs: injector.get(SelectedTabService),
     synthesis: injector.get(SynthesisBuilderService),
     active: injector.get(ActiveObjService),
+    // For the checks that assert the gates agree with each other rather than
+    // asserting one of them twice.
+    grid: injector.get(GridUtilsService),
   };
 }
 
@@ -548,13 +551,28 @@ describe('the right-click menu', () => {
   });
 
   describe('away from the start pose', () => {
-    it('grays what edits the mechanism and leaves the view alone', () => {
+    it('offers the structural rows at a paused pose, and grays them while playing', () => {
+      // Phase 2 of the plan changed this answer, not the plumbing behind it.
+      // Grounding a joint is addressed by identity -- it applies to the design
+      // without needing the pose -- so parking mid-cycle is no longer a reason
+      // to refuse it. Playing still is: nothing can be aimed at while it moves.
       const parts = fourBar(harness.mechanism);
       harness.mechanism.mechanismTimeStep = 12;
-      const model = harness.builder.build(parts.t, noHandlers);
-      expect(row(model, 'Grounded')!.refusal!.short).toBe('not at the start');
-      // A trace is a view of the mechanism, not a change to it.
-      expect(row(model, 'Trace Path')!.disabled).toBe(false);
+      const paused = harness.builder.build(parts.t, noHandlers);
+      expect(row(paused, 'Grounded')!.refusal).toBeUndefined();
+      expect(row(paused, 'Trace Path')!.disabled).toBe(false);
+
+      // A trace is a view of the mechanism, not a change to it -- so parking
+      // mid-cycle, which is exactly when a reader wants one, leaves it live.
+      expect(row(paused, 'Trace Path')!.refusal).toBeUndefined();
+
+      harness.mechanism.isPlaying = true;
+      const running = harness.builder.build(parts.t, noHandlers);
+      expect(row(running, 'Grounded')!.refusal!.short).toBe('animation running');
+      // Including the trace, while it runs. `showCurve` is serialized, and
+      // undo is blocked here -- so a toggle made now could not be taken back.
+      expect(row(running, 'Trace Path')!.refusal!.short).toBe('animation running');
+      harness.mechanism.isPlaying = false;
     });
 
     /** A driven crank-rocker lettered from `from`, appended at `offset`. */
@@ -578,10 +596,12 @@ describe('the right-click menu', () => {
       return { joints, links };
     }
 
-    it('grays with a reason of its own when an unsynced machine is parked off zero', () => {
-      // Scrubbing a non-master row leaves the shared clock at zero, so this
-      // used to pass the clock check and offer live edit rows against a
-      // displaced pose that undo — gated on isAnimating() — refused to fix.
+    it('agrees with every other gate when an unsynced machine is parked off zero', () => {
+      // Scrubbing a non-master row leaves the shared clock at zero. Before the
+      // permission model this menu read that clock and offered live rows while
+      // undo -- gated on isAnimating() -- refused. They now give one answer,
+      // whatever that answer is; the point of the check is the agreement, not
+      // which way it falls.
       const first = crankRocker(harness.mechanism, 'A', 0);
       crankRocker(harness.mechanism, 'E', 10 * S);
       wireGraph(harness.mechanism);
@@ -595,9 +615,19 @@ describe('the right-click menu', () => {
       expect(harness.mechanism.mechanismTimeStep).toBe(0);
 
       const model = harness.builder.build(first.joints[1], noHandlers);
-      expect(row(model, 'Grounded')!.refusal!.short).toBe('a machine is mid-cycle');
-      // The view rows stay live, exactly as they do at a non-zero step.
+      // Paused, so the structural rows are live -- and undo agrees, which is
+      // the whole point. It used to refuse here while the menu did not.
+      expect(row(model, 'Grounded')!.refusal).toBeUndefined();
+      expect(harness.grid.canRestoreHistory()).toBe(true);
       expect(row(model, 'Trace Path')!.disabled).toBe(false);
+
+      // And while it runs, both refuse, with the words that name the machine
+      // rather than the shared clock the reader can see reading zero.
+      harness.mechanism.isPlaying = true;
+      const running = harness.builder.build(first.joints[1], noHandlers);
+      expect(running.groups.flatMap((g) => g.rows).some((r) => r.refusal)).toBe(true);
+      expect(harness.grid.canRestoreHistory()).toBe(false);
+      harness.mechanism.isPlaying = false;
     });
   });
 });

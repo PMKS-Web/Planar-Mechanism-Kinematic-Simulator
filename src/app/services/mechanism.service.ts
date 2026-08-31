@@ -45,6 +45,14 @@ import {
 } from '../model/utils';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { GridUtilsService } from './grid-utils.service';
+import {
+  MachineAnchor,
+  StartPoseGhost,
+  coordinateRuleFor,
+  coordinatesAcross,
+  reachAnchor,
+  topologyOf,
+} from '../model/mechanism/anchor';
 import { ActiveObjService } from './active-obj.service';
 import { NewGridComponent } from '../component/new-grid/new-grid.component';
 import { angleReference, describeActuator, resolveActuator } from '../model/actuator';
@@ -486,6 +494,12 @@ export class MechanismService {
       this.playbackDirection[index] = was?.compensating ? -direction : direction;
     });
     this.activeObjService.fakeUpdateSelectedObj();
+    // Where each machine's cycle is meant to start, taken for anything that has
+    // just become solvable and dropped for anything whose owned joints have
+    // changed. Before the re-seeks below, which move the editable arrays off
+    // sample 0 -- an anchor read from them after that would record wherever
+    // the reader was looking as the place the design starts.
+    this.refreshAnchors();
     this.reseekToTime(heldTime);
     this.restoreOwnTimes(heldEach);
 
@@ -4505,6 +4519,8 @@ export class MechanismService {
     if (this.atStartPose() || !this.masterMechanism()?.joints[0]?.length) {
       return;
     }
+    // A posed edit is displaced by definition, so `atStartPose` above has
+    // already let it through -- the per-machine skip is below.
     // Every machine at *its own* time zero, bypassing the clocks entirely.
     // Going through applyPose would have honored the private clocks while
     // unsynced and left each mechanism wherever its own scrubber was -- and
@@ -4513,6 +4529,12 @@ export class MechanismService {
     // playback happened to be. The pose then ratchets forward on every edit.
     this.poseRevision++;
     this.mechanisms.forEach((frames, index) => {
+      // Except the one machine whose displayed pose *is* its design pose right
+      // now -- a gesture editing at a displaced pose. Restoring it would put
+      // the drag back where it started on every pointer move; restoring
+      // nothing would turn every other displaced machine's shown pose into its
+      // provisional t = 0, corrupting machines the edit never touched.
+      if (this.seedFromDisplay === topologyOf(this.partitions[index].ownJoints)) return;
       this.applyMechanismPose(frames, this.partitions[index], 0);
     });
   }
@@ -5063,6 +5085,304 @@ export class MechanismService {
     if (!this.isPlaying) return;
     this.setAllPlaying(false);
     this.playbackClockMs = null;
+  }
+
+  // ---- where each machine's cycle starts (docs/edit-mode-playback-plan.md §3)
+
+  /**
+   * The anchor for each machine, keyed by everything it owns.
+   *
+   * Keyed on the whole owned-joint set rather than on `partitionKey`, which is
+   * the lowest owned moving-joint id: that survives reordering and deletion,
+   * which is all a held *clock* needs, but says nothing about lineage. Fuse two
+   * machines and the union usually inherits one parent's key. A wrong resume
+   * point is a nuisance; an anchor inherited across a fusion is a corrupted
+   * design, so a change to the set drops the anchor and it is taken again from
+   * whatever the fused machine now starts at.
+   */
+  private anchors = new Map<string, MachineAnchor>();
+
+  /**
+   * The machine whose *displayed* pose is currently also its design pose.
+   *
+   * Editing at a displaced pose means, for exactly one machine and for exactly
+   * the length of one gesture, that the drawn pose is what the rebuild should
+   * treat as t = 0. Every other machine is still restored to its own start
+   * first -- which is the invariant the whole design stands on: no machine's
+   * canonical pose is ever seeded from its displayed one except the one being
+   * edited, and that one is put back on its anchor at the commit.
+   *
+   * A rebuild is global, so without this the restore would be skipped for
+   * *every* displaced machine and an edit to one would silently redefine the
+   * start pose of the others.
+   */
+  private seedFromDisplay: string | null = null;
+
+  /** Which machine, if any, is mid-gesture at a displaced pose. */
+  get posedEditKey(): string | null {
+    return this.seedFromDisplay;
+  }
+
+  /** The anchor a machine's cycle starts at, for the surfaces that draw it. */
+  anchorOf(index: number): MachineAnchor | undefined {
+    const partition = this.partitions[index];
+    return partition ? this.anchors.get(topologyOf(partition.ownJoints)) : undefined;
+  }
+
+  /**
+   * Take an anchor for every machine that has just been solved and has none.
+   *
+   * From the solved sample 0 rather than from the editable arrays: sample 0
+   * *is* t = 0 by construction, where the editable joints may already have been
+   * re-seeked to wherever the reader was looking.
+   */
+  private refreshAnchors(): void {
+    const alive = new Set<string>();
+    this.partitions.forEach((partition, index) => {
+      const frames = this.mechanisms[index];
+      if (!frames?.isMechanismValid()) return;
+      const key = topologyOf(partition.ownJoints);
+      alive.add(key);
+      if (!this.anchors.has(key)) {
+        const taken = this.anchorFor(index);
+        if (taken) this.anchors.set(key, taken);
+      }
+    });
+    this.anchors.forEach((_, key) => {
+      if (!alive.has(key)) this.anchors.delete(key);
+    });
+  }
+
+  /** Read one machine's anchor off its solved cycle. */
+  private anchorFor(index: number): MachineAnchor | undefined {
+    const partition = this.partitions[index];
+    const frames = this.mechanisms[index];
+    if (!partition || !frames?.isMechanismValid()) return undefined;
+    const driven = partition.ownJoints.find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
+    if (!driven) return undefined;
+    const rule = coordinateRuleFor(driven);
+    if (!rule) return undefined;
+    const coordinates = coordinatesAcross(rule, frames.joints);
+    const first = coordinates[0];
+    if (first === undefined) return undefined;
+    const next = coordinates.find((value) => value !== undefined && value !== first);
+    return {
+      jointId: rule.jointId,
+      topology: topologyOf(partition.ownJoints),
+      kind: rule.kind,
+      coordinate: first,
+      heading: next !== undefined && next < first ? -1 : 1,
+      referenceId: rule.referenceId,
+      axis: rule.axis,
+      seed: new Map(frames.joints[0].map((joint) => [joint.id, { x: joint.x, y: joint.y }])),
+    };
+  }
+
+  /**
+   * Whether this machine could still start where it was drawn to start.
+   *
+   * A lookup into frames the preview has already solved, not a second solve --
+   * which is what lets the ghost warn *during* a drag rather than a snackbar
+   * explaining afterwards.
+   */
+  anchorIsReachable(index: number): boolean {
+    const anchor = this.anchorOf(index);
+    const frames = this.mechanisms[index];
+    if (!anchor || !frames?.isMechanismValid()) return true;
+    const rule = this.ruleFor(anchor);
+    return reachAnchor(coordinatesAcross(rule, frames.joints), anchor, frames.joints) !== null;
+  }
+
+  private ruleFor(anchor: MachineAnchor) {
+    return {
+      jointId: anchor.jointId,
+      kind: anchor.kind,
+      referenceId: anchor.referenceId,
+      axis: anchor.axis,
+    };
+  }
+
+  /**
+   * Begin a gesture that edits this part at a pose other than its machine's
+   * start, or answer that there is nothing to stage.
+   *
+   * Nothing to stage covers the ordinary cases: parked at the start, where the
+   * displayed pose already *is* the design; and a drawing whose solve has been
+   * deferred, which has no cycle to anchor against and for which "solve twice
+   * per commit" is the exact cost the deferral exists to refuse.
+   */
+  beginPosedEdit(part: Joint | Link | Force): boolean {
+    if (this.seedFromDisplay || this.isAtStartPose() || this.solvingDeferred) return false;
+    const index = this.indexOfMechanismContaining(part);
+    if (index === -1 || !this.mechanisms[index]?.isMechanismValid()) return false;
+    this.seedFromDisplay = topologyOf(this.partitions[index].ownJoints);
+    return true;
+  }
+
+  /** Abandon a staged posed edit without committing it. */
+  cancelPosedEdit(): void {
+    this.seedFromDisplay = null;
+  }
+
+  /**
+   * Close a posed edit: put the design back on the machine's anchor.
+   *
+   * By the time this runs the gesture is wholly resolved -- a drop that merged
+   * two joints or cut a slot has already changed the topology -- and the
+   * rebuild has solved the new geometry from the pose under the reader's hand.
+   * What is left is to find the anchored input value in that new cycle and make
+   * *that* pose t = 0, then put the display back where the hand was.
+   *
+   * The edit always lands. An anchor that cannot be reached is reported, never
+   * a reason to refuse or revert what the reader just did: the old start pose
+   * belongs to the old geometry, and the way back to both of them is Undo.
+   */
+  finishPosedEdit(): { reanchored: boolean; lost?: string } {
+    const key = this.seedFromDisplay;
+    this.seedFromDisplay = null;
+    if (!key) return { reanchored: false };
+    const index = this.partitions.findIndex((partition) => topologyOf(partition.ownJoints) === key);
+    const frames = this.mechanisms[index];
+    const anchor = this.anchors.get(key);
+    if (index === -1 || !anchor || !frames?.isMechanismValid()) {
+      // The machine this gesture belonged to is not there any more -- fused,
+      // split, or no longer able to run. Whatever exists now starts where it
+      // stands, which is what `refreshAnchors` will take on the next rebuild.
+      this.anchors.delete(key);
+      return { reanchored: false };
+    }
+    const rule = this.ruleFor(anchor);
+    const coordinates = coordinatesAcross(rule, frames.joints);
+    const reach = reachAnchor(coordinates, anchor, frames.joints);
+    if (!reach) {
+      this.anchors.delete(key);
+      return { reanchored: false, lost: this.partitions[index]?.id ?? `M${index + 1}` };
+    }
+    // Where the reader's hand is, so the display can be put back on it. Taken
+    // before the arrays move, because it is a property of the pose they hold.
+    const commitCoordinate = coordinates[0];
+    const times = frames.timeNum ?? [];
+    const anchored =
+      times[reach.index] +
+      (times[Math.min(reach.index + 1, times.length - 1)] - times[reach.index]) * reach.blend;
+
+    this.applyMechanismPose(frames, this.partitions[index], anchored);
+    // The anchored pose is now what the arrays hold, so it is what the rebuild
+    // must keep -- the same staging flag, for one more rebuild.
+    this.seedFromDisplay = key;
+    this.updateMechanism(true);
+    this.seedFromDisplay = null;
+    this.seekToCoordinate(key, commitCoordinate);
+    return { reanchored: true };
+  }
+
+  /** Put a machine back at the input value the reader was editing at. */
+  private seekToCoordinate(key: string, coordinate: number | undefined): void {
+    if (coordinate === undefined) return;
+    const index = this.partitions.findIndex((partition) => topologyOf(partition.ownJoints) === key);
+    const frames = this.mechanisms[index];
+    const anchor = this.anchors.get(key) ?? this.anchorFor(index);
+    if (index === -1 || !anchor || !frames?.isMechanismValid()) return;
+    const rule = this.ruleFor(anchor);
+    const coordinates = coordinatesAcross(rule, frames.joints);
+    const reach = reachAnchor(
+      coordinates,
+      { ...anchor, coordinate, seed: anchor.seed },
+      frames.joints
+    );
+    if (!reach) return;
+    const times = frames.timeNum ?? [];
+    const seconds =
+      times[reach.index] +
+      (times[Math.min(reach.index + 1, times.length - 1)] - times[reach.index]) * reach.blend;
+    this.seekMechanism(index, seconds);
+  }
+
+  /**
+   * Promote the pose on screen to this machine's start.
+   *
+   * The honest counterpart of the automatic fallback, and what makes the anchor
+   * a thing the reader can see and control rather than a rule they have to
+   * infer from where the mechanism lands after an edit.
+   */
+  setCurrentPoseAsStart(part: Joint | Link | Force): boolean {
+    const index = this.indexOfMechanismContaining(part);
+    if (index === -1 || !this.mechanisms[index]?.isMechanismValid()) return false;
+    const key = topologyOf(this.partitions[index].ownJoints);
+    this.anchors.delete(key);
+    this.seedFromDisplay = key;
+    this.updateMechanism(true);
+    this.seedFromDisplay = null;
+    // And the clock with it. The rebuild holds each machine's elapsed seconds
+    // and lays them back on afterwards, which is right for every other rebuild
+    // and wrong for this one: the pose the reader just promoted would be
+    // rebuilt as t = 0 and then immediately scrubbed a third of a cycle past
+    // it, so the drawing would still not be showing its own start.
+    this.seekMechanism(
+      this.partitions.findIndex((partition) => topologyOf(partition.ownJoints) === key),
+      0
+    );
+    return true;
+  }
+
+  /** Drop every anchor. A history step or a URL load is authoritative. */
+  forgetAnchors(): void {
+    this.anchors.clear();
+    this.ghostCache = undefined;
+  }
+
+  private ghostCache?: { revision: number; list: StartPoseGhost[] };
+
+  /**
+   * A faint skeleton of where each machine starts, for the machines that are
+   * not showing it.
+   *
+   * Posed editing without this asks a student to reason about a pose they
+   * cannot see -- and it is also where the reachability warning lives, so that
+   * a crank being dragged past the point where it stops being a crank says so
+   * *during* the gesture rather than in a message afterwards.
+   *
+   * Cached against the solve, because the answer only changes when the frames
+   * do and the canvas asks for it on every change-detection pass.
+   */
+  startPoseGhosts(): StartPoseGhost[] {
+    if (this.ghostCache?.revision !== this.solveRevision) {
+      this.ghostCache = { revision: this.solveRevision, list: this.buildGhosts() };
+    }
+    return this.ghostCache.list;
+  }
+
+  private buildGhosts(): StartPoseGhost[] {
+    return this.partitions.flatMap((partition, index) => {
+      const frames = this.mechanisms[index];
+      if (!frames?.isMechanismValid()) return [];
+      const start = frames.joints[0];
+      if (!start?.length) return [];
+      const at = new Map(start.map((joint) => [joint.id, joint]));
+      const bars: { x1: number; y1: number; x2: number; y2: number }[] = [];
+      partition.links.forEach((link) => {
+        // Every pair of the link's own joints, which draws a bar as a line and
+        // a plate as its outline plus its diagonals. Cheap, and it reads as a
+        // skeleton rather than as a second solid linkage competing with the
+        // real one for attention.
+        const own = link.joints.map((joint) => at.get(joint.id)).filter((joint) => !!joint);
+        for (let i = 0; i < own.length; i++) {
+          for (let j = i + 1; j < own.length; j++) {
+            bars.push({ x1: own[i]!.x, y1: own[i]!.y, x2: own[j]!.x, y2: own[j]!.y });
+          }
+        }
+      });
+      return [
+        {
+          index,
+          bars,
+          pins: start.map((joint) => ({ x: joint.x, y: joint.y })),
+          reachable: this.anchorIsReachable(index),
+        },
+      ];
+    });
   }
 
   setAllPlaying(playing: boolean): void {

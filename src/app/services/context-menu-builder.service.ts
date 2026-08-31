@@ -303,9 +303,36 @@ export class ContextMenuBuilderService {
       groups: [
         { label: 'Attach', rows: this.jointAttachRows(joint, handlers) },
         { label: 'State', rows: this.jointStateRows(joint, sealed) },
+        ...this.startPoseGroup(joint),
         { rows: [this.deleteJointRow(joint, sealed), this.deleteMechanismRow(joint)] },
       ],
     };
+  }
+
+  /**
+   * Promote the pose on screen to this machine's start.
+   *
+   * The honest counterpart of the automatic re-anchoring an edit at a pose does
+   * underneath: it makes the anchor a thing the reader can see and control
+   * rather than a rule they have to infer from where the mechanism lands. Only
+   * offered where it would do something -- at the start pose it is a row that
+   * changes nothing, which is worse than a row that is not there.
+   */
+  private startPoseGroup(joint: RealJoint): { label?: string; rows: MenuRow[] }[] {
+    if (this.mechanism.isAtStartPose() || this.mechanism.isPlaying) return [];
+    if (this.mechanism.indexOfMechanismContaining(joint) === -1) return [];
+    return [
+      {
+        rows: [
+          new MenuRow({
+            label: 'Set This Pose as Start',
+            icon: 'flag',
+            material: true,
+            action: () => this.mechanism.setCurrentPoseAsStart(joint),
+          }),
+        ],
+      },
+    ];
   }
 
   private jointAttachRows(joint: RealJoint, handlers: MenuHandlers): MenuRow[] {
@@ -1028,9 +1055,16 @@ export class ContextMenuBuilderService {
     // reader has to reconcile.
     const refusal: MenuRefusal | null = this.permission.poseRefusal();
     if (!refusal) return model;
+    // `alwaysAllowed` means "not refused for being away from the start" -- a
+    // trace is a view of the mechanism, not a change to it, and turning one on
+    // while parked mid-cycle is exactly when a reader wants it. It does not
+    // mean "not refused ever": `showCurve` is serialized state, so toggling it
+    // while the mechanism runs writes a change that undo -- blocked while it
+    // runs -- cannot take back.
+    const exempt = !this.mechanism.isPlaying;
     model.groups.forEach((group) =>
       group.rows.forEach((row) => {
-        if (!row.alwaysAllowed && !row.refusal) row.refusal = refusal;
+        if (!(row.alwaysAllowed && exempt) && !row.refusal) row.refusal = refusal;
       })
     );
     return model;

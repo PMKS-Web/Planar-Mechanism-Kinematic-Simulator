@@ -182,13 +182,17 @@ describe('two four-bars in one drawing', () => {
     expect(startSample.y).toBeCloseTo(rest.y, 6);
   });
 
-  it('closes every edit gate while an unsynced row is parked off zero', () => {
-    // The canvas drag, the Edit panel and the context menu all quote
-    // isAnimating(), and undo quotes it through canRestoreHistory. They used
-    // to read the shared clock instead, which stays at zero when only a
-    // non-master row is scrubbed — so edits were allowed against a displaced
-    // pose that the blocked undo could not take back.
+  it('sees an unsynced row parked off zero, which the shared clock cannot', () => {
+    // The canvas drag, the Edit panel, the context menu and undo all quote one
+    // permission model now, and it asks every machine's own clock. Reading the
+    // shared one -- which stays at zero when only a non-master row is scrubbed
+    // -- is what used to make them disagree with each other.
+    //
+    // What they agree *on* changed in Phase 2: paused is now editable wherever
+    // in the cycle it is. So the thing worth asserting is that the state is
+    // seen at all, and that playing still closes everything.
     const { service, injector } = twoFourBars();
+    const grid = injector.get(GridUtilsService);
 
     service.setSyncMechanisms(false);
     const other = service.masterMechanismIndex() === 0 ? 1 : 0;
@@ -200,7 +204,13 @@ describe('two four-bars in one drawing', () => {
 
     expect(service.isAnimating()).toBe(true);
     expect(service.isAtStartPose()).toBe(false);
-    expect(injector.get(GridUtilsService).canRestoreHistory()).toBe(false);
+    // Paused, so history is open -- and it is open because the pose is paused,
+    // not because a gate failed to notice the machine was displaced.
+    expect(grid.canRestoreHistory()).toBe(true);
+
+    service.setAllPlaying(true);
+    expect(grid.canRestoreHistory()).toBe(false);
+    service.setAllPlaying(false);
   });
 
   it('moves both when the shared clock advances, each on its own frames', () => {

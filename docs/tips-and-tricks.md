@@ -412,6 +412,24 @@ pixels are available; anything you add to the bottom row has to survive that.
   `disabled` on each control: it removes the whole subtree from pointer, keyboard and focus reach
   in one attribute. The fields still tick — `ngDoCheck` patches the selected joint's coordinates,
   because `animate()` mutates the joints in place and publishes on nothing you could subscribe to.
+- **The anchor is what stops the ratchet.** The editable joints are the design,
+  the drawn pose, and the solver's t = 0 all at once, so a rebuild that runs while playback has
+  moved them redefines "start" as wherever playback was. `model/mechanism/anchor.ts` keeps, per
+  machine, the driven joint's *coordinate at t = 0* -- measured absolutely, and **stored**, not
+  re-derived. Re-derive it and every posed edit rounds to the nearest sample and the next rounds
+  from there; store it, and the error stays bounded however many edits are made.
+- **Anchors are keyed on the whole owned-joint set, never `partitionKey`.** That key is the lowest
+  owned moving-joint id, which a fusion usually lets one parent keep. A wrong resume point is a
+  nuisance; an inherited anchor is a corrupted design.
+- **`restoreStartPose` skips exactly one machine**, for exactly the length of one gesture
+  (`seedFromDisplay`). Skipping it globally would turn *every* displaced machine's shown pose into
+  its provisional t = 0, corrupting machines the edit never touched.
+- **Drop anchors before the rebuild, not after.** `UrlProcessorService` calls `forgetAnchors()`
+  ahead of `finishStructuralEdit`; after it, the call threw away the anchors that rebuild had just
+  taken, and every freshly opened mechanism had none until its first edit.
+- **A four-bar a third of the way round its cycle puts a joint several hundred pixels below the
+  window.** A Playwright press aimed there lands on nothing and reads exactly like the drag being
+  refused. Re-frame (the Reset View control) after seeking, before aiming at anything.
 - **The phone's bottom stack is two rows now**, not one: the shared scrub row came back so a phone
   can park mid-cycle. Per-machine rows and the sync toggle stay desktop-only. Two consequences for
   tests: **a fixed canvas coordinate near the bottom of a phone viewport is no longer open grid**

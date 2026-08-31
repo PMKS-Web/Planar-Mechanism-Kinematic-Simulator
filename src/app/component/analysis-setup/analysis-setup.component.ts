@@ -6,6 +6,7 @@ import { ActiveObjService } from '../../services/active-obj.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { SettingsService } from '../../services/settings.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { EditPermissionService } from '../../services/edit-permission.service';
 import { MechanismReadiness, ReadinessCheck } from '../../model/mechanism/readiness';
 import { MatIcon } from '@angular/material/icon';
 import { ScrollShadowDirective } from '../../scroll-shadow.directive';
@@ -47,6 +48,7 @@ export class AnalysisSetupComponent {
   mechanism = inject(MechanismService);
   activeObj = inject(ActiveObjService);
   private tabs = inject(SelectedTabService);
+  private permission = inject(EditPermissionService);
   nup = inject(NumberUnitParserService);
   settings = inject(SettingsService);
   private notify = inject(NotificationService);
@@ -405,7 +407,11 @@ export class AnalysisSetupComponent {
    * stranding Edit mode at a displaced pose with its panel hidden.
    */
   massEditable(): boolean {
-    return this.tabs.getCurrentTab() === TabID.EDIT && this.mechanism.isAtStartPose();
+    // The permission model's answer rather than this drawer's own copy of it.
+    // A mass is one of the properties whose transform back to t = 0 is not
+    // written, so it is refused wherever the Edit panel's numbers are -- and
+    // by the same rule, which is the point.
+    return this.permission.may('properties');
   }
 
   inEditMode(): boolean {

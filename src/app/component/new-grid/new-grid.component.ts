@@ -51,6 +51,7 @@ import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 import { EditPermissionService } from 'src/app/services/edit-permission.service';
+import { StartPoseGhost } from 'src/app/model/mechanism/anchor';
 import { SynthesisPose } from 'src/app/services/synthesis/synthesis-util';
 import { SynthesisCanvasService } from 'src/app/services/synthesis/synthesis-canvas.service';
 import { SynthesisSolutionService } from 'src/app/services/synthesis/synthesis-solution.service';
@@ -634,8 +635,11 @@ export class NewGridComponent implements OnDestroy {
   editingBackgroundImage(): boolean {
     return (
       this.activeObjService.objType === 'BackgroundImage' &&
-      this.tabService.getCurrentTab() === TabID.EDIT &&
-      !this.mechanismSrv.isAnimating() &&
+      // Through the permission model rather than a rule of its own. The picture
+      // belongs to no machine, so there is no anchor to put it back on and no
+      // sense in which moving it "at this pose" means anything -- which makes
+      // it a `properties` question, refused wherever a typed number is.
+      this.permission.may('properties') &&
       !this.settings.tempGridDisable
     );
   }
@@ -1061,12 +1065,10 @@ export class NewGridComponent implements OnDestroy {
     // Let go, and the box goes back to being the upright one that fits.
     const turning = this.selectionGesture;
     if (turning?.mode === 'rotate') return turning.snapshot.bounds;
-    if (
-      this.activeObjService.selectedParts.length < 2 ||
-      this.tabService.getCurrentTab() !== TabID.EDIT ||
-      this.mechanismSrv.isPlaying ||
-      this.mechanismSrv.mechanismTimeStep !== 0
-    ) {
+    // `mechanismTimeStep` was the shared clock, which reads zero while an
+    // unsynced machine is parked mid-cycle -- so the handles appeared over a
+    // displaced drawing and every other surface disagreed with them.
+    if (this.activeObjService.selectedParts.length < 2 || !this.permission.may('drag')) {
       return undefined;
     }
     const closure = canonicalSelectionClosure(
@@ -1238,6 +1240,12 @@ export class NewGridComponent implements OnDestroy {
       this.activeObjService.selectedParts,
       this.mechanismSrv.joints,
       this.mechanismSrv.links
+    );
+    // A group transform is a geometry gesture like any other, so it stages the
+    // same way. The first part decides which machine: a selection spanning two
+    // is refused its staging and simply edits at the start, as it did before.
+    this.mechanismSrv.beginPosedEdit(
+      this.activeObjService.selectedParts[0] as Joint | Link | Force
     );
     this.selectionGesture = {
       snapshot,
@@ -2072,6 +2080,45 @@ export class NewGridComponent implements OnDestroy {
     return this.permission.may('drag');
   }
 
+  // ---- the start-pose ghost (docs/edit-mode-playback-plan.md §6.1) ---------
+
+  /**
+   * Whether to draw where the machines start.
+   *
+   * Only when the mechanism is not already showing it, and only in Edit: the
+   * analysis modes are read-only, so nothing there can move the start and a
+   * second skeleton would be decoration over the graphs' own subject.
+   */
+  showStartGhost(): boolean {
+    return (
+      this.tabService.getCurrentTab() === TabID.EDIT && !this.mechanismSrv.isAtStartPose()
+    );
+  }
+
+  startGhosts(): StartPoseGhost[] {
+    return this.mechanismSrv.startPoseGhosts();
+  }
+
+  /**
+   * How many readings in a row have said a machine cannot reach its start.
+   *
+   * The check is exact, but the *geometry* it is asked about crosses the
+   * boundary continuously: a crank hovering on the edge of Grashof flips the
+   * answer every few pixels, and a tag flickering under the reader's own hand
+   * is worse than no tag. Three agreeing readings is a few frames and settles
+   * it, at the cost of a warning that arrives a moment late -- which is the
+   * right way round, because the commit is what it is warning about.
+   */
+  private ghostDoubts = new Map<number, number>();
+  private static readonly GHOST_SETTLES_AFTER = 3;
+
+  ghostWarns(ghost: StartPoseGhost): boolean {
+    const seen = this.ghostDoubts.get(ghost.index) ?? 0;
+    const next = ghost.reachable ? 0 : seen + 1;
+    this.ghostDoubts.set(ghost.index, next);
+    return next >= NewGridComponent.GHOST_SETTLES_AFTER;
+  }
+
   /**
    * Whether the pointer has committed to a drag rather than a click. A short
    * press is held back so that selecting an object does not nudge it; moving
@@ -2630,6 +2677,11 @@ export class NewGridComponent implements OnDestroy {
     if (outcome.rebuild) {
       this.mechanismSrv.updateMechanism();
     }
+    // The whole outcome is known by here -- a drop that merged two joints or
+    // cut a slot has already changed the topology -- which is why closing a
+    // posed edit belongs after it rather than at the release. Nothing happens
+    // for a gesture that was not one.
+    this.closePosedEdit(outcome.save || merged, merged);
     if (this.mechanismSrv.showPathHolder) {
       this.mechanismSrv.onMechUpdateState.next(2);
     }
@@ -2643,9 +2695,43 @@ export class NewGridComponent implements OnDestroy {
 
     // One gesture earns one undo entry. Undo is a stack of URL strings, so
     // saving per pointer-move would fill it with intermediate poses nobody
-    // asked to return to.
-    if (outcome.save || merged) {
+    // asked to return to. A re-anchored posed edit has already minted its own,
+    // from the rebuild that made the anchored pose t = 0.
+    if ((outcome.save || merged) && !this.posedEditSaved) {
       this.mechanismSrv.save();
+    }
+    this.posedEditSaved = false;
+  }
+
+  /** Whether closing a posed edit has already written this gesture's entry. */
+  private posedEditSaved = false;
+
+  /**
+   * Put the design back on its anchor, and say so if it could not be.
+   *
+   * The edit always lands. An anchor the new geometry cannot reach -- a crank
+   * lengthened until it is a rocker -- moves the start rather than refusing
+   * what the reader just did: the old start pose belongs to the old geometry,
+   * and the way back to both of them is Undo, which the entry beside this
+   * message holds.
+   */
+  private closePosedEdit(changed: boolean, structuralNews: boolean): void {
+    if (!this.mechanismSrv.posedEditKey) return;
+    if (!changed) {
+      this.mechanismSrv.cancelPosedEdit();
+      return;
+    }
+    const outcome = this.mechanismSrv.finishPosedEdit();
+    this.posedEditSaved = outcome.reanchored;
+    // Yielding to structural news: one message per gesture, and a merge or a
+    // cut slot is the bigger thing that just happened. With the ghost warning
+    // live through the drag (§6.1), this is narration of something the reader
+    // watched rather than the first they hear of it.
+    if (outcome.lost && !structuralNews) {
+      this.notify.warning(
+        'anchor.unreachable',
+        `${outcome.lost} can no longer reach its original start position — the start is now the current pose.`
+      );
     }
   }
 
@@ -3164,6 +3250,7 @@ export class NewGridComponent implements OnDestroy {
                   break;
                 }
                 this.dragState.beginDraggingJoint();
+                this.mechanismSrv.beginPosedEdit(grabbed);
                 break;
               }
             }
@@ -3199,10 +3286,12 @@ export class NewGridComponent implements OnDestroy {
                 this.linkRotationPivot = undefined;
               }
               this.dragState.beginDraggingLink();
+              this.mechanismSrv.beginPosedEdit(this.activeObjService.selectedLink);
             }
             break;
           case 'Force':
             console.log('force is last left click');
+            this.mechanismSrv.beginPosedEdit(this.activeObjService.selectedForce);
             switch (this.dragState.force) {
               case forceStates.waiting:
                 if (this.activeObjService.selectedForce.locked) {
@@ -4532,17 +4621,19 @@ export class NewGridComponent implements OnDestroy {
         this.activeObjService.updateSelectedObj(undefined);
         return;
       case 'edit.delete':
-        // Every key that changes the drawing is held outside Edit, not just
-        // the two that had the check. An analysis mode is a reading of a
-        // finished mechanism: it hides the lock marks, grays the panels and
-        // takes Undo away -- and Delete was still going through, removing a
-        // joint from a drawing the reader was in the middle of measuring, with
-        // no way back short of leaving the mode.
-        if (this.tabService.isAnalysisMode()) return;
+        // The permission model, not the mode alone. Naming the mode caught an
+        // analysis mode -- which is a reading of a finished mechanism, and
+        // Delete was going through it, removing a joint from a drawing the
+        // reader was measuring with no way back short of leaving the mode --
+        // but it missed a running mechanism entirely: with the canvas, the
+        // panel, the menu and undo all refusing, Backspace still deleted the
+        // selection. A key is a control like any other and asks the same
+        // question the button beside it asks.
+        if (!this.permission.may('structure')) return;
         this.deleteSelection();
         return;
       case 'edit.lock':
-        if (this.tabService.isAnalysisMode()) return;
+        if (!this.permission.may('structure')) return;
         this.toggleLockOnSelection();
         return;
       case 'history.undo':

@@ -29,10 +29,36 @@ describe('what is allowed when', () => {
   });
 
   it('refuses every edit while playing, and keeps the transport', () => {
-    // Playing is the one state where the transport must stay live: it is the
-    // control that ends it.
-    expect(allowed(at({ playing: false, atStart: false }))).toEqual(['inspect', 'transport']);
+    // Playing is read-only, and it is also the one state where the transport
+    // must stay live: it is the control that ends it.
     expect(allowed(at({ playing: true, atStart: false }))).toEqual(['inspect', 'transport']);
+  });
+
+  it('lets a gesture edit at a paused pose, and still refuses typed numbers', () => {
+    // The whole of Phase 2, as a row of the matrix. A drag at a pose means
+    // "put it here, at this pose" and the app can honor that -- the edit lands
+    // and the machine is put back on its anchor underneath. A typed X is a
+    // pose coordinate, and the transform back to t = 0 for it is not written.
+    expect(allowed(at({ playing: false, atStart: false }))).toEqual([
+      'inspect',
+      'drag',
+      'build',
+      'structure',
+      'transport',
+      'history',
+    ]);
+    expect(refusalFor('placement', at({ atStart: false }))!.short).toBe('shown at pose');
+    expect(refusalFor('drive', at({ atStart: false }))!.short).toBe('shown at pose');
+  });
+
+  it('keeps a deferred drawing read-only away from its start', () => {
+    // No cycle to anchor against, and re-anchoring costs a solve per commit --
+    // which is the exact cost the deferral exists to refuse. At the start these
+    // edit exactly as they always did.
+    const heavy = at({ atStart: false, solveDeferred: true });
+    expect(allowed(heavy)).toEqual(['inspect', 'transport']);
+    expect(refusalFor('drag', heavy)!.long).toContain('Press Play');
+    expect(allowed(at({ solveDeferred: true }))).toEqual([...EDIT_ACTIONS]);
   });
 
   it('names the machine when the shared clock disagrees', () => {

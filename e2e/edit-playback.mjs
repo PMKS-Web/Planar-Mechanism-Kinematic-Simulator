@@ -142,20 +142,56 @@ const pausedState = await page.evaluate(() => ({
   banner: document.querySelector('.editBanner .bannerText')?.textContent?.trim() ?? null,
   backButton: document.querySelector('.bannerAction')?.textContent?.trim() ?? null,
 }));
+// Phase 2 changed what this says, because it changed what is true: paused
+// mid-cycle, a drag is allowed and a typed coordinate is not, so the banner
+// names the fields rather than the whole panel.
 record(
-  'paused mid-cycle says so instead',
-  (pausedState.banner ?? '').includes('parked mid-cycle'),
+  'paused mid-cycle names the fields, not the panel',
+  (pausedState.banner ?? '').includes('Drag on the grid to edit here'),
   pausedState.banner
 );
 record('and offers the way back', pausedState.backButton === 'Back to start', pausedState);
 await page.screenshot({ path: `${SHOTS}/4-paused-displaced.png` });
 
 // ---- 4. every gate agrees -------------------------------------------------
+//
+// The check this file was missing. It read a `window.__pmksGates` that has
+// never existed and then did nothing with the result -- a check that could not
+// fail, standing in for the one the whole permission model was built for.
 
-const gates = await page.evaluate(() => {
-  const win = /** @type {any} */ (window);
-  return win.__pmksGates ? win.__pmksGates() : null;
-});
+/** Ask every former gate the same question and collect the answers. */
+const gates = () =>
+  page.evaluate(() => {
+    const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    const panel = window.ng.getComponent(document.querySelector('app-edit-panel'));
+    const srv = grid.mechanismSrv;
+    const joint = srv.joints.find((candidate) => candidate.links.length > 0);
+    grid.activeObjService.updateSelectedObj(joint);
+    grid.setLastRightClick(joint);
+    const rows = grid.cMenu.groups.flatMap((group) => group.rows);
+    const ground = rows.find((row) => row.label === 'Grounded');
+    return {
+      sharedStep: srv.mechanismTimeStep,
+      atStart: srv.isAtStartPose(),
+      canvas: grid.permission.may('drag'),
+      panelFrozen: panel.panelIsFrozen(),
+      menu: !ground?.refusal,
+      history: grid.gridUtils.canRestoreHistory(),
+      selectionHandles: grid.permission.may('drag'),
+    };
+  });
+
+const agreeing = (seen) =>
+  seen.canvas === seen.menu && seen.canvas === seen.history && seen.canvas === !seen.panelFrozen;
+
+record('every gate agrees, parked mid-cycle', agreeing(await gates()), await gates());
+
+await page.locator('.playButton').click();
+await page.waitForTimeout(600);
+const running = await gates();
+record('every gate agrees while it runs', agreeing(running) && !running.canvas, running);
+await page.locator('.playButton').click();
+await page.waitForTimeout(400);
 
 // Back to start clears it.
 await page.locator('.bannerAction').click();
@@ -191,8 +227,9 @@ record('Analysis -> Edit keeps the pose', inAnalysis !== null && afterEdit === i
   afterEdit,
 });
 record(
-  'and Edit says it is parked mid-cycle',
-  (await banner().count()) === 1 && (await banner().innerText()).includes('mid-cycle'),
+  'and Edit says what may be done at that pose',
+  (await banner().count()) === 1 &&
+    (await banner().innerText()).includes('return to the start to type them'),
   await banner()
     .innerText()
     .catch(() => null)
