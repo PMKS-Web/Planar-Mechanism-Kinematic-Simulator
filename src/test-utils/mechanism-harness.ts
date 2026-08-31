@@ -3,6 +3,7 @@ import { PrisJoint, RealJoint, RevJoint } from '../app/model/joint';
 import { ActiveObjService } from '../app/services/active-obj.service';
 import { ColorService } from '../app/services/color.service';
 import { DragStateService } from '../app/services/drag-state.service';
+import { EditPermissionService } from '../app/services/edit-permission.service';
 import { GridUtilsService } from '../app/services/grid-utils.service';
 import { MechanismService } from '../app/services/mechanism.service';
 import { NotificationService } from '../app/services/notification.service';
@@ -67,6 +68,7 @@ export function createMechanismHarness(): MechanismHarness {
       // through this harness needs it listed like everything else.
       { provide: AnalysisSampleService, deps: [] },
       { provide: GridUtilsService, deps: [] },
+      { provide: EditPermissionService, deps: [] },
       { provide: MechanismService, deps: [] },
     ],
   });

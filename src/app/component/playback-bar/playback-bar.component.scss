@@ -87,6 +87,18 @@
   // own that has to be able to reach the card's edge, and the 12px optical
   // inset the contents used to get is made up again inside it (4 card + 4 row
   // + 4 head). Radii nest by the same rule -- outer = inner + padding.
+  // Why the transport is inert, on the card rather than in a disabled button's
+  // tooltip: disabled elements do not reliably show one, and touch has no
+  // hover. Centered in the card it stands in for, so an empty grid reads as one
+  // sentence rather than as an empty box with a caption.
+  .transportHint {
+    padding: 8px 12px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 16px;
+    color: rgba(0, 0, 0, 0.5);
+  }
+
   .scrubCard {
     position: relative;
     display: flex;
@@ -567,16 +579,33 @@
   //
   // Everything the reader needs while something is running, on one line at the
   // bottom of the window, with the mode panel opening and closing above it.
-  // Wrapped, the three cards took three rows and about two hundred pixels of a
-  // screen that has six hundred.
+  // The scrub card used to be dropped here: it was the widest of the three and
+  // the one that could not usefully shrink, carrying a row per machine with a
+  // name, a direction, two readings and a handle.
   //
-  // The scrub card is what goes. It is the widest of the three and the one that
-  // cannot usefully shrink -- it carries a row per machine, each with a name, a
-  // direction, two readings and a handle -- and seeking is the part of playback
-  // a phone can most afford to lose. Play, pause, speed and what you can see
-  // are what is left, which is what was asked for.
+  // It comes back, one row deep. Parking precisely mid-cycle is what editing at
+  // a pose is built on, so a phone without it is a phone without the feature --
+  // and the row that costs is the *per-machine* one, which is why the phone
+  // shows only the shared row (`shownRows`) and does not offer the control that
+  // would produce the others. What is left is a name, a reading and a handle on
+  // one line above the transport.
   @media (max-width: 600px) {
+    // One line for the handle, one for the buttons: the wrap rule above already
+    // puts the scrub card on the upper one, so this only has to stop overriding
+    // it. `nowrap` here was what forced the three cards onto one line back when
+    // the scrub card was not among them.
     .scrubCard {
+      // Its own line is as tall as one row needs and no taller; the desk
+      // minimum is sized for a card that could hold several.
+      min-height: 0;
+    }
+
+    // Nothing on the line but what a seek needs. The end-of-cycle reading and
+    // the toggle warning are explanations, and there is no room to explain
+    // beside a handle 300px wide.
+    .rowEnd,
+    .rowToggle,
+    .rowNote {
       display: none;
     }
 
@@ -584,7 +613,7 @@
     // not. A control that changes place when a panel opens is a control the
     // reader has to find twice.
     .playbackRow {
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
       // Edge to edge on the line the top strip runs on, with the gap between
       // the two cards that the strip keeps between its own. Centered inside an
       // 8px padding, the cards sat 23px from the window against the strip's 12,
@@ -600,6 +629,8 @@
       gap: nav.$card-inset;
       padding: 0 nav.$card-inset;
 
+      // The two on the lower line share it; the scrub card above them takes
+      // the width outright (see the wrap rule further up).
       .transportCard,
       > app-view-controls {
         flex: 1 1 auto;

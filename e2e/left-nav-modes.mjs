@@ -123,7 +123,11 @@ try {
       Math.abs(editHighlight.dWidth) <= 1,
     editHighlight
   );
-  record('the transport is absent in Edit', (await page.locator('.playButton').count()) === 0);
+  // The transport is chrome now: present in Edit and both analyses, hidden only
+  // in Synthesis. Watching a linkage run is not a question that belongs to one
+  // mode, and trapping it in the analyses cost a mode switch per turn of the
+  // loop a designer actually works in.
+  record('the transport is present in Edit', (await page.locator('.playButton').count()) === 1);
 
   // Undo/Redo left the rail for the strip, where they are reachable from every
   // mode rather than from Edit alone.
@@ -235,7 +239,14 @@ try {
     grid.mechanismSrv.updateMechanism(true);
   });
 
-  // --- play, then leave: the mechanism must rewind ---------------------------
+  // --- play, then leave: the pose survives, the motion does not --------------
+  //
+  // This used to assert the opposite. Rewinding on the way into Edit was right
+  // while Edit had no transport -- the only way to be mid-cycle was to be in an
+  // analysis mode. Now it destroys the pose the reader pressed Edit *because
+  // of*: run it, find the frame where it fouls, press Edit, and the frame is
+  // gone. Playback still stops, because arriving in an editable mode with
+  // things moving invites a reach for a joint that is not standing still.
   await tab('Kinematic').click();
   await page.waitForTimeout(500);
   await page.locator('.playButton').click();
@@ -256,16 +267,20 @@ try {
     const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
     return { step: srv.mechanismTimeStep, seconds: srv.currentTimeSeconds() };
   });
-  record('switching to Edit rewound the mechanism to time 0', rewound.step === 0, {
+  record('switching to Edit kept the pose', rewound.step > 0, {
     playing,
     rewound,
   });
   const afterSwitch = await timeSeconds();
-  record('and the time readout agrees with the mechanism', afterSwitch === 0, {
-    playing,
-    afterSwitch,
-    rewound,
-  });
+  // Asked of both because they can disagree, which is the reason this check
+  // exists: the pose is what the other modes edit, the readout is what says
+  // where the pose is, and a readout that has drifted off the pose is worse
+  // than no readout at all.
+  record(
+    'and the time readout agrees with the mechanism',
+    Math.abs(afterSwitch - rewound.seconds) < 0.05,
+    { playing, afterSwitch, rewound }
+  );
   record(
     'animation is no longer running after the mode switch',
     (await page.locator('app-playback-bar mat-icon', { hasText: 'pause' }).count()) === 0

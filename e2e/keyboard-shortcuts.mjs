@@ -84,19 +84,34 @@ record('2 comes back to Edit', (await state()).tab === 1, await state());
 await press('3');
 record('3 opens Kinematic Analysis', (await state()).tab === 2, await state());
 
-// --- Playback, and only where there is a transport --------------------------
+// --- Playback, wherever the transport is ------------------------------------
+//
+// This used to assert that Space did nothing in Edit, which was true while the
+// transport lived only in the analyses. The gate is now "is the control this
+// key stands for on screen", and the transport is on screen everywhere but
+// Synthesis -- so Space plays in Edit too, and refuses only where there is no
+// transport to press.
 await press('2');
-const still = await state();
 await press('Space');
-record('Space does nothing in Edit, which has no transport', (await state()).playing === false, {
-  before: still.playing,
-});
-await press('3');
-await press('Space');
-record('Space starts it playing', (await state()).playing === true);
+record('Space plays in Edit, where the transport now is', (await state()).playing === true);
 await press('Space');
 record('and Space again pauses it', (await state()).playing === false);
 
+await press('1');
+const inSynthesis = await state();
+await press('Space');
+record('Space does nothing in Synthesis, which has no transport', (await state()).playing === false, {
+  before: inSynthesis.playing,
+});
+
+await press('3');
+await press('Space');
+record('Space starts it playing in an analysis mode too', (await state()).playing === true);
+await press('Space');
+record('and pauses it there', (await state()).playing === false);
+
+// Arrows step frames only where nothing is selected to nudge -- one predicate,
+// from the permission model. Nothing is selected here.
 const before = (await state()).step;
 await press('ArrowRight');
 const stepped = (await state()).step;

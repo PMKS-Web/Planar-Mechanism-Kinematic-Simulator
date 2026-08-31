@@ -117,12 +117,33 @@ export class SelectedTabService {
     // looking like the app is stuck between two places.
     RightPanelComponent.closeSetupUnlessFor(this.getCurrentTab());
 
-    // Leaving Analyze rewinds the mechanism, so the other modes always act on
-    // the pose at time 0. The transport's stop button does the same thing
-    // without leaving, for a reader who wants the drawn pose back and wants to
-    // stay where they are.
-    if (this.isAnalysisMode(previousTab) && !this.isAnalysisMode()) {
+    // What each mode boundary does to the pose and to playback.
+    //
+    // This used to be one rule -- leaving an analysis mode rewinds -- which was
+    // right while Edit had no transport: the only way to be mid-cycle was to be
+    // in an analysis mode, and the only reason to leave one was to go back to
+    // editing at the start. Now that the transport is chrome, that rule covers
+    // the wrong set. Rewinding on the way into Edit would destroy the pose the
+    // reader pressed Edit *because of*: run it, find the frame where it fouls,
+    // press Edit, and the frame is gone.
+    //
+    //   Analysis -> Edit        pose kept, playback paused
+    //   Edit -> Analysis        pose kept, playback continues
+    //   Analysis <-> Analysis   both kept (unchanged)
+    //   anything -> Synthesis   eased to the start, playback stopped
+    //
+    // Synthesis is the one mode with no mechanism to be mid-cycle in, and the
+    // one whose entry the old rule missed: coming to it from Edit left a
+    // drawing parked mid-cycle behind the positions being placed on it.
+    if (this.getCurrentTab() === TabID.SYNTHESIZE) {
       this.mechanism.easeToStart();
+      this.settings.animating.next(false);
+    } else if (this.getCurrentTab() === TabID.EDIT && this.isAnalysisMode(previousTab)) {
+      // Paused where it stands, rather than eased home. Editing is refused
+      // while displaced until Phase 2, and the panel's banner says so with the
+      // way back beside it -- which is a choice the reader gets to make, where
+      // a rewind is one made for them.
+      this.mechanism.pauseInPlace();
       this.settings.animating.next(false);
     }
 

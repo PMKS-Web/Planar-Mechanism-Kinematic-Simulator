@@ -14,7 +14,10 @@ import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { CHROME_MOVED } from '../../model/chrome-motion';
-import { SelectedTabService } from '../../selected-tab.service';
+import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { ViewportService } from '../../services/viewport.service';
+import { EditPermissionService } from '../../services/edit-permission.service';
+import { LoadingService } from '../../services/loading.service';
 import { TimeUnit } from '../../model/utils';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { MatIcon } from '@angular/material/icon';
@@ -139,6 +142,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   tabs = inject(SelectedTabService);
   private nup = inject(NumberUnitParserService);
   shortcuts = inject(KeyboardShortcutsService);
+  readonly viewport = inject(ViewportService);
+  private permission = inject(EditPermissionService);
+  private loading = inject(LoadingService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   private positionSub?: Subscription;
@@ -233,7 +239,11 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   };
 
   private keySub = this.shortcuts.pressed.subscribe((id) => {
-    if (!this.tabs.isAnalysisMode()) return;
+    // Wherever the buttons are. The gate used to name the analysis modes,
+    // which was the same thing while the transport lived only there; now that
+    // it is chrome, the question is whether the control the key stands for is
+    // on screen and usable.
+    if (this.inSynthesis) return;
     this.keyed[id]?.();
   });
 
@@ -253,7 +263,45 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   get canPlay(): boolean {
-    return this.mechanism.oneValidMechanismExists();
+    // A deferred drawing counts as playable. Its motion has not been worked
+    // out, but pressing Play is exactly the request that works it out -- and a
+    // greyed play button on a drawing that would run perfectly well says the
+    // opposite of what is true.
+    return this.mechanism.oneValidMechanismExists() || this.mechanism.solvingIsDeferred;
+  }
+
+  /**
+   * Whether the transport is out of scope entirely.
+   *
+   * Synthesis is a question about a mechanism that does not exist yet, so
+   * there is nothing to play; every other mode has a transport, including over
+   * an empty grid.
+   */
+  get inSynthesis(): boolean {
+    return this.tabs.getCurrentTab() === TabID.SYNTHESIZE;
+  }
+
+  /**
+   * The one line the greyed card carries, or nothing when it can run.
+   *
+   * Readiness has the specific answer wherever a machine exists to ask it, and
+   * the permission model supplies the wording for the two cases where none
+   * does -- an empty grid, and geometry that belongs to no machine at all.
+   */
+  get hint(): string | null {
+    return this.permission.transportHint();
+  }
+
+  /**
+   * The rows this screen shows.
+   *
+   * A phone shows the shared row and no more: pose selection is what posed
+   * editing needs on every platform, but a stack of per-machine rows is the
+   * bottom half of a phone. The master row is the shared one by construction.
+   */
+  get shownRows(): PlaybackRow[] {
+    const rows = this.rows;
+    return this.viewport.isPhone() ? rows.filter((row) => row.master) : rows;
   }
 
   get speed(): number {
@@ -593,6 +641,21 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
 
   play(): void {
     if (!this.canPlay) return;
+    // A drawing large enough to have had its solve deferred has no cycle to
+    // play yet. Pressing Play is the request for one, and it takes the thread
+    // for seconds -- so it goes behind the same cover the mode buttons use
+    // rather than freezing the window with no sign that anything is happening.
+    if (this.mechanism.solvingIsDeferred) {
+      void this.loading
+        .during('Working out the motion…', () => this.mechanism.solveNow())
+        .then(() => this.startPlaying());
+      return;
+    }
+    this.startPlaying();
+  }
+
+  private startPlaying(): void {
+    if (!this.mechanism.oneValidMechanismExists()) return;
     // Every row, not just the shared flag: unsynced it is the rows that run,
     // and a master button that left them alone showed a pause icon over a
     // drawing standing still.

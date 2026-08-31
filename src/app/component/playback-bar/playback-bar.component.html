@@ -9,7 +9,13 @@
        controls beside it never move: they say what you can see, which is a
        question every mode has, so they belong in the same corner in all of
        them. -->
-  @if (tabs.isAnalysisMode()) {
+  <!-- Decided by mode alone, never by the drawing. The transport is chrome:
+       it is here over an empty grid, greyed, saying what is missing -- because
+       a control that appears when the first link is drawn is a control nobody
+       knew the app had, and because a bar sliding in and out as parts are added
+       and deleted animates on an event that is not a mode change. Hidden only
+       in Synthesis, where there is no mechanism yet to play. -->
+  @if (!inSynthesis) {
     <div class="transportCard" data-canvas-inset="bottom" @riseFromBottom>
       <button
         class="speedButton"
@@ -50,14 +56,23 @@
     <div class="scrubCard" data-canvas-inset="bottom" @riseFromBottom>
       <!-- A tab off the top edge of the card, as in the mock, rather than a
            control inside it: it governs the whole card, so it sits on it. -->
-      @if (canSync) {
+      <!-- Unsyncing gives every machine a row of its own, and the phone shows
+           one row by design (§5.4 of the plan) -- so the control that would
+           produce the others is not offered there. -->
+      @if (canSync && !viewport.isPhone()) {
         <button class="syncToggle" [class.on]="synced" (click)="toggleSync()">
           <mat-icon>{{ synced ? 'unfold_more' : 'unfold_less' }}</mat-icon>
           {{ synced ? 'Control Each Mechanism' : 'Sync All Mechanisms' }}
         </button>
       }
 
-      @for (row of rows; track row.id) {
+      <!-- Not a disabled button's tooltip: disabled elements do not reliably
+           show one and touch has no hover, so the reason is on the card. -->
+      @if (hint; as why) {
+        <div class="transportHint">{{ why }}</div>
+      }
+
+      @for (row of shownRows; track row.id) {
         <!-- The row's own surface carries the selection, so nothing has to be
              drawn around the controls and no button ever crosses the state.
              Everything to read sits on the first line; the handle gets the

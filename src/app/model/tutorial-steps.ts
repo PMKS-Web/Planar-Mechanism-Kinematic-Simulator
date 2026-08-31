@@ -291,10 +291,16 @@ export function copyFor(progress: TutorialProgress, chrome: TutorialChrome = {})
     default:
       return {
         title: 'Play it and read a velocity',
+        // The transport is chrome now, so this no longer teaches the mode as
+        // the way to *play*: Play is at the bottom of the window in Edit too,
+        // and a step that sent a student elsewhere to press a button already in
+        // front of them taught the wall rather than the tool. What the analysis
+        // mode is still for is the reading, so that is what it is named for.
+        //
         // Named by where it is, not only by what it says: below about 900px the
         // mode tabs give up their labels and a student is looking at four
         // unexplained glyphs.
-        body: `Switch to Kinematic Analysis — the third mode in the strip along the top — then press Play at the bottom of the window and ${touch ? 'tap' : 'click'} a moving joint on the grid.`,
+        body: `Press Play at the bottom of the window and watch it run. Then switch to Kinematic Analysis — the third mode in the strip along the top — and ${touch ? 'tap' : 'click'} a moving joint to read its velocity.`,
         hint: 'The reading follows the pose, so scrubbing the handle moves the number.',
         hintGlyph: 'speed',
       };

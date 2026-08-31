@@ -18,6 +18,7 @@ import { SettingsService } from './settings.service';
 import { ActiveObjService } from './active-obj.service';
 import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
+import { EditPermissionService } from './edit-permission.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 import { VectorQuantity, VECTOR_ICON, VECTOR_LABEL } from '../model/vector-trace';
 import { SelectionBatchService } from './selection-batch.service';
@@ -62,6 +63,7 @@ export class ContextMenuBuilderService {
   private synthesis = inject(SynthesisBuilderService);
   private tabs = inject(SelectedTabService);
   private selectionBatch = inject(SelectionBatchService);
+  private permission = inject(EditPermissionService);
 
   build(target: MenuTarget, handlers: MenuHandlers): ContextMenuModel {
     const model = this.buildFor(target, handlers);
@@ -1020,18 +1022,12 @@ export class ContextMenuBuilderService {
     // third state gets its own words, because "not at the start" over a
     // drawing whose transport reads 0:00 sends the reader to a scrubber that
     // already looks parked.
-    if (!this.mechanism.isAnimating()) return model;
-    const refusal: MenuRefusal = this.mechanism.isPlaying
-      ? { short: 'animation running', long: 'Pause the animation to change the mechanism.' }
-      : this.mechanism.mechanismTimeStep !== 0
-        ? {
-            short: 'not at the start',
-            long: 'The mechanism is parked mid-cycle. Return it to the start to change it.',
-          }
-        : {
-            short: 'a machine is mid-cycle',
-            long: 'One of the machines is parked away from its start. Return every machine to the start to change the drawing.',
-          };
+    // Quoted, not restated. The three refusals this used to spell out for
+    // itself are the same three the canvas and the Edit panel need, and a menu
+    // that words the rule differently from the panel beside it is a menu the
+    // reader has to reconcile.
+    const refusal: MenuRefusal | null = this.permission.poseRefusal();
+    if (!refusal) return model;
     model.groups.forEach((group) =>
       group.rows.forEach((row) => {
         if (!row.alwaysAllowed && !row.refusal) row.refusal = refusal;

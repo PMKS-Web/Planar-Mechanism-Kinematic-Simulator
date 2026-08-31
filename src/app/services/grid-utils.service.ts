@@ -13,6 +13,7 @@ import {
 import { SettingsService } from './settings.service';
 import { MechanismService } from './mechanism.service';
 import { SelectedTabService } from '../selected-tab.service';
+import { EditPermissionService } from './edit-permission.service';
 import { canDrive } from '../model/actuator';
 import { Lockable, frozenJointIds, locksHolding } from '../model/lock-set';
 import { Coord } from '../model/coord';
@@ -93,7 +94,7 @@ export class GridUtilsService {
    * on either of them.
    */
   canRestoreHistory(): boolean {
-    return !this.tabService.isAnalysisMode() && !this.mechanismSrv.isAnimating();
+    return this.injector.get(EditPermissionService).may('history');
   }
 
   //Return a boolean, is this link a ground link?

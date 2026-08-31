@@ -5047,6 +5047,24 @@ export class MechanismService {
    * Unsynced, the rows are what actually run, so the master has to move them
    * rather than a flag they do not read.
    */
+  /**
+   * Stop the show without moving anything.
+   *
+   * The bookkeeping `easeToStart` does, minus the motion: every machine's play
+   * flag down, the frame clock cleared so the next resume measures from the
+   * resume rather than from whenever this happened, and the queued frame
+   * allowed to expire against `isPlaying`.
+   *
+   * Arriving in Edit with the mechanism still running would invite exactly the
+   * fight the mode boundary exists to prevent -- a reader reaching for a joint
+   * that is moving -- so the pose is kept and the motion is not.
+   */
+  pauseInPlace(): void {
+    if (!this.isPlaying) return;
+    this.setAllPlaying(false);
+    this.playbackClockMs = null;
+  }
+
   setAllPlaying(playing: boolean): void {
     this.isPlaying = playing;
     this.ownPlaying = this.mechanisms.map((mechanism) => playing && mechanism.isMechanismValid());

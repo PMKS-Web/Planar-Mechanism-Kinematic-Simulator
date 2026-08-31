@@ -19,6 +19,7 @@ to work on it without stepping in the same holes.
 - [Spelling: American, everywhere](#spelling-american-everywhere)
 - [Formatting, and why you should not just run Prettier](#formatting-and-why-you-should-not-just-run-prettier)
 - [Angular and build gotchas](#angular-and-build-gotchas)
+- [Editing, playback, and who is allowed to say no](#editing-playback-and-who-is-allowed-to-say-no)
 - [SCSS gotchas](#scss-gotchas)
 - [Domain facts worth knowing before you debug](#domain-facts-worth-knowing-before-you-debug)
 - [Deploys, domains and surrounding services](#deploys-domains-and-surrounding-services)
@@ -301,6 +302,17 @@ Check `git status` afterwards and revert anything you did not mean to change.
 - **Not everything goes through a service.** Some components still talk through statics —
   `RightPanelComponent.openTab`, `insistOn`. Grep for the static before assuming a service is the
   only channel.
+- **A lazy `injector.get(...)` can outlive its injector.** A predicate or key handler registered
+  with a root service keeps running after the component that registered it is torn down, and a
+  service that resolves its dependencies on first *use* then reads a destroyed injector —
+  `NG0205`, seventy-two times, in a suite whose tests all passed. Two halves to the fix: resolve
+  eagerly where the ring allows it, and hand the predicate back on destroy
+  (`destroyRef.onDestroy`). `NewGridComponent`'s `whenArrowsNudge` is the example.
+- **`anyComponentStyle` is 6 kB warning / 10 kB error**, raised from 4/6 for the CAD Export dialog
+  — a whole screen of UI in one component, where the cap was written for panels. It is a global
+  cap with no per-component override, so the choice is one number for everything; 10 kB still
+  catches real bloat. `npm run build` is where you find out, and it fails the build rather than
+  warning.
 
 ---
 
@@ -377,6 +389,35 @@ not adjust a gap there to make something fit — shrink the thing instead.
 
 **The phone layout was fitted to 390px.** `top-strip-states` also exercises 360, where thirty fewer
 pixels are available; anything you add to the bottom row has to survive that.
+
+---
+
+## Editing, playback, and who is allowed to say no
+
+- **One model answers "may this edit happen".** `model/edit-permission.ts` is a pure function from
+  a described state to a refusal-or-nothing; `services/edit-permission.service.ts` describes the
+  current state to it. Six surfaces quote it — the canvas's drag gate, the Edit panel's banner,
+  the context menu's graying, undo/redo, the analysis geometry lock, and the transport's hint.
+  **Do not re-derive the rule at a new surface.** Three of those six used to read the *shared*
+  clock, and with the machines unsynced they disagreed with the three that did not: a row scrubbed
+  mid-cycle left the canvas editable while undo refused.
+- **Ask `isAtStartPose()`, never `mechanismTimeStep === 0`.** The second is the shared clock only.
+  An unsynced machine can be parked anywhere while it still reads zero.
+- **The transport's visibility is decided by mode alone.** It is on screen in Edit and both
+  analyses, including over an empty grid, and hidden only in Synthesis. That is what keeps its
+  `riseFromBottom` entry animation off the drawing-changed path: a bar that slid in when the first
+  link was drawn was animating on something that is not a mode change.
+- **The Edit panel does not vanish any more.** It stays with its body `inert` and dimmed, and a
+  banner across the top carrying the permission model's own words. `inert` rather than a
+  `disabled` on each control: it removes the whole subtree from pointer, keyboard and focus reach
+  in one attribute. The fields still tick — `ngDoCheck` patches the selected joint's coordinates,
+  because `animate()` mutates the joints in place and publishes on nothing you could subscribe to.
+- **The phone's bottom stack is two rows now**, not one: the shared scrub row came back so a phone
+  can park mid-cycle. Per-machine rows and the sync toggle stay desktop-only. Two consequences for
+  tests: **a fixed canvas coordinate near the bottom of a phone viewport is no longer open grid**
+  (compute a free point with `elementFromPoint`), and **the canvas re-frame after the sheet opens
+  takes longer** because the drawing has further to travel — poll until it settles rather than
+  waiting a flat second.
 
 ---
 

@@ -4,6 +4,7 @@ import { ContextMenuModel, MenuRow } from '../component/context-menu/menu-model'
 import { ActiveObjService } from './active-obj.service';
 import { ColorService } from './color.service';
 import { DragStateService } from './drag-state.service';
+import { EditPermissionService } from './edit-permission.service';
 import { GridUtilsService } from './grid-utils.service';
 import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
 import { MechanismService } from './mechanism.service';
@@ -66,6 +67,7 @@ function createBuilderHarness() {
       { provide: SynthesisBuilderService, deps: [] },
       { provide: SvgGridService, deps: [] },
       { provide: GridUtilsService, deps: [] },
+      { provide: EditPermissionService, deps: [] },
       { provide: MechanismService, deps: [] },
       { provide: KeyboardShortcutsService, useValue: keysStub },
       { provide: ContextMenuBuilderService, deps: [] },

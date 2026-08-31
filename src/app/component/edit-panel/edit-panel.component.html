@@ -1,530 +1,548 @@
 <div id="editWrapper">
-  @if (this.activeSrv.objType == 'MultiSelection' && !hideEditPanel()) {
-    <app-multi-edit-panel></app-multi-edit-panel>
-  }
-
-  @if (hideEditPanel() && this.activeSrv.objType !== 'Grid') {
-    <panel-section-collapsible [warning]="true" [expanded]="false" id="placeholderContainer">
-      <title-block
-        alwaysShown
-        icon="expand_more"
-        description="Editing is paused. Stop the animation, or step it back to the start, to change the mechanism."
-        >Edit Help
-      </title-block>
-      <img src="assets/gifs/Stop.gif" />
-    </panel-section-collapsible>
-  }
-
-  @if (
-    (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') && !hideEditPanel()
-  ) {
-    <div class="helpPanel">
-      <div class="helpTitle">Edit</div>
-      <!-- An empty grid has nothing to click, so it is not told to click. -->
-      <p class="helpLead">
-        @if (gridIsEmpty()) {
-          Draw something to edit.
-        } @else {
-          Select a joint or link on the grid to edit its properties.
-        }
-      </p>
-      <div class="helpRule"></div>
-      <div class="helpHints">
-        @if (!gridIsEmpty()) {
-          <div class="helpHint">
-            <mat-icon>touch_app</mat-icon>
-            <span
-              >{{ viewport.isTouch() ? 'Tap' : 'Click' }} a joint or link to select it. Drag a joint
-              to move it.</span
-            >
-          </div>
-        }
-        <!-- The gesture named is the one this reader has. A phone has no right
-             button, and the panel that teaches the app cannot open by naming a
-             button that is not there. `press` is the word, once, from the
-             viewport service the tutorial uses for the same reason. -->
-        <div class="helpHint">
-          <mat-icon>add_circle_outline</mat-icon>
-          <span>
-            @if (gridIsEmpty()) {
-              {{ press }} the grid to add a link or a cylinder.
-            } @else {
-              {{ press }} the grid to add a link or a cylinder. {{ press }} a link to attach a
-              tracer point or a force to it.
-            }
-          </span>
-        </div>
+  <!-- The panel no longer swaps itself out while the mechanism moves. This
+       says why the fields below are inert, and offers the one thing that
+       clears it. The words come from the permission model, so the banner, the
+       grayed menu rows and the canvas cannot describe the same rule
+       differently. -->
+  @if (banner(); as why) {
+    <div class="editBanner" role="status">
+      <!-- Stacked rather than laid across. The panel is 250px wide: a sentence
+           and a button sharing that line left the sentence four words deep and
+           the button hard against it. -->
+      <div class="bannerLine">
+        <mat-icon class="bannerGlyph">motion_photos_paused</mat-icon>
+        <span class="bannerText">{{ why.long }}</span>
       </div>
-
-      <!-- The offer hangs off the panel rather than replacing it: a student who
-           ignores it has still read the sentence about right-click, and the
-           tutorial then uses that same gesture rather than a third of its own. -->
-      @if (tutorial.offerVisible()) {
-        <div class="helpRule"></div>
-        <div class="offer">
-          <mat-icon>school</mat-icon>
-          <div class="offerText">
-            <div class="offerTitle">First time here?</div>
-            <p class="offerWhy">
-              Build a four-bar mechanism on this grid and read a velocity off it. About three
-              minutes, in five steps.
-            </p>
-            <div class="offerButtons">
-              <button class="offerButton" (click)="startTutorial()">Start Tutorial</button>
-              <button class="offerDismiss" (click)="dismissTutorial()">No thanks</button>
-            </div>
-          </div>
-        </div>
+      @if (backToStartHelps()) {
+        <button class="bannerAction" type="button" (click)="backToStart()">Back to start</button>
       }
     </div>
   }
 
-  <!--  BACKGROUND IMAGE PANEL: the tracing underlay is scenery, not a part, so
+  <!-- `inert` rather than a disabled attribute on every control: it takes the
+       whole subtree out of pointer, keyboard and focus reach in one place,
+       which is what "read-only" means here. The numbers stay readable on
+       purpose -- watching a joint's coordinates tick is the reason the panel
+       stays at all. -->
+  <div class="editBody" [class.frozen]="editingRefused()" [attr.inert]="editingRefused() || null">
+    @if (this.activeSrv.objType == 'MultiSelection') {
+      <app-multi-edit-panel></app-multi-edit-panel>
+    }
+
+    @if (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') {
+      <div class="helpPanel">
+        <div class="helpTitle">Edit</div>
+        <!-- An empty grid has nothing to click, so it is not told to click. -->
+        <p class="helpLead">
+          @if (gridIsEmpty()) {
+            Draw something to edit.
+          } @else {
+            Select a joint or link on the grid to edit its properties.
+          }
+        </p>
+        <div class="helpRule"></div>
+        <div class="helpHints">
+          @if (!gridIsEmpty()) {
+            <div class="helpHint">
+              <mat-icon>touch_app</mat-icon>
+              <span
+                >{{ viewport.isTouch() ? 'Tap' : 'Click' }} a joint or link to select it. Drag a
+                joint to move it.</span
+              >
+            </div>
+          }
+          <!-- The gesture named is the one this reader has. A phone has no right
+             button, and the panel that teaches the app cannot open by naming a
+             button that is not there. `press` is the word, once, from the
+             viewport service the tutorial uses for the same reason. -->
+          <div class="helpHint">
+            <mat-icon>add_circle_outline</mat-icon>
+            <span>
+              @if (gridIsEmpty()) {
+                {{ press }} the grid to add a link or a cylinder.
+              } @else {
+                {{ press }} the grid to add a link or a cylinder. {{ press }} a link to attach a
+                tracer point or a force to it.
+              }
+            </span>
+          </div>
+        </div>
+
+        <!-- The offer hangs off the panel rather than replacing it: a student who
+           ignores it has still read the sentence about right-click, and the
+           tutorial then uses that same gesture rather than a third of its own. -->
+        @if (tutorial.offerVisible()) {
+          <div class="helpRule"></div>
+          <div class="offer">
+            <mat-icon>school</mat-icon>
+            <div class="offerText">
+              <div class="offerTitle">First time here?</div>
+              <p class="offerWhy">
+                Build a four-bar mechanism on this grid and read a velocity off it. About three
+                minutes, in five steps.
+              </p>
+              <div class="offerButtons">
+                <button class="offerButton" (click)="startTutorial()">Start Tutorial</button>
+                <button class="offerDismiss" (click)="dismissTutorial()">No thanks</button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!--  BACKGROUND IMAGE PANEL: the tracing underlay is scenery, not a part, so
         it has no name to rename and nothing to lock — just where it sits, how
         big it is drawn, and how far you can see through it. -->
-  @if (this.activeSrv.objType == 'BackgroundImage' && !hideEditPanel()) {
-    @if (bgImage.image(); as bg) {
+    @if (this.activeSrv.objType == 'BackgroundImage') {
+      @if (bgImage.image(); as bg) {
+        <panel-section>
+          <div class="bgTitle">Background Image</div>
+          <div class="bgFileName">{{ bg.fileName }}</div>
+          <collapsible-subseciton
+            titleLabel="Placement"
+            [expanded]="sectionExpanded['BGPlace']"
+            (opened)="sectionExpanded['BGPlace'] = true"
+            (closed)="sectionExpanded['BGPlace'] = false"
+          >
+            <dual-input-block
+              label1="X"
+              label2="Y"
+              formControl1="centerX"
+              formControl2="centerY"
+              [formGroup]="backgroundImageForm"
+              tooltip="Where the middle of the picture sits on the grid."
+            >
+              Image Center
+            </dual-input-block>
+            <!-- Width alone, because the height follows it: a picture stretched
+               out of its own proportions is no longer something you can measure
+               a mechanism against. Set this to a length you can identify in the
+               picture and everything else in it is to scale. -->
+            <!-- No unit suffix: a length formatted by the parser already carries
+               its own, exactly as the position fields above do. -->
+            <input-block
+              [formGroup]="backgroundImageForm"
+              _formControl="width"
+              wide
+              tooltip="How wide the picture is drawn. The height follows, so the picture keeps its proportions."
+              >Image Width
+            </input-block>
+            <!-- A photograph is rarely taken square to the mechanism in it. -->
+            <input-block
+              [formGroup]="backgroundImageForm"
+              _formControl="rotation"
+              wide
+              tooltip="How far the picture is turned. Counter-clockwise is positive."
+              >Rotation
+            </input-block>
+            <input-block
+              [formGroup]="backgroundImageForm"
+              _formControl="opacity"
+              unit="%"
+              tooltip="How solid the picture is. Fade it back to see the mechanism through it."
+              >Opacity
+            </input-block>
+          </collapsible-subseciton>
+          <!-- The horizontal padding a collapsible subsection gives its own
+             contents, so the note and the buttons line up with the fields
+             rather than running to the panel's edge. -->
+          <div class="bgActions">
+            <!-- The one thing about this that trying it cannot teach: the picture
+               is not in the link the user is about to share. -->
+            <div class="bgNote">
+              Background images are not saved in the share link — reloading the page clears this
+              one.
+            </div>
+            <button-block icon="check" [click]="saveBackgroundImage.bind(this)">Save</button-block>
+            <button-block
+              color="warn"
+              customIcon="remove"
+              [click]="deleteBackgroundImage.bind(this)"
+              >Delete</button-block
+            >
+          </div>
+        </panel-section>
+      }
+    }
+
+    @if (this.activeSrv.objType == 'Mechanism') {
+      <app-mechanism-panel [editable]="true"></app-mechanism-panel>
+    }
+
+    <!--  JOINT PANEL-->
+    @if (this.activeSrv.objType == 'Joint') {
       <panel-section>
-        <div class="bgTitle">Background Image</div>
-        <div class="bgFileName">{{ bg.fileName }}</div>
+        <editable-title-block [deleteAction]="deleteJoint.bind(this)">
+          Edit Joint
+        </editable-title-block>
         <collapsible-subseciton
-          titleLabel="Placement"
-          [expanded]="sectionExpanded['BGPlace']"
-          (opened)="sectionExpanded['BGPlace'] = true"
-          (closed)="sectionExpanded['BGPlace'] = false"
+          titleLabel="Basic Settings"
+          [expanded]="sectionExpanded['JBasic']"
+          (opened)="sectionExpanded['JBasic'] = true"
+          (closed)="sectionExpanded['JBasic'] = false"
         >
           <dual-input-block
             label1="X"
             label2="Y"
-            formControl1="centerX"
-            formControl2="centerY"
-            [formGroup]="backgroundImageForm"
-            tooltip="Where the middle of the picture sits on the grid."
+            formControl1="xPos"
+            formControl2="yPos"
+            [formGroup]="jointForm"
+            tooltip="Where this joint sits on the grid."
           >
-            Image Center
+            Joint Position
           </dual-input-block>
-          <!-- Width alone, because the height follows it: a picture stretched
-               out of its own proportions is no longer something you can measure
-               a mechanism against. Set this to a length you can identify in the
-               picture and everything else in it is to scale. -->
-          <!-- No unit suffix: a length formatted by the parser already carries
-               its own, exactly as the position fields above do. -->
-          <input-block
-            [formGroup]="backgroundImageForm"
-            _formControl="width"
-            wide
-            tooltip="How wide the picture is drawn. The height follows, so the picture keeps its proportions."
-            >Image Width
-          </input-block>
-          <!-- A photograph is rarely taken square to the mechanism in it. -->
-          <input-block
-            [formGroup]="backgroundImageForm"
-            _formControl="rotation"
-            wide
-            tooltip="How far the picture is turned. Counter-clockwise is positive."
-            >Rotation
-          </input-block>
-          <input-block
-            [formGroup]="backgroundImageForm"
-            _formControl="opacity"
-            unit="%"
-            tooltip="How solid the picture is. Fade it back to see the mechanism through it."
-            >Opacity
-          </input-block>
-        </collapsible-subseciton>
-        <!-- The horizontal padding a collapsible subsection gives its own
-             contents, so the note and the buttons line up with the fields
-             rather than running to the panel's edge. -->
-        <div class="bgActions">
-          <!-- The one thing about this that trying it cannot teach: the picture
-               is not in the link the user is about to share. -->
-          <div class="bgNote">
-            Background images are not saved in the share link — reloading the page clears this one.
-          </div>
-          <button-block icon="check" [click]="saveBackgroundImage.bind(this)">Save</button-block>
-          <button-block color="warn" customIcon="remove" [click]="deleteBackgroundImage.bind(this)"
-            >Delete</button-block
+          <toggle-block
+            [formGroup]="jointForm"
+            _formControl="ground"
+            tooltip="Fixes this joint to the frame, so nothing can move it."
           >
-        </div>
-      </panel-section>
-    }
-  }
-
-  @if (this.activeSrv.objType == 'Mechanism' && !hideEditPanel()) {
-    <app-mechanism-panel [editable]="true"></app-mechanism-panel>
-  }
-
-  <!--  JOINT PANEL-->
-  @if (this.activeSrv.objType == 'Joint' && !hideEditPanel()) {
-    <panel-section>
-      <editable-title-block [deleteAction]="deleteJoint.bind(this)">
-        Edit Joint
-      </editable-title-block>
-      <collapsible-subseciton
-        titleLabel="Basic Settings"
-        [expanded]="sectionExpanded['JBasic']"
-        (opened)="sectionExpanded['JBasic'] = true"
-        (closed)="sectionExpanded['JBasic'] = false"
-      >
-        <dual-input-block
-          label1="X"
-          label2="Y"
-          formControl1="xPos"
-          formControl2="yPos"
-          [formGroup]="jointForm"
-          tooltip="Where this joint sits on the grid."
-        >
-          Joint Position
-        </dual-input-block>
-        <toggle-block
-          [formGroup]="jointForm"
-          _formControl="ground"
-          tooltip="Fixes this joint to the frame, so nothing can move it."
-        >
-          Grounded
-        </toggle-block>
-        <!-- The angle belongs to a grounded guide alone: a floating slot's
+            Grounded
+          </toggle-block>
+          <!-- The angle belongs to a grounded guide alone: a floating slot's
              direction is the line through two of its carrier's joints, so
              there is no number to type and no frame to type it in. You change
              it by dragging those joints. -->
-        <toggle-block
-          [addInput]="isGroundedSlider"
-          [disableInput]="!isGroundedSlider"
-          [formGroup]="jointForm"
-          _formControl="slider"
-          _formControlForInput="prisAngle"
-          tooltip="Give this joint a sliding block. Off is a pin."
-          (fieldEntry)="setSlotAngleOverlay($event)"
-        >
-          Slider
-        </toggle-block>
-        <!-- A slider with nowhere to slide, which the canvas cannot say for
+          <toggle-block
+            [addInput]="isGroundedSlider"
+            [disableInput]="!isGroundedSlider"
+            [formGroup]="jointForm"
+            _formControl="slider"
+            _formControlForInput="prisAngle"
+            tooltip="Give this joint a sliding block. Off is a pin."
+            (fieldEntry)="setSlotAngleOverlay($event)"
+          >
+            Slider
+          </toggle-block>
+          <!-- A slider with nowhere to slide, which the canvas cannot say for
              itself: the drawing looks the same either way, and this is the one
              thing about a slot a reader cannot see. Which link the slot is cut
              into is drawn on that link, so it is not repeated here. -->
-        @if (isDanglingSlider) {
-          <div class="sliderWarning">
-            This slider has nowhere to slide. Drag it onto a link to cut its slot, or ground it.
-          </div>
-        }
-        <toggle-block
-          [formGroup]="jointForm"
-          _formControl="weld"
-          tooltip="Fuses whatever meets at this joint into one rigid body."
-        >
-          Welded
-        </toggle-block>
-        <!-- The same block every other button in this panel is built from, so
+          @if (isDanglingSlider) {
+            <div class="sliderWarning">
+              This slider has nowhere to slide. Drag it onto a link to cut its slot, or ground it.
+            </div>
+          }
+          <toggle-block
+            [formGroup]="jointForm"
+            _formControl="weld"
+            tooltip="Fuses whatever meets at this joint into one rigid body."
+          >
+            Welded
+          </toggle-block>
+          <!-- The same block every other button in this panel is built from, so
              its border, its label and its icon take the panel's own colors.
              Written out by hand it was the one control here that did not: gray
              label, default border, and a black icon clipped by its own missing
              viewBox. -->
-        <button-block
-          [customIcon]="
-            gridUtils.isVisuallyInput(activeSrv.selectedJoint) ? 'remove_input' : 'add_input'
-          "
-          [disabled]="!canToggleInput(activeSrv.selectedJoint)"
-          [click]="mechanismService.adjustInput.bind(mechanismService)"
-        >
-          {{ gridUtils.isVisuallyInput(activeSrv.selectedJoint) ? 'Remove Input' : 'Add Input' }}
-        </button-block>
-      </collapsible-subseciton>
-      @if (gridUtils.isVisuallyInput(activeSrv.selectedJoint)) {
-        <div class="inputSettings">
-          <collapsible-subseciton
-            titleLabel="Input Settings"
-            [expanded]="sectionExpanded['JInput']"
-            (opened)="sectionExpanded['JInput'] = true"
-            (closed)="sectionExpanded['JInput'] = false"
+          <button-block
+            [customIcon]="
+              gridUtils.isVisuallyInput(activeSrv.selectedJoint) ? 'remove_input' : 'add_input'
+            "
+            [disabled]="!canToggleInput(activeSrv.selectedJoint)"
+            [click]="mechanismService.adjustInput.bind(mechanismService)"
           >
-            <!-- A driven block translates; it has no sense of rotation and no
+            {{ gridUtils.isVisuallyInput(activeSrv.selectedJoint) ? 'Remove Input' : 'Add Input' }}
+          </button-block>
+        </collapsible-subseciton>
+        @if (gridUtils.isVisuallyInput(activeSrv.selectedJoint)) {
+          <div class="inputSettings">
+            <collapsible-subseciton
+              titleLabel="Input Settings"
+              [expanded]="sectionExpanded['JInput']"
+              (opened)="sectionExpanded['JInput'] = true"
+              (closed)="sectionExpanded['JInput'] = false"
+            >
+              <!-- A driven block translates; it has no sense of rotation and no
                  RPM. Both controls read the drive's kind rather than assuming
                  the rotational one. -->
-            <button-block [icon]="inputDirectionIcon" [click]="flipInputDirection.bind(this)"
-              >{{ inputDirectionLabel }}
-            </button-block>
-            @if (isSliderInput) {
-              <input-block
-                [formGroup]="jointForm"
-                _formControl="inputSpeed"
-                [unit]="linearSpeedUnitLabel"
-                tooltip="How fast this block slides. Negative reverses it."
-                >Input Speed
-              </input-block>
-            } @else {
-              <input-block
-                [formGroup]="jointForm"
-                _formControl="inputSpeed"
-                [unitOptions]="speedUnitOptions"
-                unitFormControl="inputSpeedUnit"
-                tooltip="How fast this joint turns. Negative reverses it."
-                >Input Speed
-              </input-block>
-            }
-          </collapsible-subseciton>
-        </div>
-      }
-      <!-- The sliding body's own mass. It lives on a link nobody can select --
+              <button-block [icon]="inputDirectionIcon" [click]="flipInputDirection.bind(this)"
+                >{{ inputDirectionLabel }}
+              </button-block>
+              @if (isSliderInput) {
+                <input-block
+                  [formGroup]="jointForm"
+                  _formControl="inputSpeed"
+                  [unit]="linearSpeedUnitLabel"
+                  tooltip="How fast this block slides. Negative reverses it."
+                  >Input Speed
+                </input-block>
+              } @else {
+                <input-block
+                  [formGroup]="jointForm"
+                  _formControl="inputSpeed"
+                  [unitOptions]="speedUnitOptions"
+                  unitFormControl="inputSpeedUnit"
+                  tooltip="How fast this joint turns. Negative reverses it."
+                  >Input Speed
+                </input-block>
+              }
+            </collapsible-subseciton>
+          </div>
+        }
+        <!-- The sliding body's own mass. It lives on a link nobody can select --
            clicking a block picks the pin it rides on -- so this is the only
            place in Edit it can be reached; before it, the mass table in the
            force-analysis drawer was the only door, and there was no sign from
            the joint's own panel that a slider weighed anything at all. -->
-      @if (sliderBlock) {
+        @if (sliderBlock) {
+          <collapsible-subseciton
+            titleLabel="Mass Settings"
+            [expanded]="sectionExpanded['JMass']"
+            (opened)="sectionExpanded['JMass'] = true"
+            (closed)="sectionExpanded['JMass'] = false"
+          >
+            <input-block
+              [formGroup]="jointForm"
+              _formControl="sliderMass"
+              tooltip="The sliding body's mass, acting at this pin. Zero is an idealized massless slide."
+              >Sliding Body</input-block
+            >
+          </collapsible-subseciton>
+        }
         <collapsible-subseciton
-          titleLabel="Mass Settings"
-          [expanded]="sectionExpanded['JMass']"
-          (opened)="sectionExpanded['JMass'] = true"
-          (closed)="sectionExpanded['JMass'] = false"
+          titleLabel="Visual Settings"
+          [expanded]="sectionExpanded['JVisual']"
+          (opened)="sectionExpanded['JVisual'] = true"
+          (closed)="sectionExpanded['JVisual'] = false"
         >
-          <input-block
+          <toggle-block
             [formGroup]="jointForm"
-            _formControl="sliderMass"
-            tooltip="The sliding body's mass, acting at this pin. Zero is an idealized massless slide."
-            >Sliding Body</input-block
+            _formControl="curve"
+            tooltip="Show / hide the path this joint takes through the cycle."
+            >Trace Path
+          </toggle-block>
+          <color-picker
+            type="joint"
+            [joint]="activeSrv.selectedJoint"
+            tooltip="The color of this joint."
+            >Joint Color</color-picker
           >
         </collapsible-subseciton>
-      }
-      <collapsible-subseciton
-        titleLabel="Visual Settings"
-        [expanded]="sectionExpanded['JVisual']"
-        (opened)="sectionExpanded['JVisual'] = true"
-        (closed)="sectionExpanded['JVisual'] = false"
-      >
-        <toggle-block
-          [formGroup]="jointForm"
-          _formControl="curve"
-          tooltip="Show / hide the path this joint takes through the cycle."
-          >Trace Path
-        </toggle-block>
-        <color-picker
-          type="joint"
-          [joint]="activeSrv.selectedJoint"
-          tooltip="The color of this joint."
-          >Joint Color</color-picker
+        <collapsible-subseciton
+          titleLabel="Distance to Joints"
+          [expanded]="sectionExpanded['JDistToJ']"
+          (opened)="sectionExpanded['JDistToJ'] = true"
+          (closed)="sectionExpanded['JDistToJ'] = false"
         >
-      </collapsible-subseciton>
-      <collapsible-subseciton
-        titleLabel="Distance to Joints"
-        [expanded]="sectionExpanded['JDistToJ']"
-        (opened)="sectionExpanded['JDistToJ'] = true"
-        (closed)="sectionExpanded['JDistToJ'] = false"
-      >
-        @for (joint of listOfOtherJoints; track joint; let i = $index) {
-          <div>
-            <!-- The repeated alias template -->
-            <dual-input-block
-              label1="D"
-              label2="⊾"
-              tooltip="How far this joint is from that one, and in what direction. Editing either moves that joint."
-              [formGroup]="jointForm"
-              formSubGroup="otherJoints"
-              [formControl1]="(i * 2).toString()"
-              [formControl2]="(i * 2 + 1).toString()"
-              (field1Entry)="setShowLinkLengthOverlay($event)"
-              (field2Entry)="setShowLinkAngleOverlay($event)"
-              [emitterOutputID]="i"
-            >
-              Joint {{ joint!.name }}</dual-input-block
-            >
-          </div>
-        }
-      </collapsible-subseciton>
-    </panel-section>
-  }
+          @for (joint of listOfOtherJoints; track joint; let i = $index) {
+            <div>
+              <!-- The repeated alias template -->
+              <dual-input-block
+                label1="D"
+                label2="⊾"
+                tooltip="How far this joint is from that one, and in what direction. Editing either moves that joint."
+                [formGroup]="jointForm"
+                formSubGroup="otherJoints"
+                [formControl1]="(i * 2).toString()"
+                [formControl2]="(i * 2 + 1).toString()"
+                (field1Entry)="setShowLinkLengthOverlay($event)"
+                (field2Entry)="setShowLinkAngleOverlay($event)"
+                [emitterOutputID]="i"
+              >
+                Joint {{ joint!.name }}</dual-input-block
+              >
+            </div>
+          }
+        </collapsible-subseciton>
+      </panel-section>
+    }
 
-  <!--  CYLINDER BODY PANEL: selecting any of a sealed cylinder's geometry
+    <!--  CYLINDER BODY PANEL: selecting any of a sealed cylinder's geometry
         (barrel, rod, block or skin) selects the body, and the body edits as
         one part — mounts, length/angle read-outs, and the drive controls of
         its hidden prismatic pin. -->
-  @if (this.activeSrv.objType == 'Link' && !hideEditPanel() && selectedCylinder; as cyl) {
-    <panel-section>
-      <editable-title-block
-        [deleteAction]="deleteLink.bind(this)"
-        [displayName]="cyl.barrelFar.name + cyl.rodFar.name"
-      >
-        Edit Cylinder
-      </editable-title-block>
-      <collapsible-subseciton
-        titleLabel="Cylinder"
-        [expanded]="sectionExpanded['LBasic']"
-        (opened)="sectionExpanded['LBasic'] = true"
-        (closed)="sectionExpanded['LBasic'] = false"
-      >
-        <!-- One size number and one position number. Barrel and rod are the
+    @if (this.activeSrv.objType == 'Link' && selectedCylinder; as cyl) {
+      <panel-section>
+        <editable-title-block
+          [deleteAction]="deleteLink.bind(this)"
+          [displayName]="cyl.barrelFar.name + cyl.rodFar.name"
+        >
+          Edit Cylinder
+        </editable-title-block>
+        <collapsible-subseciton
+          titleLabel="Cylinder"
+          [expanded]="sectionExpanded['LBasic']"
+          (opened)="sectionExpanded['LBasic'] = true"
+          (closed)="sectionExpanded['LBasic'] = false"
+        >
+          <!-- One size number and one position number. Barrel and rod are the
              same length by construction, so stroke, closed and open are three
              ways of saying the size and there is nothing for a second field to
              disagree with — the picker changes which one you are typing, never
              the ram. -->
-        <!-- Pointing at either size field draws the stretch of ground the rod's
+          <!-- Pointing at either size field draws the stretch of ground the rod's
              mount covers: Travel is how long that line is, Starts at is how far
              along it the ram is standing. -->
-        <input-block
-          [formGroup]="cylinderForm"
-          _formControl="travel"
-          [unitOptions]="travelUnitOptions"
-          unitFormControl="travelUnit"
-          (fieldEntry)="setCylinderRangeOverlay($event === -2 ? undefined : 'travel')"
-          [emitterOutputID]="-1"
-          tooltip="How far the rod moves. The picker reads it as the stroke, or as the closed and open lengths."
-          >Travel
-        </input-block>
-        <input-block
-          [formGroup]="cylinderForm"
-          _formControl="start"
-          [unitOptions]="startUnitOptions"
-          unitFormControl="startUnit"
-          (fieldEntry)="setCylinderRangeOverlay($event === -2 ? undefined : 'start')"
-          [emitterOutputID]="-1"
-          tooltip="Where the rod begins its cycle: a share of the travel, or a length. Outside the travel, the cylinder resizes to reach it."
-          >Starts at
-        </input-block>
-        <!-- Same on-canvas overlay a link's angle field draws: the ram's axis is
+          <input-block
+            [formGroup]="cylinderForm"
+            _formControl="travel"
+            [unitOptions]="travelUnitOptions"
+            unitFormControl="travelUnit"
+            (fieldEntry)="setCylinderRangeOverlay($event === -2 ? undefined : 'travel')"
+            [emitterOutputID]="-1"
+            tooltip="How far the rod moves. The picker reads it as the stroke, or as the closed and open lengths."
+            >Travel
+          </input-block>
+          <input-block
+            [formGroup]="cylinderForm"
+            _formControl="start"
+            [unitOptions]="startUnitOptions"
+            unitFormControl="startUnit"
+            (fieldEntry)="setCylinderRangeOverlay($event === -2 ? undefined : 'start')"
+            [emitterOutputID]="-1"
+            tooltip="Where the rod begins its cycle: a share of the travel, or a length. Outside the travel, the cylinder resizes to reach it."
+            >Starts at
+          </input-block>
+          <!-- Same on-canvas overlay a link's angle field draws: the ram's axis is
              mount to mount, which is exactly what the angle names. -->
-        <input-block
-          [formGroup]="cylinderForm"
-          _formControl="angle"
-          (fieldEntry)="setShowLinkAngleOverlay($event)"
-          [emitterOutputID]="-1"
-          tooltip="The direction the cylinder points, joint to joint."
-          >Angle
-        </input-block>
-        @if (cylinderClamped) {
-          <div class="cylinder-clamped">{{ cylinderClamped }}</div>
-        }
-        <button-block
-          [customIcon]="cyl.slider.input ? 'remove_input' : 'add_input'"
-          [click]="toggleCylinderInput.bind(this)"
-        >
-          {{ cyl.slider.input ? 'Remove Input' : 'Add Input' }}
-        </button-block>
-      </collapsible-subseciton>
-      @if (cyl.slider.input) {
-        <div class="inputSettings">
-          <collapsible-subseciton
-            titleLabel="Input Settings"
-            [expanded]="sectionExpanded['JInput']"
-            (opened)="sectionExpanded['JInput'] = true"
-            (closed)="sectionExpanded['JInput'] = false"
+          <input-block
+            [formGroup]="cylinderForm"
+            _formControl="angle"
+            (fieldEntry)="setShowLinkAngleOverlay($event)"
+            [emitterOutputID]="-1"
+            tooltip="The direction the cylinder points, joint to joint."
+            >Angle
+          </input-block>
+          @if (cylinderClamped) {
+            <div class="cylinder-clamped">{{ cylinderClamped }}</div>
+          }
+          <button-block
+            [customIcon]="cyl.slider.input ? 'remove_input' : 'add_input'"
+            [click]="toggleCylinderInput.bind(this)"
           >
-            <button-block
-              [icon]="inputDirectionIcon"
-              [disabled]="cylinderDirectionForced"
-              [click]="flipInputDirection.bind(this)"
-              >{{ inputDirectionLabel }}
-            </button-block>
-            <input-block
-              [formGroup]="jointForm"
-              _formControl="inputSpeed"
-              [unit]="linearSpeedUnitLabel"
-              tooltip="How fast the rod extends. Negative retracts it."
-              >Expansion Speed
-            </input-block>
-          </collapsible-subseciton>
-        </div>
-      }
-      <collapsible-subseciton
-        titleLabel="Mass Settings"
-        [expanded]="sectionExpanded['LMass']"
-        (opened)="sectionExpanded['LMass'] = true"
-        (closed)="sectionExpanded['LMass'] = false"
-      >
-        <div class="massArea">
-          <!-- Three bodies, not one: the rod and head are welded rigid, but the
+            {{ cyl.slider.input ? 'Remove Input' : 'Add Input' }}
+          </button-block>
+        </collapsible-subseciton>
+        @if (cyl.slider.input) {
+          <div class="inputSettings">
+            <collapsible-subseciton
+              titleLabel="Input Settings"
+              [expanded]="sectionExpanded['JInput']"
+              (opened)="sectionExpanded['JInput'] = true"
+              (closed)="sectionExpanded['JInput'] = false"
+            >
+              <button-block
+                [icon]="inputDirectionIcon"
+                [disabled]="cylinderDirectionForced"
+                [click]="flipInputDirection.bind(this)"
+                >{{ inputDirectionLabel }}
+              </button-block>
+              <input-block
+                [formGroup]="jointForm"
+                _formControl="inputSpeed"
+                [unit]="linearSpeedUnitLabel"
+                tooltip="How fast the rod extends. Negative retracts it."
+                >Expansion Speed
+              </input-block>
+            </collapsible-subseciton>
+          </div>
+        }
+        <collapsible-subseciton
+          titleLabel="Mass Settings"
+          [expanded]="sectionExpanded['LMass']"
+          (opened)="sectionExpanded['LMass'] = true"
+          (closed)="sectionExpanded['LMass'] = false"
+        >
+          <div class="massArea">
+            <!-- Three bodies, not one: the rod and head are welded rigid, but the
              rod's mass is spread along its length while the head's rides the
              pin — the number that matters in a reciprocating machine. Inertia
              and centers stay automatic (uniform body per part). -->
-          <input-block
-            [formGroup]="cylinderForm"
-            _formControl="barrelMass"
-            tooltip="The barrel's mass, acting at the barrel's own center."
-            (mouseenter)="setCylinderPartPreview('barrel')"
-            (mouseleave)="setCylinderPartPreview(undefined)"
-            >Barrel</input-block
-          >
-          <input-block
-            [formGroup]="cylinderForm"
-            _formControl="rodMass"
-            tooltip="The rod's mass, spread along the rod."
-            (mouseenter)="setCylinderPartPreview('rod')"
-            (mouseleave)="setCylinderPartPreview(undefined)"
-            >Rod</input-block
-          >
-          <input-block
-            [formGroup]="cylinderForm"
-            _formControl="headMass"
-            tooltip="The sliding body's mass, acting at the pin."
-            (mouseenter)="setCylinderPartPreview('head')"
-            (mouseleave)="setCylinderPartPreview(undefined)"
-            >Sliding Body</input-block
-          >
-          <p class="massNote">
-            Each part's rotational inertia and center of mass are computed from its own shape and
-            the mass you give it.
-          </p>
-          @if (cylinderHasCustomInertia()) {
-            <subtitle-block
-              icon="auto_fix_normal"
-              buttonLabel="Derive From Shape"
-              description="This cylinder's parts carry inertia values set by hand (or by an older file). Derive re-computes them from each part's own shape and keeps them current."
-              [click]="deriveCylinderInertiaFromShape.bind(this)"
-            ></subtitle-block>
-          }
-        </div>
-      </collapsible-subseciton>
-      <collapsible-subseciton
-        titleLabel="Visual Settings"
-        [expanded]="sectionExpanded['LVisual']"
-        (opened)="sectionExpanded['LVisual'] = true"
-        (closed)="sectionExpanded['LVisual'] = false"
-      >
-        <color-picker type="link" [link]="cylinderBodyLink(cyl)">Cylinder Color</color-picker>
-      </collapsible-subseciton>
-    </panel-section>
-  }
+            <input-block
+              [formGroup]="cylinderForm"
+              _formControl="barrelMass"
+              tooltip="The barrel's mass, acting at the barrel's own center."
+              (mouseenter)="setCylinderPartPreview('barrel')"
+              (mouseleave)="setCylinderPartPreview(undefined)"
+              >Barrel</input-block
+            >
+            <input-block
+              [formGroup]="cylinderForm"
+              _formControl="rodMass"
+              tooltip="The rod's mass, spread along the rod."
+              (mouseenter)="setCylinderPartPreview('rod')"
+              (mouseleave)="setCylinderPartPreview(undefined)"
+              >Rod</input-block
+            >
+            <input-block
+              [formGroup]="cylinderForm"
+              _formControl="headMass"
+              tooltip="The sliding body's mass, acting at the pin."
+              (mouseenter)="setCylinderPartPreview('head')"
+              (mouseleave)="setCylinderPartPreview(undefined)"
+              >Sliding Body</input-block
+            >
+            <p class="massNote">
+              Each part's rotational inertia and center of mass are computed from its own shape and
+              the mass you give it.
+            </p>
+            @if (cylinderHasCustomInertia()) {
+              <subtitle-block
+                icon="auto_fix_normal"
+                buttonLabel="Derive From Shape"
+                description="This cylinder's parts carry inertia values set by hand (or by an older file). Derive re-computes them from each part's own shape and keeps them current."
+                [click]="deriveCylinderInertiaFromShape.bind(this)"
+              ></subtitle-block>
+            }
+          </div>
+        </collapsible-subseciton>
+        <collapsible-subseciton
+          titleLabel="Visual Settings"
+          [expanded]="sectionExpanded['LVisual']"
+          (opened)="sectionExpanded['LVisual'] = true"
+          (closed)="sectionExpanded['LVisual'] = false"
+        >
+          <color-picker type="link" [link]="cylinderBodyLink(cyl)">Cylinder Color</color-picker>
+        </collapsible-subseciton>
+      </panel-section>
+    }
 
-  <!--  LINK PANEL-->
-  @if (this.activeSrv.objType == 'Link' && !hideEditPanel() && !selectedCylinder) {
-    <panel-section>
-      <editable-title-block [deleteAction]="deleteLink.bind(this)"> Edit Link</editable-title-block>
-      <collapsible-subseciton
-        [expanded]="true"
-        titleLabel="Basic Settings"
-        [expanded]="sectionExpanded['LBasic']"
-        (opened)="sectionExpanded['LBasic'] = true"
-        (closed)="sectionExpanded['LBasic'] = false"
-      >
-        <dual-input-block
-          label1="L"
-          label2="⊾"
-          formControl1="length"
-          formControl2="angle"
-          [formGroup]="linkForm"
-          tooltip="The length and angle of this link. Counter-clockwise is positive."
-          (field1Entry)="setShowLinkLengthOverlay($event)"
-          (field2Entry)="setShowLinkAngleOverlay($event)"
-          [disabled]="activeSrv.selectedLink.joints.length > 2"
-          [emitterOutputID]="-1"
+    <!--  LINK PANEL-->
+    @if (this.activeSrv.objType == 'Link' && !selectedCylinder) {
+      <panel-section>
+        <editable-title-block [deleteAction]="deleteLink.bind(this)">
+          Edit Link</editable-title-block
         >
-          Link Length and Angle
-        </dual-input-block>
-        <dual-button
-          but1Text="Add Tracer"
-          but1Icon="add_tracer"
-          but2Text="Add Force"
-          but2Icon="add_force"
-          [but1Action]="mechanismService.addJointAtCOM.bind(mechanismService)"
-          [but2Action]="mechanismService.createForceAtCOM.bind(mechanismService)"
+        <collapsible-subseciton
+          [expanded]="true"
+          titleLabel="Basic Settings"
+          [expanded]="sectionExpanded['LBasic']"
+          (opened)="sectionExpanded['LBasic'] = true"
+          (closed)="sectionExpanded['LBasic'] = false"
         >
-        </dual-button>
-      </collapsible-subseciton>
-      <collapsible-subseciton
-        titleLabel="Visual Settings"
-        [expanded]="sectionExpanded['LVisual']"
-        (opened)="sectionExpanded['LVisual'] = true"
-        (closed)="sectionExpanded['LVisual'] = false"
-      >
-        <color-picker type="link" [link]="activeSrv.selectedLink">Link Color</color-picker>
-        <!-- The same choice the right-click menu offers, in the section that
+          <dual-input-block
+            label1="L"
+            label2="⊾"
+            formControl1="length"
+            formControl2="angle"
+            [formGroup]="linkForm"
+            tooltip="The length and angle of this link. Counter-clockwise is positive."
+            (field1Entry)="setShowLinkLengthOverlay($event)"
+            (field2Entry)="setShowLinkAngleOverlay($event)"
+            [disabled]="activeSrv.selectedLink.joints.length > 2"
+            [emitterOutputID]="-1"
+          >
+            Link Length and Angle
+          </dual-input-block>
+          <dual-button
+            but1Text="Add Tracer"
+            but1Icon="add_tracer"
+            but2Text="Add Force"
+            but2Icon="add_force"
+            [but1Action]="mechanismService.addJointAtCOM.bind(mechanismService)"
+            [but2Action]="mechanismService.createForceAtCOM.bind(mechanismService)"
+          >
+          </dual-button>
+        </collapsible-subseciton>
+        <collapsible-subseciton
+          titleLabel="Visual Settings"
+          [expanded]="sectionExpanded['LVisual']"
+          (opened)="sectionExpanded['LVisual'] = true"
+          (closed)="sectionExpanded['LVisual'] = false"
+        >
+          <color-picker type="link" [link]="activeSrv.selectedLink">Link Color</color-picker>
+          <!-- The same choice the right-click menu offers, in the section that
              collects how this link is drawn. Disabled rather than hidden here:
              the panel is describing the link you selected, so the option is
              worth naming along with why it is not available.
@@ -532,236 +550,237 @@
              The label follows what is actually on the canvas, not the stored
              choice: a disc whose ground has since been removed is drawn as a
              bar, and a button reading "Draw as a Bar" over a bar is a puzzle. -->
-        <!-- The reason it cannot be pressed is carried by this wrapper, not by
+          <!-- The reason it cannot be pressed is carried by this wrapper, not by
              the button: a disabled button receives no pointer events, so its
              own tooltip would never open — the one explanation of why it is
              grayed out would be the one nobody could reach. The wrapper is
              still hoverable, and the stylesheet takes the disabled button out
              of the way so the hover lands here. -->
-        <div
-          class="shapeToggle"
-          [matTooltip]="whyNotCircular()"
-          [matTooltipDisabled]="activeSrv.selectedLink.canBeCircular()"
-          [matTooltipShowDelay]="400"
-          matTooltipPosition="above"
+          <div
+            class="shapeToggle"
+            [matTooltip]="whyNotCircular()"
+            [matTooltipDisabled]="activeSrv.selectedLink.canBeCircular()"
+            [matTooltipShowDelay]="400"
+            matTooltipPosition="above"
+          >
+            <button-block
+              [customIcon]="drawnAsDisc() ? 'make_bar' : 'make_circular'"
+              [disabled]="!activeSrv.selectedLink.canBeCircular()"
+              (click)="mechanismService.toggleLinkCircular()"
+              [tooltip]="
+                drawnAsDisc()
+                  ? 'Draw this link as an ordinary bar between its joints.'
+                  : 'Draw this link as the disc it sweeps, centered on its fixed pin. Its mass and rotational inertia are unchanged.'
+              "
+            >
+              {{ drawnAsDisc() ? 'Draw as a Bar' : 'Draw as a Disc' }}
+            </button-block>
+          </div>
+        </collapsible-subseciton>
+        <collapsible-subseciton
+          titleLabel="Mass Settings"
+          [expanded]="sectionExpanded['LMass']"
+          (opened)="sectionExpanded['LMass'] = true"
+          (closed)="sectionExpanded['LMass'] = false"
         >
-          <button-block
-            [customIcon]="drawnAsDisc() ? 'make_bar' : 'make_circular'"
-            [disabled]="!activeSrv.selectedLink.canBeCircular()"
-            (click)="mechanismService.toggleLinkCircular()"
-            [tooltip]="
-              drawnAsDisc()
-                ? 'Draw this link as an ordinary bar between its joints.'
-                : 'Draw this link as the disc it sweeps, centered on its fixed pin. Its mass and rotational inertia are unchanged.'
-            "
-          >
-            {{ drawnAsDisc() ? 'Draw as a Bar' : 'Draw as a Disc' }}
-          </button-block>
-        </div>
-      </collapsible-subseciton>
-      <collapsible-subseciton
-        titleLabel="Mass Settings"
-        [expanded]="sectionExpanded['LMass']"
-        (opened)="sectionExpanded['LMass'] = true"
-        (closed)="sectionExpanded['LMass'] = false"
-      >
-        <div class="massArea">
-          <input-block
-            [formGroup]="linkForm"
-            _formControl="mass"
-            tooltip="The mass of this link. Zero is an idealized massless bar, which gravity and inertia skip."
-            >Mass</input-block
-          >
-          <!-- Everything below Mass describes how that mass is distributed, so on
+          <div class="massArea">
+            <input-block
+              [formGroup]="linkForm"
+              _formControl="mass"
+              tooltip="The mass of this link. Zero is an idealized massless bar, which gravity and inertia skip."
+              >Mass</input-block
+            >
+            <!-- Everything below Mass describes how that mass is distributed, so on
              a massless bar there is nothing for any of it to describe: gravity
              and inertia skip the link entirely and the numbers cannot change an
              answer. They used to be shown grayed, which asks the reader to
              work out that a whole section is inert. Give it a mass and they
              come back. -->
-          @if (activeSrv.selectedLink.mass > 0) {
-            <!-- One legend for the two derived fields below. It sits under Mass —
+            @if (activeSrv.selectedLink.mass > 0) {
+              <!-- One legend for the two derived fields below. It sits under Mass —
                which is always typed — so it introduces exactly the fields it
                governs: gray behind a hollow dot follows the shape, ink behind a
                filled one was set by hand and carries a ✕ to hand it back. -->
-            <div class="dotLegend">
-              <span class="dot"></span> from shape <span class="dot filled"></span> set by you
-              <button
-                type="button"
-                class="resetAll"
-                [disabled]="
-                  !activeSrv.selectedLink.moiIsCustom && !activeSrv.selectedLink.comIsCustom
-                "
-                (click)="useUniformBody()"
-              >
-                Reset All
-              </button>
-            </div>
-            <div class="dotRow">
-              <span class="dotRowLabel">CoM</span>
-              <!-- Marked on the options, not with [value] on the select. Setting
+              <div class="dotLegend">
+                <span class="dot"></span> from shape <span class="dot filled"></span> set by you
+                <button
+                  type="button"
+                  class="resetAll"
+                  [disabled]="
+                    !activeSrv.selectedLink.moiIsCustom && !activeSrv.selectedLink.comIsCustom
+                  "
+                  (click)="useUniformBody()"
+                >
+                  Reset All
+                </button>
+              </div>
+              <div class="dotRow">
+                <span class="dotRowLabel">CoM</span>
+                <!-- Marked on the options, not with [value] on the select. Setting
                  the select's value only takes if its options already exist,
                  and these are rebuilt whenever the panel re-renders this block
                  — a different link selected, a mass edited — after which the
                  binding is unchanged and so is never re-applied, leaving the
                  control reading Centroid over a link held some other way. An
                  option that knows itself to be the selected one cannot drift. -->
-              <select
-                class="comFrameSelect"
-                (change)="setComFrame($any($event.target).value)"
-                title="What the center of mass is held against while you edit, and the frame the two numbers below are read in. Centroid rides the link; Global grid keeps its place on the drawing; a joint follows that pin alone. Once the mechanism runs it rides the link either way."
-              >
-                <option value="centroid" [selected]="comFrame === 'centroid'">Centroid</option>
-                <option value="grid" [selected]="comFrame === 'grid'">Global grid</option>
-                @for (joint of activeSrv.selectedLink.joints; track joint.id) {
-                  <option
-                    [value]="'joint:' + joint.id"
-                    [selected]="comFrame === 'joint:' + joint.id"
-                  >
-                    Joint {{ joint.name || joint.id }}
-                  </option>
-                }
-              </select>
-            </div>
-            <!-- Each field wears the pair's state, as the mock draws it. -->
-            <div class="comPairRow" [class.derived]="!activeSrv.selectedLink.comIsCustom">
-              <span class="axisTag">X</span>
-              <state-input
+                <select
+                  class="comFrameSelect"
+                  (change)="setComFrame($any($event.target).value)"
+                  title="What the center of mass is held against while you edit, and the frame the two numbers below are read in. Centroid rides the link; Global grid keeps its place on the drawing; a joint follows that pin alone. Once the mechanism runs it rides the link either way."
+                >
+                  <option value="centroid" [selected]="comFrame === 'centroid'">Centroid</option>
+                  <option value="grid" [selected]="comFrame === 'grid'">Global grid</option>
+                  @for (joint of activeSrv.selectedLink.joints; track joint.id) {
+                    <option
+                      [value]="'joint:' + joint.id"
+                      [selected]="comFrame === 'joint:' + joint.id"
+                    >
+                      Joint {{ joint.name || joint.id }}
+                    </option>
+                  }
+                </select>
+              </div>
+              <!-- Each field wears the pair's state, as the mock draws it. -->
+              <div class="comPairRow" [class.derived]="!activeSrv.selectedLink.comIsCustom">
+                <span class="axisTag">X</span>
+                <state-input
+                  [formGroup]="linkForm"
+                  _formControl="comX"
+                  [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
+                  clearTitle="Back to the shape's centroid"
+                  (cleared)="useUniformBodyCoM()"
+                  (hovered)="setComPreview('x', $event)"
+                />
+                <span class="axisTag">Y</span>
+                <state-input
+                  [formGroup]="linkForm"
+                  _formControl="comY"
+                  [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
+                  clearTitle="Back to the shape's centroid"
+                  (cleared)="useUniformBodyCoM()"
+                  (hovered)="setComPreview('y', $event)"
+                />
+              </div>
+              <input-block
                 [formGroup]="linkForm"
-                _formControl="comX"
-                [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
-                clearTitle="Back to the shape's centroid"
-                (cleared)="useUniformBodyCoM()"
-                (hovered)="setComPreview('x', $event)"
-              />
-              <span class="axisTag">Y</span>
-              <state-input
-                [formGroup]="linkForm"
-                _formControl="comY"
-                [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
-                clearTitle="Back to the shape's centroid"
-                (cleared)="useUniformBodyCoM()"
-                (hovered)="setComPreview('y', $event)"
-              />
-            </div>
-            <input-block
-              [formGroup]="linkForm"
-              _formControl="massMoI"
-              class="moiBlock"
-              tooltip="Rotational inertia about the link's center of mass. Derived from its shape until you type a value."
-              [class.derived]="!activeSrv.selectedLink.moiIsCustom"
-              >Rotational Inertia
-              <span fieldSuffix class="stateSuffix">
-                <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
-                @if (activeSrv.selectedLink.moiIsCustom) {
-                  <button
-                    type="button"
-                    class="clearDot"
-                    title="Back to the shape's own inertia"
-                    (click)="useUniformBodyMoI()"
-                  >
-                    &#10005;
-                  </button>
-                }
-              </span>
-            </input-block>
-            <!-- Drawing a crank as a disc is a picture, not a declaration that the
+                _formControl="massMoI"
+                class="moiBlock"
+                tooltip="Rotational inertia about the link's center of mass. Derived from its shape until you type a value."
+                [class.derived]="!activeSrv.selectedLink.moiIsCustom"
+                >Rotational Inertia
+                <span fieldSuffix class="stateSuffix">
+                  <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
+                  @if (activeSrv.selectedLink.moiIsCustom) {
+                    <button
+                      type="button"
+                      class="clearDot"
+                      title="Back to the shape's own inertia"
+                      (click)="useUniformBodyMoI()"
+                    >
+                      &#10005;
+                    </button>
+                  }
+                </span>
+              </input-block>
+              <!-- Drawing a crank as a disc is a picture, not a declaration that the
                part is one. Said here, next to the two numbers it would otherwise
                be reasonable to assume it had changed — and only here, because
                with no mass there are no such numbers to mislead anyone. -->
-            @if (drawnAsDisc()) {
-              <p class="shapeNote">
-                Drawn as a disc. These two still follow the link's joints, not the circle — set
-                Rotational Inertia by hand for a real flywheel.
-              </p>
+              @if (drawnAsDisc()) {
+                <p class="shapeNote">
+                  Drawn as a disc. These two still follow the link's joints, not the circle — set
+                  Rotational Inertia by hand for a real flywheel.
+                </p>
+              }
             }
-          }
-        </div>
-      </collapsible-subseciton>
-      @if (activeSrv.selectedLink.isCompound) {
-        <collapsible-subseciton
-          [expanded]="sectionExpanded['LCompound']"
-          (opened)="sectionExpanded['LCompound'] = true"
-          (closed)="sectionExpanded['LCompound'] = false"
-          titleLabel="Compound Link Settings"
-        >
-          <dual-button
-            but1Text="Un-weld All"
-            but1Icon="unweld_joint"
-            [but1Action]="mechanismService.unweldAll.bind(mechanismService)"
-          ></dual-button>
+          </div>
         </collapsible-subseciton>
-      }
-    </panel-section>
-  }
+        @if (activeSrv.selectedLink.isCompound) {
+          <collapsible-subseciton
+            [expanded]="sectionExpanded['LCompound']"
+            (opened)="sectionExpanded['LCompound'] = true"
+            (closed)="sectionExpanded['LCompound'] = false"
+            titleLabel="Compound Link Settings"
+          >
+            <dual-button
+              but1Text="Un-weld All"
+              but1Icon="unweld_joint"
+              [but1Action]="mechanismService.unweldAll.bind(mechanismService)"
+            ></dual-button>
+          </collapsible-subseciton>
+        }
+      </panel-section>
+    }
 
-  <!--  FORCE PANEL-->
+    <!--  FORCE PANEL-->
 
-  @if (this.activeSrv.objType == 'Force' && !hideEditPanel()) {
-    <panel-section>
-      <editable-title-block [deleteAction]="deleteForce.bind(this)"
-        >Edit Force</editable-title-block
-      >
-      <collapsible-subseciton
-        titleLabel="Basic Settings"
-        [expanded]="sectionExpanded['FBasic']"
-        (opened)="sectionExpanded['FBasic'] = true"
-        (closed)="sectionExpanded['FBasic'] = false"
-      >
-        <dual-input-block
-          label1="M"
-          label2="⊾"
-          formControl1="magnitude"
-          formControl2="angle"
-          [formGroup]="forceForm"
-          tooltip="The magnitude and angle of this force. Counter-clockwise is positive."
+    @if (this.activeSrv.objType == 'Force') {
+      <panel-section>
+        <editable-title-block [deleteAction]="deleteForce.bind(this)"
+          >Edit Force</editable-title-block
         >
-          Magnitude and Angle
-        </dual-input-block>
-        <dual-input-block
-          label1="X"
-          label2="Y"
-          formControl1="xComp"
-          formControl2="yComp"
-          [formGroup]="forceForm"
-          tooltip="The x and y components of this force, in {{ forceUnitLabel }}."
+        <collapsible-subseciton
+          titleLabel="Basic Settings"
+          [expanded]="sectionExpanded['FBasic']"
+          (opened)="sectionExpanded['FBasic'] = true"
+          (closed)="sectionExpanded['FBasic'] = false"
         >
-          Force Components
-        </dual-input-block>
-        <radio-block
-          [formGroup]="forceForm"
-          _formControl="isGlobal"
-          tooltip="Global keeps the force pointing the same way. Local turns it with the link it is on."
-          option1="Local (Link {{ this.activeSrv.selectedForce.link.name }})"
-          option2="Global"
+          <dual-input-block
+            label1="M"
+            label2="⊾"
+            formControl1="magnitude"
+            formControl2="angle"
+            [formGroup]="forceForm"
+            tooltip="The magnitude and angle of this force. Counter-clockwise is positive."
+          >
+            Magnitude and Angle
+          </dual-input-block>
+          <dual-input-block
+            label1="X"
+            label2="Y"
+            formControl1="xComp"
+            formControl2="yComp"
+            [formGroup]="forceForm"
+            tooltip="The x and y components of this force, in {{ forceUnitLabel }}."
+          >
+            Force Components
+          </dual-input-block>
+          <radio-block
+            [formGroup]="forceForm"
+            _formControl="isGlobal"
+            tooltip="Global keeps the force pointing the same way. Local turns it with the link it is on."
+            option1="Local (Link {{ this.activeSrv.selectedForce.link.name }})"
+            option2="Global"
+          >
+            Force Base Frame
+          </radio-block>
+        </collapsible-subseciton>
+        <collapsible-subseciton
+          titleLabel="Visual Settings"
+          [expanded]="sectionExpanded['FVisual']"
+          (opened)="sectionExpanded['FVisual'] = true"
+          (closed)="sectionExpanded['FVisual'] = false"
         >
-          Force Base Frame
-        </radio-block>
-      </collapsible-subseciton>
-      <collapsible-subseciton
-        titleLabel="Visual Settings"
-        [expanded]="sectionExpanded['FVisual']"
-        (opened)="sectionExpanded['FVisual'] = true"
-        (closed)="sectionExpanded['FVisual'] = false"
-      >
-        <color-picker
-          type="force"
-          [force]="activeSrv.selectedForce"
-          tooltip="The color of this force."
-          >Force Color</color-picker
-        >
-      </collapsible-subseciton>
-    </panel-section>
-  }
+          <color-picker
+            type="force"
+            [force]="activeSrv.selectedForce"
+            tooltip="The color of this force."
+            >Force Color</color-picker
+          >
+        </collapsible-subseciton>
+      </panel-section>
+    }
 
-  <!-- The thread back to a closed tutorial. Its own small card after every
+    <!-- The thread back to a closed tutorial. Its own small card after every
        branch above, rather than inside the empty state where it started: that
        state is only drawn when nothing is selected, and closing the tutorial
        part-way through leaves a joint selected, so the offer vanished at
        exactly the moment it became the only way back. -->
-  @if (tutorial.resumeVisible()) {
-    <button class="resumeCard" (click)="startTutorial()">
-      <mat-icon>school</mat-icon>
-      <span>{{ tutorial.resumeLabel() }}</span>
-    </button>
-  }
+    @if (tutorial.resumeVisible()) {
+      <button class="resumeCard" (click)="startTutorial()">
+        <mat-icon>school</mat-icon>
+        <span>{{ tutorial.resumeLabel() }}</span>
+      </button>
+    }
+  </div>
 </div>

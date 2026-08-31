@@ -50,6 +50,7 @@ import { Line } from '../../model/line';
 import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
+import { EditPermissionService } from 'src/app/services/edit-permission.service';
 import { SynthesisPose } from 'src/app/services/synthesis/synthesis-util';
 import { SynthesisCanvasService } from 'src/app/services/synthesis/synthesis-canvas.service';
 import { SynthesisSolutionService } from 'src/app/services/synthesis/synthesis-solution.service';
@@ -196,6 +197,8 @@ export class NewGridComponent implements OnDestroy {
   settings = inject(SettingsService);
   activeObjService = inject(ActiveObjService);
   private tabService = inject(SelectedTabService);
+  /** The one answer to whether an edit may happen; every gate here quotes it. */
+  readonly permission = inject(EditPermissionService);
   synthesisBuilder = inject(SynthesisBuilderService);
   synthCanvas = inject(SynthesisCanvasService);
   synthSolution = inject(SynthesisSolutionService);
@@ -350,6 +353,11 @@ export class NewGridComponent implements OnDestroy {
     this.shortcuts.whenArrowsNudge(
       () => this.canEditNow() && this.activeObjService.selectedParts.length > 0
     );
+    // Handed back when this canvas goes away. The service holds the predicate
+    // for as long as it is given one, so without this a torn-down canvas keeps
+    // answering for a live one -- and answers by reaching into an injector that
+    // no longer exists.
+    this.destroyRef.onDestroy(() => this.shortcuts.whenArrowsNudge(() => false));
 
     const svgElement = document.getElementById('canvas') as HTMLElement;
     this.svgGrid.setNewElement(svgElement);
@@ -2056,26 +2064,12 @@ export class NewGridComponent implements OnDestroy {
    * a fifth place saying the same word.
    */
   private canEditNow(): boolean {
-    // `isAnimating()`, not the shared clock: with the machines unsynced, one
-    // row can be scrubbed mid-cycle while `mechanismTimeStep` still reads
-    // zero, and a drag against that displaced pose writes it into the drawing.
-    if (this.mechanismSrv.isAnimating()) {
-      return false;
-    }
-    if (this.tabService.getCurrentTab() === TabID.SYNTHESIZE) {
-      return false;
-    }
-    // Analyze already refuses to open an edit context menu (see onContextMenu),
-    // but dragging bypassed that: the mode was read-only by menu only. Whole-link
-    // drag would have widened the hole, so the guard covers every drag instead.
-    //
-    // Both analysis modes, not just the kinematic one. Force analysis reads the
-    // same solved cycle and is no more able to survive the geometry moving
-    // under it.
-    if (this.tabService.isAnalysisMode()) {
-      return false;
-    }
-    return true;
+    // One question, asked of the one thing that answers it. This used to be
+    // three tests here and near-identical tests in four other files, and they
+    // did not agree: three read the *shared* clock, so with the machines
+    // unsynced and one row scrubbed mid-cycle the canvas allowed a drag
+    // against a displaced pose while undo refused. See `EditPermissionService`.
+    return this.permission.may('drag');
   }
 
   /**
@@ -3974,7 +3968,9 @@ export class NewGridComponent implements OnDestroy {
 
   /** Nothing on the canvas can be moved in an analysis mode. */
   get geometryLocked(): boolean {
-    return this.tabService.isAnalysisMode();
+    // Still the analysis modes, but asked of the permission model so the words
+    // it refuses in are the ones the menu and the panel use for the same rule.
+    return this.permission.modeLocksGeometry();
   }
 
   /**

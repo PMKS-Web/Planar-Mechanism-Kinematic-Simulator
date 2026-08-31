@@ -132,8 +132,29 @@ record(
   (await page.locator('app-touchscreen-warning').count()) === 0
 );
 
+/**
+ * A spot on the canvas with no chrome over it.
+ *
+ * This used to be the literal point (200, 480), which was open grid for as long
+ * as the phone's bottom stack was one card tall. Bringing the shared scrub row
+ * back made the stack taller, which lifted the sheet's handle onto that exact
+ * spot -- and three checks about long-press started failing on a long-press
+ * that was landing on a grip. Asked of the page, it survives the next restyle
+ * too.
+ */
+async function freeGrid() {
+  return page.evaluate(() => {
+    for (let y = 200; y < window.innerHeight - 40; y += 8) {
+      const el = document.elementFromPoint(200, y);
+      if (el && el.closest('svg#canvas') && !el.closest('[id^="joint_"]')) return { x: 200, y };
+    }
+    return { x: 200, y: 300 };
+  });
+}
+
 // --- a held finger is the right button -------------------------------------
-const onGrid = await hold(200, 480);
+const bare = await freeGrid();
+const onGrid = await hold(bare.x, bare.y);
 record('a held finger on the grid opens the menu', onGrid.openWhileDown === 1, onGrid);
 // The browser sends a compatibility click after every touch, and the overlay
 // closes on an outside click: the menu used to appear and vanish on the lift.
@@ -142,11 +163,11 @@ record('the menu offers the verb that makes something', /Link/.test(await menuTe
 await page.keyboard.press('Escape').catch(() => undefined);
 await page.waitForTimeout(300);
 
-record('a tap opens nothing', (await hold(200, 480, 120)).openAfterLift === 0);
+record('a tap opens nothing', (await hold(bare.x, bare.y, 120)).openAfterLift === 0);
 record('and leaves nothing holding a gesture', await gestureIdle());
 
 const viewBefore = await canvasTransform();
-await swipe(200, 480, 120, 0);
+await swipe(bare.x, bare.y, 120, 0);
 record(
   'a swipe opens nothing, because it is a pan',
   (await page.locator('#contextMenu').count()) === 0
@@ -326,8 +347,19 @@ record('and the controls are on screen, below the top strip', cluster.y >= strip
   cluster,
   stripBottom,
 });
-record('the controls are one row', cluster.h <= 70, { cluster });
-record('with no scrubber on it', (await page.locator('.scrubCard:visible').count()) === 0);
+// Two lines now, not one: the scrub card came back on phones because parking
+// precisely mid-cycle is what editing at a pose is built on, and a phone
+// without it is a phone without the feature. What it does *not* carry is a row
+// per machine -- the shared row only -- so the stack stays two lines deep
+// however many machines the drawing holds.
+record('the controls are two rows, no more', cluster.h <= 140, { cluster });
+record('with the shared scrubber on the upper one', (await page.locator('.scrubCard:visible').count()) === 1);
+record(
+  'and one row on it, whatever the drawing holds',
+  (await page.locator('.mechRow').count()) === 1,
+  await page.locator('.mechRow').count()
+);
+record('and no control that would produce more', (await page.locator('.syncToggle').count()) === 0);
 
 const rowWhileOpen = cluster.y;
 await page.locator('.sheetHandle').click();
@@ -586,17 +618,36 @@ const moved = (a, c) => Math.hypot(c.x - a.x, c.y - a.y);
   await waitForReady(page).catch(() => undefined);
   await page.waitForTimeout(900);
   await page.locator('.sheetHandle').click();
-  await page.waitForTimeout(1000);
-  const sheetTop = (await box('.panel')).y;
-  const lowest = await page.evaluate(() =>
-    Math.round(
-      Math.max(
-        ...[...document.querySelectorAll('[id^="joint_"]')].map(
-          (el) => el.getBoundingClientRect().bottom
+  const lowestJoint = () =>
+    page.evaluate(() =>
+      Math.round(
+        Math.max(
+          ...[...document.querySelectorAll('[id^="joint_"]')].map(
+            (el) => el.getBoundingClientRect().bottom
+          )
         )
       )
-    )
-  );
+    );
+  // Polled until the drawing stops moving rather than waited out on the clock.
+  // The re-frame eases, and how long it takes depends on how far the drawing
+  // has to travel -- which grew when the phone's bottom stack did. A flat
+  // second used to be enough and then was not, by two pixels.
+  let lowest = await lowestJoint();
+  let still = 0;
+  for (let i = 0; i < 60; i++) {
+    await page.waitForTimeout(100);
+    const next = await lowestJoint();
+    // Four readings the same, not one: the sheet's own slide runs before the
+    // re-frame does, so a single match taken early is the drawing holding
+    // still in the moment *before* it starts moving.
+    still = next === lowest ? still + 1 : 0;
+    lowest = next;
+    // Not before the slide has even begun: the sheet takes a moment to publish
+    // its height, and the drawing holds perfectly still until it does. Twelve
+    // ticks is past that and still well inside the ease.
+    if (i > 12 && still >= 4) break;
+  }
+  const sheetTop = (await box('.panel')).y;
   record('opening the sheet reframes the drawing above it', lowest <= sheetTop, {
     lowest,
     sheetTop,

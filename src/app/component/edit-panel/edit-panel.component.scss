@@ -28,6 +28,87 @@
     //}
   }
 
+  // The sections used to be the wrapper's own children, so they inherit its
+  // column and its gap rather than being restacked by the freeze.
+  .editBody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  // Dimmed enough to read as unavailable, not so far that the numbers stop
+  // being legible: watching a joint's coordinates tick while the mechanism
+  // runs is the reason the panel stays instead of vanishing.
+  .editBody.frozen {
+    opacity: 0.55;
+    transition: opacity 150ms ease-out;
+  }
+
+  // A card, because everything else in this panel is one -- same width, same
+  // corner, same shadow, so it lines up with the section under it instead of
+  // floating over the grid at its own inset. In the app's own indigo rather
+  // than a second blue: it is a state, not a fault, and the readiness chips
+  // have the red and green.
+  //
+  // No margin of its own. `#editWrapper` already puts 10px between its
+  // children, and adding to it here pushed the whole panel down by ten pixels
+  // the moment the banner appeared.
+  .editBanner {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: var(--card-radius);
+    background: #e8eaf6;
+    color: #303f9f;
+    font-size: 12px;
+    line-height: 16px;
+    box-shadow: var(--card-shadow);
+  }
+
+  .bannerLine {
+    display: flex;
+    // Against the first line of the sentence, not centered on all of it: an
+    // icon that drifts down the block as the wording grows reads as a bullet
+    // that has come loose.
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .bannerGlyph {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    // The cap height of the 12/16 text beside it.
+    line-height: 16px;
+  }
+
+  .bannerText {
+    flex: 1 1 auto;
+  }
+
+  // Outlined in the container's own ink rather than the panel's primary, so
+  // the banner reads as one object; the metrics are the panel buttons'.
+  .bannerAction {
+    align-self: flex-end;
+    flex: 0 0 auto;
+    height: 24px;
+    padding: 0 8px;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(48, 63, 159, 0.08);
+    }
+  }
+
   #errorMessage {
     //font-weight: 300;
   }

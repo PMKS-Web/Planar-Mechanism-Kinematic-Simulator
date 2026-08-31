@@ -1,6 +1,7 @@
 import { Subscription } from 'rxjs';
 import {
   AfterContentInit,
+  DoCheck,
   Component,
   OnDestroy,
   OnInit,
@@ -32,6 +33,8 @@ import {
 import { NumberUnitParserService } from 'src/app/services/number-unit-parser.service';
 import { SettingsService } from '../../services/settings.service';
 import { MechanismService } from '../../services/mechanism.service';
+import { EditPermissionService } from '../../services/edit-permission.service';
+import { EditRefusal } from '../../model/edit-permission';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { Link, RealLink } from '../../model/link';
 import { NewGridComponent } from '../new-grid/new-grid.component';
@@ -50,8 +53,6 @@ import {
 import { NotificationService } from 'src/app/services/notification.service';
 import { BackgroundImageService, MIN_WIDTH } from 'src/app/services/background-image.service';
 import { NOT_A } from 'src/app/ui-text';
-import { PanelSectionCollapsibleComponent } from '../BLOCKS/panel-section-collapsible/panel-section-collapsible.component';
-import { TitleBlock } from '../BLOCKS/title/title.component';
 import { MatIcon } from '@angular/material/icon';
 import { TutorialService } from '../../services/tutorial.service';
 import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.component';
@@ -84,8 +85,6 @@ const INPUT_SPEED_UNITS = [
   styleUrls: ['./edit-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
-    PanelSectionCollapsibleComponent,
-    TitleBlock,
     MatTooltip,
     MatIcon,
     SubtitleComponent,
@@ -106,7 +105,7 @@ const INPUT_SPEED_UNITS = [
     MultiEditPanelComponent,
   ],
 })
-export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
+export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, OnDestroy {
   activeSrv = inject(ActiveObjService);
   viewport = inject(ViewportService);
 
@@ -123,6 +122,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   private fb = inject(FormBuilder);
   private nup = inject(NumberUnitParserService);
   mechanismService = inject(MechanismService);
+  /** The one place that says whether an edit may happen, and in what words. */
+  private permission = inject(EditPermissionService);
   gridUtils = inject(GridUtilsService);
   bgImage = inject(BackgroundImageService);
   private notify = inject(NotificationService);
@@ -177,11 +178,61 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
     return this.mechanismService.joints.length === 0 && this.mechanismService.links.length === 0;
   }
 
-  hideEditPanel() {
-    // The service's answer, not the shared clock: unsynced, a machine can be
-    // parked mid-cycle while `mechanismTimeStep` reads zero, and the panel
-    // must go quiet then too — the same rule the canvas and menu quote.
-    return this.mechanismService.isAnimating();
+  /**
+   * Why editing is refused right now, or nothing when it is not.
+   *
+   * The panel used to replace itself with a placeholder card and an animated
+   * GIF the moment anything moved -- so pressing Play took away the thing the
+   * reader was in the middle of reading, and the way back was a picture rather
+   * than a control. It stays now: the fields are inert and dimmed, this
+   * sentence sits across the top, and the button beside it is the way out.
+   */
+  banner(): EditRefusal | null {
+    return this.permission.editingBanner();
+  }
+
+  /** The same question, for the handlers that must not write while refused. */
+  editingRefused(): boolean {
+    return this.banner() !== null;
+  }
+
+  /** Whether the banner's own way out would do anything. */
+  backToStartHelps(): boolean {
+    return this.banner()?.backToStartHelps === true;
+  }
+
+  backToStart(): void {
+    // Stopped, then walked home. `easeToStart` only moves the pose; pressed
+    // while the mechanism was running it would have been racing the playback
+    // that was still advancing underneath it.
+    this.mechanismService.pauseInPlace();
+    this.settingsService.animating.next(false);
+    this.mechanismService.easeToStart();
+  }
+
+  /**
+   * Keep the shown coordinates honest while the mechanism moves.
+   *
+   * The fields are patched on selection and on commit, neither of which happens
+   * during playback -- so a panel that no longer vanishes would sit there
+   * showing the start pose's numbers beside a joint visibly somewhere else.
+   * Reading them tick is the reason the panel stays.
+   *
+   * From `ngDoCheck` rather than a subscription, for the reason the tutorial
+   * card is: `animate()` mutates the joints in place and publishes on nothing.
+   */
+  ngDoCheck(): void {
+    if (!this.editingRefused() || this.activeSrv.objType !== 'Joint') return;
+    const joint = this.activeSrv.selectedJoint;
+    if (!joint) return;
+    const unit = this.settingsService.lengthUnit.getValue();
+    this.jointForm.patchValue(
+      {
+        xPos: this.nup.formatModelLength(joint.x, unit),
+        yPos: this.nup.formatModelLength(joint.y, unit),
+      },
+      { emitEvent: false }
+    );
   }
 
   /** Unit choices for the Input Speed field's inline picker. */
@@ -965,14 +1016,14 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['sliderMass'].valueChanges.subscribe((val) => {
-        if (this.hideEditPanel()) return;
+        if (this.editingRefused()) return;
         this.commitSliderMass(val ?? '');
       })
     );
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['xPos'].valueChanges.subscribe((val) => {
-        if (this.hideEditPanel()) return;
+        if (this.editingRefused()) return;
         const [success, value] = this.nup.parseModelLengthString(
           val!,
           this.settingsService.lengthUnit.getValue()
@@ -1010,7 +1061,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['yPos'].valueChanges.subscribe((val) => {
-        if (this.hideEditPanel()) return;
+        if (this.editingRefused()) return;
         const [success, value] = this.nup.parseModelLengthString(
           val!,
           this.settingsService.lengthUnit.getValue()
@@ -1048,7 +1099,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['prisAngle'].valueChanges.subscribe((val) => {
-        if (this.hideEditPanel()) return;
+        if (this.editingRefused()) return;
         const [success, value] = this.nup.parseAngleString(
           val!,
           this.settingsService.angleUnit.getValue()
@@ -1104,7 +1155,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['ground'].valueChanges.subscribe((val) => {
-        if (this.hideEditPanel()) {
+        if (this.editingRefused()) {
           return;
         }
         // Through the service rather than straight onto the joint. A slider is
@@ -1118,7 +1169,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['input'].valueChanges.subscribe((val) => {
-        if (this.hideEditPanel()) {
+        if (this.editingRefused()) {
           return;
         }
         //  grounded joint is revolute
@@ -1191,7 +1242,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['slider'].valueChanges.subscribe((val) => {
-        if (this.hideEditPanel()) {
+        if (this.editingRefused()) {
           return;
         }
         this.mechanismService.toggleSlider();
@@ -1203,7 +1254,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['weld'].valueChanges.subscribe((val) => {
-        if (this.hideEditPanel()) {
+        if (this.editingRefused()) {
           return;
         }
         // One axis, one control. Unwelding a Slide gives a Slot rather than a
@@ -1224,7 +1275,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['curve'].valueChanges.subscribe((val) => {
-        if (this.hideEditPanel()) {
+        if (this.editingRefused()) {
           return;
         }
         this.gridUtils.toggleCurve(this.activeSrv.selectedJoint);
@@ -1595,7 +1646,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
 
     this.onDestroySubscriptions.push(
       this.forceForm.controls['isGlobal'].valueChanges.subscribe((val) => {
-        if (this.hideEditPanel()) {
+        if (this.editingRefused()) {
           return;
         }
         this.mechanismService.changeForceLocal();
@@ -2047,7 +2098,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   }
 
   resolveNewLink() {
-    if (!this.hideEditPanel()) {
+    if (!this.editingRefused()) {
       //If the first joint is ground, then the second joint is dragged
       if ((this.activeSrv.selectedLink.joints[1] as RevJoint).ground) {
         let newJ1 = getNewOtherJointPos(
@@ -2069,7 +2120,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   }
 
   resolveNewForceAngle() {
-    if (!this.hideEditPanel()) {
+    if (!this.editingRefused()) {
       //Whenever angle is changed, the end point of the force is changed
       const distanceBetweenPoints = getDistance(
         this.activeSrv.selectedForce.startCoord,
@@ -2087,7 +2138,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, OnDestroy {
   }
 
   resolveNewForceMagnitude() {
-    if (!this.hideEditPanel()) {
+    if (!this.editingRefused()) {
       const endX = this.activeSrv.selectedForce.startCoord.x + this.activeSrv.selectedForce.xComp;
       const endY = this.activeSrv.selectedForce.startCoord.y + this.activeSrv.selectedForce.yComp;
 
