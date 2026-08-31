@@ -29,7 +29,7 @@
 
         // Material pins the checkmark absolutely at the button's left edge while
         // the label centers across the full width, so the space between them
-        // changes with the label's length. Laying the button out as a centerd
+        // changes with the label's length. Laying the button out as a centered
         // flex row keeps the pair together at one fixed gap instead.
         //
         // Material also reserves 30px of left padding on the checked button for
@@ -42,7 +42,7 @@
           padding: 0;
         }
 
-        // Back into the flow, and flex-centerd so the mark loses the
+        // Back into the flow, and flex-centered so the mark loses the
         // inline-block baseline drop that left it sitting low against the label.
         // The extra pixel up balances the checkmark's weight, which hangs below
         // its own box's center.

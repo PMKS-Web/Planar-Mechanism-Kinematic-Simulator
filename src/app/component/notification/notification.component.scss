@@ -59,13 +59,13 @@ $accent: 5px;
   }
 
   // Material gives mat-icon a 24px box whatever the glyph inside it is, so the
-  // glyph has to be centerd in the box the box actually is, not left to sit at
+  // glyph has to be centered in the box the box actually is, not left to sit at
   // the top of it.
   //
   // The element is named as well as the class deliberately. `.mat-icon` sets
   // that 24px box and `display: block`, it carries exactly the same specificity
   // as a bare class, and it is loaded after this file -- so it won, the flex
-  // centring below never applied, and every glyph in the stack sat three pixels
+  // centering below never applied, and every glyph in the stack sat three pixels
   // above the sentence it belonged to. `mat-icon.notificationIcon` is one
   // element more specific, which is all it takes to put this rule in front.
   mat-icon.notificationIcon {
@@ -76,9 +76,9 @@ $accent: 5px;
     width: 20px;
     height: 20px;
     font-size: 20px;
-    // A Material Icons glyph is not centerd on its own baseline: the ink runs
+    // A Material Icons glyph is not centered on its own baseline: the ink runs
     // from one twelfth of the font size above the baseline to eleven twelfths
-    // above it. Centring the *line box* therefore leaves the ink high by half
+    // above it. Centering the *line box* therefore leaves the ink high by half
     // the difference, so the box is given the ink's own height and the glyph is
     // dropped onto it. Written as a ratio rather than a pixel nudge so it holds
     // if the size ever changes.

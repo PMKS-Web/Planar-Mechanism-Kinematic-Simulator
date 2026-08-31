@@ -751,7 +751,7 @@ export class SvgGridService {
   /**
    * The buttons zoom about the middle of the free canvas rather than the middle
    * of the window, which is where the library puts it. Zooming about a point
-   * behind the panel walked a centerd drawing sideways under it, a little
+   * behind the panel walked a centered drawing sideways under it, a little
    * further with every press.
    */
   zoomIn() {

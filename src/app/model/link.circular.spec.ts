@@ -94,7 +94,7 @@ describe('a link drawn as a circle', () => {
     expect(numbersIn(link.d)[0]).toBeCloseTo(ground.x - radius, 6);
   });
 
-  it('comes back as a bar when the ground it was centerd on is removed', () => {
+  it('comes back as a bar when the ground it was centered on is removed', () => {
     const { link, ground } = crank();
     link.isCircle = true;
     link.reComputeDPath();

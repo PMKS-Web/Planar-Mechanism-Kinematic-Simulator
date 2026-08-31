@@ -88,7 +88,7 @@
         // An inline svg sits on the text baseline, which grows the icon box
         // by the font's descender and floats every glyph high — and lets a
         // content change re-evaluate the line box, which is a wobble. A block
-        // box is 18x18, centerd, and inert.
+        // box is 18x18, centered, and inert.
         svg {
           display: block;
         }

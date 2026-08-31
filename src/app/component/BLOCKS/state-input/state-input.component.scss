@@ -27,7 +27,7 @@
 }
 
 /* The suffix rides the field's visible center, not the text baseline. The
-   app squeezes the 56px MDC flex row into a 30px wrapper, so centring in
+   app squeezes the 56px MDC flex row into a 30px wrapper, so centering in
    the flex row lands below the field — anchor to the top like the input
    does (6px in, 18px line) and center a ~14px suffix inside that band. */
 .state-input-host .mat-mdc-form-field-icon-suffix,

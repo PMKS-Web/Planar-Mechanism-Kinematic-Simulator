@@ -323,7 +323,7 @@ export class SliderMarkService {
    * The channels cut into `carrier`, expressed in the slot's own frame so they
    * can be appended to a path already drawn there.
    *
-   * The frame is centerd on the pin with +x along the slot, so a model point is
+   * The frame is centered on the pin with +x along the slot, so a model point is
    * carried into it by subtracting the pin and turning by the slot angle.
    */
   private channelsInLocalFrame(
@@ -650,7 +650,7 @@ export class SliderMarkService {
   /**
    * Where a grounded guide sits and how far it runs, in world coordinates.
    *
-   * Centerd on the middle of the block's travel rather than on its resting
+   * Centered on the middle of the block's travel rather than on its resting
    * point, so the block is inside its own track wherever the cycle takes it.
    */
   private bandFor(

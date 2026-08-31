@@ -1934,8 +1934,8 @@ export class NewGridComponent implements OnDestroy {
 
   /**
    * The shoulder position, for badges whose center spot is already taken: a
-   * force's anchor is a small dark disc a centerd glyph would vanish into,
-   * and a welded joint's plus-mark is the very thing a centerd chip covered.
+   * force's anchor is a small dark disc a centered glyph would vanish into,
+   * and a welded joint's plus-mark is the very thing a centered chip covered.
    */
   offsetLockBadgeTransform(): string {
     const offset = 0.19 * this.settings.objectScale;

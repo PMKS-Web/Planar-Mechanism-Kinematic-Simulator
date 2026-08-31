@@ -181,7 +181,7 @@ describe('a bar whose joints have all landed on one point', () => {
 
     expect(link.d).not.toMatch(/NaN|Infinity/);
     expect(link.d).toMatch(/^M /);
-    // Centerd on the point the joints collapsed onto, at the bar's own width.
+    // Centered on the point the joints collapsed onto, at the bar's own width.
     const numbers = (link.d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
     expect(Math.max(...numbers.filter((_, index) => index % 2 === 0))).toBeGreaterThan(4);
     // Nothing to hover: an outline with no length has no edges to offer.

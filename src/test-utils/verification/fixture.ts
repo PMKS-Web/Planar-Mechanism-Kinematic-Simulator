@@ -144,7 +144,7 @@ export interface FixtureLink {
    *
    * A drawing choice only: mass properties still come from the joint skeleton.
    * Only a link with exactly one revolute ground pin and no subset can honor
-   * it, because the disc is centerd on the pin the link turns about, and the
+   * it, because the disc is centered on the pin the link turns about, and the
    * app simply ignores the flag on a link that does not qualify. A fixture is
    * authored once and read as an example, so here the same request throws
    * instead — a template that silently opened as a bar would teach the wrong
@@ -218,7 +218,7 @@ function buildMechanismNow(
       if (!link.canBeCircular()) {
         throw new Error(
           `Link ${link.id} cannot be drawn as a disc: a circular link needs exactly one ` +
-            'revolute ground pin to be centerd on, and no subset.'
+            'revolute ground pin to be centered on, and no subset.'
         );
       }
       link.isCircle = true;

@@ -2265,7 +2265,7 @@ export class PositionSolver {
           prev_joint_index,
           known_joint_index,
         ]);
-        // Two circles centerd on two joints of the *same* body as this one are
+        // Two circles centered on two joints of the *same* body as this one are
         // that body's own two sides, and they meet at a shallow angle -- exactly
         // tangentially where the three joints are in line, as they are on every
         // straight bar with a pin part way along it. Carrying the joint in the
@@ -2604,7 +2604,7 @@ export class PositionSolver {
       const separation = Math.hypot(dx, dy);
       if (!(separation > 0)) continue;
       // Measured from the channel's midpoint, and bounded by the channel's own
-      // half-length — which is where its rounded end cap is centerd. So a block
+      // half-length — which is where its rounded end cap is centered. So a block
       // stops with its pin concentric with that arc: the last pose in which the
       // block is fully inside the slot rather than hanging out of the end of it.
       // Asking the drawing's own function is what keeps the limit and the
@@ -2865,7 +2865,7 @@ export class PositionSolver {
     return true;
   }
 
-  /** Intersections of the joint's slot line with the circle centerd on `j1`. */
+  /** Intersections of the joint's slot line with the circle centered on `j1`. */
   private static slotSolutions(j1: Joint, unknownJoint: Joint): [number, number][] | undefined {
     const line = this.resolveSlotLine(unknownJoint.id);
     if (!line) {

@@ -283,7 +283,7 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       title: {
         text: 'Time (seconds)',
         // Up beside the two ends rather than on a line of its own below them,
-        // and centerd between them: Apex centers it on the whole canvas, which
+        // and centered between them: Apex centers it on the whole canvas, which
         // the y axis's own labels make eight pixels wider on the left.
         offsetY: -20,
         offsetX: -8,

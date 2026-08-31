@@ -205,7 +205,7 @@ await page.goto(`${BASE}/?${payloads['Cylinder_Boom']}`, { waitUntil: 'domconten
 await waitForReady(page);
 await kinematic();
 
-// The element holds the handle, so the bar is the 8px centerd inside it. One
+// The element holds the handle, so the bar is the 8px centered inside it. One
 // row above and one below are taken too, which is where the rim used to be.
 const bar = await page.locator('.rowScrubber').boundingBox();
 const strip = await page.screenshot({

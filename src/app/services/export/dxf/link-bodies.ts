@@ -184,7 +184,7 @@ export function slotProfile(
     capsule(from, to, half, slotLayer),
     // Something to put in the slot. The canvas draws no block outline of its
     // own, so this one is nominal: square to the slot, as wide as it is, and
-    // centerd where the block sits at the start pose. It is a part a reader can
+    // centered where the block sits at the start pose. It is a part a reader can
     // extrude and mate, which an empty slot is not.
     ...blockProfile(point(joint), along, half, pinRadius, blockLayer),
   ];

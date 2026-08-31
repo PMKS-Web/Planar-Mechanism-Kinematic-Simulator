@@ -51,7 +51,7 @@ describe('BackgroundImageService', () => {
 
     /**
      * The image layer is drawn unflipped while the model has y up, so a picture
-     * centerd above the axis has to be at a negative SVG y. Getting this
+     * centered above the axis has to be at a negative SVG y. Getting this
      * backwards mirrors the underlay about the x axis, which is invisible on a
      * symmetric picture and wrong on every other one.
      */

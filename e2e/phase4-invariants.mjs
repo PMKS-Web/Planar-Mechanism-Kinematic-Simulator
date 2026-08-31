@@ -8,7 +8,7 @@
 //
 //   1. the block sits on its pin
 //   2. the block's long axis runs along the slot
-//   3. a floating slot's channel is centerd between the joints that define it,
+//   3. a floating slot's channel is centered between the joints that define it,
 //      and points the same way
 //   4. a weld plate reaches the joint its rider reaches
 //

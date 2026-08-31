@@ -98,7 +98,7 @@ const anchorsAreCenters = () =>
       const carriedSlot = grid.mechanismSrv.joints.find(
         (joint) => joint.carrier?.id === link.id && joint.slotJointA && joint.slotJointB
       );
-      if (carriedSlot) return { id: link.id, centerd: true };
+      if (carriedSlot) return { id: link.id, centered: true };
       const parts = link.subset?.length ? link.subset : [link];
       const span = (part) => {
         const first = part.joints[0];
@@ -114,7 +114,7 @@ const anchorsAreCenters = () =>
       const got = grid.linkLabelStyle(link);
       return {
         id: link.id,
-        centerd:
+        centered:
           joints.length === 0 ||
           (Math.abs(got.x - want.x) < 1e-6 && Math.abs(got.y - want.y) < 1e-6),
       };
@@ -134,8 +134,8 @@ for (const name of [
   const anchors = await anchorsAreCenters();
   record(
     `every label in ${name} is anchored inside the joints of the link it names`,
-    anchors.length > 0 && anchors.every((link) => link.centerd),
-    anchors.filter((link) => !link.centerd)
+    anchors.length > 0 && anchors.every((link) => link.centered),
+    anchors.filter((link) => !link.centered)
   );
 }
 

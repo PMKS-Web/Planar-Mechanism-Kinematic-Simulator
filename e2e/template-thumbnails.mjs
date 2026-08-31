@@ -174,7 +174,7 @@ for (const { id, payload } of libraryTemplates()) {
   // off into the corner: the second move schedules change detection just as
   // well and leaves nothing under the cursor.
   await page.mouse.move(4, 4);
-  // The panels float over the canvas, so a clip centerd on the mechanism can
+  // The panels float over the canvas, so a clip centered on the mechanism can
   // still catch a corner of one. They are overlays and hiding them moves
   // nothing.
   await page.addStyleTag({

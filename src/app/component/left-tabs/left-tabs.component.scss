@@ -466,7 +466,7 @@
     // The pill at the foot of the target rather than in the middle of it. What
     // a reader sees is the pill, so it is the pill that has to sit the same
     // distance above the sheet as it does above the controls row when the sheet
-    // is shut -- and centerd in a 44px box it stood 22px clear of both, which
+    // is shut -- and centered in a 44px box it stood 22px clear of both, which
     // reads as a thing floating near the sheet rather than a thing on it. The
     // box keeps its full height, so all that grew is the reach *above* the
     // pill, which is where a thumb coming up the screen arrives first.
@@ -492,7 +492,7 @@
     &::after {
       content: '';
       position: absolute;
-      // Centerd on the card above, which is at the foot of the box now rather
+      // Centered on the card above, which is at the foot of the box now rather
       // than the middle of it. Written from the same two names the card is
       // placed by, so the line cannot come adrift from the pill it is drawn on.
       bottom: calc(#{nav.$sheet-grip-gap} + (#{nav.$sheet-pill-height} - 4px) / 2);

@@ -179,7 +179,7 @@ export class RealLink extends Link {
    * where the numbers are, rather than leaving the difference to be guessed.
    *
    * Only a link with exactly one ground pin can honor it, because the disc
-   * is centerd on the pin the link turns about and a link with no such pin
+   * is centered on the pin the link turns about and a link with no such pin
    * has no center to offer. `canBeCircular` is that question; the flag is
    * simply ignored while the answer is no, so a link that loses its ground
    * comes back as a bar and returns to a disc if it is grounded again.
@@ -648,7 +648,7 @@ export class RealLink extends Link {
    * Exactly one ground, and a revolute one: two grounds make a frame that does
    * not turn at all, none makes a coupler with no fixed center to draw about,
    * and a prismatic ground anchors a slot rather than a pivot. Each of those
-   * would need a different answer to "centerd where?", and a disc drawn about
+   * would need a different answer to "centered where?", and a disc drawn about
    * a guess is worse than the bar it replaced.
    */
   groundPivot(): Joint | undefined {
@@ -666,7 +666,7 @@ export class RealLink extends Link {
   /**
    * The disc a circular link is drawn as, or nothing when it is not one.
    *
-   * Centerd on the ground pin, and wide enough to reach the outermost joint's
+   * Centered on the ground pin, and wide enough to reach the outermost joint's
    * end cap — the same half-width every bar is drawn with — so the disc covers
    * exactly the ground the bar covered and no pin ends up outside its own link.
    */

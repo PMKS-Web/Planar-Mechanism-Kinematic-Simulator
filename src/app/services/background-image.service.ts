@@ -123,7 +123,7 @@ export class BackgroundImageService {
   }
 
   /**
-   * Read a chosen file and place it, centerd on the origin, sized to `fitWidth`.
+   * Read a chosen file and place it, centered on the origin, sized to `fitWidth`.
    *
    * Rejects rather than guesses on anything it cannot decode: a broken data URL
    * drawn into the canvas is an invisible failure, and the caller turns this

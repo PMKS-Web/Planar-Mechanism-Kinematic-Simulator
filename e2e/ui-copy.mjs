@@ -48,7 +48,7 @@ const BANNED = [
   [/\bsimulation\b/i, 'simulation — say animation'],
   [/\bactuator\b/i, 'actuator — say driven'],
   [/\bcolor\b/i, 'color — spell American'],
-  [/\bcenterd?\b/i, 'centerd/center — spell American'],
+  [/\bcentered?\b/i, 'centered/center — spell American'],
   [/\bneighbor/i, 'neighbor — spell American'],
   [/\banalyse[ds]?\b/i, 'analyze — spell American'],
   [/\bTODO\b/, 'TODO placeholder'],

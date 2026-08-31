@@ -522,7 +522,7 @@ export class TutorialService {
     const box = canvas?.getBoundingClientRect();
     if (!box || box.width === 0 || box.height === 0) {
       // No canvas to ask -- a test harness, or a call before the view exists.
-      // The default view is centerd on the origin and about twenty units wide.
+      // The default view is centered on the origin and about twenty units wide.
       return { x: 0, y: 0, width: 20 * MODEL_SCALE, height: 12 * MODEL_SCALE };
     }
 

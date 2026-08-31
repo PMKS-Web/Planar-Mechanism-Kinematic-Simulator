@@ -18,7 +18,7 @@
 
   // Right-aligned in every mode, so the view controls at its right-hand end sit
   // in exactly the same place whatever mode is open. They used to be pushed
-  // there by a growing spacer in Edit and centerd with the transport in
+  // there by a growing spacer in Edit and centered with the transport in
   // analysis, which moved them -- twice, and by different amounts at different
   // window widths.
   .playbackRow {
@@ -505,7 +505,7 @@
       box-sizing: border-box;
       width: 24px;
       height: 20px;
-      // Centerd on the 8px bar rather than on the element.
+      // Centered on the 8px bar rather than on the element.
       margin-top: -6px;
       border: 1px solid rgba(0, 0, 0, 0.16);
       border-radius: 10px;
@@ -586,11 +586,11 @@
     .playbackRow {
       flex-wrap: nowrap;
       // Edge to edge on the line the top strip runs on, with the gap between
-      // the two cards that the strip keeps between its own. Centerd inside an
+      // the two cards that the strip keeps between its own. Centered inside an
       // 8px padding, the cards sat 23px from the window against the strip's 12,
       // so the two ends of the screen disagreed about where the margin was.
       //
-      // Filling the row rather than centring in it: at their natural widths
+      // Filling the row rather than centering in it: at their natural widths
       // there is no way to have both ends on the card line *and* one gap in the
       // middle, because the slack has to go somewhere, and a middle gap three
       // times every other gap is worse than two slightly wider cards. In Edit,

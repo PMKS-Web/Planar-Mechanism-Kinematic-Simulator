@@ -3120,7 +3120,7 @@ export class MechanismService {
         link.massMoI = 0;
         link.moiIsCustom = false;
       }
-      // A link drawn as a disc that has since lost the pin the disc was centerd
+      // A link drawn as a disc that has since lost the pin the disc was centered
       // on -- or been given one back. Nothing else would notice: an outline is
       // only rebuilt when something asks it to, and grounding a joint asks
       // about the joint. Left alone, a crank kept its disc after its ground was

@@ -111,7 +111,7 @@ for (const expected of [2, 3, 4, 5]) {
     );
     check('joint letters are showing', letters.includes('A'), letters.join(''));
     // Ringed is no use if it is behind a panel. The mechanism is built into the
-    // clear space between the chrome for this reason: centerd on the whole
+    // clear space between the chrome for this reason: centered on the whole
     // canvas, a narrow window put the left-hand ground joint -- the one this
     // step rings and names -- underneath the Edit panel.
     const behindChrome = await page.evaluate(
@@ -305,7 +305,7 @@ await page.screenshot({ path: `${OUT}/07-resume.png` });
 // ---- a narrow window, where the placement has gone wrong twice ----
 //
 // The mechanism is built into the strip between the left panel and the drawer.
-// Centerd on the whole canvas it landed under the left panel; measured against
+// Centered on the whole canvas it landed under the left panel; measured against
 // the space *below* that panel it was fine until the panel grew — which is
 // exactly what selecting a joint does on the way from step three to step four.
 {

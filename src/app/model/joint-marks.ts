@@ -119,7 +119,7 @@ export const MARK = {
  * multiples of R, and the rail marks are the one place in the app where a
  * stroke is in model units rather than screen pixels. They are stated here, not
  * only in the template, because the hatch geometry has to know its own weight:
- * a round cap is centerd on the point it caps, so a tick whose root sits on the
+ * a round cap is centered on the point it caps, so a tick whose root sits on the
  * rail's centerline puts half its width on the far side of the line.
  */
 export const GROUND_STROKE = {
@@ -184,7 +184,7 @@ export const CYLINDER = {
  * about and cut square at the mouth the rod slides through.
  *
  * `anchor` and `mouth` are the barrel's two ends in the mark's frame, which is
- * centerd on the *pin* with +x toward the rod — so the anchor is behind the
+ * centered on the *pin* with +x toward the rod — so the anchor is behind the
  * piston (negative) and the mouth ahead of it (positive), and the barrel
  * straddles the piston rather than stopping at it.
  *
@@ -369,7 +369,7 @@ export function orientedCapsulePath(
   );
 }
 
-/** The block, centerd on the joint, long axis along the slot. Always #000. */
+/** The block, centered on the joint, long axis along the slot. Always #000. */
 export function blockPath(r: number): string {
   const a = MARK.blockAlongHalf * r;
   const c = MARK.blockAcrossHalf * r;
@@ -418,7 +418,7 @@ export function plusPath(r: number): string {
 }
 
 /**
- * The channel window, centerd on the slot's midpoint and running `halfLength`
+ * The channel window, centered on the slot's midpoint and running `halfLength`
  * each way. Callers subtract this from the carrier's fill and stroke its
  * outline in the carrier's own color; both come from the same path so the
  * hole and its edge can never disagree.

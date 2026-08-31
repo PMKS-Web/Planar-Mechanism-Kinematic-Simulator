@@ -101,7 +101,7 @@ export class MechanismBuilder {
       link.comIsCustom = linkData.comIsCustom;
       link.fill = linkData.color;
       // The joints are all built before any link is (they have to be — a link
-      // is named by the ones it holds), so the ground pin a disc is centerd on
+      // is named by the ones it holds), so the ground pin a disc is centered on
       // is already known here and the outline can be built for real rather
       // than as a bar to be corrected on the next update.
       if (linkData.isCircle) {

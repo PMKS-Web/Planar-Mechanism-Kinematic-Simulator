@@ -19,7 +19,7 @@
     // The button then centers the box, which leaves the icon itself riding a
     // couple of pixels above the label beside it -- visible on every icon
     // button in the panels, and obvious on one whose glyph is a plain circle.
-    // Centring the contents of the box puts the drawing where the box is.
+    // Centering the contents of the box puts the drawing where the box is.
     mat-icon {
       display: inline-flex;
       align-items: center;

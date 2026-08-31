@@ -377,7 +377,7 @@
 
 /* The dot and its ✕ sit on the field's visible center, not the baseline.
    Same anchoring as state-input: the 30px wrapper clips MDC's 56px flex
-   row, so top-anchor and offset instead of flex centring. */
+   row, so top-anchor and offset instead of flex centering. */
 .massArea #input-block .mat-mdc-form-field-icon-suffix,
 .massArea #input-block .mat-mdc-form-field-text-suffix {
   display: inline-flex;

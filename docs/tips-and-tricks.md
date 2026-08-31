@@ -212,7 +212,7 @@ The words this codebase has actually got wrong at least once, with the American 
 
 | Write | Not |
 | --- | --- |
-| center, centered, centering, centerline | centre, centred, centring, centreline |
+| center, centered, centering, centerline | centre, centred, centering, centreline |
 | color, colored, coloring | colour, coloured, colouring |
 | gray, grayed | grey, greyed |
 | neighbor, neighboring | neighbour, neighbouring |
@@ -223,6 +223,17 @@ The words this codebase has actually got wrong at least once, with the American 
 | labeled, labeling, modeled, modeling, traveled, canceled | labelled, labelling, modelled, modelling, travelled, cancelled |
 | catalog, program, license, defense, favor, honor, artifact | catalogue, programme, licence, defence, favour, honour, artefact |
 | while, among | whilst, amongst |
+
+**A stem swap is not always the whole word.** British English drops the `e` in some inflections
+that American English keeps, so replacing the stem leaves a non-word:
+
+- `centred` -> `centerd`, not `centered`. Swapping `centre` -> `center` produced fifty-five of
+  these, and every one of them compiled and passed the tests, because they were all in prose.
+- `centring` has no `centre` in it at all, so a `centre` -> `center` sweep misses it entirely.
+
+Both were caught by reading the diff rather than by any check, which is the argument for reading
+the diff. Grep for the American stem followed by a suspicious ending — `centerd`, `colord`,
+`grayd` — after any sweep of this kind.
 
 Two that look like exceptions and are not:
 

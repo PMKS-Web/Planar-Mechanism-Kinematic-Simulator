@@ -185,7 +185,7 @@ record('with a handle to pull it up by', (await page.locator('.sheetHandle').cou
  * Beneath it is the sheet's card when the sheet is open and the controls row
  * when it is shut, and the number has to be the same either way: it is one
  * control, and a control that sits differently in its two states reads as two.
- * It drifted once already -- the pill was centerd in its 44px target and the
+ * It drifted once already -- the pill was centered in its 44px target and the
  * sheet's frame carried 16px of shadow-room above its card, so it stood 12px
  * clear when shut and 28px clear when open.
  *
@@ -291,7 +291,7 @@ record(
   stack
 );
 record('and the status strip off the controls row', stack.rowToStrip === layoutGap, stack);
-// The bottom row used to be centerd inside an 8px padding, so its cards sat
+// The bottom row used to be centered inside an 8px padding, so its cards sat
 // 23px from the window against the top strip's 12 and the two ends of the
 // screen disagreed about where the margin was.
 record(
