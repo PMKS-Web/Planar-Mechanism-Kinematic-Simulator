@@ -841,6 +841,8 @@ export class ContextMenuBuilderService {
             new MenuRow({
               label: 'Reverse Direction',
               icon: 'switch_force_dir',
+              // A property of the force, not of the linkage's shape.
+              needs: 'properties',
               action: () => this.mechanism.changeForceDirection(),
             }),
           ],
@@ -859,6 +861,9 @@ export class ContextMenuBuilderService {
               material: true,
               kind: 'toggle',
               checked: !force.local,
+              // Which frame the endpoints are read in -- world or the link's --
+              // is exactly the pose-dependent question §5.5 has not answered.
+              needs: 'properties',
               action: () => this.mechanism.changeForceLocal(),
             }),
             this.lockRow(force, undefined),
@@ -1053,8 +1058,15 @@ export class ContextMenuBuilderService {
     // itself are the same three the canvas and the Edit panel need, and a menu
     // that words the rule differently from the panel beside it is a menu the
     // reader has to reconcile.
-    const refusal: MenuRefusal | null = this.permission.poseRefusal();
-    if (!refusal) return model;
+    // Asked per row, because they do not all ask the same thing. Most change
+    // the mechanism's shape or its topology, which a paused pose allows; a few
+    // change a *property* -- a force's direction, the frame its endpoints are
+    // read in -- and those wait for the transform the panel's own fields wait
+    // for. One blanket `build` left those two live beside their frozen fields.
+    const refusalFor = (row: MenuRow): MenuRefusal | null =>
+      this.permission.poseRefusal(row.needs ?? 'build');
+    const buildRefused = this.permission.poseRefusal('build');
+    const propertiesRefused = this.permission.poseRefusal('properties');
     // `alwaysAllowed` means "not refused for being away from the start" -- a
     // trace is a view of the mechanism, not a change to it, and turning one on
     // while parked mid-cycle is exactly when a reader wants it. It does not
@@ -1062,9 +1074,11 @@ export class ContextMenuBuilderService {
     // while the mechanism runs writes a change that undo -- blocked while it
     // runs -- cannot take back.
     const exempt = !this.mechanism.isPlaying;
+    if (!buildRefused && !propertiesRefused) return model;
     model.groups.forEach((group) =>
       group.rows.forEach((row) => {
-        if (!(row.alwaysAllowed && exempt) && !row.refusal) row.refusal = refusal;
+        const refusal = refusalFor(row);
+        if (refusal && !(row.alwaysAllowed && exempt) && !row.refusal) row.refusal = refusal;
       })
     );
     return model;

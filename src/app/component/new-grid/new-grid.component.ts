@@ -935,6 +935,15 @@ export class NewGridComponent implements OnDestroy {
 
   /** The left-click that ends the gesture: build the part, one undo entry. */
   private commitCylinderCreation(end: Coord) {
+    // Capturing, not identity-addressed: where the barrel and the rod sit
+    // relative to what they mount on is read off the pose the gesture was made
+    // at, so it is staged and settled onto the anchor like a drag.
+    this.mechanismSrv.capturingPose(this.cylinderCreateOn, () =>
+      this.commitCylinderCreationNow(end)
+    );
+  }
+
+  private commitCylinderCreationNow(end: Coord) {
     const start = this.cylinderCreateStart;
     const mountOn = this.cylinderCreateOn;
     const mountAt = this.cylinderCreateAt;
@@ -1252,13 +1261,7 @@ export class NewGridComponent implements OnDestroy {
     // A selection spanning machines is refused its staging outright. What that
     // means for the reader is that a group across two machines is edited at the
     // start pose, as it was before any of this existed.
-    const parts = this.activeObjService.selectedParts;
-    const machines = new Set(
-      parts.map((part) => this.mechanismSrv.indexOfMechanismContaining(part as Joint | Link | Force))
-    );
-    if (machines.size === 1 && parts.length > 0) {
-      this.mechanismSrv.beginPosedEdit(parts[0] as Joint | Link | Force);
-    }
+    this.stageSelection();
     this.selectionGesture = {
       snapshot,
       mode,
@@ -1398,10 +1401,8 @@ export class NewGridComponent implements OnDestroy {
     // did not, and at a displaced pose that made it a no-op: the arrow moved
     // the joints, the rebuild restored them to t = 0 on its way past, and a key
     // the permission model had just allowed did nothing at all.
-    const machines = new Set(
-      selected.map((part) => this.mechanismSrv.indexOfMechanismContaining(part as Joint | Link))
-    );
-    const staged = machines.size === 1 && this.mechanismSrv.beginPosedEdit(selected[0] as Joint);
+    if (!this.stageSelection()) return;
+    const staged = this.mechanismSrv.posedEditKey !== null;
     this.mechanismSrv.reseatFloatingSliders();
     this.mechanismSrv.updateMechanism(false);
     this.mechanismSrv.onMechUpdateState.next(2);
@@ -1415,6 +1416,33 @@ export class NewGridComponent implements OnDestroy {
       this.posedEditSaved = false;
     }
     this.mechanismSrv.save();
+  }
+
+  /**
+   * Stage a group gesture, or say why it cannot be made here.
+   *
+   * A selection spanning two machines has no single machine to stage: whichever
+   * one is put back on its anchor at the commit, the members of the other were
+   * restored to *their* start by the same rebuild -- so they move under the
+   * hand and snap back, and the gesture reports itself applied having done
+   * nothing. Refused with a reason instead, which is the one honest answer
+   * available: at the start pose it works exactly as it always has.
+   */
+  private stageSelection(): boolean {
+    const parts = this.activeObjService.selectedParts;
+    if (parts.length === 0 || this.mechanismSrv.isAtStartPose()) return true;
+    const machines = new Set(
+      parts.map((part) => this.mechanismSrv.indexOfMechanismContaining(part as Joint | Link | Force))
+    );
+    if (machines.size > 1) {
+      this.notify.refusal(
+        'selection.spans-machines',
+        'This selection is spread across two machines, which can only be moved together at the start pose. Press Back to start, then try again.'
+      );
+      return false;
+    }
+    this.mechanismSrv.beginPosedEdit(parts[0] as Joint | Link | Force);
+    return true;
   }
 
   private finishSelectionGesture(): boolean {
@@ -2872,6 +2900,20 @@ export class NewGridComponent implements OnDestroy {
       this.refuseDrop(source.id, refused.refusal);
       return false;
     }
+    // A drop that would join this machine to a different one, made at a
+    // displaced pose, has no consistent geometry to become. The staged machine
+    // is holding the pose under the reader's hand while every other machine has
+    // been restored to its own start, so the fused body would be half one and
+    // half the other -- and the anchor it would need to be put back on belongs
+    // to a topology that no longer exists.
+    //
+    // Refused with a reason rather than solved: the reader can do exactly this
+    // at the start pose, where both halves mean the same thing.
+    const across = this.crossesMachines(source, target ?? slot?.carrier);
+    if (across) {
+      this.refuseDrop(source.id, across);
+      return false;
+    }
     if (!target) {
       // No joint claimed the drop, so a bar may have. Cutting the slot is the
       // gesture's whole point (§4.3) and it earns the same receipt a merge does.
@@ -2903,6 +2945,20 @@ export class NewGridComponent implements OnDestroy {
     }
     this.popJoint(target.id);
     return true;
+  }
+
+  /**
+   * Why a drop joining two machines is refused mid-cycle, if it is.
+   *
+   * Only mid-cycle, and only across machines: everything else about a merge or
+   * a slot cut is unchanged.
+   */
+  private crossesMachines(source: Joint, onto: Joint | Link | undefined): MergeRefusal | undefined {
+    if (!onto || !this.mechanismSrv.posedEditKey) return undefined;
+    const from = this.mechanismSrv.indexOfMechanismContaining(source);
+    const to = this.mechanismSrv.indexOfMechanismContaining(onto);
+    if (from === -1 || to === -1 || from === to) return undefined;
+    return 'crosses-machines';
   }
 
   /**
@@ -3064,6 +3120,34 @@ export class NewGridComponent implements OnDestroy {
   private synthPressTaken = false;
 
   mouseDown($event: MouseEvent) {
+    // A press that *finishes* a creation gesture -- the second click of a link
+    // or a cylinder -- makes a part whose geometry is read off the pose it was
+    // drawn at. That is capturing, in the plan's §6.2 terms, so it is staged
+    // and settled onto the anchor like a drag; without it the rebuild inside
+    // restored over the new part and moved the mount it was drawn from.
+    //
+    // Wrapped here rather than at each of the six commits inside, because they
+    // are branches of one gesture and it is the gesture that captures a pose.
+    if (this.dragState.grid !== gridStates.waiting && !this.mechanismSrv.isAtStartPose()) {
+      this.mechanismSrv.capturingPose(this.creationAnchorPart(), () => this.mouseDownNow($event));
+      return;
+    }
+    this.mouseDownNow($event);
+  }
+
+  /** The part a creation gesture is growing from, if it is growing from one. */
+  private creationAnchorPart(): Joint | Link | Force | undefined {
+    if (this.cylinderCreateOn) return this.cylinderCreateOn;
+    // A link grows from wherever the first click landed, which is a coordinate
+    // rather than a part -- so the machine is named by what is selected, which
+    // for a link drawn from a joint is that joint.
+    const selected = this.activeObjService.selectedJoint;
+    return selected && this.mechanismSrv.indexOfMechanismContaining(selected) !== -1
+      ? selected
+      : undefined;
+  }
+
+  private mouseDownNow($event: MouseEvent) {
     // Log the time that the mouse was clicked
     this.timeMouseDown = new Date().getTime();
     this.synthPressTaken = false;
@@ -3767,6 +3851,17 @@ export class NewGridComponent implements OnDestroy {
   startComDrag(link: RealLink, event: PointerEvent): void {
     event.stopPropagation();
     event.preventDefault();
+    // A center of mass is a *property*, not geometry -- `applyMechanismPose`
+    // writes it back from solved frames, and the panel speaks it in three
+    // different frames -- so it is refused wherever the panel's CoM fields are
+    // rather than wherever a drag is. It asked for `drag`, which Phase 2 allows
+    // at a paused pose, and so stayed live beside its own frozen fields.
+    if (!this.permission.may('properties')) return;
+    // And a Lock holds it, as it holds every other way of moving this link.
+    if (this.mechanismSrv.isLockedTarget(link)) {
+      this.refuseLockedCoM(link);
+      return;
+    }
     this.draggingCoMLink = link;
     const move = (e: PointerEvent) => {
       const pos = this.svgGrid.screenToSVGfromXY(e.clientX, e.clientY);
@@ -3787,6 +3882,14 @@ export class NewGridComponent implements OnDestroy {
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
+  }
+
+  /** Say why a locked link's center of mass will not follow the pointer. */
+  private refuseLockedCoM(link: RealLink): void {
+    this.notify.refusal(
+      'com.locked',
+      `Link ${link.name || link.id} is locked. Unlock it to move its center of mass.`
+    );
   }
 
   /**

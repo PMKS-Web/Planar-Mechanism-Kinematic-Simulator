@@ -14,7 +14,18 @@ export type MergeRefusal =
   | 'sealed-cylinder'
   | 'welded-mount'
   | 'own-cylinder'
-  | 'driven-joint';
+  | 'driven-joint'
+  /**
+   * Two different machines, joined at a pose other than the start.
+   *
+   * Not a fact about the geometry, which is why it is the one refusal here
+   * that depends on when it is asked. Mid-cycle the machine being edited is
+   * holding the pose under the reader's hand while every other machine has
+   * been restored to its own start, so a body fused across that line would be
+   * half one and half the other -- and the anchor it would have to be put back
+   * on belongs to a topology that no longer exists.
+   */
+  | 'crosses-machines';
 
 /** What to tell the user when a merge is refused. */
 export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
@@ -31,6 +42,8 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
   'driven-joint':
     'A driven joint can only join two bodies — remove the input first, or attach somewhere else.',
   'own-cylinder': 'A cylinder cannot fold onto itself.',
+  'crosses-machines':
+    'Joining two machines needs the start pose. Press Back to start, then try again.',
 };
 
 /**

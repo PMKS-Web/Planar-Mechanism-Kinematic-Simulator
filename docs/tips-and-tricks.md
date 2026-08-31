@@ -427,6 +427,18 @@ pixels are available; anything you add to the bottom row has to survive that.
 - **Drop anchors before the rebuild, not after.** `UrlProcessorService` calls `forgetAnchors()`
   ahead of `finishStructuralEdit`; after it, the call threw away the anchors that rebuild had just
   taken, and every freshly opened mechanism had none until its first edit.
+- **Cancelling a posed edit is a commit without the save, not a `= null`.** Every pointer move has
+  already solved a provisional cycle whose sample 0 is the pose under the hand, so a machine merely
+  unstaged has the displaced pose as its canonical t = 0. But only settle when a rebuild *has* run
+  while staged (`stagedRebuilt`) -- otherwise a click that selects and releases without moving
+  anything settles onto its own anchor and rewinds the drawing under the reader.
+- **An edit that captures the pose it is made at must be staged like a drag.** Adding a link,
+  welding, dropping a cylinder: §6.2 calls these *capturing*, and they rebuilt directly, so the
+  restore ran over them. `MechanismService.capturingPose` stages, runs and settles, holding the
+  inner save so the gesture is still one undo entry.
+- **`updateLinkageUnits` scales the live joints, which mid-cycle are a solved sample.** Rewind
+  first -- the clocks too, not just the joints, or the rebuild's own restore undoes the scale --
+  then put the reader back afterwards.
 - **Every path that abandons a gesture must abandon its staging.** `letGoOfEverything` is the one
   a pinch and a long press take, and a `seedFromDisplay` left behind outlives the gesture: the next
   ambient rebuild reads "seed this machine from what is drawn" and the displaced pose becomes the

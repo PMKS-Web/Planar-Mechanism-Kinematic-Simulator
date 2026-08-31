@@ -405,6 +405,7 @@ export class MechanismService {
         },
       ])
     );
+    if (this.seedFromDisplay) this.stagedRebuilt = true;
     this.restoreStartPose();
 
     // The sealed-cylinder invariant is enforced HERE, at the one funnel every
@@ -979,12 +980,29 @@ export class MechanismService {
   }
 
   save() {
+    // Held while a pose-capturing edit is mid-flight: it will save once, at the
+    // end, so the whole gesture is one entry in the history rather than one for
+    // the mutation and another for settling it onto the anchor.
+    if (this.savesHeld) return;
     const saveHistoryService = this.injector.get(SaveHistoryService);
     saveHistoryService.save();
   }
 
   updateLinkageUnits(fromUnits: LengthUnit, toUnits: LengthUnit) {
     if (fromUnits === toUnits) return;
+    // Against the design, not the pose on screen. Everything below multiplies
+    // the *live* joints -- which mid-cycle are a solved sample, not t = 0 --
+    // and the rebuild at the end then restored them from frames the scaling
+    // never touched. The scale was applied and undone in the same call: the
+    // reader saw the unit change and the geometry stay exactly as it was.
+    //
+    // A unit change is identity-addressed (plan §6.2): it says nothing about
+    // the pose, so it is made at the start and the reader is put back
+    // afterwards. The clocks have to go to zero with the pose, not just the
+    // joints -- the rebuild's own restore reads them, and left running it
+    // would undo the scaling a second time.
+    const heldEach = this.partitions.map((_, index) => this.secondsOf(index));
+    this.rewindToStart();
 
     const from = siUnitFactorsForLength(fromUnits);
     const to = siUnitFactorsForLength(toUnits);
@@ -1045,6 +1063,15 @@ export class MechanismService {
     });
 
     this.updateMechanism(true);
+    // And back to where they were looking. The cycle takes the same time in
+    // either unit -- a crank's rpm is scale-free, and a slider's speed was
+    // rescaled with the geometry above -- so the seconds still mean the same
+    // place in the motion.
+    heldEach.forEach((seconds, index) => {
+      if (seconds > 0 && this.mechanisms[index]?.isMechanismValid()) {
+        this.seekMechanism(index, seconds);
+      }
+    });
   }
 
   getLinkProp(l: Link, propType: string) {
@@ -5266,13 +5293,74 @@ export class MechanismService {
     const index = this.indexOfMechanismContaining(part);
     if (index === -1 || !this.mechanisms[index]?.isMechanismValid()) return false;
     this.seedFromDisplay = topologyOf(this.partitions[index].ownJoints);
+    this.stagedRebuilt = false;
     return true;
   }
 
-  /** Abandon a staged posed edit without committing it. */
-  cancelPosedEdit(): void {
+  /**
+   * While set, `save()` does nothing: a gesture is mid-flight and will save at
+   * its end. One gesture earns one undo entry.
+   */
+  private savesHeld = false;
+
+  /**
+   * Run a structural edit that captures the pose it is made at.
+   *
+   * Adding a link, welding, dropping a cylinder: §6.2 of the plan calls these
+   * *capturing* rather than identity-addressed, because what they record is the
+   * relative geometry at the pose they were made at. They rebuilt directly, so
+   * at a displaced pose the restore ran over them -- a link attached a third of
+   * the way round the cycle moved its own mount a thousand model units and came
+   * out half as long again as the gesture that drew it.
+   *
+   * Staged like a drag, then settled onto the anchor. The inner save is held so
+   * the whole thing is still one entry in the history.
+   */
+  capturingPose<T>(near: Joint | Link | Force | undefined, work: () => T): T {
+    const staged = near !== undefined && this.beginPosedEdit(near);
+    if (!staged) return work();
+    const key = this.seedFromDisplay!;
+    this.savesHeld = true;
+    let result: T;
+    try {
+      result = work();
+    } finally {
+      this.savesHeld = false;
+    }
     this.seedFromDisplay = null;
+    this.settleToAnchor(key, true);
+    return result;
   }
+
+  /**
+   * Abandon a staged posed edit, and put the machine back where it was.
+   *
+   * Forgetting the key is not enough, and that is the whole subtlety. Every
+   * pointer move of the gesture has already solved a provisional cycle whose
+   * sample 0 is the pose under the reader's hand -- so a machine merely
+   * unstaged is a machine whose canonical t = 0 *is* the displaced pose, and
+   * the next rebuild writes it down. Escape mid-drag reached exactly that.
+   *
+   * So a cancel is a commit without the save: the anchored pose is found in the
+   * provisional cycle and made t = 0 again, which is where the machine was
+   * before the gesture started.
+   */
+  cancelPosedEdit(): void {
+    const key = this.seedFromDisplay;
+    this.seedFromDisplay = null;
+    // Only where a rebuild actually ran while staged. Until one does, nothing
+    // has been solved from the displayed pose and the machine is exactly where
+    // it was -- so settling would be work with nothing to undo, and its closing
+    // re-seek would move the reader off the pose they were looking at. A click
+    // that selects and releases without moving anything reached that: it
+    // staged, cancelled, and rewound the drawing.
+    if (!key || !this.stagedRebuilt) return;
+    this.stagedRebuilt = false;
+    this.settleToAnchor(key, false);
+  }
+
+  /** Whether a rebuild has run since the current gesture staged its machine. */
+  private stagedRebuilt = false;
 
   /**
    * Close a posed edit: put the design back on the machine's anchor.
@@ -5290,7 +5378,20 @@ export class MechanismService {
   finishPosedEdit(): { reanchored: boolean; lost?: string } {
     const key = this.seedFromDisplay;
     this.seedFromDisplay = null;
+    this.stagedRebuilt = false;
     if (!key) return { reanchored: false };
+    return this.settleToAnchor(key, true);
+  }
+
+  /**
+   * Put a staged machine back on its anchor, with or without minting an entry.
+   *
+   * The one body a commit and a cancel share. They differ in exactly two
+   * things: whether the rebuild saves, and whether an unreachable anchor is
+   * worth telling the reader about -- a cancel has nothing to narrate, because
+   * nothing was committed.
+   */
+  private settleToAnchor(key: string, committing: boolean): { reanchored: boolean; lost?: string } {
     const index = this.partitions.findIndex((partition) => topologyOf(partition.ownJoints) === key);
     const frames = this.mechanisms[index];
     const anchor = this.anchors.get(key);
@@ -5306,7 +5407,9 @@ export class MechanismService {
     const reach = reachAnchor(coordinates, anchor, frames.joints);
     if (!reach) {
       this.anchors.delete(key);
-      return { reanchored: false, lost: this.partitions[index]?.id ?? `M${index + 1}` };
+      return committing
+        ? { reanchored: false, lost: this.partitions[index]?.id ?? `M${index + 1}` }
+        : { reanchored: false };
     }
     // Where the reader's hand is, so the display can be put back on it. Taken
     // before the arrays move, because it is a property of the pose they hold --
@@ -5332,7 +5435,7 @@ export class MechanismService {
     // The anchored pose is now what the arrays hold, so it is what the rebuild
     // must keep -- the same staging flag, for one more rebuild.
     this.seedFromDisplay = key;
-    this.updateMechanism(true);
+    this.updateMechanism(committing);
     this.seedFromDisplay = null;
     this.seekToCoordinate(key, commitPose);
     return { reanchored: true };
@@ -5832,6 +5935,13 @@ export class MechanismService {
   }
 
   public weldJoint(joint: RealJoint = this.activeObjService.selectedJoint): void {
+    // A weld records the angle the bodies are at when it is made, so at a
+    // displaced pose it captures *that* angle -- which is the feature, and is
+    // also why it has to be staged like a drag rather than rebuilt directly.
+    if (!this.seedFromDisplay && !this.isAtStartPose()) {
+      this.capturingPose(joint, () => this.weldJoint(joint));
+      return;
+    }
     if (!joint) return;
 
     // A weld fuses what meets at a joint, so a joint connecting fewer than two

@@ -239,6 +239,56 @@ describe('editing at a displaced pose', () => {
     expect(startPoses(service)).toBe(before);
   });
 
+  it('puts the machine back on its anchor when a gesture is abandoned', () => {
+    // Forgetting the staging key is not enough, which is the whole subtlety.
+    // Every pointer move has already solved a provisional cycle whose sample 0
+    // is the pose under the reader's hand, so a machine merely unstaged has the
+    // displaced pose as its canonical t = 0 and the next rebuild writes it
+    // down. Escape mid-drag reached exactly that.
+    const { service, joints } = oneBar();
+    displace(service);
+    const before = startPoses(service);
+
+    const anchored = startCoordinate(service, 0);
+    expect(service.beginPosedEdit(joints[1])).toBe(true);
+    joints[1].x += 0.4;
+    // A pointer move, which is what makes the provisional cycle real.
+    service.updateMechanism();
+    service.cancelPosedEdit();
+    service.updateMechanism();
+
+    // A cancel abandons the *staging*, not the geometry the pointer already
+    // wrote -- so the drawing is not what it was, and asserting that it is
+    // would be asserting an undo nobody performed. What must hold is that the
+    // cycle still starts where it started: the machine is on its anchor, not
+    // on the pose the reader's hand was over.
+    expect(startPoses(service)).not.toBe(before);
+    expect(startCoordinate(service, 0)).toBeCloseTo(anchored, 1);
+  });
+
+  it('scales the design, not the pose on screen, when the units change', () => {
+    // `updateLinkageUnits` multiplies the live joints -- which mid-cycle are a
+    // solved sample rather than t = 0 -- and the rebuild then restored them
+    // from frames the scaling never touched. The scale was applied and undone
+    // in the same call: the unit changed and the geometry did not.
+    const { service, joints } = oneBar();
+    const spanAtStart = () => {
+      const frame = service.mechanisms[0].joints[0];
+      const a = frame.find((joint) => joint.id === 'A')!;
+      const d = frame.find((joint) => joint.id === 'D')!;
+      return Math.hypot(d.x - a.x, d.y - a.y);
+    };
+    const before = spanAtStart();
+    displace(service);
+
+    service.updateLinkageUnits(LengthUnit.CM, LengthUnit.INCH);
+    expect(spanAtStart() / before).toBeCloseTo(1 / 2.54, 4);
+    expect(joints.length).toBe(4);
+
+    service.updateLinkageUnits(LengthUnit.INCH, LengthUnit.CM);
+    expect(spanAtStart() / before).toBeCloseTo(1, 4);
+  });
+
   it('stages one machine at a time and no more', () => {
     // A second `beginPosedEdit` while one is open must not take the staging
     // from the first: whichever machine is put back on its anchor at the

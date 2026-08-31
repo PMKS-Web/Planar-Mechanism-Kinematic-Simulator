@@ -1,3 +1,4 @@
+import { EditPermissionService } from '../../services/edit-permission.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { environment } from '../../../environments/environment';
 import { Component, ChangeDetectionStrategy, OnDestroy, inject } from '@angular/core';
@@ -54,6 +55,7 @@ export class SettingsPanelComponent implements OnDestroy {
   private svgGrid = inject(SvgGridService);
   private nup = inject(NumberUnitParserService);
   private tabs = inject(SelectedTabService);
+  private permission = inject(EditPermissionService);
 
   readonly appVersion = environment.appVersion;
 
@@ -247,7 +249,16 @@ export class SettingsPanelComponent implements OnDestroy {
    * tidying up.
    */
   documentEditable(): boolean {
-    return this.tabs.getCurrentTab() === TabID.EDIT && !this.settingsService.animating.value;
+    // The permission model, not `settings.animating`. That flag is pushed by
+    // the transport's master controls and says nothing about a *row* being
+    // played: with one machine of several visibly running, it read false, and
+    // Global Units, Angle Units and Gravity stayed live while every other
+    // surface in the app said the drawing was read-only.
+    //
+    // `properties` rather than `structure`: a unit change rescales every length
+    // in the drawing, which is exactly the class of thing whose transform back
+    // to t = 0 the plan has not written yet.
+    return this.permission.may('properties');
   }
 
   /**
