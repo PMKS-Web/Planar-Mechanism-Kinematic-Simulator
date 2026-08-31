@@ -727,3 +727,47 @@ describe('MechanismService un-grounding one slider among several', () => {
     expect(s.second.slotAngle).toBeCloseTo(wasPointing, 9);
   });
 });
+
+describe('MechanismService undo entries on a drawing large enough to defer solving', () => {
+  // Past SOLVE_IN_EDIT_UP_TO joints, updateMechanism puts the solve off until
+  // an analysis mode asks for it. Deferring the solve must not defer the save:
+  // the URL encodes the editable drawing, not the solved mechanisms, so every
+  // edit routed through updateMechanism(true) — weld, ground, input, force
+  // edits — still owes its undo entry.
+  it('still saves a weld when the solve is deferred', () => {
+    const harness = createChain(26);
+
+    harness.service.weldJoint(harness.joints[1]);
+
+    expect(harness.service.solvingIsDeferred).toBe(true);
+    expect(harness.saveCount()).toBe(1);
+  });
+
+  it('still saves a ground toggle when the solve is deferred', () => {
+    const harness = createChain(26);
+    harness.active.updateSelectedObj(harness.joints[0]);
+
+    harness.service.toggleGround();
+
+    expect(harness.service.solvingIsDeferred).toBe(true);
+    expect(harness.joints[0].ground).toBe(true);
+    expect(harness.saveCount()).toBe(1);
+  });
+
+  it('can encode the URL an undo entry is made of while deferred', () => {
+    const harness = createChain(26);
+    harness.service.updateMechanism();
+
+    expect(harness.service.solvingIsDeferred).toBe(true);
+    expect(encodeUrlOf(harness.service, harness.settings).length).toBeGreaterThan(0);
+  });
+
+  it('does not defer at the threshold itself, and still saves', () => {
+    const harness = createChain(24);
+
+    harness.service.weldJoint(harness.joints[1]);
+
+    expect(harness.service.solvingIsDeferred).toBe(false);
+    expect(harness.saveCount()).toBe(1);
+  });
+});

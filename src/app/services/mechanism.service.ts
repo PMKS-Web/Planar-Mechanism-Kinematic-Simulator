@@ -437,6 +437,12 @@ export class MechanismService {
       this.playbackDirection = [];
       this.isPlaying = false;
       this.showPathHolder = false;
+      // Deferring the solve must not defer the undo entry: the URL encodes the
+      // editable drawing at its start pose, which exists whether or not the
+      // motion has been worked out.
+      if (save) {
+        this.save();
+      }
       return;
     }
     this.solvingDeferred = false;
