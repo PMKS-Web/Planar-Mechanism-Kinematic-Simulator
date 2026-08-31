@@ -3,8 +3,23 @@
 **Purpose:** decide how PMKS+ can allow playback inside Edit mode, and later allow edits at any
 paused pose, without corrupting the saved design, the undo history, or shared URLs.
 
-This is a planning document. Nothing in it is implemented yet. It records the audit of the
-current code, the design decisions, the trade-offs, and the build order. **All three phases are
+**Status: all three phases are built.** This began as a planning document and is kept as the
+record of *why* the code is shaped the way it is — the audit of what the code did before, the
+design decisions, the trade-offs, and the build order. Read it that way: where it says "will",
+it now describes what does happen.
+
+Where the pieces live: `model/edit-permission.ts` and `services/edit-permission.service.ts` are
+the permission model of §5.1; `model/mechanism/anchor.ts` is the anchor of §3;
+`MechanismService`'s `beginPosedEdit` / `finishPosedEdit` and the `seedFromDisplay` skip inside
+`restoreStartPose` are the staged transaction of §5.3. The gates are checked by
+`src/tests/verification/posed-editing.spec.ts`, `e2e/edit-playback.mjs` (Gate 1) and
+`e2e/posed-editing.mjs` (Gates 2 and 3).
+
+Three rounds of adversarial review (GPT-5.6 sol) ran against the built phases and found
+twenty-two defects between them, all fixed; the commit messages from `9970fde` onward name them
+individually. The recurring one is worth knowing before touching this code: **a path that ends a
+gesture without ending its staging leaves a machine seeded from its displayed pose**, and the
+next ambient rebuild makes that the design. Three separate paths had it. **All three phases are
 committed scope.** The phases exist to give the developer checkpoints — each ends in a gate
 that proves the work so far is right — not to offer places to stop. No phase builds anything a
 later phase tears out.
