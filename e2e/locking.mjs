@@ -210,9 +210,15 @@ await dragBy(grab, 0, 120, 14);
 const after = { b: await jointModel('B'), c: await jointModel('C') };
 const lengthAfter = Math.hypot(after.c.x - after.b.x, after.c.y - after.b.y);
 
+// Still to within float noise, not to the last bit. The swing is solved from a
+// pointer path the harness samples, so the arithmetic that arrives at the held
+// joint's own coordinates varies in the last decimal place between runs -- and
+// an exact comparison failed on a difference of 3e-14 model units, which is
+// 1.5e-16 of a centimeter. The check is about a joint a Lock holds, not about
+// IEEE 754.
 record(
   'the held joint stays exactly still through the swing',
-  before.b.x === after.b.x && before.b.y === after.b.y,
+  Math.hypot(after.b.x - before.b.x, after.b.y - before.b.y) < 1e-9,
   {
     before: before.b,
     after: after.b,

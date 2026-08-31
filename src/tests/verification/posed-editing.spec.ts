@@ -289,6 +289,24 @@ describe('editing at a displaced pose', () => {
     expect(spanAtStart() / before).toBeCloseTo(1, 4);
   });
 
+  it('mints exactly one entry for an edit that captures the pose', () => {
+    // Adding a link, welding and dropping a cylinder are staged and then
+    // settled onto the anchor, which is two rebuilds -- so the inner save is
+    // held and the settle's own rebuild is the one that writes the entry.
+    // Where the settle *cannot* re-anchor, though, it runs no rebuild at all,
+    // and the edit was left out of the history entirely: it had happened, and
+    // Undo would not take it back.
+    const { service, joints, saveCount } = oneBar();
+    displace(service);
+    const before = saveCount();
+
+    service.weldJoint(joints[1]);
+
+    expect(joints[1].isWelded).toBe(true);
+    expect(saveCount() - before).toBe(1);
+    expect(service.posedEditKey).toBeNull();
+  });
+
   it('stages one machine at a time and no more', () => {
     // A second `beginPosedEdit` while one is open must not take the staging
     // from the first: whichever machine is put back on its anchor at the

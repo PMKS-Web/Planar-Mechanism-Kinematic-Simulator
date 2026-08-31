@@ -5328,7 +5328,13 @@ export class MechanismService {
       this.savesHeld = false;
     }
     this.seedFromDisplay = null;
-    this.settleToAnchor(key, true);
+    // A settle that re-anchors saves on its way through, as the rebuild it runs
+    // is the one that makes the anchored pose t = 0. One that cannot -- a weld
+    // that fused the driven joint's body measures the drive against something
+    // else, so the old anchor is dropped rather than carried -- runs no rebuild
+    // and so no save, and the edit was left out of the history entirely: it had
+    // happened, and Undo would not take it back.
+    if (!this.settleToAnchor(key, true).reanchored) this.save();
     return result;
   }
 
@@ -5400,6 +5406,11 @@ export class MechanismService {
       // split, or no longer able to run. Whatever exists now starts where it
       // stands, which is what `refreshAnchors` will take on the next rebuild.
       this.anchors.delete(key);
+      // And take a fresh one straight away rather than waiting for whatever
+      // rebuild happens next. Between the two the machine has no anchor at all,
+      // which draws no ghost and answers "reachable" to a question that has no
+      // subject -- a gap with nothing in it, for no reason.
+      this.refreshAnchors();
       return { reanchored: false };
     }
     const rule = this.ruleFor(anchor);
@@ -5407,6 +5418,7 @@ export class MechanismService {
     const reach = reachAnchor(coordinates, anchor, frames.joints);
     if (!reach) {
       this.anchors.delete(key);
+      this.refreshAnchors();
       return committing
         ? { reanchored: false, lost: this.partitions[index]?.id ?? `M${index + 1}` }
         : { reanchored: false };
