@@ -3037,10 +3037,23 @@ export class NewGridComponent implements OnDestroy {
     // cut slot is the bigger thing that just happened. With the ghost warning
     // live through the drag (§6.1), this is narration of something the reader
     // watched rather than the first they hear of it.
+    if (outcome.lost) {
+      // The row keeps the fact whether or not the message gets to say it: the
+      // notification is the news, the chip is the record, and structural news
+      // taking the message away must not take the record with it.
+      this.mechanismSrv.markStartMoved(outcome.lost);
+    }
     if (outcome.lost && !structuralNews) {
-      this.notify.warning(
+      // Half the words it used to have, and a verb rather than a report: what
+      // happened is that the machine starts here now. Indigo rather than an
+      // alarm color, because nothing failed -- the edit landed exactly as it
+      // was asked for, and this is the consequence that came with it. Undo
+      // rides the message, per the app's rule that a consequence carries its
+      // own exit.
+      this.notify.news(
         'anchor.unreachable',
-        `${outcome.lost} can no longer reach its original start position — the start is now the current pose.`
+        `${outcome.lost} starts here now — its old start is out of reach.`,
+        { actions: [{ label: 'Undo', run: () => this.saveHistoryService.undo() }] }
       );
     }
   }

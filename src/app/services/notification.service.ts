@@ -10,7 +10,16 @@ import { Injectable } from '@angular/core';
  * the drawing is now in, which nobody asked for and which is still true after
  * the message goes away. That is the one that has to wait to be dismissed.
  */
-export type NotificationKind = 'success' | 'refusal' | 'warning' | 'failure';
+/**
+ * `news` is the odd one, and earns its place by what it is *not*.
+ *
+ * Something happened that the reader has to know about, and nothing failed:
+ * their edit landed exactly as they asked, and a consequence came with it. An
+ * alarm color there is the wrong register -- it says a mistake was made, when
+ * the app is reporting a fact -- so this one is the informational indigo the
+ * Edit strip and the transport's anchor seat already use.
+ */
+export type NotificationKind = 'success' | 'refusal' | 'warning' | 'failure' | 'news';
 
 /**
  * Something to do about it, offered on the message itself.
@@ -52,6 +61,9 @@ const DURATION: Record<NotificationKind, number | undefined> = {
   // be caught out of the corner of an eye, not read.
   success: 2500,
   refusal: 4000,
+  // Long enough to read a sentence and reach the Undo on it, and no longer:
+  // the transport row keeps the same fact for as long as it stays true.
+  news: 4000,
   warning: undefined,
   failure: undefined,
 };
@@ -107,6 +119,11 @@ export class NotificationService {
   }
 
   /** It happened, but the drawing is now in a state worth knowing about. */
+  /** Something happened, and nothing failed. See `NotificationKind`. */
+  news(id: string, text: string, options?: NotificationOptions): void {
+    this.say('news', id, text, options);
+  }
+
   warning(id: string, text: string, options?: NotificationOptions): void {
     this.say('warning', id, text, options);
   }

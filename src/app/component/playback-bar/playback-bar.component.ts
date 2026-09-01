@@ -26,6 +26,7 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 import { ShortcutTipDirective } from '../../shortcut-tip.directive';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
+import { SaveHistoryService } from '../../services/save-history.service';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 
 /** What the stylesheet is asked for, and what to assume if it has not loaded. */
@@ -139,6 +140,16 @@ export interface PlaybackRow {
    * from it -- the chip that carries "back to the start" and "move it here".
    */
   displaced?: string;
+  /**
+   * Whether this machine's start has just been moved, and not yet been read
+   * past.
+   *
+   * The notification is the news and is gone in four seconds; this is the
+   * record, and it stays until the next transport action -- so the fact
+   * survives a reader who looked away, said in the one place that has always
+   * meant "where this starts".
+   */
+  startMoved: boolean;
 }
 
 /** A row that cannot be played, in the three pieces the reading line draws. */
@@ -204,6 +215,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly viewport = inject(ViewportService);
   private permission = inject(EditPermissionService);
   private loading = inject(LoadingService);
+  private history = inject(SaveHistoryService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   private positionSub?: Subscription;
@@ -400,9 +412,21 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     return { percent: row.anchorAt / 10 };
   }
 
+  /**
+   * Take back the edit that moved the start, and the old start with it.
+   *
+   * The same Undo the message carried: one thing happened, so one thing takes
+   * it back.
+   */
+  undoStartMove(): void {
+    this.mechanism.clearStartMoved();
+    this.history.undo();
+  }
+
   /** Back to where this machine's cycle starts. */
   backToStart(row: PlaybackRow): void {
     this.startMenuFor = null;
+    this.mechanism.clearStartMoved();
     if (row.index === -1) {
       this.stop();
       return;
@@ -569,6 +593,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
       period: mechanism.cyclePeriod || 1,
       inert: false,
       deferred: this.mechanism.solvingIsDeferred,
+      startMoved: !combined && this.mechanism.startMovedOn === this.nameOf(index),
       // Only where the reader is actually parked away from the start, and only
       // on a machine's own row: the combined row stands for several cycles, and
       // "142 degrees from start" is a fact about one input.
@@ -638,6 +663,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
       refusal,
       inert: true,
       deferred: false,
+      startMoved: false,
     };
   }
 
@@ -716,6 +742,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   toggleRow(row: PlaybackRow): void {
+    // Any transport action is the reader moving on from the news that the
+    // start moved, so the row stops carrying it.
+    this.mechanism.clearStartMoved();
     this.mechanism.toggleMechanismPlaying(row.index);
   }
 
@@ -727,6 +756,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    * on each leg, which is why it is told where the machine is now.
    */
   scrubRow(row: PlaybackRow, event: Event): void {
+    // Any transport action is the reader moving on from the news that the
+    // start moved, so the row stops carrying it.
+    this.mechanism.clearStartMoved();
     const along = Number((event.target as HTMLInputElement).value) / 1000;
     if (row.index === -1) {
       // The combined row stands for all of them, so all of them go -- led by
@@ -841,6 +873,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    * it off before it could be read.
    */
   stepBy(delta: number): void {
+    // Any transport action is the reader moving on from the news that the
+    // start moved, so the row stops carrying it.
+    this.mechanism.clearStartMoved();
     if (!this.canPlay) return;
     const master = this.rows.find((row) => row.master);
     if (!master) return;
@@ -871,6 +906,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   play(): void {
+    // Any transport action is the reader moving on from the news that the
+    // start moved, so the row stops carrying it.
+    this.mechanism.clearStartMoved();
     if (!this.canPlay) return;
     // A drawing large enough to have had its solve deferred has no cycle to
     // play yet. Pressing Play is the request for one, and it takes the thread
@@ -913,6 +951,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    * same move played over a fifth of a second reads as playback ending.
    */
   stop(): void {
+    // Any transport action is the reader moving on from the news that the
+    // start moved, so the row stops carrying it.
+    this.mechanism.clearStartMoved();
     if (!this.canPlay) return;
     this.mechanism.setAllPlaying(false);
     this.settings.animating.next(false);
@@ -939,6 +980,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    * handle holds its place; the time is what jumps.
    */
   flipDirection(row: PlaybackRow): void {
+    // Any transport action is the reader moving on from the news that the
+    // start moved, so the row stops carrying it.
+    this.mechanism.clearStartMoved();
     const mechanism = this.mechanism.mechanisms[row.index];
     if (mechanism?.reciprocates) {
       this.mechanism.setPlaybackDirection(row.index, -this.mechanism.directionOf(row.index));

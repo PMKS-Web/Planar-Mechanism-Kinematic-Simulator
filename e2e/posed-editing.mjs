@@ -389,9 +389,13 @@ await displace();
     .catch(() => '');
   record(
     'releasing while warned says the start has moved',
-    /no longer reach its original start/i.test(said),
+    /starts here now/i.test(said) && /out of reach/i.test(said),
     said.slice(0, 160)
   );
+  // The consequence carries its own exit, and the row keeps the same fact after
+  // the message has gone.
+  record('and the message carries Undo', /Undo/.test(said), said.slice(0, 160));
+  record('and the row keeps the record', (await page.locator('.movedChip').count()) === 1);
   await page.screenshot({ path: `${SHOTS}/2c-snackbar.png` });
   // And the edit landed rather than being reverted for anchor reasons.
   const after = await look();

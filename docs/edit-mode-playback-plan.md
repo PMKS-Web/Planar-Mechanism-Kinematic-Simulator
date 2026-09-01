@@ -569,7 +569,8 @@ meeting a popup after the fact. The per-move check is advisory; the commit's tar
 anchor reasons. The commit pose becomes t = 0, the anchor is re-established from it, and a
 snackbar reports:
 
-> *"M1 can no longer reach its original start position — the start is now the current pose."*
+> *"M1 starts here now — its old start is out of reach."* — with Undo on the message, and the
+> same fact kept on the transport row until the next transport action.
 > **[Undo]**
 
 Non-blocking, with Undo as the escape: the "restore" option *is* undo, because the old start

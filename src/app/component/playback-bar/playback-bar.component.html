@@ -113,6 +113,18 @@
                 <span class="rowRefusal">{{ why.text }}</span>
               }
 
+              <!-- What just happened to this machine's start. The message is
+                   gone in four seconds; this stays until the next transport
+                   action, so the fact survives a reader who looked away. Undo
+                   appears in both and does the same thing: takes back the edit
+                   and the old start together. -->
+              @if (row.startMoved) {
+                <span class="movedChip">
+                  Start moved here
+                  <button (click)="undoStartMove(); $event.stopPropagation()">Undo</button>
+                </span>
+              }
+
               <!-- How far this machine is parked from its own start, and both
                    ways back from there. Pressing the label is the one-press way
                    home; the caret is only for the second answer. -->

@@ -5886,6 +5886,25 @@ export class MechanismService {
     return points.length > 1 ? `M ${points.join(' L ')}` : undefined;
   }
 
+  /**
+   * The machine whose start has just moved, by name, or nothing.
+   *
+   * The transport row keeps this until the next transport action. The
+   * notification is the news and is gone in four seconds; the chip is the
+   * record, so the fact survives a reader who looked away -- and it is said in
+   * the one place that has always meant "where this starts".
+   */
+  startMovedOn: string | null = null;
+
+  markStartMoved(id: string): void {
+    this.startMovedOn = id;
+  }
+
+  /** Cleared by the next thing the reader does to the transport. */
+  clearStartMoved(): void {
+    this.startMovedOn = null;
+  }
+
   setAllPlaying(playing: boolean): void {
     this.isPlaying = playing;
     this.ownPlaying = this.mechanisms.map((mechanism) => playing && mechanism.isMechanismValid());
