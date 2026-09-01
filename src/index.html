@@ -72,6 +72,42 @@
       `touch-action` instead, which is the narrower fix.
     -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <!--
+      What makes the drawing reach the edges of an actual phone.
+
+      In a browser tab it cannot, and it is worth writing down why rather than
+      trying again: Safari hands the page a viewport of 654pt out of an 852pt
+      screen and paints no page content outside it. Measured on the hardware --
+      a canvas laid out 100pt taller than the viewport draws nothing in the
+      strip past it, and neither does a background image on the root element.
+      The one thing that does reach is the root element's background *color*,
+      which the browser propagates over the whole screen. So a tab's grid stops
+      where the page stops, with matching white either side of it, and no
+      arrangement of `env()` or viewport units changes that -- all four insets
+      read zero there, because the page is already inside the safe area.
+
+      Installed to the Home Screen it is a different story: the page is the
+      screen, the insets become real numbers, and the four `env(safe-area-*)`
+      readers in the chrome finally have something to read. `black-translucent`
+      is the part that earns it at the top -- it puts the status bar *over* the
+      web view instead of above it, which is what lets the grid run under the
+      clock. The strips are already built for it: the mode strip takes the top
+      inset into its own padding, the transport keeps the bottom inset off the
+      home indicator, and the canvas is the size of the screen either way.
+
+      `start_url` is deliberately absent from the manifest, so it defaults to
+      whatever page was open when the icon was made. A mechanism in this app is
+      a URL, so pinning one has to pin *that* drawing; a manifest naming "/"
+      would quietly turn every saved linkage into a blank grid.
+    -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PMKS+" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="apple-touch-icon" href="assets/app-icon/icon-180.png" />
     <!--    <link rel='icon' type='image/x-icon' href='favicon.ico' />-->
     <link rel="preconnect" href="https://fonts.gstatic.com" />
     <link

@@ -402,6 +402,24 @@ screen. Do not debug a phone layout by reasoning about which inset applies; put 
 the page that prints `innerHeight`, `visualViewport`, `documentElement.clientHeight`, each of
 `vh/dvh/svh/lvh` measured off a probe element, and the four insets, and read it on the device.
 
+**A browser tab cannot go edge to edge, and no amount of CSS changes that.** Measured, not guessed:
+Safari hands the page 654pt of an 852pt screen and paints no page *content* outside it — a canvas
+laid out 100pt taller draws nothing in the strip past the viewport, and neither does a
+`background-image` on the root element. The one thing that reaches the whole screen is the root
+element's background **color**, which the browser propagates. So in a tab the grid stops where the
+page stops, with matching white either side, and that is the end of it.
+
+Installed to the Home Screen the same build reports `innerHeight` 874, `safe-area-inset-top` 62 and
+`-bottom` 34, and the canvas spans the whole screen. That is what `manifest.webmanifest`,
+`apple-mobile-web-app-capable` and — the load-bearing one —
+`apple-mobile-web-app-status-bar-style: black-translucent` are for: the last puts the status bar
+*over* the web view rather than above it. A standalone web app also gets its **own storage jar**, so
+`tutorialSeen` and every other `localStorage` mark starts empty there; the tutorial opening on first
+launch of the installed app is correct, not a bug.
+
+`start_url` is deliberately absent from the manifest so it defaults to the installed page. A
+mechanism here is a URL, and a manifest naming `/` would turn every pinned linkage into a blank grid.
+
 **The canvas takes `100lvh` and is `position: fixed`; everything else takes the small viewport.**
 The drawing is the app's background, so it is the size of the screen: `100vh`/`100lvh` (the same
 number on every browser that matters — it is what iOS has always meant by `vh`), and fixed, because
