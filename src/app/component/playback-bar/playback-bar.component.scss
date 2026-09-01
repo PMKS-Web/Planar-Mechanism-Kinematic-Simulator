@@ -22,10 +22,6 @@
     var(--travelled, #3f51b5) 0 var(--along, 0%),
     #d5d7e0 var(--along, 0%) 100%
   );
-  // The cap that stands for the start of the cycle, and the gap after it.
-  $rail-cap: 4px;
-  $rail-start: 6px;
-
   // Right-aligned in every mode, so the view controls at its right-hand end sit
   // in exactly the same place whatever mode is open. They used to be pushed
   // there by a growing spacer in Edit and centered with the transport in
@@ -631,21 +627,6 @@
     margin: 0 4px;
   }
 
-  // The rail's own left end -- the bottom of the input's travel, which is not
-  // the same place as the start of the cycle and only looks like it on a crank.
-  // Where the start is is the seat's job. 4px of indigo 700 behind a 2px gap,
-  // which is where the track begins.
-  .trackCap {
-    position: absolute;
-    left: 0;
-    top: 4px;
-    width: $rail-cap;
-    height: 8px;
-    border-radius: 2px 0 0 2px;
-    background: #303f9f;
-    pointer-events: none;
-  }
-
   // Where this machine's cycle starts, drawn as the handle's own outline.
   //
   // It was a 2x6px tick under the track, which read as the end cap of the fill
@@ -659,16 +640,14 @@
     position: absolute;
     // The handle's own geometry, so the seat and the handle coincide exactly
     // rather than nearly: a range thumb's centre runs from half its width to
-    // half its width short of the far end, never edge to edge. The track is the
-    // scrubber's own box -- `left: $rail-start` with `width: 100%` -- so it is
-    // the well's width starting one cap in, not the well's width less a cap.
+    // half its width short of the far end, never edge to edge.
     //
     // `--at` is a bare number here, not a percentage. As a percentage this read
     // `<length> * 41.7%`, which is not a thing calc can multiply, so the whole
     // declaration was invalid and the seat fell back to its static position --
     // at the left of the well, whatever the value said. Invisible for as long
     // as the value was always zero.
-    left: calc(#{$rail-start} + 12px + (100% - 24px) * var(--at, 0) / 100);
+    left: calc(12px + (100% - 24px) * var(--at, 0) / 100);
     top: -2px;
     width: 24px;
     height: 20px;
@@ -715,8 +694,7 @@
   // same page did not look the same on two machines; this one does.
   .rowScrubber {
     position: absolute;
-    // Clear of the cap, which stands for the start of the cycle.
-    left: $rail-start;
+    left: 0;
     right: 0;
     // The handle is taller than the bar and taller than the well it sits in --
     // 20px in 16px, as the mock has it, overhanging into the row's own padding
