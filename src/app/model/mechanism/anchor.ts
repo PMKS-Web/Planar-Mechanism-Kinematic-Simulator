@@ -352,6 +352,39 @@ function seedDistance(
 }
 
 /**
+ * Where in this cycle a given pose occurs -- without being told which way the
+ * input was travelling through it.
+ *
+ * `reachAnchor` is asked about a pose whose leg is already known, because an
+ * anchor and a commit both record the heading they were taken at. This one is
+ * asked about a pose that has just been re-measured against a *different* rule
+ * -- the input moved to another joint -- and a heading in the old
+ * parameterization says nothing about the new one. Guessing it is worse than
+ * having none: `reachAnchor` prefers crossings that match, so a wrong guess is
+ * actively steered towards the wrong leg.
+ *
+ * So both legs are searched and the pose itself decides between them, which is
+ * the tiebreak `reachAnchor` already falls back on.
+ */
+export function findPose(
+  coordinates: (number | undefined)[],
+  where: {
+    readonly coordinate: number;
+    readonly kind: 'angle' | 'length';
+    readonly seed: ReadonlyMap<string, { x: number; y: number }>;
+  },
+  frames: Joint[][]
+): AnchorReach | null {
+  const found = ([1, -1] as const)
+    .map((heading) => reachAnchor(coordinates, { ...where, heading }, frames))
+    .filter((reach): reach is AnchorReach => reach !== null);
+  if (found.length === 0) return null;
+  return found.reduce((best, one) =>
+    seedDistance(one, frames, where.seed) < seedDistance(best, frames, where.seed) ? one : best
+  );
+}
+
+/**
  * Where a machine was when a posed edit was committed.
  *
  * The same three things an anchor carries, and for the same reason: putting the

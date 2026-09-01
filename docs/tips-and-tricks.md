@@ -427,6 +427,21 @@ pixels are available; anything you add to the bottom row has to survive that.
 - **Drop anchors before the rebuild, not after.** `UrlProcessorService` calls `forgetAnchors()`
   ahead of `finishStructuralEdit`; after it, the call threw away the anchors that rebuild had just
   taken, and every freshly opened mechanism had none until its first edit.
+- **A held clock only holds the pose while the machine is measured the same way.** A rebuild
+  carries each machine's elapsed seconds across and lays them back on afterwards, which is right
+  for an ordinary rebuild and wrong for one that re-parameterizes the machine: move the drive from
+  joint A to joint B and t = 0.7 s stops meaning "0.7 s of A turning" and starts meaning "0.7 s of
+  B turning", so the same clock reading is a different pose. A four-bar parked mid-swing jumped
+  ~800 model units the moment its input changed. The *start* pose was never in danger -- the anchor
+  looks after that, and it is why the bug is easy to miss -- but the pose the reader was looking at
+  teleported. `posesAcrossReparameterization` notices the rule changing (compared whole, like
+  `ruleStillHolds`), measures the drawn pose in the **new** rule before `restoreStartPose` moves
+  the arrays, and `restoreHeldPoses` finds it again in the cycle the rebuild solved. The pose is
+  held and **the clock is what jumps** -- the same trade `reverseDrive` makes, and the same one to
+  make at any future rebuild that re-measures a machine.
+- **`findPose` exists because a heading you do not know is worse than none.** `reachAnchor` prefers
+  crossings matching the heading it is given, so passing a guess actively steers it to the wrong
+  leg of a reversing cycle. `findPose` searches both and lets the pose itself decide.
 - **Do not run `npm test` and a large Playwright sweep at the same time.** Six heavy fixture,
   codec and graph specs time out under the load and fail together, which reads exactly like a
   shared-state bug in whatever you just changed. Re-run the unit suite on a quiet machine before

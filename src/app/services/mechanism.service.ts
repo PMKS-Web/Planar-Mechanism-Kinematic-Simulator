@@ -46,13 +46,16 @@ import {
 import { BehaviorSubject, Subject } from 'rxjs';
 import { GridUtilsService } from './grid-utils.service';
 import {
+  AnchorReach,
   CommitPose,
   CoordinateRule,
   MachineAnchor,
   StartPoseGhost,
   blendFrame,
+  coordinateIn,
   coordinateRuleFor,
   coordinatesAcross,
+  findPose,
   reachAnchor,
   topologyOf,
 } from '../model/mechanism/anchor';
@@ -108,6 +111,20 @@ interface HeldPlayback {
   direction: number;
   /** Running backwards only because its drive was turned round in place. */
   compensating: boolean;
+}
+
+/**
+ * One machine's displayed pose, carried across a rebuild that re-measures it.
+ *
+ * The clock cannot carry it -- that is the whole point -- so what is kept is
+ * the driven coordinate in the *new* rule plus the pose itself, which is what
+ * tells the two legs of a reversing cycle apart. Exactly what an anchor keeps,
+ * about the displayed pose rather than the start.
+ */
+interface HeldPose {
+  rule: CoordinateRule;
+  coordinate: number;
+  seed: ReadonlyMap<string, { x: number; y: number }>;
 }
 
 /**
@@ -413,6 +430,9 @@ export class MechanismService {
         },
       ])
     );
+    // A machine whose input is about to be measured differently cannot be put
+    // back by its clock, so its pose is taken instead -- see `heldPoses`.
+    const heldPoses = this.posesAcrossReparameterization();
     // A staging with no gesture behind it is stale, and the rebuild about to
     // run is exactly where that becomes a corrupted design: the machine is
     // still marked "seed this one from what is drawn", so the displaced pose
@@ -536,6 +556,9 @@ export class MechanismService {
     this.refreshAnchors();
     this.reseekToTime(heldTime);
     this.restoreOwnTimes(heldEach);
+    // After the clocks, and overriding them where they have stopped meaning
+    // what they meant.
+    this.restoreHeldPoses(heldPoses);
 
     if (save) {
       this.save();
@@ -5255,6 +5278,92 @@ export class MechanismService {
     });
   }
 
+  /**
+   * The displayed pose of any machine whose input is about to be measured
+   * differently, so the rebuild can find that pose again instead of trusting a
+   * clock that has stopped meaning what it meant.
+   *
+   * A rebuild holds each machine's elapsed seconds and lays them back on
+   * afterwards, which keeps the pose on screen exactly as long as the machine
+   * is parameterized the same way on both sides of it. Move the drive from one
+   * joint to another and that stops being true: t = 0.7 s meant "0.7 s of A
+   * turning" and now means "0.7 s of B turning", which is a different pose
+   * entirely. Held anyway, a four-bar parked mid-swing jumped 800 model units
+   * the moment its input changed -- while its *start* pose, which the anchor
+   * looks after, stayed correctly put. The design was never in danger; the
+   * thing the reader was looking at was.
+   *
+   * So the pose is carried across instead, and the clock is what jumps -- the
+   * same trade `reverseDrive` makes, for the same reason.
+   *
+   * The staged machine is excluded: a gesture editing at a pose already owns
+   * where its display lands, and settles it against the anchor at the commit.
+   */
+  private posesAcrossReparameterization(): Map<string, HeldPose> {
+    const held = new Map<string, HeldPose>();
+    this.partitions.forEach((partition, index) => {
+      const key = topologyOf(partition.ownJoints);
+      if (key === this.seedFromDisplay) return;
+      // The anchor is the record of how this machine was measured when it was
+      // last solved. Without one it has never been solved, so there is no
+      // reparameterization to notice and nothing on screen worth holding.
+      const was = this.anchors.get(key);
+      if (!was) return;
+      const rule = this.currentRuleFor(index);
+      // Compared whole, like `ruleStillHolds` and for the same reason: a
+      // comparison that lists its fields stops checking whatever is added next.
+      if (!rule || JSON.stringify(rule) === JSON.stringify(was.rule)) return;
+      // Measured in the *new* rule, off the pose as it is drawn right now --
+      // which is the last moment it exists, since `restoreStartPose` is about
+      // to put the arrays back on sample 0.
+      const drawn = new Map(partition.joints.map((joint) => [joint.id, joint]));
+      const coordinate = coordinateIn(rule, (id) => drawn.get(id));
+      if (coordinate === undefined) return;
+      held.set(key, {
+        rule,
+        coordinate,
+        seed: new Map([...drawn].map(([id, joint]) => [id, { x: joint.x, y: joint.y }])),
+      });
+    });
+    return held;
+  }
+
+  /** Put each of those machines back on the pose it was showing. */
+  private restoreHeldPoses(held: Map<string, HeldPose>): void {
+    held.forEach((pose, key) => {
+      const index = this.partitions.findIndex(
+        (partition) => topologyOf(partition.ownJoints) === key
+      );
+      const frames = this.mechanisms[index];
+      if (index === -1 || !frames?.isMechanismValid()) return;
+      // The rule has to be the one the coordinate was measured in. A rebuild
+      // can change the drive again on its way through -- `reconcileOneInputPerMechanism`
+      // drops a second input when two driven machines fuse -- and a coordinate
+      // read against one rule means nothing against another.
+      const rule = this.currentRuleFor(index);
+      if (!rule || JSON.stringify(rule) !== JSON.stringify(pose.rule)) return;
+      const reach = findPose(
+        coordinatesAcross(rule, frames.joints),
+        { coordinate: pose.coordinate, kind: rule.kind, seed: pose.seed },
+        frames.joints
+      );
+      // Not every pose survives the change: drive a crank-rocker from its
+      // rocker and the half of the circuit past the toggle is no longer
+      // reachable. The held clock stands in that case, which is where the
+      // machine already is -- no worse than before, and nothing to explain.
+      if (!reach) return;
+      this.seekMechanism(index, this.secondsAt(frames, reach));
+    });
+  }
+
+  /** When in a cycle a reach falls, blended between its two samples. */
+  private secondsAt(frames: Mechanism, reach: AnchorReach): number {
+    const times = frames.timeNum ?? [];
+    const here = times[reach.index];
+    const next = times[Math.min(reach.index + 1, times.length - 1)];
+    return here + (next - here) * reach.blend;
+  }
+
   /** Whether this machine is still measured the way its anchor was taken. */
   private ruleStillHolds(index: number, anchor: MachineAnchor): boolean {
     const rule = this.currentRuleFor(index);
@@ -5551,12 +5660,7 @@ export class MechanismService {
               : 1) as 1 | -1,
             seed: new Map(frames.joints[0].map((joint) => [joint.id, { x: joint.x, y: joint.y }])),
           };
-    const times = frames.timeNum ?? [];
-    const anchored =
-      times[reach.index] +
-      (times[Math.min(reach.index + 1, times.length - 1)] - times[reach.index]) * reach.blend;
-
-    this.applyMechanismPose(frames, this.partitions[index], anchored);
+    this.applyMechanismPose(frames, this.partitions[index], this.secondsAt(frames, reach));
     // The anchored pose is now what the arrays hold, so it is what the rebuild
     // must keep -- the same staging flag, for one more rebuild.
     this.seedFromDisplay = key;
@@ -5583,11 +5687,7 @@ export class MechanismService {
     // of the pose they were editing at, so it is measured from that pose.
     const reach = reachAnchor(coordinates, { ...anchor, ...where }, frames.joints);
     if (!reach) return;
-    const times = frames.timeNum ?? [];
-    const seconds =
-      times[reach.index] +
-      (times[Math.min(reach.index + 1, times.length - 1)] - times[reach.index]) * reach.blend;
-    this.seekMechanism(index, seconds);
+    this.seekMechanism(index, this.secondsAt(frames, reach));
   }
 
   /**

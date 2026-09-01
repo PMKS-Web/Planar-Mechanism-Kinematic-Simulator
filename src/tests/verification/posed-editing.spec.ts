@@ -644,4 +644,49 @@ describe('editing at a displaced pose', () => {
     service.updateMechanism();
     expect(service.anchorOf(0)?.topology).not.toBe('A,B,C,D');
   });
+
+  // ---- a rebuild that re-measures the input --------------------------------
+
+  it('holds the pose on screen when the drive moves to another joint', () => {
+    // A rebuild carries each machine's elapsed seconds across and lays them
+    // back on, which holds the pose exactly as long as the machine is
+    // parameterized the same way on both sides of it. Move the drive from A to
+    // B and it is not: t = 0.7 s meant "0.7 s of A turning" and now means "0.7
+    // s of B turning". Held anyway, the linkage teleported the moment its input
+    // changed -- while the *start* pose, which the anchor looks after, stayed
+    // correctly put. The design was never in danger; the thing the reader was
+    // looking at was.
+    const { service, joints } = oneBar();
+    const started = startPoses(service);
+    displace(service);
+    const shown = service.joints.map((joint) => [joint.id, joint.x, joint.y]);
+
+    joints[0].input = false;
+    joints[1].input = true;
+    service.updateMechanism(true);
+
+    expect(service.joints.map((joint) => [joint.id, joint.x, joint.y])).toEqual(
+      shown.map(([id, x, y]) => [
+        id,
+        expect.closeTo(x as number, 3),
+        expect.closeTo(y as number, 3),
+      ])
+    );
+    // The clock is what gives, which is the same trade `reverseDrive` makes:
+    // this pose is somewhere else entirely in B's cycle.
+    expect(service.secondsOf(0)).not.toBeCloseTo(service.mechanisms[0].cyclePeriod / 3, 3);
+    // And none of it moved the start.
+    expect(startPoses(service)).toEqual(started);
+  });
+
+  it('leaves a machine alone when the rebuild does not re-measure it', () => {
+    // The pose-holding above is keyed on the rule actually changing, so an
+    // ordinary rebuild still restores by the clock -- which is what keeps a
+    // scrubbed machine reading the time it was scrubbed to.
+    const { service } = oneBar();
+    displace(service);
+    const seconds = service.secondsOf(0);
+    service.updateMechanism(true);
+    expect(service.secondsOf(0)).toBeCloseTo(seconds, 6);
+  });
 });
