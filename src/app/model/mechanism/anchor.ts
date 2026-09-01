@@ -404,9 +404,31 @@ export interface CommitPose {
  * linkages on one grid compete for the reader's attention, and only one of them
  * is the thing being edited.
  */
+/** One of the ghost's link shapes: the real outline, carried to the start pose. */
+export interface GhostBody {
+  /** The link's own path, exactly as the canvas draws it now. */
+  readonly d: string;
+  readonly fill: string;
+  /** Where that path goes: a rigid move from the drawn pose to the start one. */
+  readonly transform: string;
+}
+
 export interface StartPoseGhost {
   /** Which machine, so the canvas can tie it to a transport row. */
   readonly index: number;
+  /** Which sample the start pose falls on, for the arc a drag traces from it. */
+  readonly at: number;
+  /**
+   * The real linkage, carried back to where it starts.
+   *
+   * It used to be a skeleton -- every pair of a link's joints as a line, so a
+   * plate drew as its outline plus its diagonals. That reads as a diagram of
+   * the linkage rather than as the linkage: a plate is a plate, and the
+   * diagonals were a second thing to explain. Behind the mechanism at 22% it is
+   * plainly the same object, earlier.
+   */
+  readonly bodies: readonly GhostBody[];
+  /** Kept for the press target and the tag: a plate's outline is hard to aim at. */
   readonly bars: readonly { x1: number; y1: number; x2: number; y2: number }[];
   readonly pins: readonly { x: number; y: number }[];
   /**

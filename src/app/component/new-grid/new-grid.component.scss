@@ -409,6 +409,12 @@
     // A target, not decoration: it is the most obvious thing in the window to
     // press when what you want is to go back to the start.
     cursor: pointer;
+    // The real linkage, behind the mechanism. 22% is the whole treatment: same
+    // shapes, same colors, plainly the same object earlier -- against a
+    // skeleton, which read as a diagram of the linkage and left a plate's
+    // diagonals to be explained.
+    opacity: 0.22;
+    transition: opacity 120ms ease-out;
 
     // The hit area: invisible, and the only part of the ghost with a stroke
     // wide enough to be aimed at with a finger.
@@ -417,47 +423,72 @@
       stroke-linecap: round;
     }
 
-    &:hover line:not(.ghostGrab),
-    &:hover circle {
-      // The same ink, less transparent. A ghost that changed color on hover
-      // would read as a second state of the warning below it.
-      opacity: 1;
+    // The same ink, less transparent. A ghost that changed color on hover would
+    // read as a second state of the warning below it.
+    &:hover {
+      opacity: 0.4;
     }
 
-    line {
-      stroke: rgba(63, 81, 181, 0.32);
-      stroke-linecap: round;
+    .ghostBody {
+      stroke: none;
     }
 
-    circle {
-      fill: rgba(63, 81, 181, 0.32);
+    .ghostPin {
+      fill: rgba(63, 81, 181, 0.55);
+      stroke: none;
     }
 
     // The drag has taken the linkage somewhere its original start no longer
-    // exists. Amber rather than red: nothing is broken, and letting go here is
-    // allowed -- it just moves the start, which is what the tag says.
-    // Dimmed amber, not bright: it is still a reference under the mechanism,
-    // and at full strength it took the eye off the linkage the reader has hold
-    // of -- which is the thing they need to see to drag back out of this.
+    // exists. Nothing is broken and letting go here is allowed -- it just moves
+    // the start, which is what the tag says -- so this is the same
+    // informational indigo the strip and the seat use rather than an alarm
+    // color. Amber stays where it earns its keep: the toggle-point dot on the
+    // transport row, which is a warning about the linkage rather than about
+    // the reader.
+    //
+    // The shapes give way to a dotted outline with hollow pins: what is being
+    // said is that this pose is about to stop existing, and an outline is the
+    // drawing of a thing that is not there.
     &.unreachable {
-      line:not(.ghostGrab) {
-        stroke: rgba(230, 145, 0, 0.5);
+      opacity: 0.5;
+
+      .ghostBody {
+        fill: none;
       }
 
-      circle {
-        fill: rgba(230, 145, 0, 0.5);
+      .ghostEdge {
+        stroke: #303f9f;
+        stroke-linecap: round;
+      }
+
+      .ghostPin {
+        fill: #fff;
+        stroke: #303f9f;
       }
     }
   }
 
+  // How far this gesture has taken what it is holding, drawn from where it
+  // started. In the ink `#pathsHolder` already strokes traced paths in, dashed
+  // because this one ends with the gesture.
+  .dragTrace {
+    fill: none;
+    stroke: #1a237e;
+    stroke-linecap: round;
+    opacity: 0.75;
+  }
+
   .startGhostTag {
-    fill: #b26a00;
-    text-anchor: middle;
+    fill: #fff;
+    text-anchor: start;
     font-family: Roboto, 'Helvetica Neue', sans-serif;
-    paint-order: stroke;
-    stroke: rgba(255, 255, 255, 0.85);
-    stroke-width: 3px;
-    stroke-linejoin: round;
+  }
+
+  // The tag rides the pointer rather than the drawing: anchored to the one
+  // thing on screen the reader is definitely looking at, instead of floating
+  // over a linkage whose own marks it has to dodge.
+  .startGhostTagPill {
+    fill: #303f9f;
   }
 
   // Where the middle of the coupler goes over the whole of the travel.

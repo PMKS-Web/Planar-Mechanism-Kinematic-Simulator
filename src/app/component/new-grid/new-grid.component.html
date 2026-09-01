@@ -459,6 +459,15 @@
           (click)="goToStart(ghost)"
           [attr.aria-label]="'Back to the start pose'"
         >
+          <!-- The real linkage, behind the mechanism: the same shapes in the
+               same colors, at 22%. It was a skeleton -- every pair of a link's
+               joints as a line, so a plate drew as its outline plus its
+               diagonals -- which reads as a diagram of the linkage rather than
+               as the linkage, and left the diagonals to be explained. A plate
+               is a plate. -->
+          @for (body of ghost.bodies; track $index) {
+            <path class="ghostBody" [attr.d]="body.d" [attr.fill]="body.fill" fill-rule="evenodd" />
+          }
           @for (bar of ghost.bars; track $index) {
             <!-- The line the reader sees is two pixels wide, which is a hard
                  thing to hit. A transparent one several times that, drawn
@@ -471,18 +480,49 @@
               [attr.y2]="bar.y2"
               [attr.stroke-width]="svgGrid.scaleWithZoom(14)"
             />
-            <line
-              [attr.x1]="bar.x1"
-              [attr.y1]="bar.y1"
-              [attr.x2]="bar.x2"
-              [attr.y2]="bar.y2"
-              [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
-            />
+            <!-- Drawn only while the start is about to be lost, where the
+                 shapes give way to a dotted outline. Otherwise the bodies above
+                 are the ghost, and a skeleton over them would be the diagram
+                 again. -->
+            @if (ghostWarns(ghost)) {
+              <line
+                class="ghostEdge"
+                [attr.x1]="bar.x1"
+                [attr.y1]="bar.y1"
+                [attr.x2]="bar.x2"
+                [attr.y2]="bar.y2"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(2.5)"
+                [attr.stroke-dasharray]="
+                  svgGrid.scaleWithZoom(0.1) + ' ' + svgGrid.scaleWithZoom(5)
+                "
+              />
+            }
           }
           @for (pin of ghost.pins; track $index) {
-            <circle [attr.cx]="pin.x" [attr.cy]="pin.y" [attr.r]="svgGrid.scaleWithZoom(4)" />
+            <circle
+              class="ghostPin"
+              [attr.cx]="pin.x"
+              [attr.cy]="pin.y"
+              [attr.r]="svgGrid.scaleWithZoom(4)"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+            />
           }
         </g>
+      }
+    </g>
+  }
+
+  <!-- What the gesture has moved, drawn from where it started. Above the ghost
+       and below the live mechanism, so the drawing still comes first. -->
+  @if (dragArcs(); as arcs) {
+    <g id="dragTraceHolder" style="transform: scaleY(-1)" pointer-events="none">
+      @for (arc of arcs; track $index) {
+        <path
+          class="dragTrace"
+          [attr.d]="arc"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
+          [attr.stroke-dasharray]="svgGrid.scaleWithZoom(2) + ' ' + svgGrid.scaleWithZoom(4)"
+        />
       }
     </g>
   }
@@ -1040,15 +1080,34 @@
     <g id="startGhostTags" style="transform: scaleY(-1)" pointer-events="none">
       @for (ghost of startGhosts(); track ghost.index) {
         @if (ghostWarns(ghost)) {
-          <text
-            class="startGhostTag"
-            [attr.x]="ghostTagAt(ghost).x"
-            [attr.y]="-ghostTagAt(ghost).y"
-            [attr.font-size]="svgGrid.scaleWithZoom(13)"
-            transform="scale(1,-1)"
+          <!-- A filled pill rather than outlined text. It is the one thing
+               drawn over the drawing in any state, so it says its piece plainly
+               and gets out of the way; the verb carries the consequence, which
+               is what letting go will do rather than what has gone wrong. -->
+          <!-- The holder is flipped, so the pill flips back: text drawn under
+               `scaleY(-1)` reads upside down. -->
+          <g
+            [attr.transform]="
+              'translate(' + ghostTagAt(ghost).x + ',' + -ghostTagAt(ghost).y + ') scale(1,-1)'
+            "
           >
-            start unreachable
-          </text>
+            <rect
+              class="startGhostTagPill"
+              x="0"
+              [attr.y]="svgGrid.scaleWithZoom(-11)"
+              [attr.width]="svgGrid.scaleWithZoom(196)"
+              [attr.height]="svgGrid.scaleWithZoom(22)"
+              [attr.rx]="svgGrid.scaleWithZoom(11)"
+            />
+            <text
+              class="startGhostTag"
+              [attr.x]="svgGrid.scaleWithZoom(12)"
+              [attr.y]="svgGrid.scaleWithZoom(4)"
+              [attr.font-size]="svgGrid.scaleWithZoom(12)"
+            >
+              Letting go moves the start here
+            </text>
+          </g>
         }
       }
     </g>

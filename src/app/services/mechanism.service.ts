@@ -50,6 +50,7 @@ import {
   CommitPose,
   CoordinateRule,
   MachineAnchor,
+  GhostBody,
   StartPoseGhost,
   blendFrame,
   coordinateIn,
@@ -5739,7 +5740,12 @@ export class MechanismService {
    */
   private lastGoodGhost = new Map<
     string,
-    { bars: { x1: number; y1: number; x2: number; y2: number }[]; pins: { x: number; y: number }[] }
+    {
+      at: number;
+      bodies: GhostBody[];
+      bars: { x1: number; y1: number; x2: number; y2: number }[];
+      pins: { x: number; y: number }[];
+    }
   >();
 
   /**
@@ -5787,7 +5793,18 @@ export class MechanismService {
       // the reader is about to lose and the thing dragging back recovers.
       if (!reach) {
         const held = this.lastGoodGhost.get(key);
-        return held ? [{ index, bars: held.bars, pins: held.pins, reachable: false }] : [];
+        return held
+          ? [
+              {
+                index,
+                at: held.at,
+                bodies: held.bodies,
+                bars: held.bars,
+                pins: held.pins,
+                reachable: false,
+              },
+            ]
+          : [];
       }
       const start = blendFrame(frames.joints, reach.index, reach.blend);
       if (!start?.length) return [];
@@ -5806,9 +5823,67 @@ export class MechanismService {
         }
       });
       const pins = start.map((joint) => ({ x: joint.x, y: joint.y }));
-      this.lastGoodGhost.set(key, { bars, pins });
-      return [{ index, bars, pins, reachable: true }];
+      // And the real shapes. A link is a rigid body, so its outline at the start
+      // pose is the outline it is wearing now, moved: two of its own joints give
+      // the move, and `transformRigidPath` is the same one `Mechanism` uses to
+      // carry a compound path across the samples it solves.
+      const bodies = partition.links.flatMap((link): GhostBody[] => {
+        if (!(link instanceof RealLink) || !link.d) return [];
+        const [from, to] = link.joints;
+        const there = from && to ? at.get(from.id) : undefined;
+        const thereEnd = from && to ? at.get(to.id) : undefined;
+        if (!there || !thereEnd) return [];
+        return [
+          {
+            d: transformRigidPath(link.d, from, to, there, thereEnd),
+            fill: this.getLinkProp(link, 'fill') as string,
+            transform: '',
+          },
+        ];
+      });
+      this.lastGoodGhost.set(key, { at: reach.index, bodies, bars, pins });
+      return [{ index, at: reach.index, bodies, bars, pins, reachable: true }];
     });
+  }
+
+  /**
+   * The arc one joint has travelled from its machine's start to the pose on
+   * screen, as an SVG path.
+   *
+   * The same curve the right-click menu's traced path draws, borrowed for the
+   * length of a gesture and cut to the part that has actually happened -- so
+   * "how far you have taken it" is a drawn line rather than an inference. It is
+   * also the discoverability fix: the moment the reader touches the mechanism a
+   * line appears joining it to the ghost, so the faint thing behind is visibly
+   * connected to what they are holding rather than being scenery.
+   *
+   * Nothing when the start is out of reach: the joint can no longer get back to
+   * where it began, so a line joining the two would draw a journey that does
+   * not exist. The trace simply stopping is itself the tell.
+   */
+  travelledArcOf(joint: Joint): string | undefined {
+    const index = this.indexOfMechanismContaining(joint);
+    const frames = this.mechanisms[index];
+    if (index === -1 || !frames?.isMechanismValid()) return undefined;
+    const ghost = this.startPoseGhosts().find((one) => one.index === index);
+    if (!ghost?.reachable) return undefined;
+    const samples = frames.joints;
+    const total = samples.length;
+    if (total < 2) return undefined;
+    const now = Math.max(Math.min(this.currentSampleOf(index), total - 1), 0);
+    const where = new Map(samples[0].map((one, position) => [one.id, position]));
+    const seat = where.get(joint.id);
+    if (seat === undefined) return undefined;
+    // Forward from the start, wrapping: the reader has driven the input that
+    // way, and the short way round is not the way it went.
+    const points: string[] = [];
+    for (let step = 0; ; step++) {
+      const sample = (ghost.at + step) % total;
+      const one = samples[sample]?.[seat];
+      if (one && one.id === joint.id) points.push(`${one.x},${one.y}`);
+      if (sample === now || step > total) break;
+    }
+    return points.length > 1 ? `M ${points.join(' L ')}` : undefined;
   }
 
   setAllPlaying(playing: boolean): void {

@@ -2216,6 +2216,34 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
+   * The arcs to draw while something is being dragged: one per joint the
+   * gesture is moving, from its ghost twin to where it is now.
+   *
+   * A joint gets its own; a link gets one for every joint on it, so a plate
+   * dragged by its body shows all three curves and the reader sees the whole
+   * part swing rather than one corner of it.
+   *
+   * The app's own traced path rather than a new tether between two dots: a
+   * rubber band would be a mark to learn, while the trace already exists,
+   * students already turn it on, and it is the established answer to "where has
+   * this point been" -- which is exactly what a drag away from the start is
+   * asking. Temporary and additive: nothing here touches a trace the reader
+   * switched on for themselves.
+   */
+  dragArcs(): string[] {
+    const dragging =
+      this.dragState.joint === jointStates.dragging || this.dragState.link === linkStates.dragging;
+    if (!dragging || !this.showStartGhost()) return [];
+    const joints =
+      this.dragState.link === linkStates.dragging
+        ? (this.activeObjService.selectedLink?.joints ?? [])
+        : [this.activeObjService.selectedJoint];
+    return joints
+      .map((joint) => (joint ? this.mechanismSrv.travelledArcOf(joint) : undefined))
+      .filter((arc): arc is string => !!arc);
+  }
+
+  /**
    * How many readings in a row have said a machine cannot reach its start.
    *
    * The check is exact, but the *geometry* it is asked about crosses the
@@ -2237,6 +2265,20 @@ export class NewGridComponent implements OnDestroy {
    * -- a ground's hatching, an input's motor box -- and the words went behind.
    */
   ghostTagAt(ghost: StartPoseGhost): { x: number; y: number } {
+    // On the pointer, 20px off its tip, rather than over the ghost.
+    //
+    // It was centred over the ghost's own span, which is a place the reader is
+    // not necessarily looking and which the drawing's own marks -- a ground's
+    // hatching, an input's motor box -- kept getting in the way of. The pointer
+    // is the one thing on screen they are definitely looking at, and while this
+    // tag is on screen the pointer is down on the thing it is about.
+    //
+    // Only while a gesture is live: released, the pointer is not where the
+    // reader's attention is any more, and the tag falls back to the ghost.
+    if (this.dragState.isPointerDown) {
+      const off = this.svgGrid.scaleWithZoom(20);
+      return { x: this.mouseLocation.x + off, y: this.mouseLocation.y + off };
+    }
     const xs = ghost.pins.map((pin) => pin.x);
     const ys = ghost.pins.map((pin) => pin.y);
     return {
