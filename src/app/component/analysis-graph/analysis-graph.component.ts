@@ -515,7 +515,15 @@ export class AnalysisGraphComponent
         if (value !== null) values.push(value);
       })
     );
-    const span = values.length ? readableRange(values) : { low: 0, high: 0 };
+    // The range the axis was *actually showing*, raw. Trimmed here, the plot
+    // changed the moment a drag began: a force curve peaking at 180 N was
+    // rescaled to a 60 N ceiling and its own spike clipped, so the "before"
+    // curve was not what the reader had been looking at a moment earlier --
+    // which is the one thing this overlay promises. Nothing needs trimming
+    // here anyway: this is a plot the reader was already reading happily.
+    const span = values.length
+      ? { low: Math.min(...values), high: Math.max(...values) }
+      : { low: 0, high: 0 };
     this.baselineAt = this.history.historySteps;
     this.baseline = {
       series: series.map((one) => ({
@@ -588,15 +596,13 @@ export class AnalysisGraphComponent
         })
       );
       if (!values.length) return null;
-      // The peak of the curve the reader can *see*, which is the same range the
-      // axis is drawn to. Taken as the raw maximum it reported thirty-seven
-      // thousand over a plot whose axis read thirty -- the number and the
-      // picture disagreeing about the same curve, which is worse than either
-      // being wrong on its own. A toggle sends acceleration to infinity, and
-      // "you have made a singularity" is what the curve leaving the top of the
-      // plot says; it is not a peak anybody tuned to.
-      const range = readableRange(values);
-      return Math.max(Math.abs(range.low), Math.abs(range.high));
+      // The true peak of each curve, both measured the same way. Trimmed, the
+      // two numbers were computed per-curve while the axis was computed over
+      // both and then rounded, so the pill could read `35.61 -> 77.13` above a
+      // plot whose "before" curve visibly reached 180 -- three different
+      // answers to one question. The axis is the thing that is allowed to trim,
+      // and a curve leaving the top of the plot is how it says so.
+      return Math.max(...values.map((one) => Math.abs(one)));
     };
     const shown = new Set(this.displayedSeries.map((one) => one.name?.replace(BEFORE, '')));
     const before = peakOf(held.series.filter((one) => shown.has(one.name?.replace(BEFORE, ''))));
@@ -610,7 +616,7 @@ export class AnalysisGraphComponent
     return {
       before: formatAnalysisValue(before),
       after: formatAnalysisValue(after),
-      better: after < before,
+      better: !same && after < before,
       same,
     };
   }
@@ -839,14 +845,20 @@ export class AnalysisGraphComponent
    * Every tick here is a whole number of one step away from a limit that is
    * itself a whole number of steps, so zero is a line whenever it is in range.
    */
-  private applyYAxisScale(): void {
+  /** Every finite number in a set of series, in one array. */
+  private valuesOf(series: ApexAxisChartSeries): number[] {
     const values: number[] = [];
-    this.displayedSeries.forEach((series) =>
-      series.data.forEach((point) => {
+    series.forEach((one) =>
+      one.data.forEach((point) => {
         const value = this.pointValue(point);
         if (value !== null) values.push(value);
       })
     );
+    return values;
+  }
+
+  private applyYAxisScale(): void {
+    const values = this.valuesOf(this.displayedSeries);
     const yaxis = this.chartOptions.yaxis!;
     // With a comparison on the plot the axis has to hold both curves, and it
     // has to hold *still*: refitted to the live values on every pointer move it
@@ -855,14 +867,21 @@ export class AnalysisGraphComponent
     // the live curve leaves it -- a clipped peak would lie, and a peak that
     // stops growing because the axis grew with it says nothing.
     const held = this.baseline;
-    // Robust only while a comparison is on the plot. An ordinary graph keeps
-    // the range it has always had: the drawing it describes is one the reader
-    // built deliberately, and if it has a spike in it that is the answer.
-    const range = values.length
-      ? held
-        ? readableRange(values)
-        : { low: Math.min(...values), high: Math.max(...values) }
-      : { low: 0, high: 0 };
+    // The live values only. The baseline contributes the range it was drawn to,
+    // untouched; what can contain a singularity is the curve the drag is making
+    // right now, and that is the only half worth trimming. An ordinary graph
+    // with no comparison keeps the range it has always had -- a spike in a
+    // drawing somebody built deliberately is the answer rather than the noise.
+    const liveValues = this.valuesOf(
+      this.displayedSeries.filter((one) => !BEFORE.test(one.name ?? ''))
+    );
+    const range = held
+      ? liveValues.length
+        ? readableRange(liveValues)
+        : { low: 0, high: 0 }
+      : values.length
+        ? { low: Math.min(...values), high: Math.max(...values) }
+        : { low: 0, high: 0 };
     const low = range.low;
     const high = range.high;
     if (held && values.length) {

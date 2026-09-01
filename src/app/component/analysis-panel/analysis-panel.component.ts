@@ -88,9 +88,16 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy {
   get analysisHelpHint(): string {
     // The verb the reader's device gives them, as everywhere else in the app.
     const pick = this.viewport.isTouch() ? 'Tap' : 'Click';
+    // The second sentence is the half a reader will not guess. Dragging edits
+    // here now, and it deliberately does *not* move what is graphed -- so
+    // without saying so, a drag that leaves the heading on another joint reads
+    // as a stale panel rather than as the point.
+    const tune = this.viewport.isTouch()
+      ? ' Drag a part to tune it; the graphs stay on whatever you tapped.'
+      : ' Drag a part to tune it; the graphs stay on whatever you clicked.';
     return this.showForce
-      ? `${pick} a joint for the reactions it carries, or a link for the forces at its joints. The input joint carries the effort that drives the mechanism.`
-      : `${pick} a joint for position, velocity and acceleration graphs, or a link for its angular kinematics.`;
+      ? `${pick} a joint for the reactions it carries, or a link for the forces at its joints. The input joint carries the effort that drives the mechanism.${tune}`
+      : `${pick} a joint for position, velocity and acceleration graphs, or a link for its angular kinematics.${tune}`;
   }
 
   /**

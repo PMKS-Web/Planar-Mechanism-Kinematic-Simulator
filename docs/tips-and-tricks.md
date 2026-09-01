@@ -493,6 +493,20 @@ pixels are available; anything you add to the bottom row has to survive that.
 - **SCSS appended before a file's last `}` lands inside the last rule, not at the top level.**
   Two chips came out as `.analysis-gap .baselineChip` and silently did nothing. `grep` the
   built CSS for the selector, not just the class name.
+- **A second mouse button pressed during a drag arrives as `pointermove`, not `pointerdown`.**
+  The Pointer Events spec fires `pointerdown` only for the *first* button. These bindings are
+  `pointerdown`, so the right- and middle-button teardown written into `mouseDownNow`'s button
+  cases could never run during a drag -- the gesture was left standing, and the next rebuild
+  settled the moved geometry onto the anchor as though it had been asked for, with nothing to
+  undo it. The hook that actually fires is `contextmenu`, and `onContextMenu` runs the same
+  `putBackTheDrag(); letGoOfEverything(true)` the pinch and the long press do.
+- **`putBackTheDrag()` must rebuild while the machine is still staged.** The cancel that follows
+  is what finds the anchor *in those fresh frames* and makes it t = 0 again. Un-stage first and
+  the settle searches frames solved from the geometry the drag had already changed.
+- **A comparison's baseline keeps the axis it was drawn to, untrimmed.** Only the live curve can
+  contain a singularity the reader has just created, so only the live half is worth trimming --
+  and running the baseline through the same trim rescaled the plot the instant a drag began,
+  clipping the very curve the overlay promises is "what you were looking at".
 - **Do not run `npm test` and a large Playwright sweep at the same time.** Six heavy fixture,
   codec and graph specs time out under the load and fail together, which reads exactly like a
   shared-state bug in whatever you just changed. Re-run the unit suite on a quiet machine before

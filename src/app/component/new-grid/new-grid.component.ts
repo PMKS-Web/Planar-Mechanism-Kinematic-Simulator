@@ -982,6 +982,11 @@ export class NewGridComponent implements OnDestroy {
         this.selectionGesture = undefined;
         this.pendingPartReplacement = undefined;
         this.selectionTogglePress = false;
+        // Before the cancel, which is what makes this the last moment the
+        // gesture still looks like a drag. Past the slop it has already moved
+        // something; cancelled with the moved geometry standing, the next
+        // rebuild settles it onto the anchor as though it had been asked for.
+        this.putBackTheDrag();
         this.dragState.cancel();
       } else {
         this.activeObjService.updateSelectedObj(clickedObj);
@@ -2836,12 +2841,18 @@ export class NewGridComponent implements OnDestroy {
       force.forceLine = force.createForceLine(force.startCoord, force.endCoord);
       force.forceArrow = force.createForceArrow(force.startCoord, force.endCoord);
     });
-    // Only where something actually moved. `isDragging` is true from the
-    // pointer going down, so a press that never travelled -- a pinch that began
-    // on a joint and simply zoomed -- was being "restored" and re-solved, and a
-    // re-solve of an unchanged drawing still rewrites its coordinates in the
-    // last few decimal places.
-    if (moved) this.mechanismSrv.updateMechanism();
+    // Only where something actually moved: a press that never travelled -- a
+    // pinch that began on a joint and simply zoomed -- must not be "restored"
+    // and re-solved, because a re-solve of an unchanged drawing still rewrites
+    // its coordinates in the last few decimal places.
+    if (!moved) return;
+    // Rebuilt while still staged, deliberately, and the caller cancels the
+    // posed edit immediately afterwards. That order is the whole trick: this
+    // rebuild solves a fresh cycle from the geometry just put back, and the
+    // cancel then finds the anchor *in those frames* and makes it t = 0 again.
+    // Cancelled first, the settle would be searching frames solved from the
+    // geometry the drag had already changed.
+    this.mechanismSrv.updateMechanism();
   }
 
   /**
@@ -2876,6 +2887,23 @@ export class NewGridComponent implements OnDestroy {
   onContextMenu($event: MouseEvent) {
     this.lastRightClickCoord.x = $event.clientX;
     this.lastRightClickCoord.y = $event.clientY;
+    // A menu is opening, so whatever the other button had hold of is over --
+    // and putting a gesture down means putting the drawing back.
+    //
+    // This is where a right-click during a drag actually announces itself.
+    // `mouseDownNow`'s button cases never see one: these bindings are
+    // `pointerdown`, and the Pointer Events spec fires `pointerdown` only for
+    // the *first* button -- a second button pressed while one is already down
+    // arrives as a `pointermove` with different `buttons`. So the teardown that
+    // was written into those cases could not run, and past the drag slop the
+    // gesture had already moved something and staged the machine: the next
+    // rebuild settled the moved geometry onto the anchor as though it had been
+    // asked for, and an abandoned gesture mints no entry to undo it with.
+    //
+    // After `setLastRightClick`, which the element under the pointer fires
+    // first, so the menu still knows what it is about.
+    this.putBackTheDrag();
+    this.letGoOfEverything(true);
   }
 
   /**
@@ -2884,8 +2912,8 @@ export class NewGridComponent implements OnDestroy {
    *
    * The press has already started a drag -- `mouseDown` cannot know at the
    * time whether a finger is going to move -- so the first thing to do is put
-   * that drag down, which is exactly what the right-button case of `mouseDown`
-   * does and for the same reason.
+   * that drag down *and put the drawing back*, which is exactly what the
+   * right-button case of `mouseDown` does and for the same reason.
    *
    * Then it asks the element under the finger for a `contextmenu`, rather than
    * building a menu here. Every part on this canvas already answers that event
@@ -3453,6 +3481,23 @@ export class NewGridComponent implements OnDestroy {
   }
 
   private mouseDownNow($event: MouseEvent) {
+    // The other two buttons put the gesture down rather than starting one, and
+    // that has to happen *before* anything below touches the drag state.
+    // `press()` on the next line re-arms the gesture -- it clears the travelled
+    // and modified flags -- so a teardown further down was working from a
+    // gesture that looked as though it had never moved.
+    //
+    // Past the drag slop the first button has already moved something and
+    // staged the machine. Cancelling the drag state alone left the moved
+    // geometry standing, and the next rebuild settled it onto the anchor as
+    // though it had been asked for: an edit nobody made, with nothing to undo
+    // it, because an abandoned gesture mints no entry. The same two lines the
+    // pinch and the long press already run, for the same reason.
+    if ($event.button === 1 || $event.button === 2) {
+      this.putBackTheDrag();
+      this.letGoOfEverything(true);
+      if ($event.button === 1) return;
+    }
     // Log the time that the mouse was clicked
     this.timeMouseDown = new Date().getTime();
     this.synthPressTaken = false;
@@ -3818,18 +3863,10 @@ export class NewGridComponent implements OnDestroy {
           // by then it knows the two joints already share a bar.
         }
         break;
-      // TODO: Be sure all things reset
+      // Buttons 1 and 2 are handled at the top of this method, before the
+      // press below could re-arm the gesture they are putting down.
       case 1: // Middle-Click
-        this.dragState.cancel();
-        this.cylinderCreateStart = undefined;
-        this.linkCreateStart = undefined;
-        this.linkCreateFrom = undefined;
-        return;
       case 2: // Right-Click
-        this.dragState.cancel();
-        this.cylinderCreateStart = undefined;
-        this.linkCreateStart = undefined;
-        this.linkCreateFrom = undefined;
         break;
     }
   }

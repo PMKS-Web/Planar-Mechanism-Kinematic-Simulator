@@ -267,6 +267,74 @@ const jointAt = (p, id) =>
   await c.close();
 }
 
+// ---- a right-click mid-drag is an abandoned gesture, not an edit ----------
+//
+// Found by review, and it reproduced in Edit as well as the analysis modes, so
+// it was a hole in the posed-editing work rather than in the analysis unlock.
+// The teardown written for it lived in `mouseDownNow`'s button cases and could
+// never run: those bindings are `pointerdown`, and the Pointer Events spec
+// fires `pointerdown` only for the *first* button -- a second button pressed
+// while one is down arrives as a `pointermove`. So the drag was left standing,
+// and the next rebuild settled the moved geometry onto the anchor as though it
+// had been asked for, with nothing to undo it.
+for (const mode of ['Kinematic', 'Edit']) {
+  const c = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  await startQuiet(c);
+  const p = await c.newPage();
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(String(e)));
+  await openMechanism(p, BASE + '/?' + TEMPLATE_LINKAGES['4-Bar']);
+  await p.locator('.tabButton', { hasText: mode }).click();
+  await p.waitForTimeout(700);
+  await p.locator('.playButton').click();
+  await p.waitForTimeout(900);
+  await p.locator('.playButton').click();
+  await p.waitForTimeout(500);
+  await p.evaluate(() =>
+    ng.getComponent(document.querySelector('app-new-grid')).svgGrid.scaleToFitLinkage()
+  );
+  await p.waitForTimeout(600);
+
+  const cycleStart = () =>
+    p.evaluate(
+      () =>
+        ng
+          .getComponent(document.querySelector('app-new-grid'))
+          .mechanismSrv.mechanisms[0]?.joints[0]?.map((j) => [j.x, j.y]) ?? []
+    );
+  const before = await cycleStart();
+  const at = await jointAt(p, 'B');
+  await p.mouse.move(at.x, at.y);
+  await p.mouse.down();
+  for (let i = 1; i <= 4; i++) {
+    await p.mouse.move(at.x + i * 9, at.y - i * 6);
+    await p.waitForTimeout(80);
+  }
+  await p.mouse.down({ button: 'right' });
+  await p.mouse.up({ button: 'right' });
+  await p.waitForTimeout(400);
+  await p.mouse.up();
+  await p.waitForTimeout(900);
+
+  const after = await cycleStart();
+  const drift = Math.max(
+    ...before.map((one, i) => Math.hypot(one[0] - after[i][0], one[1] - after[i][1]))
+  );
+  // Model units: this drawing spans about 1500 of them, so a tenth of one is
+  // the restore-and-re-solve round trip's own arithmetic rather than a move.
+  record(`${mode}: a right-click mid-drag leaves the cycle's start where it was`, drift < 0.1, {
+    drift,
+  });
+  record(
+    `${mode}: and leaves no machine staged`,
+    (await p.evaluate(
+      () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.posedEditKey
+    )) === null
+  );
+  record(`${mode}: no page errors from the abandoned gesture`, errs.length === 0, errs.slice(0, 2));
+  await c.close();
+}
+
 await browser.close();
 const bad = out.filter(([, ok]) => !ok);
 console.log(`\n${out.length - bad.length}/${out.length} probes passed`);

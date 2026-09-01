@@ -400,6 +400,71 @@ await page.mouse.up();
 await page.waitForTimeout(1200);
 await page.screenshot({ path: `${SHOTS}/4-force.png` });
 
+// ---- 9. the comparison has to be honest ----------------------------------
+//
+// Found by review: the baseline was recorded through the same outlier trim the
+// live curve needs, so the axis changed the moment a drag began -- a force
+// curve peaking at 180 N was rescaled to a 60 N ceiling and its own spike
+// clipped. The "before" curve has to be what the reader was looking at.
+
+await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['Offset_Load_Rocker']}`);
+await page.locator('.tabButton', { hasText: 'Force' }).click();
+await page.waitForTimeout(1200);
+await page.evaluate(() => {
+  const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+  const driven = grid.mechanismSrv.joints.find((j) => j.input);
+  if (driven) grid.activeObjService.updateSelectedObj(driven);
+});
+await page.waitForTimeout(900);
+await page.locator('app-analysis-graph-section').first().locator('button').first().click();
+await page.waitForTimeout(1200);
+const axisOf = () =>
+  page.evaluate(() => {
+    const graph = window.ng.getComponent(document.querySelector('app-analysis-graph'));
+    return { min: graph.chartOptions.yaxis.min, max: graph.chartOptions.yaxis.max };
+  });
+const axisBefore = await axisOf();
+const tuning = await jointAt('B');
+await page.mouse.move(tuning.x, tuning.y);
+await page.mouse.down();
+for (let i = 1; i <= 6; i++) {
+  await page.mouse.move(tuning.x + i * 4, tuning.y - i * 3);
+  await page.waitForTimeout(90);
+}
+const axisDuring = await axisOf();
+const honestPeak = await page.evaluate(
+  () => window.ng.getComponent(document.querySelector('app-analysis-graph')).peakReadout
+);
+record(
+  'the axis still holds the whole of the curve from before the drag',
+  axisDuring.min <= axisBefore.min && axisDuring.max >= axisBefore.max,
+  { axisBefore, axisDuring }
+);
+record(
+  'and the peak it prints is one the axis can show',
+  Number(honestPeak.before) <= axisDuring.max,
+  { peak: honestPeak, axisDuring }
+);
+// A change too small to be anybody's doing is neither better nor worse.
+record(
+  'a peak that did not really move is not called an improvement',
+  !(honestPeak.same && honestPeak.better),
+  honestPeak
+);
+await page.mouse.up();
+await page.waitForTimeout(1000);
+
+record(
+  'the panel says that dragging does not move what is graphed',
+  /Drag a part to tune it/.test(await page.locator('app-analysis-panel').innerText()) ||
+    /Drag a part to tune it/.test(
+      await page.evaluate(() => {
+        const panel = window.ng.getComponent(document.querySelector('app-analysis-panel'));
+        return panel.analysisHelpHint;
+      })
+    )
+);
+
 record('no page errors', errors.length === 0, errors.slice(0, 3));
 
 const failed = results.filter(([, ok]) => !ok);
