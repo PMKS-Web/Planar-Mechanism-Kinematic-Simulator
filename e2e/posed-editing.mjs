@@ -569,6 +569,103 @@ await displace();
   await page.mouse.up();
 }
 
+// ---- 8. an input that turns back, where the start is not the left end ----
+//
+// Every check above is on a crank, whose whole cycle is measured *from* the
+// pose it was drawn in -- so its start sits at zero on the track and a marker
+// pinned to the left end passes. A rocker is the case that tells the two apart:
+// it is measured limit to limit, and the pose it was drawn in is four tenths of
+// the way along its own swing.
+
+await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['Offset_Load_Rocker']}`);
+await page.waitForTimeout(400);
+
+/** The transport row as the reader sees it, plus where its marks actually are. */
+const transport = () =>
+  page.evaluate(() => {
+    const bar = window.ng.getComponent(document.querySelector('app-playback-bar'));
+    const row = bar.rows[0];
+    const input = document.querySelector('.rowScrubber');
+    const box = input.getBoundingClientRect();
+    // A range thumb's centre: half a thumb in, half a thumb short of the end.
+    const centreAt = (per1000) => box.left + 12 + ((box.width - 24) * per1000) / 1000;
+    const seat = document.querySelector('.anchorSeat');
+    const seatBox = seat && seat.getBoundingClientRect();
+    return {
+      scrub: row.scrub,
+      anchorAt: row.anchorAt,
+      chip: row.displaced ?? null,
+      seats: document.querySelectorAll('.anchorSeat').length,
+      seatCentre: seatBox ? seatBox.left + seatBox.width / 2 : null,
+      wantSeatAt: row.anchorAt === undefined ? null : centreAt(row.anchorAt),
+    };
+  });
+
+const rocker = await transport();
+record(
+  'a rocker starts part way along its own track, not at the left end',
+  rocker.scrub > 100 && rocker.scrub < 900,
+  rocker
+);
+record('and the mark for its start is put there too', rocker.anchorAt === rocker.scrub, rocker);
+record(
+  'standing on its start, the row does not claim it is away from it',
+  rocker.chip === null && rocker.seats === 0,
+  rocker
+);
+
+await page.evaluate(() =>
+  window.ng
+    .getComponent(document.querySelector('app-playback-bar'))
+    .mechanism.seekMechanismTo(0, 0.85)
+);
+await page.waitForTimeout(400);
+const away = await transport();
+record('scrubbed away from it, the seat appears', away.seats === 1 && away.chip !== null, away);
+record(
+  'and it stays on the start rather than following the handle',
+  away.anchorAt === rocker.scrub,
+  away
+);
+// The whole point of the mark: it is a place on the track, so it has to be
+// *drawn* at that place. It was positioned by a calc that multiplied a length
+// by a percentage, which is invalid -- so it sat at the left of the well no
+// matter what it was told, and looked right for as long as the value was zero.
+record(
+  'and it is drawn where the handle stood, to the pixel',
+  Math.abs(away.seatCentre - away.wantSeatAt) < 1.5,
+  away
+);
+// The chip is a distance, and the readout beside it is a position. On a rocker
+// they are different numbers, which is what used to be wrong: the chip printed
+// the readout and so said "24 degrees from start" over a machine standing on
+// its start.
+record('the chip says a distance, not the reading beside it', away.chip !== rocker.chip, away);
+
+await page.evaluate(() => {
+  const bar = window.ng.getComponent(document.querySelector('app-playback-bar'));
+  bar.moveStartHere(bar.rows[0]);
+});
+await page.waitForTimeout(700);
+const moved = await transport();
+record(
+  'moving the start here moves the mark with it',
+  moved.anchorAt === away.scrub && moved.seats === 0 && moved.chip === null,
+  moved
+);
+await page.evaluate(() =>
+  window.ng
+    .getComponent(document.querySelector('app-playback-bar'))
+    .mechanism.seekMechanismTo(0, 0.2)
+);
+await page.waitForTimeout(400);
+const afterMove = await transport();
+record(
+  'and the seat is at the new start once the handle leaves it',
+  afterMove.seats === 1 && afterMove.anchorAt === away.scrub,
+  afterMove
+);
+
 record('no page errors', errors.length === 0, errors.slice(0, 3));
 
 await browser.close();

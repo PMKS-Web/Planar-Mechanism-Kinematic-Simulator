@@ -352,7 +352,7 @@
       @if (seatFor(row); as at) {
         <button
           class="anchorSeat"
-          [style.--at.%]="at.percent"
+          [style.--at]="at.percent"
           (click)="backToStart(row); $event.stopPropagation()"
           title="Back to where this machine's cycle starts"
           aria-label="Back to the start pose"

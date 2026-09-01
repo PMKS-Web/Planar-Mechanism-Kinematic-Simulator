@@ -380,6 +380,19 @@ and will bury a real one-property change.
 has two, hundreds of lines apart, and the later one wins. A rule added to the first that already
 exists in the second does nothing at all, and looks correct while doing it.
 
+**A length times a percentage is not a thing `calc()` can work out.** The scrub card's start marker
+was placed with `calc(... + (100% - 24px) * var(--at) / 100)`, and `--at` was bound from Angular as
+`[style.--at.%]` — so the multiplication read `<length> * 41.7%`, the whole `left` declaration was
+invalid, and the marker fell back to its static position at the left of the well. The value it was
+*given* never mattered. Bind a custom property that gets multiplied as a **bare number**
+(`[style.--at]`), and keep the `.%` suffix for properties that are used as a percentage outright, the
+way `--along` is used as a gradient stop.
+
+This one hid for a whole feature because the value was always zero: a marker pinned to the left is
+indistinguishable from a marker correctly placed at zero. If a positioned element only ever gets
+tested at one value, set it to a second one and measure — `getBoundingClientRect()` against the
+control it is supposed to line up with, not a screenshot.
+
 **Check where a block sits before adding to it.** The phone layout is spread over several media
 blocks by concern, not gathered in one place.
 
@@ -585,6 +598,16 @@ pixels are available; anything you add to the bottom row has to survive that.
 ---
 
 ## Domain facts worth knowing before you debug
+
+- **The transport's handle measures the *input*, not the clock, and the start pose is usually not at
+  either end of it.** `drive-profile.ts` maps each solved sample to `along` ∈ 0..1 across everything
+  the input does: end to end of a stroke, limit to limit of a rocker's swing, or once round for a
+  crank. Only the crank is measured *from* the drawn pose, so only there does the start sit at
+  `along = 0`. A rocker drawn mid-swing starts four tenths along its own track, which is why the
+  start marker is `profile.along[0]` and not zero, and why "is this parked away from its start" is a
+  question about `secondsOf(index)` rather than about how far along the handle is. Ask the wrong one
+  and the card claims a machine standing exactly on its start is 24 degrees from it, with 0.00 s
+  printed beside the claim.
 
 - **`MODEL_SCALE` is 200** (`model/render-scale.ts`) — model units per centimeter. A coordinate of
   600 is 3 cm. Most solver code is in model units and most panel code is in the reader's unit.

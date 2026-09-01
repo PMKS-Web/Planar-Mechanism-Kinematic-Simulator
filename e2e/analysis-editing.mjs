@@ -228,6 +228,33 @@ record('grabbing a moving joint pauses it, as in Edit', grabbed === false);
 await page.mouse.move(moving.x + 30, moving.y - 20);
 await page.waitForTimeout(120);
 record('and the drag it started is live', (await page.locator('.dragTrace').count()) >= 1);
+// The app's own traced path, not a mark invented for the gesture: the whole
+// curve the joint takes, solid, at the weight `#pathsHolder` draws one at. It
+// was a dashed arc cut to the part of the cycle the drag had covered, which is
+// a second vocabulary for a question Traced Paths already answers.
+const trace = await page.evaluate(() => {
+  const drag = document.querySelector('.dragTrace');
+  const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+  const joint = grid.activeObjService.selectedJoint;
+  const style = getComputedStyle(drag);
+  return {
+    dashed: drag.getAttribute('stroke-dasharray'),
+    width: drag.getAttribute('stroke-width'),
+    wantWidth: String(0.01 * grid.settings.objectScale),
+    d: drag.getAttribute('d'),
+    wantD: joint ? grid.mechanismSrv.getJointPath(joint) : null,
+    stroke: style.stroke,
+  };
+});
+record('drawn solid, like the trace it borrows', trace.dashed === null, trace);
+record("at the trace's own weight", trace.width === trace.wantWidth, {
+  width: trace.width,
+  want: trace.wantWidth,
+});
+record('and it is the whole path, not the arc so far', trace.d === trace.wantD, {
+  drawn: trace.d?.length,
+  want: trace.wantD?.length,
+});
 record(
   'with no placeholder over the graph',
   (await page.locator('.graphPlaceholder').count()) === 0

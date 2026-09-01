@@ -511,17 +511,15 @@
     </g>
   }
 
-  <!-- What the gesture has moved, drawn from where it started. Above the ghost
-       and below the live mechanism, so the drawing still comes first. -->
+  <!-- Where the joints under the hand travel, for as long as the hand is on
+       them. The paths holder's own curve, at its own weight, so a reader who
+       has used Traced Paths is looking at the same mark and not at a second one
+       that means nearly the same thing. Above the ghost and below the live
+       mechanism, so the drawing still comes first. -->
   @if (dragArcs(); as arcs) {
     <g id="dragTraceHolder" style="transform: scaleY(-1)" pointer-events="none">
       @for (arc of arcs; track $index) {
-        <path
-          class="dragTrace"
-          [attr.d]="arc"
-          [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
-          [attr.stroke-dasharray]="svgGrid.scaleWithZoom(2) + ' ' + svgGrid.scaleWithZoom(4)"
-        />
+        <path class="dragTrace" [attr.d]="arc" [attr.stroke-width]="0.01 * settings.objectScale" />
       }
     </g>
   }

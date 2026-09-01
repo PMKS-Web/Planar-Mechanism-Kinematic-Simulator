@@ -30,7 +30,17 @@ export interface DriveProfile {
   readonly continuous: boolean;
   /** A slider or ram, which extends; otherwise a crank, which turns. */
   readonly linear: boolean;
-  /** End to end of the input's travel, in model units. Zero for a crank. */
+  /**
+   * What one whole unit of `along` is worth, in the input's own raw units:
+   * radians for a crank, model units for a slide.
+   *
+   * For an input that turns back this is end to end of its travel. For one that
+   * goes all the way round it is the whole turn -- which used to be recorded as
+   * zero, on the grounds that a loop has no two ends to measure between. True,
+   * and it left `along` as the one coordinate on the transport with no scale
+   * attached, so "how far is this from its start" could be asked of a rocker
+   * and not of a crank. Always positive: which way it went is `along`'s to say.
+   */
   readonly span: number;
 }
 
@@ -89,7 +99,7 @@ export function driveProfileOf(mechanism: Mechanism, ram?: RamEnds): DriveProfil
       along: raw.map((value) => (value - raw[0]) / denominator),
       continuous,
       linear,
-      span: 0,
+      span: Math.abs(total),
     };
   }
 

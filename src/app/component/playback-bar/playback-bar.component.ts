@@ -85,12 +85,15 @@ export interface PlaybackRow {
   /**
    * Where along the track this machine's cycle starts, 0-1000, or nothing.
    *
-   * Always zero today, and marked anyway: the anchor is a concept the reader
-   * now has to hold -- an edit at a pose puts the design back on it, and "Set
-   * This Pose as Start" moves it -- and a concept with no mark on the one
-   * control that measures the cycle is one the reader has to take on trust.
-   * Nothing for the combined row, which stands for several cycles at once and
-   * so has no single start to point at.
+   * Not zero. The handle measures the *input*, not the clock, so the start pose
+   * is at the left end of the track only for an input that happens to begin at
+   * one end of its travel -- true of a crank, which is measured from the pose
+   * it was drawn in, and false of everything that turns back. A rocker drawn
+   * mid-swing starts four tenths along its own arc, and the mark sat at the
+   * left end claiming the start was somewhere the machine had never been.
+   *
+   * Nothing for the combined row, which measures time rather than an input:
+   * every machine's cycle starts at t = 0, so there the left end is right.
    */
   anchorAt?: number;
   /**
@@ -569,15 +572,15 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     const combined = name !== undefined;
     return {
       id: name ?? this.nameOf(index),
-      // The start of the cycle is where the handle reads zero, by construction:
-      // re-anchoring is what makes that true after an edit at a pose.
+      // Sample 0 is the start pose by construction -- re-anchoring is what
+      // makes that true after an edit at a pose -- so where the start is on
+      // *this* track is where sample 0's input sits along the input's travel.
       //
-      // The combined row gets one too. It stands for several cycles at once,
-      // and every one of them starts where its own handle reads zero -- so the
-      // mark is as true there as on a machine's own row, and leaving it off
-      // meant a synced drawing, and every drawing on a phone, had the concept
-      // with nothing pointing at it.
-      anchorAt: 0,
+      // The combined row gets one too, and there it is zero: that handle
+      // measures the shared clock, which every machine starts at.
+      anchorAt: combined
+        ? 0
+        : Math.round((this.mechanism.driveProfileOf(index)?.along[0] ?? 0) * 1000),
       index: combined ? -1 : index,
       leader: index,
       isMechanism: !combined,
@@ -616,15 +619,61 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    * How far this machine is parked from its own start, in the input's own
    * units, or nothing when it is standing on it.
    *
-   * The same string the readout uses, because it is the same quantity -- what
-   * makes it a chip rather than a second reading is that it is the distance
-   * from the anchor, and that pressing it is the way back.
+   * A *distance*, which is what "from start" says and what the chip did not
+   * used to carry: it printed the readout beside it, which is where the input
+   * is, and the two agree only for an input measured from the pose it was drawn
+   * in. A rocker drawn mid-swing reads 24 degrees at its own start, so a chip
+   * saying "24 degrees from start" appeared over a machine standing exactly on
+   * its start with 0.00 s beside it.
+   *
+   * And parked is a fact about the clock, not about the input. A reversing
+   * input passes every value in its range twice, so "back at the angle it
+   * started at" is a pose the machine reaches half a cycle from home.
    */
   private displacementOf(index: number): string | undefined {
     if (this.mechanism.isMechanismPlaying(index)) return undefined;
-    if ((this.mechanism.travelOf(index) ?? 0) <= 0) return undefined;
-    const label = this.positionLabel(index);
+    if (this.mechanism.secondsOf(index) === 0) return undefined;
+    const label = this.offsetLabel(index);
     return label ? `${label} from start` : undefined;
+  }
+
+  /**
+   * The gap between the input now and the input at the start pose.
+   *
+   * Off the profile's own coordinate rather than off the readout: `along` is
+   * the fraction of the input's whole travel, and `span` is what that travel is
+   * worth -- radians for a crank, model units for a slide -- so the two
+   * multiply out to the quantity the reader is owed in either kind of input.
+   *
+   * Unsigned. Which way it went is what the direction note beside it says, and
+   * a minus sign in front of a degree count reads as a bearing rather than as a
+   * distance.
+   *
+   * Nothing where the number would round to a zero, in whichever unit it is
+   * being said in. `Back to the start` eases rather than cutting, so the last
+   * frame or two of it are a fraction of a degree out, and a chip reading
+   * "0 degrees from start" contradicts itself once per press of Stop. It is
+   * also the rule the seat already follows, so the two marks agree: at the
+   * input value the cycle starts at, neither of them appears.
+   */
+  private offsetLabel(index: number): string | undefined {
+    const profile = this.mechanism.driveProfileOf(index);
+    const along = this.mechanism.travelOf(index);
+    if (!profile || along === undefined) return undefined;
+    const fraction = Math.abs(along - (profile.along[0] ?? 0));
+    if (!(profile.span > 0)) {
+      const percent = Math.round(fraction * 100);
+      return percent === 0 ? undefined : `${percent}%`;
+    }
+    if (!profile.linear) {
+      const degrees = Math.round((fraction * profile.span * 180) / Math.PI);
+      return degrees === 0 ? undefined : `${degrees}\u00b0`;
+    }
+    const shown = this.nup.formatValueAndUnit(
+      (fraction * profile.span) / MODEL_SCALE,
+      this.settings.lengthUnit.value
+    );
+    return parseFloat(shown) === 0 ? undefined : shown;
   }
 
   /**
@@ -753,7 +802,10 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
       const bearing = this.mechanism.inputAngleDegrees(index);
       return bearing === undefined ? '' : `${Math.round(bearing)}\u00b0`;
     }
-    if (!(profile.span > 0)) {
+    // A loop has a span now, but no low end to measure a position above: what
+    // `along` counts there is distance from the drawn pose, not a place in a
+    // stroke. So the fraction stands, as it did when the span was zero.
+    if (profile.continuous || !(profile.span > 0)) {
       return `${Math.round(along * 100)}%`;
     }
     return this.nup.formatValueAndUnit(

@@ -460,14 +460,13 @@
     }
   }
 
-  // How far this gesture has taken what it is holding, drawn from where it
-  // started. In the ink `#pathsHolder` already strokes traced paths in, dashed
-  // because this one ends with the gesture.
+  // Where what the gesture is holding travels. `#pathsHolder`'s own rule, said
+  // again rather than shared because the two groups are switched on by
+  // different questions -- and it is the same ink at the same weight, which is
+  // the point: this is the app's traced path, borrowed for a gesture.
   .dragTrace {
     fill: none;
-    stroke: #1a237e;
-    stroke-linecap: round;
-    opacity: 0.75;
+    stroke: mat.m2-get-color-from-palette($primary-palette, 900);
   }
 
   .startGhostTag {

@@ -631,9 +631,10 @@
     margin: 0 4px;
   }
 
-  // The rail's own left end. The start of the cycle is a *place*, and the fill
-  // that runs from it is a different thing, so the two are drawn apart: 4px of
-  // indigo 700 behind a 2px gap, which is where the track begins.
+  // The rail's own left end -- the bottom of the input's travel, which is not
+  // the same place as the start of the cycle and only looks like it on a crank.
+  // Where the start is is the seat's job. 4px of indigo 700 behind a 2px gap,
+  // which is where the track begins.
   .trackCap {
     position: absolute;
     left: 0;
@@ -648,10 +649,9 @@
   // Where this machine's cycle starts, drawn as the handle's own outline.
   //
   // It was a 2x6px tick under the track, which read as the end cap of the fill
-  // it sat on -- and, sitting at zero on every machine that had never been
-  // re-anchored, as a tick that never moved. Hollow, it is the same word the
-  // ghost on the canvas uses: this is where the start is. One vocabulary,
-  // learned once.
+  // it sat on -- and, sitting at zero on every machine, as a tick that never
+  // moved. Hollow, it is the same word the ghost on the canvas uses: this is
+  // where the start is. One vocabulary, learned once.
   //
   // And it is a target. 24x20 in a 16px well, against a tick nobody could ever
   // have pressed; pressing it is back to the start.
@@ -659,8 +659,16 @@
     position: absolute;
     // The handle's own geometry, so the seat and the handle coincide exactly
     // rather than nearly: a range thumb's centre runs from half its width to
-    // half its width short of the far end, never edge to edge.
-    left: calc(#{$rail-start} + 12px + (100% - #{$rail-start} - 24px) * var(--at, 0) / 100);
+    // half its width short of the far end, never edge to edge. The track is the
+    // scrubber's own box -- `left: $rail-start` with `width: 100%` -- so it is
+    // the well's width starting one cap in, not the well's width less a cap.
+    //
+    // `--at` is a bare number here, not a percentage. As a percentage this read
+    // `<length> * 41.7%`, which is not a thing calc can multiply, so the whole
+    // declaration was invalid and the seat fell back to its static position --
+    // at the left of the well, whatever the value said. Invisible for as long
+    // as the value was always zero.
+    left: calc(#{$rail-start} + 12px + (100% - 24px) * var(--at, 0) / 100);
     top: -2px;
     width: 24px;
     height: 20px;
