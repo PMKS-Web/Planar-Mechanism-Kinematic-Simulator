@@ -19,6 +19,8 @@ import { NumberUnitParserService } from '../../services/number-unit-parser.servi
 import { ActiveObjService } from '../../services/active-obj.service';
 import { AnalysisSampleService } from '../../services/analysis-sample.service';
 import { MechanismService } from '../../services/mechanism.service';
+import { DragStateService } from '../../services/drag-state.service';
+import { SaveHistoryService } from '../../services/save-history.service';
 import { SettingsService } from '../../services/settings.service';
 import { BUILT_IN_TEMPLATE_IDS, TEMPLATE_LINKAGES } from '../MODALS/templates/template-linkages';
 import {
@@ -112,6 +114,10 @@ function createComponent(fixture: MechanismFixture): AnalysisGraphComponent {
       { provide: SettingsService, useValue: fixture.settings },
       { provide: NumberUnitParserService, deps: [] },
       { provide: AnalysisSampleService, deps: [] },
+      // The comparison overlay asks these two what a gesture is doing. Nothing
+      // is dragged in these fixtures, so the real ones answer "nothing".
+      { provide: DragStateService, deps: [] },
+      { provide: SaveHistoryService, useValue: { historySteps: 0 } },
     ],
     () => new AnalysisGraphComponent()
   );

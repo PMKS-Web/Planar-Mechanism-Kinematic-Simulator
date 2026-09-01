@@ -54,9 +54,21 @@ export class SaveHistoryService {
     return this.index > 0;
   }
 
+  /**
+   * How many history steps have been taken, ever.
+   *
+   * Not the index -- undo and redo move that back and forth, and what a reader
+   * needs to know is that a step *happened*. The analysis graphs drop their
+   * comparison curve on one: the curve a step restores may be the very one the
+   * comparison was taken from, and two identical lines is confusion rather than
+   * comparison.
+   */
+  historySteps = 0;
+
   private setMechanismToState(index: number) {
     const urlProcessorService = this.injector.get(UrlProcessorService);
 
+    this.historySteps++;
     this.index = index;
     // Settings are part of the serialized mechanism state. Restoring only the
     // geometry leaves converted values paired with the wrong unit system and

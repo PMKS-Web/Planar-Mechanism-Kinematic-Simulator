@@ -134,4 +134,44 @@
     padding: 0;
     text-decoration: underline;
   }
+
+  // What the ghosted curve under the live one is, and how to be rid of it.
+  // Flat on the card rather than raised: it is a note about what is drawn, not
+  // a control sitting on top of the drawing.
+  .baselineChip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 2px;
+    padding: 0 2px;
+    font-size: 11px;
+    color: #5f6368;
+    white-space: nowrap;
+
+    button {
+      height: 18px;
+      padding: 0 6px;
+      border: none;
+      border-radius: 9px;
+      background: #eef1fc;
+      color: #303f9f;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+
+      &:hover {
+        background: #e3e8fb;
+      }
+    }
+  }
+
+  // The same ink as the ghosted curves it stands for.
+  .baselineSwatch {
+    width: 14px;
+    height: 2px;
+    flex: 0 0 auto;
+    border-radius: 1px;
+    background: rgba(63, 81, 181, 0.35);
+  }
 }

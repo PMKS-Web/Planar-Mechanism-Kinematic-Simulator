@@ -72,6 +72,11 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
     // are all well-proportioned, so the default answer is "nothing to say".
     // A spec that wants the warning rendered overrides it.
     cylinderReachWarning: () => undefined,
+    // Nothing is ever staged here: these fixtures are built and read, never
+    // dragged, so the cycle is never turned away from its anchor. A spec that
+    // wants the comparison overlay's phase alignment tested overrides it.
+    phaseOffsetOf: () => 0,
+    solveRevision: 0,
     // Implemented, from the same function the service calls: what counts as a
     // cylinder decides which parts a panel offers and which it folds away, so
     // a stub here could make a drawer look right about a machine it had wrong.

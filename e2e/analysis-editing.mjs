@@ -235,6 +235,107 @@ record(
 await page.mouse.up();
 await page.waitForTimeout(600);
 
+// ---- 6. the comparison overlay (Phase B) ---------------------------------
+
+await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['4-Bar']}`);
+await mode('Kinematic');
+const studiedJoint = await jointAt('C');
+await page.mouse.move(studiedJoint.x, studiedJoint.y);
+await page.mouse.down();
+await page.mouse.up();
+await page.waitForTimeout(700);
+await page
+  .locator('app-analysis-graph-section', { hasText: 'Position of Joint C' })
+  .locator('button')
+  .first()
+  .click();
+await page.waitForTimeout(900);
+const curvesBefore = await page.locator('.apexcharts-series').count();
+record('one curve before any drag', curvesBefore === 2, { curvesBefore });
+record('and no comparison to clear', (await page.locator('.baselineChip').count()) === 0);
+
+const tuned = await jointAt('D');
+await page.mouse.move(tuned.x, tuned.y);
+await page.mouse.down();
+for (let i = 1; i <= 6; i++) {
+  await page.mouse.move(tuned.x + i * 5, tuned.y + i * 3);
+  await page.waitForTimeout(90);
+}
+const overlay = await page.evaluate(() => {
+  const graph = window.ng.getComponent(document.querySelector('app-analysis-graph'));
+  return {
+    names: graph.displayedSeries.map((s) => s.name),
+    colors: graph.displayedColors,
+    dash: graph.displayedStroke?.dashArray,
+    annotations: document.querySelectorAll('.apexcharts-xaxis-annotations line').length,
+    axis: document.querySelector('.apexcharts-yaxis')?.textContent ?? '',
+  };
+});
+record(
+  'a drag lays the curves from before it under the live ones',
+  overlay.names.filter((n) => / before$/.test(n)).length === 2 && overlay.names.length === 4,
+  overlay.names
+);
+record(
+  'the earlier ones ghosted, the live ones in full colour',
+  overlay.colors.slice(0, 2).every((c) => c.startsWith('rgba')) &&
+    overlay.colors.slice(2).every((c) => c.startsWith('#')),
+  overlay.colors
+);
+record(
+  'and the live ones dashed while the hand is down',
+  overlay.dash[0] === 0 && overlay.dash[2] > 0,
+  overlay.dash
+);
+record('with the playhead hushed for the duration', overlay.annotations === 0, overlay);
+record(
+  'and a chip saying what the pale curve is',
+  (await page.locator('.baselineChip').count()) === 1
+);
+// The axis must hold still: refitted per frame it swims under the very curve
+// being watched, and every frame looks the same height as the last.
+const axisFrames = [];
+for (let i = 7; i <= 10; i++) {
+  await page.mouse.move(tuned.x + i * 5, tuned.y + i * 3);
+  await page.waitForTimeout(90);
+  axisFrames.push(
+    await page.evaluate(() => document.querySelector('.apexcharts-yaxis')?.textContent ?? '')
+  );
+}
+record(
+  'the y axis never shrinks under the hand',
+  new Set(axisFrames).size <= 2,
+  axisFrames.map((a) => a.slice(0, 24))
+);
+
+await page.mouse.up();
+await page.waitForTimeout(900);
+const settled = await page.evaluate(() => {
+  const graph = window.ng.getComponent(document.querySelector('app-analysis-graph'));
+  return {
+    dash: graph.displayedStroke?.dashArray,
+    names: graph.displayedSeries.map((s) => s.name),
+  };
+});
+record(
+  'letting go settles the live curve to solid',
+  settled.dash.every((d) => d === 0),
+  settled
+);
+record(
+  'and the comparison outlives the gesture',
+  (await page.locator('.baselineChip').count()) === 1
+);
+await page.screenshot({ path: `${SHOTS}/3-comparison.png` });
+
+await page.locator('.baselineChip button').click();
+await page.waitForTimeout(700);
+record('the chip clears it', (await page.locator('.baselineChip').count()) === 0);
+record(
+  'and the plot goes back to one curve per series',
+  (await page.locator('.apexcharts-series').count()) === 2
+);
+
 record('no page errors', errors.length === 0, errors.slice(0, 3));
 
 const failed = results.filter(([, ok]) => !ok);

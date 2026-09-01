@@ -9,6 +9,17 @@
     <button class="gapShow" (click)="showGapPosition()">{{ gapShowLabel }}</button>
   </div>
 }
+<!-- The comparison outlives the gesture. The tuning loop is drag, look, drag
+     again, and taking the "before" away at the moment the reader finally has a
+     still frame to compare in would serve the code rather than the reader. It
+     goes when they say so, or when the next drag takes its own. -->
+@if (hasBaseline) {
+  <div class="baselineChip">
+    <span class="baselineSwatch" aria-hidden="true"></span>
+    Before your drag
+    <button (click)="clearBaseline()">Clear</button>
+  </div>
+}
 @if (analysisDiagnostic) {
   <div class="analysis-diagnostic" role="status">{{ analysisDiagnostic }}</div>
 } @else {
@@ -31,7 +42,7 @@
     [yaxis]="chartOptions.yaxis!"
     [dataLabels]="chartOptions.dataLabels!"
     [markers]="chartOptions.markers!"
-    [stroke]="chartOptions.stroke!"
+    [stroke]="displayedStroke"
     [grid]="chartOptions.grid"
     [xaxis]="chartOptions.xaxis!"
     [tooltip]="chartOptions.tooltip!"

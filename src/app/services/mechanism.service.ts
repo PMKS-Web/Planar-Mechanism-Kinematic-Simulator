@@ -5723,6 +5723,28 @@ export class MechanismService {
     return true;
   }
 
+  /**
+   * How far this machine's cycle is currently turned away from its anchor.
+   *
+   * Mid-gesture at a displaced pose the machine is staged, which means sample 0
+   * of the provisional cycle is *the pose under the reader's hand* rather than
+   * the pose the design starts at. A curve plotted from it is the same curve
+   * cyclically rotated by wherever the reader happened to pause -- so laid over
+   * the one taken before the gesture, every comparison is nonsense.
+   *
+   * The commit settles this at the end by putting the design back on the
+   * anchor. A plot needs the same answer every frame, and the ghost has already
+   * worked it out: its `at` is where the anchored pose falls in the cycle as it
+   * currently stands. Nothing to undo where the machine is not staged, and
+   * nothing to undo where the anchor is out of reach -- that is the case the
+   * ghost's own warning covers, and a graph should not narrate it twice.
+   */
+  phaseOffsetOf(index: number): number {
+    if (!this.seedFromDisplay || this.stagedMachineIndex() !== index) return 0;
+    const ghost = this.startPoseGhosts().find((one) => one.index === index);
+    return ghost?.reachable ? ghost.at : 0;
+  }
+
   /** Drop every anchor. A history step or a URL load is authoritative. */
   forgetAnchors(): void {
     this.anchors.clear();

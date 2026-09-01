@@ -6,6 +6,7 @@ import {
   OnChanges,
   OnDestroy,
   OnInit,
+  DoCheck,
   SimpleChanges,
   ViewChild,
   ChangeDetectionStrategy,
@@ -42,6 +43,8 @@ import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { AnalysisSampleService } from '../../services/analysis-sample.service';
+import { DragStateService } from '../../services/drag-state.service';
+import { SaveHistoryService } from '../../services/save-history.service';
 import { skip, Subscription } from 'rxjs';
 import { AnalysisApexChartComponent } from './analysis-apex-chart.component';
 
@@ -143,6 +146,50 @@ export interface SeriesSelection {
  * very first frame. It used to ask the graph, and the graph did not exist yet,
  * so the legend showed everything lit while the plot drew one line.
  */
+/**
+ * How a baseline series is named and told apart.
+ *
+ * A suffix rather than a parallel structure: Apex identifies a series by its
+ * name, the tooltip reads it out, and the visibility toggles work on the live
+ * name with the suffix stripped -- so hiding Y hides both Ys without the legend
+ * growing a second set of chips.
+ */
+const BEFORE_SUFFIX = ' before';
+const BEFORE = / before$/;
+
+/**
+ * The range an axis should show, ignoring the sample or two a toggle position
+ * throws towards infinity.
+ *
+ * Acceleration near a toggle is a singularity: a drag that takes a four-bar
+ * through one produces two samples out of 360 reading twenty thousand against a
+ * curve whose real range is nought to twelve. Fitted to the true maximum, the
+ * axis is right and the plot is useless -- every real feature collapses onto the
+ * zero line and the reader is told their curve is flat, which is false.
+ *
+ * So the tails are trimmed, but only when they are *outliers*: unless the full
+ * spread is several times the inner one, the true range is the honest range and
+ * clipping it would hide a real peak, which is the thing this whole overlay
+ * exists to show moving.
+ */
+export function readableRange(values: number[]): { low: number; high: number } {
+  const low = Math.min(...values);
+  const high = Math.max(...values);
+  if (values.length < 20) return { low, high };
+  const sorted = [...values].sort((a, b) => a - b);
+  const at = (q: number) => sorted[Math.round(q * (sorted.length - 1))];
+  const inner = { low: at(0.01), high: at(0.99) };
+  const spread = inner.high - inner.low;
+  return spread > 0 && high - low > spread * 4 ? inner : { low, high };
+}
+
+/** The same ink, ghosted: "the same thing, earlier", as the start-pose ghost says it. */
+export function ghostOf(color: string): string {
+  const hex = color.replace('#', '');
+  const to = (at: number) => parseInt(hex.slice(at, at + 2), 16);
+  return hex.length === 6 ? `rgba(${to(0)}, ${to(2)}, ${to(4)}, 0.35)` : color;
+}
+
 export function defaultSeriesSelection(count: number, analysis: string): SeriesSelection {
   const showComponents = count === 2 || (count === 3 && analysis === 'force');
   return showComponents ? { x: true, y: true, z: false } : { x: false, y: false, z: true };
@@ -173,12 +220,16 @@ export function defaultSeriesSelection(count: number, analysis: string): SeriesS
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [AnalysisApexChartComponent, MatIcon],
 })
-export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
+export class AnalysisGraphComponent
+  implements OnInit, AfterViewInit, OnDestroy, OnChanges, DoCheck
+{
   private fb = inject(FormBuilder);
   private mechanismService = inject(MechanismService);
   settingsService = inject(SettingsService);
   private nup = inject(NumberUnitParserService);
   private samples = inject(AnalysisSampleService);
+  private drag = inject(DragStateService);
+  private history = inject(SaveHistoryService);
 
   public chartOptions: Partial<ChartOptions> = {
     annotations: {
@@ -385,6 +436,132 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     return `Graph of ${this.graphLabel} over one cycle${plotted}. The same numbers are available from Export Data in the top strip.`;
   }
 
+  /** The stroke the plot is drawn with, which the comparison overlay changes. */
+  displayedStroke: ApexStroke = {};
+
+  /**
+   * The curves as they were when this gesture began, and the axis they were
+   * read against.
+   *
+   * The whole point of unlocking a drag in an analysis mode: one series from
+   * before the hand moved, one that follows it, and the difference between them
+   * is the answer to "did that help". Taken once, at the moment a gesture is
+   * confirmed as a drag, and dropped when the next one begins -- each drag
+   * compares against the pose it started from.
+   */
+  private baseline?: { series: ApexAxisChartSeries; low: number; high: number };
+  /** Which history step the baseline was taken during. */
+  private baselineAt = -1;
+
+  /** Whether a gesture is in flight right now, as this component last saw it. */
+  private gestureLive = false;
+  /** The solve this graph has already drawn, so a redraw happens once per solve. */
+  private drawnSolve = -1;
+  private liveRedraw?: number;
+
+  /**
+   * A drag turns the comparison on, and letting go turns it off.
+   *
+   * Read from the drag state and the solve counter rather than from a signal
+   * the canvas emits: the canvas already knows what a gesture is, and a second
+   * channel saying the same thing is a second channel that can disagree. This
+   * is the idiom the tutorial card uses for the same reason -- every edit ends
+   * in `updateMechanism`, which publishes on nothing that could be subscribed
+   * to.
+   */
+  ngDoCheck(): void {
+    const live = this.drag.isPointerDown && this.drag.travelled;
+    if (live && !this.gestureLive) {
+      this.gestureLive = true;
+      // Each drag compares against the pose it started from, so the next one
+      // replaces the last one's answer rather than accumulating over it.
+      this.takeBaseline();
+    }
+    // A history step is not a drag, and the curve it restores may be the very
+    // one the baseline was taken from -- two identical lines is confusion
+    // rather than comparison. `historyRevision` moves on undo and redo alone.
+    if (this.baseline && this.history.historySteps !== this.baselineAt) {
+      this.baseline = undefined;
+      this.applySeriesVisibility();
+    }
+    if (live && this.mechanismService.solveRevision !== this.drawnSolve) {
+      this.drawnSolve = this.mechanismService.solveRevision;
+      this.scheduleLiveRedraw();
+    }
+    if (!live && this.gestureLive) {
+      this.gestureLive = false;
+      this.settleAfterGesture();
+    }
+  }
+
+  /**
+   * Snapshot what is on the plot right now.
+   *
+   * Only where there is something to compare: a graph with no curve yet has no
+   * honest "before" to show, and one opened mid-gesture never had one.
+   */
+  private takeBaseline(): void {
+    const series = this.chartOptions.series ?? [];
+    if (!series.length) return;
+    const values: number[] = [];
+    series.forEach((one) =>
+      one.data.forEach((point) => {
+        const value = this.pointValue(point);
+        if (value !== null) values.push(value);
+      })
+    );
+    const span = values.length ? readableRange(values) : { low: 0, high: 0 };
+    this.baselineAt = this.history.historySteps;
+    this.baseline = {
+      series: series.map((one) => ({
+        ...one,
+        name: `${one.name}${BEFORE_SUFFIX}`,
+        // Copied, not referenced: the live series is rebuilt in place on every
+        // pointer move, and a baseline pointing at it would follow the hand.
+        data: (one.data as unknown[]).slice(),
+      })) as ApexAxisChartSeries,
+      low: span.low,
+      high: span.high,
+    };
+  }
+
+  /**
+   * One redraw per animation frame, trailing edge.
+   *
+   * A pointer can emit moves faster than a chart can be rebuilt, and every one
+   * of them has already cost a full cycle solve. The last move always lands,
+   * which is the one that matters.
+   */
+  private scheduleLiveRedraw(): void {
+    if (this.liveRedraw !== undefined) return;
+    this.liveRedraw = requestAnimationFrame(() => {
+      this.liveRedraw = undefined;
+      if (this.destroyed) return;
+      this.updateChartData();
+    });
+  }
+
+  /** The gesture is over: the curve that was provisional is now what is. */
+  private settleAfterGesture(): void {
+    if (this.liveRedraw !== undefined) {
+      cancelAnimationFrame(this.liveRedraw);
+      this.liveRedraw = undefined;
+    }
+    this.updateChartData();
+  }
+
+  /** Forget the comparison -- the reader has read it, or moved on. */
+  clearBaseline(): void {
+    this.baseline = undefined;
+    this.applySeriesVisibility();
+    this.updateYAxis();
+  }
+
+  /** Whether there is a "before" curve on the plot to clear. */
+  get hasBaseline(): boolean {
+    return !!this.baseline;
+  }
+
   noDataSelected: boolean = false;
   analysisDiagnostic: string | null = null;
   /**
@@ -438,6 +615,12 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes || !this.analysis || !this.mechProp || !this.mechPart) return;
+    // A different part, or a different quantity, is a different question -- and
+    // a "before" curve from the last one would be a comparison between two
+    // things that were never compared.
+    if (Object.keys(changes).some((name) => name !== 'initialSeries')) {
+      this.baseline = undefined;
+    }
     // The legend handing back what it remembers is not a change to what is
     // plotted, and rebuilding the chart for it would be a rebuild per click.
     if (Object.keys(changes).every((name) => name === 'initialSeries')) return;
@@ -556,10 +739,38 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     if (data.y) selectedNames.add('Y');
     if (data.z) selectedNames.add('Z');
 
-    this.displayedSeries = (this.chartOptions.series ?? []).filter((series) =>
+    const live = (this.chartOptions.series ?? []).filter((series) =>
       selectedNames.has(series.name ?? '')
     );
-    this.displayedColors = this.displayedSeries.map((series) => this.colorForSeries(series.name));
+    // The curves as they were when the gesture began, under the ones moving
+    // under the reader's hand. Baseline first, so the live curve is drawn over
+    // it rather than under it -- what is being compared *to* belongs behind.
+    // Same names with a suffix, so the tooltip says which is which; the
+    // visibility toggles are the live names, so hiding Y hides both Ys.
+    const before = (this.baseline?.series ?? []).filter((series) =>
+      selectedNames.has(BEFORE.test(series.name ?? '') ? series.name!.replace(BEFORE, '') : '')
+    );
+    this.displayedSeries = [...before, ...live];
+    this.displayedColors = this.displayedSeries.map((series) =>
+      BEFORE.test(series.name ?? '')
+        ? ghostOf(this.colorForSeries(series.name!.replace(BEFORE, '')))
+        : this.colorForSeries(series.name)
+    );
+    // Dashed only while it is provisional, which is while the hand is still
+    // down. Let go and it is simply what the mechanism does now, so it settles
+    // into an ordinary solid curve -- and what tells the two apart from then on
+    // is that the earlier one is ghosted, which is the same word the start-pose
+    // ghost uses for the same idea.
+    this.displayedStroke = {
+      ...this.chartOptions.stroke,
+      width: this.displayedSeries.map(() => 2),
+      dashArray: this.displayedSeries.map((series) =>
+        !BEFORE.test(series.name ?? '') && this.gestureLive ? 5 : 0
+      ),
+    };
+    if (!this.baseline) {
+      this.displayedStroke = { ...this.chartOptions.stroke };
+    }
     this.noDataSelected = this.displayedSeries.length === 0;
     this.applyYAxisScale();
     this.shownSeriesChange.emit({ x: !!data.x, y: !!data.y, z: !!data.z });
@@ -584,8 +795,36 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
       })
     );
     const yaxis = this.chartOptions.yaxis!;
+    // With a comparison on the plot the axis has to hold both curves, and it
+    // has to hold *still*: refitted to the live values on every pointer move it
+    // swims under the very curve the reader is watching, and every frame looks
+    // the same height as the last. Frozen to the baseline and widened only when
+    // the live curve leaves it -- a clipped peak would lie, and a peak that
+    // stops growing because the axis grew with it says nothing.
+    const held = this.baseline;
+    // Robust only while a comparison is on the plot. An ordinary graph keeps
+    // the range it has always had: the drawing it describes is one the reader
+    // built deliberately, and if it has a spike in it that is the answer.
+    const range = values.length
+      ? held
+        ? readableRange(values)
+        : { low: Math.min(...values), high: Math.max(...values) }
+      : { low: 0, high: 0 };
+    const low = range.low;
+    const high = range.high;
+    if (held && values.length) {
+      // A *running* range, not this frame's. Recomputed from the live values
+      // each frame it shrank as readily as it grew, so the axis swam: a drag
+      // through a toggle sent it to 30,000 and the next frame brought it back
+      // to 800, and every frame looked the same height as the last. Widening
+      // only, the curve moves against something that is holding still.
+      held.low = Math.min(held.low, low);
+      held.high = Math.max(held.high, high);
+    }
     const scale = values.length
-      ? niceAxisScale(Math.min(...values), Math.max(...values))
+      ? held
+        ? niceAxisScale(Math.min(low, held.low), Math.max(high, held.high))
+        : niceAxisScale(low, high)
       : undefined;
     this.chartOptions = {
       ...this.chartOptions,
@@ -624,6 +863,13 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
 
   private showAnnotations() {
     if (!this.chart) return;
+    // Nothing while the hand is down. The playhead and its point markers are
+    // recomputed on every move, and mid-gesture they are three things flickering
+    // between the reader and the one thing they are looking at.
+    if (this.gestureLive) {
+      this.chart.clearAnnotations();
+      return;
+    }
     const timeIndex = this.ownSample();
     if (timeIndex === 0) {
       this.chart.clearAnnotations();
@@ -899,12 +1145,20 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     // contributes NaN or Infinity. A null point creates an intentional gap at
     // that singular timestep while preserving the rest of the series.
     const times = mechanism?.timeNum ?? [];
+    // Turned back onto the anchor, where a gesture at a displaced pose has
+    // turned the cycle away from it: mid-drag the provisional cycle starts at
+    // the pose under the hand, so plotted raw the live curve is the baseline
+    // rotated by wherever the reader happened to pause. Half a sample of phase
+    // is invisible at 360 of them, so the blend is not worth carrying.
+    const turn = mechanism
+      ? this.mechanismService.phaseOffsetOf(this.mechanismService.mechanisms.indexOf(mechanism))
+      : 0;
     const chartSeries = seriesData.map((series) => ({
       ...series,
-      data: series.data.map((value, index) => ({
-        x: times[index] ?? index,
-        y: Number.isFinite(value) ? value : null,
-      })),
+      data: series.data.map((_, index) => {
+        const value = series.data[(index + turn) % series.data.length];
+        return { x: times[index] ?? index, y: Number.isFinite(value) ? value : null };
+      }),
     })) as ApexAxisChartSeries;
     const yaxis = this.chartOptions.yaxis!;
     this.chartOptions = {
