@@ -580,17 +580,23 @@ export class AnalysisGraphComponent
     const held = this.baseline;
     if (!held) return null;
     const peakOf = (series: ApexAxisChartSeries) => {
-      let most = 0;
-      let found = false;
+      const values: number[] = [];
       series.forEach((one) =>
         one.data.forEach((point) => {
           const value = this.pointValue(point);
-          if (value === null) return;
-          found = true;
-          most = Math.max(most, Math.abs(value));
+          if (value !== null) values.push(value);
         })
       );
-      return found ? most : null;
+      if (!values.length) return null;
+      // The peak of the curve the reader can *see*, which is the same range the
+      // axis is drawn to. Taken as the raw maximum it reported thirty-seven
+      // thousand over a plot whose axis read thirty -- the number and the
+      // picture disagreeing about the same curve, which is worse than either
+      // being wrong on its own. A toggle sends acceleration to infinity, and
+      // "you have made a singularity" is what the curve leaving the top of the
+      // plot says; it is not a peak anybody tuned to.
+      const range = readableRange(values);
+      return Math.max(Math.abs(range.low), Math.abs(range.high));
     };
     const shown = new Set(this.displayedSeries.map((one) => one.name?.replace(BEFORE, '')));
     const before = peakOf(held.series.filter((one) => shown.has(one.name?.replace(BEFORE, ''))));
