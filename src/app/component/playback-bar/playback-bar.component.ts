@@ -23,6 +23,7 @@ import { MODEL_SCALE } from '../../model/render-scale';
 import { MatIcon } from '@angular/material/icon';
 import { ViewControlsComponent } from '../view-controls/view-controls.component';
 import { MatTooltip } from '@angular/material/tooltip';
+import { NgTemplateOutlet } from '@angular/common';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 import { ShortcutTipDirective } from '../../shortcut-tip.directive';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
@@ -203,6 +204,7 @@ export interface RowRefusal {
     ViewControlsComponent,
     CdkOverlayOrigin,
     CdkConnectedOverlay,
+    NgTemplateOutlet,
   ],
 })
 export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {

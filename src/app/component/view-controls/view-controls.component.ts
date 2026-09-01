@@ -11,6 +11,9 @@ import { SettingsService, writeStoredFlag } from '../../services/settings.servic
 import { SvgGridService } from '../../services/svg-grid.service';
 import { ViewButtonComponent } from './view-button.component';
 import { RealLink } from '../../model/link';
+import { MatIcon } from '@angular/material/icon';
+import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
+import { ViewportService } from '../../services/viewport.service';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 
 /** The one gap a card keeps from its neighbor (left-tabs.vars.scss). */
@@ -25,10 +28,41 @@ const CARD_GAP = 12;
   templateUrl: './view-controls.component.html',
   styleUrls: ['./view-controls.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [ViewButtonComponent],
+  imports: [ViewButtonComponent, MatIcon, CdkOverlayOrigin, CdkConnectedOverlay],
 })
 export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   svgGrid = inject(SvgGridService);
+  readonly viewport = inject(ViewportService);
+
+  /** Whether the phone's drawer of view switches is up. */
+  sheetOpen = false;
+
+  /**
+   * Above the *card*, never below it and never over it.
+   *
+   * The button is on the transport line, which is the last thing before the
+   * home indicator, so there is no downward room. Anchoring to the button alone
+   * put the drawer's bottom edge ten pixels above the button -- which is inside
+   * the card, so it landed across the reading line. The lift is measured from
+   * the card the button is sitting in.
+   */
+  sheetPosition: ConnectedPosition[] = [
+    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -10 },
+  ];
+
+  toggleSheet(button: HTMLElement): void {
+    if (!this.sheetOpen)
+      this.sheetPosition = [{ ...this.sheetPosition[0], offsetY: -this.liftOver(button) }];
+    this.sheetOpen = !this.sheetOpen;
+  }
+
+  /** How far above the button the card's own top edge is, plus the usual gap. */
+  private liftOver(button: HTMLElement): number {
+    const card = button.closest('.scrubCard');
+    if (!card) return 10;
+    return Math.max(10, button.getBoundingClientRect().top - card.getBoundingClientRect().top + 10);
+  }
+
   mechanismService = inject(MechanismService);
   settingsService = inject(SettingsService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);

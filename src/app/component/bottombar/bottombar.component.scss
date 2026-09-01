@@ -35,6 +35,21 @@
       white-space: nowrap;
     }
 
+    // Heavier on a phone, so a floating browser bar cannot make it look
+    // provisional: 34px rather than 26, and the home indicator's own room
+    // underneath it. It is the strip the drawing is measured against, so it is
+    // the one thing down there that has to clear the inset -- everything else
+    // is measured against this.
+    //
+    // The design draws this strip at the top of the phone. Here it has always
+    // been at the bottom, and the design's own instruction is that it stays
+    // where it is; so it keeps the bottom, and takes the bottom inset rather
+    // than the notch's.
+    @media (max-width: 600px) {
+      height: calc(34px + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
     .status,
     .cursor,
     .units {

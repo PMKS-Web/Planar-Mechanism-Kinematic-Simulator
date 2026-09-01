@@ -15,45 +15,31 @@
        knew the app had, and because a bar sliding in and out as parts are added
        and deleted animates on an event that is not a mode change. Hidden only
        in Synthesis, where there is no mechanism yet to play. -->
-  @if (!inSynthesis) {
-    <div class="transportCard" data-canvas-inset="bottom" @riseFromBottom>
-      <button
-        class="speedButton"
-        (click)="cycleSpeed()"
-        [disabled]="!canPlay"
-        appShortcutTip="Playback speed"
-        shortcutTipFor="playback.speed"
-      >
-        {{ speed }}x
-      </button>
-      <button
-        class="playButton"
-        [class.live]="canPlay"
-        (click)="play()"
-        [disabled]="!canPlay"
-        [appShortcutTip]="playing ? 'Pause' : 'Play'"
-        shortcutTipFor="playback.toggle"
-        [attr.aria-label]="playing ? 'Pause' : 'Play'"
-      >
-        <mat-icon>{{ playing ? 'pause' : 'play_arrow' }}</mat-icon>
-      </button>
-      <!-- Back to the pose the mechanism was drawn in, which is the one every
-           other mode shows. Beside the play button rather than in the row of
-           readings: it is the other half of the same question. -->
-      <button
-        class="stopButton"
-        (click)="stop()"
-        [disabled]="!canStop"
-        matTooltip="Back to the start pose"
-        matTooltipPosition="above"
-        matTooltipShowDelay="600"
-        aria-label="Back to the start pose"
-      >
-        <mat-icon>stop</mat-icon>
-      </button>
-    </div>
+  <!-- Three cards on the desk, one on a phone.
+       The desk keeps the transport and the scrub card apart because there is
+       room and the sync tab needs an edge to hang from. A phone has neither, so
+       there they merge: one card, a full-width reading line, and the buttons
+       sharing the 52px line with the rail. The stack goes from two rows and
+       three cards to one -- 86px against 116, which is thirty pixels of canvas
+       back and one fewer thing for the eye to parse above the home indicator.
 
-    <div class="scrubCard" data-canvas-inset="bottom" @riseFromBottom>
+       The reading line is the win: full width, so the machine's name, the
+       displacement chip and both numbers all fit, where before the chip had to
+       compete with a 108px readout inside a card that was also holding a
+       handle. -->
+  @if (!inSynthesis && !viewport.isPhone()) {
+    <div class="transportCard" data-canvas-inset="bottom" @riseFromBottom>
+      <ng-container *ngTemplateOutlet="transportButtons" />
+    </div>
+  }
+
+  @if (!inSynthesis) {
+    <div
+      class="scrubCard"
+      [class.phoneCard]="viewport.isPhone()"
+      data-canvas-inset="bottom"
+      @riseFromBottom
+    >
       <!-- A tab off the top edge of the card, as in the mock, rather than a
            control inside it: it governs the whole card, so it sits on it. -->
       <!-- Unsyncing gives every machine a row of its own, and the phone shows
@@ -277,59 +263,121 @@
             }
           </div>
 
-          <div class="trackWell" [class.inert]="row.inert">
-            @if (row.inert) {
-              <!-- No cap, no seat, no handle: none of the three means anything
-                   on a cycle that does not exist. The rail stays, so the card
-                   is the same shape it is in every other state. -->
-              <span class="inertRail"></span>
-            } @else {
-              <!-- The rail's own left end, capped in the same ink as the seat:
-                   the start of the cycle is a place, and the fill that runs
-                   from it is a different thing. -->
-              <span class="trackCap"></span>
-
-              <!-- Where this machine's cycle starts, drawn as the handle's own
-                   outline: hollow means "where the start is" here and on the
-                   drawing, which is one vocabulary rather than two. Not drawn
-                   when the handle is standing in it -- the mark exists exactly
-                   when it has something to say -- and pressing it is the way
-                   back. -->
-              @if (seatFor(row); as at) {
-                <button
-                  class="anchorSeat"
-                  [style.--at.%]="at.percent"
-                  (click)="backToStart(row); $event.stopPropagation()"
-                  title="Back to where this machine's cycle starts"
-                  aria-label="Back to the start pose"
-                ></button>
-              }
-            }
-            <!-- The handle likewise: moving one machine along its own travel is
-                 watching it, not picking it. -->
-            @if (!row.inert) {
-              <input
-                class="rowScrubber"
-                (click)="$event.stopPropagation()"
-                [id]="row.master ? 'slider' : null"
-                type="range"
-                min="0"
-                max="1000"
-                [attr.aria-label]="scrubLabel(row)"
-                [value]="row.scrub"
-                [style.--along.%]="row.scrub / 10"
-                [style.--travelled]="row.playing ? '#3f51b5' : '#9fa8da'"
-                [disabled]="!canPlay"
-                (mousedown)="onScrubDown(row)"
-                (mouseup)="onScrubUp(row)"
-                (input)="scrubRow(row, $event)"
-              />
-            }
-          </div>
+          @if (viewport.isPhone()) {
+            <!-- Buttons and rail on one 52px line, with the view drawer's
+                 button at its right-hand end: two of the six view controls
+                 duplicate a pinch and the three switches are set once and left,
+                 so none of them earns permanent space in a 390px window. -->
+            <div class="phoneTransport">
+              <ng-container *ngTemplateOutlet="transportButtons" />
+              <span class="phoneRule" aria-hidden="true"></span>
+              <ng-container *ngTemplateOutlet="machineRail; context: { $implicit: row }" />
+              <span class="phoneRule tight" aria-hidden="true"></span>
+              <app-view-controls></app-view-controls>
+            </div>
+          } @else {
+            <ng-container *ngTemplateOutlet="machineRail; context: { $implicit: row }" />
+          }
         </div>
       }
     </div>
   }
 
-  <app-view-controls></app-view-controls>
+  <!-- On a phone they are inside the card above, on the transport's own line. -->
+  @if (!viewport.isPhone()) {
+    <app-view-controls></app-view-controls>
+  }
 </div>
+
+<!-- The transport's three buttons and one machine's rail, declared once.
+     The desk gives them a card each; a phone has room for one card, so it
+     puts both on a single line inside it. Same markup either way, so the
+     two layouts cannot drift apart. -->
+<ng-template #transportButtons>
+  <button
+    class="speedButton"
+    (click)="cycleSpeed()"
+    [disabled]="!canPlay"
+    appShortcutTip="Playback speed"
+    shortcutTipFor="playback.speed"
+  >
+    {{ speed }}x
+  </button>
+  <button
+    class="playButton"
+    [class.live]="canPlay"
+    (click)="play()"
+    [disabled]="!canPlay"
+    [appShortcutTip]="playing ? 'Pause' : 'Play'"
+    shortcutTipFor="playback.toggle"
+    [attr.aria-label]="playing ? 'Pause' : 'Play'"
+  >
+    <mat-icon>{{ playing ? 'pause' : 'play_arrow' }}</mat-icon>
+  </button>
+  <!-- Back to the pose the mechanism was drawn in, which is the one every
+           other mode shows. Beside the play button rather than in the row of
+           readings: it is the other half of the same question. -->
+  <button
+    class="stopButton"
+    (click)="stop()"
+    [disabled]="!canStop"
+    matTooltip="Back to the start pose"
+    matTooltipPosition="above"
+    matTooltipShowDelay="600"
+    aria-label="Back to the start pose"
+  >
+    <mat-icon>stop</mat-icon>
+  </button>
+</ng-template>
+
+<ng-template #machineRail let-row>
+  <div class="trackWell" [class.inert]="row.inert">
+    @if (row.inert) {
+      <!-- No cap, no seat, no handle: none of the three means anything
+             on a cycle that does not exist. The rail stays, so the card
+             is the same shape it is in every other state. -->
+      <span class="inertRail"></span>
+    } @else {
+      <!-- The rail's own left end, capped in the same ink as the seat:
+             the start of the cycle is a place, and the fill that runs
+             from it is a different thing. -->
+      <span class="trackCap"></span>
+
+      <!-- Where this machine's cycle starts, drawn as the handle's own
+             outline: hollow means "where the start is" here and on the
+             drawing, which is one vocabulary rather than two. Not drawn
+             when the handle is standing in it -- the mark exists exactly
+             when it has something to say -- and pressing it is the way
+             back. -->
+      @if (seatFor(row); as at) {
+        <button
+          class="anchorSeat"
+          [style.--at.%]="at.percent"
+          (click)="backToStart(row); $event.stopPropagation()"
+          title="Back to where this machine's cycle starts"
+          aria-label="Back to the start pose"
+        ></button>
+      }
+    }
+    <!-- The handle likewise: moving one machine along its own travel is
+           watching it, not picking it. -->
+    @if (!row.inert) {
+      <input
+        class="rowScrubber"
+        (click)="$event.stopPropagation()"
+        [id]="row.master ? 'slider' : null"
+        type="range"
+        min="0"
+        max="1000"
+        [attr.aria-label]="scrubLabel(row)"
+        [value]="row.scrub"
+        [style.--along.%]="row.scrub / 10"
+        [style.--travelled]="row.playing ? '#3f51b5' : '#9fa8da'"
+        [disabled]="!canPlay"
+        (mousedown)="onScrubDown(row)"
+        (mouseup)="onScrubUp(row)"
+        (input)="scrubRow(row, $event)"
+      />
+    }
+  </div>
+</ng-template>

@@ -75,7 +75,7 @@
       // is a control the reader has to find twice.
       // The one gap above the status strip, matching what the sheet keeps
       // above this row and the top strip keeps from the window.
-      bottom: calc(#{nav.$bottom-bar-height} + #{nav.$card-inset});
+      bottom: calc(34px + env(safe-area-inset-bottom) + #{nav.$card-inset});
     }
   }
 
@@ -816,68 +816,73 @@
   // would produce the others. What is left is a name, a reading and a handle on
   // one line above the transport.
   @media (max-width: 600px) {
-    // One line for the handle, one for the buttons: the wrap rule above already
-    // puts the scrub card on the upper one, so this only has to stop overriding
-    // it. `nowrap` here was what forced the three cards onto one line back when
-    // the scrub card was not among them.
-    .scrubCard {
+    // One card, edge to edge on the line the top strip runs on. The transport
+    // and the view controls are inside it now, so there is nothing left to wrap
+    // and nothing to space apart.
+    .playbackRow {
+      flex-wrap: wrap;
+      justify-content: stretch;
+      gap: nav.$card-inset;
+      padding: 0 nav.$card-inset;
+      // Above the mode strip, which is what takes the home indicator's room --
+      // so this is measured against the strip and nothing here has to know
+      // about the inset twice.
+      bottom: calc(34px + env(safe-area-inset-bottom) + #{nav.$card-inset});
+    }
+
+    .phoneCard {
+      flex: 1 1 auto;
       // Its own line is as tall as one row needs and no taller; the desk
       // minimum is sized for a card that could hold several.
       min-height: 0;
+      gap: 0;
     }
 
-    // Nothing on the line but what a seek needs. The end-of-cycle reading and
-    // the toggle warning are explanations, and there is no room to explain
-    // beside a handle 300px wide.
+    // Nothing on the reading line but what a seek needs. The end-of-cycle
+    // reading and the toggle warning are explanations, and the line is holding
+    // a name, a chip and two numbers already.
     .rowEnd,
     .rowToggle,
     .rowNote {
       display: none;
     }
 
-    // Just above the status strip and staying there: the sheet moves, this does
-    // not. A control that changes place when a panel opens is a control the
-    // reader has to find twice.
-    .playbackRow {
-      flex-wrap: wrap;
-      // Edge to edge on the line the top strip runs on, with the gap between
-      // the two cards that the strip keeps between its own. Centered inside an
-      // 8px padding, the cards sat 23px from the window against the strip's 12,
-      // so the two ends of the screen disagreed about where the margin was.
-      //
-      // Filling the row rather than centering in it: at their natural widths
-      // there is no way to have both ends on the card line *and* one gap in the
-      // middle, because the slack has to go somewhere, and a middle gap three
-      // times every other gap is worse than two slightly wider cards. In Edit,
-      // where the transport is not there at all, this is what gives the one
-      // card that is left two edges to line up with.
-      justify-content: space-between;
-      gap: nav.$card-inset;
-      padding: 0 nav.$card-inset;
+    // Full width, so the name, the chip and both readings all fit -- where
+    // before the chip had to compete with a 108px readout inside a card that
+    // was also holding a handle.
+    .rowReadout {
+      flex: 0 0 auto;
+    }
 
-      // The two on the lower line share it; the scrub card above them takes
-      // the width outright (see the wrap rule further up).
-      .transportCard,
-      > app-view-controls {
+    // Buttons and rail on one line, which is what merging the cards buys.
+    .phoneTransport {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      height: 52px;
+      padding: 0 2px;
+
+      // The rail takes what the buttons leave.
+      .trackWell {
         flex: 1 1 auto;
-      }
-
-      // The host shrink-wraps its card, so growing the host alone grows nothing
-      // a reader can see.
-      > app-view-controls {
-        display: flex;
+        min-width: 0;
+        margin: 0 4px;
       }
     }
 
-    // The two that remain have to fit 390px between them, which at their desk
-    // sizes they do not by about seventy pixels.
-    .transportCard {
-      gap: 2px;
-      padding: 0 6px;
-      height: 52px;
-      // Spread rather than clumped at the left, which is where a row of controls
-      // ends up when the box around it grows and nothing tells it otherwise.
-      justify-content: space-evenly;
+    // Where one kind of control ends and the next begins: the transport, the
+    // handle, and what the drawing shows are three different questions sharing
+    // one line.
+    .phoneRule {
+      width: 1px;
+      height: 30px;
+      flex: 0 0 auto;
+      margin: 0 4px;
+      background: rgba(0, 0, 0, 0.08);
+
+      &.tight {
+        margin: 0 2px;
+      }
     }
 
     .speedButton,

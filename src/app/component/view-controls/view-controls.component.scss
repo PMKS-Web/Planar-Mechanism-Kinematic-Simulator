@@ -53,4 +53,34 @@
       height: 20px;
     }
   }
+
+  // The one button the six collapse to on a phone. It lives on the transport
+  // card's own line, so it wears that line's metrics rather than the view
+  // cluster's -- there is no view cluster there any more.
+  .viewSheetButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #5f6368;
+    cursor: pointer;
+
+    mat-icon {
+      width: 22px;
+      height: 22px;
+      font-size: 22px;
+      line-height: 22px;
+    }
+
+    &.on {
+      background: #eef1fc;
+      color: #303f9f;
+    }
+  }
 }
