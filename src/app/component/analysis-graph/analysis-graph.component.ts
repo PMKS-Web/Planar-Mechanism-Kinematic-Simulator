@@ -423,7 +423,6 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     service.seekMechanism(this.analysisGap.mechIndex, this.analysisGap.firstSeconds);
   }
 
-  loading: boolean = false;
   private subscriptions = new Subscription();
   private chartSyncTimer?: ReturnType<typeof setTimeout>;
   private destroyed = false;
@@ -483,12 +482,13 @@ export class AnalysisGraphComponent implements OnInit, AfterViewInit, OnDestroy,
     );
     this.subscriptions.add(
       this.mechanismService.onMechUpdateState.subscribe((data) => {
-        if (data === 1) {
-          this.loading = true;
-        } else if (data === 0) {
-          this.loading = false;
-        } else if (data === 2 && this.mechanismService.oneValidMechanismExists()) {
-          this.loading = false;
+        // State 1 -- "being dragged" -- used to raise a "Graph paused while
+        // dragging" placeholder in place of the chart. It could only ever fire
+        // in Edit, where these graphs are not on screen, and now that a drag in
+        // an analysis mode is an edit it would blank the very curve the drag is
+        // about. The graph is about to be told the answer; the old curve is a
+        // better thing to be looking at in the meantime than a sentence.
+        if (data === 2 && this.mechanismService.oneValidMechanismExists()) {
           this.updateChartData();
         }
       })

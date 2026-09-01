@@ -91,6 +91,52 @@ describe('what is allowed when', () => {
     });
   });
 
+  it('lets an analysis mode tune what exists, and not restructure it', () => {
+    // The whole of the analysis unlock, as a row of the matrix. The line is
+    // drawn at what the graphs are graphs *of*: dragging a joint changes a
+    // dimension and the curves follow, which is the point; adding or deleting
+    // one changes what the mechanism is, which belongs in Edit.
+    const analysing = at({ mode: 'analysis' });
+    expect(allowed(analysing)).toEqual(['inspect', 'drag', 'transport', 'history']);
+    expect(refusalFor('build', analysing)!.short).toBe('lives in Edit');
+    expect(refusalFor('structure', analysing)!.short).toBe('lives in Edit');
+    expect(refusalFor('placement', analysing)!.short).toBe('lives in Edit');
+  });
+
+  it('never lets an analysis mode allow more than Edit would', () => {
+    // One gradient of freedom across the modes rather than two regimes to
+    // learn: analysis unlocks a subset of Edit, never a superset. Checked over
+    // the pose states as well, because the analysis column asks the same
+    // questions about pose once the mode has had its say.
+    const poses: Partial<EditState>[] = [
+      {},
+      { playing: true, atStart: false },
+      { atStart: false, sharedStepZero: false },
+      { atStart: false, solveDeferred: true },
+    ];
+    poses.forEach((pose) => {
+      const inEdit = new Set(allowed(at({ ...pose, mode: 'edit' })));
+      allowed(at({ ...pose, mode: 'analysis' })).forEach((action) => {
+        expect(inEdit.has(action)).toBe(true);
+      });
+    });
+  });
+
+  it('asks an analysis mode the same questions about pose that Edit asks', () => {
+    // A drag there stages and re-anchors exactly as it does in Edit, so it is
+    // refused while the mechanism is running for the same reason and in the
+    // same words.
+    expect(allowed(at({ mode: 'analysis', playing: true, atStart: false }))).toEqual([
+      'inspect',
+      'transport',
+    ]);
+    expect(refusalFor('drag', at({ mode: 'analysis', playing: true, atStart: false }))!.short).toBe(
+      'animation running'
+    );
+    // And allowed at a paused pose, which is where the tuning happens.
+    expect(refusalFor('drag', at({ mode: 'analysis', atStart: false }))).toBeNull();
+  });
+
   it('keeps a deferred drawing read-only away from its start', () => {
     // No cycle to anchor against, and re-anchoring costs a solve per commit --
     // which is the exact cost the deferral exists to refuse. At the start these
@@ -114,11 +160,12 @@ describe('what is allowed when', () => {
     expect(unsynced!.backToStartHelps).toBe(true);
   });
 
-  it('refuses editing in the analysis modes whatever the pose', () => {
-    expect(allowed(at({ mode: 'analysis' }))).toEqual(['inspect', 'transport']);
-    // Including undo, which replays a URL and would swap the geometry the
-    // graphs are drawn from.
-    expect(refusalFor('history', at({ mode: 'analysis' }))!.short).toBe('analysis mode');
+  it('lets undo into the analysis modes, which used to be refused there', () => {
+    // Undo was refused here because replaying a URL swaps the geometry the
+    // graphs are drawn from. The graphs redraw from whatever was last solved,
+    // so that stopped being a reason -- and unlocking drags without undo would
+    // strand a bad drag behind a mode switch.
+    expect(refusalFor('history', at({ mode: 'analysis' }))).toBeNull();
   });
 
   it('has no transport at all in Synthesis', () => {

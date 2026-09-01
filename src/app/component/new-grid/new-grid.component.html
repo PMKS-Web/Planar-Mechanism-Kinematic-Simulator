@@ -3,7 +3,6 @@
   display="block"
   width="100%"
   height="100%"
-  [class.geometryLocked]="geometryLocked"
   [cdkContextMenuTriggerFor]="context_menu"
   (contextmenu)="onContextMenu($event)"
   appLongPress
@@ -1702,7 +1701,6 @@
       [attr.cursor]="force.locked && mechanismSrv.lockVisualsOn() ? 'not-allowed' : 'move'"
       [class.force-inert]="mechanismSrv.isPartInert(force.link)"
       [class.force-locked]="force.locked && mechanismSrv.lockVisualsOn()"
-      [attr.pointer-events]="geometryLocked ? 'none' : null"
       style="transform: scaleY(-1)"
       (contextmenu)="setLastRightClick(force)"
       (pointerdown)="beginDraggingForceBody(force, $event); setLastLeftClick(force)"

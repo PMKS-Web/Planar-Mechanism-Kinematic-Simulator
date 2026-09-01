@@ -229,14 +229,6 @@
     }
   }
 
-  // Geometry is frozen in the analysis modes, so the four-headed move cursor is
-  // an offer the mode will not honor: the drag it promises does nothing. These
-  // parts can still be *clicked*, to choose what the panel graphs, which is
-  // what a pointer says.
-  #canvas.geometryLocked [cursor='move'] {
-    cursor: pointer;
-  }
-
   // Held in place while editing: the cue is the small padlock badge riding
   // each held joint (and a locked force's anchor) — drawn in the template, so
   // nothing here restyles strokes and no state can cover another. The classes

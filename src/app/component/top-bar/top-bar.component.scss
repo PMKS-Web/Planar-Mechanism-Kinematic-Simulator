@@ -80,13 +80,25 @@
       margin-left: auto;
     }
 
-    // The two faces of that card, one leaving as the other arrives. The one on
-    // its way out is taken out of flow by the animation itself, so the card is
-    // sized by the one arriving rather than by both at once.
-    .cardFace {
+    // Where one kind of verb ends and the next begins: taking an edit back and
+    // taking the numbers away are two different questions sharing one card.
+    // The slot the export control arrives in. It clips, so nothing is drawn
+    // outside the card while the width is still opening.
+    .exportSlot {
       display: flex;
       align-items: center;
       gap: 6px;
+      flex: 0 0 auto;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .historyRule {
+      width: 1px;
+      height: 22px;
+      flex: 0 0 auto;
+      margin: 0 2px;
+      background: #e2e4ec;
     }
   }
 

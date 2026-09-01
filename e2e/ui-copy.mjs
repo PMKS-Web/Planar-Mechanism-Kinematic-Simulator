@@ -240,9 +240,12 @@ const inAnalysis = await unitsTip();
 // The permission model's own sentence now, rather than a second one written
 // here: the note used to read a master-only playing flag, so an unsynced row
 // running in Edit was told to switch to Edit mode while standing in it.
+// The analysis modes tune rather than lock now, so the sentence says both
+// halves: what you can do here, and where the typed version lives.
 record(
   'and does say the way out once the switch is actually greyed',
-  /Switch to Edit to change it\./.test(inAnalysis),
+  /Drag on the grid to tune dimensions here/.test(inAnalysis) &&
+    /switch to Edit to type them\./.test(inAnalysis),
   inAnalysis
 );
 await page.screenshot({ path: 'artifacts/ui-copy/tip-angle-units-locked.png' });

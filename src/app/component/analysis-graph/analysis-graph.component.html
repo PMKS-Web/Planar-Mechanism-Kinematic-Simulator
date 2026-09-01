@@ -15,14 +15,12 @@
   <!-- In place of the chart rather than over it: these used to be fixed-height
        overlays pinned 100px down the card, which on a short graph covered the
        card below and on a tall one floated in the middle of nothing. -->
-  @if (noDataSelected || loading) {
-    <div class="graphPlaceholder" role="status">
-      {{ noDataSelected ? 'No series shown. Pick one above.' : 'Graph paused while dragging.' }}
-    </div>
+  @if (noDataSelected) {
+    <div class="graphPlaceholder" role="status">No series shown. Pick one above.</div>
   }
   <app-analysis-apex-chart
     #chart
-    [class.hidden]="noDataSelected || loading"
+    [class.hidden]="noDataSelected"
     role="img"
     [attr.aria-label]="graphSummary"
     [class.compact-single-series]="compactSingleSeries"

@@ -355,7 +355,7 @@ try {
   const analysisStrip = await page.locator('#bottomBar').innerText();
   record(
     'and follows the mode into analysis',
-    /Kinematic/.test(analysisStrip) && /Read-only here/.test(analysisStrip),
+    /Kinematic/.test(analysisStrip) && /Drag to tune/.test(analysisStrip),
     analysisStrip
   );
 

@@ -75,6 +75,31 @@ const MENU_SHORTCUTS: ShortcutId[] = ['app.settings', 'app.help'];
     // Undo/Redo giving the corner over to Export Data, and back. The one on its
     // way out leaves the flow, so the card takes the width of the one arriving
     // instead of holding both.
+    // Export arrives from the right-hand edge it lives on, and leaves the same
+    // way. It is joining a card that is already there rather than replacing
+    // what is in it, so nothing already on the card may move: the two buttons
+    // beside it keep their place and this slides in past them.
+    trigger('slideInFromRight', [
+      transition(':enter', [
+        // Width as well as the slide, so the card grows *with* it. The card is
+        // pinned to the window's right edge, so gaining a control widens it
+        // leftwards -- and with only the button animating, that widening
+        // happened in one frame and moved Undo and Redo before anything slid.
+        // `margin-left` goes with it, or the card's own 6px gap is still there
+        // at zero width and the growth starts with a jump of its own.
+        style({ width: 0, marginLeft: '-6px', opacity: 0, transform: 'translateX(10px)' }),
+        animate(
+          '220ms cubic-bezier(0.4, 0, 0.2, 1)',
+          style({ width: '*', marginLeft: '*', opacity: 1, transform: 'none' })
+        ),
+      ]),
+      transition(':leave', [
+        animate(
+          '170ms cubic-bezier(0.4, 0, 1, 1)',
+          style({ width: 0, marginLeft: '-6px', opacity: 0, transform: 'translateX(10px)' })
+        ),
+      ]),
+    ]),
     trigger('swapFace', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateY(7px)' }),

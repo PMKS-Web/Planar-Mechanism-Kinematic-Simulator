@@ -475,7 +475,15 @@ describe('AnalysisGraphComponent lifecycle', () => {
     fixture.service.onMechUpdateState.next(2);
     vi.advanceTimersByTime(2);
     expect(stateEvents.slice(eventsBeforeRefresh)).toEqual([2]);
-    expect(component.loading).toBe(false);
+    // A drag no longer blanks the graph. The "Graph paused while dragging"
+    // placeholder could only fire in Edit, where these graphs are not on
+    // screen -- and now that a drag in an analysis mode is an edit, it would
+    // have covered the very curve the drag is about. State 1 is now a state
+    // this component simply does not act on.
+    const drawnBefore = determineChart.mock.calls.length;
+    fixture.service.onMechUpdateState.next(1);
+    vi.advanceTimersByTime(2);
+    expect(determineChart.mock.calls.length).toBe(drawnBefore);
 
     const callsBeforeUnitChange = determineChart.mock.calls.length;
     fixture.settings.lengthUnit.next(LengthUnit.METER);

@@ -54,9 +54,10 @@ export class BottombarComponent {
    */
   get status(): string {
     if (this.tabs.isAnalysisMode()) {
-      // Not "locked": that word belongs to the per-part Lock, and a student
-      // who has locked nothing would go hunting for an unlock that isn't there.
-      return 'Read-only here';
+      // It used to say "Read-only here", which stopped being true when a drag
+      // in an analysis mode became an edit. What is true is the narrower thing:
+      // what exists can be tuned, and what the mechanism is made of is Edit's.
+      return 'Drag to tune \u00b7 build in Edit';
     }
     if (this.tabs.getCurrentTab() === TabID.SYNTHESIZE) {
       return this.synthesisStatus();

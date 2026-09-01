@@ -110,38 +110,43 @@
     </div>
   </div>
 
-  <!-- The same corner in every mode, holding whatever that mode's verb is:
-       taking an edit back where edits can be made, and taking the numbers away
-       where they can only be read. One card that changes hands rather than two
-       that appear and disappear in the same place. -->
+  <!-- The same corner in every mode. Undo and Redo are always here now, because
+       an analysis mode can be edited: unlocking drags without them would strand
+       a bad drag behind a mode switch. Export joins them where there is a
+       solved cycle to take away, sliding in from the right so the two that were
+       already there keep their place rather than being pushed about. -->
   <div class="card historyCard">
-    @if (!tabs.isAnalysisMode()) {
-      <div class="cardFace" @swapFace>
-        <button
-          class="historyButton"
-          (click)="undo()"
-          [disabled]="!canUndo()"
-          appShortcutTip="Undo"
-          shortcutTipFor="history.undo"
-          aria-label="Undo"
-        >
-          <mat-icon>undo</mat-icon>
-          <span class="historyLabel">Undo</span>
-        </button>
-        <button
-          class="historyButton"
-          (click)="redo()"
-          [disabled]="!canRedo()"
-          appShortcutTip="Redo"
-          shortcutTipFor="history.redo"
-          aria-label="Redo"
-        >
-          <mat-icon>redo</mat-icon>
-          <span class="historyLabel">Redo</span>
-        </button>
-      </div>
-    } @else {
-      <div class="cardFace" @swapFace>
+    <button
+      class="historyButton"
+      (click)="undo()"
+      [disabled]="!canUndo()"
+      appShortcutTip="Undo"
+      shortcutTipFor="history.undo"
+      aria-label="Undo"
+    >
+      <mat-icon>undo</mat-icon>
+      <span class="historyLabel">Undo</span>
+    </button>
+    <button
+      class="historyButton"
+      (click)="redo()"
+      [disabled]="!canRedo()"
+      appShortcutTip="Redo"
+      shortcutTipFor="history.redo"
+      aria-label="Redo"
+    >
+      <mat-icon>redo</mat-icon>
+      <span class="historyLabel">Redo</span>
+    </button>
+    @if (tabs.isAnalysisMode()) {
+      <!-- One slot rather than two entering elements: the card has to *grow* as
+           this arrives, and it can only grow leftwards because it is pinned to
+           the window's right edge. Animating the slot's own width is what makes
+           that growth part of the same movement -- with the button alone
+           entering, the card snapped to its full width in one frame and threw
+           Undo and Redo 200px to the left before anything had slid anywhere. -->
+      <span class="exportSlot" @slideInFromRight>
+        <span class="historyRule" aria-hidden="true"></span>
         <button
           class="historyButton"
           (click)="exportData()"
@@ -152,7 +157,7 @@
           <mat-icon>download</mat-icon>
           <span class="historyLabel">Export Data</span>
         </button>
-      </div>
+      </span>
     }
   </div>
 </div>

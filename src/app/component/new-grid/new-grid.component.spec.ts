@@ -13,6 +13,7 @@ import { MODEL_SCALE } from '../../model/render-scale';
 import { BackgroundImageService } from '../../services/background-image.service';
 import { SynthesisBuilderService } from '../../services/synthesis/synthesis-builder.service';
 import { NotificationService } from '../../services/notification.service';
+import { EditPermissionService } from '../../services/edit-permission.service';
 import { Coord } from '../../model/coord';
 import { LONGEST_ARROW_FRACTION, PATH_ARROW_COUNT } from '../../model/vector-trace';
 
@@ -292,84 +293,45 @@ describe('NewGridComponent drag gestures', () => {
     expect([c.x, c.y]).toEqual([32, 33]);
   });
 
-  // Analyze presents itself as read-only, and refused the edit context menu, but
-  // dragging went straight through. Whole-link drag would have made that worse.
-  it('refuses to drag anything while Analysis mode is showing', () => {
+  // An analysis mode used to refuse every drag, on the grounds that the graphs
+  // described a cycle the geometry could not move under. They redraw from
+  // whatever was last solved, so the lock was standing between the reader and
+  // the most instructive thing here: grab a joint and watch the curve follow.
+  it('lets a drag through in an analysis mode, joint and link alike', () => {
     const { component, b, c, cd } = setUp();
     TestBed.inject(SelectedTabService).setTab(TabID.ANALYZE);
 
     component.setLastLeftClick(b);
     drag(component, 8);
+    expect([b.x, b.y]).not.toEqual([5, 5]);
+
+    const wasC = [c.x, c.y];
     component.setLastLeftClick(cd, new MouseEvent('mousedown'));
     component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 0, clientY: 0 }));
     component.mouseMove(new MouseEvent('mousemove', { clientX: 12, clientY: 13 }));
     component.mouseUp(new MouseEvent('mouseup'));
-
-    expect([b.x, b.y]).toEqual([5, 5]);
-    expect([c.x, c.y]).toEqual([20, 20]);
+    expect([c.x, c.y]).not.toEqual(wasC);
   });
 
-  /**
-   * ...and says so, once, and only to somebody who really tried.
-   *
-   * The refused drag above was silent: the joint stayed put and nothing said
-   * why, which reads as a broken canvas rather than a fixed one. The two bars
-   * here do not solve, so in an analysis mode they would be scenery and take
-   * no click at all -- the refusal is about the mode rather than about this
-   * machine, so the scene is told to treat them as live parts.
-   */
-  describe('the refusal a fixed geometry earns', () => {
-    const said = () =>
-      TestBed.inject(NotificationService).live.filter(
-        (one) => one.id === 'analysis.geometry-fixed'
-      );
-
-    function inAnalysis() {
-      const scene = setUp();
-      TestBed.inject(SelectedTabService).setTab(TabID.ANALYZE);
-      vi.spyOn(scene.mechanism, 'isPartInert').mockReturnValue(false);
-      return scene;
-    }
-
-    it('names the way out when a part is dragged', () => {
-      const { component, b } = inAnalysis();
-      component.setLastLeftClick(b);
-      drag(component, 8);
-      expect(said().length).toBe(1);
-      expect(said()[0].text).toContain('Edit mode');
-    });
-
-    it('says it once for a gesture, however many moves it takes', () => {
-      const { component, b } = inAnalysis();
-      component.setLastLeftClick(b);
-      drag(component, 20);
-      expect(said().length).toBe(1);
-    });
-
-    it('stays quiet for a click that only selected the part', () => {
-      const { component, b } = inAnalysis();
-      component.setLastLeftClick(b);
-      component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 5, clientY: 5 }));
-      component.mouseUp(new MouseEvent('mouseup'));
-      expect(said().length).toBe(0);
-    });
-
-    it('stays quiet for a press that never leaves the click threshold', () => {
-      const { component, b } = inAnalysis();
-      component.setLastLeftClick(b);
-      component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 5, clientY: 5 }));
-      component.mouseMove(new MouseEvent('mousemove', { clientX: 7, clientY: 8 }));
-      component.mouseUp(new MouseEvent('mouseup'));
-      expect(said().length).toBe(0);
-    });
-
-    it('stays quiet where the geometry can actually be moved', () => {
-      const { component, b } = setUp();
-      component.setLastLeftClick(b);
-      drag(component, 8);
-      expect(said().length).toBe(0);
-    });
+  // What it still refuses is changing what the mechanism is made of, which is
+  // where the graphs' own subject would go out from under them.
+  it('still refuses to restructure in an analysis mode', () => {
+    const { component } = setUp();
+    TestBed.inject(SelectedTabService).setTab(TabID.ANALYZE);
+    const permission = TestBed.inject(EditPermissionService);
+    expect(permission.may('drag')).toBe(true);
+    expect(permission.may('history')).toBe(true);
+    expect(permission.may('structure')).toBe(false);
+    expect(permission.may('build')).toBe(false);
+    expect(permission.refusal('build')!.short).toBe('lives in Edit');
+    expect(component.structureLocked).toBe(true);
   });
+
+  // "the refusal a fixed geometry earns" was here -- five tests around the
+  // `analysis.geometry-fixed` notice, which said "Geometry is fixed while
+  // analyzing. Switch to Edit mode to move this part." Nothing is fixed while
+  // analyzing any more, so there is no refusal to earn and no notice to arm.
+  // What an analysis mode still refuses is covered above.
 
   // A drag let go of over the floating panel comes up on the window, not on the
   // canvas, so `mouseUp` never fires. Left unreleased the joint kept following a

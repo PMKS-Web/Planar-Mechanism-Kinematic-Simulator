@@ -1441,7 +1441,9 @@ export class NewGridComponent implements OnDestroy {
     const parts = this.activeObjService.selectedParts;
     if (parts.length === 0 || this.mechanismSrv.isAtStartPose()) return true;
     const machines = new Set(
-      parts.map((part) => this.mechanismSrv.indexOfMechanismContaining(part as Joint | Link | Force))
+      parts.map((part) =>
+        this.mechanismSrv.indexOfMechanismContaining(part as Joint | Link | Force)
+      )
     );
     if (machines.size > 1) {
       this.notify.refusal(
@@ -1788,14 +1790,15 @@ export class NewGridComponent implements OnDestroy {
 
     // The press earned a refusal, and the pointer has now actually tried to
     // move the object: say it, once per gesture.
-    // `geometryLocked` as well as `canEditNow`: in an analysis mode nothing is
-    // editable by definition, and the refusal armed there is precisely about
-    // that. Everywhere else the gate is unchanged -- a press held while the
-    // animation runs still says nothing, because the reader can see it running.
+    // Just `canEditNow` now. A held press in an analysis mode used to earn a
+    // spoken refusal, because nothing there was editable and the reason was
+    // nowhere on screen; a drag there is an edit, so there is nothing to say.
+    // The gate is otherwise unchanged -- a press held while the animation runs
+    // still says nothing, because the reader can see it running.
     if (
       this.heldGestureNotice &&
       this.dragState.isPointerDown &&
-      (this.canEditNow() || this.geometryLocked) &&
+      this.canEditNow() &&
       this.pastDragThreshold($event) &&
       // Traveled, not merely held: `pastDragThreshold` also calls a press held
       // for a tenth of a second a drag, and a hand resting on the button while
@@ -2005,23 +2008,11 @@ export class NewGridComponent implements OnDestroy {
     this.heldGestureNotice ??= say;
   }
 
-  /**
-   * Refuse a drag the analysis modes cannot honor, and name the way out.
-   *
-   * On a long cooldown on purpose. It is a fact about the mode rather than
-   * about this part, so it is learned once — and a reader who has read it and
-   * carries on dragging is not helped by reading it again.
-   */
-  private refuseAnalysisDrag(): void {
-    this.notify.refusal(
-      'analysis.geometry-fixed',
-      'Geometry is fixed while analyzing. Switch to Edit mode to move this part.',
-      {
-        cooldownMs: 10000,
-        actions: [{ label: 'Switch to Edit', run: () => this.tabService.setTab(TabID.EDIT) }],
-      }
-    );
-  }
+  // `refuseAnalysisDrag` was here: "Geometry is fixed while analyzing. Switch
+  // to Edit mode to move this part." Nothing is fixed while analyzing any more,
+  // so the sentence would be false. What an analysis mode still refuses --
+  // adding, deleting, welding -- is said by the context menu's grayed rows, in
+  // the model's own words.
 
   /**
    * The padlock the canvas badges wear. Unlike lock.svg's fully hollow
@@ -2185,12 +2176,12 @@ export class NewGridComponent implements OnDestroy {
    * tap on Play.
    *
    * Only a movable part. Panning must not stop the show, so a press on empty
-   * canvas is not a grab -- and neither is one in an analysis mode, where the
-   * geometry is locked and a press is how a part is picked for its graphs.
+   * canvas is not a grab. An analysis mode used to be excluded too, on the
+   * grounds that a press there could only be picking a part for its graphs --
+   * which stopped being true when a drag became an edit there.
    */
   private grabToPause(clickedObj: Joint | Link | string | Force | SynthesisPose): void {
     if (!this.mechanismSrv.isPlaying) return;
-    if (this.permission.modeLocksGeometry()) return;
     if (typeof clickedObj === 'string' || clickedObj instanceof SynthesisPose) return;
     this.mechanismSrv.pauseInPlace();
     this.settings.animating.next(false);
@@ -2206,8 +2197,12 @@ export class NewGridComponent implements OnDestroy {
    * second skeleton would be decoration over the graphs' own subject.
    */
   showStartGhost(): boolean {
+    // Wherever a drag can move the start, which is now the analysis modes as
+    // well. It is not decoration there: a drag at a displaced pose re-anchors
+    // underneath it, and the ghost is the surface that warns when the start is
+    // about to be lost. Synthesis has no mechanism to have a start.
     return (
-      this.tabService.getCurrentTab() === TabID.EDIT && !this.mechanismSrv.isAtStartPose()
+      this.tabService.getCurrentTab() !== TabID.SYNTHESIZE && !this.mechanismSrv.isAtStartPose()
     );
   }
 
@@ -2801,7 +2796,7 @@ export class NewGridComponent implements OnDestroy {
     this.selectionTogglePress = false;
     this.cylinderCreateStart = undefined;
     this.linkCreateStart = undefined;
-                this.linkCreateFrom = undefined;
+    this.linkCreateFrom = undefined;
     if (this.showSynthesis()) this.synthCanvas.release();
   }
 
@@ -3333,13 +3328,10 @@ export class NewGridComponent implements OnDestroy {
       // slot-cut refusals exist to prevent. Refused the same way, and offered
       // again at the start pose where both halves mean the same thing.
       if (this.creationWouldCrossMachines()) {
-        this.notify.refusal(
-          'merge.crosses-machines',
-          MERGE_REFUSAL_MESSAGES['crosses-machines']
-        );
+        this.notify.refusal('merge.crosses-machines', MERGE_REFUSAL_MESSAGES['crosses-machines']);
         this.dragState.cancel();
         this.linkCreateStart = undefined;
-                this.linkCreateFrom = undefined;
+        this.linkCreateFrom = undefined;
         this.linkCreateFrom = undefined;
         return;
       }
@@ -3420,18 +3412,6 @@ export class NewGridComponent implements OnDestroy {
         if (this.dragState.grid === gridStates.createCylinder) {
           this.commitCylinderCreation(mousePosInSvg);
           break;
-        }
-        // The analysis modes read a solved cycle, so the geometry under it
-        // cannot move: a drag on a part there is a refusal rather than a drag.
-        // Armed here and ahead of the lock refusals below, because in these
-        // modes the mode is the reason and a lock is beside the point —
-        // and spoken only if the pointer actually travels, since a click here
-        // is how a part is picked for its graphs.
-        if (
-          this.geometryLocked &&
-          (this.lastLeftClickType === 'Joint' || this.lastLeftClickType === 'Link')
-        ) {
-          this.holdNotice(() => this.refuseAnalysisDrag());
         }
         switch (this.lastLeftClickType) {
           case 'Grid':
@@ -3605,7 +3585,7 @@ export class NewGridComponent implements OnDestroy {
                 if (commonLinkCheck) {
                   this.dragState.finishCreating();
                   this.linkCreateStart = undefined;
-                this.linkCreateFrom = undefined;
+                  this.linkCreateFrom = undefined;
                   this.notify.refusal(
                     'link.already-joined',
                     'Those two joints are already on one link.'
@@ -3697,7 +3677,7 @@ export class NewGridComponent implements OnDestroy {
               );
               this.dragState.cancel();
               this.linkCreateStart = undefined;
-                this.linkCreateFrom = undefined;
+              this.linkCreateFrom = undefined;
               break;
             }
             if (this.dragState.link === linkStates.waiting) {
@@ -3763,13 +3743,13 @@ export class NewGridComponent implements OnDestroy {
         this.dragState.cancel();
         this.cylinderCreateStart = undefined;
         this.linkCreateStart = undefined;
-                this.linkCreateFrom = undefined;
+        this.linkCreateFrom = undefined;
         return;
       case 2: // Right-Click
         this.dragState.cancel();
         this.cylinderCreateStart = undefined;
         this.linkCreateStart = undefined;
-                this.linkCreateFrom = undefined;
+        this.linkCreateFrom = undefined;
         break;
     }
   }
@@ -4561,11 +4541,18 @@ export class NewGridComponent implements OnDestroy {
     return !!sealed && link.id !== sealed.barrel.id;
   }
 
-  /** Nothing on the canvas can be moved in an analysis mode. */
-  get geometryLocked(): boolean {
-    // Still the analysis modes, but asked of the permission model so the words
-    // it refuses in are the ones the menu and the panel use for the same rule.
-    return this.permission.modeLocksGeometry();
+  /**
+   * Whether this mode refuses to let the mechanism be *restructured*.
+   *
+   * It was `geometryLocked`, and it meant it: the whole drawing was painted as
+   * scenery, with a `pointer-events: none` layer over the forces and every part
+   * drawn in the grayed family. None of that is true now -- a part in an
+   * analysis mode is a thing you can pick up -- so what is left of the old lock
+   * is this narrower question, asked by the gestures that build rather than by
+   * the ones that move.
+   */
+  get structureLocked(): boolean {
+    return this.permission.modeLocksStructure();
   }
 
   /**

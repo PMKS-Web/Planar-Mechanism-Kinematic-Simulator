@@ -156,14 +156,63 @@ const IN_SYNTHESIS: EditRefusal = refusal({
   actionKind: 'toEdit',
 });
 
-const IN_ANALYSIS: EditRefusal = refusal({
-  short: 'analysis mode',
+/**
+ * Restructuring, in an analysis mode.
+ *
+ * The refusal that teaches the thing it guards: what is refused here is
+ * *changing what the mechanism is made of*, and what is offered instead is the
+ * whole point of unlocking the mode.
+ */
+const ANALYSIS_RESTRUCTURE: EditRefusal = refusal({
+  short: 'lives in Edit',
   glyph: 'insights',
-  lead: 'The graphs describe this cycle.',
-  action: 'Switch to Edit',
-  tail: 'to change it.',
+  lead: 'Adding and removing parts lives in Edit. Here you can drag what exists and watch the graphs follow.',
+});
+
+/**
+ * A typed number, in an analysis mode.
+ *
+ * The panels here are graphs; there is no field to type into. Said anyway, so
+ * the matrix has no blank cells and any surface added later inherits an answer
+ * rather than inventing one.
+ */
+const ANALYSIS_TYPING: EditRefusal = refusal({
+  short: 'lives in Edit',
+  glyph: 'insights',
+  lead: 'Typed values live in the Edit panel. Drag on the grid to tune dimensions here, or',
+  action: 'switch to Edit',
+  tail: 'to type them.',
   actionKind: 'toEdit',
 });
+
+/**
+ * What an analysis mode refuses on its own account, before any question of
+ * pose -- or nothing, where it refuses nothing.
+ *
+ * The modes used to refuse *everything* but inspecting and the transport, on
+ * the grounds that "the graphs describe this exact cycle, so the geometry is
+ * locked here". That claim stopped being true: the graph stack redraws from
+ * whatever `updateMechanism` last solved, and an Edit drag already re-solves
+ * the whole cycle on every pointer move. The lock was not protecting the
+ * graphs; it was standing between the reader and the most instructive thing
+ * this app can do -- grab a joint and watch the acceleration peak move.
+ *
+ * So the line is drawn at what the graphs are graphs *of*: tuning what exists
+ * is allowed, changing what exists is not. Undo comes with it, because
+ * unlocking drags without it strands a bad drag behind a mode switch.
+ */
+function analysisRefusalFor(action: EditAction): EditRefusal | null {
+  switch (action) {
+    case 'drag':
+    case 'history':
+      return null;
+    case 'build':
+    case 'structure':
+      return ANALYSIS_RESTRUCTURE;
+    default:
+      return ANALYSIS_TYPING;
+  }
+}
 
 const PLAYING: EditRefusal = refusal({
   short: 'animation running',
@@ -254,14 +303,16 @@ export function refusalFor(action: EditAction, state: EditState): EditRefusal | 
 
   if (action === 'transport') return transportRefusal(state);
 
-  // Synthesis owns the grid entirely, and the analyses own a solved cycle that
-  // geometry cannot move under. Both refuse before any question about pose.
+  // Synthesis owns the grid entirely: it describes a mechanism that does not
+  // exist yet, so there is nothing here to refuse *about*.
   if (state.mode === 'synthesis') return IN_SYNTHESIS;
+  // An analysis mode refuses restructuring outright and then asks the same
+  // questions about pose that Edit does -- so no cell of its column is ever
+  // more permissive than Edit's, and there is one gradient of freedom across
+  // the modes rather than two regimes to learn.
   if (state.mode === 'analysis') {
-    // Undo already refused in the analyses before this model existed, for the
-    // same reason a drag does: replaying a URL swaps the geometry the graphs
-    // are drawn from.
-    return IN_ANALYSIS;
+    const refused = analysisRefusalFor(action);
+    if (refused) return refused;
   }
 
   // Playing is read-only whatever the action. A reader reaching for a joint

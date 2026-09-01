@@ -126,7 +126,7 @@ const inkIn = async (mode) => {
     return {
       ink: grid.orphanMarkInk,
       cursor: joint ? getComputedStyle(joint).cursor : null,
-      locked: grid.geometryLocked,
+      locked: grid.structureLocked,
     };
   });
 };
@@ -140,11 +140,11 @@ record(
   analyzing.ink !== '#F44336',
   analyzing
 );
-record(
-  'and the cursor stops offering a drag that will not happen',
-  analyzing.cursor === 'pointer',
-  analyzing
-);
+// The cursor keeps offering the drag, because the drag now happens: an
+// analysis mode tunes what exists. What it still refuses is restructuring,
+// which no cursor was ever promising.
+record('and the parts can still be dragged there', analyzing.cursor === 'move', analyzing);
+record('while the mode still refuses to restructure', analyzing.locked === true, analyzing);
 
 // --- a drawing that cannot be analyzed sends you back to Edit --------------
 await load(payloads['4-Bar']);
@@ -234,10 +234,12 @@ await page.locator('.tabButton', { hasText: 'Kinematic' }).click({ force: true }
 await page.waitForTimeout(700);
 record(
   'with a solved mechanism there is something to export, selection or not',
-  !(await page.locator('.historyCard button').first().isDisabled()),
+  // By name, not by position: Undo and Redo share this card now, and the
+  // first button in it is Undo.
+  !(await page.locator('.historyCard button', { hasText: 'Export Data' }).isDisabled()),
   {}
 );
-await page.locator('.historyCard button').first().click();
+await page.locator('.historyCard button', { hasText: 'Export Data' }).click();
 await page.waitForTimeout(700);
 record(
   'and the corner card opens the drawer that asks what to write',

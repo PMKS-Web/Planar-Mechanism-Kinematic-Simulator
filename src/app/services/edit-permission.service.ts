@@ -72,14 +72,14 @@ export class EditPermissionService {
   }
 
   /**
-   * Whether the *mode* is what forbids geometry, rather than where in the cycle
-   * the mechanism is.
+   * Whether the *mode* forbids changing what the mechanism is made of.
    *
-   * The canvas needs the distinction: in an analysis mode a held press earns a
-   * spoken refusal, because the reason is not on screen anywhere; mid-cycle it
-   * stays silent, because the reader can see the thing moving.
+   * It used to be `modeLocksGeometry`, and it meant it: an analysis mode
+   * refused every edit there was. It refuses restructuring now and lets a drag
+   * through, so the honest name is the narrower one -- and the surfaces that
+   * quoted the old one have to say which half they meant.
    */
-  modeLocksGeometry(): boolean {
+  modeLocksStructure(): boolean {
     return this.mode() === 'analysis';
   }
 

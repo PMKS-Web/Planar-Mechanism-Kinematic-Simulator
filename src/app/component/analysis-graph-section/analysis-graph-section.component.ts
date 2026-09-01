@@ -108,6 +108,10 @@ export class AnalysisGraphSectionComponent {
     );
     const key = [
       step,
+      // The pose, not just the sample. A drag changes the geometry without
+      // moving the playhead, so keyed on the sample alone this header went on
+      // quoting the number it read before the drag started.
+      this.mechanismService.poseRevision,
       this.settings.lengthUnit.value,
       this.settings.angleUnit.value,
       this.settings.forceUnit.value,
