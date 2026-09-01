@@ -38,10 +38,26 @@ export class EditPermissionService {
       // still reads zero.
       atStart: mechanism.isAtStartPose(),
       sharedStepZero: mechanism.mechanismTimeStep === 0,
+      awayMachine: this.machineAwayFromItsStart(),
       solveDeferred: mechanism.solvingIsDeferred,
       empty: mechanism.joints.length === 0 && mechanism.links.length === 0,
       runnable: mechanism.oneValidMechanismExists(),
     };
+  }
+
+  /**
+   * The first machine parked away from its own start, by name.
+   *
+   * For the one message that has to name one: unsynced, the shared clock can
+   * read zero while a machine sits a third of the way round, and "one of the
+   * machines" is a sentence written by something that does not know what the
+   * machine is called.
+   */
+  private machineAwayFromItsStart(): string | undefined {
+    const at = this.mechanism.mechanisms.findIndex(
+      (_, index) => (this.mechanism.secondsOf(index) ?? 0) > 0
+    );
+    return at === -1 ? undefined : this.mechanism.partitions[at]?.id;
   }
 
   private mode(): EditMode {

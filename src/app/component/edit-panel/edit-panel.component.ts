@@ -41,6 +41,7 @@ import { Link, RealLink } from '../../model/link';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
+import { EditBannerComponent } from './edit-banner.component';
 import { StateInputComponent } from '../BLOCKS/state-input/state-input.component';
 import { uniformBodyOf } from '../../model/uniform-body';
 import {
@@ -86,6 +87,7 @@ const INPUT_SPEED_UNITS = [
   styleUrls: ['./edit-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    EditBannerComponent,
     MatTooltip,
     MatIcon,
     SubtitleComponent,

@@ -788,7 +788,12 @@ await page.waitForTimeout(900);
 const headShadow = () =>
   page.evaluate(() => {
     const card = document.querySelector('app-edit-panel #normalPanel');
-    const head = card?.querySelector(':scope > editable-title-block, :scope > title-block');
+    // Through the freeze wrapper, which has no box of its own: `panel-section`
+    // wraps the title so the card's contents can be made inert without taking
+    // the refusal strip beside them with it.
+    const head = card?.querySelector(
+      ':scope > .sectionBody > editable-title-block, :scope > .sectionBody > title-block'
+    );
     if (!card || !head) return null;
     const shadow = getComputedStyle(head).boxShadow;
     // "rgba(0, 0, 0, 0)" is the resting state: declared, so it fades in.

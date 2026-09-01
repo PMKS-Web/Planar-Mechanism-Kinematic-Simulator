@@ -4,21 +4,6 @@
        clears it. The words come from the permission model, so the banner, the
        grayed menu rows and the canvas cannot describe the same rule
        differently. -->
-  @if (banner(); as why) {
-    <div class="editBanner" role="status">
-      <!-- Stacked rather than laid across. The panel is 250px wide: a sentence
-           and a button sharing that line left the sentence four words deep and
-           the button hard against it. -->
-      <div class="bannerLine">
-        <mat-icon class="bannerGlyph">motion_photos_paused</mat-icon>
-        <span class="bannerText">{{ why.long }}</span>
-      </div>
-      @if (backToStartHelps()) {
-        <button class="bannerAction" type="button" (click)="backToStart()">Back to start</button>
-      }
-    </div>
-  }
-
   <!-- Two levels, because the answers differ. Playing or in an analysis mode
        nothing here may be touched, and `inert` takes the whole subtree out of
        pointer, keyboard and focus reach in one attribute. Merely paused away
@@ -27,13 +12,13 @@
        only the pose-bound fields are frozen, which the component does on the
        controls themselves. The numbers stay readable either way: watching a
        joint's coordinates tick is the reason the panel stays at all. -->
-  <div class="editBody" [class.frozen]="panelIsFrozen()" [attr.inert]="panelIsFrozen() || null">
+  <div class="editBody" [class.frozen]="panelIsFrozen()">
     @if (this.activeSrv.objType == 'MultiSelection') {
-      <app-multi-edit-panel></app-multi-edit-panel>
+      <app-multi-edit-panel [attr.inert]="panelIsFrozen() || null"></app-multi-edit-panel>
     }
 
     @if (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') {
-      <div class="helpPanel">
+      <div class="helpPanel" [attr.inert]="panelIsFrozen() || null">
         <div class="helpTitle">Edit</div>
         <!-- An empty grid has nothing to click, so it is not told to click. -->
         <p class="helpLead">
@@ -99,7 +84,7 @@
         big it is drawn, and how far you can see through it. -->
     @if (this.activeSrv.objType == 'BackgroundImage') {
       @if (bgImage.image(); as bg) {
-        <panel-section>
+        <panel-section [frozen]="panelIsFrozen()">
           <div class="bgTitle">Background Image</div>
           <div class="bgFileName">{{ bg.fileName }}</div>
           <collapsible-subseciton
@@ -170,15 +155,19 @@
     }
 
     @if (this.activeSrv.objType == 'Mechanism') {
-      <app-mechanism-panel [editable]="true"></app-mechanism-panel>
+      <app-mechanism-panel
+        [editable]="true"
+        [attr.inert]="panelIsFrozen() || null"
+      ></app-mechanism-panel>
     }
 
     <!--  JOINT PANEL-->
     @if (this.activeSrv.objType == 'Joint') {
-      <panel-section>
+      <panel-section [frozen]="panelIsFrozen()">
         <editable-title-block [deleteAction]="deleteJoint.bind(this)">
           Edit Joint
         </editable-title-block>
+        <app-edit-banner panelAttached />
         <collapsible-subseciton
           titleLabel="Basic Settings"
           [expanded]="sectionExpanded['JBasic']"
@@ -363,13 +352,14 @@
         one part — mounts, length/angle read-outs, and the drive controls of
         its hidden prismatic pin. -->
     @if (this.activeSrv.objType == 'Link' && selectedCylinder; as cyl) {
-      <panel-section>
+      <panel-section [frozen]="panelIsFrozen()">
         <editable-title-block
           [deleteAction]="deleteLink.bind(this)"
           [displayName]="cyl.barrelFar.name + cyl.rodFar.name"
         >
           Edit Cylinder
         </editable-title-block>
+        <app-edit-banner panelAttached />
         <collapsible-subseciton
           titleLabel="Cylinder"
           [expanded]="sectionExpanded['LBasic']"
@@ -510,10 +500,11 @@
 
     <!--  LINK PANEL-->
     @if (this.activeSrv.objType == 'Link' && !selectedCylinder) {
-      <panel-section>
+      <panel-section [frozen]="panelIsFrozen()">
         <editable-title-block [deleteAction]="deleteLink.bind(this)">
           Edit Link</editable-title-block
         >
+        <app-edit-banner panelAttached />
         <collapsible-subseciton
           [expanded]="true"
           titleLabel="Basic Settings"
@@ -731,10 +722,11 @@
     <!--  FORCE PANEL-->
 
     @if (this.activeSrv.objType == 'Force') {
-      <panel-section>
+      <panel-section [frozen]="panelIsFrozen()">
         <editable-title-block [deleteAction]="deleteForce.bind(this)"
           >Edit Force</editable-title-block
         >
+        <app-edit-banner panelAttached />
         <collapsible-subseciton
           titleLabel="Basic Settings"
           [expanded]="sectionExpanded['FBasic']"

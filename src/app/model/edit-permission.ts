@@ -70,15 +70,45 @@ export const EDIT_ACTIONS: readonly EditAction[] = [
  */
 export interface EditRefusal {
   short: string;
+  /** The whole sentence, for a tooltip, a snackbar, or a grayed row's title. */
   long: string;
   /**
    * Whether returning to the start pose is what clears this refusal.
    *
-   * The surfaces that can offer a way out -- the panel banner's "Back to
-   * start" -- need to know that the button would help, rather than guessing
-   * from the wording.
+   * The surfaces that can offer a way out need to know that the button would
+   * help, rather than guessing from the wording.
    */
   backToStartHelps?: boolean;
+  /** The glyph the Edit panel's strip draws beside it. */
+  glyph: string;
+  /**
+   * The same sentence in three pieces, so the way out can be a link *inside*
+   * it rather than a button beside it.
+   *
+   * The panel is 250px wide. A sentence and a button sharing that line left the
+   * sentence four words deep with the button hard against it, and a button
+   * stacked under it made the strip a different height in every state. Written
+   * as prose with one word underlined, every message is the same two lines.
+   */
+  lead: string;
+  action?: string;
+  tail?: string;
+  /** What pressing that word does. */
+  actionKind?: 'backToStart' | 'toEdit';
+}
+
+/**
+ * One refusal, written once.
+ *
+ * `long` is built from the pieces rather than written twice: the two used to be
+ * separate strings, which is how a surface comes to quote a sentence the panel
+ * no longer says.
+ */
+function refusal(parts: Omit<EditRefusal, 'long'>): EditRefusal {
+  return {
+    ...parts,
+    long: [parts.lead, parts.action, parts.tail].filter(Boolean).join(' ').replace(/\s+/g, ' '),
+  };
 }
 
 /** Everything the answers are decided from. Assembled by the service. */
@@ -94,6 +124,14 @@ export interface EditState {
    * transport that reads 0:00 sends a reader to a scrubber that looks parked.
    */
   sharedStepZero: boolean;
+  /**
+   * The machine parked away from its own start, by name, where the shared clock
+   * does not show it.
+   *
+   * Carried rather than derived: the model is pure, and what a machine is called
+   * is the service's to know.
+   */
+  awayMachine?: string;
   /** Built, but its motion deliberately not worked out yet (large drawings). */
   solveDeferred: boolean;
   /** Nothing drawn at all. */
@@ -103,42 +141,68 @@ export interface EditState {
 }
 
 /** Nothing has been drawn, so there is nothing to play. */
-const NOTHING_DRAWN: EditRefusal = {
+const NOTHING_DRAWN: EditRefusal = refusal({
   short: 'nothing drawn',
-  long: 'Nothing to play yet \u2014 draw a mechanism.',
-};
+  glyph: 'draw',
+  lead: 'Nothing to play yet \u2014 draw a mechanism.',
+});
 
-const IN_SYNTHESIS: EditRefusal = {
+const IN_SYNTHESIS: EditRefusal = refusal({
   short: 'synthesis mode',
-  long: 'Synthesis describes a mechanism that does not exist yet. Switch to Edit to change one.',
-};
+  glyph: 'polyline',
+  lead: 'Synthesis describes a mechanism that does not exist yet.',
+  action: 'Switch to Edit',
+  tail: 'to change one.',
+  actionKind: 'toEdit',
+});
 
-const IN_ANALYSIS: EditRefusal = {
+const IN_ANALYSIS: EditRefusal = refusal({
   short: 'analysis mode',
-  long: 'The graphs describe this exact cycle, so the geometry is locked here. Switch to Edit to change it.',
-};
+  glyph: 'insights',
+  lead: 'The graphs describe this cycle.',
+  action: 'Switch to Edit',
+  tail: 'to change it.',
+  actionKind: 'toEdit',
+});
 
-const PLAYING: EditRefusal = {
+const PLAYING: EditRefusal = refusal({
   short: 'animation running',
-  long: 'Pause the animation to change the mechanism.',
+  glyph: 'play_circle',
+  lead: 'Pause the animation to change the mechanism.',
   // The same button clears it: stopping is pausing plus the walk home, which
   // is what a reader who wants to edit is going to press next anyway.
   backToStartHelps: true,
-};
+});
 
 /** Displaced, and the transport agrees it is displaced. */
-const DISPLACED: EditRefusal = {
+const DISPLACED: EditRefusal = refusal({
   short: 'not at the start',
-  long: 'The mechanism is parked mid-cycle. Return it to the start to change it.',
+  glyph: 'motion_photos_paused',
+  lead: 'The mechanism is parked mid-cycle.',
+  action: 'Return it to the start',
+  tail: 'to change it.',
+  actionKind: 'backToStart',
   backToStartHelps: true,
-};
+});
 
-/** Displaced, but the shared clock reads zero -- so say which clock is not. */
-const DISPLACED_UNSYNCED: EditRefusal = {
-  short: 'a machine is mid-cycle',
-  long: 'One of the machines is parked away from its start. Return every machine to the start to change the drawing.',
-  backToStartHelps: true,
-};
+/**
+ * Displaced, but the shared clock reads zero -- so say which machine is not.
+ *
+ * Named, not counted. "One of the machines" is a sentence written by something
+ * that does not know what the machine is called; the app does know, so it says
+ * it.
+ */
+function displacedUnsynced(name: string | undefined): EditRefusal {
+  return refusal({
+    short: 'a machine is mid-cycle',
+    glyph: 'pause_circle',
+    lead: `${name ?? 'One of the machines'} is parked away from its start.`,
+    action: 'Return every machine',
+    tail: 'to edit.',
+    actionKind: 'backToStart',
+    backToStartHelps: true,
+  });
+}
 
 /**
  * A typed number at a displaced pose.
@@ -151,11 +215,15 @@ const DISPLACED_UNSYNCED: EditRefusal = {
  * written transform back to t = 0 before it can be offered here, and until one
  * exists the field says so rather than writing the wrong thing quietly.
  */
-const DISPLACED_TYPING: EditRefusal = {
+const DISPLACED_TYPING: EditRefusal = refusal({
   short: 'shown at pose',
-  long: 'These are the values at the pose on screen. Drag on the grid to edit here, or return to the start to type them.',
+  glyph: 'motion_photos_paused',
+  lead: 'Values at this pose. Drag to edit, or',
+  action: 'return to the start',
+  tail: 'to type.',
+  actionKind: 'backToStart',
   backToStartHelps: true,
-};
+});
 
 /**
  * A large drawing whose motion has not been worked out.
@@ -164,11 +232,15 @@ const DISPLACED_TYPING: EditRefusal = {
  * per commit -- the exact cost the deferral exists to refuse. At the start pose
  * these drawings edit exactly as they always did.
  */
-const DEFERRED_DISPLACED: EditRefusal = {
+const DEFERRED_DISPLACED: EditRefusal = refusal({
   short: 'motion not worked out',
-  long: 'This drawing is large enough that its motion is worked out on request. Press Play, or return to the start to edit it.',
+  glyph: 'hourglass_empty',
+  lead: 'Motion is solved on request. Press Play, or',
+  action: 'return to the start',
+  tail: '.',
+  actionKind: 'backToStart',
   backToStartHelps: true,
-};
+});
 
 /**
  * The verdict for one action.
@@ -209,7 +281,12 @@ export function refusalFor(action: EditAction, state: EditState): EditRefusal | 
     default:
       // Joint X/Y, link angle, masses, forces, cylinders, input speed. Each
       // waits for its own canonicalization transform (§5.5 of the plan).
-      return DISPLACED_TYPING;
+      //
+      // Which sentence depends on whether the transport agrees it is displaced.
+      // "Not at the start" over a scrubber reading 0:00 sends a reader to a
+      // control that looks parked; unsynced, the machine that is actually away
+      // is named instead.
+      return state.sharedStepZero ? displacedUnsynced(state.awayMachine) : DISPLACED_TYPING;
   }
 }
 
@@ -231,10 +308,11 @@ function transportRefusal(state: EditState): EditRefusal | null {
     // The readiness list has the specific answer and the caller pastes it in;
     // this is the sentence for a drawing whose parts belong to no machine at
     // all, which readiness has nothing to say about.
-    return {
+    return refusal({
       short: 'nothing to run',
-      long: 'Nothing here can run yet. Ground a joint and give one joint a drive.',
-    };
+      glyph: 'link_off',
+      lead: 'Nothing here can run yet. Ground a joint and give one joint a drive.',
+    });
   }
   return null;
 }
@@ -250,5 +328,5 @@ function transportRefusal(state: EditState): EditRefusal | null {
 export function displacementRefusal(state: EditState): EditRefusal | null {
   if (state.playing) return PLAYING;
   if (state.atStart) return null;
-  return state.sharedStepZero ? DISPLACED_UNSYNCED : DISPLACED;
+  return state.sharedStepZero ? displacedUnsynced(state.awayMachine) : DISPLACED;
 }

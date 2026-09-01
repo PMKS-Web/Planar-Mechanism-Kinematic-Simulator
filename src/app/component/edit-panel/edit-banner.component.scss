@@ -1,0 +1,74 @@
+// The panel's own second line, full-bleed to its edges rather than a card
+// floating inside it. It was a card: same width, same corner, same shadow --
+// which made it a second card inside the first, reading as a notification
+// that had landed in the panel rather than as something the panel is saying
+// about itself. Attached, it is plainly the panel's own state.
+//
+// In the app's own indigo rather than a second blue: it is a state, not a
+// fault, and the readiness chips have the red and the green.
+//
+// A fixed two-line box. All five messages are written to fit it, so the strip
+// is the same height in every state and hammering the space bar cannot pump
+// the panel -- which it did, when the sentence went from one line to three.
+:host {
+  display: block;
+}
+
+.editBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  // Fixed, not merely minimum: all five messages are written to fit two lines
+  // at this width, and the two levels have to be the same height to the pixel.
+  // They were not -- hammering the space bar pumped the panel, because the
+  // sentence went from one line to three.
+  height: 54px;
+  padding: 9px 15px;
+  box-sizing: border-box;
+  background: #e8eaf6;
+  color: #303f9f;
+  font-size: 12.5px;
+  line-height: 18px;
+  // Full-bleed: `#editWrapper` insets its children, and the strip takes the
+  // card's own edges back.
+  margin: 0 calc(var(--panel-inset, 0px) * -1);
+}
+
+.bannerGlyph {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  // The line height of the text beside it, so the two sit on one baseline
+  // whether the sentence runs to one line or two.
+  line-height: 18px;
+}
+
+.bannerText {
+  flex: 1 1 auto;
+}
+
+// A word in the sentence, not a button beside it. Underlined rather than
+// boxed: a box here would be a second object on a strip whose whole job is to
+// be one line of prose.
+.bannerAction {
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+  // An inline-block on a baseline adds the descender space under its box to the
+  // line it sits in, which made the strip one pixel taller in the states whose
+  // sentence carries a link. Aligned to the text's own baseline it does not.
+  vertical-align: baseline;
+  line-height: 18px;
+
+  &:hover {
+    color: #1a237e;
+  }
+}

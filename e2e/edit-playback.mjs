@@ -129,13 +129,20 @@ await page.waitForTimeout(700);
 
 const playingState = await page.evaluate(() => ({
   banner: document.querySelector('.editBanner .bannerText')?.textContent?.trim() ?? null,
-  bodyInert: document.querySelector('.editBody')?.hasAttribute('inert') ?? null,
+  // The freeze moved off the wrapper and into the cards, so the strip that
+  // states the refusal can stay reachable: `inert` cannot be un-inherited.
+  bodyInert: !!document.querySelector('app-edit-panel .sectionBody[inert]'),
   bodyPresent: !!document.querySelector('.editBody'),
   backButton: !!document.querySelector('.bannerAction'),
   placeholderGif: !!document.querySelector('img[src*="Stop.gif"]'),
 }));
 record('the Edit panel stays while it plays', playingState.bodyPresent);
 record('its body is inert', playingState.bodyInert === true);
+// And the strip itself is not, or the way out would be unreachable too.
+record(
+  'while the strip that says why is not',
+  await page.evaluate(() => !document.querySelector('.editBanner')?.closest('[inert]'))
+);
 record(
   'the banner says why',
   (playingState.banner ?? '').includes('Pause the animation'),
@@ -156,10 +163,16 @@ const pausedState = await page.evaluate(() => ({
 // names the fields rather than the whole panel.
 record(
   'paused mid-cycle names the fields, not the panel',
-  (pausedState.banner ?? '').includes('Drag on the grid to edit here'),
+  (pausedState.banner ?? '').includes('Drag to edit'),
   pausedState.banner
 );
-record('and offers the way back', pausedState.backButton === 'Back to start', pausedState);
+// The way out is a word inside the sentence rather than a button beside it.
+record(
+  'and offers the way back, inside the sentence',
+  pausedState.backButton === 'return to the start' &&
+    (pausedState.banner ?? '').includes('return to the start to type.'),
+  pausedState
+);
 await page.screenshot({ path: `${SHOTS}/4-paused-displaced.png` });
 
 // ---- 4. every gate agrees -------------------------------------------------
@@ -238,7 +251,7 @@ record('Analysis -> Edit keeps the pose', inAnalysis !== null && afterEdit === i
 record(
   'and Edit says what may be done at that pose',
   (await banner().count()) === 1 &&
-    (await banner().innerText()).includes('return to the start to type them'),
+    (await banner().innerText()).includes('return to the start to type.'),
   await banner()
     .innerText()
     .catch(() => null)

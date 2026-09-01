@@ -47,8 +47,48 @@ describe('what is allowed when', () => {
       'transport',
       'history',
     ]);
-    expect(refusalFor('placement', at({ atStart: false }))!.short).toBe('shown at pose');
-    expect(refusalFor('drive', at({ atStart: false }))!.short).toBe('shown at pose');
+    // Which sentence depends on whether the transport agrees it is displaced.
+    const parked = at({ atStart: false, sharedStepZero: false });
+    expect(refusalFor('placement', parked)!.short).toBe('shown at pose');
+    expect(refusalFor('drive', parked)!.short).toBe('shown at pose');
+  });
+
+  it('names the machine that is away when the shared clock does not show it', () => {
+    // Unsynced, a row can be scrubbed a third of the way round while the shared
+    // handle still reads zero. "Not at the start" over a scrubber reading 0:00
+    // sends a reader to a control that looks parked, so the machine that is
+    // actually away is named instead -- named, not counted: the app knows what
+    // it is called.
+    const hidden = at({ atStart: false, sharedStepZero: true, awayMachine: 'M2' });
+    expect(refusalFor('placement', hidden)!.long).toContain('M2 is parked away from its start');
+    expect(displacementRefusal(hidden)!.long).toContain('M2 is parked away from its start');
+    // And falls back to a sentence that names nothing, rather than to "M2" for
+    // a machine nobody has named.
+    const unnamed = at({ atStart: false, sharedStepZero: true });
+    expect(refusalFor('placement', unnamed)!.long).toContain('One of the machines');
+  });
+
+  it('writes every refusal as one sentence and as pieces that rebuild it', () => {
+    // `long` is built from the pieces rather than written twice: the two used to
+    // be separate strings, which is how a surface comes to quote a sentence the
+    // panel no longer says.
+    const states: EditState[] = [
+      at({ mode: 'synthesis' }),
+      at({ mode: 'analysis' }),
+      at({ playing: true, atStart: false }),
+      at({ atStart: false, sharedStepZero: false }),
+      at({ atStart: false, solveDeferred: true }),
+      at({ empty: true, runnable: false }),
+    ];
+    states.forEach((state) => {
+      EDIT_ACTIONS.forEach((action) => {
+        const why = refusalFor(action, state);
+        if (!why) return;
+        expect(why.glyph.length).toBeGreaterThan(0);
+        expect(why.long).toContain(why.lead);
+        if (why.action) expect(why.long).toContain(why.action);
+      });
+    });
   });
 
   it('keeps a deferred drawing read-only away from its start', () => {

@@ -43,10 +43,18 @@
     border-top: 5px solid mat.m2-get-color-from-palette($primary-palette, 500);
     //padding: 20px;
 
+    // The freeze wrapper is not a box. It exists to carry one attribute, and a
+    // real box here would take the card's children out of its own flex column
+    // -- which is the height chain the card scrolls on.
+    .sectionBody {
+      display: contents;
+    }
+
     // Stretched to the panel's own width -- which is a content-box width, so a
     // child with side padding would come out wider than the panel it is in and
     // overflow the drawer. That is how the version row ran off the edge.
-    > * {
+    > *,
+    > .sectionBody > * {
       width: 100%;
       box-sizing: border-box;
       flex: 0 0 auto;
@@ -54,8 +62,11 @@
 
     // The name of the thing being edited, and what can be done to it, stay
     // where they are; everything below them scrolls.
-    > title-block:first-child,
-    > editable-title-block:first-child {
+    // Through the freeze wrapper, which has no box of its own -- `display:
+    // contents` takes an element out of the box tree but leaves it in the DOM,
+    // so a child combinator still has to pass it.
+    > .sectionBody:first-child > title-block:first-child,
+    > .sectionBody:first-child > editable-title-block:first-child {
       position: sticky;
       top: 0;
       z-index: 2;
@@ -71,8 +82,8 @@
     // first setting ran up beneath the title and was gone, leaving white space
     // that looked like the top of the panel. The title now casts a shadow onto
     // whatever is passing under it.
-    &.scrolled > title-block:first-child,
-    &.scrolled > editable-title-block:first-child {
+    &.scrolled > .sectionBody:first-child > title-block:first-child,
+    &.scrolled > .sectionBody:first-child > editable-title-block:first-child {
       box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0.35);
     }
   }

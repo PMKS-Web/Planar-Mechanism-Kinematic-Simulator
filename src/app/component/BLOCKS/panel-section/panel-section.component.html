@@ -1,3 +1,17 @@
 <div id="normalPanel" appScrollShadow>
-  <ng-content></ng-content>
+  <!-- The title, then anything attached to it, then the card's own contents.
+       Three slots rather than one because of what the freeze must *not* cover:
+       a panel that is out of reach still has to be able to say so, and to offer
+       the one word that clears it. `inert` cannot be un-inherited, so the
+       attached slot has to sit outside it -- while the title's own Rename, Lock
+       and Delete are as much out of reach as anything below them. -->
+  <div class="sectionBody" [attr.inert]="frozen() || null">
+    <ng-content select="title-block, editable-title-block"></ng-content>
+  </div>
+  <ng-content select="[panelAttached]"></ng-content>
+  <!-- `display: contents`, so the children stay flex items of the card itself:
+       a real box here would break the height chain the card scrolls on. -->
+  <div class="sectionBody" [attr.inert]="frozen() || null">
+    <ng-content></ng-content>
+  </div>
 </div>
