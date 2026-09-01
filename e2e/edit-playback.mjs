@@ -59,7 +59,10 @@ async function mode(name) {
 
 const transport = () => page.locator('.transportCard');
 const scrub = () => page.locator('.scrubCard');
-const hint = () => page.locator('.transportHint');
+// The refusal is a row now, not a caption: the card keeps its shape in every
+// state and the reason sits on the reading line where the machine name would
+// be. See T1 of the design, and `PlaybackBarComponent.refusalRows`.
+const hint = () => page.locator('.rowRefusal');
 const banner = () => page.locator('.editBanner');
 
 // ---- 1. the empty grid ----------------------------------------------------
@@ -74,7 +77,7 @@ record(
     await hint()
       .innerText()
       .catch(() => '')
-  ).includes('Draw a mechanism'),
+  ).includes('draw a mechanism'),
   await hint()
     .innerText()
     .catch(() => '(no hint)')
@@ -102,7 +105,13 @@ await mode('Edit');
 await page.waitForTimeout(300);
 record('the transport is in Edit', await transport().isVisible());
 record('with a scrub card', await scrub().isVisible());
-record('and no hint, because it can run', (await hint().count()) === 0);
+record('and no refusal row, because it can run', (await hint().count()) === 0);
+// The card is the same shape whether or not anything can run: only its contents
+// go inert. That is the whole reason the refusal had to be a rail and a row.
+record(
+  'and a real rail rather than the inert one',
+  (await page.locator('.inertRail').count()) === 0
+);
 record('play is live', !(await page.locator('.playButton').isDisabled()));
 await page.screenshot({ path: `${SHOTS}/2-edit-transport.png` });
 

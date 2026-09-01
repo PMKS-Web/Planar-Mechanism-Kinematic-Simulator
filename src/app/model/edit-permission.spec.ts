@@ -88,7 +88,7 @@ describe('what is allowed when', () => {
 
   it('says what is missing rather than nothing, over a drawing that cannot run', () => {
     expect(refusalFor('transport', at({ empty: true, runnable: false }))!.long).toBe(
-      'Draw a mechanism to play it.'
+      'Nothing to play yet \u2014 draw a mechanism.'
     );
     // Something is drawn, but it belongs to no machine -- which readiness, being
     // per machine, has nothing to say about.

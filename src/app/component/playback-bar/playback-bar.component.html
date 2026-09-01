@@ -66,12 +66,6 @@
         </button>
       }
 
-      <!-- Not a disabled button's tooltip: disabled elements do not reliably
-           show one and touch has no hover, so the reason is on the card. -->
-      @if (hint; as why) {
-        <div class="transportHint">{{ why }}</div>
-      }
-
       @for (row of shownRows; track row.id) {
         <!-- The row's own surface carries the selection, so nothing has to be
              drawn around the controls and no button ever crosses the state.
@@ -108,6 +102,88 @@
                 }}</span>
               }
 
+              <!-- A machine that cannot run states its own blocker here, on the
+                   reading line, where the name and the note would be. The count
+                   is a chip because it is a number the reader can act on; the
+                   rest is a sentence. -->
+              @if (row.refusal; as why) {
+                @if (why.count) {
+                  <span class="rowBlockers">{{ why.count }}</span>
+                }
+                <span class="rowRefusal">{{ why.text }}</span>
+              }
+
+              <!-- How far this machine is parked from its own start, and both
+                   ways back from there. Pressing the label is the one-press way
+                   home; the caret is only for the second answer. -->
+              @if (row.displaced; as away) {
+                <span
+                  class="startChip"
+                  [class.open]="startMenuFor === row.index"
+                  cdkOverlayOrigin
+                  #chip="cdkOverlayOrigin"
+                >
+                  <button
+                    class="startChipLabel"
+                    (click)="backToStart(row); $event.stopPropagation()"
+                    title="Back to the start pose"
+                  >
+                    <mat-icon>first_page</mat-icon>
+                    {{ away }}
+                  </button>
+                  <span class="startChipRule"></span>
+                  <button
+                    class="startChipCaret"
+                    (click)="toggleStartMenu(row); $event.stopPropagation()"
+                    [attr.aria-expanded]="startMenuFor === row.index"
+                    aria-label="What to do about the start pose"
+                  >
+                    <mat-icon>arrow_drop_up</mat-icon>
+                  </button>
+
+                  <!-- Upward, always: the transport is 38px off the bottom edge,
+                       so there is no downward room and never will be. Anchored
+                       to the caret's bottom edge with a 6px gap, left edges
+                       aligned, and fixed at 76px so it can never want to flip
+                       or scroll.
+
+                       In an overlay rather than in the row, because the row
+                       clips: `rowHead` and `rowLabel` both hide their overflow
+                       so a long note cannot make the card taller, and a menu
+                       drawn inside them was cut off at the card's own edge. -->
+                  <ng-template
+                    cdkConnectedOverlay
+                    [cdkConnectedOverlayOrigin]="chip"
+                    [cdkConnectedOverlayOpen]="startMenuFor === row.index"
+                    [cdkConnectedOverlayPositions]="startMenuPosition"
+                    [cdkConnectedOverlayHasBackdrop]="true"
+                    cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop"
+                    (backdropClick)="startMenuFor = null"
+                    (detach)="startMenuFor = null"
+                  >
+                    <div class="startMenu">
+                      <button (click)="backToStart(row)">
+                        <mat-icon>first_page</mat-icon>
+                        Back to the start
+                      </button>
+                      <button (click)="moveStartHere(row)">
+                        <mat-icon>flag</mat-icon>
+                        Move the start here
+                      </button>
+                    </div>
+                  </ng-template>
+                </span>
+              }
+
+              <!-- The one refusal that is not one: the rail is real and every
+                   control is live, and this only warns that Play buys a wait. -->
+              @if (row.deferred) {
+                <span class="rowEnd">
+                  <mat-icon>hourglass_empty</mat-icon>
+                  Solved when you press Play
+                </span>
+              }
+
               @if (row.note) {
                 <span class="rowNote">{{ row.note }}</span>
               }
@@ -139,7 +215,7 @@
                    question about a coordinate the transport no longer uses. A
                    fixed width, so a value going negative or gaining a digit
                    cannot shift the buttons beside it. -->
-              <span class="rowReadout">
+              <span class="rowReadout" [class.blank]="row.inert">
                 @if (row.position) {
                   <span class="rowPosition" [id]="row.master ? 'playbackPosition' : null">{{
                     row.position
@@ -157,6 +233,14 @@
                  and these two are what a reader presses over and over while
                  watching one machine run. Sharing a hitbox with the selector
                  meant every play and every reversal took their place away. -->
+            <!-- Where rowPlay would be. A row that cannot run offers the place
+                 the answer is instead of a control that can only refuse. -->
+            @if (row.refusal?.action; as label) {
+              <button class="rowAction" (click)="openSetup(); $event.stopPropagation()">
+                {{ label }}
+              </button>
+            }
+
             @if (row.ownPlay) {
               <button
                 class="rowPlay"
@@ -181,35 +265,54 @@
             }
           </div>
 
-          <div class="trackWell">
-            <!-- Where this machine's cycle starts. The anchor is a thing the
-                 reader has to hold now -- an edit at a pose puts the design
-                 back on it -- and a concept with no mark on the control that
-                 measures the cycle is one they have to take on trust. -->
-            @if (row.anchorAt !== undefined) {
-              <span
-                class="anchorMark"
-                [style.--at.%]="row.anchorAt / 10"
-                title="Where this machine's cycle starts"
-              ></span>
+          <div class="trackWell" [class.inert]="row.inert">
+            @if (row.inert) {
+              <!-- No cap, no seat, no handle: none of the three means anything
+                   on a cycle that does not exist. The rail stays, so the card
+                   is the same shape it is in every other state. -->
+              <span class="inertRail"></span>
+            } @else {
+              <!-- The rail's own left end, capped in the same ink as the seat:
+                   the start of the cycle is a place, and the fill that runs
+                   from it is a different thing. -->
+              <span class="trackCap"></span>
+
+              <!-- Where this machine's cycle starts, drawn as the handle's own
+                   outline: hollow means "where the start is" here and on the
+                   drawing, which is one vocabulary rather than two. Not drawn
+                   when the handle is standing in it -- the mark exists exactly
+                   when it has something to say -- and pressing it is the way
+                   back. -->
+              @if (seatFor(row); as at) {
+                <button
+                  class="anchorSeat"
+                  [style.--at.%]="at.percent"
+                  (click)="backToStart(row); $event.stopPropagation()"
+                  title="Back to where this machine's cycle starts"
+                  aria-label="Back to the start pose"
+                ></button>
+              }
             }
             <!-- The handle likewise: moving one machine along its own travel is
                  watching it, not picking it. -->
-            <input
-              class="rowScrubber"
-              (click)="$event.stopPropagation()"
-              [id]="row.master ? 'slider' : null"
-              type="range"
-              min="0"
-              max="1000"
-              [attr.aria-label]="scrubLabel(row)"
-              [value]="row.scrub"
-              [style.--along.%]="row.scrub / 10"
-              [disabled]="!canPlay"
-              (mousedown)="onScrubDown(row)"
-              (mouseup)="onScrubUp(row)"
-              (input)="scrubRow(row, $event)"
-            />
+            @if (!row.inert) {
+              <input
+                class="rowScrubber"
+                (click)="$event.stopPropagation()"
+                [id]="row.master ? 'slider' : null"
+                type="range"
+                min="0"
+                max="1000"
+                [attr.aria-label]="scrubLabel(row)"
+                [value]="row.scrub"
+                [style.--along.%]="row.scrub / 10"
+                [style.--travelled]="row.playing ? '#3f51b5' : '#9fa8da'"
+                [disabled]="!canPlay"
+                (mousedown)="onScrubDown(row)"
+                (mouseup)="onScrubUp(row)"
+                (input)="scrubRow(row, $event)"
+              />
+            }
           </div>
         </div>
       }

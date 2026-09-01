@@ -25,6 +25,8 @@ import { ViewControlsComponent } from '../view-controls/view-controls.component'
 import { MatTooltip } from '@angular/material/tooltip';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 import { ShortcutTipDirective } from '../../shortcut-tip.directive';
+import { RightPanelComponent } from '../right-panel/right-panel.component';
+import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 
 /** What the stylesheet is asked for, and what to assume if it has not loaded. */
 const BOTTOM_OFFSET_VAR = '--playback-bottom';
@@ -107,6 +109,45 @@ export interface PlaybackRow {
    */
   ends: CycleEnd[];
   period: number;
+  /**
+   * Why this line cannot be played, when it cannot.
+   *
+   * A machine that cannot run keeps its row and states its own blocker. The
+   * refusal used to be a caption under an empty card -- one sentence for the
+   * whole drawing, in a card that changed shape depending on whether anything
+   * was runnable. Per-row, it is the same shape in every state and it can name
+   * *which* machine is not ready, which a card-wide caption never could.
+   */
+  refusal?: RowRefusal;
+  /**
+   * Whether the rail is a flat bar rather than a track.
+   *
+   * The card keeps its shape in every state and only its contents go inert, so
+   * there is still a rail here -- with no cap, no seat and no handle, because
+   * none of the three means anything on a cycle that does not exist.
+   */
+  inert: boolean;
+  /**
+   * Built, but its motion deliberately not worked out yet.
+   *
+   * The one refusal that is not one: everything is live and the rail is real.
+   * The reading line only warns that pressing Play buys a wait.
+   */
+  deferred: boolean;
+  /**
+   * How far this machine is parked from its own start, when it is parked away
+   * from it -- the chip that carries "back to the start" and "move it here".
+   */
+  displaced?: string;
+}
+
+/** A row that cannot be played, in the three pieces the reading line draws. */
+export interface RowRefusal {
+  /** "2 blockers" -- absent where the sentence stands on its own. */
+  count?: string;
+  text: string;
+  /** The way out, where the drawing offers one. */
+  action?: string;
 }
 
 /**
@@ -144,7 +185,14 @@ export interface PlaybackRow {
     ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [ShortcutTipDirective, MatIcon, MatTooltip, ViewControlsComponent],
+  imports: [
+    ShortcutTipDirective,
+    MatIcon,
+    MatTooltip,
+    ViewControlsComponent,
+    CdkOverlayOrigin,
+    CdkConnectedOverlay,
+  ],
 })
 export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   mechanism = inject(MechanismService);
@@ -317,6 +365,85 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.rows;
   }
 
+  /**
+   * Which row has its start menu open, by index, or nothing.
+   *
+   * Held here rather than on the row: `rows` is rebuilt from the service on
+   * every change-detection pass, so anything stored on a row lives for one
+   * frame.
+   */
+  startMenuFor: number | null = null;
+
+  /**
+   * Upward, always, with the left edges aligned and a 6px gap.
+   *
+   * One position and no fallbacks: the transport sits 38px off the bottom of
+   * the window, so there is never downward room, and a menu that could flip is
+   * a menu whose height has to be guessed at rather than fixed.
+   */
+  readonly startMenuPosition: ConnectedPosition[] = [
+    { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -6 },
+  ];
+
+  /**
+   * Where to draw the empty seat, or nothing when the handle is standing in it.
+   *
+   * The mark exists exactly when it means something. At the start there is
+   * nothing to point at -- the handle is already there -- and a tick that never
+   * moves is a tick nobody reads.
+   */
+  seatFor(row: PlaybackRow): { percent: number } | null {
+    if (row.anchorAt === undefined) return null;
+    // A thousandth of the track is a third of a pixel; anything closer than a
+    // couple of them is the handle sitting in the seat.
+    if (Math.abs(row.scrub - row.anchorAt) < 8) return null;
+    return { percent: row.anchorAt / 10 };
+  }
+
+  /** Back to where this machine's cycle starts. */
+  backToStart(row: PlaybackRow): void {
+    this.startMenuFor = null;
+    if (row.index === -1) {
+      this.stop();
+      return;
+    }
+    if (this.mechanism.isMechanismPlaying(row.index)) {
+      this.mechanism.toggleMechanismPlaying(row.index);
+    }
+    this.mechanism.seekMechanism(row.index, 0);
+  }
+
+  toggleStartMenu(row: PlaybackRow): void {
+    this.startMenuFor = this.startMenuFor === row.index ? null : row.index;
+  }
+
+  /**
+   * Promote the pose on screen to this machine's start.
+   *
+   * It used to live in the right-click menu, where it was a fact about whatever
+   * joint the pointer happened to be over -- while what it actually changes is
+   * the machine's clock, and the rest of that clock is on this card.
+   */
+  moveStartHere(row: PlaybackRow): void {
+    this.startMenuFor = null;
+    const part = this.mechanism.partitions[row.index]?.ownJoints[0];
+    if (part) this.mechanism.setCurrentPoseAsStart(part);
+  }
+
+  /**
+   * The drawer that says what a machine is still missing.
+   *
+   * The same call the mechanism panel's own button makes, so the two ways in
+   * land on the same page.
+   */
+  openSetup(): void {
+    RightPanelComponent.tabClicked(
+      this.tabs.getCurrentTab() === TabID.FORCE
+        ? RightPanelComponent.FORCE_SETUP_TAB
+        : RightPanelComponent.KINEMATIC_SETUP_TAB
+    );
+  }
+
   get speed(): number {
     return this.mechanism.animationSpeedMultiplier;
   }
@@ -345,8 +472,13 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
       .map((mechanism, index) => ({ mechanism, index }))
       .filter(({ mechanism }) => mechanism.isMechanismValid());
 
+    // A drawing with nothing runnable in it still has rows: one per machine
+    // that cannot run, each stating its own blocker, or -- with nothing drawn
+    // at all -- the one line that says so. The card keeps its shape either way,
+    // which is the whole reason the inert rail had to be a rail rather than a
+    // caption under an empty card.
     if (runnable.length === 0) {
-      return [];
+      return this.refusalRows();
     }
 
     // Synced, the machines are started and stopped together and there is one
@@ -435,6 +567,77 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
       ownPlay,
       ends: ends ?? [this.endOf(index)],
       period: mechanism.cyclePeriod || 1,
+      inert: false,
+      deferred: this.mechanism.solvingIsDeferred,
+      // Only where the reader is actually parked away from the start, and only
+      // on a machine's own row: the combined row stands for several cycles, and
+      // "142 degrees from start" is a fact about one input.
+      displaced: combined ? undefined : this.displacementOf(index),
+    };
+  }
+
+  /**
+   * How far this machine is parked from its own start, in the input's own
+   * units, or nothing when it is standing on it.
+   *
+   * The same string the readout uses, because it is the same quantity -- what
+   * makes it a chip rather than a second reading is that it is the distance
+   * from the anchor, and that pressing it is the way back.
+   */
+  private displacementOf(index: number): string | undefined {
+    if (this.mechanism.isMechanismPlaying(index)) return undefined;
+    if ((this.mechanism.travelOf(index) ?? 0) <= 0) return undefined;
+    const label = this.positionLabel(index);
+    return label ? `${label} from start` : undefined;
+  }
+
+  /**
+   * One row per machine that cannot run, or the empty-grid line.
+   *
+   * Named, not counted: the app knows what the machine is called, so the row
+   * says "M1" and its own blocker rather than one sentence standing for
+   * however many machines happen to be broken.
+   */
+  private refusalRows(): PlaybackRow[] {
+    const readiness = this.mechanism.readinessOfEachMechanism();
+    const rows = readiness.map((one, index) => {
+      const blockers = one.checks.filter((check) => check.state === 'blocker');
+      return this.inertRow(one.id, index, {
+        count: blockers.length
+          ? `${blockers.length} ${blockers.length === 1 ? 'blocker' : 'blockers'}`
+          : undefined,
+        text: 'before it will run.',
+        action: 'Analysis setup',
+      });
+    });
+    if (rows.length) return rows;
+    // Nothing drawn, or geometry belonging to no machine at all. One line, and
+    // no name to put on it.
+    return [this.inertRow('', 0, { text: this.permission.transportHint() ?? '' })];
+  }
+
+  /** A row with no cycle behind it: the reading line, and a flat rail. */
+  private inertRow(id: string, index: number, refusal: RowRefusal): PlaybackRow {
+    return {
+      id,
+      index,
+      leader: index,
+      isMechanism: false,
+      master: index === 0,
+      time: '',
+      position: '',
+      scrub: 0,
+      clockwise: true,
+      anchorAt: undefined,
+      togglePoint: false,
+      note: '',
+      playing: false,
+      ownPlay: false,
+      ends: [],
+      period: 1,
+      refusal,
+      inert: true,
+      deferred: false,
     };
   }
 

@@ -14,7 +14,17 @@
   // that fill sits below white, so the bar reads on a chosen row as clearly as
   // it does on a plain one. The mock's own gray was the platform's, and it
   // disappeared into the highlight.
-  $track: linear-gradient(to right, #3f51b5 0 var(--along, 0%), #d5d7e0 var(--along, 0%) 100%);
+  // Indigo 500 while it is actually moving, indigo 200 while it is parked, so a
+  // stopped machine does not read as a running one at a glance -- the fill is
+  // the only thing on the card that says which.
+  $track: linear-gradient(
+    to right,
+    var(--travelled, #3f51b5) 0 var(--along, 0%),
+    #d5d7e0 var(--along, 0%) 100%
+  );
+  // The cap that stands for the start of the cycle, and the gap after it.
+  $rail-cap: 4px;
+  $rail-start: 6px;
 
   // Right-aligned in every mode, so the view controls at its right-hand end sit
   // in exactly the same place whatever mode is open. They used to be pushed
@@ -87,18 +97,6 @@
   // own that has to be able to reach the card's edge, and the 12px optical
   // inset the contents used to get is made up again inside it (4 card + 4 row
   // + 4 head). Radii nest by the same rule -- outer = inner + padding.
-  // Why the transport is inert, on the card rather than in a disabled button's
-  // tooltip: disabled elements do not reliably show one, and touch has no
-  // hover. Centered in the card it stands in for, so an empty grid reads as one
-  // sentence rather than as an empty box with a caption.
-  .transportHint {
-    padding: 8px 12px;
-    text-align: center;
-    font-size: 12px;
-    line-height: 16px;
-    color: rgba(0, 0, 0, 0.5);
-  }
-
   .scrubCard {
     position: relative;
     display: flex;
@@ -382,6 +380,133 @@
     }
   }
 
+  // Why this machine will not run, said on the reading line rather than as a
+  // caption under an empty card. The count is a chip because it is a number
+  // with somewhere to go; the rest is a sentence, at the 13px the name beside
+  // it uses -- a message, not a caption.
+  .rowBlockers {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    padding: 0 8px;
+    flex: 0 0 auto;
+    border-radius: 9px;
+    background: #fce8e6;
+    color: #c5221f;
+    font-size: 11px;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .rowRefusal {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    color: #5f6368;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // The way out, standing where this row's play button would be. A row that
+  // cannot run offers the place the answer is rather than a control that can
+  // only refuse.
+  .rowAction {
+    height: 22px;
+    padding: 0 8px;
+    flex: 0 0 auto;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: mat.m2-get-color-from-palette($primary-palette, 500);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+  }
+
+  // How far this machine is parked from its own start, and both ways back.
+  // A raised pill on the row's own fill, so it reads as a thing to press
+  // rather than as a third reading among the numbers.
+  .startChip {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    flex: 0 0 auto;
+    border-radius: 9px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
+    // The menu hangs off it.
+    position: relative;
+    overflow: visible;
+  }
+
+  .startChipLabel,
+  .startChipCaret {
+    display: inline-flex;
+    align-items: center;
+    height: 18px;
+    border: none;
+    background: transparent;
+    color: #303f9f;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .startChipLabel {
+    gap: 4px;
+    padding: 0 6px 0 4px;
+    border-radius: 9px 0 0 9px;
+
+    mat-icon {
+      width: 13px;
+      height: 13px;
+      font-size: 13px;
+      line-height: 13px;
+    }
+  }
+
+  .startChipCaret {
+    padding: 0 3px;
+    border-radius: 0 9px 9px 0;
+
+    mat-icon {
+      width: 14px;
+      height: 14px;
+      font-size: 14px;
+      line-height: 14px;
+    }
+  }
+
+  .startChipLabel:hover,
+  .startChipCaret:hover {
+    background: rgba(63, 81, 181, 0.08);
+  }
+
+  .startChip.open .startChipCaret {
+    background: #eef1fc;
+  }
+
+  .startChipRule {
+    width: 1px;
+    height: 12px;
+    flex: 0 0 auto;
+    background: rgba(0, 0, 0, 0.12);
+  }
+
+  // A row with no cycle behind it has no numbers to line up, and the column
+  // would otherwise hold 108px of empty space in front of the way out.
+  .rowReadout.blank {
+    display: none;
+  }
+
   // A fixed width holding the two numbers hard against the buttons, so a value
   // gaining a digit or a minus sign cannot move anything beside it.
   .rowReadout {
@@ -467,21 +592,67 @@
     margin: 0 4px;
   }
 
-  // A tick under the track, not on it: the track carries the handle and how far
-  // it has come, and a second mark drawn among them would read as a third piece
-  // of the same reading rather than as a fixed point the cycle is measured from.
-  .anchorMark {
+  // The rail's own left end. The start of the cycle is a *place*, and the fill
+  // that runs from it is a different thing, so the two are drawn apart: 4px of
+  // indigo 700 behind a 2px gap, which is where the track begins.
+  .trackCap {
     position: absolute;
-    left: var(--at, 0%);
-    bottom: 0;
-    width: 2px;
-    height: 6px;
-    margin-left: -1px;
-    border-radius: 1px;
-    // Dark enough to read against the filled half of the track, which is the
-    // same indigo: at the left end -- where re-anchoring keeps it -- the two
-    // would otherwise be one shape.
+    left: 0;
+    top: 4px;
+    width: $rail-cap;
+    height: 8px;
+    border-radius: 2px 0 0 2px;
     background: #303f9f;
+    pointer-events: none;
+  }
+
+  // Where this machine's cycle starts, drawn as the handle's own outline.
+  //
+  // It was a 2x6px tick under the track, which read as the end cap of the fill
+  // it sat on -- and, sitting at zero on every machine that had never been
+  // re-anchored, as a tick that never moved. Hollow, it is the same word the
+  // ghost on the canvas uses: this is where the start is. One vocabulary,
+  // learned once.
+  //
+  // And it is a target. 24x20 in a 16px well, against a tick nobody could ever
+  // have pressed; pressing it is back to the start.
+  .anchorSeat {
+    position: absolute;
+    // The handle's own geometry, so the seat and the handle coincide exactly
+    // rather than nearly: a range thumb's centre runs from half its width to
+    // half its width short of the far end, never edge to edge.
+    left: calc(#{$rail-start} + 12px + (100% - #{$rail-start} - 24px) * var(--at, 0) / 100);
+    top: -2px;
+    width: 24px;
+    height: 20px;
+    margin-left: -12px;
+    padding: 0;
+    box-sizing: border-box;
+    border: 1.5px dashed #303f9f;
+    border-radius: 10px;
+    // Not opaque: the rail runs behind it, and the seat is a place on the rail
+    // rather than something standing on it.
+    background: rgba(255, 255, 255, 0.55);
+    cursor: pointer;
+    z-index: 1;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.8);
+      border-color: mat.m2-get-color-from-palette($primary-palette, 500);
+    }
+  }
+
+  // A cycle that does not exist gets a rail and nothing else -- no cap, no
+  // seat, no handle, because none of the three means anything. The card keeps
+  // the shape it has in every other state; only its contents go inert.
+  .inertRail {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 4px;
+    height: 8px;
+    border-radius: 4px;
+    background: #eceef5;
     pointer-events: none;
   }
 
@@ -497,7 +668,8 @@
   // same page did not look the same on two machines; this one does.
   .rowScrubber {
     position: absolute;
-    left: 0;
+    // Clear of the cap, which stands for the start of the cycle.
+    left: $rail-start;
     right: 0;
     // The handle is taller than the bar and taller than the well it sits in --
     // 20px in 16px, as the mock has it, overhanging into the row's own padding
@@ -518,14 +690,14 @@
     &::-webkit-slider-runnable-track {
       height: 8px;
       border: none;
-      border-radius: 4px;
+      border-radius: 0 4px 4px 0;
       background: $track;
     }
 
     &::-moz-range-track {
       height: 8px;
       border: none;
-      border-radius: 4px;
+      border-radius: 0 4px 4px 0;
       background: $track;
     }
 

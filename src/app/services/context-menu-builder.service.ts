@@ -303,37 +303,19 @@ export class ContextMenuBuilderService {
       groups: [
         { label: 'Attach', rows: this.jointAttachRows(joint, handlers) },
         { label: 'State', rows: this.jointStateRows(joint, sealed) },
-        ...this.startPoseGroup(joint),
         { rows: [this.deleteJointRow(joint, sealed), this.deleteMechanismRow(joint)] },
       ],
     };
   }
 
-  /**
-   * Promote the pose on screen to this machine's start.
-   *
-   * The honest counterpart of the automatic re-anchoring an edit at a pose does
-   * underneath: it makes the anchor a thing the reader can see and control
-   * rather than a rule they have to infer from where the mechanism lands. Only
-   * offered where it would do something -- at the start pose it is a row that
-   * changes nothing, which is worse than a row that is not there.
-   */
-  private startPoseGroup(joint: RealJoint): { label?: string; rows: MenuRow[] }[] {
-    if (this.mechanism.isAtStartPose() || this.mechanism.isPlaying) return [];
-    if (this.mechanism.indexOfMechanismContaining(joint) === -1) return [];
-    return [
-      {
-        rows: [
-          new MenuRow({
-            label: 'Set This Pose as Start',
-            icon: 'flag',
-            material: true,
-            action: () => this.mechanism.setCurrentPoseAsStart(joint),
-          }),
-        ],
-      },
-    ];
-  }
+  // Where "Set This Pose as Start" used to be.
+  //
+  // It was never a fact about whichever joint the pointer happened to be over:
+  // what it changes is the machine's *clock*, and the rest of that clock is on
+  // the transport. Here it also appeared and vanished on a condition the menu
+  // could not explain -- one row above Delete, on whatever the pointer was on.
+  // It now lives on the transport row's displacement chip, beside the reading
+  // it is about. See `PlaybackBarComponent.moveStartHere`.
 
   private jointAttachRows(joint: RealJoint, handlers: MenuHandlers): MenuRow[] {
     const driven = this.gridUtils.isVisuallyInput(joint);

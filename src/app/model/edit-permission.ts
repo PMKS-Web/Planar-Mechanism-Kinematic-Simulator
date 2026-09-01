@@ -105,7 +105,7 @@ export interface EditState {
 /** Nothing has been drawn, so there is nothing to play. */
 const NOTHING_DRAWN: EditRefusal = {
   short: 'nothing drawn',
-  long: 'Draw a mechanism to play it.',
+  long: 'Nothing to play yet \u2014 draw a mechanism.',
 };
 
 const IN_SYNTHESIS: EditRefusal = {

@@ -188,21 +188,31 @@ await page.screenshot({ path: `${SHOTS}/3-after-undo.png` });
 
 await displace();
 const displaced = await look();
-const target = await jointAt('B');
-await page.mouse.move(target.x, target.y);
-await page.mouse.click(target.x, target.y, { button: 'right' });
-await page.waitForTimeout(500);
-const menu = await page
+// Off the right-click menu and onto the transport's displacement chip, which is
+// where the rest of this machine's clock already is. Right-clicking a joint says
+// nothing about which machine's start is meant, and the row does.
+const menuGone = await page
   .locator('#contextMenu')
   .innerText()
   .catch(() => '');
+record('the right-click menu no longer offers it', !/Set This Pose as Start/i.test(menuGone));
 record(
-  'the menu offers to promote this pose',
-  /Set This Pose as Start/i.test(menu),
-  menu.slice(0, 200)
+  'the row says how far it is parked from its start',
+  await page.locator('.startChip').count()
+);
+await page.locator('.startChipCaret').first().click();
+await page.waitForTimeout(300);
+const menu = await page
+  .locator('.startMenu')
+  .innerText()
+  .catch(() => '');
+record(
+  'the chip offers both ways back',
+  /Back to the start/i.test(menu) && /Move the start here/i.test(menu),
+  menu
 );
 await page.screenshot({ path: `${SHOTS}/4-set-start-menu.png` });
-await page.getByText('Set This Pose as Start').click();
+await page.getByText('Move the start here').click();
 await page.waitForTimeout(800);
 const promoted = await look();
 record('promoting it leaves the drawing at its start', promoted.atStart, promoted);
@@ -275,9 +285,25 @@ await page.waitForTimeout(300);
 
 // ---- 7. the anchor affordances -----------------------------------------
 
-record('the track marks where the cycle starts', (await page.locator('.anchorMark').count()) >= 1);
+// The anchor's mark is the handle's own outline, hollow -- the same word the
+// ghost uses on the drawing. It is drawn exactly when it has something to say:
+// at the start the handle is standing in it, and nothing extra is on screen.
+await page.locator('.stopButton').click();
+await page.waitForTimeout(500);
+record(
+  'no seat is drawn while the handle is standing in it',
+  (await page.locator('.anchorSeat').count()) === 0
+);
 
 await displace();
+record(
+  'the track marks where the cycle starts once it is away from it',
+  (await page.locator('.anchorSeat').count()) >= 1
+);
+record(
+  'and pressing the seat is the way back',
+  await page.locator('.anchorSeat').first().isEnabled()
+);
 record('the ghost is a target', (await page.locator('.startGhost').count()) === 1);
 await page.locator('.startGhost .ghostGrab').first().click({ force: true });
 await page.waitForTimeout(900);
