@@ -71,13 +71,18 @@ Unit specs stay co-located in `src/**/*.spec.ts`; browser-driven E2E tests are P
 Regenerate against a PR's deploy preview when you want links a reviewer can click before merge — a mechanism using a feature that has not shipped yet will not decode on production:
 
 ```bash
-PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksprod.netlify.app npm run fixture-urls
+PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksnew.netlify.app npm run fixture-urls
 ```
 
 ## Deployment / branch rules
 
-**Never push directly to `main`** — commits to `main` auto-deploy to production (app.pmksplus.com). Work in branches/forks and open PRs. Every non-main branch auto-publishes to `https://[BRANCHNAME]--pmksprod.netlify.app` (the
-Netlify site is named `pmksprod`; the older `--pmks.netlify.app` pattern 404s).
+**Never push directly to `main`** — commits to `main` auto-deploy to production (app.pmksplus.com). Work in branches/forks and open PRs. Every non-main branch auto-publishes to `https://[BRANCHNAME]--pmksnew.netlify.app`.
+
+**There are two Netlify sites, and the branch one moved.** Branch and preview builds come from
+`pmksnew` now; `[BRANCH]--pmksprod.netlify.app` still answers 200 and serves a **months-stale
+bundle**, which is worse than a 404 because it looks like a deploy that simply ignored your commit.
+Confirm a build landed by asking for something only the new commit has, not by the page loading.
+See [tips-and-tricks](docs/tips-and-tricks.md#deploys-domains-and-surrounding-services).
 
 The `version` in `package.json` is now bumped by hand (the automated bump action was removed). It is what the bottom bar displays, via `environments/environment*.ts`, so raise it in the PR that ships a release.
 

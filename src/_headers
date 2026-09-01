@@ -1,0 +1,10 @@
+# Netlify reads this from the root of the publish directory.
+#
+# Netlify has no type for `.webmanifest` and serves it as
+# `application/octet-stream`. The dev server sends `application/manifest+json`,
+# which is what the Home Screen install was actually verified against -- so
+# without this, the thing that was tested and the thing that ships are two
+# different responses, and the one that ships is the one no browser was asked
+# about.
+/manifest.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8

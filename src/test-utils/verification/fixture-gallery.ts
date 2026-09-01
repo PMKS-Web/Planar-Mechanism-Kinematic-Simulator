@@ -936,7 +936,7 @@ export function galleryMarkdown(baseUrl: string): string {
     '```bash',
     // Deliberately a placeholder rather than a real preview number: pinning one
     // PR's preview here means every later regeneration re-emits a dead link.
-    'PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksprod.netlify.app npm run fixture-urls',
+    'PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksnew.netlify.app npm run fixture-urls',
     '```',
     '',
     '| Mechanism | What it is for | Floating slot | Slide | Asserted in |',

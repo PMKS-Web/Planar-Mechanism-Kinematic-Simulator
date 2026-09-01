@@ -596,7 +596,7 @@ tracked files, which hostname the dev server answers on — is in
 
 - **Never push to `main`.** Commits there deploy straight to production at
   [app.pmksplus.com](https://app.pmksplus.com).
-- Every other branch publishes to `https://[BRANCHNAME]--pmksprod.netlify.app`.
+- Every other branch publishes to `https://[BRANCHNAME]--pmksnew.netlify.app`.
 - The `version` in `package.json` is what Settings shows to a user; raise it in the PR that ships
   a release.
 

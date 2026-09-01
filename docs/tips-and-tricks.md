@@ -679,9 +679,24 @@ pixels are available; anything you add to the bottom row has to survive that.
 
 - **Production is [app.pmksplus.com](https://app.pmksplus.com)**, deployed from `main`. **Never
   push to `main`** unless someone has told you to: a commit there ships.
-- **The Netlify site is named `pmksprod`.** Branch previews are
-  `https://[BRANCHNAME]--pmksprod.netlify.app`. The older `--pmks.netlify.app` pattern 404s, and
-  the wrong hostname looks exactly like a broken deploy.
+- **There are two Netlify sites, and branch builds come from `pmksnew`.** Branch previews are
+  `https://[BRANCHNAME]--pmksnew.netlify.app`. The older `--pmks.netlify.app` pattern 404s, which is
+  at least honest; `[BRANCH]--pmksprod.netlify.app` is the trap, because it still answers **200 with
+  a months-stale bundle**. Measured on the day this was written: `staging--pmksprod` served a build
+  with none of the last several commits in it while `staging--pmksnew` served the current one, and
+  `app.pmksplus.com` matched `pmksprod.netlify.app`. So production may still be the old site while
+  branches are on the new one — check rather than assume.
+- **Never confirm a deploy by loading the page.** Ask for something only the new commit has:
+
+  ```bash
+  curl -s https://staging--pmksnew.netlify.app/ | grep -o 'main-[A-Z0-9]*\.js'
+  ```
+
+  A changed bundle hash is proof; a 200 is not. This is also how to tell "Netlify has not built yet"
+  from "Netlify is not watching this branch any more", which look identical from a browser.
+- **Re-pushing the same commit does nothing.** Netlify reacts to a new SHA, so `git push` on an
+  up-to-date branch prints `Everything up-to-date` and no build starts. `git commit --allow-empty`
+  is the way to ask for a rebuild.
 - **`version` in `package.json` is what the bottom bar shows**, via `environments/environment*.ts`.
   It is bumped by hand, in the PR that ships a release.
 - **The feedback form needs a serverless key.** `netlify/functions/getEmailJSKey.ts` supplies it
@@ -693,7 +708,7 @@ pixels are available; anything you add to the bottom row has to survive that.
   mechanism that uses a feature which has not shipped:
 
   ```bash
-  PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksprod.netlify.app npm run fixture-urls
+  PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksnew.netlify.app npm run fixture-urls
   ```
 
 - **The mechanism library's payloads are generated** by `npm run template-payloads` from the
