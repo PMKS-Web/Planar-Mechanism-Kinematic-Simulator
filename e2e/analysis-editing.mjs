@@ -336,6 +336,70 @@ record(
   (await page.locator('.apexcharts-series').count()) === 2
 );
 
+// ---- 7. the peak, said as a number (Phase C) -----------------------------
+
+record(
+  'the chip says what the peak was and what it is now',
+  await page.evaluate(() => {
+    const graph = window.ng.getComponent(document.querySelector('app-analysis-graph'));
+    return graph.peakReadout === null;
+  }),
+  'no comparison on the plot, so no peak to compare'
+);
+
+// ---- 8. force analysis, where the solve is dearer -------------------------
+
+await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['Offset_Load_Rocker']}`);
+await page.locator('.tabButton', { hasText: 'Force' }).click();
+await page.waitForTimeout(1200);
+await page.evaluate(() => {
+  const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+  const driven = grid.mechanismSrv.joints.find((j) => j.input);
+  if (driven) grid.activeObjService.updateSelectedObj(driven);
+});
+await page.waitForTimeout(900);
+const forceCards = await page.locator('app-analysis-graph-section').count();
+record('force analysis offers graphs to tune against', forceCards > 0, { forceCards });
+await page.locator('app-analysis-graph-section').first().locator('button').first().click();
+await page.waitForTimeout(1200);
+
+const held = await jointAt('B');
+await page.mouse.move(held.x, held.y);
+await page.mouse.down();
+const started = Date.now();
+const moves = 8;
+for (let i = 1; i <= moves; i++) {
+  await page.mouse.move(held.x + i * 4, held.y - i * 3);
+  await page.waitForTimeout(10);
+}
+const perMove = (Date.now() - started) / moves;
+const forceOverlay = await page.evaluate(() => {
+  const graph = window.ng.getComponent(document.querySelector('app-analysis-graph'));
+  return {
+    series: graph.displayedSeries.length,
+    peak: graph.peakReadout,
+    gapShown: !!document.querySelector('.analysis-gap'),
+  };
+});
+record('a force curve gets the same comparison', forceOverlay.series >= 4, forceOverlay);
+record(
+  'and the peak is said as two numbers',
+  !!forceOverlay.peak && forceOverlay.peak.before !== forceOverlay.peak.after,
+  forceOverlay.peak
+);
+// A drag walks the linkage through toggle positions on the way somewhere, so
+// the gap count changes on every move; the banner waits until it means
+// something.
+record('the toggle-gap banner does not flicker under the hand', !forceOverlay.gapShown);
+// Every move here costs a full cycle solve *and* a full force solve. The
+// budget is what keeps this honest rather than a hope.
+record(`force mode holds its budget (${Math.round(perMove)}ms/move, 90ms)`, perMove < 90, {
+  perMove,
+});
+await page.mouse.up();
+await page.waitForTimeout(1200);
+await page.screenshot({ path: `${SHOTS}/4-force.png` });
+
 record('no page errors', errors.length === 0, errors.slice(0, 3));
 
 const failed = results.filter(([, ok]) => !ok);

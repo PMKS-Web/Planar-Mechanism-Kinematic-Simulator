@@ -11,8 +11,7 @@ import { waitForReady } from './app-ready.mjs';
 const screenshotDir = path.resolve('artifacts/screenshots');
 await fs.mkdir(screenshotDir, { recursive: true });
 
-const baseUrl =
-  process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://127.0.0.1:4200/';
+const baseUrl = process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://127.0.0.1:4200/';
 const runPrefix = process.env.RUN_PREFIX || 'phase1';
 const chromePath =
   process.env.PMKS_CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -361,12 +360,15 @@ await safe('a plain click selects without moving anything', async () => {
   record('the click earned no undo entry', undoEnabled === false, { undoEnabled });
 });
 
-// --- 5. An analysis mode refuses drags ------------------------------------
-await safe('an analysis mode refuses to drag a joint or a link', async () => {
+// --- 5. An analysis mode drags, and re-anchors while it does ---------------
+await safe('an analysis mode drags what exists, and keeps where the cycle starts', async () => {
   await loadFourBar(page);
-  const before = await jointState(page);
   await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
   await page.waitForTimeout(800);
+  // Read *after* the mode switch: the left card widens from 250px to 400px in
+  // an analysis mode, so the canvas re-frames and a joint's place on screen
+  // moves. Coordinates taken before it land on bare canvas.
+  const before = await jointState(page);
 
   const b = before.find((j) => j.id === 'B');
   const release = await dragBy(
@@ -377,16 +379,23 @@ await safe('an analysis mode refuses to drag a joint or a link', async () => {
   await release();
   const after = await jointState(page);
   const afterB = after.find((j) => j.id === 'B');
-  await shot(page, 'analyze-drag-refused.png');
+  await shot(page, 'analyze-drag-lands.png');
 
+  // The lock used to refuse this outright -- "the graphs describe this exact
+  // cycle, so the geometry is locked here" -- which stopped being true when the
+  // graph stack began redrawing from whatever was last solved. What it refuses
+  // now is restructuring; tuning what exists is the point.
   record(
-    'the joint did not move in an analysis mode',
-    Math.abs(afterB.modelX - b.modelX) < 0.001 && Math.abs(afterB.modelY - b.modelY) < 0.001,
+    'the joint moved',
+    Math.abs(afterB.modelX - b.modelX) > 0.001 || Math.abs(afterB.modelY - b.modelY) > 0.001,
     { before: [b.modelX, b.modelY], after: [afterB.modelX, afterB.modelY] }
   );
-  // The refusal is silent by design: the mode is stated in the strip above and
-  // in the tab that is lit, and a message per attempted drag would repeat it.
-  // A joint that does not move is the answer.
+  record(
+    'and the mode still refuses to restructure',
+    await page.evaluate(
+      () => !window.ng.getComponent(document.querySelector('app-new-grid')).permission.may('build')
+    )
+  );
 });
 
 // --- 6. A bare cursor never pans the canvas -------------------------------

@@ -455,6 +455,11 @@ export class AnalysisGraphComponent
 
   /** Whether a gesture is in flight right now, as this component last saw it. */
   private gestureLive = false;
+
+  /** The same, for the template: what is hushed while the hand is down. */
+  get gestureIsLive(): boolean {
+    return this.gestureLive;
+  }
   /** The solve this graph has already drawn, so a redraw happens once per solve. */
   private drawnSolve = -1;
   private liveRedraw?: number;
@@ -560,6 +565,48 @@ export class AnalysisGraphComponent
   /** Whether there is a "before" curve on the plot to clear. */
   get hasBaseline(): boolean {
     return !!this.baseline;
+  }
+
+  /**
+   * What the peak was, and what it is now.
+   *
+   * The workflow this whole overlay exists for is "reduce the acceleration
+   * peak", so the peak is the number to say. Two curves is squinting; two
+   * numbers and an arrow is reading. Largest magnitude of whatever series are
+   * shown, in the unit the axis is already lettered in -- the same arithmetic
+   * the plot is drawn from, so the readout cannot disagree with the picture.
+   */
+  get peakReadout(): { before: string; after: string; better: boolean; same: boolean } | null {
+    const held = this.baseline;
+    if (!held) return null;
+    const peakOf = (series: ApexAxisChartSeries) => {
+      let most = 0;
+      let found = false;
+      series.forEach((one) =>
+        one.data.forEach((point) => {
+          const value = this.pointValue(point);
+          if (value === null) return;
+          found = true;
+          most = Math.max(most, Math.abs(value));
+        })
+      );
+      return found ? most : null;
+    };
+    const shown = new Set(this.displayedSeries.map((one) => one.name?.replace(BEFORE, '')));
+    const before = peakOf(held.series.filter((one) => shown.has(one.name?.replace(BEFORE, ''))));
+    const after = peakOf(
+      (this.chartOptions.series ?? []).filter((one) => shown.has(one.name ?? ''))
+    );
+    if (before === null || after === null) return null;
+    // A hair either way is the solver's own noise, not an improvement anybody
+    // made -- and an arrow claiming one is worse than no arrow.
+    const same = Math.abs(after - before) <= Math.max(Math.abs(before), 1e-9) * 0.005;
+    return {
+      before: formatAnalysisValue(before),
+      after: formatAnalysisValue(after),
+      better: after < before,
+      same,
+    };
   }
 
   noDataSelected: boolean = false;

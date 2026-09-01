@@ -466,6 +466,33 @@ pixels are available; anything you add to the bottom row has to survive that.
   inline link -- "Drag to edit, or *return to the start* to type." -- came out as
   "orreturn to the start" because the space before the block was eaten. Write it as `&#32;`, and
   keep the trailing space out of the model string so `long` does not end up double-spaced.
+- **An analysis mode edits now, and the line is `build`/`structure`, not `drag`.** The old
+  blanket -- "the graphs describe this exact cycle, so the geometry is locked here" -- is gone,
+  along with four outposts that hard-coded it: a `pointer-events: none` layer, a cursor rule, a
+  scenery class, and `refuseAnalysisDrag`. `modeLocksGeometry` is `modeLocksStructure` now,
+  because that is what is left of it. **No cell of the analysis column is ever more permissive
+  than Edit's** -- a spec asserts it over every pose state.
+- **Click selects, drag tunes -- and the drag still works through the selection.** Nineteen
+  reads in the drag paths take their target from `activeObjService.selectedJoint`, so the press
+  still selects. What is held is what the panels are *about*
+  (`ActiveObjService.holdGraphSubject`), and the canvas puts the selection itself back when a
+  gesture that travelled ends. The hold has to live on the service: the selection changes on
+  pointer-down and the drag state that would gate it is not armed until after, so a panel
+  gating on `isPointerDown` in `ngDoCheck` sees the swap and keeps it.
+- **Read `travelled` off the gesture's own outcome, not off the service.** `release()` clears
+  the flag as part of returning it, so a question asked later in the same handler always
+  answers "no". This cost an afternoon.
+- **A toggle is a singularity, and it will own any axis fitted to its maximum.** Two samples
+  out of 360 read twenty thousand where the curve's real range is nought to twelve; the axis is
+  then *correct* and the plot says the curve is flat, which is false. `readableRange` in
+  `analysis-graph.component.ts` trims the tails when they are outliers -- and only while a
+  comparison is on the plot, because a spike in a drawing somebody built deliberately is the
+  answer rather than the noise.
+- **A comparison axis must widen and never shrink.** Refitted per frame it moves as much as the
+  curve does and every frame looks the same height as the last.
+- **SCSS appended before a file's last `}` lands inside the last rule, not at the top level.**
+  Two chips came out as `.analysis-gap .baselineChip` and silently did nothing. `grep` the
+  built CSS for the selector, not just the class name.
 - **Do not run `npm test` and a large Playwright sweep at the same time.** Six heavy fixture,
   codec and graph specs time out under the load and fail together, which reads exactly like a
   shared-state bug in whatever you just changed. Re-run the unit suite on a quiet machine before

@@ -1,4 +1,9 @@
-@if (analysisGap; as gap) {
+<!-- Not while the hand is down. A drag walks the linkage through toggle
+     positions on its way somewhere, so the count changes on every pointer move
+     and the banner flickers a different number between the reader and the curve
+     they are watching. It says its piece when the gesture is over and the count
+     means something. -->
+@if (!gestureIsLive && analysisGap; as gap) {
   <div
     class="analysis-gap"
     role="status"
@@ -17,6 +22,17 @@
   <div class="baselineChip">
     <span class="baselineSwatch" aria-hidden="true"></span>
     Before your drag
+    <!-- The number the whole overlay exists to move. Two curves is squinting;
+         two numbers and an arrow is reading. -->
+    @if (peakReadout; as peak) {
+      <span class="peakReadout" [class.better]="peak.better" [class.same]="peak.same">
+        peak {{ peak.before }}
+        <mat-icon>{{
+          peak.same ? 'drag_handle' : peak.better ? 'south_east' : 'north_east'
+        }}</mat-icon>
+        {{ peak.after }}
+      </span>
+    }
     <button (click)="clearBaseline()">Clear</button>
   </div>
 }

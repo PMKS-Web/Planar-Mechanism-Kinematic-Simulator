@@ -31,9 +31,13 @@ their source. Everything browser-driven lives here.
   become them. A view gesture ending a center-of-mass drag, a pinch after a drag has begun, and a
   synced two-machine drawing edited on the machine that is not the master. Every check here started
   as a defect
+- `analysis-editing.mjs` — `docs/analysis-mode-editing-plan.md`: what an analysis mode allows now
+  (drag, undo) and still refuses (adding, deleting, welding), click-selects-drag-tunes, the
+  before/after comparison overlay and the axis holding still under it, the peak said as two
+  numbers, and the force-mode budget measured rather than hoped for
 - `phase1-drag.mjs` — drag gestures: joint snap ring and merge, merging onto a slider's pin,
   refusing an over-constraining merge, whole-link drag, one undo entry per gesture,
-  click-without-nudge, the canvas staying put after a merge, and an analysis mode refusing drags.
+  click-without-nudge, and the canvas staying put after a merge.
   Prints a PASS/FAIL check list and exits non-zero on any failure, so it can gate a change.
 - `force-analysis-panels.mjs` — Force Analysis rows on the joint and link analysis panels, and the shared Force Analysis Type toggle
 - `left-nav-modes.mjs` — mode navigation in the top strip that replaced the rail: the four modes, the

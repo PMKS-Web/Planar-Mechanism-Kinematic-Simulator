@@ -1,6 +1,7 @@
 # Editing in Analysis mode — tuning a mechanism against its own curves
 
-**Status: proposed.** Follows `docs/edit-mode-playback-plan.md`, which built the machinery this
+**Status: built.** Phases A, B and C shipped; `e2e/analysis-editing.mjs` is the suite that keeps
+them honest. Follows `docs/edit-mode-playback-plan.md`, which built the machinery this
 plan stands on. Read that one first; this one leans on its vocabulary (anchor, staged posed
 edit, `EditPermission`) without re-arguing it.
 
@@ -381,16 +382,28 @@ the effect well.
   reading as "one object resting, pointed at, picked". Needs the same visual pass in analysis
   that Edit got, not just deletion of the gray.
 
-## 9. Open questions (decide at Gate A, none block Phase A)
+## 9. Open questions — as answered
 
-1. Should the post-release baseline survive *several* drags ("compare to before I started
-   tuning") behind a pin control, or is per-gesture re-baselining (§5.5) enough? Ship
-   per-gesture; add the pin only if real use asks.
-2. Does the corner card in analysis need visible Undo (§4.2), or are the shortcut and menu
-   enough?
-3. Multi-select drags in analysis: allowed by the same `drag` cell in principle — include at
-   Phase A, or hold to Phase C with the rest of the hardening? (Lean: include; it is the same
-   gate.)
+1. **Per-gesture re-baselining.** Each drag compares against the pose it started from; no pin.
+2. **The corner card carries both**, in the order Undo · Redo · Export, with Export sliding in
+   from the right-hand edge it lives on as Edit gives way to an analysis mode.
+3. **Multi-select drags are included**, and cost nothing extra: the gate they pass is the same
+   `may('drag')` a single part passes.
+
+And one the build itself raised, decided after seeing it: **click selects, drag tunes.** A drag
+works through the selection, so grabbing a joint to tune it stole the graphs from whatever was
+being studied — backwards for the move this whole unlock exists for. The selection is still
+made on the press, and a gesture that travelled puts it back; `ActiveObjService` holds what the
+panels are *about* in between, so the swap is never on screen.
+
+Two things the build found that the plan had not:
+
+- **A singularity must not own the y axis.** Acceleration near a toggle is unbounded, so two
+  samples out of 360 can read twenty thousand against a curve whose real range is nought to
+  twelve. Fitted to that the axis is correct and the plot is useless. `readableRange` trims the
+  tails, but only when they are outliers and only while a comparison is on the plot.
+- **The axis has to hold a *running* range.** Recomputed per frame it shrank as readily as it
+  grew, so it swam under the very curve being watched. Widen only.
 
 ## 10. Keeping it verified
 

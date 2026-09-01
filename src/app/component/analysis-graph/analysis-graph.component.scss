@@ -134,44 +134,81 @@
     padding: 0;
     text-decoration: underline;
   }
+}
+// What the ghosted curve under the live one is, and how to be rid of it.
+// Flat on the card rather than raised: it is a note about what is drawn, not
+// a control sitting on top of the drawing.
+.baselineChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 2px;
+  padding: 0 2px;
+  font-size: 11px;
+  color: #5f6368;
+  white-space: nowrap;
 
-  // What the ghosted curve under the live one is, and how to be rid of it.
-  // Flat on the card rather than raised: it is a note about what is drawn, not
-  // a control sitting on top of the drawing.
-  .baselineChip {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin: 0 0 2px;
-    padding: 0 2px;
+  button {
+    height: 18px;
+    padding: 0 6px;
+    border: none;
+    border-radius: 9px;
+    background: #eef1fc;
+    color: #303f9f;
+    font-family: inherit;
     font-size: 11px;
-    color: #5f6368;
-    white-space: nowrap;
+    font-weight: 500;
+    cursor: pointer;
 
-    button {
-      height: 18px;
-      padding: 0 6px;
-      border: none;
-      border-radius: 9px;
-      background: #eef1fc;
-      color: #303f9f;
-      font-family: inherit;
-      font-size: 11px;
-      font-weight: 500;
-      cursor: pointer;
-
-      &:hover {
-        background: #e3e8fb;
-      }
+    &:hover {
+      background: #e3e8fb;
     }
   }
+}
 
-  // The same ink as the ghosted curves it stands for.
-  .baselineSwatch {
-    width: 14px;
-    height: 2px;
-    flex: 0 0 auto;
-    border-radius: 1px;
-    background: rgba(63, 81, 181, 0.35);
+// A pale line, in no series' colour.
+//
+// It stood for the ghosted curves and was drawn in indigo to say so -- which is
+// right on a position graph and a lie on an acceleration one, where the series
+// is orange. A graph can show three at once, so there is no one colour to
+// borrow: what the swatch actually means is "pale", and grey says that without
+// claiming to be any of them.
+.baselineSwatch {
+  width: 14px;
+  height: 2px;
+  flex: 0 0 auto;
+  border-radius: 1px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+// What the peak was and what it is now. Green down, amber up, grey for a
+// change too small to have been anybody's doing -- an arrow claiming an
+// improvement that is really solver noise is worse than no arrow.
+.peakReadout {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: #f4f4f7;
+  color: #5f6368;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+
+  mat-icon {
+    width: 13px;
+    height: 13px;
+    font-size: 13px;
+    line-height: 13px;
+  }
+
+  &.better {
+    background: #e6f4ea;
+    color: #1e7d32;
+  }
+
+  &:not(.better):not(.same) {
+    background: #fdf1e3;
+    color: #8a6100;
   }
 }
