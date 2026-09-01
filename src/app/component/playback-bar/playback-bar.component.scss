@@ -75,7 +75,10 @@
       // is a control the reader has to find twice.
       // The one gap above the status strip, matching what the sheet keeps
       // above this row and the top strip keeps from the window.
-      bottom: calc(34px + env(safe-area-inset-bottom) + #{nav.$card-inset});
+      // The card is the only thing down there now, so it is measured against
+      // the home indicator directly rather than against a strip that has gone
+      // to the top of the window.
+      bottom: max(#{nav.$card-inset}, env(safe-area-inset-bottom));
     }
   }
 
@@ -823,11 +826,15 @@
       flex-wrap: wrap;
       justify-content: stretch;
       gap: nav.$card-inset;
-      padding: 0 nav.$card-inset;
+      padding: 0 calc(#{nav.$card-inset} + env(safe-area-inset-right)) 0
+        calc(#{nav.$card-inset} + env(safe-area-inset-left));
       // Above the mode strip, which is what takes the home indicator's room --
       // so this is measured against the strip and nothing here has to know
       // about the inset twice.
-      bottom: calc(34px + env(safe-area-inset-bottom) + #{nav.$card-inset});
+      // The card is the only thing down there now, so it is measured against
+      // the home indicator directly rather than against a strip that has gone
+      // to the top of the window.
+      bottom: max(#{nav.$card-inset}, env(safe-area-inset-bottom));
     }
 
     .phoneCard {

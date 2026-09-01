@@ -35,19 +35,38 @@
       white-space: nowrap;
     }
 
-    // Heavier on a phone, so a floating browser bar cannot make it look
-    // provisional: 34px rather than 26, and the home indicator's own room
-    // underneath it. It is the strip the drawing is measured against, so it is
-    // the one thing down there that has to clear the inset -- everything else
-    // is measured against this.
+    // On a phone this strip goes to the top of the window and gets heavier.
     //
-    // The design draws this strip at the top of the phone. Here it has always
-    // been at the bottom, and the design's own instruction is that it stays
-    // where it is; so it keeps the bottom, and takes the bottom inset rather
-    // than the notch's.
+    // Heavier so that a floating browser bar cannot make it look provisional:
+    // 34px rather than 26, and the ambient shadow it already carries rather
+    // than a hairline -- so when Safari's bar slides up over it, what shows
+    // through still reads as a surface with the page under it rather than a
+    // stray line of text.
+    //
+    // Padded for the notch, and the padding is *on the strip* rather than on
+    // the canvas: the strip grows up into the inset and the drawing keeps its
+    // full height under it. It is also flush to the window's edges rather than
+    // inset like the floating cards below it, which is what makes it read as
+    // the window's own edge instead of a fourth card.
     @media (max-width: 600px) {
-      height: calc(34px + env(safe-area-inset-bottom));
-      padding-bottom: env(safe-area-inset-bottom);
+      top: 0;
+      bottom: auto;
+      height: calc(34px + env(safe-area-inset-top));
+      padding-top: env(safe-area-inset-top);
+      align-items: flex-end;
+      padding-bottom: 4px;
+      padding-left: calc(14px + env(safe-area-inset-left));
+      padding-right: calc(14px + env(safe-area-inset-right));
+      // A surface with the page under it, rather than a band of dead white
+      // where the drawing ought to be. The notch's inset is 59px on the phones
+      // this matters on -- opaque, that is a third of the strip's own height
+      // again in nothing at all, and the reader can see it is nothing. Let the
+      // grid run under it and show through, which is what the shadow below is
+      // for: it is what keeps this reading as a surface rather than as a stray
+      // line of text once something is visible behind it.
+      background-color: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
     }
 
     .status,

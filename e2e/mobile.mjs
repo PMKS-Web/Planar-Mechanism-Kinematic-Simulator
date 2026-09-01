@@ -299,7 +299,11 @@ const stack = await page.evaluate(() => {
     cardLeft: Math.round(card.left),
     cardRight: Math.round(window.innerWidth - card.right),
     cardToRow: Math.round(row.top - card.bottom),
-    rowToStrip: Math.round(strip.top - rowCard.bottom),
+    // The strip is at the top of the window on a phone now, so what stands off
+    // what has changed: the controls row is the last thing before the window's
+    // own bottom edge, and the strip is the first thing before the mode cards.
+    rowToWindow: Math.round(window.innerHeight - rowCard.bottom),
+    stripToTopStrip: Math.round(r('.topStrip').top - strip.bottom),
     bottomLeft: Math.round(Math.min(...inRow.map((b) => b.left))),
     bottomRight: Math.round(window.innerWidth - Math.max(...inRow.map((b) => b.right))),
   };
@@ -311,7 +315,27 @@ record(
   stack.cardToRow === layoutGap,
   stack
 );
-record('and the status strip off the controls row', stack.rowToStrip === layoutGap, stack);
+// The mode strip took the top of the window, so the controls row is measured
+// against the window's own bottom edge and the strip against the cards below it.
+record(
+  'the controls row stands off the window by the same gap',
+  stack.rowToWindow === layoutGap,
+  stack
+);
+record('and the mode cards off the strip above them', stack.stripToTopStrip === layoutGap, stack);
+// It is flush to the window's edges rather than inset like the floating cards,
+// which is what makes it read as the window's own edge instead of a fourth card.
+record(
+  'the strip is flush to the window, not inset like a card',
+  await page.evaluate(() => {
+    const b = document.querySelector('app-bottombar > *').getBoundingClientRect();
+    return (
+      Math.round(b.left) === 0 &&
+      Math.round(b.top) === 0 &&
+      Math.round(window.innerWidth - b.right) === 0
+    );
+  })
+);
 // The bottom row used to be centered inside an 8px padding, so its cards sat
 // 23px from the window against the top strip's 12 and the two ends of the
 // screen disagreed about where the margin was.
@@ -353,7 +377,10 @@ record('and the controls are on screen, below the top strip', cluster.y >= strip
 // per machine -- the shared row only -- so the stack stays two lines deep
 // however many machines the drawing holds.
 record('the controls are two rows, no more', cluster.h <= 140, { cluster });
-record('with the shared scrubber on the upper one', (await page.locator('.scrubCard:visible').count()) === 1);
+record(
+  'with the shared scrubber on the upper one',
+  (await page.locator('.scrubCard:visible').count()) === 1
+);
 record(
   'and one row on it, whatever the drawing holds',
   (await page.locator('.mechRow').count()) === 1,
@@ -390,7 +417,11 @@ record('and no control that would produce more', (await page.locator('.syncToggl
       machines: bar.mechanism.mechanisms.filter((one) => one.isMechanismValid()).length,
     };
   });
-  record('an unsynced drawing still shows one row on a phone', unsynced.shown.length === 1, unsynced);
+  record(
+    'an unsynced drawing still shows one row on a phone',
+    unsynced.shown.length === 1,
+    unsynced
+  );
   record(
     'and it stands for every machine rather than the first',
     unsynced.machines < 2 || unsynced.shown[0].index === -1,

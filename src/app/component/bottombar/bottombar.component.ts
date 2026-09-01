@@ -6,6 +6,7 @@ import { SettingsService } from '../../services/settings.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { environment } from '../../../environments/environment';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { ViewportService } from '../../services/viewport.service';
 import { SynthesisBuilderService } from '../../services/synthesis/synthesis-builder.service';
 import { SynthesisSolutionService } from '../../services/synthesis/synthesis-solution.service';
 
@@ -17,6 +18,7 @@ import { SynthesisSolutionService } from '../../services/synthesis/synthesis-sol
 })
 export class BottombarComponent {
   settings = inject(SettingsService);
+  readonly viewport = inject(ViewportService);
   mechanismSrv = inject(MechanismService);
   private tabs = inject(SelectedTabService);
   private svgGrid = inject(SvgGridService);

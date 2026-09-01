@@ -28,6 +28,7 @@ import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-sh
 import { ShortcutTipDirective } from '../../shortcut-tip.directive';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { SaveHistoryService } from '../../services/save-history.service';
+import { RealJoint } from '../../model/joint';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 
 /** What the stylesheet is asked for, and what to assume if it has not loaded. */
@@ -503,8 +504,16 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     // at all -- the one line that says so. The card keeps its shape either way,
     // which is the whole reason the inert rail had to be a rail rather than a
     // caption under an empty card.
+    //
+    // Except a drawing whose motion has merely not been worked out yet, which
+    // is the one refusal that is not one. Nothing is wrong with it and every
+    // control is live; it is waiting to be asked. Solving is what fills
+    // `mechanisms`, so a deferred drawing has nothing valid in it and would
+    // otherwise fall into the refusal path -- where it drew a dead rail under
+    // an empty sentence, because there is no blocker to name and the transport
+    // is not refused.
     if (runnable.length === 0) {
-      return this.refusalRows();
+      return this.mechanism.solvingIsDeferred ? this.deferredRows() : this.refusalRows();
     }
 
     // Synced, the machines are started and stopped together and there is one
@@ -640,7 +649,65 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     if (rows.length) return rows;
     // Nothing drawn, or geometry belonging to no machine at all. One line, and
     // no name to put on it.
-    return [this.inertRow('', 0, { text: this.permission.transportHint() ?? '' })];
+    return [
+      this.inertRow('', 0, {
+        text:
+          this.permission.transportHint() ??
+          this.permission.refusal('transport')?.long ??
+          'Nothing here can run yet.',
+      }),
+    ];
+  }
+
+  /**
+   * One row per machine in a drawing that has not been solved yet.
+   *
+   * A real rail with the handle at the start, live controls, and a reading line
+   * that says what pressing Play buys. A machine that could not run even once
+   * solved still states its blocker, because that is true whether or not the
+   * motion has been worked out.
+   */
+  private deferredRows(): PlaybackRow[] {
+    // From the partitions, not from readiness: readiness is built from solved
+    // mechanisms, and a deferred drawing has none -- so asking it here returned
+    // an empty list, and the card drew nothing at all.
+    return this.mechanism.partitions.map((partition, index) => {
+      const driven = partition.ownJoints.find(
+        (joint) => joint instanceof RealJoint && joint.input
+      ) as RealJoint | undefined;
+      // Undriven is the one thing that can be said without solving. Everything
+      // else -- mobility, a slot with nowhere to go -- is what the solve is for,
+      // and guessing at it here would be a refusal the model has not made.
+      if (!driven) {
+        return this.inertRow(partition.id, index, {
+          text: 'needs a drive before it will run.',
+          action: 'Analysis setup',
+        });
+      }
+      return {
+        id: partition.id,
+        index,
+        leader: index,
+        isMechanism: true,
+        master: index === 0,
+        time: this.format(0),
+        position: '',
+        scrub: 0,
+        // Where it will start, which is where it is standing: the handle is in
+        // its seat, so no seat is drawn.
+        anchorAt: 0,
+        clockwise: driven ? this.mechanism.driveSpeedOf(driven) >= 0 : true,
+        togglePoint: false,
+        note: '',
+        playing: false,
+        ownPlay: false,
+        ends: [],
+        period: 1,
+        inert: false,
+        deferred: true,
+        startMoved: false,
+      };
+    });
   }
 
   /** A row with no cycle behind it: the reading line, and a flat rail. */

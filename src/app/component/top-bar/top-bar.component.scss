@@ -10,6 +10,16 @@
   .topStrip {
     position: absolute;
     top: nav.$card-inset;
+
+    // Below the mode strip, which on a phone takes the top of the window and
+    // the notch's inset with it.
+    @media (max-width: 600px) {
+      top: calc(34px + env(safe-area-inset-top) + #{nav.$card-inset});
+      // And clear of the rounded corners, which is the same question sideways.
+      left: calc(#{nav.$card-inset} + env(safe-area-inset-left));
+      right: calc(12px + env(safe-area-inset-right));
+    }
+
     left: nav.$card-inset;
     right: nav.$card-inset;
     right: 12px;

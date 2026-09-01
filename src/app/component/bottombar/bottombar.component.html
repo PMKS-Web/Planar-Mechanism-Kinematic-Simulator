@@ -1,4 +1,7 @@
-<div data-canvas-inset="bottom" id="bottomBar">
+<!-- Which edge this hugs is which edge it is on: the strip takes the top of
+     the window on a phone, and `freeCanvasRect` has to reserve the room where
+     the strip actually is or it frames the drawing under it. -->
+<div [attr.data-canvas-inset]="viewport.isPhone() ? 'top' : 'bottom'" id="bottomBar">
   <span class="mode">{{ modeName }}</span>
   <span class="status">{{ status }}</span>
   <span class="spacer"></span>
