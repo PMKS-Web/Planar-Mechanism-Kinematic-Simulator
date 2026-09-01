@@ -33,7 +33,9 @@ There is no lint target (`tslint.json` is vestigial). Formatting follows `.prett
 ## UI validation: run it yourself, then have GPT-5.6 sol review it
 
 **Run UI validation, browser automation, screenshots, and end-to-end interaction checks
-directly**, following the `ui-validate` skill (`.claude/skills/ui-validate/SKILL.md`): Playwright
+directly**, following the `ui-validate` skill (`.claude/skills/ui-validate/SKILL.md`) — which
+**requires a filmstrip, not a screenshot, for anything that animates or responds to a drag**
+(`e2e/filmstrip.mjs`): Playwright
 from `/tmp/pmks-playwright`, a disposable Chrome profile under `/tmp`, screenshots and JSON
 reports into gitignored `artifacts/`. Inspect your own screenshots rather than trusting an exit
 code. Do not use claude-in-chrome (`mcp__claude-in-chrome__*`) in this repo — it drives the user's

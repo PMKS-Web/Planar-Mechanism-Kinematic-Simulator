@@ -65,6 +65,65 @@ export class ActiveObjService {
     return this.partSelection.primary;
   }
 
+  /**
+   * What the panels should be *about* while a gesture is in flight.
+   *
+   * Click selects, drag tunes. A drag in an analysis mode is an edit now, and
+   * the drag machinery works through the selection -- so grabbing a joint to
+   * tune it would swap the graphs to that joint for the length of the gesture.
+   * Which is backwards for the move the unlock exists for: watch the output's
+   * acceleration, tune the coupler pivot, watch the peak come down.
+   *
+   * Held here rather than in the panel, because the panel cannot see the press
+   * early enough: the selection changes on pointer-down, and the drag state
+   * that would have gated it is not armed until after. Set from the same line
+   * that changes the selection, there is no ordering to get wrong.
+   */
+  private gestureHold?: {
+    type: ActiveObjType;
+    joint: RealJoint;
+    link: RealLink;
+    force: Force;
+  };
+
+  /** Remember what the panels are about, before a gesture moves the selection. */
+  holdGraphSubject(): void {
+    if (this.gestureHold) return;
+    this.gestureHold = {
+      type: this.objType,
+      joint: this.selectedJoint,
+      link: this.selectedLink,
+      force: this.selectedForce,
+    };
+  }
+
+  /**
+   * Let the panels see the selection again.
+   *
+   * After a click that is all there is to do -- the new selection is the point
+   * of a click. After a drag the caller puts the old one back first, so this
+   * releases onto what was already showing.
+   */
+  releaseGraphSubject(): void {
+    this.gestureHold = undefined;
+  }
+
+  get graphType(): ActiveObjType {
+    return this.gestureHold?.type ?? this.objType;
+  }
+
+  get graphJoint(): RealJoint {
+    return this.gestureHold?.joint ?? this.selectedJoint;
+  }
+
+  get graphLink(): RealLink {
+    return this.gestureHold?.link ?? this.selectedLink;
+  }
+
+  get graphForce(): Force {
+    return this.gestureHold?.force ?? this.selectedForce;
+  }
+
   getSelectedObj(): RealJoint | Force | RealLink {
     switch (this.objType) {
       case 'Joint':

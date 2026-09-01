@@ -1069,7 +1069,79 @@ export class NewGridComponent implements OnDestroy {
       this.activeObjService.clearPartSelection();
       return;
     }
+    // Click selects, drag tunes.
+    //
+    // In an analysis mode the selection decides what the panel *graphs*, and a
+    // drag is now an edit -- so grabbing a joint to tune it stole the graphs
+    // away from whatever was being studied. Which is exactly backwards for the
+    // move this unlock exists for: watch the output's acceleration, tune the
+    // coupler pivot, watch the peak come down.
+    //
+    // The drag itself still works through the selection, which is nineteen
+    // reads through the most delicate code here, so the selection is still made
+    // on the press. What is remembered is what it was *before* -- and a gesture
+    // that turns out to have travelled puts it back on release. The analysis
+    // panel holds the pose it is graphing steady for the length of the gesture,
+    // so the selection this makes and unmakes is never one the reader sees.
+    if (this.tabService.isAnalysisMode()) {
+      this.selectionBeforeGesture = this.graphedPart();
+      // Before the line below moves it, so the panels never see the swap.
+      this.activeObjService.holdGraphSubject();
+    }
     this.activeObjService.updateSelectedObj(clickedObj);
+  }
+
+  /**
+   * What was selected when this gesture began, in an analysis mode.
+   *
+   * Nothing outside a gesture, and nothing in the other modes: in Edit the
+   * panel is about the thing being edited, so selecting what you drag is what
+   * a reader expects there.
+   */
+  private selectionBeforeGesture?: RealJoint | RealLink | Force;
+
+  /** Whatever the analysis panel is graphing, or nothing where it graphs nothing. */
+  private graphedPart(): RealJoint | RealLink | Force | undefined {
+    switch (this.activeObjService.objType) {
+      case 'Joint':
+        return this.activeObjService.selectedJoint;
+      case 'Link':
+        return this.activeObjService.selectedLink;
+      case 'Force':
+        return this.activeObjService.selectedForce;
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Put the graphs back on what the reader was studying.
+   *
+   * Only after a gesture that actually moved something -- a press that merely
+   * selected is a click, and a click is exactly how the graphs are meant to be
+   * changed.
+   */
+  private restoreSelectionAfterDrag(travelled: boolean): void {
+    const before = this.selectionBeforeGesture;
+    this.selectionBeforeGesture = undefined;
+    // Whatever happens below, the panels stop being held: after a click the new
+    // selection is the whole point of the click.
+    try {
+      if (!before || !travelled) return;
+      if (before === this.graphedPart()) return;
+      // Gone, if the gesture merged it away. The graphs then stay where the
+      // gesture left them rather than pointing at something that is not there.
+      const alive =
+        before instanceof Force
+          ? this.mechanismSrv.forces.includes(before)
+          : before instanceof Link
+            ? this.mechanismSrv.links.includes(before)
+            : this.mechanismSrv.joints.includes(before);
+      if (!alive) return;
+      this.activeObjService.updateSelectedObj(before);
+    } finally {
+      this.activeObjService.releaseGraphSubject();
+    }
   }
 
   selectionBounds(): SelectionBounds | undefined {
@@ -2781,6 +2853,7 @@ export class NewGridComponent implements OnDestroy {
    * than committed.
    */
   private letGoOfEverything(revert = false): void {
+    this.restoreSelectionAfterDrag(this.dragState.travelled);
     this.beforeDrag = undefined;
     this.linkCreateFrom = undefined;
     this.endComDrag?.(revert);
@@ -2991,12 +3064,19 @@ export class NewGridComponent implements OnDestroy {
       this.mechanismSrv.onMechUpdateState.next(2);
     }
     // Only in Edit, where this holder is the preview a drag puts up and the end
-    // of the gesture is what puts it away. In an analysis mode there is no
-    // gesture to end -- geometry is locked -- and the traces are what the
-    // reader came to look at, so a click on the grid must not take them down.
+    // of the gesture is what puts it away. In an analysis mode the traces are
+    // what the reader came to look at, so a click on the grid must not take
+    // them down -- and the temporary ones a drag turns on are additive and go
+    // when the gesture does.
     if (!this.tabService.isAnalysisMode()) {
       this.mechanismSrv.showPathHolder = false;
     }
+
+    // Click selects, drag tunes: a gesture that travelled puts the graphs back
+    // on whatever was being studied before it. From the outcome rather than
+    // from the service, because `release()` above has already cleared the flag
+    // by the time the question is asked here.
+    this.restoreSelectionAfterDrag(outcome.travelled);
 
     // One gesture earns one undo entry. Undo is a stack of URL strings, so
     // saving per pointer-move would fill it with intermediate poses nobody

@@ -24,6 +24,32 @@ reports yourself, and return a compact PASS/FAIL summary.
 2. Use the Playwright installation at `/tmp/pmks-playwright`. If it is absent:
    `mkdir -p /tmp/pmks-playwright && cd /tmp/pmks-playwright && npm i playwright && npx playwright install chromium`
 
+## Filmstrips are mandatory for any animated or gestural change
+
+A screenshot proves the end state and says nothing about the frames before it,
+which is where interaction bugs live. **Any change that animates, slides, fades,
+resizes, or responds to a drag must be captured as a filmstrip and the frames
+looked at** — not a before-and-after pair.
+
+Use `e2e/filmstrip.mjs`: `filmstrip(page, dir, clip)` gives numbered burst
+frames and `during(everyMs, count, tag, work)` captures while an interaction
+runs; `contactSheet(pattern, out, columns)` tiles them into one image to read.
+Playwright's `recordVideo` is not a substitute — a `.webm` cannot be inspected
+here (no ffmpeg), and a whole animation as one sheet costs about what a single
+screenshot costs.
+
+Then **look at the sheet**. Collecting frames and asserting nothing proves
+nothing. Two real bugs were caught this way and by nothing else: a card that
+snapped to its full width before the control it was making room for had begun
+to slide, throwing two buttons 200px sideways in one frame; and that control
+being clipped at the card's edge for the first third of its entrance. Both were
+invisible in the finished screenshot.
+
+What to film, at minimum: the interaction's start (the frame the gesture takes
+hold), two or three frames mid-way, the release, and the settle. For a drag,
+film a pose *away from* the start of the cycle as well — a gesture at t = 0 and
+the same gesture parked mid-cycle are different code paths here.
+
 ## Running checks
 
 - Run scripts with plain Node and

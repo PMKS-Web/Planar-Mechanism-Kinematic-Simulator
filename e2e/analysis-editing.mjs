@@ -112,7 +112,10 @@ async function dragJoint(id, steps = 6) {
     await page.mouse.move(at.x + i * 9, at.y - i * 6);
     await page.waitForTimeout(70);
     seen.push(
-      await page.evaluate(() => document.body.innerText.match(/Mag: [-\d.]+/)?.[0] ?? null)
+      await page.evaluate(
+        () =>
+          document.querySelector('app-analysis-panel')?.innerText.match(/Mag: [-\d.]+/)?.[0] ?? null
+      )
     );
   }
   await page.mouse.up();
@@ -161,11 +164,29 @@ const before = await look();
 record('parked mid-cycle, the ghost is drawn', (await page.locator('.startGhost').count()) === 1);
 record('and the row says how far from the start', (await page.locator('.startChip').count()) === 1);
 
-const readings = await dragJoint('C');
+// Click selects, drag tunes. Select the joint being *studied* first, then tune
+// a different one -- which is the move the whole unlock exists for: watch the
+// output's acceleration, move the coupler pivot, watch the peak come down.
+const studied = await jointAt('C');
+await page.mouse.move(studied.x, studied.y);
+await page.mouse.down();
+await page.mouse.up();
+await page.waitForTimeout(700);
+record(
+  'a click chooses what is graphed',
+  /for Joint C/.test(await page.locator('app-analysis-panel').innerText())
+);
+
+const readings = await dragJoint('B');
 const after = await look();
 record('the drag moved the mechanism', before.drawn !== after.drawn);
 record(
-  'the numbers beside the graphs moved while the hand was down',
+  'and the graphs stayed on the joint being studied, not the one being held',
+  /for Joint C/.test(await page.locator('app-analysis-panel').innerText()),
+  (await page.locator('app-analysis-panel').innerText()).slice(0, 60)
+);
+record(
+  'while its numbers moved under the hand',
   new Set(readings.filter(Boolean)).size > 1,
   readings
 );

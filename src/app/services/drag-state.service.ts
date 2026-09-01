@@ -7,6 +7,13 @@ export interface GestureOutcome {
   rebuild: boolean;
   /** The gesture changed the mechanism, so it earns exactly one undo entry. */
   save: boolean;
+  /**
+   * The pointer travelled: this was a drag rather than a click.
+   *
+   * A different question from `save` -- a drag that got refused still
+   * travelled, and it must not take the graphs with it either way.
+   */
+  travelled: boolean;
 }
 
 /**
@@ -79,6 +86,17 @@ export class DragStateService {
       this._force === forceStates.draggingBody ||
       this.backgroundImageHeld
     );
+  }
+
+  /**
+   * Whether this gesture has actually travelled, rather than merely been held.
+   *
+   * The distinction a click and a drag are told apart by, which more than the
+   * save path needs now: an analysis-mode gesture puts the graphs back on what
+   * the reader was studying, and only a gesture that moved something should.
+   */
+  get travelled(): boolean {
+    return this.pointerMoved;
   }
 
   get isPointerDown(): boolean {
@@ -174,6 +192,11 @@ export class DragStateService {
     const outcome: GestureOutcome = {
       rebuild: this._force !== forceStates.waiting,
       save: this.pointerMoved && this.mechanismModified,
+      // Whether the gesture was a drag rather than a click, which is a
+      // different question from whether it changed anything: a drag that got
+      // refused still travelled, and the graphs it must not steal are the same
+      // graphs either way.
+      travelled: this.pointerMoved,
     };
     this.cancel();
     this.pointerIsDown = false;

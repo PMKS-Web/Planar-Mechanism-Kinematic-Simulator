@@ -1,5 +1,5 @@
 import { SelectedTabService, TabID } from '../../selected-tab.service';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ViewportService } from '../../services/viewport.service';
 import { ForceAnalysisMode, ForceReactionIndex } from 'src/app/model/mechanism/force-solver';
 import { Mechanism } from 'src/app/model/mechanism/mechanism';
@@ -7,7 +7,8 @@ import { PrisJoint, RealJoint } from 'src/app/model/joint';
 import { RealLink } from 'src/app/model/link';
 import { Cylinder, cylinderJoints, isCylinderInterior } from 'src/app/model/cylinder';
 import { LengthUnit } from 'src/app/model/unit-enums';
-import { ActiveObjService } from 'src/app/services/active-obj.service';
+import { ActiveObjService, ActiveObjType } from 'src/app/services/active-obj.service';
+import { Force } from 'src/app/model/force';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
@@ -51,7 +52,7 @@ export interface ForceAnalysisRow {
     ReactiveFormsModule,
   ],
 })
-export class AnalysisPanelComponent {
+export class AnalysisPanelComponent implements OnInit, OnDestroy {
   viewport = inject(ViewportService);
   activeSrv = inject(ActiveObjService);
   private fb = inject(FormBuilder);
@@ -92,10 +93,34 @@ export class AnalysisPanelComponent {
       : `${pick} a joint for position, velocity and acceleration graphs, or a link for its angular kinematics.`;
   }
 
+  /**
+   * What this panel is graphing, which a drag does not change.
+   *
+   * Click selects, drag tunes -- see `ActiveObjService.holdGraphSubject`. The
+   * hold lives on the service because the panel cannot see a press early
+   * enough: the selection changes on pointer-down, and the drag state that
+   * would have gated it here is not armed until after.
+   */
+  get shownType(): ActiveObjType {
+    return this.activeSrv.graphType;
+  }
+
+  get shownJoint(): RealJoint {
+    return this.activeSrv.graphJoint;
+  }
+
+  get shownLink(): RealLink {
+    return this.activeSrv.graphLink;
+  }
+
+  get shownForce(): Force {
+    return this.activeSrv.graphForce;
+  }
+
   /** The selected joint or link, when the selection is one of those. */
   private get selectedPart(): RealJoint | RealLink | undefined {
-    if (this.activeSrv.objType === 'Joint') return this.activeSrv.selectedJoint;
-    if (this.activeSrv.objType === 'Link') return this.activeSrv.selectedLink;
+    if (this.shownType === 'Joint') return this.shownJoint;
+    if (this.shownType === 'Link') return this.shownLink;
     return undefined;
   }
 
@@ -115,7 +140,7 @@ export class AnalysisPanelComponent {
 
   /** The empty state stands in wherever the selection has no graphs to show. */
   get showAnalysisHelp(): boolean {
-    const selected = this.activeSrv.objType;
+    const selected = this.shownType;
     if (selected === 'Grid' || selected === 'Nothing') return true;
     return (selected === 'Joint' || selected === 'Link') && !this.selectionIsSimulatable;
   }
@@ -218,10 +243,10 @@ export class AnalysisPanelComponent {
    */
   private get drivenJointOfSelection(): RealJoint | undefined {
     const selection =
-      this.activeSrv.objType === 'Link'
-        ? this.activeSrv.selectedLink
-        : this.activeSrv.objType === 'Joint'
-          ? this.activeSrv.selectedJoint
+      this.shownType === 'Link'
+        ? this.shownLink
+        : this.shownType === 'Joint'
+          ? this.shownJoint
           : undefined;
     const own = selection && this.mechanismService.partitionContaining(selection);
     const pool = own ? own.joints : this.mechanismService.joints;
@@ -383,12 +408,12 @@ export class AnalysisPanelComponent {
 
   /** One row per link that reacts at the selected joint. */
   jointForceRows(): ForceAnalysisRow[] {
-    return this.cachedRows('joint', this.activeSrv.selectedJoint?.id ?? '');
+    return this.cachedRows('joint', this.shownJoint?.id ?? '');
   }
 
   /** In Force mode, does the selected joint have any graph to offer? */
   get jointForceHasGraphs(): boolean {
-    return this.jointForceRows().length > 0 || !!this.activeSrv.selectedJoint?.input;
+    return this.jointForceRows().length > 0 || !!this.shownJoint?.input;
   }
 
   /** In Force mode, does the selected link have any graph to offer? */
@@ -402,7 +427,7 @@ export class AnalysisPanelComponent {
    * and the mode selector describe graphs that are not on the panel.
    */
   get panelDescription(): string {
-    if (this.showForce && this.activeSrv.objType === 'Joint' && !this.jointForceHasGraphs) {
+    if (this.showForce && this.shownType === 'Joint' && !this.jointForceHasGraphs) {
       return `Only one part meets Joint ${this.activeSrv.selectedJoint?.name}, so there is no force to graph here.`;
     }
     if (this.showForce && this.activeSrv.objType === 'Link' && !this.linkForceHasGraphs) {

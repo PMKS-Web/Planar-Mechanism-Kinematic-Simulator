@@ -48,44 +48,44 @@
     </div>
   }
 
-  @if (this.activeSrv.objType == 'Mechanism') {
+  @if (shownType == 'Mechanism') {
     <app-mechanism-panel></app-mechanism-panel>
   }
 
   <!-- Joint Kinematics-->
-  @if (selectionIsSimulatable && this.activeSrv.objType == 'Joint') {
+  @if (selectionIsSimulatable && shownType == 'Joint') {
     <panel-section id="analysis-panel">
       <title-block description="{{ panelDescription }}">
-        {{ modeLabel }} for Joint {{ this.activeSrv.selectedJoint.name }}
+        {{ modeLabel }} for Joint {{ shownJoint.name }}
       </title-block>
       @if (showKinematic) {
         <app-analysis-graph-section
-          label="Position of Joint {{ this.activeSrv.selectedJoint.name }}"
+          label="Position of Joint {{ shownJoint.name }}"
           help="Where this joint is, through the cycle"
           analysis="kinematic"
           analysisType="loop"
           mechProp="Linear Joint Pos"
-          mechPart="{{ this.activeSrv.selectedJoint.id }}"
+          mechPart="{{ shownJoint.id }}"
           [expanded]="isExpanded('JPos')"
           (expandedChange)="graphExpanded['JPos'] = $event"
         ></app-analysis-graph-section>
         <app-analysis-graph-section
-          label="Velocity of Joint {{ this.activeSrv.selectedJoint.name }}"
+          label="Velocity of Joint {{ shownJoint.name }}"
           help="How fast this joint moves, and which way"
           analysis="kinematic"
           analysisType="loop"
           mechProp="Linear Joint Vel"
-          mechPart="{{ this.activeSrv.selectedJoint.id }}"
+          mechPart="{{ shownJoint.id }}"
           [expanded]="isExpanded('JVel')"
           (expandedChange)="graphExpanded['JVel'] = $event"
         ></app-analysis-graph-section>
         <app-analysis-graph-section
-          label="Acceleration of Joint {{ this.activeSrv.selectedJoint.name }}"
+          label="Acceleration of Joint {{ shownJoint.name }}"
           help="How this joint’s velocity changes"
           analysis="kinematic"
           analysisType="loop"
           mechProp="Linear Joint Acc"
-          mechPart="{{ this.activeSrv.selectedJoint.id }}"
+          mechPart="{{ shownJoint.id }}"
           [expanded]="isExpanded('JAcc')"
           (expandedChange)="graphExpanded['JAcc'] = $event"
         ></app-analysis-graph-section>
@@ -127,14 +127,14 @@
             (expandedChange)="graphExpanded['JForce_' + row.linkId] = $event"
           ></app-analysis-graph-section>
         }
-        @if (this.activeSrv.selectedJoint.input) {
+        @if (shownJoint.input) {
           <app-analysis-graph-section
-            label="Input {{ inputEffortLabel() }} at Joint {{ this.activeSrv.selectedJoint.name }}"
+            label="Input {{ inputEffortLabel() }} at Joint {{ shownJoint.name }}"
             help="The effort the input has to supply to drive the mechanism"
             analysis="force"
             [analysisType]="forceAnalysisMode()"
             mechProp="Input Effort"
-            mechPart="{{ this.activeSrv.selectedJoint.id }}"
+            mechPart="{{ shownJoint.id }}"
             [expanded]="isExpanded('JInputForce')"
             (expandedChange)="graphExpanded['JInputForce'] = $event"
           ></app-analysis-graph-section>
@@ -144,7 +144,7 @@
   }
 
   <!-- Link Kinematics-->
-  @if (selectionIsSimulatable && this.activeSrv.objType == 'Link') {
+  @if (selectionIsSimulatable && shownType == 'Link') {
     <panel-section id="analysis-panel">
       <title-block description="{{ panelDescription }}">
         {{ modeLabel }} for {{ selectedBodyLabel }}
@@ -167,7 +167,7 @@
           analysis="kinematic"
           analysisType="loop"
           mechProp="Angular Link Pos"
-          mechPart="{{ this.activeSrv.selectedLink.id }}"
+          mechPart="{{ shownLink.id }}"
           [expanded]="isExpanded('LAng')"
           (expandedChange)="graphExpanded['LAng'] = $event"
         ></app-analysis-graph-section>
@@ -177,7 +177,7 @@
           analysis="kinematic"
           analysisType="loop"
           mechProp="Angular Link Vel"
-          mechPart="{{ this.activeSrv.selectedLink.id }}"
+          mechPart="{{ shownLink.id }}"
           [expanded]="isExpanded('LAngVel')"
           (expandedChange)="graphExpanded['LAngVel'] = $event"
         ></app-analysis-graph-section>
@@ -187,7 +187,7 @@
           analysis="kinematic"
           analysisType="loop"
           mechProp="Angular Link Acc"
-          mechPart="{{ this.activeSrv.selectedLink.id }}"
+          mechPart="{{ shownLink.id }}"
           [expanded]="isExpanded('LAngAcc')"
           (expandedChange)="graphExpanded['LAngAcc'] = $event"
         ></app-analysis-graph-section>
@@ -207,7 +207,7 @@
           analysis="kinematic"
           analysisType="loop"
           mechProp="Linear Link's CoM Pos"
-          mechPart="{{ this.activeSrv.selectedLink.id }}"
+          mechPart="{{ shownLink.id }}"
           [expanded]="isExpanded('LPos')"
           (expandedChange)="graphExpanded['LPos'] = $event"
         ></app-analysis-graph-section>
@@ -217,7 +217,7 @@
           analysis="kinematic"
           analysisType="loop"
           mechProp="Linear Link's CoM Vel"
-          mechPart="{{ this.activeSrv.selectedLink.id }}"
+          mechPart="{{ shownLink.id }}"
           [expanded]="isExpanded('LVel')"
           (expandedChange)="graphExpanded['LVel'] = $event"
         ></app-analysis-graph-section>
@@ -227,7 +227,7 @@
           analysis="kinematic"
           analysisType="loop"
           mechProp="Linear Link's CoM Acc"
-          mechPart="{{ this.activeSrv.selectedLink.id }}"
+          mechPart="{{ shownLink.id }}"
           [expanded]="isExpanded('LAcc')"
           (expandedChange)="graphExpanded['LAcc'] = $event"
         ></app-analysis-graph-section>
@@ -289,16 +289,16 @@
   }
 
   <!-- Forces Arrows-->
-  @if (validMechanisms() && this.activeSrv.objType == 'Force') {
+  @if (validMechanisms() && shownType == 'Force') {
     <panel-section id="analysis-panel">
       <title-block description="There are no analysis graphs for forces.">
-        {{ modeLabel }} for Force {{ this.activeSrv.selectedForce.name }}
+        {{ modeLabel }} for Force {{ shownForce.name }}
       </title-block>
     </panel-section>
   }
 
   <!-- Export Button -->
   <!--  <panel-section>-->
-  <!--    <button-block icon='download'> Export Analysis for {{ this.activeSrv.objType }} </button-block>-->
+  <!--    <button-block icon='download'> Export Analysis for {{ shownType }} </button-block>-->
   <!--  </panel-section>-->
 </div>
