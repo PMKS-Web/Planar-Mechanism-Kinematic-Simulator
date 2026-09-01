@@ -646,6 +646,14 @@ pixels are available; anything you add to the bottom row has to survive that.
   and the card claims a machine standing exactly on its start is 24 degrees from it, with 0.00 s
   printed beside the claim.
 
+- **The grid's minor step has to be a round number too, and that decides how many there are.**
+  `cellSizeFor` picks the major off the one-two-five ladder; `minorDivisionsFor` then splits it 10,
+  4 or 5 ways depending on which of those it landed on, so the minor comes out a 1, a 2 or a 5 as
+  well. A fixed five-way split only works for the fives: at a major of 2 it drew 0.4, 0.8, 1.2 and
+  1.6, so a reader looking at a line labeled 2 had no way to find 1. Snapping reads `minorCellSize`,
+  so the two cannot come apart. Note the half is *not* always a line — half of 5 is 2.5, which is not
+  a number anybody would choose, and being round wins over being halved.
+
 - **`MODEL_SCALE` is 200** (`model/render-scale.ts`) — model units per centimeter. A coordinate of
   600 is 3 cm. Most solver code is in model units and most panel code is in the reader's unit.
 - **`partition.joints` are the same objects as the editable drawing** (not copies), and `animate()`

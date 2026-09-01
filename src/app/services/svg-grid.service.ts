@@ -23,13 +23,48 @@ import { SelectedTabService } from '../selected-tab.service';
 import { CHROME_MOVED } from '../model/chrome-motion';
 
 /**
- * Minor lines to a major cell.
+ * Minor lines to a major cell, decided by the major cell.
  *
- * Five, so the lines between two labels are whole units: the labels fall on
- * multiples of five, and at four divisions every line between them was a
- * quarter of whatever the label said.
+ * The rule is that the minor step has to be a round number too. The major
+ * steps climb the one-two-five ladder, and dividing every one of them by five
+ * only lands on a round number for the fives:
+ *
+ *   major 1  ->  0.2   no half, no whole anything
+ *   major 2  ->  0.4   0.4, 0.8, 1.2, 1.6 -- the reader never sees 1
+ *   major 5  ->  1     1, 2, 3, 4, the one that always worked
+ *   major 10 ->  2     2, 4, 6, 8 -- never sees 5
+ *
+ * A reader zoomed to a major of 2 is looking at a line labeled 2 with four
+ * lines under it and no way to find 1, which is the number they are actually
+ * trying to place something on.
+ *
+ * So the count comes from the major's own mantissa, chosen so that the minor
+ * step is itself a one, a two or a five:
+ *
+ *   major 1  -> 10 divisions -> 0.1   0.5 is a line, and so is every tenth
+ *   major 2  ->  4 divisions -> 0.5   0.5, 1, 1.5
+ *   major 5  ->  5 divisions -> 1     1, 2, 3, 4
+ *   major 10 -> 10 divisions -> 1     1..9, with 5 halfway
+ *
+ * Exported because it is the whole rule, and a rule stated in one place is one
+ * the snapping and the drawing cannot disagree about.
  */
-const MINOR_DIVISIONS = 5;
+export function minorDivisionsFor(majorModelUnits: number): number {
+  const units = majorModelUnits / MODEL_SCALE;
+  if (!(units > 0) || !Number.isFinite(units)) return 5;
+  // The ladder only ever produces 1, 2 and 5, so the mantissa is snapped to
+  // one of them rather than trusted: `cellSizeFor` multiplies its way there
+  // through a power of ten, and 0.30000000000000004 is what that arithmetic
+  // hands back at some decades.
+  const decade = 10 ** Math.floor(Math.log10(units) + 1e-9);
+  const mantissa = units / decade;
+  const step = [1, 2, 5, 10].reduce((best, candidate) =>
+    Math.abs(candidate - mantissa) < Math.abs(best - mantissa) ? candidate : best
+  );
+  // 10 is 1 of the next decade up; both are a round decade and subdivide the
+  // same way.
+  return step === 2 ? 4 : step === 5 ? 5 : 10;
+}
 import { LengthUnit } from '../model/unit-enums';
 
 /** One of each unit, in centimeters. The only ratio this file needs. */
@@ -597,6 +632,7 @@ export class SvgGridService {
 
   handlePan() {
     if (!this.movingTheViewOurselves) this.forgetChosenView();
+    const minorStep = this.minorCellSize;
     this.updateVisibleCoords();
     this.verticalLines = [];
     let currentLine = Math.floor(this.viewBoxMinX / this.cellSize) * this.cellSize;
@@ -610,12 +646,10 @@ export class SvgGridService {
     }
 
     this.verticalLinesMinor = [];
-    currentLine =
-      Math.floor(this.viewBoxMinX / (this.cellSize / MINOR_DIVISIONS)) *
-      (this.cellSize / MINOR_DIVISIONS);
+    currentLine = Math.floor(this.viewBoxMinX / minorStep) * minorStep;
     while (currentLine < this.viewBoxMaxX) {
       this.verticalLinesMinor.push(currentLine);
-      currentLine += this.cellSize / MINOR_DIVISIONS;
+      currentLine += minorStep;
     }
 
     this.horizontalLines = [];
@@ -630,12 +664,10 @@ export class SvgGridService {
     }
 
     this.horizontalLinesMinor = [];
-    currentLine =
-      Math.floor(this.viewBoxMinY / (this.cellSize / MINOR_DIVISIONS)) *
-      (this.cellSize / MINOR_DIVISIONS);
+    currentLine = Math.floor(this.viewBoxMinY / minorStep) * minorStep;
     while (currentLine < this.viewBoxMaxY) {
       this.horizontalLinesMinor.push(currentLine);
-      currentLine += this.cellSize / MINOR_DIVISIONS;
+      currentLine += minorStep;
     }
 
     //Clean up the lines by rounding them to 2 decimal places
@@ -708,10 +740,10 @@ export class SvgGridService {
    * about and they do not.
    */
   get minorCellSize(): number {
-    return this.cellSize / MINOR_DIVISIONS;
+    return this.cellSize / minorDivisionsFor(this.cellSize);
   }
 
-  /** The spacing of the labeled lines -- five of the smallest squares. */
+  /** The spacing of the labeled lines -- a whole number of the smallest squares. */
   get majorCellSize(): number {
     return this.cellSize;
   }

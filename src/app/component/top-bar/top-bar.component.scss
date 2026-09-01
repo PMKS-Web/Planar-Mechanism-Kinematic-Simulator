@@ -243,6 +243,24 @@
       display: none;
     }
 
+    // Export leaves the strip before the mode tabs start losing their targets.
+    //
+    // At 360 the three cards want 382px of 336, and this slot is 53 of the 46
+    // that have to go. The alternative was shaving every button and gap in the
+    // strip, which buys the same room by making four mode tabs harder to hit on
+    // exactly the device where they are hit with a thumb.
+    //
+    // Hidden rather than dropped from the template, because `fitLabels`
+    // measures each level by putting its class on and reading what the strip
+    // wants: a slot removed by a binding is still there while level 0 is being
+    // measured, so the level that fits could never be found.
+    //
+    // The capability stays -- Export Data is in the project menu, next to CAD
+    // Export, at every width.
+    .exportSlot {
+      display: none;
+    }
+
     .tabButton {
       padding: 0 8px;
     }
