@@ -104,9 +104,10 @@ Animation ticks on a ~16 ms setTimeout (`FRAME_INTERVAL_MS`) but advances by **e
 
 **Whether an edit is allowed is not decided here, and never by `mechanismTimeStep`.** One model
 answers it — `model/edit-permission.ts`, described through `services/edit-permission.service.ts` —
-and every gate quotes that: the canvas's drag gate, the Edit panel's banner, the context menu's
-graying, undo/redo, the analysis lock, the transport's hint. Editing is allowed at any *paused*
-pose, not only at timestep 0; the design is put back on its per-machine **anchor**
+and every gate quotes that: the canvas's drag gate, the Edit panel's attached refusal strip, the
+context menu's graying, undo/redo, the analysis lock, and the transport's refusal *row* — a row
+rather than a caption, so the scrub card is the same shape in every state. Editing is allowed at
+any *paused* pose, not only at timestep 0; the design is put back on its per-machine **anchor**
 (`model/mechanism/anchor.ts`) at the commit, so the pose the drawing starts in does not ratchet
 forward with every mid-cycle tweak. `docs/edit-mode-playback-plan.md` is the whole argument, and
 [tips-and-tricks](docs/tips-and-tricks.md#editing-playback-and-who-is-allowed-to-say-no) has the
@@ -134,8 +135,8 @@ Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), 
 | Top strip | `app-top-bar` | project menu + logo · the four **mode tabs**, each with a readiness chip · a corner card that is Undo/Redo in Synthesis/Edit and swaps to **Export Data** in the analysis modes |
 | Left card (below the strip, `left: 0`) | `app-left-tabs` | the current mode's panel — Synthesis form, Edit properties, or Analysis graphs. 250px, widening to 400px in analysis |
 | Canvas (full bleed, behind everything) | `app-new-grid` | grid, right-click context menus, drag |
-| Bottom center | `app-playback-bar` | transport card (speed · play/pause · stop-to-start) and a scrub card with **one row per machine**. Present in Edit and both analyses, including over an empty grid; hidden only in Synthesis |
-| Bottom right | `app-view-controls` | center of mass · joint IDs · traced paths ‖ zoom out · zoom in · reset view |
+| Bottom center | `app-playback-bar` | transport card (speed · play/pause · stop-to-start) and a scrub card with **one row per machine**. Present in Edit and both analyses, including over an empty grid; hidden only in Synthesis. **On a phone the two merge into one card** and the view controls join its transport line |
+| Bottom right | `app-view-controls` | center of mass · joint IDs · traced paths ‖ zoom out · zoom in · reset view. **On a phone all six collapse behind one `visibility` button** that raises a drawer of named rows |
 | Bottom strip | `app-bottombar` | mode name · status · cursor coords · units |
 | Right drawer | `app-right-panel` | Settings, Help/Feedback, the two analysis setups, Export Data |
 

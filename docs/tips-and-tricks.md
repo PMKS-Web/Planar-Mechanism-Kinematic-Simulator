@@ -442,6 +442,30 @@ pixels are available; anything you add to the bottom row has to survive that.
 - **`findPose` exists because a heading you do not know is worse than none.** `reachAnchor` prefers
   crossings matching the heading it is given, so passing a guess actively steers it to the wrong
   leg of a reversing cycle. `findPose` searches both and lets the pose itself decide.
+- **`inert` cannot be un-inherited, so plan what it covers before you reach for it.** The Edit
+  panel's refusal strip has to stay pressable while the panel it describes is out of reach, which
+  means it cannot be *inside* the frozen subtree. `panel-section` therefore has three slots -- the
+  title, an attached slot, and the contents -- with the freeze on the first and third only. If you
+  add a control that must survive the freeze, it goes in `[panelAttached]`, not in the card body.
+- **`display: contents` keeps an element in the DOM, so `>` still has to pass it.** The freeze
+  wrappers above have no boxes, which is deliberate -- a real box there breaks the height chain the
+  card scrolls on -- but `#normalPanel > title-block` stopped matching the moment one appeared, and
+  the sticky panel title silently unstuck. Selectors that reach through them say `.sectionBody >`.
+  `e2e/detail-fixes` catches this one, by way of the title's scroll shadow.
+- **A component's styles do not reach a CDK overlay.** An overlay renders outside the component
+  that opened it, so `:host`-scoped rules never apply: the transport's start-pose menu and the
+  phone's view drawer both live in `src/styles.scss` for that reason. Put the trigger's styles in
+  the component and the panel's styles in the global sheet.
+- **A range input's thumb does not travel edge to edge.** Its centre runs from half its width to
+  half its width short of the far end, while a `linear-gradient` percentage on the track is measured
+  across the whole thing -- so a mark positioned as a plain percentage drifts from the handle by up
+  to half a thumb. The anchor seat uses the thumb's own geometry
+  (`calc(12px + (100% - 24px) * var(--at) / 100)`), and is additionally *not drawn* when the handle
+  is on it, so the two can never be seen disagreeing.
+- **Angular collapses the whitespace around an `@if` inside a run of text.** A sentence with an
+  inline link -- "Drag to edit, or *return to the start* to type." -- came out as
+  "orreturn to the start" because the space before the block was eaten. Write it as `&#32;`, and
+  keep the trailing space out of the model string so `long` does not end up double-spaced.
 - **Do not run `npm test` and a large Playwright sweep at the same time.** Six heavy fixture,
   codec and graph specs time out under the load and fail together, which reads exactly like a
   shared-state bug in whatever you just changed. Re-run the unit suite on a quiet machine before
