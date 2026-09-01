@@ -53,8 +53,7 @@ export function centerOf(rect: Rect): { x: number; y: number } {
  * window; otherwise the larger of the two does.
  */
 export function freeCanvasRect(canvas: Element, doc: Document = document): Rect {
-  const bounds = canvas.getBoundingClientRect();
-  const full: Rect = { x: bounds.left, y: bounds.top, width: bounds.width, height: bounds.height };
+  const full = visibleCanvas(canvas, doc);
   const cards = [...doc.querySelectorAll<HTMLElement>('[data-canvas-inset]')].filter((card) => {
     const box = card.getBoundingClientRect();
     return box.width > 0 && box.height > 0;
@@ -67,6 +66,34 @@ export function freeCanvasRect(canvas: Element, doc: Document = document): Rect 
   // only a window shorter than its own strips can manage. Drawing through them
   // is the last thing left, one axis at a time.
   return area(best) > 0 ? best : relaxed(full, beside);
+}
+
+/**
+ * The part of the canvas the reader can actually reach.
+ *
+ * The canvas is the whole screen -- the large viewport -- so on a phone browser
+ * its last hundred points are behind the browser's own toolbar: painted, and
+ * showing through, but not anywhere a drawing can be put. Framed into them, a
+ * mechanism hangs half under Safari, and every card that stands on the bottom
+ * edge is measured against an edge the reader cannot see.
+ *
+ * `documentElement.clientHeight` is that smaller viewport, and it is in the
+ * same units as the rect it is trimming. `visualViewport` also knows where the
+ * browser's bars are and is the tempting answer, but it reports the *visual*
+ * viewport, which a pinch rescales -- so at any zoom but 1 the two numbers are
+ * in different coordinate systems and the trim is wrong by the zoom factor.
+ */
+function visibleCanvas(canvas: Element, doc: Document): Rect {
+  const bounds = canvas.getBoundingClientRect();
+  const root = doc.documentElement;
+  const bottom = root.clientHeight > 0 ? Math.min(bounds.bottom, root.clientHeight) : bounds.bottom;
+  const right = root.clientWidth > 0 ? Math.min(bounds.right, root.clientWidth) : bounds.right;
+  return {
+    x: bounds.left,
+    y: bounds.top,
+    width: Math.max(0, right - bounds.left),
+    height: Math.max(0, bottom - bounds.top),
+  };
 }
 
 /** Whether a rect is big enough in both directions to frame a drawing in. */

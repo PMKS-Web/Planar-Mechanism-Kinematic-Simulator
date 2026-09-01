@@ -393,6 +393,25 @@ indistinguishable from a marker correctly placed at zero. If a positioned elemen
 tested at one value, set it to a second one and measure — `getBoundingClientRect()` against the
 control it is supposed to line up with, not a screenshot.
 
+**On a phone browser the page is not the screen, and `env(safe-area-inset-*)` is zero.** Measured on
+an iPhone in Safari with the bars showing: `innerHeight` 654, `vh` and `lvh` 754, `dvh` and `svh`
+654, and all four safe-area insets **0**. Safari lays the page out in the band between its own bars,
+which is already inside the safe area — so `viewport-fit=cover` has nothing to do there and the
+`env()` readers all return zero. They are for a Home Screen web app, where the page really is the
+screen. Do not debug a phone layout by reasoning about which inset applies; put a fixed `<div>` on
+the page that prints `innerHeight`, `visualViewport`, `documentElement.clientHeight`, each of
+`vh/dvh/svh/lvh` measured off a probe element, and the four insets, and read it on the device.
+
+**The canvas takes `100lvh` and is `position: fixed`; everything else takes the small viewport.**
+The drawing is the app's background, so it is the size of the screen: `100vh`/`100lvh` (the same
+number on every browser that matters — it is what iOS has always meant by `vh`), and fixed, because
+the body is the small viewport and clips. The chrome keeps measuring from `100dvh` so its cards stay
+above the browser's toolbar. The consequence to remember is that `canvas.getBoundingClientRect()` is
+now *larger than the reachable page*: `freeCanvasRect` trims it to `documentElement.clientHeight`
+before framing anything, or the mechanism is centered partly under Safari. Trim with
+`documentElement`, not `visualViewport` — the latter rescales under a pinch, so at any zoom but 1 the
+two are in different coordinate systems.
+
 **Check where a block sits before adding to it.** The phone layout is spread over several media
 blocks by concern, not gathered in one place.
 

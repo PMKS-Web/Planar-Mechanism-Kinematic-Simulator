@@ -22,11 +22,19 @@ function canvasOf(width: number, height: number) {
   } as unknown as Element;
 }
 
+/**
+ * `viewport` is what the browser has actually left for the page, which is not
+ * the canvas: on a phone the canvas is the whole screen and the page is the
+ * band between the browser's own bars. Big enough to trim nothing unless a
+ * test says otherwise.
+ */
 function docWith(
   cards: HTMLElement[],
-  layers: Record<string, [number, number, number, number]> = {}
+  layers: Record<string, [number, number, number, number]> = {},
+  viewport: [number, number] = [10000, 10000]
 ) {
   return {
+    documentElement: { clientWidth: viewport[0], clientHeight: viewport[1] },
     querySelectorAll: () => cards,
     getElementById: (id: string) => {
       const box = layers[id];
@@ -47,6 +55,18 @@ function docWith(
 }
 
 describe('freeCanvasRect', () => {
+  // The canvas is the whole screen so the drawing reads as the ground the app
+  // stands on, and on a phone browser the last hundred points of it are behind
+  // the browser's own toolbar -- painted, showing through, and not anywhere a
+  // mechanism can be put. Framed into them it hangs half under Safari.
+  it('stops at the viewport, not at the edge of a canvas drawn past it', () => {
+    const free = freeCanvasRect(
+      canvasOf(402, 754),
+      docWith([card('top', [0, 0, 402, 34])], {}, [402, 654])
+    );
+    expect(free).toEqual({ x: 0, y: 34, width: 402, height: 620 });
+  });
+
   it('takes the edge each card hugs off the canvas', () => {
     const free = freeCanvasRect(
       canvasOf(1512, 900),

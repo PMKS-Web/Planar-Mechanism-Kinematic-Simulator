@@ -54,8 +54,16 @@
       a window edge. Those are: the mode strip, which takes the top inset into
       its own padding so its text clears the clock; the top strip, which stands
       below it; and the transport, which keeps the bottom inset off the home
-      indicator. The canvas measures from nothing and simply fills what is
-      there.
+      indicator.
+
+      Measured on the hardware afterwards, all four insets read zero in Safari
+      with its bars showing -- the page is already laid out inside the safe area
+      there, so `viewport-fit` has nothing to cover. It is what a Home Screen
+      web app needs, and the four `env()` readers above are what make that one
+      work; in a tab they are all reading zero and costing nothing. The canvas
+      is a separate matter and takes the large viewport explicitly -- see
+      `#canvas` -- because what Safari leaves the page is a hundred points short
+      of the screen and the drawing is meant to be the ground, not a panel.
 
       Zoom is deliberately left enabled. A canvas app is tempting to pin at
       scale 1 because the browser's pinch fights the drawing's own, but taking

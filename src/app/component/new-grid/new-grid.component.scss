@@ -18,7 +18,31 @@
   // joint, and a pinch that zooms the page over a canvas that is also zooming.
   // Page zoom stays available everywhere else, which is where a reader who
   // needs it is going to reach for it anyway.
+  //
+  // The drawing is the window's background, so it is the size of the window
+  // and not the size of the document.
+  //
+  // A phone browser lays the page out in what is left between its own bars, so
+  // a canvas filling the document stopped at a hard white line a hundred points
+  // above the bottom of the screen -- grid, then nothing, then Safari. The
+  // large viewport is the whole screen, and the strip past the small one is
+  // behind a toolbar the system draws translucent, so the grid carries on under
+  // it and the drawing reads as the ground the app is standing on. `100vh` is
+  // the same number on every browser that matters -- it is what iOS has always
+  // meant by it -- and is here as the fallback for one that does not know
+  // `lvh`.
+  //
+  // Fixed, because the body is the small viewport and clips: in flow, the extra
+  // hundred points would be cut off exactly where they were cut off before.
+  // Nothing else moves -- every card over it is positioned and comes later in
+  // the DOM.
   #canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100lvh;
     touch-action: none;
     // A long press on a phone otherwise raises the selection callout over the
     // linkage, which lands on top of the menu that press was meant to open.
