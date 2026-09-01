@@ -130,11 +130,15 @@ check(
     );
   })
 );
+// "Reaches all 3 positions on one assembly" used to head this list. It is not
+// a requirement any more: three is always tried first and two is what is
+// offered when three cannot be done, so there is nothing left for a reader to
+// choose between. What remains are the two that really do narrow the search.
 check(
-  'the strictest requirement is the one offered first',
+  'the requirements are the two that narrow the search',
   (await page.locator('#synthesisPanel .req__label').first().innerText()).includes(
-    'Reaches all 3 positions'
-  )
+    "Coupler pinned at the link's ends"
+  ) && (await page.locator('#synthesisPanel .req__label').count()) === 2
 );
 check(
   'the design is laid out as sections that can be folded away',
@@ -710,14 +714,18 @@ if (driver.dyad) {
 }
 
 // --- the transport ----------------------------------------------------
+// A finished search starts its own preview: a four-bar is a motion, and the
+// question the reader asked is answered by watching it rather than by a still
+// picture of it. So the transport is found running, and the first press pauses.
+check('the preview is already running', await panel('(p) => p.solution.playing'));
 const phaseBefore = await panel('(p) => p.solution.currentPhase()');
+await page.locator('#synthesisPanel .iconBtn--sm').first().click();
+await page.waitForTimeout(200);
+check('and pressing it pauses', !(await panel('(p) => p.solution.playing')));
 await page.locator('#synthesisPanel .iconBtn--sm').first().click();
 await page.waitForTimeout(600);
 const phaseAfter = await panel('(p) => p.solution.currentPhase()');
-check('the preview can be played', phaseAfter !== phaseBefore, { phaseBefore, phaseAfter });
-await page.locator('#synthesisPanel .iconBtn--sm').first().click();
-await page.waitForTimeout(200);
-check('and paused', !(await panel('(p) => p.solution.playing')));
+check('and playing again moves it on', phaseAfter !== phaseBefore, { phaseBefore, phaseAfter });
 check(
   'the three positions are marked along its travel',
   (await page.locator('#synthesisPanel .track__tick').count()) === 3
@@ -1676,11 +1684,11 @@ const ask = (p, fn) =>
   const picked = await ask(
     p,
     `(panel) => {
-      // With defects allowed, which is a setting the panel offers. Held to the
-      // strict list, this design's constructions each have one assembly that
-      // can be built, so the switch is correctly stuck and proves nothing.
-      panel.design.allowDefect = true;
-      panel.solution.changed.next();
+      // No setting to arrange any more: allAssemblies lists both closures of
+      // whatever constructions the gallery is offering, because the reader
+      // picked the construction and the switch is what flips its closure --
+      // filtered by the gallery's own test it could only ever offer the one
+      // that had already passed it, which is a switch with nowhere to go.
       const both = panel.solution
         .candidates()
         .find((c) => panel.solution.allAssemblies().filter((a) => a.pair === c.pair).length === 2);

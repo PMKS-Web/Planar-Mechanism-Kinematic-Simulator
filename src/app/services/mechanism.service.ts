@@ -679,13 +679,57 @@ export class MechanismService {
         dropped.push(candidate.name || candidate.id);
       });
     });
+    this.sayOneInputPerMechanism(dropped);
+  }
+
+  /**
+   * Say that a drive was taken away, and — where it is the reason — why.
+   *
+   * Two paths reach this: a rebuild that finds two driven joints in one machine
+   * because two machines fused, and a reader deliberately driving a second
+   * joint. Both used to be silent or nearly so, and the second is the one that
+   * hurts: somebody building a two-degree-of-freedom arm drives the shoulder,
+   * then drives the elbow, and the shoulder's drive quietly disappears. Nothing
+   * on screen says the app has a rule, so it reads as a bug in the app or a
+   * mistake by the reader.
+   *
+   * The mobility clause is added only when mobility is the reason. On a 1-DOF
+   * linkage moving the drive from one joint to another is an ordinary edit and
+   * a lecture about degrees of freedom would be noise.
+   *
+   * A minute's cooldown rather than once per session: a reader who dismisses it
+   * without reading is not helped by never seeing it again, and a reader
+   * fighting the rule for the third time in ten seconds does not need it three
+   * times. The id is shared by both callers so the two cannot double up.
+   */
+  private sayOneInputPerMechanism(dropped: string[], near?: RealJoint): void {
     if (dropped.length === 0) return;
-    this.notify.warning(
-      'input.merged',
-      `A mechanism can have one driven joint. ${dropped.join(', ')} ${
-        dropped.length === 1 ? 'is' : 'are'
-      } no longer driven.`
+    const names = dropped.join(', ');
+    const verb = dropped.length === 1 ? 'is' : 'are';
+    const dof = this.mobilityNear(near);
+    const why =
+      dof !== undefined && dof > 1
+        ? ` PMKS+ can only simulate 1-DOF linkages, and this one has ${dof} degrees of freedom.` +
+          ' Add a constraint, or build the parts as separate mechanisms.'
+        : '';
+    this.notify.news(
+      'input.oneDriven',
+      `One driven joint per mechanism, so ${names} ${verb} no longer driven.${why}`,
+      { cooldownMs: 60000 }
     );
+  }
+
+  /**
+   * The mobility of the machine a joint belongs to, or of the drawing's first.
+   *
+   * Read off the last solve, which is right even mid-rebuild: mobility is a
+   * property of the geometry and its constraints, and which joint carries the
+   * drive is not one of them.
+   */
+  private mobilityNear(joint?: RealJoint): number | undefined {
+    const index = joint ? this.indexOfMechanismContaining(joint) : 0;
+    const dof = this.mechanisms[index === -1 ? 0 : index]?.dof;
+    return typeof dof === 'number' && Number.isFinite(dof) ? dof : undefined;
   }
 
   /**
@@ -696,7 +740,7 @@ export class MechanismService {
    * linkage stopped the first, so two machines could never run at once however
    * well the solver handled them.
    */
-  private clearInputsSharingMechanismWith(joint: RealJoint): void {
+  private clearInputsSharingMechanismWith(joint: RealJoint): string[] {
     const index = this.indexOfMechanismContaining(joint);
     // A joint in no machine -- one on a bar pinned down at both ends, say --
     // shares a mechanism with nothing that has one. Clearing every input in the
@@ -706,11 +750,14 @@ export class MechanismService {
       index === -1
         ? this.joints.filter((candidate) => this.indexOfMechanismContaining(candidate) === -1)
         : this.partitions[index].ownJoints;
+    const dropped: string[] = [];
     scope.forEach((candidate) => {
       if (candidate instanceof RealJoint && candidate.input && candidate.id !== joint.id) {
         candidate.input = false;
+        dropped.push(candidate.name || candidate.id);
       }
     });
+    return dropped;
   }
 
   /**
@@ -3146,10 +3193,33 @@ export class MechanismService {
    * Returns nothing when the mechanism is fine.
    */
   readinessOfEachMechanism(): MechanismReadiness[] {
+    if (this.gestureIsSettling() && this.readinessCache) return this.readinessCache.list;
     if (this.readinessCache?.revision !== this.solveRevision) {
       this.readinessCache = { revision: this.solveRevision, list: this.buildReadiness() };
     }
     return this.readinessCache.list;
+  }
+
+  /**
+   * Whether an answer about readiness should wait for the hand to come up.
+   *
+   * A drag re-solves on every pointer move, so `solveRevision` counts frames
+   * while one is in flight and every reader keyed on it recomputes at 60Hz.
+   * That is right for the graphs, which are the point of dragging, and wrong
+   * for the mode chips: the reader is told "Ready", "1 to check", "Ready" as
+   * their hand passes through poses they are not stopping at, in a chip four
+   * characters wide at the top of the window. It reads as the app being unsure.
+   *
+   * So these two are held at whatever they last said and recomputed at the
+   * commit -- which is when the question was actually asked. Held rather than
+   * suppressed: a chip that empties mid-drag is the same flicker with a blank
+   * frame in it.
+   *
+   * Nothing is held before the first answer exists; a gesture begun on a
+   * drawing that has never been assessed falls through and assesses it.
+   */
+  private gestureIsSettling(): boolean {
+    return this.injector.get(DragStateService).isPointerDown;
   }
 
   /**
@@ -3361,6 +3431,7 @@ export class MechanismService {
    * above a panel that says it cannot solve.
    */
   forceAnalysisRequirements(): ForceRequirement[] {
+    if (this.gestureIsSettling() && this.requirementsCache) return this.requirementsCache.list;
     if (this.requirementsCache?.revision !== this.solveRevision) {
       this.requirementsCache = { revision: this.solveRevision, list: this.buildRequirements() };
     }
@@ -3988,6 +4059,8 @@ export class MechanismService {
     // the user never made. Refused here with the reason, rather than accepted
     // and guessed at downstream. Turning one off is always allowed.
     //
+    // What this press took the drive away from, for the message at the end.
+    let displaced: string[] = [];
     // Asked *before* anything is changed. The old input used to be cleared
     // first and the refusal returned after, which left the mechanism with no
     // driven joint at all -- a click that was refused still took the input
@@ -4005,7 +4078,7 @@ export class MechanismService {
       }
       // One input per mechanism, so the joint taking the job displaces the old
       // one -- in its own machine only.
-      this.clearInputsSharingMechanismWith(jointToToggleInput);
+      displaced = this.clearInputsSharingMechanismWith(jointToToggleInput);
     }
 
     //Toggle the input joint
@@ -4016,6 +4089,9 @@ export class MechanismService {
     // can do to a mechanism, and it was the one edit undo could not reach.
     this.updateMechanism(true);
     this.onMechUpdateState.next(3);
+    // After the rebuild: the sentence names a mobility, and the mobility worth
+    // naming is the one the drawing has now.
+    this.sayOneInputPerMechanism(displaced, jointToToggleInput);
   }
 
   /**

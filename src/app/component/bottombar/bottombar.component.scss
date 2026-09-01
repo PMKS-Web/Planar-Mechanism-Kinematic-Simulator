@@ -70,6 +70,7 @@
     }
 
     .status,
+    .dof,
     .cursor,
     .units {
       color: rgba(0, 0, 0, 0.55);
@@ -86,6 +87,15 @@
     @media (max-width: 720px) {
       .units,
       .cursor {
+        display: none;
+      }
+    }
+
+    // The mobility outlives the other two readouts. Of the three it is the one
+    // about the mechanism rather than about the tool, and it is what the mode
+    // chips' refusals are all really counting -- so it is the last to go.
+    @media (max-width: 520px) {
+      .dof {
         display: none;
       }
     }

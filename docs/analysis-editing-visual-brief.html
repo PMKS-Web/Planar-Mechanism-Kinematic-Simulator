@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drag to Tune</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+
+<style>
+  /* ---- tokens: complete light palette on bare :root ---- */
+  :root {
+    --ground: #f6f7fb;
+    --surface: #ffffff;
+    --surface-2: #eef0f7;
+    --ink: #14161f;
+    --ink-2: #565d72;
+    --ink-3: #838aa0;
+    --rule: #dcdfeb;
+    --rule-soft: #e9ebf3;
+    --accent: #303f9f;
+    --accent-soft: #e8eaf6;
+    --shadow: 0 1px 2px rgba(20, 22, 31, 0.06), 0 8px 24px -12px rgba(20, 22, 31, 0.18);
+
+    --step--1: 0.8125rem;
+    --step-0: 1rem;
+    --step-1: 1.1875rem;
+    --step-2: 1.5rem;
+    --step-3: 2rem;
+    --step-4: 2.75rem;
+
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --display: "Archivo", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101219;
+      --surface: #191c26;
+      --surface-2: #212533;
+      --ink: #e9ebf4;
+      --ink-2: #a3aabf;
+      --ink-3: #767d94;
+      --rule: #2b3040;
+      --rule-soft: #232735;
+      --accent: #97a3ee;
+      --accent-soft: #232a4a;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px -12px rgba(0, 0, 0, 0.8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101219;
+    --surface: #191c26;
+    --surface-2: #212533;
+    --ink: #e9ebf4;
+    --ink-2: #a3aabf;
+    --ink-3: #767d94;
+    --rule: #2b3040;
+    --rule-soft: #232735;
+    --accent: #97a3ee;
+    --accent-soft: #232a4a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px -12px rgba(0, 0, 0, 0.8);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: var(--step-0);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4.5rem) clamp(1.15rem, 4vw, 2.5rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.75rem, 5vw, 4rem);
+  }
+
+  /* ---- masthead ---- */
+  .masthead { display: flex; flex-direction: column; gap: 1.1rem; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2.1rem, 6vw, var(--step-4));
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: var(--step-1);
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 42ch;
+    margin: 0;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.4rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--ink-3);
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---- sections ---- */
+  section { display: flex; flex-direction: column; gap: 1.15rem; }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: var(--step-2);
+    letter-spacing: -0.018em;
+    line-height: 1.2;
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    text-wrap: balance;
+  }
+  h2 .num {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    flex: 0 0 auto;
+  }
+
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: var(--step-0);
+    letter-spacing: -0.005em;
+    margin: 0;
+  }
+
+  p { margin: 0; max-width: 68ch; }
+  p + p { margin-top: 0.65rem; }
+
+  a { color: var(--accent); text-underline-offset: 0.18em; }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  code, .mono { font-family: var(--mono); font-size: 0.86em; }
+  code {
+    background: var(--surface-2);
+    padding: 0.1em 0.36em;
+    border-radius: 3px;
+  }
+
+  .lede { font-size: var(--step-1); line-height: 1.5; color: var(--ink); max-width: 46ch; }
+
+  /* ---- specimen: a light ground, because these are specimens of a light UI ---- */
+  .specimen {
+    background: #ffffff;
+    color: #14161f;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: clamp(1.1rem, 3vw, 1.75rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    overflow-x: auto;
+  }
+  .specimen.paper {
+    background-color: #ffffff;
+    background-image:
+      repeating-linear-gradient(to right, #eceef6 0 1px, transparent 1px 24px),
+      repeating-linear-gradient(to bottom, #eceef6 0 1px, transparent 1px 24px);
+  }
+  .specimen .caption {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #838aa0;
+    margin: 0;
+  }
+
+  .plots { display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  .plot { flex: 1 1 15rem; min-width: 13rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .plot svg { width: 100%; height: auto; display: block; }
+  .plot .label {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    color: #565d72;
+    letter-spacing: 0.04em;
+  }
+
+  /* ---- the peak pill, rendered exactly as it ships ---- */
+  .pills { display: flex; flex-wrap: wrap; gap: 0.9rem 1.5rem; align-items: center; }
+  .pillcase { display: flex; flex-direction: column; gap: 0.4rem; }
+  .peakReadout {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 0 6px;
+    border-radius: 9px;
+    background: #f4f4f7;
+    color: #5f6368;
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 11px;
+    line-height: 18px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    width: max-content;
+  }
+  .peakReadout.better { background: #e6f4ea; color: #1e7d32; }
+  .peakReadout.worse { background: #fdf1e3; color: #8a6100; }
+  .peakReadout .g { font-size: 13px; line-height: 13px; }
+  .pillcase .note { font-family: var(--mono); font-size: 0.6875rem; color: #838aa0; }
+
+  /* the chip row */
+  .baselineChip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 11px;
+    color: #5f6368;
+    white-space: nowrap;
+    flex-wrap: wrap;
+  }
+  .baselineSwatch { width: 14px; height: 2px; border-radius: 1px; background: rgba(0,0,0,0.24); flex: 0 0 auto; }
+  .baselineChip .clear {
+    height: 18px;
+    padding: 0 6px;
+    border: none;
+    border-radius: 9px;
+    background: #eef1fc;
+    color: #303f9f;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* ---- swatches ---- */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 1rem; }
+  .sw { display: flex; flex-direction: column; gap: 0.45rem; }
+  .sw .bar { height: 2.75rem; border-radius: 6px; border: 1px solid rgba(20,22,31,0.09); }
+  .sw .ghostbar { height: 2.75rem; border-radius: 6px; border: 1px solid rgba(20,22,31,0.09); }
+  .sw .nm { font-size: 0.8125rem; font-weight: 500; color: #14161f; }
+  .sw .hx { font-family: var(--mono); font-size: 0.6875rem; color: #838aa0; }
+
+  /* ---- tables ---- */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+  th, td { text-align: left; padding: 0.65rem 0.9rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  thead th {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td .mono { color: var(--ink-2); }
+
+  /* ---- the questions: the point of the document ---- */
+  .questions { display: flex; flex-direction: column; gap: 0; counter-reset: q; }
+  .q {
+    display: grid;
+    grid-template-columns: 2.2rem 1fr;
+    gap: 0 0.9rem;
+    padding: 1.05rem 0;
+    border-top: 1px solid var(--rule);
+    align-items: start;
+  }
+  .q:last-child { border-bottom: 1px solid var(--rule); }
+  .q::before {
+    counter-increment: q;
+    content: counter(q);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+    padding-top: 0.28rem;
+  }
+  .q h3 { margin-bottom: 0.25rem; }
+  .q p { color: var(--ink-2); font-size: var(--step--1); }
+
+  /* ---- callout ---- */
+  .rule-note {
+    border-left: 2px solid var(--accent);
+    padding: 0.15rem 0 0.15rem 1rem;
+    color: var(--ink-2);
+    font-size: var(--step--1);
+    max-width: 66ch;
+  }
+
+  .steps { margin: 0; padding-left: 1.15rem; color: var(--ink-2); font-size: var(--step--1); }
+  .steps li { margin-bottom: 0.3rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+<style>
+  /* This file stands on its own, so it brings its own reset. */
+  html { -webkit-text-size-adjust: 100%; }
+  img, svg { max-width: 100%; }
+  button { font-family: inherit; }
+
+  /* The PDF is printed from this file, so the print sheet is designed rather
+     than defaulted: one theme, no page breaks through a specimen, and links
+     spelled out because paper cannot be clicked. */
+  @media print {
+    :root {
+      --ground: #ffffff;
+      --surface: #ffffff;
+      --surface-2: #f3f4fa;
+      --ink: #14161f;
+      --ink-2: #4c5266;
+      --ink-3: #7b8196;
+      --rule: #d5d9e6;
+      --rule-soft: #e6e9f1;
+      --accent: #303f9f;
+      --shadow: none;
+    }
+    body { background: #ffffff; }
+    .wrap { max-width: none; padding: 0; gap: 2rem; }
+    section, .specimen, .tablewrap, .q { break-inside: avoid; page-break-inside: avoid; }
+    h2 { break-after: avoid; page-break-after: avoid; }
+    .specimen { box-shadow: none; }
+    a[href^="http"]::after {
+      content: " (" attr(href) ")";
+      font-family: var(--mono);
+      font-size: 0.8em;
+      color: var(--ink-3);
+      word-break: break-all;
+    }
+    @page { margin: 16mm 14mm; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">PMKS+ · visual brief for design review</p>
+    <h1>Drag to Tune</h1>
+    <p class="standfirst">We unlocked editing inside the analysis modes. The graphs now change under your hand — which only means anything if you can still see what they were.</p>
+    <div class="meta">
+      <span><b>Status</b> shipped to staging</span>
+      <span><b>Asking for</b> feedback on the visuals, not the behaviour</span>
+      <span><b>Surfaces</b> graph panel · canvas · transport</span>
+    </div>
+  </header>
+
+  <section>
+    <h2><span class="num">00</span> What changed</h2>
+    <p>PMKS+ is a planar linkage simulator used for teaching. Its two analysis modes — Kinematic and Force — used to be read-only: you built a mechanism in Edit, switched over, and looked at graphs of position, velocity, acceleration and reaction force across one cycle of the machine.</p>
+    <p>That lock is gone. You can drag a joint while the graphs are open and they re-solve as you move. The workflow it exists for is one sentence:</p>
+    <p class="lede">Watch the acceleration peak, move the coupler pivot, watch the peak come down.</p>
+    <p>So the design problem is <strong>comparison</strong>, and the numbers that come out of it.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">01</span> The comparison overlay</h2>
+    <p>When a drag begins, the graph snapshots every curve currently plotted and keeps drawing it underneath the live one.</p>
+
+    <div class="specimen paper">
+      <p class="caption">Acceleration of joint C — before, during and after a drag</p>
+      <div class="plots">
+        <div class="plot">
+          <svg viewBox="0 0 260 130" role="img" aria-label="Curve before any drag: a single solid indigo curve peaking high."><g id="p1"></g></svg>
+          <span class="label">Resting — one curve</span>
+        </div>
+        <div class="plot">
+          <svg viewBox="0 0 260 130" role="img" aria-label="During the drag: a pale ghosted curve at the old peak with a dashed live curve at a lower peak."><g id="p2"></g></svg>
+          <span class="label">Hand down — live curve dashed</span>
+        </div>
+        <div class="plot">
+          <svg viewBox="0 0 260 130" role="img" aria-label="After release: the ghosted curve remains and the live curve is solid at the lower peak."><g id="p3"></g></svg>
+          <span class="label">Released — settles to solid</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th scope="col"></th><th scope="col">Before curve</th><th scope="col">Live curve</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Colour</th><td>the series' own colour at <span class="mono">35% alpha</span></td><td>the series' own colour, full</td></tr>
+          <tr><th scope="row">Stroke</th><td>2px solid</td><td>2px — <strong>dashed (5)</strong> while the hand is down, solid on release</td></tr>
+          <tr><th scope="row">Draw order</th><td>behind</td><td>in front</td></tr>
+          <tr><th scope="row">Legend</th><td><span class="mono">X before</span>, <span class="mono">Y before</span>, <span class="mono">Z before</span></td><td><span class="mono">X</span>, <span class="mono">Y</span>, <span class="mono">Z</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Two encodings are doing work, deliberately. <strong>Ghosting means “earlier”</strong> — the same word the canvas uses for the start-pose ghost, so a reader learns it once. <strong>Dashing means “provisional”</strong>, and applies only while your finger is down; on release the curve becomes an ordinary solid line, because it is no longer a preview. It is what the mechanism does now.</p>
+
+    <h3>Lifecycle</h3>
+    <p>One baseline per gesture. It survives the release — the tuning loop is drag, look, drag again, and taking the comparison away at the moment you finally have a still frame to read would serve the code, not the reader. It is replaced by the next drag, cleared by the <strong>Clear</strong> button, and dropped on undo or redo.</p>
+
+    <h3>The y-axis rule</h3>
+    <p class="rule-note">The axis freezes to the range the <em>before</em> curve was drawn to, and <strong>widens but never shrinks</strong> while you drag. Recomputed per frame it swam under the very curve you were watching — a drag through a toggle sent it to 30,000 and the next frame brought it back to 800, and every frame looked identically tall. Outlier trimming (1st–99th percentile) applies only to the live curve, and only when the full spread exceeds 4× the inner spread: acceleration near a toggle position is a true singularity, and two samples out of 360 reading twenty thousand will flatten a real 0–12 curve onto the zero line.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span> The peak readout</h2>
+    <p>Two curves is squinting. Two numbers and an arrow is reading. So the number the whole overlay exists to move gets said out loud, above the plot.</p>
+
+    <div class="specimen">
+      <p class="caption">Three states, at ship size</p>
+      <div class="pills">
+        <div class="pillcase">
+          <span class="peakReadout better">peak 35.61 <span class="g" aria-hidden="true">↘</span> 21.04</span>
+          <span class="note">improved · after &lt; before</span>
+        </div>
+        <div class="pillcase">
+          <span class="peakReadout worse">peak 35.61 <span class="g" aria-hidden="true">↗</span> 48.90</span>
+          <span class="note">worse · after &gt; before</span>
+        </div>
+        <div class="pillcase">
+          <span class="peakReadout">peak 35.61 <span class="g" aria-hidden="true">—</span> 35.72</span>
+          <span class="note">unchanged · within 0.5%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th scope="col">State</th><th scope="col">Rule</th><th scope="col">Background</th><th scope="col">Text</th><th scope="col">Glyph</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Improved</th><td>after &lt; before</td><td class="mono">#e6f4ea</td><td class="mono">#1e7d32</td><td class="mono">south_east</td></tr>
+          <tr><th scope="row">Worse</th><td>after &gt; before</td><td class="mono">#fdf1e3</td><td class="mono">#8a6100</td><td class="mono">north_east</td></tr>
+          <tr><th scope="row">Unchanged</th><td>within 0.5%</td><td class="mono">#f4f4f7</td><td class="mono">#5f6368</td><td class="mono">drag_handle</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The 0.5% deadband exists because a rounding difference painted green is a lie — an arrow claiming an improvement nobody made is worse than no arrow.</p>
+    <p>Both numbers are each curve's <strong>true</strong> peak, deliberately not the trimmed range the axis is drawn to. They disagreed once: the pill read <span class="mono">35.61 → 77.13</span> above a curve that visibly reached 180. The axis is the thing allowed to trim; a curve leaving the top of the plot is how it says so.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span> The chip row that holds it</h2>
+    <p>Sits directly above the chart, flat on the card — a note about what is drawn, not a control sitting on top of it.</p>
+
+    <div class="specimen">
+      <p class="caption">Full row, at ship size</p>
+      <div class="baselineChip">
+        <span class="baselineSwatch" aria-hidden="true"></span>
+        Before your drag
+        <span class="peakReadout better">peak 35.61 <span class="g" aria-hidden="true">↘</span> 21.04</span>
+        <button class="clear" type="button">Clear</button>
+      </div>
+    </div>
+
+    <p>The swatch is <strong>grey on purpose</strong>, not a series colour: it stands for <em>all</em> the ghosted curves, and a graph can show three at once, so there is no one colour to borrow. What it actually means is “pale”.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span> The palette it borrows from</h2>
+    <p>The overlay does not introduce colour. It reuses the plot's own three series and the app's indigo.</p>
+
+    <div class="specimen">
+      <p class="caption">Series colours, full and ghosted at 35%</p>
+      <div class="swatches">
+        <div class="sw">
+          <div class="bar" style="background:#313aa7"></div>
+          <div class="ghostbar" style="background:rgba(49,58,167,0.35)"></div>
+          <span class="nm">X</span><span class="hx">#313aa7</span>
+        </div>
+        <div class="sw">
+          <div class="bar" style="background:#ea2b29"></div>
+          <div class="ghostbar" style="background:rgba(234,43,41,0.35)"></div>
+          <span class="nm">Y</span><span class="hx">#ea2b29</span>
+        </div>
+        <div class="sw">
+          <div class="bar" style="background:#fdb50e"></div>
+          <div class="ghostbar" style="background:rgba(253,181,14,0.35)"></div>
+          <span class="nm">Z / Magnitude</span><span class="hx">#fdb50e</span>
+        </div>
+        <div class="sw">
+          <div class="bar" style="background:#303f9f"></div>
+          <div class="ghostbar" style="background:#e8eaf6"></div>
+          <span class="nm">App indigo</span><span class="hx">#303f9f · #e8eaf6</span>
+        </div>
+      </div>
+    </div>
+    <p>The amber row is the one to look at hardest — see question 2.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span> Related treatments</h2>
+    <p>These shipped alongside and share the vocabulary, so they are worth seeing together.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th scope="col">Where</th><th scope="col">Treatment</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Start-pose ghost<br><span class="mono" style="font-weight:400">canvas</span></th>
+            <td>Where the machine's cycle starts, under the live mechanism at <strong>22% opacity</strong> — same shapes, same colours, plainly the same object earlier. 40% on hover; pressing it returns to the start. When a drag takes the linkage somewhere its original start no longer exists it becomes a <strong>dotted outline with hollow pins at 50%</strong>, in informational indigo rather than an alarm colour — nothing is broken, letting go just moves the start. A pill tag rides the pointer to say so.</td>
+          </tr>
+          <tr>
+            <th scope="row">Drag trace<br><span class="mono" style="font-weight:400">canvas</span></th>
+            <td>While you hold a joint, its full path over the cycle is drawn — literally the app's existing <em>Traced Paths</em> curve, same ink, same weight. It was a custom dashed partial arc until this week.</td>
+          </tr>
+          <tr>
+            <th scope="row">Transport row<br><span class="mono" style="font-weight:400">bottom bar</span></th>
+            <td>A hollow dashed ring marks where the cycle starts on the scrub rail. A <span class="mono">134° from start</span> chip appears when you are parked away from it; pressing it goes back, and a caret opens “Move the start here”. A <span class="mono">Start moved here</span> chip with an inline Undo records the change.</td>
+          </tr>
+          <tr>
+            <th scope="row">Refusal strip<br><span class="mono" style="font-weight:400">edit panel</span></th>
+            <td>When the panel cannot be typed into: a full-bleed 54px strip in <span class="mono">#e8eaf6</span> on <span class="mono">#303f9f</span> directly under the title, with the way out written as an <strong>underlined word inside the sentence</strong> rather than a button beside it. Same height in all five states.</td>
+          </tr>
+          <tr>
+            <th scope="row">Corner card<br><span class="mono" style="font-weight:400">top strip</span></th>
+            <td>Undo and Redo live there in Edit. Export Data slides in from the right (220ms) when you enter an analysis mode, animating width and margin together so the card grows <em>with</em> it and the two buttons beside it never jump.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span> Where I would like your eye</h2>
+    <p>Ranked by how unsure I am. Everything here is a decision I made alone and would happily lose.</p>
+
+    <div class="questions">
+      <div class="q">
+        <div>
+          <h3>The green / amber pill makes a value judgement</h3>
+          <p>A smaller peak is usually what someone wants — but not always, and colouring it good or bad may be overstepping for a teaching tool. Is a neutral delta better?</p>
+        </div>
+      </div>
+      <div class="q">
+        <div>
+          <h3>35% alpha is very faint on the amber series</h3>
+          <p>Against white, <span class="mono">#fdb50e</span> ghosted is much weaker than the same treatment on indigo. Should ghosting be a fixed grey, a fixed alpha, or tuned per colour?</p>
+        </div>
+      </div>
+      <div class="q">
+        <div>
+          <h3>Two encodings change at once on release</h3>
+          <p>Dashed becomes solid at the same moment the gesture ends. That may be one change too many — is ghosting alone enough to carry “before”, with the live curve solid throughout?</p>
+        </div>
+      </div>
+      <div class="q">
+        <div>
+          <h3>The chip row competes for its slot</h3>
+          <p>An amber “No solution at N of M positions” banner can occupy the same strip above the chart. They never show at once today, but they are two different shapes in one place.</p>
+        </div>
+      </div>
+      <div class="q">
+        <div>
+          <h3>The peak numbers carry no unit</h3>
+          <p>The unit lives on the axis only, so <span class="mono">peak 35.61 → 21.04</span> is ambiguous read on its own.</p>
+        </div>
+      </div>
+      <div class="q">
+        <div>
+          <h3>Width is not fixed</h3>
+          <p>The panel is 250px in Edit and 400px in analysis, and on a phone it is a bottom sheet. The chip row can wrap at the narrow width.</p>
+        </div>
+      </div>
+      <div class="q">
+        <div>
+          <h3>Indigo is doing a lot of jobs</h3>
+          <p>The ghost, the refusal strip, the start chip, the seat and the X series are all indigo. One vocabulary, or an overload?</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">07</span> Seeing it live</h2>
+    <p>Everything above is running at <a href="https://staging--pmksnew.netlify.app">staging--pmksnew.netlify.app</a>.</p>
+    <ol class="steps">
+      <li>Open any template, then switch to <strong>Kinematic Analysis</strong>.</li>
+      <li>Press Play, then pause mid-cycle.</li>
+      <li>Click a joint to choose what is graphed.</li>
+      <li>Drag a <em>different</em> joint. Click selects; drag tunes.</li>
+    </ol>
+  </section>
+
+</div>
+
+<script>
+  // The three specimen plots. Generated rather than hand-authored so the two
+  // curves are demonstrably the same function with one parameter moved -- which
+  // is what a real tuning pass looks like.
+  (function () {
+    const W = 260, H = 130, PAD = 8;
+    const curve = (peak) => {
+      const pts = [];
+      for (let i = 0; i <= 80; i++) {
+        const t = i / 80;
+        // A plausible acceleration trace: a dominant lobe with a smaller return.
+        const v = Math.sin(t * Math.PI * 2) * peak + Math.sin(t * Math.PI * 4) * peak * 0.34;
+        const x = PAD + t * (W - PAD * 2);
+        const y = H / 2 - v * (H / 2 - PAD) / 1.34;
+        pts.push((i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1));
+      }
+      return pts.join(' ');
+    };
+
+    const INK = '#313aa7';
+    const GHOST = 'rgba(49, 58, 167, 0.35)';
+    const zero = '<line x1="' + PAD + '" y1="' + H / 2 + '" x2="' + (W - PAD) + '" y2="' + H / 2 +
+      '" stroke="#c8cce0" stroke-width="1"></line>';
+    const path = (d, stroke, dash) =>
+      '<path d="' + d + '" fill="none" stroke="' + stroke + '" stroke-width="2" stroke-linecap="round"' +
+      (dash ? ' stroke-dasharray="5 5"' : '') + '></path>';
+
+    const high = curve(1);      // before
+    const low = curve(0.59);    // after a tuning drag
+
+    document.getElementById('p1').innerHTML = zero + path(high, INK, false);
+    document.getElementById('p2').innerHTML = zero + path(high, GHOST, false) + path(low, INK, true);
+    document.getElementById('p3').innerHTML = zero + path(high, GHOST, false) + path(low, INK, false);
+  })();
+</script>
+</body>
+</html>

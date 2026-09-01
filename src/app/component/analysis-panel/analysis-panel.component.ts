@@ -124,6 +124,17 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy {
     return this.activeSrv.graphForce;
   }
 
+  /**
+   * Show the reactions on the part this force pushes.
+   *
+   * The same selection a click on that link would make, so the panel that
+   * follows is the ordinary one rather than a second view of it.
+   */
+  graphTheLinkUnder(): void {
+    const link = this.shownForce?.link;
+    if (link) this.activeSrv.updateSelectedObj(link);
+  }
+
   /** The selected joint or link, when the selection is one of those. */
   private get selectedPart(): RealJoint | RealLink | undefined {
     if (this.shownType === 'Joint') return this.shownJoint;

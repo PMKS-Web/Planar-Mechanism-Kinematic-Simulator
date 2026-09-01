@@ -310,6 +310,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   private readonly keyed: Partial<Record<ShortcutId, () => void>> = {
     'playback.toggle': () => this.play(),
+    // Through the button's own method, like every other key here, so the
+    // guard that makes Stop a no-op at the start pose applies to the key too.
+    'playback.stop': () => this.stop(),
     'playback.back': () => this.stepBy(-1),
     'playback.forward': () => this.stepBy(1),
     'playback.speed': () => this.canPlay && this.cycleSpeed(),

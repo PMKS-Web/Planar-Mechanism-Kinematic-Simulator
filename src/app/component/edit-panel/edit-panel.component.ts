@@ -670,11 +670,15 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         setEnabled(this.cylinderForm.get('start'), movable);
         setEnabled(this.cylinderForm.get('angle'), movable);
       } else {
-        // On top of the >2-joint rule disableAndEnableLinkFields applies: a
-        // length or angle edit moves the link's joints about an anchor of its
-        // own choosing, which no held joint can be trusted to survive.
-        const anyHeld = this.activeSrv.selectedLink.joints.some((joint) => frozenIds.has(joint.id));
-        if (anyHeld) {
+        // A bar with one end pinned is the ordinary case, not a refused one:
+        // the lock says where that end is, and lengthening the bar swings the
+        // *other* end. `resolveNewLink` anchors on the held joint, so the mark
+        // is honored rather than worked around.
+        //
+        // Both ends held is the real refusal -- there is nothing left to move,
+        // and a length is the distance between two points that are both fixed.
+        const held = this.activeSrv.selectedLink.joints.filter((joint) => frozenIds.has(joint.id));
+        if (held.length >= this.activeSrv.selectedLink.joints.length) {
           setEnabled(this.linkForm.get('length'), false);
           setEnabled(this.linkForm.get('angle'), false);
         }
@@ -2193,26 +2197,37 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     );
   }
 
+  /**
+   * Re-place the link's far end after its length or angle was typed.
+   *
+   * One end holds still and the other swings; which is which is the whole of
+   * the decision, and it is made once here rather than in two branches that
+   * can disagree. A Lock outranks ground: the reader has said in as many words
+   * that this joint does not move, where ground is only the default when
+   * nothing has been said. Without that, a typed length on a bar with one
+   * pinned end moved the pinned end -- the one thing the mark exists to stop --
+   * and the old shape could do it even with the lock read, because a free end
+   * that happens to be grounded took the branch that moves the *other* one.
+   */
   resolveNewLink() {
-    if (!this.editingRefused()) {
-      //If the first joint is ground, then the second joint is dragged
-      if ((this.activeSrv.selectedLink.joints[1] as RevJoint).ground) {
-        let newJ1 = getNewOtherJointPos(
-          this.activeSrv.selectedLink.joints[1],
-          this.activeSrv.selectedLink.angleRad + Math.PI,
-          this.activeSrv.selectedLink.length
-        );
-        this.gridUtils.dragJoint(this.activeSrv.selectedLink.joints[0] as RevJoint, newJ1);
-      } else {
-        //If the second joint is ground, then the first joint is dragged
-        let newJ2 = getNewOtherJointPos(
-          this.activeSrv.selectedLink.joints[0],
-          this.activeSrv.selectedLink.angleRad,
-          this.activeSrv.selectedLink.length
-        );
-        this.gridUtils.dragJoint(this.activeSrv.selectedLink.joints[1] as RevJoint, newJ2);
-      }
-    }
+    if (this.editingRefused()) return;
+    const joints = this.activeSrv.selectedLink.joints;
+    if (joints.length < 2) return;
+    const frozenIds = this.gridUtils.frozenJointIds();
+    const held = (at: number) => frozenIds.has(joints[at]!.id);
+    const grounded = (at: number) => (joints[at] as RevJoint).ground;
+    // Which end stays put. Held beats grounded beats "the first one", and the
+    // other end is the one that moves.
+    const anchor = held(0) ? 0 : held(1) ? 1 : grounded(1) ? 1 : 0;
+    const moving = anchor === 0 ? 1 : 0;
+    // The link's angle is measured from joint 0 to joint 1, so swinging the
+    // near end about the far one is the same angle turned around.
+    const bearing =
+      anchor === 0
+        ? this.activeSrv.selectedLink.angleRad
+        : this.activeSrv.selectedLink.angleRad + Math.PI;
+    const to = getNewOtherJointPos(joints[anchor], bearing, this.activeSrv.selectedLink.length);
+    this.gridUtils.dragJoint(joints[moving] as RevJoint, to);
   }
 
   resolveNewForceAngle() {

@@ -214,11 +214,34 @@ export class SynthesisSolutionService {
       this.cached = result.candidates;
       this.cachedRejections = result.rejections;
     }
-    let list = this.cached;
-    this.strictCount = new Set(list.filter((c) => c.defectFree).map((c) => c.pair)).size;
-    if (!this.design.allowDefect) list = list.filter((c) => c.defectFree);
-    return rankCandidates(list);
+    const list = this.cached;
+    const strict = list.filter((c) => c.defectFree);
+    this.strictCount = new Set(strict.map((c) => c.pair)).size;
+    // Three if three can be done, two if they cannot.
+    //
+    // This used to be a switch the reader had to find and understand -- and to
+    // understand it they had to already know what a branch defect is, which is
+    // the thing they came here to be told. Worse, the answer to "can this be
+    // built at all" was hidden behind it: a design with no three-position
+    // solution reported *no solutions*, and the linkage that reaches two of
+    // them -- often the whole of what the reader needed -- was one unexplained
+    // toggle away and looked like it did not exist.
+    //
+    // So the preference is the app's rather than the reader's. Three is always
+    // tried first and always wins where it exists; two is what is offered
+    // instead of nothing, and `settledForTwo` is how the panel says so.
+    this.settledForTwo = strict.length === 0;
+    const fallback = list.filter((c) => c.onBranchCount >= 2);
+    return rankCandidates(strict.length ? strict : fallback);
   }
+
+  /**
+   * Whether what is on offer reaches two of the three positions, not all three.
+   *
+   * A fact about the answer, not a setting -- the panel states it rather than
+   * asking, because a reader who wanted two positions would have placed two.
+   */
+  public settledForTwo = false;
 
   /**
    * Every assembly of every solution, including the ones the gallery folds
@@ -226,8 +249,17 @@ export class SynthesisSolutionService {
    */
   allAssemblies(): FourBarCandidate[] {
     if (!this.generated || !this.design.isFullyDefined()) return [];
-    this.candidates();
-    return this.design.allowDefect ? this.cached : this.cached.filter((c) => c.defectFree);
+    // Every assembly of the constructions the gallery is offering -- which is
+    // not the same as every construction that passes the gallery's test.
+    //
+    // Open and Crossed are one four-bar closed two ways, and this is what the
+    // Assembly branch switch flips between. Filtered by the gallery's own rule
+    // it listed only the assembly that had passed it, so the switch had nothing
+    // to move to: it was reachable only through the defect toggle, and with
+    // that gone it would have been dead in every design. The construction is
+    // what the reader picked; both of its closures are theirs to look at.
+    const offered = new Set(this.candidates().map((c) => c.pair));
+    return this.cached.filter((c) => offered.has(c.pair));
   }
 
   rejections(): CandidateRejections {

@@ -91,3 +91,35 @@
   margin: 0 0 14px;
   padding: 0 15px;
 }
+
+// Why a force has no graph, and the one click to the thing that does. Sized
+// like `.helpHint` above, which is the panel's other quiet explanatory line.
+//
+// The way out is an underlined word inside the sentence rather than a button
+// beside it -- the same idiom the Edit panel's refusal strip uses, for the same
+// reason: the panel is 400px wide and a sentence with a button hard against it
+// wraps into four words and a control.
+#analysisWrapper panel-section .forceRedirect {
+  margin: 0 0 14px;
+  padding: 0 15px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+#analysisWrapper panel-section .forceRedirectAction {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #303f9f;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+  vertical-align: baseline;
+
+  &:hover {
+    color: #1a237e;
+  }
+}

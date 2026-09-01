@@ -149,7 +149,34 @@ export class SynthesisBuilderService {
     return this._length;
   }
 
+  /**
+   * Whether the end-effector length is a number somebody asked for.
+   *
+   * False on a design nobody has started, which is what lets the panel offer a
+   * length that suits the view instead of the same 5 units whatever the reader
+   * is looking at. True the moment one is typed, and it never goes back.
+   */
+  private lengthChosen = false;
+
+  /**
+   * Offer a length, for a design that has not been given one.
+   *
+   * A suggestion, not a setting: it loses to anything the reader has typed, and
+   * it is silent about it. Called with a length already rounded to something a
+   * person would choose -- what is nice depends on the unit on screen, which is
+   * the panel's business rather than this one's.
+   */
+  suggestLength(modelUnits: number): void {
+    if (this.lengthChosen || !(modelUnits > 0)) return;
+    this._length = modelUnits;
+    this.valueChanges.next(true);
+  }
+
   set length(length: number) {
+    // Written by the reader, so the suggestion below stands aside from here on.
+    // A unit change rescales `_length` directly for exactly this reason: it is
+    // the same length said in different words, not a different length asked for.
+    this.lengthChosen = true;
     this._length = length;
     for (let pose of this.getAllPoses()) {
       pose.recompute();
@@ -468,7 +495,7 @@ export class SynthesisBuilderService {
     // model position like any other, and a baseline left behind reads the whole
     // inserted machine as moved by hand.
     this.ownedAt = this.ownedAt.map((at) => ({ x: at.x * scale, y: at.y * scale }));
-    this.length = this._length * scale;
+    this._length = this._length * scale;
     this.valueChanges.next(true);
   }
 
@@ -477,6 +504,7 @@ export class SynthesisBuilderService {
     this.poses = {};
     this._COR = COR.CENTER;
     this._length = 5 * MODEL_SCALE;
+    this.lengthChosen = false;
     this._selectedPose = 0;
     this.stage = 'chooser';
     this.armed = false;
@@ -511,6 +539,11 @@ export class SynthesisBuilderService {
     ownershipPartial?: boolean;
   }): void {
     this._COR = decoded.reference;
+    // A restored design carries a length somebody settled on, whether or not
+    // they typed it in this session -- so the suggestion stands aside from it
+    // exactly as it would from a typed one. Absent, there is nothing to honor
+    // and the default is as good a starting point as it ever was.
+    this.lengthChosen = decoded.length > 0;
     this._length = decoded.length > 0 ? decoded.length : 5 * MODEL_SCALE;
     this.endsOnly = decoded.endsOnly;
     this.allowDefect = decoded.allowDefect;

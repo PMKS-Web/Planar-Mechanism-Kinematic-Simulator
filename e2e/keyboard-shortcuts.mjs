@@ -100,9 +100,13 @@ record('and Space again pauses it', (await state()).playing === false);
 await press('1');
 const inSynthesis = await state();
 await press('Space');
-record('Space does nothing in Synthesis, which has no transport', (await state()).playing === false, {
-  before: inSynthesis.playing,
-});
+record(
+  'Space does nothing in Synthesis, which has no transport',
+  (await state()).playing === false,
+  {
+    before: inSynthesis.playing,
+  }
+);
 
 await press('3');
 await press('Space');
@@ -290,6 +294,46 @@ record(
   'and the drawer carries the list of keys, one cap each',
   listed.heading && listed.caps >= 15,
   listed
+);
+
+// ---- R stops, and stopping means back to the start ----------------------
+//
+// Space plays and pauses, which leaves the machine wherever the reader's thumb
+// happened to land. The transport has always had a second button for going back
+// to the start pose, and it was the one thing on that card no key could reach.
+await page.goto(`${BASE}/?${payloads['4-Bar']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+await page.waitForTimeout(600);
+await page.locator('.playButton').click();
+await page.waitForTimeout(900);
+await page.locator('.playButton').click();
+await page.waitForTimeout(400);
+const atStart = () =>
+  page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.isAtStartPose()
+  );
+const displaced = await atStart();
+await page.keyboard.press('r');
+await page.waitForTimeout(1200);
+const home = await atStart();
+record('R goes back to the start pose', displaced === false && home === true, {
+  displaced,
+  home,
+});
+record(
+  'and Help lists it with the rest of the transport',
+  /Stop and go back to the start/.test(
+    await page.evaluate(() => document.querySelector('app-help-panel')?.innerText ?? '')
+  ) ||
+    (await page.evaluate(() =>
+      window.ng
+        .getComponent(document.querySelector('app-playback-bar'))
+        .shortcuts.bySection()
+        .some((group) =>
+          group.shortcuts.some((one) => one.id === 'playback.stop' && one.keys === 'R')
+        )
+    ))
 );
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));

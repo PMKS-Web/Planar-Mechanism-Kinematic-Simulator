@@ -13,6 +13,7 @@ export type ShortcutId =
   | 'mode.kinematic'
   | 'mode.force'
   | 'playback.toggle'
+  | 'playback.stop'
   | 'playback.back'
   | 'playback.forward'
   | 'playback.speed'
@@ -152,6 +153,13 @@ export class KeyboardShortcutsService {
       label: 'Play / Pause',
       keys: 'Space',
       match: [' ', 'spacebar'],
+    },
+    {
+      id: 'playback.stop',
+      section: 'Playback',
+      label: 'Stop and go back to the start',
+      keys: 'R',
+      match: ['r'],
     },
     {
       id: 'playback.back',

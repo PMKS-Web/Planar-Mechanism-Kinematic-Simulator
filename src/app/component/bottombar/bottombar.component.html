@@ -5,6 +5,20 @@
   <span class="mode">{{ modeName }}</span>
   <span class="status">{{ status }}</span>
   <span class="spacer"></span>
+  <!-- Mobility, said in the one place that already reports what the drawing is
+       rather than what it is doing. It is the number every refusal in this app
+       is really about -- one input drives one degree of freedom -- and it was
+       computed here and never rendered. Hidden where there is nothing to say:
+       a linkage with nothing grounded has no mobility, and a dash under a
+       heading is worse than no heading. -->
+  @if (degreesOfFreedom !== '—') {
+    <span
+      class="dof"
+      title="Degrees of freedom. PMKS+ simulates one input per mechanism, which drives one degree of freedom."
+    >
+      DOF: {{ degreesOfFreedom }}
+    </span>
+  }
   @if (cursor) {
     <span class="cursor">Cursor: {{ cursor }}</span>
   }

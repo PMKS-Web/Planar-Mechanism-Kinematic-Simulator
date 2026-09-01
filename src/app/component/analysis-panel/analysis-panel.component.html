@@ -291,9 +291,19 @@
   <!-- Forces Arrows-->
   @if (validMechanisms() && shownType == 'Force') {
     <panel-section id="analysis-panel">
-      <title-block description="There are no analysis graphs for forces.">
-        {{ modeLabel }} for Force {{ shownForce.name }}
-      </title-block>
+      <title-block>{{ modeLabel }} for Force {{ shownForce.name }}</title-block>
+      <!-- "There are no analysis graphs for forces" was true and unhelpful: it
+           named what is missing and left the reader to work out that the answer
+           they came for is one click away, on the part this force pushes. The
+           way there is a control rather than an instruction -- a panel that can
+           name the link can select it. -->
+      <p class="forceRedirect">
+        A force is an input, so it has no curve of its own. What it does is show up in the reactions
+        on the part it acts on.
+        <button type="button" class="forceRedirectAction" (click)="graphTheLinkUnder()">
+          Graph {{ shownForce.link.name }}</button
+        >, which carries it.
+      </p>
     </panel-section>
   }
 

@@ -850,6 +850,49 @@ record(
   { restColor, hovered: await help.evaluate((mark) => getComputedStyle(mark).color) }
 );
 
+// ---- mobility, on the strip that already says what the drawing is ----------
+//
+// It is the number every refusal in this app is really about -- one input
+// drives one degree of freedom -- and the strip computed it and rendered
+// nothing. Absent where there is nothing to say: a linkage with nothing
+// grounded has no mobility, and a heading over a dash is worse than no heading.
+await load(payloads['4-Bar']);
+record(
+  'the status strip reports the mobility',
+  /DOF:\s*1/.test(await page.locator('#bottomBar').innerText()),
+  (await page.locator('#bottomBar').innerText()).replace(/\s+/g, ' ')
+);
+
+// ---- a force sends the reader to the part that carries it ------------------
+//
+// "There are no analysis graphs for forces" was true and unhelpful: it named
+// what is missing and left the answer -- the reactions on the link this force
+// pushes -- one unmentioned click away. The way there is a control now.
+await load(payloads['4-Bar']);
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+await page.waitForTimeout(600);
+await page.evaluate(() => {
+  const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.links[0]);
+  grid.mechanismSrv.createForceAtCOM();
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.forces[0]);
+});
+await page.waitForTimeout(700);
+const forcePanel = await page.locator('app-analysis-panel').innerText();
+record(
+  'a selected force offers the link instead of an apology',
+  /Graph /.test(forcePanel) && !/There are no analysis graphs/.test(forcePanel),
+  forcePanel.replace(/\s+/g, ' ').slice(0, 120)
+);
+await page.locator('.forceRedirectAction').click();
+await page.waitForTimeout(700);
+record(
+  'and pressing it graphs that link',
+  (await page.evaluate(
+    () => window.ng.getComponent(document.querySelector('app-new-grid')).activeObjService.objType
+  )) === 'Link'
+);
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 await browser.close();
 

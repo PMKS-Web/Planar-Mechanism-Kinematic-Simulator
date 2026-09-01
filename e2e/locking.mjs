@@ -375,6 +375,79 @@ record(
   )
 );
 
+// ---- a lock says where one end is, not that the bar cannot change length ----
+//
+// Locking one end of a bar used to gray out its Length and Angle fields, on the
+// grounds that a length edit moves the link's joints about an anchor of its own
+// choosing. The anchor is a choice, and the lock is the reader making it: the
+// held end stays and the free one swings. Both ends held is the real refusal.
+await page.goto(`${BASE}/?${FOUR_BAR}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.locator('.tabButton', { hasText: 'Edit' }).click();
+await page.waitForTimeout(600);
+
+const jointAt = (id) =>
+  page.evaluate((want) => {
+    const j = window.ng
+      .getComponent(document.querySelector('app-new-grid'))
+      .mechanismSrv.joints.find((one) => one.id === want);
+    return j ? { x: Math.round(j.x * 1e4) / 1e4, y: Math.round(j.y * 1e4) / 1e4 } : null;
+  }, id);
+
+await page.evaluate(() => {
+  const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+  const b = grid.mechanismSrv.joints.find((one) => one.id === 'B');
+  grid.activeObjService.updateSelectedObj(b);
+  grid.mechanismSrv.toggleLock(b);
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.links.find((one) => one.id === 'AB'));
+});
+await page.waitForTimeout(700);
+record(
+  'one end locked leaves the length editable',
+  await page.evaluate(
+    () =>
+      window.ng.getComponent(document.querySelector('app-edit-panel')).linkForm.get('length')
+        .enabled
+  )
+);
+
+const wasA = await jointAt('A');
+const wasB = await jointAt('B');
+await page.evaluate(() =>
+  window.ng
+    .getComponent(document.querySelector('app-edit-panel'))
+    .linkForm.get('length')
+    .setValue('4.00 cm')
+);
+await page.waitForTimeout(800);
+const nowA = await jointAt('A');
+const nowB = await jointAt('B');
+record('and the locked end does not move', Math.hypot(nowB.x - wasB.x, nowB.y - wasB.y) < 1e-6, {
+  wasB,
+  nowB,
+});
+record('while the free end does', Math.hypot(nowA.x - wasA.x, nowA.y - wasA.y) > 1, {
+  wasA,
+  nowA,
+});
+
+await page.evaluate(() => {
+  const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+  const a = grid.mechanismSrv.joints.find((one) => one.id === 'A');
+  grid.activeObjService.updateSelectedObj(a);
+  grid.mechanismSrv.toggleLock(a);
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.links.find((one) => one.id === 'AB'));
+});
+await page.waitForTimeout(700);
+record(
+  'both ends locked is still refused, because nothing is left to move',
+  (await page.evaluate(
+    () =>
+      window.ng.getComponent(document.querySelector('app-edit-panel')).linkForm.get('length')
+        .enabled
+  )) === false
+);
+
 record('no page errors the whole way through', errors.length === 0, errors);
 
 const failed = results.filter(([, ok]) => !ok);

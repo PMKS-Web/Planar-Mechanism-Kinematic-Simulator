@@ -73,6 +73,28 @@ const HELP = {
     'positions, making it a six-bar a motor can run.',
 };
 
+/**
+ * The nearest length a person would have picked.
+ *
+ * 1, 2, 5 and their decades -- the steps a ruler is marked in. A suggestion
+ * derived from the window is going to be 3.7431 by nature, and a number like
+ * that is one the reader has to replace before they can think about it, which
+ * leaves them exactly where they started. Snapped, it is a number they can
+ * accept, and the mantissa is compared on a log scale so 3 rounds to 2 and 4
+ * rounds to 5 rather than both falling to the nearer end of a linear gap.
+ */
+export function niceRound(value: number): number {
+  if (!(value > 0) || !Number.isFinite(value)) return 0;
+  const decade = Math.pow(10, Math.floor(Math.log10(value)));
+  const mantissa = value / decade;
+  const step = [1, 2, 5, 10].reduce((best, candidate) =>
+    Math.abs(Math.log(candidate / mantissa)) < Math.abs(Math.log(best / mantissa))
+      ? candidate
+      : best
+  );
+  return step * decade;
+}
+
 @Component({
   selector: 'app-synthesis-panel',
   templateUrl: './synthesis-panel.component.html',
@@ -128,6 +150,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   regionForm = this.fb.group({ rx: [''], ry: [''], rw: [''], rh: [''] }, { updateOn: 'blur' });
 
   ngOnInit(): void {
+    this.sizeCouplerToView();
     this.readFromModel();
 
     this.subs.push(
@@ -190,13 +213,61 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
         const searching = this.solution.generating;
         const finished = this.wasSearching && !searching && this.solution.generated;
         this.wasSearching = searching;
-        if (finished) this.revealTheAnswer();
+        if (finished) {
+          this.revealTheAnswer();
+          this.playTheAnswer();
+        }
       })
     );
   }
 
+  /**
+   * Start a fresh design with an end-effector that fits what is on screen.
+   *
+   * The default was five units whatever the reader was looking at, which is a
+   * bar off the edge of the window on a drawing zoomed in to a bearing, and a
+   * speck in the middle of one zoomed out to a whole excavator. Either way the
+   * first thing to do was to fix the number before anything could be placed.
+   *
+   * A fifth of the visible width leaves room for the three positions and the
+   * four-bar that has to reach them. Rounded to something a person would have
+   * chosen -- 2, 5, 20 -- because a suggestion reading 3.7431 cm is one the
+   * reader has to replace before they can think about it, which is where they
+   * started.
+   *
+   * Once, and only where nothing has been asked for: a length in the URL, a
+   * length typed, or a position already placed all mean the question has been
+   * answered and this has nothing to add.
+   */
+  private sizeCouplerToView(): void {
+    if (this.design.getAllPoses().length > 0) return;
+    const span = this.svgGrid.viewBoxMaxX - this.svgGrid.viewBoxMinX;
+    if (!(span > 0)) return;
+    // Model units are the reader's own unit times MODEL_SCALE -- changing the
+    // unit rescales the drawing rather than converting on the way out -- so the
+    // rounding happens on the number they will actually see.
+    const nice = niceRound(span / 5 / MODEL_SCALE);
+    if (nice > 0) this.design.suggestLength(nice * MODEL_SCALE);
+  }
+
   /** Whether the last thing this panel heard about was a search in progress. */
   private wasSearching = false;
+
+  /**
+   * Start the preview moving as soon as there is something to move.
+   *
+   * A four-bar is a motion, and a still picture of one is the least
+   * informative thing this panel can show: the whole question the reader is
+   * asking -- does this linkage go where I asked it to -- is answered by
+   * watching it, and it took a second press to find out. Nothing to play means
+   * nothing to start, and a reader who paused a previous preview gets it
+   * running again because this is a new answer rather than the one they paused.
+   */
+  private playTheAnswer(): void {
+    if (this.solution.candidates().length === 0) return;
+    this.solution.playing = true;
+    this.schedule();
+  }
 
   /**
    * Scroll the design out of the way and the solution into view.
@@ -524,8 +595,10 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
         ? 'No solution to check this position against yet'
         : 'Generate solutions to check this position';
     }
-    return ok
-      ? 'The chosen solution passes through this position on its own assembly'
+    if (ok) return 'The chosen solution passes through this position on its own assembly';
+    return this.solution.settledForTwo
+      ? 'No four-bar reaches all three, so this is the one given up: the linkage would have to ' +
+          'be taken apart to get here'
       : 'The chosen solution reaches this position only on its other assembly — a branch defect';
   }
 
@@ -534,15 +607,6 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   requirements(): Requirement[] {
     const length = this.plain(this.design.length);
     return [
-      {
-        key: 'defect',
-        on: !this.design.allowDefect,
-        label: 'Reaches all 3 positions on one assembly',
-        detail: this.design.allowDefect
-          ? 'Solutions that have to be taken apart between positions are listed too'
-          : 'The mechanism never has to be taken apart',
-        toggle: () => this.toggleRequirement('allowDefect'),
-      },
       {
         // Named for where the coupler is pinned rather than for how long it
         // comes out, because the length is a consequence and the pinning is
@@ -569,18 +633,16 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     ];
   }
 
-  private toggleRequirement(which: 'endsOnly' | 'allowDefect' | 'constrain'): void {
+  private toggleRequirement(which: 'endsOnly' | 'constrain'): void {
     if (which === 'endsOnly') this.design.endsOnly = !this.design.endsOnly;
-    if (which === 'allowDefect') this.design.allowDefect = !this.design.allowDefect;
     if (which === 'constrain') {
       this.design.constrain = !this.design.constrain;
       this.design.regionDraw = false;
       this.design.setArmed(false);
       if (this.design.constrain) this.frameRegionOnCurrentAnswer();
     }
-    // Only the defect filter leaves the enumeration standing: it hides members
-    // of a list rather than changing which list it is.
-    if (which === 'allowDefect') this.solution.changed.next();
+    // Both remaining requirements change which four-bars are enumerated rather
+    // than which of them are shown, so both send the search back to the start.
     else this.solution.invalidate();
     this.record();
   }
@@ -613,11 +675,8 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
    * of a solution, so it says that instead.
    */
   requirementCount(): string {
-    const n =
-      (this.design.endsOnly ? 1 : 0) +
-      (this.design.allowDefect ? 0 : 1) +
-      (this.design.constrain ? 1 : 0);
-    return n === 0 ? 'nothing narrowing the search' : `${n} of 3 narrowing the search`;
+    const n = (this.design.endsOnly ? 1 : 0) + (this.design.constrain ? 1 : 0);
+    return n === 0 ? 'nothing narrowing the search' : `${n} of 2 narrowing the search`;
   }
 
   regionSummary(): string {
@@ -646,28 +705,17 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
         `off. ${moveOne}`
       );
     }
-    if (this.design.endsOnly && !this.design.allowDefect) {
-      return (
-        'No solution satisfies both. Unpinning the coupler from the ends of the link is the ' +
-        'usual first one to give: the three positions stay exactly where they are, and only ' +
-        `where the coupler is attached to the link changes. ${moveOne}`
-      );
-    }
     if (this.design.endsOnly) {
       return (
         "No four-bar whose coupler is pinned at the link's ends passes through these three " +
         `positions. Unpin it to let the coupler be any length. ${moveOne}`
       );
     }
-    if (!this.design.allowDefect) {
-      return (
-        'Every four-bar through these three positions has to be taken apart between them. ' +
-        `Accept a branch defect to see them. ${moveOne}`
-      );
-    }
+    // Two-position solutions are offered automatically, so reaching this means
+    // there is not even a four-bar that gets to two of them on one assembly.
     return (
-      'Nothing was found even with every requirement relaxed. The three positions are too close ' +
-      `to a straight line. ${moveOne}`
+      'No four-bar reaches even two of these positions on one assembly. They are too close to ' +
+      `a straight line. ${moveOne}`
     );
   }
 
@@ -679,7 +727,6 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
 
   generateNote(): string {
     const parts: string[] = [];
-    if (!this.design.allowDefect) parts.push('all three positions on one assembly');
     if (this.design.endsOnly) parts.push("the coupler pinned at the link's ends");
     if (this.design.constrain) parts.push('both ground pins in the region');
     return parts.length
@@ -772,7 +819,12 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       const label = strict === 1 ? 'solution reaches' : 'solutions reach';
       return `${strict} ${label} all 3 positions${capped}`;
     }
-    return `${shown} solution${shown === 1 ? '' : 's'}, all with a branch defect`;
+    // No four-bar reaches all three, so what is on offer reaches two. Said as
+    // what it does rather than as what is wrong with it: "branch defect" names
+    // the fault in the linkage, and the reader's question is what they can
+    // build.
+    const label = shown === 1 ? 'solution reaches' : 'solutions reach';
+    return `No solution reaches all 3 — ${shown} ${label} 2 of them`;
   }
 
   /**
@@ -784,7 +836,6 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       this.showResults &&
       this.solution.candidates().length === 0 &&
       !this.design.endsOnly &&
-      this.design.allowDefect &&
       !this.design.constrain
     );
   }
@@ -839,11 +890,14 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       selected: !!picked && picked.pair === c.pair,
       defectFree: c.defectFree,
       binds: c.binds,
+      // Capability first. While these were only ever shown behind a switch the
+      // reader had opted into, leading with the fault was fair; offered as the
+      // answer, "branch defect" names what is wrong before saying what it does.
       reachText: c.defectFree
         ? 'all 3, one assembly'
         : c.binds && c.onBranchCount === 3
           ? 'all 3, but stalls between them'
-          : `branch defect · ${c.onBranchCount} of 3`,
+          : `${c.onBranchCount} of 3 · branch defect`,
       metric:
         (c.binds ? `stalls at ${c.minTransmission}° · ` : `min angle ${c.minTransmission}° · `) +
         (c.range.full ? 'full turn' : `${Math.round(c.range.to - c.range.from)}° swing`),
