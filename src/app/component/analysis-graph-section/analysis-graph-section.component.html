@@ -3,12 +3,20 @@
      and the table of what each curve reaches. A card per quantity, each with
      its own legend of switches, was what the rows replaced. -->
 <div class="graphSection" [class.open]="expanded()" [class.closed]="!expanded()">
-  <button class="graphHeader" type="button" (click)="toggle()" [attr.aria-expanded]="expanded()">
+  <!-- The press that opens the row also puts its tooltip away: left up, it
+       hung over the row above until the pointer next moved. -->
+  <button
+    class="graphHeader"
+    type="button"
+    (click)="toggle(); tip.hide()"
+    [attr.aria-expanded]="expanded()"
+  >
     <!-- Above, not below: below is where the split and the plot are, and a
          tooltip that lands on the control the reader is reaching for next is
          in the way of the next click. -->
     <span
       class="graphTitle"
+      #tip="matTooltip"
       [matTooltip]="help"
       matTooltipPosition="above"
       matTooltipShowDelay="600"
