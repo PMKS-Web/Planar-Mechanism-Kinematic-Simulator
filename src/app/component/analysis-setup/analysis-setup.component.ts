@@ -395,23 +395,17 @@ export class AnalysisSetupComponent {
   }
 
   /**
-   * Editing is an Edit-mode thing, as everywhere else in the app: the
-   * analysis modes read a solved cycle and hold it still. The header offers
-   * the mode switch, so the read-only state is one click from the editable
-   * one — with the drawer staying open across it.
+   * A mass is typed whenever the machine is standing still.
    *
-   * The same at-rest question the canvas and the Edit panel ask, not a looser
-   * one of this drawer's own. "Not playing" alone let the table be typed into
-   * during the ~220 ms ease back to the start pose, and indefinitely after an
-   * aborted one — and the commit's own `updateMechanism` aborts that ease,
-   * stranding Edit mode at a displaced pose with its panel hidden.
+   * Not the pose rule the Edit panel's numbers follow: a mass is not read off
+   * a pose and needs no transform back to the start, so a machine parked
+   * mid-cycle in any mode can have its masses changed and its force graphs
+   * re-solved under them. While it runs the table is read-only, like every
+   * other setting -- the numbers would be changing under a solve in flight.
    */
   massEditable(): boolean {
-    // The permission model's answer rather than this drawer's own copy of it.
-    // A mass is one of the properties whose transform back to t = 0 is not
-    // written, so it is refused wherever the Edit panel's numbers are -- and
-    // by the same rule, which is the point.
-    return this.permission.may('properties');
+    const mechanism = this.mechanism;
+    return !mechanism.isPlaying && !mechanism.mechanisms.some((_, i) => mechanism.isMechanismPlaying(i));
   }
 
   inEditMode(): boolean {

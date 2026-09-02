@@ -1087,9 +1087,15 @@ export class AnalysisGraphComponent
     }
   }
 
+  /**
+   * Which ink a series is drawn in. X indigo, Y red, and a magnitude amber --
+   * whether it is the third series of a vector or the only series of an
+   * angle: one series is one kind of thing, and it used to borrow X's indigo
+   * on the single-series graphs, which made an angle look like a component.
+   */
   private colorForSeries(name: string | undefined): string {
     if (name === 'Y') return ANALYSIS_SERIES_COLORS.Y;
-    if (name === 'Z' && this.numberOfSeries === 3) return ANALYSIS_SERIES_COLORS.Z;
+    if (name === 'Z') return ANALYSIS_SERIES_COLORS.Z;
     return ANALYSIS_SERIES_COLORS.X;
   }
 

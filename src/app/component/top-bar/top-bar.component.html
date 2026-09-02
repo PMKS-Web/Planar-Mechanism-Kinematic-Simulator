@@ -31,17 +31,18 @@
         [style.width.px]="highlight.width"
       ></div>
 
+      <!-- The tip on the whole button, as the analysis tabs have it: on the
+           icon alone it answered only a pointer over the glyph, and a reader
+           resting on the word got nothing. -->
       <button
         class="tabButton"
         [class.active]="isActive(TabID.SYNTHESIZE)"
         (click)="select(TabID.SYNTHESIZE)"
         aria-label="Synthesis"
+        appShortcutTip="Synthesis"
+        shortcutTipFor="mode.synthesis"
       >
-        <mat-icon
-          appShortcutTip="Synthesis"
-          shortcutTipFor="mode.synthesis"
-          svgIcon="synthesis"
-        ></mat-icon>
+        <mat-icon svgIcon="synthesis"></mat-icon>
         <span class="tabLabel">Synthesis</span>
       </button>
 
@@ -50,12 +51,10 @@
         [class.active]="isActive(TabID.EDIT)"
         (click)="select(TabID.EDIT)"
         aria-label="Edit"
+        appShortcutTip="Edit"
+        shortcutTipFor="mode.edit"
       >
-        <mat-icon
-          appShortcutTip="Edit"
-          shortcutTipFor="mode.edit"
-          svgIcon="edit_outline"
-        ></mat-icon>
+        <mat-icon svgIcon="edit_outline"></mat-icon>
         <span class="tabLabel">Edit</span>
       </button>
 

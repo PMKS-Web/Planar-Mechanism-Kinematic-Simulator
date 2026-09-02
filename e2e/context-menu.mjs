@@ -200,7 +200,7 @@ check(
 );
 check(
   'the destructive row names what goes with it',
-  ownDelete(jointA)?.label === 'Delete Joint and Link OA',
+  ownDelete(jointA)?.label === 'Delete Joint (and Link OA)',
   ownDelete(jointA)?.label
 );
 check(
@@ -345,7 +345,7 @@ check(
 );
 check(
   'and the deletion says it takes the whole part',
-  ownDelete(cylinderJoint)?.label === 'Delete Joint and Cylinder',
+  ownDelete(cylinderJoint)?.label === 'Delete Joint (and Cylinder)',
   ownDelete(cylinderJoint)?.label
 );
 check(

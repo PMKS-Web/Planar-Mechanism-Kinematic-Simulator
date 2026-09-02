@@ -562,12 +562,14 @@ export class ContextMenuBuilderService {
     const doomed = this.mechanism
       .linksRemovedByDeleting(joint)
       .filter((link) => !(link instanceof SliderBlock) && !inside.has(link.id));
+    // The thing named goes; what goes with it is in brackets, so the row reads
+    // as one action with a consequence rather than a list of three things.
     if (!sealed) {
-      return doomed.length === 0 ? 'Delete Joint' : `Delete Joint and ${this.bodyList(doomed)}`;
+      return doomed.length === 0 ? 'Delete Joint' : `Delete Joint (and ${this.bodyList(doomed)})`;
     }
     return doomed.length === 0
-      ? 'Delete Joint and Cylinder'
-      : `Delete Joint, Cylinder and ${this.bodyList(doomed)}`;
+      ? 'Delete Joint (and Cylinder)'
+      : `Delete Joint (and Cylinder, ${this.bodyList(doomed)})`;
   }
 
   private jointSubtitle(joint: Joint): string {

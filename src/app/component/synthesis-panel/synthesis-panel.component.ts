@@ -159,6 +159,11 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.sizeCouplerToView();
     this.readFromModel();
+    // Coming back to the tab with placing still armed: leaving handed the
+    // wheel to the canvas, and nothing else re-asks for it until the design
+    // next changes -- so the wheel zoomed the grid and turned the position
+    // both at once.
+    this.claimWheel();
 
     this.subs.push(
       this.design.valueChanges.subscribe(() => {

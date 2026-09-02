@@ -288,6 +288,7 @@
         @if (sliderBlock) {
           <collapsible-subseciton
             panelLive
+            [attr.inert]="playingNow() || null"
             titleLabel="Mass Settings"
             [expanded]="sectionExpanded['JMass']"
             (opened)="sectionExpanded['JMass'] = true"
@@ -442,6 +443,7 @@
         }
         <collapsible-subseciton
           panelLive
+          [attr.inert]="playingNow() || null"
           titleLabel="Mass Settings"
           [expanded]="sectionExpanded['LMass']"
           (opened)="sectionExpanded['LMass'] = true"
@@ -583,6 +585,7 @@
         </collapsible-subseciton>
         <collapsible-subseciton
           panelLive
+          [attr.inert]="playingNow() || null"
           titleLabel="Mass Settings"
           [expanded]="sectionExpanded['LMass']"
           (opened)="sectionExpanded['LMass'] = true"

@@ -369,7 +369,7 @@ describe('the right-click menu', () => {
         (one) => one.destructive
       )!;
       // The crank is left with one end; the three-joint coupler survives.
-      expect(remove.label).toBe('Delete Joint and Link OA');
+      expect(remove.label).toBe('Delete Joint (and Link OA)');
     });
 
     it('says plain Delete Joint when nothing else goes with it', () => {
@@ -377,7 +377,7 @@ describe('the right-click menu', () => {
       const remove = rows(harness.builder.build(parts.c, noHandlers)).find(
         (one) => one.destructive
       )!;
-      expect(remove.label).toBe('Delete Joint and Link CD');
+      expect(remove.label).toBe('Delete Joint (and Link CD)');
       expect(
         rows(harness.builder.build(parts.t, noHandlers)).find((one) => one.destructive)!.label
       ).toBe('Delete Joint');

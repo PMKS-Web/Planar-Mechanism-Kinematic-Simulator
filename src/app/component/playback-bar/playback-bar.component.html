@@ -323,9 +323,8 @@
     class="stopButton"
     (click)="stop()"
     [disabled]="!canStop"
-    [matTooltip]="shortcuts.tip('Back to the start pose', 'playback.stop')"
-    matTooltipPosition="above"
-    matTooltipShowDelay="600"
+    appShortcutTip="Back to the start pose"
+    shortcutTipFor="playback.stop"
     aria-label="Back to the start pose"
   >
     <mat-icon>stop</mat-icon>

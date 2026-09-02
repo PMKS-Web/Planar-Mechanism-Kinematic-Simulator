@@ -110,8 +110,14 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
     // back with the same value after the panel around it was rebuilt, snaps
     // into place -- a pill sliding into a panel that has just appeared says a
     // choice was made when none was.
-    const slides = this.restingAt !== undefined && this.restingAt !== at;
-    host.classList.toggle('settling', !slides);
+    //
+    // And a pass that changed nothing leaves the class alone. A caller that
+    // writes its options inline hands this a fresh array every pass, which
+    // re-runs the measurement -- and stamping "no transition" on a pill in
+    // the middle of its slide is what froze the text pills while the one with
+    // a held array slid.
+    if (this.restingAt === undefined) host.classList.add('settling');
+    else if (this.restingAt !== at) host.classList.remove('settling');
     host.style.setProperty('--thumb-left', `${chosen.offsetLeft}px`);
     host.style.setProperty('--thumb-width', `${chosen.offsetWidth}px`);
     this.restingAt = at;

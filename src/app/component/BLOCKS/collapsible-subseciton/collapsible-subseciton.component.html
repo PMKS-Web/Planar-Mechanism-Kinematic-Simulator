@@ -11,7 +11,14 @@
       <span class="panel-header__actions"><ng-content select="[headerActions]"></ng-content></span>
     </div>
   }
-  <div [@openClose]="expanded ? 'open' : 'closed'" class="panel-content">
+  <!-- Clipped only while the height is moving. Settled open, the box lets
+       its children out: a switch's hover ripple is wider than the row it sits
+       in, and clipped it drew as a half-circle against the section's edge. -->
+  <div
+    [@openClose]="expanded ? 'open' : 'closed'"
+    class="panel-content"
+    [class.settled]="expanded && settled"
+  >
     <ng-content></ng-content>
   </div>
 </div>

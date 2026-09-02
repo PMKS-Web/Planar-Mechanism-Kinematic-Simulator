@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy, input, output } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, OnChanges, input, output } from '@angular/core';
 import { animate, AUTO_STYLE, state, style, transition, trigger } from '@angular/animations';
 import { MatIcon } from '@angular/material/icon';
 
@@ -34,10 +34,28 @@ import { MatIcon } from '@angular/material/icon';
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [MatIcon],
 })
-export class CollapsibleSubsecitonComponent {
+export class CollapsibleSubsecitonComponent implements OnChanges {
   readonly hideHeader = input<boolean>(false); //If this is true the content cannot be expanded
 
   @Input() expanded: boolean = false;
+  /**
+   * Whether the open/close animation is at rest, which is when the box may
+   * stop clipping. Timed rather than read from the animation's own events: a
+   * synthetic listener needs the animation providers, and a spec that mounts
+   * a panel without them then throws on the listener alone.
+   */
+  settled = true;
+  private settling?: ReturnType<typeof setTimeout>;
+
+  private unsettle(): void {
+    this.settled = false;
+    clearTimeout(this.settling);
+    this.settling = setTimeout(() => (this.settled = true), 200);
+  }
+
+  ngOnChanges(): void {
+    this.unsettle();
+  }
   readonly titleLabel = input<string>('');
 
   readonly closed = output<boolean>();
@@ -45,6 +63,7 @@ export class CollapsibleSubsecitonComponent {
 
   toggleExpand() {
     this.expanded = !this.expanded;
+    this.unsettle();
 
     if (this.expanded) {
       this.opened.emit(true);

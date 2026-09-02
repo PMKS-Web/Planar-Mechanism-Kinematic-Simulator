@@ -327,13 +327,19 @@
            they came for is one click away, on the part this force pushes. The
            way there is a control rather than an instruction -- a panel that can
            name the link can select it. -->
-      <p class="forceRedirect">
-        A force is an input, so it has no curve of its own. What it does is show up in the reactions
-        on the part it acts on.
-        <button type="button" class="forceRedirectAction" (click)="graphTheLinkUnder()">
-          Graph {{ shownForce.link.name }}</button
-        >, which carries it.
-      </p>
+      <!-- The pointer mark every "click something else" in the app wears, with
+           the link that does the clicking kept inside the sentence. -->
+      <div class="helpRule"></div>
+      <div class="helpHint forceRedirect" role="status">
+        <mat-icon>touch_app</mat-icon>
+        <span>
+          A force is an input, so it has no curve of its own. What it does is show up in the
+          reactions on the part it acts on.
+          <button type="button" class="forceRedirectAction" (click)="graphTheLinkUnder()">
+            Graph {{ shownForce.link.name }}</button
+          >, which carries it.
+        </span>
+      </div>
     </panel-section>
   }
 </div>

@@ -270,6 +270,41 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   /** The controls this freeze disabled, so unfreezing gives back only those. */
   private frozenByPose = new Set<AbstractControl>();
 
+  /** Whether any machine on the grid is running. */
+  playingNow(): boolean {
+    const mechanism = this.mechanismService;
+    return (
+      mechanism.isPlaying || mechanism.mechanisms.some((_, i) => mechanism.isMechanismPlaying(i))
+    );
+  }
+
+  /**
+   * The masses are typed at any pose -- they are not read off one -- but not
+   * while the machine runs, like every other setting: a rebuild under a solve
+   * in flight is the one thing the freeze exists to prevent.
+   */
+  private freezeMassesWhilePlaying(): void {
+    if (!this.playingNow()) {
+      const held = [...this.frozenByPlay];
+      this.frozenByPlay.clear();
+      held.forEach((control) => control.enable({ emitEvent: false }));
+      if (held.length) this.syncLockDisabledFields();
+      return;
+    }
+    const freeze = (group: FormGroup, names: string[]) =>
+      names.forEach((name) => {
+        const control = group.get(name);
+        if (!control || control.disabled) return;
+        control.disable({ emitEvent: false });
+        this.frozenByPlay.add(control);
+      });
+    freeze(this.jointForm, ['sliderMass']);
+    freeze(this.linkForm, ['mass', 'massMoI']);
+    freeze(this.cylinderForm, ['barrelMass', 'rodMass', 'headMass']);
+  }
+
+  private frozenByPlay = new Set<AbstractControl>();
+
   /** Whether the input's direction may be turned round -- it moves the pose. */
   driveIsFrozen(): boolean {
     return !this.permission.may('drive');
@@ -302,6 +337,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    */
   ngDoCheck(): void {
     this.freezePoseBoundFields();
+    this.freezeMassesWhilePlaying();
     if (!this.editingRefused() || this.activeSrv.objType !== 'Joint') return;
     const joint = this.activeSrv.selectedJoint;
     if (!joint) return;
@@ -613,6 +649,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     // hold the same field, and the pose freeze must not be undone by the lock
     // rules deciding that particular field is free.
     this.freezePoseBoundFields();
+    this.freezeMassesWhilePlaying();
   }
 
   /**

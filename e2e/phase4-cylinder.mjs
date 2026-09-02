@@ -362,7 +362,7 @@ checkThat(
   // and a block is structurally off the table on a sealed part, so that row is
   // absent rather than grayed.
   'the mount menu names the cylinder in its Delete and offers no Slider',
-  mountMenu.some((i) => i.label.startsWith('Delete Joint and Cylinder')) &&
+  mountMenu.some((i) => i.label.startsWith('Delete Joint (and Cylinder')) &&
     mountMenu.every((i) => i.label !== 'Slider'),
   JSON.stringify(mountMenu)
 );
