@@ -376,6 +376,22 @@ export class AnalysisSetupComponent {
   }
 
   /**
+   * A mass is typed whenever the machine is standing still.
+   *
+   * Not the pose rule the Edit panel's numbers follow: a mass is not read off
+   * a pose and needs no transform back to the start, so a machine parked
+   * mid-cycle in any mode can have its masses changed and its force graphs
+   * re-solved under them. While it runs the table is read-only, like every
+   * other setting -- the numbers would be changing under a solve in flight.
+   */
+  massEditable(): boolean {
+    const mechanism = this.mechanism;
+    return (
+      !mechanism.isPlaying && !mechanism.mechanisms.some((_, i) => mechanism.isMechanismPlaying(i))
+    );
+  }
+
+  /**
    * Whether this row's inertia can be typed at. A block is a point mass with
    * no inertia of its own, and a sealed cylinder's parts always follow their
    * own shapes — which is what lets the cylinder card promise exactly that.
@@ -392,24 +408,6 @@ export class AnalysisSetupComponent {
 
   inertiaUnitLabel(): string {
     return this.nup.unitLabel(this.nup.displayInertiaUnit(this.settings.lengthUnit.value));
-  }
-
-  /**
-   * A mass is typed whenever the machine is standing still.
-   *
-   * Not the pose rule the Edit panel's numbers follow: a mass is not read off
-   * a pose and needs no transform back to the start, so a machine parked
-   * mid-cycle in any mode can have its masses changed and its force graphs
-   * re-solved under them. While it runs the table is read-only, like every
-   * other setting -- the numbers would be changing under a solve in flight.
-   */
-  massEditable(): boolean {
-    const mechanism = this.mechanism;
-    return !mechanism.isPlaying && !mechanism.mechanisms.some((_, i) => mechanism.isMechanismPlaying(i));
-  }
-
-  inEditMode(): boolean {
-    return this.tabs.getCurrentTab() === TabID.EDIT;
   }
 
   anyInertiaIsCustom(): boolean {
@@ -499,25 +497,6 @@ export class AnalysisSetupComponent {
     // The arrow next to a mass cell points at the mass fields, so land on
     // them even when the reader last left that section folded shut.
     if (part instanceof RealLink && EditPanelComponent.instance) {
-      EditPanelComponent.instance.sectionExpanded['LMass'] = true;
-    }
-  }
-
-  /**
-   * Go and edit the masses, from the table that will not let you.
-   *
-   * The header used to say "Editable in Edit mode", which is a true sentence
-   * and the wrong shape: the reader is looking at the numbers they want to
-   * change and being told, in gray, where the changing happens. It is a
-   * one-press trip and the panel already knows how to make it.
-   *
-   * No part to select, unlike `goTo`: the subject is the table as a whole, so
-   * this opens the mode and the Edit panel's own mass section and leaves the
-   * choosing of a body to the reader.
-   */
-  editMasses(): void {
-    this.tabs.setTab(TabID.EDIT);
-    if (EditPanelComponent.instance) {
       EditPanelComponent.instance.sectionExpanded['LMass'] = true;
     }
   }

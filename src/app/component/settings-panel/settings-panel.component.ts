@@ -299,6 +299,19 @@ export class SettingsPanelComponent implements OnDestroy {
 
     this.mechanismSrv.updateLinkageUnits(fromUnit, toUnit);
 
+    // Nothing drawn, nothing to hold still: the compensation below exists to
+    // keep a mechanism at its apparent size, and applied to an empty grid it
+    // zoomed the view a hundredfold and raised the far-too-large warning over
+    // a drawing that did not exist. The view starts over instead.
+    if (this.mechanismSrv.joints.length === 0 && this.mechanismSrv.links.length === 0) {
+      SettingsService._objectScale.next(
+        this.nup.convertLength(SettingsService.objectScale, fromUnit, toUnit)
+      );
+      this.svgGrid.scaleToFitLinkage();
+      this.mechanismSrv.onMechUpdateState.next(2);
+      return;
+    }
+
     // Compensate the viewport zoom so the mechanism keeps its apparent size,
     // then scale visual affordances to match.
     const tempOriginInScreen = this.svgGrid.SVGtoScreen(new Coord(0, 0));

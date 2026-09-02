@@ -621,15 +621,16 @@ record(
 await page.mouse.up();
 await page.waitForTimeout(1000);
 
+// On its own hint row, with the drag mark, beside the click row: two gestures,
+// two ideas, two icons.
 record(
   'the panel says that dragging does not move what is graphed',
-  /Drag a part to tune it/.test(await page.locator('app-analysis-panel').innerText()) ||
-    /Drag a part to tune it/.test(
-      await page.evaluate(() => {
-        const panel = window.ng.getComponent(document.querySelector('app-analysis-panel'));
-        return panel.analysisHelpHint;
-      })
-    )
+  /Drag a part to tune it/.test(
+    await page.evaluate(() => {
+      const panel = window.ng.getComponent(document.querySelector('app-analysis-panel'));
+      return panel.analysisTuneHint;
+    })
+  )
 );
 
 record('no page errors', errors.length === 0, errors.slice(0, 3));

@@ -290,6 +290,18 @@
       }
     }
 
+    // The page keeps its own width while the frame's width animates, and the
+    // frame clips it. As a flex item it shrank with the frame, so a switch
+    // from Edit to an analysis mode re-wrapped every line of the panel on
+    // every frame of the widening; now the wider panel is laid out once, at
+    // its width, and revealed. Not on the phone, where the page is as wide as
+    // the sheet and has no width of its own to keep.
+    &:not(.sheet) > .page1,
+    &:not(.sheet) > .page2,
+    &:not(.sheet) > .page3 {
+      flex: 0 0 auto;
+    }
+
     // --- the phone layout ---------------------------------------------
     //
     // Below `ViewportService`'s breakpoint the panel stops being a side panel.

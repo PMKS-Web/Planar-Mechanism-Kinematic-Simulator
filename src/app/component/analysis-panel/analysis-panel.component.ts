@@ -173,16 +173,24 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   get analysisHelpHint(): string {
     // The verb the reader's device gives them, as everywhere else in the app.
     const pick = this.viewport.isTouch() ? 'Tap' : 'Click';
-    // The second sentence is the half a reader will not guess. Dragging edits
-    // here now, and it deliberately does *not* move what is graphed -- so
-    // without saying so, a drag that leaves the heading on another joint reads
-    // as a stale panel rather than as the point.
-    const tune = this.viewport.isTouch()
-      ? ' Drag a part to tune it; the graphs stay on whatever you tapped.'
-      : ' Drag a part to tune it; the graphs stay on whatever you clicked.';
     return this.showForce
-      ? `${pick} a joint for the reactions it carries, or a link for the forces at its joints. The input joint carries the effort that drives the mechanism.${tune}`
-      : `${pick} a joint for position, velocity and acceleration graphs, or a link for its angular kinematics.${tune}`;
+      ? `${pick} a joint for the reactions it carries, or a link for the forces at its joints. The input joint carries the effort that drives the mechanism.`
+      : `${pick} a joint for position, velocity and acceleration graphs, or a link for its angular kinematics.`;
+  }
+
+  /**
+   * The other thing a hand can do here, on its own line with its own mark.
+   *
+   * Dragging edits here now, and it deliberately does *not* move what is
+   * graphed -- so without saying so, a drag that leaves the heading on another
+   * joint reads as a stale panel rather than as the point. One idea per row,
+   * as the Edit panel's empty state has it: selecting and tuning are two
+   * gestures, and one icon for both said only "the pointer".
+   */
+  get analysisTuneHint(): string {
+    return this.viewport.isTouch()
+      ? 'Drag a part to tune it. The graphs stay on whatever you tapped.'
+      : 'Drag a part to tune it. The graphs stay on whatever you clicked.';
   }
 
   /**

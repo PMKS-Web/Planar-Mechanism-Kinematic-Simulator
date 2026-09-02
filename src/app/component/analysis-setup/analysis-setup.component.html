@@ -45,17 +45,13 @@
   @if (mode() === 'force') {
     @if (massRows().length > 0) {
       <div class="mechBlock">
-        <!-- A row rather than one button, because the thing on the right is a
-             control now and a button inside a button is not markup. The header
-             keeps its whole width as the fold's target; Edit Masses sits beside
-             it and stops the press reaching it. -->
+        <!-- The header keeps its whole width as the fold's target. It used to
+             carry an Edit Masses button to the Edit panel; the table is typed
+             into here now whenever the machine stands still. -->
         <div class="sectionHeader sectionHeaderRow">
           <button class="sectionToggle" (click)="massesOpen = !massesOpen">
             <span class="sectionName">Masses</span>
           </button>
-          @if (!inEditMode()) {
-            <button class="actionButton slim" (click)="editMasses()">Edit Masses</button>
-          }
           <button class="sectionToggle chevron" (click)="massesOpen = !massesOpen">
             <mat-icon>{{ massesOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
           </button>
