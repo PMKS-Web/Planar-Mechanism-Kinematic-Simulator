@@ -32,6 +32,18 @@ export function formatAnalysisValue(value: number): string {
 }
 
 /**
+ * The same value, set for reading rather than for parsing.
+ *
+ * A typographic minus instead of a hyphen: the sign is the one thing about a
+ * reading a reader must not miss, and a hyphen at eleven pixels is a speck.
+ * The axes of the plot beside it are lettered the same way. Files keep the
+ * hyphen, because a spreadsheet does not read a minus sign.
+ */
+export function formatReading(value: number): string {
+  return formatAnalysisValue(value).replace('-', '\u2212');
+}
+
+/**
  * What an angular series has to be multiplied by to be in the unit it is labeled with.
  *
  * The solver does not hand these out in one unit. A link's angle is converted

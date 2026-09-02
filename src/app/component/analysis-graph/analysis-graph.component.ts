@@ -32,7 +32,7 @@ import { KinematicsSolver } from 'src/app/model/mechanism/kinematic-solver';
 import {
   ANALYSIS_SERIES_COLORS,
   angularScale,
-  formatAnalysisValue,
+  formatReading,
 } from 'src/app/model/analysis-series';
 export { ANALYSIS_SERIES_COLORS };
 import { ForceAnalysisMode } from 'src/app/model/mechanism/force-solver';
@@ -43,8 +43,10 @@ import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { AnalysisSampleService } from '../../services/analysis-sample.service';
-import { DragStateService } from '../../services/drag-state.service';
-import { SaveHistoryService } from '../../services/save-history.service';
+import {
+  AnalysisCompareService,
+  ComparisonHolder,
+} from '../../services/analysis-compare.service';
 import { skip, Subscription } from 'rxjs';
 import { AnalysisApexChartComponent } from './analysis-apex-chart.component';
 
@@ -183,11 +185,31 @@ export function readableRange(values: number[]): { low: number; high: number } {
   return spread > 0 && high - low > spread * 4 ? inner : { low, high };
 }
 
-/** The same ink, ghosted: "the same thing, earlier", as the start-pose ghost says it. */
+/**
+ * The same ink, ghosted: "the same thing, earlier", as the start-pose ghost
+ * says it.
+ *
+ * Not one alpha for all three. Amber at the indigo's alpha all but vanished
+ * against white, so the magnitude's earlier curve was a rumor while the
+ * components' were legible; it is given a little more.
+ */
 export function ghostOf(color: string): string {
   const hex = color.replace('#', '');
   const to = (at: number) => parseInt(hex.slice(at, at + 2), 16);
-  return hex.length === 6 ? `rgba(${to(0)}, ${to(2)}, ${to(4)}, 0.35)` : color;
+  const alpha = color.toLowerCase() === ANALYSIS_SERIES_COLORS.Z.toLowerCase() ? 0.42 : 0.34;
+  return hex.length === 6 ? `rgba(${to(0)}, ${to(2)}, ${to(4)}, ${alpha})` : color;
+}
+
+/** One series' reach, as the table under the plot states it. */
+export interface SeriesStat {
+  /** "X", "Y", "Magnitude" -- or nothing on a plot with one series, where the swatch is the legend. */
+  label: string;
+  color: string;
+  ghost: string;
+  max: string;
+  min: string;
+  /** The same two numbers from before the drag, while a comparison is shown. */
+  before?: { max: string; min: string };
 }
 
 export function defaultSeriesSelection(count: number, analysis: string): SeriesSelection {
@@ -221,15 +243,14 @@ export function defaultSeriesSelection(count: number, analysis: string): SeriesS
   imports: [AnalysisApexChartComponent, MatIcon],
 })
 export class AnalysisGraphComponent
-  implements OnInit, AfterViewInit, OnDestroy, OnChanges, DoCheck
+  implements OnInit, AfterViewInit, OnDestroy, OnChanges, DoCheck, ComparisonHolder
 {
   private fb = inject(FormBuilder);
   private mechanismService = inject(MechanismService);
   settingsService = inject(SettingsService);
   private nup = inject(NumberUnitParserService);
   private samples = inject(AnalysisSampleService);
-  private drag = inject(DragStateService);
-  private history = inject(SaveHistoryService);
+  private comparison = inject(AnalysisCompareService);
 
   public chartOptions: Partial<ChartOptions> = {
     annotations: {
@@ -238,7 +259,7 @@ export class AnalysisGraphComponent
     },
     chart: {
       width: '100%',
-      height: '250px', //300
+      height: '190px',
       // Off, both the first draw and the tween between one dataset and the
       // next. A chart that morphs is drawing values the mechanism never had:
       // reverse a four-bar and the speed of its crank pin, which is constant,
@@ -264,7 +285,7 @@ export class AnalysisGraphComponent
     },
     stroke: {
       curve: 'straight',
-      width: 2,
+      width: 2.6,
     },
     colors: [ANALYSIS_SERIES_COLORS.X, ANALYSIS_SERIES_COLORS.Y, ANALYSIS_SERIES_COLORS.Z],
     tooltip: {
@@ -289,6 +310,10 @@ export class AnalysisGraphComponent
     grid: {
       position: 'back',
       show: true,
+      // Faint, as the mock rules its plot: the lines are there to be read
+      // against, not to be seen.
+      borderColor: '#eceef5',
+      strokeDashArray: 0,
       padding: {
         top: -14,
         bottom: -8,
@@ -322,9 +347,9 @@ export class AnalysisGraphComponent
         // Clear of the plot's own frame, which they used to sit against.
         offsetY: 4,
         style: {
-          fontSize: '12px',
+          fontSize: '11px',
           fontWeight: 400,
-          colors: ['#373d3f', '#373d3f'],
+          colors: ['#5f6368', '#5f6368'],
         },
         formatter: function (val) {
           return formatAxisEnd(Number(val));
@@ -332,12 +357,25 @@ export class AnalysisGraphComponent
       },
       tickAmount: 1,
       title: {
-        text: 'Time (seconds)',
+        text: 'Time (s)',
+        style: {
+          fontSize: '11px',
+          fontWeight: 400,
+          color: '#5f6368',
+        },
         // Up beside the two ends rather than on a line of its own below them,
         // and centered between them: Apex centers it on the whole canvas, which
         // the y axis's own labels make eight pixels wider on the left.
         offsetY: -20,
         offsetX: -8,
+      },
+      // The plot's own frame is one line, up its left edge; the time axis
+      // reads from its two end labels.
+      axisBorder: {
+        show: false,
+      },
+      axisTicks: {
+        show: false,
       },
       tooltip: {
         enabled: false,
@@ -351,19 +389,25 @@ export class AnalysisGraphComponent
       // one plot were lettered differently.
       labels: {
         style: {
-          fontSize: '12px',
+          fontSize: '11px',
           fontWeight: 400,
+          colors: ['#5f6368'],
         },
+        // One decimal, the minus the readings use.
+        formatter: (value: number) => formatAxisEnd(value).replace('-', '\u2212'),
+      },
+      axisBorder: {
+        show: true,
+        color: '#c8ccd8',
       },
       min: FLOOR_OF,
       max: CEIL_OF,
+      // No title. The quantity and its unit are the row this plot sits in,
+      // and the table under it says the unit beside every number; a title up
+      // the side spent forty pixels of a 400px panel saying it a third time.
       title: {
-        text: 'setLater',
-        style: {
-          fontSize: '12px',
-        },
+        text: '',
       },
-      // tickAmount: 1,
       decimalsInFloat: 1,
     },
     legend: {
@@ -385,6 +429,8 @@ export class AnalysisGraphComponent
   @Input() mechProp: string = '';
   @Input() mechPart: string = '';
   @Input() reactionLinkId: string = '';
+  /** What the numbers are in, as the row above already spells it. */
+  @Input() unit: string = '';
 
   /**
    * Which series to open on, when the card above already has an opinion.
@@ -433,8 +479,12 @@ export class AnalysisGraphComponent
       .map((name) => (name === 'Z' ? this.seriesLabel('z') : name))
       .filter((name): name is string => !!name);
     const plotted = names.length ? `, plotting ${names.join(', ')}` : '';
-    return `Graph of ${this.graphLabel} over one cycle${plotted}. The same numbers are available from Export Data in the top strip.`;
+    const what = this.axisTitle ? `${this.axisTitle}, ` : '';
+    return `Graph of ${what}${this.graphLabel} over one cycle${plotted}. The same numbers are available from Export Data in the top strip.`;
   }
+
+  /** The quantity and its unit, as the axis used to be titled; the summary still says it. */
+  axisTitle = '';
 
   /** The stroke the plot is drawn with, which the comparison overlay changes. */
   displayedStroke: ApexStroke = {};
@@ -450,8 +500,16 @@ export class AnalysisGraphComponent
    * compares against the pose it started from.
    */
   private baseline?: { series: ApexAxisChartSeries; low: number; high: number };
-  /** Which history step the baseline was taken during. */
-  private baselineAt = -1;
+
+  /** The baseline as the reader wants it shown: nothing while the switch is off. */
+  private get comparedBaseline():
+    | { series: ApexAxisChartSeries; low: number; high: number }
+    | undefined {
+    return this.comparison.compare ? this.baseline : undefined;
+  }
+
+  /** Whether the comparison switch was on when the plot was last drawn. */
+  private compareShown = true;
 
   /** Whether a gesture is in flight right now, as this component last saw it. */
   private gestureLive = false;
@@ -475,18 +533,14 @@ export class AnalysisGraphComponent
    * to.
    */
   ngDoCheck(): void {
-    const live = this.drag.isPointerDown && this.drag.travelled;
+    const live = this.comparison.live;
     if (live && !this.gestureLive) {
       this.gestureLive = true;
-      // Each drag compares against the pose it started from, so the next one
-      // replaces the last one's answer rather than accumulating over it.
-      this.takeBaseline();
     }
-    // A history step is not a drag, and the curve it restores may be the very
-    // one the baseline was taken from -- two identical lines is confusion
-    // rather than comparison. `historyRevision` moves on undo and redo alone.
-    if (this.baseline && this.history.historySteps !== this.baselineAt) {
-      this.baseline = undefined;
+    // The switch in the panel's head. Off, the earlier curves and their numbers
+    // leave the plot; on again, they come back as they were.
+    if (this.comparison.compare !== this.compareShown) {
+      this.compareShown = this.comparison.compare;
       this.applySeriesVisibility();
     }
     if (live && this.mechanismService.solveRevision !== this.drawnSolve) {
@@ -500,12 +554,13 @@ export class AnalysisGraphComponent
   }
 
   /**
-   * Snapshot what is on the plot right now.
+   * Snapshot what is on the plot right now. Called by the comparison service
+   * on the first travel of a drag, from the app shell's own check.
    *
    * Only where there is something to compare: a graph with no curve yet has no
    * honest "before" to show, and one opened mid-gesture never had one.
    */
-  private takeBaseline(): void {
+  takeBaseline(): void {
     const series = this.chartOptions.series ?? [];
     if (!series.length) return;
     const values: number[] = [];
@@ -524,7 +579,6 @@ export class AnalysisGraphComponent
     const span = values.length
       ? { low: Math.min(...values), high: Math.max(...values) }
       : { low: 0, high: 0 };
-    this.baselineAt = this.history.historySteps;
     this.baseline = {
       series: series.map((one) => ({
         ...one,
@@ -536,6 +590,18 @@ export class AnalysisGraphComponent
       low: span.low,
       high: span.high,
     };
+  }
+
+  /**
+   * Forget the earlier curves. Called on undo and redo: a history step is not
+   * a drag, and the curve it restores may be the very one the baseline was
+   * taken from -- two identical lines is confusion rather than comparison.
+   */
+  dropBaseline(): void {
+    if (!this.baseline) return;
+    this.baseline = undefined;
+    this.applySeriesVisibility();
+    this.updateYAxis();
   }
 
   /**
@@ -563,62 +629,55 @@ export class AnalysisGraphComponent
     this.updateChartData();
   }
 
-  /** Forget the comparison -- the reader has read it, or moved on. */
-  clearBaseline(): void {
-    this.baseline = undefined;
-    this.applySeriesVisibility();
-    this.updateYAxis();
-  }
-
-  /** Whether there is a "before" curve on the plot to clear. */
+  /** Whether there is a curve from before the drag on this plot. */
   get hasBaseline(): boolean {
     return !!this.baseline;
   }
 
+  private statsCache?: {
+    series: ApexAxisChartSeries;
+    held: unknown;
+    stats: SeriesStat[];
+  };
+
   /**
-   * What the peak was, and what it is now.
+   * What each plotted series reaches, and what it reached before the drag.
    *
-   * The workflow this whole overlay exists for is "reduce the acceleration
-   * peak", so the peak is the number to say. Two curves is squinting; two
-   * numbers and an arrow is reading. Largest magnitude of whatever series are
-   * shown, in the unit the axis is already lettered in -- the same arithmetic
-   * the plot is drawn from, so the readout cannot disagree with the picture.
+   * The workflow this whole overlay exists for is "move the acceleration
+   * peak", so the peak is the number to say -- and the trough, because a peak
+   * a reader wants smaller may be the negative one. The true reach of each
+   * curve, not the range the axis is drawn to: the axis is the thing that is
+   * allowed to trim, and a curve leaving the top of the plot is how it says so.
+   *
+   * Cached on the series the plot is showing: the template asks on every pass,
+   * and the answer changes only when the plot does.
    */
-  get peakReadout(): { before: string; after: string; better: boolean; same: boolean } | null {
-    const held = this.baseline;
-    if (!held) return null;
-    const peakOf = (series: ApexAxisChartSeries) => {
-      const values: number[] = [];
-      series.forEach((one) =>
-        one.data.forEach((point) => {
-          const value = this.pointValue(point);
-          if (value !== null) values.push(value);
-        })
-      );
-      if (!values.length) return null;
-      // The true peak of each curve, both measured the same way. Trimmed, the
-      // two numbers were computed per-curve while the axis was computed over
-      // both and then rounded, so the pill could read `35.61 -> 77.13` above a
-      // plot whose "before" curve visibly reached 180 -- three different
-      // answers to one question. The axis is the thing that is allowed to trim,
-      // and a curve leaving the top of the plot is how it says so.
-      return Math.max(...values.map((one) => Math.abs(one)));
-    };
-    const shown = new Set(this.displayedSeries.map((one) => one.name?.replace(BEFORE, '')));
-    const before = peakOf(held.series.filter((one) => shown.has(one.name?.replace(BEFORE, ''))));
-    const after = peakOf(
-      (this.chartOptions.series ?? []).filter((one) => shown.has(one.name ?? ''))
-    );
-    if (before === null || after === null) return null;
-    // A hair either way is the solver's own noise, not an improvement anybody
-    // made -- and an arrow claiming one is worse than no arrow.
-    const same = Math.abs(after - before) <= Math.max(Math.abs(before), 1e-9) * 0.005;
-    return {
-      before: formatAnalysisValue(before),
-      after: formatAnalysisValue(after),
-      better: !same && after < before,
-      same,
-    };
+  get stats(): SeriesStat[] {
+    const held = this.comparedBaseline;
+    if (this.statsCache?.series === this.displayedSeries && this.statsCache.held === held) {
+      return this.statsCache.stats;
+    }
+    const live = this.displayedSeries.filter((one) => !BEFORE.test(one.name ?? ''));
+    const reach = (values: number[]) =>
+      values.length
+        ? { max: formatReading(Math.max(...values)), min: formatReading(Math.min(...values)) }
+        : undefined;
+    const stats = live.map((one) => {
+      const key = (one.name === 'Z' ? 'z' : one.name === 'Y' ? 'y' : 'x') as 'x' | 'y' | 'z';
+      const earlier = held?.series.find((was) => was.name === `${one.name}${BEFORE_SUFFIX}`);
+      const now = reach(this.valuesOf([one]));
+      return {
+        // One series needs no name: the swatch is the whole legend.
+        label: live.length > 1 ? this.seriesLabel(key) : '',
+        color: this.colorForSeries(one.name),
+        ghost: ghostOf(this.colorForSeries(one.name)),
+        max: now?.max ?? '\u2014',
+        min: now?.min ?? '\u2014',
+        before: earlier ? reach(this.valuesOf([earlier])) : undefined,
+      };
+    });
+    this.statsCache = { series: this.displayedSeries, held, stats };
+    return stats;
   }
 
   noDataSelected: boolean = false;
@@ -709,6 +768,7 @@ export class AnalysisGraphComponent
 
     //Param 4: mechPart: If Joint 'a','b','c'... If Link 'ab','bc','cd'...
     this.determineChart(this.analysis, this.analysisType, this.mechProp, this.mechPart);
+    this.comparison.register(this);
 
     this.subscriptions.add(
       this.seriesCheckboxForm.valueChanges.subscribe(() => this.applySeriesVisibility())
@@ -787,6 +847,11 @@ export class AnalysisGraphComponent
     this.seriesCheckboxForm.patchValue({ [key]: !this.isSeriesShown(key) });
   }
 
+  /** Draw exactly these: the row's Magnitude / X & Y switch, applied. */
+  showSeries(selection: SeriesSelection): void {
+    this.seriesCheckboxForm.patchValue({ ...selection });
+  }
+
   colorForSeriesKey(key: 'x' | 'y' | 'z'): string {
     return this.colorForSeries(this.seriesLabel(key) === 'Magnitude' ? 'Z' : key.toUpperCase());
   }
@@ -806,7 +871,7 @@ export class AnalysisGraphComponent
     // it rather than under it -- what is being compared *to* belongs behind.
     // Same names with a suffix, so the tooltip says which is which; the
     // visibility toggles are the live names, so hiding Y hides both Ys.
-    const before = (this.baseline?.series ?? []).filter((series) =>
+    const before = (this.comparedBaseline?.series ?? []).filter((series) =>
       selectedNames.has(BEFORE.test(series.name ?? '') ? series.name!.replace(BEFORE, '') : '')
     );
     this.displayedSeries = [...before, ...live];
@@ -815,25 +880,22 @@ export class AnalysisGraphComponent
         ? ghostOf(this.colorForSeries(series.name!.replace(BEFORE, '')))
         : this.colorForSeries(series.name)
     );
-    // Dashed only while it is provisional, which is while the hand is still
-    // down. Let go and it is simply what the mechanism does now, so it settles
-    // into an ordinary solid curve -- and what tells the two apart from then on
-    // is that the earlier one is ghosted, which is the same word the start-pose
-    // ghost uses for the same idea.
+    // The earlier curve is the marked one: thinner, dashed, in its own ink
+    // faded, under a live curve drawn exactly as it always is. The live curve
+    // used to be dashed while the hand was down and settle to solid on release,
+    // which was two encodings changing at the one moment the reader finally had
+    // a still frame to read; now nothing on the plot changes when they let go.
     this.displayedStroke = {
       ...this.chartOptions.stroke,
-      width: this.displayedSeries.map(() => 2),
-      dashArray: this.displayedSeries.map((series) =>
-        !BEFORE.test(series.name ?? '') && this.gestureLive ? 5 : 0
-      ),
+      width: this.displayedSeries.map((series) => (BEFORE.test(series.name ?? '') ? 1.8 : 2.6)),
+      dashArray: this.displayedSeries.map((series) => (BEFORE.test(series.name ?? '') ? 5 : 0)),
     };
-    if (!this.baseline) {
-      this.displayedStroke = { ...this.chartOptions.stroke };
-    }
     this.noDataSelected = this.displayedSeries.length === 0;
     this.applyYAxisScale();
     this.shownSeriesChange.emit({ x: !!data.x, y: !!data.y, z: !!data.z });
-    if (this.chart) this.showAnnotations();
+    // Into the options even before there is a chart to draw on: the first
+    // render reads them from there.
+    this.showAnnotations();
   }
 
   /**
@@ -866,6 +928,10 @@ export class AnalysisGraphComponent
     // the same height as the last. Frozen to the baseline and widened only when
     // the live curve leaves it -- a clipped peak would lie, and a peak that
     // stops growing because the axis grew with it says nothing.
+    // The baseline itself, not the baseline as shown: the switch hides the
+    // earlier curves, and the axis must not jump when it is flipped -- so the
+    // range they were read against stays in force, and the live curve stays
+    // trimmed, until the comparison is actually gone.
     const held = this.baseline;
     // The live values only. The baseline contributes the range it was drawn to,
     // untouched; what can contain a singularity is the curve the drag is making
@@ -933,47 +999,56 @@ export class AnalysisGraphComponent
     return Math.max(Math.min(step, mechanism.joints.length - 1), 0);
   }
 
+  /**
+   * The playhead and its markers: the zero line, the line at the time on
+   * screen, and a dot where each curve crosses it.
+   *
+   * Written into the chart's options *and* drawn onto the chart. Drawn, so a
+   * playhead moving under playback costs one cheap call rather than a redraw
+   * per frame; and written into the options, because a redraw for any other
+   * reason -- the series switched, the axis refitted, the panel settling its
+   * width -- starts from the options and would otherwise come up without it.
+   * A row that has just opened redraws three times in a few milliseconds, and
+   * chasing each one with a fresh drawing lost the race every time.
+   */
   private showAnnotations() {
-    if (!this.chart) return;
+    const held = this.chartOptions.annotations!;
+    held.xaxis = [];
+    held.yaxis = [];
+    held.points = [];
     // Nothing while the hand is down. The playhead and its point markers are
     // recomputed on every move, and mid-gesture they are three things flickering
     // between the reader and the one thing they are looking at.
     if (this.gestureLive) {
-      this.chart.clearAnnotations();
+      this.chart?.clearAnnotations();
       return;
     }
+    // Zero, a shade darker than the other gridlines: where a curve crosses it
+    // is usually the fact the reader came for.
+    held.yaxis.push({ y: 0, borderColor: '#c8ccd8', strokeDashArray: 0 });
     const timeIndex = this.ownSample();
-    if (timeIndex === 0) {
-      this.chart.clearAnnotations();
-      return;
-    }
     const timeSeconds =
       this.mechanismService.mechanismForId(this.mechPart)?.timeNum[timeIndex] ?? timeIndex;
-    if (
+    const anyShown =
       this.seriesCheckboxForm.value.x ||
       this.seriesCheckboxForm.value.y ||
-      this.seriesCheckboxForm.value.z
-    ) {
-      this.chart.clearAnnotations();
-      this.chart.addXaxisAnnotation(
-        {
-          x: timeSeconds,
-          borderColor: '#000000',
-          // Under the line rather than over it. Above, it was pushed past the
-          // top of the plot and clipped by the card, which left a white box
-          // with half a label in it hanging over the chart.
-          label: {
-            // One decimal, like the two ends of the axis it sits on: "T= 1"
-            // beside "0.0" and "3.0" is the same number written two ways.
-            text: 'T= ' + formatAxisEnd(timeSeconds),
-            orientation: 'horizontal',
-            position: 'bottom',
-            offsetY: 4,
-          },
-        },
-        false
-      );
+      this.seriesCheckboxForm.value.z;
+    if (timeIndex > 0 && anyShown) {
+      // A plain line. The time it stands at is the panel's subtitle, and what
+      // each curve reads there is the row's own number, so a box on the plot
+      // said both a second time.
+      held.xaxis.push({ x: timeSeconds, borderColor: '#2c2c2c', strokeDashArray: 0 });
+      this.markCurves(timeIndex, timeSeconds);
     }
+    if (!this.chart) return;
+    this.chart.clearAnnotations();
+    held.yaxis.forEach((one) => this.chart.addYaxisAnnotation(one, false));
+    held.xaxis.forEach((one) => this.chart.addXaxisAnnotation(one, false));
+    held.points.forEach((one) => this.chart.addPointAnnotation(one, false));
+  }
+
+  /** A dot on each shown curve at the playhead, in the curve's own ink. */
+  private markCurves(timeIndex: number, timeSeconds: number): void {
 
     const xSeries = this.chartOptions.series?.find((s) => s.name === 'X');
     const ySeries = this.chartOptions.series?.find((s) => s.name === 'Y');
@@ -1004,24 +1079,24 @@ export class AnalysisGraphComponent
   ): void {
     const value = this.pointValue(series.data[timeIndex]);
     if (value === null) return;
-    this.chart.addPointAnnotation(
-      {
-        x: timeSeconds,
-        y: value,
-        marker: { strokeColor: color, shape: 'square' },
-        label: {
-          borderColor: color,
-          fillColor: '#000000',
-          orientation: 'horizontal',
-          text: formatAnalysisValue(value),
-        },
+    this.chartOptions.annotations!.points!.push({
+      x: timeSeconds,
+      y: value,
+      // A dot in the series' own ink with a white rim, and no label: the
+      // number it marks is the row's own value.
+      marker: {
+        size: 3.4,
+        fillColor: color,
+        strokeColor: '#ffffff',
+        strokeWidth: 1.6,
+        shape: 'circle',
       },
-      false
-    );
+    });
   }
 
   ngOnDestroy(): void {
     this.destroyed = true;
+    this.comparison.unregister(this);
     if (this.chartSyncTimer) clearTimeout(this.chartSyncTimer);
     this.subscriptions.unsubscribe();
   }
@@ -1232,14 +1307,10 @@ export class AnalysisGraphComponent
         return { x: times[index] ?? index, y: Number.isFinite(value) ? value : null };
       }),
     })) as ApexAxisChartSeries;
-    const yaxis = this.chartOptions.yaxis!;
+    this.axisTitle = yAxisTitle;
     this.chartOptions = {
       ...this.chartOptions,
       series: chartSeries,
-      yaxis: {
-        ...yaxis,
-        title: { ...yaxis.title, text: yAxisTitle },
-      },
     };
     this.displayedSeries = chartSeries;
     this.displayedColors = chartSeries.map((series) => this.colorForSeries(series.name));

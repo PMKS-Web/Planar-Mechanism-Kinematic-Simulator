@@ -142,6 +142,10 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
     this.chartInstance?.addPointAnnotation(options, pushToMemory);
   }
 
+  addYaxisAnnotation(options: object, pushToMemory?: boolean): void {
+    this.chartInstance?.addYaxisAnnotation(options, pushToMemory);
+  }
+
   private scheduleUpdate(): void {
     if (!this.viewInitialized || this.destroyed) return;
     const generation = ++this.updateGeneration;

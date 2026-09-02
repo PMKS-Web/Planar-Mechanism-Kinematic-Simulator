@@ -1,12 +1,19 @@
 import { SelectedTabService, TabID } from '../../selected-tab.service';
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DoCheck,
+  OnDestroy,
+  OnInit,
+  inject,
+} from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { ViewportService } from '../../services/viewport.service';
 import { ForceAnalysisMode, ForceReactionIndex } from 'src/app/model/mechanism/force-solver';
 import { Mechanism } from 'src/app/model/mechanism/mechanism';
 import { PrisJoint, RealJoint } from 'src/app/model/joint';
 import { RealLink } from 'src/app/model/link';
 import { Cylinder, cylinderJoints, isCylinderInterior } from 'src/app/model/cylinder';
-import { LengthUnit } from 'src/app/model/unit-enums';
 import { ActiveObjService, ActiveObjType } from 'src/app/services/active-obj.service';
 import { Force } from 'src/app/model/force';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -19,6 +26,7 @@ import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.comp
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { AnalysisGraphSectionComponent } from '../analysis-graph-section/analysis-graph-section.component';
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
+import { AnalysisCompareService } from '../../services/analysis-compare.service';
 
 /** One expandable force graph: the reaction between `linkId` and `jointId`. */
 export interface ForceAnalysisRow {
@@ -50,15 +58,87 @@ export interface ForceAnalysisRow {
     RadioComponent,
     FormsModule,
     ReactiveFormsModule,
+    NgTemplateOutlet,
   ],
 })
-export class AnalysisPanelComponent implements OnInit, OnDestroy {
+export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   viewport = inject(ViewportService);
   activeSrv = inject(ActiveObjService);
   private fb = inject(FormBuilder);
   mechanismService = inject(MechanismService);
   settingsService = inject(SettingsService);
   private tabs = inject(SelectedTabService);
+  private comparison = inject(AnalysisCompareService);
+
+  /**
+   * The tuning gesture is polled, not subscribed to: every edit ends in a
+   * rebuild that publishes on nothing, which is the idiom the tutorial card
+   * uses for the same reason.
+   */
+  ngDoCheck(): void {
+    this.comparison.sync();
+  }
+
+  /** A part is under the hand right now. */
+  get tuning(): boolean {
+    return this.comparison.live && !!this.comparison.record;
+  }
+
+  /** What is under the hand -- not necessarily what is graphed. */
+  get heldLabel(): string {
+    return this.comparison.record?.label ?? '';
+  }
+
+  /** Whether any open graph holds the curves from before a drag. */
+  get hasComparison(): boolean {
+    return this.comparison.hasComparison;
+  }
+
+  get compare(): boolean {
+    return this.comparison.compare;
+  }
+
+  toggleCompare(): void {
+    this.comparison.toggleCompare();
+  }
+
+  /**
+   * "Kinematics for Joint C": the mode as a noun, and the part.
+   *
+   * It said "Kinematic Analysis for Joint C", which is the tab's name again
+   * over a panel the reader reached by pressing that tab.
+   */
+  get panelTitle(): string {
+    const part =
+      this.shownType === 'Joint' ? `Joint ${this.shownJoint.name}` : this.selectedBodyLabel;
+    return `${this.modeNoun} for ${part}`;
+  }
+
+  /**
+   * The moment the rows read at, or why there is nothing to read.
+   *
+   * While a part is under the hand the numbers are following it and no time
+   * describes them. A force panel with nothing to graph says why here, with
+   * the way out in the hint row below.
+   */
+  get subtitle(): string {
+    if (this.tuning) return 'Following your hand';
+    if (this.showForce && this.shownType === 'Joint' && !this.jointForceHasGraphs) {
+      return `Only one part meets Joint ${this.shownJoint?.name}, so there is no force to graph here.`;
+    }
+    if (this.showForce && this.shownType === 'Link' && !this.linkForceHasGraphs) {
+      return `${this.selectedBodyLabel} does not meet another part at any of its joints, so there is no force to graph here.`;
+    }
+    return `Readings at ${this.readingsAt.toFixed(2)} s`;
+  }
+
+  /** Where the shown part's own machine stands in its cycle, in seconds. */
+  private get readingsAt(): number {
+    const part = this.selectedPart;
+    const mechanism = part && this.mechanismService.mechanismForId(part.id);
+    const at = mechanism ? this.mechanismService.mechanisms.indexOf(mechanism) : -1;
+    return at === -1 ? 0 : this.mechanismService.secondsOf(at);
+  }
 
   /**
    * What the empty analysis panel says, which depends on why it is empty.
@@ -211,71 +291,6 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy {
   mechStateSub?: Subscription;
   private subscriptions = new Subscription();
   private rowCache?: { key: string; mechanism: unknown; rows: ForceAnalysisRow[] };
-
-  /**
-   * What the drive is doing, in the terms the drive itself has (§5.5).
-   *
-   * A driven block does not turn, so neither "RPM" nor "clockwise" says
-   * anything true about it — the header used to report a cylinder extending at
-   * 5 cm/s as turning at 5.00 RPM clockwise.
-   */
-  get inputSummary(): string {
-    const driven = this.drivenJointOfSelection;
-    const signed = this.mechanismService.driveSpeedOf(driven);
-    const speed = Math.abs(signed);
-    if (driven instanceof PrisJoint) {
-      // Toward the two ends the Edit panel's Travel field names: closed and open.
-      const direction = signed < 0 ? 'closing' : 'opening';
-      return `Driven at ${speed.toFixed(2)} ${this.linearSpeedUnit}, ${direction}.`;
-    }
-    const direction = signed < 0 ? 'clockwise' : 'counter-clockwise';
-    return `Driven at ${speed.toFixed(2)} RPM, ${direction}.`;
-  }
-
-  /**
-   * Where that speed is actually changed.
-   *
-   * A cylinder is driven by a joint buried inside it that the canvas gives no
-   * hitbox and the Edit panel never lists, so sending the reader to "the input
-   * joint" sends them somewhere they cannot go. The field is on the cylinder,
-   * under its own name.
-   */
-  get inputEditHint(): string {
-    const driven = this.drivenJointOfSelection;
-    const sealed = driven && this.mechanismService.cylinderAt(driven);
-    if (sealed) {
-      const name = `Cylinder ${sealed.barrelFar.name || sealed.barrelFar.id}${
-        sealed.rodFar.name || sealed.rodFar.id
-      }`;
-      return `Change it under Expansion Speed in ${name}'s Edit panel.`;
-    }
-    return "Change it in the input joint's Edit panel.";
-  }
-
-  /**
-   * The drive of the mechanism the selection belongs to.
-   *
-   * A drawing can hold several mechanisms turning at different speeds, so the
-   * first driven joint in the document is only the right answer when there is
-   * one of them.
-   */
-  private get drivenJointOfSelection(): RealJoint | undefined {
-    const selection =
-      this.shownType === 'Link'
-        ? this.shownLink
-        : this.shownType === 'Joint'
-          ? this.shownJoint
-          : undefined;
-    const own = selection && this.mechanismService.partitionContaining(selection);
-    const pool = own ? own.joints : this.mechanismService.joints;
-    return pool.find((joint): joint is RealJoint => joint instanceof RealJoint && joint.input);
-  }
-
-  /** Length per second, spelled the way the mechanism's length unit is. */
-  private get linearSpeedUnit(): string {
-    const unit = this.settingsService.lengthUnit.value;
-    return unit === LengthUnit.INCH ? 'in/s' : unit === LengthUnit.METER ? 'm/s' : 'cm/s';
-  }
 
   constructor() {
     this.forceAnalysisFormGroup.patchValue(
@@ -440,21 +455,6 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * The heading's description. A part with nothing to graph gets the cause in
-   * the description and the way out in the hint row below — the speed summary
-   * and the mode selector describe graphs that are not on the panel.
-   */
-  get panelDescription(): string {
-    if (this.showForce && this.shownType === 'Joint' && !this.jointForceHasGraphs) {
-      return `Only one part meets Joint ${this.activeSrv.selectedJoint?.name}, so there is no force to graph here.`;
-    }
-    if (this.showForce && this.activeSrv.objType === 'Link' && !this.linkForceHasGraphs) {
-      return `${this.selectedBodyLabel} does not meet another part at any of its joints, so there is no force to graph here.`;
-    }
-    return `${this.inputSummary} ${this.inputEditHint}`;
-  }
-
-  /**
    * The links a selected body is made of.
    *
    * One for an ordinary bar. A cylinder is one body to the reader and three
@@ -500,15 +500,15 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Which analysis this panel is showing.
+   * Which analysis this panel is showing, as the noun the title starts with.
    *
    * It used to be an accordion inside the panel headed "Kinematic Analysis" --
    * a heading that only ever said what mode the reader had already chosen, and
    * one more thing to open before reaching a graph. The panel's own title says
    * it now.
    */
-  get modeLabel(): string {
-    return this.tabs.getCurrentTab() === TabID.FORCE ? 'Force Analysis' : 'Kinematic Analysis';
+  get modeNoun(): string {
+    return this.tabs.getCurrentTab() === TabID.FORCE ? 'Forces' : 'Kinematics';
   }
 
   /**

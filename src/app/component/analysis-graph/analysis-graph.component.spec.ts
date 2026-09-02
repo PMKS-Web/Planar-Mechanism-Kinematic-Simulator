@@ -19,8 +19,7 @@ import { NumberUnitParserService } from '../../services/number-unit-parser.servi
 import { ActiveObjService } from '../../services/active-obj.service';
 import { AnalysisSampleService } from '../../services/analysis-sample.service';
 import { MechanismService } from '../../services/mechanism.service';
-import { DragStateService } from '../../services/drag-state.service';
-import { SaveHistoryService } from '../../services/save-history.service';
+import { AnalysisCompareService } from '../../services/analysis-compare.service';
 import { SettingsService } from '../../services/settings.service';
 import { BUILT_IN_TEMPLATE_IDS, TEMPLATE_LINKAGES } from '../MODALS/templates/template-linkages';
 import {
@@ -83,6 +82,7 @@ class ApexChartStubComponent {
 
   addPointAnnotation = vi.fn();
   addXaxisAnnotation = vi.fn();
+  addYaxisAnnotation = vi.fn();
   clearAnnotations = vi.fn();
   updateOptions = vi.fn();
 }
@@ -106,6 +106,18 @@ const PRODUCTION_FIXTURES = [
   ['legacy force URL', LEGACY_FORCE_MECHANISM] as const,
 ];
 
+/** No gesture, no record, the switch on: the state every fixture here is read in. */
+function quietComparison(): Partial<AnalysisCompareService> {
+  return {
+    live: false,
+    record: undefined,
+    compare: true,
+    register: () => undefined,
+    unregister: () => undefined,
+    sync: () => undefined,
+  };
+}
+
 function createComponent(fixture: MechanismFixture): AnalysisGraphComponent {
   return withTestInjector(
     [
@@ -114,10 +126,9 @@ function createComponent(fixture: MechanismFixture): AnalysisGraphComponent {
       { provide: SettingsService, useValue: fixture.settings },
       { provide: NumberUnitParserService, deps: [] },
       { provide: AnalysisSampleService, deps: [] },
-      // The comparison overlay asks these two what a gesture is doing. Nothing
-      // is dragged in these fixtures, so the real ones answer "nothing".
-      { provide: DragStateService, deps: [] },
-      { provide: SaveHistoryService, useValue: { historySteps: 0 } },
+      // The comparison overlay asks the shared account what a gesture is
+      // doing. Nothing is dragged in these fixtures, so it answers "nothing".
+      { provide: AnalysisCompareService, useValue: quietComparison() },
     ],
     () => new AnalysisGraphComponent()
   );
@@ -407,14 +418,15 @@ describe('AnalysisGraphComponent production fixtures', () => {
     const finiteIndex = newtonPoints.findIndex((point) => Number.isFinite(point.y));
     const newtonValue = newtonPoints[finiteIndex].y!;
     expect(Math.abs(newtonValue)).toBeGreaterThan(1);
-    expect(component.chartOptions.yaxis!.title!.text).toBe('Force (N)');
+    // The words the axis used to be titled with; the summary still says them.
+    expect(component.axisTitle).toBe('Force (N)');
 
     fixture.settings.forceUnit.next(ForceUnit.LBF);
     component.determineChart('force', 'static', 'Joint Forces', input.id);
     const lbfValue = (
       component.chartOptions.series![2].data[finiteIndex] as unknown as { y: number }
     ).y;
-    expect(component.chartOptions.yaxis!.title!.text).toBe('Force (lbf)');
+    expect(component.axisTitle).toBe('Force (lbf)');
     expect(lbfValue).toBeCloseTo(newtonValue * 0.22480894387096, 3);
   });
 });
@@ -436,6 +448,7 @@ describe('AnalysisGraphComponent lifecycle', () => {
     const chart = {
       addPointAnnotation: vi.fn(),
       addXaxisAnnotation: vi.fn(),
+      addYaxisAnnotation: vi.fn(),
       clearAnnotations: vi.fn(),
       updateOptions: vi.fn(),
     };
@@ -515,6 +528,7 @@ describe('AnalysisGraphComponent lifecycle', () => {
     const chart = {
       addPointAnnotation: vi.fn(),
       addXaxisAnnotation: vi.fn(),
+      addYaxisAnnotation: vi.fn(),
       clearAnnotations: vi.fn(),
       updateOptions: vi.fn(),
     };
@@ -591,6 +605,7 @@ describe('AnalysisGraphComponent rendered controls', () => {
         { provide: SettingsService, useValue: fixtureData.settings },
         { provide: NumberUnitParserService, useValue: new NumberUnitParserService() },
         { provide: ActiveObjService, useValue: fixtureData.active },
+        { provide: AnalysisCompareService, useValue: quietComparison() },
       ],
       schemas: [NO_ERRORS_SCHEMA],
     })
@@ -639,7 +654,7 @@ describe('AnalysisGraphComponent rendered controls', () => {
     fixture.detectChanges();
     expect(graph.displayedSeries).toHaveLength(0);
     expect(graph.noDataSelected).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('No series shown. Pick one above.');
+    expect(fixture.nativeElement.textContent).toContain('No series shown.');
 
     graph.toggleSeries('x');
     fixture.detectChanges();

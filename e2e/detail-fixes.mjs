@@ -179,7 +179,7 @@ await page.locator('.tabButton', { hasText: 'Kinematic' }).click({ force: true }
 await page.waitForTimeout(700);
 await page.locator('#joint_B').first().click({ force: true });
 await page.waitForTimeout(700);
-await page.getByText('Velocity of Joint B').first().click({ force: true });
+await page.locator('.graphHeader', { hasText: 'Velocity' }).first().click({ force: true });
 await page.waitForTimeout(1800);
 const legend = await page.evaluate(() => {
   const section = [...document.querySelectorAll('app-analysis-graph-section')].find((node) =>
@@ -188,23 +188,21 @@ const legend = await page.evaluate(() => {
   const component = ng.getComponent(section);
   // viewChild is a signal now: the child is behind a call.
   const graph = typeof component.graph === 'function' ? component.graph() : component.graph;
-  const lit = [...section.querySelectorAll('.previewSeries')].map(
-    (node) => !node.classList.contains('off')
-  );
   return {
-    lit,
+    chosen: section.querySelector('.seriesSplit .chosen')?.textContent.trim(),
     drawn: ['x', 'y', 'z'].map((key) => graph.isSeriesShown(key)),
     plotted: graph.displayedSeries.length,
   };
 });
+// Magnitude is one line; the components are two. Never six, never one alone.
 record(
-  'the legend and the plot agree the moment a graph opens',
-  legend.lit.filter(Boolean).length === legend.plotted,
+  'the split and the plot agree the moment a graph opens',
+  legend.plotted === (legend.chosen === 'Magnitude' ? 1 : 2),
   legend
 );
 
 // --- toggling a series does not move the panel under the pointer -----------
-await page.getByText('Acceleration of Joint B').first().click({ force: true });
+await page.locator('.graphHeader', { hasText: 'Acceleration' }).first().click({ force: true });
 await page.waitForTimeout(1500);
 const scroller = '.panel';
 await page.evaluate((selector) => {
@@ -213,15 +211,15 @@ await page.evaluate((selector) => {
 }, scroller);
 await page.waitForTimeout(400);
 const before = await page.evaluate((s) => document.querySelector(s).scrollTop, scroller);
-const lastLegend = page
+const lastSplit = page
   .locator('app-analysis-graph-section')
   .last()
-  .locator('.previewSeries')
+  .locator('.seriesSplit button')
   .last();
-await lastLegend.click({ force: true });
+await lastSplit.click({ force: true });
 await page.waitForTimeout(900);
 const after = await page.evaluate((s) => document.querySelector(s).scrollTop, scroller);
-record('turning a line off leaves the panel where it was', Math.abs(after - before) < 12, {
+record('switching to the components leaves the panel where it was', Math.abs(after - before) < 12, {
   before,
   after,
 });
@@ -334,7 +332,9 @@ const playhead = await page.evaluate(async () => {
   // Park it, and run the first machine instead.
   srv.seekMechanism(1, 3);
   if (!srv.isMechanismPlaying(0)) srv.toggleMechanismPlaying(0);
-  const label = () => document.querySelector('.apexcharts-xaxis-annotation-label')?.textContent;
+  // Where the playhead stands, as the line's own x: it carries no label now.
+  const label = () =>
+    document.querySelector('.apexcharts-xaxis-annotations line')?.getAttribute('x1') ?? '';
   const before = { at: label(), running: srv.secondsOf(0), parked: srv.secondsOf(1) };
   await new Promise((done) => setTimeout(done, 1500));
   const after = { at: label(), running: srv.secondsOf(0), parked: srv.secondsOf(1) };
@@ -350,7 +350,7 @@ record(
 );
 record(
   "a paused machine's graph keeps its playhead where the machine is",
-  playhead.before.at === playhead.after.at && playhead.after.at === 'T= 3.0',
+  playhead.before.at === playhead.after.at && playhead.after.at !== '',
   playhead
 );
 
@@ -653,8 +653,8 @@ await page.locator('.tabButton', { hasText: 'Kinematic' }).click({ force: true }
 await page.waitForTimeout(700);
 await page.locator('#joint_B').first().click({ force: true });
 await page.waitForTimeout(700);
-for (const card of ['Position of Joint B', 'Velocity of Joint B']) {
-  await page.getByText(card).first().click({ force: true });
+for (const card of ['Position', 'Velocity']) {
+  await page.locator('.graphHeader', { hasText: card }).first().click({ force: true });
   await page.waitForTimeout(1200);
 }
 // Off timestep 0, where there is no playhead to label.
@@ -670,8 +670,9 @@ const plots = await page.evaluate(() =>
     const graph = ng.getComponent(node);
     return {
       prop: graph.mechProp,
-      labels: [...node.querySelectorAll('.apexcharts-point-annotation-label')].map((label) =>
-        label.textContent.trim()
+      // The playhead carries no label now; the reading is the row's own value.
+      labels: [...node.closest('app-analysis-graph-section').querySelectorAll('.graphValue')].map(
+        (label) => label.textContent.trim()
       ),
       // Every line the plot draws, and how wide a box each occupies. A
       // constant series is zero high, which is the point -- but it still has
@@ -684,7 +685,7 @@ const plots = await page.evaluate(() =>
   })
 );
 const overlong = plots.flatMap((plot) => plot.labels).filter((text) => /\d\.\d{3,}/.test(text));
-record('a playhead label stops at two decimals', plots.length > 0 && overlong.length === 0, {
+record('a reading stops at two decimals', plots.length > 0 && overlong.length === 0, {
   overlong,
   labels: plots.map((plot) => plot.labels),
 });

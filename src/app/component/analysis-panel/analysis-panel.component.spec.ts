@@ -99,8 +99,8 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     }
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Force Analysis for Joint A');
-    expect(fixture.nativeElement.textContent).not.toContain('Kinematic Analysis');
+    expect(fixture.nativeElement.textContent).toContain('Forces for Joint A');
+    expect(fixture.nativeElement.textContent).not.toContain('Kinematics');
     expect(fixture.nativeElement.querySelectorAll('app-analysis-graph-section').length).toBe(
       rows.length + 1
     );
@@ -168,7 +168,7 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
 
     // The panel names the analysis it is showing, which is the heading the
     // accordion inside it used to carry.
-    expect(fixture.nativeElement.textContent).toContain('Force Analysis for Link BC');
+    expect(fixture.nativeElement.textContent).toContain('Forces for Link BC');
 
     const rows = fixture.componentInstance.linkForceRows();
     expect(rows.map((row) => row.jointId)).toEqual(['B', 'C']);
@@ -274,7 +274,7 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent;
-    expect(sectionLabels(fixture).some((label) => label.endsWith("'s CoM"))).toBe(true);
+    expect(sectionLabels(fixture).some((label) => label.startsWith('CoM '))).toBe(true);
     expect(text).not.toContain('COM');
     fixture.destroy();
   });
@@ -310,30 +310,13 @@ describe('AnalysisPanelComponent with a cylinder selected', () => {
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'GN');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Analysis for Cylinder');
-    expect(fixture.nativeElement.textContent).not.toContain('Analysis for Link GN');
-    // And so does every graph under the heading. A panel that calls the body a
-    // cylinder at the top and a link in every row below has only moved the
-    // disagreement down the page.
+    expect(fixture.nativeElement.textContent).toContain('Kinematics for Cylinder');
+    expect(fixture.nativeElement.textContent).not.toContain('for Link GN');
+    // And no row under the heading contradicts it: the rows name the quantity
+    // alone, so there is no second place for the body's name to go wrong.
     const labels = sectionLabels(fixture);
     expect(labels.some((label) => label.includes('Link GN'))).toBe(false);
-    expect(labels).toContain('Angle of Cylinder GC');
-    fixture.destroy();
-  });
-
-  it("sends the reader to the cylinder's own panel to change its speed", async () => {
-    // The joint driving a cylinder is buried inside it: no hitbox on the
-    // canvas, no row in the Edit panel. "The input joint's Edit panel" names
-    // somewhere the reader cannot get to.
-    const { fixture } = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'GN');
-    fixture.detectChanges();
-
-    // The hint is passed to a block component the schema here stubs out, so
-    // it is read off the panel rather than off the rendered text.
-    const hint = fixture.componentInstance.inputEditHint;
-    expect(hint).toContain('Expansion Speed');
-    expect(hint).toContain('Cylinder GC');
-    expect(hint).not.toContain("input joint's Edit panel");
+    expect(labels).toContain('Angle');
     fixture.destroy();
   });
 

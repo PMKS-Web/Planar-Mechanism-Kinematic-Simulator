@@ -246,11 +246,11 @@ try {
   // --- Link panel: link BC has external joints B and C. ---
   await selectAndAnalyze('#linkHolder path', 1);
   const linkHeading = await page.evaluate(
-    () => document.body.innerText.match(/(Kinematic )?Analysis for Link \w+/)?.[0]
+    () => document.body.innerText.match(/(Kinematic Analysis|Kinematics|Forces) for Link \w+/)?.[0]
   );
   await shot('04-link-panel.png');
 
-  check('link panel title dropped the "Kinematic" prefix', linkHeading === 'Analysis for Link BC', {
+  check('link panel title names the analysis as a noun', linkHeading === 'Forces for Link BC', {
     linkHeading,
   });
 

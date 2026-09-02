@@ -289,7 +289,7 @@ const selectedJointId = () =>
     return window.ng.getComponent(grid).activeObjService?.selectedJoint?.id ?? null;
   });
 
-const GRAPH_ROWS = ['Position of Joint', 'Velocity of Joint', 'Acceleration of Joint'];
+const GRAPH_ROWS = ['Position', 'Velocity', 'Acceleration'];
 
 /**
  * Open each of the three kinematic cards, so its graph exists to be read.

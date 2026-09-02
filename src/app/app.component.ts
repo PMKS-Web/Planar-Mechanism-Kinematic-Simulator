@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, afterNextRender, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, DoCheck, afterNextRender, inject } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
 import { NewGridComponent } from './component/new-grid/new-grid.component';
@@ -9,6 +9,7 @@ import { PlaybackBarComponent } from './component/playback-bar/playback-bar.comp
 import { RightPanelComponent } from './component/right-panel/right-panel.component';
 import { NotificationComponent } from './component/notification/notification.component';
 import { LoadingOverlayComponent } from './component/loading-overlay/loading-overlay.component';
+import { AnalysisCompareService } from './services/analysis-compare.service';
 
 @Component({
   selector: 'app-root',
@@ -29,9 +30,21 @@ import { LoadingOverlayComponent } from './component/loading-overlay/loading-ove
     LoadingOverlayComponent,
   ],
 })
-export class AppComponent {
+export class AppComponent implements DoCheck {
   private matIconRegistry = inject(MatIconRegistry);
   private domSanitizer = inject(DomSanitizer);
+  private comparison = inject(AnalysisCompareService);
+
+  /**
+   * The tuning gesture is polled, and polled here first: the status strip, the
+   * analysis panel and every open graph read the same record, and a reader
+   * checked before the record was brought up to date sees one pass's stale
+   * answer -- which Angular reports as NG0100 against whichever it was. The
+   * shell is checked before all of them.
+   */
+  ngDoCheck(): void {
+    this.comparison.sync();
+  }
 
   constructor() {
     this.matIconRegistry.addSvgIcon(

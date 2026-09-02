@@ -111,10 +111,12 @@ async function dragJoint(id, steps = 6) {
   for (let i = 1; i <= steps; i++) {
     await page.mouse.move(at.x + i * 9, at.y - i * 6);
     await page.waitForTimeout(70);
+    // The rows' own numbers, which follow the hand.
     seen.push(
-      await page.evaluate(
-        () =>
-          document.querySelector('app-analysis-panel')?.innerText.match(/Mag: [-\d.]+/)?.[0] ?? null
+      await page.evaluate(() =>
+        [...document.querySelectorAll('app-analysis-graph-section .graphValue')]
+          .map((value) => value.textContent.trim())
+          .join('|')
       )
     );
   }
@@ -195,6 +197,11 @@ record('the machine still starts where it started', before.anchor === after.anch
   after: after.anchor,
 });
 record('and the display stayed where the hand was', !after.atStart, after);
+record(
+  'the status strip says what moved',
+  /Joint B moved/.test(await page.locator('#bottomBar').innerText()),
+  await page.locator('#bottomBar .status').innerText()
+);
 await page.screenshot({ path: `${SHOTS}/2-after-drag.png` });
 
 // ---- 4. undo reaches into the analysis modes ------------------------------
@@ -210,6 +217,11 @@ record('and undo takes it back', undone.drawn !== after.drawn, {
   after: after.drawn.slice(0, 60),
   undone: undone.drawn.slice(0, 60),
 });
+record(
+  'and the strip stops saying it moved',
+  !/moved/.test(await page.locator('#bottomBar').innerText()),
+  await page.locator('#bottomBar .status').innerText()
+);
 
 // ---- 5. grab-to-pause works here too -------------------------------------
 
@@ -272,14 +284,19 @@ await page.mouse.down();
 await page.mouse.up();
 await page.waitForTimeout(700);
 await page
-  .locator('app-analysis-graph-section', { hasText: 'Position of Joint C' })
-  .locator('button')
+  .locator('app-analysis-graph-section', { hasText: 'Position' })
+  .locator('.graphHeader')
   .first()
   .click();
 await page.waitForTimeout(900);
 const curvesBefore = await page.locator('.apexcharts-series').count();
 record('one curve before any drag', curvesBefore === 2, { curvesBefore });
-record('and no comparison to clear', (await page.locator('.baselineChip').count()) === 0);
+record('and no comparison to switch', (await page.locator('.compareToggle').count()) === 0);
+record(
+  'the table states the reach of each curve, with nothing to compare it to',
+  (await page.locator('.statsRow').count()) === 2 &&
+    (await page.locator('.statsBefore').count()) === 0
+);
 
 const tuned = await jointAt('D');
 await page.mouse.move(tuned.x, tuned.y);
@@ -309,15 +326,28 @@ record(
     overlay.colors.slice(2).every((c) => c.startsWith('#')),
   overlay.colors
 );
+// The earlier curve is the marked one -- dashed and thin -- and the live curve
+// is drawn as it always is, so nothing on the plot changes at the moment of
+// release. It used to be the live curve that was dashed while the hand was
+// down, which was one encoding too many changing at once.
 record(
-  'and the live ones dashed while the hand is down',
-  overlay.dash[0] === 0 && overlay.dash[2] > 0,
+  'the earlier ones dashed, the live ones solid',
+  overlay.dash[0] > 0 && overlay.dash[2] === 0,
   overlay.dash
 );
 record('with the playhead hushed for the duration', overlay.annotations === 0, overlay);
 record(
-  'and a chip saying what the pale curve is',
-  (await page.locator('.baselineChip').count()) === 1
+  'and the head names what is under the hand, not what is graphed',
+  /Tuning Joint D/.test(await page.locator('.tuningChip').innerText()) &&
+    /for Joint C/.test(await page.locator('.panelTitle').innerText())
+);
+record(
+  'while the subtitle says the numbers are following it',
+  /Following your hand/.test(await page.locator('.panelSub').innerText())
+);
+record(
+  'and the strip says the same, in the accent',
+  /Tuning Joint D/.test(await page.locator('#bottomBar .status.tuning').innerText())
 );
 // The axis must hold still: refitted per frame it swims under the very curve
 // being watched, and every frame looks the same height as the last.
@@ -345,33 +375,56 @@ const settled = await page.evaluate(() => {
   };
 });
 record(
-  'letting go settles the live curve to solid',
-  settled.dash.every((d) => d === 0),
+  'letting go changes nothing on the plot',
+  settled.dash[0] > 0 && settled.dash[2] === 0 && settled.names.length === 4,
   settled
 );
 record(
-  'and the comparison outlives the gesture',
-  (await page.locator('.baselineChip').count()) === 1
+  'and the comparison outlives the gesture, with the switch to hide it',
+  (await page.locator('.compareToggle').count()) === 1
+);
+record(
+  'the subtitle goes back to the reading time',
+  /Readings at [\d.]+ s/.test(await page.locator('.panelSub').innerText())
 );
 await page.screenshot({ path: `${SHOTS}/3-comparison.png` });
 
-await page.locator('.baselineChip button').click();
-await page.waitForTimeout(700);
-record('the chip clears it', (await page.locator('.baselineChip').count()) === 0);
+// ---- 7. the reach of each curve, before and now ---------------------------
+
+const table = await page.evaluate(() =>
+  [...document.querySelectorAll('.statsRow')].map((row) => ({
+    name: row.querySelector('.statsName')?.textContent.trim(),
+    values: [...row.querySelectorAll('.statsValue')].map((one) => one.textContent.trim()),
+    before: [...row.querySelectorAll('.statsBefore')].map((one) => one.textContent.trim()),
+  }))
+);
 record(
-  'and the plot goes back to one curve per series',
-  (await page.locator('.apexcharts-series').count()) === 2
+  'each series states its max and min, and under them the values from before',
+  table.length === 2 &&
+    table.every((row) => row.values.length === 2 && row.before.length === 2) &&
+    table.map((row) => row.name).join() === 'X,Y',
+  table
+);
+record(
+  'with the unit on every number and a typographic minus on the negative ones',
+  table.every((row) => row.values.every((one) => / cm$/.test(one))) &&
+    !table.some((row) => row.before.some((one) => /^-/.test(one))),
+  table
 );
 
-// ---- 7. the peak, said as a number (Phase C) -----------------------------
-
+await page.locator('.compareToggle').click();
+await page.waitForTimeout(700);
 record(
-  'the chip says what the peak was and what it is now',
-  await page.evaluate(() => {
-    const graph = window.ng.getComponent(document.querySelector('app-analysis-graph'));
-    return graph.peakReadout === null;
-  }),
-  'no comparison on the plot, so no peak to compare'
+  'the switch hides the earlier curves and their numbers',
+  (await page.locator('.apexcharts-series').count()) === 2 &&
+    (await page.locator('.statsBefore').count()) === 0
+);
+await page.locator('.compareToggle').click();
+await page.waitForTimeout(700);
+record(
+  'and brings them back',
+  (await page.locator('.apexcharts-series').count()) === 4 &&
+    (await page.locator('.statsBefore').count()) === 4
 );
 
 // ---- 8. force analysis, where the solve is dearer -------------------------
@@ -404,15 +457,15 @@ const forceOverlay = await page.evaluate(() => {
   const graph = window.ng.getComponent(document.querySelector('app-analysis-graph'));
   return {
     series: graph.displayedSeries.length,
-    peak: graph.peakReadout,
+    stats: graph.stats,
     gapShown: !!document.querySelector('.analysis-gap'),
   };
 });
 record('a force curve gets the same comparison', forceOverlay.series >= 4, forceOverlay);
 record(
-  'and the peak is said as two numbers',
-  !!forceOverlay.peak && forceOverlay.peak.before !== forceOverlay.peak.after,
-  forceOverlay.peak
+  'and every series says its reach before and now',
+  forceOverlay.stats.length > 0 && forceOverlay.stats.every((one) => one.before),
+  forceOverlay.stats
 );
 // A drag walks the linkage through toggle positions on the way somewhere, so
 // the gap count changes on every move; the banner waits until it means
@@ -459,24 +512,24 @@ for (let i = 1; i <= 6; i++) {
   await page.waitForTimeout(90);
 }
 const axisDuring = await axisOf();
-const honestPeak = await page.evaluate(
-  () => window.ng.getComponent(document.querySelector('app-analysis-graph')).peakReadout
+const reach = await page.evaluate(() =>
+  window.ng.getComponent(document.querySelector('app-analysis-graph')).stats
 );
 record(
   'the axis still holds the whole of the curve from before the drag',
   axisDuring.min <= axisBefore.min && axisDuring.max >= axisBefore.max,
   { axisBefore, axisDuring }
 );
+// The table prints with a typographic minus; the axis is a number.
+const asNumber = (text) => Number(String(text).replace('\u2212', '-'));
 record(
-  'and the peak it prints is one the axis can show',
-  Number(honestPeak.before) <= axisDuring.max,
-  { peak: honestPeak, axisDuring }
-);
-// A change too small to be anybody's doing is neither better nor worse.
-record(
-  'a peak that did not really move is not called an improvement',
-  !(honestPeak.same && honestPeak.better),
-  honestPeak
+  'and the earlier reach it prints is one the axis can show',
+  reach.length > 0 &&
+    reach.every(
+      (one) => one.before && asNumber(one.before.max) <= axisDuring.max + 1e-9 &&
+        asNumber(one.before.min) >= axisDuring.min - 1e-9
+    ),
+  { reach, axisDuring }
 );
 await page.mouse.up();
 await page.waitForTimeout(1000);

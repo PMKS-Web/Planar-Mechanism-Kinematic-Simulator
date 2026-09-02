@@ -1,7 +1,11 @@
 # Editing in Analysis mode — tuning a mechanism against its own curves
 
-**Status: built.** Phases A, B and C shipped; `e2e/analysis-editing.mjs` is the suite that keeps
-them honest. Follows `docs/edit-mode-playback-plan.md`, which built the machinery this
+**Status: built, then redesigned.** Phases A, B and C shipped; `e2e/analysis-editing.mjs` is the
+suite that keeps them honest. The visual language below (a dashed *live* curve, a peak pill) was
+the first version; the panel was redesigned afterwards — one card of rows, a Magnitude / X & Y
+split, the *earlier* curve dashed and faded under a live curve that never changes, and a max/min
+table with the before values — and `docs/analysis-editing-visual-brief.md` describes what shipped.
+The mechanics in §§4–5 are unchanged. Follows `docs/edit-mode-playback-plan.md`, which built the machinery this
 plan stands on. Read that one first; this one leans on its vocabulary (anchor, staged posed
 edit, `EditPermission`) without re-arguing it.
 

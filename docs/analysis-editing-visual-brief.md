@@ -1,8 +1,9 @@
 # PMKS+ — Analysis-mode editing: visual brief
 
-**For:** design review
-**Scope:** the visual treatments added when we made the analysis modes editable. Behaviour is
-shipped and working; this brief is about how it *looks*, and where I think it needs a second opinion.
+**For:** design review — and now the record of what shipped from it
+**Scope:** the visual treatments added when we made the analysis modes editable. The first
+version of this brief asked a designer's opinion of them; §1 now describes the design that came
+back and was built, and §3 lists where each of the original questions landed.
 
 ---
 
@@ -21,149 +22,68 @@ nothing unless you can still see what it was.
 
 ---
 
-## 1. The comparison overlay
+## 1. The comparison, as one card
 
-When a drag begins, the graph snapshots every curve currently plotted and keeps drawing it
-underneath the live one.
+Designed with Claude Design from the first version of this brief; the mockup is the
+"Analysis Panel Prototype" in that project, and this section describes what shipped from it.
+
+**One card, a row per quantity.** The panel is a list rather than a stack of cards: each row is
+the quantity's name, its value at the pose on screen with the unit once, and a chevron. Pressing
+a row opens it in place. Joint rows are Position, Velocity, Acceleration; link rows are Angle,
+Angular velocity, Angular acceleration, then under a *Center of Mass (CoM)* heading the CoM
+position, velocity and acceleration.
+
+**The head.** "Kinematics for Joint C" (or "Forces for …") over "Readings at 1.26 s". While a part
+is under the hand the subtitle reads "Following your hand" and a chip on the title's line names
+the part being held — *Tuning Joint B* — which need not be the part being graphed, because a
+click selects and a drag tunes. Once a drag has been made, a **Compare with before drag** switch
+sits on the subtitle's line and shows or hides the earlier curves on every open row at once. The
+head is sticky, so the switch is at hand however far the rows have scrolled.
+
+**The split.** An open row with a magnitude and its components offers a two-way segmented
+control, *Magnitude* / *X & Y components*: two lines or four, never six, and never a lone
+component. A quantity with only components (position) shows no Magnitude side; one with only a
+magnitude (an angle) shows no split at all. Kinematic rows open on Magnitude, force rows on the
+components.
+
+**The plot.** Short and wide, no y-axis title (the row and the table carry the unit), gridlines
+faint, zero a shade darker. The playhead is a plain line with a dot on each curve; the value it
+marks is the row's own number.
 
 | | Before curve | Live curve |
 |---|---|---|
-| Colour | the series' own colour at **35% alpha** | the series' own colour, full |
-| Stroke | 2px solid | 2px, **dashed (5) while the hand is down**, solid on release |
+| Colour | the series' own colour, faded (34% alpha; 42% for amber, which vanished at 34%) | full |
+| Stroke | 1.8px, dashed | 2.6px, solid |
 | Draw order | behind | in front |
-| Legend name | `X before`, `Y before`, `Z before` | `X`, `Y`, `Z` |
 
-Series palette: **X `#313aa7`** (indigo), **Y `#ea2b29`** (red), **Z / Magnitude `#fdb50e`** (amber).
+The live curve is solid throughout. Nothing on the plot changes at the moment of release; what
+tells the two curves apart is only that the earlier one is faded and dashed.
 
-Two encodings are doing work here, deliberately:
+**The table.** Under the plot, a row per series: its **max** and **min** with the unit, and under
+each the value from before the drag while the comparison is on. This replaced a pill that quoted
+only the larger peak and coloured the change green or amber — a value judgement about a number a
+student may have wanted larger. Negative numbers use a typographic minus.
 
-- **Ghosting = "earlier."** It's the same word the canvas uses for the start-pose ghost (see §4), so
-  a reader learns it once.
-- **Dashing = "provisional."** It's dashed only while your finger is down. On release the curve
-  becomes an ordinary solid line, because it's no longer a preview — it's what the mechanism does
-  now. From then on, ghosting alone separates the two.
+**Lifecycle.** One baseline per gesture, taken on the first travel of a drag in an analysis mode
+and kept until the next drag replaces it or undo/redo restores a drawing it may have been taken
+from. The switch hides it without dropping it; the axis stays where the comparison put it while
+the switch is off, so flipping it moves nothing.
 
-**Lifecycle.** One baseline per gesture. It survives the release (the tuning loop is drag → look →
-drag again, and taking the comparison away at the moment you finally have a still frame to read
-would serve the code, not the reader). It is replaced by the next drag, cleared by the **Clear**
-button, and dropped automatically on undo/redo.
+**The y-axis rule** is unchanged from the first version: frozen to the range the before curve
+was drawn to, widened but never shrunk while the hand is down, with outlier trimming applied to
+the live curve only.
 
-**The y-axis rule** is the least obvious part and probably worth scrutiny:
+## 2. The status strip
 
-- The axis freezes to the range the *before* curve was drawn to.
-- It **widens but never shrinks** while you drag. Recomputed per frame, it swam under the very curve
-  you were watching — a drag through a toggle sent it to 30,000 and the next frame brought it back
-  to 800, and every frame looked identically tall.
-- Outlier trimming (1st–99th percentile) applies **only to the live curve**, and only when the full
-  spread is more than 4× the inner spread. Acceleration near a toggle position is a true
-  singularity: two samples out of 360 read twenty thousand against a curve whose real range is 0–12.
-  Fitted to that, every real feature collapses onto the zero line.
+"Tuning Joint B — release to keep" in the accent while the hand is down, "Joint B moved" after,
+and the usual "Drag to tune · build in Edit" otherwise.
 
----
+## 3. Where the first version's questions landed
 
-## 2. The peak readout
-
-Two curves is squinting. Two numbers and an arrow is reading. So above the plot:
-
-```
-peak 35.61  ↘  21.04
-```
-
-It is the **largest absolute value** of each curve — before and after — across whichever series are
-currently shown. Three states:
-
-| State | Rule | Background | Text | Glyph |
-|---|---|---|---|---|
-| Improved | after < before | `#e6f4ea` green | `#1e7d32` | `south_east` ↘ |
-| Worse | after > before | `#fdf1e3` amber | `#8a6100` | `north_east` ↗ |
-| Unchanged | within **0.5%** | `#f4f4f7` grey | `#5f6368` | `drag_handle` — |
-
-Pill: `inline-flex`, `border-radius 9px`, `padding 0 6px`, 13px icon, tabular numerals.
-
-The 0.5% deadband exists because a rounding difference painted green is a lie — an arrow claiming an
-improvement nobody made is worse than no arrow.
-
-Both numbers are each curve's **true** peak, deliberately not the trimmed range the axis is drawn
-to. Earlier they disagreed with the plot: the pill read `35.61 → 77.13` above a curve that visibly
-reached 180. The axis is the thing allowed to trim; a curve leaving the top of the plot is how it
-says so.
-
----
-
-## 3. The chip row that holds it
-
-Sits directly above the chart, flat on the card — a note about what's drawn, not a control sitting
-on top of it.
-
-```
-▬  Before your drag   [peak 35.61 ↘ 21.04]   (Clear)
-```
-
-- **Swatch** — 14×2px, `rgba(0,0,0,0.24)`. Deliberately grey, not a series colour: the chip stands
-  for *all* the ghosted curves, and a graph can show three at once, so there is no one colour to
-  borrow. What it means is "pale."
-- **Label** — 11px, `#5f6368`.
-- **Clear** — 18px pill, `#eef1fc` on `#303f9f`.
-
----
-
-## 4. Related treatments (same feature, other surfaces)
-
-These shipped alongside and share a vocabulary, so they're worth seeing together.
-
-**Start-pose ghost (canvas).** Where the machine's cycle starts, drawn under the live mechanism at
-**22% opacity** — same shapes, same colours, plainly the same object earlier. 40% on hover. Pressing
-it returns to the start. When a drag takes the linkage somewhere its original start no longer
-exists, it becomes a **dotted outline with hollow pins** at 50%, in informational indigo `#303f9f`
-rather than an alarm colour — nothing is broken, letting go here just moves the start. A pill tag
-`#303f9f` rides the pointer to say so.
-
-**Drag trace (canvas).** While you hold a joint, its full path over the cycle is drawn — literally
-the app's existing "Traced Paths" curve, same ink, same weight. *(This was a custom dashed partial
-arc until yesterday; it's now the real trace, at the user's request.)*
-
-**Transport row.** A hollow dashed ring marks where the cycle starts on the scrub rail; a
-`134° from start` chip appears when you're parked away from it, pressing it goes back, a caret opens
-"Move the start here". A `Start moved here` chip (`#e8eaf6` / `#303f9f`) with an inline Undo records
-the change.
-
-**Edit panel refusal strip.** When the panel can't be typed into, a full-bleed 54px strip in
-`#e8eaf6` / `#303f9f` directly under the title, with the way out written as an *underlined word
-inside the sentence* rather than a button beside it. Fixed height in all five states.
-
-**Corner card.** Undo/Redo live there in Edit; Export Data slides in from the right (220ms,
-`cubic-bezier(0.4,0,0.2,1)`, animating width + margin so the card grows *with* it) when you enter an
-analysis mode.
-
----
-
-## 5. Where I'd like a designer's eye
-
-Ranked by how unsure I am:
-
-1. **The green/amber peak pill makes a value judgement.** "Smaller peak" is usually what someone
-   wants, but not always — and colouring it as good/bad may be overstepping for a teaching tool. Is
-   a neutral delta better?
-2. **35% alpha on the amber series (`#fdb50e`) is very faint** against white — much weaker than the
-   same treatment on indigo. Should ghosting be a fixed grey, a fixed alpha, or per-colour tuned?
-3. **Two encodings changing at once** on release (dashed → solid) may be one change too many. Is
-   ghosting alone enough to carry "before", with the live curve solid throughout?
-4. **The chip row competes for its slot.** An amber "No solution at N of M positions" banner can
-   occupy the same strip above the chart. They currently never show at once (the banner is hushed
-   mid-gesture) but they are two different shapes in one place.
-5. **The peak numbers carry no unit** — the unit is only on the axis. `peak 35.61 → 21.04` is
-   ambiguous read on its own.
-6. **The panel is 250px wide in Edit and 400px in analysis.** The chip row can wrap at the narrow
-   width, and on a phone the panel is a bottom sheet.
-7. **Indigo is doing a lot of jobs** — the ghost, the refusal strip, the start chip, the seat, the X
-   series. Is that one vocabulary or an overload?
-
----
-
-## Notes for whoever reviews this
-
-- Everything above is live on `staging` → **https://staging--pmksnew.netlify.app**
-- To see the comparison: open any template → Kinematic Analysis → press Play, then Pause mid-cycle →
-  click a joint to graph it → drag a *different* joint. Click selects, drag tunes.
-- The design rationale for each choice is in the source as comments, and the argument for the
-  feature is in `docs/analysis-mode-editing-plan.md`.
+- The green/amber peak pill is gone; max and min per series, before and now, replaced it.
+- Amber's ghost got its own alpha.
+- The live curve no longer changes stroke on release.
+- The chip row above the chart is gone, so nothing competes with the no-solution banner.
+- Every number in the table carries its unit.
+- The one thing not taken from the mockup is a second, pre-drag ghost of the linkage on the canvas
+  — the start-pose ghost is the only ghost drawn there.

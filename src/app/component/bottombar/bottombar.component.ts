@@ -9,6 +9,7 @@ import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ViewportService } from '../../services/viewport.service';
 import { SynthesisBuilderService } from '../../services/synthesis/synthesis-builder.service';
 import { SynthesisSolutionService } from '../../services/synthesis/synthesis-solution.service';
+import { AnalysisCompareService } from '../../services/analysis-compare.service';
 
 @Component({
   selector: 'app-bottombar',
@@ -25,6 +26,7 @@ export class BottombarComponent {
   private nup = inject(NumberUnitParserService);
   private design = inject(SynthesisBuilderService);
   private solution = inject(SynthesisSolutionService);
+  private comparison = inject(AnalysisCompareService);
 
   /**
    * Which mode the app is in, spelled the way the tabs spell it.
@@ -54,6 +56,12 @@ export class BottombarComponent {
    */
   get status(): string {
     if (this.tabs.isAnalysisMode()) {
+      // While a part is under the hand the strip names it, and after it says
+      // what happened -- the same record the panel's head and the graphs'
+      // earlier curves are drawn from, so the three cannot disagree.
+      const tuned = this.comparison.record;
+      if (tuned && this.comparison.live) return `Tuning ${tuned.label} \u2014 release to keep`;
+      if (tuned) return `${tuned.label} moved`;
       // It used to say "Read-only here", which stopped being true when a drag
       // in an analysis mode became an edit. What is true is the narrower thing:
       // what exists can be tuned, and what the mechanism is made of is Edit's.
@@ -70,6 +78,11 @@ export class BottombarComponent {
       return 'Ready to analyze';
     }
     return `${blockers} ${blockers === 1 ? 'fix' : 'fixes'} before analysis`;
+  }
+
+  /** The one status that is about the reader's hand, set in the accent ink. */
+  get statusIsTuning(): boolean {
+    return this.tabs.isAnalysisMode() && this.comparison.live && !!this.comparison.record;
   }
 
   /**

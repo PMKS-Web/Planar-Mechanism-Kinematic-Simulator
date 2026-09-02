@@ -818,3 +818,30 @@ git stash push -u -- src/app/component/new-grid/new-grid.component.ts
 
 When you find one, fix it to assert the rule rather than the coincidence. A check that computes what
 the answer should be cannot be invalidated by a palette or a template.
+
+## Analysis graphs: keep annotations in the options, not on the chart
+
+`ApexCharts.addXaxisAnnotation(…, pushToMemory=false)` draws onto the chart, and *any* later
+`updateOptions` — the series changing, the axis refitting, the bridge's width watcher — redraws the
+chart from its options and the drawing is gone. A row that has just opened redraws three times in
+a few milliseconds, and chasing each with a fresh drawing (even one frame later) lost the race
+every time: the playhead was simply absent on a freshly opened row, and present only after the
+next playback tick. `showAnnotations` in `analysis-graph.component.ts` now writes the playhead
+into `chartOptions.annotations` *and* draws it; the options are what every redraw reads, the
+drawing is what makes a moving playhead cheap.
+
+## A record read by several components has to be brought up to date before any of them
+
+The tuning gesture (`AnalysisCompareService`) is polled, because every edit ends in a rebuild
+that publishes on nothing. Polled from a component's own `ngDoCheck`, it was updated by whichever
+component was checked first — after the ones checked earlier had already rendered the stale value,
+which dev mode reports as NG0100 against the earlier one (the status strip, then the panel's
+switch). `AppComponent.ngDoCheck` syncs it now, before any child is checked. The graphs' own
+"before" curves are taken and dropped from that same sync for the same reason: a graph deciding in
+its own check decided after the panel above it had asked whether there was anything to compare.
+
+## `analysis-graph.component.spec.ts` builds its own injector
+
+Its production-fixture tests construct the component with `withTestInjector([...providers])`, so a
+service that is `providedIn: 'root'` is *not* available there: adding an `inject()` to the graph
+means adding a provider (or a stub) to that list, or every fixture test fails with NG0201.

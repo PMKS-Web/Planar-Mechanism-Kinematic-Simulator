@@ -1,60 +1,56 @@
-<!-- Closed, the whole card opens it: the values are as much an invitation to
-     look closer as the title is, and a reader aiming at either was hitting a
-     strip only the title lived in. -->
-<div
-  class="graphSection"
-  [class.open]="expanded()"
-  [class.closed]="!expanded()"
-  (click)="expanded() ? null : toggle()"
->
-  <button
-    class="graphHeader"
-    type="button"
-    (click)="toggle(); $event.stopPropagation()"
-    [attr.aria-expanded]="expanded()"
-  >
-    <span class="graphTitle">{{ label() }}</span>
-    @if (help) {
-      <mat-icon class="graphHelp" [matTooltip]="help" matTooltipShowDelay="400" aria-hidden="true"
-        >help_outline</mat-icon
-      >
-    }
-    <mat-icon class="graphChevron">{{ expanded() ? 'expand_less' : 'expand_more' }}</mat-icon>
-  </button>
-
-  <!-- One row, two jobs: what each series reads at the pose on screen, and --
-       once the graph is open -- which of them the graph is drawing. Closed it
-       is a read-out; open it is the legend. Two rows saying the same names in
-       different orders was what the checkboxes and the values came to. -->
-  @if (preview.length) {
-    <div class="graphPreview" [class.interactive]="expanded()">
-      @for (series of preview; track series.name) {
-        @if (expanded() && preview.length > 1) {
-          <button
-            type="button"
-            class="previewSeries"
-            [class.off]="!isShown(series.key)"
-            [attr.aria-pressed]="isShown(series.key)"
-            (click)="toggleSeries(series.key)"
-          >
-            <span class="previewRule" [style.background]="series.color"></span>
-            {{ series.name }}: {{ series.text }}
-          </button>
-        } @else {
-          <span class="previewSeries">
-            <span class="previewRule" [style.background]="series.color"></span>
-            @if (series.name) {
-              {{ series.name }}:
-            }
-            {{ series.text }}
-          </span>
-        }
+<!-- One row per quantity: its name, what it reads at the pose on screen, and a
+     chevron. Pressed, it opens in place -- the split above the plot, the plot,
+     and the table of what each curve reaches. A card per quantity, each with
+     its own legend of switches, was what the rows replaced. -->
+<div class="graphSection" [class.open]="expanded()" [class.closed]="!expanded()">
+  <button class="graphHeader" type="button" (click)="toggle()" [attr.aria-expanded]="expanded()">
+    <!-- Above, not below: below is where the split and the plot are, and a
+         tooltip that lands on the control the reader is reaching for next is
+         in the way of the next click. -->
+    <span
+      class="graphTitle"
+      [matTooltip]="help"
+      matTooltipPosition="above"
+      matTooltipShowDelay="600"
+      >{{ label() }}</span
+    >
+    <span class="graphValue">
+      @if (readout) {
+        {{ readout }} <span class="graphUnit">{{ unit }}</span>
+      } @else {
+        —
       }
-    </div>
-  }
+    </span>
+    <mat-icon class="graphChevron">{{ expanded() ? 'expand_less' : 'chevron_right' }}</mat-icon>
+  </button>
 
   <div class="graphBody" [@openClose]="expanded() ? 'open' : 'closed'">
     @if (expanded()) {
+      <!-- Two lines or four, never six, and never a lone component: a plot
+           with a magnitude offers it or the pair, and a plot with only the
+           pair (a position) or only a magnitude (an angle) offers no choice. -->
+      @if (hasSplit) {
+        <div class="seriesSplit" role="radiogroup" aria-label="Series">
+          <button
+            type="button"
+            role="radio"
+            [class.chosen]="mode === 'mag'"
+            [attr.aria-checked]="mode === 'mag'"
+            (click)="setMode('mag')"
+          >
+            Magnitude
+          </button>
+          <button
+            type="button"
+            role="radio"
+            [class.chosen]="mode === 'xy'"
+            [attr.aria-checked]="mode === 'xy'"
+            (click)="setMode('xy')"
+          >
+            X &amp; Y components
+          </button>
+        </div>
+      }
       <app-analysis-graph
         #graph
         [analysis]="analysis()"
@@ -62,6 +58,7 @@
         [mechProp]="mechProp()"
         [mechPart]="mechPart()"
         [reactionLinkId]="reactionLinkId()"
+        [unit]="unit"
         [initialSeries]="shownSeries"
         (shownSeriesChange)="adoptSeries($event)"
       ></app-analysis-graph>

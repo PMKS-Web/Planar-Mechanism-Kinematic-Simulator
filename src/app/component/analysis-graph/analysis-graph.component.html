@@ -14,28 +14,6 @@
     <button class="gapShow" (click)="showGapPosition()">{{ gapShowLabel }}</button>
   </div>
 }
-<!-- The comparison outlives the gesture. The tuning loop is drag, look, drag
-     again, and taking the "before" away at the moment the reader finally has a
-     still frame to compare in would serve the code rather than the reader. It
-     goes when they say so, or when the next drag takes its own. -->
-@if (hasBaseline) {
-  <div class="baselineChip">
-    <span class="baselineSwatch" aria-hidden="true"></span>
-    Before your drag
-    <!-- The number the whole overlay exists to move. Two curves is squinting;
-         two numbers and an arrow is reading. -->
-    @if (peakReadout; as peak) {
-      <span class="peakReadout" [class.better]="peak.better" [class.same]="peak.same">
-        peak {{ peak.before }}
-        <mat-icon>{{
-          peak.same ? 'drag_handle' : peak.better ? 'south_east' : 'north_east'
-        }}</mat-icon>
-        {{ peak.after }}
-      </span>
-    }
-    <button (click)="clearBaseline()">Clear</button>
-  </div>
-}
 @if (analysisDiagnostic) {
   <div class="analysis-diagnostic" role="status">{{ analysisDiagnostic }}</div>
 } @else {
@@ -43,7 +21,7 @@
        overlays pinned 100px down the card, which on a short graph covered the
        card below and on a tall one floated in the middle of nothing. -->
   @if (noDataSelected) {
-    <div class="graphPlaceholder" role="status">No series shown. Pick one above.</div>
+    <div class="graphPlaceholder" role="status">No series shown.</div>
   }
   <app-analysis-apex-chart
     #chart
@@ -65,6 +43,49 @@
     [legend]="chartOptions.legend!"
   >
   </app-analysis-apex-chart>
+  <!-- What each curve reaches, as numbers: the max and the min of every series
+       on the plot, and under each the value it reached before the drag while
+       a comparison is on. Two curves is squinting; two numbers is reading, and
+       a high peak and a low one are both readable this way. It replaced a pill
+       that said only the larger peak and colored the change green or amber,
+       which was a value judgement about a number a student may have wanted
+       larger. -->
+  @if (stats.length) {
+    <div class="statsTable">
+      <div class="statsHead">
+        <span></span>
+        <span>Max</span>
+        <span>Min</span>
+      </div>
+      @for (stat of stats; track stat.color) {
+        <div class="statsRow">
+          <span class="statsName">
+            <span class="statsSwatch" [style.background]="stat.color"></span>{{ stat.label }}
+          </span>
+          <span class="statsValue">{{ stat.max }} <span class="statsUnit">{{ unit }}</span></span>
+          <span class="statsValue">{{ stat.min }} <span class="statsUnit">{{ unit }}</span></span>
+          @if (stat.before; as before) {
+            <span class="statsBeforeName">
+              <svg width="18" height="3" aria-hidden="true">
+                <line
+                  x1="0"
+                  y1="1.5"
+                  x2="18"
+                  y2="1.5"
+                  [attr.stroke]="stat.ghost"
+                  stroke-width="3"
+                  stroke-dasharray="4 3"
+                ></line>
+              </svg>
+              before
+            </span>
+            <span class="statsBefore">{{ before.max }}</span>
+            <span class="statsBefore">{{ before.min }}</span>
+          }
+        </div>
+      }
+    </div>
+  }
   <!-- The numbers behind every plot leave together, from Export Data in the top
        strip: a button under each graph meant one file per plot, each with its
        own time column to line up by hand. -->

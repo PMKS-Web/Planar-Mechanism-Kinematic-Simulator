@@ -1,6 +1,11 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
 
+// The plot draws itself this tall, axis included. The mock's plot is a short
+// wide strip: 400px is a poor width for reading a curve, and what a row wants
+// is the shape of the cycle with the numbers underneath, not a tall chart.
+$plot-height: 190px;
+
 @mixin css($theme) {
   // Get the color config from the theme.
   $color-config: mat.m2-get-color-config($theme);
@@ -21,7 +26,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 244px;
+    min-height: $plot-height - 6px;
     margin: 4px 0 8px;
     border: 1px dashed #dfe1ea;
     border-radius: var(--border-radius);
@@ -36,21 +41,16 @@
     display: none;
   }
 
-  // A single-series graph is shorter, not lifted: the -40px here closed the gap
-  // the old checkbox row left behind, and with that row gone it pulled the plot
-  // up over the values above it.
-  //
   // The floor is the height the chart draws itself at. Apex empties its host
   // for an instant while it re-lays a chart out, and a host that collapses to
   // nothing takes the panel's scroll position with it.
   app-analysis-apex-chart {
     display: block;
-    min-height: 250px;
+    min-height: $plot-height;
   }
 
-  // The chart draws itself 250px tall; a host shorter than that does not make
-  // a shorter chart, it cuts the bottom off one -- which is where the time
-  // axis's label lives.
+  // A host shorter than the chart does not make a shorter chart, it cuts the
+  // bottom off one -- which is where the time axis's label lives.
   app-analysis-apex-chart > div:not(.chart-render-error) {
     min-height: 0 !important;
     height: auto !important;
@@ -61,19 +61,19 @@
     margin-bottom: -6px;
   }
 
-  // Apex clips at its own SVG, which sits a few pixels inside the card -- so
-  // the read-out box that rides the playhead lost its right-hand edge near the
-  // end of a cycle, and its top at the peak of a curve. The series are clipped
-  // by a mask of their own rather than by this, so letting the SVG overflow
-  // frees the labels and moves nothing else. The card outside it still clips,
-  // with a margin wide enough to hold a label and no more.
+  // Apex clips at its own SVG, which sits a few pixels inside the row -- so a
+  // marker riding the playhead lost its edge at the end of a cycle, and its top
+  // at the peak of a curve. The series are clipped by a mask of their own
+  // rather than by this, so letting the SVG overflow frees the marks and moves
+  // nothing else. The row outside it still clips, with a margin wide enough to
+  // hold a mark and no more.
   .apexcharts-svg {
     overflow: visible !important;
   }
 
   // A container Apex leaves in the DOM with a border on it whether or not there
   // is anything to say. Empty, it reads as a stray box floating over the plot,
-  // and half of one while the card is opening.
+  // and half of one while the row is opening.
   .apexcharts-tooltip:not(.apexcharts-active),
   .apexcharts-xaxistooltip:not(.apexcharts-active),
   .apexcharts-yaxistooltip:not(.apexcharts-active) {
@@ -135,80 +135,77 @@
     text-decoration: underline;
   }
 }
-// What the ghosted curve under the live one is, and how to be rid of it.
-// Flat on the card rather than raised: it is a note about what is drawn, not
-// a control sitting on top of the drawing.
-.baselineChip {
+
+// The numbers under the plot: a column each for the maximum and the minimum,
+// a row per series, and under a series its values from before the drag while
+// there is a comparison to make. The first column is the name column, and it
+// is fixed so the numbers line up down the table whatever the names are.
+.statsTable {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 2px;
-  padding: 0 2px;
-  font-size: 11px;
-  color: #5f6368;
-  white-space: nowrap;
-
-  button {
-    height: 18px;
-    padding: 0 6px;
-    border: none;
-    border-radius: 9px;
-    background: #eef1fc;
-    color: #303f9f;
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: 500;
-    cursor: pointer;
-
-    &:hover {
-      background: #e3e8fb;
-    }
-  }
+  flex-direction: column;
+  gap: 9px;
+  margin: 0 2px;
+  padding: 8px 4px 10px;
+  border-top: 1px solid #f1f2f7;
+  font-variant-numeric: tabular-nums;
 }
 
-// A pale line, in no series' colour.
-//
-// It stood for the ghosted curves and was drawn in indigo to say so -- which is
-// right on a position graph and a lie on an acceleration one, where the series
-// is orange. A graph can show three at once, so there is no one colour to
-// borrow: what the swatch actually means is "pale", and grey says that without
-// claiming to be any of them.
-.baselineSwatch {
-  width: 14px;
-  height: 2px;
-  flex: 0 0 auto;
-  border-radius: 1px;
-  background: rgba(0, 0, 0, 0.24);
+.statsHead,
+.statsRow {
+  display: grid;
+  grid-template-columns: 58px 1fr 1fr;
+  gap: 3px 10px;
+  align-items: baseline;
 }
 
-// What the peak was and what it is now. Green down, amber up, grey for a
-// change too small to have been anybody's doing -- an arrow claiming an
-// improvement that is really solver noise is worse than no arrow.
-.peakReadout {
+.statsHead span {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8a8f9e;
+}
+
+.statsName,
+.statsBeforeName {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 0 6px;
-  border-radius: 9px;
-  background: #f4f4f7;
-  color: #5f6368;
-  font-variant-numeric: tabular-nums;
+  gap: 8px;
   white-space: nowrap;
+}
 
-  mat-icon {
-    width: 13px;
-    height: 13px;
-    font-size: 13px;
-    line-height: 13px;
+.statsName {
+  font-size: 12.5px;
+  color: #2c2c2c;
+}
+
+// The swatch is the legend: the same ink the curve is drawn in, and for the
+// earlier curve the same dashes.
+.statsSwatch {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+
+.statsValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: #14161f;
+
+  .statsUnit {
+    font-size: 11.5px;
+    font-weight: 400;
+    color: #5f6368;
   }
+}
 
-  &.better {
-    background: #e6f4ea;
-    color: #1e7d32;
-  }
+.statsBeforeName,
+.statsBefore {
+  font-size: 12px;
+  color: #8a8f9e;
 
-  &:not(.better):not(.same) {
-    background: #fdf1e3;
-    color: #8a6100;
+  svg {
+    display: block;
+    flex: 0 0 auto;
   }
 }

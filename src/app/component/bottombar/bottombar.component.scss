@@ -77,6 +77,11 @@
       white-space: nowrap;
     }
 
+    // Naming what is under the hand, in the ink the panel's chip uses for it.
+    .status.tuning {
+      color: #303f9f;
+    }
+
     .spacer {
       flex: 1 1 auto;
     }

@@ -66,7 +66,8 @@
     // contents` takes an element out of the box tree but leaves it in the DOM,
     // so a child combinator still has to pass it.
     > .sectionBody:first-child > title-block:first-child,
-    > .sectionBody:first-child > editable-title-block:first-child {
+    > .sectionBody:first-child > editable-title-block:first-child,
+    > .sectionBody:first-child > .panelHead:first-child {
       position: sticky;
       top: 0;
       z-index: 2;
@@ -83,7 +84,8 @@
     // that looked like the top of the panel. The title now casts a shadow onto
     // whatever is passing under it.
     &.scrolled > .sectionBody:first-child > title-block:first-child,
-    &.scrolled > .sectionBody:first-child > editable-title-block:first-child {
+    &.scrolled > .sectionBody:first-child > editable-title-block:first-child,
+    &.scrolled > .sectionBody:first-child > .panelHead:first-child {
       box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0.35);
     }
   }

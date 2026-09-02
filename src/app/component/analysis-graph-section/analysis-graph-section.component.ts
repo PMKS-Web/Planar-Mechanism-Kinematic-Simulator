@@ -20,26 +20,36 @@ import { AnalysisSampleService } from '../../services/analysis-sample.service';
 import { ForceUnit } from '../../model/unit-enums';
 import { ForceAnalysisMode } from '../../model/mechanism/force-solver';
 import { Mechanism } from '../../model/mechanism/mechanism';
-import {
-  ANALYSIS_SERIES_COLORS,
-  angularScale,
-  formatAnalysisValue,
-} from '../../model/analysis-series';
+import { ANALYSIS_SERIES_COLORS, angularScale, formatReading } from '../../model/analysis-series';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 
-/** One value of one series, as the collapsed header shows it. */
+/** One value of one series, at the pose on screen. */
 export interface SeriesPreview {
   key: 'x' | 'y' | 'z';
   name: string;
   color: string;
+  /** The number alone; the row says the unit once, after all of them. */
   text: string;
+}
+
+/**
+ * Which of a plot's series the reader is looking at: the magnitude, or the two
+ * components it is the magnitude of. Two lines or four, never six -- and never
+ * a lone component, which is a picture of half a vector.
+ */
+export type SeriesMode = 'mag' | 'xy';
+
+/** The series a mode draws, for a plot with this many of them. */
+export function selectionFor(count: number, mode: SeriesMode): SeriesSelection {
+  if (count === 1 || (count === 3 && mode === 'mag')) return { x: false, y: false, z: true };
+  return { x: true, y: true, z: false };
 }
 
 /**
  * One analysable quantity: its name, its value right now, and its graph.
  *
- * The value is the point of the header. A reader looking for "where is joint B"
+ * The value is the point of the row. A reader looking for "where is joint B"
  * had to open a graph to find out, and the ten graphs a joint and a link offer
  * between them are ten things to open. The number is there before the graph is,
  * and the graph is what you open when the number is not enough.
@@ -84,7 +94,12 @@ export class AnalysisGraphSectionComponent {
    * template asks this three times per pass -- to decide whether to draw the
    * row, to draw it, and to size the legend. Once per pose is enough.
    */
-  private previewCache?: { key: string; mechanism: unknown; series: SeriesPreview[] };
+  private previewCache?: {
+    key: string;
+    mechanism: unknown;
+    series: SeriesPreview[];
+    unit: string;
+  };
 
   /**
    * What this quantity reads at the pose on screen.
@@ -144,70 +159,94 @@ export class AnalysisGraphSectionComponent {
       key: keys[index],
       name: names[index],
       color: this.colorFor(names[index]),
-      text: Number.isFinite(value) ? `${formatAnalysisValue(value * scale)} ${unit}`.trim() : '—',
+      text: Number.isFinite(value) ? formatReading(value * scale) : '—',
     }));
-    this.previewCache = { key, mechanism, series };
+    this.previewCache = { key, mechanism, series, unit };
     return series;
   }
 
-  /**
-   * Which series the legend is showing, held here rather than asked of the
-   * graph.
-   *
-   * The graph only exists while the section is open, so asking it during the
-   * template's own evaluation gave a different answer before and after the
-   * child was created in that same pass -- which Angular reports as NG0100
-   * against the legend's own class. Held here, it also survives the card being
-   * closed and opened again, which is what a reader who turned a line off
-   * expects.
-   *
-   * Undefined until the reader has an opinion, which is when the graph's own
-   * default stands: the same default, computed from the same two facts, so the
-   * legend and the plot agree on the very first frame rather than the legend
-   * lighting everything up over a plot drawing one line.
-   */
-  private chosen?: SeriesSelection;
+  /** What every number in this row is in. */
+  get unit(): string {
+    // The preview computes it; asking for the preview first keeps the cache warm.
+    this.preview;
+    return this.previewCache?.unit ?? '';
+  }
 
   /**
-   * The default, held rather than made fresh each time it is asked for.
+   * The row's number: what the plot's chosen series read right now.
+   *
+   * The pair as "x, y" and a magnitude on its own, so the closed row already
+   * says what the open one would draw.
+   */
+  get readout(): string {
+    const preview = this.preview;
+    if (!preview.length) return '';
+    if (preview.length === 1) return preview[0].text;
+    if (preview.length === 3 && this.mode === 'mag') return preview[2].text;
+    return `${preview[0].text}, ${preview[1].text}`;
+  }
+
+  /** Whether this plot has a magnitude and its components to choose between. */
+  get hasSplit(): boolean {
+    return this.preview.length === 3;
+  }
+
+  /**
+   * Which half of the split the reader chose, held here rather than asked of
+   * the graph.
+   *
+   * The graph only exists while the row is open, so asking it during the
+   * template's own evaluation gave a different answer before and after the
+   * child was created in that same pass -- which Angular reports as NG0100.
+   * Held here, it also survives the row being closed and opened again, which
+   * is what a reader who switched to the components expects.
+   *
+   * Undefined until the reader has an opinion, which is when the graph's own
+   * default stands: force plots open on the components, since the direction
+   * of a reaction is what is being read; kinematic ones lead with the
+   * magnitude.
+   */
+  private chosen?: SeriesMode;
+
+  get mode(): SeriesMode {
+    if (this.chosen) return this.chosen;
+    const fallback = defaultSeriesSelection(this.preview.length, this.analysis());
+    return fallback.z && !fallback.x ? 'mag' : 'xy';
+  }
+
+  /**
+   * The selection, held rather than made fresh each time it is asked for.
    *
    * It is handed to the graph as an input, and a new object every pass would
    * read as a new value -- which rebuilds the chart, which asks again.
    */
-  private fallback = defaultSeriesSelection(0, '');
-  private fallbackFor = -1;
+  private selection = selectionFor(0, 'xy');
+  private selectionKey = '';
 
   get shownSeries(): SeriesSelection {
-    if (this.chosen) return this.chosen;
-    const count = this.preview.length;
-    if (count !== this.fallbackFor) {
-      this.fallbackFor = count;
-      this.fallback = defaultSeriesSelection(count, this.analysis());
+    const key = `${this.preview.length}|${this.mode}`;
+    if (key !== this.selectionKey) {
+      this.selectionKey = key;
+      this.selection = selectionFor(this.preview.length, this.mode);
     }
-    return this.fallback;
+    return this.selection;
   }
 
-  isShown(key: 'x' | 'y' | 'z'): boolean {
-    return this.shownSeries[key];
+  setMode(mode: SeriesMode): void {
+    if (this.mode === mode) return;
+    this.chosen = mode;
+    this.graph()?.showSeries(this.shownSeries);
   }
 
   /**
-   * The graph reporting what it is drawing, which is the legend's own state.
+   * The graph reporting what it is drawing, which is the switch's own state.
    *
-   * By value, not by object: the graph reports after every rebuild, and taking
-   * a fresh object each time would change an input it is bound to, which
-   * rebuilds it, which reports again.
+   * By value: the graph reports after every rebuild, and an answer that
+   * agrees with the switch must not move it.
    */
   adoptSeries(selection: SeriesSelection): void {
-    const shown = this.shownSeries;
-    const same = shown.x === selection.x && shown.y === selection.y && shown.z === selection.z;
-    this.chosen = same ? shown : selection;
-  }
-
-  toggleSeries(key: 'x' | 'y' | 'z'): void {
-    const next = { ...this.shownSeries, [key]: !this.isShown(key) };
-    this.chosen = next;
-    this.graph()?.toggleSeries(key);
+    const mode: SeriesMode = selection.z && !selection.x && !selection.y ? 'mag' : 'xy';
+    if (mode !== this.mode) this.chosen = mode;
   }
 
   /**

@@ -55,16 +55,135 @@
     // }
   }
 }
+// The head of a panel of graphs. Sized as the title block it replaced -- the
+// same 20px title on the same gutter -- with a chip on the title's line and a
+// switch on the subtitle's, each shown only while it has something to say.
+#analysisWrapper .panelHead {
+  padding: 10px 15px 8px;
+  background: var(--card-surface);
+}
+
+#analysisWrapper .panelTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 30px;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+#analysisWrapper .panelTitleText,
+#analysisWrapper .panelSubText {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+// Names what is under the hand, in the accent the status strip uses for it.
+#analysisWrapper .tuningChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 11px;
+  background: #e8eaf6;
+  color: #303f9f;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+
+  mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+    line-height: 14px;
+  }
+}
+
+#analysisWrapper .panelSub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 22px;
+  padding-top: 2px;
+  font-size: 13px;
+  line-height: 18px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+// The switch that shows or hides the curves from before the drag, on every
+// open graph at once. A label with a track, not a checkbox: it is a view
+// setting the reader flips while reading, not a form field.
+#analysisWrapper .compareToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: #2c2c2c;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#analysisWrapper .switchTrack {
+  position: relative;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 20px;
+  border-radius: 10px;
+  background: #c4c7d0;
+  transition: background 0.15s;
+
+  &.on {
+    background: #3f51b5;
+  }
+}
+
+#analysisWrapper .switchKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: left 0.15s;
+
+  .switchTrack.on & {
+    left: 16px;
+  }
+}
+
+// The rows, on the panel's text gutter, closed off by a rule under the last.
+#analysisWrapper .rowList {
+  padding: 0 15px;
+
+  &::after {
+    content: '';
+    display: block;
+    margin: 0 -6px;
+    border-top: 1px solid #eceef5;
+  }
+}
+
+#analysisWrapper .rowList:last-child {
+  padding-bottom: 14px;
+}
+
 // Names the group of graphs under it. It used to be a subtitle-block nudged
 // down 20px, which read as a stray line of text between two cards rather than
 // as a heading for the ones below it.
 #analysisWrapper .graphGroupHeading {
-  // On the cards' own gutter, and weighted to carry the group under it rather
-  // than to be the quietest thing on the page.
-  margin: 16px 0 10px;
-  padding: 14px 15px 0;
-  border-top: 1px solid #eceef5;
-  font-size: 15px;
+  // Under the rows above it and over the ones below, weighted a little above
+  // a row's name so it reads as their heading rather than as one more of them.
+  margin: 10px 15px 0;
+  padding: 10px 4px 2px;
+  font-size: 12px;
   font-weight: 500;
   color: #2c2c2c;
   cursor: default;

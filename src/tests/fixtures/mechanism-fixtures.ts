@@ -127,6 +127,9 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
   // One machine, so its own place in its cycle is the shared step. The real
   // one reads a per-machine clock the harness has no reason to run.
   service.currentSampleOf = () => service.mechanismTimeStep;
+  // And the seconds the analysis panel's subtitle reads at: the harness never
+  // runs a clock, so its one machine stands at the start of its cycle.
+  service.secondsOf = () => 0;
   // Borrowed rather than restated: the panels now ask which machine owns the
   // part they are drawing, and the real lookup reads exactly the two fields
   // set above, so a copy here could only drift away from it.

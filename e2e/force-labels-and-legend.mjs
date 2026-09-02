@@ -117,7 +117,7 @@ for (const member of ['GN', 'PC', 'PS']) {
   const rows = await titles();
   record(
     `selecting ${member} offers the effort its drive has to supply`,
-    rows.includes('Input Force for Cylinder GC'),
+    rows.includes('Input Force'),
     rows
   );
 }
@@ -137,13 +137,11 @@ const readingOf = async (id, title) => {
     const section = [...document.querySelectorAll('.graphSection')].find(
       (one) => one.querySelector('.graphTitle')?.textContent.trim() === wanted
     );
-    return section
-      ? [...section.querySelectorAll('.previewSeries')].map((el) => el.textContent.trim()).join('|')
-      : null;
+    return section ? section.querySelector('.graphValue')?.textContent.trim() : null;
   }, title);
 };
-const onThePart = await readingOf('GN', 'Input Force for Cylinder GC');
-const onTheJoint = await readingOf('S', 'Input Force at Joint S');
+const onThePart = await readingOf('GN', 'Input Force');
+const onTheJoint = await readingOf('S', 'Input Force');
 record('and reads exactly what the buried joint reads', onThePart === onTheJoint && !!onThePart, {
   onThePart,
   onTheJoint,
@@ -160,14 +158,18 @@ await page.evaluate(() =>
 );
 await page.waitForTimeout(600);
 await select('B');
+// The row's value is set flush right in tabular figures, so what must hold
+// still as the digits change is its right-hand edge.
 const legendAt = () =>
   page.evaluate(() => {
-    const first = document.querySelector('.graphPreview');
+    const first = document.querySelector('.graphValue');
     if (!first) return null;
-    return [...first.querySelectorAll('.previewSeries')].map((el) => ({
-      text: el.textContent.trim().replace(/\s+/g, ' '),
-      left: Math.round(el.getBoundingClientRect().left * 10) / 10,
-    }));
+    return [
+      {
+        text: first.textContent.trim().replace(/\s+/g, ' '),
+        right: Math.round(first.getBoundingClientRect().right * 10) / 10,
+      },
+    ];
   });
 
 const frames = [];
@@ -178,11 +180,11 @@ for (const step of [0, 12, 25, 37, 48]) {
   await page.waitForTimeout(400);
   frames.push(await legendAt());
 }
-record('the legend has an entry per series', (frames[0] ?? []).length >= 2, frames[0]);
+record('the row states both components', /,/.test(frames[0]?.[0]?.text ?? ''), frames[0]);
 const readings = new Set(frames.map((frame) => (frame ?? []).map((one) => one.text).join('|')));
 record('the numbers really do change across the cycle', readings.size > 1, [...readings]);
-const columns = new Set(frames.map((frame) => (frame ?? []).map((one) => one.left).join(',')));
-record('and every entry stays in the same column while they do', columns.size === 1, [...columns]);
+const columns = new Set(frames.map((frame) => (frame ?? []).map((one) => one.right).join(',')));
+record('and the value keeps its right edge while they do', columns.size === 1, [...columns]);
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 await browser.close();
