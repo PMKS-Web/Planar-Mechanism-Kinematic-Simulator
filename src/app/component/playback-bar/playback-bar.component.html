@@ -183,7 +183,9 @@
               }
 
               @if (row.note) {
-                <span class="rowNote">{{ row.note }}</span>
+                <span class="rowNote" [attr.data-row]="row.index" [attr.data-full]="row.note">{{
+                  noteText(row)
+                }}</span>
               }
 
               <!-- Amber rather than red: the mechanism runs, and runs correctly.
@@ -321,7 +323,7 @@
     class="stopButton"
     (click)="stop()"
     [disabled]="!canStop"
-    matTooltip="Back to the start pose"
+    [matTooltip]="shortcuts.tip('Back to the start pose', 'playback.stop')"
     matTooltipPosition="above"
     matTooltipShowDelay="600"
     aria-label="Back to the start pose"
@@ -347,6 +349,7 @@
       @if (seatFor(row); as at) {
         <button
           class="anchorSeat"
+          [class.covered]="at.covered"
           [style.--at]="at.percent"
           (click)="backToStart(row); $event.stopPropagation()"
           title="Back to where this machine's cycle starts"

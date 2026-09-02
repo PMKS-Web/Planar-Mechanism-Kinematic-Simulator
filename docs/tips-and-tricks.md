@@ -865,3 +865,28 @@ directly. The pill under the chosen option is positioned by measuring that optio
 (`--thumb-left`, `--thumb-width`), so options may be as wide as their labels (`[fill]="false"`
 at the end of a settings row) or share the width equally (the default in a panel). Its buttons
 carry the plain button role and `aria-pressed`, which is what the suites find them by.
+
+## ApexCharts draws every annotation in front, and has no option about it
+
+`annotations.position` is not a thing (only `grid.position` and the crosshairs have one), so a
+zero line drawn as a y-axis annotation crossed the curve it was there to be read against. The
+chart bridge moves the axis-annotation groups under the series group after each draw, from a
+`MutationObserver` on the chart's host -- the one vantage point that sees Apex's own late
+redraws too. The move must be a no-op once the order is right: moving a node that is already in
+place is itself a mutation, and the first version of this looped the tab solid.
+
+## `panel-section` has a live slot for what a frozen panel may still change
+
+`[frozen]` makes the card's body `inert`. A child marked `panelLive` is projected after the
+body, outside it, and stays usable while the rest is gray: that is how the mass fields are typed
+while the machine plays. The frozen look in `edit-panel.component.scss` is scoped to `[inert]`
+descendants for the same reason, so the live section keeps its ink.
+
+## Template payloads outside the generated block are edited by hand
+
+`npm run template-payloads` rewrites only the block between the `<generated …>` markers in
+`template-linkages.ts`; the entries above it and everything in `dev-templates.ts` are typed in.
+A default that lives in the URL's settings flags (joint labels, say) therefore has to be flipped
+in those strings too: the first two characters are the packed bool settings in the URL's
+base-64 alphabet, and the checksum on the end is a function of the length alone, so a flipped
+bit needs no other change.

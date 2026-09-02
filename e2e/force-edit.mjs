@@ -168,7 +168,10 @@ await page.evaluate(() => {
   item?.click();
 });
 await page.waitForTimeout(300);
-await page.mouse.move(onBoom.x + 120, onBoom.y - 90, { steps: 8 });
+// Away from the hook, where the first force now hangs: its anchor is held
+// off the shared pin along the boom rather than refused outright, so the
+// arrow it ends up with reaches into the spot the old click used.
+await page.mouse.move(onBoom.x - 120, onBoom.y - 90, { steps: 8 });
 await page.waitForTimeout(200);
 
 const ghost = await page.evaluate(() => {
@@ -179,7 +182,7 @@ const ghost = await page.evaluate(() => {
 });
 record('drawing a force previews the arrow it will make', !!ghost && ghost.drawn >= 2, ghost);
 
-await page.mouse.click(onBoom.x + 120, onBoom.y - 90);
+await page.mouse.click(onBoom.x - 120, onBoom.y - 90);
 await page.waitForTimeout(800);
 const built = await page.evaluate(
   () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.forces.length

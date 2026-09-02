@@ -929,7 +929,7 @@ export class GridUtilsService {
     link: RealLink,
     point: Coord,
     objectScale: number
-  ): { at: Coord; snappedTo?: RealJoint } | undefined {
+  ): { at: Coord; snappedTo?: RealJoint; shared?: RealJoint } {
     // Generous enough to catch by hand: a joint is 0.15 object scales across.
     const snapRadius = 0.3 * objectScale;
     let nearest: RealJoint | undefined;
@@ -943,7 +943,10 @@ export class GridUtilsService {
       }
     }
     if (nearest && nearestGap <= snapRadius) {
-      if (nearest.links.length > 1) return undefined;
+      // A pin several links meet at is not a place for a force -- it would
+      // not say which body it acts on -- but it is not a wall either. The
+      // caller keeps the force on the link, short of the pin.
+      if (nearest.links.length > 1) return { at: point, shared: nearest };
       return { at: new Coord(nearest.x, nearest.y), snappedTo: nearest };
     }
     return { at: point };

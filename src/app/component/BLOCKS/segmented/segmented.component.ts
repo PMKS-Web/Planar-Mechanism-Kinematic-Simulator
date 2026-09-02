@@ -40,6 +40,11 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
   readonly selected = input<number>(0);
   readonly selectedChange = output<number>();
   readonly disabled = input<boolean>(false);
+  /**
+   * Options that cannot be chosen right now, by index: grayed in place, so
+   * the reader can see the choice exists and is not theirs to make yet.
+   */
+  readonly disabledAt = input<number[]>([]);
   /** A little shorter and tighter, for a row that has less room. */
   readonly compact = input<boolean>(false);
   /**
@@ -52,6 +57,8 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
 
   private readonly buttons = viewChildren<ElementRef<HTMLButtonElement>>('option');
   private watch?: ResizeObserver;
+  /** Which option the pill was last put under, so a slide is only ever between two. */
+  private restingAt?: number;
 
   constructor() {
     // The pill follows the chosen option, and the option follows its label:
@@ -79,8 +86,12 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
   }
 
   choose(index: number): void {
-    if (this.disabled() || index === this.selected()) return;
+    if (this.disabled() || this.disabledAt().includes(index) || index === this.selected()) return;
     this.selectedChange.emit(index);
+  }
+
+  isDisabledAt(index: number): boolean {
+    return this.disabled() || this.disabledAt().includes(index);
   }
 
   /**
@@ -90,10 +101,19 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
    * between.
    */
   private measure(): void {
-    const chosen = this.buttons()[this.selected()]?.nativeElement;
+    const at = this.selected();
+    const chosen = this.buttons()[at]?.nativeElement;
     if (!chosen) return;
-    const style = this.host.nativeElement.style;
-    style.setProperty('--thumb-left', `${chosen.offsetLeft}px`);
-    style.setProperty('--thumb-width', `${chosen.offsetWidth}px`);
+    const host = this.host.nativeElement;
+    // A slide is a change the reader watched happen: from one option to
+    // another while the control was on screen. A control arriving, or coming
+    // back with the same value after the panel around it was rebuilt, snaps
+    // into place -- a pill sliding into a panel that has just appeared says a
+    // choice was made when none was.
+    const slides = this.restingAt !== undefined && this.restingAt !== at;
+    host.classList.toggle('settling', !slides);
+    host.style.setProperty('--thumb-left', `${chosen.offsetLeft}px`);
+    host.style.setProperty('--thumb-width', `${chosen.offsetWidth}px`);
+    this.restingAt = at;
   }
 }

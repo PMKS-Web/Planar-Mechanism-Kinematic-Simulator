@@ -114,7 +114,8 @@ export class BottombarComponent {
     if (this.solution.inserted) {
       return `Inserted as a ${kind} · positions kept for reference`;
     }
-    const chosen = this.solution.chosen();
+    // As driven from the chosen pin, which is the linkage on the grid.
+    const chosen = this.solution.driven();
     if (!chosen) return 'No solution meets the current requirements';
     const missed = 3 - chosen.onBranchCount;
     const how = chosen.defectFree

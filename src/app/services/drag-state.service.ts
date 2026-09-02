@@ -183,6 +183,18 @@ export class DragStateService {
   }
 
   /**
+   * The gesture has put things back exactly where it found them.
+   *
+   * A force follows the hand along its bar now, and a hand that wanders far
+   * off the bar and back leaves the force where it started; credited for the
+   * wandering, the release would push a URL identical to the last one onto
+   * the history, and Undo would be armed with nothing to undo.
+   */
+  noteMechanismRestored(): void {
+    this.mechanismModified = false;
+  }
+
+  /**
    * The pointer came up: clear everything in flight and report what the gesture
    * earned. A gesture that moved nothing, or moved the pointer without touching
    * the mechanism, earns no undo entry — that is what keeps a click from

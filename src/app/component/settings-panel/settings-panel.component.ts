@@ -267,14 +267,22 @@ export class SettingsPanelComponent implements OnDestroy {
    * already standing in Edit mode, where it is the one sentence in the tooltip
    * that cannot help them.
    */
-  lockedNote(): string {
+  lockedNote(subject = 'This setting'): string {
     const refusal = this.permission.refusal('properties');
     if (!refusal) return '';
-    // The model's own sentence, so the way out named here is the one that
-    // actually applies. Reading `settings.animating` -- which the transport's
-    // master controls push and a *row* play does not -- told a reader watching
-    // one machine of several to switch to Edit mode, standing in Edit mode.
-    return ` ${refusal.long}`;
+    // Why *this* control is gray, in its own words: the model's sentence spoke
+    // of "changing the mechanism", which under a units switch read as advice
+    // about the drawing. What is being refused is the units, and the way out
+    // is the model's -- asked of it, so a machine running or parked in any
+    // mode is sent to the control that actually clears it.
+    // In an analysis mode the model's own sentence: it says what this mode
+    // does allow, and where the typed version lives.
+    if (refusal.actionKind === 'toEdit') return ` ${refusal.long}`;
+    // Away from the start, the model's sentence spoke of "changing the
+    // mechanism", which under a units switch read as advice about the drawing.
+    // What is being refused is the units.
+    const way = refusal.action ?? 'Return it to the start';
+    return ` ${subject} cannot be changed while the mechanism is away from the start. ${way[0].toUpperCase()}${way.slice(1)} first.`;
   }
 
   /**

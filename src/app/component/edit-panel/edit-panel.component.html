@@ -232,6 +232,7 @@
               gridUtils.isVisuallyInput(activeSrv.selectedJoint) ? 'remove_input' : 'add_input'
             "
             [disabled]="!canToggleInput(activeSrv.selectedJoint)"
+            [tooltip]="inputRefusal()"
             [click]="mechanismService.adjustInput.bind(mechanismService)"
           >
             {{ gridUtils.isVisuallyInput(activeSrv.selectedJoint) ? 'Remove Input' : 'Add Input' }}
@@ -286,6 +287,7 @@
            the joint's own panel that a slider weighed anything at all. -->
         @if (sliderBlock) {
           <collapsible-subseciton
+            panelLive
             titleLabel="Mass Settings"
             [expanded]="sectionExpanded['JMass']"
             (opened)="sectionExpanded['JMass'] = true"
@@ -439,6 +441,7 @@
           </div>
         }
         <collapsible-subseciton
+          panelLive
           titleLabel="Mass Settings"
           [expanded]="sectionExpanded['LMass']"
           (opened)="sectionExpanded['LMass'] = true"
@@ -579,6 +582,7 @@
           </div>
         </collapsible-subseciton>
         <collapsible-subseciton
+          panelLive
           titleLabel="Mass Settings"
           [expanded]="sectionExpanded['LMass']"
           (opened)="sectionExpanded['LMass'] = true"

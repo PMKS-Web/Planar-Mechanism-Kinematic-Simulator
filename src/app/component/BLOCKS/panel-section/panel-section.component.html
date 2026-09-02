@@ -14,4 +14,8 @@
   <div class="sectionBody" [attr.inert]="frozen() || null">
     <ng-content></ng-content>
   </div>
+  <!-- What stays live when the card is frozen. A mass is a property of the
+       design that no pose has a say in, so it can be typed while the machine
+       runs; the freeze exists for the numbers a pose does have a say in. -->
+  <ng-content select="[panelLive]"></ng-content>
 </div>

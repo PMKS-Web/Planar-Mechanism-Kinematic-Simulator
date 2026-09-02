@@ -1783,17 +1783,14 @@
           >
             >
           </line>
+          <!-- Through its own handler: in an analysis mode a base standing on a
+               joint is that joint, and the press has to be filed as one. -->
           <svg
             id="startForceEndpoint"
             [attr.x]="force.startCoord.x"
             [attr.y]="force.startCoord.y"
             [attr.stroke-width]="0.03 * settings.objectScale"
-            (pointerdown)="
-              setLastLeftClick(force);
-              activeObjService.updateSelectedObj(force.startCoord, force);
-              mouseDown($event);
-              $event.stopPropagation()
-            "
+            (pointerdown)="pressForceBase(force, $event)"
             height="10"
             width="10"
             cursor="move"

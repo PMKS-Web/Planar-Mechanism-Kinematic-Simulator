@@ -666,6 +666,12 @@
       background: rgba(255, 255, 255, 0.8);
       border-color: mat.m2-get-color-from-palette($primary-palette, 500);
     }
+
+    // Under the handle, and out of the pointer's way, while the two overlap.
+    &.covered {
+      z-index: 0;
+      pointer-events: none;
+    }
   }
 
   // A cycle that does not exist gets a rail and nothing else -- no cap, no

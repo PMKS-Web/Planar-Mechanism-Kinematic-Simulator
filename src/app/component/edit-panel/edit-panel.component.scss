@@ -67,8 +67,10 @@
     --frozen-ink: rgba(0, 0, 0, 0.38);
 
     // The section titles, which carry the panel's indigo when it is live.
-    .panel-header__toggle,
-    .subtitle {
+    // Only inside what is actually inert: a section the card keeps live -- the
+    // masses -- must look as live as it is.
+    [inert] .panel-header__toggle,
+    [inert] .subtitle {
       color: var(--frozen-ink);
       transition: color 150ms ease-out;
     }
@@ -76,11 +78,11 @@
     // And the controls Angular has not disabled itself: a switch, a color, a
     // button. Dimmed rather than recolored, because each is a different shape
     // of control and there is no one ink they share.
-    toggle-block,
-    button-block,
-    dual-button,
-    app-color-picker,
-    .label {
+    [inert] toggle-block,
+    [inert] button-block,
+    [inert] dual-button,
+    [inert] app-color-picker,
+    [inert] .label {
       opacity: 0.55;
       transition: opacity 150ms ease-out;
     }

@@ -253,8 +253,11 @@ export class AnalysisGraphComponent
   private comparison = inject(AnalysisCompareService);
 
   public chartOptions: Partial<ChartOptions> = {
+    // The zero line and the playhead are moved behind the curves after each
+    // draw (`layerAnnotations` on the bridge): Apex has no option for it.
     annotations: {
       xaxis: [],
+      yaxis: [],
       points: [],
     },
     chart: {
@@ -289,21 +292,20 @@ export class AnalysisGraphComponent
     },
     colors: [ANALYSIS_SERIES_COLORS.X, ANALYSIS_SERIES_COLORS.Y, ANALYSIS_SERIES_COLORS.Z],
     tooltip: {
-      // followCursor: false,
-      // theme: 'dark',
       x: {
-        formatter: function (val) {
-          return 'T = ' + formatTimeLabel(Number(val)) + 's';
-        },
-      },
-      marker: {
-        // show: false,
+        // Two decimals, like every reading on the panel.
+        formatter: (val) => `T = ${Number(val).toFixed(2)} s`,
       },
       y: {
+        // Two decimals whatever the number -- "2" and "2.00" in one column
+        // read as two kinds of number -- and no name for a magnitude: X and
+        // Y say which component, while "Z" said nothing a reader could use.
+        formatter: (val) => (Number.isFinite(val) ? Number(val).toFixed(2) : ''),
         title: {
-          // formatter: function () {
-          //   return 'T = ';
-          // },
+          formatter: (seriesName) => {
+            const name = String(seriesName ?? '').replace(/^Z ?/, '');
+            return name ? `${name}:` : '';
+          },
         },
       },
     },
@@ -1064,6 +1066,7 @@ export class AnalysisGraphComponent
     held.yaxis.forEach((one) => this.chart.addYaxisAnnotation(one, false));
     held.xaxis.forEach((one) => this.chart.addXaxisAnnotation(one, false));
     held.points.forEach((one) => this.chart.addPointAnnotation(one, false));
+    this.chart.layerAnnotations();
   }
 
   /** A dot on each shown curve at the playhead, in the curve's own ink. */

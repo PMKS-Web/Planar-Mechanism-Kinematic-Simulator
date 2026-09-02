@@ -222,6 +222,12 @@ export class MechanismPanelComponent {
     if (this.editable()) {
       return 'Select one of its joints or links on the grid to edit that part.';
     }
+    if (!this.ready) {
+      const count = this.blockers;
+      return count === 1
+        ? 'This mechanism cannot run yet. Press the blocker above to see what it needs.'
+        : 'This mechanism cannot run yet. Press the blockers above to see what it needs.';
+    }
     return this.tabs.getCurrentTab() === TabID.FORCE
       ? 'Select a joint or link on the grid for the reactions it carries, or the input for the effort that drives this mechanism.'
       : 'Select a joint or link on the grid for its position, velocity and acceleration graphs.';

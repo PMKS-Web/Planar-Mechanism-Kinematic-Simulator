@@ -128,6 +128,31 @@
   .mechanismPanel .factValue {
     font-size: 13px;
     color: #2c2c2c;
+
+    // The one number on the panel that can be wrong, in the ink the status
+    // chip uses for a blocker.
+    &.bad {
+      color: #c5221f;
+      font-weight: 500;
+    }
+  }
+
+  .mechFooter .helpHint {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 19px;
+    color: rgba(0, 0, 0, 0.6);
+
+    mat-icon {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+      line-height: 19px;
+      color: mat.m2-get-color-from-palette($primary-palette, 500);
+    }
   }
 
   .linkList {

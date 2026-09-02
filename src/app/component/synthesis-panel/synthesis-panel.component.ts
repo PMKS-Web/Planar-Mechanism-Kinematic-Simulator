@@ -1,3 +1,6 @@
+import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
+import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.service';
+import { SelectedTabService, TabID } from '../../selected-tab.service';
 import {
   Component,
   OnInit,
@@ -85,14 +88,15 @@ const HELP = {
  */
 export function niceRound(value: number): number {
   if (!(value > 0) || !Number.isFinite(value)) return 0;
-  const decade = Math.pow(10, Math.floor(Math.log10(value)));
-  const mantissa = value / decade;
-  const step = [1, 2, 5, 10].reduce((best, candidate) =>
-    Math.abs(Math.log(candidate / mantissa)) < Math.abs(Math.log(best / mantissa))
-      ? candidate
-      : best
-  );
-  return step * decade;
+  // The numbers a reader would have chosen: every whole number up to 20, then
+  // fives to 50, then tens to 100 -- and the same ladder scaled by a hundred
+  // either side of it, so a drawing in meters or in millimeters gets the same
+  // kind of number. 1, 2, 5, 10 was too coarse a ladder: a coupler that wanted
+  // to be 3 cm was offered 2 or 5.
+  const scale = Math.pow(100, Math.floor(Math.log10(value) / 2));
+  const inRange = value / scale;
+  const step = inRange <= 20 ? 1 : inRange <= 50 ? 5 : 10;
+  return Math.max(step, Math.round(inRange / step) * step) * scale;
 }
 
 @Component({
@@ -107,9 +111,12 @@ export function niceRound(value: number): number {
     MatTooltip,
     CollapsibleSubsecitonComponent,
     StandardFieldDirective,
+    SegmentedComponent,
   ],
 })
 export class SynthesisPanelComponent implements OnInit, OnDestroy {
+  private shortcuts = inject(KeyboardShortcutsService);
+  private tabs = inject(SelectedTabService);
   private fb = inject(FormBuilder);
   mechanismSrv = inject(MechanismService);
   private notify = inject(NotificationService);
@@ -246,7 +253,8 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     // Model units are the reader's own unit times MODEL_SCALE -- changing the
     // unit rescales the drawing rather than converting on the way out -- so the
     // rounding happens on the number they will actually see.
-    const nice = niceRound(span / 5 / MODEL_SCALE);
+    // A sixth of the view: a fifth made the first coupler most of the drawing.
+    const nice = niceRound(span / 6 / MODEL_SCALE);
     if (nice > 0) this.design.suggestLength(nice * MODEL_SCALE);
   }
 
@@ -286,6 +294,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.keySub.unsubscribe();
     this.gone = true;
     // Take the replace warning with us: its buttons act on this panel, and left
     // on screen they were still clickable after it was gone.
@@ -570,7 +579,11 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
    * drawn in. Undefined when there is nothing to check it against.
    */
   reached(i: number): boolean | undefined {
-    const cand = this.solution.chosen();
+    // As driven, not as constructed: driving from the far pin re-assesses the
+    // linkage as the machine it then is, and the chips must say what that
+    // machine does. Read from the construction, every chip said "reached" over
+    // a coupler that visibly never got there.
+    const cand = this.solution.driven();
     if (!cand || !this.isPlaced(i)) return undefined;
     return cand.onBranch[i - 1];
   }
@@ -954,6 +967,50 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     if (key) this.solution.pick(key);
   }
 
+  /** The pill's view of `referenceOptions`: labels held, and the chosen index. */
+  referenceLabels(): string[] {
+    const next = this.referenceOptions().map((opt) => opt.label);
+    if (next.join(',') !== this.referenceLabelsHeld.join(',')) this.referenceLabelsHeld = next;
+    return this.referenceLabelsHeld;
+  }
+
+  private referenceLabelsHeld: string[] = [];
+
+  referenceIndex(): number {
+    return Math.max(0, this.referenceOptions().findIndex((opt) => opt.active));
+  }
+
+  /** The pill's view of `branchOptions`: labels held, the chosen index, the grayed ones. */
+  readonly branchLabels = ['Open', 'Crossed'];
+
+  branchIndex(): number {
+    return Math.max(0, this.branchOptions().findIndex((opt) => opt.active));
+  }
+
+  branchUnavailable(): number[] {
+    const held = this.branchOptions()
+      .map((opt, index) => (opt.available ? -1 : index))
+      .filter((index) => index >= 0);
+    // The same array while it reads the same, so the pill is not handed a
+    // new value every pass.
+    const key = held.join(',');
+    if (key !== this.unavailableKey) {
+      this.unavailableKey = key;
+      this.unavailable = held;
+    }
+    return this.unavailable;
+  }
+
+  private unavailable: number[] = [];
+  private unavailableKey = '';
+  private pinLabelsHeld: string[] = [];
+
+  pinLabels(): string[] {
+    const next = this.pinOptions().map((opt) => opt.label);
+    if (next.join(',') !== this.pinLabelsHeld.join(',')) this.pinLabelsHeld = next;
+    return this.pinLabelsHeld;
+  }
+
   pinOptions(): { label: string; far: boolean; active: boolean }[] {
     // Named by the letters those two pins are drawn under. `chosen()` rather
     // than `driven()`: this asks which end to read the linkage from, so it has
@@ -1043,6 +1100,18 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     if (this.solution.playing) this.schedule();
     else this.cancelFrame();
   }
+
+  /**
+   * Space, as on the transport. The transport's own key handler stands down in
+   * Synthesis, because the thing to play here is the preview rather than a
+   * machine on the grid -- so the preview answers it instead.
+   */
+  private keySub = this.shortcuts.pressed.subscribe((id) => {
+    if (id !== 'playback.toggle') return;
+    if (this.tabs.getCurrentTab() !== TabID.SYNTHESIZE) return;
+    if (!this.solution.generated) return;
+    this.togglePlay();
+  });
 
   /**
    * At most one chain of frames.

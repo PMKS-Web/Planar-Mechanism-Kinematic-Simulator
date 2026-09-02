@@ -1005,6 +1005,42 @@ export class NewGridComponent implements OnDestroy {
     this.updateContextMenuItems();
   }
 
+  /**
+   * A press on a force's base handle.
+   *
+   * In an analysis mode a force has no graphs, and a base standing on a joint
+   * is standing on something that does: the press is filed as a press on the
+   * joint, all the way down. Otherwise it is the ordinary grab of the base --
+   * the force selected first, then its base marked, in that order, because
+   * selecting the force is what clears the marks.
+   */
+  pressForceBase(force: Force, event: PointerEvent): void {
+    event.stopPropagation();
+    const under = this.jointUnderForceBase(force);
+    if (under) {
+      this.setLastLeftClick(under, event);
+      this.mouseDown(event);
+      return;
+    }
+    this.setLastLeftClick(force);
+    this.activeObjService.updateSelectedObj(force.startCoord, force);
+    this.mouseDown(event);
+  }
+
+  /**
+   * The joint a force's base is standing on, in the modes that have graphs
+   * for joints but none for forces.
+   */
+  private jointUnderForceBase(force: Force): RealJoint | undefined {
+    if (!this.tabService.isAnalysisMode()) return undefined;
+    const reach = 0.3 * this.settings.objectScale;
+    return force.link.joints.find(
+      (joint): joint is RealJoint =>
+        joint instanceof RealJoint &&
+        Math.hypot(joint.x - force.startCoord.x, joint.y - force.startCoord.y) <= reach
+    );
+  }
+
   setLastLeftClick(clickedObj: Joint | Link | string | Force | SynthesisPose, event?: MouseEvent) {
     // Scenery in the analysis modes takes no clicks: every panel behind a
     // selection is about a machine that runs, and this geometry is not in one.
@@ -1711,25 +1747,76 @@ export class NewGridComponent implements OnDestroy {
     // what it acts on, and the two can disagree after a click on the body.
     const link = force.link;
     const anchor = this.gridUtils.forceAnchorAt(link, wanted, this.settings.objectScale);
-    if (!anchor) {
-      this.notify.refusal(
-        'force.ambiguous-anchor',
-        'Several links meet at that joint, so a force there would not say which one it acts on.',
-        { cooldownMs: 1500 }
-      );
-      return;
+    let at = anchor.at;
+    if (!anchor.snappedTo && !this.pointIsInsideLink(link, at)) {
+      // The hand is off the bar. The force used to stop dead until the pointer
+      // came back over the link, which made every drag along a bar feel
+      // stuck: the nearest point on the link is where the hand means.
+      at = this.closestPointOnLink(link, wanted);
     }
-    if (!anchor.snappedTo && !this.pointIsInsideLink(link, anchor.at)) {
-      // Nothing moved, so nothing happened. Crediting the gesture anyway put an
-      // identical URL on the undo stack: dragging the arrow off its own link
-      // armed Undo, and pressing it appeared to do nothing because there was
-      // nothing between the two states to see.
-      return;
+    if (anchor.shared) {
+      // Held short of a pin several links meet at, along the bar it is on: a
+      // force exactly there would not say which body it acts on, and a
+      // snackbar saying so on every pointer move was the other half of what
+      // made the drag feel stuck.
+      at = this.heldOffJoint(link, anchor.shared, at, 0.3 * this.settings.objectScale);
     }
-    this.gridUtils.dragForce(force, anchor.at, how);
+    this.gridUtils.dragForce(force, at, how);
     // So that the panel values update continuously.
     this.activeObjService.fakeUpdateSelectedObj();
-    this.dragState.noteMechanismModified();
+    // Credited only while it is somewhere else: back where the gesture found
+    // it, there is nothing for Undo to take back.
+    const was = this.beforeDrag?.forces.find((one) => one.id === force.id);
+    const restored =
+      !!was &&
+      force.startCoord.x === was.sx &&
+      force.startCoord.y === was.sy &&
+      force.endCoord.x === was.ex &&
+      force.endCoord.y === was.ey;
+    if (restored) this.dragState.noteMechanismRestored();
+    else this.dragState.noteMechanismModified();
+  }
+
+  /**
+   * The point on a link's bars nearest to a point off them: the nearest of
+   * the projections onto the segments between its joints, clamped to them.
+   */
+  private closestPointOnLink(link: RealLink, point: Coord): Coord {
+    const joints = link.joints;
+    let best = point;
+    let bestGap = Infinity;
+    for (let first = 0; first < joints.length; first++) {
+      for (let second = first + 1; second < joints.length; second++) {
+        const [x, y] = point_on_line_segment_closest_to_point(
+          point.x,
+          point.y,
+          joints[first].x,
+          joints[first].y,
+          joints[second].x,
+          joints[second].y
+        );
+        const gap = Math.hypot(x - point.x, y - point.y);
+        if (gap < bestGap) {
+          bestGap = gap;
+          best = new Coord(x, y);
+        }
+      }
+    }
+    return best;
+  }
+
+  /** The same point, pushed `margin` away from a joint along the bar it is on. */
+  private heldOffJoint(link: RealLink, pin: RealJoint, at: Coord, margin: number): Coord {
+    const gap = Math.hypot(at.x - pin.x, at.y - pin.y);
+    if (gap >= margin) return at;
+    // Away from the pin, along the bar the point is on -- toward the joint on
+    // the bar's other end, which is the direction the force was coming from.
+    const other = link.joints.find((joint) => joint !== pin) ?? pin;
+    const dx = other.x - pin.x;
+    const dy = other.y - pin.y;
+    const length = Math.hypot(dx, dy);
+    if (!(length > margin)) return at;
+    return new Coord(pin.x + (dx / length) * margin, pin.y + (dy / length) * margin);
   }
 
   /**

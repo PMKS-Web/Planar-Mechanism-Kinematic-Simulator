@@ -26,6 +26,8 @@ export interface ReadinessCheck {
 export interface MechanismFact {
   label: string;
   value: string;
+  /** A number that is wrong for a machine, drawn as a fault rather than a fact. */
+  bad?: boolean;
 }
 
 export interface MechanismReadiness {
@@ -273,7 +275,13 @@ function factsOf(
   const moving = partition.links.length;
   const dof = mechanism.dof;
   const facts: MechanismFact[] = [
-    { label: 'Degrees of freedom', value: Number.isFinite(dof) ? String(dof) : '—' },
+    // One is the only mobility a machine with one input can have; anything
+    // else is the fault the blockers above are about, and reads as one.
+    {
+      label: 'Degrees of freedom',
+      value: Number.isFinite(dof) ? String(dof) : '—',
+      bad: !Number.isFinite(dof) || dof !== 1,
+    },
     { label: 'Links / joints', value: `${moving} / ${partition.ownJoints.length}` },
     { label: 'Driven joint', value: driven ? driven.name || driven.id : 'Not set' },
   ];

@@ -1,6 +1,8 @@
 import {
+  AfterViewChecked,
   AfterViewInit,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   ElementRef,
   OnDestroy,
@@ -211,7 +213,7 @@ export interface RowRefusal {
     NgTemplateOutlet,
   ],
 })
-export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
+export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
   mechanism = inject(MechanismService);
   settings = inject(SettingsService);
   activeObj = inject(ActiveObjService);
@@ -223,6 +225,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   private loading = inject(LoadingService);
   private history = inject(SaveHistoryService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private changeDetector = inject(ChangeDetectorRef);
 
   private positionSub?: Subscription;
   private wasAnimating = false;
@@ -327,6 +330,10 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
     this.keyed[id]?.();
   });
 
+  ngAfterViewChecked(): void {
+    this.fitNotes();
+  }
+
   ngOnDestroy(): void {
     this.keySub.unsubscribe();
     this.positionSub?.unsubscribe();
@@ -413,12 +420,16 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
    * nothing to point at -- the handle is already there -- and a tick that never
    * moves is a tick nobody reads.
    */
-  seatFor(row: PlaybackRow): { percent: number } | null {
+  seatFor(row: PlaybackRow): { percent: number; covered: boolean } | null {
     if (row.anchorAt === undefined) return null;
     // A thousandth of the track is a third of a pixel; anything closer than a
     // couple of them is the handle sitting in the seat.
-    if (Math.abs(row.scrub - row.anchorAt) < 8) return null;
-    return { percent: row.anchorAt / 10 };
+    const apart = Math.abs(row.scrub - row.anchorAt);
+    if (apart < 8) return null;
+    // Within a handle's width the two overlap, and the handle is the one a
+    // press there is reaching for: a seat drawn over it took the press and
+    // sent the machine back to the start instead of picking the handle up.
+    return { percent: row.anchorAt / 10, covered: apart < 60 };
   }
 
   /**
@@ -831,6 +842,69 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
       return outward ? 'Opening' : 'Closing';
     }
     return outward ? 'Clockwise' : 'Counter-clockwise';
+  }
+
+  /**
+   * The note as it fits. "Counter-clockwise" is the longest thing on a reading
+   * line that also has to hold a chip and a time, and cut to "Counter-cl…" it
+   * says nothing; "CCW" says the whole thing in the room there is. Whether
+   * there is room is measured, per row, after every layout.
+   */
+  noteText(row: PlaybackRow): string {
+    if (!this.shortNotes.has(row.index)) return row.note;
+    if (row.note === 'Clockwise') return 'CW';
+    if (row.note === 'Counter-clockwise') return 'CCW';
+    return row.note;
+  }
+
+  /** The rows whose reading line cannot hold the note in full. */
+  private shortNotes = new Set<number>();
+  private noteFitKey = '';
+
+  /**
+   * Measure the notes against the room they have, and remember which need
+   * shortening. Done after each check rather than on a resize alone, because
+   * what shares the line -- the start chip, a refusal -- comes and goes with
+   * the state, not the window.
+   */
+  private fitNotes(): void {
+    const host = this.host.nativeElement as HTMLElement;
+    const notes = [...host.querySelectorAll<HTMLElement>('.rowNote[data-row]')];
+    const key = notes
+      .map((note) => `${note.dataset['row']}:${note.dataset['full']}:${note.parentElement?.clientWidth}`)
+      .join('|');
+    if (key === this.noteFitKey) return;
+    this.noteFitKey = key;
+    let changed = false;
+    for (const note of notes) {
+      const index = Number(note.dataset['row']);
+      const line = note.parentElement;
+      if (!line) continue;
+      // The room is what the line has left once everything else on it is
+      // placed; the full note's own width is measured off screen.
+      const others = [...line.children].filter((child) => child !== note) as HTMLElement[];
+      const gap = parseFloat(getComputedStyle(line).columnGap) || 0;
+      const taken = others.reduce((sum, child) => sum + child.offsetWidth, 0) + gap * others.length;
+      const room = line.clientWidth - taken;
+      const full = this.widthOf(note, note.dataset['full'] ?? '');
+      const wants = full > room + 0.5;
+      if (wants !== this.shortNotes.has(index)) {
+        if (wants) this.shortNotes.add(index);
+        else this.shortNotes.delete(index);
+        changed = true;
+      }
+    }
+    if (changed) this.changeDetector.detectChanges();
+  }
+
+  private widthOf(like: HTMLElement, text: string): number {
+    const probe = document.createElement('span');
+    probe.textContent = text;
+    probe.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font:${getComputedStyle(like).font}`;
+    like.parentElement?.appendChild(probe);
+    const width = probe.offsetWidth;
+    probe.remove();
+    return width;
   }
 
   /** Only worth offering when there is more than one machine to get out of step. */

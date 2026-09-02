@@ -434,48 +434,10 @@ $red: #e53935;
       }
     }
 
-    /* A segmented control: one box, one option lit. */
+    /* The pick-one pills at the end of a row: as wide as the old strip. */
     .seg {
-      display: flex;
-      height: 30px;
-      border: 1px solid rgba(0, 0, 0, 0.12);
-      border-radius: 4px;
-      overflow: hidden;
-
-      &--wide {
-        width: 214px;
-        flex: 0 0 214px;
-      }
-
-      &__opt {
-        flex: 1 1 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 0;
-        background: #fff;
-        font-family: Roboto, sans-serif;
-        font-size: 13px;
-        font-weight: 500;
-        color: #3c4043;
-        cursor: pointer;
-
-        & + & {
-          border-left: 1px solid rgba(0, 0, 0, 0.12);
-        }
-
-        &--on {
-          background: $indigo-mid;
-          color: #fff;
-        }
-
-        /* The other branch of a pair that has only one: offered, so the reader can
-         see the choice exists, but there is nothing behind it. */
-        &:disabled {
-          color: #c4c7d0;
-          cursor: default;
-        }
-      }
+      width: 214px;
+      flex: 0 0 214px;
     }
 
     /* --- positions ----------------------------------------------------------- */

@@ -90,7 +90,9 @@ export class SettingsService {
    */
   isSnapToAlignment = new BehaviorSubject(readStoredFlag('snapToAlignment', true));
 
-  isShowID = new BehaviorSubject(false);
+  // On, so a reader's first drawing already has the letters the panels, the
+  // menus and the tutorial call its joints by. A shared URL carries its own.
+  isShowID = new BehaviorSubject(true);
   /**
    * On by default, and remembered on this machine rather than in the URL: the
    * mark only appears on links that have been given mass — a massless link has

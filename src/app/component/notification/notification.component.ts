@@ -17,9 +17,8 @@ const ICONS: Record<NotificationKind, string> = {
   success: 'check_circle',
   refusal: 'block',
   warning: 'warning',
-  // A flag, not a warning triangle: this one marks a place rather than
-  // reporting a fault.
-  news: 'flag',
+  // Information, not a fault: the plain (i) every reader knows.
+  news: 'info',
   failure: 'error',
 };
 

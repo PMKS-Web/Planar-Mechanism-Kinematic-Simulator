@@ -93,12 +93,29 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
     this.viewInitialized = true;
     this.scheduleUpdate();
     this.watchWidth();
+    this.watchLayering();
+  }
+
+  private layerWatch?: MutationObserver;
+
+  /**
+   * Keep the axis annotations behind the curves whenever Apex puts them back
+   * in front, which it does on every draw it makes -- and some of those it
+   * makes after the promise for the draw has resolved. Watching the DOM is
+   * the one vantage point that sees all of them. The move itself is a no-op
+   * once the order is right, so the observer does not chase its own tail.
+   */
+  private watchLayering(): void {
+    if (typeof MutationObserver === 'undefined') return;
+    this.layerWatch = new MutationObserver(() => this.layerAnnotations());
+    this.layerWatch.observe(this.chartHost().nativeElement, { childList: true, subtree: true });
   }
 
   ngOnDestroy(): void {
     this.destroyed = true;
     this.updateGeneration++;
     this.widthWatch?.disconnect();
+    this.layerWatch?.disconnect();
     this.chartInstance?.destroy();
     this.chartInstance = undefined;
   }
@@ -125,7 +142,9 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
       if (!width || width === this.renderedWidth || this.destroyed) return;
       this.renderedWidth = width;
       this.zone.runOutsideAngular(() => {
-        this.chartInstance?.updateOptions({ chart: { width } }, false, false);
+        void this.chartInstance
+          ?.updateOptions({ chart: { width } }, false, false)
+          .then(() => this.layerAnnotations());
       });
     });
     this.widthWatch.observe(host);
@@ -137,7 +156,34 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
     animate?: boolean,
     updateSyncedCharts?: boolean
   ): Promise<unknown> | undefined {
-    return this.chartInstance?.updateOptions(options, redrawPaths, animate, updateSyncedCharts);
+    return this.chartInstance
+      ?.updateOptions(options, redrawPaths, animate, updateSyncedCharts)
+      .then((result) => {
+        this.layerAnnotations();
+        return result;
+      });
+  }
+
+  /**
+   * The axis annotations -- the zero line, the playhead -- behind the curves.
+   *
+   * Apex draws every annotation over the series and offers no option about
+   * it, so a zero line crossed the curve it exists to be read against. The
+   * groups are moved under the series after each draw; the point markers stay
+   * in front, which is where a dot on a curve belongs.
+   */
+  layerAnnotations(): void {
+    const host = this.chartHost()?.nativeElement;
+    const series = host?.querySelector('.apexcharts-line-series, .apexcharts-area-series');
+    const parent = series?.parentNode;
+    if (!series || !parent) return;
+    for (const selector of ['.apexcharts-yaxis-annotations', '.apexcharts-xaxis-annotations']) {
+      const group = host!.querySelector(selector);
+      // Only a group that is in front: moving one already behind is a
+      // mutation of its own, which the observer would answer with another.
+      const inFront = !!group && !!(series.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING);
+      if (group && inFront && group.parentNode === parent) parent.insertBefore(group, series);
+    }
   }
 
   clearAnnotations(): void {
@@ -187,6 +233,7 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
         );
         await this.zone.runOutsideAngular(() => this.chartInstance!.render());
       }
+      this.layerAnnotations();
       this.zone.run(() => {
         this.renderError = null;
         this.changeDetector.markForCheck();

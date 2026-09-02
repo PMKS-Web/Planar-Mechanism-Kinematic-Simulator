@@ -75,6 +75,11 @@
       &:not(.chosen):hover {
         color: #2c2c2c;
       }
+
+      &:disabled {
+        color: #b0b4c0;
+        cursor: default;
+      }
     }
 
     &.compact button {
@@ -99,6 +104,12 @@
         cursor: default;
       }
     }
+  }
+
+  // Put in place rather than slid: a control that has just appeared, or been
+  // rebuilt with the value it had.
+  segmented-block.settling .segmented .thumb {
+    transition: none;
   }
 
   @media (prefers-reduced-motion: reduce) {

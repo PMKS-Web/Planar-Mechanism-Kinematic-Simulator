@@ -479,8 +479,10 @@ await page.evaluate(() => {
 await page.waitForTimeout(700);
 const asDrawn = await switches();
 record(
-  'the switches arrive with marks and paths on and labels off',
-  asDrawn[0].on && !asDrawn[1].on && asDrawn[2].on,
+  // Labels on as well now: a reader's first drawing already has the letters
+  // the panels and the menus call its joints by.
+  'the switches arrive with marks, labels and paths on',
+  asDrawn[0].on && asDrawn[1].on && asDrawn[2].on,
   asDrawn.map((s) => `${s.name}=${s.on}`)
 );
 // The glyph draws what is on the grid, so the crossed-out one means hidden.

@@ -24,7 +24,7 @@
         @for (fact of facts; track fact.label) {
           <div class="fact">
             <span class="factLabel">{{ fact.label }}</span>
-            <span class="factValue">{{ fact.value }}</span>
+            <span class="factValue" [class.bad]="fact.bad">{{ fact.value }}</span>
           </div>
         }
       </div>
@@ -47,8 +47,19 @@
       </div>
     }
 
+    <!-- The same hint row the Edit and Analysis panels' empty states use, so
+         "something else is to be clicked" looks the same everywhere. A machine
+         that cannot run has nothing to click *for*, so it is sent to its
+         blockers instead. -->
     <div class="mechFooter">
-      <p>{{ footerHint }}</p>
+      @if (ready || editable()) {
+        <div class="helpHint">
+          <mat-icon>touch_app</mat-icon>
+          <span>{{ footerHint }}</span>
+        </div>
+      } @else {
+        <p>{{ footerHint }}</p>
+      }
     </div>
   </div>
 }

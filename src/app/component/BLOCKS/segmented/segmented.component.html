@@ -18,7 +18,7 @@
       type="button"
       [class.chosen]="$index === selected()"
       [attr.aria-pressed]="$index === selected()"
-      [disabled]="disabled()"
+      [disabled]="isDisabledAt($index)"
       (click)="choose($index)"
     >
       {{ option }}

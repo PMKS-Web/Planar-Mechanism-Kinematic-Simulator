@@ -87,18 +87,12 @@
               help_outline
             </mat-icon>
             <span class="row__spacer"></span>
-            <div class="seg seg--wide">
-              @for (opt of referenceOptions(); track opt.value) {
-                <button
-                  type="button"
-                  class="seg__opt"
-                  [class.seg__opt--on]="opt.active"
-                  (click)="setReference(opt.value)"
-                >
-                  {{ opt.label }}
-                </button>
-              }
-            </div>
+            <segmented-block
+              class="seg"
+              [options]="referenceLabels()"
+              [selected]="referenceIndex()"
+              (selectedChange)="setReference(referenceOptions()[$event].value)"
+            ></segmented-block>
           </div>
         </collapsible-subseciton>
 
@@ -404,19 +398,13 @@
                   help_outline
                 </mat-icon>
                 <span class="row__spacer"></span>
-                <div class="seg seg--wide">
-                  @for (opt of branchOptions(); track opt.label) {
-                    <button
-                      type="button"
-                      class="seg__opt"
-                      [class.seg__opt--on]="opt.active"
-                      [disabled]="!opt.available"
-                      (click)="pickBranch(opt.key)"
-                    >
-                      {{ opt.label }}
-                    </button>
-                  }
-                </div>
+                <segmented-block
+                  class="seg"
+                  [options]="branchLabels"
+                  [selected]="branchIndex()"
+                  [disabledAt]="branchUnavailable()"
+                  (selectedChange)="pickBranch(branchOptions()[$event].key)"
+                ></segmented-block>
               </div>
 
               <div class="row">
@@ -425,18 +413,12 @@
                   help_outline
                 </mat-icon>
                 <span class="row__spacer"></span>
-                <div class="seg seg--wide">
-                  @for (opt of pinOptions(); track opt.label) {
-                    <button
-                      type="button"
-                      class="seg__opt"
-                      [class.seg__opt--on]="opt.active"
-                      (click)="setPin(opt.far)"
-                    >
-                      {{ opt.label }}
-                    </button>
-                  }
-                </div>
+                <segmented-block
+                  class="seg"
+                  [options]="pinLabels()"
+                  [selected]="solution.driveOnFarPin ? 1 : 0"
+                  (selectedChange)="setPin($event === 1)"
+                ></segmented-block>
               </div>
 
               <div class="row">

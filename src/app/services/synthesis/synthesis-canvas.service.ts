@@ -202,7 +202,8 @@ export class SynthesisCanvasService {
   }
 
   poseBars(): PoseBar[] {
-    const cand = this.solution.chosen();
+    // The linkage as driven: see `SynthesisPanelComponent.reached`.
+    const cand = this.solution.driven();
     return this.design.getAllPoses().map((pose) => {
       const reached = cand ? cand.onBranch[pose.id - 1] : undefined;
       return {
@@ -234,7 +235,7 @@ export class SynthesisCanvasService {
   }
 
   poseChips(): PoseChip[] {
-    const cand = this.solution.chosen();
+    const cand = this.solution.driven();
     return this.design.getAllPoses().map((pose) => {
       const reached = cand ? cand.onBranch[pose.id - 1] : undefined;
       const far = pose.posBack.x > pose.posFront.x ? pose.posBack : pose.posFront;

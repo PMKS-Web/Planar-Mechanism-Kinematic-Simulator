@@ -1,3 +1,4 @@
+import { describeActuatorRefusal } from '../../model/actuator';
 import { Subscription } from 'rxjs';
 import {
   AfterContentInit,
@@ -252,31 +253,18 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         control.disable({ emitEvent: false });
         this.frozenByPose.add(control);
       });
-    freeze(this.jointForm, [
-      'xPos',
-      'yPos',
-      'prisAngle',
-      'sliderMass',
-      'inputSpeed',
-      'inputSpeedUnit',
-    ]);
+    // Not the masses. A mass is not read off a pose and needs no transform
+    // back to the start, so it is typed at any pose, playing included: the
+    // force graphs re-solve under it, which is the point of typing it then.
+    freeze(this.jointForm, ['xPos', 'yPos', 'prisAngle', 'inputSpeed', 'inputSpeedUnit']);
     this.otherJoints.controls.forEach((control) => {
       if (control.disabled) return;
       control.disable({ emitEvent: false });
       this.frozenByPose.add(control);
     });
-    freeze(this.linkForm, ['length', 'angle', 'mass', 'massMoI', 'comX', 'comY']);
+    freeze(this.linkForm, ['length', 'angle', 'comX', 'comY']);
     freeze(this.forceForm, ['magnitude', 'angle', 'xComp', 'yComp', 'isGlobal']);
-    freeze(this.cylinderForm, [
-      'travel',
-      'travelUnit',
-      'start',
-      'startUnit',
-      'angle',
-      'barrelMass',
-      'rodMass',
-      'headMass',
-    ]);
+    freeze(this.cylinderForm, ['travel', 'travelUnit', 'start', 'startUnit', 'angle']);
   }
 
   /** The controls this freeze disabled, so unfreezing gives back only those. */
@@ -2280,6 +2268,19 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   /** One rule, shared with the right-click menu so the two cannot disagree. */
   canToggleInput(selectedJoint: RealJoint) {
     return this.gridUtils.canToggleInput(selectedJoint);
+  }
+
+  /**
+   * Why Add Input is gray, from the model that grays it -- the same sentence
+   * the right-click menu's row carries, so a button and a row cannot disagree.
+   */
+  inputRefusal(): string | undefined {
+    const joint = this.activeSrv.selectedJoint;
+    if (!joint || this.canToggleInput(joint)) return undefined;
+    const driven = this.gridUtils.isAttachedToSlider(joint)
+      ? this.gridUtils.getSliderJoint(joint)
+      : joint;
+    return describeActuatorRefusal(driven)?.long ?? 'This joint cannot be driven.';
   }
 
   /** Point at a CoM field, see what it states: the CoM mark, plus the

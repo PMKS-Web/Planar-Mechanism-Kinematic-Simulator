@@ -83,6 +83,7 @@ class ApexChartStubComponent {
   addPointAnnotation = vi.fn();
   addXaxisAnnotation = vi.fn();
   addYaxisAnnotation = vi.fn();
+  layerAnnotations = vi.fn();
   clearAnnotations = vi.fn();
   updateOptions = vi.fn();
 }
@@ -449,6 +450,7 @@ describe('AnalysisGraphComponent lifecycle', () => {
       addPointAnnotation: vi.fn(),
       addXaxisAnnotation: vi.fn(),
       addYaxisAnnotation: vi.fn(),
+      layerAnnotations: vi.fn(),
       clearAnnotations: vi.fn(),
       updateOptions: vi.fn(),
     };
@@ -529,6 +531,7 @@ describe('AnalysisGraphComponent lifecycle', () => {
       addPointAnnotation: vi.fn(),
       addXaxisAnnotation: vi.fn(),
       addYaxisAnnotation: vi.fn(),
+      layerAnnotations: vi.fn(),
       clearAnnotations: vi.fn(),
       updateOptions: vi.fn(),
     };

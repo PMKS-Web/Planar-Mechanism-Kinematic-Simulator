@@ -462,11 +462,11 @@ check(
 
 // --- "Driven from" has to change something the reader can see -------------
 const onPinA = await grid('(g) => JSON.stringify(g.synthCanvas.previewGrounds())');
-await page.locator('#synthesisPanel .seg__opt', { hasText: 'Pin D' }).click();
+await page.locator('#synthesisPanel .seg button', { hasText: 'Pin D' }).click();
 await page.waitForTimeout(600);
 const onPinD = await grid('(g) => JSON.stringify(g.synthCanvas.previewGrounds())');
 check('changing the drive pin moves the input mark on the grid', onPinA !== onPinD);
-await page.locator('#synthesisPanel .seg__opt', { hasText: 'Pin A' }).click();
+await page.locator('#synthesisPanel .seg button', { hasText: 'Pin A' }).click();
 await page.waitForTimeout(500);
 
 // --- comparing --------------------------------------------------------
@@ -1473,6 +1473,10 @@ const ask = (p, fn) =>
         panel.design.placePose({ x: x * S, y: y * S, applyMatrix() {} })
       );
       [0, 5, 60].forEach((t, i) => (panel.design.getPose(i + 1).thetaDegrees = t));
+      // The coupler this design was written against. It used to be the
+      // default the view suggested, which has since become a sixth of the
+      // view on a finer ladder -- and at 3 cm this candidate's driver fits.
+      panel.design.length = 5 * 200;
       panel.design.valueChanges.next(true);
     }`
   );
@@ -1700,14 +1704,14 @@ const ask = (p, fn) =>
   await p.waitForTimeout(400);
   const row = p
     .locator('#synthesisPanel .row', { hasText: 'Assembly branch' })
-    .locator('.seg__opt');
+    .locator('.seg button');
   const labels = () =>
     ask(p, '(panel) => JSON.stringify(panel.branchOptions().map((o) => [o.label, o.active]))');
   const before = picked ? await labels() : null;
   let moved = null;
   let restored = null;
   if (picked && (await row.count()) === 2) {
-    const off = (await row.nth(0).getAttribute('class')).includes('--on') ? 1 : 0;
+    const off = (await row.nth(0).getAttribute('class')).includes('chosen') ? 1 : 0;
     await row.nth(off).click();
     await p.waitForTimeout(400);
     moved = await labels();
