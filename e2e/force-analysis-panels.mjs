@@ -77,11 +77,11 @@ async function forceRowTitles() {
 async function toggleLabels() {
   return page.evaluate(() => {
     const row = document.querySelector('.forceModeRow');
-    const group = row?.querySelector('mat-button-toggle-group');
+    const group = row?.querySelector('segmented-block');
     if (!group) return null;
-    return [...group.querySelectorAll('mat-button-toggle')].map((el) => ({
+    return [...group.querySelectorAll('button')].map((el) => ({
       text: el.innerText.trim(),
-      checked: el.classList.contains('mat-button-toggle-checked'),
+      checked: el.classList.contains('chosen'),
     }));
   });
 }
@@ -235,7 +235,7 @@ try {
   );
 
   // Flip the shared setting to dynamic from the joint side.
-  await page.locator('mat-button-toggle', { hasText: 'In-motion' }).first().click();
+  await page.locator('.forceModeRow segmented-block button', { hasText: 'In-motion' }).first().click();
   await page.waitForTimeout(1500);
   await shot('03-joint-dynamic.png');
   const afterFlip = await toggleLabels();
@@ -277,7 +277,7 @@ try {
   );
 
   // Flip back from the link side and confirm the joint side follows.
-  await page.locator('mat-button-toggle', { hasText: 'Static' }).first().click();
+  await page.locator('.forceModeRow segmented-block button', { hasText: 'Static' }).first().click();
   await page.waitForTimeout(1200);
   await selectAndAnalyze('#jointHolder svg', 1);
   const backOnJoint = await toggleLabels();

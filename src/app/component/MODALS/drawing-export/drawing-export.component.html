@@ -83,30 +83,24 @@
           </div>
           <div class="field">
             <span class="fieldName">Format</span>
-            <div class="segmented">
-              @for (choice of formatChoices; track choice.value) {
-                <button
-                  [class.on]="options.fileFormat === choice.value"
-                  (click)="set({ fileFormat: choice.value })"
-                >
-                  {{ choice.label }}
-                </button>
-              }
-            </div>
+            <segmented-block
+              class="segmented"
+              [fill]="false"
+              [options]="labelsOf(formatChoices)"
+              [selected]="indexIn(formatChoices, options.fileFormat)"
+              (selectedChange)="set({ fileFormat: formatChoices[$event].value })"
+            ></segmented-block>
             <span class="fieldNote">{{ formatNote }}</span>
           </div>
           <div class="field">
             <span class="fieldName">Units</span>
-            <div class="segmented">
-              @for (choice of unitChoices; track choice.value) {
-                <button
-                  [class.on]="effectiveUnit === choice.value"
-                  (click)="chooseUnit(choice.value)"
-                >
-                  {{ choice.label }}
-                </button>
-              }
-            </div>
+            <segmented-block
+              class="segmented"
+              [fill]="false"
+              [options]="labelsOf(unitChoices)"
+              [selected]="indexIn(unitChoices, effectiveUnit)"
+              (selectedChange)="chooseUnit(unitChoices[$event].value)"
+            ></segmented-block>
           </div>
         </div>
       }
@@ -158,16 +152,13 @@
             @if (options.origin === 'joint') {
               <div class="subField">
                 <span class="fieldName">Joint</span>
-                <div class="segmented">
-                  @for (joint of jointChoices(); track joint.id) {
-                    <button
-                      [class.on]="originJointLabel === joint.id"
-                      (click)="touch({ originJointId: joint.id })"
-                    >
-                      {{ joint.name }}
-                    </button>
-                  }
-                </div>
+                <segmented-block
+                  class="segmented"
+                  [fill]="false"
+                  [options]="jointNames()"
+                  [selected]="jointIndex()"
+                  (selectedChange)="touch({ originJointId: jointChoices()[$event].id })"
+                ></segmented-block>
               </div>
             }
           </div>
@@ -217,20 +208,13 @@
             @if (options.includeDimensions) {
               <div class="subField">
                 <span class="fieldName">Style</span>
-                <div class="segmented">
-                  <button
-                    [class.on]="options.dimensionStyle === 'entities'"
-                    (click)="touch({ dimensionStyle: 'entities' })"
-                  >
-                    Dimension entities
-                  </button>
-                  <button
-                    [class.on]="options.dimensionStyle === 'table'"
-                    (click)="touch({ dimensionStyle: 'table' })"
-                  >
-                    Text table
-                  </button>
-                </div>
+                <segmented-block
+                  class="segmented"
+                  [fill]="false"
+                  [options]="['Dimension entities', 'Text table']"
+                  [selected]="options.dimensionStyle === 'table' ? 1 : 0"
+                  (selectedChange)="touch({ dimensionStyle: $event === 1 ? 'table' : 'entities' })"
+                ></segmented-block>
               </div>
             }
             <!-- Grayed rows say why, and the reason hangs on the row rather

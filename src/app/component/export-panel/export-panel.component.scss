@@ -374,34 +374,7 @@
       color: rgba(0, 0, 0, 0.5);
     }
 
-    .segmented {
-      display: flex;
-      height: 30px;
-      border-radius: 4px;
-      overflow: hidden;
-      border: 1px solid rgba(0, 0, 0, 0.12);
-
-      button {
-        display: flex;
-        align-items: center;
-        padding: 0 10px;
-        border: none;
-        background: #fff;
-        color: #2c2c2c;
-        font-family: inherit;
-        font-size: 13px;
-        cursor: pointer;
-
-        & + button {
-          border-left: 1px solid rgba(0, 0, 0, 0.12);
-        }
-
-        &.on {
-          background: $indigo-light;
-          color: #fff;
-        }
-      }
-    }
+    // The pick-one controls are `segmented-block`, which brings its own look.
 
     .formatBlock {
       display: flex;
@@ -562,12 +535,6 @@
     // Both labels have to fit beside their control on a 380px drawer, and
     // `Static (Equilibrium)` beside `In-motion (Dynamic)` will not do it at the
     // size the rest of the panel's controls are set in.
-    .segmented.tight button {
-      padding: 0 7px;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-
     .exportFoot {
       flex: 0 0 auto;
       display: flex;

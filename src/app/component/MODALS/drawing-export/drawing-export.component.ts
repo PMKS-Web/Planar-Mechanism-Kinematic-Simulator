@@ -1,3 +1,4 @@
+import { SegmentedComponent } from '../../BLOCKS/segmented/segmented.component';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButton, MatIconButton } from '@angular/material/button';
@@ -91,6 +92,7 @@ const LAYER_ROWS: LayerRow[] = [
     MatIcon,
     MatIconButton,
     MatTooltip,
+    SegmentedComponent,
   ],
 })
 export class DrawingExportComponent {
@@ -197,6 +199,47 @@ export class DrawingExportComponent {
 
   jointChoices(): { id: string; name: string }[] {
     return this.exportService.originJointChoices();
+  }
+
+  /** The joints' names for the pill, held while the joints are the same. */
+  jointNames(): string[] {
+    return this.labels(this.jointChoices().map((joint) => joint.name));
+  }
+
+  jointIndex(): number {
+    return Math.max(
+      0,
+      this.jointChoices().findIndex((joint) => joint.id === this.originJointLabel)
+    );
+  }
+
+  /**
+   * A choice list's labels, as one array for as long as they read the same.
+   *
+   * The pill takes its labels as an input, and an array made fresh on every
+   * pass would read as a new value every pass.
+   */
+  labelsOf(choices: { label: string }[]): string[] {
+    return this.labels(choices.map((choice) => choice.label));
+  }
+
+  indexIn(choices: { value: unknown }[], value: unknown): number {
+    return Math.max(
+      0,
+      choices.findIndex((choice) => choice.value === value)
+    );
+  }
+
+  private readonly heldLabels = new Map<string, string[]>();
+
+  private labels(next: string[]): string[] {
+    const key = next.join('\u0001');
+    let held = this.heldLabels.get(key);
+    if (!held) {
+      held = next;
+      this.heldLabels.set(key, held);
+    }
+    return held;
   }
 
   /** Why a row is grayed, or nothing. The rule the rest of the app follows. */

@@ -1,0 +1,109 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+
+@mixin css($theme) {
+  $color-config: mat.m2-get-color-config($theme);
+  $primary-palette: map.get($color-config, 'primary');
+
+  segmented-block {
+    display: block;
+    min-width: 0;
+  }
+
+  // A fitted pill at the end of a row takes only its own width.
+  segmented-block:has(> .segmented.fit) {
+    flex: 0 0 auto;
+  }
+
+  // A track with a pill. The pill is as wide as one option and slides to the
+  // chosen one; the options sit over it, and only their ink changes.
+  segmented-block .segmented {
+    --gap: 2px;
+    --pad: 3px;
+    --height: 28px;
+    position: relative;
+    display: flex;
+    gap: var(--gap);
+    padding: var(--pad);
+    border-radius: 8px;
+    background: #f1f2f6;
+    box-sizing: border-box;
+
+    &.compact {
+      --height: 26px;
+    }
+
+    .thumb {
+      position: absolute;
+      top: var(--pad);
+      bottom: var(--pad);
+      left: var(--thumb-left, var(--pad));
+      width: var(--thumb-width, 0);
+      border-radius: 6px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+      transition:
+        left 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+        width 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    button {
+      position: relative;
+      z-index: 1;
+      flex: 1 1 0;
+      min-width: 0;
+      height: var(--height);
+      padding: 0 8px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      font-family: inherit;
+      font-size: 12.5px;
+      line-height: 1;
+      color: #5f6368;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      transition: color 0.18s ease-in-out;
+
+      &.chosen {
+        color: mat.m2-get-color-from-palette($primary-palette, 700);
+        font-weight: 500;
+      }
+
+      &:not(.chosen):hover {
+        color: #2c2c2c;
+      }
+    }
+
+    &.compact button {
+      padding: 0 7px;
+      font-size: 12px;
+    }
+
+    // Each option as wide as its label, and the track as wide as its options.
+    &.fit {
+      display: inline-flex;
+
+      button {
+        flex: 0 0 auto;
+      }
+    }
+
+    // Grayed, not gone: the choice that was made is still readable.
+    &.disabled {
+      opacity: 0.5;
+
+      button {
+        cursor: default;
+      }
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    segmented-block .segmented .thumb {
+      transition: none;
+    }
+  }
+}

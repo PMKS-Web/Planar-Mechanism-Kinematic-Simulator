@@ -1,0 +1,27 @@
+<!-- The pill is one element under all the options, moved by the two custom
+     properties the component measures from the chosen option, so the slide is
+     a transition rather than a relayout. -->
+<!-- Plain buttons that say whether they are pressed, rather than radios: the
+     suites find these by their button role, and a pressed button is what a
+     reader's assistive tech calls a chosen segment anyway. -->
+<div
+  class="segmented"
+  role="group"
+  [class.compact]="compact()"
+  [class.fit]="!fill()"
+  [class.disabled]="disabled()"
+>
+  <span class="thumb" aria-hidden="true"></span>
+  @for (option of options(); track $index) {
+    <button
+      #option
+      type="button"
+      [class.chosen]="$index === selected()"
+      [attr.aria-pressed]="$index === selected()"
+      [disabled]="disabled()"
+      (click)="choose($index)"
+    >
+      {{ option }}
+    </button>
+  }
+</div>

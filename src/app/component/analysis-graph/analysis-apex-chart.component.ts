@@ -74,6 +74,16 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
   private viewInitialized = false;
   private destroyed = false;
   private updateGeneration = 0;
+  /**
+   * One redraw at a time. Apex's update is asynchronous, and two started a
+   * few milliseconds apart -- which a drag produces every frame -- finish in
+   * either order and leave whichever finished last on screen. Under a drag
+   * that was the previous frame's curves over this frame's axis, or a live
+   * curve with no earlier one under it. A redraw asked for while one is in
+   * flight runs when it is done, from the options current *then*.
+   */
+  private updating = false;
+  private updateWanted = false;
 
   ngOnChanges(_changes: SimpleChanges): void {
     this.scheduleUpdate();
@@ -156,6 +166,11 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
   }
 
   private async renderOrUpdate(): Promise<void> {
+    if (this.updating) {
+      this.updateWanted = true;
+      return;
+    }
+    this.updating = true;
     try {
       const options = this.options();
       if (this.chartInstance) {
@@ -182,6 +197,12 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
         this.renderError = 'Graph rendering failed. Reload the page and try again.';
         this.changeDetector.markForCheck();
       });
+    } finally {
+      this.updating = false;
+      if (this.updateWanted && !this.destroyed) {
+        this.updateWanted = false;
+        void this.renderOrUpdate();
+      }
     }
   }
 

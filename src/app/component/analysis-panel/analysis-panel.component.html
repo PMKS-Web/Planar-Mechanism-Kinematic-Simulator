@@ -48,17 +48,16 @@
       </div>
       <div class="panelSub">
         <span class="panelSubText">{{ subtitle }}</span>
+        <!-- The app's own switch, a size down: the same block Settings and the
+             Edit panel flip, so a reader knows it on sight. -->
         @if (hasComparison) {
-          <button
-            type="button"
+          <toggle-block
             class="compareToggle"
-            role="switch"
-            [attr.aria-checked]="compare"
-            (click)="toggleCompare()"
+            [formGroup]="compareForm"
+            _formControl="compare"
+            tooltip="Shows the curves from before your last drag, dashed and faded, under the live ones."
+            >Compare with before drag</toggle-block
           >
-            Compare with before drag
-            <span class="switchTrack" [class.on]="compare"><span class="switchKnob"></span></span>
-          </button>
         }
       </div>
     </div>

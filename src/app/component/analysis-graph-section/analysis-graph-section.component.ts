@@ -23,6 +23,7 @@ import { Mechanism } from '../../model/mechanism/mechanism';
 import { ANALYSIS_SERIES_COLORS, angularScale, formatReading } from '../../model/analysis-series';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
+import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 
 /** One value of one series, at the pose on screen. */
 export interface SeriesPreview {
@@ -68,7 +69,7 @@ export function selectionFor(count: number, mode: SeriesMode): SeriesSelection {
   templateUrl: './analysis-graph-section.component.html',
   styleUrls: ['./analysis-graph-section.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, MatTooltip, AnalysisGraphComponent],
+  imports: [MatIcon, MatTooltip, AnalysisGraphComponent, SegmentedComponent],
 })
 export class AnalysisGraphSectionComponent {
   private mechanismService = inject(MechanismService);
@@ -185,6 +186,9 @@ export class AnalysisGraphSectionComponent {
     if (preview.length === 3 && this.mode === 'mag') return preview[2].text;
     return `${preview[0].text}, ${preview[1].text}`;
   }
+
+  /** The two halves of the split, held so the pill is not handed a new array each pass. */
+  readonly splitOptions = ['Magnitude', 'X & Y components'];
 
   /** Whether this plot has a magnitude and its components to choose between. */
   get hasSplit(): boolean {

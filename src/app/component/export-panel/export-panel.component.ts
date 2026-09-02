@@ -1,3 +1,4 @@
+import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
@@ -40,7 +41,7 @@ interface StepMark {
   templateUrl: './export-panel.component.html',
   styleUrls: ['./export-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, MatTooltip, ScrollShadowDirective],
+  imports: [MatIcon, MatTooltip, ScrollShadowDirective, SegmentedComponent],
 })
 export class ExportPanelComponent implements OnInit, OnDestroy {
   flow = inject(ExportFlowService);
@@ -351,6 +352,9 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   decimalLabel(choice: Decimals): string {
     return choice === 'full' ? 'Full' : String(choice);
   }
+
+  /** The decimal choices as the pill's labels, held so it is not handed a new array each pass. */
+  readonly decimalLabels = this.decimalChoices.map((choice) => this.decimalLabel(choice));
 
   // --- moving between the steps --------------------------------------------
 

@@ -3,25 +3,23 @@
      and the table of what each curve reaches. A card per quantity, each with
      its own legend of switches, was what the rows replaced. -->
 <div class="graphSection" [class.open]="expanded()" [class.closed]="!expanded()">
-  <!-- The press that opens the row also puts its tooltip away: left up, it
-       hung over the row above until the pointer next moved. -->
-  <button
-    class="graphHeader"
-    type="button"
-    (click)="toggle(); tip.hide()"
-    [attr.aria-expanded]="expanded()"
-  >
-    <!-- Above, not below: below is where the split and the plot are, and a
-         tooltip that lands on the control the reader is reaching for next is
-         in the way of the next click. -->
-    <span
-      class="graphTitle"
-      #tip="matTooltip"
-      [matTooltip]="help"
-      matTooltipPosition="above"
-      matTooltipShowDelay="600"
-      >{{ label() }}</span
-    >
+  <button class="graphHeader" type="button" (click)="toggle()" [attr.aria-expanded]="expanded()">
+    <span class="graphTitle">
+      {{ label() }}
+      <!-- A question about the quantity, on its own mark beside the name, as
+           every other block's help is. On the whole row it fired on the way
+           to the chevron and hung over whatever was above. -->
+      @if (help) {
+        <mat-icon
+          class="graphHelp"
+          [matTooltip]="help"
+          matTooltipShowDelay="400"
+          aria-hidden="true"
+          (click)="$event.stopPropagation()"
+          >help_outline</mat-icon
+        >
+      }
+    </span>
     <span class="graphValue">
       @if (readout) {
         {{ readout }} <span class="graphUnit">{{ unit }}</span>
@@ -38,26 +36,13 @@
            with a magnitude offers it or the pair, and a plot with only the
            pair (a position) or only a magnitude (an angle) offers no choice. -->
       @if (hasSplit) {
-        <div class="seriesSplit" role="radiogroup" aria-label="Series">
-          <button
-            type="button"
-            role="radio"
-            [class.chosen]="mode === 'mag'"
-            [attr.aria-checked]="mode === 'mag'"
-            (click)="setMode('mag')"
-          >
-            Magnitude
-          </button>
-          <button
-            type="button"
-            role="radio"
-            [class.chosen]="mode === 'xy'"
-            [attr.aria-checked]="mode === 'xy'"
-            (click)="setMode('xy')"
-          >
-            X &amp; Y components
-          </button>
-        </div>
+        <segmented-block
+          class="seriesSplit"
+          [options]="splitOptions"
+          [selected]="mode === 'mag' ? 0 : 1"
+          [compact]="true"
+          (selectedChange)="setMode($event === 0 ? 'mag' : 'xy')"
+        ></segmented-block>
       }
       <app-analysis-graph
         #graph

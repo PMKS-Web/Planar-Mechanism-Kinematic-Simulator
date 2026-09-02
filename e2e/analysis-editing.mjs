@@ -389,7 +389,94 @@ record(
 );
 await page.screenshot({ path: `${SHOTS}/3-comparison.png` });
 
+// ---- 6b. every frame under the hand shows the right curves ----------------
+// Not the end state: a rAF sampler in the page records the series names the
+// chart holds on every frame of a fast drag. The chart used to be handed all
+// three live series the moment they were built and the chosen ones a tick
+// later, so X and Y flashed through a plot set to Magnitude and the live
+// curve showed with no earlier one under it -- invisible in any screenshot,
+// and the most confusing thing on the screen.
+await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['4-Bar']}`);
+await mode('Kinematic');
+const watched = await jointAt('C');
+await page.mouse.move(watched.x, watched.y);
+await page.mouse.down();
+await page.mouse.up();
+await page.waitForTimeout(600);
+await page
+  .locator('app-analysis-graph-section', { hasText: 'Velocity' })
+  .locator('.graphHeader')
+  .first()
+  .click();
+await page.waitForTimeout(1200);
+await fit();
+const fastHeld = await jointAt('D');
+await page.mouse.move(fastHeld.x, fastHeld.y);
+await page.mouse.down();
+await page.evaluate(() => {
+  window.__frames = [];
+  window.__sampling = true;
+  const tick = () => {
+    if (!window.__sampling) return;
+    const names = [...document.querySelectorAll('.apexcharts-series')].map((g) =>
+      g.getAttribute('seriesName')
+    );
+    window.__frames.push(names.join(','));
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+});
+for (let i = 1; i <= 5; i++) {
+  await page.mouse.move(fastHeld.x + i * 12, fastHeld.y - i * 8);
+  await page.waitForTimeout(40);
+}
+await page.mouse.up();
+await page.waitForTimeout(600);
+const frameSigs = await page.evaluate(() => {
+  window.__sampling = false;
+  return [...new Set(window.__frames)];
+});
+// Apex writes a series' name into an attribute with spaces turned to 'x'.
+const leaked = frameSigs.filter((sig) => /(^|,)(X|Y)(x|,|$)/.test(sig));
+const lonely = frameSigs.filter((sig) => /before/.test(sig) && !/(^|,)Z$/.test(sig));
+record(
+  'no frame of a Magnitude drag shows the components',
+  frameSigs.length > 0 && leaked.length === 0,
+  frameSigs
+);
+record(
+  'and no frame shows the earlier curve without the live one over it',
+  lonely.length === 0,
+  frameSigs
+);
+
 // ---- 7. the reach of each curve, before and now ---------------------------
+
+await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['4-Bar']}`);
+await mode('Kinematic');
+{
+  const again = await jointAt('C');
+  await page.mouse.move(again.x, again.y);
+  await page.mouse.down();
+  await page.mouse.up();
+  await page.waitForTimeout(600);
+  await page
+    .locator('app-analysis-graph-section', { hasText: 'Position' })
+    .locator('.graphHeader')
+    .first()
+    .click();
+  await page.waitForTimeout(1200);
+  await fit();
+  const held = await jointAt('D');
+  await page.mouse.move(held.x, held.y);
+  await page.mouse.down();
+  for (let i = 1; i <= 6; i++) {
+    await page.mouse.move(held.x + i * 5, held.y + i * 3);
+    await page.waitForTimeout(90);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(900);
+}
 
 const table = await page.evaluate(() =>
   [...document.querySelectorAll('.statsRow')].map((row) => ({
@@ -412,14 +499,14 @@ record(
   table
 );
 
-await page.locator('.compareToggle').click();
+await page.locator('.compareToggle mat-slide-toggle').click();
 await page.waitForTimeout(700);
 record(
   'the switch hides the earlier curves and their numbers',
   (await page.locator('.apexcharts-series').count()) === 2 &&
     (await page.locator('.statsBefore').count()) === 0
 );
-await page.locator('.compareToggle').click();
+await page.locator('.compareToggle mat-slide-toggle').click();
 await page.waitForTimeout(700);
 record(
   'and brings them back',

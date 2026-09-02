@@ -845,3 +845,23 @@ its own check decided after the panel above it had asked whether there was anyth
 Its production-fixture tests construct the component with `withTestInjector([...providers])`, so a
 service that is `providedIn: 'root'` is *not* available there: adding an `inject()` to the graph
 means adding a provider (or a stub) to that list, or every fixture test fails with NG0201.
+
+## The chart gets one series set per redraw, and the bridge redraws one at a time
+
+`buildChart` used to assign every live series to `displayedSeries` and leave the chosen ones to
+a 1 ms timer. Under a drag -- a redraw per frame -- ApexCharts drew the first set before the
+second arrived: X and Y flashing through a plot set to Magnitude, and a live curve with no
+earlier one under it. Screenshots never caught it; a `requestAnimationFrame` sampler reading
+the `seriesName` attributes did (`e2e/analysis-editing.mjs`, "no frame of a Magnitude drag").
+`updateChartData` now builds and applies the selection in one synchronous step, and the bridge
+(`analysis-apex-chart.component.ts`) runs one `updateOptions` at a time, re-running once from
+the options current at the end if more were asked for meanwhile.
+
+## `segmented-block` is the pick-one control
+
+Every "choose one of two or three" in the app is `segmented-block`: `radio-block` wraps it for
+form-bound settings, the graph rows use it for Magnitude / X & Y, the export drawers use it
+directly. The pill under the chosen option is positioned by measuring that option
+(`--thumb-left`, `--thumb-width`), so options may be as wide as their labels (`[fill]="false"`
+at the end of a settings row) or share the width equally (the default in a panel). Its buttons
+carry the plain button role and `aria-pressed`, which is what the suites find them by.

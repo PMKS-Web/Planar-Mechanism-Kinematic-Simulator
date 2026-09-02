@@ -175,13 +175,13 @@
               >help_outline</mat-icon
             >
             <span class="spacer"></span>
-            <div class="segmented">
-              @for (choice of decimalChoices; track choice) {
-                <button [class.on]="flow.decimals === choice" (click)="flow.decimals = choice">
-                  {{ decimalLabel(choice) }}
-                </button>
-              }
-            </div>
+            <segmented-block
+              class="segmented"
+              [fill]="false"
+              [options]="decimalLabels"
+              [selected]="decimalChoices.indexOf(flow.decimals)"
+              (selectedChange)="flow.decimals = decimalChoices[$event]"
+            ></segmented-block>
           </div>
         }
 
@@ -197,14 +197,13 @@
               >help_outline</mat-icon
             >
             <span class="spacer"></span>
-            <div class="segmented">
-              <button [class.on]="!flow.splitPerPart" (click)="flow.splitPerPart = false">
-                One file
-              </button>
-              <button [class.on]="flow.splitPerPart" (click)="flow.splitPerPart = true">
-                Per part
-              </button>
-            </div>
+            <segmented-block
+              class="segmented"
+              [fill]="false"
+              [options]="['One file', 'Per part']"
+              [selected]="flow.splitPerPart ? 1 : 0"
+              (selectedChange)="flow.splitPerPart = $event === 1"
+            ></segmented-block>
           </div>
         }
 
@@ -220,14 +219,13 @@
               >help_outline</mat-icon
             >
             <span class="spacer"></span>
-            <div class="segmented">
-              <button [class.on]="!flow.splitPerPart" (click)="flow.splitPerPart = false">
-                By analysis
-              </button>
-              <button [class.on]="flow.splitPerPart" (click)="flow.splitPerPart = true">
-                By part
-              </button>
-            </div>
+            <segmented-block
+              class="segmented"
+              [fill]="false"
+              [options]="['By analysis', 'By part']"
+              [selected]="flow.splitPerPart ? 1 : 0"
+              (selectedChange)="flow.splitPerPart = $event === 1"
+            ></segmented-block>
           </div>
         }
 
@@ -243,14 +241,13 @@
               >help_outline</mat-icon
             >
             <span class="spacer"></span>
-            <div class="segmented">
-              <button [class.on]="flow.imageFormat === 'png'" (click)="flow.imageFormat = 'png'">
-                PNG
-              </button>
-              <button [class.on]="flow.imageFormat === 'svg'" (click)="flow.imageFormat = 'svg'">
-                SVG
-              </button>
-            </div>
+            <segmented-block
+              class="segmented"
+              [fill]="false"
+              [options]="['PNG', 'SVG']"
+              [selected]="flow.imageFormat === 'svg' ? 1 : 0"
+              (selectedChange)="flow.imageFormat = $event === 1 ? 'svg' : 'png'"
+            ></segmented-block>
           </div>
         }
 
@@ -306,16 +303,14 @@
             >help_outline</mat-icon
           >
           <span class="spacer"></span>
-          <div class="segmented tight">
-            @for (mode of ['static', 'dynamic']; track mode) {
-              <button
-                [class.on]="flow.forceMode() === mode"
-                (click)="flow.setForceMode($any(mode))"
-              >
-                {{ mode === 'static' ? 'Static' : 'In-motion' }}
-              </button>
-            }
-          </div>
+          <segmented-block
+            class="segmented"
+            [fill]="false"
+            [options]="['Static', 'In-motion']"
+            [selected]="flow.forceMode() === 'dynamic' ? 1 : 0"
+            [compact]="true"
+            (selectedChange)="flow.setForceMode($event === 1 ? 'dynamic' : 'static')"
+          ></segmented-block>
         </div>
       }
       @if (hasMagnitude()) {
@@ -330,14 +325,14 @@
             >help_outline</mat-icon
           >
           <span class="spacer"></span>
-          <div class="segmented tight">
-            <button [class.on]="!flow.withMagnitude" (click)="flow.withMagnitude = false">
-              X, Y
-            </button>
-            <button [class.on]="flow.withMagnitude" (click)="flow.withMagnitude = true">
-              X, Y, Magnitude
-            </button>
-          </div>
+          <segmented-block
+            class="segmented"
+            [fill]="false"
+            [options]="['X, Y', 'X, Y, Magnitude']"
+            [selected]="flow.withMagnitude ? 1 : 0"
+            [compact]="true"
+            (selectedChange)="flow.withMagnitude = $event === 1"
+          ></segmented-block>
         </div>
       }
       @if (hasUnevenSteps()) {
@@ -352,14 +347,14 @@
             >help_outline</mat-icon
           >
           <span class="spacer"></span>
-          <div class="segmented tight">
-            <button [class.on]="flow.uniformRows" (click)="flow.uniformRows = true">
-              Evenly spaced
-            </button>
-            <button [class.on]="!flow.uniformRows" (click)="flow.uniformRows = false">
-              Every position
-            </button>
-          </div>
+          <segmented-block
+            class="segmented"
+            [fill]="false"
+            [options]="['Evenly spaced', 'Every position']"
+            [selected]="flow.uniformRows ? 0 : 1"
+            [compact]="true"
+            (selectedChange)="flow.uniformRows = $event === 0"
+          ></segmented-block>
         </div>
       }
     </div>

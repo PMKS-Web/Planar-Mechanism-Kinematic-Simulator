@@ -46,6 +46,9 @@
   }
 
   .graphTitle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     min-width: 0;
     font-weight: 400;
     color: #2c2c2c;
@@ -54,6 +57,20 @@
       font-weight: 500;
       color: mat.m2-get-color-from-palette($primary-palette, 700);
     }
+  }
+
+  // The help mark's size is a matter of the room a row has; its ink, cursor
+  // and hover are every help mark's, said once in `blocks.common`.
+  .graphHeader .graphHelp {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    font-size: 15px;
+    line-height: 1;
+    pointer-events: auto;
   }
 
   // Every digit the same width, so the number does not shuffle in its column
@@ -82,34 +99,9 @@
     }
   }
 
-  // The two-way switch above the plot: the chosen half is lifted onto a white
-  // tile, the other sits in the track.
+  // The split above the plot: the app's pill, on the row's own gutter.
   .seriesSplit {
-    display: flex;
-    gap: 2px;
     margin: 2px 4px 10px;
-    padding: 3px;
-    border-radius: 8px;
-    background: #f1f2f6;
-
-    button {
-      flex: 1 1 0;
-      height: 26px;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      font-family: inherit;
-      font-size: 12px;
-      color: #5f6368;
-      cursor: pointer;
-
-      &.chosen {
-        background: #fff;
-        color: mat.m2-get-color-from-palette($primary-palette, 700);
-        font-weight: 500;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
-      }
-    }
   }
 
   // The height animation needs this clipped; a marker riding the playhead at

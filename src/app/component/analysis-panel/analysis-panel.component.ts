@@ -26,6 +26,7 @@ import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.comp
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { AnalysisGraphSectionComponent } from '../analysis-graph-section/analysis-graph-section.component';
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
+import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 import { AnalysisCompareService } from '../../services/analysis-compare.service';
 
 /** One expandable force graph: the reaction between `linkId` and `jointId`. */
@@ -56,6 +57,7 @@ export interface ForceAnalysisRow {
     PanelSectionComponent,
     AnalysisGraphSectionComponent,
     RadioComponent,
+    ToggleComponent,
     FormsModule,
     ReactiveFormsModule,
     NgTemplateOutlet,
@@ -98,9 +100,12 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
     return this.comparison.compare;
   }
 
-  toggleCompare(): void {
-    this.comparison.toggleCompare();
-  }
+  /**
+   * The switch's form, mirroring the shared flag the graphs read. A form
+   * because the app's toggle block is form-bound, and the panel's switch
+   * should be the block every other switch in the app is.
+   */
+  compareForm = this.fb.group({ compare: [true] });
 
   /**
    * "Kinematics for Joint C": the mode as a noun, and the part.
@@ -309,6 +314,12 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
           break;
       }
     });
+
+    this.subscriptions.add(
+      this.compareForm.valueChanges.subscribe((value) => {
+        if (!!value.compare !== this.comparison.compare) this.comparison.toggleCompare();
+      })
+    );
 
     // The toggle is one mechanism-wide setting, so the control and the service
     // mirror each other instead of the panel owning the value.

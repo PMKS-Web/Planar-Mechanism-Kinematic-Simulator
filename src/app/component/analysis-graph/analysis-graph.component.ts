@@ -745,10 +745,21 @@ export class AnalysisGraphComponent
     this.updateChartData();
   }
 
+  /**
+   * Re-solve and redraw, as one step.
+   *
+   * The chart gets exactly one set of series per redraw: the live curves the
+   * reader chose and, while a comparison is held, the earlier curves under
+   * them. It used to be handed every live series the moment they were built
+   * and the chosen ones a tick later, and under a drag -- a redraw per frame --
+   * the chart drew the first set before the second arrived: X and Y flashing
+   * through a plot set to Magnitude, and a live curve with no earlier one
+   * beneath it.
+   */
   updateChartData() {
     if (!this.analysis || !this.mechProp || !this.mechPart) return;
     this.determineChart(this.analysis, this.analysisType, this.mechProp, this.mechPart);
-    this.scheduleChartSync(false);
+    this.applySeriesVisibility();
   }
 
   ngAfterViewInit(): void {
@@ -768,6 +779,14 @@ export class AnalysisGraphComponent
 
     //Param 4: mechPart: If Joint 'a','b','c'... If Link 'ab','bc','cd'...
     this.determineChart(this.analysis, this.analysisType, this.mechProp, this.mechPart);
+    // Which series to draw, before anything is drawn: the row above has an
+    // opinion, or the default stands. Chosen here rather than a tick later so
+    // the first set the chart is handed is already the right one.
+    this.seriesCheckboxForm.patchValue(
+      this.initialSeries ?? defaultSeriesSelection(this.numberOfSeries, this.analysis),
+      { emitEvent: false }
+    );
+    this.applySeriesVisibility();
     this.comparison.register(this);
 
     this.subscriptions.add(
@@ -1308,12 +1327,12 @@ export class AnalysisGraphComponent
       }),
     })) as ApexAxisChartSeries;
     this.axisTitle = yAxisTitle;
+    // Built, not yet shown: `applySeriesVisibility` decides what of this
+    // reaches the chart, and it is the caller's next line.
     this.chartOptions = {
       ...this.chartOptions,
       series: chartSeries,
     };
-    this.displayedSeries = chartSeries;
-    this.displayedColors = chartSeries.map((series) => this.colorForSeries(series.name));
   }
 
   determineAnalysis(

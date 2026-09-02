@@ -2,87 +2,9 @@
 @use '@angular/material' as mat;
 
 @mixin css($theme) {
-  // Get the color config from the theme.
-  $color-config: mat.m2-get-color-config($theme);
-  // Get the primary color palette from the color-config.
-  $primary-palette: map.get($color-config, 'primary');
-  $accent-palette: map.get($color-config, 'accent');
-  $typography-config: mat.m2-get-typography-config($theme);
-  $background: map.get($theme, background);
-  $foreground: map.get($theme, foreground);
-
-  #radio-block {
-    #radio-buttons {
-      //font-size: 14px !important;
-      //font-weight: 200 !important;
-      height: 36px;
-      width: 100%;
-      display: flex;
-
-      mat-button-toggle {
-        height: 100%;
-        flex-grow: 1;
-
-        .mat-button-toggle-label-content {
-          padding: 0;
-        }
-
-        // Material pins the checkmark absolutely at the button's left edge while
-        // the label centers across the full width, so the space between them
-        // changes with the label's length. Laying the button out as a centered
-        // flex row keeps the pair together at one fixed gap instead.
-        //
-        // Material also reserves 30px of left padding on the checked button for
-        // that absolute mark. With the mark back in the flow the padding only
-        // inflates the selected option and shoves the pair off center, so it goes.
-        .mat-button-toggle-button {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0;
-        }
-
-        // Back into the flow, and flex-centered so the mark loses the
-        // inline-block baseline drop that left it sitting low against the label.
-        // The extra pixel up balances the checkmark's weight, which hangs below
-        // its own box's center.
-        .mat-button-toggle-checkbox-wrapper {
-          position: static;
-          display: flex;
-          align-items: center;
-          transform: translateY(-1px);
-        }
-
-        button {
-          height: 100%;
-
-          span {
-            height: 100%;
-            line-height: 36px;
-          }
-        }
-      }
-
-      .mat-button-toggle-checked {
-        background-color: mat.m2-get-color-from-palette($primary-palette, 400);
-        color: white;
-
-        // The selection checkmark defaults to a dark color that all but vanishes
-        // against the fill behind it. Material re-declares the variable on the
-        // checkbox element, so it has to be set there rather than inherited from
-        // the toggle; on blue the mark reads white like the label beside it.
-        .mat-pseudo-checkbox {
-          --mat-pseudo-checkbox-minimal-selected-checkmark-color: white;
-          --mat-pseudo-checkbox-minimal-disabled-selected-checkmark-color: rgba(255, 255, 255, 0.5);
-        }
-
-        // Only the checked toggle draws a mark — the wrapper is present but empty
-        // on the others and collapses to nothing — so the gap belongs here, where
-        // it can't push an unselected label off center.
-        .mat-button-toggle-checkbox-wrapper {
-          margin-right: 8px;
-        }
-      }
-    }
+  // What this block adds to the pill it wraps is only its width: the label
+  // row above it is every block's, and the pill itself is segmented-block's.
+  #radio-block #radio-buttons {
+    width: 100%;
   }
 }

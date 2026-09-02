@@ -6,19 +6,16 @@
     >
     <div class="spacer"></div>
   </div>
-  <div class="row" [formGroup]="formGroup()">
-    <mat-button-toggle-group id="radio-buttons" [formControlName]="this._formControl()">
-      <mat-button-toggle disabled="{{ this.disabled() }}" value="0">{{
-        this.option1()
-      }}</mat-button-toggle>
-      <mat-button-toggle disabled="{{ this.disabled() }}" value="1">{{
-        this.option2()
-      }}</mat-button-toggle>
-      @if (this.option3) {
-        <mat-button-toggle disabled="{{ this.disabled() }}" value="2">{{
-          this.option3
-        }}</mat-button-toggle>
-      }
-    </mat-button-toggle-group>
+  <div class="row">
+    <!-- The same pill every other pick-one in the app slides; this block only
+         binds it to a form control, whose value is the option's index as a
+         string, which is what the Material button toggle it replaced wrote. -->
+    <segmented-block
+      id="radio-buttons"
+      [options]="options"
+      [selected]="selectedIndex"
+      [disabled]="disabled()"
+      (selectedChange)="choose($event)"
+    ></segmented-block>
   </div>
 </div>

@@ -113,49 +113,37 @@
 }
 
 // The switch that shows or hides the curves from before the drag, on every
-// open graph at once. A label with a track, not a checkbox: it is a view
-// setting the reader flips while reading, not a form field.
+// open graph at once. The app's toggle block, a size down for the subtitle's
+// line: its label at the subtitle's size, its help mark beside it, and the
+// switch itself scaled to the line's height.
 #analysisWrapper .compareToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  font-family: inherit;
-  font-size: 13px;
-  color: #2c2c2c;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-#analysisWrapper .switchTrack {
-  position: relative;
   flex: 0 0 auto;
-  width: 34px;
-  height: 20px;
-  border-radius: 10px;
-  background: #c4c7d0;
-  transition: background 0.15s;
 
-  &.on {
-    background: #3f51b5;
+  #toggle-block .row {
+    gap: 6px;
   }
-}
 
-#analysisWrapper .switchKnob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-  transition: left 0.15s;
+  #toggle-block .label {
+    font-size: 12.5px;
+    color: #2c2c2c;
+    white-space: nowrap;
+  }
 
-  .switchTrack.on & {
-    left: 16px;
+  #toggle-block .label-help {
+    width: 16px;
+    height: 16px;
+    font-size: 15px;
+    line-height: 16px;
+  }
+
+  #toggle-block .spacer {
+    display: none;
+  }
+
+  mat-slide-toggle {
+    transform: scale(0.8);
+    transform-origin: right center;
+    margin-left: -6px;
   }
 }
 
