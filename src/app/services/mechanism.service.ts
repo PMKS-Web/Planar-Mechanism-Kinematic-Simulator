@@ -3143,6 +3143,16 @@ export class MechanismService {
   }
 
   addJointAt(coord: Coord) {
+    // A tracer point is placed on the link *as drawn*, so at a displaced pose
+    // it captures that pose (§6.2 of the plan) and has to be staged like a
+    // weld. Rebuilt directly, the restore put every other joint back on the
+    // start pose and left the new one where the hand had put it: a point that
+    // was on the coupler a third of the way round the cycle stood half a
+    // mechanism off it at t = 0, and rode along at that offset ever after.
+    if (!this.seedFromDisplay && !this.isAtStartPose()) {
+      this.capturingPose(this.activeObjService.selectedLink, () => this.addJointAt(coord));
+      return;
+    }
     const newId = this.determineNextLetter();
     const newJoint = new RevJoint(newId, coord.x, coord.y);
     this.graftJointOnto(newJoint, this.activeObjService.selectedLink);
@@ -4065,7 +4075,9 @@ export class MechanismService {
       this.clearInputsSharingMechanismWith(sealed.slider);
     }
     sealed.slider.input = !sealed.slider.input;
-    this.updateMechanism();
+    // Saved: the row is an edit like the pin's Driven Input, and it used to
+    // rebuild without an entry, so Undo could not give the drive back.
+    this.updateMechanism(true);
     this.onMechUpdateState.next(3);
   }
 
@@ -4356,6 +4368,15 @@ export class MechanismService {
         'cylinder.sealed-slider',
         'A cylinder is one sealed part — delete the cylinder instead of editing its slider.'
       );
+      return;
+    }
+    // Adding a slider puts a block at the pin *as drawn*, with a guide through
+    // it -- geometry read off the pose, so at a displaced pose it captures
+    // that pose and is staged like a weld. Rebuilt directly, the pin went home
+    // on the restore and the block stayed where the pin had been drawn, and
+    // the machine came up "dangling-slider" from one click of the toggle.
+    if (!this.seedFromDisplay && !this.isAtStartPose()) {
+      this.capturingPose(this.activeObjService.selectedJoint, () => this.toggleSlider());
       return;
     }
     this.sliderTopology();
@@ -4790,13 +4811,14 @@ export class MechanismService {
     // joints as t = 0, that silently redefines the start pose as wherever
     // playback happened to be. The pose then ratchets forward on every edit.
     this.poseRevision++;
+    const staged = this.stagedMachineIndex();
     this.mechanisms.forEach((frames, index) => {
       // Except the one machine whose displayed pose *is* its design pose right
       // now -- a gesture editing at a displaced pose. Restoring it would put
       // the drag back where it started on every pointer move; restoring
       // nothing would turn every other displaced machine's shown pose into its
       // provisional t = 0, corrupting machines the edit never touched.
-      if (this.seedFromDisplay === topologyOf(this.partitions[index].ownJoints)) return;
+      if (index === staged) return;
       this.applyMechanismPose(frames, this.partitions[index], 0);
     });
   }
@@ -5387,10 +5409,15 @@ export class MechanismService {
 
   /** That machine's index, or -1 when nothing is staged. */
   private stagedMachineIndex(): number {
+    // Resolved by joints as well as by key: the gesture that staged this
+    // machine may have drawn it a new part or merged two of its joints, and
+    // it is the same machine under a new key -- the one whose restore has to
+    // be skipped and whose clock has to be zeroed, exactly as before the key
+    // changed. Compared by key alone, the rebuild after a tracer point was
+    // added restored the machine from the provisional cycle's sample 0, which
+    // was the displaced pose, and that pose became the design.
     if (!this.seedFromDisplay) return -1;
-    return this.partitions.findIndex(
-      (partition) => topologyOf(partition.ownJoints) === this.seedFromDisplay
-    );
+    return this.stagedPartitionIndex(this.seedFromDisplay);
   }
 
   /** The anchor a machine's cycle starts at, for the surfaces that draw it. */
@@ -5423,13 +5450,65 @@ export class MechanismService {
         this.anchors.delete(key);
       }
       if (!this.anchors.has(key)) {
-        const taken = this.anchorFor(index);
+        const taken = this.carriedAnchorFor(index) ?? this.anchorFor(index);
         if (taken) this.anchors.set(key, taken);
       }
     });
     this.anchors.forEach((_, key) => {
       if (!alive.has(key)) this.anchors.delete(key);
     });
+  }
+
+  /**
+   * The anchor a reshaped machine brings with it, if it is the same machine.
+   *
+   * The key is the owned-joint set, so a machine that gains a tracer point, a
+   * link drawn from one of its joints, or a cylinder, or loses a joint to a
+   * merge, arrives here under a new key with no anchor -- and taking a fresh
+   * one from sample 0 is exactly wrong while that edit is staged, because
+   * sample 0 is then the pose under the reader's hand. That is how adding a
+   * point to a coupler a third of the way round the cycle quietly made that
+   * pose the start.
+   *
+   * Same machine means: still driven at the joint the anchor names, measured
+   * the same way, and the only held anchor whose driven joint this machine
+   * owns. Two anchors' joints in one machine is a fusion, which the plan (§6.3)
+   * says must not inherit either -- and a machine at its start pose loses
+   * nothing by being read fresh, so the carry is only ever a correction.
+   */
+  private carriedAnchorFor(index: number): MachineAnchor | undefined {
+    const partition = this.partitions[index];
+    if (!partition) return undefined;
+    const owned = new Set(partition.ownJoints.map((joint) => joint.id));
+    const held = [...this.anchors.values()].filter((anchor) => owned.has(anchor.jointId));
+    if (held.length !== 1 || !this.ruleStillHolds(index, held[0])) return undefined;
+    return { ...held[0], topology: topologyOf(partition.ownJoints) };
+  }
+
+  /**
+   * Which machine a staging opened under `key` is now, after the gesture.
+   *
+   * By the key itself where it still exists, and otherwise by the joints: a
+   * drop that merged two joints, or a gesture that drew a new part, leaves the
+   * machine under a different key, and the machine that owns most of the old
+   * one's joints is it.
+   */
+  private stagedPartitionIndex(key: string): number {
+    const exact = this.partitions.findIndex(
+      (partition) => topologyOf(partition.ownJoints) === key
+    );
+    if (exact !== -1) return exact;
+    const was = new Set(key.split(','));
+    let best = -1;
+    let shared = 0;
+    this.partitions.forEach((partition, index) => {
+      const common = partition.ownJoints.filter((joint) => was.has(joint.id)).length;
+      if (common > shared) {
+        best = index;
+        shared = common;
+      }
+    });
+    return best;
   }
 
   /**
@@ -5455,9 +5534,10 @@ export class MechanismService {
    */
   private posesAcrossReparameterization(): Map<string, HeldPose> {
     const held = new Map<string, HeldPose>();
+    const staged = this.stagedMachineIndex();
     this.partitions.forEach((partition, index) => {
       const key = topologyOf(partition.ownJoints);
-      if (key === this.seedFromDisplay) return;
+      if (index === staged) return;
       // The anchor is the record of how this machine was measured when it was
       // last solved. Without one it has never been solved, so there is no
       // reparameterization to notice and nothing on screen worth holding.
@@ -5774,9 +5854,12 @@ export class MechanismService {
     key: string,
     committing: boolean
   ): { reanchored: boolean; lost?: string } {
-    const index = this.partitions.findIndex((partition) => topologyOf(partition.ownJoints) === key);
+    const index = this.stagedPartitionIndex(key);
     const frames = this.mechanisms[index];
-    const anchor = this.anchors.get(key);
+    // Under the machine's key as it is *now*: a gesture that changed the
+    // owned-joint set carried the anchor to the new key (`carriedAnchorFor`).
+    const anchor =
+      index === -1 ? undefined : this.anchors.get(topologyOf(this.partitions[index].ownJoints));
     if (index === -1 || !anchor || !frames?.isMechanismValid()) {
       // The machine this gesture belonged to is not there any more -- fused,
       // split, or no longer able to run. Whatever exists now starts where it
@@ -5787,6 +5870,7 @@ export class MechanismService {
       // which draws no ghost and answers "reachable" to a question that has no
       // subject -- a gap with nothing in it, for no reason.
       this.refreshAnchors();
+      this.startWhereItStands(index);
       return { reanchored: false };
     }
     const rule = this.ruleFor(anchor);
@@ -5795,6 +5879,7 @@ export class MechanismService {
     if (!reach) {
       this.anchors.delete(key);
       this.refreshAnchors();
+      this.startWhereItStands(index);
       return committing
         ? { reanchored: false, lost: this.partitions[index]?.id ?? `M${index + 1}` }
         : { reanchored: false };
@@ -5824,10 +5909,33 @@ export class MechanismService {
     return { reanchored: true };
   }
 
+  /**
+   * The pose under the reader's hand is this machine's start now: say so
+   * everywhere the app keeps that fact.
+   *
+   * A staged gesture solves its provisional cycle from the displayed pose, so
+   * when the old start is out of reach that cycle's sample 0 *is* the drawing
+   * -- but the clocks still said the machine was parked a third of the way
+   * round, and the ghost cache still held the amber "unreachable" ghost the
+   * drag had raised. Nothing rebuilt after the anchor was dropped, so nothing
+   * put either right. The reader saw "Letting go moves the start here" over a
+   * drawing they had already let go of, a transport reading two seconds over
+   * a machine standing at its start, and a redo that carried that stale step
+   * into the history and landed a different pose.
+   */
+  private startWhereItStands(index: number): void {
+    this.ghostCache = undefined;
+    if (index === -1) return;
+    // Through the ordinary seek: it writes the machine's own clock and, for
+    // the master, the shared step, and it draws sample 0 -- which is the pose
+    // already on screen, so nothing visibly moves.
+    this.seekMechanism(index, 0);
+  }
+
   /** Put a machine back at the input value the reader was editing at. */
   private seekToCoordinate(key: string, where: CommitPose | undefined): void {
     if (where === undefined) return;
-    const index = this.partitions.findIndex((partition) => topologyOf(partition.ownJoints) === key);
+    const index = this.stagedPartitionIndex(key);
     const frames = this.mechanisms[index];
     const anchor = this.anchors.get(key) ?? this.anchorFor(index);
     if (index === -1 || !anchor || !frames?.isMechanismValid()) return;
@@ -6692,6 +6800,14 @@ export class MechanismService {
   createForce(startCoord: Coord, endCoord: Coord, onLink?: RealLink): Force | undefined {
     const selectedLink = onLink ?? this.activeObjService.selectedLink;
     if (!(selectedLink instanceof RealLink)) return undefined;
+    // Drawn on the link as it is showing, so at a displaced pose this captures
+    // that pose and is staged like a weld -- here, so that every caller gets
+    // it, and not only the canvas gesture that wraps its own press.
+    if (!this.seedFromDisplay && !this.isAtStartPose()) {
+      return this.capturingPose(selectedLink, () =>
+        this.createForce(startCoord, endCoord, selectedLink)
+      );
+    }
     startCoord = new Coord(startCoord.x, startCoord.y);
     endCoord = new Coord(endCoord.x, endCoord.y);
     // TODO: utilize dot product to find point that is closest to the line

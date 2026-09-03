@@ -705,6 +705,28 @@ machinery — so nothing built here is discarded either way.
 
 ---
 
+### 7.2 The audit, run (September 2026)
+
+`e2e/posed-edit-audit.mjs` tries every cell of the "paused displaced" column the app actually
+offers -- every context-menu row on a joint, a link, a force and the canvas, every Edit-panel
+field, the keys and the transport, on a four-bar, a slider-crank and a cylinder -- and judges the
+state each one leaves behind rather than what it did. Its table is written to
+`artifacts/posed-edit-audit/matrix.md`. What the first run found, and what changed:
+
+| Finding | Class | Fix |
+| --- | --- | --- |
+| A tracer point, a force, or a slider made at a displaced pose rebuilt directly; the restore put every other joint home and left the new part where the hand had put it (a point half a mechanism off its coupler; a "dangling-slider" from one click) | Capturing edit not staged (§6.2) | `addJointAt`, `createForce` and `toggleSlider` stage themselves through `capturingPose`, as `weldJoint` already did; the force gesture's press names its link as the anchor part |
+| A staged edit that changed the owned-joint set -- a part drawn from a joint, a drop that merged two joints -- lost the machine's anchor: the key changed, a fresh anchor was read from the provisional cycle's sample 0 (the displaced pose), and the settle could not find the machine. The start quietly became the pose under the hand | Anchor identity | Anchors are carried across a reshaped machine (`carriedAnchorFor`: same driven joint, same rule, the only anchor those joints hold), and the staged machine is resolved by its joints, not its key |
+| A release that could not re-anchor ran no rebuild, so the amber ghost, its "Letting go moves the start here" pill, and the machine's clock all stayed as the drag had left them; the stale step was then encoded into the history and redo landed a different pose | Commit bookkeeping | `startWhereItStands`: the commit pose is the start, so the machine's clock and the shared step are zeroed through the ordinary seek and the ghost cache is dropped. The pill is drawn only while a gesture is staged |
+| Every Edit-panel handler asked the *placement* question, so the toggles the freeze leaves live away from the start -- Grounded, Driven Input, Slider, Weld, Trace, the masses -- flipped on screen and wrote nothing | Panel gate | Those handlers ask `structure` |
+| Pose-independent, found on the way: grounding a slider's pin minted three entries (the slot-angle control's enable/disable emission was handled as a typed angle); the cylinder's Driven Input row rebuilt without saving | History | The angle handler ignores a disabled control and the value it is already showing; the cylinder toggle saves |
+
+The 🔶 cells stand: joint X/Y, link length and angle, CoM, force fields, cylinder fields and the
+input speed are refused while displaced, with the banner quoting why, and the sweep records each as
+refused with words. Writing their canonicalization transforms (§5.5) is still the way to unlock
+them; nothing in the sweep changes when one is written except that its row moves from *refused* to
+*ok*.
+
 ## 8. Risks, named
 
 1. **The ratchet returns.** The design stands on the §5.3 invariant — no machine's canonical

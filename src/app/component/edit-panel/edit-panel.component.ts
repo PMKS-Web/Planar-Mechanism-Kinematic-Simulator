@@ -203,6 +203,20 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   }
 
   /**
+   * The same question for the handlers behind the controls the freeze leaves
+   * live away from the start -- Grounded, Driven Input, Slider, Weld, Trace,
+   * the masses. Those are identity-addressed or staged, so a paused pose
+   * allows them; only playing, an analysis mode or Synthesis refuse. They used
+   * to ask `editingRefused`, which is the *placement* question, so away from
+   * the start every one of them returned without writing while its switch
+   * still flipped on screen -- a control lying about state, and a reader
+   * concluding the app had broken.
+   */
+  structureRefused(): boolean {
+    return !this.permission.may('structure');
+  }
+
+  /**
    * Whether the panel as a whole is out of reach.
    *
    * Coarser than the banner, and deliberately so. Playing or in an analysis
@@ -1141,7 +1155,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['sliderMass'].valueChanges.subscribe((val) => {
-        if (this.editingRefused()) return;
+        if (this.structureRefused()) return;
         this.commitSliderMass(val ?? '');
       })
     );
@@ -1225,12 +1239,30 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     this.onDestroySubscriptions.push(
       this.jointForm.controls['prisAngle'].valueChanges.subscribe((val) => {
         if (this.editingRefused()) return;
+        // Enabling and disabling this control emits (see
+        // disableAndEnableJointFields), and a disabled control's emission is
+        // not a reader typing an angle. Handled as one, grounding a slider's
+        // pin wrote the angle it already had and minted two history entries
+        // beside the toggle's own -- so one Undo took back none of it.
+        if (this.jointForm.controls['prisAngle'].disabled) return;
         const [success, value] = this.nup.parseAngleString(
           val!,
           this.settingsService.angleUnit.getValue()
         );
         if (!this.activeSrv.selectedJoint) return;
         if (!this.gridUtils.isAttachedToSlider(this.activeSrv.selectedJoint)) return;
+        // Nor is the angle it already has, as this panel shows it: the control
+        // is patched with the angle rounded for display, and re-parsing that
+        // is not the same number as the radians on the joint.
+        const shown = this.nup.formatValueAndUnit(
+          this.nup.convertAngle(
+            this.selectedSlider?.angle_rad ?? 0,
+            AngleUnit.RADIAN,
+            this.settingsService.angleUnit.getValue()
+          ),
+          this.settingsService.angleUnit.getValue()
+        );
+        if (val === shown) return;
         if (!success) {
           this.notify.refusal('value.angle', NOT_A.angle);
           // Two things had to be true for this to recurse until the stack ran
@@ -1280,7 +1312,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['ground'].valueChanges.subscribe((val) => {
-        if (this.editingRefused()) {
+        if (this.structureRefused()) {
           return;
         }
         // Through the service rather than straight onto the joint. A slider is
@@ -1294,7 +1326,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['input'].valueChanges.subscribe((val) => {
-        if (this.editingRefused()) {
+        if (this.structureRefused()) {
           return;
         }
         //  grounded joint is revolute
@@ -1367,7 +1399,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['slider'].valueChanges.subscribe((val) => {
-        if (this.editingRefused()) {
+        if (this.structureRefused()) {
           return;
         }
         this.mechanismService.toggleSlider();
@@ -1379,7 +1411,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['weld'].valueChanges.subscribe((val) => {
-        if (this.editingRefused()) {
+        if (this.structureRefused()) {
           return;
         }
         // One axis, one control. Unwelding a Slide gives a Slot rather than a
@@ -1400,7 +1432,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
     this.onDestroySubscriptions.push(
       this.jointForm.controls['curve'].valueChanges.subscribe((val) => {
-        if (this.editingRefused()) {
+        if (this.structureRefused()) {
           return;
         }
         this.gridUtils.toggleCurve(this.activeSrv.selectedJoint);

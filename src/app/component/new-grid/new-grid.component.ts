@@ -2486,6 +2486,18 @@ export class NewGridComponent implements OnDestroy {
   }
 
   ghostWarns(ghost: StartPoseGhost): boolean {
+    // The warning narrates a gesture: "letting go moves the start here" is
+    // only true while something is being held. Between gestures the answer is
+    // no, whatever the counters say -- they are advanced by solves, and a
+    // release that could not re-anchor runs no solve, so they stood at their
+    // mid-drag count and the pill stayed up over a drawing the reader had
+    // already let go of.
+    if (!this.mechanismSrv.posedEditKey) {
+      // And the next gesture starts its count from nothing, with the same
+      // three solves' grace at the boundary as the first one had.
+      this.ghostDoubts.clear();
+      return false;
+    }
     this.settleGhostDoubts();
     return (this.ghostDoubts.get(ghost.index) ?? 0) >= NewGridComponent.GHOST_SETTLES_AFTER;
   }
@@ -2505,9 +2517,13 @@ export class NewGridComponent implements OnDestroy {
   private settleGhostDoubts(): void {
     if (this.ghostDoubtsAt === this.mechanismSrv.solveRevision) return;
     this.ghostDoubtsAt = this.mechanismSrv.solveRevision;
+    // Every machine, not only the ones with a ghost this solve: a count left
+    // behind by a machine whose ghost went away would greet its next ghost
+    // as already past the threshold.
+    const was = this.ghostDoubts;
+    this.ghostDoubts = new Map<number, number>();
     this.mechanismSrv.startPoseGhosts().forEach((ghost) => {
-      const seen = this.ghostDoubts.get(ghost.index) ?? 0;
-      this.ghostDoubts.set(ghost.index, ghost.reachable ? 0 : seen + 1);
+      this.ghostDoubts.set(ghost.index, ghost.reachable ? 0 : (was.get(ghost.index) ?? 0) + 1);
     });
   }
 
@@ -3623,6 +3639,12 @@ export class NewGridComponent implements OnDestroy {
   private creationAnchorPart(): Joint | Link | Force | undefined {
     if (this.cylinderCreateOn) return this.cylinderCreateOn;
     if (this.linkCreateFrom) return this.linkCreateFrom;
+    // A force is drawn on a link at the pose the link is showing, which is as
+    // capturing as a link drawn from a joint. Left off this list, the press
+    // that finishes it ran unstaged, and the arrow stood half a mechanism off
+    // the body it was drawn on once the rebuild put that body back on its
+    // start.
+    if (this.forceCreateOn) return this.forceCreateOn;
     // A link grows from wherever the first click landed, which is a coordinate
     // rather than a part -- so the machine is named by what is selected, which
     // for a link drawn from a joint is that joint.

@@ -634,6 +634,37 @@ pixels are available; anything you add to the bottom row has to survive that.
 
 ---
 
+### Editing away from the start: three doors, and the sweep that tries them all
+
+An edit made while a machine is parked mid-cycle goes through one of three doors, and the plan
+(`docs/edit-mode-playback-plan.md` §6.2) names them. **Identity-addressed** edits -- delete,
+ground, drive, lock, trace -- apply to the design without reading the pose; the rebuild's restore
+puts every joint back on its start first, so they are safe as they are. **Capturing** edits read
+geometry off the pose they are made at -- a drag, a link drawn from a joint, a cylinder, a force,
+a tracer point, a weld, a slider -- and *must* be staged (`capturingPose` / `beginPosedEdit`) so
+the rebuild solves from the displayed pose and the settle puts the machine back on its anchor.
+Rebuilt directly, the restore sends every existing joint home and leaves the new part where the
+hand put it: that is exactly what a tracer point, a force and a slider did until September 2026.
+**Pose-bound numbers** -- a joint's X and Y, a link's length and angle, the CoM, a force's
+endpoints, a cylinder's travel -- are refused with the banner until their transform back to t = 0
+is written (§5.5).
+
+Two things follow for anyone adding an edit. Stage it if it reads the drawing as shown; the
+service methods stage themselves (`weldJoint`, `addJointAt`, `createForce`, `toggleSlider` are
+the pattern), so a new caller cannot forget. And if it changes the owned-joint set, know that the
+machine's anchor is keyed by that set: `carriedAnchorFor` carries the anchor to the new key and
+`stagedPartitionIndex` finds the staged machine by its joints, so a part drawn from a joint or a
+drop that merges two keeps the start it had.
+
+The panel's handlers ask the permission model about *their own* action: the pose-bound fields
+ask `placement`, and the toggles the freeze leaves live ask `structure`. A handler that asks the
+wrong question does not misbehave loudly -- it returns, and the switch it sits behind still flips.
+
+`e2e/posed-edit-audit.mjs` tries every row, field and key at a displaced pose on three
+mechanisms and judges what is left behind (nothing staged, clocks agreeing, the start pose or the
+anchor kept, Undo exact). Run it after touching the canvas gestures, the menu builder, the panel
+or the anchors; it takes about a quarter of an hour.
+
 ## Domain facts worth knowing before you debug
 
 - **The transport's handle measures the *input*, not the clock, and the start pose is usually not at

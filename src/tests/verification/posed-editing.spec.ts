@@ -3,6 +3,9 @@
 import '../../app/model/joint';
 import { RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
+import { Coord } from '../../app/model/coord';
+import { PrisJoint } from '../../app/model/joint';
+import { ActiveObjService } from '../../app/services/active-obj.service';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { DragStateService } from '../../app/services/drag-state.service';
 import { MechanismService } from '../../app/services/mechanism.service';
@@ -688,5 +691,100 @@ describe('editing at a displaced pose', () => {
     const seconds = service.secondsOf(0);
     service.updateMechanism(true);
     expect(service.secondsOf(0)).toBeCloseTo(seconds, 6);
+  });
+  // ---- capturing edits are staged, whichever door they come through -------
+  //
+  // §6.2 of the plan: an operation that reads geometry off the pose it is made
+  // at captures that pose, and has to be staged and settled like a drag. Three
+  // of them rebuilt directly. The restore then put every existing joint back
+  // on the start pose and left the new part where the hand had put it -- so a
+  // tracer point on the coupler stood half a mechanism off it at t = 0, a
+  // force stood off the body it was drawn on, and a slider's block stayed
+  // where its pin had been drawn while the pin went home.
+
+  /** How far `p` stands from the segment `a`-`b`. */
+  function offSegment(
+    p: { x: number; y: number },
+    a: { x: number; y: number },
+    b: { x: number; y: number }
+  ): number {
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const t = Math.max(
+      0,
+      Math.min(1, ((p.x - a.x) * abx + (p.y - a.y) * aby) / (abx * abx + aby * aby))
+    );
+    return Math.hypot(p.x - (a.x + t * abx), p.y - (a.y + t * aby));
+  }
+
+  it('puts a tracer point placed at a displaced pose on its link at the start', () => {
+    const { service, joints, links, injector } = oneBar();
+    const anchoredBefore = startCoordinate(service, 0);
+    displace(service);
+    const [, b, c] = joints;
+    injector.get(ActiveObjService).updateSelectedObj(links[1]);
+    service.addJointAt(new Coord((b.x + c.x) / 2, (b.y + c.y) / 2));
+
+    const frames = service.mechanisms[0];
+    expect(frames.isMechanismValid()).toBe(true);
+    const at0 = (id: string) => frames.joints[0].find((joint) => joint.id === id)!;
+    expect(at0('E')).toBeDefined();
+    expect(offSegment(at0('E'), at0('B'), at0('C'))).toBeLessThan(1e-6);
+    // And the cycle still starts where it started.
+    expect(startCoordinate(service, 0)).toBeCloseTo(anchoredBefore, 1);
+  });
+
+  it('keeps a force drawn at a displaced pose on its link at the start', () => {
+    const { service, joints, links } = oneBar();
+    const anchoredBefore = startCoordinate(service, 0);
+    displace(service);
+    const [, b, c] = joints;
+    const mid = new Coord((b.x + c.x) / 2, (b.y + c.y) / 2);
+    service.createForce(mid, new Coord(mid.x, mid.y + 1), links[1] as RealLink);
+
+    const frames = service.mechanisms[0];
+    expect(frames.isMechanismValid()).toBe(true);
+    const at0 = (id: string) => frames.joints[0].find((joint) => joint.id === id)!;
+    const force = frames.forces[0][0];
+    expect(force).toBeDefined();
+    expect(offSegment(force.startCoord, at0('B'), at0('C'))).toBeLessThan(1e-6);
+    expect(startCoordinate(service, 0)).toBeCloseTo(anchoredBefore, 1);
+  });
+
+  it('puts a slider added at a displaced pose on its pin', () => {
+    const { service, joints, injector } = oneBar();
+    displace(service);
+    injector.get(ActiveObjService).updateSelectedObj(joints[2]);
+    service.toggleSlider();
+
+    // A fresh slider dangles until it is given a guide, at the start pose as
+    // much as here; what matters is that its block is on the pin it was put on.
+    const block = service.joints.find((joint) => joint instanceof PrisJoint)!;
+    expect(block).toBeDefined();
+    expect(Math.hypot(block.x - joints[2].x, block.y - joints[2].y)).toBeLessThan(1e-6);
+  });
+
+  it('parks a machine at its new start when a release cannot re-anchor', () => {
+    // The commit pose becomes t = 0 (§6.1), so every clock has to say so:
+    // the machine's own, and the shared step half the app reads. Neither was
+    // written, and the ghost cache still held the amber ghost the drag raised,
+    // because nothing rebuilt once the anchor was dropped.
+    const { service, joints } = oneBar();
+    displace(service);
+    expect(service.beginPosedEdit(joints[1])).toBe(true);
+    // The crank, lengthened past any hope of turning: the four-bar becomes a
+    // rocker whose swing does not include the angle it started at.
+    joints[1].x += 6;
+    joints[1].y -= 0.5;
+    service.updateMechanism();
+    const outcome = service.finishPosedEdit();
+
+    expect(outcome.reanchored).toBe(false);
+    expect(service.mechanisms[0].isMechanismValid()).toBe(true);
+    expect(service.isAtStartPose()).toBe(true);
+    expect(service.secondsOf(0)).toBe(0);
+    expect(service.mechanismTimeStep).toBe(0);
+    expect(service.startPoseGhosts().every((ghost) => ghost.reachable)).toBe(true);
+    expect(service.anchorOf(0)).toBeDefined();
   });
 });

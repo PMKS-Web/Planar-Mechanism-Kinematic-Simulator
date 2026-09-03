@@ -31,6 +31,15 @@ their source. Everything browser-driven lives here.
   become them. A view gesture ending a center-of-mass drag, a pinch after a drag has begun, and a
   synced two-machine drawing edited on the machine that is not the master. Every check here started
   as a defect
+- `posed-edit-audit.mjs` — every way to edit a linkage while it is parked away from its start,
+  tried: each context-menu row on a joint, a link, a force and the canvas; each field of the Edit
+  panel; the keys; the transport — on a four-bar, a slider-crank and a cylinder. It does not decide
+  what each action *should* do (§7 of `docs/edit-mode-playback-plan.md` does); it checks what is
+  left behind: nothing staged, no warning pill without a hand on the drawing, clocks that agree
+  about being at the start, an identity-addressed edit leaving the start pose byte-identical, a
+  capturing edit keeping the anchor or saying the start moved, and Undo restoring the design
+  exactly. A row or field that is refused is recorded as refused *with words*. Writes the table to
+  `artifacts/posed-edit-audit/matrix.md`. Slow: about a quarter of an hour, one fresh load per action
 - `analysis-editing.mjs` — `docs/analysis-mode-editing-plan.md`: what an analysis mode allows now
   (drag, undo) and still refuses (adding, deleting, welding), click-selects-drag-tunes, the
   before/after comparison overlay and the axis holding still under it, the peak said as two

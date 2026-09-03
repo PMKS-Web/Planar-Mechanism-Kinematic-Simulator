@@ -424,6 +424,42 @@ await displace();
     before: before.crank,
     after: after.crank,
   });
+  // The pill narrates a gesture, and the gesture is over. It used to stay up
+  // -- the release ran no solve, so nothing advanced the counter it reads --
+  // over a drawing the reader had already let go of.
+  record(
+    'and the pill goes with the hand',
+    (await page.locator('.startGhostTag').count()) === 0 &&
+      (await page.locator('.startGhost.unreachable').count()) === 0
+  );
+  // The commit pose is the start now, so every clock says so: the machine's
+  // own and the shared step. Left unwritten, the transport read two seconds
+  // over a machine standing at its start, and redo carried the stale step into
+  // the history.
+  const parked = await page.evaluate(() => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    return {
+      atStart: srv.isAtStartPose(),
+      seconds: srv.secondsOf(0),
+      step: srv.mechanismTimeStep,
+    };
+  });
+  record(
+    'and the machine stands at its new start on every clock',
+    parked.atStart && parked.seconds === 0 && parked.step === 0,
+    parked
+  );
+  // Parked away again with no hand on it, nothing warns.
+  await page.evaluate(() => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    srv.seekMechanism(0, srv.mechanisms[0].cyclePeriod / 4);
+  });
+  await page.waitForTimeout(400);
+  record(
+    'displaced again, nothing warns without a gesture',
+    (await page.locator('.startGhostTag').count()) === 0 &&
+      (await page.locator('.startGhost.unreachable').count()) === 0
+  );
 }
 
 // ---- 8. nothing is ever left staged ------------------------------------
