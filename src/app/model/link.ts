@@ -119,6 +119,9 @@ export class Link {
   }
 }
 
+/** Which of a bar's two numbers an edit may not change, if either. */
+export type LinkHold = 'length' | 'angle' | undefined;
+
 export class RealLink extends Link {
   private _fill: string = 'Set Later';
   // private _shape: Shape; //Shape is the shape of the link
@@ -191,6 +194,17 @@ export class RealLink extends Link {
 
   public static debugDesiredJointsIDs: unknown;
   public lastSelectedSublink: Link | null = null;
+  /**
+   * The one value of this bar an edit may not change: its length or its angle
+   * from the grid's x axis. One or the other, never both -- a bar holding both
+   * can only translate, which is what a Lock on its joints already means, so
+   * asking for the second moves the hold rather than adding to it.
+   *
+   * A hold is not a Lock: the joints stay free to move, on the arc or the line
+   * the held value leaves them. It is meaningful on a two-joint bar only, and
+   * the URL refuses to carry one on anything else.
+   */
+  public hold: LinkHold = undefined;
   /**
    * Whether the author chose this link's moment of inertia / center of mass,
    * or left them to follow the geometry (a uniform body over the joints,

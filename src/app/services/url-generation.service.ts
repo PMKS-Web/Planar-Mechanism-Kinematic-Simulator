@@ -189,6 +189,17 @@ export class UrlGenerationService {
         ...this.mechanism.forces.filter((force) => force.locked).map((force) => 'F' + force.id),
       ]);
 
+      // Which bars hold a length or an angle. Only the bars that hold one, so a
+      // drawing with no holds says nothing about them.
+      encoder.setHolds(
+        this.mechanism.links
+          .filter(
+            (link): link is RealLink =>
+              link instanceof RealLink && link.hold !== undefined && link.joints.length === 2
+          )
+          .map((link) => 'H' + (link.hold === 'length' ? 'l' : 'a') + link.id)
+      );
+
       // Where a hand-placed center of mass is held. Only the links that answer
       // something other than "against the link itself", which is the answer
       // every link gave before this was a choice.

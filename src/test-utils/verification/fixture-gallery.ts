@@ -6,6 +6,7 @@ import {
   teachingLabFourBarFixture,
   teachingLabSliderCrankFixture,
   nearlyNonGrashofFixture,
+  heldCrankFourBarFixture,
   twoFourBarsFixture,
   wattIFixture,
 } from './fixtures';
@@ -703,6 +704,14 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'posed-editing.spec.ts',
     floatingSlot: false,
     fixture: nearlyNonGrashofFixture(),
+  },
+  {
+    name: 'Crank holding its length',
+    purpose:
+      'A bar with a hold on it: drag B and it rides the arc about A, with the chip and the guide drawn',
+    spec: 'grid-utils.holds.spec.ts',
+    floatingSlot: false,
+    fixture: heldCrankFourBarFixture(),
   },
   {
     name: 'Two four-bars',

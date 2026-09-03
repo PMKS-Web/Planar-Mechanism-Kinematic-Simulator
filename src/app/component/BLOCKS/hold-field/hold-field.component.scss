@@ -1,0 +1,146 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+
+@mixin css($theme) {
+  $color-config: mat.m2-get-color-config($theme);
+  $primary-palette: map.get($color-config, 'primary');
+  $typography-config: mat.m2-get-typography-config($theme);
+  $accent: mat.m2-get-color-from-palette($primary-palette, 500);
+
+  #hold-field-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .head {
+      justify-content: flex-start;
+      gap: 4px;
+      height: 22px;
+    }
+
+    .label.dim,
+    .label-help.inert {
+      opacity: 0.5;
+    }
+
+    // The field and its padlock share one well, so the padlock reads as part
+    // of the value rather than as a button beside it.
+    .well {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 8px 0 0;
+      border-radius: 4px 4px 0 0;
+      background-color: #f0f1f5;
+      transition: background-color 120ms ease-out;
+
+      &.held {
+        background-color: #e8eaf6;
+
+        .customInput {
+          color: $accent;
+          font-weight: 400;
+        }
+      }
+
+      &.pinned {
+        opacity: 0.6;
+
+        .customInput {
+          color: rgba(0, 0, 0, 0.38);
+        }
+      }
+    }
+
+    .customInputForm {
+      flex: 1 1 auto;
+      min-width: 0;
+
+      .customInput {
+        @include mat.m2-typography-level($typography-config, 'body-2');
+      }
+
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+
+      .mat-mdc-form-field-infix {
+        padding: 6px 0;
+      }
+
+      // The well carries the tint; the field itself is clear so a held value
+      // and an open one sit in the same box.
+      .mdc-text-field--filled:not(.mdc-text-field--disabled) {
+        background-color: transparent;
+      }
+
+      .mat-mdc-text-field-wrapper {
+        height: 30px;
+        width: 100%;
+        padding: 0 6px;
+      }
+
+      .customInput[readonly] {
+        cursor: default;
+      }
+    }
+
+    .padlock {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      flex: none;
+      border: none;
+      background: none;
+      padding: 0;
+      font:
+        500 11px/1 Roboto,
+        sans-serif;
+      letter-spacing: 0.2px;
+      color: rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+
+      &:hover,
+      &.on {
+        color: $accent;
+      }
+    }
+
+    .note {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      background: #e8eaf6;
+      font-size: 12px;
+      line-height: 17px;
+      color: mat.m2-get-color-from-palette($primary-palette, 700);
+
+      .noteGlyph {
+        flex: none;
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        line-height: 17px;
+      }
+
+      .noteAction {
+        border: none;
+        background: none;
+        padding: 0;
+        font: inherit;
+        color: inherit;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+    }
+  }
+}

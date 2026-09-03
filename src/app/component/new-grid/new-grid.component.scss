@@ -695,6 +695,44 @@
     pointer-events: none;
   }
 
+  // Where a held bar lets the dragged joint go: amber, dashed, and behind the
+  // joint, so it reads as a track rather than as a part.
+  .holdGuide {
+    fill: none;
+    stroke: #ffc107;
+    opacity: 0.85;
+    pointer-events: none;
+  }
+
+  // A held value on its bar, and a hover dimension's number: one pill spec,
+  // white on a hairline outline with the panel's ink, sized in screen pixels.
+  .holdChip,
+  .dimensionPill {
+    rect {
+      fill: #fff;
+      stroke: rgba(0, 0, 0, 0.12);
+    }
+
+    text {
+      fill: #263238;
+      font-weight: 500;
+      stroke: none;
+    }
+
+    .holdChipGlyph {
+      fill: #263238;
+    }
+  }
+
+  // The hover dimension itself: a hairline in a quiet gray, so the bar it
+  // measures stays the thing being looked at.
+  .hoverDimension {
+    path {
+      fill: none;
+      stroke: rgba(0, 0, 0, 0.42);
+    }
+  }
+
   // One-shot feedback on release. Both translate against the joint's own
   // bounding box rather than in pixels, so the motion holds its proportions at
   // every zoom level instead of growing with the canvas transform.

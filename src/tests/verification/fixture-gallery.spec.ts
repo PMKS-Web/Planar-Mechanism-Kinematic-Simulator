@@ -15,6 +15,7 @@ import { MechanismService } from '../../app/services/mechanism.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { PrisJoint, RealJoint } from '../../app/model/joint';
+import { RealLink } from '../../app/model/link';
 
 // docs/fixture-urls.md is generated, not written. This spec is what keeps it
 // honest: adding a fixture without regenerating fails here rather than leaving
@@ -84,7 +85,7 @@ function describeMechanism(mechanism: MechanismService) {
           `${link.id}[${link.joints
             .map((joint) => joint.id)
             .sort()
-            .join('')}]`
+            .join('')}]${(link as RealLink).hold ? ':' + (link as RealLink).hold : ''}`
       )
       .sort(),
     forces: mechanism.forces.map((force) => force.id).sort(),

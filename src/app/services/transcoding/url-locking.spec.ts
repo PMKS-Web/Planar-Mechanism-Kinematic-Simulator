@@ -117,3 +117,36 @@ describe('lock marks in the URL', () => {
     expect(() => decode(tampered)).toThrowError(/locks an object/);
   });
 });
+
+/**
+ * A bar's hold on its length or its angle shares the trailing section, tagged
+ * 'H', for the same reason the locks live there: absent means "no hold", so a
+ * drawing with no holds is the URL it always was.
+ */
+describe('a held length or angle in the URL', () => {
+  function held(hold: 'length' | 'angle' | undefined): string {
+    const drawing = source();
+    drawing.links[0].hold = hold;
+    return urlGeneratorFor(
+      { ...drawing, mechanismTimeStep: 0 } as unknown as MechanismService,
+      new SettingsService()
+    ).generateUrlQuery();
+  }
+
+  it('round-trips a held length and a held angle', () => {
+    expect((decode(held('length')).links[0] as RealLink).hold).toBe('length');
+    expect((decode(held('angle')).links[0] as RealLink).hold).toBe('angle');
+    expect((decode(held(undefined)).links[0] as RealLink).hold).toBeUndefined();
+  });
+
+  it('is one trailing entry, and nothing at all without a hold', () => {
+    expect(body(held(undefined))).toBe(body(encode()));
+    expect(body(held('length'))).toBe(body(encode()) + '.HlAB');
+    expect(body(held('angle'))).toBe(body(encode()) + '.HaAB');
+  });
+
+  it('refuses a hold on a bar the URL does not contain, or on neither value', () => {
+    expect(() => decode(held('length').replace('.HlAB', '.HlAZ'))).toThrowError(/holds a length/);
+    expect(() => decode(held('length').replace('.HlAB', '.HxAB'))).toThrowError(/holds a length/);
+  });
+});

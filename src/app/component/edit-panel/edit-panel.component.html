@@ -517,20 +517,16 @@
           (opened)="sectionExpanded['LBasic'] = true"
           (closed)="sectionExpanded['LBasic'] = false"
         >
-          <dual-input-block
-            label1="L"
-            label2="⊾"
-            formControl1="length"
-            formControl2="angle"
+          <!-- Two stacked fields rather than the L / angle pair: each has a
+               padlock of its own, and a held one is read-only rather than
+               disabled -- the number is still the link's, only not typeable. -->
+          <hold-field-block
             [formGroup]="linkForm"
-            tooltip="The length and angle of this link. Counter-clockwise is positive."
-            (field1Entry)="setShowLinkLengthOverlay($event)"
-            (field2Entry)="setShowLinkAngleOverlay($event)"
+            [link]="activeSrv.selectedLink"
             [disabled]="activeSrv.selectedLink.joints.length > 2"
-            [emitterOutputID]="-1"
-          >
-            Link Length and Angle
-          </dual-input-block>
+            (lengthEntry)="setShowLinkLengthOverlay($event)"
+            (angleEntry)="setShowLinkAngleOverlay($event)"
+          ></hold-field-block>
           <dual-button
             but1Text="Add Tracer"
             but1Icon="add_tracer"

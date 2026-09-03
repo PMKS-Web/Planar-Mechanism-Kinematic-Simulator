@@ -1,0 +1,98 @@
+<div id="hold-field-block" [formGroup]="formGroup()" [class.disabled]="disabled()">
+  @for (
+    which of [
+      {
+        key: 'length',
+        label: 'Link Length',
+        control: 'length',
+        help: 'Distance between the two joints of this link.',
+      },
+      {
+        key: 'angle',
+        label: 'Link Angle',
+        control: 'angle',
+        help: 'Angle of this link measured from the positive x axis. Counter-clockwise is positive.',
+      },
+    ];
+    track which.key
+  ) {
+    <div class="field">
+      <div class="row head">
+        <span class="label" [class.dim]="disabled()">{{ which.label }}</span>
+        <mat-icon
+          class="label-help"
+          [matTooltip]="which.help"
+          matTooltipShowDelay="400"
+          [class.inert]="disabled()"
+          [matTooltipDisabled]="disabled()"
+          >help_outline</mat-icon
+        >
+      </div>
+      <!-- Hover or focus draws this value's dimension on the canvas, the same
+           signal the pair of fields used to send. -->
+      <div
+        class="well"
+        [class.held]="held($any(which.key))"
+        [class.pinned]="lockedInPlace() || disabled()"
+        (mouseenter)="enter($any(which.key))"
+        (mouseleave)="leave($any(which.key))"
+      >
+        <mat-form-field
+          class="customInputForm"
+          (click)="!readOnly($any(which.key)) && field.select()"
+        >
+          <input
+            class="customInput"
+            spellcheck="false"
+            matInput
+            type="text"
+            #field
+            [readonly]="readOnly($any(which.key))"
+            [attr.data-hold-field]="which.key"
+            (keyup.enter)="field.blur()"
+            (focusin)="focus($any(which.key), field)"
+            (focusout)="blur($any(which.key))"
+            [formControlName]="which.control"
+          />
+        </mat-form-field>
+        @if (holdable()) {
+          <!-- The icon states, the word confirms: a held field says Held beside
+               the closed padlock; an open one is just the padlock, as the way
+               to hold it. -->
+          <button
+            type="button"
+            class="padlock"
+            [class.on]="held($any(which.key))"
+            [attr.data-hold-toggle]="which.key"
+            [matTooltip]="padlockTitle($any(which.key))"
+            matTooltipShowDelay="400"
+            (click)="toggle($any(which.key), $event)"
+          >
+            @if (held($any(which.key))) {
+              <span class="word">Held</span>
+            }
+            <svg width="15" height="15" viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                fill-rule="evenodd"
+                [attr.d]="held($any(which.key)) ? lockPath : unlockPath"
+              ></path>
+            </svg>
+          </button>
+        }
+      </div>
+    </div>
+  }
+  @if (lockedInPlace() && !disabled()) {
+    <!-- Locked in place already holds both, so neither padlock is offered and
+         the line says why, with the way out as a word inside the sentence. -->
+    <div class="note" role="status">
+      <mat-icon class="noteGlyph">lock</mat-icon>
+      <span
+        >Locked in place. Every joint of this link is held, so its length and angle cannot change
+        either. <button type="button" class="noteAction" (click)="unlockLink()">Unlock</button> to
+        move it.</span
+      >
+    </div>
+  }
+</div>

@@ -289,6 +289,14 @@ export class MechanismBuilder {
       }
     });
 
+    // Re-arm the holds, for the same reason as the locks: a bar that holds its
+    // length has to still hold it after an undo. The transcoder has already
+    // refused a hold on anything but a two-joint bar.
+    this.transcoder.getHolds().forEach((entry) => {
+      const link = this.getLinkByID(links, entry.substring(2));
+      if (link instanceof RealLink) link.hold = entry.charAt(1) === 'l' ? 'length' : 'angle';
+    });
+
     // Put the chosen colors back. Undo and redo replay URLs, so this is what
     // keeps a colored part colored through one -- the same reason the locks
     // above are re-armed. The transcoder has already refused any reference that

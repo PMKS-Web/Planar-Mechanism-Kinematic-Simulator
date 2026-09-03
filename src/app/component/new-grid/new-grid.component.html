@@ -60,6 +60,22 @@
     <marker id="arrowheadArc" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" />
     </marker>
+    <!-- The hover dimensions' arrowheads: the same shape in the hairline's own
+         ink, so the arrow is part of the line rather than a black cap on a
+         gray one. -->
+    <marker id="hairlineArrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="rgba(0, 0, 0, 0.42)" />
+    </marker>
+    <marker
+      id="hairlineArrowFlipped"
+      markerWidth="10"
+      markerHeight="7"
+      refX="0"
+      refY="3.5"
+      orient="auto"
+    >
+      <polygon points="10 0, 0 3.5, 10 7" fill="rgba(0, 0, 0, 0.42)" />
+    </marker>
     <marker
       id="arrowheadArcFlipped"
       markerWidth="10"
@@ -945,6 +961,42 @@
         [attr.r]="0.38 * settings.objectScale"
         [attr.cx]="refusedTarget.joint.x"
         [attr.cy]="refusedTarget.joint.y"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+      ></circle>
+    }
+    <!-- Where a held bar lets the dragged joint go: the arc about the far end
+         for a held length, the line through it for a held angle. Drawn while
+         the drag lasts, so the freedom that is left is visible as it is used. -->
+    @if (holdGuide; as guide) {
+      @if (guide.kind === 'arc') {
+        <circle
+          class="holdGuide"
+          [attr.cx]="guide.cx"
+          [attr.cy]="guide.cy"
+          [attr.r]="guide.r"
+          fill="none"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+          [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(5)"
+        ></circle>
+      } @else {
+        <line
+          class="holdGuide"
+          [attr.x1]="guide.x1"
+          [attr.y1]="guide.y1"
+          [attr.x2]="guide.x2"
+          [attr.y2]="guide.y2"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+          [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(5)"
+        ></line>
+      }
+    }
+    <!-- A joint the holds would not let go where it was asked. -->
+    @if (holdRing) {
+      <circle
+        class="snapRefused holdRefused"
+        [attr.r]="0.38 * settings.objectScale"
+        [attr.cx]="holdRing.x"
+        [attr.cy]="holdRing.y"
         [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
       ></circle>
     }
@@ -1969,6 +2021,46 @@
       }
     </g>
   }
+  <!-- A held value rides its bar as a chip: a padlock and the number, in the
+       place the hover dimension for that value labels. Only while editing,
+       like the lock marks: in the analysis modes nothing is being held against. -->
+  @if (holdsVisible()) {
+    <g id="holdChipHolder" modelFrame style="pointer-events: none">
+      @for (chip of heldChips(); track chip.id) {
+        <g class="holdChip" [upright]="chip" [attr.data-hold-chip]="chip.id">
+          <rect
+            [attr.x]="-chip.w / 2"
+            [attr.y]="-svgGrid.scaleWithZoom(11)"
+            [attr.width]="chip.w"
+            [attr.height]="svgGrid.scaleWithZoom(22)"
+            [attr.rx]="svgGrid.scaleWithZoom(11)"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          ></rect>
+          <path
+            class="holdChipGlyph"
+            [attr.d]="lockGlyphPath"
+            [attr.transform]="
+              'translate(' +
+              (-chip.w / 2 + svgGrid.scaleWithZoom(7)) +
+              ' ' +
+              -svgGrid.scaleWithZoom(7) +
+              ') scale(' +
+              svgGrid.scaleWithZoom(0.58) +
+              ')'
+            "
+          ></path>
+          <text
+            [attr.x]="-chip.w / 2 + svgGrid.scaleWithZoom(24)"
+            [attr.y]="svgGrid.scaleWithZoom(0.5)"
+            [attr.font-size]="svgGrid.scaleWithZoom(12.5)"
+            dominant-baseline="middle"
+          >
+            {{ chip.text }}
+          </text>
+        </g>
+      }
+    </g>
+  }
   <g id="linkTagHolder" style="pointer-events: none">
     <!-- One call, not four: this walks the link's joints, and the horse has
          forty-five of them across twenty-seven links on every redraw. -->
@@ -2068,74 +2160,77 @@
     this.showLinkLengthOverlay >= -1 &&
     this.showLinkAngleOverlay < -1
   ) {
-    <g modelFrame style="pointer-events: none">
+    <!-- A hairline dimension with a pill for its number: the value the field
+         under the pointer is about, drawn where it is measured. Screen-sized,
+         so it reads the same at any zoom and never competes with the bar. -->
+    <g modelFrame class="hoverDimension" style="pointer-events: none">
       <path
         [attr.d]="getSVGPerpendicularLine1() + getSVGPerpendicularLine2()"
-        [attr.stroke-width]="0.02 * settings.objectScale"
-        [attr.stroke]="'#000000'"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
       ></path>
       <path
         [attr.d]="getSVGPrimaryAxisLine1()"
-        [attr.stroke-width]="0.02 * settings.objectScale"
-        [attr.stroke]="'#000000'"
-        [attr.marker-start]="
-          secondJointIsGrounded(activeObjService.selectedLink) ? 'url(#arrowheadArcFlipped)' : ''
-        "
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+        marker-start="url(#hairlineArrowFlipped)"
       ></path>
       <path
         [attr.d]="getSVGPrimaryAxisLine2()"
-        [attr.stroke-width]="0.02 * settings.objectScale"
-        [attr.stroke]="'#000000'"
-        [attr.marker-end]="
-          secondJointIsGrounded(activeObjService.selectedLink) ? '' : 'url(#arrowheadArc)'
-        "
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+        marker-end="url(#hairlineArrow)"
       ></path>
-      <text
-        text-anchor="middle"
-        [upright]="getSVGLengthOverlayTextPos()"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
-        [attr.font-size]="svgGrid.scaleWithZoom(20)"
-      >
-        {{
-          this.nup.formatModelLength(
-            getLengthBetweenOverlayPoints(),
-            this.settings.lengthUnit.getValue()
-          )
-        }}
-      </text>
+      <g class="dimensionPill" [upright]="getSVGLengthOverlayTextPos()">
+        <rect
+          [attr.x]="-pillWidth(lengthOverlayLabel()) / 2"
+          [attr.y]="-svgGrid.scaleWithZoom(11)"
+          [attr.width]="pillWidth(lengthOverlayLabel())"
+          [attr.height]="svgGrid.scaleWithZoom(22)"
+          [attr.rx]="svgGrid.scaleWithZoom(11)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+        ></rect>
+        <text
+          text-anchor="middle"
+          dominant-baseline="middle"
+          [attr.y]="svgGrid.scaleWithZoom(0.5)"
+          [attr.font-size]="svgGrid.scaleWithZoom(12.5)"
+        >
+          {{ lengthOverlayLabel() }}
+        </text>
+      </g>
     </g>
   }
   @if (
     (activeObjService.objType == 'Link' || activeObjService.objType == 'Joint') &&
     this.showLinkAngleOverlay >= -1
   ) {
-    <g modelFrame style="pointer-events: none">
+    <g modelFrame class="hoverDimension" style="pointer-events: none">
       <path
         [attr.d]="getSVGAngleOverlayLines()"
-        [attr.stroke-width]="0.02 * settings.objectScale"
-        [attr.stroke]="'#000000'"
-        [attr.stroke-dasharray]="0.1 * settings.objectScale"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
       ></path>
       <path
         [attr.d]="getSVGAngleOverlayArc()"
-        [attr.stroke-width]="0.02 * settings.objectScale"
-        [attr.fill]="'transparent'"
-        [attr.stroke]="'#000000'"
-        marker-end="url(#arrowheadArc)"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+        fill="none"
+        marker-end="url(#hairlineArrow)"
       ></path>
-      <text
-        text-anchor="left"
-        [upright]="getSVGAngleOverlayTextPos()"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
-        [attr.font-size]="svgGrid.scaleWithZoom(20)"
-      >
-        {{
-          this.nup.formatValueAndUnit(
-            getAngleBetweenOverlayPoints(),
-            this.settings.angleUnit.getValue()
-          )
-        }}
-      </text>
+      <g class="dimensionPill" [upright]="getSVGAngleOverlayTextPos()">
+        <rect
+          [attr.x]="-pillWidth(angleOverlayLabel()) / 2"
+          [attr.y]="-svgGrid.scaleWithZoom(11)"
+          [attr.width]="pillWidth(angleOverlayLabel())"
+          [attr.height]="svgGrid.scaleWithZoom(22)"
+          [attr.rx]="svgGrid.scaleWithZoom(11)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+        ></rect>
+        <text
+          text-anchor="middle"
+          dominant-baseline="middle"
+          [attr.y]="svgGrid.scaleWithZoom(0.5)"
+          [attr.font-size]="svgGrid.scaleWithZoom(12.5)"
+        >
+          {{ angleOverlayLabel() }}
+        </text>
+      </g>
     </g>
   }
   <!-- The distance a CoM field states, drawn where it is measured: from the

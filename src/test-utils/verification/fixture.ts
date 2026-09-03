@@ -79,6 +79,11 @@ export interface MechanismFixture {
    * a class is meant to drag — the marks ride the URL like every other state.
    */
   locks?: { joints?: string[]; links?: string[] };
+  /**
+   * Bars that open holding their length or their angle against edits. A hold
+   * rides the URL like a lock does, and only a two-joint bar can carry one.
+   */
+  holds?: { link: string; hold: 'length' | 'angle' }[];
   /** Input speed in rad/s, using the v1 manifest's exact rpm*pi/30 conversion. */
   inputAngVel: number;
   gravity?: boolean;
@@ -310,6 +315,11 @@ function buildMechanismNow(
       .joints.forEach((joint) => {
         if (joint instanceof RevJoint) joint.locked = true;
       });
+  });
+
+  fixture.holds?.forEach(({ link: id, hold }) => {
+    const bar = links.find((link) => link.id === id);
+    if (bar instanceof RealLink) bar.hold = hold;
   });
 
   const forces: Force[] = [];

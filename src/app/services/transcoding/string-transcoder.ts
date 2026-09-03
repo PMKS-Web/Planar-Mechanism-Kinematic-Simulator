@@ -460,11 +460,15 @@ export class StringTranscoder extends GenericTranscoder {
     // color of its own: 'KJ<joint>~<family>' and 'KF<force>~<rrggbb>'. Only
     // the parts that were asked, so a drawing where nobody chose a color says
     // nothing about color.
+    // A fifth, 'H', for a bar that holds its length or its angle against
+    // edits: 'Hl<link>' and 'Ha<link>'. A bar with no hold says nothing, so a
+    // drawing with no holds is the URL it always was.
     const trailing = [
       ...this.lockedIds,
       ...this.comAnchors,
       ...this.synthesisMarks,
       ...this.partColors,
+      ...this.holds,
     ];
     if (trailing.length > 0) {
       fullString += '.' + trailing.join(',');
@@ -587,6 +591,7 @@ export class StringTranscoder extends GenericTranscoder {
       if (entry.charAt(0) === 'C') this.comAnchors.push(entry);
       else if (entry.charAt(0) === 'S') this.synthesisMarks.push(entry);
       else if (entry.charAt(0) === 'K') this.partColors.push(entry);
+      else if (entry.charAt(0) === 'H') this.holds.push(entry);
       else this.lockedIds.push(entry);
     }
 
@@ -721,6 +726,7 @@ export class StringTranscoder extends GenericTranscoder {
       }
     });
     this.validateDecodedComAnchors(linkIDs);
+    this.validateDecodedHolds();
     this.validateDecodedSynthesis();
   }
 
@@ -806,6 +812,22 @@ export class StringTranscoder extends GenericTranscoder {
           : entry.charAt(1) === 'J' && jointID !== undefined && link.jointIDs.includes(jointID));
       if (!resolves) {
         throw new Error('URL anchors a center of mass to something it does not contain');
+      }
+    });
+  }
+
+  /*
+    A hold names one of the two values a bar has, on a bar the URL carries. Only
+    a two-joint bar has a length and an angle to hold, so a hold on anything
+    else is a hand-edit and fails closed like every other trailing entry.
+    */
+  private validateDecodedHolds(): void {
+    this.holds.forEach((entry) => {
+      const which = entry.charAt(1);
+      const link = this.links.find((candidate) => candidate.id === entry.substring(2));
+      const resolves = (which === 'l' || which === 'a') && link?.jointIDs.length === 2;
+      if (!resolves) {
+        throw new Error('URL holds a length or angle on something that has none');
       }
     });
   }

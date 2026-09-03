@@ -67,9 +67,11 @@ const record = (what, ok, detail) => {
 /**
  * Type into a labeled field of the Edit panel and commit it.
  *
- * Two shapes to look through: a single `input-block` labels its own row, and a
- * `dual-input-block` (joint X/Y, link length and angle) labels each of its two
- * fields separately inside one row.
+ * Three shapes to look through: a single `input-block` labels its own row, a
+ * `dual-input-block` (joint X/Y, distance to joints) labels each of its two
+ * fields separately inside one row, and the link's `hold-field-block` stacks
+ * "Link Length" and "Link Angle" as a labeled field each -- asked for by the
+ * short name the pair used to carry, so the calls below read the same.
  */
 async function typeInPanel(label, text) {
   const handle = await page.evaluateHandle((want) => {
@@ -77,6 +79,10 @@ async function typeInPanel(label, text) {
       if (block.querySelector('.label')?.textContent?.trim() === want) {
         return block.querySelector('input');
       }
+    }
+    for (const field of document.querySelectorAll('#hold-field-block .field')) {
+      const named = field.querySelector('.label')?.textContent?.trim();
+      if (named === want || named === `Link ${want}`) return field.querySelector('input');
     }
     for (const block of document.querySelectorAll('#dual-input-block')) {
       const labels = [...block.querySelectorAll('.label')];

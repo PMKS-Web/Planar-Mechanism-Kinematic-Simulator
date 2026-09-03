@@ -1,4 +1,6 @@
 import { Injectable, Injector, inject } from '@angular/core';
+import { HoldGoal, reachedByHolds, settleHolds } from '../model/hold-solver';
+import { heldBars, heldBarsReaching, holdJoints } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { roundNumber, point_on_line_segment_closest_to_point } from '../model/utils';
 import { Link, SliderBlock, RealLink } from '../model/link';
@@ -291,6 +293,95 @@ export class GridUtilsService {
    * every body and every sealed assembly, and the canvas asks it several times
    * per joint on every change detection pass.
    */
+  /**
+   * What the last move against a hold could not do, for the canvas to say.
+   *
+   * Cleared by every move the holds allowed. `immovable` names the joints the
+   * holds leave no freedom at all; `bars` are the holds involved, nearest to
+   * the asked joint first, which is what a Release action lets go of.
+   */
+  lastHoldRefusal?: { immovable: RealJoint[]; bars: RealLink[]; shortfall: number };
+
+  /**
+   * Put the asked-for joints where the holds allow, moving what the holds
+   * require with them.
+   *
+   * Returns nothing when no hold reaches any of the asks, in which case nothing
+   * was written and the caller moves the joints itself as it always did.
+   * Otherwise the holds answered: every joint they reach is written, the ids
+   * of those joints are returned so the caller can move the rest itself, and
+   * `lastHoldRefusal` says what, if anything, could not be granted.
+   */
+  settleHolds(goals: readonly HoldGoal[]): Set<string> | undefined {
+    const links = this.mechanismSrv.links;
+    const bars = heldBars(links);
+    if (bars.length === 0) return undefined;
+    const asked = goals.map((goal) => this.mechanismSrv.joints.find((j) => j.id === goal.id));
+    const reached = reachedByHolds(
+      goals.map((goal) => goal.id),
+      bars
+    ).joints;
+    if (!reached.size || !bars.some((bar) => reached.has(bar.a))) return undefined;
+    const frozen = this.frozenJointIds();
+    const joints = holdJoints(this.mechanismSrv.joints, (joint) => this.holdAnchor(joint, frozen));
+    const solved = settleHolds(joints, bars, goals);
+    solved.positions.forEach((at, id) => {
+      const joint = this.mechanismSrv.joints.find((j) => j.id === id);
+      if (joint instanceof RealJoint) this.dragJoint(joint, new Coord(at.x, at.y), false, true);
+    });
+    const immovable = solved.immovable
+      .map((id) => this.mechanismSrv.joints.find((j) => j.id === id))
+      .filter((joint): joint is RealJoint => joint instanceof RealJoint);
+    const refused = immovable.length > 0 || !solved.satisfied;
+    this.lastHoldRefusal = refused
+      ? {
+          immovable,
+          bars: asked
+            .filter((joint): joint is Joint => joint !== undefined)
+            .flatMap((joint) => heldBarsReaching(joint, links))
+            .filter((bar, index, all) => all.indexOf(bar) === index),
+          shortfall: solved.shortfall,
+        }
+      : undefined;
+    return reached;
+  }
+
+  /**
+   * The held bars that leave this joint no freedom at all, or none.
+   *
+   * Asked at the grab, before anything moves: a joint the holds have fully
+   * determined never enters the dragging state, the same way a locked one
+   * does not, so nothing downstream has to hold it still.
+   */
+  holdsImmobilizing(joint: RealJoint): RealLink[] {
+    const links = this.mechanismSrv.links;
+    const bars = heldBars(links);
+    if (bars.length === 0 || heldBarsReaching(joint, links).length === 0) return [];
+    const frozen = this.frozenJointIds();
+    const joints = holdJoints(this.mechanismSrv.joints, (j) => this.holdAnchor(j, frozen));
+    const solved = settleHolds(joints, bars, [{ id: joint.id, x: joint.x, y: joint.y }]);
+    return solved.immovable.includes(joint.id) ? heldBarsReaching(joint, links) : [];
+  }
+
+  /**
+   * Which joints the hold solver may never move: grounded pins are bolted to
+   * the frame, locked ones are held by a mark, and a slider's or a cylinder's
+   * joints live on a line of their own that the solver does not know.
+   */
+  isHoldAnchor(joint: RealJoint): boolean {
+    return this.holdAnchor(joint, this.frozenJointIds());
+  }
+
+  private holdAnchor(joint: RealJoint, frozen: Set<string>): boolean {
+    return (
+      joint.ground ||
+      frozen.has(joint.id) ||
+      joint instanceof PrisJoint ||
+      this.isAttachedToSlider(joint) ||
+      this.mechanismSrv.cylindersAt(joint).length > 0
+    );
+  }
+
   frozenJointIds(): Set<string> {
     return this.mechanismSrv.frozenJoints();
   }
@@ -309,13 +400,30 @@ export class GridUtilsService {
     );
   }
 
-  dragJoint(selectedJoint: RealJoint, trueCoord: Coord, rebuild: boolean = true) {
+  dragJoint(
+    selectedJoint: RealJoint,
+    trueCoord: Coord,
+    rebuild: boolean = true,
+    settled: boolean = false
+  ) {
     // The last line of defense, not the first: the canvas refuses at the
     // grab and the panel grays its fields, but every route to "move this
     // joint" — distance fields aimed at a neighbor, the linkage table, a
     // caller not yet written — lands here, and a held joint holds whoever
     // asks.
     if (this.frozenJointIds().has(selectedJoint.id)) {
+      return selectedJoint;
+    }
+    // The same rule for a bar's hold on its length or angle, for the same
+    // reason. Asked here, every route that moves a joint gets the CAD answer:
+    // the joint goes where the holds allow, and whatever else the holds need
+    // moved moves with it. `settled` is how the answer is written back
+    // without being asked again.
+    if (!settled && this.settleHolds([{ id: selectedJoint.id, x: trueCoord.x, y: trueCoord.y }])) {
+      if (rebuild) {
+        this.mechanismSrv.reseatFloatingSliders();
+        this.mechanismSrv.updateMechanism(false);
+      }
       return selectedJoint;
     }
     // TODO: have the round Number be integrated within function for determining trueCoord
@@ -560,6 +668,35 @@ export class GridUtilsService {
         sealed.barrelNear.y
       ),
     }));
+
+    // A held bar somewhere on this body, or on a neighbor sharing one of its
+    // joints, has a say in where the joints go. Then this is not a rigid move
+    // at all: every joint is asked for as a goal, the holds answer for the
+    // ones they reach, and the rest go where the body would have put them.
+    const carried: Joint[] = [];
+    selectedLink.joints.forEach((joint) => {
+      carried.push(joint);
+      if (!(joint instanceof RealJoint)) return;
+      joint.links.forEach((link) => {
+        if (link instanceof SliderBlock) link.joints.forEach((member) => carried.push(member));
+      });
+    });
+    const goals: HoldGoal[] = carried
+      .filter((joint, index) => carried.indexOf(joint) === index)
+      .map((joint) => ({ id: joint.id, ...mapPoint(joint.x, joint.y) }));
+    const settled = this.settleHolds(goals);
+    if (settled) {
+      goals.forEach((goal) => {
+        if (settled.has(goal.id)) return;
+        const joint = carried.find((candidate) => candidate.id === goal.id);
+        if (joint instanceof RealJoint) {
+          this.dragJoint(joint, new Coord(goal.x, goal.y), false, true);
+        }
+      });
+      this.mechanismSrv.reseatFloatingSliders();
+      this.mechanismSrv.updateMechanism(false);
+      return selectedLink;
+    }
 
     const movedJointIDs = new Set<string>();
     const moveJoint = (joint: Joint) => {

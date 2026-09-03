@@ -1,4 +1,5 @@
 import { SvgGridService } from '../../services/svg-grid.service';
+import { heldBarsAt, heldBarsReaching, heldBySentence, holdOf } from '../../model/link-holds';
 import {
   OnDestroy,
   Component,
@@ -2060,6 +2061,7 @@ export class NewGridComponent implements OnDestroy {
                   this.svgGrid.snapToGrid(mousePosInSvg, $event.altKey)
                 )
         );
+        this.afterHoldMove(this.activeObjService.selectedJoint);
         this.dragState.noteMechanismModified();
         //So that the panel values update continously
         this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
@@ -2292,6 +2294,150 @@ export class NewGridComponent implements OnDestroy {
         : `Link ${link.name} is locked.`
       : 'Two of the joints this drag would carry are locked. Unlock one to swing the body about the other.';
     this.refuseWithUnlock('lock.link', text, holds);
+  }
+
+  /** Whether the held-value chips are drawn: when the lock marks are, in Edit. */
+  holdsVisible(): boolean {
+    return this.mechanismSrv.lockVisualsOn();
+  }
+
+  /** The joint a hold has just refused to move, ringed in red while it is. */
+  holdRing?: RealJoint;
+  /** Where the dragged joint may go, when a single held bar decides that. */
+  holdGuide?:
+    | { kind: 'arc'; cx: number; cy: number; r: number }
+    | { kind: 'line'; x1: number; y1: number; x2: number; y2: number };
+
+  /**
+   * After a move went through the holds: ring and say what they refused, or
+   * clear the ring; and draw the freedom the dragged joint has left.
+   */
+  private afterHoldMove(joint: RealJoint): void {
+    const refusal = this.gridUtils.lastHoldRefusal;
+    if (refusal) {
+      this.holdRing = joint;
+      this.refuseHeldByHolds(joint, refusal.bars);
+    } else {
+      this.holdRing = undefined;
+    }
+    this.holdGuide = this.holdGuideFor(joint);
+  }
+
+  /**
+   * The arc or the line a joint on exactly one held bar slides on, when the
+   * bar's other end is not going anywhere. With more holds in play, or a free
+   * far end that gets towed, the freedom is not a curve worth drawing.
+   */
+  private holdGuideFor(joint: RealJoint): NewGridComponent['holdGuide'] {
+    const links = this.mechanismSrv.links;
+    const reaching = heldBarsReaching(joint, links);
+    const at = heldBarsAt(joint, links);
+    if (reaching.length !== 1 || at.length !== 1) return undefined;
+    const bar = at[0];
+    const other = bar.joints.find((end) => end !== joint);
+    if (!(other instanceof RealJoint) || !this.gridUtils.isHoldAnchor(other)) return undefined;
+    if (holdOf(bar) === 'length') {
+      return {
+        kind: 'arc',
+        cx: other.x,
+        cy: other.y,
+        r: Math.hypot(joint.x - other.x, joint.y - other.y),
+      };
+    }
+    const [from, to] = bar.joints;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const span = Math.hypot(dx, dy) || 1;
+    const reach = 50 * this.settings.objectScale;
+    return {
+      kind: 'line',
+      x1: other.x - (dx / span) * reach,
+      y1: other.y - (dy / span) * reach,
+      x2: other.x + (dx / span) * reach,
+      y2: other.y + (dy / span) * reach,
+    };
+  }
+
+  /** One refusal for a joint the holds will not let go where it was asked. */
+  private refuseHeldByHolds(joint: RealJoint, bars: RealLink[]): void {
+    this.notify.refusal(
+      'hold.joint',
+      `${heldBySentence(bars)}. Release one to move joint ${joint.name || joint.id}.`,
+      {
+        actions:
+          bars.length > 0
+            ? [{ label: 'Release', run: () => this.mechanismSrv.releaseHolds(bars) }]
+            : [],
+      }
+    );
+  }
+
+  /**
+   * A held bar wears its held value as a chip, where the hover dimension for
+   * that value would put its label: beside the bar for a length, in the
+   * angle's wedge for an angle. Sized in screen pixels, so it reads the same
+   * at any zoom.
+   */
+  heldChips(): { id: string; x: number; y: number; text: string; w: number }[] {
+    const chips: { id: string; x: number; y: number; text: string; w: number }[] = [];
+    for (const link of this.mechanismSrv.links) {
+      const hold = holdOf(link);
+      if (!hold || !(link instanceof RealLink) || this.mechanismSrv.isLockedTarget(link)) continue;
+      const [a, b] = link.joints;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const span = Math.hypot(dx, dy) || 1;
+      let text: string;
+      let x: number;
+      let y: number;
+      if (hold === 'length') {
+        text = this.nup.formatModelLength(span, this.settings.lengthUnit.getValue());
+        const off = 0.42 * this.settings.objectScale;
+        x = (a.x + b.x) / 2 + (dy / span) * off;
+        y = (a.y + b.y) / 2 - (dx / span) * off;
+      } else {
+        text = this.nup.formatValueAndUnit(
+          this.nup.convertAngle(
+            this.degreesOf(Math.atan2(dy, dx)),
+            AngleUnit.DEGREE,
+            this.settings.angleUnit.getValue()
+          ),
+          this.settings.angleUnit.getValue()
+        );
+        const half = Math.atan2(dy, dx) / 2;
+        const r = 0.62 * this.settings.objectScale + this.svgGrid.scaleWithZoom(30);
+        x = a.x + Math.cos(half) * r;
+        y = a.y + Math.sin(half) * r;
+      }
+      chips.push({ id: link.id, x, y, text, w: this.pillWidth(text, true) });
+    }
+    return chips;
+  }
+
+  /** The label of the length hover dimension, as the panel spells it. */
+  lengthOverlayLabel(): string {
+    return this.nup.formatModelLength(
+      this.getLengthBetweenOverlayPoints(),
+      this.settings.lengthUnit.getValue()
+    );
+  }
+
+  /** The label of the angle hover dimension, as the panel spells it. */
+  angleOverlayLabel(): string {
+    return this.nup.formatValueAndUnit(
+      this.getAngleBetweenOverlayPoints(),
+      this.settings.angleUnit.getValue()
+    );
+  }
+
+  /** A pill wide enough for its words, in screen pixels at the current zoom. */
+  pillWidth(text: string, withGlyph = false): number {
+    return this.svgGrid.scaleWithZoom((withGlyph ? 32 : 20) + text.length * 7.2);
+  }
+
+  private degreesOf(radians: number): number {
+    const degrees = (radians * 180) / Math.PI;
+    return degrees < 0 ? degrees + 360 : degrees;
   }
 
   private refuseLockedForce(force: Force): void {
@@ -3143,6 +3289,8 @@ export class NewGridComponent implements OnDestroy {
   }
 
   mouseUp($event: MouseEvent) {
+    this.holdRing = undefined;
+    this.holdGuide = undefined;
     // The last move of a drag lands before the release is read, so the part
     // ends where the hand was, not one frame short of it.
     this.applyPendingDragMove();
@@ -3937,6 +4085,14 @@ export class NewGridComponent implements OnDestroy {
                 const grabbed = this.activeObjService.selectedJoint;
                 if (this.gridUtils.isJointFrozen(grabbed)) {
                   this.holdNotice(() => this.refuseLockedJoint(grabbed));
+                  break;
+                }
+                // A joint the held bars around it have fully determined is as
+                // still as a locked one, and is refused the same way, at the
+                // grab, naming what holds it.
+                const immobilized = this.gridUtils.holdsImmobilizing(grabbed);
+                if (immobilized.length > 0) {
+                  this.holdNotice(() => this.refuseHeldByHolds(grabbed, immobilized));
                   break;
                 }
                 this.dragState.beginDraggingJoint();
