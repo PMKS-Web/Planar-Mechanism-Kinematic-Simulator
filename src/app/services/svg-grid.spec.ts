@@ -1,5 +1,6 @@
-import { minorDivisionsFor } from './svg-grid.service';
+import { SvgGridService, minorDivisionsFor } from './svg-grid.service';
 import { MODEL_SCALE } from '../model/render-scale';
+import { Coord } from '../model/coord';
 
 /** A major cell of `units` of the reader's own unit, in model units. */
 const major = (units: number) => units * MODEL_SCALE;
@@ -94,5 +95,84 @@ describe('minorDivisionsFor', () => {
     expect(minorDivisionsFor(major(0.30000000000000004 / 0.15))).toBe(4);
     expect(minorDivisionsFor(major(1.9999999999999998))).toBe(4);
     expect(minorDivisionsFor(major(5.000000000000001))).toBe(5);
+  });
+});
+
+describe('screenToModel and modelToScreen', () => {
+  /*
+    The pair has to be symmetric, which the pair it replaced was not:
+    `screenToSVG` negated y and `SVGtoScreen` did not, so the two were not each
+    other's inverse and nothing said which of them carried the flip.
+
+    Both carry it. The matrix is the pan-zoom viewport's and the viewport sits
+    outside the layers that wear `modelFrame`, so a trip through the matrix
+    alone lands in a y-down space nothing else in the app speaks.
+  */
+
+  /**
+   * A view zoomed 2x and panned, standing in for the pan-zoom viewport's.
+   *
+   * Hand-rolled rather than a `DOMMatrix`, which jsdom does not implement, and
+   * only the six numbers and `inverse` are ever read.
+   */
+  const view = {
+    a: 2,
+    b: 0,
+    c: 0,
+    d: 2,
+    e: 300,
+    f: 400,
+    inverse: () => ({ a: 0.5, b: 0, c: 0, d: 0.5, e: -150, f: -200 }),
+  };
+
+  /** The service with a view on it and nothing else; neither method reads more. */
+  const grid = (): SvgGridService => {
+    const service = Object.create(SvgGridService.prototype) as SvgGridService;
+    service.CTM = view as unknown as SVGMatrix;
+    return service;
+  };
+
+  it('round-trips a point through both directions', () => {
+    const at = new Coord(140, -260);
+    const back = grid().screenToModel(grid().modelToScreen(at));
+    expect(back.x).toBeCloseTo(at.x, 9);
+    expect(back.y).toBeCloseTo(at.y, 9);
+  });
+
+  it('round-trips a client pixel the other way round too', () => {
+    const pixel = new Coord(812, 137);
+    const back = grid().modelToScreen(grid().screenToModel(pixel));
+    expect(back.x).toBeCloseTo(pixel.x, 9);
+    expect(back.y).toBeCloseTo(pixel.y, 9);
+  });
+
+  it('puts a point above the origin in the drawing above it on screen', () => {
+    // The whole point of the flip, and the one thing about it worth pinning:
+    // +y is up in the drawing and down on the screen, so a higher model y has
+    // to come out as a *smaller* client y.
+    const origin = grid().modelToScreen(new Coord(0, 0));
+    const above = grid().modelToScreen(new Coord(0, 500));
+    expect(above.y).toBeLessThan(origin.y);
+    expect(above.x).toBeCloseTo(origin.x, 9);
+  });
+
+  it('reads a pixel above the origin as being above it in the drawing', () => {
+    const origin = grid().screenToModel(new Coord(0, 0));
+    const above = grid().screenToModel(new Coord(0, -500));
+    expect(above.y).toBeGreaterThan(origin.y);
+  });
+
+  it('answers the origin before there is a view to ask', () => {
+    // The canvas asks for a conversion before svg-pan-zoom has handed over a
+    // matrix, and both used to guard against exactly that.
+    const service = Object.create(SvgGridService.prototype) as SvgGridService;
+    expect(service.modelToScreen(new Coord(7, 9))).toEqual(new Coord(0, 0));
+    expect(service.screenToModel(new Coord(7, 9))).toEqual(new Coord(0, 0));
+  });
+
+  it('takes a pointer event as its two numbers', () => {
+    const fromXY = grid().screenToModelFromXY(812, 137);
+    const fromCoord = grid().screenToModel(new Coord(812, 137));
+    expect(fromXY).toEqual(fromCoord);
   });
 });

@@ -61,8 +61,8 @@ async function configureGridTestBed() {
     panZoomObject: { resize: vi.fn(), fit: vi.fn(), center: vi.fn() },
     getZoom: () => 1,
     scaleWithZoom: (value: number) => value,
-    screenToSVGfromXY: (x: number, y: number) => ({ x, y }),
-    SVGtoScreen: (coord: { x: number; y: number }) => coord,
+    screenToModelFromXY: (x: number, y: number) => ({ x, y }),
+    modelToScreen: (coord: { x: number; y: number }) => coord,
     setNewElement: (element: HTMLElement) => element.classList.add('svg-pan-zoom_viewport'),
     // Decoding a URL asks for a fit. The stub has always been missing this; the
     // call used to be a second behind a timer, so it threw after the test had

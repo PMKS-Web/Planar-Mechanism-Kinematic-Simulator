@@ -717,7 +717,7 @@ export class NewGridComponent implements OnDestroy {
     const image = this.bgImage.image();
     if (!image || !this.editingBackgroundImage() || !this.isPrimaryPress(event)) return;
     event.stopPropagation();
-    const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
+    const at = this.svgGrid.screenToModelFromXY(event.clientX, event.clientY);
     this.bgDrag = { grabOffset: new Coord(image.centerX - at.x, image.centerY - at.y) };
     this.dragState.press();
     this.dragState.beginDraggingBackgroundImage();
@@ -759,7 +759,7 @@ export class NewGridComponent implements OnDestroy {
     const image = this.bgImage.image();
     if (!image || !this.editingBackgroundImage() || !this.isPrimaryPress(event)) return;
     event.stopPropagation();
-    const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
+    const at = this.svgGrid.screenToModelFromXY(event.clientX, event.clientY);
     // What the hand grabbed at, less what the picture already is: the drag then
     // turns the picture with the hand rather than snapping it to the pointer.
     this.bgDrag = {
@@ -901,7 +901,7 @@ export class NewGridComponent implements OnDestroy {
     // to the one the user pointed at.
     this.cylinderCreateStart = this.cylinderCreateAt
       ? new Coord(this.cylinderCreateAt.x, this.cylinderCreateAt.y)
-      : this.svgGrid.screenToSVG(this.lastRightClickCoord);
+      : this.svgGrid.screenToModel(this.lastRightClickCoord);
     this.dragState.beginCreatingCylinder();
   }
 
@@ -1360,7 +1360,7 @@ export class NewGridComponent implements OnDestroy {
     this.startX = event.pageX;
     this.startY = event.pageY;
     this.dragState.press();
-    const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
+    const at = this.svgGrid.screenToModelFromXY(event.clientX, event.clientY);
     this.beginSelectionGesture(mode, at, undefined, grip);
     this.holdPointer(event);
   }
@@ -1609,7 +1609,7 @@ export class NewGridComponent implements OnDestroy {
 
   addJoint() {
     // TODO: Make sure you add logic within here so that joint is part of fixedLocations for respective link subset
-    const coord = this.svgGrid.screenToSVGfromXY(
+    const coord = this.svgGrid.screenToModelFromXY(
       this.lastRightClickCoord.x,
       this.lastRightClickCoord.y
     );
@@ -1632,7 +1632,7 @@ export class NewGridComponent implements OnDestroy {
     // is drawn by the same code as the finished arrow rather than by a line
     // that only resembles one. Same reason the cylinder gesture previews its
     // actual members: what is shown is what the next click will make.
-    const at = this.svgGrid.screenToSVG(this.lastRightClickCoord);
+    const at = this.svgGrid.screenToModel(this.lastRightClickCoord);
     this.forceGhost = new Force('ghost', onLink, at, new Coord(at.x, at.y));
     this.mechanismSrv.onMechUpdateState.next(3);
   }
@@ -1735,7 +1735,7 @@ export class NewGridComponent implements OnDestroy {
   private forceGrabOffset = new Coord(0, 0);
 
   beginDraggingForceBody(force: Force, event: PointerEvent): void {
-    const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
+    const at = this.svgGrid.screenToModelFromXY(event.clientX, event.clientY);
     this.forceGrabOffset = new Coord(at.x - force.startCoord.x, at.y - force.startCoord.y);
   }
 
@@ -1882,7 +1882,7 @@ export class NewGridComponent implements OnDestroy {
   }
 
   creatingForce($event: MouseEvent) {
-    const mousePos = this.svgGrid.screenToSVGfromXY($event.clientX, $event.clientY);
+    const mousePos = this.svgGrid.screenToModelFromXY($event.clientX, $event.clientY);
     this.forceGhost?.moveDirectionHandle(mousePos);
   }
 
@@ -1892,7 +1892,7 @@ export class NewGridComponent implements OnDestroy {
     // drawn at it. It used to be settled at the *commit*, which meant the ghost
     // was drawn at the old scale and the bar changed size under the click.
     this.fitObjectScaleToFirstPart();
-    const startCoord = this.svgGrid.screenToSVG(this.lastRightClickCoord);
+    const startCoord = this.svgGrid.screenToModel(this.lastRightClickCoord);
     switch (this.objectKind(this.lastRightClick)) {
       case 'String':
         this.dragState.beginCreatingLinkFromGrid();
@@ -1927,9 +1927,9 @@ export class NewGridComponent implements OnDestroy {
 
   mouseMove($event: MouseEvent) {
     this.snapSuspended = $event.altKey;
-    const mousePosInSvg = this.svgGrid.screenToSVGfromXY($event.clientX, $event.clientY);
+    const mousePosInSvg = this.svgGrid.screenToModelFromXY($event.clientX, $event.clientY);
     this.lastMouseLocation = this.mouseLocation;
-    this.originInScreen = this.svgGrid.SVGtoScreen(new Coord(0, 0));
+    this.originInScreen = this.svgGrid.modelToScreen(new Coord(0, 0));
     this.mouseLocationRaw = new Coord($event.clientX, $event.clientY);
     this.mouseLocation = mousePosInSvg;
     this.svgGrid.cursorAt = mousePosInSvg;
@@ -3124,7 +3124,7 @@ export class NewGridComponent implements OnDestroy {
         this.synthesisBuilder.armed &&
         this.pressDidNotTravel($event)
       ) {
-        const at = this.svgGrid.screenToSVGfromXY($event.clientX, $event.clientY);
+        const at = this.svgGrid.screenToModelFromXY($event.clientX, $event.clientY);
         this.synthesisBuilder.placePose(at);
         // A position added is a different question, not a different answer.
         this.synthSolution.invalidate();
@@ -3471,7 +3471,7 @@ export class NewGridComponent implements OnDestroy {
     event.stopPropagation();
     this.synthPressTaken = true;
     this.holdPointer(event);
-    const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
+    const at = this.svgGrid.screenToModelFromXY(event.clientX, event.clientY);
     this.synthCanvas.grabPose(at, id, mode);
     if (this.synthesisBuilder.isPoseDefined(id)) {
       const pose = this.synthesisBuilder.getPose(id);
@@ -3486,7 +3486,7 @@ export class NewGridComponent implements OnDestroy {
     event.stopPropagation();
     this.synthPressTaken = true;
     this.holdPointer(event);
-    const at = this.svgGrid.screenToSVGfromXY(event.clientX, event.clientY);
+    const at = this.svgGrid.screenToModelFromXY(event.clientX, event.clientY);
     this.synthCanvas.grabRegion(at, mode, corner);
   }
 
@@ -3619,7 +3619,7 @@ export class NewGridComponent implements OnDestroy {
     let joint2: RevJoint;
     let link: RealLink;
 
-    const mousePosInSvg = this.svgGrid.screenToSVGfromXY($event.clientX, $event.clientY);
+    const mousePosInSvg = this.svgGrid.screenToModelFromXY($event.clientX, $event.clientY);
     this.mouseLocation = mousePosInSvg;
     this.svgGrid.cursorAt = mousePosInSvg;
     // Where a link drag measures its offset from. Without anchoring it here the
@@ -3756,8 +3756,8 @@ export class NewGridComponent implements OnDestroy {
                 this.linkCreateFrom = undefined;
                 break;
               case gridStates.createForce:
-                const startCoord = this.svgGrid.screenToSVG(this.lastRightClickCoord);
-                const endCoord = this.svgGrid.screenToSVG(
+                const startCoord = this.svgGrid.screenToModel(this.lastRightClickCoord);
+                const endCoord = this.svgGrid.screenToModel(
                   new Coord($event.clientX, $event.clientY)
                 );
                 this.mechanismSrv.createForce(startCoord, endCoord, this.forceCreateOn);
@@ -4338,7 +4338,7 @@ export class NewGridComponent implements OnDestroy {
         up();
         return;
       }
-      const pos = this.svgGrid.screenToSVGfromXY(e.clientX, e.clientY);
+      const pos = this.svgGrid.screenToModelFromXY(e.clientX, e.clientY);
       const placed = e.altKey ? pos : this.snapComToJointLines(link, pos);
       link.placeCustomCoM({ x: placed.x, y: placed.y });
       moved = true;

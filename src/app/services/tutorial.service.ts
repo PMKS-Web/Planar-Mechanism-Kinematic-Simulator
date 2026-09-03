@@ -561,8 +561,8 @@ export class TutorialService {
         ? beside
         : { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
 
-    const from = this.svgGrid.screenToSVGfromXY(best.left, best.top);
-    const to = this.svgGrid.screenToSVGfromXY(best.right, best.bottom);
+    const from = this.svgGrid.screenToModelFromXY(best.left, best.top);
+    const to = this.svgGrid.screenToModelFromXY(best.right, best.bottom);
     return {
       x: (from.x + to.x) / 2,
       y: (from.y + to.y) / 2,

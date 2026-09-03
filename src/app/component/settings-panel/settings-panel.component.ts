@@ -314,7 +314,7 @@ export class SettingsPanelComponent implements OnDestroy {
 
     // Compensate the viewport zoom so the mechanism keeps its apparent size,
     // then scale visual affordances to match.
-    const tempOriginInScreen = this.svgGrid.SVGtoScreen(new Coord(0, 0));
+    const tempOriginInScreen = this.svgGrid.modelToScreen(new Coord(0, 0));
     // Through `ourOwnMove`: holding the drawing still across a change of units
     // is the app compensating, not the reader choosing a zoom, and the canvas
     // tells the two apart by which of them made the move.

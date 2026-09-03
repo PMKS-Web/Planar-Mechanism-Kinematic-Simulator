@@ -1052,7 +1052,7 @@ export class GridUtilsService {
     //Seach each link in the subset to see if the mouse is over it
     // use isPointInsideLink()
     //First convert the screen coordinates to true coordinates
-    let trueCoords = this.svgGrid.screenToSVG(new Coord(mouseEvent.offsetX, mouseEvent.offsetY));
+    let trueCoords = this.svgGrid.screenToModel(new Coord(mouseEvent.offsetX, mouseEvent.offsetY));
 
     clickedObj.lastSelectedSublink = null;
 

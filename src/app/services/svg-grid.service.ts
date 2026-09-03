@@ -359,27 +359,33 @@ export class SvgGridService {
     else this.panZoomObject.disableMouseWheelZoom();
   }
 
-  screenToSVG(screenPos: Coord): Coord {
-    const CTM: SVGMatrix = this.CTM;
-    //Temporary solution. Maybe okay to have...
+  /**
+   * A client pixel, said in the drawing's coordinates.
+   *
+   * Both halves of this pair carry the drawing's y-flip, because the matrix
+   * they go through does not. `CTM` is the pan-zoom viewport's, and the
+   * viewport sits *outside* the layers that wear `modelFrame` -- so mapping
+   * through it alone lands in a y-down space that is nothing the rest of the
+   * app speaks. The negation here is that one missing step.
+   *
+   * These replaced a `screenToSVG` that negated y and an `SVGtoScreen` that
+   * did not, which were not each other's inverse and did not say so. Reaching
+   * for the wrong one is how a probe reports a crank turning the wrong way.
+   */
+  screenToModel(screenPos: Coord): Coord {
     if (this.CTM === undefined) {
       return new Coord(0, 0);
     }
-    const inverseCTM = CTM.inverse();
-    const svgPos = screenPos.applyMatrix(inverseCTM);
-    svgPos.y = svgPos.y * -1;
-    return svgPos;
+    const at = screenPos.applyMatrix(this.CTM.inverse());
+    return new Coord(at.x, -at.y);
   }
 
-  SVGtoScreen(svgPos: Coord): Coord {
-    const CTM: SVGMatrix = this.CTM;
-    //Temporary solution. Maybe okay to have...
+  /** The same trip the other way: a point on the drawing, in client pixels. */
+  modelToScreen(modelPos: Coord): Coord {
     if (this.CTM === undefined) {
       return new Coord(0, 0);
     }
-    const screenPos = svgPos.applyMatrix(CTM);
-    // screenPos.y = screenPos.y * -1;
-    return screenPos;
+    return new Coord(modelPos.x, -modelPos.y).applyMatrix(this.CTM);
   }
 
   /**
@@ -394,7 +400,7 @@ export class SvgGridService {
    */
   compensateForUnitChange(fromUnit: LengthUnit, toUnit: LengthUnit): void {
     if (fromUnit === toUnit || !this.panZoomObject) return;
-    const origin = this.SVGtoScreen(new Coord(0, 0));
+    const origin = this.modelToScreen(new Coord(0, 0));
     // Through `ourOwnMove`, because this is the app holding a view still across
     // a change of units rather than the reader choosing a new one: read as a
     // choice it would throw away a fit that is still perfectly fitted.
@@ -446,8 +452,9 @@ export class SvgGridService {
     }
   }
 
-  screenToSVGfromXY(screenX: number, screenY: number): Coord {
-    return this.screenToSVG(new Coord(screenX, screenY));
+  /** `screenToModel` for a pointer event, which arrives as two numbers. */
+  screenToModelFromXY(screenX: number, screenY: number): Coord {
+    return this.screenToModel(new Coord(screenX, screenY));
   }
 
   updateVisibleCoords() {
@@ -1305,8 +1312,9 @@ export class SvgGridService {
     const canvas = this.canvasBounds();
     const matrix = this.drawnMatrix();
     if (!free || !canvas || !matrix) return;
-    // The drawing layers carry the grid's own y-flip and the matrix does not:
-    // +y is up on the drawing and down on the screen.
+    // The same flip `modelToScreen` carries, done here against the matrix the
+    // canvas is drawn under right now rather than against the one the library
+    // last announced: this runs while a view is still settling.
     const x = canvas.x + matrix.a * at.x + matrix.e;
     const y = canvas.y + matrix.d * -at.y + matrix.f;
     const inView =

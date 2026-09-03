@@ -162,8 +162,8 @@ const commitPoint = await page.evaluate(
     // plain numbers.
     const plain = (p) => ({ x: p.x, y: p.y });
     return {
-      start: plain(c.svgGrid.screenToSVGfromXY(start.x, start.y)),
-      end: plain(c.svgGrid.screenToSVGfromXY(end.x, end.y)),
+      start: plain(c.svgGrid.screenToModelFromXY(start.x, start.y)),
+      end: plain(c.svgGrid.screenToModelFromXY(end.x, end.y)),
     };
   },
   { start: gesture.start, end: gesture.end }
