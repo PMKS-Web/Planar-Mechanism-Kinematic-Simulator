@@ -1274,26 +1274,40 @@ export class MechanismService {
    * Nothing to draw yet is an ordinary state; the honest answer is no path.
    */
   getJointPath(joint: Joint) {
-    // Its own mechanism, found by id: a joint traces the cycle of the machine
-    // it belongs to, and looking its position up by index into another
-    // machine's frames would draw some other joint's path under it.
     const solved = this.mechanismContaining(joint);
     if (!solved || solved.joints.length === 0 || solved.joints[0].length === 0) {
       return '';
     }
-    if (!solved.joints[0].some((candidate) => candidate.id === joint.id)) {
-      return '';
+    // Once per solve, not once per change-detection pass: the canvas binds
+    // this straight into a path's `d`, and a pointer move runs a dozen passes,
+    // so a drawing with its traces shown was concatenating every joint's few
+    // hundred points dozens of times per move for a string that changes once.
+    // The machine is the key: a new sweep is a new object, and a machine kept
+    // across a rebuild has the same paths as before.
+    let paths = this.jointPaths.get(solved);
+    if (!paths) {
+      paths = new Map();
+      this.jointPaths.set(solved, paths);
     }
-    const at = (step: number) => {
-      const sample = solved.joints[step].find((candidate) => candidate.id === joint.id)!;
-      return `${sample.x} , ${sample.y}`;
-    };
-    let string = 'M' + at(0);
-    for (let j_index = 1; j_index < solved.joints.length; j_index++) {
-      string += 'L' + at(j_index);
+    const kept = paths.get(joint.id);
+    if (kept !== undefined) return kept;
+    let string = '';
+    if (solved.joints[0].some((candidate) => candidate.id === joint.id)) {
+      const at = (step: number) => {
+        const sample = solved.joints[step].find((candidate) => candidate.id === joint.id)!;
+        return `${sample.x} , ${sample.y}`;
+      };
+      string = 'M' + at(0);
+      for (let j_index = 1; j_index < solved.joints.length; j_index++) {
+        string += 'L' + at(j_index);
+      }
     }
+    paths.set(joint.id, string);
     return string;
   }
+
+  /** Each solved machine's joint paths, built on first read. */
+  private jointPaths = new WeakMap<Mechanism, Map<string, string>>();
 
   /**
    * Can anything in this drawing be simulated?

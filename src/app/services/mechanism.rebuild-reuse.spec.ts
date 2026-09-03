@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { TEMPLATE_LINKAGES } from '../component/MODALS/templates/template-linkages';
 import { MechanismService } from './mechanism.service';
@@ -66,5 +67,42 @@ describe('rebuilding a drawing of several machines', () => {
     mechanism.updateMechanism();
     expect(mechanism.mechanisms).toEqual(before);
     expect(mechanism.mechanisms[0]).toBe(before[0]);
+  });
+});
+
+describe('a joint path is built once per solve', () => {
+  let mechanism: MechanismService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    mechanism = TestBed.inject(MechanismService);
+    TestBed.inject(UrlProcessorService).updateFromURL(
+      TEMPLATE_LINKAGES['4-Bar'],
+      false,
+      true,
+      false
+    );
+  });
+
+  afterEach(() => {
+    mechanism.isPlaying = false;
+    mechanism.animate(0, false);
+  });
+
+  it('answers the same string until the machine is solved again, then a new one', () => {
+    const joint = mechanism.joints.find((candidate) => candidate.id === 'B')!;
+    const first = mechanism.getJointPath(joint);
+    expect(first.startsWith('M')).toBe(true);
+    expect(mechanism.getJointPath(joint)).toBe(first);
+    joint.x += 20;
+    mechanism.updateMechanism();
+    const moved = mechanism.getJointPath(joint);
+    expect(moved).not.toBe(first);
+    expect(moved.startsWith('M')).toBe(true);
+  });
+
+  it('says nothing for a joint no machine holds', () => {
+    const loose = new RevJoint('Z', 0, 0);
+    expect(mechanism.getJointPath(loose)).toBe('');
   });
 });
