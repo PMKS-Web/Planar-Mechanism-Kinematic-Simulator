@@ -725,11 +725,17 @@
   }
 
   // The hover dimension itself: a hairline in a quiet gray, so the bar it
-  // measures stays the thing being looked at.
+  // measures stays the thing being looked at. Solid black faded as a group,
+  // not a translucent stroke: the arrowhead sits over the end of the line,
+  // and two translucencies stacked there read darker than the line.
   .hoverDimension {
+    .hairline {
+      opacity: 0.42;
+    }
+
     path {
       fill: none;
-      stroke: rgba(0, 0, 0, 0.42);
+      stroke: #000;
     }
   }
 

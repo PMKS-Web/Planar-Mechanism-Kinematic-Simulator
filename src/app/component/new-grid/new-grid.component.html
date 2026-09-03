@@ -64,7 +64,7 @@
          ink, so the arrow is part of the line rather than a black cap on a
          gray one. -->
     <marker id="hairlineArrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="rgba(0, 0, 0, 0.42)" />
+      <polygon points="0 0, 10 3.5, 0 7" fill="#000" />
     </marker>
     <marker
       id="hairlineArrowFlipped"
@@ -74,7 +74,7 @@
       refY="3.5"
       orient="auto"
     >
-      <polygon points="10 0, 0 3.5, 10 7" fill="rgba(0, 0, 0, 0.42)" />
+      <polygon points="10 0, 0 3.5, 10 7" fill="#000" />
     </marker>
     <marker
       id="arrowheadArcFlipped"
@@ -2164,20 +2164,25 @@
          under the pointer is about, drawn where it is measured. Screen-sized,
          so it reads the same at any zoom and never competes with the bar. -->
     <g modelFrame class="hoverDimension" style="pointer-events: none">
-      <path
-        [attr.d]="getSVGPerpendicularLine1() + getSVGPerpendicularLine2()"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
-      ></path>
-      <path
-        [attr.d]="getSVGPrimaryAxisLine1()"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
-        marker-start="url(#hairlineArrowFlipped)"
-      ></path>
-      <path
-        [attr.d]="getSVGPrimaryAxisLine2()"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
-        marker-end="url(#hairlineArrow)"
-      ></path>
+      <!-- The line and its arrowheads are drawn solid and faded together as
+           one group: faded each on its own, the arrowhead over the end of the
+           line stacked two translucencies and read darker than the rest. -->
+      <g class="hairline">
+        <path
+          [attr.d]="getSVGPerpendicularLine1() + getSVGPerpendicularLine2()"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+        ></path>
+        <path
+          [attr.d]="getSVGPrimaryAxisLine1()"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          marker-start="url(#hairlineArrowFlipped)"
+        ></path>
+        <path
+          [attr.d]="getSVGPrimaryAxisLine2()"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          marker-end="url(#hairlineArrow)"
+        ></path>
+      </g>
       @if (!overlayValueLocked('length')) {
         <g class="dimensionPill" [upright]="getSVGLengthOverlayTextPos()">
           <rect
@@ -2205,16 +2210,18 @@
     this.showLinkAngleOverlay >= -1
   ) {
     <g modelFrame class="hoverDimension" style="pointer-events: none">
-      <path
-        [attr.d]="getSVGAngleOverlayLines()"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
-      ></path>
-      <path
-        [attr.d]="getSVGAngleOverlayArc()"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
-        fill="none"
-        marker-end="url(#hairlineArrow)"
-      ></path>
+      <g class="hairline">
+        <path
+          [attr.d]="getSVGAngleOverlayLines()"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+        ></path>
+        <path
+          [attr.d]="getSVGAngleOverlayArc()"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          fill="none"
+          marker-end="url(#hairlineArrow)"
+        ></path>
+      </g>
       @if (!overlayValueLocked('angle')) {
         <g class="dimensionPill" [upright]="getSVGAngleOverlayTextPos()">
           <rect
