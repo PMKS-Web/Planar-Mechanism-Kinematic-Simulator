@@ -1,29 +1,36 @@
 <div id="hold-field-block" [formGroup]="formGroup()" [class.disabled]="disabled()">
-  <!-- One caption for the pair, as the L / angle pair had, and a row for each
-       value led by its letter. Only the placement is the pair's; each field
-       keeps its own padlock, inside it at the right. -->
-  <div class="row head">
-    <span class="label" [class.dim]="disabled()">Link Length and Angle</span>
-    <mat-icon
-      class="label-help"
-      matTooltip="The length and angle of this link. Counter-clockwise is positive."
-      matTooltipShowDelay="400"
-      [class.inert]="disabled()"
-      [matTooltipDisabled]="disabled()"
-      >help_outline</mat-icon
-    >
-  </div>
+  <!-- A row per value: its word and its help, then the field with the padlock
+       inside it at the right. The words share one column, so the two fields
+       line up. -->
   @for (
     which of [
-      { key: 'length', letter: 'L', control: 'length' },
-      { key: 'angle', letter: '⊾', control: 'angle' },
+      {
+        key: 'length',
+        label: 'Length',
+        control: 'length',
+        help: 'Distance between the two joints of this link.',
+      },
+      {
+        key: 'angle',
+        label: 'Angle',
+        control: 'angle',
+        help: 'Angle of this link measured from the positive x axis. Counter-clockwise is positive.',
+      },
     ];
     track which.key
   ) {
     <div class="row field">
-      <span class="label" [class.dim]="disabled()" [class.angle-label]="which.key === 'angle'">{{
-        which.letter
-      }}</span>
+      <span class="caption">
+        <span class="label" [class.dim]="disabled()">{{ which.label }}</span>
+        <mat-icon
+          class="label-help"
+          [matTooltip]="which.help"
+          matTooltipShowDelay="400"
+          [class.inert]="disabled()"
+          [matTooltipDisabled]="disabled()"
+          >help_outline</mat-icon
+        >
+      </span>
       <!-- Hover or focus draws this value's dimension on the canvas, the same
            signal the pair of fields used to send. The padlock is laid over the
            field's right end rather than given to Material as a suffix: the
