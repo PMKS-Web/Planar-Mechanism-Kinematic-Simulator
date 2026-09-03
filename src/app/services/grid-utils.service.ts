@@ -334,7 +334,12 @@ export class GridUtilsService {
     ).joints;
     if (!reached.size || !bars.some((bar) => reached.has(bar.a))) return undefined;
     const frozen = this.frozenJointIds();
-    const joints = holdJoints(this.mechanismSrv.joints, (joint) => this.holdAnchor(joint, frozen));
+    // A grounded joint anchors the others, not itself: in Edit a ground pin
+    // is dragged like any other, and the bar it is on follows.
+    const moving = new Set(goals.map((goal) => goal.id));
+    const joints = holdJoints(this.mechanismSrv.joints, (joint) =>
+      this.holdAnchor(joint, frozen, moving)
+    );
     const solved = settleHolds(joints, bars, goals);
     // An ask no configuration satisfies is refused whole: the half-settled
     // positions the sweep stopped in have a hold or two false in them, and
@@ -445,23 +450,27 @@ export class GridUtilsService {
     const bars = heldBars(links);
     if (bars.length === 0 || heldBarsReaching(joint, links).length === 0) return [];
     const frozen = this.frozenJointIds();
-    const joints = holdJoints(this.mechanismSrv.joints, (j) => this.holdAnchor(j, frozen));
+    const joints = holdJoints(this.mechanismSrv.joints, (j) =>
+      this.holdAnchor(j, frozen, new Set([joint.id]))
+    );
     const solved = settleHolds(joints, bars, [{ id: joint.id, x: joint.x, y: joint.y }]);
     return solved.immovable.includes(joint.id) ? heldBarsReaching(joint, links) : [];
   }
 
   /**
    * Which joints the hold solver may never move: grounded pins are bolted to
-   * the frame, locked ones are held by a mark, and a slider's or a cylinder's
-   * joints live on a line of their own that the solver does not know.
+   * the frame -- unless the pin is the one being moved, since in Edit a ground
+   * pin drags like any other -- locked ones are held by a mark, and a slider's
+   * or a cylinder's joints live on a line of their own that the solver does
+   * not know.
    */
   isHoldAnchor(joint: RealJoint): boolean {
     return this.holdAnchor(joint, this.frozenJointIds());
   }
 
-  private holdAnchor(joint: RealJoint, frozen: Set<string>): boolean {
+  private holdAnchor(joint: RealJoint, frozen: Set<string>, moving = new Set<string>()): boolean {
     return (
-      joint.ground ||
+      (joint.ground && !moving.has(joint.id)) ||
       frozen.has(joint.id) ||
       joint instanceof PrisJoint ||
       this.isAttachedToSlider(joint) ||

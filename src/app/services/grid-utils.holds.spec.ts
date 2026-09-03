@@ -58,6 +58,19 @@ describe('dragging against a held bar', () => {
     expect(parts.ab.length).toBeCloseTo(2 * S, 3);
   });
 
+  it('lets the grounded end be dragged, towing the free end at the held length', () => {
+    // In Edit a ground pin drags like any other. A is asked to move; B, the
+    // free end, comes along by however much the locked length needs.
+    const parts = fourBar(service);
+    parts.ab.hold = 'length';
+    expect(grid.holdsImmobilizing(parts.a)).toEqual([]);
+    grid.dragJoint(parts.a, new Coord(1 * S, 0.5 * S));
+    expect(parts.a.x).toBeCloseTo(1 * S, 2);
+    expect(parts.a.y).toBeCloseTo(0.5 * S, 2);
+    expect(dist(parts.a, parts.b)).toBeCloseTo(2 * S, 3);
+    expect(grid.lastHoldRefusal).toBeUndefined();
+  });
+
   it('keeps the free end on the line through the grounded end when the angle is held', () => {
     const parts = fourBar(service);
     parts.ab.hold = 'angle';

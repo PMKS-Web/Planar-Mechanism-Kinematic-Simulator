@@ -105,10 +105,12 @@
       }
 
       // Down onto the number's baseline: an 11px word centered beside a 15px
-      // icon sits a few pixels above the 14px number it shares a field with.
+      // icon sits above the 14px number it shares a field with. Measured from
+      // the fonts' own ascents and line boxes, not from the boxes' bottoms,
+      // which is what once put it too low.
       .word {
         position: relative;
-        top: 2.5px;
+        top: 1.5px;
       }
     }
   }
