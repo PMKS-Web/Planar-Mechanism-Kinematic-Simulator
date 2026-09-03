@@ -1,5 +1,8 @@
 import { buildMechanism } from '../../../test-utils/verification/fixture';
-import { teachingLabFourBarFixture } from '../../../test-utils/verification/fixtures';
+import {
+  teachingLabFourBarFixture,
+  wideSwingRockerFixture,
+} from '../../../test-utils/verification/fixtures';
 import { cylinderBoomFixture } from '../../../test-utils/verification/slot-fixtures';
 import { RealJoint } from '../joint';
 import {
@@ -109,6 +112,62 @@ describe('the start-pose anchor', () => {
       const at = reach!.index + reach!.blend;
       expect(Math.min(at, Math.abs(at - (frames.length - 1)))).toBeLessThan(1e-3);
     }
+  });
+
+  /** The wide-swing rocker, whose crank reaches the same angle on two branches. */
+  function wideSwing() {
+    const built = buildMechanism(wideSwingRockerFixture());
+    const driven = built.joints.find((joint) => (joint as RealJoint).input) as RealJoint;
+    const rule = coordinateRuleFor(driven)!;
+    const frames = built.mechanism.joints;
+    return { rule, frames, coordinates: coordinatesAcross(rule, frames) };
+  }
+
+  it('finds the start a whole turn along the coordinates, not the branch sharing its turn', () => {
+    // A rocker whose swing is wider than a turn reaches the same crank angle
+    // twice, on two assembly branches. A cycle solved from a pose past the
+    // first turn unwraps its coordinates from there, so the stored start angle
+    // coincides first with the crossing on the *other* branch; the start
+    // itself is a whole turn further along. Searching for the stored value
+    // alone drew the other branch under the ghost after a drag of a few
+    // pixels.
+    const { rule, frames, coordinates } = wideSwing();
+    const anchor = {
+      coordinate: coordinates[0]!,
+      heading: (coordinates[1]! > coordinates[0]! ? 1 : -1) as 1 | -1,
+      kind: 'angle' as const,
+      seed: seedAt(frames, 0),
+    };
+    // The same cycle, written from a pose 380 degrees into the swing -- past
+    // the first full turn, where the linkage is on its other branch.
+    const shift = 380;
+    const rotated = [...frames.slice(shift), ...frames.slice(1, shift + 1)];
+    const reach = reachAnchor(coordinatesAcross(rule, rotated), anchor, rotated);
+    expect(reach).not.toBeNull();
+    const from = rotated[reach!.index];
+    const to = rotated[Math.min(reach!.index + 1, rotated.length - 1)];
+    const off = Math.max(
+      ...frames[0].map((joint, k) => {
+        const x = from[k].x + (to[k].x - from[k].x) * reach!.blend;
+        const y = from[k].y + (to[k].y - from[k].y) * reach!.blend;
+        return Math.hypot(x - joint.x, y - joint.y);
+      })
+    );
+    expect(off).toBeLessThan(1e-2);
+  });
+
+  it('says no rather than drawing the other branch when only that branch has the angle', () => {
+    const { frames, coordinates } = wideSwing();
+    // A seed taken from the far branch, most of a link away from every pose
+    // that holds the start angle on the near one -- what a start that has
+    // been dragged onto the other branch looks like to the lookup.
+    const anchor = {
+      coordinate: coordinates[0]!,
+      heading: (coordinates[1]! > coordinates[0]! ? 1 : -1) as 1 | -1,
+      kind: 'angle' as const,
+      seed: seedAt(frames, 200),
+    };
+    expect(reachAnchor(coordinates, anchor, frames)).toBeNull();
   });
 
   it('uses the seed to tell two legs of a cycle apart', () => {

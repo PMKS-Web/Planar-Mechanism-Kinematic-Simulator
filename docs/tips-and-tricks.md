@@ -667,6 +667,14 @@ Without the slack, a drag that changed the cycle could leave a crank's own start
 with the ghost drawn at the last pose it could reach and a "starts here now" it had no cause for.
 `e2e/posed-drag-fuzz.mjs` is the seeded random-drag sweep that found it.
 
+And the lookup looks for the start angle at *every* whole turn inside the cycle, not just the
+stored value: a provisional cycle's angles are unwrapped from wherever the hand is, and on a
+rocker whose swing is wider than a turn the same crank angle is reached on two assembly branches.
+The winner is the crossing nearest the anchor's seed, and a winner more than a fifth of the
+drawing from the seed is refused as the other branch, which turns the ghost amber and moves the
+start on release instead of drawing a design the reader never made. The seed is re-taken from the
+new start on every successful re-anchor, so it stays a description of the current design.
+
 `e2e/posed-edit-audit.mjs` tries every row, field and key at a displaced pose on three
 mechanisms and judges what is left behind (nothing staged, clocks agreeing, the start pose or the
 anchor kept, Undo exact). Run it after touching the canvas gestures, the menu builder, the panel

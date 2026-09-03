@@ -270,82 +270,102 @@ export interface AnchorReach {
 export function reachAnchor(
   coordinates: (number | undefined)[],
   anchor: Pick<MachineAnchor, 'coordinate' | 'heading' | 'kind' | 'seed'>,
-  frames: Joint[][],
-  /** Whether the whole-turn retry below has already been spent on this call. */
-  wrapped = false
+  frames: Joint[][]
 ): AnchorReach | null {
+  // Every value the anchor could be read as. An angle repeats every turn,
+  // and the cycle's coordinates are unwrapped from wherever the cycle
+  // *starts* -- for a cycle solved from the pose under a reader's hand, that
+  // is the hand -- so the stored angle and the same crank position in this
+  // cycle can differ by any whole number of turns. On a swing wider than a
+  // turn the same angle is reached twice, on two assembly branches, and only
+  // one of them is the start: searching for the stored value alone found
+  // whichever happened to share its turn, and the ghost flipped to the
+  // other branch on a drag of a few pixels.
+  const values = [anchor.coordinate];
+  if (anchor.kind === 'angle') {
+    const known = coordinates.filter((value): value is number => value !== undefined);
+    if (known.length > 0) {
+      const low = Math.min(...known);
+      const high = Math.max(...known);
+      const firstTurn = Math.ceil((low - anchor.coordinate) / TWO_PI - REACH_SLACK);
+      const lastTurn = Math.floor((high - anchor.coordinate) / TWO_PI + REACH_SLACK);
+      values.length = 0;
+      for (let turn = firstTurn; turn <= lastTurn; turn++) {
+        values.push(anchor.coordinate + turn * TWO_PI);
+      }
+      if (values.length === 0) values.push(anchor.coordinate);
+    }
+  }
   const crossings: AnchorReach[] = [];
   for (let i = 0; i + 1 < coordinates.length; i++) {
     const from = coordinates[i];
     const to = coordinates[i + 1];
     if (from === undefined || to === undefined) continue;
     const span = to - from;
-    if (Math.abs(span) < 1e-12) {
-      if (Math.abs(from - anchor.coordinate) < 1e-9) {
-        crossings.push({ index: i, blend: 0, heading: anchor.heading });
+    for (const value of values) {
+      if (Math.abs(span) < 1e-12) {
+        if (Math.abs(from - value) < 1e-9) {
+          crossings.push({ index: i, blend: 0, heading: anchor.heading });
+        }
+        continue;
       }
-      continue;
+      const blend = (value - from) / span;
+      // With a hair of slack at either end. The coordinate was read off one
+      // cycle's sample 0 and is being looked for in the next cycle's, and the
+      // two differ in the last decimals: positions are rounded per sample and
+      // the angle is recomputed from them. Exactly on a sample and a hair
+      // outside its interval, a crank's start was declared unreachable -- so
+      // the ghost drew the last pose it could reach, a third of a turn from
+      // where the transport said the start was.
+      if (blend < -REACH_SLACK || blend > 1 + REACH_SLACK) continue;
+      crossings.push({
+        index: i,
+        blend: Math.min(1, Math.max(0, blend)),
+        heading: span > 0 ? 1 : -1,
+      });
     }
-    const blend = (anchor.coordinate - from) / span;
-    // With a hair of slack at either end. The coordinate was read off one
-    // cycle's sample 0 and is being looked for in the next cycle's, and the
-    // two differ in the last decimals: positions are rounded per sample and
-    // the angle is recomputed from them. Exactly on a sample and a hair
-    // outside its interval, a crank's start was declared unreachable -- so
-    // the ghost drew the last pose it could reach, a third of a turn from
-    // where the transport said the start was.
-    if (blend < -REACH_SLACK || blend > 1 + REACH_SLACK) continue;
-    crossings.push({
-      index: i,
-      blend: Math.min(1, Math.max(0, blend)),
-      heading: span > 0 ? 1 : -1,
-    });
   }
-  if (crossings.length === 0) {
-    // An angle repeats every turn, so a coordinate a whole number of turns away
-    // is the same crank position and the cycle does reach it. Tried only after
-    // the direct search, so a cycle that holds the value outright never has to
-    // reason about turns at all.
-    //
-    // Once only. `wrapNear` returns the coordinate unchanged whenever no whole
-    // number of turns brings it into range -- including the case where the
-    // cycle has no usable coordinates at all -- and retrying on an unchanged
-    // value recurses until the stack runs out. A drag that broke the linkage
-    // outright reached exactly that, and the crash looked like a solver fault.
-    if (anchor.kind !== 'angle' || wrapped) return null;
-    const near = wrapNear(anchor.coordinate, coordinates);
-    if (near === anchor.coordinate) return null;
-    return reachAnchor(coordinates, { ...anchor, coordinate: near }, frames, true);
-  }
+  if (crossings.length === 0) return null;
   const sameWay = crossings.filter((crossing) => crossing.heading === anchor.heading);
   const shortlist = sameWay.length > 0 ? sameWay : crossings;
-  return shortlist.reduce((best, candidate) =>
-    seedDistance(candidate, frames, anchor.seed) < seedDistance(best, frames, anchor.seed)
+  const best = shortlist.reduce((held, candidate) =>
+    seedDistance(candidate, frames, anchor.seed) < seedDistance(held, frames, anchor.seed)
       ? candidate
-      : best
+      : held
   );
+  // The nearest crossing has to be the same pose, give or take the edit. A
+  // crossing that puts the joints most of a link away from where the start
+  // last stood is the other assembly branch wearing the start's crank angle,
+  // and drawing it is worse than saying the start is out of reach: the
+  // reader is told the start will move, and can drag back or undo, instead
+  // of watching the design flip under the ghost.
+  const span = drawingSpan(frames[0] ?? []);
+  if (span > 0 && seedDistance(best, frames, anchor.seed) > span * BRANCH_FRACTION) return null;
+  return best;
 }
 
 /**
- * The same crank position, expressed inside this cycle's own range.
- *
- * Returns the coordinate unchanged when no whole number of turns brings it into
- * range, which leaves the caller's second search to fail exactly as the first
- * one did.
+ * How far, as a fraction of the drawing's size, the joints may stand from
+ * where the start last held them before a crossing is judged to be the other
+ * assembly branch. Averaged over the joints: an edit moves one joint and its
+ * neighbors, a branch flip moves half the linkage by a link's length.
  */
-function wrapNear(coordinate: number, coordinates: (number | undefined)[]): number {
-  const known = coordinates.filter((value): value is number => value !== undefined);
-  if (known.length === 0) return coordinate;
-  const low = Math.min(...known);
-  const high = Math.max(...known);
-  // Into the range rather than towards the middle of it. A cycle that covers a
-  // full revolution runs from c to c + 2pi, and an anchor stored one turn on
-  // sits a hair past the far end -- near enough the middle to fail a
-  // round-to-nearest and be refused, which would move the start of any machine
-  // whose cycle happens to be written on the other side of the seam.
-  if (coordinate < low) return coordinate + Math.ceil((low - coordinate) / TWO_PI) * TWO_PI;
-  if (coordinate > high) return coordinate - Math.ceil((coordinate - high) / TWO_PI) * TWO_PI;
-  return coordinate;
+const BRANCH_FRACTION = 0.2;
+
+/** The larger side of the joints' bounding box. */
+function drawingSpan(frame: readonly Joint[]): number {
+  if (frame.length < 2) return 0;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const joint of frame) {
+    minX = Math.min(minX, joint.x);
+    maxX = Math.max(maxX, joint.x);
+    minY = Math.min(minY, joint.y);
+    maxY = Math.max(maxY, joint.y);
+  }
+  return Math.max(maxX - minX, maxY - minY);
 }
 
 /** How far this crossing's pose is from the pose t = 0 was last known to hold. */

@@ -5905,6 +5905,13 @@ export class MechanismService {
     this.seedFromDisplay = key;
     this.updateMechanism(committing);
     this.seedFromDisplay = null;
+    // The anchor's seed is the pose the start was last known to hold, and it
+    // has just been re-solved: the design changed under it. Left as the pose
+    // the drawing first arrived in, it drifts away from every crossing as
+    // edits accumulate, until the lookup cannot tell the start from the other
+    // branch -- or refuses the start for being too far from a pose that no
+    // longer exists.
+    this.reseedAnchor(key);
     this.seekToCoordinate(key, commitPose);
     return { reanchored: true };
   }
@@ -5930,6 +5937,20 @@ export class MechanismService {
     // the master, the shared step, and it draws sample 0 -- which is the pose
     // already on screen, so nothing visibly moves.
     this.seekMechanism(index, 0);
+  }
+
+  /** Give a machine's anchor the pose its start holds now. */
+  private reseedAnchor(key: string): void {
+    const index = this.stagedPartitionIndex(key);
+    if (index === -1) return;
+    const now = topologyOf(this.partitions[index].ownJoints);
+    const anchor = this.anchors.get(now);
+    const start = this.mechanisms[index]?.joints[0];
+    if (!anchor || !start) return;
+    this.anchors.set(now, {
+      ...anchor,
+      seed: new Map(start.map((joint) => [joint.id, { x: joint.x, y: joint.y }])),
+    });
   }
 
   /** Put a machine back at the input value the reader was editing at. */
