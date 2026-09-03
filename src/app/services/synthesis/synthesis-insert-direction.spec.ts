@@ -12,8 +12,8 @@ import { COR } from './synthesis-util';
  * The preview turns the way its arrow points, and Insert has to hand that on:
  * a reader who reversed the preview before inserting expects the linkage on
  * the grid to turn the way they were just watching it turn, not whichever way
- * the document's drive was last set. Negative is clockwise, as `setDriveSpeed`
- * spells it and the transport reads it.
+ * the document's drive was last set. Negative is clockwise, which
+ * `turnsClockwise` says once for the whole app.
  */
 
 const S = MODEL_SCALE;

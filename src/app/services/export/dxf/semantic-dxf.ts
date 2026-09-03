@@ -1,5 +1,6 @@
 import { Cylinder, cylinderJoints, sealedCylinderStructures } from '../../../model/cylinder';
 import { Force } from '../../../model/force';
+import { turnsClockwise } from '../../../model/drive-direction';
 import { Joint, PrisJoint, RealJoint } from '../../../model/joint';
 import { Link, RealLink, SliderBlock } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
@@ -210,7 +211,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
         const clockwise =
           cylinder.slider.driveSpeed === 0
             ? input.defaultInputClockwise
-            : cylinder.slider.driveSpeed < 0;
+            : turnsClockwise(cylinder.slider.driveSpeed);
         entities.push(
           ...inputAnnotation(
             {
@@ -319,7 +320,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
           entities.push(...groundAnnotation(at, symbolScale, DXF_LAYER.annotations));
         if (joint.input) {
           const clockwise =
-            joint.driveSpeed === 0 ? input.defaultInputClockwise : joint.driveSpeed < 0;
+            joint.driveSpeed === 0 ? input.defaultInputClockwise : turnsClockwise(joint.driveSpeed);
           entities.push(
             ...inputAnnotation(
               { ...at, slotAngle: joint instanceof PrisJoint ? joint.slotAngle : undefined },

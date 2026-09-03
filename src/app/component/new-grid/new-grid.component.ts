@@ -20,6 +20,7 @@ import { SettingsService } from '../../services/settings.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { LongPress, LongPressDirective } from '../../long-press.directive';
 import { ModelFrameDirective, ModelPoint, UprightDirective } from '../../model-frame.directive';
+import { turnsClockwise } from '../../model/drive-direction';
 import { ViewportService } from '../../services/viewport.service';
 import { ContextMenuComponent } from '../context-menu/context-menu.component';
 import { ContextMenuModel, trackContextMenuPointer } from '../context-menu/menu-model';
@@ -4108,7 +4109,9 @@ export class NewGridComponent implements OnDestroy {
    * been given a speed of its own still gets exactly the old answer.
    */
   drivenClockwise(joint: Joint): boolean {
-    return this.mechanismSrv.driveSpeedOf(joint instanceof RealJoint ? joint : undefined) < 0;
+    return turnsClockwise(
+      this.mechanismSrv.driveSpeedOf(joint instanceof RealJoint ? joint : undefined)
+    );
   }
 
   /** Which way each drive runs, for the mark service to ask per joint. */

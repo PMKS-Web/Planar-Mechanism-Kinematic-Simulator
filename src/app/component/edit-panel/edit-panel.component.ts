@@ -1,4 +1,5 @@
 import { describeActuatorRefusal } from '../../model/actuator';
+import { speedTurning, turnsClockwise } from '../../model/drive-direction';
 import { Subscription } from 'rxjs';
 import {
   AfterContentInit,
@@ -805,9 +806,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     if (end === undefined) return;
     const wantsRetract = end === 1;
     const signed = this.mechanismService.driveSpeedOf(sealed.slider);
-    if (signed === 0 || signed < 0 === wantsRetract) return;
-    const magnitude = Math.abs(signed);
-    this.mechanismService.setDriveSpeed(sealed.slider, wantsRetract ? -magnitude : magnitude);
+    if (signed === 0 || turnsClockwise(signed) === wantsRetract) return;
+    this.mechanismService.setDriveSpeed(sealed.slider, speedTurning(wantsRetract, signed));
     this.mechanismService.updateMechanism(false);
   }
 
@@ -1074,7 +1074,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    * had touched most recently rather than the one in front of them.
    */
   private get drivenClockwise(): boolean {
-    return this.mechanismService.driveSpeedOf(this.drivenJoint) < 0;
+    return turnsClockwise(this.mechanismService.driveSpeedOf(this.drivenJoint));
   }
 
   /**
@@ -1340,10 +1340,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
               );
           // The field carries magnitude; a minus sign reads as "the other way",
           // so -20 becomes 20 with the direction flipped.
-          const wasClockwise = this.mechanismService.driveSpeedOf(joint) < 0;
+          const wasClockwise = turnsClockwise(this.mechanismService.driveSpeedOf(joint));
           const clockwise = typed < 0 ? !wasClockwise : wasClockwise;
           if (joint) {
-            this.mechanismService.setDriveSpeed(joint, clockwise ? -magnitude : magnitude);
+            this.mechanismService.setDriveSpeed(joint, speedTurning(clockwise, magnitude));
           } else if (this.isSliderInput) {
             this.settingsService.linearInputSpeed.next(magnitude);
             this.settingsService.isInputCW.next(clockwise);

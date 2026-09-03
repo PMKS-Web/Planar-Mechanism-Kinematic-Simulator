@@ -1,5 +1,6 @@
 import { Injectable, Injector, inject } from '@angular/core';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
+import { speedTurning, turnsClockwise } from '../model/drive-direction';
 import { Link, SliderBlock, RealLink } from '../model/link';
 import { isSlideCandidate, slideAssemblyAt } from '../model/slide-assembly';
 import {
@@ -610,7 +611,7 @@ export class MechanismService {
       joint instanceof PrisJoint
         ? this.settingsService.linearInputSpeed.value
         : this.settingsService.inputSpeed.value;
-    return this.settingsService.isInputCW.value ? -magnitude : magnitude;
+    return speedTurning(this.settingsService.isInputCW.value, magnitude);
   }
 
   /**
@@ -647,7 +648,7 @@ export class MechanismService {
     } else {
       this.settingsService.inputSpeed.next(magnitude);
     }
-    this.settingsService.isInputCW.next(signed < 0);
+    this.settingsService.isInputCW.next(turnsClockwise(signed));
   }
 
   /**
@@ -3282,7 +3283,7 @@ export class MechanismService {
           }
           const signed = this.driveSpeedOf(driven);
           const magnitude = Math.abs(signed).toFixed(2);
-          const way = signed < 0 ? 'CW' : 'CCW';
+          const way = turnsClockwise(signed) ? 'CW' : 'CCW';
           return driven instanceof PrisJoint
             ? `${magnitude} ${this.nup.unitLabel(this.settingsService.lengthUnit.value)}/s`
             : `${magnitude} RPM ${way}`;
@@ -5033,7 +5034,7 @@ export class MechanismService {
   travelingForward(index: number): boolean {
     const profile = this.driveProfileOf(index);
     const mechanism = this.mechanisms[index];
-    const forwardDrive = (mechanism?.inputAngularVelocities[0] ?? 0) < 0;
+    const forwardDrive = turnsClockwise(mechanism?.inputAngularVelocities[0] ?? 0);
     // Which way playback runs *through the frames*, which is not the same as
     // which way it runs through the cycle once the drive has been turned round:
     // reversing walks the frames backwards precisely so the machine goes

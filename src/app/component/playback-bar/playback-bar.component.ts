@@ -10,6 +10,7 @@ import {
   inject,
 } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
+import { turnsClockwise } from '../../model/drive-direction';
 import { Subscription } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
@@ -759,8 +760,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
         // Where it will start, which is where it is standing: the handle is in
         // its seat, so no seat is drawn.
         anchorAt: 0,
-        // Negative is clockwise, as everywhere else the sign is read.
-        clockwise: driven ? this.mechanism.driveSpeedOf(driven) < 0 : true,
+        clockwise: driven ? turnsClockwise(this.mechanism.driveSpeedOf(driven)) : true,
         togglePoint: false,
         note: '',
         playing: false,

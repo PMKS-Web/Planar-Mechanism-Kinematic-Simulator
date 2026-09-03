@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Subject } from 'rxjs';
 import { Coord } from 'src/app/model/coord';
+import { speedTurning } from 'src/app/model/drive-direction';
 import { RealLink } from 'src/app/model/link';
 import { RealJoint, RevJoint } from 'src/app/model/joint';
 import { MechanismService } from '../mechanism.service';
@@ -878,10 +879,10 @@ export class SynthesisSolutionService {
     this.mechanismSrv.mergeToLinks(links);
     // The preview turned the way its arrow pointed, so the linkage lands
     // turning that way too, rather than whichever way the document's drive was
-    // last set. Negative is clockwise on screen, as `setDriveSpeed` spells it;
-    // the magnitude is the document's, since the preview never had a speed.
-    const rate = Math.abs(this.mechanismSrv.driveSpeedOf(drive));
-    this.mechanismSrv.setDriveSpeed(drive, this.clockwise ? -rate : rate);
+    // last set. The magnitude is the document's, since the preview never had a
+    // speed of its own.
+    const rate = this.mechanismSrv.driveSpeedOf(drive);
+    this.mechanismSrv.setDriveSpeed(drive, speedTurning(this.clockwise, rate));
     this.design.ownedJointIds = joints.map((joint) => joint.id);
     this.design.ownedAt = joints.map((joint) => ({ x: joint.x, y: joint.y }));
     this.design.ownershipPartial = false;
