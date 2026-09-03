@@ -510,21 +510,34 @@ export class MechanismService {
       return;
     }
     this.solvingDeferred = false;
-    this.mechanisms = this.partitions.map(
-      //If the mechanism is simulatable, it will generate loops and all future time steps
-      (partition) =>
-        new Mechanism(
-          partition.joints,
-          partition.links,
-          partition.forces,
-          this.ics,
-          this.settingsService.isGravity.value,
-          unitStr,
-          this.inputVelocityFor(partition),
-          'adaptive',
-          new Set(partition.ownJoints.map((joint) => joint.id))
-        )
-    );
+    // Only the machine that changed is solved again. A drawing of several
+    // machines is dragged one joint at a time, and every other machine's
+    // sweep was being redone for nothing: four four-bars cost four sweeps per
+    // pointer move. A machine is kept when everything its solve was built
+    // from reads the same as last time.
+    const built = new Map<string, { fingerprint: string; mechanism: Mechanism }>();
+    this.mechanisms = this.partitions.map((partition) => {
+      const key = partitionKey(partition);
+      const fingerprint = this.solveFingerprint(partition, unitStr);
+      const kept = this.lastBuilt.get(key);
+      const mechanism =
+        kept && kept.fingerprint === fingerprint
+          ? kept.mechanism
+          : new Mechanism(
+              partition.joints,
+              partition.links,
+              partition.forces,
+              this.ics,
+              this.settingsService.isGravity.value,
+              unitStr,
+              this.inputVelocityFor(partition),
+              'adaptive',
+              new Set(partition.ownJoints.map((joint) => joint.id))
+            );
+      built.set(key, { fingerprint, mechanism });
+      return mechanism;
+    });
+    this.lastBuilt = built;
     // Every machine's held state, re-laid onto the machines that now exist:
     // matched by identity, defaulted for one that has just appeared, and
     // dropped for one that has gone. Written wholesale rather than in place
@@ -582,6 +595,53 @@ export class MechanismService {
    * two quantities applies depends on what *this* machine is driven by: a
    * cylinder beside a crank must not be handed the crank's rpm.
    */
+  /** The machines from the last build, by the key that survives a rebuild. */
+  private lastBuilt = new Map<string, { fingerprint: string; mechanism: Mechanism }>();
+
+  /**
+   * Everything a machine's solve reads, as one string.
+   *
+   * Joints by place and kind, links by mass, inertia, center and shape,
+   * forces by where they act and how hard, and the document-wide inputs the
+   * constructor is handed. Two partitions with the same fingerprint solve to
+   * the same frames, so the earlier ones can stand.
+   */
+  private solveFingerprint(partition: MechanismPartition, unitStr: string): string {
+    const joints = partition.joints.map((joint) => {
+      const real = joint instanceof RealJoint ? joint : undefined;
+      const slide = joint instanceof PrisJoint ? joint.angle_rad : '';
+      const kind = joint.constructor.name;
+      const flags = [real?.ground && 'g', real?.input && 'i', real?.isWelded && 'w']
+        .filter(Boolean)
+        .join('');
+      return `${joint.id}@${joint.x},${joint.y}:${kind}${flags}${slide}`;
+    });
+    const links = partition.links.map((link) => {
+      const body = link instanceof RealLink ? link : undefined;
+      const pins = link.joints.map((joint) => joint.id).join('');
+      const subset = body?.subset.map((part) => part.id).join('+') ?? '';
+      const shape = `${body?.isCircle ? 'o' : ''}d${body?.d.length ?? ''}`;
+      const center = `${body?.CoM.x ?? ''},${body?.CoM.y ?? ''}`;
+      const inertia = `m${link.mass}I${body?.massMoI ?? ''}`;
+      return `${link.id}[${pins}]${link.constructor.name}${inertia}c${center}${shape}s${subset}`;
+    });
+    const forces = partition.forces.map((force) => {
+      const from = `${force.startCoord.x},${force.startCoord.y}`;
+      const to = `${force.endCoord.x},${force.endCoord.y}`;
+      const at = `${from}-${to}`;
+      return `${force.id}>${force.link.id}@${at}m${force.mag}${force.local ? 'l' : ''}`;
+    });
+    return [
+      joints.join('|'),
+      links.join('|'),
+      forces.join('|'),
+      this.settingsService.isGravity.value,
+      unitStr,
+      this.inputVelocityFor(partition),
+      this.ics.length,
+    ].join('#');
+  }
+
   private inputVelocityFor(partition: MechanismPartition): number {
     // Its own joints, not everything it is handed to solve against: a frame
     // piece shared with the machine next door carries that machine's driven
