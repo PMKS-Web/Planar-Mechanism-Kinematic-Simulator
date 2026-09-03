@@ -683,33 +683,76 @@ pixels are available; anything you add to the bottom row has to survive that.
 
 ---
 
-### The drawing is y-up, the screen is y-down, and the flip lives on the SVG holders
+### The drawing is y-up, the screen is y-down, and two directives say so
 
-Model coordinates follow the math convention: +y is up. The screen's is down. The app reconciles
-the two once, in the template: every drawing layer in `new-grid.component.html` is a `<g>` with
-`style="transform: scaleY(-1)"` (there are 36 of them), so a joint is drawn with
-`[attr.cy]="joint.y"` and no arithmetic. Anything that has to read upright -- joint labels, pose
-chips, hint badges -- undoes it locally with `scale(1,-1)`, which is what the nine counter-flips
-in that template are.
+Model coordinates follow the math convention: +y is up. The screen's is down.
+The app reconciles the two once, in the template, and there are exactly two
+words for it -- both in `src/app/model-frame.directive.ts`:
 
-What follows from that, and what has cost an hour more than once:
+- **`modelFrame`** on a drawing layer turns it over, so everything inside is
+  written with the numbers the solver produced: a joint is `[attr.cy]="joint.y"`
+  and no arithmetic. Two dozen layers of `new-grid.component.html` wear it.
+- **`upright`** on one thing inside undoes that flip for itself, because text
+  drawn under it reads upside down and an asset authored y-down comes out
+  mirrored. `[upright]="chip"` hangs the thing on a point in the drawing;
+  bare `upright` flips in place, for something already positioned by its own
+  `x`/`y`; `[uprightTurnedBy]` turns it first, for a mark bolted to a part.
+  Inside an `upright` the axes are the screen's again, +y down, which is what
+  lets a pill or a glyph be laid out with ordinary SVG numbers.
 
-- **`getScreenCTM()` on a holder already contains the flip** (`d < 0`), so mapping a model point
-  through it lands on the right pixel. `SvgGridService.screenToSVG` negates y by hand and
-  `revealOnCanvas` writes `matrix.d * -at.y` because the pan-zoom matrix they hold is the
-  viewport's, *outside* the flipped holders. Mixing the two is how a probe reports a crank turning
-  the wrong way.
-- **The same angle has opposite signs on the two sides.** An angle measured in screen pixels grows
-  clockwise; measured in model coordinates it grows counterclockwise. The synthesis preview's
-  `phase` is a model angle, so advancing it turns the preview counterclockwise on screen -- which
-  is why `SynthesisPanelComponent.step` negates the stride for a clockwise preview.
-- **A negative drive speed is clockwise on screen.** `MechanismService.setDriveSpeed` writes
-  `isInputCW = signed < 0`, and the transport's Clockwise note, its rotate icon and the pin's
-  arrow glyph all read the sign the same way. This was settled by looking at four frames of the
-  four-bar template, not by reasoning about signs.
-- **If you touch a direction, look at it.** Play, take a few screenshots clipped around the
-  driven pin, and see which way the crank goes. A numeric probe is only as good as the matrix it
-  chose, and two of them in one session disagreed with the screen.
+Both used to be spelled `style="transform: scaleY(-1)"`, which is why they are
+directives now: **the frame and the escape from it were the same string**, and
+eleven counter-flips were indistinguishable from the layers containing them
+without tracing the nesting by hand. If you add a layer, say `modelFrame`; if
+you add words to one, say `upright`.
+
+What follows from the flip, and what has cost an hour more than once:
+
+- **`SvgGridService` has one symmetric pair, and both halves carry the flip.**
+  `screenToModel(Coord)`, `screenToModelFromXY(x, y)` and `modelToScreen(Coord)`.
+  The pan-zoom matrix they go through is the *viewport's*, and the viewport
+  sits outside the flipped layers, so the negation in those functions is the
+  step the matrix is missing. They replaced a `screenToSVG` that negated y and
+  an `SVGtoScreen` that did not -- two functions named as each other's inverse
+  that were not one, with nothing saying which carried the flip. `svg-grid.spec.ts`
+  round-trips a point and pins that a point above the origin in the drawing
+  lands above it on screen.
+- **`getScreenCTM()` on a layer already contains the flip** (`d < 0`), so
+  mapping a model point through *that* lands on the right pixel with no
+  negation. Mixing it with the viewport's matrix is how a probe reports a crank
+  turning the wrong way. `revealOnCanvas` does the flip by hand for the same
+  reason the pair does, against the matrix the canvas is drawn under right now
+  rather than the one the library last announced.
+- **The same angle has opposite signs on the two sides.** An angle measured in
+  screen pixels grows clockwise; measured in model coordinates it grows
+  counterclockwise. The synthesis preview's `phase` is a model angle, so
+  advancing it turns the preview counterclockwise on screen -- which is why
+  `SynthesisPanelComponent.step` negates the stride for a clockwise preview.
+- **If you touch a direction, look at it.** Play, take a few frames clipped
+  around the driven pin, and see which way the crank goes. A numeric probe is
+  only as good as the matrix it chose, and two of them in one session disagreed
+  with the screen.
+
+### A negative drive speed is clockwise, and `turnsClockwise` is the only place that knows
+
+`model/drive-direction.ts` holds the pair: `turnsClockwise(signedSpeed)` reads
+the sign and `speedTurning(clockwise, magnitude)` writes it. Every "is this
+clockwise?" in the app goes through the first -- the pin's arrow glyph, the
+transport's note and its rotate icon, the Edit panel's direction control, the
+analysis setup's `12.00 RPM CW`, `travelingForward`, the DXF export and
+synthesis' Insert -- and everything that has a direction and needs the number
+goes through the second.
+
+**Do not re-derive the convention; it does not follow from anything.** You can
+talk yourself into either answer from the y-flip, and reasoning about it gets
+it wrong about as often as right. It was settled by playing the four-bar
+template and watching four frames of the crank. `drive-direction.spec.ts` is
+what holds it there, and it exists because those eight readings used to be
+eight copies of `speed < 0` -- one of which, the transport's row for a machine
+whose solve is deferred, was backwards for a week (a7b83a8).
+
+The same sign runs through `inputAngularVelocities`, which is the joint's rpm
+through pi/30: a different quantity, the same convention.
 
 ## Deploys, domains and surrounding services
 
