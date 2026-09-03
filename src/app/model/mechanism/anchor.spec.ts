@@ -86,6 +86,31 @@ describe('the start-pose anchor', () => {
     expect(reachAnchor([0, 1, 2, 1, 0], outside, frames)).toBeNull();
   });
 
+  it('finds a coordinate that sits a rounding hair outside the first sample', () => {
+    // The coordinate was read off one cycle's sample 0 and is looked for in
+    // the next cycle's, whose sample 0 differs in the last decimals. Exactly
+    // on the sample and a hair past it, the direct search found nothing and
+    // the whole-turn fallback saw a value already in range and gave up -- so
+    // a crank, every angle of which is reachable, was told its start was not,
+    // and the ghost drew the last pose it could reach instead.
+    const { frames, coordinates } = crank();
+    const heading = (coordinates[1]! > coordinates[0]! ? 1 : -1) as 1 | -1;
+    for (const hair of [1e-9, -1e-9]) {
+      const anchor = {
+        coordinate: coordinates[0]! + hair,
+        heading,
+        kind: 'angle' as const,
+        seed: seedAt(frames, 0),
+      };
+      const reach = reachAnchor(coordinates, anchor, frames);
+      expect(reach, `a hair of ${hair}`).not.toBeNull();
+      // On the start itself, or on the sample a full turn later, which is the
+      // same pose.
+      const at = reach!.index + reach!.blend;
+      expect(Math.min(at, Math.abs(at - (frames.length - 1)))).toBeLessThan(1e-3);
+    }
+  });
+
   it('uses the seed to tell two legs of a cycle apart', () => {
     // A coordinate a reversing input passes twice: the same value going out and
     // coming back. Heading separates them here; where it cannot, the seed does.

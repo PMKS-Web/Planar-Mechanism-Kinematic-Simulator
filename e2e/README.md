@@ -43,6 +43,10 @@ their source. Everything browser-driven lives here.
   and judges those states too. A row or field that is refused is recorded as refused *with words*.
   Writes the table to `artifacts/posed-edit-audit/matrix.md`. Slow: half an hour, one fresh load
   per action
+- `posed-drag-fuzz.mjs` — random drags at random poses, seeded so a finding replays (`SEED=`,
+  `ONLY=` trial numbers). After each drag the ghost's crank angle, the design's sample 0 and the
+  transport's "from start" have to agree, and a crank's own start may never be unreachable. This is
+  how the anchor lookup's missing slack was found. About ten minutes
 - `analysis-editing.mjs` — `docs/analysis-mode-editing-plan.md`: what an analysis mode allows now
   (drag, undo) and still refuses (adding, deleting, welding), click-selects-drag-tunes, the
   before/after comparison overlay and the axis holding still under it, the peak said as two

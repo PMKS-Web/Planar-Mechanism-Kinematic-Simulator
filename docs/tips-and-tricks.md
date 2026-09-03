@@ -660,6 +660,13 @@ The panel's handlers ask the permission model about *their own* action: the pose
 ask `placement`, and the toggles the freeze leaves live ask `structure`. A handler that asks the
 wrong question does not misbehave loudly -- it returns, and the switch it sits behind still flips.
 
+The anchor lookup (`reachAnchor`) has a hundredth of a sample of slack, and needs it: the pose a
+re-anchor puts at sample 0 is interpolated between two solved samples, and the coordinate read
+back off a point part-way along a chord is a few thousandths of a degree from the stored one.
+Without the slack, a drag that changed the cycle could leave a crank's own start "unreachable",
+with the ghost drawn at the last pose it could reach and a "starts here now" it had no cause for.
+`e2e/posed-drag-fuzz.mjs` is the seeded random-drag sweep that found it.
+
 `e2e/posed-edit-audit.mjs` tries every row, field and key at a displaced pose on three
 mechanisms and judges what is left behind (nothing staged, clocks agreeing, the start pose or the
 anchor kept, Undo exact). Run it after touching the canvas gestures, the menu builder, the panel

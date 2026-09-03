@@ -231,6 +231,18 @@ export function coordinatesAcross(rule: CoordinateRule, frames: Joint[][]): (num
 
 const TWO_PI = Math.PI * 2;
 
+/**
+ * How far outside a sample interval, as a fraction of it, a coordinate may
+ * fall and still count as on the sample.
+ *
+ * A hundredth: a hundredth of a degree for a crank. The pose a re-anchor
+ * puts at sample 0 is interpolated between two solved samples, and a point
+ * part-way along a chord is not at the part-way angle -- the coordinate read
+ * back off it is off by up to a few thousandths of a degree, which is
+ * invisible on screen and well inside this.
+ */
+const REACH_SLACK = 1e-2;
+
 /** Where an anchored coordinate sits in a cycle, as a fractional sample index. */
 export interface AnchorReach {
   /** The sample below it, and how far past that sample it lies. */
@@ -275,8 +287,19 @@ export function reachAnchor(
       continue;
     }
     const blend = (anchor.coordinate - from) / span;
-    if (blend < 0 || blend > 1) continue;
-    crossings.push({ index: i, blend, heading: span > 0 ? 1 : -1 });
+    // With a hair of slack at either end. The coordinate was read off one
+    // cycle's sample 0 and is being looked for in the next cycle's, and the
+    // two differ in the last decimals: positions are rounded per sample and
+    // the angle is recomputed from them. Exactly on a sample and a hair
+    // outside its interval, a crank's start was declared unreachable -- so
+    // the ghost drew the last pose it could reach, a third of a turn from
+    // where the transport said the start was.
+    if (blend < -REACH_SLACK || blend > 1 + REACH_SLACK) continue;
+    crossings.push({
+      index: i,
+      blend: Math.min(1, Math.max(0, blend)),
+      heading: span > 0 ? 1 : -1,
+    });
   }
   if (crossings.length === 0) {
     // An angle repeats every turn, so a coordinate a whole number of turns away
