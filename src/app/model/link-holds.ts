@@ -78,12 +78,15 @@ export function describeHold(link: RealLink): string {
   return `fixed ${holdOf(link) === 'angle' ? 'angle' : 'length'} ${link.name || link.id}`;
 }
 
-/** "Held by fixed length AB and fixed angle BC", for a refusal. */
-export function heldBySentence(bars: readonly RealLink[]): string {
+/** "fixed length AB and fixed angle BC": the holds, as a list. */
+export function holdList(bars: readonly RealLink[]): string {
   const names = bars.map(describeHold);
-  const list =
-    names.length <= 1
-      ? names.join('')
-      : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-  return `Held by ${list}`;
+  return names.length <= 1
+    ? names.join('')
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/** "Locked by fixed length AB and fixed angle BC", for a refusal. */
+export function heldBySentence(bars: readonly RealLink[]): string {
+  return `Locked by ${holdList(bars)}`;
 }

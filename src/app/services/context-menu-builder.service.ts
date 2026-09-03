@@ -464,8 +464,8 @@ export class ContextMenuBuilderService {
           material: true,
           action: () => undefined,
           refusal: {
-            short: `held by ${named}`,
-            long: `${holding.map(describeHold).join(' and ')} ${holding.length > 1 ? 'confine' : 'confines'} this joint. Release ${holding.length > 1 ? 'them' : 'it'} on the link to move it freely.`,
+            short: `locked by ${named}`,
+            long: `${holding.map(describeHold).join(' and ')} ${holding.length > 1 ? 'confine' : 'confines'} this joint. Unlock ${holding.length > 1 ? 'them' : 'it'} on the link to move it freely.`,
           },
         })
       );
@@ -832,12 +832,12 @@ export class ContextMenuBuilderService {
         checked: on,
         action: () => this.mechanism.setHold(link, on ? undefined : hold),
         refusal,
-        hint: on ? undefined : moves ? 'moves the hold' : value,
+        hint: on ? undefined : moves ? 'moves the lock' : value,
         tip: moves
-          ? 'A link holds one or the other, since holding both is Lock. Choosing this releases the one already held.'
+          ? 'A link locks one or the other, since locking both is Lock. Choosing this unlocks the one already locked.'
           : hold === 'length'
-            ? 'Hold this link at its current length. Dragging either joint slides it on the arc about the other.'
-            : 'Hold this link at its current angle from the grid. Dragging either joint slides it along that line.',
+            ? 'Lock this link at its current length. Dragging either joint slides it on the arc about the other.'
+            : 'Lock this link at its current angle from the grid. Dragging either joint slides it along that line.',
       });
     };
     return [

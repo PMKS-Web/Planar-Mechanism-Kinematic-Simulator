@@ -133,3 +133,39 @@ describe('settling held bars', () => {
     expect(out.satisfied).toBe(false);
   });
 });
+
+describe('a four-bar with every length held', () => {
+  // A and D grounded, AB, BC and CD held: the one freedom left is the
+  // four-bar's own motion, and dragging B has to move C with it.
+  const joints = [J('A', 0, 0, true), J('B', 0, 200), J('C', 300, 300), J('D', 400, 0, true)];
+  const bars = [
+    bar('AB', 'A', 'B', 'length', joints),
+    bar('BC', 'B', 'C', 'length', joints),
+    bar('CD', 'C', 'D', 'length', joints),
+  ];
+
+  it('moves the coupler with the crank and keeps every length', () => {
+    const out = settleHolds(joints, bars, [{ id: 'B', x: 60, y: 190 }]);
+    const b = out.positions.get('B')!;
+    const c = out.positions.get('C')!;
+    expect(out.satisfied).toBe(true);
+    expect(out.immovable).toEqual([]);
+    expect(dist({ x: 0, y: 0 }, b)).toBeCloseTo(200, 4);
+    expect(dist(b, c)).toBeCloseTo(bars[1].length, 4);
+    expect(dist(c, { x: 400, y: 0 })).toBeCloseTo(bars[2].length, 4);
+  });
+
+  it('says so when the ask cannot be reached', () => {
+    // A shorter coupler and rocker: with B swung to the far side of A, the
+    // coupler and the rocker together cannot span from B to D, so no
+    // configuration has every length true there.
+    const short = [J('A', 0, 0, true), J('B', 0, 100), J('C', 150, 100), J('D', 300, 0, true)];
+    const shortBars = [
+      bar('AB', 'A', 'B', 'length', short),
+      bar('BC', 'B', 'C', 'length', short),
+      bar('CD', 'C', 'D', 'length', short),
+    ];
+    const out = settleHolds(short, shortBars, [{ id: 'B', x: -100, y: 0 }]);
+    expect(out.satisfied).toBe(false);
+  });
+});

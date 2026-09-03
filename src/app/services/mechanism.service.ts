@@ -2030,9 +2030,9 @@ export class MechanismService {
       const who = link.name || link.id;
       this.notify.news(
         'hold.moved',
-        'A link holds its length or its angle, not both. ' +
-          `Moved the hold on ${who} to the ${name(hold)}.`,
-        { actions: [{ label: `Hold ${name(was)} instead`, run: () => this.setHold(link, was) }] }
+        'A link locks its length or its angle, not both. ' +
+          `Moved the lock on ${who} to the ${name(hold)}.`,
+        { actions: [{ label: `Lock ${name(was)} instead`, run: () => this.setHold(link, was) }] }
       );
     }
   }

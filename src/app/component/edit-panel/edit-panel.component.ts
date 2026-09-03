@@ -1424,8 +1424,18 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
             ),
           });
         } else {
-          this.activeSrv.selectedLink.length = value;
-          this.resolveNewLink();
+          // Near a lock the number is a constraint to solve, not an end to
+          // move; the solver says whether it can be true at all.
+          const solved = this.gridUtils.setBarValue(this.activeSrv.selectedLink, 'length', value);
+          if (solved === 'refused') {
+            this.refuseTypedValue('length');
+            this.patchLinkLength();
+            return;
+          }
+          if (solved === 'unheld') {
+            this.activeSrv.selectedLink.length = value;
+            this.resolveNewLink();
+          }
           this.mechanismService.onMechUpdateState.next(2);
           // One committed edit, one undo step. Some fields in this panel
           // reached `updateMechanism(true)` and entered the history; the ones
@@ -1574,12 +1584,21 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
               .toString(),
           });
         } else {
-          this.activeSrv.selectedLink.angleRad = this.nup.convertAngle(
+          const radians = this.nup.convertAngle(
             value,
             this.settingsService.angleUnit.getValue(),
             AngleUnit.RADIAN
           );
-          this.resolveNewLink();
+          const solved = this.gridUtils.setBarValue(this.activeSrv.selectedLink, 'angle', radians);
+          if (solved === 'refused') {
+            this.refuseTypedValue('angle');
+            this.patchLinkAngle();
+            return;
+          }
+          if (solved === 'unheld') {
+            this.activeSrv.selectedLink.angleRad = radians;
+            this.resolveNewLink();
+          }
           this.mechanismService.onMechUpdateState.next(2);
           // One committed edit, one undo step. Some fields in this panel
           // reached `updateMechanism(true)` and entered the history; the ones
@@ -2236,6 +2255,54 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    * and the old shape could do it even with the lock read, because a free end
    * that happens to be grounded took the branch that moves the *other* one.
    */
+  /** No configuration of the locked bars makes the typed number true. */
+  private refuseTypedValue(which: 'length' | 'angle'): void {
+    const holds = this.gridUtils.lastHoldRefusal?.bars ?? [];
+    const named = holds.map((bar) => `fixed ${bar.hold} ${bar.name || bar.id}`).join(', ');
+    this.notify.refusal(
+      'hold.typed',
+      `No position of the linkage gives this ${which} with ${named} locked. Unlock one, or ask for a value they allow.`,
+      {
+        actions:
+          holds.length > 0
+            ? [{ label: 'Unlock', run: () => this.mechanismService.releaseHolds(holds) }]
+            : [],
+      }
+    );
+  }
+
+  /** Put the field back on the length the link actually has. */
+  private patchLinkLength(): void {
+    this.activeSrv.selectedLink.updateLengthAndAngle();
+    this.linkForm.patchValue(
+      {
+        length: this.nup.formatModelLength(
+          this.activeSrv.selectedLink.length,
+          this.settingsService.lengthUnit.getValue()
+        ),
+      },
+      { emitEvent: false }
+    );
+  }
+
+  /** Put the field back on the angle the link actually has. */
+  private patchLinkAngle(): void {
+    this.activeSrv.selectedLink.updateLengthAndAngle();
+    this.linkForm.patchValue(
+      {
+        angle: this.nup.formatValueAndUnit(
+          this.nup.convertAngle(
+            this.activeSrv.selectedLink.angleRad,
+            AngleUnit.RADIAN,
+            this.settingsService.angleUnit.getValue()
+          ),
+          this.settingsService.angleUnit.getValue()
+        ),
+      },
+      { emitEvent: false }
+    );
+  }
+
   resolveNewLink() {
     if (this.editingRefused()) return;
     const joints = this.activeSrv.selectedLink.joints;

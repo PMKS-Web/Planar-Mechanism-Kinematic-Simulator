@@ -29,42 +29,22 @@
       opacity: 0.5;
     }
 
-    // The field and its padlock share one well, so the padlock reads as part
-    // of the value rather than as a button beside it.
+    // The same filled field the rest of the panel uses, shortened so the
+    // number and its padlock read as one compact control rather than a bar
+    // across the panel. The padlock is laid over the field's right end, so
+    // the field itself is exactly the panel's usual field.
     .well {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      height: 30px;
-      padding: 0 8px 0 0;
-      border-radius: 4px 4px 0 0;
-      background-color: #f0f1f5;
-      transition: background-color 120ms ease-out;
-
-      &.held {
-        background-color: #e8eaf6;
-
-        .customInput {
-          color: $accent;
-          font-weight: 400;
-        }
-      }
-
-      &.pinned {
-        opacity: 0.6;
-
-        .customInput {
-          color: rgba(0, 0, 0, 0.38);
-        }
-      }
+      position: relative;
+      width: 70%;
     }
 
     .customInputForm {
-      flex: 1 1 auto;
-      min-width: 0;
+      width: 100%;
 
       .customInput {
         @include mat.m2-typography-level($typography-config, 'body-2');
+        // Room for the padlock, and for the word beside it once locked.
+        padding-right: 22px;
       }
 
       .mat-mdc-form-field-subscript-wrapper {
@@ -75,10 +55,8 @@
         padding: 6px 0;
       }
 
-      // The well carries the tint; the field itself is clear so a held value
-      // and an open one sit in the same box.
       .mdc-text-field--filled:not(.mdc-text-field--disabled) {
-        background-color: transparent;
+        background-color: #f0f1f5;
       }
 
       .mat-mdc-text-field-wrapper {
@@ -86,17 +64,22 @@
         width: 100%;
         padding: 0 6px;
       }
-
-      .customInput[readonly] {
-        cursor: default;
-      }
     }
 
+    .well.locked .customInput {
+      padding-right: 62px;
+    }
+
+    // Only the word and the icon say locked; the field itself stays the
+    // field, because the number is still typeable.
     .padlock {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
       display: flex;
       align-items: center;
       gap: 3px;
-      flex: none;
       border: none;
       background: none;
       padding: 0;

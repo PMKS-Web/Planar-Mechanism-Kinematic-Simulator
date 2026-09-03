@@ -773,7 +773,9 @@ A bar can hold its **length** or its **angle** against edits (`RealLink.hold`, t
 Length / Fixed Angle rows, the padlocks on the Link Length and Link Angle fields). It is not a Lock:
 the joints stay free to move, on the arc or the line the held value leaves them. One or the other,
 never both -- both is what a Lock on the joints already means -- so asking for the second moves the
-hold and says so, with "Hold length instead" on the message.
+hold and says so, with "Lock length instead" on the message. To the reader the word is always
+**Locked** (the padlock's label, "Locked by fixed length AB", the Unlock action); `hold` is the
+code's name for it, kept distinct from the joint Lock it is not.
 
 The rules are the CAD ones, and they live in one place, `model/hold-solver.ts`: the joint that was
 asked for reaches its ask when the holds allow and lands on the nearest allowed place when they do
@@ -781,7 +783,12 @@ not; every other joint on a held bar moves as little as it must (drag the free e
 its far end is towed; drag it when the far end is grounded and it rides the arc); grounded, locked,
 slider and cylinder joints never move. A joint the holds have fully determined -- between two held
 lengths from two fixed points -- is refused at the grab, naming the holds, exactly as a locked joint
-is. **Every route that moves a joint lands in `GridUtilsService.dragJoint`, and that is where the
+is; an ask no configuration satisfies (a four-bar dragged past where its coupler can follow) is
+refused *whole* -- the half-settled positions the sweep stopped in have a hold false in them, and
+writing those was how a locked length once changed under a drag. A typed length or angle near a
+lock is a constraint, not a place: `setBarValue` adds the number to the holds and lets the solver
+move whatever must move, which is also what typing into a locked field does -- the number typed
+becomes the number locked. **Every route that moves a joint lands in `GridUtilsService.dragJoint`, and that is where the
 solver is asked**, so a typed coordinate, a distance-to-joint field and a link drag get the same
 answer as a canvas drag. `settled` is how the solver writes its answer back through the same door
 without being asked again; forget it and you get a recursion.

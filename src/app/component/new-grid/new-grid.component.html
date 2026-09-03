@@ -2178,24 +2178,26 @@
         [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
         marker-end="url(#hairlineArrow)"
       ></path>
-      <g class="dimensionPill" [upright]="getSVGLengthOverlayTextPos()">
-        <rect
-          [attr.x]="-pillWidth(lengthOverlayLabel()) / 2"
-          [attr.y]="-svgGrid.scaleWithZoom(11)"
-          [attr.width]="pillWidth(lengthOverlayLabel())"
-          [attr.height]="svgGrid.scaleWithZoom(22)"
-          [attr.rx]="svgGrid.scaleWithZoom(11)"
-          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
-        ></rect>
-        <text
-          text-anchor="middle"
-          dominant-baseline="middle"
-          [attr.y]="svgGrid.scaleWithZoom(0.5)"
-          [attr.font-size]="svgGrid.scaleWithZoom(12.5)"
-        >
-          {{ lengthOverlayLabel() }}
-        </text>
-      </g>
+      @if (!overlayValueLocked('length')) {
+        <g class="dimensionPill" [upright]="getSVGLengthOverlayTextPos()">
+          <rect
+            [attr.x]="-pillWidth(lengthOverlayLabel()) / 2"
+            [attr.y]="-svgGrid.scaleWithZoom(11)"
+            [attr.width]="pillWidth(lengthOverlayLabel())"
+            [attr.height]="svgGrid.scaleWithZoom(22)"
+            [attr.rx]="svgGrid.scaleWithZoom(11)"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          ></rect>
+          <text
+            text-anchor="middle"
+            dominant-baseline="middle"
+            [attr.y]="svgGrid.scaleWithZoom(0.5)"
+            [attr.font-size]="svgGrid.scaleWithZoom(12.5)"
+          >
+            {{ lengthOverlayLabel() }}
+          </text>
+        </g>
+      }
     </g>
   }
   @if (
@@ -2213,24 +2215,26 @@
         fill="none"
         marker-end="url(#hairlineArrow)"
       ></path>
-      <g class="dimensionPill" [upright]="getSVGAngleOverlayTextPos()">
-        <rect
-          [attr.x]="-pillWidth(angleOverlayLabel()) / 2"
-          [attr.y]="-svgGrid.scaleWithZoom(11)"
-          [attr.width]="pillWidth(angleOverlayLabel())"
-          [attr.height]="svgGrid.scaleWithZoom(22)"
-          [attr.rx]="svgGrid.scaleWithZoom(11)"
-          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
-        ></rect>
-        <text
-          text-anchor="middle"
-          dominant-baseline="middle"
-          [attr.y]="svgGrid.scaleWithZoom(0.5)"
-          [attr.font-size]="svgGrid.scaleWithZoom(12.5)"
-        >
-          {{ angleOverlayLabel() }}
-        </text>
-      </g>
+      @if (!overlayValueLocked('angle')) {
+        <g class="dimensionPill" [upright]="getSVGAngleOverlayTextPos()">
+          <rect
+            [attr.x]="-pillWidth(angleOverlayLabel()) / 2"
+            [attr.y]="-svgGrid.scaleWithZoom(11)"
+            [attr.width]="pillWidth(angleOverlayLabel())"
+            [attr.height]="svgGrid.scaleWithZoom(22)"
+            [attr.rx]="svgGrid.scaleWithZoom(11)"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          ></rect>
+          <text
+            text-anchor="middle"
+            dominant-baseline="middle"
+            [attr.y]="svgGrid.scaleWithZoom(0.5)"
+            [attr.font-size]="svgGrid.scaleWithZoom(12.5)"
+          >
+            {{ angleOverlayLabel() }}
+          </text>
+        </g>
+      }
     </g>
   }
   <!-- The distance a CoM field states, drawn where it is measured: from the

@@ -29,25 +29,23 @@
         >
       </div>
       <!-- Hover or focus draws this value's dimension on the canvas, the same
-           signal the pair of fields used to send. -->
+           signal the pair of fields used to send. The padlock is laid over the
+           field's right end rather than given to Material as a suffix: the
+           panel's fields are thirty pixels tall, and a suffix sits on the text
+           baseline, which in a field this short is the underline. -->
       <div
         class="well"
-        [class.held]="held($any(which.key))"
-        [class.pinned]="lockedInPlace() || disabled()"
+        [class.locked]="held($any(which.key))"
         (mouseenter)="enter($any(which.key))"
         (mouseleave)="leave($any(which.key))"
       >
-        <mat-form-field
-          class="customInputForm"
-          (click)="!readOnly($any(which.key)) && field.select()"
-        >
+        <mat-form-field class="customInputForm" (click)="field.select()">
           <input
             class="customInput"
             spellcheck="false"
             matInput
             type="text"
             #field
-            [readonly]="readOnly($any(which.key))"
             [attr.data-hold-field]="which.key"
             (keyup.enter)="field.blur()"
             (focusin)="focus($any(which.key), field)"
@@ -56,9 +54,10 @@
           />
         </mat-form-field>
         @if (holdable()) {
-          <!-- The icon states, the word confirms: a held field says Held beside
-               the closed padlock; an open one is just the padlock, as the way
-               to hold it. -->
+          <!-- The icon states, the word confirms: a locked value says Locked
+               beside the closed padlock; an open one is just the padlock, as
+               the way to lock it. Typing into a locked field is allowed: the
+               number typed becomes the number locked. -->
           <button
             type="button"
             class="padlock"
@@ -69,7 +68,7 @@
             (click)="toggle($any(which.key), $event)"
           >
             @if (held($any(which.key))) {
-              <span class="word">Held</span>
+              <span class="word">Locked</span>
             }
             <svg width="15" height="15" viewBox="0 0 24 24">
               <path

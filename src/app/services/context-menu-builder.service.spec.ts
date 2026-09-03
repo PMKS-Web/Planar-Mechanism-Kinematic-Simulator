@@ -665,7 +665,7 @@ describe('the right-click menu, on a bar that can hold a value', () => {
     const model = harness.builder.build(parts.crank, noHandlers);
     expect(row(model, 'Fixed Length')!.checked).toBe(true);
     expect(row(model, 'Fixed Length')!.hint).toBeUndefined();
-    expect(row(model, 'Fixed Angle')!.hint).toBe('moves the hold');
+    expect(row(model, 'Fixed Angle')!.hint).toBe('moves the lock');
     expect(model.header?.subtitle).toContain('fixed length');
   });
 
@@ -692,7 +692,7 @@ describe('the right-click menu, on a bar that can hold a value', () => {
     parts.crank.hold = 'length';
     const model = harness.builder.build(parts.a, noHandlers);
     const free = row(model, 'Free to Move')!;
-    expect(free.refusal?.short).toBe('held by OA');
+    expect(free.refusal?.short).toBe('locked by OA');
     expect(free.refusal?.long).toContain('fixed length OA');
     expect(model.header?.subtitle).toContain('on fixed OA');
     expect(row(harness.builder.build(parts.d, noHandlers), 'Free to Move')).toBeUndefined();

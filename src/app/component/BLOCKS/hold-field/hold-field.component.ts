@@ -16,10 +16,10 @@ type Which = 'length' | 'angle';
  * A bar's length and angle, each with a padlock.
  *
  * The two used to share a row as `L` and `⊾`. Each now has a labeled field of
- * its own, because each has a control of its own: the padlock holds that one
- * value against edits, and a held field is read-only rather than disabled --
- * the number is still the link's, only not typeable, so it keeps its ink and
- * gains the accent tint that says it is being held.
+ * its own, because each has a control of its own: the padlock inside the
+ * field locks that one value against edits. A locked field stays typeable --
+ * the number typed becomes the number locked, which the panel's commit solves
+ * as a constraint -- so only the word and the padlock say it is locked.
  *
  * A link locked in place holds both already: both fields dim, the padlocks
  * step aside, and one line says why with the way out on it.
@@ -75,16 +75,12 @@ export class HoldFieldComponent {
     return this.hold() === which;
   }
 
-  /** Read-only: held, or the whole link is locked, or it is not a bar. */
-  readOnly(which: Which): boolean {
-    return this.held(which) || this.lockedInPlace() || this.disabled();
-  }
-
   padlockTitle(which: Which): string {
     const other = which === 'length' ? 'angle' : 'length';
-    if (this.held(which)) return `Release the ${which}`;
-    if (this.hold() === other) return `Hold the ${which} instead — the ${other} is released`;
-    return `Hold the ${which}`;
+    if (this.held(which))
+      return `Unlock the ${which}. Typing a number keeps it locked at that number`;
+    if (this.hold() === other) return `Lock the ${which} instead — the ${other} is unlocked`;
+    return `Lock the ${which}`;
   }
 
   toggle(which: Which, event: Event): void {
@@ -109,7 +105,7 @@ export class HoldFieldComponent {
 
   focus(which: Which, field: HTMLInputElement): void {
     this.focused[which] = true;
-    if (!this.readOnly(which)) field.select();
+    field.select();
     this.announce(which);
   }
 

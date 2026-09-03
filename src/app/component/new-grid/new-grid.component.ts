@@ -1,5 +1,11 @@
 import { SvgGridService } from '../../services/svg-grid.service';
-import { heldBarsAt, heldBarsReaching, heldBySentence, holdOf } from '../../model/link-holds';
+import {
+  heldBarsAt,
+  heldBarsReaching,
+  heldBySentence,
+  holdList,
+  holdOf,
+} from '../../model/link-holds';
 import {
   OnDestroy,
   Component,
@@ -2316,7 +2322,8 @@ export class NewGridComponent implements OnDestroy {
     const refusal = this.gridUtils.lastHoldRefusal;
     if (refusal) {
       this.holdRing = joint;
-      this.refuseHeldByHolds(joint, refusal.bars);
+      if (refusal.immovable.length > 0) this.refuseHeldByHolds(joint, refusal.bars);
+      else this.refuseBeyondHolds(joint, refusal.bars);
     } else {
       this.holdRing = undefined;
     }
@@ -2362,14 +2369,24 @@ export class NewGridComponent implements OnDestroy {
   private refuseHeldByHolds(joint: RealJoint, bars: RealLink[]): void {
     this.notify.refusal(
       'hold.joint',
-      `${heldBySentence(bars)}. Release one to move joint ${joint.name || joint.id}.`,
-      {
-        actions:
-          bars.length > 0
-            ? [{ label: 'Release', run: () => this.mechanismSrv.releaseHolds(bars) }]
-            : [],
-      }
+      `${heldBySentence(bars)}. Unlock one to move joint ${joint.name || joint.id}.`,
+      { actions: this.unlockAction(bars) }
     );
+  }
+
+  /** The joint can move, but not to there: the locked bars run out of reach. */
+  private refuseBeyondHolds(joint: RealJoint, bars: RealLink[]): void {
+    this.notify.refusal(
+      'hold.reach',
+      `Joint ${joint.name || joint.id} can go no further with ${holdList(bars)} locked.`,
+      { actions: this.unlockAction(bars) }
+    );
+  }
+
+  private unlockAction(bars: RealLink[]): { label: string; run: () => void }[] {
+    return bars.length > 0
+      ? [{ label: 'Unlock', run: () => this.mechanismSrv.releaseHolds(bars) }]
+      : [];
   }
 
   /**
@@ -2387,31 +2404,48 @@ export class NewGridComponent implements OnDestroy {
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const span = Math.hypot(dx, dy) || 1;
-      let text: string;
-      let x: number;
-      let y: number;
-      if (hold === 'length') {
-        text = this.nup.formatModelLength(span, this.settings.lengthUnit.getValue());
-        const off = 0.42 * this.settings.objectScale;
-        x = (a.x + b.x) / 2 + (dy / span) * off;
-        y = (a.y + b.y) / 2 - (dx / span) * off;
-      } else {
-        text = this.nup.formatValueAndUnit(
-          this.nup.convertAngle(
-            this.degreesOf(Math.atan2(dy, dx)),
-            AngleUnit.DEGREE,
-            this.settings.angleUnit.getValue()
-          ),
-          this.settings.angleUnit.getValue()
-        );
-        const half = Math.atan2(dy, dx) / 2;
-        const r = 0.62 * this.settings.objectScale + this.svgGrid.scaleWithZoom(30);
-        x = a.x + Math.cos(half) * r;
-        y = a.y + Math.sin(half) * r;
-      }
-      chips.push({ id: link.id, x, y, text, w: this.pillWidth(text, true) });
+      // Exactly where the hover dimension labels that value, so hovering the
+      // field adds the hairline and nothing else: the chip is the label.
+      const at =
+        hold === 'length'
+          ? this.lengthLabelAt(a.x, a.y, b.x, b.y)
+          : this.angleLabelAt(a.x, a.y, b.x, b.y);
+      const text =
+        hold === 'length'
+          ? this.nup.formatModelLength(span, this.settings.lengthUnit.getValue())
+          : this.nup.formatValueAndUnit(
+              this.nup.convertAngle(
+                this.degreesOf(Math.atan2(dy, dx)),
+                AngleUnit.DEGREE,
+                this.settings.angleUnit.getValue()
+              ),
+              this.settings.angleUnit.getValue()
+            );
+      chips.push({ id: link.id, x: at.x, y: at.y, text, w: this.pillWidth(text, true) });
     }
     return chips;
+  }
+
+  /**
+   * Whether the value the hover dimension is about is locked on the selected
+   * bar, in which case its chip already labels it and the pill stays away.
+   */
+  overlayValueLocked(which: 'length' | 'angle'): boolean {
+    if (this.activeObjService.objType !== 'Link') return false;
+    const link = this.activeObjService.selectedLink;
+    return holdOf(link) === which && !this.mechanismSrv.isLockedTarget(link);
+  }
+
+  /** Where a length's label goes: the middle of the bar. */
+  private lengthLabelAt(x1: number, y1: number, x2: number, y2: number): { x: number; y: number } {
+    return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+  }
+
+  /** Where an angle's label goes: out along the half angle from the first joint. */
+  private angleLabelAt(x1: number, y1: number, x2: number, y2: number): { x: number; y: number } {
+    const offSetRadius = SettingsService.objectScale * 2;
+    const midAngle = Math.atan2(y2 - y1, x2 - x1) / 2;
+    return { x: x1 + offSetRadius * Math.cos(midAngle), y: y1 + offSetRadius * Math.sin(midAngle) };
   }
 
   /** The label of the length hover dimension, as the panel spells it. */

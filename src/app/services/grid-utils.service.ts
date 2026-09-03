@@ -1,6 +1,6 @@
 import { Injectable, Injector, inject } from '@angular/core';
-import { HoldGoal, reachedByHolds, settleHolds } from '../model/hold-solver';
-import { heldBars, heldBarsReaching, holdJoints } from '../model/link-holds';
+import { HoldBar, HoldGoal, reachedByHolds, settleHolds } from '../model/hold-solver';
+import { heldBars, heldBarsReaching, holdJoints, holdOf } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { roundNumber, point_on_line_segment_closest_to_point } from '../model/utils';
 import { Link, SliderBlock, RealLink } from '../model/link';
@@ -300,7 +300,13 @@ export class GridUtilsService {
    * holds leave no freedom at all; `bars` are the holds involved, nearest to
    * the asked joint first, which is what a Release action lets go of.
    */
-  lastHoldRefusal?: { immovable: RealJoint[]; bars: RealLink[]; shortfall: number };
+  lastHoldRefusal?: {
+    immovable: RealJoint[];
+    bars: RealLink[];
+    shortfall: number;
+    /** False when the ask is simply beyond reach rather than the joint being fixed. */
+    satisfied: boolean;
+  };
 
   /**
    * Put the asked-for joints where the holds allow, moving what the holds
@@ -325,10 +331,15 @@ export class GridUtilsService {
     const frozen = this.frozenJointIds();
     const joints = holdJoints(this.mechanismSrv.joints, (joint) => this.holdAnchor(joint, frozen));
     const solved = settleHolds(joints, bars, goals);
-    solved.positions.forEach((at, id) => {
-      const joint = this.mechanismSrv.joints.find((j) => j.id === id);
-      if (joint instanceof RealJoint) this.dragJoint(joint, new Coord(at.x, at.y), false, true);
-    });
+    // An ask no configuration satisfies is refused whole: the half-settled
+    // positions the sweep stopped in have a hold or two false in them, and
+    // writing those is how a locked length came to change under a drag.
+    if (solved.satisfied) {
+      solved.positions.forEach((at, id) => {
+        const joint = this.mechanismSrv.joints.find((j) => j.id === id);
+        if (joint instanceof RealJoint) this.dragJoint(joint, new Coord(at.x, at.y), false, true);
+      });
+    }
     const immovable = solved.immovable
       .map((id) => this.mechanismSrv.joints.find((j) => j.id === id))
       .filter((joint): joint is RealJoint => joint instanceof RealJoint);
@@ -341,9 +352,72 @@ export class GridUtilsService {
             .flatMap((joint) => heldBarsReaching(joint, links))
             .filter((bar, index, all) => all.indexOf(bar) === index),
           shortfall: solved.shortfall,
+          satisfied: solved.satisfied,
         }
       : undefined;
     return reached;
+  }
+
+  /**
+   * Give a bar a typed length or angle, as a constraint rather than a place.
+   *
+   * A typed number is exact, and moving one end to make it true is only right
+   * when nothing else has a say. Near a lock it has to be solved: the bar's
+   * new value joins the holds, both of its ends are asked to stay, and the
+   * solver moves whatever must move -- a grounded end not at all, a free end
+   * on a locked neighbor along that neighbor's arc, both ends a little when
+   * both are free. A bar locked on that very value keeps its lock and now
+   * holds the new number, which is what typing into a locked field means.
+   *
+   * Returns 'unheld' when no hold reaches the bar, so the caller may do what
+   * it always did; 'applied' when the number is now true; 'refused' when no
+   * configuration makes it true, in which case nothing moved.
+   */
+  setBarValue(
+    link: RealLink,
+    kind: 'length' | 'angle',
+    value: number
+  ): 'unheld' | 'applied' | 'refused' {
+    const links = this.mechanismSrv.links;
+    const [a, b] = link.joints;
+    if (!(a instanceof RealJoint) || !(b instanceof RealJoint) || link.joints.length !== 2) {
+      return 'unheld';
+    }
+    const others = heldBars(links).filter((bar) => bar.id !== link.id);
+    const reach = reachedByHolds([a.id, b.id], others).bars;
+    if (reach.length === 0 && holdOf(link) === undefined) return 'unheld';
+    const asked: HoldBar = {
+      id: link.id,
+      a: a.id,
+      b: b.id,
+      hold: kind,
+      length: kind === 'length' ? value : Math.hypot(b.x - a.x, b.y - a.y),
+      angle: kind === 'angle' ? value : Math.atan2(b.y - a.y, b.x - a.x),
+    };
+    const frozen = this.frozenJointIds();
+    const joints = holdJoints(this.mechanismSrv.joints, (joint) => this.holdAnchor(joint, frozen));
+    const solved = settleHolds(
+      joints,
+      [...others, asked],
+      [a, b].map((joint) => ({ id: joint.id, x: joint.x, y: joint.y }))
+    );
+    if (!solved.satisfied) {
+      this.lastHoldRefusal = {
+        immovable: [],
+        bars: heldBarsReaching(a, links).concat(heldBarsReaching(b, links)),
+        shortfall: solved.shortfall,
+        satisfied: false,
+      };
+      return 'refused';
+    }
+    solved.positions.forEach((at, id) => {
+      const joint = this.mechanismSrv.joints.find((j) => j.id === id);
+      if (joint instanceof RealJoint) this.dragJoint(joint, new Coord(at.x, at.y), false, true);
+    });
+    this.lastHoldRefusal = undefined;
+    this.mechanismSrv.reseatFloatingSliders();
+    this.mechanismSrv.updateMechanism(false);
+    return 'applied';
   }
 
   /**

@@ -151,17 +151,16 @@ record(
 // --- The panel: Link Length is held and read-only, Link Angle typeable -----
 
 record(
-  'the Link Length field is read-only and marked held; the angle is not',
+  'the Link Length field says Locked on its padlock and stays typeable; the angle does not',
   await page.evaluate(() => {
     const length = document.querySelector('[data-hold-field="length"]');
     const angle = document.querySelector('[data-hold-field="angle"]');
     return (
       !!length &&
-      length.readOnly &&
-      length.closest('.well').classList.contains('held') &&
+      !length.readOnly &&
       !!angle &&
-      !angle.readOnly &&
-      /Held/.test(document.querySelector('[data-hold-toggle="length"]').textContent)
+      !/Locked/.test(document.querySelector('[data-hold-toggle="angle"]').textContent) &&
+      /Locked/.test(document.querySelector('[data-hold-toggle="length"]').textContent)
     );
   })
 );
@@ -175,6 +174,19 @@ record(
   await page.evaluate(() => {
     const dims = document.querySelectorAll('.hoverDimension');
     return dims.length === 1 && !!dims[0].querySelector('.dimensionPill rect');
+  })
+);
+await page.hover('[data-hold-field="length"]');
+await page.waitForTimeout(300);
+record(
+  'hovering the locked Link Length draws only the hairline: the chip is its label',
+  await page.evaluate(() => {
+    const dims = document.querySelectorAll('.hoverDimension');
+    return (
+      dims.length === 1 &&
+      !dims[0].querySelector('.dimensionPill') &&
+      !!document.querySelector('[data-hold-chip="AB"]')
+    );
   })
 );
 await page.screenshot({ path: `${OUT}/02-angle-dimension.png` });
@@ -213,16 +225,16 @@ await page.click('[data-hold-toggle="angle"]');
 await page.waitForTimeout(300);
 record('the padlock on the angle moves the hold to the angle', (await holdOf('AB')) === 'angle');
 record(
-  'a message says the hold moved and offers the length instead',
+  'a message says the lock moved and offers the length instead',
   await page.evaluate(() => {
     const action = [...document.querySelectorAll('.notificationAction')].find((b) =>
-      /Hold length instead/.test(b.textContent)
+      /Lock length instead/.test(b.textContent)
     );
     return !!action;
   })
 );
 await page.screenshot({ path: `${OUT}/04-hold-moved.png` });
-await page.click('.notificationAction:has-text("Hold length instead")');
+await page.click('.notificationAction:has-text("Lock length instead")');
 await page.waitForTimeout(300);
 record('the way back puts the hold on the length again', (await holdOf('AB')) === 'length');
 
@@ -250,15 +262,14 @@ record('a joint the holds fully determine does not move', dist(bHeld, bStill) < 
   bStill,
 });
 record(
-  'the refusal names both holds and offers Release',
+  'the refusal says Locked by both, and offers Unlock',
   await page.evaluate(() => {
     const c = ng.getComponent(document.querySelector('app-new-grid'));
     const one = c.notify.live.find((n) => n.id === 'hold.joint');
     return (
       !!one &&
-      /fixed length AB/.test(one.text) &&
-      /fixed length BC/.test(one.text) &&
-      one.actions.some((action) => action.label === 'Release')
+      /^Locked by fixed length AB and fixed length BC/.test(one.text) &&
+      one.actions.some((action) => action.label === 'Unlock')
     );
   })
 );
