@@ -434,6 +434,8 @@ export class NewGridComponent implements OnDestroy {
   }
 
   ngOnDestroy() {
+    if (this.dragFrame !== undefined) cancelAnimationFrame(this.dragFrame);
+    this.pendingDragMove = undefined;
     // Let go of the static. It is a debug handle, but services reach the
     // snackbar through it and it was never cleared — so a torn-down grid stayed
     // registered, and the next thing to send a notification sent it to a
@@ -1927,6 +1929,22 @@ export class NewGridComponent implements OnDestroy {
   private linkCreateFrom?: Joint | Link;
 
   mouseMove($event: MouseEvent) {
+    // One solve per frame, however fast the pointer reports. Every move of a
+    // held part re-solves the whole cycle, and a pointer can report faster
+    // than the screen refreshes -- two or three times a frame on some
+    // hardware -- with every report costing a solve nobody could see. So a
+    // drag takes the latest move on the next animation frame and drops the
+    // ones between; the last move always lands, and release flushes it.
+    if (this.dragInProgress() && !this.applyingDragFrame) {
+      this.pendingDragMove = $event;
+      if (this.dragFrame === undefined) {
+        this.dragFrame = requestAnimationFrame(() => {
+          this.dragFrame = undefined;
+          this.applyPendingDragMove();
+        });
+      }
+      return;
+    }
     this.snapSuspended = $event.altKey;
     const mousePosInSvg = this.svgGrid.screenToModelFromXY($event.clientX, $event.clientY);
     this.lastMouseLocation = this.mouseLocation;
@@ -3092,7 +3110,42 @@ export class NewGridComponent implements OnDestroy {
     this.tabService.sheetExpanded.set(true);
   }
 
+  private pendingDragMove?: MouseEvent;
+  private dragFrame?: number;
+  private applyingDragFrame = false;
+
+  private dragInProgress(): boolean {
+    return (
+      this.dragState.joint === jointStates.dragging ||
+      this.dragState.link === linkStates.dragging ||
+      this.dragState.link === linkStates.resizing ||
+      this.dragState.force === forceStates.draggingStart ||
+      this.dragState.force === forceStates.draggingEnd ||
+      this.dragState.force === forceStates.draggingBody
+    );
+  }
+
+  /** Run the move that is waiting for a frame, now. */
+  private applyPendingDragMove(): void {
+    if (this.dragFrame !== undefined) {
+      cancelAnimationFrame(this.dragFrame);
+      this.dragFrame = undefined;
+    }
+    const move = this.pendingDragMove;
+    this.pendingDragMove = undefined;
+    if (!move) return;
+    this.applyingDragFrame = true;
+    try {
+      this.mouseMove(move);
+    } finally {
+      this.applyingDragFrame = false;
+    }
+  }
+
   mouseUp($event: MouseEvent) {
+    // The last move of a drag lands before the release is read, so the part
+    // ends where the hand was, not one frame short of it.
+    this.applyPendingDragMove();
     //This is the mouseUp that is called no matter what is clicked on
     this.bgDrag = undefined;
     if (this.showSynthesis()) {
@@ -3379,6 +3432,7 @@ export class NewGridComponent implements OnDestroy {
    * hand lets go is what the drawing keeps.
    */
   releaseCanvasGestures(event?: PointerEvent): void {
+    this.applyPendingDragMove();
     this.bgDrag = undefined;
     if (this.synthCanvas.dragging) {
       this.synthCanvas.release();

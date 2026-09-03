@@ -137,11 +137,52 @@ describe('NewGridComponent welded SVG presentation', () => {
     const rebuild = vi.spyOn(mechanism, 'updateMechanism');
 
     component.mouseMove(new MouseEvent('mousemove', { clientX: 20, clientY: 20 }));
+    frame(component);
 
     expect(drag).toHaveBeenCalledTimes(1);
     expect(rebuild).toHaveBeenCalledTimes(1);
   });
+
+  it('takes one move per animation frame, the latest, and drops the ones between', () => {
+    const mechanism = TestBed.inject(MechanismService);
+    const active = TestBed.inject(ActiveObjService);
+    const gridUtils = TestBed.inject(GridUtilsService);
+    const joint = new RevJoint('A', 0, 0);
+    mechanism.joints = [joint];
+    mechanism.links = [];
+    active.selectedJoint = joint;
+
+    const fixture = TestBed.createComponent(NewGridComponent);
+    const component = fixture.componentInstance;
+    TestBed.inject(DragStateService).beginDraggingJoint();
+    component['timeMouseDown'] = 0;
+    component['startX'] = 0;
+    component['startY'] = 0;
+    const drag = vi.spyOn(gridUtils, 'dragJoint');
+
+    component.mouseMove(new MouseEvent('mousemove', { clientX: 10, clientY: 10 }));
+    component.mouseMove(new MouseEvent('mousemove', { clientX: 15, clientY: 15 }));
+    component.mouseMove(new MouseEvent('mousemove', { clientX: 20, clientY: 20 }));
+    // Nothing has been solved yet: the frame has not come.
+    expect(drag).not.toHaveBeenCalled();
+    frame(component);
+    expect(drag).toHaveBeenCalledTimes(1);
+    const landed = drag.mock.calls[0][1] as { x: number; y: number };
+    expect([landed.x, landed.y]).toEqual([20, 20]);
+    // And a release lands the move still waiting, before it is read.
+    component.mouseMove(new MouseEvent('mousemove', { clientX: 25, clientY: 25 }));
+    component.mouseUp(new MouseEvent('mouseup'));
+    expect(drag).toHaveBeenCalledTimes(2);
+  });
 });
+
+/**
+ * A drag takes its moves on the next animation frame. The specs below want
+ * to read the state a move left behind, so they bring the frame themselves.
+ */
+function frame(component: NewGridComponent) {
+  component['applyPendingDragMove']();
+}
 
 /**
  * Two separate bars, A-B and C-D, with C sitting exactly where a drag to
@@ -242,9 +283,11 @@ describe('NewGridComponent drag gestures', () => {
 
     component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 5, clientY: 5 }));
     component.mouseMove(new MouseEvent('mousemove', { clientX: 12, clientY: 12 }));
+    frame(component);
     expect(component.snapTargetJoint).toBeUndefined();
 
     component.mouseMove(new MouseEvent('mousemove', { clientX: 20, clientY: 20 }));
+    frame(component);
     expect(component.snapTargetJoint).toBe(c);
 
     component.mouseUp(new MouseEvent('mouseup'));
@@ -289,6 +332,7 @@ describe('NewGridComponent drag gestures', () => {
 
     component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 0, clientY: 0 }));
     component.mouseMove(new MouseEvent('mousemove', { clientX: 12, clientY: 13 }));
+    frame(component);
 
     expect([c.x, c.y]).toEqual([32, 33]);
   });
