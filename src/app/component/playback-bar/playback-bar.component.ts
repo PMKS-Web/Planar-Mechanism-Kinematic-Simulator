@@ -759,7 +759,8 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
         // Where it will start, which is where it is standing: the handle is in
         // its seat, so no seat is drawn.
         anchorAt: 0,
-        clockwise: driven ? this.mechanism.driveSpeedOf(driven) >= 0 : true,
+        // Negative is clockwise, as everywhere else the sign is read.
+        clockwise: driven ? this.mechanism.driveSpeedOf(driven) < 0 : true,
         togglePoint: false,
         note: '',
         playing: false,
