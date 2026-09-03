@@ -438,6 +438,17 @@ export class SynthesisCanvasService {
    * input at all -- the motor sits on the driver's own ground -- which is
    * itself worth being able to see.
    */
+  /**
+   * Which way the preview's motor turns, for the mark on the driven pin.
+   *
+   * The preview's own direction, not the document's default drive setting:
+   * the panel's Reverse button flips this one, and the mark read the other,
+   * so pressing Reverse turned the motion round and left the arrow as it was.
+   */
+  previewClockwise(): boolean {
+    return this.solution.clockwise;
+  }
+
   previewGrounds(): PreviewJoint[] {
     const solved = this.previewing() ? this.solution.previewPose() : null;
     if (!solved) return [];

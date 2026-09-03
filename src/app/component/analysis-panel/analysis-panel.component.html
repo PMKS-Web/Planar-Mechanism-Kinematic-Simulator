@@ -325,20 +325,21 @@
   <!-- Forces Arrows-->
   @if (validMechanisms() && shownType == 'Force') {
     <panel-section id="analysis-panel">
-      <title-block>{{ modeNoun }} for Force {{ shownForce.name }}</title-block>
-      <!-- "There are no analysis graphs for forces" was true and unhelpful: it
-           named what is missing and left the reader to work out that the answer
+      <!-- Why there is nothing here is the subtitle; what to do about it is
+           the hint row under the rule, in the shape every "click something
+           else" in the app has. "There are no analysis graphs for forces" was
+           true and unhelpful: it left the reader to work out that the answer
            they came for is one click away, on the part this force pushes. The
-           way there is a control rather than an instruction -- a panel that can
-           name the link can select it. -->
-      <!-- The pointer mark every "click something else" in the app wears, with
-           the link that does the clicking kept inside the sentence. -->
+           way there is a control rather than an instruction -- a panel that
+           can name the link can select it. -->
+      <title-block
+        description="A force is an input, so it has no curve of its own. It shows up in the reactions on the part it acts on."
+        >{{ modeNoun }} for Force {{ shownForce.name }}</title-block
+      >
       <div class="helpRule"></div>
       <div class="helpHint forceRedirect" role="status">
         <mat-icon>touch_app</mat-icon>
         <span>
-          A force is an input, so it has no curve of its own. What it does is show up in the
-          reactions on the part it acts on.
           <button type="button" class="forceRedirectAction" (click)="graphTheLinkUnder()">
             Graph {{ shownForce.link.name }}</button
           >, which carries it.
