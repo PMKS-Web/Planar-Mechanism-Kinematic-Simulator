@@ -284,3 +284,25 @@ export function wideSwingRockerFixture(): MechanismFixture {
     inputAngVel: -INPUT_SPEED,
   };
 }
+
+/**
+ * The stock four-bar with its crank holding its length.
+ *
+ * Published so a reader can open a mechanism with a hold already on it and
+ * try the drag: B rides the arc about A, the amber guide shows the arc, and
+ * the chip on the crank names the length being held. The hold is the URL's
+ * `Hl` entry, so this link is also what proves it decodes.
+ */
+export function heldCrankFourBarFixture(): MechanismFixture {
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true, input: true },
+      { id: 'B', x: 0, y: 2 },
+      { id: 'C', x: 3, y: 3 },
+      { id: 'D', x: 4, y: 0, ground: true },
+    ],
+    links: [{ joints: 'AB' }, { joints: 'BC' }, { joints: 'CD' }],
+    holds: [{ link: 'AB', hold: 'length' }],
+    inputAngVel: INPUT_SPEED,
+  };
+}

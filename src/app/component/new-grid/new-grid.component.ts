@@ -1,5 +1,12 @@
 import { SvgGridService } from '../../services/svg-grid.service';
 import {
+  heldBarsAt,
+  heldBarsReaching,
+  heldBySentence,
+  holdList,
+  holdOf,
+} from '../../model/link-holds';
+import {
   OnDestroy,
   Component,
   DestroyRef,
@@ -2060,6 +2067,7 @@ export class NewGridComponent implements OnDestroy {
                   this.svgGrid.snapToGrid(mousePosInSvg, $event.altKey)
                 )
         );
+        this.afterHoldMove(this.activeObjService.selectedJoint);
         this.dragState.noteMechanismModified();
         //So that the panel values update continously
         this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
@@ -2292,6 +2300,196 @@ export class NewGridComponent implements OnDestroy {
         : `Link ${link.name} is locked.`
       : 'Two of the joints this drag would carry are locked. Unlock one to swing the body about the other.';
     this.refuseWithUnlock('lock.link', text, holds);
+  }
+
+  /** Whether the held-value chips are drawn: when the lock marks are, in Edit. */
+  holdsVisible(): boolean {
+    return this.mechanismSrv.lockVisualsOn();
+  }
+
+  /** The joint a hold has just refused to move, ringed in red while it is. */
+  holdRing?: RealJoint;
+  /** Where the dragged joint may go, when a single held bar decides that. */
+  holdGuide?:
+    | { kind: 'arc'; cx: number; cy: number; r: number }
+    | { kind: 'line'; x1: number; y1: number; x2: number; y2: number };
+
+  /**
+   * After a move went through the holds: ring and say what they refused, or
+   * clear the ring; and draw the freedom the dragged joint has left.
+   */
+  private afterHoldMove(joint: RealJoint): void {
+    const refusal = this.gridUtils.lastHoldRefusal;
+    if (refusal) {
+      this.holdRing = joint;
+      if (refusal.immovable.length > 0) this.refuseHeldByHolds(joint, refusal.bars);
+      else this.refuseBeyondHolds(joint, refusal.bars);
+    } else {
+      this.holdRing = undefined;
+    }
+    this.holdGuide = this.holdGuideFor(joint);
+  }
+
+  /**
+   * The arc or the line a joint on exactly one held bar slides on, when the
+   * bar's other end is not going anywhere. With more holds in play, or a free
+   * far end that gets towed, the freedom is not a curve worth drawing.
+   */
+  private holdGuideFor(joint: RealJoint): NewGridComponent['holdGuide'] {
+    const links = this.mechanismSrv.links;
+    const reaching = heldBarsReaching(joint, links);
+    const at = heldBarsAt(joint, links);
+    if (reaching.length !== 1 || at.length !== 1) return undefined;
+    const bar = at[0];
+    const other = bar.joints.find((end) => end !== joint);
+    if (!(other instanceof RealJoint) || !this.gridUtils.isHoldAnchor(other)) return undefined;
+    if (holdOf(bar) === 'length') {
+      return {
+        kind: 'arc',
+        cx: other.x,
+        cy: other.y,
+        r: Math.hypot(joint.x - other.x, joint.y - other.y),
+      };
+    }
+    const [from, to] = bar.joints;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const span = Math.hypot(dx, dy) || 1;
+    const reach = 50 * this.settings.objectScale;
+    return {
+      kind: 'line',
+      x1: other.x - (dx / span) * reach,
+      y1: other.y - (dy / span) * reach,
+      x2: other.x + (dx / span) * reach,
+      y2: other.y + (dy / span) * reach,
+    };
+  }
+
+  /** One refusal for a joint the holds will not let go where it was asked. */
+  private refuseHeldByHolds(joint: RealJoint, bars: RealLink[]): void {
+    this.notify.refusal(
+      'hold.joint',
+      `${heldBySentence(bars)}. Unlock one to move joint ${joint.name || joint.id}.`,
+      { actions: this.unlockAction(bars) }
+    );
+  }
+
+  /** The joint can move, but not to there: the locked bars run out of reach. */
+  private refuseBeyondHolds(joint: RealJoint, bars: RealLink[]): void {
+    this.notify.refusal(
+      'hold.reach',
+      `Joint ${joint.name || joint.id} can go no further with ${holdList(bars)} locked.`,
+      { actions: this.unlockAction(bars) }
+    );
+  }
+
+  private unlockAction(bars: RealLink[]): { label: string; run: () => void }[] {
+    return bars.length > 0
+      ? [{ label: 'Unlock', run: () => this.mechanismSrv.releaseHolds(bars) }]
+      : [];
+  }
+
+  /**
+   * A held bar wears its held value as a chip, where the hover dimension for
+   * that value would put its label: beside the bar for a length, in the
+   * angle's wedge for an angle. Sized in screen pixels, so it reads the same
+   * at any zoom.
+   */
+  heldChips(): { id: string; x: number; y: number; text: string; w: number }[] {
+    const chips: { id: string; x: number; y: number; text: string; w: number }[] = [];
+    for (const link of this.mechanismSrv.links) {
+      const hold = holdOf(link);
+      if (!hold || !(link instanceof RealLink) || this.mechanismSrv.isLockedTarget(link)) continue;
+      const [a, b] = link.joints;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const span = Math.hypot(dx, dy) || 1;
+      const text =
+        hold === 'length'
+          ? this.nup.formatModelLength(span, this.settings.lengthUnit.getValue())
+          : // The same reading as the panel's field and the hover pill: atan2's,
+            // signed, so a bar pointing down reads -37 deg on all three.
+            this.nup.formatValueAndUnit(
+              this.nup.convertAngle(
+                (Math.atan2(dy, dx) * 180) / Math.PI,
+                AngleUnit.DEGREE,
+                this.settings.angleUnit.getValue()
+              ),
+              this.settings.angleUnit.getValue()
+            );
+      const w = this.pillWidth(text, true);
+      // Where the hover dimension labels that value, so hovering the field
+      // adds the hairline and nothing else: the chip is the label. A length's
+      // chip then moves along the bar, away from the name, so the center is
+      // left to the center-of-mass mark.
+      const at =
+        hold === 'length'
+          ? this.lengthLabelAt(a.x, a.y, b.x, b.y)
+          : this.angleLabelAt(a.x, a.y, b.x, b.y);
+      if (hold === 'length') {
+        const placed = this.lengthChipPlace(link, w);
+        if (placed) {
+          at.x = placed.x;
+          at.y = placed.y;
+        }
+      }
+      chips.push({ id: link.id, x: at.x, y: at.y, text, w });
+    }
+    return chips;
+  }
+
+  /**
+   * Whether the value the hover dimension is about is locked on the selected
+   * bar, in which case its chip already labels it and the pill stays away.
+   */
+  overlayValueLocked(which: 'length' | 'angle'): boolean {
+    if (this.activeObjService.objType !== 'Link') return false;
+    const link = this.activeObjService.selectedLink;
+    return holdOf(link) === which && !this.mechanismSrv.isLockedTarget(link);
+  }
+
+  /** Where a length's label goes: the middle of the bar. */
+  private lengthLabelAt(x1: number, y1: number, x2: number, y2: number): { x: number; y: number } {
+    return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+  }
+
+  /** Where an angle's label goes: out along the half angle from the first joint. */
+  private angleLabelAt(x1: number, y1: number, x2: number, y2: number): { x: number; y: number } {
+    const offSetRadius = SettingsService.objectScale * 2;
+    const midAngle = Math.atan2(y2 - y1, x2 - x1) / 2;
+    return { x: x1 + offSetRadius * Math.cos(midAngle), y: y1 + offSetRadius * Math.sin(midAngle) };
+  }
+
+  /**
+   * How far the link's name steps up from the center, in the label's own
+   * units: clear of the center-of-mass mark, and clear of a locked length's
+   * chip, which is a screen-sized pill and so needs a zoom-sized step.
+   */
+  linkLabelLift(link: Link): number {
+    // A bar's name has already moved along the bar; only a body steps up.
+    if (this.barAxis(link)) return 0;
+    return this.showsCoM(link) ? -this.settings.objectScale * 0.13 : 0;
+  }
+
+  /** The label of the length hover dimension, as the panel spells it. */
+  lengthOverlayLabel(): string {
+    return this.nup.formatModelLength(
+      this.getLengthBetweenOverlayPoints(),
+      this.settings.lengthUnit.getValue()
+    );
+  }
+
+  /** The label of the angle hover dimension, as the panel spells it. */
+  angleOverlayLabel(): string {
+    return this.nup.formatValueAndUnit(
+      this.getAngleBetweenOverlayPoints(),
+      this.settings.angleUnit.getValue()
+    );
+  }
+
+  /** A pill wide enough for its words, in screen pixels at the current zoom. */
+  pillWidth(text: string, withGlyph = false): number {
+    return this.svgGrid.scaleWithZoom((withGlyph ? 32 : 20) + text.length * 7.2);
   }
 
   private refuseLockedForce(force: Force): void {
@@ -3159,6 +3357,8 @@ export class NewGridComponent implements OnDestroy {
   }
 
   mouseUp($event: MouseEvent) {
+    this.holdRing = undefined;
+    this.holdGuide = undefined;
     // The last move of a drag lands before the release is read, so the part
     // ends where the hand was, not one frame short of it.
     this.applyPendingDragMove();
@@ -3959,6 +4159,14 @@ export class NewGridComponent implements OnDestroy {
                 const grabbed = this.activeObjService.selectedJoint;
                 if (this.gridUtils.isJointFrozen(grabbed)) {
                   this.holdNotice(() => this.refuseLockedJoint(grabbed));
+                  break;
+                }
+                // A joint the held bars around it have fully determined is as
+                // still as a locked one, and is refused the same way, at the
+                // grab, naming what holds it.
+                const immobilized = this.gridUtils.holdsImmobilizing(grabbed);
+                if (immobilized.length > 0) {
+                  this.holdNotice(() => this.refuseHeldByHolds(grabbed, immobilized));
                   break;
                 }
                 this.dragState.beginDraggingJoint();
@@ -5053,7 +5261,124 @@ export class NewGridComponent implements OnDestroy {
       parts.length === 0
         ? link
         : parts.reduce((best, part) => (span(part) > span(best) ? part : best));
-    return { ...middleOf(on), ink: this.linkLabelInk(link), opacity: 0.55, name, angle };
+    const center = middleOf(on);
+    // On a bar the name gives up the center to the center-of-mass mark and a
+    // locked length's chip by moving *along* the bar, toward its higher end;
+    // stepping "up" across the bar put a flat bar's name on top of its chip.
+    const axis = this.barAxis(link);
+    if (axis && (this.showsCoM(link) || this.lengthChipShown(link))) {
+      const along = this.labelHalfExtentAlong(name, angle, axis);
+      const off = this.centerClearance() + along;
+      center.x += axis.x * off;
+      center.y += axis.y * off;
+    }
+    return { ...center, ink: this.linkLabelInk(link), opacity: 0.55, name, angle };
+  }
+
+  /**
+   * The direction along a two-joint bar the name moves in, or nothing for a
+   * body that has no direction. Toward the bar's higher end, so the name is
+   * above the center and the chip below it whichever way the bar was drawn;
+   * a flat bar sends it toward the right-hand end.
+   */
+  private barAxis(link: Link): { x: number; y: number } | undefined {
+    if ((link.joints?.length ?? 0) !== 2) return undefined;
+    if (link instanceof RealLink && link.subset.length > 0) return undefined;
+    const [from, to] = link.joints;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const span = Math.hypot(dx, dy);
+    if (span < 1e-9) return undefined;
+    const up = dy > 1e-9 || (Math.abs(dy) <= 1e-9 && dx > 0) ? 1 : -1;
+    return { x: (up * dx) / span, y: (up * dy) / span };
+  }
+
+  /** Whether this bar wears a length chip right now. */
+  private lengthChipShown(link: Link): boolean {
+    return (
+      this.holdsVisible() && holdOf(link) === 'length' && !this.mechanismSrv.isLockedTarget(link)
+    );
+  }
+
+  /** How far from the center anything must sit to clear the center-of-mass mark. */
+  private centerClearance(): number {
+    return 0.16 * this.settings.objectScale + this.svgGrid.scaleWithZoom(4);
+  }
+
+  /**
+   * Half of how much a name takes up along the bar: a name written along the
+   * bar is its own width; one left flat is its box projected onto the axis.
+   */
+  private labelHalfExtentAlong(
+    name: string,
+    angle: number,
+    axis: { x: number; y: number }
+  ): number {
+    const width = name.length * this.tagFontSize * 0.32;
+    const height = this.tagFontSize * 0.4;
+    if (angle !== 0) return width;
+    return Math.abs(axis.x) * width + Math.abs(axis.y) * height;
+  }
+
+  /** Half of how much a chip takes up along the bar: its box projected onto the axis. */
+  private chipHalfExtentAlong(width: number, axis: { x: number; y: number }): number {
+    return (Math.abs(axis.x) * width) / 2 + Math.abs(axis.y) * this.svgGrid.scaleWithZoom(11);
+  }
+
+  /**
+   * Where a length's chip sits on a bar: from the center, along the bar and
+   * away from the name, by enough to clear the center-of-mass mark. The hover
+   * dimension's pill sits in exactly this place too, so locking the length
+   * turns the one into the other without anything moving.
+   */
+  private lengthChipPlace(link: Link, chipWidth: number): { x: number; y: number } | undefined {
+    const axis = this.barAxis(link);
+    if (!axis) return undefined;
+    const [a, b] = link.joints;
+    const off = this.centerClearance() + this.chipHalfExtentAlong(chipWidth, axis);
+    return { x: (a.x + b.x) / 2 - axis.x * off, y: (a.y + b.y) / 2 - axis.y * off };
+  }
+
+  /**
+   * The length dimension on the selected bar: where its pill goes, and how
+   * much of the bar around it the hairline leaves clear. Nothing for a
+   * joint's distance-to-joint dimension or a cylinder, which keep the
+   * midpoint and the middle third.
+   */
+  private lengthDimensionOnBar():
+    { center: { x: number; y: number }; halfGap: number } | undefined {
+    if (this.activeObjService.objType !== 'Link') return undefined;
+    const link = this.activeObjService.selectedLink;
+    if (!link || this.mechanismSrv.cylinderAt(link)) return undefined;
+    const axis = this.barAxis(link);
+    if (!axis) return undefined;
+    // Sized for the chip, glyph and all, so the pill lands where the chip will.
+    const width = this.pillWidth(this.lengthOverlayLabel(), true);
+    const center = this.lengthChipPlace(link, width);
+    if (!center) return undefined;
+    return {
+      center,
+      halfGap: this.chipHalfExtentAlong(width, axis) + this.svgGrid.scaleWithZoom(8),
+    };
+  }
+
+  /**
+   * The two ends of the hairline along the bar, as distances from the first
+   * joint: up to the gap the pill sits in, and from that gap to the far end.
+   */
+  private hairlineReach(): { toGap: number; fromGap: number; length: number } {
+    const { x1, y1, x2, y2 } = this.findStartAndEndPoints();
+    const length = Math.hypot(x2 - x1, y2 - y1);
+    const onBar = this.lengthDimensionOnBar();
+    if (!onBar || length < 1e-9) {
+      return { toGap: length / 3, fromGap: (2 * length) / 3, length };
+    }
+    const along = ((onBar.center.x - x1) * (x2 - x1) + (onBar.center.y - y1) * (y2 - y1)) / length;
+    return {
+      toGap: Math.max(0, along - onBar.halfGap),
+      fromGap: Math.min(length, along + onBar.halfGap),
+      length,
+    };
   }
 
   /** The slot this bar carries, if it is a plain bar carrying one. */
@@ -5648,43 +5973,25 @@ export class NewGridComponent implements OnDestroy {
   }
 
   getSVGPrimaryAxisLine1() {
-    //Return the SVG path of the line that is the primary axis
-    //Cut the middle 1/3 of the line off, return two lines that are 1/3 of the length of the original line
-    //Each line should start the joints
-    let { x1, y1, x2, y2 } = this.findStartAndEndPoints();
-
-    //Find the length of the original line
-    let length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-
-    //Find the angle of the original line
-    let angle = Math.atan2(y2 - y1, x2 - x1); //Use atan2 instead of atan
-
-    //Find the coordinates of the points that divide the line into three equal parts
-    let x3 = x1 + (length / 3) * Math.cos(angle);
-    let y3 = y1 + (length / 3) * Math.sin(angle);
-
-    //Return the SVG paths of the two lines that start from the joints and end at the middle points
-    return 'M' + x1 + ' ' + y1 + ' L' + x3 + ' ' + y3;
+    // From the first joint up to the gap the pill sits in. The gap was the
+    // middle third; on a bar it is wherever the chip is, so the line stops
+    // short of the chip on its side.
+    const { x1, y1, x2, y2 } = this.findStartAndEndPoints();
+    const { toGap, length } = this.hairlineReach();
+    if (length < 1e-9) return '';
+    const ux = (x2 - x1) / length;
+    const uy = (y2 - y1) / length;
+    return 'M' + x1 + ' ' + y1 + ' L' + (x1 + ux * toGap) + ' ' + (y1 + uy * toGap);
   }
 
   getSVGPrimaryAxisLine2() {
-    //Return the SVG path of the line that is the primary axis
-    //Cut the middle 1/3 of the line off, return two lines that are 1/3 of the length of the original line
-    //Each line should start the joints
-    let { x1, y1, x2, y2 } = this.findStartAndEndPoints();
-
-    //Find the length of the original line
-    let length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-
-    //Find the angle of the original line
-    let angle = Math.atan2(y2 - y1, x2 - x1); //Use atan2 instead of atan
-
-    //Find the coordinates of the points that divide the line into three equal parts
-    let x4 = x2 - (length / 3) * Math.cos(angle);
-    let y4 = y2 - (length / 3) * Math.sin(angle);
-
-    //Return the SVG paths of the two lines that start from the joints and end at the middle points
-    return 'M' + x4 + ' ' + y4 + ' L' + x2 + ' ' + y2;
+    // From the far side of the gap to the second joint.
+    const { x1, y1, x2, y2 } = this.findStartAndEndPoints();
+    const { fromGap, length } = this.hairlineReach();
+    if (length < 1e-9) return '';
+    const ux = (x2 - x1) / length;
+    const uy = (y2 - y1) / length;
+    return 'M' + (x1 + ux * fromGap) + ' ' + (y1 + uy * fromGap) + ' L' + x2 + ' ' + y2;
   }
 
   getSVGAngleOverlayLines() {
@@ -5762,7 +6069,9 @@ export class NewGridComponent implements OnDestroy {
   protected readonly AngleUnit = AngleUnit;
 
   getSVGLengthOverlayTextPos() {
-    //Return the average of the two joints
+    // On a bar, exactly where its length chip sits; otherwise the midpoint.
+    const onBar = this.lengthDimensionOnBar();
+    if (onBar) return onBar.center;
     let { x1, y1, x2, y2 } = this.findStartAndEndPoints();
     let x = (x1 + x2) / 2;
     let y = (y1 + y2) / 2;

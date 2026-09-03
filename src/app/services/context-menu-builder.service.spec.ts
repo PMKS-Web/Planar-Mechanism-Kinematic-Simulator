@@ -280,6 +280,18 @@ describe('the right-click menu', () => {
       expect(remove.refusal!.short).toBe('unlock first');
     });
 
+    it('still attaches a link, a tracer, a cylinder and a force to a locked link', () => {
+      // A lock holds the link where it is; a new part built onto it moves
+      // nothing that is held.
+      const parts = fourBar(harness.mechanism);
+      parts.o.locked = true;
+      parts.a.locked = true;
+      const model = harness.builder.build(parts.crank, noHandlers);
+      for (const label of ['Link', 'Cylinder', 'Tracer Point', 'Force']) {
+        expect(row(model, label)!.refusal, label).toBeUndefined();
+      }
+    });
+
     it('refuses to attach to a locked joint for the same reason', () => {
       const parts = fourBar(harness.mechanism);
       parts.a.locked = true;
@@ -629,5 +641,72 @@ describe('the right-click menu', () => {
       expect(harness.grid.canRestoreHistory()).toBe(false);
       harness.mechanism.isPlaying = false;
     });
+  });
+});
+
+/**
+ * Fixed Length and Fixed Angle: a bar's two holds, in the State group.
+ *
+ * The rows carry the value they would hold, so what is held is what is
+ * named; a link holds one or the other, so the second says it moves the hold;
+ * and a locked link, or a body that is not a bar, gets the model's refusal.
+ */
+describe('the right-click menu, on a bar that can hold a value', () => {
+  let harness: ReturnType<typeof createBuilderHarness>;
+
+  beforeEach(() => {
+    harness = createBuilderHarness();
+    harness.tabs.setTab(TabID.EDIT);
+  });
+
+  it('offers both holds with the value each would hold', () => {
+    const parts = fourBar(harness.mechanism);
+    const model = harness.builder.build(parts.crank, noHandlers);
+    const length = row(model, 'Fixed Length')!;
+    const angle = row(model, 'Fixed Angle')!;
+    expect(length.kind).toBe('toggle');
+    expect(length.checked).toBe(false);
+    expect(length.refusal).toBeUndefined();
+    expect(length.hint).toMatch(/^2/);
+    expect(angle.hint).toMatch(/^90/);
+  });
+
+  it('checks the held one and says the other would move the hold', () => {
+    const parts = fourBar(harness.mechanism);
+    parts.crank.hold = 'length';
+    const model = harness.builder.build(parts.crank, noHandlers);
+    expect(row(model, 'Fixed Length')!.checked).toBe(true);
+    expect(row(model, 'Fixed Length')!.hint).toBeUndefined();
+    expect(row(model, 'Fixed Angle')!.hint).toBe('moves the lock');
+    expect(model.header?.subtitle).toContain('fixed length');
+  });
+
+  it('sets and releases the hold through the mechanism', () => {
+    const parts = fourBar(harness.mechanism);
+    row(harness.builder.build(parts.crank, noHandlers), 'Fixed Angle')!.action();
+    expect(parts.crank.hold).toBe('angle');
+    row(harness.builder.build(parts.crank, noHandlers), 'Fixed Angle')!.action();
+    expect(parts.crank.hold).toBeUndefined();
+  });
+
+  it('refuses both on a locked link, and on a body that is not a bar', () => {
+    const parts = fourBar(harness.mechanism);
+    parts.o.locked = true;
+    parts.a.locked = true;
+    const locked = harness.builder.build(parts.crank, noHandlers);
+    expect(row(locked, 'Fixed Length')!.refusal?.short).toBe('locked in place');
+    const body = harness.builder.build(parts.coupler, noHandlers);
+    expect(row(body, 'Fixed Angle')!.refusal?.short).toBe('bars only');
+  });
+
+  it('tells a joint on a held bar what confines it', () => {
+    const parts = fourBar(harness.mechanism);
+    parts.crank.hold = 'length';
+    const model = harness.builder.build(parts.a, noHandlers);
+    const free = row(model, 'Free to Move')!;
+    expect(free.refusal?.short).toBe('locked by OA');
+    expect(free.refusal?.long).toContain('fixed length OA');
+    expect(model.header?.subtitle).toContain('on fixed OA');
+    expect(row(harness.builder.build(parts.d, noHandlers), 'Free to Move')).toBeUndefined();
   });
 });

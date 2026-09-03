@@ -1,0 +1,88 @@
+<div id="hold-field-block" [formGroup]="formGroup()" [class.disabled]="disabled()">
+  <!-- A row per value: its word and its help, then the field with the padlock
+       inside it at the right. The words share one column, so the two fields
+       line up. -->
+  @for (
+    which of [
+      {
+        key: 'length',
+        label: 'Length',
+        control: 'length',
+        help: 'Distance between the two joints of this link.',
+      },
+      {
+        key: 'angle',
+        label: 'Angle',
+        control: 'angle',
+        help: 'Angle of this link measured from the positive x axis. Counter-clockwise is positive.',
+      },
+    ];
+    track which.key
+  ) {
+    <div class="row field">
+      <span class="caption">
+        <span class="label" [class.dim]="disabled()">{{ which.label }}</span>
+        <mat-icon
+          class="label-help"
+          [matTooltip]="which.help"
+          matTooltipShowDelay="400"
+          [class.inert]="disabled()"
+          [matTooltipDisabled]="disabled()"
+          >help_outline</mat-icon
+        >
+      </span>
+      <!-- Hover or focus draws this value's dimension on the canvas, the same
+           signal the pair of fields used to send. The padlock is laid over the
+           field's right end rather than given to Material as a suffix: the
+           panel's fields are thirty pixels tall, and a suffix sits on the text
+           baseline, which in a field this short is the underline. -->
+      <div
+        class="well"
+        [class.locked]="held($any(which.key))"
+        (mouseenter)="enter($any(which.key))"
+        (mouseleave)="leave($any(which.key))"
+      >
+        <mat-form-field class="customInputForm" (click)="field.select()">
+          <input
+            class="customInput"
+            spellcheck="false"
+            matInput
+            type="text"
+            #field
+            [attr.data-hold-field]="which.key"
+            (keyup.enter)="field.blur()"
+            (focusin)="focus($any(which.key), field)"
+            (focusout)="blur($any(which.key))"
+            [formControlName]="which.control"
+          />
+        </mat-form-field>
+        @if (holdable()) {
+          <!-- The icon states, the word confirms: a locked value says Locked
+               beside the closed padlock; an open one is just the padlock, as
+               the way to lock it. Typing into a locked field is allowed: the
+               number typed becomes the number locked. -->
+          <button
+            type="button"
+            class="padlock"
+            [class.on]="held($any(which.key))"
+            [attr.data-hold-toggle]="which.key"
+            [matTooltip]="padlockTitle($any(which.key))"
+            matTooltipShowDelay="400"
+            (click)="toggle($any(which.key), $event)"
+          >
+            @if (held($any(which.key))) {
+              <span class="word">Locked</span>
+            }
+            <svg width="15" height="15" viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                fill-rule="evenodd"
+                [attr.d]="held($any(which.key)) ? lockPath : unlockPath"
+              ></path>
+            </svg>
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

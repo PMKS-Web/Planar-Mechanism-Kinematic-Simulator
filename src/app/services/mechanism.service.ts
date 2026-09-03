@@ -1,4 +1,6 @@
 import { Injectable, Injector, inject } from '@angular/core';
+import { LinkHold } from '../model/link';
+import { holdOf, holdableBar } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { speedTurning, turnsClockwise } from '../model/drive-direction';
 import { Link, SliderBlock, RealLink } from '../model/link';
@@ -2000,6 +2002,48 @@ export class MechanismService {
     ];
     const locked = marks.filter((mark) => mark.locked).length;
     return { locked, open: marks.length - locked, total: marks.length };
+  }
+
+  /** The hold this link is under: its length, its angle, or nothing. */
+  holdOf(link: Link | undefined): LinkHold {
+    return holdOf(link);
+  }
+
+  /**
+   * Hold one of a bar's two numbers against edits, or let it go.
+   *
+   * One or the other, never both: a bar holding its length and its angle can
+   * only translate, and that is what a Lock on its joints already means. So
+   * asking for the second moves the hold, and says so, with the way back on
+   * the message. A hold is an edit like a lock is -- it rides the URL, so it
+   * survives undo and travels in a shared link.
+   */
+  setHold(link: Link, hold: LinkHold): void {
+    if (!holdableBar(link)) return;
+    const was = link.hold;
+    if (was === hold) return;
+    link.hold = hold;
+    this.updateMechanism(true);
+    this.activeObjService.fakeUpdateSelectedObj();
+    if (hold !== undefined && was !== undefined) {
+      const name = (which: LinkHold) => (which === 'angle' ? 'angle' : 'length');
+      const who = link.name || link.id;
+      this.notify.news(
+        'hold.moved',
+        'A link locks its length or its angle, not both. ' +
+          `Moved the lock on ${who} to the ${name(hold)}.`,
+        { actions: [{ label: `Lock ${name(was)} instead`, run: () => this.setHold(link, was) }] }
+      );
+    }
+  }
+
+  /** Let these bars go, as one edit: what a refusal's Release button carries. */
+  releaseHolds(links: readonly Link[]): void {
+    const held = links.filter((link) => holdOf(link) !== undefined);
+    if (held.length === 0) return;
+    held.forEach((link) => ((link as RealLink).hold = undefined));
+    this.updateMechanism(true);
+    this.activeObjService.fakeUpdateSelectedObj();
   }
 
   /**

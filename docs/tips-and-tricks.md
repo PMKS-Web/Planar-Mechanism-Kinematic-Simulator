@@ -126,6 +126,11 @@ npx tsc -p tsconfig.json --noEmit 2>&1 | grep -vE "\.spec\.ts|test-utils|getEmai
 They are plain Node scripts in `e2e/*.mjs`, run one at a time, printing `PASS`/`FAIL` lines and
 exiting non-zero if anything failed. There is no runner.
 
+**Running all of them takes about an hour**, and most of that is suites that walk every template or
+every context-menu row. So do not run the lot to "be safe": run the suites that cover the change,
+and any you can name a reason to worry about, and leave the full batch for when the user asks or
+when a change is so broad that no shorter list would be honest.
+
 ```bash
 PMKS_BASE_URL=http://localhost:4200 node e2e/playback-bar.mjs
 ```
@@ -846,6 +851,42 @@ the crank angle, distance constraints, tangent from the null space) traces the w
 curve and reports the crank's range and its turning points. That is how the 444-degree swing above,
 the boundary six-bar's 382-degree swing with the drawn pose at a limit, and Watt I's eleven-degree
 sliver were each established, and each contradicted what the spec at the time asserted.
+
+### A hold is a constraint, not a lock, and every move goes through the solver
+
+A bar can hold its **length** or its **angle** against edits (`RealLink.hold`, the menu's Fixed
+Length / Fixed Angle rows, the padlocks on the Link Length and Link Angle fields). It is not a Lock:
+the joints stay free to move, on the arc or the line the held value leaves them. One or the other,
+never both -- both is what a Lock on the joints already means -- so asking for the second moves the
+hold and says so, with "Lock length instead" on the message. To the reader the word is always
+**Locked** (the padlock's label, "Locked by fixed length AB", the Unlock action); `hold` is the
+code's name for it, kept distinct from the joint Lock it is not.
+
+The rules are the CAD ones, and they live in one place, `model/hold-solver.ts`: the joint that was
+asked for reaches its ask when the holds allow and lands on the nearest allowed place when they do
+not; every other joint on a held bar moves as little as it must (drag the free end of a held bar and
+its far end is towed; drag it when the far end is grounded and it rides the arc); grounded, locked,
+slider and cylinder joints never move. A joint the holds have fully determined -- between two held
+lengths from two fixed points -- is refused at the grab, naming the holds, exactly as a locked joint
+is; an ask no configuration satisfies (a four-bar dragged past where its coupler can follow) is
+refused *whole* -- the half-settled positions the sweep stopped in have a hold false in them, and
+writing those was how a locked length once changed under a drag. A typed length or angle near a
+lock is a constraint, not a place: `setBarValue` adds the number to the holds and lets the solver
+move whatever must move, which is also what typing into a locked field does -- the number typed
+becomes the number locked. **Every route that moves a joint lands in `GridUtilsService.dragJoint`, and that is where the
+solver is asked**, so a typed coordinate, a distance-to-joint field and a link drag get the same
+answer as a canvas drag. `settled` is how the solver writes its answer back through the same door
+without being asked again; forget it and you get a recursion.
+
+A hold is only meaningful on a plain two-joint bar, and `holdOf()` in `model/link-holds.ts` reads
+one as absent on anything else -- which is why nothing has to clear the flag when a bar is welded or
+given a third joint. It rides the URL as an `H` entry in the trailing section (`HlAB`, `HaAB`),
+beside the locks, so it survives undo and travels in a shared link; the decoder refuses a hold on
+anything but a bar. The held-value chips and the amber guide are canvas state
+(`heldChips()`, `holdGuide`, `holdRing` in `new-grid.component.ts`), shown only when the lock marks
+are (`lockVisualsOn`), and the hover dimensions for a length or an angle -- the link's and the
+joint panel's distance-to-joint ones alike -- are now a hairline with a pill, sized in screen pixels
+through `svgGrid.scaleWithZoom`. `e2e/link-holds.mjs` walks all of it.
 
 ### Where a drag's time goes, and how to re-measure it
 

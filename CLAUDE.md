@@ -66,6 +66,8 @@ The app is **fully standalone** — `src/main.ts` calls `bootstrapApplication`, 
 
 Unit specs stay co-located in `src/**/*.spec.ts`; browser-driven E2E tests are Playwright scripts in `e2e/*.mjs` (run directly — see above), with outputs in gitignored `artifacts/`. Details in `e2e/README.md`.
 
+**The full e2e batch (every `e2e/*.mjs` suite) takes about an hour.** Do not run it as a matter of course. Run the suites that cover what you changed, plus the ones you have a concrete reason to think your change could break; run the whole batch only when the user asks for it or when a change is broad enough that you genuinely cannot name the suites it could reach.
+
 **Every verification mechanism is published as a URL.** A fixture is a TypeScript object and the app only speaks URLs, so a reviewer otherwise has to rebuild a linkage by hand to see what a failing test is about. `docs/fixture-urls.md` is generated from `src/test-utils/verification/fixture-gallery.ts`; `npm run fixture-urls` refreshes it, and a spec fails if it is stale, so adding a fixture without regenerating cannot slip through. Add new mechanisms to `FIXTURE_GALLERY` rather than inlining them in a spec.
 
 Regenerate against a PR's deploy preview when you want links a reviewer can click before merge — a mechanism using a feature that has not shipped yet will not decode on production:
@@ -158,6 +160,7 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
   with the peak said as two numbers. `docs/analysis-mode-editing-plan.md` is the argument;
   `e2e/analysis-editing.mjs` is the guard. Click selects, drag tunes: a drag does not move what
   the panel is graphing.
+- A bar can **hold** its length or its angle against edits (`RealLink.hold`, the menu's Fixed Length / Fixed Angle rows, the padlocks in the Link panel's `hold-field-block`). It is a constraint, not a lock: every joint move goes through `GridUtilsService.dragJoint`, which asks `model/hold-solver.ts` for the CAD answer, and the hold rides the URL as an `H` entry beside the locks. `docs/tips-and-tricks.md` has the rules.
 - `SelectedTabService` (`TabID` enum) coordinates the four modes; the Edit and analysis panels operate on whatever `ActiveObjService` says is selected (joint, link, force, mechanism, background image, or synthesis pose).
 - The right drawer is addressed by number through statics on `RightPanelComponent`: 1 Settings, 3 Help, 4 Debug (dev only), 5 `KINEMATIC_SETUP_TAB`, 6 `FORCE_SETUP_TAB`, 7 `EXPORT_TAB`. **Tab 2 (`app-equation-panel`) is unreachable** — nothing calls `tabClicked(2)` and its content is placeholder images. It is unfinished work, not a feature.
 - `SettingsService` exposes document-wide settings as RxJS BehaviorSubjects (units, gravity, grid and snap visibility, object scale). Input **speed and direction are not global** — they belong to the driven joint (`Joint.driveSpeed`), because a drawing can hold several machines; the SettingsService values are only the default a joint falls back to.

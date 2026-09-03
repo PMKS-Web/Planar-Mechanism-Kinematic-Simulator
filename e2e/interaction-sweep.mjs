@@ -78,7 +78,12 @@ const signature = () =>
       )
       .join('|');
     const links = mech.links
-      .map((l) => `${l.id}:${l.constructor.name[0]}:${l.fill ?? '-'}${l.isCircle ? ':disc' : ''}`)
+      // A bar's hold is a switch too, for the same reason a joint's lock is.
+      .map(
+        (l) =>
+          `${l.id}:${l.constructor.name[0]}:${l.fill ?? '-'}${l.isCircle ? ':disc' : ''}` +
+          `${l.hold ? ':' + l.hold : ''}`
+      )
       .join('|');
     const forces = mech.forces
       .map((f) => `${f.id ?? f.name}:${f.local}:${f.startCoord.x.toFixed(1)}`)

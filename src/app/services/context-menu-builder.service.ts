@@ -1,4 +1,8 @@
 import { Injectable, inject } from '@angular/core';
+import { NumberUnitParserService } from './number-unit-parser.service';
+import { AngleUnit } from '../model/utils';
+import { describeHold, heldBarsAt, holdOf, holdableBar } from '../model/link-holds';
+import { LinkHold } from '../model/link';
 import {
   ContextMenuModel,
   MenuGroup,
@@ -58,6 +62,7 @@ export class ContextMenuBuilderService {
   private mechanism = inject(MechanismService);
   private gridUtils = inject(GridUtilsService);
   private settings = inject(SettingsService);
+  private nup = inject(NumberUnitParserService);
   private activeObj = inject(ActiveObjService);
   private keys = inject(KeyboardShortcutsService);
   private synthesis = inject(SynthesisBuilderService);
@@ -446,6 +451,25 @@ export class ContextMenuBuilderService {
     }
     rows.push(this.traceRow(joint));
     rows.push(this.lockRow(joint, joint));
+    // A joint on a held bar is confined by it: it still moves, on the arc or
+    // the line the hold leaves it, and the row says so and names the holds,
+    // because the way to move it freely is on the bar rather than here.
+    const holding = heldBarsAt(joint, this.mechanism.links);
+    if (holding.length > 0) {
+      const named = holding.map((bar) => bar.name || bar.id).join(', ');
+      rows.push(
+        new MenuRow({
+          label: 'Free to Move',
+          icon: 'open_with',
+          material: true,
+          action: () => undefined,
+          refusal: {
+            short: `locked by ${named}`,
+            long: `${holding.map(describeHold).join(' and ')} ${holding.length > 1 ? 'confine' : 'confines'} this joint. Unlock ${holding.length > 1 ? 'them' : 'it'} on the link to move it freely.`,
+          },
+        })
+      );
+    }
     return rows;
   }
 
@@ -579,7 +603,12 @@ export class ContextMenuBuilderService {
       return `${end} · ${this.cylinderName(sealed)}`;
     }
     const bodies = joint instanceof RealJoint ? joint.links : [];
-    return `${this.jointKind(joint, bodies)} · ${this.bodyList(bodies)}`;
+    const holding = heldBarsAt(joint, this.mechanism.links);
+    const held =
+      holding.length > 0
+        ? ` · on fixed ${holding.map((bar) => bar.name || bar.id).join(', ')}`
+        : '';
+    return `${this.jointKind(joint, bodies)} · ${this.bodyList(bodies)}${held}`;
   }
 
   /**
@@ -696,27 +725,28 @@ export class ContextMenuBuilderService {
             long: 'This is a welded compound. Click one of the links it is made of, so the new member knows which body it joins.',
           }
         : undefined;
-    const locked = this.lockedRefusal(link);
+    // A lock holds the link where it is, and attaching a new part to it moves
+    // nothing that is held -- the new link, block, tracer or force is built
+    // onto the link as it stands. So the lock refuses none of these.
     const rows = [
       new MenuRow({
         label: 'Link',
         icon: 'new_link',
         action: () => handlers.attachLink(),
-        refusal: fillet ?? locked,
+        refusal: fillet,
       }),
       new MenuRow({
         label: 'Cylinder',
         icon: 'add_cylinder',
         action: () => handlers.attachCylinder(),
-        refusal: fillet ?? locked,
+        refusal: fillet,
       }),
       new MenuRow({
         label: 'Tracer Point',
         icon: 'add_tracer',
         action: () => handlers.attachTracerPoint(),
-        refusal: fillet ?? locked,
+        refusal: fillet,
       }),
-      // A force does not move the geometry, so a locked link still takes one.
       new MenuRow({
         label: 'Force',
         icon: 'add_force',
@@ -762,8 +792,80 @@ export class ContextMenuBuilderService {
               long: 'A disc is the shape a link sweeps about a fixed pin, and this link turns about none.',
             },
       }),
+      ...this.holdRows(link),
       this.lockRow(link, undefined),
     ];
+  }
+
+  /**
+   * Fixed Length and Fixed Angle: the two numbers a bar can hold against
+   * edits. Each row carries the value it would hold, so what is held is what
+   * is named. A link holds one or the other -- both is what Lock means -- so
+   * the row for the other says it moves the hold rather than adding one, and
+   * a locked link, which already holds both, offers neither.
+   */
+  private holdRows(link: RealLink): MenuRow[] {
+    const refusal: MenuRefusal | undefined = !holdableBar(link)
+      ? {
+          short: 'bars only',
+          long: 'Only a bar between two joints has one length and one angle to hold.',
+        }
+      : this.mechanism.isLockedTarget(link)
+        ? {
+            short: 'locked in place',
+            long: 'Locked in place already holds the length and the angle.',
+          }
+        : undefined;
+    const held = holdOf(link);
+    const row = (
+      hold: Exclude<LinkHold, undefined>,
+      label: string,
+      icon: string,
+      value: string
+    ) => {
+      const on = held === hold;
+      const moves = !on && held !== undefined;
+      return new MenuRow({
+        label,
+        icon,
+        material: true,
+        kind: 'toggle',
+        checked: on,
+        action: () => this.mechanism.setHold(link, on ? undefined : hold),
+        refusal,
+        hint: on ? undefined : moves ? 'moves the lock' : value,
+        tip: moves
+          ? 'A link locks one or the other, since locking both is Lock. Choosing this unlocks the one already locked.'
+          : hold === 'length'
+            ? 'Lock this link at its current length. Dragging either joint slides it on the arc about the other.'
+            : 'Lock this link at its current angle from the grid. Dragging either joint slides it along that line.',
+      });
+    };
+    return [
+      row('length', 'Fixed Length', 'straighten', this.lengthOf(link)),
+      row('angle', 'Fixed Angle', 'architecture', this.angleOf(link)),
+    ];
+  }
+
+  private lengthOf(link: RealLink): string {
+    const [a, b] = link.joints;
+    if (!a || !b) return '';
+    return this.nup.formatModelLength(
+      Math.hypot(b.x - a.x, b.y - a.y),
+      this.settings.lengthUnit.getValue()
+    );
+  }
+
+  private angleOf(link: RealLink): string {
+    const [a, b] = link.joints;
+    if (!a || !b) return '';
+    // Signed, as the panel's field reads it, so the row names the number the
+    // field will show once the angle is locked.
+    const degrees = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+    return this.nup.formatValueAndUnit(
+      this.nup.convertAngle(degrees, AngleUnit.DEGREE, this.settings.angleUnit.getValue()),
+      this.settings.angleUnit.getValue()
+    );
   }
 
   private deleteLinkRow(link: RealLink): MenuRow {
@@ -804,7 +906,8 @@ export class ContextMenuBuilderService {
     const kind = bar.subset.length > 0 ? 'Compound' : bar.joints.length > 2 ? 'Body' : 'Bar';
     const joints = bar.joints.map((joint) => this.nameOf(joint)).join(', ');
     const locked = this.mechanism.isLockedTarget(bar) ? ' · locked' : '';
-    return `${kind} · Joints ${joints}${locked}`;
+    const held = !locked && holdOf(bar) ? ` · fixed ${holdOf(bar)}` : '';
+    return `${kind} · Joints ${joints}${locked}${held}`;
   }
 
   // ----------------------------------------------------------------- force

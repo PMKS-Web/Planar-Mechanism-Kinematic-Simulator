@@ -1,0 +1,117 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+
+@mixin css($theme) {
+  $color-config: mat.m2-get-color-config($theme);
+  $primary-palette: map.get($color-config, 'primary');
+  $typography-config: mat.m2-get-typography-config($theme);
+  $accent: mat.m2-get-color-from-palette($primary-palette, 500);
+
+  #hold-field-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    // A row per value, led by its word and its help. The words share one
+    // column wide enough for the longer of them, so the two fields line up.
+    .field {
+      justify-content: flex-start;
+      gap: 6px;
+    }
+
+    .caption {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      width: 74px;
+    }
+
+    .label.dim,
+    .label-help.inert {
+      opacity: 0.5;
+    }
+
+    // The same filled field the rest of the panel uses, shortened so the
+    // number and its padlock read as one compact control rather than a bar
+    // across the panel. The padlock is laid over the field's right end, so
+    // the field itself is exactly the panel's usual field.
+    .well {
+      position: relative;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .customInputForm {
+      width: 100%;
+
+      .customInput {
+        @include mat.m2-typography-level($typography-config, 'body-2');
+        // Room for the padlock, and for the word beside it once locked. Inside
+        // the width, not on top of it: Material gives the input its full
+        // width, and padding added to that ran the box past the field's right
+        // edge, so a click at the visible end of the field landed on the
+        // padlock instead of in the text.
+        box-sizing: border-box;
+        padding-right: 22px;
+      }
+
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+
+      .mat-mdc-form-field-infix {
+        padding: 6px 0;
+      }
+
+      .mdc-text-field--filled:not(.mdc-text-field--disabled) {
+        background-color: #f0f1f5;
+      }
+
+      .mat-mdc-text-field-wrapper {
+        height: 30px;
+        width: 100%;
+        padding: 0 6px;
+      }
+    }
+
+    .well.locked .customInput {
+      padding-right: 62px;
+    }
+
+    // Only the word and the icon say locked; the field itself stays the
+    // field, because the number is still typeable.
+    .padlock {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      border: none;
+      background: none;
+      padding: 0;
+      font:
+        500 11px/1 Roboto,
+        sans-serif;
+      letter-spacing: 0.2px;
+      color: rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+
+      &:hover,
+      &.on {
+        color: $accent;
+      }
+
+      // Down onto the number's baseline: an 11px word centered beside a 15px
+      // icon sits above the 14px number it shares a field with. Measured from
+      // the fonts' own ascents and line boxes, not from the boxes' bottoms,
+      // which is what once put it too low.
+      .word {
+        position: relative;
+        top: 1.5px;
+      }
+    }
+  }
+}

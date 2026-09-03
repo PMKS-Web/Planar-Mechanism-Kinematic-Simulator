@@ -38,6 +38,12 @@ export abstract class GenericTranscoder {
    */
   protected comAnchors: string[] = [];
   /**
+   * Which bars hold their length or their angle against edits, as tagged
+   * references sharing the lock section: 'Hl<link>' for a length, 'Ha<link>'
+   * for an angle. See StringTranscoder for the spelling.
+   */
+  protected holds: string[] = [];
+  /**
    * The synthesis design -- three positions of an end-effector link and what a
    * solution has to satisfy -- as tagged entries sharing the same trailing
    * section. See StringTranscoder for the spelling.
@@ -133,6 +139,14 @@ export abstract class GenericTranscoder {
 
   getLockedIds(): string[] {
     return this.lockedIds;
+  }
+
+  setHolds(holds: string[]): void {
+    this.holds = holds;
+  }
+
+  getHolds(): string[] {
+    return this.holds;
   }
 
   setComAnchors(anchors: string[]): void {
