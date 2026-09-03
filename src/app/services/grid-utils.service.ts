@@ -391,7 +391,11 @@ export class GridUtilsService {
     }
     const others = heldBars(links).filter((bar) => bar.id !== link.id);
     const reach = reachedByHolds([a.id, b.id], others).bars;
-    if (reach.length === 0 && holdOf(link) === undefined) return 'unheld';
+    const frozen = this.frozenJointIds();
+    // A locked end is an anchor the solver knows how to keep; the panel's own
+    // rule moves an end of its own choosing and would ask the locked one.
+    const anchored = frozen.has(a.id) || frozen.has(b.id);
+    if (reach.length === 0 && holdOf(link) === undefined && !anchored) return 'unheld';
     const asked: HoldBar = {
       id: link.id,
       a: a.id,
@@ -400,7 +404,6 @@ export class GridUtilsService {
       length: kind === 'length' ? value : Math.hypot(b.x - a.x, b.y - a.y),
       angle: kind === 'angle' ? value : Math.atan2(b.y - a.y, b.x - a.x),
     };
-    const frozen = this.frozenJointIds();
     const joints = holdJoints(this.mechanismSrv.joints, (joint) => this.holdAnchor(joint, frozen));
     const solved = settleHolds(
       joints,

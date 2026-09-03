@@ -2083,15 +2083,16 @@
             !isSecondaryCylinderTag(link) &&
             gridUtils.typeOfLink(link) !== 'P'
           ) {
-            <!-- Both the name and the center-of-mass mark belong at the center
-                 of the link, so when the mark is being shown the name steps up
-                 out of its way -- along the name's own up, which on a bar
-                 written lengthwise is across the bar. -->
+            <!-- The name, the center-of-mass mark and a locked length's chip
+                 all belong at the center of the link, so when either of the
+                 other two is being shown the name steps up out of its way --
+                 along the name's own up, which on a bar written lengthwise is
+                 across the bar. -->
             <text
               [attr.fill]="tag.ink"
               [attr.fill-opacity]="tag.opacity"
               [attr.transform]="tag.angle ? 'rotate(' + tag.angle + ')' : null"
-              [attr.dy]="showsCoM(link) ? -settings.objectScale * 0.13 : 0"
+              [attr.dy]="linkLabelLift(link)"
               [style.font-size.px]="tagFontSize"
               style="text-anchor: middle"
             >

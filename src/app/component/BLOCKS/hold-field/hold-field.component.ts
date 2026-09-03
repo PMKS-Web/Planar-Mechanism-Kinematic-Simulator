@@ -65,10 +65,17 @@ export class HoldFieldComponent {
     return holdableBar(this.link()) && !this.disabled() && !this.lockedInPlace();
   }
 
-  /** Every joint of the link held by a Lock mark: the whole bar is pinned. */
+  /**
+   * Every joint of the link held by a Lock mark: the whole bar is pinned.
+   *
+   * Every, not any: with one end locked the bar can still turn about it and
+   * stretch from it, so locking its length or angle still means something,
+   * and the padlocks stay.
+   */
   lockedInPlace(): boolean {
     const frozen = this.gridUtils.frozenJointIds();
-    return this.link().joints.some((joint) => frozen.has(joint.id));
+    const joints = this.link().joints;
+    return joints.length > 0 && joints.every((joint) => frozen.has(joint.id));
   }
 
   held(which: Which): boolean {

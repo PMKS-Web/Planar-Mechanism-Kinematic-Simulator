@@ -223,6 +223,16 @@ describe('a typed length or angle near a lock', () => {
     expect(dist(parts.b, parts.c)).toBeCloseTo(bc, 6);
   });
 
+  it('is solved about a locked end, moving only the free one', () => {
+    const parts = fourBar(service);
+    parts.b.locked = true;
+    const bWas = { x: parts.b.x, y: parts.b.y };
+    expect(grid.setBarValue(parts.bc, 'length', 5 * S)).toBe('applied');
+    expect(dist(parts.b, parts.c)).toBeCloseTo(5 * S, 3);
+    expect(parts.b.x).toBeCloseTo(bWas.x, 6);
+    expect(parts.b.y).toBeCloseTo(bWas.y, 6);
+  });
+
   it('leaves a bar no lock reaches to the panel', () => {
     const parts = fourBar(service);
     expect(grid.setBarValue(parts.bc, 'length', 5 * S)).toBe('unheld');

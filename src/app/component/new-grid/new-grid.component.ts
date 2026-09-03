@@ -2450,6 +2450,20 @@ export class NewGridComponent implements OnDestroy {
     return { x: x1 + offSetRadius * Math.cos(midAngle), y: y1 + offSetRadius * Math.sin(midAngle) };
   }
 
+  /**
+   * How far the link's name steps up from the center, in the label's own
+   * units: clear of the center-of-mass mark, and clear of a locked length's
+   * chip, which is a screen-sized pill and so needs a zoom-sized step.
+   */
+  linkLabelLift(link: Link): number {
+    const chip = this.holdsVisible() && holdOf(link) === 'length';
+    const mark = this.showsCoM(link);
+    if (!chip && !mark) return 0;
+    const forMark = mark ? this.settings.objectScale * 0.13 : 0;
+    const forChip = chip ? this.svgGrid.scaleWithZoom(20) : 0;
+    return -Math.max(forMark, forChip);
+  }
+
   /** The label of the length hover dimension, as the panel spells it. */
   lengthOverlayLabel(): string {
     return this.nup.formatModelLength(

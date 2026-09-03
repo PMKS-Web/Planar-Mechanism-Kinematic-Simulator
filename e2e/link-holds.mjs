@@ -320,6 +320,45 @@ for (let step = 0; step < 3; step++) {
 record('undo takes the hold off BC', (await holdOf('BC')) === null, await holdOf('BC'));
 record('and AB still holds its length', (await holdOf('AB')) === 'length');
 
+// --- One locked end keeps the padlocks, and a typed length solves about it --
+
+await page.evaluate(() => {
+  const c = ng.getComponent(document.querySelector('app-new-grid'));
+  c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'A'));
+  c.activeObjService.updateSelectedObj(c.mechanismSrv.links.find((l) => l.id === 'AB'));
+});
+await page.waitForTimeout(400);
+record(
+  'a bar with one locked end keeps both padlocks and its fields live',
+  await page.evaluate(
+    () =>
+      document.querySelectorAll('[data-hold-toggle]').length === 2 &&
+      !document.querySelector('[data-hold-field="length"]').disabled &&
+      !document.querySelector('[data-lock-banner]')
+  )
+);
+const aLocked = await jointModel('A');
+const lengthField = page.locator('[data-hold-field="length"]');
+await lengthField.click({ clickCount: 3 });
+await lengthField.type('3');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(600);
+const aAfterTyping = await jointModel('A');
+const bAfterTyping = await jointModel('B');
+record(
+  'typing a length on it moves the free end and leaves the locked one',
+  // Joint positions are model pixels; the field spoke centimeters.
+  Math.abs(dist(aAfterTyping, bAfterTyping) / 200 - 3) < 1e-3 &&
+    aAfterTyping.x === aLocked.x &&
+    aAfterTyping.y === aLocked.y,
+  { aLocked, aAfterTyping, bAfterTyping }
+);
+await page.evaluate(() => {
+  const c = ng.getComponent(document.querySelector('app-new-grid'));
+  c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'A'));
+});
+await page.waitForTimeout(300);
+
 // --- Leaving Edit stands the chips down --------------------------------------
 
 await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
