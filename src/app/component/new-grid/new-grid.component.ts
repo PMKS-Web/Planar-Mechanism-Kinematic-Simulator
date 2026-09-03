@@ -2428,11 +2428,16 @@ export class NewGridComponent implements OnDestroy {
    * Centered over the ghost's own span and lifted off its topmost pin, rather
    * than pinned to one joint: whichever joint that is, something is drawn on it
    * -- a ground's hatching, an input's motor box -- and the words went behind.
+   *
+   * In the drawing's own coordinates, which is what `upright` wants and what
+   * every other tag on the canvas hands it. The template used to negate the y
+   * on the way past, which mirrored the pill across the x-axis and left it
+   * nowhere near the ghost or the pointer it is about.
    */
-  ghostTagAt(ghost: StartPoseGhost): { x: number; y: number } {
+  ghostTagAt(ghost: StartPoseGhost): ModelPoint {
     // On the pointer, 20px off its tip, rather than over the ghost.
     //
-    // It was centred over the ghost's own span, which is a place the reader is
+    // It was centered over the ghost's own span, which is a place the reader is
     // not necessarily looking and which the drawing's own marks -- a ground's
     // hatching, an input's motor box -- kept getting in the way of. The pointer
     // is the one thing on screen they are definitely looking at, and while this
@@ -2450,23 +2455,6 @@ export class NewGridComponent implements OnDestroy {
       x: (Math.min(...xs) + Math.max(...xs)) / 2,
       y: Math.max(...ys) + this.svgGrid.scaleWithZoom(26),
     };
-  }
-
-  /**
-   * Where the warning pill actually hangs, which is `ghostTagAt` mirrored.
-   *
-   * The negation is what the template has always done and it is preserved
-   * here unchanged, but it does not agree with the point above: `ghostTagAt`
-   * answers in the drawing's coordinates, and every other tag on the canvas --
-   * the preview's joint letters, the pose chips -- hangs on that point as it
-   * stands. Negating y puts the pill the same distance the *other* side of the
-   * x-axis, which for a pointer well away from the axis is nowhere near the
-   * gesture the pill is about. Straightening that out is a change to what is
-   * drawn rather than to how it is spelled, so it is left for its own commit.
-   */
-  ghostTagAnchor(ghost: StartPoseGhost): ModelPoint {
-    const at = this.ghostTagAt(ghost);
-    return { x: at.x, y: -at.y };
   }
 
   /** Press the picture of the start pose to go there. */

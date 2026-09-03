@@ -347,6 +347,27 @@ await displace();
   record('the ghost warns while the hand is still moving', path !== null, { path: path?.length });
   await page.screenshot({ path: `${SHOTS}/2b-warned.png` });
 
+  // Where the pill lands, not just that it exists. `ghostTagAt` answers in the
+  // drawing's coordinates and the pill hangs on that point through `upright`;
+  // the template used to negate the y on the way past, which mirrored the pill
+  // across the x-axis and parked it hundreds of pixels from the hand it is
+  // narrating -- visible to anyone who looked, and invisible to a check that
+  // only counted the element.
+  const pill = await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const ghost = grid.startGhosts()[0];
+    const node = document.querySelector('#startGhostTags g');
+    if (!ghost || !node) return null;
+    const want = grid.svgGrid.modelToScreen(grid.ghostTagAt(ghost));
+    const box = node.getBoundingClientRect();
+    return { dx: box.x - want.x, dy: box.y - want.y };
+  });
+  record(
+    'and the pill hangs where the drawing says, not mirrored across the axis',
+    pill !== null && Math.abs(pill.dx) < 40 && Math.abs(pill.dy) < 40,
+    pill
+  );
+
   // Dragged back, the warning goes -- which is the point of it being live.
   // Driven by the warning on the way home as well as on the way out: how far
   // back the linkage has to come is the same unknown in both directions, and a

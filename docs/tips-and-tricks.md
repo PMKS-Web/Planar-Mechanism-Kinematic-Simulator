@@ -728,6 +728,14 @@ What follows from the flip, and what has cost an hour more than once:
   counterclockwise. The synthesis preview's `phase` is a model angle, so
   advancing it turns the preview counterclockwise on screen -- which is why
   `SynthesisPanelComponent.step` negates the stride for a clockwise preview.
+- **A hand-written flip can be a hand-written bug, and counting elements will
+  not find it.** The start-ghost's warning pill hung on `translate(x, -y)
+  scale(1,-1)`, which is `upright` with the y mirrored: measured on the 4-Bar,
+  `ghostTagAt` named a point 123px down the window and the pill was drawn at
+  729px, the same distance the other side of the axis. It survived because
+  every check on it asked whether the pill was *there*, never where. The
+  placement check in `posed-editing.mjs` compares the pill's box against
+  `modelToScreen(ghostTagAt(ghost))` and is what that lesson is worth.
 - **If you touch a direction, look at it.** Play, take a few frames clipped
   around the driven pin, and see which way the crank goes. A numeric probe is
   only as good as the matrix it chose, and two of them in one session disagreed
