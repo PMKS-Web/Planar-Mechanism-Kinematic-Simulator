@@ -610,7 +610,8 @@ export class MechanismService {
     const joints = partition.joints.map((joint) => {
       const real = joint instanceof RealJoint ? joint : undefined;
       const slide = joint instanceof PrisJoint ? joint.angle_rad : '';
-      const kind = joint.constructor.name;
+      // Spelled, not read off the class: a production build renames classes.
+      const kind = joint instanceof PrisJoint ? 'P' : joint instanceof RevJoint ? 'R' : 'J';
       const flags = [real?.ground && 'g', real?.input && 'i', real?.isWelded && 'w']
         .filter(Boolean)
         .join('');
@@ -623,7 +624,8 @@ export class MechanismService {
       const shape = `${body?.isCircle ? 'o' : ''}d${body?.d.length ?? ''}`;
       const center = `${body?.CoM.x ?? ''},${body?.CoM.y ?? ''}`;
       const inertia = `m${link.mass}I${body?.massMoI ?? ''}`;
-      return `${link.id}[${pins}]${link.constructor.name}${inertia}c${center}${shape}s${subset}`;
+      const kind = body ? 'L' : link instanceof SliderBlock ? 'S' : 'K';
+      return `${link.id}[${pins}]${kind}${inertia}c${center}${shape}s${subset}`;
     });
     const forces = partition.forces.map((force) => {
       const from = `${force.startCoord.x},${force.startCoord.y}`;
