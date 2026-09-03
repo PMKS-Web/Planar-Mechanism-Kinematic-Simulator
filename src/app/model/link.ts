@@ -138,9 +138,40 @@ export class RealLink extends Link {
   private _subset: Link[] = []; // this is not connectedLinks but links that make up this link
   private _isVisualGeometryCurrent = false;
 
-  public externalLines: Line[] = [];
+  /**
+   * The link this one's artwork is a rigid move of, until someone asks for it.
+   *
+   * A sweep builds every link at every one of its ~360 samples, and only the
+   * sample being drawn is ever looked at. Carrying the path across at
+   * construction meant tokenizing and reformatting every outline several
+   * hundred times per pointer move, which was two thirds of what a drag cost.
+   * So the copy waits: `d`, `externalLines` and `initialExternalLines` realize
+   * it on first read, and the source is a solved sample's own clone, which
+   * nothing changes afterwards.
+   */
+  private visualSource?: RealLink;
+  private _externalLines: Line[] = [];
+  private _initialExternalLines: Line[] = [];
+  /** The four center-of-mass quadrant paths are built when first read, too. */
+  private comDsStale = true;
 
-  public initialExternalLines: Line[] = [];
+  get externalLines(): Line[] {
+    this.realizeVisualGeometry();
+    return this._externalLines;
+  }
+
+  set externalLines(value: Line[]) {
+    this._externalLines = value;
+  }
+
+  get initialExternalLines(): Line[] {
+    this.realizeVisualGeometry();
+    return this._initialExternalLines;
+  }
+
+  set initialExternalLines(value: Line[]) {
+    this._initialExternalLines = value;
+  }
 
   /**
    * The closed rings a compound outline is made of, kept alongside the path.
@@ -381,7 +412,7 @@ export class RealLink extends Link {
       visualSource.joints.length >= 2 &&
       this.joints.length >= 2
     ) {
-      this.copyVisualGeometryFrom(visualSource);
+      this.visualSource = visualSource;
     } else {
       this._d = this.getPathString();
     }
@@ -392,10 +423,19 @@ export class RealLink extends Link {
   }
 
   public reComputeDPath() {
+    this.visualSource = undefined;
     this._d = this.getPathString();
     this._isVisualGeometryCurrent = true;
     this.updateCoMDs();
     this.updateLengthAndAngle();
+  }
+
+  /** Carry the deferred artwork across now, once. */
+  private realizeVisualGeometry(): void {
+    const source = this.visualSource;
+    if (!source) return;
+    this.visualSource = undefined;
+    this.copyVisualGeometryFrom(source);
   }
 
   private copyVisualGeometryFrom(source: RealLink): void {
@@ -947,10 +987,12 @@ export class RealLink extends Link {
   }
 
   get d(): string {
+    this.realizeVisualGeometry();
     return this._d;
   }
 
   set d(value: string) {
+    this.visualSource = undefined;
     this._d = value;
     this._isVisualGeometryCurrent = true;
   }
@@ -1004,6 +1046,7 @@ export class RealLink extends Link {
   }
 
   get CoM_d1(): string {
+    if (this.comDsStale) this.buildCoMDs();
     return this._CoM_d1;
   }
 
@@ -1012,6 +1055,7 @@ export class RealLink extends Link {
   }
 
   get CoM_d2(): string {
+    if (this.comDsStale) this.buildCoMDs();
     return this._CoM_d2;
   }
 
@@ -1020,6 +1064,7 @@ export class RealLink extends Link {
   }
 
   get CoM_d3(): string {
+    if (this.comDsStale) this.buildCoMDs();
     return this._CoM_d3;
   }
 
@@ -1028,6 +1073,7 @@ export class RealLink extends Link {
   }
 
   get CoM_d4(): string {
+    if (this.comDsStale) this.buildCoMDs();
     return this._CoM_d4;
   }
 
@@ -1040,6 +1086,11 @@ export class RealLink extends Link {
   }
 
   updateCoMDs() {
+    this.comDsStale = true;
+  }
+
+  private buildCoMDs() {
+    this.comDsStale = false;
     //This is such a bad way of doing this. Just import the SVG file from the assets folder and use that instead of constructing the exact same thing every time.
     // Small. The mark says where the center of mass is; at the size it was, on
     // a drawing with several links, it was the loudest thing on the canvas.
