@@ -2426,11 +2426,12 @@ export class NewGridComponent implements OnDestroy {
         hold === 'length'
           ? this.lengthLabelAt(a.x, a.y, b.x, b.y)
           : this.angleLabelAt(a.x, a.y, b.x, b.y);
-      const axis = hold === 'length' ? this.barAxis(link) : undefined;
-      if (axis) {
-        const off = this.centerClearance() + this.chipHalfExtentAlong(w, axis);
-        at.x -= axis.x * off;
-        at.y -= axis.y * off;
+      if (hold === 'length') {
+        const placed = this.lengthChipPlace(link, w);
+        if (placed) {
+          at.x = placed.x;
+          at.y = placed.y;
+        }
       }
       chips.push({ id: link.id, x: at.x, y: at.y, text, w });
     }
@@ -5302,6 +5303,62 @@ export class NewGridComponent implements OnDestroy {
     return (Math.abs(axis.x) * width) / 2 + Math.abs(axis.y) * this.svgGrid.scaleWithZoom(11);
   }
 
+  /**
+   * Where a length's chip sits on a bar: from the center, along the bar and
+   * away from the name, by enough to clear the center-of-mass mark. The hover
+   * dimension's pill sits in exactly this place too, so locking the length
+   * turns the one into the other without anything moving.
+   */
+  private lengthChipPlace(link: Link, chipWidth: number): { x: number; y: number } | undefined {
+    const axis = this.barAxis(link);
+    if (!axis) return undefined;
+    const [a, b] = link.joints;
+    const off = this.centerClearance() + this.chipHalfExtentAlong(chipWidth, axis);
+    return { x: (a.x + b.x) / 2 - axis.x * off, y: (a.y + b.y) / 2 - axis.y * off };
+  }
+
+  /**
+   * The length dimension on the selected bar: where its pill goes, and how
+   * much of the bar around it the hairline leaves clear. Nothing for a
+   * joint's distance-to-joint dimension or a cylinder, which keep the
+   * midpoint and the middle third.
+   */
+  private lengthDimensionOnBar():
+    { center: { x: number; y: number }; halfGap: number } | undefined {
+    if (this.activeObjService.objType !== 'Link') return undefined;
+    const link = this.activeObjService.selectedLink;
+    if (!link || this.mechanismSrv.cylinderAt(link)) return undefined;
+    const axis = this.barAxis(link);
+    if (!axis) return undefined;
+    // Sized for the chip, glyph and all, so the pill lands where the chip will.
+    const width = this.pillWidth(this.lengthOverlayLabel(), true);
+    const center = this.lengthChipPlace(link, width);
+    if (!center) return undefined;
+    return {
+      center,
+      halfGap: this.chipHalfExtentAlong(width, axis) + this.svgGrid.scaleWithZoom(8),
+    };
+  }
+
+  /**
+   * The two ends of the hairline along the bar, as distances from the first
+   * joint: up to the gap the pill sits in, and from that gap to the far end.
+   */
+  private hairlineReach(): { toGap: number; fromGap: number; length: number } {
+    const { x1, y1, x2, y2 } = this.findStartAndEndPoints();
+    const length = Math.hypot(x2 - x1, y2 - y1);
+    const onBar = this.lengthDimensionOnBar();
+    if (!onBar || length < 1e-9) {
+      return { toGap: length / 3, fromGap: (2 * length) / 3, length };
+    }
+    const along = ((onBar.center.x - x1) * (x2 - x1) + (onBar.center.y - y1) * (y2 - y1)) / length;
+    return {
+      toGap: Math.max(0, along - onBar.halfGap),
+      fromGap: Math.min(length, along + onBar.halfGap),
+      length,
+    };
+  }
+
   /** The slot this bar carries, if it is a plain bar carrying one. */
   private slotCarriedBy(link: Link): PrisJoint | undefined {
     if ((link.joints?.length ?? 0) !== 2) return undefined;
@@ -5894,43 +5951,25 @@ export class NewGridComponent implements OnDestroy {
   }
 
   getSVGPrimaryAxisLine1() {
-    //Return the SVG path of the line that is the primary axis
-    //Cut the middle 1/3 of the line off, return two lines that are 1/3 of the length of the original line
-    //Each line should start the joints
-    let { x1, y1, x2, y2 } = this.findStartAndEndPoints();
-
-    //Find the length of the original line
-    let length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-
-    //Find the angle of the original line
-    let angle = Math.atan2(y2 - y1, x2 - x1); //Use atan2 instead of atan
-
-    //Find the coordinates of the points that divide the line into three equal parts
-    let x3 = x1 + (length / 3) * Math.cos(angle);
-    let y3 = y1 + (length / 3) * Math.sin(angle);
-
-    //Return the SVG paths of the two lines that start from the joints and end at the middle points
-    return 'M' + x1 + ' ' + y1 + ' L' + x3 + ' ' + y3;
+    // From the first joint up to the gap the pill sits in. The gap was the
+    // middle third; on a bar it is wherever the chip is, so the line stops
+    // short of the chip on its side.
+    const { x1, y1, x2, y2 } = this.findStartAndEndPoints();
+    const { toGap, length } = this.hairlineReach();
+    if (length < 1e-9) return '';
+    const ux = (x2 - x1) / length;
+    const uy = (y2 - y1) / length;
+    return 'M' + x1 + ' ' + y1 + ' L' + (x1 + ux * toGap) + ' ' + (y1 + uy * toGap);
   }
 
   getSVGPrimaryAxisLine2() {
-    //Return the SVG path of the line that is the primary axis
-    //Cut the middle 1/3 of the line off, return two lines that are 1/3 of the length of the original line
-    //Each line should start the joints
-    let { x1, y1, x2, y2 } = this.findStartAndEndPoints();
-
-    //Find the length of the original line
-    let length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-
-    //Find the angle of the original line
-    let angle = Math.atan2(y2 - y1, x2 - x1); //Use atan2 instead of atan
-
-    //Find the coordinates of the points that divide the line into three equal parts
-    let x4 = x2 - (length / 3) * Math.cos(angle);
-    let y4 = y2 - (length / 3) * Math.sin(angle);
-
-    //Return the SVG paths of the two lines that start from the joints and end at the middle points
-    return 'M' + x4 + ' ' + y4 + ' L' + x2 + ' ' + y2;
+    // From the far side of the gap to the second joint.
+    const { x1, y1, x2, y2 } = this.findStartAndEndPoints();
+    const { fromGap, length } = this.hairlineReach();
+    if (length < 1e-9) return '';
+    const ux = (x2 - x1) / length;
+    const uy = (y2 - y1) / length;
+    return 'M' + (x1 + ux * fromGap) + ' ' + (y1 + uy * fromGap) + ' L' + x2 + ' ' + y2;
   }
 
   getSVGAngleOverlayLines() {
@@ -6008,7 +6047,9 @@ export class NewGridComponent implements OnDestroy {
   protected readonly AngleUnit = AngleUnit;
 
   getSVGLengthOverlayTextPos() {
-    //Return the average of the two joints
+    // On a bar, exactly where its length chip sits; otherwise the midpoint.
+    const onBar = this.lengthDimensionOnBar();
+    if (onBar) return onBar.center;
     let { x1, y1, x2, y2 } = this.findStartAndEndPoints();
     let x = (x1 + x2) / 2;
     let y = (y1 + y2) / 2;

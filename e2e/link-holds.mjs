@@ -132,8 +132,58 @@ record(
   { lengthRow, angleRow }
 );
 
+// Before the lock: the hover pill's place and the hairline around it.
+await page.keyboard.press('Escape');
+await page.waitForTimeout(150);
+await page.mouse.click(abOn.x, abOn.y);
+await page.waitForTimeout(300);
+await page.hover('[data-hold-field="length"]');
+await page.waitForTimeout(300);
+const pillCenter = await page.evaluate(() => {
+  const r = document.querySelector('.hoverDimension .dimensionPill rect').getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+});
+await page.mouse.move(700, 500);
+await page.waitForTimeout(200);
+await page.mouse.click(abOn.x, abOn.y, { button: 'right' });
+await page.waitForTimeout(350);
+
 await clickRow('Fixed Length');
 record('Fixed Length holds the bar', (await holdOf('AB')) === 'length');
+record(
+  "the hover pill sat exactly where the lock's chip now sits",
+  await page.evaluate((pill) => {
+    const r = document.querySelector('[data-hold-chip="AB"] rect').getBoundingClientRect();
+    return (
+      Math.abs(r.left + r.width / 2 - pill.x) < 1 && Math.abs(r.top + r.height / 2 - pill.y) < 1
+    );
+  }, pillCenter),
+  pillCenter
+);
+await page.mouse.click(abOn.x, abOn.y);
+await page.waitForTimeout(300);
+await page.hover('[data-hold-field="length"]');
+await page.waitForTimeout(300);
+record(
+  'no point of the hairline falls inside the chip',
+  await page.evaluate(() => {
+    const chip = document.querySelector('[data-hold-chip="AB"] rect').getBoundingClientRect();
+    const inside = (p) =>
+      p.x > chip.left && p.x < chip.right && p.y > chip.top && p.y < chip.bottom;
+    for (const path of document.querySelectorAll('.hoverDimension .hairline path')) {
+      const total = path.getTotalLength();
+      const ctm = path.getScreenCTM();
+      for (let k = 0; k <= 60; k++) {
+        const at = path.getPointAtLength((total * k) / 60);
+        const p = new DOMPoint(at.x, at.y).matrixTransform(ctm);
+        if (inside(p)) return false;
+      }
+    }
+    return true;
+  })
+);
+await page.mouse.move(700, 500);
+await page.waitForTimeout(200);
 await page.screenshot({ path: `${OUT}/01-length-held.png` });
 
 record(
