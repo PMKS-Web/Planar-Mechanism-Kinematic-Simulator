@@ -19,6 +19,7 @@ import { GridUtilsService } from '../../services/grid-utils.service';
 import { SettingsService } from '../../services/settings.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { LongPress, LongPressDirective } from '../../long-press.directive';
+import { ModelFrameDirective, ModelPoint, UprightDirective } from '../../model-frame.directive';
 import { ViewportService } from '../../services/viewport.service';
 import { ContextMenuComponent } from '../context-menu/context-menu.component';
 import { ContextMenuModel, trackContextMenuPointer } from '../context-menu/menu-model';
@@ -184,7 +185,13 @@ const SELECTION_RING_PX = 3;
   templateUrl: './new-grid.component.html',
   styleUrls: ['./new-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CdkContextMenuTrigger, ContextMenuComponent, LongPressDirective],
+  imports: [
+    CdkContextMenuTrigger,
+    ContextMenuComponent,
+    LongPressDirective,
+    ModelFrameDirective,
+    UprightDirective,
+  ],
 })
 export class NewGridComponent implements OnDestroy {
   readonly Math = Math;
@@ -2186,24 +2193,15 @@ export class NewGridComponent implements OnDestroy {
   readonly lockGlyphPath = 'M7 10V7a5 5 0 0 1 10 0v3h2.5v11h-15V10H7Zm2 0h6V7a3 3 0 0 0-6 0v3Z';
 
   /**
-   * Dead center of the joint, unflipped: the joint layer draws in the y-up
-   * model frame (scaleY(-1) on the holder), so the badge flips itself back
-   * to keep the padlock upright. The glyph sits inside the joint's own
-   * circle, so the circle's fill keeps saying what it always says — cream,
-   * amber when selected — behind the mark.
+   * Where a badge sits when the center spot is already taken: a force's anchor
+   * is a small dark disc a centered glyph would vanish into, and a welded
+   * joint's plus-mark is the very thing a centered chip covered. A plain
+   * joint's badge takes no shoulder and stands dead center, on `upright`
+   * alone -- the joint's own cream circle is chip enough behind it.
    */
-  lockBadgeTransform(): string {
-    return `scale(1,-1)`;
-  }
-
-  /**
-   * The shoulder position, for badges whose center spot is already taken: a
-   * force's anchor is a small dark disc a centered glyph would vanish into,
-   * and a welded joint's plus-mark is the very thing a centered chip covered.
-   */
-  offsetLockBadgeTransform(): string {
+  lockBadgeShoulder(): ModelPoint {
     const offset = 0.19 * this.settings.objectScale;
-    return `translate(${offset}, ${offset}) scale(1,-1)`;
+    return { x: offset, y: offset };
   }
 
   /** Center the 24-unit glyph on the badge point, sized to the drawing. */
@@ -2451,6 +2449,23 @@ export class NewGridComponent implements OnDestroy {
       x: (Math.min(...xs) + Math.max(...xs)) / 2,
       y: Math.max(...ys) + this.svgGrid.scaleWithZoom(26),
     };
+  }
+
+  /**
+   * Where the warning pill actually hangs, which is `ghostTagAt` mirrored.
+   *
+   * The negation is what the template has always done and it is preserved
+   * here unchanged, but it does not agree with the point above: `ghostTagAt`
+   * answers in the drawing's coordinates, and every other tag on the canvas --
+   * the preview's joint letters, the pose chips -- hangs on that point as it
+   * stands. Negating y puts the pill the same distance the *other* side of the
+   * x-axis, which for a pointer well away from the axis is nowhere near the
+   * gesture the pill is about. Straightening that out is a change to what is
+   * drawn rather than to how it is spelled, so it is left for its own commit.
+   */
+  ghostTagAnchor(ghost: StartPoseGhost): ModelPoint {
+    const at = this.ghostTagAt(ghost);
+    return { x: at.x, y: -at.y };
   }
 
   /** Press the picture of the start pose to go there. */

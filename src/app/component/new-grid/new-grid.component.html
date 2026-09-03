@@ -305,7 +305,7 @@
        hit-testable they sit over whatever is beneath them and swallow clicks
        meant for a link body -- a cylinder barrel could not be selected at all
        because a ground mark overlapped it. -->
-  <g id="jointBGHolder" style="transform: scaleY(-1)" pointer-events="none">
+  <g id="jointBGHolder" modelFrame pointer-events="none">
     @for (joint of mechanismSrv.getJoints(); track joint) {
       <svg [attr.x]="joint.x" [attr.y]="joint.y" width="10" height="10" style="overflow: visible">
         @if (
@@ -319,7 +319,7 @@
             [attr.x]="settings.objectScale * -0.6"
             [attr.y]="settings.objectScale * -0.35 * 1.2"
             [attr.height]="settings.objectScale * 1.2"
-            style="transform: scaleY(-1)"
+            upright
           />
         }
         @if (
@@ -337,7 +337,7 @@
             [attr.x]="settings.objectScale * -0.505 * 1.2"
             [attr.y]="settings.objectScale * -0.435 * 1.2"
             [attr.height]="settings.objectScale * 1.2"
-            style="transform: scaleY(-1)"
+            upright
           />
         }
         @if (
@@ -352,7 +352,7 @@
             [attr.x]="settings.objectScale * -0.505 * 1.2"
             [attr.y]="settings.objectScale * -0.435 * 1.2"
             [attr.height]="settings.objectScale * 1.2"
-            style="transform: scaleY(-1)"
+            upright
           />
         }
       </svg>
@@ -362,7 +362,7 @@
        of it and no gap has to track the rod — the links simply draw over it at
        whatever angle they happen to point. Hatching never rotates with the rod;
        the rails do, because they are the guide itself. -->
-  <g id="railHolder" style="transform: scaleY(-1); pointer-events: none">
+  <g id="railHolder" modelFrame style="pointer-events: none">
     @for (mark of sliderMarkList; track mark.id) {
       @if (mark.rails) {
         <!-- The guide's own frame, not the block's: it is fixed in the world and
@@ -427,13 +427,9 @@
        as one part rather than as a box parked on a joint. The arrows sit on the
        case but still under the links, so the member the motor turns passes over
        them exactly as it passes over the case. -->
-  <g id="motorHolder" style="transform: scaleY(-1)" pointer-events="none">
+  <g id="motorHolder" modelFrame pointer-events="none">
     @for (motor of drivenPinMotors; track motor.id) {
-      <g
-        [attr.transform]="
-          'translate(' + motor.x + ' ' + motor.y + ') rotate(' + motor.angle + ') scale(1 -1)'
-        "
-      >
+      <g [upright]="motor" [uprightTurnedBy]="motor.angle">
         <path [attr.d]="drivenPinCase" fill="#000000" filter="url(#elevation-1)" />
       </g>
     }
@@ -445,7 +441,7 @@
        exists, the ghost goes amber, and dragging back recovers it. That is a
        better answer than a message explaining what already happened. -->
   @if (showStartGhost()) {
-    <g id="startGhostHolder" style="transform: scaleY(-1)">
+    <g id="startGhostHolder" modelFrame>
       @for (ghost of startGhosts(); track ghost.index) {
         <!-- The ghost is also the way back to it. A picture of where the
              machine starts, standing next to the machine, is the most obvious
@@ -517,14 +513,14 @@
        that means nearly the same thing. Above the ghost and below the live
        mechanism, so the drawing still comes first. -->
   @if (dragArcs(); as arcs) {
-    <g id="dragTraceHolder" style="transform: scaleY(-1)" pointer-events="none">
+    <g id="dragTraceHolder" modelFrame pointer-events="none">
       @for (arc of arcs; track $index) {
         <path class="dragTrace" [attr.d]="arc" [attr.stroke-width]="0.01 * settings.objectScale" />
       }
     </g>
   }
 
-  <g id="linkHolder" style="transform: scaleY(-1)">
+  <g id="linkHolder" modelFrame>
     @for (link of mechanismSrv.getLinks(); track link) {
       <ng-container>
         @if (gridUtils.typeOfLink(link) == 'R') {
@@ -596,7 +592,7 @@
        why a random palette can never break the cue. Arrows sit above the plate
        so nothing can tint them: they are always white, and that is only safe
        because what is underneath is always black. -->
-  <g id="sliderHolder" style="transform: scaleY(-1)">
+  <g id="sliderHolder" modelFrame>
     <!-- Ordered by how deep in the stack each body sits, not grouped by
          assembly: a block is above the carrier it slides in, and a link is
          above the block it is pinned to, and no assignment of the two to fixed
@@ -865,7 +861,7 @@
       </g>
     }
   </g>
-  <g id="motorArrowHolder" style="transform: scaleY(-1)" pointer-events="none">
+  <g id="motorArrowHolder" modelFrame pointer-events="none">
     @for (motor of drivenPinMotors; track motor.id) {
       <!-- Placed exactly as the grounded glyph is placed, because it is the
            same element with the same attributes on an asset that differs only
@@ -897,12 +893,12 @@
           [attr.x]="motorArrowBox.x"
           [attr.y]="motorArrowBox.y"
           [attr.height]="motorArrowBox.size"
-          style="transform: scaleY(-1)"
+          upright
         />
       </g>
     }
   </g>
-  <g id="jointHolder" style="transform: scaleY(-1)">
+  <g id="jointHolder" modelFrame>
     @for (joint of mechanismSrv.getJoints(); track joint) {
       <ng-container>
         @if (mechanismSrv.isJointOrphan(joint)) {
@@ -1035,9 +1031,7 @@
               <g
                 class="lockBadge"
                 pointer-events="none"
-                [attr.transform]="
-                  gridUtils.getWelded(joint) ? offsetLockBadgeTransform() : lockBadgeTransform()
-                "
+                [upright]="gridUtils.getWelded(joint) ? lockBadgeShoulder() : ''"
               >
                 <!-- A plain joint's cream circle is chip enough, and the glyph
                      sits dead center on it. A welded joint's plus-mark is its
@@ -1074,20 +1068,14 @@
        grounded joint's hatching. A label nobody can read is worse than no
        label, because the state it names is still true. -->
   @if (showStartGhost()) {
-    <g id="startGhostTags" style="transform: scaleY(-1)" pointer-events="none">
+    <g id="startGhostTags" modelFrame pointer-events="none">
       @for (ghost of startGhosts(); track ghost.index) {
         @if (ghostWarns(ghost)) {
           <!-- A filled pill rather than outlined text. It is the one thing
                drawn over the drawing in any state, so it says its piece plainly
                and gets out of the way; the verb carries the consequence, which
                is what letting go will do rather than what has gone wrong. -->
-          <!-- The holder is flipped, so the pill flips back: text drawn under
-               `scaleY(-1)` reads upside down. -->
-          <g
-            [attr.transform]="
-              'translate(' + ghostTagAt(ghost).x + ',' + -ghostTagAt(ghost).y + ') scale(1,-1)'
-            "
-          >
+          <g [upright]="ghostTagAnchor(ghost)">
             <rect
               class="startGhostTagPill"
               x="0"
@@ -1119,7 +1107,7 @@
        they face. Drawn inside the canvas's y-flip, so the box's greatest y is
        its top edge and the compass names read as they look. -->
   @if (selectionBounds(); as bounds) {
-    <g id="selectionTransformOverlay" class="selectionTransform" style="transform: scaleY(-1)">
+    <g id="selectionTransformOverlay" class="selectionTransform" modelFrame>
       <g [attr.transform]="selectionSpin()">
         @if (selectionBox(bounds); as box) {
           <rect
@@ -1178,7 +1166,7 @@
        drawing, which is why none of it goes through the mechanism's holders and
        none of it survives a tab change without being inserted first. -->
   @if (showSynthesisPositions()) {
-    <g id="synthesis" style="transform: scaleY(-1)" [class.shadow]="synthesisShadowOnly()">
+    <g id="synthesis" modelFrame [class.shadow]="synthesisShadowOnly()">
       <!-- Where the ground pivots have to land, if that has been asked for.
            Under the parts: it is a constraint on the answer, not the answer. -->
       @if (showSynthesis() && synthCanvas.regionBox(); as region) {
@@ -1269,7 +1257,7 @@
                   [attr.height]="settings.objectScale * 1.2"
                   [attr.x]="settings.objectScale * -0.6"
                   [attr.y]="settings.objectScale * -0.35 * 1.2"
-                  style="transform: scaleY(-1)"
+                  upright
                 />
               }
               <!-- The pin that turns wears the motor's mark, from the same two
@@ -1287,7 +1275,7 @@
                   [attr.height]="settings.objectScale * 1.2"
                   [attr.x]="settings.objectScale * -0.505 * 1.2"
                   [attr.y]="settings.objectScale * -0.435 * 1.2"
-                  style="transform: scaleY(-1)"
+                  upright
                 />
               }
             </svg>
@@ -1310,7 +1298,7 @@
             @for (jt of synthCanvas.previewJoints(); track jt.id) {
               <text
                 class="synthPreviewTag"
-                [attr.transform]="'translate(' + jt.x + ',' + jt.y + ') scale(1,-1)'"
+                [upright]="jt"
                 [attr.x]="svgGrid.scaleWithZoom(11)"
                 [attr.y]="svgGrid.scaleWithZoom(-9)"
                 [style.font-size.px]="svgGrid.scaleWithZoom(13)"
@@ -1484,7 +1472,7 @@
                rather than bare text: it is read against whatever the drawing
                puts behind it, and gray words over a link are words nobody can
                read. -->
-            <g [attr.transform]="'translate(' + chip.x + ',' + chip.y + ') scale(1,-1)'">
+            <g [upright]="chip">
               <rect
                 class="synthChip"
                 [class.synthChip--sel]="chip.selected"
@@ -1526,10 +1514,7 @@
 
       <!-- What the next click will do, beside the pointer that will do it. -->
       @if (showSynthesis() && synthesisHint; as hint) {
-        <g
-          pointer-events="none"
-          [attr.transform]="'translate(' + hint.x + ',' + hint.y + ') scale(1,-1)'"
-        >
+        <g pointer-events="none" [upright]="hint">
           <text
             class="synthHint"
             [attr.x]="svgGrid.scaleWithZoom(18)"
@@ -1555,7 +1540,7 @@
 
   <!--  For Debugging-->
   @if (settings.isGridDebugOn) {
-    <g style="transform: scaleY(-1); pointer-events: none">
+    <g modelFrame style="pointer-events: none">
       @for (line of getDebugLines(); track line) {
         <ng-container>
           <circle
@@ -1645,7 +1630,8 @@
               [attr.d]="mechanismSrv.getJointPath(joint)"
               fill="none"
               [attr.stroke-width]="0.01 * settings.objectScale"
-              style="transform: scaleY(-1); pointer-events: none"
+              modelFrame
+              style="pointer-events: none"
             ></path>
           }
         </ng-container>
@@ -1659,7 +1645,7 @@
        happening now, and moves with the animation. Both come from the service
        already cached, because this group is redrawn every frame. -->
   @if (mechanismSrv.anyVectorTrace) {
-    <g id="vectorTraceHolder" style="transform: scaleY(-1); pointer-events: none">
+    <g id="vectorTraceHolder" modelFrame style="pointer-events: none">
       @for (trace of mechanismSrv.vectorTracePaths(); track trace.key) {
         <path
           [attr.d]="trace.d"
@@ -1699,7 +1685,7 @@
       [attr.cursor]="force.locked && mechanismSrv.lockVisualsOn() ? 'not-allowed' : 'move'"
       [class.force-inert]="mechanismSrv.isPartInert(force.link)"
       [class.force-locked]="force.locked && mechanismSrv.lockVisualsOn()"
-      style="transform: scaleY(-1)"
+      modelFrame
       (contextmenu)="setLastRightClick(force)"
       (pointerdown)="beginDraggingForceBody(force, $event); setLastLeftClick(force)"
       (pointerover)="force.showHighlight = true"
@@ -1736,11 +1722,7 @@
           <!-- Same badge the joints wear, at the anchor: a force has no joint
                to carry it, so the mark rides where the load is applied. -->
           @if (force.locked && mechanismSrv.lockVisualsOn()) {
-            <g
-              class="lockBadge"
-              pointer-events="none"
-              [attr.transform]="offsetLockBadgeTransform()"
-            >
+            <g class="lockBadge" pointer-events="none" [upright]="lockBadgeShoulder()">
               <circle
                 [attr.r]="0.13 * settings.objectScale"
                 fill="#ffffff"
@@ -1911,7 +1893,7 @@
     }
   </g>
   @if (settings.isShowCOM.value || settings.previewCoMLinkId) {
-    <g id="comTagHolder" style="transform: scaleY(-1); pointer-events: none">
+    <g id="comTagHolder" modelFrame style="pointer-events: none">
       @for (link of mechanismSrv.getLinks(); track link) {
         @if (showsCoM(link)) {
           <svg style="overflow: visible">
@@ -2052,7 +2034,7 @@
   <!-- The bar being drawn. Same capsule, same half-width as the link it will
        become, so the preview is the part rather than a line suggesting one. -->
   @if (linkPreview; as preview) {
-    <g style="pointer-events: none; transform: scaleY(-1)" opacity="0.5">
+    <g modelFrame style="pointer-events: none" opacity="0.5">
       <path
         [attr.d]="preview.bar"
         [attr.fill]="preview.fill"
@@ -2065,7 +2047,7 @@
   <!-- The force being drawn. Same two paths the finished arrow is made of, so
        what is previewed is exactly what the next click will create. -->
   @if (forceGhost; as ghost) {
-    <g id="forceTempHolder" opacity="0.5" style="pointer-events: none; transform: scaleY(-1)">
+    <g id="forceTempHolder" opacity="0.5" modelFrame style="pointer-events: none">
       <circle
         [attr.cx]="ghost.startCoord.x"
         [attr.cy]="ghost.startCoord.y"
@@ -2086,7 +2068,7 @@
     this.showLinkLengthOverlay >= -1 &&
     this.showLinkAngleOverlay < -1
   ) {
-    <g style="pointer-events: none; transform: scaleY(-1)">
+    <g modelFrame style="pointer-events: none">
       <path
         [attr.d]="getSVGPerpendicularLine1() + getSVGPerpendicularLine2()"
         [attr.stroke-width]="0.02 * settings.objectScale"
@@ -2110,9 +2092,7 @@
       ></path>
       <text
         text-anchor="middle"
-        style="transform: scaleY(-1)"
-        [attr.x]="getSVGLengthOverlayTextPos().x"
-        [attr.y]="-getSVGLengthOverlayTextPos().y"
+        [upright]="getSVGLengthOverlayTextPos()"
         [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
         [attr.font-size]="svgGrid.scaleWithZoom(20)"
       >
@@ -2129,7 +2109,7 @@
     (activeObjService.objType == 'Link' || activeObjService.objType == 'Joint') &&
     this.showLinkAngleOverlay >= -1
   ) {
-    <g style="pointer-events: none; transform: scaleY(-1)">
+    <g modelFrame style="pointer-events: none">
       <path
         [attr.d]="getSVGAngleOverlayLines()"
         [attr.stroke-width]="0.02 * settings.objectScale"
@@ -2145,9 +2125,7 @@
       ></path>
       <text
         text-anchor="left"
-        style="transform: scaleY(-1)"
-        [attr.x]="getSVGAngleOverlayTextPos().x"
-        [attr.y]="-getSVGAngleOverlayTextPos().y"
+        [upright]="getSVGAngleOverlayTextPos()"
         [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
         [attr.font-size]="svgGrid.scaleWithZoom(20)"
       >
@@ -2164,7 +2142,7 @@
        frame's zero, along the hovered axis, to the center of mass — whose
        mark the same hover previews. -->
   @if (comMeasure && comMeasureValue(comMeasure) > 1e-9 ? comMeasure : null; as measure) {
-    <g style="pointer-events: none; transform: scaleY(-1)">
+    <g modelFrame style="pointer-events: none">
       <line
         [attr.x1]="comMeasureLine(measure).from.x"
         [attr.y1]="comMeasureLine(measure).from.y"
@@ -2190,9 +2168,7 @@
            there would run the digits through the stroke. -->
       <text
         [attr.text-anchor]="measure.axis === 'y' ? 'start' : 'middle'"
-        style="transform: scaleY(-1)"
-        [attr.x]="comMeasureLabelPos(measure).x"
-        [attr.y]="-comMeasureLabelPos(measure).y"
+        [upright]="comMeasureLabelPos(measure)"
         [attr.font-size]="svgGrid.scaleWithZoom(20)"
       >
         {{ nup.formatModelLength(comMeasureValue(measure), settings.lengthUnit.getValue()) }}
@@ -2203,7 +2179,7 @@
        picture for both size fields: Travel is how long this line is, Starts at
        is how far along it the ram is standing right now. -->
   @if (cylinderRange; as range) {
-    <g style="pointer-events: none; transform: scaleY(-1)">
+    <g modelFrame style="pointer-events: none">
       <line
         [attr.x1]="range.from.x"
         [attr.y1]="range.from.y"
@@ -2239,9 +2215,7 @@
       }
       <text
         text-anchor="middle"
-        style="transform: scaleY(-1)"
-        [attr.x]="cylinderRangeLabelPos(range).x"
-        [attr.y]="-cylinderRangeLabelPos(range).y"
+        [upright]="cylinderRangeLabelPos(range)"
         [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
         [attr.font-size]="svgGrid.scaleWithZoom(20)"
       >
@@ -2250,7 +2224,7 @@
     </g>
   }
   @if (slotAngleGuide; as guide) {
-    <g style="pointer-events: none; transform: scaleY(-1)">
+    <g modelFrame style="pointer-events: none">
       <!-- The frame the number is in: +x from the block, dashed, because it is
            a reference rather than a part of the mechanism. -->
       <line
@@ -2281,9 +2255,7 @@
       />
       <text
         text-anchor="middle"
-        style="transform: scaleY(-1)"
-        [attr.x]="guide.labelAt.x"
-        [attr.y]="-guide.labelAt.y"
+        [upright]="guide.labelAt"
         [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
         [attr.font-size]="svgGrid.scaleWithZoom(20)"
       >

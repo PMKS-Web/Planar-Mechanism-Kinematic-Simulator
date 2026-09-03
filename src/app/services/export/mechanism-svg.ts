@@ -23,7 +23,7 @@ export function mechanismSvg(
   }
 
   // Model y points up and SVG y points down, which is why the canvas itself
-  // draws through a scaleY(-1); here the flip is folded into the projection.
+  // draws through `modelFrame`; here the flip is folded into the projection.
   const xs = drawn.map((joint) => joint.x);
   const ys = drawn.map((joint) => -joint.y);
   const pad = 26;
