@@ -423,11 +423,13 @@ export class MechanismBuilder {
     // edit at all -- editing is gated on being at the start pose -- and nothing
     // on screen says why.
     //
-    // Undo and redo are the case the index is trustworthy in: same mechanism,
-    // same cycle, one step of its own history, and returning the reader to the
-    // frame they were watching is the whole point. Everything else -- the
-    // opening decode, a project, a template -- is a different mechanism
-    // arriving, and it should draw the pose it encodes.
+    // Nobody restores it now. Undo and redo used to, on the grounds that one
+    // step of a mechanism's own history is the same cycle -- but the seek that
+    // put the drawing on that sample was removed when editing away from the
+    // start became legal (the restored geometry is older, with a different
+    // cycle), and a step restored with no seek behind it is a transport
+    // reading one pose over a drawing showing another. Kept as a parameter so
+    // the codec still round-trips the number it carries.
     this.mechanism.mechanismTimeStep = restorePlayhead
       ? this.transcoder.getIntSetting(IntSetting.TIMESTEP)
       : 0;

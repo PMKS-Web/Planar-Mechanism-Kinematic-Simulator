@@ -84,6 +84,33 @@ const look = () =>
         : null,
       // What is drawn right now, for the states with no cycle.
       shown: Object.fromEntries(s.joints.map((j) => [j.id, [round(j.x), round(j.y)]])),
+      // Whether every link body is drawn where its pins are. A solved sample's
+      // outline used to be realized from the source link *after* the display
+      // had moved it, so after a seek the bodies stayed at the pose before
+      // while the pins went on: a delete at a displaced pose left the linkage
+      // visibly in two places at once.
+      linksAdrift: s.links
+        .filter((l) => typeof l.d === 'string' && l.d.length > 0 && l.joints.length >= 2)
+        .filter((l) => {
+          const numbers = (l.d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+          if (numbers.length < 4) return false;
+          const xs = numbers.filter((_, i) => i % 2 === 0);
+          const ys = numbers.filter((_, i) => i % 2 === 1);
+          const box = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+          const margin = Math.max(80, 0.3 * Math.hypot(box[1] - box[0], box[3] - box[2]));
+          return l.joints.some(
+            (j) =>
+              j.x < box[0] - margin ||
+              j.x > box[1] + margin ||
+              j.y < box[2] - margin ||
+              j.y > box[3] + margin
+          );
+        })
+        .map((l) => l.id),
+      forces: s.forces
+        .map((f) => f.id)
+        .sort()
+        .join(','),
       anchor: s.anchorOf(0)?.coordinate ?? null,
       // What the design is made of and how it is flagged -- the things a URL
       // would carry, less the pose. A trace is a view of the mechanism and is
@@ -237,6 +264,11 @@ const undo = async () => {
   await page.waitForTimeout(500);
 };
 
+/** Undo until the history stands where it stood before the action, if it moved. */
+const undoToBefore = async (before) => {
+  for (let i = 0; i < 8 && (await look()).history[0] > before.history[0]; i++) await undo();
+};
+
 // ---- the invariants ----------------------------------------------------------
 
 /** The rows that read the pose they are made at (§6.2: capturing). */
@@ -251,9 +283,25 @@ const clocksAgree = (state) =>
  * `kind` is 'identity' or 'capturing'; `changed` says whether the action was
  * expected to change anything at all.
  */
-function judge(what, kind, before, after, afterUndo) {
+function judge(what, kind, before, after, afterUndo, followUps = []) {
   const problems = [];
   if (after.staged !== null) problems.push(`left staged: ${after.staged}`);
+  if (after.linksAdrift.length) {
+    problems.push(`links drawn away from their pins: ${after.linksAdrift}`);
+  }
+  for (const [step, state] of followUps) {
+    if (state.staged !== null) problems.push(`${step}: left staged`);
+    if (state.pill || state.amber) problems.push(`${step}: warning left up`);
+    if (!clocksAgree(state)) {
+      problems.push(
+        `${step}: clocks disagree ${JSON.stringify({ atStart: state.atStart, step: state.step, seconds: state.seconds })}`
+      );
+    }
+    if (state.linksAdrift.length) {
+      problems.push(`${step}: links drawn away from their pins: ${state.linksAdrift}`);
+    }
+    if (state.errors?.length) problems.push(`${step}: page errors ${state.errors.join(' | ')}`);
+  }
   if (after.pill || after.amber)
     problems.push(`warning left up: pill ${after.pill} amber ${after.amber}`);
   if (!clocksAgree(after))
@@ -276,8 +324,9 @@ function judge(what, kind, before, after, afterUndo) {
   }
   // An edit that changed the design minted an entry, and Undo puts the design
   // back exactly, at its start. One that changed nothing minted none, and the
-  // drawing simply stays where it was.
-  const undone = afterUndo.history[1] === after.history[1] && after.history[1] > before.history[1];
+  // drawing simply stays where it was. (The follow-ups may have minted more
+  // entries of their own; the walk back went to the entry before the edit.)
+  const undone = after.history[1] > before.history[1];
   if (after.design !== before.design && !undone) {
     problems.push(
       `changed the design without an entry to undo it: ${before.design} -> ${after.design}`
@@ -301,6 +350,68 @@ function judge(what, kind, before, after, afterUndo) {
   if (errors.length) problems.push(`page errors: ${errors.splice(0).join(' | ')}`);
   record(what, problems.length === 0, problems);
   ledger.push([what, kind, problems.length === 0 ? 'ok' : problems[0]]);
+}
+
+/**
+ * What a reader does next, after an edit that landed at a displaced pose:
+ * runs it, deletes the thing the edit made, and walks the history back and
+ * forward. Each is a place a stale piece of state has shown up -- a link body
+ * left where the pins were, a clock that stopped agreeing with the pose, a
+ * design that a redo could not put back.
+ */
+async function followUps(before, after) {
+  const states = [];
+  const snapshot = async (label) => {
+    const state = await look();
+    state.errors = errors.splice(0);
+    states.push([label, state]);
+    return state;
+  };
+  // Run it, then stop: the display has to draw the new cycle from where it is.
+  if (after.valid) {
+    await page.locator('.playButton').click();
+    await page.waitForTimeout(350);
+    await page.locator('.playButton').click();
+    await page.waitForTimeout(250);
+    await snapshot('played');
+  }
+  // Delete what the edit made, while still parked away from the start.
+  const newJoints = [...after.joints].filter((id) => !before.joints.includes(id));
+  const newForces = after.forces
+    .split(',')
+    .filter((id) => id && !before.forces.split(',').includes(id));
+  for (const id of newForces) {
+    await page.evaluate((id) => {
+      const s = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+      const force = s.forces.find((f) => f.id === id);
+      if (force) s.deleteForce(force);
+    }, id);
+    await page.waitForTimeout(400);
+  }
+  for (const id of newJoints) {
+    const present = await page.evaluate((id) => {
+      const g = ng.getComponent(document.querySelector('app-new-grid'));
+      const joint = g.mechanismSrv.joints.find((j) => j.id === id);
+      if (!joint) return false;
+      g.activeObjService.updateSelectedObj(joint);
+      g.mechanismSrv.deleteJoint();
+      return true;
+    }, id);
+    if (present) await page.waitForTimeout(400);
+  }
+  if (newJoints.length || newForces.length) await snapshot('deleted what it made');
+  // Back through the history to before the edit, and forward again.
+  const back = await look();
+  for (let i = 0; i < 6 && (await look()).history[0] > before.history[0]; i++) await undo();
+  await snapshot('undone to before');
+  for (let i = 0; i < 6 && (await look()).history[0] < back.history[0]; i++) {
+    await page.evaluate(() =>
+      ng.getComponent(document.querySelector('app-new-grid')).saveHistoryService.redo()
+    );
+    await page.waitForTimeout(500);
+  }
+  await snapshot('redone');
+  return states;
 }
 
 // ---- 1. every context-menu row -----------------------------------------------
@@ -402,10 +513,11 @@ for (const mechanism of MECHANISMS) {
       }
       const after = await look();
       const kindOfEdit = CAPTURING.test(row.label) ? 'capturing' : 'identity';
+      const later = after.history[1] > before.history[1] ? await followUps(before, after) : [];
       // One entry per edit; a row that changed nothing minted none.
-      if (after.history[1] > before.history[1]) await undo();
+      await undoToBefore(before);
       const afterUndo = await look();
-      judge(what, kindOfEdit, before, after, afterUndo);
+      judge(what, kindOfEdit, before, after, afterUndo, later);
     }
   }
 }
@@ -507,7 +619,8 @@ for (const mechanism of MECHANISMS) {
       await page.waitForTimeout(500);
       const after = await look();
       const kindOfEdit = CAPTURING_FIELDS.test(field) ? 'capturing' : 'identity';
-      if (after.history[1] > before.history[1]) await undo();
+      const later = after.history[1] > before.history[1] ? await followUps(before, after) : [];
+      await undoToBefore(before);
       const afterUndo = await look();
       // A pose-bound field that is *enabled* here is a finding in itself.
       if (POSE_FIELDS.test(field)) {
@@ -515,7 +628,7 @@ for (const mechanism of MECHANISMS) {
         ledger.push([what, 'live', 'pose-bound field enabled while displaced']);
         continue;
       }
-      judge(what, kindOfEdit, before, after, afterUndo);
+      judge(what, kindOfEdit, before, after, afterUndo, later);
     }
   }
 }
@@ -539,7 +652,7 @@ for (const [key, kindOfEdit] of [
   await page.keyboard.press(key);
   await page.waitForTimeout(500);
   const after = await look();
-  if (after.history[1] > before.history[1]) await undo();
+  await undoToBefore(before);
   const afterUndo = await look();
   judge(`key · ${key}`, kindOfEdit, before, after, afterUndo);
 }

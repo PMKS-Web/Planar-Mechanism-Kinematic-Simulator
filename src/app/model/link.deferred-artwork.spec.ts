@@ -35,7 +35,7 @@ function sampleOf(source: RealLink, ax: number, ay: number, bx: number, by: numb
 }
 
 const deferred = (link: RealLink): boolean =>
-  (link as unknown as { visualSource?: RealLink }).visualSource !== undefined;
+  (link as unknown as { visualSource?: object }).visualSource !== undefined;
 
 describe('a solved sample defers copying its link artwork', () => {
   it('waits until the path is read, then answers with the rigid move of the source', () => {
@@ -87,5 +87,28 @@ describe('a solved sample defers copying its link artwork', () => {
     link.CoM = new Coord(1000, 2000);
     link.updateCoMDs();
     expect(link.CoM_d3).toContain('M1000 2000');
+  });
+  it('carries the artwork from where the source stood when the sample was made', () => {
+    // The source is the editable link, and the display moves its joints and
+    // rewrites its path before a sample's outline is first read. Read live,
+    // the move from source to sample was the identity and the body stayed a
+    // frame behind its pins.
+    const source = bar('AB', 0, 0, 4, 0);
+    const expected = transformRigidPath(
+      source.d,
+      source.joints[0],
+      source.joints[1],
+      { x: 1, y: 1 },
+      { x: 1, y: 5 }
+    );
+    const sample = sampleOf(source, 1, 1, 1, 5);
+    expect(deferred(sample)).toBe(true);
+    // The display moves on before anything reads the sample.
+    source.joints[0].x = 10;
+    source.joints[0].y = 10;
+    source.joints[1].x = 14;
+    source.joints[1].y = 10;
+    source.d = 'M 99 99 L 100 100 Z';
+    expect(sample.d).toBe(expected);
   });
 });

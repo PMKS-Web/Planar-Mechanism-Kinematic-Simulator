@@ -79,10 +79,16 @@ describe('a mechanism arriving from a URL', () => {
     expect(mechanism.isAtStartPose()).toBe(true);
   });
 
-  it('still keeps the playhead when undo and redo step through history', () => {
-    // The stored index, restored: this is the caller it was written for, and
-    // zeroing it everywhere would have taken the frame away from undo too.
+  it('rests at the start after undo and redo as well', () => {
+    // Undo and redo used to be the one caller that restored the stored index,
+    // on the grounds that a step of a mechanism's own history is the same
+    // cycle. The seek that put the drawing on that sample went when editing
+    // away from the start became legal (plan §6.4: pose is not part of
+    // history), and a step restored with no seek behind it was a transport
+    // reading a third of a turn over a drawing standing at its start -- which
+    // the permission model believed, and refused to let the reader edit.
     const mechanism = decode(true);
-    expect(mechanism.mechanismTimeStep).toBe(31);
+    expect(mechanism.mechanismTimeStep).toBe(0);
+    expect(mechanism.isAtStartPose()).toBe(true);
   });
 });

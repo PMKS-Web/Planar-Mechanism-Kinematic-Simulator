@@ -37,9 +37,12 @@ their source. Everything browser-driven lives here.
   what each action *should* do (§7 of `docs/edit-mode-playback-plan.md` does); it checks what is
   left behind: nothing staged, no warning pill without a hand on the drawing, clocks that agree
   about being at the start, an identity-addressed edit leaving the start pose byte-identical, a
-  capturing edit keeping the anchor or saying the start moved, and Undo restoring the design
-  exactly. A row or field that is refused is recorded as refused *with words*. Writes the table to
-  `artifacts/posed-edit-audit/matrix.md`. Slow: about a quarter of an hour, one fresh load per action
+  capturing edit keeping the anchor or saying the start moved, every link body drawn where its
+  pins are, and Undo restoring the design exactly. After each edit that landed it also does what a
+  reader does next -- runs the machine, deletes what the edit made, undoes to before and redoes --
+  and judges those states too. A row or field that is refused is recorded as refused *with words*.
+  Writes the table to `artifacts/posed-edit-audit/matrix.md`. Slow: half an hour, one fresh load
+  per action
 - `analysis-editing.mjs` — `docs/analysis-mode-editing-plan.md`: what an analysis mode allows now
   (drag, undo) and still refuses (adding, deleting, welding), click-selects-drag-tunes, the
   before/after comparison overlay and the axis holding still under it, the peak said as two

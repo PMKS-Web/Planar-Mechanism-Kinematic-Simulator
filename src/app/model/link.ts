@@ -149,7 +149,25 @@ export class RealLink extends Link {
    * it on first read, and the source is a solved sample's own clone, which
    * nothing changes afterwards.
    */
-  private visualSource?: RealLink;
+  /**
+   * The artwork this link is a copy of, taken the moment it was made.
+   *
+   * A snapshot, not the source link: the source is the editable link, and by
+   * the time a solved sample's outline is first read -- the first frame of a
+   * seek -- the display has already moved that link's joints to the new pose
+   * and written the previous frame's path over its `d`. Read live, the rigid
+   * move from "where the source stood" to "where this sample stands" was the
+   * identity, and every link body was drawn one frame behind its pins: a lag
+   * of a degree during playback, and a whole jump after a seek, where the
+   * bodies stayed at the start pose while the pins went to two seconds in.
+   */
+  private visualSource?: {
+    d: string;
+    externalLines: Line[];
+    initialExternalLines: Line[];
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+  };
   private _externalLines: Line[] = [];
   private _initialExternalLines: Line[] = [];
   /** The four center-of-mass quadrant paths are built when first read, too. */
@@ -412,7 +430,14 @@ export class RealLink extends Link {
       visualSource.joints.length >= 2 &&
       this.joints.length >= 2
     ) {
-      this.visualSource = visualSource;
+      const [from, to] = visualSource.joints;
+      this.visualSource = {
+        d: visualSource.d,
+        externalLines: visualSource.externalLines,
+        initialExternalLines: visualSource.initialExternalLines,
+        from: { x: from.x, y: from.y },
+        to: { x: to.x, y: to.y },
+      };
     } else {
       this._d = this.getPathString();
     }
@@ -435,12 +460,9 @@ export class RealLink extends Link {
     const source = this.visualSource;
     if (!source) return;
     this.visualSource = undefined;
-    this.copyVisualGeometryFrom(source);
-  }
-
-  private copyVisualGeometryFrom(source: RealLink): void {
-    const [sourceStart, sourceEnd] = source.joints;
     const [targetStart, targetEnd] = this.joints;
+    const sourceStart = source.from;
+    const sourceEnd = source.to;
     this._d = transformRigidPath(source.d, sourceStart, sourceEnd, targetStart, targetEnd);
     this.externalLines = this.transformVisualLines(
       source.externalLines,
@@ -460,10 +482,10 @@ export class RealLink extends Link {
 
   private transformVisualLines(
     lines: Line[],
-    sourceStart: Joint,
-    sourceEnd: Joint,
-    targetStart: Joint,
-    targetEnd: Joint
+    sourceStart: { x: number; y: number },
+    sourceEnd: { x: number; y: number },
+    targetStart: { x: number; y: number },
+    targetEnd: { x: number; y: number }
   ): Line[] {
     const transformed = lines.map((line) => {
       const start = transformRigidCoord(

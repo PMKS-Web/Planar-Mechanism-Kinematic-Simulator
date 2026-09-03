@@ -148,7 +148,14 @@ export class UrlProcessorService {
           this.settingsSrv,
           this.activeObj
         );
-        builder.build(updateSettings, continuingHistory);
+        // Never the playhead. A history step used to note the sample the
+        // reader was watching and seek the rebuilt drawing to it again; that
+        // seek is gone (below), so restoring the *step* alone put the shared
+        // clock at sample 120 over a drawing standing at its start -- the
+        // transport read a third of a turn, the pose said zero, and the
+        // permission model believed the transport. Pose is not part of
+        // history (plan §6.4); neither is the number that names one.
+        builder.build(updateSettings, false);
         // After the mechanism, because a design is about a machine that is not
         // on the grid yet and so has nothing in the build to wait for -- but
         // before the rebuild below, so the panel and the canvas come up

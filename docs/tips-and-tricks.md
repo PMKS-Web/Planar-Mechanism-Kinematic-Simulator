@@ -892,6 +892,18 @@ frame is the number a reader feels. To see *why* a number moved, `node e2e/drag-
 blank page at the start of each run, and profile the second drag on a page, because the first
 runs 15 to 25% slower while the JIT warms up.
 
+**The deferred link artwork is a snapshot, and has to stay one.** A solved sample's `RealLink`
+carries its outline across from the editable link lazily (fix 1 above). The first version kept a
+reference to the editable link and read its `d` and its joints when the outline was first asked
+for -- which is the first frame of a seek, after the display has already moved those joints and
+written the previous frame's path over `d`. The rigid move from source to sample was then the
+identity: bodies lagged their pins by a degree in playback and by the whole jump after any seek,
+and a delete at a displaced pose left the linkage drawn in two places at once. The sample now
+snapshots the path, the lines and the two pin coordinates at construction, which costs a few
+numbers and keeps the string work deferred. `e2e/posed-edit-audit.mjs` checks every link body
+against its pins after every action; the pixel diff that cleared the original change compared
+poses reached by playback, where a one-sample lag is invisible.
+
 ## Deploys, domains and surrounding services
 
 - **Production is [app.pmksplus.com](https://app.pmksplus.com)**, deployed from `main`. **Never
