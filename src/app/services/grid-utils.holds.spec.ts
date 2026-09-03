@@ -206,6 +206,21 @@ describe('a typed length or angle near a lock', () => {
     expect(parts.bc.length).toBeCloseTo(5 * S, 3);
   });
 
+  it('gives a bar with a locked length the typed angle, sign and all', () => {
+    // AB points straight up with its length locked; asked for -90 degrees it
+    // must point straight down, not stay where it is on the same line.
+    const parts = fourBar(service);
+    parts.ab.hold = 'length';
+    expect(grid.setBarValue(parts.ab, 'angle', -Math.PI / 2)).toBe('applied');
+    expect(parts.b.x).toBeCloseTo(0, 3);
+    expect(parts.b.y).toBeCloseTo(-2 * S, 3);
+    expect(parts.ab.hold).toBe('length');
+    // And at an angle off the line it stood on, the locked length still holds.
+    expect(grid.setBarValue(parts.ab, 'angle', Math.PI / 6)).toBe('applied');
+    expect(dist(parts.a, parts.b)).toBeCloseTo(2 * S, 3);
+    expect(Math.atan2(parts.b.y - parts.a.y, parts.b.x - parts.a.x)).toBeCloseTo(Math.PI / 6, 4);
+  });
+
   it('keeps a locked bar locked at the number typed into it', () => {
     const parts = fourBar(service);
     parts.bc.hold = 'length';

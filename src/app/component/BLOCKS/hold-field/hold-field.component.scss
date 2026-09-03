@@ -47,7 +47,12 @@
 
       .customInput {
         @include mat.m2-typography-level($typography-config, 'body-2');
-        // Room for the padlock, and for the word beside it once locked.
+        // Room for the padlock, and for the word beside it once locked. Inside
+        // the width, not on top of it: Material gives the input its full
+        // width, and padding added to that ran the box past the field's right
+        // edge, so a click at the visible end of the field landed on the
+        // padlock instead of in the text.
+        box-sizing: border-box;
         padding-right: 22px;
       }
 
@@ -97,6 +102,13 @@
       &:hover,
       &.on {
         color: $accent;
+      }
+
+      // Down onto the number's baseline: an 11px word centered beside a 15px
+      // icon sits a few pixels above the 14px number it shares a field with.
+      .word {
+        position: relative;
+        top: 2.5px;
       }
     }
   }

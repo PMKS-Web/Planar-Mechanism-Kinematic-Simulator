@@ -389,7 +389,9 @@ export class GridUtilsService {
     if (!(a instanceof RealJoint) || !(b instanceof RealJoint) || link.joints.length !== 2) {
       return 'unheld';
     }
-    const others = heldBars(links).filter((bar) => bar.id !== link.id);
+    // The bar's own hold on the *other* value stays in force: typing an
+    // angle into a bar with a locked length turns it at that length.
+    const others = heldBars(links).filter((bar) => !(bar.id === link.id && bar.hold === kind));
     const reach = reachedByHolds([a.id, b.id], others).bars;
     const frozen = this.frozenJointIds();
     // A locked end is an anchor the solver knows how to keep; the panel's own
@@ -408,7 +410,9 @@ export class GridUtilsService {
     const solved = settleHolds(
       joints,
       [...others, asked],
-      [a, b].map((joint) => ({ id: joint.id, x: joint.x, y: joint.y }))
+      [a, b].map((joint) => ({ id: joint.id, x: joint.x, y: joint.y })),
+      // A typed number changes the holds; the ends go where it puts them.
+      { holdStill: false }
     );
     if (!solved.satisfied) {
       this.lastHoldRefusal = {

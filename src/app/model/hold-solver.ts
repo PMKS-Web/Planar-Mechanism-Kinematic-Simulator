@@ -106,11 +106,24 @@ export function reachedByHolds(
   return { joints, bars: reached };
 }
 
+export interface SettleOptions {
+  /**
+   * Whether a goal the holds leave no freedom is held still rather than
+   * asked. True for a drag, where an ask the joint cannot follow must not
+   * hop it to a mirror assembly. False for a typed value, which changes the
+   * holds themselves: the joint has to move to wherever the new number puts
+   * it, however determined it was under the old ones.
+   */
+  holdStill?: boolean;
+}
+
 export function settleHolds(
   joints: readonly HoldJoint[],
   bars: readonly HoldBar[],
-  goals: readonly HoldGoal[]
+  goals: readonly HoldGoal[],
+  options: SettleOptions = {}
 ): HoldSolution {
+  const holdStill = options.holdStill ?? true;
   const byId = new Map(joints.map((joint) => [joint.id, joint]));
   const reach = reachedByHolds(
     goals.map((goal) => goal.id),
@@ -136,7 +149,7 @@ export function settleHolds(
     const joint = byId.get(id);
     if (!joint) continue;
     const goal = goalById.get(id);
-    const still = joint.fixed || immovable.includes(id);
+    const still = joint.fixed || (holdStill && immovable.includes(id));
     pos.set(id, still || !goal ? { x: joint.x, y: joint.y } : { x: goal.x, y: goal.y });
     weight.set(id, still ? 0 : goal ? GOAL_WEIGHT : 1);
   }
@@ -228,8 +241,12 @@ function project(
     q.y -= uy * sq;
     return Math.abs(err);
   }
-  // Angle: the pair must lie along the held direction. Move each joint across
-  // that direction until the offset between them is gone.
+  // Angle: the pair must lie along the held direction, and point the held
+  // way along it. Move each joint across that direction until the offset
+  // between them is gone -- and if the bar is pointing backwards along the
+  // line, turn it round: an angle of -30 degrees is not 150, though the two
+  // share a line, and with the length held too a bar asked for -30 used to
+  // settle nearest to where it stood, which was 150.
   const nx = -Math.sin(bar.angle);
   const ny = Math.cos(bar.angle);
   const across = (q.x - p.x) * nx + (q.y - p.y) * ny;
@@ -239,7 +256,18 @@ function project(
   p.y += ny * sp;
   q.x -= nx * sq;
   q.y -= ny * sq;
-  return Math.abs(across);
+  const ux = Math.cos(bar.angle);
+  const uy = Math.sin(bar.angle);
+  const along = (q.x - p.x) * ux + (q.y - p.y) * uy;
+  if (along >= 0) return Math.abs(across);
+  // Reflect the pair through their weighted midpoint so q is ahead of p.
+  const tp = (wp / total) * 2 * along;
+  const tq = (wq / total) * 2 * along;
+  p.x += ux * tp;
+  p.y += uy * tp;
+  q.x -= ux * tq;
+  q.y -= uy * tq;
+  return Math.max(Math.abs(across), Math.abs(2 * along));
 }
 
 /** How far a hold is from true, in model units. */
@@ -247,7 +275,10 @@ function residual(bar: HoldBar, pos: Map<string, { x: number; y: number }>): num
   const p = pos.get(bar.a)!;
   const q = pos.get(bar.b)!;
   if (bar.hold === 'length') return Math.abs(Math.hypot(q.x - p.x, q.y - p.y) - bar.length);
-  return Math.abs((q.x - p.x) * -Math.sin(bar.angle) + (q.y - p.y) * Math.cos(bar.angle));
+  const across = (q.x - p.x) * -Math.sin(bar.angle) + (q.y - p.y) * Math.cos(bar.angle);
+  const along = (q.x - p.x) * Math.cos(bar.angle) + (q.y - p.y) * Math.sin(bar.angle);
+  // Pointing the wrong way along the line is as false as being off it.
+  return along < 0 ? Math.max(Math.abs(across), -along) : Math.abs(across);
 }
 
 /**

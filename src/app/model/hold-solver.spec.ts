@@ -67,6 +67,28 @@ describe('settling held bars', () => {
     expect(b.y).toBeCloseTo(3, 6);
   });
 
+  it('turns a bar round for an angle on the other side of the line', () => {
+    // A fixed, AB pointing at 30 degrees with its length held, asked for
+    // -30 degrees: the same line, the other way. B has to swing round to the
+    // -30 ray, not stay put where it happens already to be on the line.
+    const joints = [
+      J('A', 0, 0, true),
+      J('B', Math.cos(Math.PI / 6) * 4, Math.sin(Math.PI / 6) * 4),
+    ];
+    const bars: HoldBar[] = [
+      bar('AB', 'A', 'B', 'length', joints),
+      { id: 'AB*', a: 'A', b: 'B', hold: 'angle', length: 4, angle: -Math.PI / 6 },
+    ];
+    // A typed value's ask: B is where it is, and goes where the new hold puts it.
+    const out = settleHolds(joints, bars, [{ id: 'B', x: joints[1].x, y: joints[1].y }], {
+      holdStill: false,
+    });
+    const b = out.positions.get('B')!;
+    expect(out.satisfied).toBe(true);
+    expect(b.x).toBeCloseTo(Math.cos(-Math.PI / 6) * 4, 4);
+    expect(b.y).toBeCloseTo(Math.sin(-Math.PI / 6) * 4, 4);
+  });
+
   it('refuses a joint with no freedom left, and says which it is', () => {
     // B between two held lengths from two grounds: a rigid triangle.
     const joints = [J('A', 0, 0, true), J('B', 3, 4), J('C', 6, 0, true)];
