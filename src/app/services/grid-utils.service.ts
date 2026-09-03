@@ -319,6 +319,11 @@ export class GridUtilsService {
    * `lastHoldRefusal` says what, if anything, could not be granted.
    */
   settleHolds(goals: readonly HoldGoal[]): Set<string> | undefined {
+    // Every ask starts clean. A refusal that stood from an earlier move used
+    // to survive the bars being unlocked, because a drawing with no holds
+    // returns here before anything below could clear it -- and the canvas
+    // went on reporting a limit that no longer existed.
+    this.lastHoldRefusal = undefined;
     const links = this.mechanismSrv.links;
     const bars = heldBars(links);
     if (bars.length === 0) return undefined;
@@ -378,6 +383,7 @@ export class GridUtilsService {
     kind: 'length' | 'angle',
     value: number
   ): 'unheld' | 'applied' | 'refused' {
+    this.lastHoldRefusal = undefined;
     const links = this.mechanismSrv.links;
     const [a, b] = link.joints;
     if (!(a instanceof RealJoint) || !(b instanceof RealJoint) || link.joints.length !== 2) {

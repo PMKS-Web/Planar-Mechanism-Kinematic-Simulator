@@ -101,6 +101,23 @@ describe('dragging against a held bar', () => {
     expect(parts.c.x).toBeCloseTo(5 * S, 2);
   });
 
+  it('forgets a refusal once the bars that refused are unlocked', () => {
+    const parts = fourBar(service);
+    parts.ab.hold = 'length';
+    parts.bc.hold = 'length';
+    parts.c.locked = true;
+    grid.dragJoint(parts.b, new Coord(2 * S, 2 * S));
+    expect(grid.lastHoldRefusal).toBeDefined();
+    // Unlock everything: the next drag is an ordinary drag, and must not be
+    // reported as the limit it no longer is.
+    parts.ab.hold = undefined;
+    parts.bc.hold = undefined;
+    parts.c.locked = false;
+    grid.dragJoint(parts.b, new Coord(1 * S, 2 * S));
+    expect(parts.b.x).toBeCloseTo(1 * S, 6);
+    expect(grid.lastHoldRefusal).toBeUndefined();
+  });
+
   it('is not consulted when no held bar reaches the moved joint', () => {
     const parts = fourBar(service);
     parts.ab.hold = 'length';
