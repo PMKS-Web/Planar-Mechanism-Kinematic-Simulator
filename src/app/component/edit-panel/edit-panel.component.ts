@@ -65,6 +65,7 @@ import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.
 import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
 import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
 import { HoldFieldComponent } from '../BLOCKS/hold-field/hold-field.component';
+import { LockBannerComponent } from './lock-banner.component';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { InputComponent } from '../BLOCKS/input/input.component';
@@ -101,6 +102,7 @@ const INPUT_SPEED_UNITS = [
     CollapsibleSubsecitonComponent,
     DualInputComponent,
     HoldFieldComponent,
+    LockBannerComponent,
     FormsModule,
     ReactiveFormsModule,
     ToggleComponent,

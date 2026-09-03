@@ -82,16 +82,4 @@
       </div>
     </div>
   }
-  @if (lockedInPlace() && !disabled()) {
-    <!-- Locked in place already holds both, so neither padlock is offered and
-         the line says why, with the way out as a word inside the sentence. -->
-    <div class="note" role="status">
-      <mat-icon class="noteGlyph">lock</mat-icon>
-      <span
-        >Locked in place. Every joint of this link is held, so its length and angle cannot change
-        either. <button type="button" class="noteAction" (click)="unlockLink()">Unlock</button> to
-        move it.</span
-      >
-    </div>
-  }
 </div>

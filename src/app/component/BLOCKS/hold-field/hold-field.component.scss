@@ -95,35 +95,5 @@
         color: $accent;
       }
     }
-
-    .note {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      padding: 8px 10px;
-      border-radius: 4px;
-      background: #e8eaf6;
-      font-size: 12px;
-      line-height: 17px;
-      color: mat.m2-get-color-from-palette($primary-palette, 700);
-
-      .noteGlyph {
-        flex: none;
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
-        line-height: 17px;
-      }
-
-      .noteAction {
-        border: none;
-        background: none;
-        padding: 0;
-        font: inherit;
-        color: inherit;
-        text-decoration: underline;
-        cursor: pointer;
-      }
-    }
   }
 }

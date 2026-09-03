@@ -21,8 +21,8 @@ type Which = 'length' | 'angle';
  * the number typed becomes the number locked, which the panel's commit solves
  * as a constraint -- so only the word and the padlock say it is locked.
  *
- * A link locked in place holds both already: both fields dim, the padlocks
- * step aside, and one line says why with the way out on it.
+ * A link locked in place holds both already: the padlocks step aside, and the
+ * panel's own strip under the title says why (`app-lock-banner`).
  *
  * The form controls stay the panel's `length` and `angle`, so what a typed
  * number does is unchanged; this block only decides when one may be typed.
@@ -87,10 +87,6 @@ export class HoldFieldComponent {
     event.stopPropagation();
     if (!this.holdable()) return;
     this.mechanism.setHold(this.link(), this.held(which) ? undefined : which);
-  }
-
-  unlockLink(): void {
-    this.mechanism.toggleLock(this.link());
   }
 
   enter(which: Which): void {
