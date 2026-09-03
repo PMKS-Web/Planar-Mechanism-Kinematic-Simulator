@@ -1,0 +1,52 @@
+{
+  "note": "Per-pointer-move cost of a drag, app time only, on the machine named. Rewrite with `node e2e/drag-perf.mjs --baseline` alongside the change that earned it.",
+  "machine": "Kohmeis-MacBook-Pro-2.local",
+  "writtenAt": "2026-09-03",
+  "steps": 30,
+  "scenarios": {
+    "edit-joint": {
+      "appMsPerMove": 20.5,
+      "frameP90Ms": 17
+    },
+    "edit-link": {
+      "appMsPerMove": 20.2,
+      "frameP90Ms": 17
+    },
+    "edit-traces": {
+      "appMsPerMove": 23.9,
+      "frameP90Ms": 17
+    },
+    "kin-1row": {
+      "appMsPerMove": 31.3,
+      "frameP90Ms": 25
+    },
+    "kin-3rows": {
+      "appMsPerMove": 57.9,
+      "frameP90Ms": 58
+    },
+    "kin-3rows-compare": {
+      "appMsPerMove": 58.4,
+      "frameP90Ms": 58
+    },
+    "kin-link-3rows": {
+      "appMsPerMove": 67.1,
+      "frameP90Ms": 67
+    },
+    "force-2rows": {
+      "appMsPerMove": 42.5,
+      "frameP90Ms": 42
+    },
+    "jansen-edit": {
+      "appMsPerMove": 49.4,
+      "frameP90Ms": 42
+    },
+    "jansen-3rows": {
+      "appMsPerMove": 98,
+      "frameP90Ms": 108
+    },
+    "four-machines": {
+      "appMsPerMove": 60.5,
+      "frameP90Ms": 50
+    }
+  }
+}

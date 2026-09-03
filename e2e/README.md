@@ -77,6 +77,8 @@ their source. Everything browser-driven lives here.
   A fresh context per case on purpose, because the case that was reported only happens before the
   page has recorded any interaction
 
+- `drag-perf.mjs` — is dragging as smooth as it was? Drags a fixed set of scenarios (Edit joint and link, traced paths shown, one and three graph rows, the before-drag comparison, a force-analysis row, the Jansen leg, a four-machine drawing) with nothing attached, subtracts the protocol's own per-event cost, and compares the app's cost per pointer move and the 90th-percentile frame to `drag-perf-baseline.json`. Fails a scenario more than 35% (`PMKS_PERF_TOLERANCE`) above its baseline. The baseline is per machine: `--baseline` rewrites it, and the rewrite belongs in the same commit as the change that earned it
+- `drag-profile.mjs <scenario>` — where that drag's time goes: the DevTools profiler and tracer on one scenario, reported per second of drag by stage (position sweep, link-geometry copies, the graphs' kinematic re-solve, the chart redraw, change detection, GC), by function with source-map attribution, and, on the dev server, how often each stage ran per pointer move. `docs/tips-and-tricks.md` keeps the last full account under "Where a drag's time goes"
 - `multi-select-and-dxf.mjs` — real Ctrl/Command selection, macOS Control-click, blank/Escape/plain
   replacement, group drag/rotate/scale with one-step history and Lock refusal, atomic duplicate/delete,
   plus desktop/narrow visual checks and a downloaded semantic DXF smoke test
