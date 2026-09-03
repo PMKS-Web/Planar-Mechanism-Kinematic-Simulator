@@ -225,6 +225,14 @@ await page.click('[data-hold-toggle="angle"]');
 await page.waitForTimeout(300);
 record('the padlock on the angle moves the hold to the angle', (await holdOf('AB')) === 'angle');
 record(
+  'the locked angle field still shows its number, signed as the chip and the menu sign it',
+  await page.evaluate(() => {
+    const field = document.querySelector('[data-hold-field="angle"]').value;
+    const chip = document.querySelector('[data-hold-chip="AB"]')?.textContent?.trim() ?? '';
+    return /-?\d/.test(field) && field.replace(/\s+/g, '') === chip.replace(/\s+/g, '');
+  })
+);
+record(
   'a message says the lock moved and offers the length instead',
   await page.evaluate(() => {
     const action = [...document.querySelectorAll('.notificationAction')].find((b) =>

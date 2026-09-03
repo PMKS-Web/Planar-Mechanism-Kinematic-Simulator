@@ -2413,9 +2413,11 @@ export class NewGridComponent implements OnDestroy {
       const text =
         hold === 'length'
           ? this.nup.formatModelLength(span, this.settings.lengthUnit.getValue())
-          : this.nup.formatValueAndUnit(
+          : // The same reading as the panel's field and the hover pill: atan2's,
+            // signed, so a bar pointing down reads -37 deg on all three.
+            this.nup.formatValueAndUnit(
               this.nup.convertAngle(
-                this.degreesOf(Math.atan2(dy, dx)),
+                (Math.atan2(dy, dx) * 180) / Math.PI,
                 AngleUnit.DEGREE,
                 this.settings.angleUnit.getValue()
               ),
@@ -2467,11 +2469,6 @@ export class NewGridComponent implements OnDestroy {
   /** A pill wide enough for its words, in screen pixels at the current zoom. */
   pillWidth(text: string, withGlyph = false): number {
     return this.svgGrid.scaleWithZoom((withGlyph ? 32 : 20) + text.length * 7.2);
-  }
-
-  private degreesOf(radians: number): number {
-    const degrees = (radians * 180) / Math.PI;
-    return degrees < 0 ? degrees + 360 : degrees;
   }
 
   private refuseLockedForce(force: Force): void {

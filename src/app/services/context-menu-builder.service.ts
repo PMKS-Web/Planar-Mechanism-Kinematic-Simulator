@@ -858,8 +858,9 @@ export class ContextMenuBuilderService {
   private angleOf(link: RealLink): string {
     const [a, b] = link.joints;
     if (!a || !b) return '';
-    let degrees = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
-    if (degrees < 0) degrees += 360;
+    // Signed, as the panel's field reads it, so the row names the number the
+    // field will show once the angle is locked.
+    const degrees = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
     return this.nup.formatValueAndUnit(
       this.nup.convertAngle(degrees, AngleUnit.DEGREE, this.settings.angleUnit.getValue()),
       this.settings.angleUnit.getValue()
