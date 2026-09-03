@@ -5,48 +5,48 @@
   "steps": 30,
   "scenarios": {
     "edit-joint": {
-      "appMsPerMove": 20.5,
-      "frameP90Ms": 17
+      "appMsPerMove": 8.8,
+      "frameP90Ms": 9
     },
     "edit-link": {
-      "appMsPerMove": 20.2,
-      "frameP90Ms": 17
+      "appMsPerMove": 6.5,
+      "frameP90Ms": 9
     },
     "edit-traces": {
-      "appMsPerMove": 23.9,
-      "frameP90Ms": 17
+      "appMsPerMove": 7.6,
+      "frameP90Ms": 9
     },
     "kin-1row": {
-      "appMsPerMove": 31.3,
-      "frameP90Ms": 25
+      "appMsPerMove": 7.5,
+      "frameP90Ms": 9
     },
     "kin-3rows": {
-      "appMsPerMove": 57.9,
-      "frameP90Ms": 58
+      "appMsPerMove": 14.1,
+      "frameP90Ms": 10
     },
     "kin-3rows-compare": {
-      "appMsPerMove": 58.4,
-      "frameP90Ms": 58
+      "appMsPerMove": 14.4,
+      "frameP90Ms": 16
     },
     "kin-link-3rows": {
-      "appMsPerMove": 67.1,
-      "frameP90Ms": 67
+      "appMsPerMove": 14.6,
+      "frameP90Ms": 9
     },
     "force-2rows": {
-      "appMsPerMove": 42.5,
-      "frameP90Ms": 42
+      "appMsPerMove": 12.7,
+      "frameP90Ms": 9
     },
     "jansen-edit": {
-      "appMsPerMove": 49.4,
-      "frameP90Ms": 42
+      "appMsPerMove": 12.1,
+      "frameP90Ms": 9
     },
     "jansen-3rows": {
-      "appMsPerMove": 98,
-      "frameP90Ms": 108
+      "appMsPerMove": 26.7,
+      "frameP90Ms": 17
     },
     "four-machines": {
-      "appMsPerMove": 60.5,
-      "frameP90Ms": 50
+      "appMsPerMove": 18.7,
+      "frameP90Ms": 10
     }
   }
 }

@@ -765,44 +765,62 @@ through pi/30: a different quantity, the same convention.
 ### Where a drag's time goes, and how to re-measure it
 
 Measured on 2 Sep 2026 in a real Chromium with the DevTools profiler and tracer, on the
-production build and the dev server (`e2e/drag-profile.mjs`). The lag is JavaScript, not
-rendering: paint is about 1% of a drag second, style and layout at most 12%, and production is
-only 15 to 20% faster than the dev server. Per pointer move, production, warmed: 16 ms on the
-four-bar in Edit, 52 ms with three graph rows open, 90 ms on the Jansen leg with three rows.
-Everything below runs on **every pointer move**, in this order of cost:
+production build and the dev server (`e2e/drag-profile.mjs`). The lag was JavaScript, not
+rendering: paint is about 1% of a drag second, style and layout at most 12%, and production was
+only 15 to 20% faster than the dev server. Six things ran on **every pointer move**, and each was
+fixed on 3 Sep 2026 (commits eedd5d8 through 70dda33); the numbers are app time per pointer move
+on the dev server, before and after:
 
-1. **The position sweep copies link artwork, not positions.** For each of the ~360 timesteps
-   and each link, `findFullMovementPos` constructs a `RealLink`, and `copyVisualGeometryFrom`
-   re-tokenizes the SVG path string with a regex, rotates every point and reformats every number
-   with `toFixed(9)`. Two thirds of the sweep (11 of 17 ms on the four-bar, 27 of 38 on the
-   Jansen leg); the position solver itself is a few milliseconds. Also most of the garbage.
-2. **Each open graph re-solves the whole cycle's kinematics on its own.** A row rebuilds its
-   curve through `AnalysisSampleService.sampleAt`, which runs `KinematicsSolver` at every
-   timestep, and nothing is shared between rows: three rows, three full solves, ~1,100 timestep
-   solves per move on the four-bar.
-3. **ApexCharts rebuilds every plot from scratch** through `updateOptions`, about 8 ms per
-   chart per move, ~7,000 DOM mutations and a run of `getBBox` / `clientWidth` reads that are
-   all the layout time in the trace. Cost grows ~14 ms per open row.
-4. **Every machine in the drawing is rebuilt when one joint moves**: `updateMechanism` maps
-   every partition to a fresh `Mechanism`, and the adaptive sampler re-sweeps to refine, so a
-   four-machine drawing ran 5.6 sweeps per pointer move for one dragged four-bar.
-5. **Traced paths are rebuilt in a template binding** (`getJointPath` in `[attr.d]`), on each
-   of the ~12 change-detection passes a pointer move causes: +13 ms per move with paths shown.
-6. **Change detection runs about a dozen times per move** (the Edit panel's two `setTimeout`s
-   per selection publish, the top bar's animation frame from every `ngAfterViewChecked`, the
-   grid's settle loop, each graph row's frame request and `ResizeObserver`). Each pass is
-   cheap; it multiplies 5.
+| Scenario | before | after |
+| --- | --- | --- |
+| four-bar, Edit, drag a joint | 20 ms | 9 ms |
+| four-bar, Edit, every joint tracing its path | 24 ms | 8 ms |
+| four-bar, Kinematic, three graph rows open | 58 ms | 14 ms |
+| Jansen leg, Edit | 49 ms | 12 ms |
+| Jansen leg, Kinematic, three rows | 98 ms | 27 ms |
+| four machines in one drawing, one joint dragged | 60 ms | 19 ms |
 
-Not it: the before-drag comparison (no measurable cost), forces in Edit mode, joint labels, the
-center-of-mass marks, the canvas SVG itself (2 to 3 DOM mutations per move).
+1. **The position sweep copied link artwork, not positions.** For each of the ~360 timesteps
+   and each link, `findFullMovementPos` built a `RealLink` whose constructor re-tokenized the
+   SVG path with a regex, rotated every point and reformatted every number with `toFixed(9)`:
+   two thirds of the sweep. Now the copy is deferred: a solved sample's link keeps its
+   `visualSource` and realizes the path on the first read of `d` or the outline
+   (`link.deferred-artwork.spec.ts`).
+2. **Each open graph re-solved the whole cycle's kinematics on its own.** Three rows, three
+   full solves. `AnalysisSampleService` now keeps the solver's answer per sample, weakly keyed
+   on the mechanism a drag replaces on every move.
+3. **ApexCharts rebuilt every plot from scratch** through `updateOptions`, about 8 ms per chart
+   per move and ~7,000 DOM mutations. While the hand is down the bridge now draws the live
+   curves as paths over the standing plot (`showLive` in `analysis-apex-chart.component.ts`) and
+   the chart is handed the final series once, on release. The overlay goes up before the chart
+   drops its live series and comes down only after the chart has redrawn them, so no frame ever
+   shows the earlier curve alone -- `e2e/analysis-editing.mjs` samples every frame for exactly
+   that.
+4. **Every machine in the drawing was rebuilt when one joint moved.** `updateMechanism` now
+   fingerprints each partition from everything its solve reads and keeps the `Mechanism` whose
+   fingerprint did not change (`mechanism.rebuild-reuse.spec.ts`).
+5. **Traced paths were rebuilt in a template binding** on each of the ~12 change-detection
+   passes a pointer move causes. `getJointPath` now keeps its strings per solved machine.
+6. **A pointer can report faster than the screen refreshes**, and every report cost a solve. The
+   canvas now takes the latest move on the next animation frame; a release lands the move still
+   waiting before it is read.
+
+Still true and worth knowing: change detection runs about a dozen times per pointer move (the
+Edit panel's two `setTimeout`s per selection publish, the top bar's animation frame from every
+`ngAfterViewChecked`, the grid's settle loop, each graph row's frame request and
+`ResizeObserver`). Each pass is cheap now that nothing heavy hangs off a template binding, but
+anything that does will be multiplied by twelve. Not it: the before-drag comparison, forces in
+Edit mode, joint labels, the center-of-mass marks, the canvas SVG itself.
 
 **Guarding it.** `node e2e/drag-perf.mjs` drags every scenario with nothing attached and fails
 any that runs more than 35% above `e2e/drag-perf-baseline.json`. The baseline is for the
 machine that wrote it; after a change that deliberately moves the numbers, run it with
-`--baseline` and commit the rewrite with the change. To see *why* a number moved,
-`node e2e/drag-profile.mjs <scenario>`. Both subtract the DevTools protocol's own ~8 ms per
-pointer event, measured on a blank page at the start of each run, and profile the second drag
-on a page, because the first runs 15 to 25% slower while the JIT warms up.
+`--baseline` and commit the rewrite with the change. Since moves are coalesced to one solve per
+frame, the suite's "ms per move" counts the work the frames actually did, and the 90th-percentile
+frame is the number a reader feels. To see *why* a number moved, `node e2e/drag-profile.mjs
+<scenario>`. Both subtract the DevTools protocol's own ~8 ms per pointer event, measured on a
+blank page at the start of each run, and profile the second drag on a page, because the first
+runs 15 to 25% slower while the JIT warms up.
 
 ## Deploys, domains and surrounding services
 

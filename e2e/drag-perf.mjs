@@ -18,6 +18,10 @@
  *   node e2e/drag-perf.mjs edit-joint kin-3rows  # only these scenarios
  *   PMKS_PERF_TOLERANCE=1.5 node e2e/drag-perf.mjs
  *
+ * The canvas takes one drag move per animation frame, so "ms per move" here
+ * is the work the frames actually did spread over the moves sent; the 90th
+ * percentile frame is the number a reader feels.
+ *
  * Where the time goes is `drag-profile.mjs`'s job; the last full account of
  * it is in docs/tips-and-tricks.md under "Where a drag's time goes".
  */
