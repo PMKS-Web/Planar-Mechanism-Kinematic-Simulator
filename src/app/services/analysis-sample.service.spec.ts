@@ -1,3 +1,4 @@
+import { KinematicsSolver } from '../model/mechanism/kinematic-solver';
 import { RealJoint } from '../model/joint';
 import { MODEL_SCALE } from '../model/render-scale';
 import { TEMPLATE_LINKAGES } from '../component/MODALS/templates/template-linkages';
@@ -347,5 +348,53 @@ describe('AnalysisSampleService', () => {
       expect(distinct).toBeGreaterThan(solved.length * 0.9);
       expect(new Set(solved.map((value) => value.toFixed(3))).size).toBeLessThan(distinct / 2);
     });
+  });
+});
+
+describe('AnalysisSampleService keeps each solve', () => {
+  let fixture: MechanismFixture;
+  let service: AnalysisSampleService;
+  beforeEach(() => {
+    fixture = buildMechanismFixture(FOUR_BAR);
+    service = withTestInjector(
+      [{ provide: SettingsService, useValue: fixture.settings }],
+      () => new AnalysisSampleService()
+    );
+  });
+  const ask = (index: number, prop: string, part: string) =>
+    service.sampleAt(fixture.mechanism, index, 'kinematic', 'loop', prop, part);
+
+  it('solves a sample once however many rows read it', () => {
+    const solves = vi.spyOn(KinematicsSolver, 'determineKinematics');
+    const velocity = ask(45, 'Linear Joint Vel', 'B');
+    const acceleration = ask(45, 'Linear Joint Acc', 'B');
+    const angular = ask(45, 'Angular Link Vel', 'BC');
+    expect(solves).toHaveBeenCalledTimes(1);
+    // And the kept answer is the solver's answer, not a stale one.
+    const fresh = withTestInjector(
+      [{ provide: SettingsService, useValue: fixture.settings }],
+      () => new AnalysisSampleService()
+    );
+    expect(
+      fresh.sampleAt(fixture.mechanism, 45, 'kinematic', 'loop', 'Linear Joint Acc', 'B')
+    ).toEqual(acceleration);
+    expect(
+      fresh.sampleAt(fixture.mechanism, 45, 'kinematic', 'loop', 'Linear Joint Vel', 'B')
+    ).toEqual(velocity);
+    expect(
+      fresh.sampleAt(fixture.mechanism, 45, 'kinematic', 'loop', 'Angular Link Vel', 'BC')
+    ).toEqual(angular);
+    solves.mockRestore();
+  });
+
+  it('solves again for another sample, and for another mechanism', () => {
+    const solves = vi.spyOn(KinematicsSolver, 'determineKinematics');
+    ask(45, 'Linear Joint Vel', 'B');
+    ask(46, 'Linear Joint Vel', 'B');
+    expect(solves).toHaveBeenCalledTimes(2);
+    const another = buildMechanismFixture(FOUR_BAR);
+    service.sampleAt(another.mechanism, 45, 'kinematic', 'loop', 'Linear Joint Vel', 'B');
+    expect(solves).toHaveBeenCalledTimes(3);
+    solves.mockRestore();
   });
 });

@@ -20,6 +20,18 @@ import { SettingsService } from './settings.service';
  */
 const NOISE_FLOOR = 1e-9;
 
+/** What the kinematics solver knows about one sample, once it has run. */
+interface KinematicsAt {
+  jointVel: Map<string, [number, number]>;
+  jointAcc: Map<string, [number, number]>;
+  linkCoM: Map<string, [number, number]>;
+  linkVel: Map<string, [number, number]>;
+  linkAcc: Map<string, [number, number]>;
+  linkAngPos: Map<string, number>;
+  linkAngVel: Map<string, number>;
+  linkAngAcc: Map<string, number>;
+}
+
 function snapNoiseToZero(value: number): number {
   return Math.abs(value) < NOISE_FLOOR ? 0 : value;
 }
@@ -55,6 +67,19 @@ export class AnalysisSampleService {
    * once per mechanism — the same granularity the plotting loop always used.
    */
   private preparedFor: Mechanism | undefined;
+
+  /**
+   * The solver's answer at each sample, kept per mechanism.
+   *
+   * Every open graph row rebuilds its curve by asking for a value at every
+   * sample, and each ask ran the whole velocity-and-acceleration solve for
+   * that sample again -- so three rows on one joint solved the same cycle
+   * three times on every pointer move. The solve is the same whatever is
+   * being read from it, so it is done once per sample and its maps are kept.
+   * Keyed weakly on the mechanism because a drag builds a fresh one on every
+   * move, and the old one's answers should leave with it.
+   */
+  private solved = new WeakMap<Mechanism, Map<number, KinematicsAt>>();
 
   /**
    * The values a graph plots, for one solved sample.
@@ -142,31 +167,24 @@ export class AnalysisSampleService {
       return [(joint?.x ?? Number.NaN) / MODEL_SCALE, (joint?.y ?? Number.NaN) / MODEL_SCALE];
     }
 
+    const at = this.kinematicsAt(mechanism, index);
     switch (mechProp) {
       case 'Linear Joint Vel':
-        this.solve(mechanism, index);
-        return this.scaledVector(KinematicsSolver.jointVelMap.get(mechPart), true);
+        return this.scaledVector(at.jointVel.get(mechPart), true);
       case 'Linear Joint Acc':
-        this.solve(mechanism, index);
-        return this.scaledVector(KinematicsSolver.jointAccMap.get(mechPart), true);
+        return this.scaledVector(at.jointAcc.get(mechPart), true);
       case "Linear Link's CoM Pos":
-        this.solve(mechanism, index);
-        return this.scaledVector(KinematicsSolver.linkCoMMap.get(mechPart), false);
+        return this.scaledVector(at.linkCoM.get(mechPart), false);
       case "Linear Link's CoM Vel":
-        this.solve(mechanism, index);
-        return this.scaledVector(KinematicsSolver.linkVelMap.get(mechPart), true);
+        return this.scaledVector(at.linkVel.get(mechPart), true);
       case "Linear Link's CoM Acc":
-        this.solve(mechanism, index);
-        return this.scaledVector(KinematicsSolver.linkAccMap.get(mechPart), true);
+        return this.scaledVector(at.linkAcc.get(mechPart), true);
       case 'Angular Link Pos':
-        this.solve(mechanism, index);
-        return [KinematicsSolver.linkAngPosMap.get(mechPart) ?? Number.NaN];
+        return [at.linkAngPos.get(mechPart) ?? Number.NaN];
       case 'Angular Link Vel':
-        this.solve(mechanism, index);
-        return [KinematicsSolver.linkAngVelMap.get(mechPart) ?? Number.NaN];
+        return [at.linkAngVel.get(mechPart) ?? Number.NaN];
       case 'Angular Link Acc':
-        this.solve(mechanism, index);
-        return [KinematicsSolver.linkAngAccMap.get(mechPart) ?? Number.NaN];
+        return [at.linkAngAcc.get(mechPart) ?? Number.NaN];
       default:
         // 'ic' and anything this service does not know plot nothing.
         return [];
@@ -174,6 +192,32 @@ export class AnalysisSampleService {
   }
 
   /** Rates and poses for one sample, left in the solver's static maps. */
+  /** The solve at one sample, done the first time it is asked for. */
+  private kinematicsAt(mechanism: Mechanism, index: number): KinematicsAt {
+    let perSample = this.solved.get(mechanism);
+    if (!perSample) {
+      perSample = new Map();
+      this.solved.set(mechanism, perSample);
+    }
+    const kept = perSample.get(index);
+    if (kept) return kept;
+    this.solve(mechanism, index);
+    // Copies, because the solver writes every answer into the same statics
+    // and the force solver shares them.
+    const answer: KinematicsAt = {
+      jointVel: new Map(KinematicsSolver.jointVelMap),
+      jointAcc: new Map(KinematicsSolver.jointAccMap),
+      linkCoM: new Map(KinematicsSolver.linkCoMMap),
+      linkVel: new Map(KinematicsSolver.linkVelMap),
+      linkAcc: new Map(KinematicsSolver.linkAccMap),
+      linkAngPos: new Map(KinematicsSolver.linkAngPosMap),
+      linkAngVel: new Map(KinematicsSolver.linkAngVelMap),
+      linkAngAcc: new Map(KinematicsSolver.linkAngAccMap),
+    };
+    perSample.set(index, answer);
+    return answer;
+  }
+
   private solve(mechanism: Mechanism, index: number): void {
     if (this.preparedFor !== mechanism) {
       KinematicsSolver.resetVariables();
