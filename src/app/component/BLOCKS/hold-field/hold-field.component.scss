@@ -12,10 +12,23 @@
     flex-direction: column;
     gap: 10px;
 
+    // A row per value, led by its letter: the pair's own layout, kept.
     .field {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
+      justify-content: flex-start;
+      gap: 8px;
+
+      > .label {
+        flex: none;
+        width: 16px;
+      }
+    }
+
+    .angle-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 25px;
+      line-height: 30px;
     }
 
     .head {
@@ -35,7 +48,8 @@
     // the field itself is exactly the panel's usual field.
     .well {
       position: relative;
-      width: 70%;
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
     .customInputForm {

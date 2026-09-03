@@ -1,33 +1,29 @@
 <div id="hold-field-block" [formGroup]="formGroup()" [class.disabled]="disabled()">
+  <!-- One caption for the pair, as the L / angle pair had, and a row for each
+       value led by its letter. Only the placement is the pair's; each field
+       keeps its own padlock, inside it at the right. -->
+  <div class="row head">
+    <span class="label" [class.dim]="disabled()">Link Length and Angle</span>
+    <mat-icon
+      class="label-help"
+      matTooltip="The length and angle of this link. Counter-clockwise is positive."
+      matTooltipShowDelay="400"
+      [class.inert]="disabled()"
+      [matTooltipDisabled]="disabled()"
+      >help_outline</mat-icon
+    >
+  </div>
   @for (
     which of [
-      {
-        key: 'length',
-        label: 'Link Length',
-        control: 'length',
-        help: 'Distance between the two joints of this link.',
-      },
-      {
-        key: 'angle',
-        label: 'Link Angle',
-        control: 'angle',
-        help: 'Angle of this link measured from the positive x axis. Counter-clockwise is positive.',
-      },
+      { key: 'length', letter: 'L', control: 'length' },
+      { key: 'angle', letter: '⊾', control: 'angle' },
     ];
     track which.key
   ) {
-    <div class="field">
-      <div class="row head">
-        <span class="label" [class.dim]="disabled()">{{ which.label }}</span>
-        <mat-icon
-          class="label-help"
-          [matTooltip]="which.help"
-          matTooltipShowDelay="400"
-          [class.inert]="disabled()"
-          [matTooltipDisabled]="disabled()"
-          >help_outline</mat-icon
-        >
-      </div>
+    <div class="row field">
+      <span class="label" [class.dim]="disabled()" [class.angle-label]="which.key === 'angle'">{{
+        which.letter
+      }}</span>
       <!-- Hover or focus draws this value's dimension on the canvas, the same
            signal the pair of fields used to send. The padlock is laid over the
            field's right end rather than given to Material as a suffix: the
