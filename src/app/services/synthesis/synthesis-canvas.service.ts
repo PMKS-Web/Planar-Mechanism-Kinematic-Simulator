@@ -446,7 +446,7 @@ export class SynthesisCanvasService {
    * so pressing Reverse turned the motion round and left the arrow as it was.
    */
   previewClockwise(): boolean {
-    return this.solution.clockwise;
+    return this.solution.turningClockwise();
   }
 
   previewGrounds(): PreviewJoint[] {

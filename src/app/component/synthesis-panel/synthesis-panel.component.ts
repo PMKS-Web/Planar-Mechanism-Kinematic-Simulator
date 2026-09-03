@@ -1098,7 +1098,6 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
 
   // --- previewing the motion -----------------------------------------------
 
-  private direction = 1;
 
   togglePlay(): void {
     this.solution.playing = !this.solution.playing;
@@ -1150,13 +1149,16 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     const cand = this.solution.driven();
     if (!cand) return;
     const range = this.solution.drivenRange();
-    const stride = 1.4 * (this.solution.clockwise ? 1 : -1);
-    let phase = this.solution.currentPhase() + this.direction * stride;
+    // Clockwise on the grid is a falling phase: the phase is a model angle,
+    // counter-clockwise with y up. It used to rise for "clockwise", so the
+    // preview turned the other way from its own arrow.
+    const stride = 1.4 * (this.solution.clockwise ? -1 : 1);
+    let phase = this.solution.currentPhase() + this.solution.travelDirection * stride;
     if (range.full) {
       if (phase > range.to) phase -= 360;
       if (phase < range.from) phase += 360;
     } else if (phase > range.to || phase < range.from) {
-      this.direction = -this.direction;
+      this.solution.travelDirection = -this.solution.travelDirection;
       phase = Math.max(range.from, Math.min(range.to, phase));
     }
     this.solution.phase = phase;

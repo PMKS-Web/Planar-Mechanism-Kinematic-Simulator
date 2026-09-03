@@ -80,6 +80,27 @@ export class SynthesisSolutionService {
   public clockwise = true;
 
   /**
+   * Which way along its travel the preview is going right now: forward, or
+   * back from the end of a rocking range. A crank that goes all the way
+   * round never turns back; a rocker does at each end, and the mark on its
+   * pin has to say so, as the transport's does for a reciprocating drive.
+   */
+  public travelDirection = 1;
+
+  /**
+   * Whether the preview's crank is turning clockwise *on screen* right now.
+   *
+   * The phase is a model angle, measured counter-clockwise with y up, so a
+   * falling phase is a clockwise turn on the grid -- and the stride the
+   * preview steps by is negative when `clockwise` is set. A rocker running
+   * back from the end of its range is turning the other way for as long as
+   * that lasts.
+   */
+  turningClockwise(): boolean {
+    return this.clockwise === this.travelDirection > 0;
+  }
+
+  /**
    * Where each joint stood when synthesis last wrote it.
    *
    * The one thing that cannot be derived from the drawing: whether the linkage
