@@ -683,6 +683,34 @@ pixels are available; anything you add to the bottom row has to survive that.
 
 ---
 
+### The drawing is y-up, the screen is y-down, and the flip lives on the SVG holders
+
+Model coordinates follow the math convention: +y is up. The screen's is down. The app reconciles
+the two once, in the template: every drawing layer in `new-grid.component.html` is a `<g>` with
+`style="transform: scaleY(-1)"` (there are 36 of them), so a joint is drawn with
+`[attr.cy]="joint.y"` and no arithmetic. Anything that has to read upright -- joint labels, pose
+chips, hint badges -- undoes it locally with `scale(1,-1)`, which is what the nine counter-flips
+in that template are.
+
+What follows from that, and what has cost an hour more than once:
+
+- **`getScreenCTM()` on a holder already contains the flip** (`d < 0`), so mapping a model point
+  through it lands on the right pixel. `SvgGridService.screenToSVG` negates y by hand and
+  `revealOnCanvas` writes `matrix.d * -at.y` because the pan-zoom matrix they hold is the
+  viewport's, *outside* the flipped holders. Mixing the two is how a probe reports a crank turning
+  the wrong way.
+- **The same angle has opposite signs on the two sides.** An angle measured in screen pixels grows
+  clockwise; measured in model coordinates it grows counterclockwise. The synthesis preview's
+  `phase` is a model angle, so advancing it turns the preview counterclockwise on screen -- which
+  is why `SynthesisPanelComponent.step` negates the stride for a clockwise preview.
+- **A negative drive speed is clockwise on screen.** `MechanismService.setDriveSpeed` writes
+  `isInputCW = signed < 0`, and the transport's Clockwise note, its rotate icon and the pin's
+  arrow glyph all read the sign the same way. This was settled by looking at four frames of the
+  four-bar template, not by reasoning about signs.
+- **If you touch a direction, look at it.** Play, take a few screenshots clipped around the
+  driven pin, and see which way the crank goes. A numeric probe is only as good as the matrix it
+  chose, and two of them in one session disagreed with the screen.
+
 ## Deploys, domains and surrounding services
 
 - **Production is [app.pmksplus.com](https://app.pmksplus.com)**, deployed from `main`. **Never

@@ -818,6 +818,7 @@ export class SynthesisSolutionService {
     const drivenDirectly = !dyad;
 
     const jointA = new RevJoint(idA, solution.A.x, solution.A.y, drivenDirectly, true);
+    let drive: RevJoint = jointA;
     const jointB = new RevJoint(idB, solution.B.x, solution.B.y, false, false);
     const jointC = new RevJoint(idC, solution.C.x, solution.C.y, false, false);
     const jointD = new RevJoint(idD, solution.D.x, solution.D.y, false, true);
@@ -848,6 +849,7 @@ export class SynthesisSolutionService {
       const elbow = meet(dyad.ground, dyad.crankLength, solution.B, dyad.couplerLength);
       if (elbow) {
         const motor = new RevJoint(idE, dyad.ground.x, dyad.ground.y, true, true);
+        drive = motor;
         const knee = new RevJoint(idF, elbow[0].x, elbow[0].y, false, false);
         motor.connectedJoints.push(knee);
         knee.connectedJoints.push(motor, jointB);
@@ -874,6 +876,12 @@ export class SynthesisSolutionService {
 
     this.mechanismSrv.mergeToJoints(joints);
     this.mechanismSrv.mergeToLinks(links);
+    // The preview turned the way its arrow pointed, so the linkage lands
+    // turning that way too, rather than whichever way the document's drive was
+    // last set. Negative is clockwise on screen, as `setDriveSpeed` spells it;
+    // the magnitude is the document's, since the preview never had a speed.
+    const rate = Math.abs(this.mechanismSrv.driveSpeedOf(drive));
+    this.mechanismSrv.setDriveSpeed(drive, this.clockwise ? -rate : rate);
     this.design.ownedJointIds = joints.map((joint) => joint.id);
     this.design.ownedAt = joints.map((joint) => ({ x: joint.x, y: joint.y }));
     this.design.ownershipPartial = false;
