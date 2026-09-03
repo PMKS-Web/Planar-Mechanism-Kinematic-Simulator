@@ -311,20 +311,29 @@ const overlay = await page.evaluate(() => {
     names: graph.displayedSeries.map((s) => s.name),
     colors: graph.displayedColors,
     dash: graph.displayedStroke?.dashArray,
+    // While the hand is down the live curves are drawn over the standing
+    // chart rather than by it, so the chart is not rebuilt on every move.
+    live: [...document.querySelectorAll('app-analysis-graph .liveOverlay path')].map((p) => ({
+      name: p.getAttribute('data-series'),
+      color: p.getAttribute('stroke'),
+      dash: p.getAttribute('stroke-dasharray'),
+    })),
     annotations: document.querySelectorAll('.apexcharts-xaxis-annotations line').length,
     axis: document.querySelector('.apexcharts-yaxis')?.textContent ?? '',
   };
 });
 record(
   'a drag lays the curves from before it under the live ones',
-  overlay.names.filter((n) => / before$/.test(n)).length === 2 && overlay.names.length === 4,
-  overlay.names
+  overlay.names.filter((n) => / before$/.test(n)).length === 2 &&
+    overlay.names.length === 2 &&
+    overlay.live.map((l) => l.name).sort().join() === 'X,Y',
+  { chart: overlay.names, overlay: overlay.live.map((l) => l.name) }
 );
 record(
   'the earlier ones ghosted, the live ones in full colour',
-  overlay.colors.slice(0, 2).every((c) => c.startsWith('rgba')) &&
-    overlay.colors.slice(2).every((c) => c.startsWith('#')),
-  overlay.colors
+  overlay.colors.every((c) => c.startsWith('rgba')) &&
+    overlay.live.every((l) => l.color.startsWith('#')),
+  { chart: overlay.colors, overlay: overlay.live.map((l) => l.color) }
 );
 // The earlier curve is the marked one -- dashed and thin -- and the live curve
 // is drawn as it always is, so nothing on the plot changes at the moment of
@@ -332,8 +341,8 @@ record(
 // down, which was one encoding too many changing at once.
 record(
   'the earlier ones dashed, the live ones solid',
-  overlay.dash[0] > 0 && overlay.dash[2] === 0,
-  overlay.dash
+  overlay.dash.every((d) => d > 0) && overlay.live.every((l) => !l.dash),
+  { chart: overlay.dash, overlay: overlay.live.map((l) => l.dash) }
 );
 record('with the playhead hushed for the duration', overlay.annotations === 0, overlay);
 record(
@@ -421,7 +430,12 @@ await page.evaluate(() => {
     const names = [...document.querySelectorAll('.apexcharts-series')].map((g) =>
       g.getAttribute('seriesName')
     );
-    window.__frames.push(names.join(','));
+    // The overlay's curves count as drawn too: that is where the live one is
+    // while the hand is down.
+    const live = [...document.querySelectorAll('.liveOverlay path')].map(
+      (p) => 'live:' + p.getAttribute('data-series')
+    );
+    window.__frames.push([...names, ...live].join(','));
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
@@ -437,8 +451,8 @@ const frameSigs = await page.evaluate(() => {
   return [...new Set(window.__frames)];
 });
 // Apex writes a series' name into an attribute with spaces turned to 'x'.
-const leaked = frameSigs.filter((sig) => /(^|,)(X|Y)(x|,|$)/.test(sig));
-const lonely = frameSigs.filter((sig) => /before/.test(sig) && !/(^|,)Z$/.test(sig));
+const leaked = frameSigs.filter((sig) => /(^|,)(live:)?(X|Y)(x|,|$)/.test(sig));
+const lonely = frameSigs.filter((sig) => /before/.test(sig) && !/(^|,)(live:)?Z(,|$)/.test(sig));
 record(
   'no frame of a Magnitude drag shows the components',
   frameSigs.length > 0 && leaked.length === 0,
@@ -543,7 +557,9 @@ const perMove = (Date.now() - started) / moves;
 const forceOverlay = await page.evaluate(() => {
   const graph = window.ng.getComponent(document.querySelector('app-analysis-graph'));
   return {
-    series: graph.displayedSeries.length,
+    series:
+      graph.displayedSeries.length +
+      document.querySelectorAll('app-analysis-graph .liveOverlay path').length,
     stats: graph.stats,
     gapShown: !!document.querySelector('.analysis-gap'),
   };

@@ -29,11 +29,7 @@ import {
   ApexYAxis,
 } from 'apexcharts';
 import { KinematicsSolver } from 'src/app/model/mechanism/kinematic-solver';
-import {
-  ANALYSIS_SERIES_COLORS,
-  angularScale,
-  formatReading,
-} from 'src/app/model/analysis-series';
+import { ANALYSIS_SERIES_COLORS, angularScale, formatReading } from 'src/app/model/analysis-series';
 export { ANALYSIS_SERIES_COLORS };
 import { ForceAnalysisMode } from 'src/app/model/mechanism/force-solver';
 import { ForceUnit } from '../../model/utils';
@@ -43,10 +39,7 @@ import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { AnalysisSampleService } from '../../services/analysis-sample.service';
-import {
-  AnalysisCompareService,
-  ComparisonHolder,
-} from '../../services/analysis-compare.service';
+import { AnalysisCompareService, ComparisonHolder } from '../../services/analysis-compare.service';
 import { skip, Subscription } from 'rxjs';
 import { AnalysisApexChartComponent } from './analysis-apex-chart.component';
 
@@ -157,6 +150,8 @@ export interface SeriesSelection {
  * growing a second set of chips.
  */
 const BEFORE_SUFFIX = ' before';
+/** How wide a live curve is drawn, on the chart and on the overlay alike. */
+const LIVE_STROKE_WIDTH = 2.6;
 const BEFORE = / before$/;
 
 /**
@@ -505,8 +500,7 @@ export class AnalysisGraphComponent
 
   /** The baseline as the reader wants it shown: nothing while the switch is off. */
   private get comparedBaseline():
-    | { series: ApexAxisChartSeries; low: number; high: number }
-    | undefined {
+    { series: ApexAxisChartSeries; low: number; high: number } | undefined {
     return this.comparison.compare ? this.baseline : undefined;
   }
 
@@ -538,6 +532,13 @@ export class AnalysisGraphComponent
     const live = this.comparison.live;
     if (live && !this.gestureLive) {
       this.gestureLive = true;
+      // Hand the live curves to the overlay for the length of the gesture:
+      // the chart keeps the earlier curves and the held axis, and stands still.
+      // The overlay is drawn first, in this very pass, so no frame shows the
+      // earlier curve alone; the chart lets go of its live series a microtask
+      // later, once the overlay is already on screen.
+      this.redrawLive();
+      this.applySeriesVisibility();
     }
     // The switch in the panel's head. Off, the earlier curves and their numbers
     // leave the plot; on again, they come back as they were.
@@ -618,8 +619,46 @@ export class AnalysisGraphComponent
     this.liveRedraw = requestAnimationFrame(() => {
       this.liveRedraw = undefined;
       if (this.destroyed) return;
-      this.updateChartData();
+      this.redrawLive();
     });
+  }
+
+  /** What the reader has switched on, whether the chart or the overlay is drawing it. */
+  private liveSeries: ApexAxisChartSeries = [];
+
+  /**
+   * One frame of a gesture: the numbers again, and the curves over the plot.
+   *
+   * Rebuilding the chart for each of these cost more than the solve behind
+   * it -- ApexCharts remakes the whole plot to take new data. The axes are
+   * held for the length of a gesture anyway, so the curve is drawn over the
+   * standing plot by the bridge and the chart is handed the series once, on
+   * release, in `settleAfterGesture`.
+   */
+  private redrawLive(): void {
+    if (!this.analysis || !this.mechProp || !this.mechPart) return;
+    this.determineChart(this.analysis, this.analysisType, this.mechProp, this.mechPart);
+    const selected = this.selectedNames();
+    this.liveSeries = (this.chartOptions.series ?? []).filter((series) =>
+      selected.has(series.name ?? '')
+    );
+    this.chart?.showLive(
+      this.liveSeries.map((series) => ({
+        name: series.name ?? '',
+        color: this.colorForSeries(series.name),
+        width: LIVE_STROKE_WIDTH,
+        points: series.data as { x: number; y: number | null }[],
+      }))
+    );
+  }
+
+  private selectedNames(): Set<string> {
+    const data = this.seriesCheckboxForm.getRawValue();
+    const selectedNames = new Set<string>();
+    if (data.x) selectedNames.add('X');
+    if (data.y) selectedNames.add('Y');
+    if (data.z) selectedNames.add('Z');
+    return selectedNames;
   }
 
   /** The gesture is over: the curve that was provisional is now what is. */
@@ -628,6 +667,7 @@ export class AnalysisGraphComponent
       cancelAnimationFrame(this.liveRedraw);
       this.liveRedraw = undefined;
     }
+    this.chart?.showLive(null);
     this.updateChartData();
   }
 
@@ -656,10 +696,10 @@ export class AnalysisGraphComponent
    */
   get stats(): SeriesStat[] {
     const held = this.comparedBaseline;
-    if (this.statsCache?.series === this.displayedSeries && this.statsCache.held === held) {
+    if (this.statsCache?.series === this.liveSeries && this.statsCache.held === held) {
       return this.statsCache.stats;
     }
-    const live = this.displayedSeries.filter((one) => !BEFORE.test(one.name ?? ''));
+    const live = this.liveSeries;
     const reach = (values: number[]) =>
       values.length
         ? { max: formatReading(Math.max(...values)), min: formatReading(Math.min(...values)) }
@@ -678,7 +718,7 @@ export class AnalysisGraphComponent
         before: earlier ? reach(this.valuesOf([earlier])) : undefined,
       };
     });
-    this.statsCache = { series: this.displayedSeries, held, stats };
+    this.statsCache = { series: this.liveSeries, held, stats };
     return stats;
   }
 
@@ -879,14 +919,14 @@ export class AnalysisGraphComponent
 
   applySeriesVisibility(): void {
     const data = this.seriesCheckboxForm.getRawValue();
-    const selectedNames = new Set<string>();
-    if (data.x) selectedNames.add('X');
-    if (data.y) selectedNames.add('Y');
-    if (data.z) selectedNames.add('Z');
+    const selectedNames = this.selectedNames();
 
-    const live = (this.chartOptions.series ?? []).filter((series) =>
+    this.liveSeries = (this.chartOptions.series ?? []).filter((series) =>
       selectedNames.has(series.name ?? '')
     );
+    // During a gesture the overlay draws the live curves (`redrawLive`), so
+    // the chart is given only the earlier ones and is not rebuilt per move.
+    const live = this.gestureLive ? [] : this.liveSeries;
     // The curves as they were when the gesture began, under the ones moving
     // under the reader's hand. Baseline first, so the live curve is drawn over
     // it rather than under it -- what is being compared *to* belongs behind.
@@ -908,10 +948,12 @@ export class AnalysisGraphComponent
     // a still frame to read; now nothing on the plot changes when they let go.
     this.displayedStroke = {
       ...this.chartOptions.stroke,
-      width: this.displayedSeries.map((series) => (BEFORE.test(series.name ?? '') ? 1.8 : 2.6)),
+      width: this.displayedSeries.map((series) =>
+        BEFORE.test(series.name ?? '') ? 1.8 : LIVE_STROKE_WIDTH
+      ),
       dashArray: this.displayedSeries.map((series) => (BEFORE.test(series.name ?? '') ? 5 : 0)),
     };
-    this.noDataSelected = this.displayedSeries.length === 0;
+    this.noDataSelected = this.displayedSeries.length === 0 && this.liveSeries.length === 0;
     this.applyYAxisScale();
     this.shownSeriesChange.emit({ x: !!data.x, y: !!data.y, z: !!data.z });
     // Into the options even before there is a chart to draw on: the first
@@ -1071,7 +1113,6 @@ export class AnalysisGraphComponent
 
   /** A dot on each shown curve at the playhead, in the curve's own ink. */
   private markCurves(timeIndex: number, timeSeconds: number): void {
-
     const xSeries = this.chartOptions.series?.find((s) => s.name === 'X');
     const ySeries = this.chartOptions.series?.find((s) => s.name === 'Y');
     const zSeries = this.chartOptions.series?.find((s) => s.name === 'Z');

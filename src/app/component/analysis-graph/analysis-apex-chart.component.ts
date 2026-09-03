@@ -32,6 +32,28 @@ declare global {
   }
 }
 
+/** A curve drawn over the plot in data coordinates, while the chart itself stands still. */
+export interface LiveCurve {
+  name: string;
+  color: string;
+  width: number;
+  points: { x: number; y: number | null }[];
+}
+
+/** The plot's frame, read off the chart that is standing: where data lands in pixels. */
+interface PlotFrame {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  svgWidth: number;
+  svgHeight: number;
+}
+
 /**
  * Small Angular bridge for the ApexCharts bundle loaded by angular.json.
  *
@@ -46,7 +68,50 @@ declare global {
       <div class="chart-render-error" role="status">{{ renderError }}</div>
     }
     <div #chartHost></div>
+    @if (livePaths.length) {
+      <svg
+        class="liveOverlay"
+        [attr.width]="overlay.svgWidth"
+        [attr.height]="overlay.svgHeight"
+        aria-hidden="true"
+      >
+        <defs>
+          <clipPath [attr.id]="clipId">
+            <rect
+              [attr.x]="overlay.left"
+              [attr.y]="overlay.top"
+              [attr.width]="overlay.width"
+              [attr.height]="overlay.height"
+            />
+          </clipPath>
+        </defs>
+        <g [attr.clip-path]="'url(#' + clipId + ')'" fill="none" stroke-linejoin="round">
+          @for (path of livePaths; track $index) {
+            <path
+              [attr.d]="path.d"
+              [attr.data-series]="path.name"
+              [attr.stroke]="path.color"
+              [attr.stroke-width]="path.width"
+            />
+          }
+        </g>
+      </svg>
+    }
   `,
+  styles: [
+    `
+      :host {
+        display: block;
+        position: relative;
+      }
+      .liveOverlay {
+        position: absolute;
+        left: 0;
+        top: 0;
+        pointer-events: none;
+      }
+    `,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnDestroy {
@@ -70,6 +135,86 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
 
   renderError: string | null = null;
   chartInstance?: ApexCharts;
+
+  /**
+   * The curves following a drag, drawn here rather than by the chart.
+   *
+   * ApexCharts has one way to take new data, and it is to tear the plot down
+   * and build it again: axes measured, labels laid out, every element made
+   * anew, about eight milliseconds and seven thousand DOM changes per row per
+   * pointer move. During a gesture the axes do not move -- the scale is held
+   * for exactly that reason -- so the only thing that needs redrawing is the
+   * curve, and a path over the standing plot is that. The chart is handed the
+   * final series when the hand lets go.
+   */
+  livePaths: { name: string; d: string; color: string; width: number }[] = [];
+  overlay: PlotFrame = {
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+    minX: 0,
+    maxX: 1,
+    minY: 0,
+    maxY: 1,
+    svgWidth: 0,
+    svgHeight: 0,
+  };
+  readonly clipId = `liveClip${Math.random().toString(36).slice(2, 9)}`;
+  private clearOverlayAfterRender = false;
+
+  /**
+   * Draw these curves over the plot, or clear them with `null`.
+   *
+   * Clearing waits for the chart's next render to finish: on release the
+   * chart is handed the final series, and the overlay stays up until those
+   * are actually drawn, so there is never a frame with no live curve on it.
+   */
+  showLive(curves: LiveCurve[] | null): void {
+    const frame = curves ? this.plotFrame() : null;
+    if (!curves || !frame) {
+      this.clearOverlayAfterRender = this.livePaths.length > 0;
+      return;
+    }
+    this.clearOverlayAfterRender = false;
+    this.overlay = frame;
+    const spanX = frame.maxX - frame.minX || 1;
+    const spanY = frame.maxY - frame.minY || 1;
+    this.livePaths = curves.map((curve) => {
+      let d = '';
+      let pen = false;
+      for (const point of curve.points) {
+        if (point.y === null || !Number.isFinite(point.y) || !Number.isFinite(point.x)) {
+          pen = false;
+          continue;
+        }
+        const px = frame.left + ((point.x - frame.minX) / spanX) * frame.width;
+        const py = frame.top + ((frame.maxY - point.y) / spanY) * frame.height;
+        d += `${pen ? 'L' : 'M'}${px.toFixed(1)} ${py.toFixed(1)}`;
+        pen = true;
+      }
+      return { name: curve.name, d, color: curve.color, width: curve.width };
+    });
+    this.changeDetector.markForCheck();
+  }
+
+  private plotFrame(): PlotFrame | null {
+    const globals = (this.chartInstance as unknown as { w?: { globals?: Record<string, number> } })
+      ?.w?.globals;
+    if (!globals || !(globals['gridWidth'] > 0) || !(globals['gridHeight'] > 0)) return null;
+    return {
+      left: globals['translateX'],
+      top: globals['translateY'],
+      width: globals['gridWidth'],
+      height: globals['gridHeight'],
+      minX: globals['minX'],
+      maxX: globals['maxX'],
+      minY: globals['minY'],
+      maxY: globals['maxY'],
+      svgWidth: globals['svgWidth'],
+      svgHeight: globals['svgHeight'],
+    };
+  }
 
   private viewInitialized = false;
   private destroyed = false;
@@ -181,7 +326,8 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
       const group = host!.querySelector(selector);
       // Only a group that is in front: moving one already behind is a
       // mutation of its own, which the observer would answer with another.
-      const inFront = !!group && !!(series.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const inFront =
+        !!group && !!(series.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING);
       if (group && inFront && group.parentNode === parent) parent.insertBefore(group, series);
     }
   }
@@ -246,6 +392,11 @@ export class AnalysisApexChartComponent implements OnChanges, AfterViewInit, OnD
       });
     } finally {
       this.updating = false;
+      if (this.clearOverlayAfterRender && !this.updateWanted) {
+        this.clearOverlayAfterRender = false;
+        this.livePaths = [];
+        this.zone.run(() => this.changeDetector.markForCheck());
+      }
       if (this.updateWanted && !this.destroyed) {
         this.updateWanted = false;
         void this.renderOrUpdate();
