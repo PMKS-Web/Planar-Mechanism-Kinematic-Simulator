@@ -359,6 +359,32 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(300);
 
+// --- A locked link still takes new parts from its menu ----------------------
+
+await page.evaluate(() => {
+  const c = ng.getComponent(document.querySelector('app-new-grid'));
+  c.mechanismSrv.toggleLock(c.mechanismSrv.links.find((l) => l.id === 'CD'));
+});
+await page.waitForTimeout(300);
+const cdOn = await linkOnScreen('CD');
+await page.mouse.click(cdOn.x, cdOn.y, { button: 'right' });
+await page.waitForTimeout(350);
+menu = await readMenu();
+record(
+  "a locked link's Link, Cylinder, Tracer Point and Force rows are all live",
+  ['Link', 'Cylinder', 'Tracer Point', 'Force'].every(
+    (label) => menu?.rows.find((r) => r.label === label)?.off === false
+  ),
+  menu?.rows.filter((r) => ['Link', 'Cylinder', 'Tracer Point', 'Force'].includes(r.label))
+);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(150);
+await page.evaluate(() => {
+  const c = ng.getComponent(document.querySelector('app-new-grid'));
+  c.mechanismSrv.toggleLock(c.mechanismSrv.links.find((l) => l.id === 'CD'));
+});
+await page.waitForTimeout(300);
+
 // --- Leaving Edit stands the chips down --------------------------------------
 
 await page.locator('.tabButton', { hasText: 'Kinematic' }).click();

@@ -725,27 +725,28 @@ export class ContextMenuBuilderService {
             long: 'This is a welded compound. Click one of the links it is made of, so the new member knows which body it joins.',
           }
         : undefined;
-    const locked = this.lockedRefusal(link);
+    // A lock holds the link where it is, and attaching a new part to it moves
+    // nothing that is held -- the new link, block, tracer or force is built
+    // onto the link as it stands. So the lock refuses none of these.
     const rows = [
       new MenuRow({
         label: 'Link',
         icon: 'new_link',
         action: () => handlers.attachLink(),
-        refusal: fillet ?? locked,
+        refusal: fillet,
       }),
       new MenuRow({
         label: 'Cylinder',
         icon: 'add_cylinder',
         action: () => handlers.attachCylinder(),
-        refusal: fillet ?? locked,
+        refusal: fillet,
       }),
       new MenuRow({
         label: 'Tracer Point',
         icon: 'add_tracer',
         action: () => handlers.attachTracerPoint(),
-        refusal: fillet ?? locked,
+        refusal: fillet,
       }),
-      // A force does not move the geometry, so a locked link still takes one.
       new MenuRow({
         label: 'Force',
         icon: 'add_force',

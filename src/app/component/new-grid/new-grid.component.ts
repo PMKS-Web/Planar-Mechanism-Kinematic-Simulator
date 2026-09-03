@@ -2404,12 +2404,6 @@ export class NewGridComponent implements OnDestroy {
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const span = Math.hypot(dx, dy) || 1;
-      // Exactly where the hover dimension labels that value, so hovering the
-      // field adds the hairline and nothing else: the chip is the label.
-      const at =
-        hold === 'length'
-          ? this.lengthLabelAt(a.x, a.y, b.x, b.y)
-          : this.angleLabelAt(a.x, a.y, b.x, b.y);
       const text =
         hold === 'length'
           ? this.nup.formatModelLength(span, this.settings.lengthUnit.getValue())
@@ -2423,7 +2417,22 @@ export class NewGridComponent implements OnDestroy {
               ),
               this.settings.angleUnit.getValue()
             );
-      chips.push({ id: link.id, x: at.x, y: at.y, text, w: this.pillWidth(text, true) });
+      const w = this.pillWidth(text, true);
+      // Where the hover dimension labels that value, so hovering the field
+      // adds the hairline and nothing else: the chip is the label. A length's
+      // chip then moves along the bar, away from the name, so the center is
+      // left to the center-of-mass mark.
+      const at =
+        hold === 'length'
+          ? this.lengthLabelAt(a.x, a.y, b.x, b.y)
+          : this.angleLabelAt(a.x, a.y, b.x, b.y);
+      const axis = hold === 'length' ? this.barAxis(link) : undefined;
+      if (axis) {
+        const off = this.centerClearance() + this.chipHalfExtentAlong(w, axis);
+        at.x -= axis.x * off;
+        at.y -= axis.y * off;
+      }
+      chips.push({ id: link.id, x: at.x, y: at.y, text, w });
     }
     return chips;
   }
@@ -2456,12 +2465,9 @@ export class NewGridComponent implements OnDestroy {
    * chip, which is a screen-sized pill and so needs a zoom-sized step.
    */
   linkLabelLift(link: Link): number {
-    const chip = this.holdsVisible() && holdOf(link) === 'length';
-    const mark = this.showsCoM(link);
-    if (!chip && !mark) return 0;
-    const forMark = mark ? this.settings.objectScale * 0.13 : 0;
-    const forChip = chip ? this.svgGrid.scaleWithZoom(20) : 0;
-    return -Math.max(forMark, forChip);
+    // A bar's name has already moved along the bar; only a body steps up.
+    if (this.barAxis(link)) return 0;
+    return this.showsCoM(link) ? -this.settings.objectScale * 0.13 : 0;
   }
 
   /** The label of the length hover dimension, as the panel spells it. */
@@ -5232,7 +5238,68 @@ export class NewGridComponent implements OnDestroy {
       parts.length === 0
         ? link
         : parts.reduce((best, part) => (span(part) > span(best) ? part : best));
-    return { ...middleOf(on), ink: this.linkLabelInk(link), opacity: 0.55, name, angle };
+    const center = middleOf(on);
+    // On a bar the name gives up the center to the center-of-mass mark and a
+    // locked length's chip by moving *along* the bar, toward its higher end;
+    // stepping "up" across the bar put a flat bar's name on top of its chip.
+    const axis = this.barAxis(link);
+    if (axis && (this.showsCoM(link) || this.lengthChipShown(link))) {
+      const along = this.labelHalfExtentAlong(name, angle, axis);
+      const off = this.centerClearance() + along;
+      center.x += axis.x * off;
+      center.y += axis.y * off;
+    }
+    return { ...center, ink: this.linkLabelInk(link), opacity: 0.55, name, angle };
+  }
+
+  /**
+   * The direction along a two-joint bar the name moves in, or nothing for a
+   * body that has no direction. Toward the bar's higher end, so the name is
+   * above the center and the chip below it whichever way the bar was drawn;
+   * a flat bar sends it toward the right-hand end.
+   */
+  private barAxis(link: Link): { x: number; y: number } | undefined {
+    if ((link.joints?.length ?? 0) !== 2) return undefined;
+    if (link instanceof RealLink && link.subset.length > 0) return undefined;
+    const [from, to] = link.joints;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const span = Math.hypot(dx, dy);
+    if (span < 1e-9) return undefined;
+    const up = dy > 1e-9 || (Math.abs(dy) <= 1e-9 && dx > 0) ? 1 : -1;
+    return { x: (up * dx) / span, y: (up * dy) / span };
+  }
+
+  /** Whether this bar wears a length chip right now. */
+  private lengthChipShown(link: Link): boolean {
+    return (
+      this.holdsVisible() && holdOf(link) === 'length' && !this.mechanismSrv.isLockedTarget(link)
+    );
+  }
+
+  /** How far from the center anything must sit to clear the center-of-mass mark. */
+  private centerClearance(): number {
+    return 0.16 * this.settings.objectScale + this.svgGrid.scaleWithZoom(4);
+  }
+
+  /**
+   * Half of how much a name takes up along the bar: a name written along the
+   * bar is its own width; one left flat is its box projected onto the axis.
+   */
+  private labelHalfExtentAlong(
+    name: string,
+    angle: number,
+    axis: { x: number; y: number }
+  ): number {
+    const width = name.length * this.tagFontSize * 0.32;
+    const height = this.tagFontSize * 0.4;
+    if (angle !== 0) return width;
+    return Math.abs(axis.x) * width + Math.abs(axis.y) * height;
+  }
+
+  /** Half of how much a chip takes up along the bar: its box projected onto the axis. */
+  private chipHalfExtentAlong(width: number, axis: { x: number; y: number }): number {
+    return (Math.abs(axis.x) * width) / 2 + Math.abs(axis.y) * this.svgGrid.scaleWithZoom(11);
   }
 
   /** The slot this bar carries, if it is a plain bar carrying one. */

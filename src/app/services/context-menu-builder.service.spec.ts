@@ -280,6 +280,18 @@ describe('the right-click menu', () => {
       expect(remove.refusal!.short).toBe('unlock first');
     });
 
+    it('still attaches a link, a tracer, a cylinder and a force to a locked link', () => {
+      // A lock holds the link where it is; a new part built onto it moves
+      // nothing that is held.
+      const parts = fourBar(harness.mechanism);
+      parts.o.locked = true;
+      parts.a.locked = true;
+      const model = harness.builder.build(parts.crank, noHandlers);
+      for (const label of ['Link', 'Cylinder', 'Tracer Point', 'Force']) {
+        expect(row(model, label)!.refusal, label).toBeUndefined();
+      }
+    });
+
     it('refuses to attach to a locked joint for the same reason', () => {
       const parts = fourBar(harness.mechanism);
       parts.a.locked = true;
