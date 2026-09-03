@@ -94,7 +94,11 @@ describe('SixbarService', () => {
   const unit = 'cm';
   const tolerance = 0.01;
 
-  mechanisms.push(new Mechanism(joints, links, forces, ics, gravity, unit, 10));
+  // 'degree': the MATLAB tables are stated one row per degree of crank and
+  // compared one to one. Under 'adaptive' this rocker's eleven-degree swing is
+  // cut into a full cycle's worth of samples, which is the same motion at a
+  // spacing the tables were never stated on.
+  mechanisms.push(new Mechanism(joints, links, forces, ics, gravity, unit, 10, 'degree'));
 
   // ForceSolver.determineDesiredLoopLettersForce(mechanisms[0].requiredLoops)
   // ForceSolver.determineForceAnalysis(

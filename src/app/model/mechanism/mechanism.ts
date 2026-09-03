@@ -409,12 +409,13 @@ export class Mechanism {
   /**
    * The most samples a cycle may hold.
    *
-   * The cap that used to stand at 750 counted solves, and now counts crank, so
+   * The crank budget in findFullMovementPos counts crank, not solves, so
    * something still has to bound the solves themselves: a fold can always be
-   * asked for one more cut. Well above any cycle that is not subdividing --
-   * the longest template is 363 samples.
+   * asked for one more cut. Above the budget itself, so a cycle that is long
+   * rather than folded -- a rocker whose swing is more than a turn -- is ended
+   * by the crank running out and not by this.
    */
-  private static readonly MAX_SAMPLES = 4000;
+  private static readonly MAX_SAMPLES = 6000;
 
   /** The span of the drawing at rest, which the jump limit is a fraction of. */
   private startingSpan(): number {
@@ -513,6 +514,8 @@ export class Mechanism {
     let falseTwice = 0;
     let inputAngVelDirection = inputAngVel > 0;
     let currentTimeStamp = 0;
+    // The floor under every "is it home" question below, for a drawing too
+    // small for a fraction of its size to mean anything.
     const TOLERANCE = 0.008;
     let curTimeNum = 0;
     // PositionSolver.incrementRevInput steps the crank by exactly one degree, so a
@@ -520,6 +523,16 @@ export class Mechanism {
     // Ending on that count instead of on a position tolerance keeps the sample count
     // — and therefore the t=0 pose — identical every time the mechanism is rebuilt.
     const STEPS_PER_REVOLUTION = 360;
+    // How many turns a crank is given to bring the whole drawing home. One
+    // closes most cycles; a rod that passes through tangency with its slot
+    // comes home on the second; a winding of three is the most this will
+    // wait for, and a drawing that is not home by then is refused below
+    // rather than shown with a teleport at the wrap.
+    const MAX_REVOLUTIONS = 3;
+    // Whole steps of crank a cycle may spend. A rocker's cycle is out and back
+    // over each side of its start, and a limit may lie as far away as the
+    // crank is allowed to turn -- so four times that, and not a step more.
+    const CRANK_BUDGET = 4 * MAX_REVOLUTIONS * STEPS_PER_REVOLUTION;
     const inputJoint = this.joints[0].find((j) => j instanceof RealJoint && j.input);
     const revoluteInput = inputJoint !== undefined && !(inputJoint instanceof PrisJoint);
     // An input that cannot go round reverses instead, and only the
@@ -577,8 +590,6 @@ export class Mechanism {
     const desiredJoint = this.joints[0][desiredJointIndex];
     const startingPositionX = desiredJoint.x;
     const startingPositionY = desiredJoint.y;
-    let xDiff = Math.abs(startingPositionX - Math.round(desiredJoint.x * 100) / 100);
-    let yDiff = Math.abs(startingPositionY - Math.round(desiredJoint.y * 100) / 100);
     this._timeNum.push(curTimeNum);
 
     // A reversing input passes through its starting pose twice: once on the way
@@ -604,6 +615,27 @@ export class Mechanism {
     // has to be the same set of points in both directions -- measured from
     // where the walk began rather than from wherever it last turned round.
     let travel = 0;
+    // Whether the latest sample landed on the original spacing.
+    let onSpacing = true;
+    // A reversing cycle is home when its travel is back to nothing and the
+    // *drawing* is where it started -- all of it, on the same assembly branch.
+    // It used to be judged on one reference joint, to a hundredth of a pixel:
+    // a linkage that came back on another branch could pass that with half its
+    // joints elsewhere, and the animation teleported them at the wrap. And a
+    // linkage drawn at one of its own limits could never pass it -- at a fold
+    // the pose is exquisitely sensitive to the crank, and a rounding of a ten
+    // thousandth in the pin comes back as a few thousandths of the span in the
+    // rest -- so it walked its swing again and again until the budget ran out.
+    // "Same branch" is the question, and the answer is the same line the
+    // solver draws between a step and a jump: the other branch is most of a
+    // mechanism away, and solver noise is far under what one sample may move.
+    const jumpLimit = this.startingSpan() * Mechanism.JUMP_LIMIT_FRACTION;
+    const differentPose = Math.max(jumpLimit, TOLERANCE);
+    const home = () =>
+      reversals >= 2 &&
+      onSpacing &&
+      travel === 0 &&
+      this.seamGapAt(currentTimeStamp) <= differentPose;
     const startedForward = inputAngVel > 0;
     /** How much of a whole step is left before the next point of the spacing. */
     const roomToNextPoint = (): number => {
@@ -613,10 +645,17 @@ export class Mechanism {
     };
     // Which samples subdivision added. Sample 0 is on the spacing by definition.
     const addedSamples: boolean[] = [false];
-    // The sample a full revolution landed on: with subdivision it is no longer
-    // sample 360, and the seam check and the trim both need the real index.
-    let revolutionSample = STEPS_PER_REVOLUTION;
-    const jumpLimit = this.startingSpan() * Mechanism.JUMP_LIMIT_FRACTION;
+    // The sample standing at each travel already walked. A reversing input
+    // comes home over the ground it went out on, and the pose at each point of
+    // that ground is not a new question: it was solved on the way out. Asking
+    // again is what put a rocker on the other assembly branch -- at a limit
+    // the two branches meet, the solver has no history to say which is which,
+    // and the walk back chose by a coin. So a step onto covered ground is put
+    // on the pose found there, which also makes the seam at home exactly zero.
+    const visited = new Map<number, number>([[0, 0]]);
+    const stepSign = () => (inputAngVelDirection === startedForward ? 1 : -1);
+    // How near home the crank's turns came, whole turn by whole turn.
+    let closestSeam = Infinity;
     // Only where the crank spacing is the spacing this mechanism moves by -- a
     // driven pin or cylinder steps by a field of its own -- and only under
     // 'adaptive', so the tables the verification suite is stated against keep
@@ -627,13 +666,10 @@ export class Mechanism {
       PositionSolver.stepsByRevoluteSampleStep &&
       jumpLimit > 0;
     let revolutionsToClose = 1;
-    // One-shot: an abandoned extension rewinds to the very pose that asked for
-    // it, and without this it would ask again forever.
-    let extensionAbandoned = false;
     const cycleIncomplete = () =>
       revoluteInput && reversals === 0
         ? gridSteps < STEPS_PER_REVOLUTION * revolutionsToClose
-        : reversals < 2 || xDiff > TOLERANCE || yDiff > TOLERANCE;
+        : !home();
 
     while (!simForward || currentTimeStamp === 0 || cycleIncomplete()) {
       const attempt = this.solveLookingAhead(
@@ -646,6 +682,10 @@ export class Mechanism {
       );
       const possible = attempt.solved;
       if (possible) {
+        const covered = visited.get(travel + stepSign() * attempt.fraction);
+        if (covered !== undefined) {
+          this.reinstatePose(covered);
+        }
         this._joints.push([]);
         this._links.push([]);
         this._forces.push([]);
@@ -724,25 +764,22 @@ export class Mechanism {
         // Halves, so these sums are exact in binary and a sample either lands
         // on the original spacing or is one subdivision added.
         gridSteps += attempt.fraction;
-        travel += (inputAngVelDirection === startedForward ? 1 : -1) * attempt.fraction;
-        const onSpacing = Math.abs(travel - Math.round(travel)) < 1e-9;
+        travel += stepSign() * attempt.fraction;
+        onSpacing = Math.abs(travel - Math.round(travel)) < 1e-9;
         if (onSpacing) {
           travel = Math.round(travel);
         }
         addedSamples.push(!onSpacing);
-        if (onSpacing && Math.abs(gridSteps - STEPS_PER_REVOLUTION) < 1e-9) {
-          revolutionSample = currentTimeStamp;
+        if (!visited.has(travel)) {
+          visited.set(travel, currentTimeStamp);
         }
-      } else if (revolutionsToClose === 2 && gridSteps >= STEPS_PER_REVOLUTION) {
-        // The second revolution could not be solved through. Fall back to the
-        // one-revolution cycle and its warned seam rather than losing a
-        // mechanism the old behavior kept.
-        this.trimToSample(revolutionSample);
-        currentTimeStamp = revolutionSample;
-        curTimeNum = this._timeNum[currentTimeStamp];
-        revolutionsToClose = 1;
-        extensionAbandoned = true;
       } else {
+        // A step that cannot be taken is a limit of the input's travel,
+        // wherever it falls. That includes past a full turn: an input that
+        // went round once without coming home and then stopped is a rocker
+        // whose swing is wider than a revolution, and it reverses here like
+        // any other. Falling back to the one-turn cycle instead left it
+        // labeled as looping, with the drawing teleporting at every wrap.
         if ((!simForward && currentTimeStamp === 0) || falseTwice === 2) {
           //If we are here, the mechnism is in a toggle point
           this.setMechanismInvalid('dead-position');
@@ -757,28 +794,35 @@ export class Mechanism {
         // which way they were heading is now wrong.
         PositionSolver.clearMotionHistory();
       }
-      xDiff = Math.abs(
-        startingPositionX - roundNumber(this._joints[currentTimeStamp][desiredJointIndex].x, 2)
-      );
-      yDiff = Math.abs(
-        startingPositionY - roundNumber(this._joints[currentTimeStamp][desiredJointIndex].y, 2)
-      );
       // The whole drawing has to be home, not just the reference joint, before
-      // the first revolution is allowed to be the whole cycle.
+      // a turn of the crank is allowed to be the whole cycle. If it is not,
+      // give the crank another turn, up to the most this will wait for.
       if (
+        possible &&
         revoluteInput &&
         reversals === 0 &&
-        revolutionsToClose === 1 &&
-        !extensionAbandoned &&
-        Math.abs(gridSteps - STEPS_PER_REVOLUTION) < 1e-9 &&
-        this.seamGapAt(currentTimeStamp) > this.seamTolerance()
+        onSpacing &&
+        Math.abs(gridSteps - STEPS_PER_REVOLUTION * revolutionsToClose) < 1e-9
       ) {
-        revolutionsToClose = 2;
+        const seam = this.seamGapAt(currentTimeStamp);
+        closestSeam = Math.min(closestSeam, seam);
+        if (seam > differentPose && revolutionsToClose < MAX_REVOLUTIONS) {
+          revolutionsToClose += 1;
+        }
+      }
+      // A rocker walks home over the points it walked out on, so it is back
+      // where it started exactly when its travel is. Standing somewhere else
+      // at that point means it came back on another branch, and no amount of
+      // further walking will close that.
+      if (possible && reversals >= 2 && onSpacing && travel === 0 && !home()) {
+        this._cycleGap = this.seamGapAt(currentTimeStamp) / MODEL_SCALE;
+        this.setMechanismInvalid('cycle-never-closes');
+        return;
       }
       // Crank, not solves, so subdividing a fold cannot spend the budget a
       // cycle has to close in -- with a ceiling on the samples themselves,
       // because a fold has no bottom and the work has to end somewhere.
-      if (gridSteps >= 750 || this._joints.length > Mechanism.MAX_SAMPLES) {
+      if (gridSteps >= CRANK_BUDGET || this._joints.length > Mechanism.MAX_SAMPLES) {
         // How close it ever came to its starting pose, skipping the first few
         // frames where it is trivially still there. setMechanismInvalid wipes
         // the frames, so this is the last chance to measure.
@@ -885,17 +929,14 @@ export class Mechanism {
 
     this._addedSamples = addedSamples;
 
-    // An extension that ran its full second revolution and is still not home
-    // bought nothing: keep the one-revolution cycle the old behavior kept.
-    if (
-      revoluteInput &&
-      reversals === 0 &&
-      revolutionsToClose === 2 &&
-      this.seamGapAt(currentTimeStamp) > this.seamTolerance()
-    ) {
-      this.trimToSample(revolutionSample);
-      currentTimeStamp = revolutionSample;
-      revolutionsToClose = 1;
+    // Every turn the crank was given ended in a different pose. A cycle that
+    // jumps between two poses at the wrap is not a cycle: it used to be kept
+    // anyway, labeled as looping, and the reader saw the drawing teleport
+    // once a turn.
+    if (revoluteInput && reversals === 0 && closestSeam > differentPose) {
+      this._cycleGap = closestSeam / MODEL_SCALE;
+      this.setMechanismInvalid('cycle-never-closes');
+      return;
     }
 
     // Pin the closing sample to the analytic period rather than to hundreds of
@@ -915,7 +956,19 @@ export class Mechanism {
     }
   }
 
-  /** Drop precomputed samples past `lastSample`, keeping 0..lastSample. */
+  /**
+   * Stand the position solver on a sample already found.
+   *
+   * Every joint, the input included: the input is stepped by repeated
+   * addition, so putting it back on the sample it stood on before also takes
+   * out whatever the additions drifted by since.
+   */
+  private reinstatePose(sample: number): void {
+    for (const joint of this._joints[sample]) {
+      PositionSolver.jointMapPositions.set(joint.id, [joint.x, joint.y]);
+    }
+  }
+
   /**
    * Which samples the look-ahead added, parallel to the frames.
    *
@@ -928,15 +981,6 @@ export class Mechanism {
   /** Whether this cycle needed cutting finer anywhere -- i.e. it passes a fold. */
   get hasAddedSamples(): boolean {
     return this._addedSamples.some(Boolean);
-  }
-
-  private trimToSample(lastSample: number): void {
-    if (this._addedSamples.length) this._addedSamples.length = lastSample + 1;
-    this._joints.length = lastSample + 1;
-    this._links.length = lastSample + 1;
-    this._forces.length = lastSample + 1;
-    this._timeNum.length = lastSample + 1;
-    this._inputAngularVelocities.length = lastSample + 1;
   }
 
   /** How far the furthest joint stands from its starting position at `sample`. */

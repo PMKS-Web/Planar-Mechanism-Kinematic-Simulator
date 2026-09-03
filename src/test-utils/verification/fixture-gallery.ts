@@ -7,6 +7,7 @@ import {
   teachingLabSliderCrankFixture,
   nearlyNonGrashofFixture,
   twoFourBarsFixture,
+  wideSwingRockerFixture,
   wattIFixture,
 } from './fixtures';
 import {
@@ -703,6 +704,14 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'posed-editing.spec.ts',
     floatingSlot: false,
     fixture: nearlyNonGrashofFixture(),
+  },
+  {
+    name: 'Rocker that swings more than a turn',
+    purpose:
+      'Not home after one revolution and stopped in the next: a rocker, not a crank with a seam',
+    spec: 'wide-swing-rocker.spec.ts',
+    floatingSlot: false,
+    fixture: wideSwingRockerFixture(),
   },
   {
     name: 'Two four-bars',

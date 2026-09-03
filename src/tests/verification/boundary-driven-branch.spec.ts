@@ -73,23 +73,54 @@ describe('a boundary-driven six-bar near two assembly modes', () => {
     expect(PositionSolver.unsolvableJoints).toEqual([]);
   });
 
-  it('animates a full monotone revolution instead of refusing', () => {
+  /**
+   * The crank's swing, in whole degrees. This linkage is a rocker whose swing
+   * is wider than a turn: an independent continuation of its configuration
+   * curve puts the crank's range at [0°, 382.3°], with the drawn pose at one
+   * limit. So it turns all the way round and a fifth of a turn more, stops,
+   * and comes back -- and the walk out is 382 one-degree samples.
+   */
+  const SWING = 382;
+
+  it('swings more than a full turn, stops, and comes back', () => {
+    // Its first turn ends somewhere other than home -- the drawing at 360° is
+    // two units from where it started -- and that used to be taken as the
+    // whole cycle, so it was labeled as looping and teleported at every wrap.
+    // Ending the walk at the limit instead, and retracing, is the motion.
     expect(mechanism.isMechanismValid()).toBe(true);
-    expect(frames.length).toBe(361);
+    expect(mechanism.reciprocates).toBe(true);
+    expect(frames.length).toBe(2 * SWING + 1);
 
     const angle = (step: number): number => {
       const at = frames[step].find((joint) => joint.id === 'B')!;
       return Math.atan2(at.y - pivot[1], at.x - pivot[0]);
     };
     let swept = 0;
-    for (let step = 1; step < frames.length; step++) {
+    for (let step = 1; step <= SWING; step++) {
       let increment = angle(step) - angle(step - 1);
       while (increment > Math.PI) increment -= 2 * Math.PI;
       while (increment < -Math.PI) increment += 2 * Math.PI;
       expect(increment).toBeGreaterThan(0.01);
       swept += increment;
     }
-    expect(swept).toBeGreaterThan(2 * Math.PI - 0.001);
+    expect(swept).toBeGreaterThan(2 * Math.PI + 0.35);
+    expect(swept).toBeLessThan(2 * Math.PI + 0.4);
+  });
+
+  it('comes home over the poses it went out on, and lands exactly on the start', () => {
+    // A retrace, not a re-solve: the walk back is put on the samples the walk
+    // out found, so the two legs agree to the digit and the seam is nothing.
+    // Solved afresh, the return leg came back on the other assembly branch,
+    // because at the limit the two branches meet and the solver had no history
+    // to tell them apart.
+    for (let step = 0; step <= SWING; step++) {
+      const out = frames[step];
+      const back = frames[2 * SWING - step];
+      for (let index = 0; index < out.length; index++) {
+        expect(back[index].x, `joint ${out[index].id} at step ${step}`).toBe(out[index].x);
+        expect(back[index].y, `joint ${out[index].id} at step ${step}`).toBe(out[index].y);
+      }
+    }
   });
 
   it('takes the branch continuation takes on its first one-degree solve', () => {
@@ -125,14 +156,14 @@ describe('a boundary-driven six-bar near two assembly modes', () => {
     expect(oneShot.get('E')![0]).toBeLessThan(initial.get('E')![0]);
   });
 
-  it('stays on that branch for the whole revolution', () => {
-    // Forty sub-steps a degree, carried across the whole turn rather than
+  it('stays on that branch for the whole swing', () => {
+    // Forty sub-steps a degree, carried across the whole swing rather than
     // restarted each sample, so the reference is a continuation in its own
     // right and not a re-derivation from what the mechanism drew.
     const reference: PositionMap = new Map([...initial].map(([id, point]) => [id, [...point]]));
     const SUBDIVISIONS = 40;
     let worst = 0;
-    for (let step = 1; step < frames.length; step++) {
+    for (let step = 1; step <= SWING; step++) {
       for (let part = 1; part <= SUBDIVISIONS; part++) {
         reference.set('B', crankPin(step - 1 + part / SUBDIVISIONS));
         expect(solveSimultaneous(system, reference, 0), `continuation at step ${step}`).toBe(true);

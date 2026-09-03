@@ -762,6 +762,45 @@ whose solve is deferred, was backwards for a week (a7b83a8).
 The same sign runs through `inputAngularVelocities`, which is the joint's rpm
 through pi/30: a different quantity, the same convention.
 
+### "Loops" is a claim about the drawing, not a count of samples
+
+The sweep in `findFullMovementPos` closes a crank's cycle on a *count*: 360 one-degree samples and
+the input is back where it started. That is only a cycle when the rest of the drawing is back too,
+and there are two ways for it not to be. A rod that passes through tangency with its slot comes home
+on the other assembly branch and needs two turns. And an input can be a **rocker whose swing is
+wider than a turn** -- the ten-pin linkage in `wideSwingRockerFixture` turns a full revolution and
+75 degrees more before it stops, so after 360 samples its crank is home and every other joint is
+half a mechanism away. The old sweep tried a second turn, hit the limit, fell back to the one-turn
+cycle "the old behavior kept", and warned about the seam *in the console*. The playback bar said
+"Loops" and the drawing teleported once a turn.
+
+Now: a solve that fails past a full turn is a limit, wherever it falls, and the input reverses
+there like any other rocker; a crank gets up to three turns to bring the whole drawing home; and a
+crank that is in a different pose after every turn it was given is refused as `cycle-never-closes`
+rather than shown with a seam. "Different pose" is the solver's own line between a step and a jump
+(`JUMP_LIMIT_FRACTION` of the span), not a thousandth: a linkage drawn at one of its own limits
+comes home a few thousandths of its span off, because at a fold the pose is exquisitely sensitive to
+the crank, and the one-joint-to-a-hundredth-of-a-pixel test the rocker closure used to run could
+never pass there.
+
+**A rocker walks home over the poses it found on the way out, literally.** The walk back used to be
+re-solved, and near a limit the two branches meet: after adaptive subdivision has crept to within a
+sixty-fourth of a degree of the fold, "the root nearest the current position" is a coin flip, and a
+retrace that lost it came home on the other branch -- which the one-joint closure test then passed,
+because the *crank pin* was home. `visited` maps each travel to the sample standing at it, and a
+step onto covered ground puts the position solver back on that pose (`reinstatePose`). Three things
+follow: the seam at home is exactly zero; a rocker found to be somewhere else when its travel is
+back at zero is refused on the spot, since no further walking can fix a branch; and the adaptive
+fine pass over a sliver such as Watt I's now closes instead of sailing off into the lobe the sliver's
+branch never visits.
+
+When a mechanism's cycle looks wrong, get the truth before touching the solver: a pseudo-arclength
+continuation of the constraint equations in a hundred lines of node (unknown joint positions plus
+the crank angle, distance constraints, tangent from the null space) traces the whole configuration
+curve and reports the crank's range and its turning points. That is how the 444-degree swing above,
+the boundary six-bar's 382-degree swing with the drawn pose at a limit, and Watt I's eleven-degree
+sliver were each established, and each contradicted what the spec at the time asserted.
+
 ### Where a drag's time goes, and how to re-measure it
 
 Measured on 2 Sep 2026 in a real Chromium with the DevTools profiler and tracer, on the

@@ -242,3 +242,45 @@ export function nearlyNonGrashofFixture(): MechanismFixture {
     inputAngVel: INPUT_SPEED,
   };
 }
+
+/**
+ * A rocker whose swing is wider than a full turn.
+ *
+ * Ten pins and eight bars, drawn by a reader who found that it "says it loops
+ * but does not come back". An independent continuation of its configuration
+ * curve puts the crank's range at 444 degrees: from where it is drawn it turns
+ * clockwise through a whole revolution and 75 degrees more, stops, comes back,
+ * passes the start, stops 9 degrees beyond it, and comes back again.
+ *
+ * The sweep used to close every crank on the count of one revolution, and
+ * this one is not home after one -- the drawing at 360 degrees is half a
+ * mechanism away from the drawing at 0 -- so it was published as looping,
+ * with every joint but the crank teleporting at the wrap. The count of a
+ * revolution is only a cycle when the drawing is home on it.
+ */
+export function wideSwingRockerFixture(): MechanismFixture {
+  return {
+    joints: [
+      { id: 'A', x: -0.154, y: 0.528, ground: true, input: true, driveSpeed: -10 },
+      { id: 'B', x: 6.17, y: 0, ground: true },
+      { id: 'C', x: 0.97, y: 2.123 },
+      { id: 'D', x: 0.841, y: 0.28 },
+      { id: 'E', x: 2.641, y: 3.107 },
+      { id: 'F', x: 6.17, y: 3.107 },
+      { id: 'G', x: 4.665, y: 2.031 },
+      { id: 'H', x: 3.141, y: 1.303 },
+      { id: 'I', x: 3.954, y: -0.407 },
+      { id: 'J', x: 3.881, y: 1.886 },
+    ],
+    links: [
+      { joints: 'ACD' },
+      { joints: 'CE' },
+      { joints: 'EFG' },
+      { joints: 'BFJ' },
+      { joints: 'DHI' },
+      { joints: 'GH' },
+      { joints: 'IJ' },
+    ],
+    inputAngVel: -INPUT_SPEED,
+  };
+}
