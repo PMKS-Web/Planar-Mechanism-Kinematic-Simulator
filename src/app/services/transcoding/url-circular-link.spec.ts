@@ -7,6 +7,7 @@ import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
 import { urlGeneratorFor } from '../../../test-utils/url-encoding';
 import { MechanismBuilder } from './mechanism-builder';
+import { Checksum } from './checksum';
 import { StringTranscoder } from './string-transcoder';
 import { MODEL_SCALE } from '../../model/render-scale';
 
@@ -74,8 +75,14 @@ describe('a circular link in the URL', () => {
   it('leaves a drawing of ordinary bars byte-for-byte as it was', () => {
     // One character differs between the two spellings, and it is the link
     // record's first -- so nothing about the format moved.
-    const asBar = encode(false);
-    const asDisc = encode(true);
+    const barUrl = encode(false);
+    const discUrl = encode(true);
+    // Compared as bodies, not as whole URLs: the digest at the end is a
+    // function of everything before it, so one changed character in the
+    // mechanism changes six more in the digest and this would be counting
+    // those instead of the one it is about.
+    const asBar = new Checksum().strip(barUrl);
+    const asDisc = new Checksum().strip(discUrl);
 
     expect(asBar.length).toBe(asDisc.length);
     const at = [...asBar].findIndex((char, i) => char !== asDisc[i]);
@@ -84,7 +91,7 @@ describe('a circular link in the URL', () => {
     // same link, drawn round. The pairing is the table's, not this test's.
     expect(asBar[at]).toBe('A');
     expect(asDisc[at]).toBe('1');
-    expect(decode(asBar).links.every((link) => !(link as RealLink).isCircle)).toBe(true);
+    expect(decode(barUrl).links.every((link) => !(link as RealLink).isCircle)).toBe(true);
   });
 
   it('refuses a link flag character it does not know', () => {

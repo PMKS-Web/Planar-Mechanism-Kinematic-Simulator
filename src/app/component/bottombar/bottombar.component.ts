@@ -1,4 +1,5 @@
 import { SvgGridService } from '../../services/svg-grid.service';
+import { READINESS } from '../../ui-text';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { holdOf } from '../../model/link-holds';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
@@ -87,7 +88,7 @@ export class BottombarComponent {
     if (blockers === 0) {
       return 'Ready to analyze';
     }
-    return `${blockers} ${blockers === 1 ? 'fix' : 'fixes'} before analysis`;
+    return `${READINESS.fixes(blockers)} before analysis`;
   }
 
   /** The one status that is about the reader's hand, set in the accent ink. */

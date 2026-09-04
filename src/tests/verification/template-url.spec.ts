@@ -1,6 +1,7 @@
 // joint.ts first: the model modules form an import cycle that only
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
+import { Checksum } from '../../app/services/transcoding/checksum';
 import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { SliderBlock, RealLink } from '../../app/model/link';
 import {
@@ -33,7 +34,7 @@ function decode(payload: string): StringTranscoder {
  * checksum with it. Nothing after that point is allowed to move.
  */
 function mechanismSection(payload: string): string {
-  return payload.slice(0, -1).split('.').slice(4).join('.');
+  return new Checksum().strip(payload).split('.').slice(4).join('.');
 }
 
 describe('built-in template URLs', () => {

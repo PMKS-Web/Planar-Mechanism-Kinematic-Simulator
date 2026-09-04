@@ -13,6 +13,45 @@
  */
 
 /**
+ * What stands between a drawing and a run, said the same way everywhere.
+ *
+ * There were seven wordings, and a reader could meet five of them on one
+ * screen: the mode chip said "1 fix", the bottom bar "1 fix before analysis",
+ * the transport row "1 blocker before it will run", the setup header "1 thing
+ * has to change before this mechanism will run", and the section chip "1
+ * blocker" — with "1 to set" and "One blocker before forces can be solved" on
+ * the force side. Seven names for one idea read as seven ideas.
+ *
+ * There are three states, not seven, and they are genuinely different:
+ *
+ * - a **fix** has to change before the mechanism will run, and is red;
+ * - something **to check** is worth a look and stops nothing, and is amber;
+ * - something **to set** is a question nobody has asked yet, and is gray. Force
+ *   analysis needs masses and loads, and a drawing that has neither is not
+ *   broken — it is one whose author only ever wanted to watch it move. Calling
+ *   that a fix would put a fault on the strip from the first bar drawn until
+ *   the last mass typed. See `TopBarComponent.chipFor`.
+ *
+ * All three are counted, because the count is what a reader acts on, and all
+ * three are said the same way wherever they appear — so the chip in the corner
+ * and the sentence in the drawer are recognizably about the same thing.
+ */
+export const READINESS = {
+  /** "1 fix", "3 fixes" — something is wrong, and the mechanism will not run. */
+  fixes(count: number): string {
+    return `${count} ${count === 1 ? 'fix' : 'fixes'}`;
+  },
+  /** "1 to check", "3 to check" — worth a look, and nothing is stopped. */
+  toCheck(count: number): string {
+    return `${count} to check`;
+  },
+  /** "1 to set", "3 to set" — a question the reader has not asked yet. */
+  toSet(count: number): string {
+    return `${count} to set`;
+  },
+} as const;
+
+/**
  * What to say when a typed value will not parse.
  *
  * By the *kind* of value, not by the field. There were eleven of these, one per

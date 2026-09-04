@@ -20,8 +20,9 @@ import { MODEL_SCALE } from '../../model/render-scale';
 // encoded URLs carry the same user-unit numbers they always have.
 const S = MODEL_SCALE;
 
+/** A hand-built body, stamped the way the encoder stamps one. */
 function withChecksum(raw: string): string {
-  return raw + new Checksum().generateChecksum(raw.length);
+  return new Checksum().stamp(raw);
 }
 
 function targetService(): MechanismService {
@@ -111,7 +112,7 @@ describe('welded force URL compatibility', () => {
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
       settings
     ).generateUrlQuery();
-    const raw = encoded.slice(0, -1).replace('F1,ABC,', 'F1,AB,');
+    const raw = new Checksum().strip(encoded).replace('F1,ABC,', 'F1,AB,');
     const decoder = new StringTranscoder();
     decoder.decodeURL(withChecksum(raw));
     const target = targetService();
@@ -128,7 +129,7 @@ describe('welded force URL compatibility', () => {
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
       new SettingsService()
     ).generateUrlQuery();
-    let raw = encoded.slice(0, -1);
+    let raw = new Checksum().strip(encoded);
     raw = raw.slice(0, raw.lastIndexOf('.'));
     const boolEnd = raw.indexOf('.');
     const flags = FlagPacker.unpack(raw.slice(0, boolEnd), 8);
@@ -151,7 +152,7 @@ describe('welded force URL compatibility', () => {
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
       new SettingsService()
     ).generateUrlQuery();
-    const sections = encoded.slice(0, -1).split('.');
+    const sections = new Checksum().strip(encoded).split('.');
     expect(sections[3]).toHaveLength(4);
     sections[3] = sections[3].slice(0, 3);
     const decoder = new StringTranscoder();
@@ -170,7 +171,7 @@ describe('welded force URL compatibility', () => {
       { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
       new SettingsService()
     ).generateUrlQuery();
-    const sections = encoded.slice(0, -1).split('.');
+    const sections = new Checksum().strip(encoded).split('.');
     sections[3] = '1002'; // centimeter, degrees, lbf, SI
     const decoder = new StringTranscoder();
     decoder.decodeURL(withChecksum(sections.join('.')));
@@ -240,6 +241,6 @@ describe('welded force URL compatibility', () => {
   it('rejects malformed or corrupted data instead of partially decoding it', () => {
     const decoder = new StringTranscoder();
     expect(() => decoder.decodeURL('not-a-mechanism')).toThrow();
-    expect(() => decoder.decodeURL(LEGACY_FORCE_MECHANISM.slice(0, -1) + '0')).toThrow();
+    expect(() => decoder.decodeURL(new Checksum().strip(LEGACY_FORCE_MECHANISM) + '0')).toThrow();
   });
 });

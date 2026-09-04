@@ -1,5 +1,6 @@
 import { Injectable, Injector, inject } from '@angular/core';
 import { MechanismService } from './mechanism.service';
+import { recallDrawing } from './last-drawing';
 import { StringTranscoder } from './transcoding/string-transcoder';
 import { SettingsService } from './settings.service';
 import { MechanismBuilder } from './transcoding/mechanism-builder';
@@ -13,6 +14,24 @@ import { SynthesisSolutionService } from './synthesis/synthesis-solution.service
 
 /** The one query that names a screen instead of describing a mechanism. */
 const LIBRARY_QUERY = 'library';
+
+/**
+ * Whether this load is the same visit again rather than a new one.
+ *
+ * A refresh and a Back both come back to a page the reader had already been
+ * working on; a typed address, a followed link and a new tab do not. The
+ * Navigation Timing entry is what the browser knows about which happened, and
+ * a browser that has no opinion is treated as a fresh arrival -- the safe way
+ * round, since restoring a drawing nobody asked for is worse than not.
+ */
+function returningToThePage(): boolean {
+  try {
+    const [entry] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+    return entry?.type === 'reload' || entry?.type === 'back_forward';
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Whether this address is somebody else's query rather than a mechanism.
@@ -67,9 +86,26 @@ export class UrlProcessorService {
 
   constructor() {
     // the content part of the url (the part after the ?)
-    const url = this.getURLContent();
-    this.wantsLibrary = url !== null && url.trim().toLowerCase() === LIBRARY_QUERY;
+    const fromAddress = this.getURLContent();
+    this.wantsLibrary = fromAddress !== null && fromAddress.trim().toLowerCase() === LIBRARY_QUERY;
     this.wantsBackdropFor = this.backdropAsked();
+    // Nothing in the address, and the reader did not mean to arrive: they
+    // refreshed, or pressed Back. A refresh used to take everything -- the
+    // document lives in memory, the address bar is stripped once a shared link
+    // has been decoded, and there was no prompt on the way out and nothing to
+    // come back to. The last state the history recorded is a complete URL, so
+    // bringing it back is the whole of a recovery.
+    //
+    // Only on those two navigations. Opening a new project, following a link,
+    // or typing the address is somebody asking for a fresh grid, and handing
+    // them the last drawing instead would be answering a question they did not
+    // ask.
+    //
+    // One slot, not a second history: a visit in between -- the library, a
+    // template -- records itself over it, so Back reaches whatever was last
+    // stood on rather than walking backwards through the session. Refreshing
+    // the work you are in the middle of is the case this exists for.
+    const url = fromAddress ?? (returningToThePage() ? recallDrawing() : null);
 
     // update the mechanism from the url
     //

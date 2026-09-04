@@ -15,8 +15,9 @@ import { MODEL_SCALE } from '../../model/render-scale';
 // encoded URLs carry the same user-unit numbers they always have.
 const S = MODEL_SCALE;
 
+/** A hand-built body, stamped the way the encoder stamps one. */
 function withChecksum(raw: string): string {
-  return raw + new Checksum().generateChecksum(raw.length);
+  return new Checksum().stamp(raw);
 }
 
 function targetService(): MechanismService {
@@ -129,7 +130,7 @@ describe('floating slot URL round-trip', () => {
     // Strip the three tokens off a floating slot and what is left is exactly
     // the record shape every previously shared URL has.
     const encoded = encode(invertedSliderCrank());
-    const legacy = withChecksum(encoded.slice(0, -1).replace(',CD,C,D', ''));
+    const legacy = withChecksum(new Checksum().strip(encoded).replace(',CD,C,D', ''));
 
     const target = rebuild(legacy);
     const slot = target.joints.find((joint) => joint.id === 'P') as PrisJoint;
@@ -143,7 +144,7 @@ describe('floating slot URL round-trip', () => {
 describe('floating slot decode validation', () => {
   function corrupt(replace: (raw: string) => string): () => void {
     const encoded = encode(invertedSliderCrank());
-    const raw = replace(encoded.slice(0, -1));
+    const raw = replace(new Checksum().strip(encoded));
     return () => new StringTranscoder().decodeURL(withChecksum(raw));
   }
 
@@ -182,7 +183,7 @@ describe('floating slot decode validation', () => {
     // builder and coming out as a working grounded slider, which moves
     // differently from the mechanism that was actually shared.
     const encoded = encode(invertedSliderCrank());
-    const raw = withChecksum(encoded.slice(0, -1).replace(',CD,C,D', ',CD,C'));
+    const raw = withChecksum(new Checksum().strip(encoded).replace(',CD,C,D', ',CD,C'));
     const target = targetService();
 
     expect(() => {

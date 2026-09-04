@@ -17,6 +17,7 @@ import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { CHROME_MOVED } from '../../model/chrome-motion';
+import { READINESS } from '../../ui-text';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ViewportService } from '../../services/viewport.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
@@ -703,15 +704,11 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     const rows = readiness.map((one, index) => {
       const blockers = one.checks.filter((check) => check.state === 'blocker');
       return this.inertRow(one.id, index, {
-        count: blockers.length
-          ? `${blockers.length} ${blockers.length === 1 ? 'blocker' : 'blockers'}`
-          : undefined,
-        // The count is drawn as a chip, so the sentence has to read *through*
-        // it: "M1 [1 blocker] before it will run" was missing the word that
-        // joins the two. Every other surface saying the same thing has one --
-        // the bottom bar's "1 fix before analysis", the drawer's "1 thing has
-        // to change before this mechanism will run".
-        text: blockers.length ? 'to fix before it will run.' : 'before it will run.',
+        // The count is drawn as a chip and the sentence reads through it:
+        // "M1 [1 fix] before it will run". One word for this everywhere -- see
+        // READINESS in ui-text.
+        count: blockers.length ? READINESS.fixes(blockers.length) : undefined,
+        text: 'before it will run.',
         action: 'Analysis setup',
       });
     });

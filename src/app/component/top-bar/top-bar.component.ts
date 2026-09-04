@@ -19,6 +19,7 @@ import { SaveHistoryService } from '../../services/save-history.service';
 import { AnalyticsService } from '../../services/analytics.service';
 import { UrlGenerationService } from '../../services/url-generation.service';
 import { UrlProcessorService } from '../../services/url-processor.service';
+import { READINESS } from '../../ui-text';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { ExportFlowService } from '../../services/export/export-flow.service';
 import { LoadingService } from 'src/app/services/loading.service';
@@ -439,22 +440,22 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       // count is stated and left gray until the reader engages with forces at
       // all; from then on -- once something has a mass or a load -- amber and
       // green mean what they mean everywhere else.
-      if (missing > 0) return { text: `${missing} to set`, ready: false, kind: 'neutral' };
+      if (missing > 0) return { text: READINESS.toSet(missing), ready: false, kind: 'neutral' };
       return outstanding.length > 0
-        ? { text: `${outstanding.length} to check`, ready: true, kind: 'warning' }
+        ? { text: READINESS.toCheck(outstanding.length), ready: true, kind: 'warning' }
         : { text: 'Ready', ready: true, kind: 'ok' };
     }
     const blockers = this.mechanism.blockerCount();
     if (blockers > 0) {
       return {
-        text: `${blockers} ${blockers === 1 ? 'fix' : 'fixes'}`,
+        text: READINESS.fixes(blockers),
         ready: false,
         kind: 'blocker',
       };
     }
     const warnings = this.mechanism.warningCount();
     return warnings > 0
-      ? { text: `${warnings} to check`, ready: true, kind: 'warning' }
+      ? { text: READINESS.toCheck(warnings), ready: true, kind: 'warning' }
       : { text: 'Ready', ready: true, kind: 'ok' };
   }
 

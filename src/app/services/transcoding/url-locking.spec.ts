@@ -65,8 +65,15 @@ function decode(encoded: string): { joints: Joint[]; links: Link[]; forces: Forc
 }
 
 /** The URL minus its checksum character, which is a function of length alone. */
+/** The mechanism itself, without the characters that check it. */
+/** An edit to the mechanism, with the URL's checks brought up to date after it. */
+function restamp(encoded: string, edit: (body: string) => string): string {
+  const checksum = new Checksum();
+  return checksum.stamp(edit(checksum.strip(encoded)));
+}
+
 function body(encoded: string): string {
-  return encoded.substring(0, encoded.length - 1);
+  return new Checksum().strip(encoded);
 }
 
 describe('lock marks in the URL', () => {
@@ -102,7 +109,7 @@ describe('lock marks in the URL', () => {
     // them — as the shortcut they always were — so any URL shared during
     // that window still opens held.
     const legacyBody = body(encode()) + '.LAB';
-    const legacy = legacyBody + new Checksum().generateChecksum(legacyBody.length);
+    const legacy = new Checksum().stamp(legacyBody);
     const opened = decode(legacy);
 
     expect((opened.joints.find((j) => j.id === 'A') as RealJoint).locked).toBe(true);
@@ -110,9 +117,11 @@ describe('lock marks in the URL', () => {
   });
 
   it('refuses a lock reference to an object the URL does not contain', () => {
-    // Same length, so the length-only checksum still passes and the reference
-    // check is what has to catch it.
-    const tampered = encode({ joint: true }).replace('.JA', '.JZ');
+    // Re-stamped after the edit, so what reaches the decoder is a URL that
+    // passes both of its checks and is still wrong. Corrupting one and leaving
+    // the checks stale would be testing the checksum, which has its own tests
+    // and its own message.
+    const tampered = restamp(encode({ joint: true }), (body) => body.replace('.JA', '.JZ'));
 
     expect(() => decode(tampered)).toThrowError(/locks an object/);
   });
@@ -146,7 +155,9 @@ describe('a held length or angle in the URL', () => {
   });
 
   it('refuses a hold on a bar the URL does not contain, or on neither value', () => {
-    expect(() => decode(held('length').replace('.HlAB', '.HlAZ'))).toThrowError(/holds a length/);
-    expect(() => decode(held('length').replace('.HlAB', '.HxAB'))).toThrowError(/holds a length/);
+    const edited = (from: string, to: string) =>
+      restamp(held('length'), (body) => body.replace(from, to));
+    expect(() => decode(edited('.HlAB', '.HlAZ'))).toThrowError(/holds a length/);
+    expect(() => decode(edited('.HlAB', '.HxAB'))).toThrowError(/holds a length/);
   });
 });

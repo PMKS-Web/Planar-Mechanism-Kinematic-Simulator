@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core
 import { Joint, RealJoint } from '../../model/joint';
 import { Link, RealLink, SliderBlock } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
+import { READINESS } from '../../ui-text';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { SettingsService } from '../../services/settings.service';
@@ -127,13 +128,12 @@ export class AnalysisSetupComponent {
       const blockers = this.forceOutstanding;
       const warnings = this.forceWarnings;
       if (blockers > 0) {
-        const blockerText = blockers === 1 ? 'One blocker' : `${blockers} blockers`;
         return warnings > 0
-          ? `${blockerText}, ${warnings === 1 ? 'one thing' : `${warnings} things`} worth a look.`
-          : `${blockerText} before forces can be solved.`;
+          ? `${READINESS.fixes(blockers)} before forces can be solved, and ${READINESS.toCheck(warnings)}.`
+          : `${READINESS.fixes(blockers)} before forces can be solved.`;
       }
       return warnings > 0
-        ? `Force Analysis runs. ${warnings === 1 ? 'One thing below is' : `${warnings} things below are`} worth a look before trusting the numbers.`
+        ? `Force Analysis runs, with ${READINESS.toCheck(warnings)} before trusting the numbers.`
         : 'Force Analysis is ready to run.';
     }
     const all = this.readiness;
@@ -144,7 +144,7 @@ export class AnalysisSetupComponent {
     }
     const blockers = this.mechanism.blockerCount();
     if (blockers > 0) {
-      return `${blockers} ${blockers === 1 ? 'thing has' : 'things have'} to change before ${
+      return `${READINESS.fixes(blockers)} before ${
         all.length === 1 ? 'this mechanism' : 'every mechanism'
       } will run.`;
     }
@@ -153,7 +153,7 @@ export class AnalysisSetupComponent {
       0
     );
     if (warnings > 0) {
-      return `Everything runs. ${warnings === 1 ? 'One result is' : `${warnings} results are`} worth a look before trusting the numbers.`;
+      return `Everything runs, with ${READINESS.toCheck(warnings)} before trusting the numbers.`;
     }
     return all.length === 1
       ? 'Ready to animate.'
@@ -212,14 +212,23 @@ export class AnalysisSetupComponent {
     }
   }
 
+  /** The shared wording, for the template. */
+  fixes(count: number): string {
+    return READINESS.fixes(count);
+  }
+
+  toCheck(count: number): string {
+    return READINESS.toCheck(count);
+  }
+
   chipFor(readiness: MechanismReadiness): { text: string; kind: 'blocker' | 'warning' | 'ok' } {
     const blockers = readiness.checks.filter((c) => c.state === 'blocker').length;
     if (blockers > 0) {
-      return { text: `${blockers} ${blockers === 1 ? 'blocker' : 'blockers'}`, kind: 'blocker' };
+      return { text: READINESS.fixes(blockers), kind: 'blocker' };
     }
     const warnings = readiness.checks.length;
     if (warnings > 0) {
-      return { text: `${warnings} ${warnings === 1 ? 'warning' : 'warnings'}`, kind: 'warning' };
+      return { text: READINESS.toCheck(warnings), kind: 'warning' };
     }
     return { text: 'Ready', kind: 'ok' };
   }

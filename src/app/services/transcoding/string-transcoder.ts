@@ -474,14 +474,10 @@ export class StringTranscoder extends GenericTranscoder {
       fullString += '.' + trailing.join(',');
     }
 
-    // add checksum character in the end
-    let checksum = new Checksum();
-    let checkSumChar = checksum.generateChecksum(fullString.length);
-
-    console.log('Generate checksum for length ' + fullString.length + 'and char ' + checkSumChar);
-
-    fullString += checkSumChar;
-    return fullString;
+    // A length character, then a digest of what the string says. The length
+    // character alone is what this had, and it only checks the length -- so a
+    // link mangled in transit opened a different mechanism without a word.
+    return new Checksum().stamp(fullString);
   }
 
   override decodeURL(url: string): void {
@@ -489,6 +485,20 @@ export class StringTranscoder extends GenericTranscoder {
 
     // Verify checksum
     let checksum = new Checksum();
+
+    // The content digest, if this URL carries one. Older links do not, and are
+    // read exactly as they always were -- the mark is the whole difference, and
+    // nothing the codec writes contains one, so its absence is not ambiguous.
+    // Where there is one it is checked first: it is the half that notices a
+    // changed character, and the length check below cannot.
+    const carried = checksum.digestSplit(url);
+    if (carried) {
+      if (checksum.digest(carried.body) !== carried.digest) {
+        throw new Error('Checksum failed');
+      }
+      url = carried.body;
+    }
+
     let lastChar = url.charAt(url.length - 1); // extract last character
     url = url.substring(0, url.length - 1); // remove checksum from url
     console.log('Verifying checksum for length ' + url.length + 'and char ' + lastChar);

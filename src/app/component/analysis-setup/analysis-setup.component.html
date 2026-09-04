@@ -130,9 +130,9 @@
                  so they are red. What is left when none are outstanding is
                  advice, which is amber. -->
             @if (forceOutstanding > 0) {
-              <span class="chip blocker">{{ forceOutstanding }} to set</span>
+              <span class="chip blocker">{{ fixes(forceOutstanding) }}</span>
             } @else {
-              <span class="chip warning">{{ forceWarnings }} worth a look</span>
+              <span class="chip warning">{{ toCheck(forceWarnings) }}</span>
             }
           </span>
           <mat-icon>{{ forceOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
@@ -149,7 +149,7 @@
                   <div class="checkTitle">
                     {{ requirement.title }}
                     <span class="sevTag" [class.warn]="requirement.warning">{{
-                      requirement.warning ? 'Worth a look' : 'Needed'
+                      requirement.warning ? 'Check' : 'Fix'
                     }}</span>
                   </div>
                   <p class="checkText">{{ requirement.body }}</p>

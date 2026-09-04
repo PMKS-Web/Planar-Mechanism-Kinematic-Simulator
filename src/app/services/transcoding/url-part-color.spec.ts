@@ -9,6 +9,7 @@ import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
 import { urlGeneratorFor } from '../../../test-utils/url-encoding';
 import { MechanismBuilder } from './mechanism-builder';
+import { Checksum } from './checksum';
 import { StringTranscoder } from './string-transcoder';
 import { MODEL_SCALE } from '../../model/render-scale';
 
@@ -60,8 +61,9 @@ function decode(encoded: string): { joints: Joint[]; links: Link[] } {
 }
 
 /** The URL minus its checksum character, which is a function of length alone. */
+/** The mechanism itself, without the characters that check it. */
 function body(encoded: string): string {
-  return encoded.substring(0, encoded.length - 1);
+  return new Checksum().strip(encoded);
 }
 
 const familyOf = (opened: { joints: Joint[] }, id: string) =>

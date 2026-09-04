@@ -1,6 +1,7 @@
 import { Injectable, Injector, inject } from '@angular/core';
 import { UrlGenerationService } from './url-generation.service';
 import { UrlProcessorService } from './url-processor.service';
+import { rememberDrawing } from './last-drawing';
 
 /*
  * This service is responsible for saving the history of the mechanism
@@ -43,8 +44,14 @@ export class SaveHistoryService {
 
     // update index to point to the new last state
     this.index = this.history.length - 1;
+    this.remember();
 
     console.log('save', state);
+  }
+
+  /** Keep the state the reader is standing on, for the next page load. */
+  private remember(): void {
+    rememberDrawing(this.history[this.index]);
   }
 
   /**
@@ -64,6 +71,7 @@ export class SaveHistoryService {
   restate(): void {
     if (this.history.length === 0) return;
     this.history[this.index] = this.urlGenerationService.generateUrlQuery();
+    this.remember();
   }
 
   /*
@@ -93,6 +101,9 @@ export class SaveHistoryService {
     // geometry leaves converted values paired with the wrong unit system and
     // makes unit changes impossible to undo safely.
     urlProcessorService.updateFromURL(this.history[this.index], false, true, false, true);
+    // Undo and redo move where the reader is standing, so they move what a
+    // reload would bring back.
+    this.remember();
     console.log('update to state ' + this.index + ': ' + this.history[this.index]);
   }
 

@@ -58,7 +58,7 @@ function asLegacyUrl(encoded: string): string {
   const parts = body.split('.');
   parts[1] = parts[1].split(',').slice(0, -1).join(',');
   const legacy = parts.join('.');
-  return legacy + new Checksum().generateChecksum(legacy.length);
+  return new Checksum().stamp(legacy);
 }
 
 describe('linear input speed in the URL', () => {

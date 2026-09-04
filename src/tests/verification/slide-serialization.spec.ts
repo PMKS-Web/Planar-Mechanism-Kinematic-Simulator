@@ -1,6 +1,7 @@
 // joint.ts first: the model modules form an import cycle that only initializes
 // cleanly when entered here.
 import '../../app/model/joint';
+import { Checksum } from '../../app/services/transcoding/checksum';
 import { PrisJoint, RealJoint } from '../../app/model/joint';
 import { RealLink, SliderBlock } from '../../app/model/link';
 import { slideAssemblyAt } from '../../app/model/slide-assembly';
@@ -30,7 +31,7 @@ import { teachingLabFourBarFixture } from '../../test-utils/verification/fixture
  * 2x2 (see template-url.spec.ts).
  */
 function mechanismSection(payload: string): string {
-  return payload.slice(0, -1).split('.').slice(4).join('.');
+  return new Checksum().strip(payload).split('.').slice(4).join('.');
 }
 
 /** A four-bar with one joint welded: the compound cell of the 2x2. */

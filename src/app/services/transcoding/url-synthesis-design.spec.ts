@@ -79,6 +79,12 @@ function worked(): SynthesisBuilderService {
   return design;
 }
 
+/** An edit to the mechanism, with the URL's checks brought up to date after it. */
+function restamp(encoded: string, edit: (body: string) => string): string {
+  const checksum = new Checksum();
+  return checksum.stamp(edit(checksum.strip(encoded)));
+}
+
 describe('a synthesis design in the URL', () => {
   it('adds nothing at all when no design has been started', () => {
     expect(encode(designFor(new SettingsService()))).toBe(encode());
@@ -155,10 +161,10 @@ describe('a synthesis design in the URL', () => {
   it('refuses a URL whose design is incomplete rather than half-reading it', () => {
     const url = encode(worked());
     // Run a position's last two numbers together, so it carries two fields
-    // where it should carry three. The edit is one character for one character
-    // -- the checksum is over the length, and a URL that fails that would fail
-    // for a reason that says nothing about this section.
-    const broken = url.replace(/(SP~[^~,]+~[^~,]+)~/, '$1-');
+    // where it should carry three -- and re-stamp, so what reaches the decoder
+    // is a URL whose checks pass and whose design is still wrong. A stale
+    // checksum would fail for a reason that says nothing about this section.
+    const broken = restamp(url, (body) => body.replace(/(SP~[^~,]+~[^~,]+)~/, '$1-'));
     expect(broken).not.toBe(url);
     expect(broken.length).toBe(url.length);
     expect(() => decodeInto(broken)).toThrowError(/incomplete synthesis entry/);
@@ -170,7 +176,7 @@ describe('a synthesis design in the URL', () => {
     // number alphabet. It used to decode as -1 and be absorbed silently: the
     // three positions came back intact around a coupler that was not the one
     // that had been shared, which is a half-load wearing the face of a success.
-    const broken = url.replace(/SD~([^~,])/, 'SD~$');
+    const broken = restamp(url, (body) => body.replace(/SD~([^~,])/, 'SD~$'));
     expect(broken).not.toBe(url);
     expect(broken.length).toBe(url.length);
     expect(() => decodeInto(broken)).toThrowError(/unreadable synthesis number/);
@@ -182,13 +188,13 @@ describe('a synthesis design in the URL', () => {
     // is the first thing decode looks at, so without this the URL was rejected
     // for being the wrong length and `toThrow()` passed on an error that would
     // still be raised with the duplicate rule deleted.
-    const body = url.slice(0, -1).replace(/(SD~[^,]+)/, '$1,$1');
-    const doubled = body + new Checksum().generateChecksum(body.length);
+    const doubled = restamp(url, (body) => body.replace(/(SD~[^,]+)/, '$1,$1'));
     expect(() => decodeInto(doubled)).toThrowError(/repeats a synthesis entry/);
   });
 
   it('refuses an entry it does not recognize', () => {
     const url = encode(worked());
-    expect(() => decodeInto(url.replace('SD~', 'SZ~'))).toThrowError(/unknown synthesis entry/);
+    const unknown = restamp(url, (body) => body.replace('SD~', 'SZ~'));
+    expect(() => decodeInto(unknown)).toThrowError(/unknown synthesis entry/);
   });
 });
