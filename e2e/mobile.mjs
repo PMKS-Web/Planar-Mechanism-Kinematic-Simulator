@@ -417,19 +417,35 @@ record('and no control that would produce more', (await page.locator('.syncToggl
       machines: bar.mechanism.mechanisms.filter((one) => one.isMechanismValid()).length,
     };
   });
+  // The phone used to be shown as synced by construction, so an unsynced
+  // drawing collapsed to one row there and a reader who had set the machines
+  // running independently on a desktop could not control either of them. It
+  // keeps the rows now, and offers the way back to one clock inside the card.
   record(
-    'an unsynced drawing still shows one row on a phone',
-    unsynced.shown.length === 1,
+    'an unsynced drawing keeps a row per machine on a phone',
+    unsynced.shown.length === unsynced.machines && unsynced.shown.every((row) => row.index >= 0),
     unsynced
   );
   record(
-    'and it stands for every machine rather than the first',
-    unsynced.machines < 2 || unsynced.shown[0].index === -1,
-    unsynced
+    'and the way back to one shared clock is offered there',
+    (await page.locator('.phoneSync').count()) === 1,
+    await page
+      .locator('.phoneSync')
+      .innerText()
+      .catch(() => null)
   );
 }
 
-const rowWhileOpen = cluster.y;
+// Back to the drawing `cluster` was measured on. The block above loads a
+// second one and unsyncs it, which is two rows rather than one -- and this
+// check is about the sheet moving the row, not about the row changing height
+// because the drawing did.
+await open(payloads['4-Bar']);
+await page.locator('.tabButton').nth(2).click({ force: true });
+await page.waitForTimeout(1200);
+await page.locator('.sheetHandle').click();
+await page.waitForTimeout(700);
+const rowWhileOpen = (await box('.playbackRow')).y;
 await page.locator('.sheetHandle').click();
 await page.waitForTimeout(700);
 const rowWhileShut = (await box('.playbackRow')).y;
@@ -1098,6 +1114,79 @@ const screenOf = (id) =>
     'while the machine chip still picks the machine',
     afterChip.type === 'Mechanism',
     afterChip
+  );
+}
+
+// --- what a phone does with the words spelled out ---------------------------
+//
+// The app says "Counter-clockwise" and "Center of mass" rather than CCW and
+// CoM, which is right and costs width. Two places had no room for it: a message
+// carrying two verbs squeezed its sentence into sixty pixels and grew six lines
+// tall over whatever was open behind it, and the force setup's name column read
+// every one of a drawing's links as "Link D...".
+{
+  await open(payloads['Three_Machines']);
+
+  await page.evaluate(() => {
+    const notify = ng.getComponent(document.querySelector('app-new-grid')).notify;
+    notify.news('zoom.links-tiny', 'Objects may be difficult to see at this zoom.', {
+      actions: [
+        { label: 'Auto-size objects', run: () => undefined },
+        { label: 'Fit to view', run: () => undefined },
+      ],
+    });
+    notify.refusal('probe.one', 'A message carrying one verb.', {
+      actions: [{ label: 'Undo', run: () => undefined }],
+    });
+  });
+  await page.waitForTimeout(500);
+  const cards = await page.evaluate(() =>
+    [...document.querySelectorAll('.notification')].map((card) => ({
+      height: Math.round(card.getBoundingClientRect().height),
+      verbs: card.querySelectorAll('.notificationAction').length,
+    }))
+  );
+  record(
+    'a two-verb message puts its verbs on their own line rather than wrapping the sentence',
+    cards.length === 2 && cards.every((card) => card.height <= 80),
+    cards
+  );
+  record(
+    'and a one-verb message still fits on one line',
+    (cards.find((card) => card.verbs === 1)?.height ?? 99) <= 50,
+    cards
+  );
+  await page.keyboard.press('Escape').catch(() => undefined);
+  await page.waitForTimeout(300);
+
+  // The force setup's own table, where a name is what tells two links apart.
+  await page.evaluate(() =>
+    ng.getComponent(document.querySelector('app-new-grid')).tabService.setTab(3)
+  );
+  await page.waitForTimeout(900);
+  await page.evaluate(() => {
+    const chip = [...document.querySelectorAll('button, .chip, [class*="chip"]')].find((one) =>
+      /to set|to fix|fix before/i.test(one.textContent ?? '')
+    );
+    chip?.click();
+  });
+  await page.waitForTimeout(1200);
+  const names = await page.evaluate(() =>
+    [...document.querySelectorAll('.massName')].map((one) => ({
+      shown: one.textContent.trim(),
+      title: one.getAttribute('title'),
+      width: Math.round(one.getBoundingClientRect().width),
+    }))
+  );
+  record(
+    'the force setup names bodies widely enough to tell them apart',
+    names.length > 2 && names.every((one) => one.width >= 80),
+    names.slice(0, 3)
+  );
+  record(
+    'and every one of them carries its full name for the ones that still clip',
+    names.length > 2 && names.every((one) => one.title === one.shown || one.title?.length > 0),
+    names.slice(0, 3)
   );
 }
 

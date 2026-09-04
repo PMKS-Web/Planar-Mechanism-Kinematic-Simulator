@@ -103,7 +103,7 @@ for (let trial = 0; trial < 28; trial++) {
     s.seekMechanism(0, s.mechanisms[0].cyclePeriod * f);
   }, frac);
   await page.waitForTimeout(250);
-  await page.getByRole('button', { name: 'Reset View' }).click();
+  await page.getByRole('button', { name: 'Fit to view' }).click();
   await page.waitForTimeout(400);
   const drags = [];
   const n = 1 + Math.floor(rnd() * 3);

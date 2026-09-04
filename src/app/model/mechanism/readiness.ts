@@ -158,7 +158,7 @@ export function readinessOf(
       add({
         state: 'blocker',
         title: 'A cylinder has no travel',
-        body: `${subject} has a barrel too short for its rod to slide in at all. Lengthen the cylinder, or reduce Object Scale — a larger scale draws everything on the rod bigger without lengthening the barrel.`,
+        body: `${subject} has a barrel too short for its rod to slide in at all. Lengthen the cylinder, or reduce Object Size — a larger size draws everything on the rod bigger without lengthening the barrel.`,
       });
       break;
     }

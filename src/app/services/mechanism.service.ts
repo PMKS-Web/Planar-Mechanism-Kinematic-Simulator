@@ -116,6 +116,11 @@ interface HeldPlayback {
   /** Running backwards only because its drive was turned round in place. */
 }
 
+/** A paused drawing's place in each cycle, independent of sample counts. */
+export interface PausedPlaybackPose {
+  mechanisms: { id: string; fraction: number }[];
+}
+
 /**
  * One machine's displayed pose, carried across a rebuild that re-measures it.
  *
@@ -521,6 +526,7 @@ export class MechanismService {
       if (save) {
         this.save();
       }
+      this.leaveForceAnalysisWithoutInputs();
       return;
     }
     this.solvingDeferred = false;
@@ -605,6 +611,22 @@ export class MechanismService {
     if (save) {
       this.save();
     }
+    this.leaveForceAnalysisWithoutInputs();
+  }
+
+  /**
+   * Force Analysis has no result to remain on once its last load is removed.
+   *
+   * This is deliberately checked after the edit has rebuilt and entered the
+   * history. The mass or force removal is still undoable; the mode simply
+   * returns to the place where another load can be added.
+   */
+  private leaveForceAnalysisWithoutInputs(): void {
+    if (this.tabs.getCurrentTab() !== TabID.FORCE) return;
+    const hasMass = this.links.some(
+      (link) => (link instanceof RealLink || link instanceof SliderBlock) && Number(link.mass) > 0
+    );
+    if (this.forces.length === 0 && !hasMass) this.tabs.setTab(TabID.EDIT);
   }
 
   /**
@@ -799,7 +821,7 @@ export class MechanismService {
     const dof = this.mobilityNear(near);
     const why =
       dof !== undefined && dof > 1
-        ? ` PMKS+ can only simulate 1-DOF linkages, and this one has ${dof} degrees of freedom.` +
+        ? ` PMKS+ can only simulate one-degree-of-freedom mechanisms, and this one has ${dof} degrees of freedom.` +
           ' Add a constraint, or build the parts as separate mechanisms.'
         : '';
     this.notify.news(
@@ -2055,9 +2077,9 @@ export class MechanismService {
       const who = link.name || link.id;
       this.notify.news(
         'hold.moved',
-        'A link locks its length or its angle, not both. ' +
-          `Moved the lock on ${who} to the ${name(hold)}.`,
-        { actions: [{ label: `Lock ${name(was)} instead`, run: () => this.setHold(link, was) }] }
+        'A link can keep either its length or its angle fixed. ' +
+          `${who} now has a fixed ${name(hold)}.`,
+        { actions: [{ label: `Fix ${name(was)} instead`, run: () => this.setHold(link, was) }] }
       );
     }
   }
@@ -3216,6 +3238,11 @@ export class MechanismService {
     }
     const newId = this.determineNextLetter();
     const newJoint = new RevJoint(newId, coord.x, coord.y);
+    // A tracer exists to show the point's path. Starting it with that path off
+    // made the completed gesture look identical to adding an ordinary point
+    // and required a second trip through its menu to reveal the result.
+    newJoint.showCurve = true;
+    this.settingsService.isShowTraces.next(true);
     this.graftJointOnto(newJoint, this.activeObjService.selectedLink);
     this.joints.push(newJoint);
     this.onMechUpdateState.next(3);
@@ -3429,7 +3456,7 @@ export class MechanismService {
           }
           const signed = this.driveSpeedOf(driven);
           const magnitude = Math.abs(signed).toFixed(2);
-          const way = turnsClockwise(signed) ? 'CW' : 'CCW';
+          const way = turnsClockwise(signed) ? 'Clockwise' : 'Counter-clockwise';
           return driven instanceof PrisJoint
             ? `${magnitude} ${this.nup.unitLabel(this.settingsService.lengthUnit.value)}/s`
             : `${magnitude} RPM ${way}`;
@@ -3779,7 +3806,7 @@ export class MechanismService {
     if (noTravel) {
       const cylinder = this.sealedStructures().find((found) => found.slider.id === noTravel);
       const name = cylinder ? this.cylinderName(cylinder) : noTravel;
-      return `Cylinder ${name} has no travel: its barrel is too short to slide in at all. Lengthen the cylinder, or reduce Object Scale — a larger scale draws everything on the rod bigger without lengthening the barrel.`;
+      return `Cylinder ${name} has no travel: its barrel is too short to slide in at all. Lengthen the cylinder, or reduce Object Size — a larger size draws everything on the rod bigger without lengthening the barrel.`;
     }
     const stuck = PositionSolver.unsolvableJoints;
     if (stuck.length > 0) {
@@ -5443,6 +5470,38 @@ export class MechanismService {
   /** Where one machine is in its own cycle. */
   secondsOf(index: number): number {
     return this.ownSeconds[index] ?? 0;
+  }
+
+  /**
+   * Remember the paused pose for a history step.
+   *
+   * A fraction of the cycle survives a rebuild whose solver produces a
+   * different number of samples. Mechanism ids keep independent clocks paired
+   * with the same mechanism when more than one is on the drawing.
+   */
+  capturePausedPose(): PausedPlaybackPose {
+    return {
+      mechanisms: this.partitions.map((partition, index) => {
+        const period = this.mechanisms[index]?.cyclePeriod ?? 0;
+        const fraction = period > 0 ? this.secondsOf(index) / period : 0;
+        return { id: partition.id, fraction: Math.min(Math.max(fraction, 0), 1) };
+      }),
+    };
+  }
+
+  /** Put a rebuilt drawing back at the paused pose captured before history ran. */
+  restorePausedPose(pose: PausedPlaybackPose): void {
+    const byId = new Map(pose.mechanisms.map((one) => [one.id, one.fraction]));
+    this.isPlaying = false;
+    this.ownPlaying = this.mechanisms.map(() => false);
+    this.playbackClockMs = null;
+    this.partitions.forEach((partition, index) => {
+      const fraction = byId.get(partition.id);
+      const period = this.mechanisms[index]?.cyclePeriod ?? 0;
+      if (fraction !== undefined && period > 0) this.ownSeconds[index] = fraction * period;
+    });
+    this.drawOwnClocks(false);
+    this.settingsService.animating.next(!this.isAtStartPose());
   }
 
   /** Put one machine at a place in its own cycle, and leave the others alone. */

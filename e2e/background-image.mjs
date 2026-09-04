@@ -152,8 +152,12 @@ record(
   (await page.locator('app-edit-panel .bgFileName').innerText()).trim() === 'rig.png'
 );
 record(
-  'the panel says the picture is not in the share link',
-  (await page.locator('app-edit-panel .bgNote').innerText()).includes('not saved in the share link')
+  'the panel says the picture is not in the shared address',
+  // "Link" means a bar here, so the reader-facing word for the URL is the
+  // project web address, in the panel, the tutorial and the notification alike.
+  (await page.locator('app-edit-panel .bgNote').innerText()).includes(
+    'not saved in the project web address'
+  )
 );
 record(
   'its edges are outlined while the panel has it',
@@ -621,6 +625,15 @@ record(
 );
 await page.screenshot({ path: SHOTS + '14-meters.png' });
 await setLengthUnit('1'); // back to CM
+// And put the drawer away. It is an overlay on the right of the canvas, and
+// the grid point these checks right-click sits close enough to its edge that a
+// wider drawer -- terms spelled out rather than abbreviated -- reaches it.
+await page
+  .locator('app-right-panel button[aria-label="Close"], app-right-panel .closeButton')
+  .first()
+  .click()
+  .catch(() => undefined);
+await page.waitForTimeout(400);
 await page.locator('.tabButton, .modeTab', { hasText: 'Edit' }).first().click();
 await page.waitForTimeout(600);
 

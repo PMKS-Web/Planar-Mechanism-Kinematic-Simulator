@@ -424,6 +424,12 @@
     gap: 8px;
   }
 
+  .secondaryDoors {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
   .door {
     display: flex;
     align-items: flex-start;
@@ -448,6 +454,32 @@
       height: 20px;
       line-height: 20px;
       color: $indigo;
+    }
+  }
+
+  .libraryDoor {
+    align-items: center;
+    padding: 13px 14px;
+    border-color: rgba(63, 81, 181, 0.35);
+    background: #f3f5ff;
+
+    .doorName {
+      color: $indigo;
+      font-size: 14px;
+    }
+
+    .doorGo {
+      margin-left: auto;
+      font-size: 19px;
+    }
+  }
+
+  .secondaryDoor {
+    gap: 8px;
+    padding: 8px 9px;
+
+    mat-icon {
+      font-size: 17px;
     }
   }
 

@@ -67,7 +67,7 @@ await page.screenshot({ path: `${OUT}/03-input-settings.png`, fullPage: true });
 // Direction is one button that flips, not a pair of options.
 const dirButton = page
   .locator('button#button-block')
-  .filter({ hasText: /Clockwise/ })
+  .filter({ hasText: /clockwise/i })
   .first();
 await dirButton.scrollIntoViewIfNeeded();
 const readDirection = async () => ({
@@ -79,7 +79,7 @@ check(
   'Input Direction is a single button showing the current direction',
   (await page
     .locator('button#button-block')
-    .filter({ hasText: /Clockwise/ })
+    .filter({ hasText: /clockwise/i })
     .count()) === 1 && before.icon.startsWith('rotate_'),
   `"${before.text}" icon=${before.icon}`
 );

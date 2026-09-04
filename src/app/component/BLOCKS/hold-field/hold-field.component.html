@@ -5,9 +5,7 @@
   @for (which of rows(); track which) {
     <div class="row field">
       <span class="caption">
-        <span class="label" [class.dim]="disabled()">{{
-          which === 'length' ? 'Length' : 'Angle'
-        }}</span>
+        <span class="label" [class.dim]="disabled()">{{ labelFor(which) }}</span>
         <mat-icon
           class="label-help"
           [matTooltip]="helpFor(which)"
@@ -36,6 +34,7 @@
             type="text"
             #field
             [attr.data-hold-field]="which"
+            [attr.aria-label]="labelFor(which)"
             (keyup.enter)="field.blur()"
             (focusin)="focus(which, field)"
             (focusout)="blur(which)"
@@ -43,21 +42,25 @@
           />
         </mat-form-field>
         @if (holdable()) {
-          <!-- The icon states, the word confirms: a locked value says Locked
+          <!-- The icon states, the word confirms: a held value says Fixed
                beside the closed padlock; an open one is just the padlock, as
-               the way to lock it. Typing into a locked field is allowed: the
-               number typed becomes the number locked. -->
+               the way to fix it. Typing into a fixed field is allowed: the
+               number typed becomes the number fixed. The word is "fixed" and
+               never "locked" -- a Lock is the mark that pins a joint where it
+               is, and one word for two rules was the confusion this had. -->
           <button
             type="button"
             class="padlock"
             [class.on]="held(which)"
             [attr.data-hold-toggle]="which"
+            [attr.aria-label]="(held(which) ? 'Release fixed ' : 'Fix ') + which"
+            [attr.aria-pressed]="held(which)"
             [matTooltip]="padlockTitle(which)"
             matTooltipShowDelay="400"
             (click)="toggle(which, $event)"
           >
             @if (held(which)) {
-              <span class="word">Locked</span>
+              <span class="word">Fixed</span>
             }
             <svg width="15" height="15" viewBox="0 0 24 24">
               <path

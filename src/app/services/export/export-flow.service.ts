@@ -355,7 +355,10 @@ export class ExportFlowService {
   }
 
   name(): string {
-    return this.typedName.trim() || this.defaultName();
+    // The format supplies its extension, including when the user switches
+    // formats after typing a complete filename. Keep other dots (e.g. v1.2).
+    const stem = this.typedName.trim().replace(/\.(csv|xlsx|pdf|png|svg|zip)$/i, '').trim();
+    return stem || this.defaultName();
   }
 
   extension(): string {

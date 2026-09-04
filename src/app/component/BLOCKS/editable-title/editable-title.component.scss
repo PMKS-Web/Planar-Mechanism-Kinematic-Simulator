@@ -21,14 +21,24 @@
     white-space: nowrap;
 
     .editModeRow {
-      height: 34px;
+      min-height: 34px;
       display: flex;
       align-items: center;
       justify-content: start;
       gap: 10px;
 
+      .objectName {
+        min-width: 0;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        line-height: 1.3;
+        padding: 4px 0;
+      }
+
       .customInputForm {
         margin-top: -5px;
+        min-width: 0;
+        flex: 1;
 
         .customInput {
           @include mat.m2-typography-level($typography-config, 'subtitle-2');
@@ -49,13 +59,24 @@
 
         .mat-mdc-text-field-wrapper {
           height: 30px;
-          width: 100px;
+          width: 100%;
           padding: 0 6px;
         }
       }
     }
 
     // The original self-contained look, now shared verbatim with the nav rail.
+    .titleRow {
+      display: block;
+      white-space: normal;
+      line-height: 1.3;
+      padding: 4px 0;
+
+      .objectName {
+        padding: 0;
+      }
+    }
+
     // The #editable-title-block prefix keeps the border-color specificity intact.
     @include blocks.mini-buttons($theme);
     .mini-buttons {

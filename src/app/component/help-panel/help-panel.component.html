@@ -5,7 +5,18 @@
     <collapsible-subseciton titleLabel="Learn PMKS+" [expanded]="true">
       <button-block icon="help_center" [click]="gotoHelpSite">Tutorial Videos</button-block>
       <subtitle-block>PMKS+ is open source! Do you want to help us develop it?</subtitle-block>
-      <button-block customIcon="github" [click]="gotoGithub">GitHub Repo</button-block>
+      <button-block customIcon="github" [click]="gotoGithub">GitHub Repository</button-block>
+    </collapsible-subseciton>
+
+    <collapsible-subseciton titleLabel="Glossary" [expanded]="false">
+      <dl class="glossaryList">
+        @for (entry of glossary; track entry.term) {
+          <div class="glossaryEntry">
+            <dt>{{ entry.term }}</dt>
+            <dd>{{ entry.meaning }}</dd>
+          </div>
+        }
+      </dl>
     </collapsible-subseciton>
 
     <!-- Where the keys are written down. Every hint in the app is drawn from

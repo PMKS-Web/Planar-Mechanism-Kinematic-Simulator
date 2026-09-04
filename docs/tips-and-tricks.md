@@ -88,6 +88,19 @@ to run unless `MOUSECTL` points at a compiled `e2e/tools/mousectl.swift`. It is 
 
 ## Running the app
 
+**Reload recovery must belong to the tab.** `last-drawing.ts` writes a session backup and a
+persistent latest-visit fallback. An existing tab reads its own session first; reading only
+`localStorage.lastDrawing` let editing a second project replace the first project on reload,
+with no Undo. Keep the persistent fallback for a later browser visit, but never let it win over
+an existing tab's backup. Tabs running an older build need their work saved before updating.
+
+**CAD companion tables share the drawing's origin and start pose.** Keep geometry and tables
+inside the same `encodeFromStartPose` boundary and reuse `originShift`. A paused-pose table beside
+a start-pose drawing is not a coherent handoff. Cylinder joint rows reference prismatic
+connections as well as rigid bodies, so the links table must include those connections; its
+`type` column distinguishes them. Mass/inertia keep their stored project units, documented in
+the README/JSON, even when the drawing is exported in another length unit.
+
 ```bash
 npm start          # http://localhost:4200
 ```
@@ -957,9 +970,16 @@ A bar can hold its **length** or its **angle** against edits (`RealLink.hold`, t
 Length / Fixed Angle rows, the padlocks on the Link Length and Link Angle fields). It is not a Lock:
 the joints stay free to move, on the arc or the line the held value leaves them. One or the other,
 never both -- both is what a Lock on the joints already means -- so asking for the second moves the
-hold and says so, with "Lock length instead" on the message. To the reader the word is always
-**Locked** (the padlock's label, "Locked by fixed length AB", the Unlock action); `hold` is the
-code's name for it, kept distinct from the joint Lock it is not.
+hold and says so, with "Fix length instead" on the message.
+
+**To the reader the word is "fixed", and never "locked".** The padlock inside a field says
+**Fixed**, the menu rows say **Fixed Length** and **Fixed Angle**, a refusal says "Held by fixed
+length AB", and the way out of one is **Release**. "Locked" and "Unlock" belong to the *joint mark*
+and to nothing else. That is the opposite of the rule this file used to state -- one word for both,
+told apart by context -- and it was reversed after an exploratory sweep watched a reader go looking
+for a padlock they had never pressed. `hold` stays the code's name for it.
+
+`e2e/link-holds.mjs` asserts these words, so a drift shows up there.
 
 The rules are the CAD ones, and they live in one place, `model/hold-solver.ts`: the joint that was
 asked for reaches its ask when the holds allow and lands on the nearest allowed place when they do

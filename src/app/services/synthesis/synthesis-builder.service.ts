@@ -427,7 +427,7 @@ export class SynthesisBuilderService {
     const last = placed[placed.length - 1];
     this.poses[next] = new SynthesisPose(
       next,
-      new Coord(last.position.x + 6 * MODEL_SCALE, last.position.y + 5 * MODEL_SCALE),
+      new Coord(last.position.x + 0.6 * this.length, last.position.y + 0.5 * this.length),
       ((last.thetaDegrees - 22) * Math.PI) / 180,
       () => this.COR,
       () => this.length

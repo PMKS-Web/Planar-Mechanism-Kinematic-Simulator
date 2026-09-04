@@ -53,7 +53,7 @@ describe('what is allowed when', () => {
     expect(refusalFor('drive', parked)!.short).toBe('shown at pose');
   });
 
-  it('names the machine that is away when the shared clock does not show it', () => {
+  it('names the mechanism that is away when the shared clock does not show it', () => {
     // Unsynced, a row can be scrubbed a third of the way round while the shared
     // handle still reads zero. "Not at the start" over a scrubber reading 0:00
     // sends a reader to a control that looks parked, so the machine that is
@@ -65,7 +65,7 @@ describe('what is allowed when', () => {
     // And falls back to a sentence that names nothing, rather than to "M2" for
     // a machine nobody has named.
     const unnamed = at({ atStart: false, sharedStepZero: true });
-    expect(refusalFor('placement', unnamed)!.long).toContain('One of the machines');
+    expect(refusalFor('placement', unnamed)!.long).toContain('One of the mechanisms');
   });
 
   it('writes every refusal as one sentence and as pieces that rebuild it', () => {
@@ -147,14 +147,14 @@ describe('what is allowed when', () => {
     expect(allowed(at({ solveDeferred: true }))).toEqual([...EDIT_ACTIONS]);
   });
 
-  it('names the machine when the shared clock disagrees', () => {
+  it('names the mechanism when the shared clock disagrees', () => {
     // Unsynced, a row can be parked mid-cycle while the transport reads 0:00.
     // "Not at the start" over a scrubber that looks parked sends the reader to
     // the wrong control, so that case gets its own words.
     const shared = displacementRefusal(at({ atStart: false, sharedStepZero: false }));
     const unsynced = displacementRefusal(at({ atStart: false, sharedStepZero: true }));
     expect(shared!.short).toBe('not at the start');
-    expect(unsynced!.short).toBe('a machine is mid-cycle');
+    expect(unsynced!.short).toBe('a mechanism is mid-cycle');
     // Both are cleared by the same button, and both say so.
     expect(shared!.backToStartHelps).toBe(true);
     expect(unsynced!.backToStartHelps).toBe(true);

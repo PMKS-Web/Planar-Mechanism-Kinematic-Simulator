@@ -199,7 +199,7 @@ record('pressing it does the thing, and takes the message away', ran.done && ran
 // ---- the zoom warning is the real one that carries them ----------------------
 
 // With a linkage on the grid: "Reset view" fits the view to the drawing, and an
-// empty grid has nothing to fit to -- the same as the Reset View button.
+// empty grid has nothing to fit to -- the same as the Fit to view button.
 await page.goto(`${BASE}/?${FOUR_BAR}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await watch();
@@ -217,11 +217,11 @@ const zoomed = await page.evaluate(() => {
 });
 record(
   'zooming past the band warns, with both ways out',
-  !!zoomed.id && zoomed.labels.join('|') === 'Fit to zoom|Reset view',
+  !!zoomed.id && zoomed.labels.join('|') === 'Auto-size objects|Fit to view',
   zoomed
 );
 
-// Fit to zoom keeps the view and resizes the drawing.
+// Auto-size objects keeps the view and resizes the drawing.
 const fitted = await page.evaluate(async () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const zoomBefore = grid.svgGrid.getZoom();
@@ -234,7 +234,7 @@ const fitted = await page.evaluate(async () => {
   };
 });
 record(
-  'Fit to zoom resizes the drawing and leaves the view alone',
+  'Auto-size objects resizes the drawing and leaves the view alone',
   fitted.drawnAt > 5 && fitted.drawnAt < 200 && fitted.zoomHeld,
   fitted
 );
@@ -258,7 +258,7 @@ const zoomBefore = await page.evaluate(() =>
 // A real click, not a synthetic one. `scaleToFitLinkage` finishes in an
 // `afterNextRender`, so it needs a change-detection pass behind it -- calling
 // the method from the console leaves the fit permanently pending.
-await page.locator('.notificationAction', { hasText: 'Reset view' }).click();
+await page.locator('.notificationAction', { hasText: 'Fit to view' }).click();
 await page.waitForTimeout(1500);
 const reset = await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));

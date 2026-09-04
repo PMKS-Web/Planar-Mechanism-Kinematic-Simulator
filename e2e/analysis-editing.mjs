@@ -145,12 +145,12 @@ await page.screenshot({ path: `${SHOTS}/1-analysis.png` });
 const corner = await page.locator('.historyCard').innerText();
 record(
   'the corner card holds Undo, Redo and Export together',
-  /Undo/.test(corner) && /Redo/.test(corner) && /Export Data/.test(corner),
+  /Undo/.test(corner) && /Redo/.test(corner) && /Export data/.test(corner),
   corner.replace(/\s+/g, ' ')
 );
 record(
   'in that order',
-  corner.replace(/\s+/g, ' ').indexOf('Undo') < corner.replace(/\s+/g, ' ').indexOf('Export Data')
+  corner.replace(/\s+/g, ' ').indexOf('Undo') < corner.replace(/\s+/g, ' ').indexOf('Export data')
 );
 await mode('Edit');
 record(
@@ -641,7 +641,7 @@ await page.waitForTimeout(1000);
 // two ideas, two icons.
 record(
   'the panel says that dragging does not move what is graphed',
-  /Drag a part to tune it/.test(
+  /Drag a joint or link to tune it/.test(
     await page.evaluate(() => {
       const panel = window.ng.getComponent(document.querySelector('app-analysis-panel'));
       return panel.analysisTuneHint;

@@ -307,7 +307,7 @@ try {
   const comMarks = () => page.locator('#comTagHolder path').count();
   // Icon-only squares now, so they are addressed by what they are for rather
   // than by a word that is no longer printed on them.
-  const comButton = page.locator('.viewControls .viewButton[aria-label="Show Center of Mass"]');
+  const comButton = page.locator('.viewControls .viewButton[aria-label="Show Center of mass"]');
   // The view defaults to showing centers of mass, but a mark only appears on a
   // link that has mass: take the weight away and the mark goes with it, give
   // it back and the toggle governs it from there.
@@ -334,7 +334,7 @@ try {
   await comButton.click();
   await page.waitForTimeout(300);
   await restCursor();
-  await page.locator('.viewControls .viewButton[aria-label="Reset View"]').click();
+  await page.locator('.viewControls .viewButton[aria-label="Fit to view"]').click();
   await page.waitForTimeout(600);
   await restCursor();
   await page.locator('.viewControls .viewButton[aria-label="Zoom In"]').click();

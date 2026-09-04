@@ -61,12 +61,15 @@
             <div class="massRow head">
               <span>Body</span>
               <span>Mass</span>
-              <span>Rotational Inertia</span>
+              <span>Moment of inertia</span>
               <span></span>
             </div>
             @for (row of massRows(); track row.body.id) {
               <div class="massRow" [class.weightless]="!(row.body.mass > 0)">
-                <span class="massName">{{ row.label }}</span>
+                <!-- The column ellipses, and on a phone it is narrow enough
+                     that "Link Drag crank" and "Link Drag coupler" both read
+                     as "Link D…". The full name has to be reachable. -->
+                <span class="massName" [attr.title]="row.label">{{ row.label }}</span>
                 <input-block
                   class="cellField"
                   [formGroup]="tableForm"

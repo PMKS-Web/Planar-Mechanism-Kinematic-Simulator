@@ -20,7 +20,7 @@ import { Measure, ReportSection, reportHtml, reportPages } from './report-html';
 const SERIES_COLORS: Record<string, string> = {
   X: ANALYSIS_SERIES_COLORS.X,
   Y: ANALYSIS_SERIES_COLORS.Y,
-  Mag: ANALYSIS_SERIES_COLORS.Z,
+  Magnitude: ANALYSIS_SERIES_COLORS.Z,
 };
 
 /**
@@ -305,7 +305,10 @@ export class ExportWriterService {
     const mass = this.nup.unitLabel(this.nup.massUnitFor(this.settings.lengthUnit.value));
     const angle = this.catalog.unitStr(this.settings.angleUnit.value);
     return [
-      { label: 'Mechanism', value: `${group.id}, ${group.note}, ${solved.dof} DoF` },
+      {
+        label: 'Mechanism',
+        value: `${group.id}, ${group.note}, ${solved.dof} degrees of freedom`,
+      },
       {
         label: 'Input',
         value: driven ? `Joint ${driven.name || driven.id}, ${speed}` : 'Not set',
@@ -315,7 +318,7 @@ export class ExportWriterService {
         value: `${solved.cyclePeriod.toFixed(2)} s, ${table.times.length} solved positions`,
       },
       { label: 'Units', value: `${length}, ${mass}, ${this.catalog.forceUnit()}, ${angle}` },
-      { label: 'Parts', value: parts || '—' },
+      { label: 'Selectable objects', value: parts || '—' },
       { label: 'Decimals', value: String(this.flow.decimals) },
     ];
   }

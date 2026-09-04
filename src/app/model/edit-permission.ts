@@ -243,10 +243,10 @@ const DISPLACED: EditRefusal = refusal({
  */
 function displacedUnsynced(name: string | undefined): EditRefusal {
   return refusal({
-    short: 'a machine is mid-cycle',
+    short: 'a mechanism is mid-cycle',
     glyph: 'pause_circle',
-    lead: `${name ?? 'One of the machines'} is parked away from its start.`,
-    action: 'Return every machine',
+    lead: `${name ?? 'One of the mechanisms'} is parked away from its start.`,
+    action: 'Return every mechanism',
     tail: 'to edit.',
     actionKind: 'backToStart',
     backToStartHelps: true,

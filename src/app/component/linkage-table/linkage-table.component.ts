@@ -143,12 +143,19 @@ export class LinkageTableComponent implements OnInit {
       return;
     }
     switch (linkProp) {
-      case 'mass':
-        if (isNaN(Number(($event.target as HTMLInputElement).value))) {
+      case 'mass': {
+        // Two refusals, not one: a reader who typed "-5" typed a number, and
+        // this cell used to take it and store the mass as written.
+        const typed = Number(($event.target as HTMLInputElement).value);
+        if (isNaN(typed)) {
           return this.notify.refusal('value.mass', NOT_A.mass);
         }
-        link.mass = Number(($event.target as HTMLInputElement).value);
+        if (typed < 0) {
+          return this.notify.refusal('value.mass', NOT_A.nonNegativeMass);
+        }
+        link.mass = typed;
         break;
+      }
       case 'massMoI':
         if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.momentOfInertia', NOT_A.momentOfInertia);

@@ -13,7 +13,7 @@
  */
 export const QUIET_START = {
   tutorialSeen: 'true',
-  whatsNewSeen: '2026.08',
+  whatsNewSeen: '2026.09',
 };
 
 /** Apply it to a Playwright context before its first page is opened. */

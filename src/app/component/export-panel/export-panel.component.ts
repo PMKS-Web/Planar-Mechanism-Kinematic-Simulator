@@ -52,7 +52,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
 
   /** The names the rule across the top puts on this drawing's questions. */
   private readonly stepNames: Record<ExportStep, string> = {
-    parts: 'Parts',
+    parts: 'Objects',
     kinematics: 'Kinematics',
     forces: 'Forces',
     file: 'File',
@@ -83,7 +83,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
     {
       key: 'xlsx',
       name: 'Excel workbook',
-      note: 'Sheets by analysis or by part, for charting.',
+      note: 'Sheets by analysis or by object, for charting.',
     },
     {
       key: 'images',
@@ -110,9 +110,9 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
     decimals:
       'How many digits after the point every number keeps. Full writes exactly what the solver produced.',
     files:
-      'One file puts every chosen part of a machine against one time column; per part writes a file each. Either way a machine gets its own file, because two machines run on two clocks.',
+      'Per mechanism puts its chosen objects against one time column. Per object writes a separate file for each object. Mechanisms have separate files because each has its own time range.',
     sheets:
-      'By analysis puts kinematics and forces on sheets of their own. By part gives every chosen joint and link a sheet.',
+      'By analysis puts kinematics and forces on sheets of their own. By object gives every chosen joint and link a sheet.',
     images:
       'SVG stays sharp at any size and can be opened and edited; PNG drops into a document that will not take a vector. Both carry the PMKS+ mark.',
     name: 'The stem every file is named from. Where more than one is written, what tells them apart is added to it.',
@@ -179,23 +179,21 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   // --- what the head says ---------------------------------------------------
 
   get lead(): string {
-    if (this.flow.step === 'parts') return 'Which parts do you want numbers for?';
+    if (this.flow.step === 'parts') return 'Which selectable objects do you want numbers for?';
     if (this.flow.step === 'file') return 'How should the file be written?';
-    const names = this.flow.selectedParts().map((part) => part.label.replace(/^(Joint|Link) /, ''));
-    if (names.length === 0) return 'Nothing is selected yet.';
     return this.flow.step === 'forces'
-      ? `Which forces for ${list(names)}?`
-      : `Which motion for ${list(names)}?`;
+      ? 'Which force quantities do you want?'
+      : 'Which motion quantities do you want?';
   }
 
   get countText(): string {
     if (this.flow.step === 'parts') {
-      return `${this.flow.selectedParts().length} of ${this.flow.offeredParts().length} parts`;
+      return `${this.flow.selectedParts().length} of ${this.flow.offeredParts().length} selectable objects`;
     }
     const tab = this.flow.tab;
     const of = this.flow.columnGroups(tab).flatMap((group) => group.columns).length;
     const picked = this.flow.columnCount(tab);
-    return tab === 'forces' ? `${picked} of ${of} force columns` : `${picked} of ${of} columns`;
+    return `${picked} of ${of} selected`;
   }
 
   get footNote(): string {
@@ -208,11 +206,11 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
         .join(', ');
       return parts === 0
         ? 'Nothing chosen yet'
-        : `${parts} ${parts === 1 ? 'part' : 'parts'}${machines ? ' · ' + machines : ''}`;
+        : `${parts} selectable ${parts === 1 ? 'object' : 'objects'}${machines ? ' · ' + machines : ''}`;
     }
     if (this.flow.step === 'file') return '';
     const summary = this.writer.summary();
-    return `${Math.max(summary.columns - 1, 0)} columns · ${summary.rows} rows`;
+    return `${summary.columns} columns · ${summary.rows} rows`;
   }
 
   // --- step 1 ---------------------------------------------------------------
@@ -295,7 +293,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   componentsOf(column: ExportColumn): string {
     const widest = column.series.reduce((most, series) => Math.max(most, series.components), 1);
     if (widest < 2) return '';
-    return widest === 2 || !this.flow.withMagnitude ? 'X, Y' : 'X, Y, Mag';
+    return widest === 2 || !this.flow.withMagnitude ? 'X, Y' : 'X, Y, Magnitude';
   }
 
   /** Whether anything on offer has a magnitude, and so anything to choose. */
@@ -314,13 +312,13 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
       return `${pictures} ${pictures === 1 ? 'image' : 'images'} · ${this.flow.imageFormat.toUpperCase()}`;
     }
     if (this.flow.format === 'report') {
-      return `${Math.max(summary.columns - 1, 0)} columns · ${summary.rows} rows · ${
+      return `${summary.columns} columns · ${summary.rows} rows · ${
         summary.pages
       } printed ${summary.pages === 1 ? 'page' : 'pages'}`;
     }
     // How many files there are is the line under this one, in the glyph's own
     // words; saying it twice made a two-line card read as a paragraph.
-    return `${Math.max(summary.columns - 1, 0)} columns · ${summary.rows} rows`;
+    return `${summary.columns} columns · ${summary.rows} rows`;
   }
 
   private pictureCount(): number {
@@ -407,7 +405,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
       if (!written) {
         this.notify.refusal(
           'export.empty',
-          'Nothing was written: the parts that were ticked no longer have numbers to give.'
+          'Nothing was written: the chosen objects no longer have numbers to give.'
         );
         return;
       }
@@ -429,10 +427,4 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   }
 
   isPicked = (part: ExportPart): boolean => this.flow.isPicked(part);
-}
-
-/** `B`, `B and C`, `B, C and AB` — a list read the way it is spoken. */
-function list(names: string[]): string {
-  if (names.length <= 1) return names.join('');
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }

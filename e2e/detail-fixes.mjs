@@ -567,8 +567,9 @@ const split = await page.evaluate(() => {
   return { divider, count: kids.length };
 });
 record(
-  'a divider splits the three switches from the three view actions',
-  split.divider === 3 && split.count === 7,
+  // Four actions now: zoom out, zoom in, Fit to view and Fit full motion.
+  'a divider splits the three switches from the view actions',
+  split.divider === 3 && split.count === 8,
   split
 );
 
@@ -862,7 +863,7 @@ record(
 await load(payloads['4-Bar']);
 record(
   'the status strip reports the mobility',
-  /DOF:\s*1/.test(await page.locator('#bottomBar').innerText()),
+  /Degrees of freedom:\s*1/.test(await page.locator('#bottomBar').innerText()),
   (await page.locator('#bottomBar').innerText()).replace(/\s+/g, ' ')
 );
 

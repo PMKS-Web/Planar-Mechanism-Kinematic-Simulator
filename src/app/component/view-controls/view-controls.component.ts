@@ -207,4 +207,8 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   onReframePressed(): void {
     this.svgGrid.scaleToFitLinkage();
   }
+
+  onFitFullMotionPressed(): void {
+    this.svgGrid.scaleToFitFullMotion();
+  }
 }

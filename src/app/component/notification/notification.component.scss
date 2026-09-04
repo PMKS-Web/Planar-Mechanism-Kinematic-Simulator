@@ -57,6 +57,46 @@ $accent: 5px;
     // sitting behind it.
     border-left: $accent solid transparent;
     border-radius: $accent;
+
+    // On a phone the row runs out of width before the sentence does. Two
+    // actions and a close are nowrap by construction, so the sentence took
+    // whatever was left -- sixty-odd pixels for "Objects may be difficult to
+    // see at this zoom", which wrapped almost word by word into a card six
+    // lines tall that covered the top of whatever was open behind it.
+    //
+    // The sentence keeps the first line; the verbs drop to a line of their
+    // own, which is what every snackbar this narrow does.
+    @media (max-width: 600px) {
+      flex-wrap: wrap;
+      row-gap: 4px;
+
+      .notificationText {
+        flex: 1 1 auto;
+      }
+
+      .notificationIcon,
+      .notificationClose {
+        flex: 0 0 auto;
+      }
+
+      // Two verbs take a second line of their own, indented to the sentence's
+      // left edge; the close goes to the far right of whatever line it lands
+      // on, which is where it sits on a desktop. One verb is left alone -- it
+      // fits beside the sentence at this width, and sending it down a line put
+      // the close mark on an empty row by itself.
+      // `:first-of-type` alone will not do it -- the close is a button too, so
+      // a lone action is never the last *button*. The card is asked whether it
+      // holds two actions instead.
+      &:has(.notificationAction + .notificationAction) .notificationAction:first-of-type {
+        flex-basis: 100%;
+        max-width: max-content;
+        margin-left: 30px;
+      }
+
+      .notificationClose {
+        margin-left: auto;
+      }
+    }
   }
 
   // Material gives mat-icon a 24px box whatever the glyph inside it is, so the

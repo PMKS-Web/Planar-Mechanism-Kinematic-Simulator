@@ -13,8 +13,8 @@
     <div class="scopeNote">
       <mat-icon>architecture</mat-icon>
       <p>
-        <strong>Built from the start pose.</strong> One sketch layer per part, in the project’s
-        units — the shapes the canvas draws, not a toleranced fabrication drawing.
+        <strong>Built from the start pose.</strong> Choose the geometry, layers and units below.
+        These are the shapes the canvas draws, not a toleranced fabrication drawing.
       </p>
     </div>
 
@@ -49,7 +49,7 @@
       >
         <span class="presetName"> <mat-icon>draw</mat-icon>Reference sketch </span>
         <span class="presetNote"
-          >One layer, model coordinates, joint marks only — for tracing over.</span
+          >Link centerlines, model coordinates and joint marks — for tracing over.</span
         >
       </button>
       <!-- Not a third card: nobody picks Custom, they arrive in it. -->
@@ -182,6 +182,8 @@
                   [ngModel]="effectivePinDiameter"
                   (ngModelChange)="touch({ pinDiameter: +$event })"
                   aria-label="Pin diameter"
+                  [attr.aria-invalid]="!!pinDiameterError"
+                  [attr.aria-describedby]="pinDiameterError ? 'pin-diameter-error' : null"
                 />
                 <span class="fieldNote">
                   {{ unitWord }} · every joint
@@ -303,7 +305,7 @@
       @if (open.data) {
         <div class="sectionBody">
           <span class="groupName"
-            >A companion table of joints and links — the numbers a drawing cannot carry.</span
+            >Tables of joints, links and any applied forces — the numbers a drawing cannot carry.</span
           >
           @for (choice of dataChoices; track choice.value) {
             <button class="radioRow" (click)="touch({ dataFile: choice.value })">
@@ -339,14 +341,16 @@
       <div class="liveSummary">{{ liveSummary }}</div>
       <div class="deliveryLine">{{ deliveryLine }}</div>
       @if (warning) {
-        <div class="warningLine"><mat-icon>warning</mat-icon>{{ warning }}</div>
+        <div class="warningLine" id="pin-diameter-error" role="status">
+          <mat-icon>warning</mat-icon>{{ warning }}
+        </div>
       }
     </div>
   </div>
 
   <div mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cancel</button>
-    <button mat-flat-button color="primary" [disabled]="isEmpty" (click)="download()">
+    <button mat-flat-button color="primary" [disabled]="isEmpty || !!pinDiameterError" (click)="download()">
       <mat-icon>download</mat-icon>
       {{ exportLabel }}
     </button>

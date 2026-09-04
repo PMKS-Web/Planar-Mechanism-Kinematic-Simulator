@@ -68,7 +68,16 @@ const seen = (page, selector) =>
   check('Returning visit: the release notes open', await seen(page, '#whatsNew'));
   check('Returning visit: the tutorial stays shut', !(await seen(page, '.tutorialCard')));
   const notes = await page.locator('#whatsNew .wnNote').count();
-  check('Every note is rendered', notes >= 8, `${notes} notes`);
+  // Five, and exactly five: the card is the first thing a returning reader
+  // meets, and more than five puts the way out below the fold.
+  check('Every note is rendered, and the card stays five', notes === 5, `${notes} notes`);
+  // Which is the point of five. A reader who has to scroll to find "Start
+  // using it" has been handed a document rather than a welcome.
+  const room = await page.evaluate(() => {
+    const body = document.querySelector('#whatsNew .wnBody');
+    return { need: Math.round(body.scrollHeight), have: Math.round(body.clientHeight) };
+  });
+  check('and it fits without scrolling on a desktop', room.need <= room.have + 1, room);
   await page.screenshot({ path: `${OUT}/whats-new.png` });
 
   // Closed is read, and it stays read across a reload.

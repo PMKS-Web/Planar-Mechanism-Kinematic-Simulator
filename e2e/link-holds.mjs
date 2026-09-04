@@ -207,7 +207,7 @@ record(
 // --- The panel: Link Length is held and read-only, Link Angle typeable -----
 
 record(
-  'the Link Length field says Locked on its padlock and stays typeable; the angle does not',
+  'the Link Length field says Fixed on its padlock and stays typeable; the angle does not',
   await page.evaluate(() => {
     const length = document.querySelector('[data-hold-field="length"]');
     const angle = document.querySelector('[data-hold-field="angle"]');
@@ -215,8 +215,8 @@ record(
       !!length &&
       !length.readOnly &&
       !!angle &&
-      !/Locked/.test(document.querySelector('[data-hold-toggle="angle"]').textContent) &&
-      /Locked/.test(document.querySelector('[data-hold-toggle="length"]').textContent)
+      !/Fixed/.test(document.querySelector('[data-hold-toggle="angle"]').textContent) &&
+      /Fixed/.test(document.querySelector('[data-hold-toggle="length"]').textContent)
     );
   })
 );
@@ -289,16 +289,16 @@ record(
   })
 );
 record(
-  'a message says the lock moved and offers the length instead',
+  'a message says the fix moved and offers the length instead',
   await page.evaluate(() => {
     const action = [...document.querySelectorAll('.notificationAction')].find((b) =>
-      /Lock length instead/.test(b.textContent)
+      /Fix length instead/.test(b.textContent)
     );
     return !!action;
   })
 );
 await page.screenshot({ path: `${OUT}/04-hold-moved.png` });
-await page.click('.notificationAction:has-text("Lock length instead")');
+await page.click('.notificationAction:has-text("Fix length instead")');
 await page.waitForTimeout(300);
 record('the way back puts the hold on the length again', (await holdOf('AB')) === 'length');
 
@@ -326,14 +326,14 @@ record('a joint the holds fully determine does not move', dist(bHeld, bStill) < 
   bStill,
 });
 record(
-  'the refusal says Locked by both, and offers Unlock',
+  'the refusal says Held by both, and offers Release',
   await page.evaluate(() => {
     const c = ng.getComponent(document.querySelector('app-new-grid'));
     const one = c.notify.live.find((n) => n.id === 'hold.joint');
     return (
       !!one &&
-      /^Locked by fixed length AB and fixed length BC/.test(one.text) &&
-      one.actions.some((action) => action.label === 'Unlock')
+      /^Held by fixed length AB and fixed length BC/.test(one.text) &&
+      one.actions.some((action) => action.label === 'Release')
     );
   })
 );

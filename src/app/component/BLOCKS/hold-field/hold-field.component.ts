@@ -71,6 +71,11 @@ export class HoldFieldComponent {
     return only ? [only] : ['length', 'angle'];
   }
 
+  /** The word this row is about, for its caption and for its field's name. */
+  labelFor(which: Which): string {
+    return which === 'length' ? 'Length' : 'Angle';
+  }
+
   helpFor(which: Which): string {
     if (which === 'length') return 'Distance between the two joints of this link.';
     return (
@@ -126,9 +131,9 @@ export class HoldFieldComponent {
   padlockTitle(which: Which): string {
     const other = which === 'length' ? 'angle' : 'length';
     if (this.held(which))
-      return `Unlock the ${which}. Typing a number keeps it locked at that number`;
-    if (this.hold() === other) return `Lock the ${which} instead — the ${other} is unlocked`;
-    return `Lock the ${which}`;
+      return `Release the fixed ${which}. Typing a number keeps it fixed at that number`;
+    if (this.hold() === other) return `Fix the ${which} instead — the ${other} is released`;
+    return `Fix the ${which}`;
   }
 
   toggle(which: Which, event: Event): void {

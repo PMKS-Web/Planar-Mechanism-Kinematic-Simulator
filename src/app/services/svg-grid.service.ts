@@ -174,6 +174,13 @@ export class SvgGridService {
    * and the grid being rebuilt independently.
    */
   public cursorAt: { x: number; y: number } | null = null;
+
+  constructor() {
+    // A reading from before a unit change is no longer in the current model
+    // coordinates. Wait for a new pointer position instead of relabeling it.
+    const units = this.settingsService.lengthUnit.subscribe(() => (this.cursorAt = null));
+    this.destroyRef.onDestroy(() => units.unsubscribe());
+  }
   public panZoomObject!: SvgPanZoom.Instance;
   public CTM!: SVGMatrix;
   public viewBoxMinX: number = 0;
@@ -432,6 +439,7 @@ export class SvgGridService {
   /** Whatever the view was is now whatever the reader just made it. */
   private forgetChosenView(): void {
     this.viewIsFitted = false;
+    this.viewIsFittedToMotion = false;
     this.chosenView = null;
   }
 
@@ -721,20 +729,19 @@ export class SvgGridService {
     // and resizes the drawing to suit it; "Reset view" keeps the drawing and
     // moves the view back to it.
     const fixes = [
-      { label: 'Fit to zoom', run: () => this.updateObjectScale(true) },
-      { label: 'Reset view', run: () => this.scaleToFitLinkage() },
+      { label: 'Auto-size objects', run: () => this.updateObjectScale(true) },
+      { label: 'Fit to view', run: () => this.scaleToFitLinkage() },
     ];
     if (drawnAt < 5) {
-      this.notify.warning(
-        'zoom.links-tiny',
-        'The links are drawn far smaller than the grid at this zoom.',
-        { cooldownMs: 60000, actions: fixes }
-      );
+      this.notify.news('zoom.links-tiny', 'Objects may be difficult to see at this zoom.', {
+        cooldownMs: 60000,
+        actions: fixes,
+      });
     }
     if (drawnAt > 200) {
-      this.notify.warning(
+      this.notify.news(
         'zoom.links-huge',
-        'The links are drawn far larger than the grid at this zoom.',
+        'Objects may cover too much of the drawing at this zoom.',
         { cooldownMs: 60000, actions: fixes }
       );
     }
@@ -872,6 +879,14 @@ export class SvgGridService {
     });
   }
 
+  /** Frame every solved pose, including paths that leave the start-pose view. */
+  scaleToFitFullMotion(animate = true): void {
+    this.settingsService.tempGridDisable = true;
+    afterNextRender(() => setTimeout(() => this.fitToFullMotion(animate), 0), {
+      injector: this.injector,
+    });
+  }
+
   /**
    * Wait out whatever the canvas is already doing, then frame it.
    *
@@ -892,10 +907,23 @@ export class SvgGridService {
     if (this.settlePending) {
       // Framed against a panel that is still sliding, this would land in the
       // wrong place and be corrected a moment later.
-      this.queuedFit = animate;
+      this.queuedFit = { animate, target: 'drawing' };
       return;
     }
     NewGridComponent.instance.afterGlide(() => this.frameDrawing(animate));
+  }
+
+  private fitToFullMotion(animate: boolean): void {
+    if (!this.panZoomObject || !NewGridComponent.instance) {
+      this.settingsService.tempGridDisable = false;
+      return;
+    }
+    this.settingsService.tempGridDisable = false;
+    if (this.settlePending) {
+      this.queuedFit = { animate, target: 'motion' };
+      return;
+    }
+    NewGridComponent.instance.afterGlide(() => this.frameFullMotion(animate));
   }
 
   /**
@@ -919,6 +947,7 @@ export class SvgGridService {
         animate
       );
       this.viewIsFitted = true;
+      this.viewIsFittedToMotion = false;
       this.chosenView = null;
       return;
     }
@@ -941,10 +970,59 @@ export class SvgGridService {
     }
     this.moveViewTo(drawn, centerOf(free), target, animate);
     this.viewIsFitted = true;
+    this.viewIsFittedToMotion = false;
     // A fit supersedes whatever the reader had driven to: they have just asked
     // for something else. Holding the old view would let a later squeeze hand
     // it back as though it were still theirs. `rescueFrame` puts it back where
     // the fit was the app's idea rather than a request.
+    this.chosenView = null;
+  }
+
+  /** The box swept by every joint over every valid solved cycle. */
+  private fullMotionBox(): Rect | null {
+    const mechanism = this.injector.get(MechanismService);
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const solved of mechanism.mechanisms) {
+      if (!solved.isMechanismValid()) continue;
+      for (const frame of solved.joints) {
+        for (const point of frame) {
+          minX = Math.min(minX, point.x);
+          maxX = Math.max(maxX, point.x);
+          // Drawing layers wear modelFrame, so their coordinates are y-up
+          // inside a y-down viewport. Framing uses the viewport's space.
+          minY = Math.min(minY, -point.y);
+          maxY = Math.max(maxY, -point.y);
+        }
+      }
+    }
+    if (!Number.isFinite(minX)) return null;
+    const pad = Math.max(this.settingsService.objectScale * 0.65, 1);
+    return {
+      x: minX - pad,
+      y: minY - pad,
+      width: Math.max(maxX - minX + 2 * pad, 2 * pad),
+      height: Math.max(maxY - minY + 2 * pad, 2 * pad),
+    };
+  }
+
+  /** Put the complete solved motion in the visible canvas. */
+  private frameFullMotion(animate: boolean): void {
+    const free = this.freeRect();
+    const drawn = this.fullMotionBox();
+    if (!free || !drawn) {
+      this.frameDrawing(animate);
+      return;
+    }
+    this.settledFree = free;
+    const target = this.clampZoom(
+      Math.min((free.width * FIT_FILL) / drawn.width, (free.height * FIT_FILL) / drawn.height)
+    );
+    this.moveViewTo(drawn, centerOf(free), target, animate);
+    this.viewIsFitted = true;
+    this.viewIsFittedToMotion = true;
     this.chosenView = null;
   }
 
@@ -993,6 +1071,8 @@ export class SvgGridService {
    * reader zoomed out to look at the space around a linkage fits too.
    */
   private viewIsFitted = false;
+  /** Which fitted box to preserve when surrounding panels move. */
+  private viewIsFittedToMotion = false;
   private movingTheViewOurselves = false;
 
   /**
@@ -1137,7 +1217,9 @@ export class SvgGridService {
     this.settlePending = true;
 
     const startedAt = performance.now();
-    const drawn = this.measureDrawing();
+    const drawn = this.viewIsFittedToMotion
+      ? (this.fullMotionBox() ?? this.measureDrawing())
+      : this.measureDrawing();
     const shown = drawn && this.screenBoxOf(drawn);
     const matrix = this.drawnMatrix();
     // A resize is heard once the window has already changed, so sampling from
@@ -1247,7 +1329,7 @@ export class SvgGridService {
   /** Where the chrome stood the last time the view was put somewhere. */
   private settledFree: Rect | null = null;
   /** A fit asked for while the chrome was still moving, run once it stops. */
-  private queuedFit: boolean | null = null;
+  private queuedFit: { animate: boolean; target: 'drawing' | 'motion' } | null = null;
 
   /**
    * Settle the view once the chrome has stopped moving.
@@ -1271,7 +1353,8 @@ export class SvgGridService {
     const fit = this.queuedFit;
     this.queuedFit = null;
     if (fit !== null) {
-      this.frameDrawing(fit);
+      if (fit.target === 'motion') this.frameFullMotion(fit.animate);
+      else this.frameDrawing(fit.animate);
       return;
     }
     const { free, drawn } = settle;
@@ -1299,9 +1382,11 @@ export class SvgGridService {
    */
   private rescueFrame(): void {
     const held = this.chosenView;
-    this.frameDrawing(true);
+    if (this.viewIsFittedToMotion) this.frameFullMotion(true);
+    else this.frameDrawing(true);
     if (held) {
       this.viewIsFitted = false;
+      this.viewIsFittedToMotion = false;
       this.chosenView = held;
     }
   }

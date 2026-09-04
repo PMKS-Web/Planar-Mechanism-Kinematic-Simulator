@@ -210,11 +210,12 @@ check(
   (await page.locator('#canvas [id^="joint_"]').count()) > 0
 );
 
-// The tutorial is pinned rather than paged, so opening Export stacks the two
-// instead of putting the tutorial away.
-await page.locator('.door').first().click();
+// Export is one of the two secondary doors, and the tutorial is pinned rather
+// than paged, so opening it stacks the two instead of putting the tutorial
+// away. The primary door is checked after these, because that one does close it.
+await page.locator('.door.secondaryDoor').first().click();
 await page.waitForTimeout(900);
-check('Export Data opens', await page.locator('.exportCard').isVisible());
+check('Export data opens', await page.locator('.exportCard').isVisible());
 check('the tutorial stays with it', await page.locator('.tutorialCard').isVisible());
 const tutorialBox = await page.locator('.tutorialCard').boundingBox();
 const exportBox = await page.locator('.exportCard').boundingBox();
@@ -245,6 +246,21 @@ check(
   room.scroll <= room.client || room.scroll > room.client,
   `${room.scroll} vs ${room.client}`
 );
+
+// The primary door is the Mechanism Library: the useful next thing to do with
+// a mechanism you have just finished. It is the one door that puts the
+// finished card away, because a spent tutorial stacked over the library is in
+// the way of the thing it just sent you to.
+await page.locator('.door.libraryDoor').click();
+await page.waitForTimeout(1000);
+check('the primary door opens the Mechanism Library', await page.locator('#templates').isVisible());
+check(
+  'and the finished tutorial closes behind it',
+  (await page.locator('.tutorialCard').count()) === 0 ||
+    !(await page.locator('.tutorialCard').isVisible())
+);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(700);
 
 // ---- dismissed for good, and still reachable ----
 

@@ -64,7 +64,7 @@ const shot = (name) =>
 async function forceRowTitles() {
   return page.evaluate(() => {
     const panel = document.querySelector('app-analysis-panel');
-    if (!panel || !/Force Analysis Type/.test(panel.innerText)) return null;
+    if (!panel || !/Force analysis type/i.test(panel.innerText)) return null;
     return (
       [...panel.querySelectorAll('app-analysis-graph-section .graphTitle')]
         .map((el) => el.innerText.replace(/help_outline/g, '').trim())

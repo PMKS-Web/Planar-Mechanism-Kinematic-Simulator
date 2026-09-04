@@ -72,6 +72,11 @@ describe('NumberUnitParserService mass and inertia', () => {
 describe('NumberUnitParserService force', () => {
   const nup = new NumberUnitParserService();
 
+  it('does not give rounded zero a direction, while preserving negative components', () => {
+    expect(nup.formatValueAndUnit(-1e-12, ForceUnit.NEWTON)).toBe('0.00 N');
+    expect(nup.formatValueAndUnit(-0.01, ForceUnit.NEWTON)).toBe('-0.01 N');
+  });
+
   it('names the unit a force is stored in, which is not the one it is shown in', () => {
     // Kilograms-force is a way of reading a magnitude, not a way of keeping
     // one: the solver's unit factors and every circulating URL are written in

@@ -41,14 +41,14 @@ interface DuplicateClosure {
 
 const emptySelection = (): BatchRefusal => ({
   code: 'selection-empty',
-  short: 'select parts first',
+  short: 'select objects first',
   message: 'Select at least one joint or link first.',
 });
 
 const staleSelection = (): BatchRefusal => ({
   code: 'selection-stale',
   short: 'selection changed',
-  message: 'Part of the selection no longer exists. Select the parts again.',
+  message: 'A selected object no longer exists. Select the objects again.',
 });
 
 /** Atomic structural operations shared by the multi-selection menu and shortcuts. */

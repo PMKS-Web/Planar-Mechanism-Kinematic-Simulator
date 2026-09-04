@@ -34,13 +34,13 @@
 
       <button class="viewRow" [disabled]="noMassiveLink()" (click)="showCenterOfMass()">
         <mat-icon [svgIcon]="isShowingCoM() ? 'com' : 'com_off'"></mat-icon>
-        <span class="viewRowName">Center of Mass</span>
+        <span class="viewRowName">Center of mass</span>
         <span class="viewRowSwitch" [class.on]="isShowingCoM()"></span>
       </button>
 
       <button class="viewRow" [disabled]="noJointExists()" (click)="onShowIDPressed()">
         <mat-icon [svgIcon]="isShowingIDs() ? 'abc' : 'abc_off'"></mat-icon>
-        <span class="viewRowName">Joint IDs</span>
+        <span class="viewRowName">Joint names</span>
         <span class="viewRowSwitch" [class.on]="isShowingIDs()"></span>
       </button>
 
@@ -49,7 +49,7 @@
       <button class="viewRow" [disabled]="noTracedJoint()" (click)="onShowTracesPressed()">
         <mat-icon [svgIcon]="isShowingTraces() ? 'show_path' : 'hide_path'"></mat-icon>
         <span class="viewRowName">
-          Traced Paths
+          Traced paths
           @if (noTracedJoint()) {
             <span class="viewRowWhy">No joint is tracing one yet</span>
           }
@@ -66,6 +66,11 @@
         <span class="viewRowName">Fit to view</span>
         <mat-icon class="viewRowGo">chevron_right</mat-icon>
       </button>
+      <button class="viewRow" (click)="onFitFullMotionPressed(); sheetOpen = false">
+        <mat-icon>all_out</mat-icon>
+        <span class="viewRowName">Fit full motion</span>
+        <mat-icon class="viewRowGo">chevron_right</mat-icon>
+      </button>
     </div>
   </ng-template>
 } @else {
@@ -73,7 +78,7 @@
     <!-- The switches. Each says what it is about; how a switch looks and reads
        is app-view-button's business, so the three cannot drift apart again. -->
     <app-view-button
-      noun="Center of Mass"
+      noun="Center of mass"
       shownIcon="com"
       hiddenIcon="com_off"
       [shown]="isShowingCoM()"
@@ -82,7 +87,7 @@
       (pressed)="showCenterOfMass()"
     />
     <app-view-button
-      noun="Joint IDs"
+      noun="Joint names"
       shownIcon="abc"
       hiddenIcon="abc_off"
       [shown]="isShowingIDs()"
@@ -93,7 +98,7 @@
     <!-- The app's own curve glyph, which is a traced point with its path behind
        it. A line chart reads as another kind of analysis. -->
     <app-view-button
-      noun="Traced Paths"
+      noun="Traced paths"
       shownIcon="show_path"
       hiddenIcon="hide_path"
       [shown]="isShowingTraces()"
@@ -121,9 +126,14 @@
     />
     <app-view-button
       icon="crop_free"
-      tooltip="Reset View"
+      tooltip="Fit to view"
       shortcut="view.reset"
       (pressed)="onReframePressed()"
+    />
+    <app-view-button
+      icon="all_out"
+      tooltip="Fit full motion"
+      (pressed)="onFitFullMotionPressed()"
     />
   </div>
 }

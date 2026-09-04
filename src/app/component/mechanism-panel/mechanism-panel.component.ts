@@ -10,6 +10,7 @@ import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { MechanismFact } from '../../model/mechanism/readiness';
 import { MatIcon } from '@angular/material/icon';
+import { ExportCatalogService } from '../../services/export/export-catalog.service';
 
 /** One line of the Links section: what a link is, and how long. */
 interface LinkRow {
@@ -81,6 +82,7 @@ export class MechanismPanelComponent {
   private settings = inject(SettingsService);
   private nup = inject(NumberUnitParserService);
   private tabs = inject(SelectedTabService);
+  private exportCatalog = inject(ExportCatalogService);
 
   /** Edit offers to rename and delete; analysis only reports. */
   readonly editable = input(false);
@@ -121,7 +123,11 @@ export class MechanismPanelComponent {
   }
 
   get facts(): MechanismFact[] {
-    return this.mechanism.readinessOfEachMechanism()[this.index]?.facts ?? [];
+    const facts = this.mechanism.readinessOfEachMechanism()[this.index]?.facts ?? [];
+    const count = this.exportCatalog.partGroups(false)[this.index]?.parts.length ?? 0;
+    return facts.map((fact) =>
+      fact.label === 'Links / joints' ? { label: 'Selectable objects', value: String(count) } : fact
+    );
   }
 
   /**

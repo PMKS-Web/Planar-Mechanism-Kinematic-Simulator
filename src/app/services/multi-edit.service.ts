@@ -80,7 +80,7 @@ export class MultiEditService {
         return this.refusal(
           'selection.invalid-geometry',
           'not a finite position',
-          'Every selected part needs a finite position.'
+          'Every selected object needs a finite position.'
         );
       }
       const prior = byJoint.get(placement.joint.id);
@@ -486,7 +486,7 @@ export class MultiEditService {
       return this.refusal(
         'selection.stale',
         'selection changed',
-        'One of the selected parts no longer exists.'
+        'A selected object no longer exists.'
       );
     }
     this.mechanism.setLocks(parts as (RealJoint | Link | Force)[], locked);

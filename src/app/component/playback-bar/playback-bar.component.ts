@@ -215,7 +215,9 @@ export interface RowRefusal {
     NgTemplateOutlet,
   ],
 })
-export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
+export class PlaybackBarComponent
+  implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy
+{
   mechanism = inject(MechanismService);
   settings = inject(SettingsService);
   activeObj = inject(ActiveObjService);
@@ -384,12 +386,10 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
   /**
    * The rows this screen shows.
    *
-   * A phone shows the shared row and no more: parking mid-cycle is what posed
-   * editing needs on every platform, but a stack of per-machine rows is the
-   * bottom half of a phone. `rows` reads a phone as synced, so there is one
-   * row there by construction rather than by filtering -- filtering picked the
-   * *first machine's* private row out of an unsynced set, which controlled one
-   * machine while looking like it controlled the drawing.
+   * A phone uses the same synchronized or independent rows as the desktop.
+   * The card is allowed to grow and scroll when several mechanisms are being
+   * controlled independently; hiding that state made a drawing configured on
+   * a desktop impossible to control after opening it on a phone.
    */
   get shownRows(): PlaybackRow[] {
     return this.rows;
@@ -540,12 +540,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     // is, because each measures a different thing. The combined row follows the
     // first machine and says nothing about direction.
     //
-    // A phone reads as synced whether it is or not: the control that unsyncs a
-    // drawing is desktop-only, so a phone that inherited an unsynced state --
-    // from a URL, or from the window being narrowed -- would otherwise get the
-    // *first machine's* private row, labeled M1 and moving only M1, with no
-    // way to reach the others and nothing saying so.
-    if (this.mechanism.syncMechanisms || this.viewport.isPhone()) {
+    if (this.mechanism.syncMechanisms) {
       // The longest cycle in the drawing, so one handle can reach every frame
       // of every machine. Following the first one instead left the slower
       // machines with a stretch at the end of their cycles the handle could
@@ -865,6 +860,12 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
    * line that also has to hold a chip and a time, and cut to "Counter-cl…" it
    * says nothing; "CCW" says the whole thing in the room there is. Whether
    * there is room is measured, per row, after every layout.
+   *
+   * The app spells its terms out everywhere else, and this is the one place
+   * that may not: three mechanisms parked mid-cycle in a 900px window leave
+   * the line too short for the word, and without this the note and the loop
+   * indicator were both dropped -- the reader lost the direction entirely
+   * rather than reading it in three letters.
    */
   noteText(row: PlaybackRow): string {
     if (!this.shortNotes.has(row.index)) return row.note;

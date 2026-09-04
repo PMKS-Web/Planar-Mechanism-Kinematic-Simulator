@@ -83,6 +83,9 @@ export class BottombarComponent {
     }
     const blockers = this.mechanismSrv.blockerCount();
     if (this.mechanismSrv.mechanisms.length === 0) {
+      if (this.mechanismSrv.solvingIsDeferred) {
+        return 'Ready to analyze · motion solves when you press Play';
+      }
       return 'Nothing to analyze yet';
     }
     if (blockers === 0) {
@@ -122,18 +125,23 @@ export class BottombarComponent {
       return 'Three positions placed · ready to generate solutions';
     }
     const kind = this.solution.dyad() ? 'six-bar' : 'four-bar';
-    if (this.solution.inserted) {
+    if (this.solution.inserted && !this.solution.needsReinsert()) {
       return `Inserted as a ${kind} · positions kept for reference`;
     }
     // As driven from the chosen pin, which is the linkage on the grid.
     const chosen = this.solution.driven();
     if (!chosen) return 'No solution meets the current requirements';
     const missed = 3 - chosen.onBranchCount;
-    const how = chosen.defectFree
-      ? 'walks all 3 on one assembly'
-      : `branch defect at ${missed} position${missed === 1 ? '' : 's'}`;
+    const reached =
+      missed === 0
+        ? 'all 3 positions reached on one assembly'
+        : `${missed} position${missed === 1 ? ' needs' : 's need'} reassembly`;
+    const how = chosen.binds
+      ? `${reached} · small transmission angle (${chosen.minTransmission}°)`
+      : reached;
     const count = this.solution.candidates().length;
-    return `Solution ${chosen.name} of ${count} · ${how}`;
+    const preview = this.solution.inserted ? 'Preview · ' : '';
+    return `${preview}Solution ${chosen.name} of ${count} · ${how}`;
   }
 
   /**

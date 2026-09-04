@@ -248,6 +248,15 @@
          gives it up — names are short and ellipsis covers the rare long one. */
       grid-template-columns: minmax(40px, 1fr) 76px 118px 16px;
 
+      /* Except on a phone, where the drawer is the window and "the rare long
+         one" is every row: the library's own mechanisms carry names like
+         "Drag coupler", and 47px of name column reads them all as "Link D…".
+         The moment of inertia gives the room back — it is the number a reader
+         is least often reading on a phone, and it keeps its own ellipsis. */
+      @media (max-width: 600px) {
+        grid-template-columns: minmax(96px, 1.4fr) 72px minmax(72px, 1fr) 16px;
+      }
+
       /* Grid items default to min-width auto, so a field's own content forces
          its column wide and shoves the jump arrows off the drawer. */
       > * {

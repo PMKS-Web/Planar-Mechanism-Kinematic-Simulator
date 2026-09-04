@@ -1,8 +1,8 @@
 <div id="editable-title-block">
   @if (!editMode) {
-    <div class="editModeRow">
+    <div class="editModeRow titleRow">
       <ng-container *ngTemplateOutlet="contentTpl"></ng-container>
-      {{ displayName() ?? activeObjService.getSelectedObj()?.name }}
+      <span class="objectName">{{ ' ' + (displayName() ?? activeObjService.getSelectedObj()?.name ?? '') }}</span>
       <!--            [matTooltipShowDelay]='1000' matTooltipPosition='above'>-->
     </div>
   }
@@ -13,6 +13,7 @@
         <input
           class="customInput"
           id="title-input-box"
+          aria-label="Name"
           matInput
           type="text"
           #field

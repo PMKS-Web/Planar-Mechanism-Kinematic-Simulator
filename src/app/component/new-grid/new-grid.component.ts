@@ -883,7 +883,7 @@ export class NewGridComponent implements OnDestroy {
       this.activeObjService.selectBackgroundImage();
       this.notify.success(
         'bgImage.added',
-        `${file.name} is behind the grid. It is not saved in the share link.`
+        `${file.name} is behind the grid. It is not saved in the project web address.`
       );
     } catch (error) {
       this.notify.failure(
@@ -1606,7 +1606,7 @@ export class NewGridComponent implements OnDestroy {
     if (machines.size > 1) {
       this.notify.refusal(
         'selection.spans-machines',
-        'This selection is spread across two machines, which can only be moved together at the start pose. Press Back to start, then try again.'
+        'This selection is spread across two mechanisms, which can only be moved together at the start pose. Press Back to the start pose, then try again.'
       );
       return false;
     }
@@ -2430,23 +2430,24 @@ export class NewGridComponent implements OnDestroy {
   private refuseHeldByHolds(joint: RealJoint, bars: RealLink[]): void {
     this.notify.refusal(
       'hold.joint',
-      `${heldBySentence(bars, this.mechanismSrv.joints)}. Unlock one to move joint ${joint.name || joint.id}.`,
-      { actions: this.unlockAction(bars) }
+      `${heldBySentence(bars, this.mechanismSrv.joints)}. Release one to move joint ${joint.name || joint.id}.`,
+      { actions: this.releaseAction(bars) }
     );
   }
 
-  /** The joint can move, but not to there: the locked bars run out of reach. */
+  /** The joint can move, but not to there: the held bars run out of reach. */
   private refuseBeyondHolds(joint: RealJoint, bars: RealLink[]): void {
     this.notify.refusal(
       'hold.reach',
-      `Joint ${joint.name || joint.id} can go no further with ${holdList(bars, this.mechanismSrv.joints)} locked.`,
-      { actions: this.unlockAction(bars) }
+      `Joint ${joint.name || joint.id} can go no further while ${holdList(bars, this.mechanismSrv.joints)} holds.`,
+      { actions: this.releaseAction(bars) }
     );
   }
 
-  private unlockAction(bars: RealLink[]): { label: string; run: () => void }[] {
+  /** Release, not Unlock: an Unlock beside this would be the joint mark's word. */
+  private releaseAction(bars: RealLink[]): { label: string; run: () => void }[] {
     return bars.length > 0
-      ? [{ label: 'Unlock', run: () => this.mechanismSrv.releaseHolds(bars) }]
+      ? [{ label: 'Release', run: () => this.mechanismSrv.releaseHolds(bars) }]
       : [];
   }
 
@@ -5958,7 +5959,7 @@ export class NewGridComponent implements OnDestroy {
       case 'Mechanism':
         this.notify.refusal(
           'delete.whole-mechanism',
-          'Delete removes one part — the mechanism panel has its own Delete for the whole machine.'
+          'Delete removes one part — the mechanism panel has its own Delete for the whole mechanism.'
         );
         return;
       default:

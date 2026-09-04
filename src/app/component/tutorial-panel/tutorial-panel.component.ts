@@ -173,6 +173,10 @@ export class TutorialPanelComponent implements DoCheck {
   }
 
   openTemplates(): void {
+    // The library takes over the whole task from here. Leaving the completed
+    // tutorial pinned behind its modal made the first template open into a
+    // drawer that was still telling the reader what to do next.
+    this.tutorial.exit();
     TemplatesComponent.openIn(this.dialog);
   }
 }

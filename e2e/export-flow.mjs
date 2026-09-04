@@ -127,7 +127,7 @@ await page.waitForTimeout(200);
 record(
   'the count and the footer follow what is ticked',
   (await drawer().locator('.count').innerText()).startsWith('2 of') &&
-    (await drawer().locator('.footNote').innerText()).includes('2 parts'),
+    (await drawer().locator('.footNote').innerText()).includes('2 selectable objects'),
   {
     count: await drawer().locator('.count').innerText(),
     foot: await drawer().locator('.footNote').innerText(),
@@ -145,7 +145,7 @@ record(
   'the drawer asks a question per rule mark, with no tabs inside one of them',
   (await drawer().locator('.stepName').allInnerTexts())
     .map((mark) => mark.replace(/^check\s*/, '').trim())
-    .join(' | ') === '1. Parts | 2. Kinematics | 3. File' &&
+    .join(' | ') === '1. Objects | 2. Kinematics | 3. File' &&
     (await drawer().locator('.tabs').count()) === 0,
   await drawer().locator('.stepName').allInnerTexts()
 );
@@ -170,7 +170,9 @@ record('dropping the magnitude narrows the file', number(withoutMag) < number(wi
 });
 record(
   'and every row says which of the two it will write',
-  (await drawer().locator('.rowComponents').allInnerTexts()).some((text) => text === 'X, Y, Mag') &&
+  (await drawer().locator('.rowComponents').allInnerTexts()).some(
+    (text) => text === 'X, Y, Magnitude'
+  ) &&
     (await drawer().locator('.pickRow', { hasText: 'Angle' }).locator('.rowComponents').count()) ===
       0,
   await drawer().locator('.rowComponents').allInnerTexts()
@@ -475,7 +477,7 @@ record(
   'a drawing with a load on it is asked a fourth question, about forces',
   (await drawer().locator('.stepName').allInnerTexts())
     .map((mark) => mark.replace(/^check\s*/, '').trim())
-    .join(' | ') === '1. Parts | 2. Kinematics | 3. Forces | 4. File',
+    .join(' | ') === '1. Objects | 2. Kinematics | 3. Forces | 4. File',
   await drawer().locator('.stepName').allInnerTexts()
 );
 const pressInvisible = await page.evaluate(() =>
@@ -635,7 +637,7 @@ await goToParts();
 await drawer().locator('.linkButton', { hasText: 'Select All' }).click();
 await page.waitForTimeout(300);
 await goToFile();
-await drawer().locator('.segmented button', { hasText: 'Per part' }).click();
+await drawer().locator('.segmented button', { hasText: 'Per object' }).click();
 await page.waitForTimeout(400);
 const archive = await grab(() => page.locator('.nextButton').click());
 const zipped = readFileSync(archive.path);

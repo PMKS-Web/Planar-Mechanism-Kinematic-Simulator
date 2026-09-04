@@ -3,7 +3,7 @@
        list between them moves; Back and Next are always reachable, however
        long the drawing is. -->
   <div class="exportHead">
-    <div class="exportTitle">Export Data</div>
+    <div class="exportTitle">Export data</div>
     <p class="exportLead">{{ lead }}</p>
 
     <!-- One rule, one question each. Forces used to be a tab inside the
@@ -59,7 +59,10 @@
              so a reader ticking part nineteen still knows whose it is. -->
         <div class="mechHead">
           <span class="mechName">{{ group.id }}</span>
-          <span class="mechNote">{{ groupNote(group) }}</span>
+          <!-- It ellipses when the room runs out, so the whole sentence has to
+               be reachable: at 390px "10.00 RPM Counter-clockwise" is wider
+               than the line, and the direction is the half that gets cut. -->
+          <span class="mechNote" [attr.title]="groupNote(group)">{{ groupNote(group) }}</span>
           <span class="spacer"></span>
           <button class="linkButton small" (click)="flow.setParts(group.parts, true)">All</button>
           <span class="pickSep"></span>
@@ -135,8 +138,8 @@
         <p class="empty">
           {{
             flow.step === 'forces'
-              ? 'None of the chosen parts carries a reaction this analysis can solve.'
-              : 'Choose a part on the first step to see what it has to give.'
+              ? 'None of the chosen objects carries a reaction this analysis can solve.'
+              : 'Choose an object on the first step to see what it has to give.'
           }}
         </p>
       }
@@ -200,7 +203,7 @@
             <segmented-block
               class="segmented"
               [fill]="false"
-              [options]="['One file', 'Per part']"
+              [options]="['Per mechanism', 'Per object']"
               [selected]="flow.splitPerPart ? 1 : 0"
               (selectedChange)="flow.splitPerPart = $event === 1"
             ></segmented-block>
@@ -222,7 +225,7 @@
             <segmented-block
               class="segmented"
               [fill]="false"
-              [options]="['By analysis', 'By part']"
+              [options]="['By analysis', 'By object']"
               [selected]="flow.splitPerPart ? 1 : 0"
               (selectedChange)="flow.splitPerPart = $event === 1"
             ></segmented-block>

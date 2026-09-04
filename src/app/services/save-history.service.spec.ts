@@ -2,6 +2,8 @@ import { SaveHistoryService } from './save-history.service';
 import { withTestInjector } from '../../test-utils/mechanism-harness';
 import { UrlGenerationService } from './url-generation.service';
 import { UrlProcessorService } from './url-processor.service';
+import { MechanismService } from './mechanism.service';
+import { SelectedTabService } from '../selected-tab.service';
 
 describe('SaveHistoryService', () => {
   it('restores serialized settings together with the mechanism on undo and redo', () => {
@@ -17,6 +19,16 @@ describe('SaveHistoryService', () => {
       [
         { provide: UrlGenerationService, useValue: generator },
         { provide: UrlProcessorService, useValue: processor },
+        {
+          provide: SelectedTabService,
+          // The mode is captured and put back around a restore, so the stub
+          // has to answer for it as well as for the analysis question.
+          useValue: { isAnalysisMode: () => false, getCurrentTab: () => 1, setTab: () => {} },
+        },
+        {
+          provide: MechanismService,
+          useValue: { capturePausedPose: () => ({ mechanisms: [] }), restorePausedPose: () => {} },
+        },
       ],
       () => new SaveHistoryService()
     );
@@ -35,5 +47,44 @@ describe('SaveHistoryService', () => {
       ['metric-state', false, true, false, true],
       ['english-state', false, true, false, true],
     ]);
+  });
+
+  it('restores the paused pose after undo in an analysis mode', () => {
+    const states = ['before', 'after'];
+    const pose = { mechanisms: [{ id: 'M1', fraction: 0.42 }] };
+    const calls: string[] = [];
+    const history = withTestInjector(
+      [
+        {
+          provide: UrlGenerationService,
+          useValue: { generateUrlQuery: () => states.shift()! },
+        },
+        {
+          provide: UrlProcessorService,
+          useValue: { updateFromURL: () => calls.push('restore design') },
+        },
+        {
+          provide: SelectedTabService,
+          useValue: { isAnalysisMode: () => true, getCurrentTab: () => 2, setTab: () => {} },
+        },
+        {
+          provide: MechanismService,
+          useValue: {
+            capturePausedPose: () => pose,
+            restorePausedPose: (held: unknown) => {
+              expect(held).toBe(pose);
+              calls.push('restore pose');
+            },
+          },
+        },
+      ],
+      () => new SaveHistoryService()
+    );
+
+    history.save();
+    history.save();
+    history.undo();
+
+    expect(calls).toEqual(['restore design', 'restore pose']);
   });
 });

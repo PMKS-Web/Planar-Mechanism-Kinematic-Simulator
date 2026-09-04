@@ -432,7 +432,7 @@ export class ExportTableService {
   private seriesNames(count: number): string[] {
     if (count <= 1) return [''];
     if (count === 2) return ['X', 'Y'];
-    return ['X', 'Y', 'Mag'];
+    return ['X', 'Y', 'Magnitude'];
   }
 
   /**

@@ -80,4 +80,6 @@ export const NOT_A = {
    * sign, and go on showing "-5.00 cm" over a bar that was five long.
    */
   positiveLength: 'A length has to be more than zero.',
+  /** The same distinction for a mass, which may be zero but never negative. */
+  nonNegativeMass: 'A mass cannot be less than zero.',
 } as const;

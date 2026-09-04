@@ -119,7 +119,7 @@ const openDrawingDialog = async () => {
 
 const openLibraryReference = async () => {
   await openProjectMenu();
-  await page.getByRole('button', { name: 'Templates' }).click();
+  await page.getByRole('button', { name: 'Mechanism Library' }).click();
   await page.waitForSelector('#projectMenu', { state: 'detached' });
   await page.waitForSelector('#templates', { state: 'visible' });
   await page.waitForTimeout(250);
@@ -162,7 +162,7 @@ check(
   // The note names the situation rather than the two kinds, because a force
   // can be in the mix too.
   (await page.locator('app-multi-edit-panel').innerText()).includes(
-    'A selection of more than one kind of part'
+    'A selection of more than one kind of object'
   ) &&
     (await page.locator('app-multi-edit-panel [data-field="x"]').count()) === 0 &&
     (await page.locator('app-multi-edit-panel [data-field="length"]').count()) === 0
@@ -941,7 +941,7 @@ await page.waitForTimeout(350);
 check(
   'a narrow-layout long-press inside the selection preserves it and opens group actions',
   (await selection()).length === 2 &&
-    longPressMenu.includes('2 Selected Parts') &&
+    longPressMenu.includes('2 selected objects') &&
     longPressMenu.includes('Delete Selected (2)'),
   longPressMenu.replaceAll('\n', ' | ')
 );
@@ -994,7 +994,7 @@ await macPage.keyboard.up('Control');
 check(
   'macOS Control-click opens the group menu without collapsing selection on release',
   (await macSelection()).length === 2 &&
-    (await macPage.locator('#contextMenu').innerText()).includes('2 Selected Parts')
+    (await macPage.locator('#contextMenu').innerText()).includes('2 selected objects')
 );
 
 check('no browser errors were raised', errors.length === 0, errors.join(' | '));

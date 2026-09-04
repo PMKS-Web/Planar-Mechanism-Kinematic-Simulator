@@ -151,7 +151,7 @@ const jointAt = (p, id) =>
     s.animate(s.stepAtTime(s.cyclePeriod() / 3));
   });
   await p.waitForTimeout(400);
-  await p.getByRole('button', { name: 'Reset View' }).click();
+  await p.getByRole('button', { name: 'Fit to view' }).click();
   await p.waitForTimeout(800);
 
   const canonicalBefore = await startPoses(p);

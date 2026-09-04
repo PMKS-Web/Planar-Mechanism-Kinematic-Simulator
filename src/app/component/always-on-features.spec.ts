@@ -61,7 +61,7 @@ describe('always-on force and weld UI', () => {
     active.selectedLink = bc;
     active.fakeUpdateSelectedObj();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Add Force');
+    expect(fixture.nativeElement.textContent).toContain('Add force');
 
     active.objType = 'Force';
     active.selectedForce = new Force(
@@ -77,7 +77,14 @@ describe('always-on force and weld UI', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Edit Force');
     expect(fixture.nativeElement.textContent).toContain('Force Components');
-    expect(fixture.nativeElement.textContent).toContain('Force Base Frame');
+    expect(fixture.nativeElement.textContent).toContain('Reference frame');
+
+    // A negative magnitude must not silently erase a load while the field
+    // continues to show the rejected number.
+    fixture.componentInstance.forceForm.controls['magnitude'].setValue('-5 N');
+    fixture.detectChanges();
+    expect(active.selectedForce.mag).toBe(10);
+    expect(fixture.componentInstance.forceForm.controls['magnitude'].value).toBe('10.00 N');
   });
 
   // The template library used to be checked here by counting cards and naming a

@@ -726,7 +726,10 @@ describe('editing at a displaced pose', () => {
     service.addJointAt(new Coord((b.x + c.x) / 2, (b.y + c.y) / 2));
 
     const frames = service.mechanisms[0];
+    const tracer = service.joints.find((joint) => joint.id === 'E') as RealJoint;
     expect(frames.isMechanismValid()).toBe(true);
+    expect(tracer.showCurve).toBe(true);
+    expect(injector.get(SettingsService).isShowTraces.value).toBe(true);
     const at0 = (id: string) => frames.joints[0].find((joint) => joint.id === id)!;
     expect(at0('E')).toBeDefined();
     expect(offSegment(at0('E'), at0('B'), at0('C'))).toBeLessThan(1e-6);

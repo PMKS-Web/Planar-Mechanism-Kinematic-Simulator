@@ -30,75 +30,53 @@ export interface ReleaseNote {
  * tying that to a build number means a patch release re-announces a feature
  * nobody re-shipped.
  */
-export const WHATS_NEW_VERSION = '2026.08';
+export const WHATS_NEW_VERSION = '2026.09';
 
 export const WHATS_NEW: ReleaseNote[] = [
   {
     icon: 'tab',
-    title: 'The modes are tabs along the top',
+    title: 'Four modes, along the top',
     body:
-      'Synthesis, Edit, Kinematic Analysis and Force Analysis, each with a chip saying whether ' +
-      'it can run on what you have drawn. The panel below the strip is whichever one you are in.',
-  },
-  {
-    icon: 'account_tree',
-    title: 'One drawing can hold several machines',
-    body:
-      'PMKS+ finds the independent mechanisms on the grid and solves each on its own, with its ' +
-      'own driven joint, its own speed and direction, and its own row in the playback bar.',
-  },
-  {
-    icon: 'compress',
-    title: 'Cylinders, slides and floating slots',
-    body:
-      'A ram is a part you add from the menu and can drive directly, and a slot can be cut into ' +
-      'a moving link rather than only into the frame.',
-  },
-  {
-    icon: 'download',
-    title: 'Export Data',
-    body:
-      'Take the numbers away as a CSV, an Excel workbook, graph images, or a printable report ' +
-      'with the drawing, the graphs and the table in it.',
+      'The rail down the left is gone. Synthesis, Edit, Kinematic Analysis and Force Analysis are ' +
+      'tabs in the top strip, each with a chip saying whether it can run.',
   },
   {
     icon: 'balance',
-    title: 'Force analysis that says what it needs',
+    title: 'Force analysis',
     body:
-      'A chip counts what is missing and the setup drawer names it, with every link’s mass in ' +
-      'one table. Static or in-motion, and the reaction on each body at a joint rather than one ' +
-      'merged number.',
+      'Give the bodies mass, hang loads on them, and read the reaction on each body at each ' +
+      'joint — held still, or in motion with the forces of movement included.',
   },
   {
-    icon: 'apps',
-    title: 'Forty-two mechanisms in the library',
+    icon: 'compress',
+    title: 'Cylinders, sliders and slots',
     body:
-      'There were four. They are searchable now, filed by family, and every card is a picture of ' +
-      'the mechanism it opens.',
+      'A hydraulic ram is a part you add from the menu and can drive directly. A slot can be cut ' +
+      'into a moving link rather than only into the frame.',
   },
   {
-    icon: 'school',
-    title: 'A tutorial that follows your drawing',
+    icon: 'account_tree',
+    title: 'Several mechanisms in one drawing',
     body:
-      'Five steps from a bare grid to reading a velocity. It works out which step you are on by ' +
-      'looking at what you have built, so it can start halfway and follow an undo backwards.',
+      'Each independent mechanism on the grid is solved on its own, with its own driven joint, ' +
+      'its own speed, and its own row in the playback bar.',
   },
   {
-    icon: 'phone_iphone',
-    title: 'It works on a phone',
+    icon: 'download',
+    title: 'Take the work away',
     body:
-      'Hold a finger where you would right-click. The mode panel becomes a sheet you pull up ' +
-      'when you want it, and the drawing keeps the rest of the screen.',
+      'The numbers as a CSV or an Excel workbook, the graphs as a printable report, and the ' +
+      'geometry as DXF or SVG with a table of joints and links, for CAD.',
   },
 ];
 
-/** The rest, as one line each. Real, and not worth a paragraph. */
-export const WHATS_NEW_ALSO: string[] = [
-  'Lock a joint or a link so a shared linkage can only be adjusted where you meant it to be',
-  'Velocity, acceleration and force drawn on the mechanism itself while it runs',
-  'A photograph pinned behind the grid to build a linkage on top of',
-  'Traced paths that stay up while you analyze, and centers of mass you can place',
-  'Keyboard shortcuts for the modes, playback, the view and undo: press ? for the list',
-  'Playback that measures the input rather than the clock, so a ram runs end to end of its stroke',
-  'Undo and redo across everything, because the whole project is one shareable link',
-];
+/**
+ * The rest, as one line each. Real, and not worth a paragraph.
+ *
+ * Empty for this release, and the dialog leaves the heading out when it is:
+ * the card is what a returning reader meets before they can do anything, and
+ * five notes is what fits in it without a scroll. Everything that would have
+ * gone here — the library, the tutorial, the phone layout, the locks — is a
+ * thing they will meet on their own the moment they look for it.
+ */
+export const WHATS_NEW_ALSO: string[] = [];

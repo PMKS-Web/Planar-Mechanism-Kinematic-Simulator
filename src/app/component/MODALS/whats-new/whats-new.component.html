@@ -25,12 +25,16 @@
       </div>
     }
 
-    <div class="wnAlsoTitle">Also</div>
-    <ul class="wnAlso">
-      @for (line of also; track line) {
-        <li>{{ line }}</li>
-      }
-    </ul>
+    <!-- Only when there is one. A release whose whole story is the five notes
+         above should end at the fifth rather than under an empty heading. -->
+    @if (also.length > 0) {
+      <div class="wnAlsoTitle">Also</div>
+      <ul class="wnAlso">
+        @for (line of also; track line) {
+          <li>{{ line }}</li>
+        }
+      </ul>
+    }
   </div>
 
   <div class="wnFoot">

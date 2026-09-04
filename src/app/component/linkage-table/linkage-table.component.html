@@ -11,13 +11,13 @@
   <table class="tab">
     <thead>
       <tr>
-        <th>ID</th>
-        <th>Linked To</th>
+        <th>Identifier</th>
+        <th>Connected joints</th>
         @if (getUnit() === 'cm') {
-          <th>Dist From Joint (cm)</th>
+          <th>Distance from joint (cm)</th>
         }
         @if (getUnit() === 'm') {
-          <th>Dist From Joint (m)</th>
+          <th>Distance from joint (m)</th>
         }
         @if (getUnit() === 'cm') {
           <th>x (cm)</th>
@@ -31,7 +31,7 @@
         @if (getUnit() === 'm') {
           <th>y (m)</th>
         }
-        <th>angle (deg)</th>
+        <th>Angle (deg)</th>
       </tr>
     </thead>
     <tbody>
@@ -103,7 +103,7 @@
   <table class="tab">
     <thead>
       <tr>
-        <th>ID</th>
+        <th>Identifier</th>
         @if (getUnit() === 'cm') {
           <th>Mass (g)</th>
         }
@@ -111,22 +111,22 @@
           <th>Mass (kg)</th>
         }
         @if (getUnit() === 'cm') {
-          <th>MoI (kg * cm^2)</th>
+          <th>Moment of inertia (kg · cm²)</th>
         }
         @if (getUnit() === 'm') {
-          <th>MoI (kg * m^2)</th>
+          <th>Moment of inertia (kg · m²)</th>
         }
         @if (getUnit() === 'cm') {
-          <th>X CoM (cm)</th>
+          <th>Center of mass X (cm)</th>
         }
         @if (getUnit() === 'm') {
-          <th>X CoM (m)</th>
+          <th>Center of mass X (m)</th>
         }
         @if (getUnit() === 'cm') {
-          <th>Y CoM (cm)</th>
+          <th>Center of mass Y (cm)</th>
         }
         @if (getUnit() === 'm') {
-          <th>Y CoM (m)</th>
+          <th>Center of mass Y (m)</th>
         }
       </tr>
     </thead>
@@ -200,21 +200,21 @@
   <table class="tab">
     <thead>
       <tr>
-        <th>ID</th>
-        <th>On Link</th>
+        <th>Identifier</th>
+        <th>Link</th>
         <th>Angle (deg)</th>
-        <th>Mag (N)</th>
+        <th>Magnitude (N)</th>
         @if (getUnit() === 'cm') {
-          <th>X Pos (cm)</th>
+          <th>X position (cm)</th>
         }
         @if (getUnit() === 'm') {
-          <th>X Pos (m)</th>
+          <th>X position (m)</th>
         }
         @if (getUnit() === 'cm') {
-          <th>Y Pos (cm)</th>
+          <th>Y position (cm)</th>
         }
         @if (getUnit() === 'm') {
-          <th>Y Pos (m)</th>
+          <th>Y position (m)</th>
         }
       </tr>
     </thead>

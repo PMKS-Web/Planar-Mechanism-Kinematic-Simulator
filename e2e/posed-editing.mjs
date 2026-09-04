@@ -71,7 +71,7 @@ const displace = async () => {
     srv.seekMechanism(0, srv.mechanisms[0].cyclePeriod / 3);
   });
   await page.waitForTimeout(300);
-  await page.getByRole('button', { name: 'Reset View' }).click();
+  await page.getByRole('button', { name: 'Fit to view' }).click();
   await page.waitForTimeout(700);
 };
 

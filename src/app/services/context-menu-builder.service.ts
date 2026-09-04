@@ -116,7 +116,7 @@ export class ContextMenuBuilderService {
       value ? { short: value.short, long: value.message } : undefined;
     return {
       header: {
-        title: `${count} Selected Parts`,
+        title: `${count} selected objects`,
         subtitle: this.selectionSubtitle(parts),
       },
       groups: [
@@ -321,7 +321,7 @@ export class ContextMenuBuilderService {
           }),
         ],
       });
-      groups.push({ label: 'Machine', rows: this.machineRows() });
+      groups.push({ label: 'Mechanism', rows: this.machineRows() });
     }
     groups.push({ rows: this.positionRows(handlers, undefined) });
     // A bare grid in an analysis mode: nothing to name and nothing to do, so
@@ -613,8 +613,8 @@ export class ContextMenuBuilderService {
           material: true,
           action: () => undefined,
           refusal: {
-            short: `locked by ${named}`,
-            long: `${holding.map((bar) => describeHold(bar, this.mechanism.joints)).join(' and ')} ${holding.length > 1 ? 'confine' : 'confines'} this joint. Unlock ${holding.length > 1 ? 'them' : 'it'} on the link to move it freely.`,
+            short: `held by ${named}`,
+            long: `${holding.map((bar) => describeHold(bar, this.mechanism.joints)).join(' and ')} ${holding.length > 1 ? 'confine' : 'confines'} this joint. Release ${holding.length > 1 ? 'them' : 'it'} on the link to move it freely.`,
           },
         })
       );
@@ -648,7 +648,7 @@ export class ContextMenuBuilderService {
    */
   private traceRow(joint: RealJoint): MenuRow {
     return new MenuRow({
-      label: 'Trace Path',
+      label: 'Trace path',
       icon: 'show_path',
       kind: 'toggle',
       checked: this.gridUtils.getJointShowCurve(joint),
@@ -1025,12 +1025,15 @@ export class ContextMenuBuilderService {
         checked: on,
         action: () => this.mechanism.setHold(link, on ? undefined : hold),
         refusal,
-        hint: on ? undefined : moves ? 'moves the lock' : value,
+        // Never the word "lock" here: this row sits directly above the Locked
+        // row, which is the joint mark and a different rule. A bar keeps one
+        // value or the other fixed; a Lock holds a part where it is.
+        hint: on ? undefined : moves ? 'moves the fix' : value,
         tip: moves
-          ? 'A link locks one or the other, since locking both is Lock. Choosing this unlocks the one already locked.'
+          ? 'A link fixes one or the other, never both. Choosing this releases the one already fixed.'
           : hold === 'length'
-            ? 'Lock this link at its current length. Dragging either joint slides it on the arc about the other.'
-            : 'Lock this link at its current angle from the grid. Dragging either joint slides it along that line.',
+            ? 'Fix this link at its current length. Dragging either joint slides it on the arc about the other.'
+            : 'Fix this link at its current angle from the grid. Dragging either joint slides it along that line.',
       });
     };
     return [
@@ -1200,13 +1203,13 @@ export class ContextMenuBuilderService {
       material: true,
       destructive: true,
       hint: joints > 0 ? `${joints} ${joints === 1 ? 'joint' : 'joints'}` : undefined,
-      tip: 'Deletes the whole machine this part belongs to — every joint, link and force in it.',
+      tip: 'Deletes the whole mechanism this part belongs to — every joint, link and force in it.',
       action: () => this.mechanism.deleteMechanism(index),
       refusal: partition
         ? undefined
         : {
             short: 'not in a mechanism',
-            long: 'This part is not joined into a mechanism, so there is no machine here to delete. Delete the part itself.',
+            long: 'This part is not joined into a mechanism, so there is no mechanism here to delete. Delete the part itself.',
           },
     });
   }

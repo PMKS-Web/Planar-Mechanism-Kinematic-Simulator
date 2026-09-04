@@ -101,6 +101,17 @@ function pick(flow: ExportFlowService, ...labels: string[]): void {
 }
 
 describe('the export drawer', () => {
+  it('accepts a full filename and preserves version dots when formats change', () => {
+    const { flow } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
+    flow.typedName = '  linkage.v1.2.CSV  ';
+    expect(flow.name()).toBe('linkage.v1.2');
+    flow.format = 'xlsx';
+    expect(flow.name() + flow.extension()).toBe('linkage.v1.2.xlsx');
+    flow.typedName = 'linkage.v1.2';
+    expect(flow.name()).toBe('linkage.v1.2');
+    flow.typedName = '.csv';
+    expect(flow.name()).toBe(flow.defaultName());
+  });
   beforeAll(() => vi.spyOn(console, 'log').mockImplementation(() => undefined));
   afterAll(() => vi.restoreAllMocks());
 
@@ -134,6 +145,22 @@ describe('the export drawer', () => {
     flow.reset();
 
     expect(flow.selectedParts().map((part) => part.label)).toEqual(['Joint B']);
+  });
+
+  it('opens with every selectable object ticked when the whole mechanism is selected', () => {
+    const { flow, fixture } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
+    fixture.active.selectMechanism(0);
+    flow.reset();
+
+    expect(flow.selectedParts().map((part) => part.label)).toEqual([
+      'Joint A',
+      'Joint B',
+      'Joint C',
+      'Joint D',
+      'Link AB',
+      'Link BC',
+      'Link CD',
+    ]);
   });
 
   it('steps off the forces question when the forces stop being available', () => {
@@ -178,6 +205,15 @@ describe('the export drawer', () => {
       'Acceleration',
     ]);
     expect(groups[1].columns.map((column) => column.label)).toContain('Center of mass');
+  });
+
+  it('summarizes long object lists in quantity headings', () => {
+    const { flow } = flowFor(TEMPLATE_LINKAGES.Jansen_Leg);
+    const parts = flow.partGroups()[0].parts;
+    flow.setParts(parts, true);
+
+    const titles = flow.columnGroups('kinematics').map((group) => group.title);
+    expect(titles).toEqual(['8 joints', '7 links']);
   });
 
   it('writes one row per solved sample, on the mechanism’s own clock', () => {
@@ -243,7 +279,7 @@ describe('the export drawer', () => {
     const [table] = tables.tables();
     expect(table.heads[0]).toBe('Time (s)');
     expect(table.heads).toContain('Position B X (cm)');
-    expect(table.heads).toContain('Velocity B Mag (cm/s)');
+    expect(table.heads).toContain('Velocity B Magnitude (cm/s)');
     expect(table.heads).toContain('Angle AB (deg)');
   });
 

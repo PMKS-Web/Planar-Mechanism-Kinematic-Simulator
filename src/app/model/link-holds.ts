@@ -249,7 +249,14 @@ export function holdList(bars: readonly RealLink[], joints?: readonly Joint[]): 
     : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
-/** "Locked by fixed length AB and fixed angle BC", for a refusal. */
+/**
+ * "Held by fixed length AB and fixed angle BC", for a refusal.
+ *
+ * "Held", not "Locked": a Lock is the mark that pins a joint where it is, and
+ * one word for two different rules is what made a reader look for the padlock
+ * they had not pressed. The padlock inside a field says Fixed, the menu rows
+ * say Fixed Length and Fixed Angle, and the way out of one is Release.
+ */
 export function heldBySentence(bars: readonly RealLink[], joints?: readonly Joint[]): string {
-  return `Locked by ${holdList(bars, joints)}`;
+  return `Held by ${holdList(bars, joints)}`;
 }

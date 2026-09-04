@@ -188,7 +188,7 @@ check(
 );
 check(
   'states are states, not verbs that rewrite themselves',
-  ['Grounded', 'Driven Input', 'Slider', 'Welded', 'Trace Path', 'Locked'].every((label) =>
+  ['Grounded', 'Driven Input', 'Slider', 'Welded', 'Trace path', 'Locked'].every((label) =>
     rowNamed(jointA, label)
   ) && !jointA?.rows.some((one) => /^(Add|Remove) /.test(one.label)),
   jointA?.rows.map((one) => one.label)
@@ -250,7 +250,7 @@ check(
 const canvas = await openAt(1150, 780);
 check(
   'the canvas menu says Add rather than Attach',
-  JSON.stringify(canvas?.groups) === JSON.stringify(['ADD', 'MACHINE']),
+  JSON.stringify(canvas?.groups) === JSON.stringify(['ADD', 'MECHANISM']),
   canvas?.groups
 );
 check(
@@ -294,12 +294,12 @@ await page.click('text=Kinematic Analysis');
 await page.waitForTimeout(900);
 const analysisJoint = await openOn('#joint_T');
 check(
-  // The vector traces joined Trace Path here: all three draw what the solved
+  // The vector traces joined Trace path here: all three draw what the solved
   // cycle already knows and none of them changes the mechanism, which is the
   // whole test — an analysis mode offers ways to look and no way to edit.
   'an analysis menu offers the view and nothing that edits',
   JSON.stringify(analysisJoint?.rows.map((one) => one.label)) ===
-    JSON.stringify(['Trace Path', 'Velocity Vectors', 'Acceleration Vectors']),
+    JSON.stringify(['Trace path', 'Velocity Vectors', 'Acceleration Vectors']),
   analysisJoint?.rows.map((one) => one.label)
 );
 check('and the way back into Edit rides the header', analysisJoint?.cross === 'on', analysisJoint);
@@ -325,8 +325,8 @@ check(
 );
 check(
   'while the trace stays live: it is a view, not geometry',
-  rowNamed(forceJoint, 'Trace Path')?.off === false,
-  rowNamed(forceJoint, 'Trace Path')
+  rowNamed(forceJoint, 'Trace path')?.off === false,
+  rowNamed(forceJoint, 'Trace path')
 );
 
 // ---------------------------------------------------------------- cylinder

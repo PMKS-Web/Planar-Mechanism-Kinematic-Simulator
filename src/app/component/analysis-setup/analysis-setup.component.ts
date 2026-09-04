@@ -466,7 +466,7 @@ export class AnalysisSetupComponent {
       this.nup.massUnitFor(this.settings.lengthUnit.value)
     );
     if (!success || value < 0) {
-      this.notify.refusal('value.mass', NOT_A.mass);
+      this.notify.refusal('value.mass', success ? NOT_A.nonNegativeMass : NOT_A.mass);
       return;
     }
     this.mechanism.assignBodyMass(row.body, value);

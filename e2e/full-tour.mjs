@@ -124,7 +124,7 @@ async function clickByText(page, re, label) {
 }
 
 /**
- * The file actions — Templates, Save, Share, Settings, Help — left the toolbar
+ * The file actions — Mechanism Library, Save, Share, Settings, Help — left the toolbar
  * for the hamburger menu, so each of them is now two presses.
  */
 async function clickProjectMenu(page, labelText) {
@@ -234,7 +234,7 @@ await safeStep('initial load', async () => {
 const snapshots = [await appSnapshot(page, 'initial')];
 
 await safeStep('open templates/library', async () => {
-  await clickProjectMenu(page, 'Templates');
+  await clickProjectMenu(page, 'Mechanism Library');
   await page.waitForTimeout(700);
   await shot(page, '02-template-or-library.png');
   snapshots.push(await appSnapshot(page, 'template/library'));
@@ -311,7 +311,7 @@ await safeStep('left panels edit analysis synthesis', async () => {
 });
 
 await safeStep('settings and equations panels', async () => {
-  for (const name of ['Settings', 'Help / Feedback']) {
+  for (const name of ['Settings', 'Help and feedback']) {
     await clickProjectMenu(page, name);
     await page.waitForTimeout(700);
     await shot(page, `05-right-${name.toLowerCase().replace(/[^a-z]+/g, '-')}.png`);

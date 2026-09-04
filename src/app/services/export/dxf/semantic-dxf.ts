@@ -473,8 +473,8 @@ function edgeKey(start: DxfPoint, end: DxfPoint): string {
  * Subtracted from every point, so the answer is the offset rather than the
  * point. `model` keeps the coordinates the mechanism was drawn in.
  */
-function originShift(
-  input: SemanticDxfInput,
+export function originShift(
+  input: Pick<SemanticDxfInput, 'joints'>,
   choices: { origin: string; originJointId?: string },
   unitScale: number
 ): DxfPoint {
