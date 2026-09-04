@@ -56,6 +56,10 @@ their source. Everything browser-driven lives here.
   click-without-nudge, and the canvas staying put after a merge.
   Prints a PASS/FAIL check list and exits non-zero on any failure, so it can gate a change.
 - `force-analysis-panels.mjs` — Force Analysis rows on the joint and link analysis panels, and the shared Force Analysis Type toggle
+- `force-units.mjs` — which unit a force is read in: the Force Units row appearing only where
+  there is something to pick, kilograms-force leaving every stored magnitude alone, the panel and
+  the strip converting at their own edges, the pick surviving a share link and a move between
+  metric lengths, and a grayed pill not darkening under the cursor
 - `left-nav-modes.mjs` — mode navigation in the top strip that replaced the rail: the four modes, the
   panel following the mode, the sliding highlight, the readiness chips, an analysis mode refusing to
   open, and the rewind on leaving one

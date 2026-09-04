@@ -9,7 +9,7 @@
         option3="SI (m)"
         [formGroup]="this.settingsForm"
         _formControl="globalunit"
-        [tooltip]="'The length unit the whole drawing is measured in.' + lockedNote('Units')"
+        [tooltip]="'The length unit the whole drawing is measured in.' + lockedNote()"
         [disabled]="!documentEditable()"
         >Global Units
       </radio-block>
@@ -18,18 +18,27 @@
         option2="Radian"
         [formGroup]="this.settingsForm"
         _formControl="angleunit"
-        [tooltip]="
-          'The unit for angles, angular velocity and angular acceleration.' + lockedNote('Units')
-        "
+        [tooltip]="'The unit for angles, angular velocity and angular acceleration.' + lockedNote()"
         [disabled]="!documentEditable()"
         >Angle Units
       </radio-block>
+      @if (showsForceUnit()) {
+        <radio-block
+          option1="Newton (N)"
+          option2="Kilogram-force (kgf)"
+          [formGroup]="this.settingsForm"
+          _formControl="forceunit"
+          [tooltip]="'The unit forces, reactions and torque are shown in.' + lockedNote()"
+          [disabled]="!documentEditable()"
+          >Force Units
+        </radio-block>
+      }
       <toggle-block
         [formGroup]="this.settingsForm"
         _formControl="gravity"
         [tooltip]="
           'Weight loads every link that has mass. Turn it off to analyze forces without gravity.' +
-          lockedNote('Gravity')
+          lockedNote()
         "
         [disabled]="!documentEditable()"
       >

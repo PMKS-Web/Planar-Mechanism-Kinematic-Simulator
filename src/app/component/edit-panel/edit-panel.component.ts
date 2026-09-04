@@ -1069,9 +1069,34 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     return [{ value: '0', label: this.linearSpeedUnitLabel }];
   }
 
-  /** Whichever force unit the mechanism is currently in — N or lbf, not both. */
+  /** Whichever force unit the reader is currently reading in — one of three. */
   get forceUnitLabel(): string {
     return this.nup.unitLabel(this.settingsService.forceUnit.value);
+  }
+
+  /**
+   * A stored force in the unit the reader picked.
+   *
+   * Magnitudes are held in the length system's own force unit — lbf under
+   * English, newtons otherwise — and kilograms-force is a way of reading them
+   * rather than a way of keeping them, so every force field converts at this
+   * boundary and nowhere else.
+   */
+  private forceText(stored: number): string {
+    return this.nup.formatStoredForce(
+      stored,
+      this.settingsService.lengthUnit.getValue(),
+      this.settingsService.forceUnit.getValue()
+    );
+  }
+
+  /** The same boundary the other way: typed in the reader's unit, kept in ours. */
+  private parseForce(input: string): [boolean, number] {
+    return this.nup.parseStoredForce(
+      input,
+      this.settingsService.lengthUnit.getValue(),
+      this.settingsService.forceUnit.getValue()
+    );
   }
 
   /** A translation's speed has exactly one unit — shown as plain text, no picker. */
@@ -1715,10 +1740,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
     this.onDestroySubscriptions.push(
       this.forceForm.controls['magnitude'].valueChanges.subscribe((val) => {
-        const [success, value] = this.nup.parseForceString(
-          val!,
-          this.settingsService.forceUnit.getValue()
-        );
+        const [success, value] = this.parseForce(val!);
         if (!success) {
           this.notify.refusal('value.force', NOT_A.force);
           this.forceForm.patchValue({
@@ -1730,10 +1752,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           this.mechanismService.onMechUpdateState.next(2);
           this.forceForm.patchValue(
             {
-              magnitude: this.nup.formatValueAndUnit(
-                value,
-                this.settingsService.forceUnit.getValue()
-              ),
+              magnitude: this.forceText(value),
             },
             { emitEvent: false }
           );
@@ -1776,10 +1795,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
     this.onDestroySubscriptions.push(
       this.forceForm.controls['xComp'].valueChanges.subscribe((val) => {
-        const [success, value] = this.nup.parseForceString(
-          val!,
-          this.settingsService.forceUnit.getValue()
-        );
+        const [success, value] = this.parseForce(val!);
         if (!success) {
           this.notify.refusal('value.force', NOT_A.force);
           this.forceForm.patchValue({
@@ -1791,7 +1807,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           this.mechanismService.onMechUpdateState.next(2);
           this.forceForm.patchValue(
             {
-              xComp: this.nup.formatValueAndUnit(value, this.settingsService.forceUnit.getValue()),
+              xComp: this.forceText(value),
             },
             { emitEvent: false }
           );
@@ -1801,10 +1817,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
     this.onDestroySubscriptions.push(
       this.forceForm.controls['yComp'].valueChanges.subscribe((val) => {
-        const [success, value] = this.nup.parseForceString(
-          val!,
-          this.settingsService.forceUnit.getValue()
-        );
+        const [success, value] = this.parseForce(val!);
         if (!success) {
           this.notify.refusal('value.force', NOT_A.force);
           this.forceForm.patchValue({
@@ -1816,7 +1829,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           this.mechanismService.onMechUpdateState.next(2);
           this.forceForm.patchValue(
             {
-              yComp: this.nup.formatValueAndUnit(value, this.settingsService.forceUnit.getValue()),
+              yComp: this.forceText(value),
             },
             { emitEvent: false }
           );
@@ -1974,10 +1987,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           this.currentlyOpenJointID = '';
           this.forceForm.patchValue(
             {
-              magnitude: this.nup.formatValueAndUnit(
-                this.activeSrv.selectedForce.mag,
-                this.settingsService.forceUnit.getValue()
-              ),
+              magnitude: this.forceText(this.activeSrv.selectedForce.mag),
               angle: this.nup.formatValueAndUnit(
                 this.nup.convertAngle(
                   this.activeSrv.selectedForce.angleRad,
@@ -1986,14 +1996,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
                 ),
                 this.settingsService.angleUnit.getValue()
               ),
-              xComp: this.nup.formatValueAndUnit(
-                this.activeSrv.selectedForce.xComp,
-                this.settingsService.forceUnit.getValue()
-              ),
-              yComp: this.nup.formatValueAndUnit(
-                this.activeSrv.selectedForce.yComp,
-                this.settingsService.forceUnit.getValue()
-              ),
+              xComp: this.forceText(this.activeSrv.selectedForce.xComp),
+              yComp: this.forceText(this.activeSrv.selectedForce.yComp),
               isGlobal: this.activeSrv.selectedForce.local ? '0' : '1',
             },
             { emitEvent: false }

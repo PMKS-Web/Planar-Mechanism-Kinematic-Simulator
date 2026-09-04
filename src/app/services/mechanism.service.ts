@@ -1722,7 +1722,7 @@ export class MechanismService {
       // -- leaving the drawing half cleared.
       if (!this.joints.some((live) => live.id === joint.id)) return;
       this.activeObjService.updateSelectedObj(joint);
-      this.deleteJoint(false, true);
+      this.deleteJoint(false);
     });
     this.activeObjService.updateSelectedObj(null);
     this.finishStructuralEdit(true);
@@ -1770,7 +1770,7 @@ export class MechanismService {
       // above still lists them -- same trap `deleteAll` guards against.
       if (!this.joints.some((live) => live.id === joint.id)) return;
       this.activeObjService.updateSelectedObj(joint);
-      this.deleteJoint(false, true);
+      this.deleteJoint(false);
     });
     this.activeObjService.updateSelectedObj(null);
     this.finishStructuralEdit(true);
@@ -1929,43 +1929,15 @@ export class MechanismService {
   }
 
   /**
-   * Why this part cannot be deleted, or nothing.
+   * Whether the Lock item for this object should read as "on".
    *
-   * A lock is the user saying this part is settled, and deletion is the one
-   * edit worth stopping outright rather than warning about. The rule lives
-   * here rather than in the menu that shows it, because the menu is not the
-   * only way to delete something: the Delete key and the panel's own button
-   * reach the same joint, and a grayed row beside a live keystroke is a rule
-   * that only looks enforced.
+   * A Lock says where a part is, and nothing else. Deletion used to be refused
+   * on the strength of one -- and a mark meaning "this cannot move" was then
+   * also meaning "this cannot go", which is a second rule the reader never
+   * asked for and no wording on the row could teach. Locked parts delete like
+   * any other; what a lock still refuses is every gesture that would *move*
+   * one.
    */
-  deleteRefusal(target: RealJoint | Link | Force): string | undefined {
-    if (this.isLockedTarget(target)) {
-      return 'That part is locked. Unlock it before deleting it.';
-    }
-    // A link is "locked" only when every one of its joints is, so a bar with
-    // one locked end is not -- and deleting it swept that end away as an
-    // orphan, which is the lock being ignored by a longer route. The cascade
-    // is part of the deletion, so the lock has to be asked of the cascade.
-    if (target instanceof Link) {
-      const held = this.jointsOrphanedByDeleting(target).filter((joint) => joint.locked);
-      if (held.length > 0) {
-        const names = held.map((joint) => joint.name || joint.id).join(', ');
-        return `Deleting this would also remove locked ${held.length === 1 ? 'joint' : 'joints'} ${names}. Unlock ${held.length === 1 ? 'it' : 'them'} first.`;
-      }
-    }
-    return undefined;
-  }
-
-  /** Say why, and answer whether the caller should stop. */
-  private blockedByLock(target: RealJoint | Link | Force | undefined): boolean {
-    if (!target) return false;
-    const why = this.deleteRefusal(target);
-    if (!why) return false;
-    this.notify.refusal('delete.locked', why);
-    return true;
-  }
-
-  /** Whether the Lock item for this object should read as "on". */
   isLockedTarget(target: RealJoint | Link | Force): boolean {
     const marks = this.lockMarksOf(target);
     return marks.length > 0 && marks.every((mark) => mark.locked);
@@ -2664,7 +2636,7 @@ export class MechanismService {
    * as one gesture passes `false`, and it owes a `finishStructuralEdit(true)`
    * of its own once the last one is gone — see `deleteMechanism`.
    */
-  deleteJoint(save: boolean = true, ignoreLocks: boolean = false) {
+  deleteJoint(save: boolean = true) {
     // Identity-addressed (plan §6.2): this applies to the design and says
     // nothing about the pose, so any staging a gesture left open is closed
     // first -- held mid-drag, the staged machine stayed seeded from the display
@@ -2676,13 +2648,6 @@ export class MechanismService {
     // -- on several others.
     const selected = this.activeObjService.selectedJoint;
     if (!selected || !this.joints.some((joint) => joint.id === selected.id)) return;
-    if (!ignoreLocks && this.blockedByLock(this.activeObjService.selectedJoint)) return;
-    // A cylinder's own joint carries its own mark -- locking a mount pins that
-    // point and leaves the ram free to swing about it -- so an unlocked mount
-    // on a *locked* cylinder passed the test above and then took the whole
-    // locked part with it.
-    const sealedHere = this.cylinderAt(this.activeObjService.selectedJoint);
-    if (!ignoreLocks && sealedHere && this.blockedByLock(sealedHere.barrel)) return;
     // Deleting a mount (or, defensively, any member joint) of a sealed cylinder
     // takes the whole assembly with it (§ cylinder 5) — and then goes on to
     // delete the joint itself.
@@ -3128,7 +3093,6 @@ export class MechanismService {
     // and a neighbor came out at the provisional coordinate rather than its own.
     this.cancelPosedEdit();
     if (!force) return;
-    if (this.blockedByLock(force)) return;
     this.detachForce(force);
     this.updateMechanism(true);
     this.onMechUpdateState.next(3);
@@ -3241,7 +3205,6 @@ export class MechanismService {
     // and a neighbor came out at the provisional coordinate rather than its own.
     this.cancelPosedEdit();
     const link = this.activeObjService.selectedLink;
-    if (this.blockedByLock(link)) return;
     // Deleting any member of a sealed cylinder — barrel, rod, block, or a
     // compound that swallowed one — deletes the whole assembly (§ cylinder 5).
     const sealed = this.cylinderAt(link);
@@ -4041,10 +4004,6 @@ export class MechanismService {
       this.cylinderAt(this.activeObjService.selectedJoint) ??
       this.cylinderAt(this.activeObjService.selectedLink);
     if (!sealed) return;
-    // Asked here as well as on the way in: the menu calls this directly with
-    // the cylinder it found, so a guard that only sat on deleteLink was a
-    // guard with a door beside it.
-    if (this.blockedByLock(sealed.barrel)) return;
     this.deleteCylinderTopology(sealed);
     this.activeObjService.updateSelectedObj(undefined);
     this.finishStructuralEdit(true);

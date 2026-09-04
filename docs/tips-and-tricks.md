@@ -33,16 +33,42 @@ to work on it without stepping in the same holes.
 **Node** 22.22.3+, 24.15+ or 26+ — the range the Angular 22 toolchain declares. `npm ci` for a
 clean install.
 
-**Playwright lives outside the repo.** It is deliberately not a devDependency, because it would
-bloat deploy installs. The e2e scripts look for it at `/tmp/pmks-playwright`, overridable with
-`PMKS_PLAYWRIGHT_DIR`:
+**Playwright is now a devDependency**, added alongside the Playwright MCP server so Claude Code and
+the e2e scripts can share one install. The browsers it drives are *not* in `node_modules`: Playwright
+keeps them in a per-user cache (`~/Library/Caches/ms-playwright` on macOS), so a project-local
+Playwright and the `/tmp` one below use the same Chromium as long as their versions match.
+
+**`netlify.toml` exists for exactly one reason: to stop that install downloading a browser.**
+Keeping Playwright out of the repo was a deliberate choice once — `npm ci` on Netlify installs
+devDependencies, and `playwright`'s postinstall pulls ~150 MB of Chromium on every build. The file
+declares `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"` under `[build.environment]` and nothing else.
+
+Two things about it. It has to be an *environment* variable rather than an `env` prefix on the build
+command, because the install runs before the build command does. And a `netlify.toml` overrides only
+the keys it declares, so the build command, publish directory and functions directory still come
+from each site's own UI settings — which is what you want here, since there are two sites and this
+one file has to suit both.
+
+**The e2e scripts still look in `/tmp/pmks-playwright` by default**, overridable with
+`PMKS_PLAYWRIGHT_DIR` — which can now be the repo itself. The resolver appends
+`/node_modules/playwright/index.mjs` to what you give it and imports that *relative to the script*,
+so the repo root is `..` and not `.` — `.` resolves inside `e2e/` and fails with a
+module-not-found that reads like a missing install:
+
+```bash
+PMKS_PLAYWRIGHT_DIR=.. node e2e/locking.mjs     # the project's own copy
+```
+
+The `/tmp` install is still what the suites default to, and it carries two packages the filmstrip
+helper needs that the project does not:
 
 ```bash
 mkdir -p /tmp/pmks-playwright && cd /tmp/pmks-playwright && npm i playwright gif-encoder pngjs && npx playwright install chromium
 ```
 
 **`/tmp` is cleared on reboot**, so that install disappears and every browser suite starts failing
-with a module-not-found. Reinstalling is the first thing to try.
+with a module-not-found. Reinstalling — or pointing `PMKS_PLAYWRIGHT_DIR` at the repo — is the first
+thing to try.
 
 **Two suites need more than Chromium.** `playback-loop-indicator` compares the same bar across
 engines, so it needs Firefox and WebKit too, and reports three confusing failures without them:
@@ -734,6 +760,30 @@ or the anchors; it takes about a quarter of an hour.
 
 ---
 
+### A force is stored in one unit and read in another
+
+`settings.forceUnit` is what the reader is *reading*, and it is not what a magnitude is kept in.
+`Force.mag`, the solver's `siUnitFactors`, and every URL in circulation are written in the length
+system's own force unit — lbf under inches, newtons under centimeters and meters — and
+`ForceUnit.KGF` is a third way of reading those newtons rather than a third way of keeping them.
+`NumberUnitParserService.storedForceUnit` names the one, the settings subject names the other, and
+`formatStoredForce` / `parseStoredForce` are the only crossing. Multiply a magnitude by 9.8 on its
+way anywhere else and the solver is handed a load nine times the one that was typed. This is the
+same split `displayInertiaUnit` / `storedInertiaUnit` already keeps for `g·cm²`.
+
+**A torque is a force times a length, and both halves are the reader's.** `torqueLabel(force,
+length)` is `lbf·in`, `N·cm`, `N·m`, `kgf·cm` or `kgf·m` — one rule, no cases. Centimeters used to
+be the one system whose moment did not follow it, so a reader measuring in cm was shown a moment in
+meters with a silent hundredth in the middle of it. `AnalysisSampleService` divides the solver's
+newton-meters by both factors, and `analysis-sample.service.spec.ts` pins all four combinations.
+
+**Adding a unit to one of these enums means appending it, after `NULL`.** The URL codec encodes an
+enum setting as the *index of its key* in `Object.keys`, one base-64 character, so a value inserted
+anywhere but the end renames every value already in circulation. `InertiaUnit.G_CM2` and
+`ForceUnit.KGF` both sit past `NULL` for that reason and no other.
+
+---
+
 ### The drawing is y-up, the screen is y-down, and two directives say so
 
 Model coordinates follow the math convention: +y is up. The screen's is down.
@@ -887,6 +937,23 @@ anything but a bar. The held-value chips and the amber guide are canvas state
 are (`lockVisualsOn`), and the hover dimensions for a length or an angle -- the link's and the
 joint panel's distance-to-joint ones alike -- are now a hairline with a pill, sized in screen pixels
 through `svgGrid.scaleWithZoom`. `e2e/link-holds.mjs` walks all of it.
+
+**And a Lock is about position, full stop.** It refuses every gesture that would *move* what it
+holds -- a drag, a typed coordinate, a merge -- and refuses nothing else. Two other rules had grown
+onto the same mark, and neither was anything the padlock claimed:
+
+- **Deleting** a locked part was refused, directly and through the cascade (a link whose deletion
+  would orphan a locked joint), so a reader who locked a joint to stop nudging it found they could
+  not delete it either. `MechanismService.deleteRefusal` and `SelectionBatchService`'s cascade check
+  were where that lived; both are gone.
+- **Attaching** a link, cylinder or force to a locked *joint* was refused, while attaching to a
+  locked *link* was allowed -- an inconsistency that was really the same mistake. Nothing a lock
+  holds moves when a bar is drawn out from a joint: the joint keeps its coordinate and the new joint
+  lands under the pointer. `frozenRefusal` in the menu builder is gone with it; the attach rows still
+  refuse what a third body would actually break (driven, welded, several links sharing the joint).
+
+`e2e/locking.mjs` and `e2e/context-menu.mjs` pin both the other way round now, and the locking suite
+draws a real bar onto a locked joint rather than only reading the row's state.
 
 ### Where a drag's time goes, and how to re-measure it
 

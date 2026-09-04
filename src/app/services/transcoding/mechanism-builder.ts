@@ -380,8 +380,17 @@ export class MechanismBuilder {
           : decodedLength === LengthUnit.METER
             ? GlobalUnit.SI
             : GlobalUnit.METRIC;
+      // Read back rather than re-derived, so a link shared in kilograms-force
+      // opens in kilograms-force. Everything else is still normalized against
+      // the length unit: URLs written before the pick existed carry whatever
+      // their era encoded, and English has no unit but lbf.
+      const decodedForce = this.transcoder.getEnumSetting(EnumSetting.FORCE_UNIT, ForceUnit);
       const normalizedForce =
-        normalizedGlobal === GlobalUnit.ENGLISH ? ForceUnit.LBF : ForceUnit.NEWTON;
+        normalizedGlobal === GlobalUnit.ENGLISH
+          ? ForceUnit.LBF
+          : decodedForce === ForceUnit.KGF
+            ? ForceUnit.KGF
+            : ForceUnit.NEWTON;
       this.settings.lengthUnit.next(decodedLength);
       this.settings.angleUnit.next(
         // The checksum admits no URL without this enum, so it is always present.

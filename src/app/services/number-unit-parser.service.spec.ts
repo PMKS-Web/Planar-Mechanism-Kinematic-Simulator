@@ -1,4 +1,4 @@
-import { AngularVelocityUnit, InertiaUnit, MassUnit } from '../model/utils';
+import { AngularVelocityUnit, ForceUnit, InertiaUnit, LengthUnit, MassUnit } from '../model/utils';
 import { NumberUnitParserService } from './number-unit-parser.service';
 
 describe('NumberUnitParserService mass and inertia', () => {
@@ -66,5 +66,56 @@ describe('NumberUnitParserService mass and inertia', () => {
     expect(formatted).toBe('453.59 g');
     expect(nup.parseMassString(formatted, MassUnit.GRAM)).toEqual([true, 453.59]);
     expect(nup.formatValueAndUnit(1, InertiaUnit.LBM_IN2)).toBe('1.00 lbm·in²');
+  });
+});
+
+describe('NumberUnitParserService force', () => {
+  const nup = new NumberUnitParserService();
+
+  it('names the unit a force is stored in, which is not the one it is shown in', () => {
+    // Kilograms-force is a way of reading a magnitude, not a way of keeping
+    // one: the solver's unit factors and every circulating URL are written in
+    // newtons, so storage stays there and the panel converts at its own edge.
+    expect(nup.storedForceUnit(LengthUnit.CM)).toBe(ForceUnit.NEWTON);
+    expect(nup.storedForceUnit(LengthUnit.METER)).toBe(ForceUnit.NEWTON);
+    expect(nup.storedForceUnit(LengthUnit.INCH)).toBe(ForceUnit.LBF);
+  });
+
+  it('shows a stored force in whichever unit the reader picked', () => {
+    expect(nup.formatStoredForce(9.80665, LengthUnit.CM, ForceUnit.KGF)).toBe('1.00 kgf');
+    expect(nup.formatStoredForce(9.80665, LengthUnit.CM, ForceUnit.NEWTON)).toBe('9.81 N');
+    // English never offers kgf, and its storage unit is the one it shows.
+    expect(nup.formatStoredForce(2, LengthUnit.INCH, ForceUnit.LBF)).toBe('2.00 lbf');
+  });
+
+  it('takes a typed force back to the unit storage uses', () => {
+    const [ok, stored] = nup.parseStoredForce('2', LengthUnit.CM, ForceUnit.KGF);
+    expect(ok).toBe(true);
+    expect(stored).toBeCloseTo(2 * 9.80665, 9);
+
+    // A suffix overrides the field's own unit, as it does everywhere else.
+    const [okN, asTyped] = nup.parseStoredForce('5 N', LengthUnit.CM, ForceUnit.KGF);
+    expect(okN).toBe(true);
+    expect(asTyped).toBeCloseTo(5, 9);
+
+    // And a bad number leaves the field's value alone rather than storing NaN.
+    expect(nup.parseStoredForce('kgf', LengthUnit.CM, ForceUnit.KGF)[0]).toBe(false);
+  });
+
+  it('writes a torque as its force unit times the drawing\u2019s own length unit', () => {
+    // Centimeters used to be the one system whose torque did not follow it:
+    // a reader measuring in cm was shown a moment in meters, with a silent
+    // hundredth in the middle of it. A reader who wants N·m picks SI.
+    expect(nup.torqueLabel(ForceUnit.LBF, LengthUnit.INCH)).toBe('lbf·in');
+    expect(nup.torqueLabel(ForceUnit.NEWTON, LengthUnit.CM)).toBe('N·cm');
+    expect(nup.torqueLabel(ForceUnit.NEWTON, LengthUnit.METER)).toBe('N·m');
+    expect(nup.torqueLabel(ForceUnit.KGF, LengthUnit.CM)).toBe('kgf·cm');
+    expect(nup.torqueLabel(ForceUnit.KGF, LengthUnit.METER)).toBe('kgf·m');
+  });
+
+  it('converts between all three, exactly rather than through a rounded reciprocal', () => {
+    expect(nup.convertForce(1, ForceUnit.LBF, ForceUnit.NEWTON)).toBeCloseTo(4.4482216152605, 12);
+    expect(nup.convertForce(1, ForceUnit.KGF, ForceUnit.NEWTON)).toBeCloseTo(9.80665, 12);
+    expect(nup.convertForce(9.80665, ForceUnit.NEWTON, ForceUnit.KGF)).toBeCloseTo(1, 12);
   });
 });

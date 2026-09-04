@@ -229,27 +229,29 @@ describe('SelectionBatchService duplication', () => {
 });
 
 describe('SelectionBatchService deletion', () => {
-  it('refuses atomically when the combined cascade would orphan a locked shared joint', () => {
+  it('deletes a locked selection, cascade and all', () => {
+    // A Lock holds a part where it is. It used to hold it against deletion
+    // too -- both directly and, once, through the cascade: a locked joint the
+    // selection would orphan refused the whole batch. Two rules on one mark,
+    // and the reader had only been told about the first.
     const h = chain();
     h.joints[1].locked = true;
-    const jointsBefore = [...h.service.joints];
-    const linksBefore = [...h.service.links];
 
-    const refusal = h.batch.deleteRefusal([
-      { kind: 'link', id: 'AB' },
-      { kind: 'link', id: 'BC' },
-    ]);
+    expect(
+      h.batch.deleteRefusal([
+        { kind: 'link', id: 'AB' },
+        { kind: 'link', id: 'BC' },
+      ])
+    ).toBeUndefined();
     const result = h.batch.deleteSelected([
       { kind: 'link', id: 'AB' },
       { kind: 'link', id: 'BC' },
     ]);
 
-    expect(refusal?.code).toBe('delete-locked-cascade');
-    expect(refusal?.short).toBe('unlock first');
-    expect(result.ok).toBe(false);
-    expect(h.service.joints).toEqual(jointsBefore);
-    expect(h.service.links).toEqual(linksBefore);
-    expect(h.saveCount()).toBe(0);
+    expect(result.ok).toBe(true);
+    expect(h.service.links.some((one) => one.id === 'AB' || one.id === 'BC')).toBe(false);
+    expect(h.service.joints.some((one) => one.id === h.joints[1].id)).toBe(false);
+    expect(h.saveCount()).toBe(1);
   });
 
   it('deletes deduplicated links and their orphans with one structural save', () => {
@@ -338,21 +340,22 @@ describe('SelectionBatchService deletion', () => {
     expect(h.saveCount() - beforeSaves).toBe(1);
   });
 
-  it('refuses a locked cylinder without mutating any of its closure', () => {
+  it('deletes a locked cylinder and its whole closure', () => {
     const h = createMechanismHarness();
     h.service.createCylinderFrom(new Coord(0, 0), new Coord(600, 0));
     const cylinder = sealedCylinderStructures(h.service.joints)[0];
     cylinder.slider.locked = true;
-    const beforeJoints = [...h.service.joints];
-    const beforeLinks = [...h.service.links];
     const beforeSaves = h.saveCount();
     const batch = new SelectionBatchService(h.service);
 
     const result = batch.deleteSelected([{ kind: 'link', id: cylinder.rod.id }]);
 
-    expect(result.ok).toBe(false);
-    expect(h.service.joints).toEqual(beforeJoints);
-    expect(h.service.links).toEqual(beforeLinks);
-    expect(h.saveCount()).toBe(beforeSaves);
+    // All of it, or none: the assembly is one part, and a mark on its slider
+    // says where it sits rather than whether it stays.
+    expect(result.ok).toBe(true);
+    expect(sealedCylinderStructures(h.service.joints)).toHaveLength(0);
+    expect(h.service.joints).toHaveLength(0);
+    expect(h.service.links).toHaveLength(0);
+    expect(h.saveCount() - beforeSaves).toBe(1);
   });
 });

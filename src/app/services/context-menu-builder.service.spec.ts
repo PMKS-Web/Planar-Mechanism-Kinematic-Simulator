@@ -145,7 +145,9 @@ describe('the right-click menu', () => {
       expect(deleteSelected).toHaveBeenCalledTimes(1);
     });
 
-    it('quotes an atomic lock refusal for destructive group actions', () => {
+    it('offers Delete Selected on a locked selection', () => {
+      // A Lock is about position. Graying the group's delete taught a second
+      // meaning the mark does not have.
       const parts = fourBar(harness.mechanism);
       parts.a.locked = true;
       harness.mechanism.updateMechanism(false);
@@ -154,8 +156,7 @@ describe('the right-click menu', () => {
 
       const model = harness.builder.build(parts.a, noHandlers);
 
-      expect(row(model, 'Delete Selected (2)')!.refusal?.short).toBe('unlock first');
-      expect(row(model, 'Delete Selected (2)')!.refusal?.long).toContain('locked');
+      expect(row(model, 'Delete Selected (2)')!.refusal).toBeUndefined();
     });
   });
 
@@ -252,32 +253,27 @@ describe('the right-click menu', () => {
   });
 
   describe('locks', () => {
-    it('stops a locked part being deleted, and says which way out', () => {
+    it('leaves a locked part its delete row', () => {
       const parts = fourBar(harness.mechanism);
       parts.a.locked = true;
       const model = harness.builder.build(parts.a, noHandlers);
       expect(row(model, 'Locked')!.checked).toBe(true);
       const remove = rows(model).find((one) => one.destructive)!;
-      expect(remove.refusal!.short).toBe('unlock first');
+      expect(remove.refusal).toBeUndefined();
       // Its own switch stays live: one click here frees it.
       expect(row(model, 'Locked')!.disabled).toBe(false);
     });
 
-    it('will not let a link deletion sweep up a locked joint', () => {
+    it('lets a link deletion sweep up a locked joint', () => {
+      // O is on the crank alone, so deleting the crank orphans it. That used
+      // to refuse the whole deletion -- a lock reaching through a cascade to
+      // stop an edit about something else.
       const parts = fourBar(harness.mechanism);
-      // O is on the crank alone, so deleting the crank would orphan it. The
-      // crank is not itself "locked" -- that needs every joint -- so the lock
-      // was being ignored by the longer route.
       parts.o.locked = true;
-      expect(harness.mechanism.deleteRefusal(parts.crank)).toContain('locked');
       harness.mechanism.activeObjService.updateSelectedObj(parts.crank);
       harness.mechanism.deleteLink();
-      expect(harness.mechanism.links.some((one) => one.id === 'OA')).toBe(true);
-      expect(harness.mechanism.joints.some((one) => one.id === 'O')).toBe(true);
-      const remove = rows(harness.builder.build(parts.crank, noHandlers)).find(
-        (one) => one.destructive
-      )!;
-      expect(remove.refusal!.short).toBe('unlock first');
+      expect(harness.mechanism.links.some((one) => one.id === 'OA')).toBe(false);
+      expect(harness.mechanism.joints.some((one) => one.id === 'O')).toBe(false);
     });
 
     it('still attaches a link, a tracer, a cylinder and a force to a locked link', () => {
@@ -292,11 +288,15 @@ describe('the right-click menu', () => {
       }
     });
 
-    it('refuses to attach to a locked joint for the same reason', () => {
+    it('attaches to a locked joint too, for the same reason again', () => {
+      // The joint keeps its coordinate and the new part is drawn out from it,
+      // so nothing a lock holds moves. Graying these made the mark mean
+      // "nothing may touch this", which is not what a padlock claims.
       const parts = fourBar(harness.mechanism);
       parts.a.locked = true;
       const model = harness.builder.build(parts.a, noHandlers);
-      expect(row(model, 'Link')!.refusal!.short).toBe('unlock first');
+      expect(row(model, 'Link')!.refusal).toBeUndefined();
+      expect(row(model, 'Cylinder')!.refusal).toBeUndefined();
     });
 
     it('counts what Lock All and Unlock All would touch', () => {
@@ -372,7 +372,7 @@ describe('the right-click menu', () => {
         (one) => one.destructive
       )!;
       // O is on the crank alone and goes with it; A is on two links and stays.
-      expect(remove.label).toBe('Delete Link and Joint O');
+      expect(remove.label).toBe('Delete Link (and Joint O)');
     });
 
     it('names the links deleting a joint would take with it', () => {
@@ -435,15 +435,14 @@ describe('the right-click menu', () => {
   });
 
   describe('what the row promises, the model does', () => {
-    it('will not delete a locked part, whichever surface asks', () => {
+    it('deletes a locked part, whichever surface asks', () => {
       const parts = fourBar(harness.mechanism);
       parts.a.locked = true;
       harness.mechanism.activeObjService.updateSelectedObj(parts.a);
       harness.mechanism.deleteJoint();
-      // The menu grays the row; the Delete key and the panel button reach the
-      // same joint, so the rule has to live where all three can ask it.
-      expect(harness.mechanism.joints.some((one) => one.id === 'A')).toBe(true);
-      expect(harness.mechanism.deleteRefusal(parts.a)).toContain('locked');
+      // The menu offers the row; the Delete key and the panel button reach the
+      // same joint, and all three go through the one service method.
+      expect(harness.mechanism.joints.some((one) => one.id === 'A')).toBe(false);
     });
 
     it('names the sub-link a welded compound would lose', () => {

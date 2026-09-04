@@ -35,11 +35,25 @@ There is no lint target (`tslint.json` is vestigial). Formatting follows `.prett
 **Run UI validation, browser automation, screenshots, and end-to-end interaction checks
 directly**, following the `ui-validate` skill (`.claude/skills/ui-validate/SKILL.md`) — which
 **requires a filmstrip, not a screenshot, for anything that animates or responds to a drag**
-(`e2e/filmstrip.mjs`): Playwright
-from `/tmp/pmks-playwright`, a disposable Chrome profile under `/tmp`, screenshots and JSON
-reports into gitignored `artifacts/`. Inspect your own screenshots rather than trusting an exit
-code. Do not use claude-in-chrome (`mcp__claude-in-chrome__*`) in this repo — it drives the user's
-real, logged-in browser, which the skill's profile rules exist to keep out of automation.
+(`e2e/filmstrip.mjs`): Playwright, a disposable profile, screenshots and JSON reports into
+gitignored `artifacts/`. Inspect your own screenshots rather than trusting an exit code.
+
+**Three ways to drive a browser here, and they are for different jobs.**
+
+- **The Playwright MCP** (`mcp__playwright__*`, `npx @playwright/mcp@latest`) — **reach for this
+  first when exploring or reproducing.** It holds one live browser across calls and answers with the
+  accessibility tree, so a selector is something you read rather than something you guess. Finding
+  out that a mode tab is `.tabButton` and not `.modeTab` costs one call here and a whole script run
+  otherwise. It launches its own browser with a temporary profile, so it never touches a logged-in
+  session.
+- **A tracked `e2e/*.mjs` suite** — how a finding gets *kept*. An MCP session proves something
+  worked once, in one conversation; it cannot gate a merge or catch the regression in three months.
+  Explore with the MCP, then write the suite with the guesswork already burned off.
+- **claude-in-chrome** (`mcp__claude-in-chrome__*`) — allowed, and the one that drives the user's
+  real, logged-in Chrome. Use it when that is the point (a deploy preview behind a login, a Netlify
+  or GitHub page, something already open in front of them) and not for routine checks of the app,
+  which belong in a disposable profile. Never sign in, buy, post or submit on their behalf without
+  being asked.
 
 **Then send the same UI work to GPT-5.6 sol for review**, through the Codex CLI:
 
@@ -85,6 +99,11 @@ PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksnew.netlify.app npm run fi
 bundle**, which is worse than a 404 because it looks like a deploy that simply ignored your commit.
 Confirm a build landed by asking for something only the new commit has, not by the page loading.
 See [tips-and-tricks](docs/tips-and-tricks.md#deploys-domains-and-surrounding-services).
+
+`netlify.toml` carries exactly one setting — `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD`, so the deploy's
+`npm ci` does not fetch a browser for the `playwright` devDependency. A `netlify.toml` overrides only
+what it declares, so the build command, publish directory and functions directory still come from
+each site's own UI settings; keep it that way, because the two sites are configured separately.
 
 The `version` in `package.json` is now bumped by hand (the automated bump action was removed). It is what the bottom bar displays, via `environments/environment*.ts`, so raise it in the PR that ships a release.
 
@@ -160,10 +179,11 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
   with the peak said as two numbers. `docs/analysis-mode-editing-plan.md` is the argument;
   `e2e/analysis-editing.mjs` is the guard. Click selects, drag tunes: a drag does not move what
   the panel is graphing.
+- A **Lock** is about position only: it refuses every gesture that would move what it holds and refuses nothing else, so a locked part deletes like any other and still takes a new link, cylinder or force (`model/lock-set.ts`).
 - A bar can **hold** its length or its angle against edits (`RealLink.hold`, the menu's Fixed Length / Fixed Angle rows, the padlocks in the Link panel's `hold-field-block`). It is a constraint, not a lock: every joint move goes through `GridUtilsService.dragJoint`, which asks `model/hold-solver.ts` for the CAD answer, and the hold rides the URL as an `H` entry beside the locks. `docs/tips-and-tricks.md` has the rules.
 - `SelectedTabService` (`TabID` enum) coordinates the four modes; the Edit and analysis panels operate on whatever `ActiveObjService` says is selected (joint, link, force, mechanism, background image, or synthesis pose).
 - The right drawer is addressed by number through statics on `RightPanelComponent`: 1 Settings, 3 Help, 4 Debug (dev only), 5 `KINEMATIC_SETUP_TAB`, 6 `FORCE_SETUP_TAB`, 7 `EXPORT_TAB`. **Tab 2 (`app-equation-panel`) is unreachable** — nothing calls `tabClicked(2)` and its content is placeholder images. It is unfinished work, not a feature.
-- `SettingsService` exposes document-wide settings as RxJS BehaviorSubjects (units, gravity, grid and snap visibility, object scale). Input **speed and direction are not global** — they belong to the driven joint (`Joint.driveSpeed`), because a drawing can hold several machines; the SettingsService values are only the default a joint falls back to.
+- `SettingsService` exposes document-wide settings as RxJS BehaviorSubjects (units, gravity, grid and snap visibility, object scale). Input **speed and direction are not global** — they belong to the driven joint (`Joint.driveSpeed`), because a drawing can hold several machines; the SettingsService values are only the default a joint falls back to. `forceUnit` is the unit a force is *read* in (lbf under English; N or kgf under metric and SI) and not the one it is stored in — see [tips-and-tricks](docs/tips-and-tricks.md#a-force-is-stored-in-one-unit-and-read-in-another).
 - `component/BLOCKS/` holds the reusable form primitives (input, toggle, radio, dual-input, panel-section, ...) that the panels are composed from; `component/MODALS/` holds the Templates dialog and the release-notes splash.
 - Messages to the user go through `NotificationService`, which replaced the old `NewGridComponent.sendNotification()` static. Some components still talk through statics (e.g. `RightPanelComponent.openTab` / `insistOn`) — grep for the static before assuming a service is the only channel.
 - Four-bar synthesis (generating a linkage from three desired coupler poses) lives in `services/synthesis/`.

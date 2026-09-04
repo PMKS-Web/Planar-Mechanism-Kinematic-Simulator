@@ -2,8 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../../model/joint';
 import { Cylinder, cylinderJoints } from '../../model/cylinder';
 import { Link, RealLink, SliderBlock } from '../../model/link';
-import { AngleUnit, ForceUnit, LengthUnit } from '../../model/unit-enums';
+import { AngleUnit, LengthUnit } from '../../model/unit-enums';
 import { MechanismService } from '../mechanism.service';
+import { NumberUnitParserService } from '../number-unit-parser.service';
 import { SettingsService } from '../settings.service';
 import { ExportPart, ExportPartGroup } from './export-model';
 
@@ -18,6 +19,7 @@ import { ExportPart, ExportPartGroup } from './export-model';
 export class ExportCatalogService {
   private mechanism = inject(MechanismService);
   private settings = inject(SettingsService);
+  private nup = inject(NumberUnitParserService);
 
   /**
    * Every part of every mechanism, grouped by machine.
@@ -274,11 +276,11 @@ export class ExportCatalogService {
   }
 
   forceUnit(): string {
-    return this.settings.forceUnit.value === ForceUnit.LBF ? 'lbf' : 'N';
+    return this.nup.unitLabel(this.settings.forceUnit.value);
   }
 
   torqueUnit(): string {
-    return this.settings.forceUnit.value === ForceUnit.LBF ? 'lbf·in' : 'N·m';
+    return this.nup.torqueLabel(this.settings.forceUnit.value, this.settings.lengthUnit.value);
   }
 
   /** The same words the panels put on an axis, so the file agrees with them. */

@@ -1,0 +1,13 @@
+# Netlify reads this before it installs anything, and only the keys declared
+# here override the site's UI settings — the build command, publish directory
+# and functions directory still come from there, and from each of the two sites
+# separately (see docs/tips-and-tricks.md, "Deploys, domains and surrounding
+# services").
+#
+# One key is declared, and it has to be here rather than on the build command:
+# `playwright` is a devDependency, its postinstall downloads ~150 MB of browser,
+# and that happens during `npm ci` — before the build command exists to carry an
+# `env` prefix. The e2e suites drive a browser from the developer's own machine;
+# a deploy has no use for one.
+[build.environment]
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"

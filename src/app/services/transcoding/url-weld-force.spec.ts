@@ -193,6 +193,50 @@ describe('welded force URL compatibility', () => {
     expect(target.forces[0].link.id).toBe('bc');
   });
 
+  it('carries the reader\u2019s force unit, kilograms-force included', () => {
+    // The force unit used to be re-derived from the length one on the way out
+    // and on the way in, which is fine while there is one metric force unit
+    // and wrong the moment there are two: a link shared in kgf opened in N.
+    const source = weldedSource();
+    const settings = new SettingsService();
+    settings.lengthUnit.next(LengthUnit.CM);
+    settings.globalUnit.next(GlobalUnit.METRIC);
+    settings.forceUnit.next(ForceUnit.KGF);
+    const encoded = urlGeneratorFor(
+      { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
+      settings
+    ).generateUrlQuery();
+
+    const decoder = new StringTranscoder();
+    decoder.decodeURL(encoded);
+    const restored = new SettingsService();
+    new MechanismBuilder(targetService(), decoder, restored, new ActiveObjService()).build(true);
+
+    expect(restored.forceUnit.value).toBe(ForceUnit.KGF);
+    expect(restored.lengthUnit.value).toBe(LengthUnit.CM);
+  });
+
+  it('lands on pounds-force under English, whatever the panel last held', () => {
+    // English has no kilogram-force. The pick survives a trip through metric
+    // rather than being spent, but it is never what an inch drawing reads in.
+    const source = weldedSource();
+    const settings = new SettingsService();
+    settings.lengthUnit.next(LengthUnit.INCH);
+    settings.globalUnit.next(GlobalUnit.ENGLISH);
+    settings.forceUnit.next(ForceUnit.KGF);
+    const encoded = urlGeneratorFor(
+      { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
+      settings
+    ).generateUrlQuery();
+
+    const decoder = new StringTranscoder();
+    decoder.decodeURL(encoded);
+    expect(decoder.getEnumSetting(EnumSetting.FORCE_UNIT, ForceUnit)).toBe(ForceUnit.LBF);
+    const restored = new SettingsService();
+    new MechanismBuilder(targetService(), decoder, restored, new ActiveObjService()).build(true);
+    expect(restored.forceUnit.value).toBe(ForceUnit.LBF);
+  });
+
   it('rejects malformed or corrupted data instead of partially decoding it', () => {
     const decoder = new StringTranscoder();
     expect(() => decoder.decodeURL('not-a-mechanism')).toThrow();

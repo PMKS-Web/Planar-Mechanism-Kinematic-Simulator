@@ -11,18 +11,29 @@ reports yourself, and return a compact PASS/FAIL summary.
 
 ## Safety
 
-- Use a disposable Chrome profile under `/tmp` for routine testing.
+- Use a disposable Chrome profile under `/tmp` for routine Playwright testing.
+  The Playwright MCP does this for you: it makes a temporary profile unless
+  told otherwise.
 - A task-specific persistent profile under `/tmp` is allowed when the user
   explicitly authenticates it for the task.
-- Never attach automation to the user's normal browser profile.
+- Do not point *scripted* automation at the user's normal browser profile — a
+  suite that reruns has no business in a logged-in session. claude-in-chrome
+  (`mcp__claude-in-chrome__*`) is the sanctioned way into that browser when the
+  task genuinely needs it, one deliberate step at a time; never sign in, buy,
+  post or submit there without being asked.
 - Keep screenshots and reports in gitignored `artifacts/` directories.
 
 ## Preconditions
 
-1. For local PMKS+ checks, verify that `http://127.0.0.1:4200/` returns `200`.
-   Start `npm start` and wait for compilation if needed.
-2. Use the Playwright installation at `/tmp/pmks-playwright`. If it is absent:
-   `mkdir -p /tmp/pmks-playwright && cd /tmp/pmks-playwright && npm i playwright && npx playwright install chromium`
+1. For local PMKS+ checks, verify that `http://localhost:4200/` returns `200`.
+   Start `npm start` and wait for compilation if needed. (`localhost`, not
+   `127.0.0.1` — the dev server binds the hostname.)
+2. The e2e scripts look for Playwright at `/tmp/pmks-playwright`, overridable
+   with `PMKS_PLAYWRIGHT_DIR`. `playwright` is also a devDependency now, so
+   `PMKS_PLAYWRIGHT_DIR=..` runs a suite against the project's own copy — `..`
+   and not `.`, because the resolver imports relative to the script in `e2e/`.
+   If the `/tmp` install is missing (it is cleared on reboot):
+   `mkdir -p /tmp/pmks-playwright && cd /tmp/pmks-playwright && npm i playwright gif-encoder pngjs && npx playwright install chromium`
 
 ## Filmstrips are mandatory for any animated or gestural change
 
@@ -49,6 +60,18 @@ What to film, at minimum: the interaction's start (the frame the gesture takes
 hold), two or three frames mid-way, the release, and the settle. For a drag,
 film a pose *away from* the start of the cycle as well — a gesture at t = 0 and
 the same gesture parked mid-cycle are different code paths here.
+
+## Explore with the MCP, keep it in a suite
+
+The Playwright MCP (`mcp__playwright__*`) holds one live browser across calls
+and answers with the accessibility tree, so a selector is something you read
+rather than something you guess. Use it to find the handles and confirm a
+reproduction — it is far cheaper than a write-run-read-fix loop over a `.mjs`
+file, each turn of which costs an app boot.
+
+Then write the tracked suite. An MCP session proves something worked once, in
+one conversation; only a suite that exits non-zero gates a merge or catches the
+regression months later. The MCP is the reconnaissance, not the record.
 
 ## Running checks
 

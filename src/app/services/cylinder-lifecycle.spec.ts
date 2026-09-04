@@ -349,7 +349,11 @@ describe('a mount welded into a neighboring link', () => {
     expect(still.rodFar.id).toBe(h.sealed.rodFar.id);
   });
 
-  it('will not be deleted while it is locked, by either door', () => {
+  it('is deleted while locked, by either door', () => {
+    // A lock holds the part where it is; it does not keep it in the drawing.
+    // Both doors used to refuse on the strength of one -- the second on the
+    // barrel's mark rather than the mount's own, so an unlocked mount refused
+    // for a reason nothing on it showed.
     const h = weldedMount();
     const sealed = resolve(h)!;
     h.service.toggleLock(sealed.barrel as never);
@@ -357,15 +361,17 @@ describe('a mount welded into a neighboring link', () => {
 
     // Straight at the part: the menu calls this with the cylinder it found.
     h.service.deleteCylinder(resolve(h));
-    expect(sealedCylinders(h.service.joints)).toHaveLength(1);
+    expect(sealedCylinders(h.service.joints)).toHaveLength(0);
+  });
 
-    // And through a mount, which carries its own mark rather than the part's:
-    // an unlocked mount on a locked cylinder used to take the whole part.
+  it('takes the whole part when a mount of a locked cylinder goes', () => {
+    const h = weldedMount();
+    h.service.toggleLock(resolve(h)!.barrel as never);
     const mount = h.service.joints.find((joint) => joint.id === h.sealed.barrelFar.id)!;
     expect(h.service.isLockedTarget(mount as never)).toBe(false);
     h.active.updateSelectedObj(mount);
     h.service.deleteJoint();
-    expect(sealedCylinders(h.service.joints)).toHaveLength(1);
+    expect(sealedCylinders(h.service.joints)).toHaveLength(0);
   });
 
   it('still cascades a delete, unwelding the mount so the neighbor survives', () => {

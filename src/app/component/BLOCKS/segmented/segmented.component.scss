@@ -72,7 +72,11 @@
         font-weight: 500;
       }
 
-      &:not(.chosen):hover {
+      // Only a segment that can be pressed answers the pointer. Left as
+      // `:not(.chosen)` alone this outranked the `:disabled` rule below --
+      // more classes in the selector -- so a grayed option darkened under the
+      // cursor and read as pressable right up until the click did nothing.
+      &:not(.chosen):not(:disabled):hover {
         color: #2c2c2c;
       }
 

@@ -55,24 +55,9 @@ export class SelectionBatchService {
   deleteRefusal(refs: readonly SelectedPartRef[]): BatchRefusal | undefined {
     const resolved = resolve(this.mechanism, refs);
     if ('refusal' in resolved) return resolved.refusal;
-    const plan = planDeletion(this.mechanism, resolved.parts);
-
-    for (const part of plan.resolved) {
-      const target = 'root' in part ? part.root : part.object;
-      const why = this.mechanism.deleteRefusal(target);
-      if (why) return { code: 'delete-locked', short: 'unlock first', message: why };
-    }
-    const locked = this.mechanism.joints.find(
-      (joint): joint is RealJoint =>
-        joint instanceof RealJoint && plan.removeJointIds.has(joint.id) && joint.locked
-    );
-    if (locked) {
-      return {
-        code: 'delete-locked-cascade',
-        short: 'unlock first',
-        message: `Deleting the selection would also remove locked joint ${locked.name || locked.id}. Unlock it first.`,
-      };
-    }
+    // A Lock says where a part is, not whether it may go: a locked selection
+    // deletes like any other. What is left to refuse here is a selection that
+    // is empty or no longer exists, which `resolve` has already answered.
     return undefined;
   }
 

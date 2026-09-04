@@ -19,6 +19,16 @@ export enum ForceUnit {
   LBF = 20,
   NEWTON = 21,
   NULL = 22,
+  /**
+   * A metric *display* unit, appended rather than ordered beside NEWTON: the
+   * URL codec writes an enum as its key's index, so anything inserted ahead of
+   * NULL renames the value every circulating link already carries.
+   *
+   * Storage stays lbf under English and newtons otherwise -- what the solver's
+   * unit factors and every URL are written against -- so this unit, like
+   * InertiaUnit.G_CM2, exists only at the input/label boundary.
+   */
+  KGF = 23,
 }
 
 // Mass and inertia are shown in whichever unit pairs with the current length

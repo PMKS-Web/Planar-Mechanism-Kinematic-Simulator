@@ -9,6 +9,8 @@ import type { MechanismFixture as VerificationFixture } from '../../test-utils/v
 import { AnalysisSampleService } from './analysis-sample.service';
 import { SettingsService } from './settings.service';
 import { withTestInjector } from '../../test-utils/mechanism-harness';
+import { ForceUnit, LengthUnit } from '../model/unit-enums';
+import { METERS_PER_INCH, NEWTONS_PER_LBF } from '../model/unit-conversions';
 
 /** Standard gravity, the value the force solver works to. */
 const GRAVITY = 9.80665;
@@ -238,6 +240,44 @@ describe('AnalysisSampleService', () => {
 
       // One value, not three: an input effort is a single quantity.
       expect(force(0, 'static', 'Input Effort', 'A')).toHaveLength(1);
+    });
+
+    it('answers in the units the reader is reading, force and torque alike', () => {
+      // The solver works in newtons and newton-meters whatever the drawing is
+      // measured in, and what comes back here is what the axis is labeled with.
+      // A torque carries *both* halves of its unit, and its length half is the
+      // drawing's own -- the half that used to be a fixed meter, so a reader
+      // measuring in centimeters was shown a moment in meters.
+      const reaction = () => exactForce(0, 'static', 'Joint Forces', 'A')[2];
+      const torque = () => exactForce(0, 'static', 'Input Torque', 'A')[0];
+
+      // SI: the solver's own units, so these two are the reference the rest
+      // are measured against.
+      fixture.settings.lengthUnit.next(LengthUnit.METER);
+      fixture.settings.forceUnit.next(ForceUnit.NEWTON);
+      const newtons = reaction();
+      const newtonMeters = torque();
+      expect(newtons).toBeGreaterThan(1);
+      expect(Math.abs(newtonMeters)).toBeGreaterThan(0);
+
+      // Centimeters: the force is unchanged and the moment is a hundred times
+      // the number, because a newton-centimeter is a hundredth of the unit.
+      fixture.settings.lengthUnit.next(LengthUnit.CM);
+      expect(reaction()).toBeCloseTo(newtons, 9);
+      expect(torque()).toBeCloseTo(newtonMeters * 100, 6);
+
+      // Kilograms-force divides both by what one of them weighs.
+      fixture.settings.forceUnit.next(ForceUnit.KGF);
+      expect(reaction()).toBeCloseTo(newtons / GRAVITY, 9);
+      expect(torque()).toBeCloseTo((newtonMeters * 100) / GRAVITY, 6);
+      fixture.settings.lengthUnit.next(LengthUnit.METER);
+      expect(torque()).toBeCloseTo(newtonMeters / GRAVITY, 9);
+
+      // And English, where both halves change at once.
+      fixture.settings.forceUnit.next(ForceUnit.LBF);
+      fixture.settings.lengthUnit.next(LengthUnit.INCH);
+      expect(reaction()).toBeCloseTo(newtons / NEWTONS_PER_LBF, 9);
+      expect(torque()).toBeCloseTo(newtonMeters / (NEWTONS_PER_LBF * METERS_PER_INCH), 6);
     });
 
     it('reads a reaction from the link asked for, and gaps where that link is absent', () => {

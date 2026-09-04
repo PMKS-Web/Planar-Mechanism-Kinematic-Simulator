@@ -448,6 +448,67 @@ record(
   )) === false
 );
 
+// ---- and a lock does not stop a new part being built onto what it holds ----
+//
+// Locking a joint used to gray Link, Cylinder and Force on its own menu, which
+// made the mark mean "nothing may touch this". Nothing a lock holds moves when
+// a bar is drawn out from it: the joint keeps its coordinate and the new joint
+// lands where the pointer does.
+await page.goto(`${BASE}/?${FOUR_BAR}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.locator('.tabButton', { hasText: 'Edit' }).click();
+await page.waitForTimeout(600);
+await page.evaluate(() => {
+  const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+  grid.mechanismSrv.toggleLock(grid.mechanismSrv.joints.find((one) => one.id === 'B'));
+});
+await page.waitForTimeout(700);
+const countsBefore = await page.evaluate(() => {
+  const srv = window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  return { joints: srv.joints.length, links: srv.links.length };
+});
+const heldBefore = await jointAt('B');
+
+await page.locator('#joint_B').first().click({ button: 'right' });
+await page.waitForTimeout(500);
+record(
+  'a locked joint offers Link rather than graying it',
+  (await page
+    .locator('.cm-row:has(.cm-row__label:text-is("Link"))')
+    .first()
+    .evaluate((row) => row.classList.contains('cm-row--off'))) === false
+);
+await page.locator('.cm-row:has(.cm-row__label:text-is("Link"))').first().click();
+await page.waitForTimeout(400);
+// The canvas places a joint from tracked movement, so move before the click.
+await page.mouse.move(1000, 420);
+await page.waitForTimeout(200);
+await page.mouse.move(1010, 430);
+await page.mouse.click(1010, 430);
+await page.waitForTimeout(900);
+
+const countsAfter = await page.evaluate(() => {
+  const srv = window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  return { joints: srv.joints.length, links: srv.links.length };
+});
+const heldAfter = await jointAt('B');
+record(
+  'and the bar is really drawn: a joint and a link more than before',
+  countsAfter.joints === countsBefore.joints + 1 && countsAfter.links === countsBefore.links + 1,
+  { countsBefore, countsAfter }
+);
+record(
+  'while the joint it was built onto has not moved, and is still locked',
+  Math.hypot(heldAfter.x - heldBefore.x, heldAfter.y - heldBefore.y) < 1e-6 &&
+    (await page.evaluate(
+      () =>
+        window.ng
+          .getComponent(document.querySelector('app-new-grid'))
+          .mechanismSrv.joints.find((one) => one.id === 'B').locked
+    )) === true,
+  { heldBefore, heldAfter }
+);
+
 record('no page errors the whole way through', errors.length === 0, errors);
 
 const failed = results.filter(([, ok]) => !ok);

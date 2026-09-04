@@ -122,7 +122,10 @@ information. Nothing is clickable and then refused by a snackbar.
 stand without it. `Delete Cylinder` on one of a cylinder's joints deletes the
 cylinder and leaves the joint if another link still holds it; `Delete` on that
 joint deletes the joint. If those two want different outcomes, they need different labels — which
-is why they have them.
+is why they have them. What goes with it is named **in brackets** — `Delete Joint (and Bar OA)`,
+`Delete Link (and Joints C, D)` — so the row reads as one action with a consequence rather than as
+a list of things. A **Lock never grays a delete row, nor an attach row**: it says where a part is,
+not whether it may go or what may be built onto it.
 
 ### The mechanism
 

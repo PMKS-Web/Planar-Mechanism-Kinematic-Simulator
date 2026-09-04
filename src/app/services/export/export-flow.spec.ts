@@ -1,11 +1,12 @@
 import { inject } from '@angular/core';
 import { RealJoint } from '../../model/joint';
-import { AngleUnit, ForceUnit } from '../../model/unit-enums';
+import { AngleUnit, ForceUnit, LengthUnit } from '../../model/unit-enums';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ActiveObjService } from '../active-obj.service';
 import { AnalysisSampleService } from '../analysis-sample.service';
 import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
+import { NumberUnitParserService } from '../number-unit-parser.service';
 import { withTestInjector } from '../../../test-utils/mechanism-harness';
 import {
   buildMechanismFixture,
@@ -75,6 +76,7 @@ function flowFor(payload: string, options: { forces?: boolean } = {}): Flow {
           isAnalysisMode: () => true,
         } as unknown as SelectedTabService,
       },
+      { provide: NumberUnitParserService, deps: [] },
       { provide: AnalysisSampleService, deps: [] },
       { provide: ExportCatalogService, deps: [] },
       { provide: ExportColumnsService, deps: [] },
@@ -497,6 +499,7 @@ describe('the export drawer', () => {
   it('heads a force column with the analysis it came from, in the reader’s unit', () => {
     const { flow, tables, fixture } = flowFor(LEGACY_FORCE_MECHANISM, { forces: true });
     fixture.settings.forceUnit.next(ForceUnit.LBF);
+    fixture.settings.lengthUnit.next(LengthUnit.INCH);
     flow.refresh();
     const input = flow
       .partGroups()
@@ -505,9 +508,18 @@ describe('the export drawer', () => {
     flow.togglePart(input);
     flow.step = 'forces';
 
-    const heads = tables.tables()[0].heads;
-    expect(heads.some((head) => head.startsWith('Static force at'))).toBe(true);
-    expect(heads.some((head) => head.includes('input torque') && head.includes('(lbf·in)'))).toBe(
+    const heads = () => tables.tables()[0].heads;
+    expect(heads().some((head) => head.startsWith('Static force at'))).toBe(true);
+    expect(heads().some((head) => head.includes('input torque') && head.includes('(lbf·in)'))).toBe(
+      true
+    );
+
+    // A torque is a force times a length, so the head names both — and the
+    // length half is the one the drawing is measured in, not a fixed meter.
+    fixture.settings.forceUnit.next(ForceUnit.KGF);
+    fixture.settings.lengthUnit.next(LengthUnit.CM);
+    flow.refresh();
+    expect(heads().some((head) => head.includes('input torque') && head.includes('(kgf·cm)'))).toBe(
       true
     );
   });

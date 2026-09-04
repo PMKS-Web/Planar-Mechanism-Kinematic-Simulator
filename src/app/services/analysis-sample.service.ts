@@ -2,9 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { ForceAnalysisMode } from '../model/mechanism/force-solver';
 import { KinematicsSolver } from '../model/mechanism/kinematic-solver';
 import { Mechanism } from '../model/mechanism/mechanism';
-import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../model/unit-conversions';
+import { FORCE_TO_N, siUnitFactorsForLength } from '../model/unit-conversions';
 import { MODEL_SCALE } from '../model/render-scale';
-import { ForceUnit } from '../model/unit-enums';
 import { SettingsService } from './settings.service';
 
 /**
@@ -117,10 +116,14 @@ export class AnalysisSampleService {
     const frame = mechanism.getForceAnalysis(mode).frames[index];
     if (!frame) return [];
 
-    const forceConversion =
-      this.settingsService.forceUnit.value === ForceUnit.LBF ? LBF_PER_NEWTON : 1;
+    // The solver answers in newtons and newton-meters whatever the drawing is
+    // measured in; these take it to the units the reader is reading. A torque
+    // is a force times a length, so its conversion is both of theirs -- the
+    // chosen force unit, and the length unit the drawing itself is in.
+    const display = this.settingsService.forceUnit.value;
+    const forceConversion = 1 / FORCE_TO_N[display];
     const torqueConversion =
-      this.settingsService.forceUnit.value === ForceUnit.LBF ? LBF_IN_PER_NEWTON_METER : 1;
+      forceConversion / siUnitFactorsForLength(this.settingsService.lengthUnit.value).distanceToM;
 
     if (frame.status !== 'ok') {
       return mechProp === 'Joint Forces' ? [Number.NaN, Number.NaN, Number.NaN] : [Number.NaN];

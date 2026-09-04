@@ -80,6 +80,7 @@ export class SettingsPanelComponent implements OnDestroy {
       objectScale: scaleText(this.currentObjectScaleSetting),
       lengthunit: this.currentLengthUnit.toString(),
       angleunit: (this.currentAngleUnit - 10).toString(),
+      forceunit: forceUnitIndex(this.currentForceUnit),
       // torqueunit: (this.currentTorqueUnit - 20).toString(),
       globalunit: (this.currentGlobalUnit - 30).toString(),
       showMajorGrid: this.settingsService.isShowMajorGrid.value,
@@ -135,6 +136,7 @@ export class SettingsPanelComponent implements OnDestroy {
           {
             lengthunit: length.toString(),
             angleunit: (angle - 10).toString(),
+            forceunit: forceUnitIndex(force),
             globalunit: (global - 30).toString(),
             showMajorGrid,
             showMinorGrid,
@@ -175,12 +177,26 @@ export class SettingsPanelComponent implements OnDestroy {
       this.settingsService.angleUnit.next(this.currentAngleUnit);
       this.mechanismSrv.updateMechanism();
     });
+    this.settingsForm.controls['forceunit'].valueChanges.subscribe((val) => {
+      // A display unit, not a stored one: force magnitudes stay in newtons and
+      // the fields and axes convert on the way out. So this rebuilds nothing
+      // and redraws everything, exactly as the angle switch above does.
+      if (!this.showsForceUnit()) return;
+      const chosen = val === '1' ? ForceUnit.KGF : ForceUnit.NEWTON;
+      // Opening the panel patches every control, which fires this with the
+      // value it already had. Republishing that redraws every open graph for
+      // a change nobody made -- the cost this file's `skip(1)` above exists to
+      // refuse.
+      if (chosen === this.settingsService.forceUnit.value) return;
+      this.currentForceUnit = chosen;
+      this.settingsService.forceUnit.next(chosen);
+      this.mechanismSrv.updateMechanism();
+      this.mechanismSrv.onMechUpdateState.next(2);
+    });
     this.settingsForm.controls['globalunit'].valueChanges.subscribe((val) => {
       this.currentGlobalUnit = ParseGlobalUnit(val);
       this.settingsService.globalUnit.next(this.currentGlobalUnit);
-      this.currentForceUnit =
-        this.currentGlobalUnit === GlobalUnit.ENGLISH ? ForceUnit.LBF : ForceUnit.NEWTON;
-      this.settingsService.forceUnit.next(this.currentForceUnit);
+      this.settleForceUnit();
       // A global-unit change is, for the geometry, a length-unit change. Route
       // it through the one method that rescales the mechanism so this path and
       // the length control can never diverge.
@@ -266,23 +282,55 @@ export class SettingsPanelComponent implements OnDestroy {
    * not. Told every time, "switch to Edit mode" is read most often by the reader
    * already standing in Edit mode, where it is the one sentence in the tooltip
    * that cannot help them.
+   *
+   * A clause, not a sentence. The tooltip's own line already says what the
+   * control does; what the refusal owes it is the *way out*, and the model's
+   * full wording spent two lines restating the refusal before naming one --
+   * on a tooltip whose first line the reader has already read.
    */
-  lockedNote(subject = 'This setting'): string {
+  lockedNote(): string {
     const refusal = this.permission.refusal('properties');
     if (!refusal) return '';
-    // Why *this* control is gray, in its own words: the model's sentence spoke
-    // of "changing the mechanism", which under a units switch read as advice
-    // about the drawing. What is being refused is the units, and the way out
-    // is the model's -- asked of it, so a machine running or parked in any
-    // mode is sent to the control that actually clears it.
-    // In an analysis mode the model's own sentence: it says what this mode
-    // does allow, and where the typed version lives.
-    if (refusal.actionKind === 'toEdit') return ` ${refusal.long}`;
-    // Away from the start, the model's sentence spoke of "changing the
-    // mechanism", which under a units switch read as advice about the drawing.
-    // What is being refused is the units.
-    const way = refusal.action ?? 'Return it to the start';
-    return ` ${subject} cannot be changed while the mechanism is away from the start. ${way[0].toUpperCase()}${way.slice(1)} first.`;
+    // Which way out, asked of the model rather than guessed from the mode, so a
+    // machine running or parked in any mode is sent to the control that
+    // actually clears it.
+    if (refusal.actionKind === 'toEdit') return ' Switch to Edit mode to change.';
+    if (refusal.actionKind === 'backToStart') return ' Return to the start pose to change.';
+    // Playing. The model offers no word to press here: the transport is the
+    // way out, and it is on screen.
+    return ' Pause the animation to change.';
+  }
+
+  /**
+   * Whether there is a force unit to pick.
+   *
+   * English has one — pounds-force — so the row would be a control with a
+   * single option, which is furniture rather than a choice. Metric and SI
+   * share newtons and kilograms-force.
+   */
+  showsForceUnit(): boolean {
+    return this.currentGlobalUnit !== GlobalUnit.ENGLISH;
+  }
+
+  /**
+   * The force unit that goes with the length system just chosen.
+   *
+   * Kilograms-force survives a move between centimeters and meters — both are
+   * metric, and re-picking it after every length change is a chore the switch
+   * can spare the reader. English has no kgf, so it lands on lbf whatever was
+   * chosen before, and picks up newtons on the way back.
+   */
+  private settleForceUnit(): void {
+    this.currentForceUnit = !this.showsForceUnit()
+      ? ForceUnit.LBF
+      : this.currentForceUnit === ForceUnit.KGF
+        ? ForceUnit.KGF
+        : ForceUnit.NEWTON;
+    this.settingsService.forceUnit.next(this.currentForceUnit);
+    this.settingsForm.patchValue(
+      { forceunit: forceUnitIndex(this.currentForceUnit) },
+      { emitEvent: false }
+    );
   }
 
   /**
@@ -348,6 +396,7 @@ export class SettingsPanelComponent implements OnDestroy {
       objectScale: ['', [Validators.required, Validators.pattern(this.numRegex)]],
       lengthunit: ['', { updateOn: 'change' }],
       angleunit: ['', { updateOn: 'change' }],
+      forceunit: ['', { updateOn: 'change' }],
       torqueunit: ['', { updateOn: 'change' }],
       globalunit: ['', { updateOn: 'change' }],
       showMinorGrid: [true, { updateOn: 'change' }],
@@ -364,6 +413,11 @@ export class SettingsPanelComponent implements OnDestroy {
     // an answer when there turns out to be nothing to change.
     this.svgGrid.updateObjectScale(true);
   }
+}
+
+/** Which option of the Force Units pill stands for this unit. */
+function forceUnitIndex(unit: ForceUnit): string {
+  return unit === ForceUnit.KGF ? '1' : '0';
 }
 
 function ParseLengthUnit(val: string | null): LengthUnit {

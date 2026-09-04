@@ -332,13 +332,18 @@ export class ContextMenuBuilderService {
           long: 'An input prescribes the freedom between two bodies, so a third arriving here would leave "driven" naming no pair. Remove the input first.',
         }
       : undefined;
-    const held = this.frozenRefusal(joint);
+    // A Lock is not among the reasons below. It says where this joint is, and a
+    // new bar, cylinder or load built onto it moves nothing that is held: the
+    // joint keeps its coordinate and the new part is drawn out from it. The
+    // rows used to gray anyway, which made the mark mean "nothing may touch
+    // this" -- a second rule the padlock never claimed. What still refuses
+    // here is what a third body would actually break.
     const rows: MenuRow[] = [
       new MenuRow({
         label: 'Link',
         icon: 'new_link',
         action: () => handlers.attachLink(),
-        refusal: held ?? crowds,
+        refusal: crowds,
       }),
     ];
     // A cylinder's own joints take no third member, so the row is absent there
@@ -354,7 +359,6 @@ export class ContextMenuBuilderService {
           // being part of it, and the reconcilers then disagree about what the
           // compound is.
           refusal:
-            held ??
             crowds ??
             (joint.isWelded
               ? {
@@ -376,13 +380,12 @@ export class ContextMenuBuilderService {
           icon: 'add_force',
           action: () => handlers.attachForce(bars[0]),
           refusal:
-            held ??
-            (bars.length > 1
+            bars.length > 1
               ? {
                   short: `${bars.length} links share it`,
                   long: 'A load applied where several links meet does not say which one carries it. Attach it to the link instead.',
                 }
-              : undefined),
+              : undefined,
         })
       );
     }
@@ -559,10 +562,12 @@ export class ContextMenuBuilderService {
   }
 
   private deleteJointRow(joint: RealJoint, sealed: Cylinder | undefined): MenuRow {
-    const held = this.lockedRefusal(joint);
     // The cascade is named, not confirmed: a cylinder's joint takes the whole
     // assembly, and an ordinary one takes any bar left with a single end. The
     // row says which, before the click rather than after it.
+    //
+    // A lock does not gray this. It holds the joint where it is, and a part
+    // that is going does not need holding -- see `isLockedTarget`.
     const label = this.deleteJointLabel(joint, sealed);
     return new MenuRow({
       label,
@@ -570,7 +575,6 @@ export class ContextMenuBuilderService {
       destructive: true,
       shortcut: this.keys.keysFor('edit.delete'),
       action: () => this.mechanism.deleteJoint(),
-      refusal: held,
     });
   }
 
@@ -687,7 +691,6 @@ export class ContextMenuBuilderService {
                 destructive: true,
                 shortcut: this.keys.keysFor('edit.delete'),
                 action: () => this.mechanism.deleteCylinder(sealed),
-                refusal: this.lockedRefusal(link as RealLink),
               }),
               this.deleteMechanismRow(link),
             ],
@@ -873,17 +876,19 @@ export class ContextMenuBuilderService {
     // them and names them rather than opening a dialog after the click.
     const orphans = this.mechanism.jointsOrphanedByDeleting(link);
     const named = orphans.map((joint) => this.nameOf(joint)).join(', ');
+    // Bracketed, like the joint row's cascade above: the thing named goes,
+    // and what goes with it is the consequence rather than a second item in a
+    // list. Both rows read the same way round.
     const label =
       orphans.length === 0
         ? 'Delete Link'
-        : `Delete Link and ${orphans.length === 1 ? 'Joint' : 'Joints'} ${named}`;
+        : `Delete Link (and ${orphans.length === 1 ? 'Joint' : 'Joints'} ${named})`;
     return new MenuRow({
       label,
       icon: 'remove',
       destructive: true,
       shortcut: this.keys.keysFor('edit.delete'),
       action: () => this.mechanism.deleteLink(),
-      refusal: this.lockedRefusal(link),
     });
   }
 
@@ -964,7 +969,6 @@ export class ContextMenuBuilderService {
               destructive: true,
               shortcut: this.keys.keysFor('edit.delete'),
               action: () => this.mechanism.deleteForce(force),
-              refusal: this.lockedRefusal(force),
             }),
           ],
         },
@@ -999,7 +1003,7 @@ export class ContextMenuBuilderService {
       icon: 'remove',
       destructive: true,
       hint: joints > 0 ? `${joints} ${joints === 1 ? 'joint' : 'joints'}` : undefined,
-      tip: 'Deletes the whole machine this part belongs to — every joint, link and force in it, locked or not.',
+      tip: 'Deletes the whole machine this part belongs to — every joint, link and force in it.',
       action: () => this.mechanism.deleteMechanism(index),
       refusal: partition
         ? undefined
@@ -1029,25 +1033,6 @@ export class ContextMenuBuilderService {
     });
   }
 
-  /**
-   * Why nothing can be attached to this joint: it is locked, or something
-   * locked elsewhere holds it.
-   *
-   * Locking a link marks its own joints, so most of the time a held joint is
-   * a locked joint and its own switch is the fix. The marks land elsewhere
-   * only where the closure reaches — a slider's block, a sealed cylinder —
-   * and there the reason has to name them, because the fix is on them.
-   */
-  private frozenRefusal(joint: RealJoint): MenuRefusal | undefined {
-    if (this.mechanism.isLockedTarget(joint)) {
-      return {
-        short: 'unlock first',
-        long: 'This joint is locked. Unlock it before attaching anything to it.',
-      };
-    }
-    return this.heldRefusal(joint);
-  }
-
   /** The marks that hold this joint still, when none of them is its own. */
   private heldRefusal(joint: RealJoint): MenuRefusal | undefined {
     if (this.mechanism.isLockedTarget(joint)) return undefined;
@@ -1058,15 +1043,6 @@ export class ContextMenuBuilderService {
       short: `held by ${named}`,
       long: `${holders.length === 1 ? 'A lock' : 'Locks'} on ${named} ${holders.length === 1 ? 'holds' : 'hold'} this joint still. Unlock ${holders.length === 1 ? 'it' : 'them'} to move it.`,
     };
-  }
-
-  /**
-   * Why a locked part will not delete — the service's own rule, so the row and
-   * the Delete key refuse the same thing for the same reason.
-   */
-  private lockedRefusal(target: RealJoint | RealLink | Force): MenuRefusal | undefined {
-    const why = this.mechanism.deleteRefusal(target);
-    return why ? { short: 'unlock first', long: why } : undefined;
   }
 
   // ---------------------------------------------------------------- shared

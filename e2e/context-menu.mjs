@@ -243,7 +243,7 @@ check(
 );
 check(
   'and counts the joints its deletion would sweep up',
-  ownDelete(link)?.label === 'Delete Link and Joint O',
+  ownDelete(link)?.label === 'Delete Link (and Joint O)',
   ownDelete(link)?.label
 );
 
@@ -272,13 +272,13 @@ check(
   rowNamed(locked, 'Locked')
 );
 check(
-  'refuses to be deleted, and says which way out',
-  ownDelete(locked)?.off === true && ownDelete(locked)?.slot === 'unlock first',
+  'still offers to delete it -- a lock is about position, not existence',
+  ownDelete(locked)?.off === false && ownDelete(locked)?.slot !== 'unlock first',
   ownDelete(locked)
 );
 check(
-  'and refuses attachments for the same reason',
-  rowNamed(locked, 'Link')?.slot === 'unlock first',
+  'and offers attachments for the same reason again',
+  rowNamed(locked, 'Link')?.off === false && rowNamed(locked, 'Link')?.slot !== 'unlock first',
   rowNamed(locked, 'Link')
 );
 check(

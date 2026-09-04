@@ -247,10 +247,15 @@ export class UrlGenerationService {
           : this.settings.lengthUnit.getValue() === LengthUnit.METER
             ? GlobalUnit.SI
             : GlobalUnit.METRIC;
+      // The reader's own pick, not one derived from the length system: metric
+      // and SI can show newtons or kilograms-force, and which was chosen has to
+      // ride the URL like every other setting. English has only lbf, so it is
+      // written whatever the panel last held.
+      const forceUnit = this.settings.forceUnit.getValue();
       encoder.addEnumSetting(
         EnumSetting.FORCE_UNIT,
         ForceUnit,
-        normalizedGlobal === GlobalUnit.ENGLISH ? ForceUnit.LBF : ForceUnit.NEWTON
+        normalizedGlobal === GlobalUnit.ENGLISH ? ForceUnit.LBF : forceUnit
       );
       encoder.addEnumSetting(EnumSetting.GLOBAL_UNIT, GlobalUnit, normalizedGlobal);
       encoder.addBoolSetting(BoolSetting.IS_INPUT_CW, this.settings.isInputCW.getValue());

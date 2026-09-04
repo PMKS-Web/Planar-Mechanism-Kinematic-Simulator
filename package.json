@@ -48,6 +48,7 @@
     "@types/node": "^24.13.2",
     "dxf-parser": "^1.1.2",
     "jsdom": "^29.1.1",
+    "playwright": "^1.62.1",
     "typescript": "~6.0.3",
     "vitest": "^4.1.9"
   }

@@ -32,7 +32,6 @@ import { KinematicsSolver } from 'src/app/model/mechanism/kinematic-solver';
 import { ANALYSIS_SERIES_COLORS, angularScale, formatReading } from 'src/app/model/analysis-series';
 export { ANALYSIS_SERIES_COLORS };
 import { ForceAnalysisMode } from 'src/app/model/mechanism/force-solver';
-import { ForceUnit } from '../../model/utils';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { FormBuilder } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
@@ -1255,20 +1254,15 @@ export class AnalysisGraphComponent
               ?.inputEffort?.kind;
             yAxisTitle =
               effortKind === 'force'
-                ? this.settingsService.forceUnit.value === ForceUnit.LBF
-                  ? 'Force (lbf)'
-                  : 'Force (N)'
-                : this.settingsService.forceUnit.value === ForceUnit.LBF
-                  ? 'Torque (lbf·in)'
-                  : 'Torque (N·m)';
+                ? `Force (${this.nup.unitLabel(this.settingsService.forceUnit.value)})`
+                : `Torque (${this.nup.torqueLabel(this.settingsService.forceUnit.value, this.settingsService.lengthUnit.value)})`;
             [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             seriesData.push({ name: 'Z', type: 'line', data: datum[0] });
             this.numberOfSeries = 1;
             break;
           }
           case 'Joint Forces':
-            yAxisTitle =
-              this.settingsService.forceUnit.value === ForceUnit.LBF ? 'Force (lbf)' : 'Force (N)';
+            yAxisTitle = `Force (${this.nup.unitLabel(this.settingsService.forceUnit.value)})`;
             [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });

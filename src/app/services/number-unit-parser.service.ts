@@ -10,6 +10,7 @@ import {
 } from '../model/utils';
 import {
   ANGULAR_VELOCITY_TO_RAD_PER_SEC,
+  FORCE_TO_N,
   INERTIA_TO_KG_M2,
   MASS_TO_KG,
   TIME_TO_SECONDS,
@@ -42,6 +43,8 @@ export class NumberUnitParserService {
         return 'lbf';
       case ForceUnit.NEWTON:
         return 'N';
+      case ForceUnit.KGF:
+        return 'kgf';
       case MassUnit.GRAM:
         return 'g';
       case MassUnit.KG:
@@ -70,6 +73,23 @@ export class NumberUnitParserService {
         return 'min';
     }
     return '';
+  }
+
+  /**
+   * The unit a torque reads in: the force unit times the length unit, always.
+   *
+   * One rule rather than three cases. Pounds-force already paired with inches
+   * because inches is what English measures in; centimeters was the one system
+   * where the torque did not follow its own drawing, so a reader working in cm
+   * was shown a moment in meters with a silent hundredth in the middle of it.
+   * A reader who wants the textbook's N·m picks SI, which is what that option
+   * is for.
+   *
+   * One function, because an axis title, a card's caption and an exported
+   * column heading all have to say the same thing.
+   */
+  public torqueLabel(force: ForceUnit, length: LengthUnit): string {
+    return `${this.unitLabel(force)}·${this.unitLabel(length)}`;
   }
 
   public formatValueAndUnit(value: number, units: AnyUnit): string {
@@ -229,6 +249,11 @@ export class NumberUnitParserService {
       case 'pounds':
         givenUnits = ForceUnit.LBF;
         break;
+      // Not bare 'kg', which is a mass and means something else two fields up.
+      case 'kgf':
+      case 'kilogramforce':
+        givenUnits = ForceUnit.KGF;
+        break;
       default:
         return [false, value];
     }
@@ -342,6 +367,39 @@ export class NumberUnitParserService {
       this.convertInertia(stored, this.storedInertiaUnit(length), display),
       display
     );
+  }
+
+  /**
+   * The unit a force is *stored* in, per length system — the one the solver's
+   * siUnitFactors and every circulating URL are written against.
+   *
+   * The reader's chosen force unit is a separate thing: under metric and SI
+   * they may read newtons or kilograms-force, and the stored number is
+   * newtons either way.
+   */
+  public storedForceUnit(length: LengthUnit): ForceUnit {
+    return length === LengthUnit.INCH ? ForceUnit.LBF : ForceUnit.NEWTON;
+  }
+
+  /** A stored force, formatted in whichever force unit the reader chose. */
+  public formatStoredForce(stored: number, length: LengthUnit, display: ForceUnit): string {
+    return this.formatValueAndUnit(
+      this.convertForce(stored, this.storedForceUnit(length), display),
+      display
+    );
+  }
+
+  /** Typed in the reader's force unit, returned in the one storage uses. */
+  public parseStoredForce(
+    input: string,
+    length: LengthUnit,
+    display: ForceUnit
+  ): [boolean, number] {
+    const [success, value] = this.parseForceString(input, display);
+    return [
+      success,
+      success ? this.convertForce(value, display, this.storedForceUnit(length)) : value,
+    ];
   }
 
   public parseInertiaString(input: string, desiredUnits: InertiaUnit): [boolean, number] {
@@ -528,28 +586,7 @@ export class NumberUnitParserService {
     return value;
   }
 
-  private convertForce(value: number, givenUnits: ForceUnit, desiredUnits: ForceUnit): number {
-    if (givenUnits == desiredUnits) return value;
-    switch (givenUnits) {
-      case ForceUnit.NEWTON:
-        switch (desiredUnits) {
-          case ForceUnit.LBF:
-            return value * 0.224809;
-        }
-        break;
-      case ForceUnit.LBF:
-        switch (desiredUnits) {
-          case ForceUnit.NEWTON:
-            return value / 0.224809;
-        }
-        break;
-    }
-    console.error(
-      'Error in NumberUnitParserService.convertForce(): No valid conversion found between ' +
-        ForceUnit[givenUnits] +
-        ' and ' +
-        ForceUnit[desiredUnits]
-    );
-    return value;
+  public convertForce(value: number, givenUnits: ForceUnit, desiredUnits: ForceUnit): number {
+    return this.convertViaBase(value, givenUnits, desiredUnits, FORCE_TO_N, 'convertForce');
   }
 }

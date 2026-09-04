@@ -237,19 +237,39 @@ record(
 await tab('Kinematic').click();
 await page.waitForTimeout(700);
 const inAnalysis = await unitsTip();
-// The permission model's own sentence now, rather than a second one written
-// here: the note used to read a master-only playing flag, so an unsynced row
-// running in Edit was told to switch to Edit mode while standing in it.
-// The analysis modes tune rather than lock now, so the sentence says both
-// halves: what you can do here, and where the typed version lives.
+// A clause, not a second sentence. The note used to paste the permission
+// model's whole refusal in here, which restated what the tooltip's own first
+// line had already said before naming a way out; what a grayed switch owes the
+// reader is the way out. Which way is still the model's answer -- the note used
+// to read a master-only playing flag, so an unsynced row running in Edit was
+// told to switch to Edit mode while standing in it.
 record(
   'and does say the way out once the switch is actually greyed',
-  /Drag on the grid to tune dimensions here/.test(inAnalysis) &&
-    /switch to Edit to type them\./.test(inAnalysis),
+  /^The unit for angles/.test(inAnalysis) && /Switch to Edit mode to change\.$/.test(inAnalysis),
   inAnalysis
 );
 await page.screenshot({ path: 'artifacts/ui-copy/tip-angle-units-locked.png' });
 await tab('Edit').click();
+await page.waitForTimeout(500);
+
+// The other half of the same clause: in Edit, parked away from the start, the
+// way out is the transport rather than the mode.
+await page.evaluate(() => {
+  const srv = window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  srv.seekMechanism(0, srv.mechanisms[0].cyclePeriod / 3);
+});
+await page.waitForTimeout(700);
+const midCycle = await unitsTip();
+record(
+  'and sends a reader parked mid-cycle to the start rather than to Edit',
+  /^The unit for angles/.test(midCycle) && /Return to the start pose to change\.$/.test(midCycle),
+  midCycle
+);
+await page
+  .getByRole('button', { name: /Stop|start/i })
+  .first()
+  .click()
+  .catch(() => {});
 await page.waitForTimeout(500);
 
 const viewTips = await page

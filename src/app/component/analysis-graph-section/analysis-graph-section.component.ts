@@ -17,7 +17,6 @@ import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { AnalysisSampleService } from '../../services/analysis-sample.service';
-import { ForceUnit } from '../../model/unit-enums';
 import { ForceAnalysisMode } from '../../model/mechanism/force-solver';
 import { Mechanism } from '../../model/mechanism/mechanism';
 import { ANALYSIS_SERIES_COLORS, angularScale, formatReading } from '../../model/analysis-series';
@@ -307,9 +306,9 @@ export class AnalysisGraphSectionComponent {
    * What a force card's number is in — the same two facts the plot's own axis
    * title is built from.
    *
-   * The sample arrives already converted (lbf under English units, and an
-   * input torque in lbf·in or N·m), so a fixed "N" mislabeled every English
-   * reading and every torque. Whether the input is driven by a force or a
+   * The sample arrives already converted (lbf under English units, kgf where
+   * that was picked, and an input torque in the matching moment unit), so a
+   * fixed "N" mislabeled every English reading and every torque. Whether the input is driven by a force or a
    * torque is a property of the drive, not of the units, so it is read off the
    * solved frames rather than guessed from the joint.
    */
@@ -322,6 +321,6 @@ export class AnalysisGraphSectionComponent {
       ?.getForceAnalysis(mode)
       .frames.find((frame) => frame.status === 'ok' && frame.inputEffort)?.inputEffort?.kind;
     if (kind === 'force') return force;
-    return this.settings.forceUnit.value === ForceUnit.LBF ? 'lbf·in' : 'N·m';
+    return this.nup.torqueLabel(this.settings.forceUnit.value, this.settings.lengthUnit.value);
   }
 }
