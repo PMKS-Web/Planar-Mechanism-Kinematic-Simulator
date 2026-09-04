@@ -1004,6 +1004,42 @@ onto the same mark, and neither was anything the padlock claimed:
 `e2e/locking.mjs` and `e2e/context-menu.mjs` pin both the other way round now, and the locking suite
 draws a real bar onto a locked joint rather than only reading the row's state.
 
+#### A cylinder holds its angle, and it is the two *mounts* that are held
+
+A cylinder points somewhere the same way a bar does, so it can hold that direction -- and the pair
+the hold is about is its two mounts, which is what the reader sees and what the panel's Angle field
+states. It has no *length* to hold: mount to mount is the stroke, which is what the drive moves, so
+holding it would be holding against the drive. The flag is written on the **barrel**, so whichever
+member was clicked gives one answer and one `H` entry rides the URL.
+
+Three traps, all of which this walked into:
+
+- **A cylinder cannot be recognized from a link.** It resolves from the joints of its *slide* -- the
+  welded pin, the block -- and a barrel carries neither: a barrel's joints are its mount and its
+  buried end, and its only tie to the rest of the part is the slot, an edge that points from the
+  prismatic joint *outward*. So there is no walk from a barrel to its own assembly, and every
+  question of the form "is this link part of a ram?" has to be asked of the **drawing**
+  (`cylinderMembers` in `model/link-holds.ts`). Without that, a barrel answers the plain-bar test --
+  it is a two-joint `RealLink`, after all -- and the solver is handed the barrel's own two joints,
+  a pair inside the part that the normalizer re-derives anyway. The hold then holds nothing anybody
+  can see, and it looks exactly like a solver bug.
+- **`holdAnchor` counted every cylinder joint as immovable**, mounts included, on the older rule
+  that a cylinder's joints live on a line the solver does not know. True of the interior and wrong
+  about the mounts, which are ordinary joints a reader drags -- and the failure is silent in the
+  worst way: the drag is not refused with a message, the mount simply does not move, because the
+  goal joint has weight zero and `settleHolds` returns a satisfied solution in which nothing moved.
+  Only the interior is an anchor now (`isCylinderInterior`).
+- **The mount-drag branch never asked the holds anything afterwards.** `jointStates.dragging` has a
+  branch of its own for a cylinder mount (it re-poses the ram parametrically), and it called
+  `dragJoint` -- so the constraint was applied -- but not `afterHoldMove`, so no guide line and no
+  refusal ever appeared for a mount. Two symptoms, one cause, and the second only became visible
+  once the first was fixed.
+
+The moral for the next one of these: when a hold "does not work", ask what pair of joints
+`heldBars` actually emitted before suspecting the solver. A unit test on `heldBars` found this in
+one run after an hour of browser probing found nothing.
+`src/tests/verification/cylinder-angle-hold.spec.ts` is that test.
+
 ### Where a drag's time goes, and how to re-measure it
 
 Measured on 2 Sep 2026 in a real Chromium with the DevTools profiler and tracer, on the

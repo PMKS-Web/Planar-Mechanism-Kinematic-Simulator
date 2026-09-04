@@ -2,29 +2,15 @@
   <!-- A row per value: its word and its help, then the field with the padlock
        inside it at the right. The words share one column, so the two fields
        line up. -->
-  @for (
-    which of [
-      {
-        key: 'length',
-        label: 'Length',
-        control: 'length',
-        help: 'Distance between the two joints of this link.',
-      },
-      {
-        key: 'angle',
-        label: 'Angle',
-        control: 'angle',
-        help: 'Angle of this link measured from the positive x axis. Counter-clockwise is positive.',
-      },
-    ];
-    track which.key
-  ) {
+  @for (which of rows(); track which) {
     <div class="row field">
       <span class="caption">
-        <span class="label" [class.dim]="disabled()">{{ which.label }}</span>
+        <span class="label" [class.dim]="disabled()">{{
+          which === 'length' ? 'Length' : 'Angle'
+        }}</span>
         <mat-icon
           class="label-help"
-          [matTooltip]="which.help"
+          [matTooltip]="helpFor(which)"
           matTooltipShowDelay="400"
           [class.inert]="disabled()"
           [matTooltipDisabled]="disabled()"
@@ -38,9 +24,9 @@
            baseline, which in a field this short is the underline. -->
       <div
         class="well"
-        [class.locked]="held($any(which.key))"
-        (mouseenter)="enter($any(which.key))"
-        (mouseleave)="leave($any(which.key))"
+        [class.locked]="held(which)"
+        (mouseenter)="enter(which)"
+        (mouseleave)="leave(which)"
       >
         <mat-form-field class="customInputForm" (click)="field.select()">
           <input
@@ -49,11 +35,11 @@
             matInput
             type="text"
             #field
-            [attr.data-hold-field]="which.key"
+            [attr.data-hold-field]="which"
             (keyup.enter)="field.blur()"
-            (focusin)="focus($any(which.key), field)"
-            (focusout)="blur($any(which.key))"
-            [formControlName]="which.control"
+            (focusin)="focus(which, field)"
+            (focusout)="blur(which)"
+            [formControlName]="which"
           />
         </mat-form-field>
         @if (holdable()) {
@@ -64,20 +50,20 @@
           <button
             type="button"
             class="padlock"
-            [class.on]="held($any(which.key))"
-            [attr.data-hold-toggle]="which.key"
-            [matTooltip]="padlockTitle($any(which.key))"
+            [class.on]="held(which)"
+            [attr.data-hold-toggle]="which"
+            [matTooltip]="padlockTitle(which)"
             matTooltipShowDelay="400"
-            (click)="toggle($any(which.key), $event)"
+            (click)="toggle(which, $event)"
           >
-            @if (held($any(which.key))) {
+            @if (held(which)) {
               <span class="word">Locked</span>
             }
             <svg width="15" height="15" viewBox="0 0 24 24">
               <path
                 fill="currentColor"
                 fill-rule="evenodd"
-                [attr.d]="held($any(which.key)) ? lockPath : unlockPath"
+                [attr.d]="held(which) ? lockPath : unlockPath"
               ></path>
             </svg>
           </button>

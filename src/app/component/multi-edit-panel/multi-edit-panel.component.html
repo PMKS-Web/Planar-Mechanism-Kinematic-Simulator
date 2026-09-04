@@ -28,6 +28,37 @@
       >
         Joint Position
       </dual-input-block>
+      <!-- The same three switches the one-joint panel carries, in the same
+           order and with the same words. A group in two minds shows mixed and
+           the switch says what pressing it will make them: eight joints half
+           grounded have no state to toggle to. -->
+      <toggle-block
+        [formGroup]="form"
+        _formControl="ground"
+        dataAction="ground"
+        [mixed]="groundState().kind === 'mixed'"
+        tooltip="Fixes every selected joint to the frame, so nothing can move them."
+      >
+        Grounded
+      </toggle-block>
+      <toggle-block
+        [formGroup]="form"
+        _formControl="slider"
+        dataAction="slider"
+        [mixed]="sliderState().kind === 'mixed'"
+        tooltip="Give every selected joint a sliding block. Off is a pin."
+      >
+        Slider
+      </toggle-block>
+      <toggle-block
+        [formGroup]="form"
+        _formControl="weld"
+        dataAction="weld"
+        [mixed]="weldState().kind === 'mixed'"
+        tooltip="Fuses whatever meets at each selected joint into one rigid body."
+      >
+        Welded
+      </toggle-block>
     </collapsible-subseciton>
     <collapsible-subseciton titleLabel="Visual Settings" [expanded]="true">
       <toggle-block
@@ -74,6 +105,31 @@
       >
         Mass
       </input-block>
+      @if (ordinaryBinaryLinks) {
+        <!-- The padlocks a single bar wears inside its two fields, said as
+             rows: the group's fields are one pair for the whole selection, so
+             there is no field of this bar's to put this bar's padlock in. The
+             two are exclusive, as they are on one bar -- holding an angle
+             lets go of a length. -->
+        <toggle-block
+          [formGroup]="form"
+          _formControl="fixedLength"
+          dataAction="fixedLength"
+          [mixed]="holdState('length').kind === 'mixed'"
+          tooltip="Hold every selected bar at the length it is now. Its ends may still turn about each other."
+        >
+          Fixed Length
+        </toggle-block>
+        <toggle-block
+          [formGroup]="form"
+          _formControl="fixedAngle"
+          dataAction="fixedAngle"
+          [mixed]="holdState('angle').kind === 'mixed'"
+          tooltip="Hold every selected bar at the direction it points now. Its ends may still stretch along that line."
+        >
+          Fixed Angle
+        </toggle-block>
+      }
     </collapsible-subseciton>
     <collapsible-subseciton titleLabel="Visual Settings" [expanded]="true">
       <color-picker type="link" [parts]="links" tooltip="The color of every selected link."

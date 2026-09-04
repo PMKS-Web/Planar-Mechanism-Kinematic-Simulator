@@ -7,6 +7,7 @@ import { Link, SliderBlock, RealLink } from '../model/link';
 import {
   Cylinder,
   CylinderPose,
+  isCylinderInterior,
   layoutCylinder,
   poseFromStrokeAndStart,
   sealedCylinderStructures,
@@ -325,7 +326,8 @@ export class GridUtilsService {
     // went on reporting a limit that no longer existed.
     this.lastHoldRefusal = undefined;
     const links = this.mechanismSrv.links;
-    const bars = heldBars(links);
+    const cylinders = this.mechanismSrv.sealedStructures();
+    const bars = heldBars(links, cylinders);
     if (bars.length === 0) return undefined;
     const asked = goals.map((goal) => this.mechanismSrv.joints.find((j) => j.id === goal.id));
     const reached = reachedByHolds(
@@ -359,7 +361,7 @@ export class GridUtilsService {
           immovable,
           bars: asked
             .filter((joint): joint is Joint => joint !== undefined)
-            .flatMap((joint) => heldBarsReaching(joint, links))
+            .flatMap((joint) => heldBarsReaching(joint, links, cylinders))
             .filter((bar, index, all) => all.indexOf(bar) === index),
           shortfall: solved.shortfall,
           satisfied: solved.satisfied,
@@ -458,22 +460,31 @@ export class GridUtilsService {
    */
   holdsImmobilizing(joint: RealJoint): RealLink[] {
     const links = this.mechanismSrv.links;
-    const bars = heldBars(links);
-    if (bars.length === 0 || heldBarsReaching(joint, links).length === 0) return [];
+    const cylinders = this.mechanismSrv.sealedStructures();
+    const bars = heldBars(links, cylinders);
+    if (bars.length === 0 || heldBarsReaching(joint, links, cylinders).length === 0) return [];
     const frozen = this.frozenJointIds();
     const joints = holdJoints(this.mechanismSrv.joints, (j) =>
       this.holdAnchor(j, frozen, new Set([joint.id]))
     );
     const solved = settleHolds(joints, bars, [{ id: joint.id, x: joint.x, y: joint.y }]);
-    return solved.immovable.includes(joint.id) ? heldBarsReaching(joint, links) : [];
+    return solved.immovable.includes(joint.id) ? heldBarsReaching(joint, links, cylinders) : [];
   }
 
   /**
    * Which joints the hold solver may never move: grounded pins are bolted to
    * the frame -- unless the pin is the one being moved, since in Edit a ground
    * pin drags like any other -- locked ones are held by a mark, and a slider's
-   * or a cylinder's joints live on a line of their own that the solver does
-   * not know.
+   * joints live on a line of their own that the solver does not know.
+   *
+   * A cylinder's *interior* is the same kind of thing: the barrel's buried
+   * end, the welded pin and the block are placed by the layout and re-derived
+   * on every normalize, so a solver that moved them would be overwritten and
+   * would meanwhile be solving the wrong geometry. Its two *mounts* are not --
+   * they are ordinary joints a reader grabs and drags, and every route that
+   * writes one back re-poses the ram around it. Anchoring them was what made a
+   * cylinder that holds its angle refuse the drag outright rather than slide
+   * the mount along the line it is holding.
    */
   isHoldAnchor(joint: RealJoint): boolean {
     return this.holdAnchor(joint, this.frozenJointIds());
@@ -485,7 +496,7 @@ export class GridUtilsService {
       frozen.has(joint.id) ||
       joint instanceof PrisJoint ||
       this.isAttachedToSlider(joint) ||
-      this.mechanismSrv.cylindersAt(joint).length > 0
+      this.mechanismSrv.cylindersAt(joint).some((cylinder) => isCylinderInterior(cylinder, joint))
     );
   }
 

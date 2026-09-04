@@ -398,15 +398,18 @@
             >Starts at
           </input-block>
           <!-- Same on-canvas overlay a link's angle field draws: the ram's axis is
-             mount to mount, which is exactly what the angle names. -->
-          <input-block
+             mount to mount, which is exactly what the angle names. And the same
+             padlock a bar's angle carries, for the same reason -- a cylinder
+             points somewhere, and a reader who has aimed it wants it to stay
+             aimed while the rest of the drawing moves. It has no Length row:
+             mount to mount is the stroke, which is what the drive moves. -->
+          <hold-field-block
             [formGroup]="cylinderForm"
-            _formControl="angle"
-            (fieldEntry)="setShowLinkAngleOverlay($event)"
-            [emitterOutputID]="-1"
-            tooltip="The direction the cylinder points, joint to joint."
-            >Angle
-          </input-block>
+            [link]="cylinderBodyLink(cyl)"
+            only="angle"
+            angleHelp="The direction the cylinder points, joint to joint."
+            (angleEntry)="setShowLinkAngleOverlay($event)"
+          ></hold-field-block>
           @if (cylinderClamped) {
             <div class="cylinder-clamped">{{ cylinderClamped }}</div>
           }

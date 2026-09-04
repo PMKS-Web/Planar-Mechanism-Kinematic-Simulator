@@ -1,11 +1,5 @@
 import { SvgGridService } from '../../services/svg-grid.service';
-import {
-  heldBarsAt,
-  heldBarsReaching,
-  heldBySentence,
-  holdList,
-  holdOf,
-} from '../../model/link-holds';
+import { heldBars, heldBarsReaching, heldBySentence, holdList } from '../../model/link-holds';
 import {
   OnDestroy,
   Component,
@@ -2082,6 +2076,12 @@ export class NewGridComponent implements OnDestroy {
           // Through dragJoint rather than straight at dragCylinderMount, so a
           // mount two rams share is agreed between them before either moves.
           this.gridUtils.dragJoint(this.activeObjService.selectedJoint, wanted);
+          // The same answer every other drag gets from the holds: the line the
+          // mount may slide on, and the refusal when it may not. A cylinder can
+          // hold its own angle now, so a mount is as much a joint the holds
+          // speak about as any other, and this branch was the one place that
+          // never asked.
+          this.afterHoldMove(this.activeObjService.selectedJoint);
           // Not announced. The mount stops following the cursor at the
           // shortest ram there is, and a part that stops moving under your own
           // hand has already said so.
@@ -2382,13 +2382,19 @@ export class NewGridComponent implements OnDestroy {
    */
   private holdGuideFor(joint: RealJoint): NewGridComponent['holdGuide'] {
     const links = this.mechanismSrv.links;
-    const reaching = heldBarsReaching(joint, links);
-    const at = heldBarsAt(joint, links);
-    if (reaching.length !== 1 || at.length !== 1) return undefined;
+    // From the solver's own bars rather than from the links: a cylinder's held
+    // pair is its two mounts, and neither of them is a joint of the link the
+    // hold is written on.
+    const cylinders = this.mechanismSrv.sealedStructures();
+    const bars = heldBars(links, cylinders);
+    const at = bars.filter((bar) => bar.a === joint.id || bar.b === joint.id);
+    if (heldBarsReaching(joint, links, cylinders).length !== 1 || at.length !== 1) return undefined;
     const bar = at[0];
-    const other = bar.joints.find((end) => end !== joint);
+    const other = this.mechanismSrv.joints.find(
+      (end) => end.id === (bar.a === joint.id ? bar.b : bar.a)
+    );
     if (!(other instanceof RealJoint) || !this.gridUtils.isHoldAnchor(other)) return undefined;
-    if (holdOf(bar) === 'length') {
+    if (bar.hold === 'length') {
       return {
         kind: 'arc',
         cx: other.x,
@@ -2396,17 +2402,15 @@ export class NewGridComponent implements OnDestroy {
         r: Math.hypot(joint.x - other.x, joint.y - other.y),
       };
     }
-    const [from, to] = bar.joints;
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const span = Math.hypot(dx, dy) || 1;
     const reach = 50 * this.settings.objectScale;
+    const dx = Math.cos(bar.angle) * reach;
+    const dy = Math.sin(bar.angle) * reach;
     return {
       kind: 'line',
-      x1: other.x - (dx / span) * reach,
-      y1: other.y - (dy / span) * reach,
-      x2: other.x + (dx / span) * reach,
-      y2: other.y + (dy / span) * reach,
+      x1: other.x - dx,
+      y1: other.y - dy,
+      x2: other.x + dx,
+      y2: other.y + dy,
     };
   }
 
@@ -2414,7 +2418,7 @@ export class NewGridComponent implements OnDestroy {
   private refuseHeldByHolds(joint: RealJoint, bars: RealLink[]): void {
     this.notify.refusal(
       'hold.joint',
-      `${heldBySentence(bars)}. Unlock one to move joint ${joint.name || joint.id}.`,
+      `${heldBySentence(bars, this.mechanismSrv.joints)}. Unlock one to move joint ${joint.name || joint.id}.`,
       { actions: this.unlockAction(bars) }
     );
   }
@@ -2423,7 +2427,7 @@ export class NewGridComponent implements OnDestroy {
   private refuseBeyondHolds(joint: RealJoint, bars: RealLink[]): void {
     this.notify.refusal(
       'hold.reach',
-      `Joint ${joint.name || joint.id} can go no further with ${holdList(bars)} locked.`,
+      `Joint ${joint.name || joint.id} can go no further with ${holdList(bars, this.mechanismSrv.joints)} locked.`,
       { actions: this.unlockAction(bars) }
     );
   }
@@ -2442,10 +2446,16 @@ export class NewGridComponent implements OnDestroy {
    */
   heldChips(): { id: string; x: number; y: number; text: string; w: number }[] {
     const chips: { id: string; x: number; y: number; text: string; w: number }[] = [];
-    for (const link of this.mechanismSrv.links) {
-      const hold = holdOf(link);
-      if (!hold || !(link instanceof RealLink) || this.mechanismSrv.isLockedTarget(link)) continue;
-      const [a, b] = link.joints;
+    // The solver's own bars, so a cylinder's chip sits in the wedge of the
+    // angle it is actually holding -- mount to mount -- rather than in the
+    // barrel's, which is a pair of joints inside the part.
+    for (const bar of heldBars(this.mechanismSrv.links, this.mechanismSrv.sealedStructures())) {
+      const link = this.mechanismSrv.links.find((one) => one.id === bar.id);
+      if (!(link instanceof RealLink) || this.mechanismSrv.isLockedTarget(link)) continue;
+      const a = this.mechanismSrv.joints.find((joint) => joint.id === bar.a);
+      const b = this.mechanismSrv.joints.find((joint) => joint.id === bar.b);
+      if (!a || !b) continue;
+      const hold = bar.hold;
       const dx = b.x - a.x;
       const dy = b.y - a.y;
       const span = Math.hypot(dx, dy) || 1;
@@ -2490,7 +2500,7 @@ export class NewGridComponent implements OnDestroy {
   overlayValueLocked(which: 'length' | 'angle'): boolean {
     if (this.activeObjService.objType !== 'Link') return false;
     const link = this.activeObjService.selectedLink;
-    return holdOf(link) === which && !this.mechanismSrv.isLockedTarget(link);
+    return this.mechanismSrv.holdOf(link) === which && !this.mechanismSrv.isLockedTarget(link);
   }
 
   /** Where a length's label goes: the middle of the bar. */
@@ -5378,7 +5388,9 @@ export class NewGridComponent implements OnDestroy {
   /** Whether this bar wears a length chip right now. */
   private lengthChipShown(link: Link): boolean {
     return (
-      this.holdsVisible() && holdOf(link) === 'length' && !this.mechanismSrv.isLockedTarget(link)
+      this.holdsVisible() &&
+      this.mechanismSrv.holdOf(link) === 'length' &&
+      !this.mechanismSrv.isLockedTarget(link)
     );
   }
 

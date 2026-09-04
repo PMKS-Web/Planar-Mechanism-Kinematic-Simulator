@@ -9,13 +9,14 @@ import {
 import { FormControl, FormGroup } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RealJoint } from '../../model/joint';
-import { RealLink } from '../../model/link';
+import { LinkHold, RealLink } from '../../model/link';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { CommonValue, aggregateCommonValue } from '../../model/selection';
 import { AngleUnit, LengthUnit, MassUnit } from '../../model/utils';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
 import { MechanismService } from '../../services/mechanism.service';
+import { GridUtilsService } from '../../services/grid-utils.service';
 import { MultiEditResult, MultiEditService } from '../../services/multi-edit.service';
 import { NotificationService } from '../../services/notification.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
@@ -52,6 +53,7 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
   readonly active = inject(ActiveObjService);
   private mechanism = inject(MechanismService);
   private multi = inject(MultiEditService);
+  private grid = inject(GridUtilsService);
   private batch = inject(SelectionBatchService);
   private nup = inject(NumberUnitParserService);
   private settings = inject(SettingsService);
@@ -90,6 +92,14 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
     mass: new FormControl('', { nonNullable: true, updateOn: 'blur' }),
     trace: new FormControl(false, { nonNullable: true }),
     locked: new FormControl(false, { nonNullable: true }),
+    // The structural switches a joint carries, and the two values a bar can
+    // hold. Assigned rather than toggled: a mixed group has no one state to
+    // flip, so what the switch shows is what the group will be.
+    ground: new FormControl(false, { nonNullable: true }),
+    weld: new FormControl(false, { nonNullable: true }),
+    slider: new FormControl(false, { nonNullable: true }),
+    fixedLength: new FormControl(false, { nonNullable: true }),
+    fixedAngle: new FormControl(false, { nonNullable: true }),
   });
 
   constructor() {
@@ -114,6 +124,23 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
     this.form.controls.locked.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((value) => this.setLocked(value));
+    this.form.controls.ground.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) =>
+        this.apply(this.multi.setGrounded(this.active.selectedPartRefs, value))
+      );
+    this.form.controls.weld.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.apply(this.multi.setWelded(this.active.selectedPartRefs, value)));
+    this.form.controls.slider.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.apply(this.multi.setSlider(this.active.selectedPartRefs, value)));
+    this.form.controls.fixedLength.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.setHold('length', value));
+    this.form.controls.fixedAngle.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.setHold('angle', value));
     this.active.onActiveObjChange
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.syncForm());
@@ -214,6 +241,64 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
   toggleLock(): void {
     this.setLocked(!this.lockChecked());
     this.form.patchValue({ locked: this.lockChecked() }, { emitEvent: false });
+  }
+
+  /**
+   * Grounded, read the way the one-joint panel reads it: a joint that carries a
+   * block is asking about its *slot*, which is the thing that can be bolted to
+   * the frame.
+   */
+  groundState(): CommonValue<boolean> {
+    return this.common(
+      this.joints.map((joint) => this.mechanism.sliderFor(joint)?.ground ?? joint.ground === true)
+    );
+  }
+
+  weldState(): CommonValue<boolean> {
+    return this.common(this.joints.map((joint) => joint.isWelded === true));
+  }
+
+  sliderState(): CommonValue<boolean> {
+    return this.common(this.joints.map((joint) => this.grid.isAttachedToSlider(joint)));
+  }
+
+  holdState(which: LinkHold): CommonValue<boolean> {
+    return this.common(this.links.map((link) => link.hold === which));
+  }
+
+  private checked(state: CommonValue<boolean>): boolean {
+    return state.kind === 'common' && state.value;
+  }
+
+  groundChecked(): boolean {
+    return this.checked(this.groundState());
+  }
+
+  weldChecked(): boolean {
+    return this.checked(this.weldState());
+  }
+
+  sliderChecked(): boolean {
+    return this.checked(this.sliderState());
+  }
+
+  holdChecked(which: LinkHold): boolean {
+    return this.checked(this.holdState(which));
+  }
+
+  /**
+   * A bar holds one value or the other, so switching one on takes the other
+   * off -- which is what the one-bar padlocks do, and what the menu's two rows
+   * mean side by side.
+   */
+  setHold(which: LinkHold, on: boolean): void {
+    this.apply(this.multi.setHold(this.active.selectedPartRefs, on ? which : undefined));
+  }
+
+  private apply(result: MultiEditResult): void {
+    this.report(result);
+    this.active.fakeUpdateSelectedObj();
+    this.syncForm();
   }
 
   traceState(): CommonValue<boolean> {
@@ -345,6 +430,11 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
         mass: this.massText(this.linkValue('mass')),
         trace: this.traceChecked(),
         locked: this.lockChecked(),
+        ground: this.groundChecked(),
+        weld: this.weldChecked(),
+        slider: this.sliderChecked(),
+        fixedLength: this.holdChecked('length'),
+        fixedAngle: this.holdChecked('angle'),
       },
       { emitEvent: false }
     );

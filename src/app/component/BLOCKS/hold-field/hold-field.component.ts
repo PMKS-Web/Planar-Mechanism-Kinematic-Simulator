@@ -4,8 +4,9 @@ import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatFormField } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
+import { Joint } from '../../../model/joint';
 import { LinkHold, RealLink } from '../../../model/link';
-import { holdOf, holdableBar } from '../../../model/link-holds';
+import { holdableBar } from '../../../model/link-holds';
 import { GridUtilsService } from '../../../services/grid-utils.service';
 import { MechanismService } from '../../../services/mechanism.service';
 
@@ -26,6 +27,11 @@ type Which = 'length' | 'angle';
  *
  * The form controls stay the panel's `length` and `angle`, so what a typed
  * number does is unchanged; this block only decides when one may be typed.
+ *
+ * A cylinder gets the angle row alone (`only`). It points somewhere the same
+ * way a bar does, and its panel already states that bearing in a field -- but
+ * it has no length to hold, because the distance between its mounts is the
+ * stroke, and holding the stroke would be holding against the drive.
  */
 @Component({
   selector: 'hold-field-block',
@@ -39,6 +45,10 @@ export class HoldFieldComponent {
   readonly link = input.required<RealLink>();
   /** True for a link whose length and angle are not single numbers -- a body of three or more joints. */
   readonly disabled = input<boolean>(false);
+  /** Show one value's row rather than both, for a part that only has the one. */
+  readonly only = input<Which | undefined>(undefined);
+  /** What the angle row's help says, when this is not a plain bar. */
+  readonly angleHelp = input<string | undefined>(undefined);
   /** -1 while the length field is hovered or focused, -2 when it is left; the canvas draws the dimension. */
   readonly lengthEntry = output<number>();
   readonly angleEntry = output<number>();
@@ -55,14 +65,33 @@ export class HoldFieldComponent {
   readonly unlockPath =
     'M7 10V7a5 5 0 0 1 10 0v1.5h-2V7a3 3 0 0 0-6 0v3H7Zm-2.5 0h15v11h-15V10Zm2 2v7h11v-7h-11Z';
 
-  /** The hold this bar is under, if any. */
-  hold(): LinkHold {
-    return holdOf(this.link());
+  /** The rows to show: both values, or the one this part has. */
+  rows(): Which[] {
+    const only = this.only();
+    return only ? [only] : ['length', 'angle'];
   }
 
-  /** Whether this bar can hold a value at all: a two-joint bar, not locked in place. */
+  helpFor(which: Which): string {
+    if (which === 'length') return 'Distance between the two joints of this link.';
+    return (
+      this.angleHelp() ??
+      'Angle of this link measured from the positive x axis. Counter-clockwise is positive.'
+    );
+  }
+
+  /** The hold this bar is under, if any. */
+  hold(): LinkHold {
+    // Through the service, which has the drawing: a cylinder is recognized
+    // from its joints, and its hold is written on a member the reader may not
+    // be the one looking at.
+    return this.mechanism.holdOf(this.link());
+  }
+
+  /** Whether this part can hold a value at all, and is not already pinned in place. */
   holdable(): boolean {
-    return holdableBar(this.link()) && !this.disabled() && !this.lockedInPlace();
+    const shaped =
+      this.mechanism.cylinderOfLink(this.link()) !== undefined || holdableBar(this.link());
+    return shaped && !this.disabled() && !this.lockedInPlace();
   }
 
   /**
@@ -74,8 +103,20 @@ export class HoldFieldComponent {
    */
   lockedInPlace(): boolean {
     const frozen = this.gridUtils.frozenJointIds();
-    const joints = this.link().joints;
+    const joints = this.pinned();
     return joints.length > 0 && joints.every((joint) => frozen.has(joint.id));
+  }
+
+  /**
+   * The joints holding this part still: its own, or a cylinder's two mounts.
+   *
+   * A cylinder's other joints are machinery -- the barrel's buried end and the
+   * welded pin are placed by the layout and re-derived on every normalize --
+   * so they are not what a reader locked and not what pins the part.
+   */
+  private pinned(): Joint[] {
+    const sealed = this.mechanism.cylinderOfLink(this.link());
+    return sealed ? [sealed.barrelFar, sealed.rodFar] : this.link().joints;
   }
 
   held(which: Which): boolean {

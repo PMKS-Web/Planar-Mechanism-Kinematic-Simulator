@@ -20,6 +20,7 @@ import { wireGraph } from '../../test-utils/mechanism-harness';
 import { RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { MODEL_SCALE } from '../model/render-scale';
+import { MultiEditService } from './multi-edit.service';
 import { SelectionBatchService } from './selection-batch.service';
 
 /**
@@ -72,6 +73,7 @@ function createBuilderHarness() {
       { provide: KeyboardShortcutsService, useValue: keysStub },
       { provide: ContextMenuBuilderService, deps: [] },
       { provide: SelectionBatchService, deps: [MechanismService] },
+      { provide: MultiEditService, deps: [] },
     ],
   });
   return {
@@ -157,6 +159,61 @@ describe('the right-click menu', () => {
       const model = harness.builder.build(parts.a, noHandlers);
 
       expect(row(model, 'Delete Selected (2)')!.refusal).toBeUndefined();
+    });
+
+    it('carries the joint switches, and says Mixed when the group disagrees', () => {
+      // The same four the one-joint menu carries, in the same words: a reader
+      // who has learned where Grounded is should not learn again because they
+      // selected two joints.
+      const parts = fourBar(harness.mechanism);
+      harness.active.replacePartSelection(parts.o);
+      harness.active.togglePartSelection(parts.a);
+
+      const model = harness.builder.build(parts.a, noHandlers);
+      expect(labels(model)).toEqual(
+        expect.arrayContaining(['Grounded', 'Slider', 'Welded', 'Trace Path', 'Locked'])
+      );
+      // O is ground and A is not, so there is no one state to show.
+      expect(row(model, 'Grounded')!.checked).toBe(false);
+      expect(row(model, 'Grounded')!.hint).toBe('Mixed');
+      // And no length or angle rows: those belong to bars.
+      expect(labels(model)).not.toContain('Fixed Length');
+    });
+
+    it('grays a group weld for the reason one joint would have been grayed for', () => {
+      const parts = fourBar(harness.mechanism);
+      harness.active.replacePartSelection(parts.a);
+      harness.active.togglePartSelection(parts.t);
+
+      const model = harness.builder.build(parts.a, noHandlers);
+      const welded = row(model, 'Welded')!;
+      // T is a tracer on one link, so there is nothing at it to fuse -- and
+      // the sentence is the one `weldRefusal` writes, naming the joint.
+      expect(welded.refusal?.long).toContain('T cannot be welded');
+      expect(welded.refusal?.long).toContain(harness.grid.weldRefusal(parts.t)!.long);
+    });
+
+    it('carries the two held values for a selection of bars, and nothing else', () => {
+      const parts = fourBar(harness.mechanism);
+      harness.active.replacePartSelection(parts.crank);
+      harness.active.togglePartSelection(parts.rocker);
+
+      const model = harness.builder.build(parts.crank, noHandlers);
+      expect(labels(model)).toEqual(expect.arrayContaining(['Fixed Length', 'Fixed Angle']));
+      expect(labels(model)).not.toContain('Grounded');
+      expect(row(model, 'Fixed Length')!.refusal).toBeUndefined();
+
+      row(model, 'Fixed Length')!.action();
+      expect([parts.crank.hold, parts.rocker.hold]).toEqual(['length', 'length']);
+    });
+
+    it('and refuses them on a body of three joints, which has neither', () => {
+      const parts = fourBar(harness.mechanism);
+      harness.active.replacePartSelection(parts.crank);
+      harness.active.togglePartSelection(parts.coupler);
+
+      const model = harness.builder.build(parts.crank, noHandlers);
+      expect(row(model, 'Fixed Length')!.refusal?.short).toBe('two-joint links only');
     });
   });
 

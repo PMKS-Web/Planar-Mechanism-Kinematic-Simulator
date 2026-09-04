@@ -62,7 +62,7 @@
           [class.selectable]="row.isMechanism"
           [class.combined]="!row.isMechanism"
           [class.selected]="isSelected(row)"
-          (click)="selectMechanism(row)"
+          (click)="selectMechanism(row, $event)"
           (mouseenter)="hoverMechanism(row, true)"
           (mouseleave)="hoverMechanism(row, false)"
         >

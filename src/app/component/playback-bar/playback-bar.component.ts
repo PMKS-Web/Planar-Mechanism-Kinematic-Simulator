@@ -936,8 +936,21 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     this.mechanism.setSyncMechanisms(!this.mechanism.syncMechanisms);
   }
 
-  /** The chip names a machine, so pressing it selects that machine. */
-  selectMechanism(row: PlaybackRow): void {
+  /**
+   * The chip names a machine, so pressing it selects that machine -- and so
+   * does the row's own surface, which is what makes the whole card a target.
+   *
+   * A press that landed on a *control* the row contains is about that control.
+   * On a phone the row is where the transport, the rail and the view drawer
+   * live, so play, stop, speed and the visibility button were all selecting M1
+   * on their way past -- and selecting a machine clears whatever parts the
+   * reader had picked on the drawing. Two of these controls stop propagation
+   * for their own reasons; asking here covers the rest, `app-view-controls`
+   * and its whole subtree included.
+   */
+  selectMechanism(row: PlaybackRow, event?: Event): void {
+    const from = event?.target as HTMLElement | null;
+    if (from?.closest?.('button, a, input, select, app-view-controls')) return;
     if (row.index >= 0) {
       this.activeObj.selectMechanism(row.index);
     }

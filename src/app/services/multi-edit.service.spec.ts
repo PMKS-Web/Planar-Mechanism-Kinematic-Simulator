@@ -7,6 +7,7 @@ import { wireGraph } from '../../test-utils/mechanism-harness';
 import { GridUtilsService } from './grid-utils.service';
 import { MechanismService } from './mechanism.service';
 import { MultiEditService } from './multi-edit.service';
+import { SaveHistoryService } from './save-history.service';
 
 const S = MODEL_SCALE;
 
@@ -21,13 +22,26 @@ describe('MultiEditService', () => {
   let mechanism: MechanismService;
   let service: MultiEditService;
   let grid: GridUtilsService;
+  let history: SaveHistoryService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({});
     mechanism = TestBed.inject(MechanismService);
     service = TestBed.inject(MultiEditService);
     grid = TestBed.inject(GridUtilsService);
+    history = TestBed.inject(SaveHistoryService);
   });
+
+  /**
+   * How many entries the history really gained.
+   *
+   * Not a spy on `MechanismService.save`: that method is the one holding the
+   * saves back during a batch, so replacing it counts the calls it exists to
+   * swallow. What a reader feels is presses of Undo, which is this.
+   */
+  function historyWrites() {
+    return vi.spyOn(history, 'save').mockImplementation(() => {});
+  }
 
   function twoBars() {
     const a = new RevJoint('A', 0, 0);
@@ -126,5 +140,85 @@ describe('MultiEditService', () => {
     expect(ab.joints.every((joint) => (joint as RevJoint).locked)).toBe(true);
     expect(cd.joints.every((joint) => (joint as RevJoint).locked)).toBe(true);
     expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('grounds a whole selection in one edit, and saves once for it', () => {
+    const { a, c } = twoBars();
+    const save = historyWrites();
+
+    expect(service.setGrounded(refs('joint:A', 'joint:C'), true).ok).toBe(true);
+
+    expect(a.ground).toBe(true);
+    expect(c.ground).toBe(true);
+    // One press of the switch, one entry in the history. Grounding eight joints
+    // used to cost eight presses of Undo to take back.
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('and un-grounds one, leaving a joint that was already where it was asked alone', () => {
+    const { a, c } = twoBars();
+    a.ground = true;
+
+    expect(service.setGrounded(refs('joint:A', 'joint:C'), false).ok).toBe(true);
+    expect(a.ground).toBe(false);
+    expect(c.ground).toBe(false);
+
+    // Assigned, not toggled: asking again for what they already are is not the
+    // other state, and a mixed group has no one state to flip to.
+    const save = historyWrites();
+    expect(service.setGrounded(refs('joint:A', 'joint:C'), false).ok).toBe(true);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('drops an input from a joint it grounds, as the one-joint switch does', () => {
+    const { a } = twoBars();
+    a.input = true;
+
+    expect(service.setGrounded(refs('joint:A'), true).ok).toBe(true);
+    expect(a.ground).toBe(true);
+    expect(a.input).toBe(false);
+  });
+
+  it('refuses the whole weld when one joint of the selection cannot take it', () => {
+    const { a, b, c } = twoBars();
+    const before = mechanism.links.map((link) => link.id);
+
+    // A is on one link, so there is nothing at it to fuse -- and a group weld
+    // that did the rest anyway would leave the reader unpicking it.
+    const result = service.setWelded(refs('joint:A', 'joint:B', 'joint:C'), true);
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? '' : result.refusal.code).toBe('selection.weld');
+    expect(result.ok ? '' : result.refusal.message).toContain('A');
+    expect(mechanism.links.map((link) => link.id)).toEqual(before);
+    expect([a, b, c].some((joint) => joint.isWelded)).toBe(false);
+  });
+
+  it('holds one value on every selected bar, and lets go of the other', () => {
+    const { ab, cd } = twoBars();
+    const save = historyWrites();
+
+    expect(service.setHold(refs('link:AB', 'link:CD'), 'length').ok).toBe(true);
+    expect([ab.hold, cd.hold]).toEqual(['length', 'length']);
+    expect(save).toHaveBeenCalledTimes(1);
+
+    // A bar holds its length or its angle, never both.
+    expect(service.setHold(refs('link:AB', 'link:CD'), 'angle').ok).toBe(true);
+    expect([ab.hold, cd.hold]).toEqual(['angle', 'angle']);
+
+    expect(service.setHold(refs('link:AB', 'link:CD'), undefined).ok).toBe(true);
+    expect([ab.hold, cd.hold]).toEqual([undefined, undefined]);
+  });
+
+  it('refuses a held value on anything but an ordinary two-joint bar', () => {
+    const { a, b, c } = twoBars();
+    const triangle = new RealLink('ABC', [a, b, c]);
+    mechanism.links = [triangle];
+    wireGraph(mechanism);
+
+    const result = service.setHold(refs('link:ABC'), 'length');
+    expect(result.ok).toBe(false);
+    expect(result.ok ? '' : result.refusal.code).toBe('selection.binary-links-only');
+    expect(triangle.hold).toBeUndefined();
   });
 });

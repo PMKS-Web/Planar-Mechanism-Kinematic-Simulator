@@ -128,6 +128,11 @@ const openLibraryReference = async () => {
 await openMechanism(page, BASE + FOURBAR);
 await page.waitForTimeout(250);
 const dismissTutorial = page.getByText('No thanks', { exact: true });
+
+// A row of the open right-click menu, by its words. Scoped to the menu because
+// the Edit panel deliberately says the same words for the same actions -- one
+// action, two surfaces, one sentence -- so a bare text match finds both.
+const menuRow = (label) => page.locator('#contextMenu').getByText(label, { exact: true });
 if ((await dismissTutorial.count()) > 0 && (await dismissTutorial.isVisible())) {
   await dismissTutorial.click();
 }
@@ -361,7 +366,7 @@ check(
     (await page.locator('#contextMenu').innerText()).includes('Delete Selected (2)')
 );
 const jointCount = await page.locator('#jointHolder > svg').count();
-await page.getByText('Duplicate Selected (2)', { exact: true }).click();
+await menuRow('Duplicate Selected (2)').click();
 await page.waitForTimeout(450);
 const copiedSelection = await selection();
 check(
@@ -390,7 +395,7 @@ await page.click(`#joint_${copiedIds[0]}`);
 await clickWith(`#joint_${copiedIds[1]}`, 'Control');
 const copiedAt = await center(`#joint_${copiedIds[1]}`);
 await page.mouse.click(copiedAt.x, copiedAt.y, { button: 'right' });
-await page.getByText('Delete Selected (2)', { exact: true }).click();
+await menuRow('Delete Selected (2)').click();
 await page.waitForTimeout(450);
 check(
   'Delete Selected removes the batch atomically',
@@ -402,6 +407,114 @@ check(
   'one Undo restores the complete deletion batch',
   (await page.locator('#jointHolder > svg').count()) === jointCount + 2
 );
+
+// --- The switches a whole selection carries ---------------------------------
+//
+// A group edit that runs the one-part path once per part costs one press of
+// Undo per part, which is not what the reader did. Each of these is one press
+// of a switch, so each has to be one entry in the history -- and the panel and
+// the right-click menu have to say the same thing about the same action.
+
+const jointState = () =>
+  page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    return Object.fromEntries(
+      grid.mechanismSrv.joints.map((joint) => [
+        joint.id,
+        { ground: joint.ground === true, welded: joint.isWelded === true },
+      ])
+    );
+  });
+const holds = () =>
+  page.evaluate(() =>
+    Object.fromEntries(
+      ng
+        .getComponent(document.querySelector('app-new-grid'))
+        .mechanismSrv.links.map((link) => [link.id, link.hold ?? null])
+    )
+  );
+
+await openMechanism(page, BASE + FOURBAR);
+await page.waitForTimeout(300);
+
+await page.click('#joint_A');
+await clickWith('#joint_C', 'Control');
+await page.waitForTimeout(250);
+const beforeGround = await jointState();
+await page.locator('app-multi-edit-panel [data-action="ground"]').click();
+await page.waitForTimeout(700);
+const afterGround = await jointState();
+check(
+  'one press of Grounded grounds the whole selection',
+  !beforeGround.A.ground && !beforeGround.C.ground && afterGround.A.ground && afterGround.C.ground,
+  JSON.stringify({ beforeGround, afterGround })
+);
+await page.getByRole('button', { name: 'Undo' }).click();
+await page.waitForTimeout(800);
+const undoneGround = await jointState();
+check(
+  'and one press of Undo takes both back, not one of them',
+  !undoneGround.A.ground && !undoneGround.C.ground,
+  JSON.stringify(undoneGround)
+);
+
+// The menu says the same, and says Mixed when the group disagrees. O is ground
+// and A is not; T is a tracer on one link, so there is nothing at it to fuse.
+await page.click('#joint_O');
+await clickWith('#joint_A', 'Control');
+await clickWith('#joint_T', 'Control');
+const atA = await center('#joint_A');
+await page.mouse.click(atA.x, atA.y, { button: 'right' });
+await page.waitForTimeout(400);
+const groupRows = await page.evaluate(() =>
+  [...document.querySelectorAll('#contextMenu .cm-row')].map((row) => ({
+    label: row.querySelector('.cm-row__label')?.textContent.trim(),
+    hint: row.querySelector('.cm-row__hint')?.textContent.trim() ?? '',
+    off: row.className.includes('is-off') || row.getAttribute('aria-disabled') === 'true',
+  }))
+);
+check(
+  'the group menu carries the same four switches the one-joint menu does',
+  ['Grounded', 'Slider', 'Welded', 'Trace Path'].every((label) =>
+    groupRows.some((row) => row.label === label)
+  ),
+  JSON.stringify(groupRows.map((row) => row.label))
+);
+check(
+  'and says Mixed where the group disagrees',
+  groupRows.find((row) => row.label === 'Grounded')?.hint === 'Mixed',
+  JSON.stringify(groupRows.find((row) => row.label === 'Grounded'))
+);
+check(
+  'a group weld is grayed for the reason one joint would have been',
+  groupRows.find((row) => row.label === 'Welded')?.off === true,
+  JSON.stringify(groupRows.find((row) => row.label === 'Welded'))
+);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(250);
+
+// Two bars, and the pair of held values a bar carries.
+await page.click('#OA');
+await clickWith('#CD', 'Control');
+await page.waitForTimeout(250);
+await page.locator('app-multi-edit-panel [data-action="fixedLength"]').click();
+await page.waitForTimeout(700);
+const heldLength = await holds();
+check(
+  'one press holds the length of every selected bar',
+  heldLength.OA === 'length' && heldLength.CD === 'length' && heldLength.ACT === null,
+  JSON.stringify(heldLength)
+);
+await page.locator('app-multi-edit-panel [data-action="fixedAngle"]').click();
+await page.waitForTimeout(700);
+const heldAngle = await holds();
+check(
+  'and a bar holds one value or the other, never both',
+  heldAngle.OA === 'angle' && heldAngle.CD === 'angle',
+  JSON.stringify(heldAngle)
+);
+await openMechanism(page, BASE + FOURBAR);
+await page.waitForTimeout(300);
 
 await openDrawingDialog();
 check(
@@ -429,8 +542,14 @@ await page.waitForTimeout(300);
 const unitButtons = page
   .locator('app-drawing-export .field', { hasText: 'Units' })
   .locator('button');
+// `segmented-block` says which segment is chosen through aria-pressed, which
+// is the durable half of the contract -- the class it also carries has been
+// renamed once already, and this check went on passing an empty list.
 const unitClasses = await unitButtons.evaluateAll((nodes) =>
-  nodes.map((node) => ({ label: node.textContent.trim(), on: node.classList.contains('on') }))
+  nodes.map((node) => ({
+    label: node.textContent.trim(),
+    on: node.getAttribute('aria-pressed') === 'true',
+  }))
 );
 check(
   'a unit is selected on arrival, matching the project',
@@ -673,7 +792,13 @@ await page.screenshot({ path: `${OUT}/narrow-selection.png`, fullPage: true });
 // Framed for the space that is actually free first. The narrow layout's bottom
 // stack grew a row when the shared scrub card came back, and a drawing framed
 // before that is a drawing whose lower half is now behind the sheet.
-await page.getByRole('button', { name: 'Reset View' }).click();
+// On a phone the six view controls collapse behind one `visibility` button, so
+// there is no Reset View to press: it is the sheet's "Fit to view" row.
+await page.locator('.viewSheetButton').click();
+await page.waitForTimeout(300);
+// The row shuts the sheet itself. Escape would too -- and would also clear the
+// selection the next check is about.
+await page.locator('.viewRow', { hasText: 'Fit to view' }).click();
 await page.waitForTimeout(900);
 
 // Every selected joint, not two named ones. The phone's bottom stack grew a

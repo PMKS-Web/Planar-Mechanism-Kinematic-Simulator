@@ -1,9 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { Coord } from '../model/coord';
 import { RealJoint } from '../model/joint';
-import { Link, RealLink } from '../model/link';
+import { Link, LinkHold, RealLink } from '../model/link';
+import { holdableBar } from '../model/link-holds';
 import { SelectedPartRef, resolveSelectedParts } from '../model/selection';
 import { getNewOtherJointPos } from '../model/utils';
+import { ActiveObjService } from './active-obj.service';
 import { GridUtilsService } from './grid-utils.service';
 import { MechanismService } from './mechanism.service';
 
@@ -26,6 +28,7 @@ const OK: MultiEditResult = { ok: true };
 export class MultiEditService {
   private mechanism = inject(MechanismService);
   private grid = inject(GridUtilsService);
+  private active = inject(ActiveObjService);
 
   private refusal(code: string, short: string, message: string): MultiEditResult {
     return { ok: false, refusal: { code, short, message } };
@@ -207,6 +210,191 @@ export class MultiEditService {
     joints.forEach((joint) => (joint.showCurve = traced));
     this.mechanism.updateMechanism(true);
     this.mechanism.onMechUpdateState.next(2);
+    return OK;
+  }
+
+  /**
+   * Ground or un-ground every selected joint, in one press and one undo.
+   *
+   * The rule is `toggleGround`'s, joint for joint -- a joint that carries a
+   * block grounds its *slot* rather than its pin, and grounding a pin drops an
+   * input it was carrying -- and the whole group is one structural edit, so it
+   * comes back in one press of Undo rather than in eight.
+   *
+   * Assigned rather than toggled: eight joints in two states have no one
+   * "other" state to flip to, and a toggle over a mixed group leaves it mixed
+   * the other way round. The switch says what the group will be.
+   */
+  setGrounded(refs: readonly SelectedPartRef[], grounded: boolean): MultiEditResult {
+    const joints = this.joints(refs);
+    if (!joints) {
+      return this.refusal(
+        'selection.joints-only',
+        'joints only',
+        'Grounded can be switched when every selected item is a joint.'
+      );
+    }
+    // Asked before anything is written: a group already in the state the
+    // switch asks for is not an edit, and writing a history entry for it costs
+    // the reader a press of Undo that puts nothing back.
+    const wanted = joints.filter(
+      (joint) => (this.mechanism.sliderFor(joint)?.ground ?? joint.ground === true) !== grounded
+    );
+    if (wanted.length === 0) return OK;
+    this.mechanism.batched(() => {
+      for (const joint of wanted) {
+        const slider = this.mechanism.sliderFor(joint);
+        if (slider) {
+          if (grounded) slider.groundAt(slider.slotAngle);
+          else slider.detach();
+        } else {
+          joint.ground = grounded;
+          if (grounded) joint.input = false;
+        }
+      }
+      this.mechanism.finishStructuralEdit(true);
+    });
+    return OK;
+  }
+
+  /**
+   * Weld or unweld every selected joint.
+   *
+   * Preflighted whole: a weld that half the group refuses is not a half-done
+   * weld, it is a group the reader has to unpick. `weldRefusal` is the same
+   * model the one-joint menu grays its row from, so the sentence the group
+   * gets is the sentence one joint would have got.
+   *
+   * Driven through the one-joint path with the selection pointed at each in
+   * turn, because a weld is a restructure -- link ids, subsets, connected
+   * joints -- and a second implementation of it would be a second set of bugs.
+   */
+  weldRefusal(refs: readonly SelectedPartRef[], welded: boolean): MultiEditRefusal | undefined {
+    const joints = this.joints(refs);
+    if (!joints) {
+      return {
+        code: 'selection.joints-only',
+        short: 'joints only',
+        message: 'Welded can be switched when every selected item is a joint.',
+      };
+    }
+    if (!welded) return undefined;
+    for (const joint of joints.filter((one) => one.isWelded !== welded)) {
+      const refused = this.grid.weldRefusal(joint);
+      if (refused) {
+        return {
+          code: 'selection.weld',
+          short: refused.short,
+          message: `${joint.name || joint.id} cannot be welded: ${refused.long}`,
+        };
+      }
+    }
+    return undefined;
+  }
+
+  setWelded(refs: readonly SelectedPartRef[], welded: boolean): MultiEditResult {
+    const refused = this.weldRefusal(refs, welded);
+    if (refused) return { ok: false, refusal: refused };
+    const joints = this.joints(refs)!;
+    const wanted = joints.filter((joint) => joint.isWelded !== welded);
+    if (wanted.length === 0) return OK;
+    return this.eachJoint(wanted, () => this.mechanism.toggleWeldedJoint());
+  }
+
+  /**
+   * Give every selected joint a sliding block, or take it away.
+   *
+   * The refusal that matters is the cylinder's -- a ram is one sealed part and
+   * its block is the ram -- and it is asked before anything moves, so a
+   * selection holding one mount does not half-convert the rest.
+   */
+  sliderRefusal(refs: readonly SelectedPartRef[], slider: boolean): MultiEditRefusal | undefined {
+    const joints = this.joints(refs);
+    if (!joints) {
+      return {
+        code: 'selection.joints-only',
+        short: 'joints only',
+        message: 'Slider can be switched when every selected item is a joint.',
+      };
+    }
+    for (const joint of joints.filter((one) => this.grid.isAttachedToSlider(one) !== slider)) {
+      if (this.mechanism.cylinderAt(joint)) {
+        return {
+          code: 'cylinder.sealed-slider',
+          short: 'part is sealed',
+          message: `${joint.name || joint.id} belongs to a cylinder, which is one sealed part — delete the cylinder instead of editing its slider.`,
+        };
+      }
+    }
+    return undefined;
+  }
+
+  setSlider(refs: readonly SelectedPartRef[], slider: boolean): MultiEditResult {
+    const refused = this.sliderRefusal(refs, slider);
+    if (refused) return { ok: false, refusal: refused };
+    const joints = this.joints(refs)!;
+    const wanted = joints.filter((joint) => this.grid.isAttachedToSlider(joint) !== slider);
+    if (wanted.length === 0) return OK;
+    return this.eachJoint(wanted, () => this.mechanism.toggleSlider());
+  }
+
+  /**
+   * Hold, or stop holding, one value on every selected bar.
+   *
+   * A bar holds its length or its angle, never both, so this assigns the one
+   * the reader asked for -- which is what the single bar's padlocks do when
+   * the other one is already down.
+   */
+  holdRefusal(refs: readonly SelectedPartRef[]): MultiEditRefusal | undefined {
+    const links = this.links(refs);
+    if (!links) {
+      return {
+        code: 'selection.links-only',
+        short: 'links only',
+        message: 'A held length or angle can be switched when every selected item is a link.',
+      };
+    }
+    if (!links.every(holdableBar)) {
+      return {
+        code: 'selection.binary-links-only',
+        short: 'two-joint links only',
+        message: 'A length or an angle is held on ordinary two-joint links.',
+      };
+    }
+    return undefined;
+  }
+
+  setHold(refs: readonly SelectedPartRef[], hold: LinkHold): MultiEditResult {
+    const refused = this.holdRefusal(refs);
+    if (refused) return { ok: false, refusal: refused };
+    const links = this.links(refs)!;
+    if (links.every((link) => link.hold === hold)) return OK;
+    this.mechanism.batched(() => {
+      links.forEach((link) => (link.hold = hold));
+      this.mechanism.updateMechanism(true);
+    });
+    this.active.fakeUpdateSelectedObj();
+    return OK;
+  }
+
+  /**
+   * Run a one-joint operation over several joints as a single edit.
+   *
+   * The operations it drives read the selection rather than taking an
+   * argument, so the selection is pointed at each joint and put back at the
+   * end -- and the saves are held, so the group is one entry in the history.
+   */
+  private eachJoint(joints: readonly RealJoint[], work: () => void): MultiEditResult {
+    const was = this.active.selectedJoint;
+    const selection = this.active.snapshotPartSelection();
+    this.mechanism.batched(() => {
+      for (const joint of joints) {
+        this.active.selectedJoint = joint;
+        work();
+      }
+    });
+    this.active.selectedJoint = was;
+    this.active.restorePartSelection(selection, this.mechanism.joints, this.mechanism.links);
     return OK;
   }
 

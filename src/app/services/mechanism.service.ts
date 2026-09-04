@@ -1,6 +1,6 @@
 import { Injectable, Injector, inject } from '@angular/core';
 import { LinkHold } from '../model/link';
-import { holdOf, holdableBar } from '../model/link-holds';
+import { cylinderHoldCarrier, cylinderOf, holdOf, holdableBar } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { speedTurning, turnsClockwise } from '../model/drive-direction';
 import { Link, SliderBlock, RealLink } from '../model/link';
@@ -2010,7 +2010,15 @@ export class MechanismService {
 
   /** The hold this link is under: its length, its angle, or nothing. */
   holdOf(link: Link | undefined): LinkHold {
-    return holdOf(link);
+    // With the drawing, so a cylinder is recognized: the model's own answer is
+    // about bars, and a cylinder's barrel is a bar in its own right that would
+    // otherwise report about its own two ends rather than about the part.
+    return holdOf(link, this.joints, this.sealedStructures());
+  }
+
+  /** The cylinder this link is a member of, if the drawing says it is one. */
+  cylinderOfLink(link: Link | undefined): Cylinder | undefined {
+    return cylinderOf(link, this.joints, this.sealedStructures());
   }
 
   /**
@@ -2023,6 +2031,19 @@ export class MechanismService {
    * survives undo and travels in a shared link.
    */
   setHold(link: Link, hold: LinkHold): void {
+    // A cylinder holds its angle on its barrel, so whichever member the reader
+    // clicked writes to the same place. It has no length to hold: the distance
+    // between its mounts is the stroke, which is what the drive moves, so a
+    // hold on that would be a hold against the drive.
+    const sealed = this.cylinderOfLink(link);
+    if (sealed) {
+      const carrier = cylinderHoldCarrier(sealed);
+      if (!carrier || hold === 'length' || carrier.hold === hold) return;
+      carrier.hold = hold;
+      this.updateMechanism(true);
+      this.activeObjService.fakeUpdateSelectedObj();
+      return;
+    }
     if (!holdableBar(link)) return;
     const was = link.hold;
     if (was === hold) return;
@@ -5859,6 +5880,30 @@ export class MechanismService {
    * its end. One gesture earns one undo entry.
    */
   private savesHeld = false;
+
+  /**
+   * Run several edits as one entry in the history.
+   *
+   * Every one-part edit ends by saving, which is right when it *is* the edit
+   * and wrong when a group action runs it once per part: the reader then has to
+   * press Undo eight times to take back one press of a toggle. The saves are
+   * held for the duration and one is written at the end.
+   *
+   * Nested calls are the outer one's: a batch inside a `capturingPose`, or one
+   * batch inside another, still leaves exactly one entry.
+   */
+  batched<T>(work: () => T): T {
+    if (this.savesHeld) return work();
+    this.savesHeld = true;
+    let result: T;
+    try {
+      result = work();
+    } finally {
+      this.savesHeld = false;
+    }
+    this.save();
+    return result;
+  }
 
   /**
    * Run a structural edit that captures the pose it is made at.

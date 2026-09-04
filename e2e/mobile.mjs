@@ -1044,6 +1044,63 @@ const screenOf = (id) =>
   await page.waitForTimeout(600);
 }
 
+// --- the transport line is a row of controls, not a way to select a machine --
+//
+// On a phone the transport, the machine's rail and the view drawer all sit on
+// the row that selects the machine when it is pressed. Selecting a machine
+// clears whatever parts the reader had picked, so play, stop, speed and the
+// visibility button were each undoing a selection on their way past.
+{
+  await open(payloads['4-Bar']);
+  const selection = () =>
+    page.evaluate(() => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      return {
+        parts: grid.activeObjService.selectedPartRefs.map((ref) => ref.kind + ':' + ref.id),
+        type: grid.activeObjService.getSelectedObjType(),
+      };
+    });
+  await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const [first, second] = ['A', 'B'].map((id) =>
+      grid.mechanismSrv.joints.find((joint) => joint.id === id)
+    );
+    grid.activeObjService.replacePartSelection(first);
+    grid.activeObjService.togglePartSelection(second);
+  });
+  await page.waitForTimeout(300);
+  const picked = await selection();
+
+  await page.locator('.viewSheetButton').click();
+  await page.waitForTimeout(400);
+  const afterDrawer = await selection();
+  await page.locator('.viewRow', { hasText: 'Fit to view' }).click();
+  await page.waitForTimeout(700);
+  const afterFit = await selection();
+  await page.locator('.playButton').click();
+  await page.waitForTimeout(400);
+  const afterPlay = await selection();
+  await page.locator('.playButton').click();
+  await page.waitForTimeout(300);
+
+  record(
+    'the view drawer, Fit to view and Play all leave the selection alone',
+    picked.parts.length === 2 &&
+      [afterDrawer, afterFit, afterPlay].every((state) => state.parts.length === 2),
+    { picked, afterDrawer, afterFit, afterPlay }
+  );
+
+  // And the row still does what the row is for.
+  await page.locator('.mechChip').first().click();
+  await page.waitForTimeout(400);
+  const afterChip = await selection();
+  record(
+    'while the machine chip still picks the machine',
+    afterChip.type === 'Mechanism',
+    afterChip
+  );
+}
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
 // --- the first visit ---------------------------------------------------------

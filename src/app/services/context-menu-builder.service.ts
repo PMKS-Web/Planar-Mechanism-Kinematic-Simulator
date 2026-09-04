@@ -26,6 +26,8 @@ import { EditPermissionService } from './edit-permission.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 import { VectorQuantity, VECTOR_ICON, VECTOR_LABEL } from '../model/vector-trace';
 import { SelectionBatchService } from './selection-batch.service';
+import { SelectedPartRef } from '../model/selection';
+import { MultiEditService } from './multi-edit.service';
 
 /** What the canvas does when a row asks for a gesture rather than an edit. */
 export interface MenuHandlers {
@@ -61,6 +63,7 @@ export type MenuTarget = Joint | Link | Force | SynthesisPose | string;
 export class ContextMenuBuilderService {
   private mechanism = inject(MechanismService);
   private gridUtils = inject(GridUtilsService);
+  private multiEdit = inject(MultiEditService);
   private settings = inject(SettingsService);
   private nup = inject(NumberUnitParserService);
   private activeObj = inject(ActiveObjService);
@@ -120,6 +123,7 @@ export class ContextMenuBuilderService {
         {
           label: 'State',
           rows: [
+            ...this.selectionStateRows(refs, parts),
             new MenuRow({
               label: 'Locked',
               icon: 'lock',
@@ -156,6 +160,99 @@ export class ContextMenuBuilderService {
         },
       ],
     };
+  }
+
+  /**
+   * The switches a whole selection carries, in the words one part carries them
+   * in.
+   *
+   * The Edit panel grew these first; a row here that said something else about
+   * the same action would be the third place a reader has to learn the rule.
+   * Both quote the same model -- `MultiEditService`'s own preflight -- so a
+   * grayed row and a refused press give one sentence.
+   */
+  private selectionStateRows(
+    refs: readonly SelectedPartRef[],
+    parts: readonly (RealJoint | RealLink)[]
+  ): MenuRow[] {
+    const joints = parts.filter((part): part is RealJoint => part instanceof RealJoint);
+    const links = parts.filter((part): part is RealLink => part instanceof RealLink);
+    const rows: MenuRow[] = [];
+    const state = (values: readonly boolean[]) => ({
+      all: values.every(Boolean),
+      mixed: values.some(Boolean) && !values.every(Boolean),
+    });
+    const said = (refusal: { short: string; message: string } | undefined) =>
+      refusal ? { short: refusal.short, long: refusal.message } : undefined;
+
+    if (joints.length === parts.length) {
+      const ground = state(
+        joints.map((joint) => (this.mechanism.sliderFor(joint)?.ground ?? joint.ground) === true)
+      );
+      const slider = state(joints.map((joint) => this.gridUtils.isAttachedToSlider(joint)));
+      const weld = state(joints.map((joint) => joint.isWelded === true));
+      const trace = state(joints.map((joint) => joint.showCurve === true));
+      rows.push(
+        new MenuRow({
+          label: 'Grounded',
+          icon: 'add_ground',
+          kind: 'toggle',
+          checked: ground.all,
+          hint: ground.mixed ? 'Mixed' : undefined,
+          needs: 'structure',
+          action: () => this.multiEdit.setGrounded(refs, !ground.all),
+        }),
+        new MenuRow({
+          label: 'Slider',
+          icon: 'add_slider',
+          kind: 'toggle',
+          checked: slider.all,
+          hint: slider.mixed ? 'Mixed' : undefined,
+          needs: 'structure',
+          refusal: said(this.multiEdit.sliderRefusal(refs, !slider.all)),
+          action: () => this.multiEdit.setSlider(refs, !slider.all),
+        }),
+        new MenuRow({
+          label: 'Welded',
+          icon: 'weld_joint',
+          kind: 'toggle',
+          checked: weld.all,
+          hint: weld.mixed ? 'Mixed' : undefined,
+          needs: 'structure',
+          refusal: said(this.multiEdit.weldRefusal(refs, !weld.all)),
+          action: () => this.multiEdit.setWelded(refs, !weld.all),
+        }),
+        new MenuRow({
+          label: 'Trace Path',
+          icon: 'show_path',
+          kind: 'toggle',
+          checked: trace.all,
+          hint: trace.mixed ? 'Mixed' : undefined,
+          action: () => this.multiEdit.setTracePath(refs, !trace.all),
+        })
+      );
+    }
+
+    if (links.length === parts.length) {
+      const refused = said(this.multiEdit.holdRefusal(refs));
+      for (const which of ['length', 'angle'] as const) {
+        const held = state(links.map((link) => link.hold === which));
+        rows.push(
+          new MenuRow({
+            label: which === 'length' ? 'Fixed Length' : 'Fixed Angle',
+            icon: which === 'length' ? 'straighten' : 'architecture',
+            material: true,
+            kind: 'toggle',
+            checked: held.all,
+            hint: held.mixed ? 'Mixed' : undefined,
+            needs: 'structure',
+            refusal: refused,
+            action: () => this.multiEdit.setHold(refs, held.all ? undefined : which),
+          })
+        );
+      }
+    }
+    return rows;
   }
 
   // ------------------------------------------------------------------ grid
@@ -461,7 +558,7 @@ export class ContextMenuBuilderService {
     // A joint on a held bar is confined by it: it still moves, on the arc or
     // the line the hold leaves it, and the row says so and names the holds,
     // because the way to move it freely is on the bar rather than here.
-    const holding = heldBarsAt(joint, this.mechanism.links);
+    const holding = heldBarsAt(joint, this.mechanism.links, this.mechanism.sealedStructures());
     if (holding.length > 0) {
       const named = holding.map((bar) => bar.name || bar.id).join(', ');
       rows.push(
@@ -472,7 +569,7 @@ export class ContextMenuBuilderService {
           action: () => undefined,
           refusal: {
             short: `locked by ${named}`,
-            long: `${holding.map(describeHold).join(' and ')} ${holding.length > 1 ? 'confine' : 'confines'} this joint. Unlock ${holding.length > 1 ? 'them' : 'it'} on the link to move it freely.`,
+            long: `${holding.map((bar) => describeHold(bar, this.mechanism.joints)).join(' and ')} ${holding.length > 1 ? 'confine' : 'confines'} this joint. Unlock ${holding.length > 1 ? 'them' : 'it'} on the link to move it freely.`,
           },
         })
       );
@@ -611,7 +708,7 @@ export class ContextMenuBuilderService {
       return `${end} · ${this.cylinderName(sealed)}`;
     }
     const bodies = joint instanceof RealJoint ? joint.links : [];
-    const holding = heldBarsAt(joint, this.mechanism.links);
+    const holding = heldBarsAt(joint, this.mechanism.links, this.mechanism.sealedStructures());
     const held =
       holding.length > 0
         ? ` · on fixed ${holding.map((bar) => bar.name || bar.id).join(', ')}`
@@ -684,6 +781,7 @@ export class ContextMenuBuilderService {
                 checked: sealed.slider.input,
                 action: () => this.mechanism.toggleCylinderInput(sealed),
               }),
+              ...this.cylinderHoldRows(link as RealLink),
               this.lockRow(link as RealLink, undefined),
             ],
           },
@@ -811,6 +909,48 @@ export class ContextMenuBuilderService {
    * the row for the other says it moves the hold rather than adding one, and
    * a locked link, which already holds both, offers neither.
    */
+  /**
+   * A cylinder holds the direction it points in, the way a bar holds its angle.
+   *
+   * Only the angle. The distance between a cylinder's mounts is its stroke,
+   * which is the quantity its drive moves, so a hold on that would be a hold
+   * against the drive rather than a constraint on the drawing -- which is why
+   * this is one row where the bar's pair is two.
+   */
+  private cylinderHoldRows(link: RealLink): MenuRow[] {
+    const on = this.mechanism.holdOf(link) === 'angle';
+    return [
+      new MenuRow({
+        label: 'Fixed Angle',
+        icon: 'architecture',
+        material: true,
+        kind: 'toggle',
+        checked: on,
+        needs: 'structure',
+        hint: on ? undefined : this.cylinderAngle(link),
+        action: () => this.mechanism.setHold(link, on ? undefined : 'angle'),
+        refusal: this.mechanism.isLockedTarget(link)
+          ? { short: 'locked in place', long: 'Locked in place already holds the angle.' }
+          : undefined,
+        tip: 'Hold this cylinder at the angle it points now. Dragging a mount slides it along that line.',
+      }),
+    ];
+  }
+
+  /** A cylinder's bearing, mount to mount -- the number the row would hold. */
+  private cylinderAngle(link: RealLink): string {
+    const sealed = this.mechanism.cylinderOfLink(link);
+    if (!sealed) return '';
+    const degrees =
+      (Math.atan2(sealed.rodFar.y - sealed.barrelFar.y, sealed.rodFar.x - sealed.barrelFar.x) *
+        180) /
+      Math.PI;
+    return this.nup.formatValueAndUnit(
+      this.nup.convertAngle(degrees, AngleUnit.DEGREE, this.settings.angleUnit.getValue()),
+      this.settings.angleUnit.getValue()
+    );
+  }
+
   private holdRows(link: RealLink): MenuRow[] {
     const refusal: MenuRefusal | undefined = !holdableBar(link)
       ? {

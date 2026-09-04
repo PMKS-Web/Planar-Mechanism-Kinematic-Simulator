@@ -7,7 +7,8 @@
  * watch the hold move over with a message that offers the way back; hold a
  * second bar so a joint has nowhere to go, and watch that drag refuse with a
  * red ring and a Release button; undo, and watch the hold come off -- which
- * proves it rides the URL.
+ * proves it rides the URL. Then the same thing for a cylinder, whose held pair
+ * is its two mounts rather than any link's own joints.
  *
  *   PMKS_BASE_URL=<origin> node e2e/link-holds.mjs
  */
@@ -27,6 +28,11 @@ mkdirSync(OUT, { recursive: true });
 // The stock four-bar: ground A, crank AB, coupler BC, rocker CD, ground D.
 const FOUR_BAR =
   '0P.TY.K,0.101.MA,A,0mv,0VU,0.GB,B,0e_,E6,0.GC,C,l1,WW,0.KD,D,qD,0Pk,0..YRAB,AB,Fe,Fe,0ix,08i,c5cae9,A,B,,.YRBC,BC,Fe,Fe,32,NJ,303e9f,B,C,,.YRCD,CD,Fe,Fe,nd,3P,0d125a,C,D,,...JBq';
+
+// The Gate 5 boom: ground O and G, boom O->C, and the ram G->C that drives it.
+// Its mounts are G and C; N and P are its interior, placed by the layout.
+const CYLINDER_BOOM =
+  '2v.Ay,Fe.5,0.1011.4O,O,0,0,0.0C,C,0,_W,0.4G,G,ku,0,0.0N,N,Ju,Z-,0.8P,P,R0,QX,0.ZS,S,R0,QX,0,GN,G,N..YROC,OC,0,0,0,VG,303e9f,O,C,,.YRGN,GN,0,0,XO,I0,0d125a,G,N,,.YRPC,PC,0,0,DW,iW,26A69A,P,C,,.YPPS,PS,0,0,0,0,,P,S,,...N_X*2LpxmY';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
@@ -434,6 +440,67 @@ await page.evaluate(() => {
   c.mechanismSrv.toggleLock(c.mechanismSrv.links.find((l) => l.id === 'CD'));
 });
 await page.waitForTimeout(300);
+
+// --- A cylinder holds the direction it points, and it is the mounts ----------
+
+// A hold on a ram is not a hold on any one of its links: the pair being held is
+// the two mounts, and the flag lives on the barrel, which is a two-joint bar in
+// its own right whose own joints are inside the part. Both halves failed once:
+// the solver was handed the barrel's own ends, and then the mounts were counted
+// as joints the solver may never move, so the drag was refused in silence.
+await page.goto(`${BASE}/?${CYLINDER_BOOM}`);
+await waitForReady(page);
+await page.waitForTimeout(600);
+
+await page.locator('.cylinder-rod').click();
+await page.waitForTimeout(400);
+const padlock = page.locator('[data-hold-toggle="angle"]');
+record(
+  "a cylinder's panel offers one padlock, on its angle",
+  (await padlock.count()) === 1 && (await page.locator('[data-hold-toggle="length"]').count()) === 0
+);
+await padlock.click();
+await page.waitForTimeout(600);
+
+const bearing = async () => {
+  const [g, c] = [await jointModel('G'), await jointModel('C')];
+  return (Math.atan2(c.y - g.y, c.x - g.x) * 180) / Math.PI;
+};
+const heldAt = await bearing();
+const mountBefore = await jointModel('C');
+record(
+  'and the bar it hands the solver is the two mounts',
+  await page.evaluate(() => {
+    const c = ng.getComponent(document.querySelector('app-new-grid'));
+    const bars = c.mechanismSrv.links.filter((l) => l.hold);
+    return bars.length === 1 && bars[0].id === 'GN';
+  })
+);
+
+const mountOn = await jointOnScreen('C');
+await page.mouse.move(mountOn.x, mountOn.y);
+await page.mouse.down();
+for (let step = 1; step <= 12; step++) {
+  await page.mouse.move(mountOn.x + (300 * step) / 12, mountOn.y + (120 * step) / 12);
+  await page.waitForTimeout(25);
+}
+await page.waitForTimeout(250);
+const guideDrawn = await page.evaluate(() => !!document.querySelector('.holdGuide'));
+await page.mouse.up();
+await page.waitForTimeout(500);
+const mountAfter = await jointModel('C');
+record(
+  'the driven mount slides along the held line rather than off it',
+  Math.abs((await bearing()) - heldAt) < 1e-3 && dist(mountBefore, mountAfter) > 50,
+  { heldAt, now: await bearing(), moved: dist(mountBefore, mountAfter) }
+);
+record('with the line it may slide on drawn while the hand is on it', guideDrawn);
+
+// It rides the URL, which is what makes it survive a share and an undo.
+record(
+  "the shared string carries the ram's hold",
+  (await page.evaluate(() => localStorage.getItem('lastDrawing') ?? '')).includes('HaGN')
+);
 
 // --- Leaving Edit stands the chips down --------------------------------------
 
