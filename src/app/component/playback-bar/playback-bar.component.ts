@@ -21,7 +21,7 @@ import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ViewportService } from '../../services/viewport.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
 import { LoadingService } from '../../services/loading.service';
-import { TimeUnit } from '../../model/utils';
+import { AngleUnit, TimeUnit } from '../../model/utils';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { MatIcon } from '@angular/material/icon';
 import { ViewControlsComponent } from '../view-controls/view-controls.component';
@@ -682,7 +682,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     }
     if (!profile.linear) {
       const degrees = Math.round((fraction * profile.span * 180) / Math.PI);
-      return degrees === 0 ? undefined : `${degrees}\u00b0`;
+      return degrees === 0 ? undefined : this.angleText(degrees);
     }
     const shown = this.nup.formatValueAndUnit(
       (fraction * profile.span) / MODEL_SCALE,
@@ -805,6 +805,15 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     };
   }
 
+  /** An angle in degrees, written the way this document writes angles. */
+  private angleText(degrees: number): string {
+    const unit = this.settings.angleUnit.value;
+    return this.nup.formatValueAndUnit(
+      this.nup.convertAngle(degrees, AngleUnit.DEGREE, unit),
+      unit
+    );
+  }
+
   /**
    * Where the input is, in the units the input is measured in.
    *
@@ -820,7 +829,11 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     }
     if (!profile.linear) {
       const bearing = this.mechanism.inputAngleDegrees(index);
-      return bearing === undefined ? '' : `${Math.round(bearing)}\u00b0`;
+      // In the unit the reader asked for. This card spelled its own degree
+      // sign, so it went on saying "80°" over a document set to radians --
+      // while the bottom bar said "radians", the panels said "1.05 rad" and
+      // this card's own *length* readout converted properly.
+      return bearing === undefined ? '' : this.angleText(bearing);
     }
     // A loop has a span now, but no low end to measure a position above: what
     // `along` counts there is distance from the drawn pose, not a place in a

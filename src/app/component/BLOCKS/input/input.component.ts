@@ -82,7 +82,14 @@ export class InputComponent {
 
   updateOverlay(): void {
     const wants = this.mouseOver || this.focused;
-    if (wants === this.showing) return;
+    // Re-asserted every time it is wanted, not only on the change from not
+    // wanted. The canvas clears its overlays whenever the selected object
+    // announces itself -- which a committed edit makes it do, for the same
+    // object -- and this block is not rebuilt by that, so it went on believing
+    // the dimension was drawn. Nothing then re-asked for it: pointing at the
+    // same field again was a no-change, and the field's dimension stayed gone
+    // until the reader selected something else and came back.
+    if (!wants && !this.showing) return;
     this.showing = wants;
     this.fieldEntry.emit(wants ? this.emitterOutputID() : -2);
   }
