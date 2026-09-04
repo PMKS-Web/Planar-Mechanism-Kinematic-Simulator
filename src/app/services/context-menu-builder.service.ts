@@ -346,9 +346,13 @@ export class ContextMenuBuilderService {
         refusal: crowds,
       }),
     ];
-    // A cylinder's own joints take no third member, so the row is absent there
-    // rather than grayed: that is a fact about the part, not this arrangement.
-    if (!this.mechanism.cylinderAt(joint)) {
+    // Offered on a joint that already carries one: a mount is a pin like any
+    // other, and two rams sharing an anchor is an ordinary thing to draw -- a
+    // boom lifted by one and curled by another. `dragJoint` already agrees the
+    // move between every ram on a shared mount before any of them takes it.
+    // What a cylinder's *interior* joints refuse is a third member, and those
+    // are not reachable by the pointer.
+    {
       rows.push(
         new MenuRow({
           label: 'Cylinder',
@@ -1005,7 +1009,10 @@ export class ContextMenuBuilderService {
       // is the word doing the work, and a different glyph is what a reader
       // moving quickly actually reads.
       label: `Delete entire mechanism${named}`,
+      // A Material ligature: the app's own set has no glyph for this, and the
+      // point is to look unlike the `remove` on the row above it.
       icon: 'delete_sweep',
+      material: true,
       destructive: true,
       hint: joints > 0 ? `${joints} ${joints === 1 ? 'joint' : 'joints'}` : undefined,
       tip: 'Deletes the whole machine this part belongs to — every joint, link and force in it.',
