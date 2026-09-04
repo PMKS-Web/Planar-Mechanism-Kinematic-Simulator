@@ -157,6 +157,22 @@ function blendAngle(from: number, to: number, blend: number): number {
   return from + delta * blend;
 }
 
+/**
+ * The nearest number a person would have picked: 1, 2 or 5 times a power of ten.
+ *
+ * A default that reads 13.7 rpm claims to have been calculated from something,
+ * and invites the reader to treat it as a result rather than as a starting
+ * point. The ladder is the one every axis and every ruler climbs.
+ */
+export function niceSpeed(raw: number): number {
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  const decade = Math.pow(10, Math.floor(Math.log10(raw)));
+  const steps = [1, 2, 5, 10].map((step) => step * decade);
+  return steps.reduce((best, step) =>
+    Math.abs(Math.log(step / raw)) < Math.abs(Math.log(best / raw)) ? step : best
+  );
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -514,28 +530,41 @@ export class MechanismService {
     // pointer move. A machine is kept when everything its solve was built
     // from reads the same as last time.
     const built = new Map<string, { fingerprint: string; mechanism: Mechanism }>();
-    this.mechanisms = this.partitions.map((partition) => {
-      const key = partitionKey(partition);
-      const fingerprint = this.solveFingerprint(partition, unitStr);
-      const kept = this.lastBuilt.get(key);
-      const mechanism =
-        kept && kept.fingerprint === fingerprint
-          ? kept.mechanism
-          : new Mechanism(
-              partition.joints,
-              partition.links,
-              partition.forces,
-              this.ics,
-              this.settingsService.isGravity.value,
-              unitStr,
-              this.inputVelocityFor(partition),
-              'adaptive',
-              new Set(partition.ownJoints.map((joint) => joint.id))
-            );
-      built.set(key, { fingerprint, mechanism });
-      return mechanism;
-    });
+    const buildEach = () =>
+      this.partitions.map((partition) => {
+        const key = partitionKey(partition);
+        const fingerprint = this.solveFingerprint(partition, unitStr);
+        const kept = this.lastBuilt.get(key);
+        const mechanism =
+          kept && kept.fingerprint === fingerprint
+            ? kept.mechanism
+            : new Mechanism(
+                partition.joints,
+                partition.links,
+                partition.forces,
+                this.ics,
+                this.settingsService.isGravity.value,
+                unitStr,
+                this.inputVelocityFor(partition),
+                'adaptive',
+                new Set(partition.ownJoints.map((joint) => joint.id))
+              );
+        built.set(key, { fingerprint, mechanism });
+        return mechanism;
+      });
+
+    this.mechanisms = buildEach();
     this.lastBuilt = built;
+    // With the cycles in hand: a drive somebody has just switched on is given a
+    // speed fitted to how long its own machine actually takes, which cannot be
+    // known before it has solved. Fitting one changes its machine's
+    // fingerprint, so that machine -- and only that machine -- is solved again
+    // at the speed it has just been given. Once: the ask is cleared by the
+    // fit, so there is no third pass.
+    if (this.fitAskedDriveSpeeds()) {
+      this.mechanisms = buildEach();
+      this.lastBuilt = built;
+    }
     // Every machine's held state, re-laid onto the machines that now exist:
     // matched by identity, defaulted for one that has just appeared, and
     // dropped for one that has gone. Written wholesale rather than in place
@@ -4079,6 +4108,9 @@ export class MechanismService {
     if (!sealed.slider.input) {
       // One input per mechanism, same as adjustInput.
       this.clearInputsSharingMechanismWith(sealed.slider);
+      // And the same first-speed guess: a ram's stroke decides how long its
+      // cycle runs, so one number cannot suit every ram anybody draws.
+      this.askForFittedSpeed(sealed.slider);
     }
     sealed.slider.input = !sealed.slider.input;
     // Saved: the row is an edit like the pin's Driven Input, and it used to
@@ -4160,6 +4192,11 @@ export class MechanismService {
     // first and the refusal returned after, which left the mechanism with no
     // driven joint at all -- a click that was refused still took the input
     // away, and there was no undo entry to get it back.
+    // A drive being switched on is the one moment a fitted speed is wanted: the
+    // press that creates it, and never again. Asked here rather than decided
+    // here, because how long a cycle takes is a fact about a motion that has
+    // not been solved yet.
+    if (!jointToToggleInput.input) this.askForFittedSpeed(jointToToggleInput);
     if (!jointToToggleInput.input) {
       const refusal = describeActuator(jointToToggleInput);
       if (typeof refusal === 'string') {
@@ -5203,6 +5240,72 @@ export class MechanismService {
         driven.driveSpeed = this.driveSpeedOf(driven);
       }
     });
+  }
+
+  /**
+   * How long a freshly drawn machine should take to go round: six seconds.
+   *
+   * Long enough to follow a coupler curve, short enough not to wait through.
+   */
+  private static readonly WANTED_CYCLE_SECONDS = 6;
+
+  /**
+   * Give a drive that has never been given a speed one that suits its machine.
+   *
+   * The document-wide default is a single number, and the two kinds of drive it
+   * has to serve are not comparable: a crank's revolution takes 60/rpm seconds
+   * whatever the linkage is, while a ram's stroke at one length-unit a second
+   * takes as many seconds as the stroke is long. So one default gave a
+   * four-bar a reasonable twelve seconds and a short ram a cycle over in one --
+   * and a long one that ran for a minute.
+   *
+   * Once, at the moment the machine first solves, and then never again: it is a
+   * first guess and not a governor, so playing it, editing it or reversing it
+   * leaves the number alone, and the panel shows a number the reader can type
+   * over. Rounded to one of 1, 2 or 5 times a power of ten, because a speed
+   * that reads 13.7 rpm claims to have been calculated from something.
+   */
+  private fitAskedDriveSpeeds(): boolean {
+    if (this.fitSpeedFor.size === 0) return false;
+    let fitted = false;
+    this.partitions.forEach((partition, index) => {
+      const driven = partition.ownJoints.find(
+        (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+      );
+      if (!driven || !this.fitSpeedFor.has(driven.id)) return;
+      this.fitSpeedFor.delete(driven.id);
+      const solved = this.mechanisms[index];
+      const period = solved?.isMechanismValid() ? solved.cyclePeriod : 0;
+      if (!(period > 0) || !Number.isFinite(period)) return;
+      const was = this.driveSpeedOf(driven);
+      const wanted = niceSpeed((Math.abs(was) * period) / MechanismService.WANTED_CYCLE_SECONDS);
+      if (!(wanted > 0) || wanted === Math.abs(was)) return;
+      this.setDriveSpeed(driven, Math.sign(was) * wanted);
+      fitted = true;
+    });
+    return fitted;
+  }
+
+  /**
+   * Drives switched on a moment ago, waiting for a speed to be fitted to them.
+   *
+   * An ask rather than a memory, and it is the narrow half of the question on
+   * purpose. Everything else that ends with a driven joint -- a shared link
+   * opening, an undo, a template, a fixture in a test -- already has the speed
+   * it is supposed to run at, and a guess made over the top of one of those
+   * would change a mechanism nobody asked to change. Only the press that turns
+   * a drive on adds to this.
+   */
+  private fitSpeedFor = new Set<string>();
+
+  /**
+   * Ask for a speed to be fitted to this drive when its machine next solves.
+   *
+   * The number cannot be chosen here: how long a cycle takes is a fact about
+   * the solved motion, and at the moment of the press there is not one yet.
+   */
+  askForFittedSpeed(joint: RealJoint): void {
+    if (joint.driveSpeed === 0) this.fitSpeedFor.add(joint.id);
   }
 
   /**
