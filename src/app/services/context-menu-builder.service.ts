@@ -215,6 +215,21 @@ export class ContextMenuBuilderService {
           needs: 'structure',
           action: () => this.multiEdit.setGrounded(refs, !ground.all),
         }),
+        // Named and grayed rather than left out. A reader who has learned the
+        // one-joint menu comes looking for it, and a row that is missing
+        // teaches nothing; the machine having exactly one input is the answer.
+        new MenuRow({
+          label: 'Driven Input',
+          icon: 'add_input',
+          kind: 'toggle',
+          checked: joints.every((joint) => this.gridUtils.isVisuallyInput(joint)),
+          needs: 'structure',
+          refusal: {
+            short: 'one input per machine',
+            long: 'A machine is driven at one joint, so the input is set on one joint at a time.',
+          },
+          action: () => undefined,
+        }),
         new MenuRow({
           label: 'Slider',
           icon: 'add_slider',

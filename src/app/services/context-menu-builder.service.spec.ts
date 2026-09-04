@@ -180,6 +180,18 @@ describe('the right-click menu', () => {
       expect(labels(model)).not.toContain('Fixed Length');
     });
 
+    it('names Driven Input and grays it, because a machine has one', () => {
+      const parts = fourBar(harness.mechanism);
+      harness.active.replacePartSelection(parts.a);
+      harness.active.togglePartSelection(parts.c);
+
+      const model = harness.builder.build(parts.a, noHandlers);
+      const driven = row(model, 'Driven Input')!;
+      // Present, so a reader who learned the one-joint menu finds it, and
+      // grayed with the reason rather than silently absent.
+      expect(driven.refusal?.short).toBe('one input per machine');
+    });
+
     it('grays a group weld for the reason one joint would have been grayed for', () => {
       const parts = fourBar(harness.mechanism);
       harness.active.replacePartSelection(parts.a);
