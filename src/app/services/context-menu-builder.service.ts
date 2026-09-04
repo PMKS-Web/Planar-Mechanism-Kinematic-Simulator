@@ -113,7 +113,7 @@ export class ContextMenuBuilderService {
       value ? { short: value.short, long: value.message } : undefined;
     return {
       header: {
-        title: `${count} Selected Parts`,
+        title: `${count} selected objects`,
         subtitle: `${parts.filter((part) => part instanceof RealJoint).length} joints · ${parts.filter((part) => part instanceof RealLink).length} links`,
       },
       groups: [
@@ -179,7 +179,7 @@ export class ContextMenuBuilderService {
           }),
         ],
       });
-      groups.push({ label: 'Machine', rows: this.machineRows() });
+      groups.push({ label: 'Mechanism', rows: this.machineRows() });
     }
     groups.push({ rows: this.positionRows(handlers, undefined) });
     // A bare grid in an analysis mode: nothing to name and nothing to do, so
@@ -502,7 +502,7 @@ export class ContextMenuBuilderService {
    */
   private traceRow(joint: RealJoint): MenuRow {
     return new MenuRow({
-      label: 'Trace Path',
+      label: 'Trace path',
       icon: 'show_path',
       kind: 'toggle',
       checked: this.gridUtils.getJointShowCurve(joint),
@@ -1003,13 +1003,13 @@ export class ContextMenuBuilderService {
       icon: 'remove',
       destructive: true,
       hint: joints > 0 ? `${joints} ${joints === 1 ? 'joint' : 'joints'}` : undefined,
-      tip: 'Deletes the whole machine this part belongs to — every joint, link and force in it.',
+      tip: 'Deletes the whole mechanism this part belongs to — every joint, link and force in it.',
       action: () => this.mechanism.deleteMechanism(index),
       refusal: partition
         ? undefined
         : {
             short: 'not in a mechanism',
-            long: 'This part is not joined into a mechanism, so there is no machine here to delete. Delete the part itself.',
+            long: 'This part is not joined into a mechanism, so there is no mechanism here to delete. Delete the part itself.',
           },
     });
   }

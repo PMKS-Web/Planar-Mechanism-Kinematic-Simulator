@@ -37,7 +37,7 @@
         [mixed]="traceState().kind === 'mixed'"
         tooltip="Show / hide the path each selected joint takes through the cycle."
       >
-        Trace Path
+        Trace path
       </toggle-block>
       <color-picker type="joint" [parts]="joints" tooltip="The color of every selected joint."
         >Joint Color</color-picker
@@ -83,10 +83,11 @@
   }
 
   @if (!homogeneousJoints && !homogeneousLinks) {
-    <collapsible-subseciton titleLabel="Selected Parts" [expanded]="true">
+    <collapsible-subseciton titleLabel="Selected objects" [expanded]="true">
       <p class="multiNote">
-        Joint and Link Selection — drag the group or use its canvas handles to move, rotate, or
-        scale it together. Geometry fields appear when the selection contains one kind of part.
+        Joint and link selection — drag the group or use its canvas handles to move, rotate, or
+        scale it together. Geometry fields appear when the selection contains only joints or only
+        links.
       </p>
     </collapsible-subseciton>
   }

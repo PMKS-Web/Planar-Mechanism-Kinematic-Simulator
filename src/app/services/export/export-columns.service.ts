@@ -79,11 +79,17 @@ export class ExportColumnsService {
           this.kinematic(links, 'l:angacc', 'Angular acceleration', `${angle}/s²`, [
             ['Angular acceleration', 'Angular Link Acc', `${angle}/s²`, 1],
           ]),
-          this.kinematic(links, 'l:com', 'Center of mass', 'pos, vel, acc', [
-            ['Center of mass position', "Linear Link's CoM Pos", length, 2],
-            ['Center of mass velocity', "Linear Link's CoM Vel", `${length}/s`, 3],
-            ['Center of mass acceleration', "Linear Link's CoM Acc", `${length}/s²`, 3],
-          ]),
+          this.kinematic(
+            links,
+            'l:com',
+            'Center of mass',
+            'position, velocity, acceleration',
+            [
+              ['Center of mass position', "Linear Link's CoM Pos", length, 2],
+              ['Center of mass velocity', "Linear Link's CoM Vel", `${length}/s`, 3],
+              ['Center of mass acceleration', "Linear Link's CoM Acc", `${length}/s²`, 3],
+            ]
+          ),
         ],
       });
     }
@@ -92,6 +98,11 @@ export class ExportColumnsService {
 
   /** `Joints B, C` for several, `Joint B` for one — the heading names them. */
   private titleOf(kind: string, parts: ExportPart[]): string {
+    if (parts.length === 1) return parts[0].label;
+    if (parts.length > 6) return `${parts.length} ${kind.toLowerCase()}s`;
+    if (parts.some((part) => part.label.startsWith('Cylinder '))) {
+      return parts.map((part) => part.label).join(', ');
+    }
     const names = parts.map((part) => part.label.replace(/^(Joint|Link) /, ''));
     return `${kind}${names.length === 1 ? '' : 's'} ${names.join(', ')}`;
   }

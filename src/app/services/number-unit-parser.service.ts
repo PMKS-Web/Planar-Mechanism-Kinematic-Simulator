@@ -96,7 +96,8 @@ export class NumberUnitParserService {
     const label = this.unitLabel(units);
     if (label === '') return 'Error in formatValueAndUnit()';
     const decimals = units === AngleUnit.DEGREE ? 0 : 2;
-    return value.toFixed(decimals) + ' ' + label;
+    const rounded = value.toFixed(decimals);
+    return (Number(rounded) === 0 ? (0).toFixed(decimals) : rounded) + ' ' + label;
   }
 
   /**

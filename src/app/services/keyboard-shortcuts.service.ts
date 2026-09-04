@@ -185,7 +185,7 @@ export class KeyboardShortcutsService {
 
     { id: 'view.zoomIn', section: 'View', label: 'Zoom In', keys: '+', match: ['+', '='] },
     { id: 'view.zoomOut', section: 'View', label: 'Zoom Out', keys: '−', match: ['-', '_'] },
-    { id: 'view.reset', section: 'View', label: 'Reset View', keys: '0', match: ['0'] },
+    { id: 'view.reset', section: 'View', label: 'Fit to view', keys: '0', match: ['0'] },
     {
       id: 'view.centerOfMass',
       section: 'View',
@@ -193,7 +193,7 @@ export class KeyboardShortcutsService {
       keys: 'M',
       match: ['m'],
     },
-    { id: 'view.jointIds', section: 'View', label: 'Joint IDs', keys: 'L', match: ['l'] },
+    { id: 'view.jointIds', section: 'View', label: 'Joint names', keys: 'L', match: ['l'] },
     { id: 'view.paths', section: 'View', label: 'Traced paths', keys: 'P', match: ['p'] },
 
     {

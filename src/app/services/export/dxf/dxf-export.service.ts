@@ -1,7 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../../../model/joint';
-import { RealLink } from '../../../model/link';
+import { Link, RealLink, SliderBlock } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
+import { LengthUnit } from '../../../model/unit-enums';
 import { MechanismService } from '../../mechanism.service';
 import { SettingsService } from '../../settings.service';
 import { utf8, zipStore } from '../zip';
@@ -15,7 +16,7 @@ import {
 import { DxfEntity } from './dxf-model';
 import { sealedCylinderStructures } from '../../../model/cylinder';
 import { defaultPinDiameter, linkBodyWidth, SlotTravel } from './link-bodies';
-import { buildSemanticDxf, TracedPath } from './semantic-dxf';
+import { buildSemanticDxf, originShift, TracedPath } from './semantic-dxf';
 import { writeDxf } from './dxf-writer';
 import { writeSvg } from './svg-writer';
 
@@ -55,6 +56,11 @@ export class DxfExportService {
   private settings = inject(SettingsService);
 
   create(options: DxfExportOptions = {}): DxfExportFile {
+    // Geometry and companion tables must describe the same start pose.
+    return this.mechanism.encodeFromStartPose(() => this.createFromStart(options));
+  }
+
+  private createFromStart(options: DxfExportOptions): DxfExportFile {
     const choices = { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options };
     const unit = choices.unit ?? exportUnitOf(this.settings.lengthUnit.value);
     const stem = fileStem(choices.fileName || DEFAULT_DXF_EXPORT_OPTIONS.fileName);
@@ -65,22 +71,20 @@ export class DxfExportService {
     const dxfName = `${stem} (${unitWord(unit)}).${choices.fileFormat === 'svg' ? 'svg' : 'dxf'}`;
     const write = (document: ReturnType<typeof buildSemanticDxf>) =>
       choices.fileFormat === 'svg' ? writeSvg(document, unit) : writeDxf(document);
-    const content = this.mechanism.encodeFromStartPose(() =>
-      write(
-        buildSemanticDxf({
-          joints: this.mechanism.joints,
-          links: this.mechanism.links,
-          forces: this.mechanism.forces,
-          lengthUnit: unit,
-          defaultInputClockwise: this.settings.isInputCW.value,
-          includeLabels: choices.includeLabels,
-          includeKinematicAnnotations: choices.includeKinematicAnnotations,
-          options: { ...choices, unit },
-          tracedPaths: choices.includeTracedPaths ? this.tracedPaths() : [],
-          slotTravels: this.slotTravels(),
-          groundGroups: this.groundGroups(),
-        })
-      )
+    const content = write(
+      buildSemanticDxf({
+        joints: this.mechanism.joints,
+        links: this.mechanism.links,
+        forces: this.mechanism.forces,
+        lengthUnit: unit,
+        defaultInputClockwise: this.settings.isInputCW.value,
+        includeLabels: choices.includeLabels,
+        includeKinematicAnnotations: choices.includeKinematicAnnotations,
+        options: { ...choices, unit },
+        tracedPaths: choices.includeTracedPaths ? this.tracedPaths() : [],
+        slotTravels: this.slotTravels(),
+        groundGroups: this.groundGroups(),
+      })
     );
 
     if (choices.dataFile === 'none') {
@@ -102,12 +106,12 @@ export class DxfExportService {
     // not the packaging.
     const extras =
       choices.dataFile === 'json'
-        ? [{ name: `${stem}.json`, text: this.dataJson(unit) }]
+        ? [{ name: `${stem}.json`, text: this.dataJson(unit, choices) }]
         : [
-            { name: `${stem}-joints.csv`, text: this.jointCsv(unit) },
+            { name: `${stem}-joints.csv`, text: this.jointCsv(unit, choices) },
             { name: `${stem}-links.csv`, text: this.linkCsv(unit) },
             ...(this.mechanism.forces.length
-              ? [{ name: `${stem}-forces.csv`, text: this.forceCsv(unit) }]
+              ? [{ name: `${stem}-forces.csv`, text: this.forceCsv(unit, choices) }]
               : []),
           ];
     extras.push({
@@ -118,7 +122,8 @@ export class DxfExportService {
         {
           cylinders: sealedCylinderStructures(this.mechanism.joints).length > 0,
           slots: this.mechanism.joints.some((joint) => joint instanceof PrisJoint),
-        }
+        },
+        this.tableUnits()
       ),
     });
     const zip = zipStore([
@@ -376,14 +381,15 @@ export class DxfExportService {
       .filter((ids) => ids.length > 0);
   }
 
-  private jointCsv(unit: DxfExportUnit): string {
+  private jointCsv(unit: DxfExportUnit, options: DxfExportOptions = {}): string {
+    const shift = this.tableShift(unit, options);
     const rows = this.mechanism.joints.map((joint) =>
       [
         joint.id,
         joint.name,
         joint instanceof PrisJoint ? 'prismatic' : 'revolute',
-        inUnit(joint.x, unit).toFixed(6),
-        inUnit(joint.y, unit).toFixed(6),
+        (inUnit(joint.x, unit) - shift.x).toFixed(6),
+        (inUnit(joint.y, unit) - shift.y).toFixed(6),
         joint instanceof RealJoint && joint.ground ? 'yes' : 'no',
         joint instanceof RealJoint && joint.input ? 'yes' : 'no',
         // Which parts meet here: DXF cannot say that a hole in one layer and a
@@ -396,17 +402,18 @@ export class DxfExportService {
   }
 
   private linkCsv(unit: DxfExportUnit): string {
-    const rows = this.realLinks().map((link) =>
+    const rows = this.mechanism.links.map((link) =>
       [
         link.id,
         link.name,
         link.joints.map((joint) => joint.id).join(' '),
         inUnit(lengthOf(link), unit).toFixed(6),
         link.mass.toFixed(6),
-        link.massMoI.toFixed(6),
+        link instanceof RealLink ? link.massMoI.toFixed(6) : '',
+        link instanceof SliderBlock ? 'prismatic' : 'rigid',
       ].join(',')
     );
-    return ['id,name,joints,length,mass,inertia', ...rows].join('\r\n') + '\r\n';
+    return ['id,name,joints,length,mass,inertia,type', ...rows].join('\r\n') + '\r\n';
   }
 
   /**
@@ -417,16 +424,17 @@ export class DxfExportService {
    * load happens to sit on. The magnitude and direction are what a reader
    * actually wants back, and a table is where those belong.
    */
-  private forceCsv(unit: DxfExportUnit): string {
+  private forceCsv(unit: DxfExportUnit, options: DxfExportOptions = {}): string {
+    const shift = this.tableShift(unit, options);
     const rows = this.mechanism.forces.map((force) =>
       [
         force.id,
         force.name,
         force.link?.id ?? '',
-        inUnit(force.startCoord.x, unit).toFixed(6),
-        inUnit(force.startCoord.y, unit).toFixed(6),
-        inUnit(force.endCoord.x, unit).toFixed(6),
-        inUnit(force.endCoord.y, unit).toFixed(6),
+        (inUnit(force.startCoord.x, unit) - shift.x).toFixed(6),
+        (inUnit(force.startCoord.y, unit) - shift.y).toFixed(6),
+        (inUnit(force.endCoord.x, unit) - shift.x).toFixed(6),
+        (inUnit(force.endCoord.y, unit) - shift.y).toFixed(6),
         String(force.mag),
         force.local ? 'link' : 'global',
       ].join(',')
@@ -434,36 +442,53 @@ export class DxfExportService {
     return ['id,name,link,x,y,end_x,end_y,magnitude,frame', ...rows].join('\r\n') + '\r\n';
   }
 
-  private dataJson(unit: DxfExportUnit): string {
+  private tableShift(unit: DxfExportUnit, options: DxfExportOptions) {
+    return originShift(
+      this.mechanism,
+      { ...DEFAULT_DXF_EXPORT_OPTIONS, ...options },
+      unitsPerCentimeter(unit) / MODEL_SCALE
+    );
+  }
+
+  private dataJson(unit: DxfExportUnit, options: DxfExportOptions = {}): string {
+    const shift = this.tableShift(unit, options);
     return JSON.stringify(
       {
         source: 'PMKS+',
         units: unitWord(unit),
+        ...this.tableUnits(),
         pose: 'start',
         joints: this.mechanism.joints.map((joint) => ({
           id: joint.id,
           name: joint.name,
           type: joint instanceof PrisJoint ? 'prismatic' : 'revolute',
-          x: inUnit(joint.x, unit),
-          y: inUnit(joint.y, unit),
+          x: inUnit(joint.x, unit) - shift.x,
+          y: inUnit(joint.y, unit) - shift.y,
           grounded: joint instanceof RealJoint && joint.ground,
           input: joint instanceof RealJoint && joint.input,
           links: connectedLinks(joint),
         })),
-        links: this.realLinks().map((link) => ({
+        links: this.mechanism.links.map((link) => ({
           id: link.id,
           name: link.name,
           joints: link.joints.map((joint) => joint.id),
           length: inUnit(lengthOf(link), unit),
           mass: link.mass,
-          inertia: link.massMoI,
+          inertia: link instanceof RealLink ? link.massMoI : null,
+          type: link instanceof SliderBlock ? 'prismatic' : 'rigid',
         })),
         forces: this.mechanism.forces.map((force) => ({
           id: force.id,
           name: force.name,
           link: force.link?.id,
-          at: { x: inUnit(force.startCoord.x, unit), y: inUnit(force.startCoord.y, unit) },
-          to: { x: inUnit(force.endCoord.x, unit), y: inUnit(force.endCoord.y, unit) },
+          at: {
+            x: inUnit(force.startCoord.x, unit) - shift.x,
+            y: inUnit(force.startCoord.y, unit) - shift.y,
+          },
+          to: {
+            x: inUnit(force.endCoord.x, unit) - shift.x,
+            y: inUnit(force.endCoord.y, unit) - shift.y,
+          },
           magnitude: force.mag,
           frame: force.local ? 'link' : 'global',
         })),
@@ -473,8 +498,18 @@ export class DxfExportService {
     );
   }
 
-  private realLinks(): RealLink[] {
-    return this.mechanism.links.filter((link): link is RealLink => link instanceof RealLink);
+  private tableUnits(): { massUnit: string; inertiaUnit: string; forceUnit: string } {
+    const length = this.settings.lengthUnit.value;
+    return {
+      massUnit: length === LengthUnit.INCH ? 'lbm' : length === LengthUnit.METER ? 'kg' : 'g',
+      inertiaUnit:
+        length === LengthUnit.INCH
+          ? 'lbm*in^2'
+          : length === LengthUnit.METER
+            ? 'kg*m^2'
+            : 'kg*cm^2',
+      forceUnit: 'N',
+    };
   }
 }
 
@@ -551,7 +586,8 @@ function handoffNotes(
     dataFile: string;
     fileFormat: string;
   },
-  has: { cylinders: boolean; slots: boolean }
+  has: { cylinders: boolean; slots: boolean },
+  tableUnits: { massUnit: string; inertiaUnit: string; forceUnit: string }
 ): string {
   const word = unitWord(unit);
   const parts = choices.linkBodies === 'outlines';
@@ -670,6 +706,14 @@ function handoffNotes(
           '   with revolute joints on the concentric pairs.',
           '',
         ]),
+    'Companion tables',
+    '----------------',
+    `Coordinates and lengths use ${word}, with the same origin and start pose as the drawing.`,
+    `Mass: ${tableUnits.massUnit}. Inertia: ${tableUnits.inertiaUnit}. Force magnitude: ${tableUnits.forceUnit}.`,
+    'The tables include internal cylinder joints and prismatic connections. Rigid',
+    'links are bodies; prismatic entries describe sliding connections between them.',
+    'A blank or null inertia belongs to a prismatic connection, not a rigid body.',
+    '',
     'Reading the marks',
     '-----------------',
     'A circle is a pin: those two parts turn against each other, and the hole is',
@@ -702,7 +746,7 @@ function connectedLinks(joint: Joint): string[] {
     .sort();
 }
 
-function lengthOf(link: RealLink): number {
+function lengthOf(link: Link): number {
   const [a, b] = link.joints;
   return a && b ? Math.hypot(b.x - a.x, b.y - a.y) : 0;
 }

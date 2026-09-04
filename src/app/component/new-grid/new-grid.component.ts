@@ -888,7 +888,7 @@ export class NewGridComponent implements OnDestroy {
       this.activeObjService.selectBackgroundImage();
       this.notify.success(
         'bgImage.added',
-        `${file.name} is behind the grid. It is not saved in the share link.`
+        `${file.name} is behind the grid. It is not saved in the project web address.`
       );
     } catch (error) {
       this.notify.failure(
@@ -1600,7 +1600,7 @@ export class NewGridComponent implements OnDestroy {
     if (machines.size > 1) {
       this.notify.refusal(
         'selection.spans-machines',
-        'This selection is spread across two machines, which can only be moved together at the start pose. Press Back to start, then try again.'
+        'This selection is spread across two mechanisms, which can only be moved together at the start pose. Press Back to the start pose, then try again.'
       );
       return false;
     }
@@ -5928,7 +5928,7 @@ export class NewGridComponent implements OnDestroy {
       case 'Mechanism':
         this.notify.refusal(
           'delete.whole-mechanism',
-          'Delete removes one part — the mechanism panel has its own Delete for the whole machine.'
+          'Delete removes one part — the mechanism panel has its own Delete for the whole mechanism.'
         );
         return;
       default:

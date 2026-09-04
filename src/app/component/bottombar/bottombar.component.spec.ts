@@ -1,6 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { BottombarComponent } from './bottombar.component';
 import { MechanismService } from '../../services/mechanism.service';
+import { SettingsService } from '../../services/settings.service';
+import { SvgGridService } from '../../services/svg-grid.service';
+import { LengthUnit } from '../../model/utils';
 
 // Found by building a linkage with a real mouse rather than with dispatched
 // events: the very first bar anybody draws is not grounded, mobility is not a
@@ -37,6 +40,26 @@ describe('the mobility readout', () => {
     // used to reach straight through it for `.dof`.
     (mechanism.mechanisms as unknown as unknown[]).length = 0;
     expect(component.degreesOfFreedom).toBe('—');
+  });
+
+  it('calls a deferred large drawing ready without claiming it has already solved', () => {
+    (mechanism.mechanisms as unknown as unknown[]).length = 0;
+    const state = mechanism as unknown as { solvingDeferred: boolean };
+    const before = state.solvingDeferred;
+    state.solvingDeferred = true;
+    expect(component.status).toBe('Ready to analyze · motion solves when you press Play');
+    state.solvingDeferred = before;
+  });
+
+  it('clears a stale cursor reading when the model unit changes', () => {
+    const settings = TestBed.inject(SettingsService);
+    const grid = TestBed.inject(SvgGridService);
+    settings.lengthUnit.next(LengthUnit.CM);
+    grid.cursorAt = { x: 330, y: 366 };
+    expect(component.cursor).toBe('1.65 cm, 1.83 cm');
+    settings.lengthUnit.next(LengthUnit.INCH);
+    expect(component.cursor).toBe('');
+    settings.lengthUnit.next(LengthUnit.CM);
   });
 
   it('shows a dash rather than NaN when nothing is grounded', () => {

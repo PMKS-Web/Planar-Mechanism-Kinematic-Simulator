@@ -355,6 +355,16 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    * card is: `animate()` mutates the joints in place and publishes on nothing.
    */
   ngDoCheck(): void {
+    if (this.cylinderClamped) {
+      const cylinder = this.selectedCylinder;
+      if (
+        !cylinder ||
+        cylinder.barrel !== this.cylinderClampedAt?.barrel ||
+        JSON.stringify(this.cylinderSize(cylinder)) !== this.cylinderClampedAt?.size
+      ) {
+        this.cylinderClamped = '';
+      }
+    }
     this.freezePoseBoundFields();
     this.freezeMassesWhilePlaying();
     if (!this.editingRefused() || this.activeSrv.objType !== 'Joint') return;
@@ -831,6 +841,14 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
   /** Set when the last edit had to be held at the ram's minimum, so the panel can say so. */
   cylinderClamped = '';
+  private cylinderClampedAt?: { barrel: Link; size: string };
+
+  private rememberCylinderClamp(sealed: Cylinder): void {
+    this.cylinderClampedAt = {
+      barrel: sealed.barrel,
+      size: JSON.stringify(this.cylinderSize(sealed)),
+    };
+  }
 
   /** Mount-to-mount axis angle, in the user's angle unit. */
   cylinderAngleLabel(sealed: Cylinder): string {
@@ -870,6 +888,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     // the template itself.
     this.mechanismService.save();
     this.patchCylinderForm();
+    this.rememberCylinderClamp(sealed);
   }
 
   /**
@@ -895,6 +914,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     // the template itself.
     this.mechanismService.save();
     this.patchCylinderForm();
+    this.rememberCylinderClamp(sealed);
   }
 
   /** Refresh the cylinder form's fields from the part, without re-firing them. */
@@ -1135,7 +1155,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       return this.drivenClockwise ? 'Closing' : 'Opening';
     }
     if (!this.isSliderInput) {
-      return this.drivenClockwise ? 'Clockwise' : 'Counter-Clockwise';
+      return this.drivenClockwise ? 'Clockwise' : 'Counter-clockwise';
     }
     return this.drivenClockwise ? 'Backward along slot' : 'Forward along slot';
   }
@@ -1586,9 +1606,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           const asked = Number(typed);
           if (typed === '' || !Number.isFinite(asked)) return this.patchCylinderForm();
           const held = Math.min(Math.max(asked / 100, 0), 1);
-          this.cylinderClamped =
-            held !== asked / 100 ? `Start held at ${Math.round(held * 100)}%.` : '';
           this.resizeCylinderTo(sealed, this.cylinderSize(sealed).stroke, held);
+          if (held !== asked / 100) {
+            this.cylinderClamped = `Start held at ${Math.round(held * 100)}%.`;
+          }
           return;
         }
         // A typed length is the mount-to-mount span, which is exactly what a
@@ -1748,8 +1769,13 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     this.onDestroySubscriptions.push(
       this.forceForm.controls['magnitude'].valueChanges.subscribe((val) => {
         const [success, value] = this.parseForce(val!);
-        if (!success) {
-          this.notify.refusal('value.force', NOT_A.force);
+        if (!success || value < 0) {
+          this.notify.refusal(
+            'value.force',
+            success
+              ? 'Force magnitude must be zero or greater. Change the angle to reverse its direction.'
+              : NOT_A.force
+          );
           // The stored value in the unit the field shows, and quietly: a
           // refusal that emits runs the parser over its own restore.
           this.forceForm.patchValue(
@@ -1762,7 +1788,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           this.mechanismService.onMechUpdateState.next(2);
           this.forceForm.patchValue(
             {
-              magnitude: this.forceText(value),
+              magnitude: this.forceText(this.activeSrv.selectedForce.mag),
             },
             { emitEvent: false }
           );

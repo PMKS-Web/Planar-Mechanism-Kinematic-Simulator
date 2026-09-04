@@ -43,7 +43,7 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
     'A driven joint can only join two bodies — remove the input first, or attach somewhere else.',
   'own-cylinder': 'A cylinder cannot fold onto itself.',
   'crosses-machines':
-    'Joining two machines needs the start pose. Press Back to start, then try again.',
+    'Joining two mechanisms needs the start pose. Press Back to the start pose, then try again.',
 };
 
 /**

@@ -837,6 +837,35 @@
       gap: 0;
     }
 
+    .phoneSync {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 34px;
+      margin: 2px 4px 0;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #5f6368;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+
+      &.on {
+        background: #eef1fc;
+        color: #303f9f;
+      }
+
+      mat-icon {
+        width: 17px;
+        height: 17px;
+        font-size: 17px;
+        line-height: 17px;
+      }
+    }
+
     // Nothing on the reading line but what a seek needs. The end-of-cycle
     // reading and the toggle warning are explanations, and the line is holding
     // a name, a chip and two numbers already.

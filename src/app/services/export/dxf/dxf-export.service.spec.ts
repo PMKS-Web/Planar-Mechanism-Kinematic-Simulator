@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import DxfParser from 'dxf-parser';
 import { BehaviorSubject } from 'rxjs';
 import { RevJoint } from '../../../model/joint';
-import { RealLink } from '../../../model/link';
+import { Link, RealLink, SliderBlock } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { LengthUnit } from '../../../model/unit-enums';
 import { MechanismService } from '../../mechanism.service';
@@ -24,7 +24,7 @@ describe('DxfExportService', () => {
     b.links.push(link);
     const mechanism = {
       joints: [a, b],
-      links: [link],
+      links: [link] as Link[],
       forces: [],
       encodeFromStartPose: vi.fn(<T>(run: (heldStep: number) => T): T => run(27)),
     };
@@ -295,6 +295,37 @@ describe('DxfExportService', () => {
     expect(rows[0].endsWith(',AB')).toBe(true);
     const json = JSON.parse(service['dataJson']('cm') as string);
     expect(json.joints[0].links).toEqual(['AB']);
+  });
+
+  it('keeps companion coordinates on the drawing origin and resolves prismatic references', () => {
+    const { service, mechanism } = setup();
+    const [a, b] = mechanism.joints;
+    a.x = 3 * MODEL_SCALE;
+    a.y = -2 * MODEL_SCALE;
+    a.ground = true;
+    const slider = new SliderBlock('slide', [a, b]);
+    mechanism.links.push(slider);
+    a.links.push(slider);
+    const json = JSON.parse(service['dataJson']('cm', { origin: 'ground' }));
+    expect(json.joints[0]).toMatchObject({ x: 0, y: 0 });
+    expect(json.links.find((link: { id: string }) => link.id === 'slide')).toMatchObject({ type: 'prismatic', inertia: null });
+    expect(json.joints[0].links.every((id: string) => json.links.some((link: { id: string }) => link.id === id))).toBe(true);
+    expect(service['jointCsv']('cm', { origin: 'ground' })).toContain('A,A,revolute,0.000000,0.000000');
+    expect(json).toMatchObject({ massUnit: 'kg', inertiaUnit: 'kg*m^2', forceUnit: 'N' });
+  });
+
+  it('writes the table before restoring a paused pose', () => {
+    const { service, mechanism } = setup();
+    const b = mechanism.joints[1];
+    const pausedX = b.x;
+    mechanism.encodeFromStartPose.mockImplementation(run => {
+      b.x = MODEL_SCALE;
+      try { return run(27); } finally { b.x = pausedX; }
+    });
+    const table = vi.spyOn(service as unknown as { jointCsv: (unit: string) => string }, 'jointCsv');
+    service.create({ dataFile: 'csv', unit: 'cm', origin: 'model' });
+    expect(table.mock.results[0].value).toContain('B,B,revolute,1.000000,1.000000');
+    expect(b.x).toBe(pausedX);
   });
 
   it('is byte-deterministic for unchanged model state and choices', () => {

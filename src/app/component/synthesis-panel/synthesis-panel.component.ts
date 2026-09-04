@@ -564,6 +564,8 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     this.design.duplicateLastPose();
     this.solution.invalidate();
     this.record();
+    const arrived = this.design.getPose(this.design.selectedPose);
+    if (arrived) setTimeout(() => this.svgGrid.revealOnCanvas(arrived.position));
   }
 
   /**
@@ -837,12 +839,17 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       const label = strict === 1 ? 'solution reaches' : 'solutions reach';
       return `${strict} ${label} all 3 positions${capped}`;
     }
-    // No four-bar reaches all three, so what is on offer reaches two. Said as
-    // what it does rather than as what is wrong with it: "branch defect" names
-    // the fault in the linkage, and the reader's question is what they can
-    // build.
+    const allThree = list.filter((candidate) => candidate.onBranchCount === 3).length;
+    if (allThree) {
+      const label = allThree === 1 ? 'solution reaches' : 'solutions reach';
+      const partial = shown - allThree;
+      return (
+        `${allThree} ${label} all 3 with small transmission angles` +
+        (partial ? ` · ${partial} reach 2 of 3` : '')
+      );
+    }
     const label = shown === 1 ? 'solution reaches' : 'solutions reach';
-    return `No solution reaches all 3 — ${shown} ${label} 2 of them`;
+    return `${shown} ${label} 2 of 3 positions — reassembly is needed`;
   }
 
   /**
@@ -869,7 +876,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     if (why.tooBig) {
       return (
         `${why.tooBig} of ${why.tried} constructions put a ground pivot further from the ` +
-        'positions than the machine could sensibly reach — the three positions are close to a ' +
+        'positions than the mechanism could sensibly reach — the three positions are close to a ' +
         'straight line. Turn the middle position further, or move it off the line between the ' +
         'other two.'
       );
@@ -914,10 +921,10 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
       reachText: c.defectFree
         ? 'all 3, one assembly'
         : c.binds && c.onBranchCount === 3
-          ? 'all 3, but stalls between them'
+          ? 'all 3, small transmission angle'
           : `${c.onBranchCount} of 3 · branch defect`,
       metric:
-        (c.binds ? `stalls at ${c.minTransmission}° · ` : `min angle ${c.minTransmission}° · `) +
+        `min transmission angle ${c.minTransmission}° · ` +
         (c.range.full ? 'full turn' : `${Math.round(c.range.to - c.range.from)}° swing`),
     };
   }
@@ -982,14 +989,20 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   private referenceLabelsHeld: string[] = [];
 
   referenceIndex(): number {
-    return Math.max(0, this.referenceOptions().findIndex((opt) => opt.active));
+    return Math.max(
+      0,
+      this.referenceOptions().findIndex((opt) => opt.active)
+    );
   }
 
   /** The pill's view of `branchOptions`: labels held, the chosen index, the grayed ones. */
   readonly branchLabels = ['Open', 'Crossed'];
 
   branchIndex(): number {
-    return Math.max(0, this.branchOptions().findIndex((opt) => opt.active));
+    return Math.max(
+      0,
+      this.branchOptions().findIndex((opt) => opt.active)
+    );
   }
 
   branchUnavailable(): number[] {
@@ -1097,7 +1110,6 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   }
 
   // --- previewing the motion -----------------------------------------------
-
 
   togglePlay(): void {
     this.solution.playing = !this.solution.playing;
@@ -1399,8 +1411,25 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   }
 
   insertedNote(): string {
+    if (this.solution.needsReinsert()) {
+      return 'Changes are in the preview. Choose Replace on grid to update the inserted mechanism.';
+    }
     const kind = this.solution.dyad() ? 'six-bar' : 'four-bar';
     return `Left on the grid as a ${kind}. Change a position and insert again to revise it.`;
+  }
+
+  solutionWarning(): string {
+    const chosen = this.solution.driven();
+    if (!chosen) return '';
+    const notes: string[] = [];
+    const missed = 3 - chosen.onBranchCount;
+    if (missed) notes.push(`${missed} of 3 positions need reassembly.`);
+    if (chosen.binds) {
+      notes.push(
+        `Minimum transmission angle: ${chosen.minTransmission}°. The linkage may bind near a toggle position.`
+      );
+    }
+    return notes.join(' ');
   }
 
   deleteAll(): void {

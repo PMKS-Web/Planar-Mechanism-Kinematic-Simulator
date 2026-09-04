@@ -136,7 +136,7 @@ describe('the right-click menu', () => {
         deleteSelected,
       });
 
-      expect(model.header?.title).toBe('2 Selected Parts');
+      expect(model.header?.title).toBe('2 selected objects');
       expect(labels(model)).toContain('Duplicate Selected (2)');
       expect(labels(model)).toContain('Delete Selected (2)');
       row(model, 'Duplicate Selected (2)')!.action();
@@ -465,7 +465,7 @@ describe('the right-click menu', () => {
       const model = harness.builder.build(parts.a, noHandlers);
       // Views of the mechanism, all of them: the path it traces and the two
       // rates drawn along it. Nothing here changes the drawing.
-      expect(labels(model)).toEqual(['Trace Path', 'Velocity Vectors', 'Acceleration Vectors']);
+      expect(labels(model)).toEqual(['Trace path', 'Velocity Vectors', 'Acceleration Vectors']);
       // Geometry is frozen there, so Attach and the footer are absent rather
       // than grayed — and the way back into Edit rides the header.
       expect(model.header?.crossing?.icon).toBe('edit_outline');
@@ -571,18 +571,18 @@ describe('the right-click menu', () => {
       harness.mechanism.mechanismTimeStep = 12;
       const paused = harness.builder.build(parts.t, noHandlers);
       expect(row(paused, 'Grounded')!.refusal).toBeUndefined();
-      expect(row(paused, 'Trace Path')!.disabled).toBe(false);
+      expect(row(paused, 'Trace path')!.disabled).toBe(false);
 
       // A trace is a view of the mechanism, not a change to it -- so parking
       // mid-cycle, which is exactly when a reader wants one, leaves it live.
-      expect(row(paused, 'Trace Path')!.refusal).toBeUndefined();
+      expect(row(paused, 'Trace path')!.refusal).toBeUndefined();
 
       harness.mechanism.isPlaying = true;
       const running = harness.builder.build(parts.t, noHandlers);
       expect(row(running, 'Grounded')!.refusal!.short).toBe('animation running');
       // Including the trace, while it runs. `showCurve` is serialized, and
       // undo is blocked here -- so a toggle made now could not be taken back.
-      expect(row(running, 'Trace Path')!.refusal!.short).toBe('animation running');
+      expect(row(running, 'Trace path')!.refusal!.short).toBe('animation running');
       harness.mechanism.isPlaying = false;
     });
 
@@ -630,7 +630,7 @@ describe('the right-click menu', () => {
       // the whole point. It used to refuse here while the menu did not.
       expect(row(model, 'Grounded')!.refusal).toBeUndefined();
       expect(harness.grid.canRestoreHistory()).toBe(true);
-      expect(row(model, 'Trace Path')!.disabled).toBe(false);
+      expect(row(model, 'Trace path')!.disabled).toBe(false);
 
       // And while it runs, both refuse, with the words that name the machine
       // rather than the shared clock the reader can see reading zero.

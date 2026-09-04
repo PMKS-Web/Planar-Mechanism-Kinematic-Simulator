@@ -66,7 +66,7 @@ export const READINESS = {
 export const NOT_A = {
   length: 'That is not a length. Type a number, with or without a unit — 2, 2 cm, 0.75 in.',
   angle: 'That is not an angle. Type a number, with or without a unit — 90, 90 deg, 1.5 rad.',
-  mass: 'That is not a mass. Type a number, with or without a unit — 5, 5 g, 0.2 lb.',
+  mass: 'Mass must be zero or greater. Type a number, with or without a unit — 5, 5 g, 0.2 lb.',
   momentOfInertia:
     'That is not a moment of inertia. Type a number, with or without a unit — 4, 4 kg·cm².',
   force: 'That is not a force. Type a number, with or without a unit — 10, 10 N, 2.5 lb.',

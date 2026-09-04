@@ -88,6 +88,19 @@ to run unless `MOUSECTL` points at a compiled `e2e/tools/mousectl.swift`. It is 
 
 ## Running the app
 
+**Reload recovery must belong to the tab.** `last-drawing.ts` writes a session backup and a
+persistent latest-visit fallback. An existing tab reads its own session first; reading only
+`localStorage.lastDrawing` let editing a second project replace the first project on reload,
+with no Undo. Keep the persistent fallback for a later browser visit, but never let it win over
+an existing tab's backup. Tabs running an older build need their work saved before updating.
+
+**CAD companion tables share the drawing's origin and start pose.** Keep geometry and tables
+inside the same `encodeFromStartPose` boundary and reuse `originShift`. A paused-pose table beside
+a start-pose drawing is not a coherent handoff. Cylinder joint rows reference prismatic
+connections as well as rigid bodies, so the links table must include those connections; its
+`type` column distinguishes them. Mass/inertia keep their stored project units, documented in
+the README/JSON, even when the drawing is exported in another length unit.
+
 ```bash
 npm start          # http://localhost:4200
 ```

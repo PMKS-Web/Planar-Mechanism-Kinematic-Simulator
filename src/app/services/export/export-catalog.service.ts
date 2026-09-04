@@ -7,6 +7,7 @@ import { MechanismService } from '../mechanism.service';
 import { NumberUnitParserService } from '../number-unit-parser.service';
 import { SettingsService } from '../settings.service';
 import { ExportPart, ExportPartGroup } from './export-model';
+import { ActiveObjService } from '../active-obj.service';
 
 /**
  * Every part this drawing has to offer an export, and what to call things.
@@ -18,6 +19,7 @@ import { ExportPart, ExportPartGroup } from './export-model';
 @Injectable({ providedIn: 'root' })
 export class ExportCatalogService {
   private mechanism = inject(MechanismService);
+  private activeObj = inject(ActiveObjService);
   private settings = inject(SettingsService);
   private nup = inject(NumberUnitParserService);
 
@@ -54,12 +56,13 @@ export class ExportCatalogService {
         // drew and nobody can point at on the canvas.
         .filter((link) => this.standsForCylinder(cylinders, link) !== 'hidden')
         .map((link) => this.linkPart(link, partition.id, index, valid, cylinders));
+      const parts = valid ? [...joints, ...links] : [...joints, ...links].map(this.unsolved);
       return {
         index,
         id: partition.id,
-        note: this.noteFor(index),
+        note: this.noteFor(index, parts.length),
         forcesReady: this.forcesSolve(index),
-        parts: valid ? [...joints, ...links] : [...joints, ...links].map(this.unsolved),
+        parts,
       };
     });
   }
@@ -127,7 +130,9 @@ export class ExportCatalogService {
     // "tracer" on what a joint *is*, and this is a view of it -- whether its
     // path is being drawn -- which is a different fact about a different thing.
     if (joint.showCurve) notes.push('traced');
-    const selected = this.mechanism.isSelectedJoint(joint);
+    const selected =
+      (this.activeObj.objType === 'Mechanism' && this.activeObj.selectedMechanismIndex === index) ||
+      this.mechanism.isSelectedJoint(joint);
     if (selected) notes.push('currently selected');
     return {
       // Qualified by machine, because a joint can belong to two of them: a
@@ -161,9 +166,12 @@ export class ExportCatalogService {
     const ram = this.standsForCylinder(cylinders, link) === 'rod';
     if (ram) notes.push('cylinder');
     else if (link instanceof SliderBlock) notes.push('slider block');
-    if (link.joints.some((joint) => (joint as RealJoint).input)) notes.push('input crank');
+    const input = link.joints.find((joint) => (joint as RealJoint).input);
+    if (input) notes.push(input instanceof PrisJoint ? 'driven' : 'input crank');
     if (link instanceof RealLink && link.subset.length > 0) notes.push('compound');
-    const selected = this.mechanism.isSelectedBody(link);
+    const selected =
+      (this.activeObj.objType === 'Mechanism' && this.activeObj.selectedMechanismIndex === index) ||
+      this.mechanism.isSelectedBody(link);
     if (selected) notes.push('currently selected');
     return {
       key: `${machine}|link:${link.id}`,
@@ -251,13 +259,11 @@ export class ExportCatalogService {
   }
 
   /** What a machine is, in the one line the section heading has room for. */
-  private noteFor(index: number): string {
-    const partition = this.mechanism.partitions[index];
+  private noteFor(index: number, count: number): string {
     const facts = this.mechanism.readinessOfEachMechanism()[index]?.facts ?? [];
     const speed = facts.find((fact) => fact.label === 'Input speed')?.value;
-    const bodies = partition.links.filter((link) => link instanceof RealLink).length;
-    const count = `${bodies} ${bodies === 1 ? 'link' : 'links'}`;
-    return speed ? `${count} · ${speed}` : `${count} · not running`;
+    const objects = `${count} selectable ${count === 1 ? 'object' : 'objects'}`;
+    return speed ? `${objects} · ${speed}` : `${objects} · not running`;
   }
 
   /**

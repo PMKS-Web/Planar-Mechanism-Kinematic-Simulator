@@ -139,8 +139,8 @@
             <!-- The one thing about this that trying it cannot teach: the picture
                is not in the link the user is about to share. -->
             <div class="bgNote">
-              Background images are not saved in the share link — reloading the page clears this
-              one.
+              Background images are not saved in the project web address — reloading the page clears
+              this one.
             </div>
             <button-block icon="check" [click]="saveBackgroundImage.bind(this)">Save</button-block>
             <button-block
@@ -312,7 +312,7 @@
             [formGroup]="jointForm"
             _formControl="curve"
             tooltip="Show / hide the path this joint takes through the cycle."
-            >Trace Path
+            >Trace path
           </toggle-block>
           <color-picker
             type="joint"
@@ -435,8 +435,8 @@
                 [formGroup]="jointForm"
                 _formControl="inputSpeed"
                 [unit]="linearSpeedUnitLabel"
-                tooltip="How fast the rod extends. Negative retracts it."
-                >Expansion Speed
+                tooltip="How fast the rod travels. Use the direction button to choose opening or closing."
+                >Input Speed
               </input-block>
             </collapsible-subseciton>
           </div>
@@ -529,9 +529,9 @@
             (angleEntry)="setShowLinkAngleOverlay($event)"
           ></hold-field-block>
           <dual-button
-            but1Text="Add Tracer"
+            but1Text="Add tracer point"
             but1Icon="add_tracer"
-            but2Text="Add Force"
+            but2Text="Add force"
             but2Icon="add_force"
             [but1Action]="mechanismService.addJointAtCOM.bind(mechanismService)"
             [but2Action]="mechanismService.createForceAtCOM.bind(mechanismService)"
@@ -620,7 +620,7 @@
                 </button>
               </div>
               <div class="dotRow">
-                <span class="dotRowLabel">CoM</span>
+                <span class="dotRowLabel">Center of mass</span>
                 <!-- Marked on the options, not with [value] on the select. Setting
                  the select's value only takes if its options already exist,
                  and these are rebuilt whenever the panel re-renders this block
@@ -637,10 +637,10 @@
                   class="comFrameSelect"
                   [disabled]="!permission.may('properties')"
                   (change)="setComFrame($any($event.target).value)"
-                  title="What the center of mass is held against while you edit, and the frame the two numbers below are read in. Centroid rides the link; Global grid keeps its place on the drawing; a joint follows that pin alone. Once the mechanism runs it rides the link either way."
+                  title="What the center of mass is held against while you edit, and the frame the two numbers below are read in. Centroid rides the link; Grid keeps its place on the drawing; a joint follows that pin alone. Once the mechanism runs it rides the link either way."
                 >
                   <option value="centroid" [selected]="comFrame === 'centroid'">Centroid</option>
-                  <option value="grid" [selected]="comFrame === 'grid'">Global grid</option>
+                  <option value="grid" [selected]="comFrame === 'grid'">Grid</option>
                   @for (joint of activeSrv.selectedLink.joints; track joint.id) {
                     <option
                       [value]="'joint:' + joint.id"
@@ -676,9 +676,9 @@
                 [formGroup]="linkForm"
                 _formControl="massMoI"
                 class="moiBlock"
-                tooltip="Rotational inertia about the link's center of mass. Derived from its shape until you type a value."
+                tooltip="Moment of inertia about the link's center of mass. Derived from its shape until you type a value."
                 [class.derived]="!activeSrv.selectedLink.moiIsCustom"
-                >Rotational Inertia
+                >Moment of inertia
                 <span fieldSuffix class="stateSuffix">
                   <span class="dot" [class.filled]="activeSrv.selectedLink.moiIsCustom"></span>
                   @if (activeSrv.selectedLink.moiIsCustom) {
@@ -700,7 +700,7 @@
               @if (drawnAsDisc()) {
                 <p class="shapeNote">
                   Drawn as a disc. These two still follow the link's joints, not the circle — set
-                  Rotational Inertia by hand for a real flywheel.
+                  Moment of inertia by hand for a real flywheel.
                 </p>
               }
             }
@@ -761,10 +761,10 @@
             [formGroup]="forceForm"
             _formControl="isGlobal"
             tooltip="Global keeps the force pointing the same way. Local turns it with the link it is on."
-            option1="Local (Link {{ this.activeSrv.selectedForce.link.name }})"
-            option2="Global"
+            option1="Link ({{ this.activeSrv.selectedForce.link.name }})"
+            option2="Grid"
           >
-            Force Base Frame
+            Reference frame
           </radio-block>
         </collapsible-subseciton>
         <collapsible-subseciton

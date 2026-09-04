@@ -42,7 +42,7 @@ export const WHATS_NEW: ReleaseNote[] = [
   },
   {
     icon: 'account_tree',
-    title: 'One drawing can hold several machines',
+    title: 'One drawing can hold several mechanisms',
     body:
       'PMKS+ finds the independent mechanisms on the grid and solves each on its own, with its ' +
       'own driven joint, its own speed and direction, and its own row in the playback bar.',

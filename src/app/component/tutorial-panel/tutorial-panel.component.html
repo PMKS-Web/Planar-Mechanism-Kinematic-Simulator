@@ -116,39 +116,37 @@
     <div class="cardRule"></div>
     <div class="doorsHeading">What next</div>
 
-    <!-- Each row is the control it names, not a description of where to find
-         it: the tutorial ends by handing the student to the app. -->
+    <!-- The library is the natural continuation of a first build, so it gets
+         the decision-sized control. Export and Share stay available as the
+         smaller utility choices they are at this point in the journey. -->
     <div class="doors">
-      <button class="door" (click)="openExport()">
-        <mat-icon>download</mat-icon>
-        <span class="doorText">
-          <span class="doorName">Export Data</span>
-          <span class="doorWhy">
-            Every timestep of position, velocity and acceleration, as a file you can attach to a
-            report.
-          </span>
-        </span>
-      </button>
-      <button class="door" (click)="shareProject()">
-        <mat-icon>link</mat-icon>
-        <span class="doorText">
-          <span class="doorName">Share Project</span>
-          <span class="doorWhy">
-            A link that opens this exact mechanism. It is how a professor hands one out, and how you
-            hand one in.
-          </span>
-        </span>
-      </button>
-      <button class="door" (click)="openTemplates()">
+      <button class="door libraryDoor" (click)="openTemplates()">
         <mat-icon>apps</mat-icon>
         <span class="doorText">
-          <span class="doorName">Templates</span>
+          <span class="doorName">Open the Mechanism Library</span>
           <span class="doorWhy">
-            Worked mechanisms to take apart: a Watt six-bar, a scotch yoke, a Jansen leg, a
+            Explore worked mechanisms, including a Watt six-bar, scotch yoke, Jansen leg, and
             pumpjack.
           </span>
         </span>
+        <mat-icon class="doorGo">arrow_forward</mat-icon>
       </button>
+      <div class="secondaryDoors">
+        <button class="door secondaryDoor" (click)="openExport()">
+          <mat-icon>download</mat-icon>
+          <span class="doorText">
+            <span class="doorName">Export data</span>
+            <span class="doorWhy">Save the motion for a report.</span>
+          </span>
+        </button>
+        <button class="door secondaryDoor" (click)="shareProject()">
+          <mat-icon>link</mat-icon>
+          <span class="doorText">
+            <span class="doorName">Share project</span>
+            <span class="doorWhy">Copy a web address to this project.</span>
+          </span>
+        </button>
+      </div>
     </div>
 
     <!-- One way out of a finished tutorial, not two. The card used to carry an

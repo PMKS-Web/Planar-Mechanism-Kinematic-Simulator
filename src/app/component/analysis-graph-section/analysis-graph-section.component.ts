@@ -275,14 +275,14 @@ export class AnalysisGraphSectionComponent {
   private seriesNames(count: number): string[] {
     if (count === 1) return [''];
     if (count === 2) return ['X', 'Y'];
-    return ['X', 'Y', 'Mag'];
+    return ['X', 'Y', 'Magnitude'];
   }
 
   private colorFor(name: string): string {
     if (name === 'Y') return ANALYSIS_SERIES_COLORS.Y;
     // A magnitude, and a lone series -- an angle, an input effort -- which is
     // a magnitude too, and is drawn in the same amber on its plot.
-    if (name === 'Mag' || name === '') return ANALYSIS_SERIES_COLORS.Z;
+    if (name === 'Magnitude' || name === '') return ANALYSIS_SERIES_COLORS.Z;
     return ANALYSIS_SERIES_COLORS.X;
   }
 

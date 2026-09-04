@@ -92,5 +92,26 @@
       text-align: center;
       color: rgba(0, 0, 0, 0.75);
     }
+
+    .glossaryList {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 0;
+    }
+
+    .glossaryEntry {
+      dt {
+        @include mat.m2-typography-level($typography-config, 'body-2');
+        font-weight: 600;
+        color: rgba(0, 0, 0, 0.78);
+      }
+
+      dd {
+        margin: 1px 0 0;
+        @include mat.m2-typography-level($typography-config, 'body-2');
+        color: rgba(0, 0, 0, 0.6);
+      }
+    }
   }
 }

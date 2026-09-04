@@ -135,7 +135,7 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     expect(text).toContain('Click a joint where separate parts meet');
     // With no graph to configure, the mode selector and the input-speed
     // summary would describe things that are not on the panel.
-    expect(text).not.toContain('Force Analysis Type');
+    expect(text).not.toContain('Force analysis type');
     expect(text).not.toContain('input speed is set');
     // And it is the help-card hint pattern, not a boxed banner.
     expect(fixture.nativeElement.querySelector('.helpHint')).not.toBeNull();
@@ -269,12 +269,13 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     fixture.destroy();
   });
 
-  it('names the center of mass one way in a label and another in prose', async () => {
+  it('spells out center of mass consistently in labels and prose', async () => {
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'AB');
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent;
-    expect(sectionLabels(fixture).some((label) => label.startsWith('CoM '))).toBe(true);
+    expect(sectionLabels(fixture).some((label) => label.startsWith('Center of mass '))).toBe(true);
+    expect(text).not.toContain('CoM');
     expect(text).not.toContain('COM');
     fixture.destroy();
   });

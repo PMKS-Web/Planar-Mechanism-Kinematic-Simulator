@@ -68,6 +68,53 @@ export class HelpPanelComponent {
 
   sendingEmail = false;
 
+  /** The vocabulary used across the editor, analyses, and exports. */
+  readonly glossary = [
+    {
+      term: 'Mechanism',
+      meaning: 'A connected assembly PMKS+ solves as one motion with one driven input.',
+    },
+    {
+      term: 'Linkage',
+      meaning: 'A system of rigid links joined together. A drawing can contain several mechanisms.',
+    },
+    { term: 'Link', meaning: 'A rigid body that keeps the joints on it a fixed distance apart.' },
+    { term: 'Joint', meaning: 'A connection where links rotate or slide relative to one another.' },
+    { term: 'Grounded', meaning: 'Fixed to the stationary reference frame.' },
+    { term: 'Driven input', meaning: 'The joint or slider whose motion advances the mechanism.' },
+    { term: 'Start pose', meaning: 'The position treated as time zero for playback and analysis.' },
+    {
+      term: 'Degrees of freedom',
+      meaning:
+        'The independent motions available. PMKS+ solves one degree of freedom per mechanism.',
+    },
+    {
+      term: 'Tracer point',
+      meaning: 'A point carried by one link whose path can be drawn over a full cycle.',
+    },
+    {
+      term: 'Reference frame',
+      meaning: 'The coordinate system used for a force: fixed to the grid or moving with its link.',
+    },
+    { term: 'Center of mass', meaning: 'The balance point used for a link’s weight and inertia.' },
+    {
+      term: 'Static force analysis',
+      meaning: 'Balances each pose without motion-related inertia forces.',
+    },
+    {
+      term: 'In-motion force analysis',
+      meaning: 'Includes the inertia produced by the moving parts.',
+    },
+    {
+      term: 'Toggle',
+      meaning: 'A pose where a small input movement can produce very large output rates or forces.',
+    },
+    {
+      term: 'Revolutions per minute (RPM)',
+      meaning: 'The rotational speed unit used for a driven pin.',
+    },
+  ];
+
   commentForm = this.fb.group({
     comment: ['', Validators.required],
     email: ['', Validators.email],

@@ -131,11 +131,11 @@
           <div class="forceModeRow">
             <radio-block
               tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
-              option1="Static (Equilibrium)"
-              option2="In-motion (Dynamic)"
+              option1="Static"
+              option2="In-motion"
               [formGroup]="this.forceAnalysisFormGroup"
               _formControl="mode"
-              >Force Analysis Type
+              >Force analysis type
             </radio-block>
           </div>
         }
@@ -227,11 +227,11 @@
           (mouseenter)="highlightCoM(true)"
           (mouseleave)="highlightCoM(false)"
         >
-          Center of Mass (CoM)
+          Center of mass
         </div>
         <div class="rowList">
           <app-analysis-graph-section
-            label="CoM position"
+            label="Center of mass position"
             help="Where this link’s center of mass is"
             analysis="kinematic"
             analysisType="loop"
@@ -241,7 +241,7 @@
             (expandedChange)="graphExpanded['LPos'] = $event"
           ></app-analysis-graph-section>
           <app-analysis-graph-section
-            label="CoM velocity"
+            label="Center of mass velocity"
             help="How fast this link’s center of mass moves"
             analysis="kinematic"
             analysisType="loop"
@@ -251,7 +251,7 @@
             (expandedChange)="graphExpanded['LVel'] = $event"
           ></app-analysis-graph-section>
           <app-analysis-graph-section
-            label="CoM acceleration"
+            label="Center of mass acceleration"
             help="How this link’s center of mass changes speed"
             analysis="kinematic"
             analysisType="loop"
@@ -268,11 +268,11 @@
           <div class="forceModeRow">
             <radio-block
               tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
-              option1="Static (Equilibrium)"
-              option2="In-motion (Dynamic)"
+              option1="Static"
+              option2="In-motion"
               [formGroup]="this.forceAnalysisFormGroup"
               _formControl="mode"
-              >Force Analysis Type
+              >Force analysis type
             </radio-block>
           </div>
         }

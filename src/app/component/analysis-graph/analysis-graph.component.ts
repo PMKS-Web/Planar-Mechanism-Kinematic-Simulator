@@ -70,15 +70,23 @@ export function formatTimeLabel(value: number): string {
 }
 
 /**
- * The two ends of the time axis, to one decimal.
- *
- * They read beside the y axis, which is also one decimal, and "0" against
- * "6.0" looks like two different kinds of number.
+ * The two ends of the time axis, with extra precision for short cycles.
  */
 export function formatAxisEnd(value: number): string {
   const rounded = Number(value);
   if (!Number.isFinite(rounded)) return '';
-  return rounded.toFixed(1);
+  return formatAxisTick(rounded, Math.abs(rounded) || 0.1);
+}
+
+/** Preserve the spacing between ticks, including small force values. */
+export function formatAxisTick(value: number, step: number): string {
+  if (!Number.isFinite(value)) return '';
+  const spacing = Number.isFinite(step) && step > 0 ? step : 0.1;
+  let places = Math.max(1, Math.ceil(-Math.log10(spacing)));
+  const scaled = spacing * 10 ** places;
+  if (Math.abs(scaled - Math.round(scaled)) > 1e-8) places++;
+  if (places > 6 || Math.abs(value) >= 1e7) return value === 0 ? '0' : value.toExponential(2);
+  return Number(value.toFixed(places)).toFixed(places);
 }
 
 /** Apex's own fallback, kept by name so the axis can be handed back to it. */
@@ -425,6 +433,8 @@ export class AnalysisGraphComponent
   @Input() mechProp: string = '';
   @Input() mechPart: string = '';
   @Input() reactionLinkId: string = '';
+  /** The same quantity name the visible section uses, without solver IDs. */
+  @Input() displayLabel: string = '';
   /** What the numbers are in, as the row above already spells it. */
   @Input() unit: string = '';
 
@@ -460,6 +470,7 @@ export class AnalysisGraphComponent
    * two things. The graph itself is a canvas with no text in it at all.
    */
   get graphLabel(): string {
+    if (this.displayLabel) return this.displayLabel;
     const part = this.mechPart ? ` of ${this.mechPart}` : '';
     return `${this.mechProp}${part}`;
   }
@@ -472,11 +483,18 @@ export class AnalysisGraphComponent
       // read out, "Z" promises an out-of-plane component a planar mechanism
       // does not have. A reader who cannot see the legend hears this instead
       // of it, so it has to say what the legend says.
-      .map((name) => (name === 'Z' ? this.seriesLabel('z') : name))
+      .map((name) => {
+        if (!name) return name;
+        const before = name.endsWith(BEFORE_SUFFIX);
+        if (this.compactSingleSeries) return before ? 'before drag' : 'current';
+        const component = before ? name.slice(0, -BEFORE_SUFFIX.length) : name;
+        const label = component === 'Z' ? this.seriesLabel('z') : component;
+        return label + (before ? ' before drag' : '');
+      })
       .filter((name): name is string => !!name);
     const plotted = names.length ? `, plotting ${names.join(', ')}` : '';
     const what = this.axisTitle ? `${this.axisTitle}, ` : '';
-    return `Graph of ${what}${this.graphLabel} over one cycle${plotted}. The same numbers are available from Export Data in the top strip.`;
+    return `Graph of ${what}${this.graphLabel} over one cycle${plotted}. The same numbers are available from Export Data.`;
   }
 
   /** The quantity and its unit, as the axis used to be titled; the summary still says it. */
@@ -1029,7 +1047,20 @@ export class AnalysisGraphComponent
     this.chartOptions = {
       ...this.chartOptions,
       yaxis: scale
-        ? { ...yaxis, min: scale.min, max: scale.max, tickAmount: scale.tickAmount }
+        ? {
+            ...yaxis,
+            min: scale.min,
+            max: scale.max,
+            tickAmount: scale.tickAmount,
+            labels: {
+              ...yaxis.labels,
+              formatter: (value: number) =>
+                formatAxisTick(value, (scale.max - scale.min) / scale.tickAmount).replace(
+                  '-',
+                  '\u2212'
+                ),
+            },
+          }
         : { ...yaxis, min: FLOOR_OF, max: CEIL_OF, tickAmount: undefined },
     };
   }
@@ -1299,7 +1330,7 @@ export class AnalysisGraphComponent
             this.numberOfSeries = 3;
             break;
           case "Linear Link's CoM Pos":
-            yAxisTitle = 'Position (CoM) ' + posLinUnit;
+            yAxisTitle = 'Center of mass position ' + posLinUnit;
             [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             seriesData.push({ name: 'X', type: 'line', data: datum[0] });
             seriesData.push({ name: 'Y', type: 'line', data: datum[1] });

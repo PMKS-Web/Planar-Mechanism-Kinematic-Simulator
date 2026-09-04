@@ -40,19 +40,23 @@
       data-canvas-inset="bottom"
       @riseFromBottom
     >
-      <!-- A tab off the top edge of the card, as in the mock, rather than a
-           control inside it: it governs the whole card, so it sits on it. -->
-      <!-- Unsyncing gives every machine a row of its own, and the phone shows
-           one row by design (§5.4 of the plan) -- so the control that would
-           produce the others is not offered there. -->
+      <!-- A tab off the top edge of the desktop card. On a phone the same
+           choice sits inside the card, where an overhanging tab would collide
+           with the sheet above it. -->
       @if (canSync && !viewport.isPhone()) {
         <button class="syncToggle" [class.on]="synced" (click)="toggleSync()">
           <mat-icon>{{ synced ? 'unfold_more' : 'unfold_less' }}</mat-icon>
-          {{ synced ? 'Control Each Mechanism' : 'Sync All Mechanisms' }}
+          {{ synced ? 'Control mechanisms independently' : 'Synchronize mechanisms' }}
+        </button>
+      }
+      @if (canSync && viewport.isPhone()) {
+        <button class="phoneSync" [class.on]="!synced" (click)="toggleSync()">
+          <mat-icon>{{ synced ? 'unfold_more' : 'unfold_less' }}</mat-icon>
+          {{ synced ? 'Control independently' : 'Synchronize mechanisms' }}
         </button>
       }
 
-      @for (row of shownRows; track row.id) {
+      @for (row of shownRows; track row.id; let first = $first) {
         <!-- The row's own surface carries the selection, so nothing has to be
              drawn around the controls and no button ever crosses the state.
              Everything to read sits on the first line; the handle gets the
@@ -178,14 +182,12 @@
               @if (row.deferred) {
                 <span class="rowEnd">
                   <mat-icon>hourglass_empty</mat-icon>
-                  Solved when you press Play
+                  Motion solves when you press Play
                 </span>
               }
 
               @if (row.note) {
-                <span class="rowNote" [attr.data-row]="row.index" [attr.data-full]="row.note">{{
-                  noteText(row)
-                }}</span>
+                <span class="rowNote">{{ row.note }}</span>
               }
 
               <!-- Amber rather than red: the mechanism runs, and runs correctly.
@@ -266,16 +268,19 @@
           </div>
 
           @if (viewport.isPhone()) {
-            <!-- Buttons and rail on one 52px line, with the view drawer's
-                 button at its right-hand end: two of the six view controls
-                 duplicate a pinch and the three switches are set once and left,
-                 so none of them earns permanent space in a 390px window. -->
+            <!-- The shared transport and view menu occur once; every
+                 independent mechanism still gets its own rail and the play
+                 control in its heading. -->
             <div class="phoneTransport">
-              <ng-container *ngTemplateOutlet="transportButtons" />
-              <span class="phoneRule" aria-hidden="true"></span>
+              @if (first) {
+                <ng-container *ngTemplateOutlet="transportButtons" />
+                <span class="phoneRule" aria-hidden="true"></span>
+              }
               <ng-container *ngTemplateOutlet="machineRail; context: { $implicit: row }" />
-              <span class="phoneRule tight" aria-hidden="true"></span>
-              <app-view-controls></app-view-controls>
+              @if (first) {
+                <span class="phoneRule tight" aria-hidden="true"></span>
+                <app-view-controls></app-view-controls>
+              }
             </div>
           } @else {
             <ng-container *ngTemplateOutlet="machineRail; context: { $implicit: row }" />
@@ -351,7 +356,7 @@
           [class.covered]="at.covered"
           [style.--at]="at.percent"
           (click)="backToStart(row); $event.stopPropagation()"
-          title="Back to where this machine's cycle starts"
+          title="Back to where this mechanism's cycle starts"
           aria-label="Back to the start pose"
         ></button>
       }

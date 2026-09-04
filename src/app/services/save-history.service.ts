@@ -2,6 +2,8 @@ import { Injectable, Injector, inject } from '@angular/core';
 import { UrlGenerationService } from './url-generation.service';
 import { UrlProcessorService } from './url-processor.service';
 import { rememberDrawing } from './last-drawing';
+import { MechanismService, PausedPlaybackPose } from './mechanism.service';
+import { SelectedTabService } from '../selected-tab.service';
 
 /*
  * This service is responsible for saving the history of the mechanism
@@ -94,6 +96,13 @@ export class SaveHistoryService {
 
   private setMechanismToState(index: number) {
     const urlProcessorService = this.injector.get(UrlProcessorService);
+    const tabs = this.injector.get(SelectedTabService);
+    const mechanism = this.injector.get(MechanismService);
+    // History stores the design. In an analysis mode, the pose is the reader's
+    // current viewpoint on that design and should remain where it was paused.
+    const paused: PausedPlaybackPose | undefined = tabs.isAnalysisMode()
+      ? mechanism.capturePausedPose()
+      : undefined;
 
     this.historySteps++;
     this.index = index;
@@ -101,6 +110,7 @@ export class SaveHistoryService {
     // geometry leaves converted values paired with the wrong unit system and
     // makes unit changes impossible to undo safely.
     urlProcessorService.updateFromURL(this.history[this.index], false, true, false, true);
+    if (paused) mechanism.restorePausedPose(paused);
     // Undo and redo move where the reader is standing, so they move what a
     // reload would bring back.
     this.remember();

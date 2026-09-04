@@ -20,11 +20,11 @@
           <span class="kindCard__text">
             <span class="kindCard__row">
               <span class="kindCard__name">Motion &mdash; 3 positions</span>
-              <span class="chip chip--on">4-bar or 6-bar</span>
+              <span class="chip chip--on">Four-bar or six-bar</span>
             </span>
             <span class="kindCard__detail">
-              Place a coupler in three positions. Every four-bar that passes through them is listed
-              for you to compare.
+              Place a coupler in three positions, then compare candidate four-bars that follow
+              the requested motion.
             </span>
           </span>
         </button>
@@ -391,6 +391,13 @@
           @if (hasSolution) {
             <section class="sect sect--last">
               <div class="sect__title">{{ solutionHeading }}</div>
+
+              @if (solutionWarning()) {
+                <div class="note note--warn" role="status">
+                  <mat-icon>warning</mat-icon>
+                  <span>{{ solutionWarning() }}</span>
+                </div>
+              }
 
               <div class="row">
                 <span class="row__label">Assembly branch</span>

@@ -57,6 +57,16 @@ describe('HelpPanelComponent, finding the mail key', () => {
     expect(await mailKey()).toBe('aBcDeFgHiJkLmNoPq');
   });
 
+  it('defines the shared terms used by editing and analysis', () => {
+    answerWith({});
+    const component = TestBed.createComponent(HelpPanelComponent).componentInstance;
+    const terms = component.glossary.map((entry) => entry.term);
+    expect(terms).toContain('Mechanism');
+    expect(terms).toContain('Linkage');
+    expect(terms).toContain('Reference frame');
+    expect(terms).toContain('Center of mass');
+  });
+
   it('asks the function by its real path, with one slash', async () => {
     answerWith({ apiKey: 'k' });
     await mailKey();

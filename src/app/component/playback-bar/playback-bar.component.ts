@@ -1,8 +1,6 @@
 import {
-  AfterViewChecked,
   AfterViewInit,
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
   ElementRef,
   OnDestroy,
@@ -26,7 +24,6 @@ import { AngleUnit, TimeUnit } from '../../model/utils';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { MatIcon } from '@angular/material/icon';
 import { ViewControlsComponent } from '../view-controls/view-controls.component';
-import { MatTooltip } from '@angular/material/tooltip';
 import { NgTemplateOutlet } from '@angular/common';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 import { ShortcutTipDirective } from '../../shortcut-tip.directive';
@@ -208,14 +205,13 @@ export interface RowRefusal {
   imports: [
     ShortcutTipDirective,
     MatIcon,
-    MatTooltip,
     ViewControlsComponent,
     CdkOverlayOrigin,
     CdkConnectedOverlay,
     NgTemplateOutlet,
   ],
 })
-export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
+export class PlaybackBarComponent implements OnInit, AfterViewInit, OnDestroy {
   mechanism = inject(MechanismService);
   settings = inject(SettingsService);
   activeObj = inject(ActiveObjService);
@@ -227,7 +223,6 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
   private loading = inject(LoadingService);
   private history = inject(SaveHistoryService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
-  private changeDetector = inject(ChangeDetectorRef);
 
   private positionSub?: Subscription;
   private wasAnimating = false;
@@ -332,10 +327,6 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     this.keyed[id]?.();
   });
 
-  ngAfterViewChecked(): void {
-    this.fitNotes();
-  }
-
   ngOnDestroy(): void {
     this.keySub.unsubscribe();
     this.positionSub?.unsubscribe();
@@ -384,12 +375,10 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
   /**
    * The rows this screen shows.
    *
-   * A phone shows the shared row and no more: parking mid-cycle is what posed
-   * editing needs on every platform, but a stack of per-machine rows is the
-   * bottom half of a phone. `rows` reads a phone as synced, so there is one
-   * row there by construction rather than by filtering -- filtering picked the
-   * *first machine's* private row out of an unsynced set, which controlled one
-   * machine while looking like it controlled the drawing.
+   * A phone uses the same synchronized or independent rows as the desktop.
+   * The card is allowed to grow and scroll when several mechanisms are being
+   * controlled independently; hiding that state made a drawing configured on
+   * a desktop impossible to control after opening it on a phone.
    */
   get shownRows(): PlaybackRow[] {
     return this.rows;
@@ -540,12 +529,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     // is, because each measures a different thing. The combined row follows the
     // first machine and says nothing about direction.
     //
-    // A phone reads as synced whether it is or not: the control that unsyncs a
-    // drawing is desktop-only, so a phone that inherited an unsynced state --
-    // from a URL, or from the window being narrowed -- would otherwise get the
-    // *first machine's* private row, labeled M1 and moving only M1, with no
-    // way to reach the others and nothing saying so.
-    if (this.mechanism.syncMechanisms || this.viewport.isPhone()) {
+    if (this.mechanism.syncMechanisms) {
       // The longest cycle in the drawing, so one handle can reach every frame
       // of every machine. Following the first one instead left the slower
       // machines with a stretch at the end of their cycles the handle could
@@ -858,69 +842,6 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
       return outward ? 'Opening' : 'Closing';
     }
     return outward ? 'Clockwise' : 'Counter-clockwise';
-  }
-
-  /**
-   * The note as it fits. "Counter-clockwise" is the longest thing on a reading
-   * line that also has to hold a chip and a time, and cut to "Counter-cl…" it
-   * says nothing; "CCW" says the whole thing in the room there is. Whether
-   * there is room is measured, per row, after every layout.
-   */
-  noteText(row: PlaybackRow): string {
-    if (!this.shortNotes.has(row.index)) return row.note;
-    if (row.note === 'Clockwise') return 'CW';
-    if (row.note === 'Counter-clockwise') return 'CCW';
-    return row.note;
-  }
-
-  /** The rows whose reading line cannot hold the note in full. */
-  private shortNotes = new Set<number>();
-  private noteFitKey = '';
-
-  /**
-   * Measure the notes against the room they have, and remember which need
-   * shortening. Done after each check rather than on a resize alone, because
-   * what shares the line -- the start chip, a refusal -- comes and goes with
-   * the state, not the window.
-   */
-  private fitNotes(): void {
-    const host = this.host.nativeElement as HTMLElement;
-    const notes = [...host.querySelectorAll<HTMLElement>('.rowNote[data-row]')];
-    const key = notes
-      .map((note) => `${note.dataset['row']}:${note.dataset['full']}:${note.parentElement?.clientWidth}`)
-      .join('|');
-    if (key === this.noteFitKey) return;
-    this.noteFitKey = key;
-    let changed = false;
-    for (const note of notes) {
-      const index = Number(note.dataset['row']);
-      const line = note.parentElement;
-      if (!line) continue;
-      // The room is what the line has left once everything else on it is
-      // placed; the full note's own width is measured off screen.
-      const others = [...line.children].filter((child) => child !== note) as HTMLElement[];
-      const gap = parseFloat(getComputedStyle(line).columnGap) || 0;
-      const taken = others.reduce((sum, child) => sum + child.offsetWidth, 0) + gap * others.length;
-      const room = line.clientWidth - taken;
-      const full = this.widthOf(note, note.dataset['full'] ?? '');
-      const wants = full > room + 0.5;
-      if (wants !== this.shortNotes.has(index)) {
-        if (wants) this.shortNotes.add(index);
-        else this.shortNotes.delete(index);
-        changed = true;
-      }
-    }
-    if (changed) this.changeDetector.detectChanges();
-  }
-
-  private widthOf(like: HTMLElement, text: string): number {
-    const probe = document.createElement('span');
-    probe.textContent = text;
-    probe.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font:${getComputedStyle(like).font}`;
-    like.parentElement?.appendChild(probe);
-    const width = probe.offsetWidth;
-    probe.remove();
-    return width;
   }
 
   /** Only worth offering when there is more than one machine to get out of step. */

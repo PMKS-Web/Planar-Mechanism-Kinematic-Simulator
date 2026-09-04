@@ -25,7 +25,7 @@ export interface ExportPart {
   kind: PartKind;
   id: string;
   label: string;
-  /** Why it is worth noticing — `grounded`, `input crank`, `slider`. */
+  /** Why it is worth noticing — `grounded`, `input crank`, `driven`. */
   note: string;
   /**
    * Whether this is what the canvas is holding, so the drawer opens on it.
@@ -50,7 +50,7 @@ export interface ExportPart {
 export interface ExportPartGroup {
   index: number;
   id: string;
-  /** `3 links · 10.00 RPM CCW` — what this machine is, in one line. */
+  /** `5 selectable objects · 10.00 RPM Counter-clockwise` — one-line context. */
   note: string;
   /** Whether force analysis actually solves for this machine. */
   forcesReady: boolean;

@@ -3,6 +3,9 @@
     <!-- {{ this.currentAngleUnit }} -->
     <title-block> Settings</title-block>
     <collapsible-subseciton titleLabel="Basic Settings" [expanded]="true">
+      @if (!documentEditable()) {
+        <p class="settingsLockedNote" role="status">{{ lockedNote().trim() }}</p>
+      }
       <radio-block
         option1="English (in)"
         option2="Metric (cm)"
@@ -84,10 +87,10 @@
         [formGroup]="this.settingsForm"
         _formControl="objectScale"
         tooltip="How big joints, blocks and cylinders are drawn. A drawing that arrives without a size of its own gets one suited to how large it is."
-        >Object Scale
+        >Object Size
       </input-block>
       <button-block icon="auto_fix_normal" [click]="updateObjectScale.bind(this)"
-        >Update Object Scale</button-block
+        >Auto-size Objects</button-block
       >
     </collapsible-subseciton>
 

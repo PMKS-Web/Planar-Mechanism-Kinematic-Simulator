@@ -160,7 +160,7 @@ export class DrawingExportComponent {
     // The drawing's own name, because "the DXF on its own" was on screen while
     // an SVG was being written.
     { label: 'None', note: 'The drawing on its own.', value: 'none' },
-    { label: 'CSV', note: 'Joint table and link table, two sheets.', value: 'csv' },
+    { label: 'CSV', note: 'Separate files for joints, links and any applied forces.', value: 'csv' },
     { label: 'JSON', note: 'The same tables, one structured file.', value: 'json' },
   ];
 
@@ -376,7 +376,7 @@ export class DrawingExportComponent {
     const on = rows.filter(
       (row) => row.fixed || (row.key !== undefined && this.isOn(row.key) && !this.blocked(row.key))
     ).length;
-    return `${on} of ${rows.length} included`;
+    return `${on} of ${rows.length} groups included`;
   }
 
   /** Whether a layer row shows a tick. */
@@ -416,7 +416,15 @@ export class DrawingExportComponent {
 
   /** A hole wider than the part it is cut in, said where the reader is looking. */
   get warning(): string {
-    return this.isEmpty ? '' : this.exportService.pinWarning(this.options);
+    return this.isEmpty ? '' : this.pinDiameterError || this.exportService.pinWarning(this.options);
+  }
+
+  get pinDiameterError(): string {
+    if (this.options.jointCircles !== 'holes') return '';
+    const diameter = this.effectivePinDiameter;
+    return Number.isFinite(diameter) && diameter > 0
+      ? ''
+      : 'Pin diameter must be greater than zero. Choose joint marks or no circles to omit holes.';
   }
 
   get deliveryLine(): string {
@@ -434,7 +442,7 @@ export class DrawingExportComponent {
   }
 
   download(): void {
-    if (this.isEmpty) return;
+    if (this.isEmpty || this.pinDiameterError) return;
     const file = this.exportService.create(this.options);
     const url = URL.createObjectURL(file.blob);
     const anchor = document.createElement('a');

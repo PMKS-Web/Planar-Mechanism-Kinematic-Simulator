@@ -33,7 +33,7 @@ describe('DrawingExportComponent', () => {
     fileNames: vi.fn().mockReturnValue(['mechanism (cm).dxf', 'mechanism-joints.csv']),
     downloadName: vi.fn().mockReturnValue('mechanism.zip'),
     pinWarning: vi.fn().mockReturnValue(''),
-    pinDiameter: vi.fn().mockReturnValue(0.13),
+    pinDiameter: vi.fn().mockImplementation((options) => options.pinDiameter ?? 0.13),
   };
 
   function render() {
@@ -183,5 +183,20 @@ describe('DrawingExportComponent', () => {
     expect(createUrl).toHaveBeenCalled();
     expect(click).toHaveBeenCalled();
     expect(revoke).toHaveBeenCalledWith('blob:dxf');
+  });
+
+  it.each([-1, 0, NaN, Infinity])('refuses an invalid pin diameter (%s) without exporting missing holes', (diameter) => {
+    const { component, fixture, element } = render();
+    component.touch({ pinDiameter: diameter });
+    fixture.detectChanges();
+    expect(component.warning).toContain('greater than zero');
+    expect(element.querySelector('button[mat-flat-button]').disabled).toBe(true);
+    component.download();
+    expect(exportService.create).not.toHaveBeenCalled();
+
+    // Omitting holes is a deliberate geometry choice, independent of their size.
+    component.touch({ jointCircles: 'marks' });
+    fixture.detectChanges();
+    expect(element.querySelector('button[mat-flat-button]').disabled).toBe(false);
   });
 });

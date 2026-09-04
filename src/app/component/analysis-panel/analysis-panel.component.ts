@@ -159,9 +159,9 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
       if (owner !== -1 && !this.mechanismService.mechanisms[owner]?.isMechanismValid()) {
         return `Finish analysis setup on ${this.mechanismService.partitions[owner].id} to see its graphs.`;
       }
-      return 'This part is not in a mechanism that can be solved, so it has no graphs.';
+      return 'This joint or link is not in a mechanism that can be solved, so it has no graphs.';
     }
-    return 'Select a part of the mechanism to analyze it.';
+    return 'Select a joint or link to analyze it.';
   }
 
   /**
@@ -189,8 +189,8 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
    */
   get analysisTuneHint(): string {
     return this.viewport.isTouch()
-      ? 'Drag a part to tune it. The graphs stay on whatever you tapped.'
-      : 'Drag a part to tune it. The graphs stay on whatever you clicked.';
+      ? 'Drag a joint or link to tune it. The graphs stay on whatever you tapped.'
+      : 'Drag a joint or link to tune it. The graphs stay on whatever you clicked.';
   }
 
   /**

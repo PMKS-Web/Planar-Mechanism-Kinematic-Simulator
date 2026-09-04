@@ -33,7 +33,7 @@ export const TEMPLATE_CATEGORIES = [
   { id: 'paths', name: 'Paths and Curves' },
   { id: 'forces', name: 'Forces' },
   { id: 'drives', name: 'Unusual Drives' },
-  { id: 'machines', name: 'Many Machines' },
+  { id: 'machines', name: 'Many Mechanisms' },
 ] as const;
 
 export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
@@ -101,7 +101,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Four-Bar',
     category: 'start',
     description:
-      'The one every other mechanism is a variation of: a crank turns, a rocker swings, and ' +
+      'A classic crank-rocker: a crank turns, a rocker swings, and ' +
       'the coupler between them draws a curve.',
     thumbnail: 'assets/gifs/four-bar.png',
     animation: 'assets/gifs/four-bar.gif',
@@ -139,8 +139,8 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Locked Four-Bar',
     category: 'start',
     description:
-      'Everything pinned but the crank. Lock marks ride the share link, so a class can only ' +
-      'drag the handle they are meant to.',
+      'Everything pinned but the crank. Lock marks are saved in the shared project, so a class ' +
+      'can only drag the handle they are meant to.',
     thumbnail: 'assets/gifs/locked-four-bar.png',
     animation: 'assets/gifs/locked-four-bar.gif',
   },
@@ -248,7 +248,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Screw Jack',
     category: 'slots',
     description:
-      'A plain guided slider with no cylinder drawn round it: its drive is a length per second, not an rpm.',
+      'A plain guided slider with no cylinder drawn round it: its drive is a length per second, not revolutions per minute.',
     thumbnail: 'assets/gifs/screw-jack.png',
     animation: 'assets/gifs/screw-jack.gif',
   },
@@ -276,7 +276,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Aircraft Landing Gear',
     category: 'cylinders',
     description:
-      'An aircraft head-on: two machines, a ram each, swinging the legs out of the belly and ' +
+      'An aircraft head-on: two mechanisms, a ram each, swinging the legs out of the belly and ' +
       'holding them at full stroke.',
     thumbnail: 'assets/gifs/landing-gear.png',
     animation: 'assets/gifs/landing-gear.gif',
@@ -371,8 +371,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     id: 'Punch_Press',
     name: 'Punch Press',
     category: 'forces',
-    description:
-      'A load on the slide: the crank torque spikes where the rod comes into line with it.',
+    description: 'Follow how the required crank torque changes through a loaded press stroke.',
     thumbnail: 'assets/gifs/punch-press.png',
     animation: 'assets/gifs/punch-press.gif',
   },
@@ -399,7 +398,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Offset Load Rocker',
     category: 'forces',
     description:
-      'A load off the line of its link is a moment — the term a free-body sketch leaves out.',
+      'An off-center load produces a moment. Compare its reactions with a load applied along the link.',
     thumbnail: 'assets/gifs/offset-load-rocker.png',
     animation: 'assets/gifs/offset-load-rocker.gif',
   },
@@ -408,8 +407,8 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Crane with Two Loads',
     category: 'forces',
     description:
-      'Global against local: the hook hangs vertical whatever the jib does, while the rope pull ' +
-      'swings with it.',
+      'Grid against link reference frames: the hook hangs vertical whatever the jib does, while ' +
+      'the rope pull swings with it.',
     thumbnail: 'assets/gifs/crane-two-loads.png',
     animation: 'assets/gifs/crane-two-loads.gif',
   },
@@ -443,10 +442,10 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
 
   {
     id: 'Three_Machines',
-    name: 'Three Machines',
+    name: 'Three Mechanisms',
     category: 'machines',
     description:
-      'Three machines in one drawing, each on its own playback row at its own speed and ' +
+      'Three mechanisms in one drawing, each on its own playback row at its own speed and ' +
       'direction.',
     thumbnail: 'assets/gifs/three-machines.png',
     animation: 'assets/gifs/three-machines.gif',
@@ -457,7 +456,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     category: 'machines',
     description:
       'Two Jansen legs half a cycle apart: one foot planted while the other swings. A gait is ' +
-      'a relationship between machines.',
+      'a relationship between mechanisms.',
     thumbnail: 'assets/gifs/walking-pair.png',
     animation: 'assets/gifs/walking-pair.gif',
   },
@@ -512,7 +511,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
 export const DEV_TEMPLATE_CARDS: readonly TemplateCard[] = [
   {
     id: 'Dev_All_Mechanism_Types',
-    name: 'Every Kind of Machine',
+    name: 'Every Kind of Mechanism',
     category: 'dev',
     description:
       'A crank, a cylinder, a slider and a chain that never reaches ground — every readiness state ' +

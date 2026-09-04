@@ -512,7 +512,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
 
   exportTooltip(): string {
     return this.canExport()
-      ? 'Choose parts, columns and a file format.'
+      ? 'Choose selectable objects, quantities and a file format.'
       : 'Nothing has been solved yet, so there are no numbers to export.';
   }
 
@@ -645,6 +645,9 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
 
   openTemplates(): void {
     this.closeMenu();
+    // Opening a worked mechanism is the next task, including when the library
+    // is reached while the tutorial is still pinned in the drawer.
+    this.tutorial.exit();
     TemplatesComponent.openIn(this.dialog);
   }
 

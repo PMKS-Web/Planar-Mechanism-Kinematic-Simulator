@@ -92,12 +92,32 @@ export class EditableTitleComponent {
   validateNewID(newID: string): string {
     // If the new ID only contains spaces, don't save it
     if (newID === '') {
-      return 'The new ID cannot be empty.';
+      return 'The name cannot be empty.';
     }
 
     // If new ID is not purely alphanumeric, don't save it
     if (!this.isAlphanumeric(newID)) {
-      return 'The new ID must only contain letters and numbers.';
+      return 'Use one word made of English letters (A–Z) and numbers (0–9).';
+    }
+
+    // Names appear together in selections, graphs, and exported files. Treat
+    // case as presentation rather than identity so `Crank` and `crank` cannot
+    // silently describe two different objects in the same drawing.
+    const active = this.activeObjService.getSelectedObj();
+    const normalized = newID.toLowerCase();
+    const taken = [
+      ...this.mechanismService.joints,
+      ...this.mechanismService.links,
+      ...this.mechanismService.forces,
+    ].some(
+      (candidate) =>
+        candidate !== active &&
+        String(candidate.name || candidate.id)
+          .trim()
+          .toLowerCase() === normalized
+    );
+    if (taken) {
+      return `The name ${newID} is already in use. Use a unique name.`;
     }
 
     return '';
@@ -110,7 +130,6 @@ export class EditableTitleComponent {
     let error = this.validateNewID(newID);
     if (error !== '') {
       this.notify.refusal('rename.invalid', error);
-      this.editMode = false;
       return;
     }
 

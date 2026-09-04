@@ -117,6 +117,11 @@ interface HeldPlayback {
   compensating: boolean;
 }
 
+/** A paused drawing's place in each cycle, independent of sample counts. */
+export interface PausedPlaybackPose {
+  mechanisms: { id: string; fraction: number }[];
+}
+
 /**
  * One machine's displayed pose, carried across a rebuild that re-measures it.
  *
@@ -509,6 +514,7 @@ export class MechanismService {
       if (save) {
         this.save();
       }
+      this.leaveForceAnalysisWithoutInputs();
       return;
     }
     this.solvingDeferred = false;
@@ -580,6 +586,22 @@ export class MechanismService {
     if (save) {
       this.save();
     }
+    this.leaveForceAnalysisWithoutInputs();
+  }
+
+  /**
+   * Force Analysis has no result to remain on once its last load is removed.
+   *
+   * This is deliberately checked after the edit has rebuilt and entered the
+   * history. The mass or force removal is still undoable; the mode simply
+   * returns to the place where another load can be added.
+   */
+  private leaveForceAnalysisWithoutInputs(): void {
+    if (this.tabs.getCurrentTab() !== TabID.FORCE) return;
+    const hasMass = this.links.some(
+      (link) => (link instanceof RealLink || link instanceof SliderBlock) && Number(link.mass) > 0
+    );
+    if (this.forces.length === 0 && !hasMass) this.tabs.setTab(TabID.EDIT);
   }
 
   /**
@@ -774,7 +796,7 @@ export class MechanismService {
     const dof = this.mobilityNear(near);
     const why =
       dof !== undefined && dof > 1
-        ? ` PMKS+ can only simulate 1-DOF linkages, and this one has ${dof} degrees of freedom.` +
+        ? ` PMKS+ can only simulate one-degree-of-freedom mechanisms, and this one has ${dof} degrees of freedom.` +
           ' Add a constraint, or build the parts as separate mechanisms.'
         : '';
     this.notify.news(
@@ -1513,8 +1535,7 @@ export class MechanismService {
       // are drawn in either -- switching one on in Kinematic and crossing to
       // Force used to lose it, which is exactly when a reader wants to see the
       // two together. A force is only solved in Force, so it stays there.
-      const shownIn: TabID[] =
-        quantity === 'force' ? [TabID.FORCE] : [TabID.ANALYZE, TabID.FORCE];
+      const shownIn: TabID[] = quantity === 'force' ? [TabID.FORCE] : [TabID.ANALYZE, TabID.FORCE];
       if (!shownIn.includes(tab)) continue;
       const shape = this.vectorShapeOf(part, quantity, mode);
       if (!shape) continue;
@@ -2002,9 +2023,9 @@ export class MechanismService {
       const who = link.name || link.id;
       this.notify.news(
         'hold.moved',
-        'A link locks its length or its angle, not both. ' +
-          `Moved the lock on ${who} to the ${name(hold)}.`,
-        { actions: [{ label: `Lock ${name(was)} instead`, run: () => this.setHold(link, was) }] }
+        'A link can keep either its length or its angle fixed. ' +
+          `${who} now has a fixed ${name(hold)}.`,
+        { actions: [{ label: `Fix ${name(was)} instead`, run: () => this.setHold(link, was) }] }
       );
     }
   }
@@ -3163,6 +3184,11 @@ export class MechanismService {
     }
     const newId = this.determineNextLetter();
     const newJoint = new RevJoint(newId, coord.x, coord.y);
+    // A tracer exists to show the point's path. Starting it with that path off
+    // made the completed gesture look identical to adding an ordinary point
+    // and required a second trip through its menu to reveal the result.
+    newJoint.showCurve = true;
+    this.settingsService.isShowTraces.next(true);
     this.graftJointOnto(newJoint, this.activeObjService.selectedLink);
     this.joints.push(newJoint);
     this.onMechUpdateState.next(3);
@@ -3376,7 +3402,7 @@ export class MechanismService {
           }
           const signed = this.driveSpeedOf(driven);
           const magnitude = Math.abs(signed).toFixed(2);
-          const way = turnsClockwise(signed) ? 'CW' : 'CCW';
+          const way = turnsClockwise(signed) ? 'Clockwise' : 'Counter-clockwise';
           return driven instanceof PrisJoint
             ? `${magnitude} ${this.nup.unitLabel(this.settingsService.lengthUnit.value)}/s`
             : `${magnitude} RPM ${way}`;
@@ -3726,7 +3752,7 @@ export class MechanismService {
     if (noTravel) {
       const cylinder = this.sealedStructures().find((found) => found.slider.id === noTravel);
       const name = cylinder ? this.cylinderName(cylinder) : noTravel;
-      return `Cylinder ${name} has no travel: its barrel is too short to slide in at all. Lengthen the cylinder, or reduce Object Scale — a larger scale draws everything on the rod bigger without lengthening the barrel.`;
+      return `Cylinder ${name} has no travel: its barrel is too short to slide in at all. Lengthen the cylinder, or reduce Object Size — a larger size draws everything on the rod bigger without lengthening the barrel.`;
     }
     const stuck = PositionSolver.unsolvableJoints;
     if (stuck.length > 0) {
@@ -5290,6 +5316,38 @@ export class MechanismService {
     return this.ownSeconds[index] ?? 0;
   }
 
+  /**
+   * Remember the paused pose for a history step.
+   *
+   * A fraction of the cycle survives a rebuild whose solver produces a
+   * different number of samples. Mechanism ids keep independent clocks paired
+   * with the same mechanism when more than one is on the drawing.
+   */
+  capturePausedPose(): PausedPlaybackPose {
+    return {
+      mechanisms: this.partitions.map((partition, index) => {
+        const period = this.mechanisms[index]?.cyclePeriod ?? 0;
+        const fraction = period > 0 ? this.secondsOf(index) / period : 0;
+        return { id: partition.id, fraction: Math.min(Math.max(fraction, 0), 1) };
+      }),
+    };
+  }
+
+  /** Put a rebuilt drawing back at the paused pose captured before history ran. */
+  restorePausedPose(pose: PausedPlaybackPose): void {
+    const byId = new Map(pose.mechanisms.map((one) => [one.id, one.fraction]));
+    this.isPlaying = false;
+    this.ownPlaying = this.mechanisms.map(() => false);
+    this.playbackClockMs = null;
+    this.partitions.forEach((partition, index) => {
+      const fraction = byId.get(partition.id);
+      const period = this.mechanisms[index]?.cyclePeriod ?? 0;
+      if (fraction !== undefined && period > 0) this.ownSeconds[index] = fraction * period;
+    });
+    this.drawOwnClocks(false);
+    this.settingsService.animating.next(!this.isAtStartPose());
+  }
+
   /** Put one machine at a place in its own cycle, and leave the others alone. */
   seekMechanism(index: number, seconds: number): void {
     const period = this.mechanisms[index]?.cyclePeriod ?? 0;
@@ -5497,9 +5555,7 @@ export class MechanismService {
    * one's joints is it.
    */
   private stagedPartitionIndex(key: string): number {
-    const exact = this.partitions.findIndex(
-      (partition) => topologyOf(partition.ownJoints) === key
-    );
+    const exact = this.partitions.findIndex((partition) => topologyOf(partition.ownJoints) === key);
     if (exact !== -1) return exact;
     const was = new Set(key.split(','));
     let best = -1;
@@ -5897,9 +5953,8 @@ export class MechanismService {
         ? undefined
         : {
             coordinate: coordinates[0],
-            heading: (coordinates[1] !== undefined && coordinates[1] < coordinates[0]
-              ? -1
-              : 1) as 1 | -1,
+            heading: (coordinates[1] !== undefined && coordinates[1] < coordinates[0] ? -1 : 1) as
+              1 | -1,
             seed: new Map(frames.joints[0].map((joint) => [joint.id, { x: joint.x, y: joint.y }])),
           };
     this.applyMechanismPose(frames, this.partitions[index], this.secondsAt(frames, reach));
@@ -6086,11 +6141,7 @@ export class MechanismService {
       // construction rather than by two pieces of arithmetic being kept in step.
       const anchor = this.anchorOf(index);
       const reach = anchor
-        ? reachAnchor(
-            coordinatesAcross(this.ruleFor(anchor), frames.joints),
-            anchor,
-            frames.joints
-          )
+        ? reachAnchor(coordinatesAcross(this.ruleFor(anchor), frames.joints), anchor, frames.joints)
         : null;
       const key = topologyOf(partition.ownJoints);
       // Out of reach, there is no anchored pose to draw -- and falling back to
@@ -6479,9 +6530,7 @@ export class MechanismService {
     if (this.isPartInert(link)) {
       return 'link-inert';
     }
-    if (
-      this.activeObjService.containsPart({ kind: 'link', id: link.id })
-    ) {
+    if (this.activeObjService.containsPart({ kind: 'link', id: link.id })) {
       return 'link-selected';
     }
     if (this.isInSelectedMechanism(link)) {
