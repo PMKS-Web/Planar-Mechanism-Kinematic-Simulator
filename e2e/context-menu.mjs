@@ -160,13 +160,13 @@ await openMechanism(page, BASE + FOURBAR);
  * The row that deletes the part itself.
  *
  * In Edit mode the ladder now ends with two destructive rows — the part's own
- * Delete, and below it Delete Mechanism, which takes the whole machine. So the
+ * Delete, and below it the whole-mechanism delete, which takes the machine. So the
  * part's Delete is the last row only where the machine-wide one is not offered.
  */
 const ownDelete = (menu) => {
   const rows = menu?.rows ?? [];
   const last = rows.at(-1);
-  return last?.label === 'Delete Mechanism' ? rows.at(-2) : last;
+  return last?.label.startsWith('Delete entire mechanism') ? rows.at(-2) : last;
 };
 
 const jointA = await openOn('#joint_A');

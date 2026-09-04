@@ -999,8 +999,13 @@ export class ContextMenuBuilderService {
     const named = this.mechanism.partitions.length > 1 && partition ? ` ${partition.id}` : '';
     const joints = partition?.ownJoints.length ?? 0;
     return new MenuRow({
-      label: `Delete Mechanism${named}`,
-      icon: 'remove',
+      // Named and marked apart from the row above it. Both were "remove" in
+      // red, one line apart, and the one that takes the whole machine was
+      // being pressed by hand aiming for the one that takes a part. "Entire"
+      // is the word doing the work, and a different glyph is what a reader
+      // moving quickly actually reads.
+      label: `Delete entire mechanism${named}`,
+      icon: 'delete_sweep',
       destructive: true,
       hint: joints > 0 ? `${joints} ${joints === 1 ? 'joint' : 'joints'}` : undefined,
       tip: 'Deletes the whole machine this part belongs to — every joint, link and force in it.',

@@ -114,7 +114,6 @@ interface HeldPlayback {
   playing: boolean;
   direction: number;
   /** Running backwards only because its drive was turned round in place. */
-  compensating: boolean;
 }
 
 /**
@@ -415,14 +414,12 @@ export class MechanismService {
     // the master's clock, so any edit -- a speed change, a reversal, a joint
     // moved -- silently pulled them all back into step with each other.
     //
-    // `compensating` records which machines are only running backwards because
-    // their drive was turned round without re-solving them. `reverseDrive`
-    // leaves the frames alone and walks them backwards instead, which is what
-    // keeps a reader's place on the chart. The rebuild below solves fresh
-    // frames *from the drive's new sign*, so they already run the new way and
-    // that compensation becomes a second reversal: the machine went back to
-    // turning the way it originally did while the stored speed said the
-    // opposite.
+    // Direction is the reader's own choice and survives the rebuild untouched.
+    // It used to need a compensation, because a reversal turned the clock round
+    // as well as the frames: the rebuild solves fresh frames from the drive's
+    // new sign, so the clock had to be turned back or the machine ran the way
+    // it originally did while the stored speed said the opposite. Reversing no
+    // longer moves the clock at all -- see `poseSecondsOf`.
     const heldEach = new Map<string, HeldPlayback>(
       this.partitions.map((partition, index) => [
         partitionKey(partition),
@@ -430,7 +427,6 @@ export class MechanismService {
           seconds: index === editedIndex ? 0 : (this.ownSeconds[index] ?? 0),
           playing: this.ownPlaying[index] === true,
           direction: this.playbackDirection[index] === -1 ? -1 : 1,
-          compensating: this.mechanisms[index]?.framesRunBackwards === true,
         },
       ])
     );
@@ -556,13 +552,13 @@ export class MechanismService {
       // the per-row flags are seeded from it rather than from a held value the
       // transport had no reason to keep up to date.
       this.ownPlaying[index] = this.syncMechanisms ? this.isPlaying : was?.playing === true;
-      // The frames are new and run the drive's way, so anything that was
-      // walking the old ones backwards to make up for a reversal stops. A
-      // machine whose playback the reader turned round themselves -- a rocking
-      // one, which reverses by playback alone -- was never compensating and
-      // keeps the direction it was given.
-      const direction = was?.direction ?? 1;
-      this.playbackDirection[index] = was?.compensating ? -direction : direction;
+      // The direction the reader chose, kept across the rebuild. There used to
+      // be a compensation here: a reversal turned the clock round as well as
+      // the frames, and fresh frames already run the drive's new way, so the
+      // clock had to be turned back. The clock no longer moves for a reversal
+      // (`poseSecondsOf`), so there is nothing to undo -- and undoing it anyway
+      // sent the machine backwards after the first edit following a reversal.
+      this.playbackDirection[index] = was?.direction ?? 1;
     });
     this.activeObjService.fakeUpdateSelectedObj();
     // Where each machine's cycle is meant to start, taken for anything that has
@@ -4649,7 +4645,7 @@ export class MechanismService {
     // mechanism with a shorter cycle wraps inside the master one rather than
     // running out (applyMechanismPose interpolates between samples by time).
     this.mechanisms.forEach((frames, index) => {
-      this.applyMechanismPose(frames, this.partitions[index], this.ownSeconds[index] ?? 0);
+      this.applyMechanismPose(frames, this.partitions[index], this.poseSecondsOf(index));
     });
   }
 
@@ -4661,12 +4657,34 @@ export class MechanismService {
    * "what does this quantity read at the pose on screen" has to ask the
    * machine that quantity belongs to.
    */
+  /**
+   * The time to read a *pose* at, which is not always the time on the clock.
+   *
+   * Reversing turns the drive round without re-solving: the frames still climb
+   * the way they were solved, and the machine walks them the other way. The
+   * clock keeps counting up from zero, because zero is the pose the drawing was
+   * made in and Stop returns there whichever way the input is turning -- so the
+   * pose at t seconds is the frame at `period - t`.
+   *
+   * The clock used to be turned round instead. Pressing reverse sent the
+   * reading to the end of the cycle and counted it down, so the transport said
+   * 5.44 s over a machine that had not moved and the travelled part of the bar
+   * was nearly full before anything had been played.
+   */
+  private poseSecondsOf(index: number): number {
+    const seconds = this.secondsOf(index);
+    const mechanism = this.mechanisms[index];
+    if (!mechanism?.framesRunBackwards || seconds === 0) return seconds;
+    const period = mechanism.cyclePeriod;
+    return period > 0 ? period - seconds : seconds;
+  }
+
   currentSampleOf(index: number): number {
     const frames = this.mechanisms[index];
     const times = frames?.timeNum ?? [];
     if (!frames || times.length === 0) return 0;
     const period = frames.cyclePeriod;
-    let local = this.secondsOf(index);
+    let local = this.poseSecondsOf(index);
     if (period > 0 && Number.isFinite(local) && local !== period) {
       // Exactly the period is the last sample, not a wrap back to the first.
       local = ((local % period) + period) % period;
@@ -4936,8 +4954,10 @@ export class MechanismService {
    */
   private drawOwnClocks(playing = false): void {
     const master = this.masterMechanismIndex();
+    // The master's *pose* time, not its clock: a reversed machine walks its
+    // frames the other way while its clock still counts up (`poseSecondsOf`).
     const step =
-      master === -1 ? this.mechanismTimeStep : this.stepAtTime(this.ownSeconds[master] ?? 0);
+      master === -1 ? this.mechanismTimeStep : this.stepAtTime(this.poseSecondsOf(master));
     this.seekingOneMechanism = true;
     try {
       this.animate(step, playing);
@@ -5072,8 +5092,11 @@ export class MechanismService {
       // had sampled before, every angular velocity still carrying the sign it
       // had turned round from.
       this.solveRevision++;
-      // Through the cycle the other way, from where it stands.
-      this.playbackDirection[index] = this.directionOf(index) < 0 ? 1 : -1;
+      // The clock is left alone. `withReversedDrive` has already flipped which
+      // way the machine walks its frames, and that is the whole of the
+      // reversal; turning the clock round as well sent the reading to the end
+      // of the cycle and counted it down towards a start it was already
+      // standing on. See `poseSecondsOf`.
     } else {
       this.updateMechanism(false);
     }
@@ -5136,11 +5159,12 @@ export class MechanismService {
     const profile = this.driveProfileOf(index);
     const mechanism = this.mechanisms[index];
     const forwardDrive = turnsClockwise(mechanism?.inputAngularVelocities[0] ?? 0);
-    // Which way playback runs *through the frames*, which is not the same as
-    // which way it runs through the cycle once the drive has been turned round:
-    // reversing walks the frames backwards precisely so the machine goes
-    // forwards along its new direction, and counting both flips canceled them.
-    const rewinding = this.directionOf(index) < 0 !== (mechanism?.framesRunBackwards ?? false);
+    // Only the clock. Reversing walks the frames backwards *and* turns the drive
+    // round, precisely so the machine goes forwards along its new direction --
+    // so a reversal is not a rewind and must not be counted as one. This used
+    // to subtract `framesRunBackwards` to cancel a flip of the clock that
+    // reversing no longer makes; see `poseSecondsOf`.
+    const rewinding = this.directionOf(index) < 0;
     if (!profile || !mechanism || profile.continuous) {
       return forwardDrive !== rewinding;
     }

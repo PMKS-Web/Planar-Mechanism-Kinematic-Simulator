@@ -472,7 +472,7 @@ const runRow = (kind, id, gi, ri) =>
     [kind, id, gi, ri]
   );
 
-const SKIP_ROWS = /Background Image|Delete Mechanism|Delete Selected|Duplicate Selected/;
+const SKIP_ROWS = /Background Image|Delete entire mechanism|Delete Selected|Duplicate Selected/;
 
 for (const mechanism of MECHANISMS) {
   current = mechanism;

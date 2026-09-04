@@ -177,7 +177,7 @@ describe('the right-click menu', () => {
         const destructive = all.filter((one) => one.destructive);
         expect(destructive.length).toBe(2);
         expect(all.slice(-2)).toEqual(destructive);
-        expect(destructive[1].label.startsWith('Delete Mechanism')).toBe(true);
+        expect(destructive[1].label.startsWith('Delete entire mechanism')).toBe(true);
       }
     });
 
@@ -395,11 +395,11 @@ describe('the right-click menu', () => {
       ).toBe('Delete Joint');
     });
 
-    it('counts the joints Delete Mechanism would take, on a joint or a link', () => {
+    it('counts the joints the whole-mechanism delete would take, on a joint or a link', () => {
       const parts = fourBar(harness.mechanism);
       harness.mechanism.updateMechanism();
       for (const target of [parts.a, parts.coupler]) {
-        const machine = row(harness.builder.build(target, noHandlers), 'Delete Mechanism')!;
+        const machine = row(harness.builder.build(target, noHandlers), 'Delete entire mechanism')!;
         expect(machine.destructive).toBe(true);
         expect(machine.hint).toBe('5 joints');
         expect(machine.disabled).toBe(false);
@@ -410,14 +410,14 @@ describe('the right-click menu', () => {
       const parts = fourBar(harness.mechanism);
       // Nothing partitioned, so no part belongs to a machine — the state a
       // bar dropped on the grid on its own is in.
-      const machine = row(harness.builder.build(parts.a, noHandlers), 'Delete Mechanism')!;
+      const machine = row(harness.builder.build(parts.a, noHandlers), 'Delete entire mechanism')!;
       expect(machine.refusal!.short).toBe('not in a mechanism');
     });
 
     it('takes the whole machine when the row is used', () => {
       const parts = fourBar(harness.mechanism);
       harness.mechanism.updateMechanism();
-      row(harness.builder.build(parts.crank, noHandlers), 'Delete Mechanism')!.action();
+      row(harness.builder.build(parts.crank, noHandlers), 'Delete entire mechanism')!.action();
       expect(harness.mechanism.joints.length).toBe(0);
       expect(harness.mechanism.links.length).toBe(0);
     });

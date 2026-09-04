@@ -5313,7 +5313,13 @@ export class NewGridComponent implements OnDestroy {
       return {
         x: (from.x + to.x) / 2,
         y: (from.y + to.y) / 2,
-        ink: 'black',
+        // Black *in a channel*, because there is no body color behind the name
+        // there. A cylinder's barrel carries a slot too -- that is how the rod
+        // slides in it -- but it is drawn as painted metal, so its name is read
+        // against its own color like every other body's. Left on black, a
+        // cylinder given one of the dark navies disappeared while the bar
+        // beside it in the same color turned its name white.
+        ink: this.mechanismSrv.cylinderAt(link) ? this.linkLabelInk(link) : 'black',
         opacity: 1,
         name,
         angle,
