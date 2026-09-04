@@ -8,6 +8,7 @@ import {
   nearlyNonGrashofFixture,
   heldCrankFourBarFixture,
   twoFourBarsFixture,
+  equalSidedFourBarFixture,
   redundantParallelCrankFixture,
   wideSwingRockerFixture,
   wattIFixture,
@@ -706,6 +707,14 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'posed-editing.spec.ts',
     floatingSlot: false,
     fixture: nearlyNonGrashofFixture(),
+  },
+  {
+    name: 'Four-bar with four equal sides',
+    purpose:
+      'Folds flat twice a turn: a change point, where a solver can come back on the other branch',
+    spec: 'fold-through-straight.spec.ts',
+    floatingSlot: false,
+    fixture: equalSidedFourBarFixture(),
   },
   {
     name: 'Parallelogram with a third parallel crank',

@@ -330,3 +330,28 @@ export function redundantParallelCrankFixture(): MechanismFixture {
     inputAngVel: INPUT_SPEED,
   };
 }
+
+/**
+ * A four-bar whose four links are all the same length -- a rhombus.
+ *
+ * It turns as a parallelogram, and twice a turn it folds flat: at a quarter and
+ * three-quarters every joint is on one line, which is the change point every
+ * equal-sided four-bar has. Both are places a solver can come back on the wrong
+ * assembly branch, and one reader watching this one saw exactly that -- the
+ * linkage arriving somewhere else at the end of a cycle the transport still
+ * called a loop. Reported from a shared link, and kept here because a mechanism
+ * that folds through a straight line is the hardest thing a position solver is
+ * asked to do.
+ */
+export function equalSidedFourBarFixture(): MechanismFixture {
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true, input: true },
+      { id: 'B', x: 0, y: 2 },
+      { id: 'G', x: 2, y: 2 },
+      { id: 'H', x: 2, y: 0, ground: true },
+    ],
+    links: [{ joints: 'AB' }, { joints: 'BG' }, { joints: 'GH' }],
+    inputAngVel: INPUT_SPEED,
+  };
+}
