@@ -196,6 +196,13 @@ export class LeftTabsComponent implements AfterViewInit, OnDestroy {
    * ResizeObserver that publishes it fires through the animation.
    */
   private slide(panel: HTMLElement, opening: boolean): void {
+    // At the top of what it has to say. Shut, the sheet is a box of no height
+    // with its content still inside it, and the browser is free to leave the
+    // scroll offset wherever it likes -- which turned out to be the bottom, so
+    // the sheet opened with its own heading above the fold and the first line
+    // sliced through the middle of the glyphs. Before the reduced-motion
+    // return, because where it opens is not an animation.
+    if (opening) panel.scrollTop = 0;
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     // Where it is coming from is the last height published, because by the time
     // this runs the collapsed class is already on or off and the panel is
