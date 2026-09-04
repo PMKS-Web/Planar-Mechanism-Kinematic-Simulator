@@ -408,6 +408,14 @@ export class NewGridComponent implements OnDestroy {
     const wantsBackdrop = backdropOfCard(this.urlParser.wantsBackdropFor);
     if (wantsBackdrop) void placeTemplateBackdrop(this.bgImage, wantsBackdrop);
 
+    // A half-drawn bar belongs to the mode it was started in. Left armed across
+    // a mode switch, the ghost went on tracking the cursor over the Synthesis
+    // canvas and the next click there built a link -- in a mode whose Undo is
+    // disabled, so it could not be taken back without switching away again.
+    this.tabService.tabChanged
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.abandonGesture());
+
     fromEvent(window, 'resize')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
@@ -4132,9 +4140,16 @@ export class NewGridComponent implements OnDestroy {
                   this.dragState.finishCreating();
                   this.linkCreateStart = undefined;
                   this.linkCreateFrom = undefined;
+                  // Named rather than counted: clicking the joint the gesture
+                  // started from lands here too, and "those two joints" was a
+                  // sentence about two things when the reader had pointed at
+                  // one.
+                  const from = this.activeObjService.prevSelectedJoint;
                   this.notify.refusal(
                     'link.already-joined',
-                    'Those two joints are already on one link.'
+                    from.id === joint2.id
+                      ? `A link needs two joints, and this gesture started at ${from.name || from.id}. Click somewhere else to finish it.`
+                      : `${from.name || from.id} and ${joint2.name || joint2.id} are already on one link.`
                   );
                   return;
                 }
@@ -4791,12 +4806,21 @@ export class NewGridComponent implements OnDestroy {
     return `M${to.x} ${to.y} L${m.com.x} ${m.com.y}`;
   }
 
+  /**
+   * Where the number stands: on the line, at its middle.
+   *
+   * It used to sit clear of the line, because a bare label centered on one runs
+   * its digits through the stroke. The chip has its own white and breaks the
+   * hairline instead, which is what every other dimension here does.
+   */
   comMeasureLabelPos(m: NonNullable<NewGridComponent['comMeasure']>) {
     const { from, to } = this.comMeasureLine(m);
-    const off = 0.25 * this.settings.objectScale;
-    return m.axis === 'x'
-      ? { x: (from.x + to.x) / 2, y: from.y + off }
-      : { x: from.x + off, y: (from.y + to.y) / 2 };
+    return { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+  }
+
+  /** The measure, in the reader's own length unit. */
+  comMeasureLabel(m: NonNullable<NewGridComponent['comMeasure']>): string {
+    return this.nup.formatModelLength(this.comMeasureValue(m), this.settings.lengthUnit.getValue());
   }
 
   comMeasureValue(m: NonNullable<NewGridComponent['comMeasure']>): number {
@@ -4897,7 +4921,18 @@ export class NewGridComponent implements OnDestroy {
       axis,
       along,
       arc,
-      label: `${Math.round(((swept * 180) / Math.PI) * 10) / 10}°`,
+      // The same words every other angle on this canvas is written in. It
+      // used to spell its own degree sign and its own degrees, so it read
+      // "45°" beside the length dimension's "45 deg" -- and it went on saying
+      // degrees to a reader who had asked for radians.
+      label: this.nup.formatValueAndUnit(
+        this.nup.convertAngle(
+          (swept * 180) / Math.PI,
+          AngleUnit.DEGREE,
+          this.settings.angleUnit.getValue()
+        ),
+        this.settings.angleUnit.getValue()
+      ),
       labelAt: new Coord(
         at.x + labelRadius * Math.cos(halfway),
         at.y + labelRadius * Math.sin(halfway)
@@ -4922,15 +4957,9 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /** The label sits clear of the line, on the side away from the barrel. */
+  /** On the travel line, at its middle: the chip breaks the hairline there. */
   cylinderRangeLabelPos(range: { from: Coord; to: Coord }): Coord {
-    const dx = range.to.x - range.from.x;
-    const dy = range.to.y - range.from.y;
-    const length = Math.hypot(dx, dy) || 1;
-    const off = 0.28 * this.settings.objectScale;
-    return new Coord(
-      (range.from.x + range.to.x) / 2 - (dy / length) * off,
-      (range.from.y + range.to.y) / 2 + (dx / length) * off
-    );
+    return new Coord((range.from.x + range.to.x) / 2, (range.from.y + range.to.y) / 2);
   }
 
   /**
@@ -5756,6 +5785,31 @@ export class NewGridComponent implements OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onKeyPress($event: KeyboardEvent) {
     this.reconsiderDrop($event, true);
+    if ($event.key === 'Escape') this.abandonGesture();
+  }
+
+  /**
+   * Put down a gesture that has been started and not finished.
+   *
+   * A creation gesture is armed by a menu row and disarmed by the click that
+   * completes it, and until now there was no third way out. Escape did nothing
+   * -- the ghost went on tracking the cursor and the next click built the bar
+   * -- so the only escape was a right-click, which nothing says.
+   *
+   * Nothing to say when nothing is held: this runs on every Escape anywhere in
+   * the window, including the ones closing a dialog.
+   */
+  private abandonGesture(): void {
+    const armed =
+      this.dragState.isCreatingLink ||
+      this.dragState.grid === gridStates.createCylinder ||
+      this.dragState.grid === gridStates.createForce ||
+      this.dragState.isDragging;
+    if (!armed) return;
+    this.letGoOfEverything(true);
+    this.forceGhost = undefined;
+    this.forceCreateOn = undefined;
+    this.mechanismSrv.onMechUpdateState.next(3);
   }
 
   /** Answer the shortcuts whose action is the canvas's own. */
@@ -5973,6 +6027,22 @@ export class NewGridComponent implements OnDestroy {
     }
 
     return { x1, y1, x2, y2 };
+  }
+
+  /**
+   * Whether there is a length here worth drawing.
+   *
+   * Two coincident points have no direction, so every part of the dimension is
+   * a division by zero: the end caps come out `MNaN NaN LNaN NaN`, the browser
+   * refuses the path and says so on the console, and what is left on the canvas
+   * is a chip reading 0.00 standing on nothing. A slider's block and its pin
+   * are coincident by construction, so pointing at their Distance to Joints
+   * field did this every time.
+   */
+  hasLengthDimension(): boolean {
+    const { x1, y1, x2, y2 } = this.findStartAndEndPoints();
+    if (![x1, y1, x2, y2].every(Number.isFinite)) return false;
+    return Math.hypot(x2 - x1, y2 - y1) > 1e-9;
   }
 
   getSVGPerpendicularLine1() {

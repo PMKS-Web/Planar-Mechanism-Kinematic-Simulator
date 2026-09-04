@@ -566,6 +566,13 @@ export async function placeTemplateBackdrop(
     if (images.image()?.src.startsWith(BACKDROP_ASSETS)) images.remove();
     return;
   }
+  // A card's own picture never displaces one the reader chose. Replacing the
+  // mechanism is what the choice dialog warned about; their file was not part
+  // of that bargain, and it cannot be got back -- background images are outside
+  // both the URL and the history. The reader can clear theirs and reopen the
+  // card if they want the backdrop.
+  const standing = images.image();
+  if (standing && !standing.src.startsWith(BACKDROP_ASSETS)) return;
   try {
     await images.placeInCentimeters(backdrop.src, {
       width: backdrop.width,

@@ -13,6 +13,20 @@ import { SynthesisSolutionService } from './synthesis/synthesis-solution.service
 
 /** The one query that names a screen instead of describing a mechanism. */
 const LIBRARY_QUERY = 'library';
+
+/**
+ * Whether this address is somebody else's query rather than a mechanism.
+ *
+ * The codec's alphabet is letters, digits, `_` and `-`, with `.` and `,` for
+ * its separators; it never writes an `=`. So a query whose every piece is a
+ * `key=value` pair is a link that was decorated on its way here -- a campaign
+ * tag, a click id -- and the right answer is the empty grid `/` already gives,
+ * not an error about a mechanism nobody sent.
+ */
+function looksLikeQueryParameters(url: string): boolean {
+  const pieces = url.split('&').filter((piece) => piece.length > 0);
+  return pieces.length > 0 && pieces.every((piece) => /^[^=]+=[^=]*$/.test(piece));
+}
 /** What a new tab's fragment says before the template's name. */
 const BACKDROP_QUERY = 'backdrop=';
 
@@ -101,7 +115,10 @@ export class UrlProcessorService {
     if (index === -1) return null;
     const content = fullURL.substring(index + 1);
     const fragment = content.indexOf('#');
-    return fragment === -1 ? content : content.substring(0, fragment);
+    const query = fragment === -1 ? content : content.substring(0, fragment);
+    // A bare '?' carries nothing, and nothing is what `/` means: it opened an
+    // empty grid under "that shared link could not be opened".
+    return query.length > 0 ? query : null;
   }
 
   // Decode the url and update mechanism
@@ -232,6 +249,18 @@ export class UrlProcessorService {
         // MechanismService before this service is finished being built.
         this.injector.get(SynthesisSolutionService).invalidate();
       } catch (error) {
+        // A query that was never a mechanism is not a broken one. A link
+        // decorated by a mailer or a social share arrives as
+        // `?utm_source=twitter`, and saying "that shared link could not be
+        // opened" over an empty grid tells a reader their mechanism was lost
+        // when there never was one. Ordinary query parameters are the one
+        // shape worth telling apart: the encoder writes no '=' at the top
+        // level, so every '&'-separated piece carrying one is somebody else's
+        // tracking, not our payload.
+        if (looksLikeQueryParameters(url)) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
         console.error('Unable to load mechanism URL', error);
         // Deferred because this can run inside the service's own constructor,
         // before there is an overlay to open into. A failure, and it waits to

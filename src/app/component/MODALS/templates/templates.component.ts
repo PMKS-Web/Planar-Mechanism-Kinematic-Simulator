@@ -247,7 +247,13 @@ export class TemplatesComponent {
       this.mechanismSrv.joints.length === 0 &&
       this.mechanismSrv.links.length === 0 &&
       this.mechanismSrv.forces.length === 0 &&
-      !this.design.hasDesign()
+      !this.design.hasDesign() &&
+      // A picture the reader loaded counts as work on the grid. It is not in
+      // the URL and not in the history, so a template that arrives with a
+      // backdrop of its own replaces it *unrecoverably* -- and without this the
+      // choice dialog never appeared at all on a grid that held only a picture,
+      // so the file went with no question asked.
+      !this.backdrop.image()
     );
   }
 

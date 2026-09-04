@@ -1743,9 +1743,12 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         const [success, value] = this.parseForce(val!);
         if (!success) {
           this.notify.refusal('value.force', NOT_A.force);
-          this.forceForm.patchValue({
-            magnitude: this.activeSrv.selectedForce.mag.toFixed(2).toString(),
-          });
+          // The stored value in the unit the field shows, and quietly: a
+          // refusal that emits runs the parser over its own restore.
+          this.forceForm.patchValue(
+            { magnitude: this.forceText(this.activeSrv.selectedForce.mag) },
+            { emitEvent: false }
+          );
         } else {
           this.activeSrv.selectedForce.setMagnitude(value);
           this.mechanismService.updateMechanism(true);
@@ -1768,9 +1771,25 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         );
         if (!success) {
           this.notify.refusal('value.angle', NOT_A.angle);
-          this.forceForm.patchValue({
-            angle: this.activeSrv.selectedForce.angleRad.toFixed(2).toString(),
-          });
+          // Put back what the force actually points at, in the unit this field
+          // is read in, and without waking this handler again. It used to write
+          // the raw radians as a bare number *and* emit -- so refusing "zzz" on
+          // a force pointing straight down fed "-1.57" back through the parser,
+          // which read it as -1.57 *degrees* and swung the arrow to horizontal.
+          // The refusal did the edit it was refusing.
+          this.forceForm.patchValue(
+            {
+              angle: this.nup.formatValueAndUnit(
+                this.nup.convertAngle(
+                  this.activeSrv.selectedForce.angleRad,
+                  AngleUnit.RADIAN,
+                  this.settingsService.angleUnit.getValue()
+                ),
+                this.settingsService.angleUnit.getValue()
+              ),
+            },
+            { emitEvent: false }
+          );
         } else {
           //Always convert to Radian since Force.angle is in Radian
           this.activeSrv.selectedForce.setDirectionRadians(
@@ -1798,9 +1817,12 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         const [success, value] = this.parseForce(val!);
         if (!success) {
           this.notify.refusal('value.force', NOT_A.force);
-          this.forceForm.patchValue({
-            xComp: this.activeSrv.selectedForce.xComp.toFixed(2).toString(),
-          });
+          // The stored value in the unit the field shows, and quietly: a
+          // refusal that emits runs the parser over its own restore.
+          this.forceForm.patchValue(
+            { xComp: this.forceText(this.activeSrv.selectedForce.xComp) },
+            { emitEvent: false }
+          );
         } else {
           this.activeSrv.selectedForce.setComponents(value, this.activeSrv.selectedForce.yComp);
           this.mechanismService.updateMechanism(true);
@@ -1820,9 +1842,12 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         const [success, value] = this.parseForce(val!);
         if (!success) {
           this.notify.refusal('value.force', NOT_A.force);
-          this.forceForm.patchValue({
-            yComp: this.activeSrv.selectedForce.yComp.toFixed(2).toString(),
-          });
+          // The stored value in the unit the field shows, and quietly: a
+          // refusal that emits runs the parser over its own restore.
+          this.forceForm.patchValue(
+            { yComp: this.forceText(this.activeSrv.selectedForce.yComp) },
+            { emitEvent: false }
+          );
         } else {
           this.activeSrv.selectedForce.setComponents(this.activeSrv.selectedForce.xComp, value);
           this.mechanismService.updateMechanism(true);

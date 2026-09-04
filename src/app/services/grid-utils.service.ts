@@ -1263,6 +1263,7 @@ export class GridUtilsService {
   toggleCurve(lastRightClick: Joint | Link | Force | String) {
     if (lastRightClick instanceof PrisJoint) {
       lastRightClick.showCurve = !lastRightClick.showCurve;
+      this.saveTrace();
       return;
     }
     // A pin that rides a block draws its path through the block's prismatic
@@ -1275,6 +1276,21 @@ export class GridUtilsService {
     if (lastRightClick instanceof RevJoint) {
       lastRightClick.showCurve = !lastRightClick.showCurve;
     }
+    this.saveTrace();
+  }
+
+  /**
+   * A traced path is part of the drawing, so the drawing has to record it.
+   *
+   * `showCurve` rides the URL like everything else a shared link carries, and
+   * it was the one thing in there that never reached the history: the toggle
+   * left Undo disabled, and the next undo of anything else -- a drag made
+   * minutes later -- replayed a URL written before the trace and switched it
+   * off with no notice. In the URL and out of the history is the one place a
+   * setting cannot be.
+   */
+  private saveTrace(): void {
+    this.mechanismSrv.updateMechanism(true);
   }
 
   getLinkSubset(link: Link): Link[] {

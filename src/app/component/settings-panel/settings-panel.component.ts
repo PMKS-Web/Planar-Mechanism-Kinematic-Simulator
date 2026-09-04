@@ -1,4 +1,5 @@
 import { EditPermissionService } from '../../services/edit-permission.service';
+import { NotificationService } from '../../services/notification.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { environment } from '../../../environments/environment';
 import { Component, ChangeDetectionStrategy, OnDestroy, inject } from '@angular/core';
@@ -31,6 +32,19 @@ function scaleText(scale: number): string {
   return scale.toFixed(2);
 }
 
+/**
+ * How small and how large a drawn joint may be, as a multiple of the internal
+ * scale.
+ *
+ * The floor is the field's own resolution: it shows two decimals, so anything
+ * under a hundredth reads back as "0.00" and stops being a number this panel
+ * can restore. The ceiling is generous -- fifty times is already a drawing made
+ * entirely of one joint -- and exists so a mistyped row of digits is refused
+ * rather than spending a second re-deriving every outline.
+ */
+const MIN_SCALE = 0.01;
+const MAX_SCALE = 50;
+
 @Component({
   selector: 'app-settings-panel',
   templateUrl: './settings-panel.component.html',
@@ -56,6 +70,7 @@ export class SettingsPanelComponent implements OnDestroy {
   private nup = inject(NumberUnitParserService);
   private tabs = inject(SelectedTabService);
   private permission = inject(EditPermissionService);
+  private notify = inject(NotificationService);
 
   readonly appVersion = environment.appVersion;
 
@@ -159,17 +174,33 @@ export class SettingsPanelComponent implements OnDestroy {
       // canvas. Every dimension in the mark system is a multiple of this number,
       // so a NaN or a zero does not degrade the drawing -- it erases it, behind
       // dozens of invalid-SVG errors.
-      if (
-        this.settingsForm.controls['objectScale'].invalid ||
-        !Number.isFinite(parsed) ||
-        parsed <= 0
-      ) {
-        // Restore the last good scale into its own field, not the speed field.
-        this.settingsForm.patchValue({ objectScale: scaleText(this.currentObjectScaleSetting) });
-      } else {
-        this.currentObjectScaleSetting = parsed;
-        SettingsService._objectScale.next(this.currentObjectScaleSetting * MODEL_SCALE);
+      //
+      // The bounds are a range and not just a sign. A scale of 0.0001 passed
+      // the old "greater than zero" test, drew the mechanism as bare hairlines
+      // with no joints or ground marks, and -- because the field shows two
+      // decimals -- came *back* as the text "0.00". The next refusal then
+      // restored "0.00" into the field, which failed the test, which restored
+      // it again: a recursion that ended in "Maximum call stack size exceeded"
+      // and a settings panel that had stopped working.
+      const outOfRange = !Number.isFinite(parsed) || parsed < MIN_SCALE || parsed > MAX_SCALE;
+      if (this.settingsForm.controls['objectScale'].invalid || outOfRange) {
+        // Restore the last good scale into its own field, not the speed field
+        // -- and quietly, because a restore that emits runs this handler over
+        // its own answer.
+        this.settingsForm.patchValue(
+          { objectScale: scaleText(this.currentObjectScaleSetting) },
+          { emitEvent: false }
+        );
+        // Said, not swallowed. This was the one field in the app that refused
+        // an entry and gave the reader nothing to read.
+        this.notify.refusal(
+          'value.object-scale',
+          `Object scale has to be a number from ${MIN_SCALE} to ${MAX_SCALE}.`
+        );
+        return;
       }
+      this.currentObjectScaleSetting = parsed;
+      SettingsService._objectScale.next(this.currentObjectScaleSetting * MODEL_SCALE);
       this.mechanismSrv.updateMechanism();
     });
     this.settingsForm.controls['angleunit'].valueChanges.subscribe((val) => {

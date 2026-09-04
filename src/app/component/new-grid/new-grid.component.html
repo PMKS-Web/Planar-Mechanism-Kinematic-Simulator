@@ -2159,7 +2159,8 @@
   @if (
     (activeObjService.objType == 'Link' || activeObjService.objType == 'Joint') &&
     this.showLinkLengthOverlay >= -1 &&
-    this.showLinkAngleOverlay < -1
+    this.showLinkAngleOverlay < -1 &&
+    hasLengthDimension()
   ) {
     <!-- A hairline dimension with a pill for its number: the value the field
          under the pointer is about, drawn where it is measured. Screen-sized,
@@ -2249,125 +2250,158 @@
        frame's zero, along the hovered axis, to the center of mass — whose
        mark the same hover previews. -->
   @if (comMeasure && comMeasureValue(comMeasure) > 1e-9 ? comMeasure : null; as measure) {
-    <g modelFrame style="pointer-events: none">
-      <line
-        [attr.x1]="comMeasureLine(measure).from.x"
-        [attr.y1]="comMeasureLine(measure).from.y"
-        [attr.x2]="comMeasureLine(measure).to.x"
-        [attr.y2]="comMeasureLine(measure).to.y"
-        stroke="#000000"
-        [attr.stroke-width]="0.02 * settings.objectScale"
-      />
-      <path
-        [attr.d]="comMeasureCaps(measure)"
-        stroke="#000000"
-        [attr.stroke-width]="0.02 * settings.objectScale"
-      ></path>
-      @if (comMeasureConnector(measure); as connector) {
+    <g modelFrame class="hoverDimension" style="pointer-events: none">
+      <g class="hairline">
+        <line
+          [attr.x1]="comMeasureLine(measure).from.x"
+          [attr.y1]="comMeasureLine(measure).from.y"
+          [attr.x2]="comMeasureLine(measure).to.x"
+          [attr.y2]="comMeasureLine(measure).to.y"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          marker-start="url(#hairlineArrowFlipped)"
+          marker-end="url(#hairlineArrow)"
+        />
         <path
-          [attr.d]="connector"
-          stroke="#000000"
-          [attr.stroke-width]="0.02 * settings.objectScale"
-          [attr.stroke-dasharray]="0.08 * settings.objectScale"
+          [attr.d]="comMeasureCaps(measure)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
         ></path>
-      }
-      <!-- A vertical measure's label starts clear of its line; centering it
-           there would run the digits through the stroke. -->
-      <text
-        [attr.text-anchor]="measure.axis === 'y' ? 'start' : 'middle'"
-        [upright]="comMeasureLabelPos(measure)"
-        [attr.font-size]="svgGrid.scaleWithZoom(20)"
-      >
-        {{ nup.formatModelLength(comMeasureValue(measure), settings.lengthUnit.getValue()) }}
-      </text>
+        @if (comMeasureConnector(measure); as connector) {
+          <path
+            [attr.d]="connector"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+            [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
+          ></path>
+        }
+      </g>
+      <!-- On the line rather than beside it: the pill's own white breaks the
+           hairline where the number stands, which is what a dimension does and
+           what saves a vertical measure from running its digits through the
+           stroke. -->
+      <g class="dimensionPill" [upright]="comMeasureLabelPos(measure)">
+        <rect
+          [attr.x]="-pillWidth(comMeasureLabel(measure)) / 2"
+          [attr.y]="-svgGrid.scaleWithZoom(11)"
+          [attr.width]="pillWidth(comMeasureLabel(measure))"
+          [attr.height]="svgGrid.scaleWithZoom(22)"
+          [attr.rx]="svgGrid.scaleWithZoom(11)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+        ></rect>
+        <text
+          text-anchor="middle"
+          dominant-baseline="middle"
+          [attr.y]="svgGrid.scaleWithZoom(0.5)"
+          [attr.font-size]="svgGrid.scaleWithZoom(12.5)"
+        >
+          {{ comMeasureLabel(measure) }}
+        </text>
+      </g>
     </g>
   }
   <!-- The ram's travel, as the stretch of ground its rod mount covers. One
        picture for both size fields: Travel is how long this line is, Starts at
        is how far along it the ram is standing right now. -->
   @if (cylinderRange; as range) {
-    <g modelFrame style="pointer-events: none">
-      <line
-        [attr.x1]="range.from.x"
-        [attr.y1]="range.from.y"
-        [attr.x2]="range.to.x"
-        [attr.y2]="range.to.y"
-        stroke="#000000"
-        stroke-linecap="round"
-        [attr.stroke-width]="0.02 * settings.objectScale"
-        [attr.stroke-dasharray]="0.08 * settings.objectScale"
-      />
-      <!-- Solid as far as the ram has gone, dashed for what is left of the
-           travel: the split *is* the percentage, without a second mark. -->
-      @if (range.showsPosition) {
+    <g modelFrame class="hoverDimension" style="pointer-events: none">
+      <g class="hairline">
         <line
           [attr.x1]="range.from.x"
           [attr.y1]="range.from.y"
-          [attr.x2]="range.at.x"
-          [attr.y2]="range.at.y"
-          stroke="#000000"
+          [attr.x2]="range.to.x"
+          [attr.y2]="range.to.y"
           stroke-linecap="round"
-          [attr.stroke-width]="0.04 * settings.objectScale"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
         />
-      }
-      @for (cap of cylinderRangeCaps(range); track $index) {
-        <line
-          [attr.x1]="cap.x1"
-          [attr.y1]="cap.y1"
-          [attr.x2]="cap.x2"
-          [attr.y2]="cap.y2"
-          stroke="#000000"
-          [attr.stroke-width]="0.02 * settings.objectScale"
-        />
-      }
-      <text
-        text-anchor="middle"
-        [upright]="cylinderRangeLabelPos(range)"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
-        [attr.font-size]="svgGrid.scaleWithZoom(20)"
-      >
-        {{ range.label }}
-      </text>
+        <!-- Solid as far as the ram has gone, dashed for what is left of the
+             travel: the split *is* the percentage, without a second mark. -->
+        @if (range.showsPosition) {
+          <line
+            [attr.x1]="range.from.x"
+            [attr.y1]="range.from.y"
+            [attr.x2]="range.at.x"
+            [attr.y2]="range.at.y"
+            stroke-linecap="round"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
+          />
+        }
+        @for (cap of cylinderRangeCaps(range); track $index) {
+          <line
+            [attr.x1]="cap.x1"
+            [attr.y1]="cap.y1"
+            [attr.x2]="cap.x2"
+            [attr.y2]="cap.y2"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          />
+        }
+      </g>
+      <g class="dimensionPill" [upright]="cylinderRangeLabelPos(range)">
+        <rect
+          [attr.x]="-pillWidth(range.label) / 2"
+          [attr.y]="-svgGrid.scaleWithZoom(11)"
+          [attr.width]="pillWidth(range.label)"
+          [attr.height]="svgGrid.scaleWithZoom(22)"
+          [attr.rx]="svgGrid.scaleWithZoom(11)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+        ></rect>
+        <text
+          text-anchor="middle"
+          dominant-baseline="middle"
+          [attr.y]="svgGrid.scaleWithZoom(0.5)"
+          [attr.font-size]="svgGrid.scaleWithZoom(12.5)"
+        >
+          {{ range.label }}
+        </text>
+      </g>
     </g>
   }
   @if (slotAngleGuide; as guide) {
-    <g modelFrame style="pointer-events: none">
-      <!-- The frame the number is in: +x from the block, dashed, because it is
-           a reference rather than a part of the mechanism. -->
-      <line
-        [attr.x1]="guide.at.x"
-        [attr.y1]="guide.at.y"
-        [attr.x2]="guide.axis.x"
-        [attr.y2]="guide.axis.y"
-        stroke="#000000"
-        stroke-linecap="round"
-        [attr.stroke-width]="0.02 * settings.objectScale"
-        [attr.stroke-dasharray]="0.08 * settings.objectScale"
-      />
-      <!-- Where the slot actually points, solid, because it is. -->
-      <line
-        [attr.x1]="guide.at.x"
-        [attr.y1]="guide.at.y"
-        [attr.x2]="guide.along.x"
-        [attr.y2]="guide.along.y"
-        stroke="#000000"
-        stroke-linecap="round"
-        [attr.stroke-width]="0.03 * settings.objectScale"
-      />
-      <path
-        [attr.d]="guide.arc"
-        fill="none"
-        stroke="#000000"
-        [attr.stroke-width]="0.02 * settings.objectScale"
-      />
-      <text
-        text-anchor="middle"
-        [upright]="guide.labelAt"
-        [attr.stroke-width]="svgGrid.scaleWithZoom(5)"
-        [attr.font-size]="svgGrid.scaleWithZoom(20)"
-      >
-        {{ guide.label }}
-      </text>
+    <g modelFrame class="hoverDimension" style="pointer-events: none">
+      <g class="hairline">
+        <!-- The frame the number is in: +x from the block, dashed, because it is
+             a reference rather than a part of the mechanism. -->
+        <line
+          [attr.x1]="guide.at.x"
+          [attr.y1]="guide.at.y"
+          [attr.x2]="guide.axis.x"
+          [attr.y2]="guide.axis.y"
+          stroke-linecap="round"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
+        />
+        <!-- Where the slot actually points, solid, because it is. -->
+        <line
+          [attr.x1]="guide.at.x"
+          [attr.y1]="guide.at.y"
+          [attr.x2]="guide.along.x"
+          [attr.y2]="guide.along.y"
+          stroke-linecap="round"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+        />
+        <path
+          [attr.d]="guide.arc"
+          fill="none"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          marker-end="url(#hairlineArrow)"
+        />
+      </g>
+      <g class="dimensionPill" [upright]="guide.labelAt">
+        <rect
+          [attr.x]="-pillWidth(guide.label) / 2"
+          [attr.y]="-svgGrid.scaleWithZoom(11)"
+          [attr.width]="pillWidth(guide.label)"
+          [attr.height]="svgGrid.scaleWithZoom(22)"
+          [attr.rx]="svgGrid.scaleWithZoom(11)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+        ></rect>
+        <text
+          text-anchor="middle"
+          dominant-baseline="middle"
+          [attr.y]="svgGrid.scaleWithZoom(0.5)"
+          [attr.font-size]="svgGrid.scaleWithZoom(12.5)"
+        >
+          {{ guide.label }}
+        </text>
+      </g>
     </g>
   }
 </svg>

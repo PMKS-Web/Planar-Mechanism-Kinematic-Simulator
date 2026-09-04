@@ -706,7 +706,12 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
         count: blockers.length
           ? `${blockers.length} ${blockers.length === 1 ? 'blocker' : 'blockers'}`
           : undefined,
-        text: 'before it will run.',
+        // The count is drawn as a chip, so the sentence has to read *through*
+        // it: "M1 [1 blocker] before it will run" was missing the word that
+        // joins the two. Every other surface saying the same thing has one --
+        // the bottom bar's "1 fix before analysis", the drawer's "1 thing has
+        // to change before this mechanism will run".
+        text: blockers.length ? 'to fix before it will run.' : 'before it will run.',
         action: 'Analysis setup',
       });
     });

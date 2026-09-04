@@ -159,6 +159,18 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
     return `${links} ${links === 1 ? 'link' : 'links'} selected`;
   }
 
+  /**
+   * What the delete button promises, counted.
+   *
+   * It said "Delete All", which reads as the whole drawing and is not what it
+   * does -- and the right-click menu's own row for the same action says
+   * "Delete Selected (2)". Two surfaces, one action, one sentence.
+   */
+  get deleteLabel(): string {
+    const count = this.joints.length + this.links.length;
+    return count > 0 ? `Delete Selected (${count})` : 'Delete Selected';
+  }
+
   private common<T>(values: readonly T[], equals: (left: T, right: T) => boolean = Object.is) {
     return aggregateCommonValue(values, equals);
   }

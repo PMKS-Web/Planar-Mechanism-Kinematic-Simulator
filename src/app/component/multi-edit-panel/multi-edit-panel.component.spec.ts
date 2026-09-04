@@ -59,8 +59,15 @@ describe('MultiEditPanelComponent', () => {
   }
 
   /** The header's trash can, which a group names rather than leaving as a square. */
+  /**
+   * The header's delete button, by what it now promises.
+   *
+   * It used to say "Delete All", which reads as the whole drawing and is not
+   * what it does; it says what the right-click menu's row for the same action
+   * says, and counts the same way.
+   */
   function headerDelete(element: HTMLElement): HTMLButtonElement | null {
-    return element.querySelector('editable-title-block button[aria-label="Delete All"]');
+    return element.querySelector('editable-title-block button[aria-label^="Delete Selected"]');
   }
 
   it('shows common joint values and a clear Mixed state, with no bulk rename', () => {

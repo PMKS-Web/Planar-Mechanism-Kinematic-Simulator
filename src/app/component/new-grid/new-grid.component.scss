@@ -733,7 +733,13 @@
       opacity: 0.42;
     }
 
-    path {
+    // Lines as well as paths: the measures that came later -- a center of
+    // mass's offset, a ram's travel, a slot's angle -- are drawn as `line`
+    // elements, and each was carrying its own black stroke at its own
+    // model-scaled width. One rule, so a dimension is a dimension whatever it
+    // measures.
+    path,
+    line {
       fill: none;
       stroke: #000;
     }
