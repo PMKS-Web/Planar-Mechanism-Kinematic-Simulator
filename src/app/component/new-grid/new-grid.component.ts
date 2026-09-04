@@ -548,7 +548,8 @@ export class NewGridComponent implements OnDestroy {
     this.activeObjService.restorePartSelection(
       { refs: result.selection, primary: result.selection.at(-1) },
       this.mechanismSrv.joints,
-      this.mechanismSrv.links
+      this.mechanismSrv.links,
+      this.mechanismSrv.forces
     );
   }
 
@@ -1004,7 +1005,9 @@ export class NewGridComponent implements OnDestroy {
       (clickedObj instanceof Joint || clickedObj instanceof Link || clickedObj instanceof Force)
     ) {
       if (
-        (clickedObj instanceof RealJoint || clickedObj instanceof RealLink) &&
+        (clickedObj instanceof RealJoint ||
+          clickedObj instanceof RealLink ||
+          clickedObj instanceof Force) &&
         this.activeObjService.containsPart(clickedObj)
       ) {
         // A menu opened inside a group acts on the group. In particular, a
@@ -1115,7 +1118,13 @@ export class NewGridComponent implements OnDestroy {
     if (event && event.button !== 0) return;
     if (
       this.tabService.getCurrentTab() === TabID.EDIT &&
-      (clickedObj instanceof RealJoint || clickedObj instanceof RealLink)
+      // A force is one of them: eight of them can be given one magnitude, one
+      // frame or one color in a single press, which is the whole reason a
+      // group selection exists. What it does not join is the geometry -- where
+      // a force is, is decided by the body it is on.
+      (clickedObj instanceof RealJoint ||
+        clickedObj instanceof RealLink ||
+        clickedObj instanceof Force)
     ) {
       if (
         isAdditiveSelectionGesture(
@@ -1512,7 +1521,10 @@ export class NewGridComponent implements OnDestroy {
     this.mechanismSrv.updateMechanism(false);
     this.mechanismSrv.onMechUpdateState.next(2);
     this.activeObjService.fakeUpdateSelectedObj();
-    this.showPathWhileDragging(this.activeObjService.primaryPart);
+    // The traced path is a joint's or a body's; a force has none, and asking
+    // for one would be asking about the wrong object.
+    const primary = this.activeObjService.primaryPart;
+    this.showPathWhileDragging(primary instanceof Force ? undefined : primary);
     return true;
   }
 

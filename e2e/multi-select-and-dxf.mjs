@@ -159,7 +159,11 @@ check(
 );
 check(
   'a mixed joint/link selection exposes shared actions without geometry fields',
-  (await page.locator('app-multi-edit-panel').innerText()).includes('Joint and Link Selection') &&
+  // The note names the situation rather than the two kinds, because a force
+  // can be in the mix too.
+  (await page.locator('app-multi-edit-panel').innerText()).includes(
+    'A selection of more than one kind of part'
+  ) &&
     (await page.locator('app-multi-edit-panel [data-field="x"]').count()) === 0 &&
     (await page.locator('app-multi-edit-panel [data-field="length"]').count()) === 0
 );
@@ -513,6 +517,103 @@ check(
   heldAngle.OA === 'angle' && heldAngle.CD === 'angle',
   JSON.stringify(heldAngle)
 );
+await openMechanism(page, BASE + FOURBAR);
+await page.waitForTimeout(300);
+
+// --- and the ones a force carries -------------------------------------------
+//
+// A force is a member of the selection for everything a group *says* about it
+// -- how big, which way, which frame, what color -- and brings no geometry:
+// where a force is, is decided by the body it acts on. So it deletes with the
+// group and refuses to be duplicated on its own, with the reason.
+{
+  await openMechanism(page, BASE + FOURBAR);
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    for (const id of ['OA', 'CD']) {
+      grid.activeObjService.updateSelectedObj(
+        grid.mechanismSrv.links.find((link) => link.id === id)
+      );
+      grid.mechanismSrv.createForceAtCOM();
+    }
+  });
+  await page.waitForTimeout(700);
+  const forces = () =>
+    page.evaluate(() =>
+      ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.forces.map((force) => ({
+        id: force.id,
+        mag: Math.round(force.mag * 100) / 100,
+        deg: Math.round((force.angleRad * 180) / Math.PI),
+        local: force.local,
+      }))
+    );
+
+  await page.click('#F1');
+  await clickWith('#F2', 'Control');
+  await page.waitForTimeout(250);
+  check(
+    'a force joins a selection, and the panel offers what a set of forces has in common',
+    JSON.stringify(await selection()) === JSON.stringify(['force:F1', 'force:F2']) &&
+      (await page.locator('app-multi-edit-panel input[data-field="magnitude"]').count()) === 1 &&
+      (await page.locator('app-multi-edit-panel input[data-field="forceAngle"]').count()) === 1,
+    JSON.stringify(await selection())
+  );
+
+  const magnitude = page.locator('app-multi-edit-panel input[data-field="magnitude"]');
+  await magnitude.click();
+  await magnitude.fill('4 N');
+  await magnitude.press('Tab');
+  await page.waitForTimeout(700);
+  check(
+    'one magnitude reaches every selected force',
+    (await forces()).every((force) => force.mag === 4),
+    JSON.stringify(await forces())
+  );
+
+  await page.locator('app-multi-edit-panel radio-block button', { hasText: 'Local' }).click();
+  await page.waitForTimeout(700);
+  check(
+    'and so does one frame',
+    (await forces()).every((force) => force.local === true),
+    JSON.stringify(await forces())
+  );
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await page.waitForTimeout(800);
+  check(
+    'each of which is one press of Undo',
+    (await forces()).every((force) => force.local === false && force.mag === 4),
+    JSON.stringify(await forces())
+  );
+
+  const atForce = await center('#F1');
+  await page.mouse.click(atForce.x, atForce.y, { button: 'right' });
+  await page.waitForTimeout(450);
+  const forceRows = await page.evaluate(() =>
+    [...document.querySelectorAll('#contextMenu .cm-row')].map((row) => ({
+      label: row.querySelector('.cm-row__label')?.textContent.trim(),
+      hint: row.querySelector('.cm-row__hint')?.textContent.trim() ?? '',
+      off: row.className.includes('is-off') || row.getAttribute('aria-disabled') === 'true',
+    }))
+  );
+  check(
+    'the group menu opens on a force and offers the frame',
+    forceRows.some((row) => row.label === 'Global Frame'),
+    JSON.stringify(forceRows.map((row) => row.label))
+  );
+  check(
+    'and grays Duplicate, because a force is copied with the link it acts on',
+    forceRows.find((row) => row.label === 'Duplicate Selected (2)')?.off === true,
+    JSON.stringify(forceRows.find((row) => row.label === 'Duplicate Selected (2)'))
+  );
+  await menuRow('Delete Selected (2)').click();
+  await page.waitForTimeout(700);
+  check('Delete Selected takes both forces', (await forces()).length === 0);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await page.waitForTimeout(800);
+  check('and one Undo brings both back', (await forces()).length === 2);
+}
+
 await openMechanism(page, BASE + FOURBAR);
 await page.waitForTimeout(300);
 

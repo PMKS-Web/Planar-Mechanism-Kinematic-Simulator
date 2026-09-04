@@ -1,8 +1,19 @@
+import { Force } from './force';
 import { Joint, RealJoint } from './joint';
 import { Link, RealLink } from './link';
 
-export type SelectedPart = RealJoint | RealLink;
-export type SelectedPartKind = 'joint' | 'link';
+/**
+ * What a reader can pick out of the drawing and act on as a group.
+ *
+ * A force is one of them, and it is the odd one: joints and links are
+ * *geometry*, and a force is a reading anchored to a body. It joins the
+ * selection so that eight of them can be given one magnitude, one frame or one
+ * color in a single press -- and it brings no geometry of its own to a group
+ * drag, because where a force is is decided by the link it is on. A selection
+ * that is nothing but forces therefore has nothing to drag, and says so.
+ */
+export type SelectedPart = RealJoint | RealLink | Force;
+export type SelectedPartKind = 'joint' | 'link' | 'force';
 
 /** A transient selection identity. Kind is part of the key: joint and link ids may collide. */
 export interface SelectedPartRef {
@@ -18,7 +29,10 @@ export interface PartSelectionSnapshot {
 export type CommonValue<T> = { kind: 'empty' } | { kind: 'mixed' } | { kind: 'common'; value: T };
 
 export function partRef(part: SelectedPart): SelectedPartRef {
-  return { kind: part instanceof RealJoint ? 'joint' : 'link', id: part.id };
+  return {
+    kind: part instanceof RealJoint ? 'joint' : part instanceof Force ? 'force' : 'link',
+    id: part.id,
+  };
 }
 
 export function partRefKey(ref: SelectedPartRef): string {
@@ -54,7 +68,8 @@ export function selectableLinks(links: Link[]): RealLink[] {
 export function resolveSelectedParts(
   refs: readonly SelectedPartRef[],
   joints: readonly Joint[],
-  links: readonly Link[]
+  links: readonly Link[],
+  forces: readonly Force[] = []
 ): SelectedPart[] {
   const jointById = new Map(
     joints
@@ -62,12 +77,18 @@ export function resolveSelectedParts(
       .map((joint) => [joint.id, joint])
   );
   const linkById = new Map(selectableLinks([...links]).map((link) => [link.id, link]));
+  const forceById = new Map(forces.map((force) => [force.id, force]));
   const resolved: SelectedPart[] = [];
   const seen = new Set<string>();
   for (const ref of refs) {
     const key = partRefKey(ref);
     if (seen.has(key)) continue;
-    const part = ref.kind === 'joint' ? jointById.get(ref.id) : linkById.get(ref.id);
+    const part =
+      ref.kind === 'joint'
+        ? jointById.get(ref.id)
+        : ref.kind === 'force'
+          ? forceById.get(ref.id)
+          : linkById.get(ref.id);
     if (!part) continue;
     seen.add(key);
     resolved.push(part);
@@ -132,8 +153,13 @@ export class PartSelectionState {
     };
   }
 
-  restore(snapshot: PartSelectionSnapshot, joints: readonly Joint[], links: readonly Link[]): void {
-    this.chosen = resolveSelectedParts(snapshot.refs, joints, links);
+  restore(
+    snapshot: PartSelectionSnapshot,
+    joints: readonly Joint[],
+    links: readonly Link[],
+    forces: readonly Force[] = []
+  ): void {
+    this.chosen = resolveSelectedParts(snapshot.refs, joints, links, forces);
     const surviving = new Set(this.chosen.map((part) => partRefKey(partRef(part))));
     this.primarySelection =
       snapshot.primary && surviving.has(partRefKey(snapshot.primary))

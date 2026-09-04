@@ -59,9 +59,18 @@ const select = async (id) => {
   await page.waitForTimeout(800);
 };
 
+// The title's own words. `.graphTitle` also holds the help mark, and a
+// mat-icon's ligature *is* its text -- so `textContent` reads
+// "Force on Link BC help_outline" and every exact match here missed.
 const titles = () =>
   page.evaluate(() =>
-    [...document.querySelectorAll('.graphTitle')].map((el) => el.textContent.trim())
+    [...document.querySelectorAll('.graphTitle')].map((el) =>
+      [...el.childNodes]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent)
+        .join('')
+        .trim()
+    )
   );
 
 // --- A slider names the bodies a reader can point at -------------------------
@@ -134,8 +143,15 @@ record(
 const readingOf = async (id, title) => {
   await select(id);
   return page.evaluate((wanted) => {
+    // Same reason as `titles`: the help mark's ligature is text too.
+    const named = (one) =>
+      [...(one.querySelector('.graphTitle')?.childNodes ?? [])]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent)
+        .join('')
+        .trim();
     const section = [...document.querySelectorAll('.graphSection')].find(
-      (one) => one.querySelector('.graphTitle')?.textContent.trim() === wanted
+      (one) => named(one) === wanted
     );
     return section ? section.querySelector('.graphValue')?.textContent.trim() : null;
   }, title);

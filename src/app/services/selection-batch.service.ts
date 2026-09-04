@@ -19,7 +19,9 @@ export type BatchMutationResult =
   { ok: true; selection: SelectedPartRef[] } | { ok: false; refusal: BatchRefusal };
 
 type ResolvedPart =
-  { ref: SelectedPartRef; object: RealJoint } | { ref: SelectedPartRef; object: Link; root: Link };
+  | { ref: SelectedPartRef; object: RealJoint }
+  | { ref: SelectedPartRef; object: Link; root: Link }
+  | { ref: SelectedPartRef; object: Force; force: Force };
 
 interface DeletePlan {
   resolved: ResolvedPart[];
@@ -27,6 +29,8 @@ interface DeletePlan {
   removeJointIds: Set<string>;
   selectedJointIds: Set<string>;
   orphanCandidates: Set<string>;
+  /** Forces picked out on their own. The ones on a deleted body go with it anyway. */
+  removeForces: Set<Force>;
 }
 
 interface DuplicateClosure {
@@ -75,6 +79,14 @@ export class SelectionBatchService {
   duplicateRefusal(refs: readonly SelectedPartRef[]): BatchRefusal | undefined {
     const resolved = resolve(this.mechanism, refs);
     if ('refusal' in resolved) return resolved.refusal;
+    if (resolved.parts.every((part) => 'force' in part)) {
+      return {
+        code: 'duplicate-forces-only',
+        short: 'nothing to copy it onto',
+        message:
+          'A force is copied with the link it acts on. Select that link as well, or copy it from the link.',
+      };
+    }
     const closure = duplicateClosure(this.mechanism, resolved.parts);
     return 'refusal' in closure ? closure.refusal : undefined;
   }
@@ -125,6 +137,13 @@ function resolve(
       if (canonical.has(key)) continue;
       canonical.add(key);
       parts.push({ ref, object: joint });
+    } else if (ref.kind === 'force') {
+      const force = mechanism.forces.find((candidate) => candidate.id === ref.id);
+      if (!force) return { refusal: staleSelection() };
+      const key = `force:${force.id}`;
+      if (canonical.has(key)) continue;
+      canonical.add(key);
+      parts.push({ ref, object: force, force });
     } else {
       const object = linkById(mechanism, ref.id);
       const owningRoot = rootById(mechanism, ref.id);
@@ -160,8 +179,11 @@ function planDeletion(mechanism: MechanismService, resolved: ResolvedPart[]): De
     }
   };
 
+  const removeForces = new Set<Force>();
   for (const part of resolved) {
-    if ('root' in part) {
+    if ('force' in part) {
+      removeForces.add(part.force);
+    } else if ('root' in part) {
       const linked = part;
       const cylinder = mechanism.cylinderAt(linked.object);
       if (cylinder) removeCylinder(cylinder);
@@ -201,7 +223,14 @@ function planDeletion(mechanism: MechanismService, resolved: ResolvedPart[]): De
     );
     if (!held) removeJointIds.add(id);
   });
-  return { resolved, removeRoots, removeJointIds, selectedJointIds, orphanCandidates };
+  return {
+    resolved,
+    removeRoots,
+    removeJointIds,
+    selectedJointIds,
+    orphanCandidates,
+    removeForces,
+  };
 }
 
 function applyDeletion(mechanism: MechanismService, plan: DeletePlan): void {
@@ -242,7 +271,9 @@ function applyDeletion(mechanism: MechanismService, plan: DeletePlan): void {
   });
 
   mechanism.links = roots;
-  mechanism.forces = mechanism.forces.filter((force) => !removedOwners.has(force.link));
+  mechanism.forces = mechanism.forces.filter(
+    (force) => !removedOwners.has(force.link) && !plan.removeForces.has(force)
+  );
   mechanism.joints = mechanism.joints.filter((joint) => !plan.removeJointIds.has(joint.id));
   rewireForces(mechanism);
 }
@@ -266,6 +297,9 @@ function duplicateClosure(
   };
 
   for (const part of resolved) {
+    // A force is copied with the body it acts on, which is the only place a
+    // copy of it could go: a force on its own has no position of its own.
+    if ('force' in part) continue;
     if ('root' in part) {
       const linked = part;
       const cylinder = mechanism.cylinderAt(linked.object);
@@ -422,11 +456,14 @@ function copyClosure(
   mechanism.links.push(...rootCopies);
   mechanism.forces.push(...forceCopies);
 
-  return closure.resolved.map((part) => {
+  // What the copy leaves selected. A force ref is dropped: its copy came with
+  // the body, and the reader's next gesture is about the new bodies.
+  return closure.resolved.flatMap((part): SelectedPartRef[] => {
+    if ('force' in part) return [];
     if (!('root' in part)) {
-      return { kind: 'joint', id: jointMap.get(part.object)!.id };
+      return [{ kind: 'joint', id: jointMap.get(part.object)!.id }];
     }
-    return { kind: 'link', id: linkMap.get(part.root)!.id };
+    return [{ kind: 'link', id: linkMap.get(part.root)!.id }];
   });
 }
 

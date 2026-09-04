@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { Coord } from '../model/coord';
+import { Force } from '../model/force';
 import { RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { MODEL_SCALE } from '../model/render-scale';
@@ -11,9 +13,9 @@ import { SaveHistoryService } from './save-history.service';
 
 const S = MODEL_SCALE;
 
-function refs(...entries: (`joint:${string}` | `link:${string}`)[]) {
+function refs(...entries: (`joint:${string}` | `link:${string}` | `force:${string}`)[]) {
   return entries.map((entry) => {
-    const [kind, id] = entry.split(':') as ['joint' | 'link', string];
+    const [kind, id] = entry.split(':') as ['joint' | 'link' | 'force', string];
     return { kind, id };
   });
 }
@@ -220,5 +222,72 @@ describe('MultiEditService', () => {
     expect(result.ok).toBe(false);
     expect(result.ok ? '' : result.refusal.code).toBe('selection.binary-links-only');
     expect(triangle.hold).toBeUndefined();
+  });
+
+  /** Two forces, one on each bar, as `createForce` would leave them. */
+  function twoForces() {
+    const bars = twoBars();
+    const make = (id: string, link: typeof bars.ab, at: Coord) => {
+      const force = new Force(id, link, at, new Coord(at.x + S, at.y + 3 * S));
+      link.forces.push(force);
+      return force;
+    };
+    const first = make('F1', bars.ab, new Coord(S, 0));
+    const second = make('F2', bars.cd, new Coord(5 * S, S));
+    mechanism.forces = [first, second];
+    return { ...bars, first, second };
+  }
+
+  it('gives every selected force one magnitude, in one entry', () => {
+    const { first, second } = twoForces();
+    const save = historyWrites();
+
+    expect(service.setForceValue(refs('force:F1', 'force:F2'), 'magnitude', 4).ok).toBe(true);
+    expect([first.mag, second.mag]).toEqual([4, 4]);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('and one direction, without moving where either one acts', () => {
+    const { first, second } = twoForces();
+    const anchors = [first, second].map((force) => ({ ...force.startCoord }));
+
+    expect(service.setForceValue(refs('force:F1', 'force:F2'), 'angle', Math.PI / 6).ok).toBe(true);
+    expect(first.angleRad).toBeCloseTo(Math.PI / 6, 6);
+    expect(second.angleRad).toBeCloseTo(Math.PI / 6, 6);
+    // A force is anchored to the body it acts on, and pointing it somewhere
+    // else does not move it along that body.
+    expect([first, second].map((force) => ({ ...force.startCoord }))).toEqual(anchors);
+  });
+
+  it('switches the frame every selected force is read in', () => {
+    const { first, second } = twoForces();
+    first.setLocal(true);
+
+    // Assigned, not toggled: a set half in each frame has no state to flip to.
+    expect(service.setForceFrame(refs('force:F1', 'force:F2'), true).ok).toBe(true);
+    expect([first.local, second.local]).toEqual([true, true]);
+
+    const save = historyWrites();
+    expect(service.setForceFrame(refs('force:F1', 'force:F2'), true).ok).toBe(true);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('refuses a force value on a selection that is not all forces', () => {
+    const { ab } = twoForces();
+    const result = service.setForceValue(refs('force:F1', 'link:AB'), 'magnitude', 2);
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? '' : result.refusal.code).toBe('selection.forces-only');
+    void ab;
+  });
+
+  it('refuses a negative magnitude rather than storing its absolute value', () => {
+    const { first } = twoForces();
+    const was = first.mag;
+
+    const result = service.setForceValue(refs('force:F1', 'force:F2'), 'magnitude', -3);
+    expect(result.ok).toBe(false);
+    expect(result.ok ? '' : result.refusal.short).toBe('not a magnitude');
+    expect(first.mag).toBe(was);
   });
 });

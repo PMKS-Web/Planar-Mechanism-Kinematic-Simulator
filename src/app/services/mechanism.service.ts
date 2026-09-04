@@ -2361,7 +2361,7 @@ export class MechanismService {
     this.rebuildJointGraph();
     this.reconcileSlots();
     this.reconcileAssemblyWelds();
-    this.activeObjService.reconcilePartSelection(this.joints, this.links);
+    this.activeObjService.reconcilePartSelection(this.joints, this.links, this.forces);
     PositionSolver.setUpSolvingForces(this.forces);
     this.updateMechanism(save);
     this.onMechUpdateState.next(3);
@@ -7016,10 +7016,21 @@ export class MechanismService {
 
   createForceAtCOM() {
     const com = this.activeObjService.selectedLink.CoM;
-    // The default arrow is (1, 3) of the user's units long, in model units.
+    // Pointing where it always did -- up and to the right, 1 across to 3 up --
+    // and as long as the drawing is big, which it was not.
+    //
+    // The length used to be a fixed three-and-a-bit *user units*, so the first
+    // force on a four-bar whose bars are one and a half centimeters came out
+    // twice the length of the whole mechanism and ran off the top of the
+    // window. It looked right on the library's cranes only because they happen
+    // to be that size. `objectScale` is the app's own answer to how big this
+    // drawing is -- it is what every mark is drawn against -- and the ratio
+    // below is the one the library's own forces are drawn at.
+    const reach = 1.5 * this.settingsService.objectScale;
+    const away = Math.atan2(3, 1);
     this.createForce(
       new Coord(com.x, com.y),
-      new Coord(com.x + 1 * MODEL_SCALE, com.y + 3 * MODEL_SCALE)
+      new Coord(com.x + Math.cos(away) * reach, com.y + Math.sin(away) * reach)
     );
   }
 

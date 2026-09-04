@@ -1739,7 +1739,7 @@
       [class.force-locked]="force.locked && mechanismSrv.lockVisualsOn()"
       modelFrame
       (contextmenu)="setLastRightClick(force)"
-      (pointerdown)="beginDraggingForceBody(force, $event); setLastLeftClick(force)"
+      (pointerdown)="beginDraggingForceBody(force, $event); setLastLeftClick(force, $event)"
       (pointerover)="force.showHighlight = true"
       (pointerout)="force.showHighlight = false"
     >

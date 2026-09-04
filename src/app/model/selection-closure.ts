@@ -5,6 +5,7 @@ import {
   cylinderOfLinkIn,
   sealedCylinderStructures,
 } from './cylinder';
+import { Force } from './force';
 import { Joint, PrisJoint, RealJoint } from './joint';
 import { frozenJointIds } from './lock-set';
 import { Link, RealLink, SliderBlock } from './link';
@@ -80,6 +81,14 @@ export function canonicalSelectionClosure(
       addLink(root);
       const cylinder = cylinderOfLinkIn(cylinders, root);
       if (cylinder) addCylinder(cylinder);
+    } else if (part instanceof Force) {
+      // A force brings no geometry of its own. Where it is is decided by the
+      // body it is anchored to, and it is already carried when that body moves
+      // (`SelectionTransformSnapshot` maps it through the link's frame). So it
+      // is a member of the selection for everything a group *says* about it,
+      // and adds nothing to what a group gesture moves -- which is why a
+      // selection of nothing but forces has nothing to drag.
+      addPart(part);
     } else {
       addPart(part);
       addJoint(part);

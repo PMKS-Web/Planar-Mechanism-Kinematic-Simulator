@@ -138,11 +138,53 @@
     </collapsible-subseciton>
   }
 
-  @if (!homogeneousJoints && !homogeneousLinks) {
+  @if (homogeneousForces) {
+    <collapsible-subseciton titleLabel="Basic Settings" [expanded]="true">
+      <!-- The three a set of forces has in common. Not where they are: a force
+           is anchored to the body it acts on, so its position is that body's
+           to decide. -->
+      <input-block
+        [formGroup]="form"
+        _formControl="magnitude"
+        dataField="magnitude"
+        [placeholder]="placeholder(forceValue('magnitude'))"
+        tooltip="Applies one magnitude to every selected force."
+      >
+        Magnitude
+      </input-block>
+      <input-block
+        [formGroup]="form"
+        _formControl="forceAngle"
+        dataField="forceAngle"
+        [placeholder]="placeholder(forceValue('angle'))"
+        tooltip="Points every selected force the same way. Counter-clockwise is positive."
+      >
+        Angle
+      </input-block>
+      <radio-block
+        [formGroup]="form"
+        _formControl="isGlobal"
+        tooltip="Global keeps a force pointing the same way. Local turns it with the link it is on."
+        [option1]="localOptionLabel"
+        option2="Global"
+      >
+        Force Base Frame
+      </radio-block>
+    </collapsible-subseciton>
+    <collapsible-subseciton titleLabel="Visual Settings" [expanded]="true">
+      <color-picker type="force" [parts]="forces" tooltip="The color of every selected force."
+        >Force Color</color-picker
+      >
+    </collapsible-subseciton>
+  }
+
+  @if (!homogeneousJoints && !homogeneousLinks && !homogeneousForces) {
     <collapsible-subseciton titleLabel="Selected Parts" [expanded]="true">
       <p class="multiNote">
-        Joint and Link Selection — drag the group or use its canvas handles to move, rotate, or
-        scale it together. Geometry fields appear when the selection contains one kind of part.
+        A selection of more than one kind of part. Drag it, or use its canvas handles to move,
+        rotate or scale it together; the fields for a value appear when every selected part has
+        that value. A force in the selection travels with the body it acts on rather than on its
+        own, because that is what decides where a force is.
       </p>
     </collapsible-subseciton>
   }

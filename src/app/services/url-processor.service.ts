@@ -331,7 +331,8 @@ export class UrlProcessorService {
       this.activeObj.restorePartSelection(
         heldPartSelection,
         mechanismSrv.joints,
-        mechanismSrv.links
+        mechanismSrv.links,
+        mechanismSrv.forces
       );
     } else if (heldForceSelection) {
       const restored = mechanismSrv.forces.find((force) => force.id === heldForceSelection);

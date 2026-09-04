@@ -26,7 +26,7 @@ import { EditPermissionService } from './edit-permission.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 import { VectorQuantity, VECTOR_ICON, VECTOR_LABEL } from '../model/vector-trace';
 import { SelectionBatchService } from './selection-batch.service';
-import { SelectedPartRef } from '../model/selection';
+import { SelectedPart, SelectedPartRef } from '../model/selection';
 import { MultiEditService } from './multi-edit.service';
 
 /** What the canvas does when a row asks for a gesture rather than an edit. */
@@ -91,7 +91,7 @@ export class ContextMenuBuilderService {
     }
     if (
       this.tabs.getCurrentTab() === TabID.EDIT &&
-      (target instanceof RealJoint || target instanceof RealLink) &&
+      (target instanceof RealJoint || target instanceof RealLink || target instanceof Force) &&
       this.activeObj.selectedParts.length > 1 &&
       this.activeObj.containsPart(target)
     ) {
@@ -117,7 +117,7 @@ export class ContextMenuBuilderService {
     return {
       header: {
         title: `${count} Selected Parts`,
-        subtitle: `${parts.filter((part) => part instanceof RealJoint).length} joints · ${parts.filter((part) => part instanceof RealLink).length} links`,
+        subtitle: this.selectionSubtitle(parts),
       },
       groups: [
         {
@@ -162,6 +162,19 @@ export class ContextMenuBuilderService {
     };
   }
 
+  /** "2 joints · 1 force": only the kinds the selection actually holds. */
+  private selectionSubtitle(parts: readonly SelectedPart[]): string {
+    const counted: [number, string, string][] = [
+      [parts.filter((part) => part instanceof RealJoint).length, 'joint', 'joints'],
+      [parts.filter((part) => part instanceof RealLink).length, 'link', 'links'],
+      [parts.filter((part) => part instanceof Force).length, 'force', 'forces'],
+    ];
+    return counted
+      .filter(([howMany]) => howMany > 0)
+      .map(([howMany, one, many]) => `${howMany} ${howMany === 1 ? one : many}`)
+      .join(' · ');
+  }
+
   /**
    * The switches a whole selection carries, in the words one part carries them
    * in.
@@ -173,7 +186,7 @@ export class ContextMenuBuilderService {
    */
   private selectionStateRows(
     refs: readonly SelectedPartRef[],
-    parts: readonly (RealJoint | RealLink)[]
+    parts: readonly SelectedPart[]
   ): MenuRow[] {
     const joints = parts.filter((part): part is RealJoint => part instanceof RealJoint);
     const links = parts.filter((part): part is RealLink => part instanceof RealLink);
@@ -229,6 +242,23 @@ export class ContextMenuBuilderService {
           checked: trace.all,
           hint: trace.mixed ? 'Mixed' : undefined,
           action: () => this.multiEdit.setTracePath(refs, !trace.all),
+        })
+      );
+    }
+
+    const forces = parts.filter((part): part is Force => part instanceof Force);
+    if (forces.length === parts.length) {
+      const global = state(forces.map((force) => !force.local));
+      rows.push(
+        new MenuRow({
+          label: 'Global Frame',
+          icon: 'public',
+          material: true,
+          kind: 'toggle',
+          checked: global.all,
+          hint: global.mixed ? 'Mixed' : undefined,
+          needs: 'properties',
+          action: () => this.multiEdit.setForceFrame(refs, global.all),
         })
       );
     }

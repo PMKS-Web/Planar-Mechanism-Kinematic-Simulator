@@ -1004,6 +1004,37 @@ onto the same mark, and neither was anything the padlock claimed:
 `e2e/locking.mjs` and `e2e/context-menu.mjs` pin both the other way round now, and the locking suite
 draws a real bar onto a locked joint rather than only reading the row's state.
 
+#### A force is in the selection, and it is not in the geometry
+
+`SelectedPart` is `RealJoint | RealLink | Force`, and the third one is the odd one out. Joints and
+links *are* the drawing; a force is a reading anchored to a body, and where it sits is decided by
+the link it acts on. So a force joins a selection for everything the group can *say* about it --
+one magnitude, one direction, one frame, one color, one Lock, one Delete -- and
+`canonicalSelectionClosure` deliberately gives it no joints. Three consequences follow, and each
+is load-bearing:
+
+- A selection that is nothing but forces has an empty closure, so `canTransform` is already false
+  and `selectionBounds()` returns nothing: no box, no handles, nothing to drag. That is the right
+  answer, and it falls out rather than being special-cased.
+- Duplicate is refused on a force-only selection, with words, because a copy of a force has nowhere
+  to go. A force alongside its link is copied *by* the link, so its ref is simply dropped from the
+  closure and from the selection the copy leaves behind.
+- A force *does* move with a group -- `SelectionTransformSnapshot` already maps every force on a
+  moving body through that body's frame, and has since long before any of this.
+
+`MechanismService.batched` is what makes any of the group switches one press of Undo: it holds
+`save()` for the length of the work and writes one entry at the end, the same mechanism
+`capturingPose` uses, and nests with it. Every group setter returns early when the selection is
+already in the state asked for -- a no-op that writes a history entry costs the reader a press of
+Undo that puts nothing back.
+
+**The default force arrow is sized from `objectScale`, not from a number of centimeters.** It used
+to be a little over three user units long whatever it was drawn on, which is about right on a
+library crane and twice the length of the mechanism on a four-bar whose bars are one and a half
+centimeters -- the first force a reader added ran off the top of the window. Same family as the
+mark size and the start-pose ghost: anything with a *drawn* size takes it from how big this drawing
+is.
+
 #### A cylinder holds its angle, and it is the two *mounts* that are held
 
 A cylinder points somewhere the same way a bar does, so it can hold that direction -- and the pair

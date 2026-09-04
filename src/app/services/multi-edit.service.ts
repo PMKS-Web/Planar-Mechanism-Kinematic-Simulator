@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Coord } from '../model/coord';
+import { Force } from '../model/force';
 import { RealJoint } from '../model/joint';
 import { Link, LinkHold, RealLink } from '../model/link';
 import { holdableBar } from '../model/link-holds';
@@ -35,13 +36,25 @@ export class MultiEditService {
   }
 
   private parts(refs: readonly SelectedPartRef[]) {
-    return resolveSelectedParts(refs, this.mechanism.joints, this.mechanism.links);
+    return resolveSelectedParts(
+      refs,
+      this.mechanism.joints,
+      this.mechanism.links,
+      this.mechanism.forces
+    );
   }
 
   private joints(refs: readonly SelectedPartRef[]): RealJoint[] | undefined {
     const parts = this.parts(refs);
     if (parts.length === 0 || parts.length !== refs.length) return undefined;
     if (!parts.every((part): part is RealJoint => part instanceof RealJoint)) return undefined;
+    return parts;
+  }
+
+  private forces(refs: readonly SelectedPartRef[]): Force[] | undefined {
+    const parts = this.parts(refs);
+    if (parts.length === 0 || parts.length !== refs.length) return undefined;
+    if (!parts.every((part): part is Force => part instanceof Force)) return undefined;
     return parts;
   }
 
@@ -394,7 +407,76 @@ export class MultiEditService {
       }
     });
     this.active.selectedJoint = was;
-    this.active.restorePartSelection(selection, this.mechanism.joints, this.mechanism.links);
+    this.active.restorePartSelection(
+      selection,
+      this.mechanism.joints,
+      this.mechanism.links,
+      this.mechanism.forces
+    );
+    return OK;
+  }
+
+  /**
+   * One magnitude, one direction, or one frame for every selected force.
+   *
+   * The three a reader would want to give a set of forces at once, and the
+   * three that mean exactly the same thing to eight of them as to one. Where
+   * each force *is* is not here: that is decided by the body it is anchored
+   * to, and a force does not have a position of its own to assign.
+   *
+   * The frame is the interesting one. Local means the force turns with the
+   * link it is on and Global means it keeps pointing where it points, so the
+   * two are a claim about what the force *is* rather than about how it looks
+   * -- worth setting on a whole set at once, and worth stating rather than
+   * toggling, because a set that disagrees has no state to flip to.
+   */
+  setForceValue(
+    refs: readonly SelectedPartRef[],
+    field: 'magnitude' | 'angle',
+    value: number
+  ): MultiEditResult {
+    const forces = this.forces(refs);
+    if (!forces) {
+      return this.refusal(
+        'selection.forces-only',
+        'forces only',
+        'Magnitude and angle can be assigned when every selected item is a force.'
+      );
+    }
+    if (!Number.isFinite(value) || (field === 'magnitude' && value < 0)) {
+      return this.refusal(
+        'selection.invalid-force',
+        field === 'magnitude' ? 'not a magnitude' : 'not an angle',
+        field === 'magnitude'
+          ? 'A force magnitude must be zero or greater.'
+          : 'Enter a finite angle.'
+      );
+    }
+    this.mechanism.batched(() => {
+      forces.forEach((force) =>
+        field === 'magnitude' ? force.setMagnitude(value) : force.setDirectionRadians(value)
+      );
+      this.mechanism.updateMechanism(true);
+      this.mechanism.onMechUpdateState.next(2);
+    });
+    return OK;
+  }
+
+  setForceFrame(refs: readonly SelectedPartRef[], local: boolean): MultiEditResult {
+    const forces = this.forces(refs);
+    if (!forces) {
+      return this.refusal(
+        'selection.forces-only',
+        'forces only',
+        'A force base frame can be switched when every selected item is a force.'
+      );
+    }
+    if (forces.every((force) => force.local === local)) return OK;
+    this.mechanism.batched(() => {
+      forces.forEach((force) => force.setLocal(local));
+      this.mechanism.updateMechanism(true);
+      this.mechanism.onMechUpdateState.next(2);
+    });
     return OK;
   }
 
@@ -407,7 +489,7 @@ export class MultiEditService {
         'One of the selected parts no longer exists.'
       );
     }
-    this.mechanism.setLocks(parts as (RealJoint | Link)[], locked);
+    this.mechanism.setLocks(parts as (RealJoint | Link | Force)[], locked);
     return OK;
   }
 }

@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Force } from '../../model/force';
 import { RealJoint } from '../../model/joint';
 import { LinkHold, RealLink } from '../../model/link';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -30,6 +31,7 @@ import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
 import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.component';
 import { InputComponent } from '../BLOCKS/input/input.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
+import { RadioComponent } from '../BLOCKS/radio/radio.component';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 
 /** The Edit drawer used when more than one typed mechanism part is selected. */
@@ -46,6 +48,7 @@ import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
     EditableTitleComponent,
     InputComponent,
     PanelSectionComponent,
+    RadioComponent,
     ToggleComponent,
   ],
 })
@@ -76,10 +79,15 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
    */
   ngDoCheck(): void {
     const frozen = !this.permission.may('placement');
-    (['x', 'y', 'length', 'angle', 'mass'] as const).forEach((name) => {
+    (['x', 'y', 'length', 'angle', 'mass', 'magnitude', 'forceAngle'] as const).forEach((name) => {
+      // A Lock on a force holds which way it points, which is what its drag
+      // handles edit; how big it is stays typeable, the same rule the one-force
+      // panel keeps.
+      const held = name === 'forceAngle' && this.forces.some((force) => force.locked);
+      const off = frozen || held;
       const control = this.form.controls[name];
-      if (frozen === control.disabled) return;
-      if (frozen) control.disable({ emitEvent: false });
+      if (off === control.disabled) return;
+      if (off) control.disable({ emitEvent: false });
       else control.enable({ emitEvent: false });
     });
   }
@@ -100,6 +108,10 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
     slider: new FormControl(false, { nonNullable: true }),
     fixedLength: new FormControl(false, { nonNullable: true }),
     fixedAngle: new FormControl(false, { nonNullable: true }),
+    // A force's three: how big, which way, and whether it turns with the body.
+    magnitude: new FormControl('', { nonNullable: true, updateOn: 'blur' }),
+    forceAngle: new FormControl('', { nonNullable: true, updateOn: 'blur' }),
+    isGlobal: new FormControl('0', { nonNullable: true }),
   });
 
   constructor() {
@@ -141,6 +153,17 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
     this.form.controls.fixedAngle.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((value) => this.setHold('angle', value));
+    this.form.controls.magnitude.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.commitForceMagnitude(value));
+    this.form.controls.forceAngle.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) => this.commitForceAngle(value));
+    this.form.controls.isGlobal.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((value) =>
+        this.apply(this.multi.setForceFrame(this.active.selectedPartRefs, value === '0'))
+      );
     this.active.onActiveObjChange
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.syncForm());
@@ -166,6 +189,79 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
     return this.links.length > 0 && this.links.length === this.active.selectedParts.length;
   }
 
+  get forces(): Force[] {
+    return this.active.selectedParts.filter((part): part is Force => part instanceof Force);
+  }
+
+  get homogeneousForces(): boolean {
+    return this.forces.length > 0 && this.forces.length === this.active.selectedParts.length;
+  }
+
+  /**
+   * Which link every selected force is on, when they agree.
+   *
+   * The Local option names it -- "Local (Link AB)" -- and eight forces spread
+   * over four bars have no one bar to name, so the word stands on its own.
+   */
+  get sharedForceLink(): string | undefined {
+    const names = this.forces.map((force) => force.link.name || force.link.id);
+    return names.length > 0 && names.every((name) => name === names[0]) ? names[0] : undefined;
+  }
+
+  get localOptionLabel(): string {
+    const link = this.sharedForceLink;
+    // Named when they share one, because the one-force panel names it. Eight
+    // forces spread over four bars have no one bar to name, so the word carries
+    // the meaning on its own -- and the field is narrow enough that a longer
+    // phrase would be clipped rather than read.
+    return link ? `Local (Link ${link})` : 'Local (own link)';
+  }
+
+  forceValue(field: 'magnitude' | 'angle'): CommonValue<number> {
+    return this.common(
+      this.forces.map((force) => (field === 'angle' ? force.angleRad : force.mag)),
+      (left, right) => Math.abs(left - right) < 1e-6
+    );
+  }
+
+  forceFrameState(): CommonValue<boolean> {
+    return this.common(this.forces.map((force) => force.local === true));
+  }
+
+  magnitudeText(value: CommonValue<number>): string {
+    return value.kind === 'common'
+      ? this.nup.formatStoredForce(
+          value.value,
+          this.settings.lengthUnit.value,
+          this.settings.forceUnit.value
+        )
+      : '';
+  }
+
+  commitForceMagnitude(text: string): void {
+    const [valid, value] = this.nup.parseStoredForce(
+      text,
+      this.settings.lengthUnit.value,
+      this.settings.forceUnit.value
+    );
+    if (!valid || value < 0) {
+      return this.invalid('force', 'A force magnitude must be zero or greater.');
+    }
+    this.apply(this.multi.setForceValue(this.active.selectedPartRefs, 'magnitude', value));
+  }
+
+  commitForceAngle(text: string): void {
+    const [valid, value] = this.nup.parseAngleString(text, this.settings.angleUnit.value);
+    if (!valid) return this.invalid('angle', 'Enter a valid angle.');
+    this.apply(
+      this.multi.setForceValue(
+        this.active.selectedPartRefs,
+        'angle',
+        this.nup.convertAngle(value, this.settings.angleUnit.value, AngleUnit.RADIAN)
+      )
+    );
+  }
+
   get ordinaryBinaryLinks(): boolean {
     return (
       this.homogeneousLinks &&
@@ -177,13 +273,15 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
   }
 
   get selectionLabel(): string {
-    const joints = this.joints.length;
-    const links = this.links.length;
-    if (joints && links) {
-      return `${joints} ${joints === 1 ? 'joint' : 'joints'} · ${links} ${links === 1 ? 'link' : 'links'} selected`;
-    }
-    if (joints) return `${joints} ${joints === 1 ? 'joint' : 'joints'} selected`;
-    return `${links} ${links === 1 ? 'link' : 'links'} selected`;
+    const counted = [
+      [this.joints.length, 'joint', 'joints'],
+      [this.links.length, 'link', 'links'],
+      [this.forces.length, 'force', 'forces'],
+    ] as const;
+    const said = counted
+      .filter(([count]) => count > 0)
+      .map(([count, one, many]) => `${count} ${count === 1 ? one : many}`);
+    return `${said.join(' · ')} selected`;
   }
 
   /**
@@ -194,7 +292,7 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
    * "Delete Selected (2)". Two surfaces, one action, one sentence.
    */
   get deleteLabel(): string {
-    const count = this.joints.length + this.links.length;
+    const count = this.active.selectedParts.length;
     return count > 0 ? `Delete Selected (${count})` : 'Delete Selected';
   }
 
@@ -409,6 +507,12 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
     this.notify.refusal(`value.${field}`, message);
   }
 
+  /** Local when they agree on it; Global when they do not, which is the neutral reading. */
+  private forceLocal(): boolean {
+    const state = this.forceFrameState();
+    return state.kind === 'common' && state.value;
+  }
+
   private massUnit(): MassUnit {
     switch (this.settings.lengthUnit.value) {
       case LengthUnit.INCH:
@@ -435,6 +539,9 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
         slider: this.sliderChecked(),
         fixedLength: this.holdChecked('length'),
         fixedAngle: this.holdChecked('angle'),
+        magnitude: this.magnitudeText(this.forceValue('magnitude')),
+        forceAngle: this.angleText(this.forceValue('angle')),
+        isGlobal: this.forceLocal() ? '0' : '1',
       },
       { emitEvent: false }
     );

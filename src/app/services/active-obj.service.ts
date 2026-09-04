@@ -253,17 +253,22 @@ export class ActiveObjService {
   restorePartSelection(
     snapshot: PartSelectionSnapshot,
     joints: readonly Joint[],
-    links: readonly Link[]
+    links: readonly Link[],
+    forces: readonly Force[] = []
   ): void {
-    this.partSelection.restore(snapshot, joints, links);
+    this.partSelection.restore(snapshot, joints, links, forces);
     this.syncPartSelection();
     this.onActiveObjChange.emit(this.objType);
   }
 
-  reconcilePartSelection(joints: readonly Joint[], links: readonly Link[]): void {
+  reconcilePartSelection(
+    joints: readonly Joint[],
+    links: readonly Link[],
+    forces: readonly Force[] = []
+  ): void {
     const snapshot = this.snapshotPartSelection();
     if (snapshot.refs.length === 0) return;
-    this.restorePartSelection(snapshot, joints, links);
+    this.restorePartSelection(snapshot, joints, links, forces);
   }
 
   private resetPartSelection(): void {
@@ -273,18 +278,23 @@ export class ActiveObjService {
   private syncPartSelection(): void {
     this.selectedParts.forEach((part) => {
       if (part instanceof RealJoint) this.selectedJoint = part;
+      else if (part instanceof Force) this.selectedForce = part;
       else this.selectedLink = part;
     });
     const primaryPart = this.primaryPart;
     if (primaryPart instanceof RealJoint) this.selectedJoint = primaryPart;
     else if (primaryPart instanceof RealLink) this.selectedLink = primaryPart;
+    else if (primaryPart instanceof Force) this.selectedForce = primaryPart;
+    const only = this.selectedParts[0];
     this.objType =
       this.selectedParts.length === 0
         ? 'Grid'
         : this.selectedParts.length > 1
           ? 'MultiSelection'
-          : this.selectedParts[0] instanceof RealJoint
+          : only instanceof RealJoint
             ? 'Joint'
-            : 'Link';
+            : only instanceof Force
+              ? 'Force'
+              : 'Link';
   }
 }
