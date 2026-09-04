@@ -1218,6 +1218,14 @@ export class MechanismService {
       force.updateInternalValues();
     });
 
+    // Every anchor was taken in the old unit. Its seed is a set of joint
+    // positions and, for a slide, its coordinate is a length -- so after the
+    // rescale above the anchor described a mechanism a hundred times the size
+    // of the one on the grid. The lookup then refused it as a different branch,
+    // the start-pose ghost fell back to the copy it had held from before the
+    // change, and the reader was shown a start pose in the old units beside a
+    // linkage in the new ones.
+    this.rescaleAnchors(lengthScale);
     this.updateMechanism(true);
     // And back to where they were looking. The cycle takes the same time in
     // either unit -- a crank's rpm is scale-free, and a slider's speed was
@@ -1509,8 +1517,7 @@ export class MechanismService {
       // are drawn in either -- switching one on in Kinematic and crossing to
       // Force used to lose it, which is exactly when a reader wants to see the
       // two together. A force is only solved in Force, so it stays there.
-      const shownIn: TabID[] =
-        quantity === 'force' ? [TabID.FORCE] : [TabID.ANALYZE, TabID.FORCE];
+      const shownIn: TabID[] = quantity === 'force' ? [TabID.FORCE] : [TabID.ANALYZE, TabID.FORCE];
       if (!shownIn.includes(tab)) continue;
       const shape = this.vectorShapeOf(part, quantity, mode);
       if (!shape) continue;
@@ -5414,6 +5421,32 @@ export class MechanismService {
   private anchors = new Map<string, MachineAnchor>();
 
   /**
+   * Carry every anchor into the unit the drawing has just been rescaled into.
+   *
+   * An anchor names a pose in two ways: a driven coordinate, and a seed of
+   * joint positions that tells one assembly branch from another. Both are
+   * lengths for a slide, and the seed is lengths for anything -- so a change of
+   * units leaves them describing a drawing of the wrong size unless they come
+   * along. An angle is scale-free and is left alone.
+   */
+  private rescaleAnchors(lengthScale: number): void {
+    if (!(lengthScale > 0) || lengthScale === 1) return;
+    this.anchors.forEach((anchor, key) => {
+      const seed = new Map(
+        [...anchor.seed].map(([id, at]) => [id, { x: at.x * lengthScale, y: at.y * lengthScale }])
+      );
+      this.anchors.set(key, {
+        ...anchor,
+        coordinate: anchor.kind === 'length' ? anchor.coordinate * lengthScale : anchor.coordinate,
+        seed,
+      });
+    });
+    // Drawn from the old anchors, so it describes the old size too.
+    this.lastGoodGhost.clear();
+    this.ghostCache = undefined;
+  }
+
+  /**
    * The machine whose *displayed* pose is currently also its design pose.
    *
    * Editing at a displaced pose means, for exactly one machine and for exactly
@@ -5521,9 +5554,7 @@ export class MechanismService {
    * one's joints is it.
    */
   private stagedPartitionIndex(key: string): number {
-    const exact = this.partitions.findIndex(
-      (partition) => topologyOf(partition.ownJoints) === key
-    );
+    const exact = this.partitions.findIndex((partition) => topologyOf(partition.ownJoints) === key);
     if (exact !== -1) return exact;
     const was = new Set(key.split(','));
     let best = -1;
@@ -5921,9 +5952,8 @@ export class MechanismService {
         ? undefined
         : {
             coordinate: coordinates[0],
-            heading: (coordinates[1] !== undefined && coordinates[1] < coordinates[0]
-              ? -1
-              : 1) as 1 | -1,
+            heading: (coordinates[1] !== undefined && coordinates[1] < coordinates[0] ? -1 : 1) as
+              1 | -1,
             seed: new Map(frames.joints[0].map((joint) => [joint.id, { x: joint.x, y: joint.y }])),
           };
     this.applyMechanismPose(frames, this.partitions[index], this.secondsAt(frames, reach));
@@ -6061,7 +6091,17 @@ export class MechanismService {
     this.lastGoodGhost.clear();
   }
 
-  private ghostCache?: { revision: number; list: StartPoseGhost[] };
+  /**
+   * The ghosts, held against everything that changes what they look like.
+   *
+   * The solve revision alone was not enough. A ghost's bodies are link
+   * outlines, and an outline's width is a fraction of the object scale -- so
+   * changing the scale, or changing units (which rescales the drawing and the
+   * marks with it), left the ghost drawn at the size it was first built at
+   * while the mechanism under it moved to the new one. The reader saw a start
+   * pose in the wrong size beside a linkage in the right one.
+   */
+  private ghostCache?: { revision: number; scale: number; list: StartPoseGhost[] };
 
   /**
    * The last pose each machine's ghost could actually be drawn at.
@@ -6092,8 +6132,9 @@ export class MechanismService {
    * do and the canvas asks for it on every change-detection pass.
    */
   startPoseGhosts(): StartPoseGhost[] {
-    if (this.ghostCache?.revision !== this.solveRevision) {
-      this.ghostCache = { revision: this.solveRevision, list: this.buildGhosts() };
+    const scale = SettingsService.objectScale;
+    if (this.ghostCache?.revision !== this.solveRevision || this.ghostCache.scale !== scale) {
+      this.ghostCache = { revision: this.solveRevision, scale, list: this.buildGhosts() };
     }
     return this.ghostCache.list;
   }
@@ -6110,11 +6151,7 @@ export class MechanismService {
       // construction rather than by two pieces of arithmetic being kept in step.
       const anchor = this.anchorOf(index);
       const reach = anchor
-        ? reachAnchor(
-            coordinatesAcross(this.ruleFor(anchor), frames.joints),
-            anchor,
-            frames.joints
-          )
+        ? reachAnchor(coordinatesAcross(this.ruleFor(anchor), frames.joints), anchor, frames.joints)
         : null;
       const key = topologyOf(partition.ownJoints);
       // Out of reach, there is no anchored pose to draw -- and falling back to
@@ -6503,9 +6540,7 @@ export class MechanismService {
     if (this.isPartInert(link)) {
       return 'link-inert';
     }
-    if (
-      this.activeObjService.containsPart({ kind: 'link', id: link.id })
-    ) {
+    if (this.activeObjService.containsPart({ kind: 'link', id: link.id })) {
       return 'link-selected';
     }
     if (this.isInSelectedMechanism(link)) {
