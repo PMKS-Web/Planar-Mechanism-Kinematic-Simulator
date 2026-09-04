@@ -145,6 +145,80 @@ record(
   ram
 );
 
+// ---- and a placed joint lands where a dragged one would -------------------
+//
+// Snap to Grid governed dragging an existing joint and said nothing about
+// placing a new one, so the same switch meant one thing to a joint that existed
+// and nothing to a joint being made -- and a mechanism built on a grid came out
+// on coordinates like 3.87. Both ends of the gesture are checked, because they
+// are set in different places: the start at the right-click, the finish at the
+// left one.
+const drawBar = async ({ option, snap }) => {
+  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => localStorage.setItem('tutorialSeen', '1'));
+  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2200);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+  // Off by default -- it is remembered per machine rather than carried in the
+  // URL -- so the suite says which state it is testing.
+  await page.evaluate((on) => {
+    ng.getComponent(document.querySelector('app-new-grid')).settings.isSnapToGrid.next(on);
+  }, snap);
+  await page.waitForTimeout(200);
+
+  await page.mouse.move(620, 430);
+  // Held rather than passed as a click modifier: a modifier on the click does
+  // not reach the contextmenu event, and the gesture's start reads that one.
+  if (option) await page.keyboard.down('Alt');
+  await page.mouse.click(620, 430, { button: 'right' });
+  if (option) await page.keyboard.up('Alt');
+  await page.waitForTimeout(500);
+  await page.locator('.cm-row:has(.cm-row__label:text-is("Link"))').first().click();
+  await page.waitForTimeout(400);
+  // The canvas places a joint from tracked movement, so move before the click.
+  await page.mouse.move(800, 500);
+  await page.waitForTimeout(150);
+  await page.mouse.move(803, 507);
+  if (option) await page.keyboard.down('Alt');
+  await page.mouse.click(803, 507);
+  if (option) await page.keyboard.up('Alt');
+  await page.waitForTimeout(800);
+
+  return page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const cell = grid.svgGrid.minorCellSize;
+    const onGrid = (value) => Math.abs(value / cell - Math.round(value / cell)) < 1e-6;
+    return grid.mechanismSrv.joints.map((joint) => ({
+      id: joint.id,
+      at: [Math.round(joint.x * 1e4) / 1e4, Math.round(joint.y * 1e4) / 1e4],
+      onGrid: onGrid(joint.x) && onGrid(joint.y),
+    }));
+  });
+};
+
+const snapped = await drawBar({ option: false, snap: true });
+record(
+  'both ends of a new bar land on the grid',
+  snapped.length === 2 && snapped.every((joint) => joint.onGrid),
+  snapped
+);
+
+const held = await drawBar({ option: true, snap: true });
+record(
+  'and Option places them wherever the pointer is, both ends alike',
+  held.length === 2 && held.every((joint) => !joint.onGrid),
+  held
+);
+
+const free = await drawBar({ option: false, snap: false });
+record(
+  'while with the switch off Option changes nothing, because nothing was snapping',
+  free.length === 2 &&
+    JSON.stringify(free.map((j) => j.at)) === JSON.stringify(held.map((j) => j.at)),
+  { free, held }
+);
+
 record('nothing threw', errors.length === 0, errors.slice(0, 2));
 await browser.close();
 process.exit(results.every(([, ok]) => ok) ? 0 : 1);

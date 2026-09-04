@@ -13,6 +13,8 @@ import { SynthesisSolutionService } from './synthesis/synthesis-solution.service
 
 /** The one query that names a screen instead of describing a mechanism. */
 const LIBRARY_QUERY = 'library';
+/** What a new tab's fragment says before the template's name. */
+const BACKDROP_QUERY = 'backdrop=';
 
 @Injectable({
   providedIn: 'root',
@@ -39,10 +41,21 @@ export class UrlProcessorService {
    */
   readonly wantsLibrary: boolean;
 
+  /**
+   * The template whose picture the address asked for, by name.
+   *
+   * Read here rather than off `window.location` later, because the decode strips
+   * the address in its own `finally` -- and that runs in this constructor, long
+   * before any component is alive to look. `wantsLibrary` is read here for the
+   * same reason.
+   */
+  readonly wantsBackdropFor: string | null;
+
   constructor() {
     // the content part of the url (the part after the ?)
     const url = this.getURLContent();
     this.wantsLibrary = url !== null && url.trim().toLowerCase() === LIBRARY_QUERY;
+    this.wantsBackdropFor = this.backdropAsked();
 
     // update the mechanism from the url
     //
@@ -58,13 +71,37 @@ export class UrlProcessorService {
     }
   }
 
-  // From the full url string, extract the substring after the '?'. If does not exist, return null
+  /**
+   * Which template's backdrop the fragment names, if it names one.
+   *
+   * A template opened in a new tab carries its card's name after the '#': the
+   * query is the mechanism, checksum and all, and a second parameter beside it
+   * would not decode. Only the name travels -- the picture is an asset the app
+   * already ships.
+   */
+  private backdropAsked(): string | null {
+    const hash = decodeURI(window.location.hash);
+    const at = hash.indexOf(BACKDROP_QUERY);
+    return at === -1 ? null : hash.slice(at + BACKDROP_QUERY.length) || null;
+  }
+
+  /**
+   * The content part of the address: what follows the '?' and stops at a '#'.
+   *
+   * The fragment is not part of the query and never was, but this took
+   * everything to the end of the string -- so a shared link with any anchor on
+   * the end handed the decoder a payload with `#whatever` glued to it, failed
+   * the checksum, and opened an empty grid saying the link could not be read.
+   * Nothing in the codec's alphabet is a '#' (see `BaseNConverter.baseNChars`),
+   * so the first one is always where the mechanism ends.
+   */
   private getURLContent(): string | null {
     const fullURL = decodeURI(window.location.href);
     const index = fullURL.indexOf('?');
-
     if (index === -1) return null;
-    return fullURL.substring(fullURL.indexOf('?') + 1);
+    const content = fullURL.substring(index + 1);
+    const fragment = content.indexOf('#');
+    return fragment === -1 ? content : content.substring(0, fragment);
   }
 
   // Decode the url and update mechanism

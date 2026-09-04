@@ -11,6 +11,7 @@ const { chromium } = await import(
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
 import { startQuiet } from './quiet-start.mjs';
+import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 const OUT = 'artifacts/template-open';
 mkdirSync(OUT, { recursive: true });
 const FOUR_BAR =
@@ -147,6 +148,61 @@ await page.waitForTimeout(600);
 await page.locator('button:has-text("New Tab")').click();
 await page.waitForTimeout(2000);
 check('New Tab spawns exactly one tab', newPages === 1, `new tabs=${newPages}`);
+
+// --- a card that ships a picture opens on top of it -------------------------
+//
+// The picture is an asset rather than anything in the URL: an image is
+// megabytes and a shared link is a few hundred characters. Both doors are
+// checked, because they carry it differently -- opened in place it is handed
+// straight over, and opened in a new tab only the card's *name* travels, in the
+// fragment, since the query is the mechanism and nothing fits beside it.
+const backdropNow = () =>
+  page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const image = grid.bgImage.image();
+    return image ? { src: image.src, width: Math.round(image.width) } : null;
+  });
+
+await page.goto(`${BASE}?library`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(1200);
+await page.locator('#templates [data-template="Backhoe_Bucket"]').click();
+await page.waitForTimeout(3000);
+const opened = await backdropNow();
+check(
+  'a card with a backdrop opens on top of it',
+  opened?.src === 'assets/backdrops/backhoe-arm.svg' && opened.width > 0,
+  JSON.stringify(opened)
+);
+
+// The same payload with nothing after it, for the fragment to be measured
+// against.
+await page.goto(`${BASE}?${payloads['Backhoe_Bucket']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(1500);
+const plainLinks = await linkCount(page);
+
+// The address a New Tab builds, walked into directly.
+await page.goto(`${BASE}?${payloads['Backhoe_Bucket']}#backdrop=Backhoe_Bucket`, {
+  waitUntil: 'domcontentloaded',
+});
+await waitForReady(page);
+await page.waitForTimeout(2500);
+const inNewTab = await backdropNow();
+const withFragment = await linkCount(page);
+check(
+  'and a new tab picks it up from the fragment',
+  inNewTab?.src === 'assets/backdrops/backhoe-arm.svg',
+  JSON.stringify(inNewTab)
+);
+// The fragment must not reach the decoder: everything after the '?' used to be
+// handed over whole, so any anchor on a shared link failed its checksum and
+// opened an empty grid saying the link could not be read.
+check(
+  'and the fragment costs the mechanism nothing',
+  withFragment === plainLinks && plainLinks > 0,
+  `with=${withFragment} without=${plainLinks}`
+);
 
 await browser.close();
 writeFileSync(`${OUT}/report.json`, JSON.stringify({ results }, null, 2));

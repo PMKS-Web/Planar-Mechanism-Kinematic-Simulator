@@ -55,6 +55,7 @@ import { BackgroundImageService, MIN_WIDTH } from '../../services/background-ima
 import { CdkContextMenuTrigger } from '@angular/cdk/menu';
 import { MatDialog } from '@angular/material/dialog';
 import { TemplatesComponent } from '../MODALS/templates/templates.component';
+import { backdropOfCard, placeTemplateBackdrop } from '../MODALS/templates/template-catalog';
 import { Line } from '../../model/line';
 import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
@@ -398,6 +399,14 @@ export class NewGridComponent implements OnDestroy {
     } else if (!this.whatsNew.greet()) {
       this.tutorial.openOnFirstVisit();
     }
+
+    // A template opened in a *new tab* names its backdrop in the fragment,
+    // because the query is the mechanism and nothing else fits beside it. The
+    // picture never travels: what arrives is a card's name, and the asset is one
+    // this build already ships. The name is read by the URL processor, which
+    // sees the address before the decode strips it.
+    const wantsBackdrop = backdropOfCard(this.urlParser.wantsBackdropFor);
+    if (wantsBackdrop) void placeTemplateBackdrop(this.bgImage, wantsBackdrop);
 
     fromEvent(window, 'resize')
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -911,7 +920,10 @@ export class NewGridComponent implements OnDestroy {
     // to the one the user pointed at.
     this.cylinderCreateStart = this.cylinderCreateAt
       ? new Coord(this.cylinderCreateAt.x, this.cylinderCreateAt.y)
-      : this.svgGrid.screenToModel(this.lastRightClickCoord);
+      : this.svgGrid.snapToGrid(
+          this.svgGrid.screenToModel(this.lastRightClickCoord),
+          this.snapSuspendedAtRightClick
+        );
     this.dragState.beginCreatingCylinder();
   }
 
@@ -936,7 +948,9 @@ export class NewGridComponent implements OnDestroy {
     }
     const creation = cylinderCreationLayout(
       this.cylinderCreateStart,
-      this.mouseLocation,
+      // Where the click will put it, not where the pointer is: the rod's far
+      // end is a joint, and it lands on the grid like every other.
+      this.creationLanding(),
       this.settings.objectScale
     );
     const r = 0.15 * this.settings.objectScale;
@@ -1624,7 +1638,7 @@ export class NewGridComponent implements OnDestroy {
       this.lastRightClickCoord.y
     );
 
-    this.mechanismSrv.addJointAt(coord);
+    this.mechanismSrv.addJointAt(this.svgGrid.snapToGrid(coord, this.snapSuspendedAtRightClick));
   }
 
   /**
@@ -1680,7 +1694,22 @@ export class NewGridComponent implements OnDestroy {
    * here instead, which is also what the preview draws from.
    */
   private linkGestureStart(): Coord {
-    return this.linkCreateStart ?? this.mouseLocation;
+    return this.linkCreateStart ?? this.creationLanding();
+  }
+
+  /**
+   * Where a creation gesture puts a joint: the cursor, on the grid.
+   *
+   * Dragging an existing joint has always landed it on the nearest grid square,
+   * and placing a new one did not -- so the same setting meant one thing to a
+   * joint that existed and nothing to a joint being made, and a mechanism built
+   * on a grid came out on coordinates like 3.87. Read by the preview as well as
+   * by the click, so the bar commits where the ghost was standing.
+   *
+   * Option suspends it, the way it suspends every other snap on the canvas.
+   */
+  private creationLanding(): Coord {
+    return this.svgGrid.snapToGrid(this.mouseLocation, this.snapSuspended);
   }
 
   /**
@@ -1706,7 +1735,7 @@ export class NewGridComponent implements OnDestroy {
   get linkPreview(): { bar: string; from: Coord; fill: string } | undefined {
     const from = this.linkCreateStart;
     if (!this.dragState.isCreatingLink || !from) return undefined;
-    const to = this.mouseLocation;
+    const to = this.creationLanding();
     const half = this.settings.objectScale / 4;
     const span = Math.hypot(to.x - from.x, to.y - from.y);
     // Nothing to point along yet: the first pixel of the gesture would spin a
@@ -1904,9 +1933,17 @@ export class NewGridComponent implements OnDestroy {
     this.fitObjectScaleToFirstPart();
     const startCoord = this.svgGrid.screenToModel(this.lastRightClickCoord);
     switch (this.objectKind(this.lastRightClick)) {
-      case 'String':
+      case 'String': {
+        // Started on bare grid, so the grid is what it lands on -- the same
+        // rule the second click follows. Not on a joint, whose own position is
+        // where the bar has to start, and not on a link, where the new joint
+        // has to stay on the bar it was asked for.
+        const onGrid = this.svgGrid.snapToGrid(startCoord, this.snapSuspendedAtRightClick);
+        startCoord.x = onGrid.x;
+        startCoord.y = onGrid.y;
         this.dragState.beginCreatingLinkFromGrid();
         break;
+      }
       case 'PrisJoint':
       case 'RevJoint':
         startCoord.x = this.activeObjService.selectedJoint.x;
@@ -2918,6 +2955,8 @@ export class NewGridComponent implements OnDestroy {
    * them.
    */
   private snapSuspended = false;
+  /** Whether Option was down at the right-click a creation gesture started from. */
+  private snapSuspendedAtRightClick = false;
 
   /** Is the app allowed to square this drag up with anything? */
   private alignmentAllowed(): boolean {
@@ -3217,6 +3256,11 @@ export class NewGridComponent implements OnDestroy {
   onContextMenu($event: MouseEvent) {
     this.lastRightClickCoord.x = $event.clientX;
     this.lastRightClickCoord.y = $event.clientY;
+    // Kept apart from `snapSuspended`, which every pointer move rewrites: the
+    // reader lets Option go on the way to the menu row, and by the time the row
+    // is pressed the live flag has long since forgotten it. For a gesture that
+    // starts at the right-click, the right-click is when the key was meant.
+    this.snapSuspendedAtRightClick = $event.altKey;
     // A menu is opening, so whatever the other button had hold of is over --
     // and putting a gesture down means putting the drawing back.
     //
@@ -3887,6 +3931,9 @@ export class NewGridComponent implements OnDestroy {
     const mousePosInSvg = this.svgGrid.screenToModelFromXY($event.clientX, $event.clientY);
     this.mouseLocation = mousePosInSvg;
     this.svgGrid.cursorAt = mousePosInSvg;
+    // The click carries the key too, so a placement made without stirring the
+    // pointer first still honors a held Option.
+    this.snapSuspended = $event.altKey;
     // Where a link drag measures its offset from. Without anchoring it here the
     // first move would translate the link by the distance from whatever
     // unrelated pointer event came last — a jump on grab.
@@ -3909,7 +3956,7 @@ export class NewGridComponent implements OnDestroy {
         // it lands — over grid, joint or link alike — with the cursor as the
         // rod's end, exactly where the ghost has been standing.
         if (this.dragState.grid === gridStates.createCylinder) {
-          this.commitCylinderCreation(mousePosInSvg);
+          this.commitCylinderCreation(this.creationLanding());
           break;
         }
         switch (this.lastLeftClickType) {
@@ -3922,8 +3969,8 @@ export class NewGridComponent implements OnDestroy {
                   this.linkGestureStart().y.toString()
                 );
                 joint2 = this.mechanismSrv.createRevJoint(
-                  this.mouseLocation.x.toString(),
-                  this.mouseLocation.y.toString(),
+                  this.creationLanding().x.toString(),
+                  this.creationLanding().y.toString(),
                   joint1.id
                 );
                 joint1.connectedJoints.push(joint2);
@@ -3941,8 +3988,8 @@ export class NewGridComponent implements OnDestroy {
                 break;
               case gridStates.createJointFromJoint:
                 joint2 = this.mechanismSrv.createRevJoint(
-                  this.mouseLocation.x.toString(),
-                  this.mouseLocation.y.toString()
+                  this.creationLanding().x.toString(),
+                  this.creationLanding().y.toString()
                 );
                 this.activeObjService.prevSelectedJoint.connectedJoints.push(joint2);
                 joint2.connectedJoints.push(this.activeObjService.prevSelectedJoint);
@@ -3970,8 +4017,8 @@ export class NewGridComponent implements OnDestroy {
                   this.linkGestureStart().y.toString()
                 );
                 joint2 = this.mechanismSrv.createRevJoint(
-                  this.mouseLocation.x.toString(),
-                  this.mouseLocation.y.toString(),
+                  this.creationLanding().x.toString(),
+                  this.creationLanding().y.toString(),
                   joint1.id
                 );
                 // Have within constructor other joints so when you add joint, that joint's connected joints also attach

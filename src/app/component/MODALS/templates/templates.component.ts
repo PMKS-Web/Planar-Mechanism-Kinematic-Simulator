@@ -14,6 +14,8 @@ import {
   MatDialogTitle,
   MatDialogActions,
 } from '@angular/material/dialog';
+import { BackgroundImageService } from 'src/app/services/background-image.service';
+import { BACKDROP_HASH, placeTemplateBackdrop } from './template-catalog';
 import { LoadingService } from 'src/app/services/loading.service';
 import { MechanismService } from 'src/app/services/mechanism.service';
 import { UrlProcessorService } from 'src/app/services/url-processor.service';
@@ -24,6 +26,7 @@ import {
   DEV_TEMPLATE_CARDS,
   TEMPLATE_CARDS,
   TEMPLATE_CATEGORIES,
+  TemplateBackdrop,
   TemplateCard,
   TemplateCategoryID,
 } from './template-catalog';
@@ -84,6 +87,7 @@ export class TemplatesComponent {
   private mechanismSrv = inject(MechanismService);
   private urlProcessor = inject(UrlProcessorService);
   private loading = inject(LoadingService);
+  private backdrop = inject(BackgroundImageService);
   private design = inject(SynthesisBuilderService);
 
   /** Asks whether to replace the mechanism already on the grid or open a new tab. */
@@ -195,13 +199,13 @@ export class TemplatesComponent {
       linkage in DEV_TEMPLATES
         ? DEV_TEMPLATES[linkage as DevTemplateID]
         : TEMPLATE_LINKAGES[linkage as TemplateID];
-    this.choosing =
-      [...TEMPLATE_CARDS, ...DEV_TEMPLATE_CARDS].find((card) => card.id === linkage)?.name ?? '';
+    const card = [...TEMPLATE_CARDS, ...DEV_TEMPLATE_CARDS].find((one) => one.id === linkage);
+    this.choosing = card?.name ?? '';
 
     // An empty grid has nothing to lose, so load right here instead of
     // spawning a tab the user then has to switch to.
     if (this.gridIsEmpty()) {
-      this.openHere(content);
+      this.openHere(content, card?.backdrop);
       return;
     }
 
@@ -210,11 +214,25 @@ export class TemplatesComponent {
       .afterClosed()
       .subscribe((choice) => {
         if (choice === 'replace') {
-          this.openHere(content);
+          this.openHere(content, card?.backdrop);
         } else if (choice === 'new-tab') {
-          this.openInNewTab(content);
+          this.openInNewTab(content, linkage);
         }
       });
+  }
+
+  /**
+   * Put the card's picture behind the mechanism, if it has one.
+   *
+   * After the load and never before it: opening a mechanism clears the grid,
+   * and a width given in the reader's own unit means nothing until the units
+   * the incoming URL carries have been applied. Failure is not worth a message
+   * -- a missing backdrop costs the reader a tracing aid, not their mechanism
+   * -- but it is worth the console, because a card naming an asset that is not
+   * there is a mistake in the catalog rather than in anything a reader did.
+   */
+  private async placeBackdrop(backdrop: TemplateBackdrop | undefined): Promise<void> {
+    await placeTemplateBackdrop(this.backdrop, backdrop);
   }
 
   /**
@@ -233,7 +251,7 @@ export class TemplatesComponent {
     );
   }
 
-  private openHere(content: string) {
+  private openHere(content: string, backdrop?: TemplateBackdrop) {
     // Vector switches are keyed by joint and link id, and the drawing about to
     // arrive spells its joints with the same letters as the one being replaced.
     // Left alone, a velocity vector switched on for one mechanism's B reappears
@@ -256,16 +274,24 @@ export class TemplatesComponent {
       .during('Opening mechanism…', () =>
         this.urlProcessor.updateFromURL(content, true, true, true)
       )
+      .then(() => this.placeBackdrop(backdrop))
       .catch((error) => console.error('Unable to open the mechanism', error));
   }
 
-  private openInNewTab(content: string) {
+  private openInNewTab(content: string, linkage: TemplateID | DevTemplateID) {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     const pathname = window.location.pathname;
     const port = window.location.port;
     const url = `${protocol}//${hostname}${port ? `:${port}` : ''}${pathname}`;
-    const dataURLString = `${url}?${content}`;
+    // The card's name after the hash, not in the query: the query *is* the
+    // mechanism, checksum and all, and a second parameter beside it would not
+    // decode. The picture itself never travels either way -- what crosses is a
+    // name, and the new tab fetches the asset the catalog already ships.
+    const backdrop = TEMPLATE_CARDS.find((card) => card.id === linkage)?.backdrop
+      ? `#${BACKDROP_HASH}${encodeURIComponent(linkage)}`
+      : '';
+    const dataURLString = `${url}?${content}${backdrop}`;
 
     const toolman = document.createElement('a');
     toolman.setAttribute('href', dataURLString);

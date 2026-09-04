@@ -1,3 +1,4 @@
+import { BackgroundImageService } from 'src/app/services/background-image.service';
 import { DevTemplateID } from './dev-templates';
 import { TemplateID } from './template-linkages';
 
@@ -38,6 +39,40 @@ export const TEMPLATE_CATEGORIES = [
 export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
 export type TemplateCategoryID = TemplateCategory['id'];
 
+/**
+ * How a new tab is told which card's picture to put up.
+ *
+ * A hash rather than a query parameter: the query *is* the mechanism, checksum
+ * and all, and anything appended to it stops decoding. Only the card's name
+ * travels -- the picture is an asset the app already ships.
+ */
+export const BACKDROP_HASH = 'backdrop=';
+
+/**
+ * A picture a template opens on top of, for a reader to build against.
+ *
+ * Named rather than carried: the file is an asset the app ships, so a template
+ * can arrive with the photograph or schematic it was traced from without any of
+ * it reaching the URL -- an image is megabytes and a shared link is a few
+ * hundred characters. It is scenery in every other respect, which is to say it
+ * is outside the undo history and outside the codec, exactly like a picture the
+ * reader drops in themselves.
+ *
+ * `width` is in the drawing's own length unit, because that is what a reader
+ * would measure the real thing in; the service converts.
+ */
+export interface TemplateBackdrop {
+  /** The file, under `assets/`. */
+  readonly src: string;
+  /** How wide it is drawn, in the reader's length unit. */
+  readonly width: number;
+  readonly centerX?: number;
+  readonly centerY?: number;
+  readonly rotationRad?: number;
+  /** 0..1; a tracing underlay wants to be seen through. Defaults to a half. */
+  readonly opacity?: number;
+}
+
 /** One card: what it is called, where it files, and why it is worth opening. */
 export interface TemplateCard {
   readonly id: TemplateID | DevTemplateID;
@@ -49,6 +84,8 @@ export interface TemplateCard {
   readonly thumbnail: string;
   /** Optional loop, faded in over the still while the card is hovered. */
   readonly animation?: string;
+  /** Optional picture the mechanism opens on top of. */
+  readonly backdrop?: TemplateBackdrop;
 }
 
 /**
@@ -262,6 +299,16 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'A driven cylinder feeding an ordinary four-bar: bell crank, link, and the bucket curls.',
     thumbnail: 'assets/gifs/backhoe-bucket.png',
     animation: 'assets/gifs/backhoe-bucket.gif',
+    // The machine the linkage is a linkage *of*, to build against. Placed to
+    // put the drawn pins under the template's own joints, so a reader can see
+    // at once which bar is the boom and which is the tipping link.
+    backdrop: {
+      src: 'assets/backdrops/backhoe-arm.svg',
+      width: 16,
+      centerX: -0.7,
+      centerY: 0.1,
+      opacity: 0.45,
+    },
   },
   {
     id: 'Scissor_Lift',
@@ -491,3 +538,49 @@ export const DEV_TEMPLATE_CARDS: readonly TemplateCard[] = [
     thumbnail: 'assets/gifs/dev-render-stress.png',
   },
 ];
+
+/** Where every shipped backdrop lives, which is how one is told from a reader's own. */
+export const BACKDROP_ASSETS = 'assets/backdrops/';
+
+/**
+ * Put a card's picture up, or take down the one the last card left.
+ *
+ * Both doors into the library end here -- opening in place, and a fresh tab
+ * reading the name off its own hash -- so the two cannot drift.
+ *
+ * A picture the *reader* dropped in is left alone. Opening a template replaces
+ * the mechanism, which is what the dialog warns about; it does not promise to
+ * throw away the photograph they were tracing against, and a file they chose is
+ * not this code's to delete. Only a backdrop this shipped is cleared, which is
+ * why they live under one folder.
+ *
+ * Failure is not worth a message to the reader: a missing backdrop costs them a
+ * tracing aid rather than their mechanism. It is worth the console, because a
+ * row naming an asset that is not there is a mistake in this file.
+ */
+export async function placeTemplateBackdrop(
+  images: BackgroundImageService,
+  backdrop: TemplateBackdrop | undefined
+): Promise<void> {
+  if (!backdrop) {
+    if (images.image()?.src.startsWith(BACKDROP_ASSETS)) images.remove();
+    return;
+  }
+  try {
+    await images.placeInCentimeters(backdrop.src, {
+      width: backdrop.width,
+      centerX: backdrop.centerX,
+      centerY: backdrop.centerY,
+      rotationRad: backdrop.rotationRad,
+      opacity: backdrop.opacity,
+    });
+  } catch (error) {
+    console.error(`Backdrop ${backdrop.src} could not be placed`, error);
+  }
+}
+
+/** The picture a card of this name ships, if it ships one. */
+export function backdropOfCard(id: string | null): TemplateBackdrop | undefined {
+  if (!id) return undefined;
+  return TEMPLATE_CARDS.find((card) => card.id === id)?.backdrop;
+}

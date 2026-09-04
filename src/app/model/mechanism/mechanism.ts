@@ -1,6 +1,7 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../joint';
 import { Link, SliderBlock, RealLink } from '../link';
 import { assignBodies, WORLD } from './bodies';
+import { mobilityFromGeometry } from './mobility';
 import { Force } from '../force';
 import { PositionSolver, PositionSolverDriveState, PRISMATIC_INPUT_STEP } from './position-solver';
 import { InstantCenter } from '../instant-center';
@@ -369,7 +370,7 @@ export class Mechanism {
     // already spans): a perfectly ordinary four-bar then counts as DOF 0 and
     // refuses to simulate. Collapsing such links into one body before counting
     // removes the paradox.
-    const { bodyOf, bodiesAt } = assignBodies(this.joints[0], this.links[0]);
+    const { bodyOf, bodiesAt, movingBodies } = assignBodies(this.joints[0], this.links[0]);
 
     const hasGround = this.joints[0].some((j) => j instanceof RealJoint && j.ground);
     if (!hasGround) {
@@ -387,7 +388,29 @@ export class Mechanism {
       }
       J1 += Math.max(bodiesAt(j).size - 1, 0);
     });
-    return 3 * (N - 1) - 2 * J1 - J2;
+    const counted = 3 * (N - 1) - 2 * J1 - J2;
+    if (counted >= 1) return counted;
+
+    // Counted as unable to move. Gruebler's error is one-sided -- it charges
+    // twice for constraints that say the same thing, and so reports a mobility
+    // that is too low, never too high -- so this is the one answer worth
+    // checking against the drawing itself. A parallelogram with a third
+    // parallel crank counts as zero and turns perfectly well; so does a bar
+    // carried by two others that hold it the same way.
+    //
+    // Only here, and only when it disagrees upward: everything Gruebler already
+    // calls mobile is left exactly as it was, and a structure that really
+    // cannot move still reads zero, because its rows really are independent.
+    const measured = mobilityFromGeometry(this.joints[0], this.links[0], {
+      bodyOf,
+      bodiesAt,
+      movingBodies,
+    });
+    // Only ever a rescue. Where the geometry agrees nothing can move, Gruebler's
+    // own number is the more useful of the two: -2 says how much has to come out
+    // before this is a mechanism, and a flat zero from a rank count says only
+    // that it is stuck.
+    return measured !== undefined && measured >= 1 ? measured : counted;
   }
 
   /** One refinement per build, and never again after its fallback re-solve. */

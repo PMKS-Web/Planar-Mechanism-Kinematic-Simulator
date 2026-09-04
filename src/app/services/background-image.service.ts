@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { MODEL_SCALE } from '../model/render-scale';
 import { SettingsService } from './settings.service';
+import { LengthUnit } from '../model/unit-enums';
 import { NumberUnitParserService } from './number-unit-parser.service';
 
 /**
@@ -31,6 +32,23 @@ export interface BackgroundImage {
   opacity: number;
   /** The name of the file it came from, for the panel to show. */
   fileName: string;
+}
+
+/**
+ * Where a shipped picture goes and how big it is drawn, in model units.
+ *
+ * Everything but the width has a sensible default, because a backdrop centered
+ * on the origin at half opacity is what a tracing underlay usually wants; the
+ * width has none, since only the drawing knows how much of the grid the picture
+ * is supposed to cover.
+ */
+export interface AssetPlacement {
+  width: number;
+  centerX?: number;
+  centerY?: number;
+  rotationRad?: number;
+  opacity?: number;
+  fileName?: string;
 }
 
 /** The largest file we will read, in bytes. */
@@ -154,6 +172,55 @@ export class BackgroundImageService {
       rotationRad: 0,
       opacity: 0.5,
       fileName: file.name,
+    });
+  }
+
+  /**
+   * Place a picture the app ships, rather than one the reader chose.
+   *
+   * A template can come with the drawing it was traced from -- a photograph or
+   * a schematic to build on top of -- and that picture cannot ride the URL: it
+   * is megabytes and a shared link is a few hundred characters. So it stays an
+   * asset, named by the card and fetched when the card is opened.
+   *
+   * `src` is the asset's own path rather than a data URL. Nothing here needs it
+   * inlined: the file is served from the same origin as the app, and keeping it
+   * a path means the picture is not copied into memory once per undo entry.
+   * A reader's *own* file still becomes a data URL, because there is no path to
+   * give it.
+   */
+  async loadFromUrl(src: string, placement: AssetPlacement): Promise<void> {
+    const { width, height } = await measure(src);
+    this.image.set({
+      src,
+      naturalWidth: width,
+      naturalHeight: height,
+      centerX: placement.centerX ?? 0,
+      centerY: placement.centerY ?? 0,
+      width: Math.max(MIN_WIDTH, placement.width),
+      rotationRad: placement.rotationRad ?? 0,
+      opacity: clamp(placement.opacity ?? 0.5, 0, 1),
+      fileName: placement.fileName ?? src.split('/').pop() ?? src,
+    });
+  }
+
+  /**
+   * The same, written the way a catalog row writes it: centimeters.
+   *
+   * A template is authored in centimeters and its payload carries whichever
+   * unit it was saved in, so the numbers beside a card are converted here
+   * rather than at the call site -- and a picture placed 16 cm wide is 16 cm
+   * wide whether the mechanism opened in inches or in meters.
+   */
+  async placeInCentimeters(src: string, placement: AssetPlacement): Promise<void> {
+    const unit = this.settings.lengthUnit.value;
+    const toModel = (value: number) =>
+      this.nup.convertLength(value, LengthUnit.CM, unit) * MODEL_SCALE;
+    await this.loadFromUrl(src, {
+      ...placement,
+      width: toModel(placement.width),
+      centerX: toModel(placement.centerX ?? 0),
+      centerY: toModel(placement.centerY ?? 0),
     });
   }
 

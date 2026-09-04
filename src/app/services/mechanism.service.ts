@@ -3613,7 +3613,7 @@ export class MechanismService {
                 .map((link) => this.bodyLabel(link))
                 .join(
                   ', '
-                )} ${massless.length === 1 ? 'weighs' : 'weigh'} nothing, so gravity and inertia pass ${massless.length === 1 ? 'it' : 'them'} by. Fine for an idealized bar — type a mass in the table below to include ${massless.length === 1 ? 'it' : 'them'}.`,
+                )} ${massless.length === 1 ? 'weighs' : 'weigh'} nothing, so gravity and inertia pass ${massless.length === 1 ? 'it' : 'them'} by. Fine for an idealized bar — type a mass in the table above to include ${massless.length === 1 ? 'it' : 'them'}.`,
       });
     }
 

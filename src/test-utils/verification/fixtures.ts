@@ -306,3 +306,27 @@ export function heldCrankFourBarFixture(): MechanismFixture {
     inputAngVel: INPUT_SPEED,
   };
 }
+
+/**
+ * A parallelogram with a third parallel crank -- Gruebler's paradox, drawn.
+ *
+ * Three equal cranks stand side by side, all pinned to ground and all carrying
+ * one coupler. Counting bodies and joints gives zero, and the thing turns
+ * perfectly well: the third crank repeats a constraint the first two already
+ * made, and the count has no way to know. Reported by a reader whose drawing
+ * refused to simulate.
+ */
+export function redundantParallelCrankFixture(): MechanismFixture {
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true },
+      { id: 'B', x: 0, y: 2 },
+      { id: 'E', x: 4, y: 2 },
+      { id: 'F', x: 4, y: 0, ground: true },
+      { id: 'I', x: 2, y: 2 },
+      { id: 'J', x: 2, y: 0, ground: true, input: true },
+    ],
+    links: [{ joints: 'AB' }, { joints: 'EF' }, { joints: 'BEI' }, { joints: 'IJ' }],
+    inputAngVel: INPUT_SPEED,
+  };
+}

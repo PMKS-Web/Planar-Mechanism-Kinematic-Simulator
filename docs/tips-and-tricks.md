@@ -760,6 +760,55 @@ or the anchors; it takes about a quarter of an hour.
 
 ---
 
+### Gruebler's count is one-sided, so the geometry gets the last word
+
+`determineDegreesOfFreedom` counts bodies and joints, and that count is wrong in exactly one
+direction: it charges twice for constraints that say the same thing, so a linkage whose redundancy
+is *geometric* comes out too low. The textbook case gets drawn here — a parallelogram with a third
+parallel crank counts as zero and turns perfectly well, because the third crank repeats what the
+first two already said. So when the count says a mechanism cannot move, and only then,
+`model/mechanism/mobility.ts` asks the drawing instead: **freedoms = coordinates − rank(J)**, over
+three coordinates per moving body and two rows per joint.
+
+**A rank deficiency is not a motion, and believing it is will break a working app.** It says the
+linkage can move *at this instant*. A slider-crank whose coupler is welded to its block, drawn with
+the crank square to the slot, has the pin's circle touching the block's line: first order says they
+agree and second order says they part immediately. So every freedom the rank finds is stepped along
+and put back together — if the gap that opens has a part no first-order correction can close, it was
+a tangency and the freedom is dropped. Two existing specs (`slide-mobility`, `motiongen-gripper`)
+encode exactly that case and are what caught it.
+
+Two rules keep the whole thing conservative, and both matter:
+
+- The geometry is asked **only when the count says < 1**, so nothing the count already gets right can
+  be reached.
+- Its answer is taken **only when it is ≥ 1** — a rescue, never a demotion. Where both agree nothing
+  moves, Gruebler's own number is the more useful: `-2` says how much has to come out, and a flat
+  zero from a rank count says only that it is stuck. `e2e/phase1-drag.mjs` pins that.
+
+The projection in `outsideRange` orthogonalizes the Jacobian's columns against each other before
+projecting. Subtracting each column in turn without that leaves part of the span behind and reports
+every genuine motion as a tangency — which is the answer exactly inverted, and it passes the whole
+unit suite while doing it.
+
+---
+
+### A template can ship a picture to build on
+
+A card in `template-catalog.ts` may carry a `backdrop`: an asset under `src/assets/backdrops/`, a
+width in centimeters, and where to center it. `Backhoe_Bucket` has one. The picture is never in the
+URL — an image is megabytes and a shared link is a few hundred characters — so what a *new tab*
+carries is the card's name, in the **hash**, because the query is the mechanism and a second
+parameter beside it would not decode past the checksum. `placeTemplateBackdrop` is the one door,
+called from the library and again on arrival.
+
+Two things it deliberately does not do. It does not clear a picture the *reader* dropped in: opening
+a template replaces the mechanism, which is what the dialog warns about, and a file they chose is not
+the library's to delete — so only backdrops under `assets/backdrops/` are taken down. And it does not
+put the image in the undo history or the codec, the same as any background image.
+
+---
+
 ### A force is stored in one unit and read in another
 
 `settings.forceUnit` is what the reader is *reading*, and it is not what a magnitude is kept in.

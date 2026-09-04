@@ -8,6 +8,7 @@ import {
   nearlyNonGrashofFixture,
   heldCrankFourBarFixture,
   twoFourBarsFixture,
+  redundantParallelCrankFixture,
   wideSwingRockerFixture,
   wattIFixture,
 } from './fixtures';
@@ -705,6 +706,14 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'posed-editing.spec.ts',
     floatingSlot: false,
     fixture: nearlyNonGrashofFixture(),
+  },
+  {
+    name: 'Parallelogram with a third parallel crank',
+    purpose:
+      'Gruebler counts it as rigid and it turns: the third crank repeats what the first two said',
+    spec: 'redundant-parallel-crank.spec.ts',
+    floatingSlot: false,
+    fixture: redundantParallelCrankFixture(),
   },
   {
     name: 'Rocker that swings more than a turn',
