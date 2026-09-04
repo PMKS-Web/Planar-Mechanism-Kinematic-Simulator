@@ -1474,14 +1474,21 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           val!,
           this.settingsService.lengthUnit.getValue()
         );
-        if (!success) {
-          this.notify.refusal('value.length', NOT_A.length);
-          this.linkForm.patchValue({
-            length: this.nup.formatModelLength(
-              this.activeSrv.selectedLink.length,
-              this.settingsService.lengthUnit.getValue()
-            ),
-          });
+        // Zero is a bar collapsed onto a point and a negative one is a bar
+        // with a sign the geometry cannot carry -- both used to be taken
+        // silently, the second stored as its own absolute value while the
+        // field went on showing the minus.
+        if (!success || value <= 0) {
+          this.notify.refusal('value.length', success ? NOT_A.positiveLength : NOT_A.length);
+          this.linkForm.patchValue(
+            {
+              length: this.nup.formatModelLength(
+                this.activeSrv.selectedLink.length,
+                this.settingsService.lengthUnit.getValue()
+              ),
+            },
+            { emitEvent: false }
+          );
         } else {
           // Near a lock the number is a constraint to solve, not an end to
           // move; the solver says whether it can be true at all.
@@ -2558,13 +2565,17 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
             val!,
             this.settingsService.lengthUnit.getValue()
           );
-          if (!success) {
-            this.notify.refusal('value.length', NOT_A.length);
+          // A distance is a distance: a negative one is not a shorter bar, it
+          // is the same bar with a minus sign the field then goes on showing
+          // over geometry that never took it.
+          if (!success || value < 0) {
+            this.notify.refusal('value.length', success ? NOT_A.positiveLength : NOT_A.length);
             this.otherJoints.controls[i * 2].patchValue(
               this.nup.formatModelLength(
                 this.getDistanceBetweenJoints(this.activeSrv.selectedJoint, joint),
                 this.settingsService.lengthUnit.getValue()
-              )
+              ),
+              { emitEvent: false }
             );
           } else {
             this.updateDistanceBetweenJoints(this.activeSrv.selectedJoint, joint, value);
@@ -2585,15 +2596,21 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           );
           if (!success) {
             this.notify.refusal('value.angle', NOT_A.angle);
+            // The bearing between *these two joints*, which is what this field
+            // is about. It used to reach for `selectedLink.angleRad` while a
+            // joint was selected -- so `selectedLink` was undefined, the throw
+            // took the restore with it, and the box sat there still showing
+            // whatever had just been refused.
             this.otherJoints.controls[i * 2 + 1].patchValue(
-              this.nup
-                .convertAngle(
-                  this.activeSrv.selectedLink.angleRad,
+              this.nup.formatValueAndUnit(
+                this.nup.convertAngle(
+                  this.getAngleBetweenJoints(this.activeSrv.selectedJoint, joint),
                   AngleUnit.RADIAN,
                   this.settingsService.angleUnit.getValue()
-                )
-                .toFixed(0)
-                .toString()
+                ),
+                this.settingsService.angleUnit.getValue()
+              ),
+              { emitEvent: false }
             );
           } else {
             this.updateAngleBetweenJoints(

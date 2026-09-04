@@ -8,6 +8,7 @@ import { SettingsService } from './settings.service';
 import { DragStateService } from './drag-state.service';
 import { NotificationService } from './notification.service';
 import { MechanismService } from './mechanism.service';
+import { SaveHistoryService } from './save-history.service';
 import Hammer from 'hammerjs';
 import { MODEL_SCALE } from '../model/render-scale';
 import { DEFAULT_OBJECT_SCALE } from '../model/object-scale';
@@ -1046,6 +1047,14 @@ export class SvgGridService {
     // A link's outline is computed once and cached, and its width is a fraction
     // of this scale, so a route that changes it has to say so.
     this.injector.get(MechanismService).applyObjectScaleChange();
+    // And the state the drawing arrived in has to say so too. This runs on the
+    // frame after the load, by which time the arrival is already recorded --
+    // with the default mark size, because that is what was set when it was
+    // written. Undo then restored a drawing whose joints were two and a half
+    // times too big. The entry is revised rather than added to: sizing the
+    // marks to the drawing is part of how it opened, not an edit the reader
+    // made and might want back.
+    this.injector.get(SaveHistoryService).restate();
   }
 
   /** The canvas's own top-left in client pixels, which `pan` is measured from. */

@@ -83,7 +83,7 @@
         type="number"
         [formGroup]="this.settingsForm"
         _formControl="objectScale"
-        tooltip="How big joints, blocks and cylinders are drawn, relative to the links. (Default: 0.7)"
+        tooltip="How big joints, blocks and cylinders are drawn. A drawing that arrives without a size of its own gets one suited to how large it is."
         >Object Scale
       </input-block>
       <button-block icon="auto_fix_normal" [click]="updateObjectScale.bind(this)"

@@ -47,6 +47,25 @@ export class SaveHistoryService {
     console.log('save', state);
   }
 
+  /**
+   * Rewrite the entry the drawing is standing on, without adding one.
+   *
+   * For a change that is part of how the current state *arrived* rather than a
+   * step away from it. The canvas sizes a drawing's marks to the drawing on the
+   * fit that follows a load, and that happens a frame after the arrival has
+   * been recorded -- so the entry held the default size, and the first undo
+   * after opening a template resized every joint, ground mark and label by two
+   * and a half times. Redo was correct, which is what gave it away: only the
+   * arrival entry was wrong.
+   *
+   * Not a save: an undo the reader has not made yet must not become a step they
+   * have to press twice to get past.
+   */
+  restate(): void {
+    if (this.history.length === 0) return;
+    this.history[this.index] = this.urlGenerationService.generateUrlQuery();
+  }
+
   /*
    * Return whether there is history before current state to undo to.
    */

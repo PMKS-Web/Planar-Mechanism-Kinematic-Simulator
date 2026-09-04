@@ -32,4 +32,13 @@ export const NOT_A = {
     'That is not a moment of inertia. Type a number, with or without a unit — 4, 4 kg·cm².',
   force: 'That is not a force. Type a number, with or without a unit — 10, 10 N, 2.5 lb.',
   name: 'A name has to be letters or numbers, and cannot be one already in use.',
+  /**
+   * A length that parsed but cannot be one.
+   *
+   * Kept apart from `length`, which is about the *text*: a reader who typed
+   * "-5" typed a number, and telling them it is not one is telling them the
+   * wrong thing. The fields used to take it, store the distance without the
+   * sign, and go on showing "-5.00 cm" over a bar that was five long.
+   */
+  positiveLength: 'A length has to be more than zero.',
 } as const;

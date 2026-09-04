@@ -1,6 +1,6 @@
 import { TabID } from '../../selected-tab.service';
 import { CHROME_MOVED } from '../../model/chrome-motion';
-import { Component, inject, ChangeDetectionStrategy, DoCheck } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, DoCheck, HostListener } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 import { gridStates, jointStates, linkStates, forceStates } from '../../model/utils';
@@ -232,6 +232,20 @@ export class RightPanelComponent implements DoCheck {
   /** Shut the drawer, whichever one is open. */
   close(): void {
     RightPanelComponent.dismiss();
+  }
+
+  /**
+   * Escape shuts it, as Escape shuts everything else that is over the drawing.
+   *
+   * It closed a dialog, it cleared a selection, it now puts down a half-drawn
+   * bar -- and it did nothing at all to the one panel covering a third of the
+   * window, which had to be dismissed by its X. Ignored when nothing is open,
+   * so a reader pressing Escape at the canvas still reaches whatever else
+   * answers it.
+   */
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (RightPanelComponent.isOpen) RightPanelComponent.dismiss();
   }
 
   /** Shut the drawer from outside it, the mirror of `insistOn`. */
