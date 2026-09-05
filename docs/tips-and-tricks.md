@@ -70,6 +70,13 @@ mkdir -p /tmp/pmks-playwright && cd /tmp/pmks-playwright && npm i playwright gif
 with a module-not-found. Reinstalling — or pointing `PMKS_PLAYWRIGHT_DIR` at the repo — is the first
 thing to try.
 
+**Some suites keep a browser profile in `/tmp/pmks-chrome-*`** (`launchPersistentContext`), and a
+stale one can fail a suite for reasons that have nothing to do with the change under test: a dialog
+the profile's `localStorage` has earned opens over the canvas, the suite's first click lands on it,
+and the panel it then reads has no field of the name it wants -- `Cannot read properties of null
+(reading 'click')` at a `setStart` or `setField`. When a cylinder or panel suite dies like that and
+the same clicks work in a fresh page, delete the profile directory named in the suite and run again.
+
 **Two suites need more than Chromium.** `playback-loop-indicator` compares the same bar across
 engines, so it needs Firefox and WebKit too, and reports three confusing failures without them:
 
@@ -994,6 +1001,20 @@ the crank angle, distance constraints, tangent from the null space) traces the w
 curve and reports the crank's range and its turning points. That is how the 444-degree swing above,
 the boundary six-bar's 382-degree swing with the drawn pose at a limit, and Watt I's eleven-degree
 sliver were each established, and each contradicted what the spec at the time asserted.
+
+### The rate solver walks dyads; where it cannot, the graphs difference the poses
+
+`KinematicsSolver` finds velocities and accelerations along the same chains of dyads the position
+walk uses. A mechanism the position solver had to settle all at once (§2.7a: the gripper on rails,
+whose carriage, four links and two jaws no two known joints locate) solves its poses and then has
+no rates at all, and every velocity graph was a row of gaps over a mechanism that visibly moved.
+`AnalysisSampleService` now fills the blanks from the solved positions
+(`model/mechanism/finite-difference-kinematics.ts`): a central difference for velocity, and for
+acceleration the derivative of that velocity series rather than a second difference of positions
+-- a settled pose carries the solver's tolerance as a zigzag of a hair between neighbors, invisible
+to a first difference and a spike of several units to a second. Only blanks are filled; where the
+analytic answer exists it stands. `slide-gripper.spec.ts` pins it, and `e2e/template-graphs.mjs`
+checks every plotted rate against a difference quotient of its source.
 
 ### A link pinned to ground twice is frame, and the force solver treats it so
 

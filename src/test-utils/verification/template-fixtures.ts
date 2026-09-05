@@ -18,11 +18,13 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Whitworth_Quick_Return: 'Whitworth proportions',
   Scotch_Yoke: 'Scotch yoke',
   Cylinder_Boom: 'Cylinder-driven boom',
-  // Symmetric about its ram, and its jaws stay parallel — which the
-  // counter-rotating levers this replaced did not, and which the plate-and-rails
-  // drawing beside it in the gallery only appears to: played back, that one
-  // lifts both arms together and never closes at all.
-  Cylinder_Gripper: 'Parallel gripper',
+  // The rails version, drawn after a reference gripper (MotionGen, 5 Sep
+  // 2026): a carriage on the ram, two vertical rails with the slots cut into
+  // them, and a jaw each side hung from the carriage by two equal links. It
+  // replaced the hanger version, which kept the jaws level with pins because
+  // the solver of its day could not walk a chain that leaves the frame through
+  // one sliding pair and comes back through another. It can now.
+  Cylinder_Gripper: 'Gripper on rails',
   Radial_Engine: 'Radial engine, five cylinders',
   Chebyshev_Straight_Line: 'Chebyshev straight-line linkage',
   Windshield_Wiper: 'Windshield wiper',

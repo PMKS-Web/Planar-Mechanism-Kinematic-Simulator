@@ -545,6 +545,95 @@ export function gripperFixture(scale: number = 1): MechanismFixture {
   };
 }
 
+/**
+ * A parallel gripper the way a manufacturer draws one: a carriage on the ram,
+ * two vertical rails, and a jaw on each side hung from the carriage by two
+ * equal links whose far pins ride the rails.
+ *
+ * The rails hold each jaw level and the links turn the carriage's travel into
+ * the jaw's: pushing the carriage toward the jaws swings the links flatter and
+ * draws both jaws in to the axis, and they meet flat at the tips. The rails
+ * are drawn as bars pinned to ground at both ends with the slots cut into
+ * them, which is how the reference drawing (MotionGen, 5 Sep 2026) has them
+ * and which the force solver treats as frame.
+ *
+ * Symmetric about the axis, and proportioned so the tips meet on the axis a
+ * hair before the links go level, which is where the closing stroke ends. The carriage is not on a slide of its own: the
+ * two parallelograms and the four rail pins already fix its attitude, and a
+ * fifth guide would only be a redundant constraint for the mobility check
+ * to rescue.
+ */
+/**
+ * Where the ram is mounted and how far along its travel it starts: chosen so
+ * the closing stroke ends with the tips just meeting and the opening stroke
+ * leaves them a hand's width apart, rather than crossing or binding.
+ */
+export const SLIDE_GRIPPER_MOUNT = { x: -5.0, y: 0 };
+export const SLIDE_GRIPPER_START = 0.5;
+
+export function slideGripperFixture(
+  scale: number = 1,
+  mount: { x: number; y: number } = SLIDE_GRIPPER_MOUNT,
+  start: number = SLIDE_GRIPPER_START
+): MechanismFixture {
+  const at = (x: number, y: number) => ({ x: x * scale, y: y * scale });
+  /** Rails, carriage pins and the link geometry, from the reference drawing. */
+  const RAIL_LEFT = -1.86;
+  const RAIL_RIGHT = 0.14;
+  const PIN_Y = 1;
+  const LIFT = 1.13;
+  // The tip hangs below the rail pin by what the jaw drops over the closing
+  // stroke, so the tips meet on the axis at the end of it, a little before
+  // the links go level and the linkage binds.
+  const TIP = { x: 4.05, y: -1.26 };
+  const driven = { x: -2.4, y: 0 };
+  const { barrelEnd, pin } = cylinderBetween(mount, driven, start);
+  return {
+    joints: [
+      { id: 'A', ...at(mount.x, mount.y), ground: true },
+      { id: 'B', ...at(barrelEnd.x, barrelEnd.y) },
+      { id: 'C', ...at(pin.x, pin.y) },
+      { id: 'D', ...at(driven.x, driven.y) },
+      { id: 'G', ...at(-1, PIN_Y) },
+      { id: 'H', ...at(1, PIN_Y) },
+      { id: 'I', ...at(-1, -PIN_Y) },
+      { id: 'J', ...at(1, -PIN_Y) },
+      { id: 'K', ...at(RAIL_LEFT, 3.8), ground: true },
+      { id: 'L', ...at(RAIL_LEFT, -3.8), ground: true },
+      { id: 'O', ...at(RAIL_RIGHT, 3.8), ground: true },
+      { id: 'P', ...at(RAIL_RIGHT, -3.8), ground: true },
+      { id: 'M', ...at(RAIL_LEFT, PIN_Y + LIFT) },
+      { id: 'Q', ...at(RAIL_RIGHT, PIN_Y + LIFT) },
+      { id: 'S', ...at(RAIL_RIGHT + TIP.x, PIN_Y + LIFT + TIP.y) },
+      { id: 'T', ...at(RAIL_LEFT, -PIN_Y - LIFT) },
+      { id: 'V', ...at(RAIL_RIGHT, -PIN_Y - LIFT) },
+      { id: 'X', ...at(RAIL_RIGHT + TIP.x, -PIN_Y - LIFT - TIP.y) },
+    ],
+    links: [
+      { joints: 'AB', name: 'Barrel' },
+      { joints: 'CD', name: 'Rod' },
+      { joints: 'DGHIJ', name: 'Carriage' },
+      { joints: 'KL', name: 'Rail' },
+      { joints: 'OP', name: 'Rail' },
+      { joints: 'GM' },
+      { joints: 'HQ' },
+      { joints: 'MQS', name: 'Jaw' },
+      { joints: 'IT' },
+      { joints: 'JV' },
+      { joints: 'TVX', name: 'Jaw' },
+    ],
+    sliders: [
+      { at: 'C', prisId: 'E', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
+      { at: 'M', prisId: 'N', on: { carrier: 'KL', a: 'K', b: 'L' } },
+      { at: 'Q', prisId: 'R', on: { carrier: 'OP', a: 'O', b: 'P' } },
+      { at: 'T', prisId: 'U', on: { carrier: 'KL', a: 'K', b: 'L' } },
+      { at: 'V', prisId: 'W', on: { carrier: 'OP', a: 'O', b: 'P' } },
+    ],
+    welds: ['C'],
+    inputAngVel: INPUT_SPEED * scale,
+  };
+}
+
 /** A bar doing nothing, pinned to ground at both ends: a guide rail, alone. */
 export function anchoredBarFixture(withRail: boolean): MechanismFixture {
   return {

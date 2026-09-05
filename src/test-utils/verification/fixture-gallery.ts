@@ -19,6 +19,7 @@ import {
   gripperFixture,
   parallelGripperFixture,
   pinchingGripperFixture,
+  slideGripperFixture,
   ellipticalCrankFixture,
   ellipticalTrammelFixture,
   invertedSliderCrankFixture,
@@ -423,6 +424,18 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     fixture: parallelGripperFixture(),
   },
   {
+    name: 'Gripper on rails',
+    purpose:
+      'A carriage on the ram, two vertical rails, and a jaw each side hung from the carriage by two equal links whose far pins ride the rails: the jaws stay level and meet flat',
+    spec: 'slide-gripper.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    // 1.07 cm of carriage travel closes the jaws from a hand's width to touching;
+    // 0.4 cm/s opens and closes them in 5.4 s.
+    speed: { unitsPerSecond: 0.4 },
+    fixture: slideGripperFixture(),
+  },
+  {
     name: 'Gripper the cylinder closes',
     purpose: 'Counter-rotating jaw levers: extending the cylinder pinches them shut',
     spec: 'pinching-gripper.spec.ts',
@@ -702,8 +715,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
   },
   {
     name: 'Crank on the edge of Grashof',
-    purpose:
-      'One drag from being a rocker: where a posed edit can put the start pose out of reach',
+    purpose: 'One drag from being a rocker: where a posed edit can put the start pose out of reach',
     spec: 'posed-editing.spec.ts',
     floatingSlot: false,
     fixture: nearlyNonGrashofFixture(),

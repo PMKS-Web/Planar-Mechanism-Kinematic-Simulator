@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { ForceAnalysisMode } from '../model/mechanism/force-solver';
 import { KinematicsSolver } from '../model/mechanism/kinematic-solver';
+import { fillRatesByDifference } from '../model/mechanism/finite-difference-kinematics';
 import { Mechanism } from '../model/mechanism/mechanism';
 import { FORCE_TO_N, siUnitFactorsForLength } from '../model/unit-conversions';
 import { MODEL_SCALE } from '../model/render-scale';
@@ -217,6 +218,10 @@ export class AnalysisSampleService {
       linkAngVel: new Map(KinematicsSolver.linkAngVelMap),
       linkAngAcc: new Map(KinematicsSolver.linkAngAccMap),
     };
+    // What the rate solver could not reach is read off the poses instead:
+    // a mechanism settled all at once has positions at every sample and,
+    // without this, a velocity graph of gaps over a joint that plainly moves.
+    fillRatesByDifference(mechanism, index, answer);
     perSample.set(index, answer);
     return answer;
   }

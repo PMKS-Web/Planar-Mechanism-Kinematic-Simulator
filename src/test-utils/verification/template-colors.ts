@@ -83,16 +83,15 @@ const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
   // The two arms that carry the blades. The drive link and the tie rod between
   // them do different jobs and stay apart.
   Windshield_Wiper: { same: [['BCPT', 'DQU']] },
-  // Everything in it comes in twos, mirrored about the ram's axis. The two
-  // drive links meet each other on that axis, at the ram's own pin, so this is
-  // the case where matching a mirror pair beats keeping neighbors apart:
-  // they are one part made twice and should say so.
+  // Everything in it comes in twos, mirrored about the ram's axis: the two
+  // rails, the two jaws, and the two pairs of links that hang them from the
+  // carriage. Matching each mirror pair is what makes the symmetry -- the
+  // whole reason the jaws meet flat -- visible in a still picture.
   Cylinder_Gripper: {
     same: [
-      ['BD', 'GI'],
-      ['CE', 'HJ'],
-      ['DEF', 'IJK'],
-      ['AD', 'AI'],
+      ['KL', 'OP'],
+      ['GM', 'HQ', 'IT', 'JV'],
+      ['MQS', 'TVX'],
     ],
   },
   // Mirror images about the line the pen rules: the two bars off the fixed

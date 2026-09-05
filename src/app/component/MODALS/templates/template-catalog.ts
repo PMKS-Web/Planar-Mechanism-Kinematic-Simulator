@@ -266,8 +266,8 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Parallel Gripper',
     category: 'slots',
     description:
-      'One ram, two jaws, a parallelogram under each. The jaws keep their attitude as they ' +
-      'travel, so they meet flat rather than pinching.',
+      'A carriage on the ram, two rails, and a jaw each side hung on two equal links whose ' +
+      'pins ride the rails. The jaws stay level and meet flat.',
     thumbnail: 'assets/gifs/cylinder-gripper.png',
     animation: 'assets/gifs/cylinder-gripper.gif',
   },

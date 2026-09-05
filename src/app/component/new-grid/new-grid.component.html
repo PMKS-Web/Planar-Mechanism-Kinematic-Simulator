@@ -776,9 +776,12 @@
              cannot analyze is scenery and goes gray with the rest of its
              machine. Its skin is painted from its own fill rather than through
              the link classes, so it was the one part that stayed in color. -->
+        <!-- The same state classes a bar wears (selected, pointed, hovered,
+             inert, locked), so a cylinder that has joined a selection is
+             outlined like the bars beside it. The stroke below is a
+             presentation attribute, and the class's stroke beats it. -->
         <path
-          class="cylinder-barrel"
-          [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
+          [class]="'cylinder-barrel ' + mechanismSrv.getLinkCSSClass(cyl.body)"
           [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.body) ? 'not-allowed' : 'move'"
           (pointerover)="cyl.body.showHighlight = true"
           (pointerout)="cyl.body.showHighlight = false"
@@ -803,8 +806,7 @@
           [attr.filter]="mechanismSrv.isPartInert(cyl.body) ? null : 'url(#elevation-1)'"
         />
         <path
-          class="cylinder-rod"
-          [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
+          [class]="'cylinder-rod ' + mechanismSrv.getLinkCSSClass(cyl.body)"
           [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.body) ? 'not-allowed' : 'move'"
           (pointerover)="cyl.body.showHighlight = true"
           (pointerout)="cyl.body.showHighlight = false"
