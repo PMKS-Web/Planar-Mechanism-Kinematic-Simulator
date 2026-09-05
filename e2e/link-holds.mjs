@@ -346,12 +346,6 @@ const bOn = await jointOnScreen('B');
 await page.mouse.click(bOn.x, bOn.y, { button: 'right' });
 await page.waitForTimeout(350);
 menu = await readMenu();
-const free = menu?.rows.find((r) => r.label === 'Free to Move');
-record(
-  'the joint menu has a Free to Move row, off and naming the holds',
-  !!free && !free.off && /held by .*AB/.test(free.slot),
-  free
-);
 record(
   'the joint subtitle says it is on fixed bars',
   /on fixed/.test(menu?.subtitle ?? ''),

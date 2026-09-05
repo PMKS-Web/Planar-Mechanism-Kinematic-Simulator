@@ -185,13 +185,23 @@ await clickJoint('B');
 const beforeAnalysis = await state();
 await press('3');
 await press('Backspace');
-await press('k');
-const afterAnalysis = await state();
+const afterDelete = await state();
+const saidWhy = await page.evaluate(() => {
+  const one = ng
+    .getComponent(document.querySelector('app-new-grid'))
+    .notify.live.find((n) => n.id === 'delete.analysis');
+  return !!one && one.actions.some((action) => action.label === 'Switch to Edit');
+});
 record(
-  'Delete and Lock do nothing in an analysis mode',
-  afterAnalysis.joints === beforeAnalysis.joints && afterAnalysis.lockedJoints === 0,
-  { beforeAnalysis, afterAnalysis }
+  'Delete does nothing in an analysis mode, and the message offers Edit',
+  afterDelete.joints === beforeAnalysis.joints && saidWhy,
+  { beforeAnalysis, afterDelete, saidWhy }
 );
+// A lock is a mark on the drawing rather than a change to it, like a trace,
+// and the analysis menus offer it; so does the key.
+await press('k');
+record('Lock still works there', (await state()).lockedJoints === 1, await state());
+await press('k');
 await press('2');
 await clickJoint('B');
 await press('k');

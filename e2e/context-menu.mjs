@@ -354,12 +354,6 @@ check(
   rowNamed(cylinderJoint, 'Slider')?.slot === 'part of a cylinder',
   rowNamed(cylinderJoint, 'Slider')
 );
-check(
-  'and Free to Move is on every joint, on and grayed where nothing holds it',
-  rowNamed(jointA, 'Free to Move')?.slot === 'nothing holds it' &&
-    rowNamed(cylinderJoint, 'Free to Move')?.slot === 'nothing holds it',
-  [rowNamed(jointA, 'Free to Move'), rowNamed(cylinderJoint, 'Free to Move')]
-);
 
 const cylinderBody = await openOn('[id="AB"]');
 check(

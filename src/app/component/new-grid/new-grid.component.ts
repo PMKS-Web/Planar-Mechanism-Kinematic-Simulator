@@ -5916,6 +5916,18 @@ export class NewGridComponent implements OnDestroy {
         // panel, the menu and undo all refusing, Backspace still deleted the
         // selection. A key is a control like any other and asks the same
         // question the button beside it asks.
+        // The model allows restructuring at an analysis mode's start pose,
+        // and the menu offers it there. The key does not: a reader measuring
+        // a drawing who presses Backspace is far more often reaching for a
+        // typed number than for a joint, and a joint gone from under a graph
+        // is a loss with no way back short of leaving the mode. Said, with
+        // the way out on the message, rather than swallowed.
+        if (this.tabService.isAnalysisMode()) {
+          this.notify.refusal('delete.analysis', 'Deleting is an Edit change.', {
+            actions: [{ label: 'Switch to Edit', run: () => this.tabService.setTab(TabID.EDIT) }],
+          });
+          return;
+        }
         if (!this.permission.may('structure')) return;
         this.deleteSelection();
         return;

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { NumberUnitParserService } from './number-unit-parser.service';
 import { AngleUnit } from '../model/utils';
-import { describeHold, heldBarsAt, holdOf, holdableBar } from '../model/link-holds';
+import { heldBarsAt, holdOf, holdableBar } from '../model/link-holds';
 import { LinkHold } from '../model/link';
 import {
   ContextMenuModel,
@@ -565,10 +565,11 @@ export class ContextMenuBuilderService {
       }),
     ];
     // Every row below is on every joint. A cylinder's joint used to lose the
-    // Slider row and a slider its Weld row, and a joint on a held bar gained a
-    // row the others did not have -- three menus wearing one name, and a
-    // reader who had learned where a row sits finding it gone. They gray now,
-    // each with its reason, and the menu is the same shape on every joint.
+    // Slider row and a slider its Weld row -- two menus wearing one name, and
+    // a reader who had learned where a row sits finding it gone. They gray
+    // now, each with its reason, and the menu is the same shape on every
+    // joint. (A joint on a held bar says so in its subtitle, "on fixed AB";
+    // the hold itself is released on the bar.)
     const isSlider = this.gridUtils.isAttachedToSlider(joint);
     rows.push(
       new MenuRow({
@@ -606,46 +607,8 @@ export class ContextMenuBuilderService {
         refusal: this.gridUtils.weldRefusal(joint),
       })
     );
-    rows.push(this.freeToMoveRow(joint));
     rows.push(this.lockRow(joint, joint));
     return rows;
-  }
-
-  /**
-   * Whether the bars at this joint let it go anywhere, as a switch.
-   *
-   * A bar holding its length or its angle (`RealLink.hold`) confines the
-   * joints on it: they still drag, but on the arc or along the line the hold
-   * leaves them. That is easy to mistake for a lock, so the joint says so
-   * here, names the bars, and offers the way out -- pressing it releases
-   * those holds, which is the same thing the Fixed Length and Fixed Angle
-   * rows on the bar would do one at a time. On a joint nothing confines the
-   * switch is on and grays, because there is nothing for it to release; the
-   * thing that would turn it off is a hold, and a hold is set on the bar.
-   */
-  private freeToMoveRow(joint: RealJoint): MenuRow {
-    const holding = heldBarsAt(joint, this.mechanism.links, this.mechanism.sealedStructures());
-    const named = holding.map((bar) => bar.name || bar.id).join(', ');
-    const free = holding.length === 0;
-    return new MenuRow({
-      label: 'Free to Move',
-      posePolicy: 'preserve',
-      icon: 'open_with',
-      material: true,
-      kind: 'toggle',
-      checked: free,
-      hint: free ? undefined : `held by ${named}`,
-      action: () => holding.forEach((bar) => this.mechanism.setHold(bar, undefined)),
-      tip: free
-        ? undefined
-        : `${holding.map((bar) => describeHold(bar, this.mechanism.joints)).join(' and ')} ${holding.length > 1 ? 'confine' : 'confines'} this joint to an arc or a line. Release ${holding.length > 1 ? 'them' : 'it'} to drag it anywhere.`,
-      refusal: free
-        ? {
-            short: 'nothing holds it',
-            long: 'No bar at this joint has a fixed length or a fixed angle, so it already drags anywhere. Fixed Length and Fixed Angle on a link are what would confine it.',
-          }
-        : undefined,
-    });
   }
 
   /** Whether this joint reads as grounded — a slider's ground lives on its guide. */

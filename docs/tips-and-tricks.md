@@ -1426,26 +1426,23 @@ bit needs no other change.
 
 A row on the right-click menu never comes and goes with the situation. It is there on every joint
 (or every bar, every cylinder, every force) and it grays, with the model's own reason in the slot,
-when it cannot apply. The joint menu used to break this three ways: a cylinder's joint lost its
-Slider row, the slider itself lost its Weld row, and a joint on a held bar gained a Free to Move
-row the others did not have -- three menus under one name, and a reader who had learned where a
-row sits finding it gone. All four rows are permanent now (`jointAttachRows`, `jointStateRows` and
-`freeToMoveRow` in `context-menu-builder.service.ts`), and the refusals quote `weldRefusal`,
+when it cannot apply. The joint menu used to break this: a cylinder's joint lost its Slider row and
+the slider itself lost its Weld row -- two menus under one name, and a reader who had learned where
+a row sits finding it gone. Both rows are permanent now (`jointAttachRows` and `jointStateRows` in
+`context-menu-builder.service.ts`), and the refusals quote `weldRefusal`,
 `describeActuatorRefusal` and the rest rather than restating them.
 
-*Free to Move* is the one people ask about. A bar can hold its length or its angle
-(`RealLink.hold`, the Fixed Length / Fixed Angle rows on the bar), and a joint on such a bar still
-drags but only along the arc or the line the hold leaves it -- which is easy to mistake for a lock.
-The row is a switch: on and grayed ("nothing holds it") on an ordinary joint, off with "held by AB"
-on a confined one, and pressing it there releases those holds, the same thing the bar's own rows
-would do one at a time. It is not a lock and not the inverse of one; the Locked row is still the
-Locked row.
+There was briefly a *Free to Move* row as well, for a joint on a bar holding its length or angle
+(`RealLink.hold`): such a joint still drags, but only along the arc or the line the hold leaves it.
+The row was removed as more confusing than the thing it explained. What remains is the joint's
+subtitle ("on fixed AB"), the amber guide drawn while the joint is dragged, and the hold's own rows
+on the bar, which is where it is released.
 
 The exceptions, on purpose: the multi-selection menu is its own kind of thing and shapes itself to
 what is selected, and the synthesis-position rows (`positionRows`) ride along on every menu only
 while positions exist, because a permanent grayed "Delete Synthesis Positions" on every joint in
 Edit would be noise about a mode the reader is not in. `context-menu-builder.service.spec.ts` and
-`e2e/context-menu.mjs` are the guards; `e2e/link-holds.mjs` walks the Free to Move switch.
+`e2e/context-menu.mjs` are the guards.
 
 ## The right drawer is as wide as the view controls and stops one gap above them
 

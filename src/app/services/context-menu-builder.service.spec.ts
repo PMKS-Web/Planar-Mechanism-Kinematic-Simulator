@@ -819,24 +819,11 @@ describe('the right-click menu, on a bar that can hold a value', () => {
     expect(row(body, 'Fixed Angle')!.refusal?.short).toBe('bars only');
   });
 
-  it('tells a joint on a held bar what confines it, and releases it from there', () => {
+  it('tells a joint on a held bar what confines it, in its subtitle', () => {
     const parts = fourBar(harness.mechanism);
     parts.crank.hold = 'length';
     const model = harness.builder.build(parts.a, noHandlers);
-    const free = row(model, 'Free to Move')!;
-    expect(free.checked).toBe(false);
-    expect(free.refusal).toBeUndefined();
-    expect(free.hint).toBe('held by OA');
-    expect(free.tip).toContain('fixed length OA');
     expect(model.header?.subtitle).toContain('on fixed OA');
-    free.action();
-    expect(parts.crank.hold).toBeUndefined();
-  });
-
-  it('keeps the Free to Move row on a joint nothing holds, on and grayed', () => {
-    const parts = fourBar(harness.mechanism);
-    const loose = row(harness.builder.build(parts.d, noHandlers), 'Free to Move')!;
-    expect(loose.checked).toBe(true);
-    expect(loose.refusal?.short).toBe('nothing holds it');
+    expect(row(model, 'Free to Move')).toBeUndefined();
   });
 });

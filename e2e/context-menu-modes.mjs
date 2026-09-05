@@ -98,7 +98,7 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
   const pausedRows = await rows();
   check(
     `${mode}: topology changes disabled at paused pose`,
-    pausedRows.filter((r) => !/Vectors$|^Trace path$|^Locked$|^Free to Move$/.test(r.label)).every((r) => r.disabled),
+    pausedRows.filter((r) => !/Vectors$|^Trace path$|^Locked$/.test(r.label)).every((r) => r.disabled),
     pausedRows
   );
   check(
@@ -146,7 +146,7 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
   );
   check(
     `${mode}: topology changes stay disabled after grab-to-pause`,
-    playingRows.filter((r) => !/Vectors$|^Trace path$|^Locked$|^Free to Move$/.test(r.label)).every((r) => r.disabled),
+    playingRows.filter((r) => !/Vectors$|^Trace path$|^Locked$/.test(r.label)).every((r) => r.disabled),
     playingRows
   );
   await page.keyboard.press('Escape');
