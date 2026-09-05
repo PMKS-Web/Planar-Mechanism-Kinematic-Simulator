@@ -5,6 +5,44 @@ import { TEMPLATE_LINKAGES } from '../component/MODALS/templates/template-linkag
 import { ActiveObjService } from './active-obj.service';
 import { RealLink } from '../model/link';
 import { RealJoint } from '../model/joint';
+import { NotificationService } from './notification.service';
+
+describe('malformed address recovery', () => {
+  afterEach(() => {
+    window.history.replaceState({}, '', '/');
+    vi.useRealTimers();
+  });
+
+  it.each(['?%', '#%', '?%E0%A4%A', '#backdrop=%E0%A4%A'])(
+    'finishes startup and reports an invalid link for %s',
+    (address) => {
+      vi.useFakeTimers();
+      window.history.replaceState({}, '', '/' + address);
+      const failure = vi.fn();
+      TestBed.configureTestingModule({
+        providers: [{ provide: NotificationService, useValue: { failure } }],
+      });
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const urls = TestBed.inject(UrlProcessorService);
+
+      expect(urls.wantsLibrary).toBe(false);
+      expect(urls.wantsBackdropFor).toBeNull();
+      expect(window.location.search).toBe('');
+      expect(window.location.hash).toBe('');
+      expect(TestBed.inject(MechanismService).joints).toHaveLength(0);
+      vi.advanceTimersByTime(0);
+      expect(failure).toHaveBeenCalledWith('url.undecodable', expect.any(String));
+    }
+  );
+
+  it('still opens a valid mechanism with a percent-encoded backdrop name', () => {
+    window.history.replaceState({}, '', '/?' + TEMPLATE_LINKAGES['4-Bar'] + '#backdrop=Four%20Bar');
+    TestBed.configureTestingModule({});
+    const urls = TestBed.inject(UrlProcessorService);
+    expect(urls.wantsBackdropFor).toBe('Four Bar');
+    expect(TestBed.inject(MechanismService).joints.length).toBeGreaterThan(0);
+  });
+});
 
 /**
  * Opening a linkage over one that is already running.

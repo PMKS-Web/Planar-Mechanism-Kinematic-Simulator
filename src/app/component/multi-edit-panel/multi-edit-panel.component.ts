@@ -33,6 +33,7 @@ import { InputComponent } from '../BLOCKS/input/input.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
+import { EditBannerComponent } from '../edit-panel/edit-banner.component';
 
 /** The Edit drawer used when more than one typed mechanism part is selected. */
 @Component({
@@ -46,6 +47,7 @@ import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
     ColorPickerComponent,
     DualInputComponent,
     EditableTitleComponent,
+    EditBannerComponent,
     InputComponent,
     PanelSectionComponent,
     RadioComponent,
@@ -64,6 +66,10 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
   private svgGrid = inject(SvgGridService);
   private destroyRef = inject(DestroyRef);
   private permission = inject(EditPermissionService);
+
+  panelIsFrozen(): boolean {
+    return !this.permission.may('structure');
+  }
 
   /**
    * Freeze the pose-bound fields while the mechanism is away from its start.
@@ -282,18 +288,6 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
       .filter(([count]) => count > 0)
       .map(([count, one, many]) => `${count} ${count === 1 ? one : many}`);
     return `${said.join(' · ')} selected`;
-  }
-
-  /**
-   * What the delete button promises, counted.
-   *
-   * It said "Delete All", which reads as the whole drawing and is not what it
-   * does -- and the right-click menu's own row for the same action says
-   * "Delete Selected (2)". Two surfaces, one action, one sentence.
-   */
-  get deleteLabel(): string {
-    const count = this.active.selectedParts.length;
-    return count > 0 ? `Delete Selected (${count})` : 'Delete Selected';
   }
 
   private common<T>(values: readonly T[], equals: (left: T, right: T) => boolean = Object.is) {

@@ -12,6 +12,8 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { MatFormField, MatSuffix } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 
+let nextInputId = 0;
+
 @Component({
   selector: 'input-block',
   templateUrl: './input.component.html',
@@ -28,6 +30,7 @@ import { MatInput } from '@angular/material/input';
   ],
 })
 export class InputComponent {
+  readonly labelId = `pmks-input-label-${nextInputId++}`;
   @Input() unit: string | undefined;
   /** Widens the field for values whose unit suffix does not fit the default. */
   @Input({ transform: booleanAttribute }) wide: boolean = false;

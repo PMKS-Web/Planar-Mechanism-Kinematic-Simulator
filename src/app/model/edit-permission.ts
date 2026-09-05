@@ -156,64 +156,6 @@ const IN_SYNTHESIS: EditRefusal = refusal({
   actionKind: 'toEdit',
 });
 
-/**
- * Restructuring, in an analysis mode.
- *
- * The refusal that teaches the thing it guards: what is refused here is
- * *changing what the mechanism is made of*, and what is offered instead is the
- * whole point of unlocking the mode.
- */
-const ANALYSIS_RESTRUCTURE: EditRefusal = refusal({
-  short: 'lives in Edit',
-  glyph: 'insights',
-  lead: 'Adding and removing parts lives in Edit. Here you can drag what exists and watch the graphs follow.',
-});
-
-/**
- * A typed number, in an analysis mode.
- *
- * The panels here are graphs; there is no field to type into. Said anyway, so
- * the matrix has no blank cells and any surface added later inherits an answer
- * rather than inventing one.
- */
-const ANALYSIS_TYPING: EditRefusal = refusal({
-  short: 'lives in Edit',
-  glyph: 'insights',
-  lead: 'Typed values live in the Edit panel. Drag on the grid to tune dimensions here, or',
-  action: 'switch to Edit',
-  tail: 'to type them.',
-  actionKind: 'toEdit',
-});
-
-/**
- * What an analysis mode refuses on its own account, before any question of
- * pose -- or nothing, where it refuses nothing.
- *
- * The modes used to refuse *everything* but inspecting and the transport, on
- * the grounds that "the graphs describe this exact cycle, so the geometry is
- * locked here". That claim stopped being true: the graph stack redraws from
- * whatever `updateMechanism` last solved, and an Edit drag already re-solves
- * the whole cycle on every pointer move. The lock was not protecting the
- * graphs; it was standing between the reader and the most instructive thing
- * this app can do -- grab a joint and watch the acceleration peak move.
- *
- * So the line is drawn at what the graphs are graphs *of*: tuning what exists
- * is allowed, changing what exists is not. Undo comes with it, because
- * unlocking drags without it strands a bad drag behind a mode switch.
- */
-function analysisRefusalFor(action: EditAction): EditRefusal | null {
-  switch (action) {
-    case 'drag':
-    case 'history':
-      return null;
-    case 'build':
-    case 'structure':
-      return ANALYSIS_RESTRUCTURE;
-    default:
-      return ANALYSIS_TYPING;
-  }
-}
-
 const PLAYING: EditRefusal = refusal({
   short: 'animation running',
   glyph: 'play_circle',
@@ -330,19 +272,16 @@ export function refusalFor(action: EditAction, state: EditState): EditRefusal | 
   // Synthesis owns the grid entirely: it describes a mechanism that does not
   // exist yet, so there is nothing here to refuse *about*.
   if (state.mode === 'synthesis') return IN_SYNTHESIS;
-  // An analysis mode refuses restructuring outright and then asks the same
-  // questions about pose that Edit does -- so no cell of its column is ever
-  // more permissive than Edit's, and there is one gradient of freedom across
-  // the modes rather than two regimes to learn.
-  if (state.mode === 'analysis') {
-    const refused = analysisRefusalFor(action);
-    if (refused) return refused;
-  }
-
   // Playing is read-only whatever the action. A reader reaching for a joint
   // that is moving is a fight nothing here can win.
   if (state.playing) return PLAYING;
   if (state.atStart) return null;
+
+  // Analysis can change the drawing at its start. Posed drags and undo have
+  // an anchor-preserving path; restructuring from a graph's pose does not.
+  if (state.mode === 'analysis' && (action === 'build' || action === 'structure')) {
+    return displacementRefusal(state);
+  }
 
   // Paused, and away from the start. This is where Phase 2 changed the answers
   // and nothing else: the surfaces that ask are the same ones, asking the same
@@ -404,4 +343,12 @@ export function displacementRefusal(state: EditState): EditRefusal | null {
   if (state.playing) return PLAYING;
   if (state.atStart) return null;
   return state.sharedStepZero ? displacedUnsynced(state.awayMachine) : DISPLACED;
+}
+
+/** Menus never adopt a displayed pose as the design. View switches need only a pause. */
+export function menuRefusal(state: EditState, viewOnly = false): EditRefusal | null {
+  if (state.playing) return PLAYING;
+  if (viewOnly) return null;
+  if (state.mode === 'synthesis') return IN_SYNTHESIS;
+  return displacementRefusal(state);
 }

@@ -435,12 +435,9 @@ export class MechanismService {
     // the master's clock, so any edit -- a speed change, a reversal, a joint
     // moved -- silently pulled them all back into step with each other.
     //
-    // Direction is the reader's own choice and survives the rebuild untouched.
-    // It used to need a compensation, because a reversal turned the clock round
-    // as well as the frames: the rebuild solves fresh frames from the drive's
-    // new sign, so the clock had to be turned back or the machine ran the way
-    // it originally did while the stored speed said the opposite. Reversing no
-    // longer moves the clock at all -- see `poseSecondsOf`.
+    // Playback direction survives the rebuild untouched. A drive reversal
+    // reflects the phase clock, but it does not turn that clock backwards:
+    // fresh frames solved from the new speed sign already run the new way.
     const heldEach = new Map<string, HeldPlayback>(
       this.partitions.map((partition, index) => [
         partitionKey(partition),
@@ -587,12 +584,8 @@ export class MechanismService {
       // the per-row flags are seeded from it rather than from a held value the
       // transport had no reason to keep up to date.
       this.ownPlaying[index] = this.syncMechanisms ? this.isPlaying : was?.playing === true;
-      // The direction the reader chose, kept across the rebuild. There used to
-      // be a compensation here: a reversal turned the clock round as well as
-      // the frames, and fresh frames already run the drive's new way, so the
-      // clock had to be turned back. The clock no longer moves for a reversal
-      // (`poseSecondsOf`), so there is nothing to undo -- and undoing it anyway
-      // sent the machine backwards after the first edit following a reversal.
+      // Reversal changes phase, not the direction this clock advances.
+      // Fresh frames already incorporate the new drive sign.
       this.playbackDirection[index] = was?.direction ?? 1;
     });
     this.activeObjService.fakeUpdateSelectedObj();
@@ -1564,11 +1557,9 @@ export class MechanismService {
         this.vectorTraceKeys.delete(key);
         continue;
       }
-      // Motion is the same in both analysis modes, so velocity and acceleration
-      // are drawn in either -- switching one on in Kinematic and crossing to
-      // Force used to lose it, which is exactly when a reader wants to see the
-      // two together. A force is only solved in Force, so it stays there.
-      const shownIn: TabID[] = quantity === 'force' ? [TabID.FORCE] : [TabID.ANALYZE, TabID.FORCE];
+      // A trace describes the solved drawing, whichever working mode is open.
+      // Its numerical readiness is checked by vectorShapeOf below.
+      const shownIn: TabID[] = [TabID.EDIT, TabID.ANALYZE, TabID.FORCE];
       if (!shownIn.includes(tab)) continue;
       const shape = this.vectorShapeOf(part, quantity, mode);
       if (!shape) continue;
@@ -2193,6 +2184,7 @@ export class MechanismService {
     copy.moiIsCustom = link.moiIsCustom;
     copy.fill = link.fill;
     copy.isCircle = link.isCircle;
+    copy.hold = link.hold;
     copy.comIsCustom = link.comIsCustom;
     copy.comAnchor =
       typeof link.comAnchor === 'object' ? { joint: rename(link.comAnchor.joint) } : link.comAnchor;
@@ -2765,6 +2757,16 @@ export class MechanismService {
         }
       }
     }
+    // Prune every leaf before asking which welds still connect the survivors.
+    // The old per-leaf loop saw already-pruned and untouched leaves together,
+    // leaving disconnected bodies fused (and keeping the removed leaves' mass).
+    this.links = this.links.flatMap((link) =>
+      link instanceof RealLink && link.subset.length > 0 && link.joints.includes(doomed)
+        ? this.removeCompoundJoints(link, new Set([doomed.id]))
+        : [link]
+    );
+    this.rebuildJointGraph();
+
     // A gesture in flight targets a joint that is about to stop existing. The
     // pointer keeps sending moves after the delete -- from the keyboard, or a
     // second pointer -- and the drag then writes through a SliderBlock whose
@@ -4782,7 +4784,10 @@ export class MechanismService {
       local = ((local % period) + period) % period;
     }
     let step = 0;
-    while (step + 1 < times.length && times[step + 1] <= local) step++;
+    // Reflection and modulo can round an exact sample a few ulps below its
+    // timestamp. Keep every readout on that sample, not the preceding one.
+    const epsilon = Math.max(1, period) * 1e-12;
+    while (step + 1 < times.length && times[step + 1] <= local + epsilon) step++;
     return step;
   }
 
@@ -4844,7 +4849,10 @@ export class MechanismService {
       if (local < 0) local += period;
     }
     let step = 0;
-    while (step + 1 < times.length && times[step + 1] <= local) step++;
+    // Reflection and modulo can round an exact sample a few ulps below its
+    // timestamp. Keep every readout on that sample, not the preceding one.
+    const epsilon = Math.max(1, period) * 1e-12;
+    while (step + 1 < times.length && times[step + 1] <= local + epsilon) step++;
     const nextStep = Math.min(step + 1, times.length - 1);
     const span = times[nextStep] - times[step];
     const blend = span > 0 ? Math.min(Math.max((local - times[step]) / span, 0), 1) : 0;
@@ -5151,9 +5159,8 @@ export class MechanismService {
    *
    * Nothing about the loop of poses changes: the machine walks the same loop
    * the other way. So the frames stay exactly where they are, the pose on
-   * screen stays exactly where it is, the clock is not touched -- and the only
-   * things that change are the sign of the drive, the way the playhead
-   * travels, and the sign of every rate derived from it.
+   * screen stays exactly where it is. The phase clock reflects to measure that
+   * same pose in the new direction, while zero remains the authored start.
    *
    * That is the whole reason this does not re-solve or mirror. Either of those
    * puts every pose at a different time, so the curve a reader was following
@@ -5184,11 +5191,12 @@ export class MechanismService {
       // had sampled before, every angular velocity still carrying the sign it
       // had turned round from.
       this.solveRevision++;
-      // The clock is left alone. `withReversedDrive` has already flipped which
-      // way the machine walks its frames, and that is the whole of the
-      // reversal; turning the clock round as well sent the reading to the end
-      // of the cycle and counted it down towards a start it was already
-      // standing on. See `poseSecondsOf`.
+      // Reflect only this machine's phase: the reversed frame reader must
+      // still resolve to the pose already on screen. Zero stays zero, so a
+      // reversal at rest never sends the clock to the end of the cycle.
+      const seconds = this.secondsOf(index);
+      const period = reversed.cyclePeriod;
+      this.seekMechanism(index, seconds === 0 || !(period > 0) ? seconds : period - seconds);
     } else {
       this.updateMechanism(false);
     }
@@ -5213,8 +5221,7 @@ export class MechanismService {
     const period = mechanism.cyclePeriod;
     const last = profile.along.length - 1;
     if (!(period > 0) || last <= 0) return profile.along[0] ?? 0;
-    const fraction = Math.min(Math.max(this.secondsOf(index) / period, 0), 1);
-    return profile.along[Math.min(Math.round(fraction * last), last)];
+    return profile.along[this.currentSampleOf(index)];
   }
 
   /**
@@ -5251,11 +5258,9 @@ export class MechanismService {
     const profile = this.driveProfileOf(index);
     const mechanism = this.mechanisms[index];
     const forwardDrive = turnsClockwise(mechanism?.inputAngularVelocities[0] ?? 0);
-    // Only the clock. Reversing walks the frames backwards *and* turns the drive
-    // round, precisely so the machine goes forwards along its new direction --
-    // so a reversal is not a rewind and must not be counted as one. This used
-    // to subtract `framesRunBackwards` to cancel a flip of the clock that
-    // reversing no longer makes; see `poseSecondsOf`.
+    // A continuous drive already carries its new direction in its sign.
+    // A rocking input instead reads the local frame slope, which also needs
+    // the direction in which those frames are being traversed.
     const rewinding = this.directionOf(index) < 0;
     if (!profile || !mechanism || profile.continuous) {
       return forwardDrive !== rewinding;
@@ -5263,14 +5268,11 @@ export class MechanismService {
     const period = mechanism.cyclePeriod;
     const last = profile.along.length - 1;
     if (!(period > 0) || last <= 0) return forwardDrive !== rewinding;
-    const sample = Math.min(
-      Math.round(Math.min(Math.max(this.secondsOf(index) / period, 0), 1) * last),
-      last
-    );
+    const sample = this.currentSampleOf(index);
     const before = profile.along[Math.max(sample - 1, 0)];
     const after = profile.along[Math.min(sample + 1, last)];
     const rising = after >= before;
-    return rising !== rewinding;
+    return rising !== (rewinding !== mechanism.framesRunBackwards);
   }
 
   /**
@@ -5429,9 +5431,20 @@ export class MechanismService {
     const period = mechanism.cyclePeriod;
     const last = profile.along.length - 1;
     if (!(period > 0) || last <= 0) return;
-    const nearSample = Math.round(Math.min(Math.max(this.secondsOf(index) / period, 0), 1) * last);
-    const sample = fractionalSampleAlong(profile, Math.min(Math.max(along, 0), 1), nearSample);
-    this.seekMechanism(index, (sample / last) * period);
+    const sample = fractionalSampleAlong(
+      profile,
+      Math.min(Math.max(along, 0), 1),
+      this.currentSampleOf(index)
+    );
+    const before = Math.floor(sample);
+    const after = Math.min(before + 1, last);
+    const seconds =
+      mechanism.timeNum[before] +
+      (mechanism.timeNum[after] - mechanism.timeNum[before]) * (sample - before);
+    this.seekMechanism(
+      index,
+      mechanism.framesRunBackwards && seconds !== 0 ? period - seconds : seconds
+    );
   }
 
   driveProfileOf(index: number): DriveProfile | undefined {
@@ -6996,11 +7009,47 @@ export class MechanismService {
       return false;
     }
 
-    const leaves = compound.subset.filter((link) => link instanceof RealLink) as RealLink[];
     joint.isWelded = false;
-    const remaining = [...leaves];
-    const components: RealLink[][] = [];
+    const replacementLinks = this.splitCompoundAtRemainingWelds(compound);
+    const compoundIndex = this.links.indexOf(compound);
+    this.links.splice(compoundIndex, 1, ...replacementLinks);
+    return true;
+  }
 
+  /** Delete joints from a welded body, then rebuild only its surviving weld components. */
+  removeCompoundJoints(compound: RealLink, ids: ReadonlySet<string>): RealLink[] {
+    compound.subset = compound.subset.filter((leaf) => {
+      if (!leaf.joints.some((joint) => ids.has(joint.id))) return leaf.joints.length >= 2;
+      leaf.joints = leaf.joints.filter((joint) => !ids.has(joint.id));
+      leaf.id = leaf.joints
+        .map((joint) => joint.id)
+        .sort()
+        .join('');
+      leaf.fixedLocations = [
+        { id: 'com', label: 'com' },
+        ...leaf.joints.map((joint) => ({ id: joint.id, label: joint.id })),
+      ];
+      if (ids.has(leaf.fixedLocation.fixedPoint)) leaf.fixedLocation.fixedPoint = 'com';
+      if (leaf.joints.length < 2) return false;
+      if (leaf instanceof RealLink) {
+        if (!leaf.comIsCustom) leaf.CoM = RealLink.determineCenterOfMass(leaf.joints);
+        leaf.reComputeDPath();
+      }
+      return true;
+    });
+    for (const joint of compound.joints) {
+      if (!(joint instanceof RealJoint) || !joint.isWelded || ids.has(joint.id)) continue;
+      const members = compound.subset.filter((leaf) => leaf.joints.includes(joint));
+      // A former seam at the end of a surviving component is no longer a
+      // weld. Keep slide-assembly welds, whose second member is a block.
+      if (members.length < 2 && !slideAssemblyAt(joint)) joint.isWelded = false;
+    }
+    return this.splitCompoundAtRemainingWelds(compound);
+  }
+
+  private splitCompoundAtRemainingWelds(compound: RealLink): RealLink[] {
+    const remaining = compound.subset.filter((link): link is RealLink => link instanceof RealLink);
+    const components: RealLink[][] = [];
     while (remaining.length > 0) {
       const component: RealLink[] = [];
       const queue = [remaining.shift()!];
@@ -7009,40 +7058,30 @@ export class MechanismService {
         component.push(current);
         for (let index = remaining.length - 1; index >= 0; index--) {
           const candidate = remaining[index];
-          const sharesAnotherWeld = current.joints.some(
-            (currentJoint) =>
-              currentJoint instanceof RealJoint &&
-              currentJoint !== joint &&
-              currentJoint.isWelded &&
-              candidate.joints.includes(currentJoint)
+          const sharesWeld = current.joints.some(
+            (joint) =>
+              joint instanceof RealJoint && joint.isWelded && candidate.joints.includes(joint)
           );
-          if (sharesAnotherWeld) queue.push(...remaining.splice(index, 1));
+          if (sharesWeld) queue.push(...remaining.splice(index, 1));
         }
       }
       components.push(component);
     }
-
-    const replacementLinks = components.map((component) =>
+    const replacements = components.map((component) =>
       component.length === 1 ? component[0] : this.createNewCompoundLinkFromSubset(component)
     );
-    const compoundIndex = this.links.indexOf(compound);
-    this.links.splice(compoundIndex, 1, ...replacementLinks);
-
-    const forcesToReassign = this.forces.filter(
-      (force) => force.link === compound || force.link.id === compound.id
-    );
+    const forces = this.forces.filter((force) => force.link === compound);
     compound.forces = [];
-    forcesToReassign.forEach((force) => {
-      const owner = [...replacementLinks]
-        .filter((link): link is RealLink => link instanceof RealLink)
-        .sort((left, right) => {
-          const distanceDifference =
-            this.distanceFromForceToLink(force, left) - this.distanceFromForceToLink(force, right);
-          return distanceDifference === 0 ? left.id.localeCompare(right.id) : distanceDifference;
-        })[0];
+    for (const force of forces) {
+      const owner = [...replacements].sort((left, right) => {
+        const distance =
+          this.distanceFromForceToLink(force, left) - this.distanceFromForceToLink(force, right);
+        return distance === 0 ? left.id.localeCompare(right.id) : distance;
+      })[0];
       if (owner) this.attachForceToLink(force, owner);
-    });
-    return true;
+      else this.detachForce(force);
+    }
+    return replacements;
   }
 
   private distanceFromForceToLink(force: Force, link: RealLink): number {

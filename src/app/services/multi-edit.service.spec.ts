@@ -10,6 +10,7 @@ import { GridUtilsService } from './grid-utils.service';
 import { MechanismService } from './mechanism.service';
 import { MultiEditService } from './multi-edit.service';
 import { SaveHistoryService } from './save-history.service';
+import { SettingsService } from './settings.service';
 
 const S = MODEL_SCALE;
 
@@ -126,6 +127,117 @@ describe('MultiEditService', () => {
     expect(result.ok).toBe(false);
     expect(result.ok ? '' : result.refusal.code).toBe('selection.conflicting-geometry');
     expect({ x: b.x, y: b.y }).toEqual(before);
+  });
+
+  function connectedBars() {
+    const { a, b, c, d, ab, cd } = twoBars();
+    a.ground = true;
+    d.ground = true;
+    const bc = new RealLink('BC', [b, c]);
+    mechanism.links = [ab, bc, cd];
+    wireGraph(mechanism);
+    return { a, b, c, d, ab, bc, cd };
+  }
+
+  it('satisfies shared-endpoint dimensions together, regardless of selection order', () => {
+    for (const selection of [refs('link:AB', 'link:BC'), refs('link:BC', 'link:AB')]) {
+      const { a, b, c, ab, bc } = connectedBars();
+      const angles = [ab.angleRad, bc.angleRad];
+      expect(service.assignLinkGeometry(selection, 'length', 5 * S).ok).toBe(true);
+      expect(getDistance(a, b)).toBeCloseTo(5 * S, 4);
+      expect(getDistance(b, c)).toBeCloseTo(5 * S, 4);
+      expect(ab.angleRad).toBeCloseTo(angles[0], 6);
+      expect(bc.angleRad).toBeCloseTo(angles[1], 6);
+    }
+  });
+
+  it('updates every selected fixed length while keeping those dimensions fixed', () => {
+    const { a, b, c, ab, bc } = connectedBars();
+    ab.hold = bc.hold = 'length';
+    const save = historyWrites();
+
+    expect(service.assignLinkGeometry(refs('link:AB', 'link:BC'), 'length', 5 * S).ok).toBe(true);
+
+    expect(getDistance(a, b)).toBeCloseTo(5 * S, 4);
+    expect(getDistance(b, c)).toBeCloseTo(5 * S, 4);
+    expect([ab.hold, bc.hold]).toEqual(['length', 'length']);
+    expect(save).toHaveBeenCalledTimes(1);
+    grid.dragJoint(c, new Coord(c.x + S, c.y + S));
+    expect(getDistance(a, b)).toBeCloseTo(5 * S, 4);
+    expect(getDistance(b, c)).toBeCloseTo(5 * S, 4);
+  });
+
+  it('sets a common angle while respecting each selected fixed length', () => {
+    const { a, b, c, ab, bc } = connectedBars();
+    const lengths = [ab.length, bc.length];
+    ab.hold = bc.hold = 'length';
+
+    expect(service.assignLinkGeometry(refs('link:AB', 'link:BC'), 'angle', Math.PI / 3).ok).toBe(
+      true
+    );
+
+    expect(ab.angleRad).toBeCloseTo(Math.PI / 3, 6);
+    expect(bc.angleRad).toBeCloseTo(Math.PI / 3, 6);
+    expect(getDistance(a, b)).toBeCloseTo(lengths[0], 4);
+    expect(getDistance(b, c)).toBeCloseTo(lengths[1], 4);
+  });
+
+  it('updates fixed angles without collapsing a bar turned through a right angle', () => {
+    const { a, b, c, ab, bc } = connectedBars();
+    const lengths = [ab.length, bc.length];
+    ab.hold = bc.hold = 'angle';
+
+    expect(service.assignLinkGeometry(refs('link:AB', 'link:BC'), 'angle', Math.PI / 2).ok).toBe(
+      true
+    );
+
+    expect(ab.angleRad).toBeCloseTo(Math.PI / 2, 6);
+    expect(bc.angleRad).toBeCloseTo(Math.PI / 2, 6);
+    expect(getDistance(a, b)).toBeCloseTo(lengths[0], 4);
+    expect(getDistance(b, c)).toBeCloseTo(lengths[1], 4);
+    expect([ab.hold, bc.hold]).toEqual(['angle', 'angle']);
+  });
+
+  it('refuses impossible held dimensions without moving any joint or saving', () => {
+    const { b, c, ab, bc } = connectedBars();
+    c.locked = true;
+    ab.hold = bc.hold = 'length';
+    mechanism.updateMechanism(false);
+    const before = mechanism.joints.map((joint) => [joint.x, joint.y]);
+    const save = historyWrites();
+
+    expect(service.assignLinkGeometry(refs('link:AB', 'link:BC'), 'length', S).ok).toBe(false);
+
+    expect(mechanism.joints.map((joint) => [joint.x, joint.y])).toEqual(before);
+    expect(b.x).toBe(2 * S);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('changes single and bulk traces at a paused pose without replacing the start geometry', () => {
+    const { a, b, c } = connectedBars();
+    a.input = true;
+    mechanism.updateMechanism(false);
+    mechanism.animate(60, false);
+    const solved = mechanism.mechanisms[0];
+    const pose = mechanism.joints.map((joint) => [joint.x, joint.y]);
+    const step = mechanism.mechanismTimeStep;
+    expect(step).toBeGreaterThan(0);
+    const settings = TestBed.inject(SettingsService);
+    b.showCurve = c.showCurve = false;
+    settings.isShowTraces.next(false);
+
+    grid.toggleCurve(b);
+    expect(b.showCurve).toBe(true);
+    expect(settings.isShowTraces.value).toBe(true);
+    expect(service.setTracePath(refs('joint:B', 'joint:C'), true).ok).toBe(true);
+
+    expect(c.showCurve).toBe(true);
+    expect(mechanism.mechanisms[0]).toBe(solved);
+    expect(mechanism.mechanismTimeStep).toBe(step);
+    for (let index = 0; index < mechanism.joints.length; index++) {
+      expect(mechanism.joints[index].x).toBeCloseTo(pose[index][0], 6);
+      expect(mechanism.joints[index].y).toBeCloseTo(pose[index][1], 6);
+    }
   });
 
   it('applies a common safe mass and lock state atomically without renaming', () => {

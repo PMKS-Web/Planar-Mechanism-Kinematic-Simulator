@@ -41,10 +41,12 @@ export function plotSvg(plot: ExportPlot, times: number[], options: PlotSvgOptio
   const highest = finite.length > 0 ? Math.max(...finite) : 0;
   const [low, high] = pad(lowest, highest);
   const span = high - low || 1;
+  const firstTime = times[0] ?? 0;
   const lastTime = times.length > 0 ? times[times.length - 1] : 0;
+  const duration = lastTime - firstTime;
 
   const x = (index: number) =>
-    left + (times.length < 2 ? innerWidth / 2 : (index / (times.length - 1)) * innerWidth);
+    left + (duration === 0 ? innerWidth / 2 : ((times[index] - firstTime) / duration) * innerWidth);
   const y = (value: number) => top + innerHeight - ((value - low) / span) * innerHeight;
 
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => high - fraction * span);
@@ -94,7 +96,7 @@ export function plotSvg(plot: ExportPlot, times: number[], options: PlotSvgOptio
     `<line x1="${left}" y1="${top + innerHeight}" x2="${left + innerWidth}" y2="${
       top + innerHeight
     }" stroke="#d5d7e0" stroke-width="1"/>` +
-    `<text x="${left}" y="${top + innerHeight + 20}" font-size="11" fill="rgba(0,0,0,0.55)">0 s</text>` +
+    `<text x="${left}" y="${top + innerHeight + 20}" font-size="11" fill="rgba(0,0,0,0.55)">${Number(firstTime.toFixed(2))} s</text>` +
     `<text x="${left + innerWidth}" y="${
       top + innerHeight + 20
     }" text-anchor="end" font-size="11" fill="rgba(0,0,0,0.55)">${lastTime.toFixed(2)} s</text>`;

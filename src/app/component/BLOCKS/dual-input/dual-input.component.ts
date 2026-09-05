@@ -14,6 +14,8 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { MatFormField, MatSuffix } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 
+let nextInputId = 0;
+
 @Component({
   selector: 'dual-input-block',
   templateUrl: './dual-input.component.html',
@@ -22,6 +24,19 @@ import { MatInput } from '@angular/material/input';
   imports: [MatIcon, MatTooltip, FormsModule, ReactiveFormsModule, MatFormField, MatInput],
 })
 export class DualInputComponent {
+  readonly labelId = `pmks-dual-input-label-${nextInputId++}`;
+
+  /** Speak the quantity, including where the compact caption is only a glyph. */
+  fieldName(label: string): string {
+    const names: Record<string, string> = {
+      L: 'Length',
+      D: 'Distance',
+      M: 'Magnitude',
+      '⊾': 'Angle',
+    };
+    return names[label] ?? label;
+  }
+
   readonly tooltip = input.required<string>();
   readonly formControl1 = input.required<string>();
   readonly label1 = input<string>('X');

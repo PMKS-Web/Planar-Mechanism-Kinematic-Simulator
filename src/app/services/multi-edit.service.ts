@@ -5,10 +5,10 @@ import { RealJoint } from '../model/joint';
 import { Link, LinkHold, RealLink } from '../model/link';
 import { holdableBar } from '../model/link-holds';
 import { SelectedPartRef, resolveSelectedParts } from '../model/selection';
-import { getNewOtherJointPos } from '../model/utils';
 import { ActiveObjService } from './active-obj.service';
 import { GridUtilsService } from './grid-utils.service';
 import { MechanismService } from './mechanism.service';
+import { SettingsService } from './settings.service';
 
 export interface MultiEditRefusal {
   code: string;
@@ -30,6 +30,7 @@ export class MultiEditService {
   private mechanism = inject(MechanismService);
   private grid = inject(GridUtilsService);
   private active = inject(ActiveObjService);
+  private settings = inject(SettingsService);
 
   private refusal(code: string, short: string, message: string): MultiEditResult {
     return { ok: false, refusal: { code, short, message } };
@@ -169,22 +170,18 @@ export class MultiEditService {
       );
     }
 
-    const placements: Placement[] = [];
-    for (const link of links) {
-      const first = link.joints[0] as RealJoint;
-      const second = link.joints[1] as RealJoint;
-      const angle = field === 'angle' ? value : link.angleRad;
-      const length = field === 'length' ? value : link.length;
-      if (second.ground) {
-        placements.push({
-          joint: first,
-          at: getNewOtherJointPos(second, angle + Math.PI, length),
-        });
-      } else {
-        placements.push({ joint: second, at: getNewOtherJointPos(first, angle, length) });
-      }
+    if (!this.grid.setBarValues(links, field, value)) {
+      return this.refusal(
+        'selection.conflicting-geometry',
+        'dimensions disagree',
+        'The selected dimensions cannot all be satisfied with the current anchors and fixed values. No links were changed.'
+      );
     }
-    return this.applyPlacements(placements);
+    this.mechanism.reseatFloatingSliders();
+    this.mechanism.updateMechanism(false);
+    this.mechanism.onMechUpdateState.next(2);
+    this.mechanism.save();
+    return OK;
   }
 
   assignLinkMass(refs: readonly SelectedPartRef[], value: number): MultiEditResult {
@@ -220,8 +217,15 @@ export class MultiEditService {
         'A traced path can be switched when every selected item is a joint.'
       );
     }
-    joints.forEach((joint) => (joint.showCurve = traced));
-    this.mechanism.updateMechanism(true);
+    joints.forEach((joint) => {
+      joint.showCurve = traced;
+      // The path of a pin on a slider is drawn by its prismatic half.
+      if (this.grid.containsSlider(joint)) {
+        (this.grid.getSliderJoint(joint) as RealJoint).showCurve = traced;
+      }
+    });
+    if (traced) this.settings.isShowTraces.next(true);
+    this.mechanism.save();
     this.mechanism.onMechUpdateState.next(2);
     return OK;
   }

@@ -14,7 +14,7 @@
        joint's coordinates tick is the reason the panel stays at all. -->
   <div class="editBody" [class.frozen]="panelIsFrozen()">
     @if (this.activeSrv.objType == 'MultiSelection') {
-      <app-multi-edit-panel [attr.inert]="panelIsFrozen() || null"></app-multi-edit-panel>
+      <app-multi-edit-panel></app-multi-edit-panel>
     }
 
     @if (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') {

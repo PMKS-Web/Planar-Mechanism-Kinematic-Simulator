@@ -1201,8 +1201,8 @@ record('nothing threw', errors.length === 0, errors.slice(0, 3));
   await firstTime.goto(BASE, { waitUntil: 'domcontentloaded' });
   await firstTime.waitForTimeout(3000);
   record(
-    'a first visit opens the tutorial',
-    (await firstTime.locator('app-tutorial-panel').count()) === 1
+    'a first visit leaves the tutorial closed',
+    (await firstTime.locator('app-tutorial-panel').count()) === 0
   );
   await firstTime.close();
 

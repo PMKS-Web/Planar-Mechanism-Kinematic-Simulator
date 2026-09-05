@@ -271,6 +271,65 @@ describe('Reversing a drive', () => {
     expect(service.directionOf(0)).toBe(1);
   });
 
+  it('preserves a paused frame through reversal, redraw, resume and a rebuild', () => {
+    const { service } = load(TEMPLATE_LINKAGES['4-Bar']);
+    const start = service.joints.map((joint) => ({ x: joint.x, y: joint.y }));
+    service.seekMechanism(0, 1.5);
+    const before = service.joints.map((joint) => ({ x: joint.x, y: joint.y }));
+    const sample = service.currentSampleOf(0);
+    const seconds = service.secondsOf(0);
+    const period = service.mechanisms[0].cyclePeriod;
+    service.reverseDrive(0);
+    expect(service.secondsOf(0)).toBeCloseTo(period - seconds, 9);
+    expect(service.currentSampleOf(0)).toBe(sample);
+    service.joints.forEach((joint, index) => {
+      expect(joint.x).toBeCloseTo(before[index].x, 8);
+      expect(joint.y).toBeCloseTo(before[index].y, 8);
+    });
+    // The first resumed frame must move a small distance in the opposite
+    // direction, rather than teleport to the reflected physical pose.
+    service.seekMechanism(0, service.secondsOf(0) + 0.01);
+    expect(service.currentSampleOf(0)).toBeLessThan(sample);
+    const b = service.joints.find((joint) => joint.id === 'B')!;
+    const oldB = before[service.joints.indexOf(b)];
+    expect(Math.hypot(b.x - oldB.x, b.y - oldB.y)).toBeLessThan(10);
+    const moved = service.joints.map((joint) => ({ x: joint.x, y: joint.y }));
+    service.updateMechanism(false);
+    service.joints.forEach((joint, index) => {
+      expect(Math.hypot(joint.x - moved[index].x, joint.y - moved[index].y)).toBeLessThan(0.02);
+    });
+    service.animate(0, false);
+    service.joints.forEach((joint, index) => {
+      expect(joint.x).toBeCloseTo(start[index].x, 8);
+      expect(joint.y).toBeCloseTo(start[index].y, 8);
+    });
+  });
+
+  it('reflects only the reversed machine while playback is synced', () => {
+    const { service } = load(TEMPLATE_LINKAGES['Three_Machines']);
+    service.animate(60, false);
+    const seconds = service.mechanisms.map((_, index) => service.secondsOf(index));
+    const samples = service.mechanisms.map((_, index) => service.currentSampleOf(index));
+    const before = service.joints.map((joint) => ({ x: joint.x, y: joint.y }));
+    service.reverseDrive(0);
+    for (let index = 1; index < service.mechanisms.length; index++) {
+      expect(service.secondsOf(index)).toBe(seconds[index]);
+      expect(service.currentSampleOf(index)).toBe(samples[index]);
+    }
+    service.joints.forEach((joint, index) => {
+      expect(joint.x).toBeCloseTo(before[index].x, 8);
+      expect(joint.y).toBeCloseTo(before[index].y, 8);
+    });
+  });
+
+  it('keeps reversal at the authored start at zero seconds', () => {
+    const { service } = load(TEMPLATE_LINKAGES['4-Bar']);
+    service.reverseDrive(0);
+    expect(service.secondsOf(0)).toBe(0);
+    expect(service.currentSampleOf(0)).toBe(0);
+    expect(service.isAtStartPose()).toBe(true);
+  });
+
   it('declines when there is no solved cycle to turn round', () => {
     const harness = createMechanismHarness();
     expect(harness.service.mechanisms[0]?.withReversedDrive()).toBeUndefined();

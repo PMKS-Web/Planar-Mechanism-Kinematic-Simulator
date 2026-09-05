@@ -132,8 +132,8 @@ await mode('Kinematic');
 const permissions = (await look()).may;
 record('an analysis mode allows a drag', permissions.drag === true, permissions);
 record('and undo, which it used to refuse', permissions.history === true, permissions);
-record('and still refuses restructuring', permissions.structure === false, permissions);
-record('and building', permissions.build === false, permissions);
+record('and permits restructuring at the start', permissions.structure === true, permissions);
+record('and building at the start', permissions.build === true, permissions);
 record(
   'the status strip stops calling it read-only',
   /Drag to tune/.test(await page.locator('#bottomBar').innerText())

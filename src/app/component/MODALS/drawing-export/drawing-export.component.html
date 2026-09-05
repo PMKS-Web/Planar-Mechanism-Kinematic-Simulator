@@ -151,14 +151,17 @@
             }
             @if (options.origin === 'joint') {
               <div class="subField">
-                <span class="fieldName">Joint</span>
-                <segmented-block
-                  class="segmented"
-                  [fill]="false"
-                  [options]="jointNames()"
-                  [selected]="jointIndex()"
-                  (selectedChange)="touch({ originJointId: jointChoices()[$event].id })"
-                ></segmented-block>
+                <label class="fieldName" for="cad-origin-joint">Joint</label>
+                <select
+                  id="cad-origin-joint"
+                  class="textInput"
+                  [value]="originJointLabel"
+                  (change)="touch({ originJointId: $any($event.target).value })"
+                >
+                  @for (joint of jointChoices(); track joint.id) {
+                    <option [value]="joint.id">{{ joint.name }}</option>
+                  }
+                </select>
               </div>
             }
           </div>

@@ -488,6 +488,15 @@ pixels are available; anything you add to the bottom row has to survive that.
 
 ## Editing, playback, and who is allowed to say no
 
+**Context menus share one start-pose boundary across Edit and Analysis.** Their rows come from
+one builder; `menuRefusal` allows mutations only while every machine is at its start. Paused
+trace switches save without rebuilding the mechanism, so they preserve both the displayed pose
+and the authored start. Posed drags still use their separate anchor-preserving edit path.
+
+**Bulk dimensions must be solved together.** Submit selected bars to `setBarValues`; precomputing
+endpoints and calling `dragJoint` in a loop uses stale shared anchors and retains old dimension
+holds. A failed simultaneous constraint solve must leave every joint unchanged.
+
 - **One model answers "may this edit happen".** `model/edit-permission.ts` is a pure function from
   a described state to a refusal-or-nothing; `services/edit-permission.service.ts` describes the
   current state to it. Six surfaces quote it — the canvas's drag gate, the Edit panel's banner,

@@ -24,6 +24,23 @@ function chain(count = 4) {
 }
 
 describe('SelectionBatchService duplication', () => {
+  for (const hold of ['length', 'angle'] as const) {
+    for (const batch of [false, true]) {
+      it(`preserves a fixed ${hold} while releasing position locks (${batch ? 'batch' : 'single'})`, () => {
+        const h = chain(2);
+        h.links[0].hold = hold;
+        h.joints.forEach((joint) => (joint.locked = true));
+        if (batch) h.batch.duplicateSelected([{ kind: 'link', id: 'AB' }], { x: 0, y: 100 });
+        else h.service.duplicateLink(h.links[0]);
+        const copy = h.service.links.find((link) => link !== h.links[0]) as RealLink;
+        expect(copy.hold).toBe(hold);
+        expect(copy.joints.every((joint) => !(joint as RevJoint).locked)).toBe(true);
+        expect(copy.length).toBeCloseTo(h.links[0].length, 8);
+        expect(copy.angleRad).toBeCloseTo(h.links[0].angleRad, 8);
+      });
+    }
+  }
+
   it('copies shared topology once, excludes outside links, offsets parts, and saves once', () => {
     const h = chain();
     h.joints[0].name = 'Pivot';
@@ -322,6 +339,49 @@ describe('SelectionBatchService deletion', () => {
     expect(h.service.links).toHaveLength(0);
     expect(h.service.joints).toHaveLength(0);
     expect(h.saveCount() - savesBefore).toBe(1);
+  });
+
+  for (const batch of [false, true]) {
+    it(`splits disconnected welded survivors and removes deleted mass (${batch ? 'batch' : 'single'})`, () => {
+      const h = chain(5);
+      h.links.forEach((link) => h.service.assignBodyMass(link, 10));
+      for (const joint of h.joints.slice(1, -1)) h.service.weldJoint(joint);
+      expect(h.service.links).toHaveLength(1);
+      expect(h.service.links[0].mass).toBe(40);
+      const compound = h.service.links[0] as RealLink;
+      const load = new Force('F1', compound, new Coord(350, 0), new Coord(350, 40));
+      compound.forces.push(load);
+      h.service.forces.push(load);
+      const before = h.saveCount();
+      if (batch) h.batch.deleteSelected([{ kind: 'joint', id: 'C' }]);
+      else {
+        h.active.updateSelectedObj(h.joints[2]);
+        h.service.deleteJoint();
+      }
+      expect(h.service.links.map((link) => link.id).sort()).toEqual(['AB', 'DE']);
+      expect(h.service.links.every((link) => link.mass === 10)).toBe(true);
+      expect(h.service.links.every((link) => (link as RealLink).subset.length === 0)).toBe(true);
+      expect(h.service.joints.every((joint) => !(joint as RevJoint).isWelded)).toBe(true);
+      expect(h.joints[0].connectedJoints.map((joint) => joint.id)).toEqual(['B']);
+      expect(load.link.id).toBe('DE');
+      expect(load.link.forces).toContain(load);
+      expect(h.saveCount() - before).toBe(1);
+    });
+  }
+
+  it('retains connected surviving welds with their own aggregate mass', () => {
+    const h = chain(7);
+    h.links.forEach((link) => h.service.assignBodyMass(link, 10));
+    for (const joint of h.joints.slice(1, -1)) h.service.weldJoint(joint);
+    h.batch.deleteSelected([{ kind: 'joint', id: 'D' }]);
+    expect(h.service.links.map((link) => link.id).sort()).toEqual(['ABC', 'EFG']);
+    expect(h.service.links.every((link) => link.mass === 20)).toBe(true);
+    expect(h.service.links.every((link) => (link as RealLink).subset.length === 2)).toBe(true);
+    expect(h.joints[1].isWelded).toBe(true);
+    expect(h.joints[5].isWelded).toBe(true);
+    expect(h.joints[2].isWelded).toBe(false);
+    expect(h.joints[4].isWelded).toBe(false);
+    expect(h.joints[0].connectedJoints.map((joint) => joint.id).sort()).toEqual(['B', 'C']);
   });
 
   it('deletes a sealed cylinder without leaving its hidden implementation parts', () => {

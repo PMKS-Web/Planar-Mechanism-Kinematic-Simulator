@@ -1,5 +1,12 @@
 import { Injectable, inject } from '@angular/core';
-import { EditAction, EditMode, EditRefusal, EditState, refusalFor } from '../model/edit-permission';
+import {
+  EditAction,
+  EditMode,
+  EditRefusal,
+  EditState,
+  refusalFor,
+  menuRefusal,
+} from '../model/edit-permission';
 import { MechanismService } from './mechanism.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 
@@ -71,16 +78,9 @@ export class EditPermissionService {
     return refusalFor(action, this.state());
   }
 
-  /**
-   * Whether the *mode* forbids changing what the mechanism is made of.
-   *
-   * It used to be `modeLocksGeometry`, and it meant it: an analysis mode
-   * refused every edit there was. It refuses restructuring now and lets a drag
-   * through, so the honest name is the narrower one -- and the surfaces that
-   * quoted the old one have to say which half they meant.
-   */
+  /** Analysis restructuring is available at the original start pose. */
   modeLocksStructure(): boolean {
-    return this.mode() === 'analysis';
+    return this.mode() === 'analysis' && !this.mechanism.isAtStartPose();
   }
 
   /**
@@ -94,6 +94,11 @@ export class EditPermissionService {
     // The mode half stripped off, the pose half kept -- including Phase 2's
     // answer, which is that a geometry gesture at a paused pose is allowed.
     return refusalFor(action, { ...state, mode: 'edit' });
+  }
+
+  /** Menu actions use the original design pose; view switches never change it. */
+  menuRefusal(viewOnly = false): EditRefusal | null {
+    return menuRefusal(this.state(), viewOnly);
   }
 
   /** The same question where only yes or no is wanted. */

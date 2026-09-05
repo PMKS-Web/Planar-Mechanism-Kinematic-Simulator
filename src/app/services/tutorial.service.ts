@@ -268,26 +268,6 @@ export class TutorialService {
 
   // ---------- entering and leaving ----------
 
-  /**
-   * Open it unasked, once, for someone who has never been here.
-   *
-   * The tutorial was only ever offered -- a card in the Edit panel's empty
-   * state, which a reader has to notice and accept. That is the right weight
-   * for a returning user and the wrong one for a first: the app opens on an
-   * empty grid whose one instruction is a gesture nobody has been told about
-   * yet, and the offer sits beside it competing with the drawing for attention.
-   *
-   * Not over someone else's mechanism, though. Arriving by a shared link means
-   * arriving to look at *that*, and a tutorial about drawing your first bar is
-   * an interruption rather than a welcome. The same for a drawing already in
-   * progress, which on this app means a URL that has just been decoded.
-   */
-  openOnFirstVisit(): void {
-    if (this.seen || this.started) return;
-    if (this.mechanism.joints.length > 0 || this.mechanism.links.length > 0) return;
-    this.start();
-  }
-
   start(): void {
     this.started = true;
     this.exited = false;

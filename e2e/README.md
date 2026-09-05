@@ -80,11 +80,11 @@ their source. Everything browser-driven lives here.
 - `playback-timing.mjs` — real-time playback: a revolution takes 60/RPM wall-clock seconds, the reported cycle period scales with input speed, and simulation time is held (not the sample index) across a speed change
 - `input-settings-and-playback.mjs` — the input joint's Input Settings section (direction, unit-free speed field, RPM / deg/s / rad/s picker), its removal from global Settings, the time field's width, and that playback interpolates between samples at a slow input speed
 - `synthesis-redesign.mjs` — Synthesis end to end: the chooser, arming and dropping the three positions (wheel turns the one about to land, and does not zoom), dragging one without panning the canvas, Generate, the candidate gallery and its hover comparison, the six-bar driver, the preview transport, Insert and its Undo, and the design surviving undo and redo
-- `context-menu.mjs` — the right-click menu on every kind of part and in every mode: the fixed Attach/State/Machine ladder with Delete alone at the foot, states written as ticked switches rather than labels that flip, the model's own reason in the right-hand slot of every grayed row (a load at a shared pin, a weld with nothing to fuse, a sealed cylinder, a locked part), the deletion cascades named before the click, the counts beside Lock All and Unlock All, and the analysis modes offering the trace and the way back into Edit and nothing that edits
+- `context-menu.mjs` — the right-click menu on every kind of part and in every mode: the fixed Attach/State/Machine ladder with Delete alone at the foot, states written as ticked switches rather than labels that flip, the model's own reason in the right-hand slot of every grayed row (a load at a shared pin, a weld with nothing to fuse, a sealed cylinder, a locked part), the deletion cascades named before the click, the counts beside Lock All and Unlock All, and analysis modes offering the same actions as Edit at the start pose
 - `ui-copy.mjs` — the words themselves, read off the running app: that the Edit panel's toggles carry the state names the right-click menu uses (`Grounded`, `Welded`, `Trace Path`), that no tooltip there runs past two sentences, that the units tooltip names the way out only while the switch is actually grayed, that the analysis checklist no longer prints Gruebler in code notation, and that none of the surfaces it walks uses a word `docs/ui-vocabulary.md` rules out
 
 - `whats-new.mjs` — which of the three welcomes a reader gets, and the two covers that go up while
-  a mechanism is being solved: a first visit gets the tutorial and no release notes, a returning
+  a mechanism is being solved: a first visit gets a tutorial invitation and no release notes, a returning
   visit gets the notes once and never again (by the button, by Escape, and across a reload),
   `?library` beats both and leaves the address bar clean, the boot splash is up before the app is
   and gone once it has drawn, and the loading cover goes up and comes back down for a template, a
@@ -165,3 +165,9 @@ Interaction gotchas baked into these scripts:
 - `#bottomBar` is a read-only status strip (mode, status phrase, units, version) with
   `pointer-events: none`. It no longer prints the degrees of freedom; read the mobility
   from `mechanismSrv.mechanisms[i].dof`, or from the setup drawer's `.factGrid`.
+
+- `context-menu-modes.mjs` — shared Edit/Kinematic/Force menus, correct right-click targets,
+  start-pose mutation gates, traces preserving paused geometry and t=0, bulk field explanations,
+  and menu scrolling on phones.
+- `release-export-ui.mjs` — malformed URL recovery, semantic field names, and a mobile CAD origin
+  chooser with twelve joints.

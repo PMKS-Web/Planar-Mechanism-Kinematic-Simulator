@@ -33,7 +33,12 @@
     display: inline-flex;
     flex-direction: column;
     min-width: 224px;
-    max-width: 320px;
+    max-width: min(320px, calc(100vw - 16px));
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+    > * {
+      flex-shrink: 0;
+    }
     padding: 0 0 4px;
     background-color: #ffffff;
     border-radius: var(--border-radius);

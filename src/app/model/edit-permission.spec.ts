@@ -3,6 +3,7 @@ import {
   EditAction,
   EditState,
   displacementRefusal,
+  menuRefusal,
   refusalFor,
 } from './edit-permission';
 
@@ -91,16 +92,22 @@ describe('what is allowed when', () => {
     });
   });
 
-  it('lets an analysis mode tune what exists, and not restructure it', () => {
-    // The whole of the analysis unlock, as a row of the matrix. The line is
-    // drawn at what the graphs are graphs *of*: dragging a joint changes a
-    // dimension and the curves follow, which is the point; adding or deleting
-    // one changes what the mechanism is, which belongs in Edit.
-    const analysing = at({ mode: 'analysis' });
-    expect(allowed(analysing)).toEqual(['inspect', 'drag', 'transport', 'history']);
-    expect(refusalFor('build', analysing)!.short).toBe('lives in Edit');
-    expect(refusalFor('structure', analysing)!.short).toBe('lives in Edit');
-    expect(refusalFor('placement', analysing)!.short).toBe('lives in Edit');
+  it('allows the same edits in analysis at the start, with posed restructuring refused', () => {
+    expect(allowed(at({ mode: 'analysis' }))).toEqual([...EDIT_ACTIONS]);
+    for (const action of ['build', 'structure'] as const) {
+      expect(refusalFor(action, at({ mode: 'analysis', atStart: false }))!.backToStartHelps).toBe(
+        true
+      );
+    }
+  });
+
+  it('keeps menu mutations at the original start in every mode', () => {
+    for (const mode of ['edit', 'analysis'] as const) {
+      expect(menuRefusal(at({ mode }))).toBeNull();
+      expect(menuRefusal(at({ mode, atStart: false }))).not.toBeNull();
+      expect(menuRefusal(at({ mode, atStart: false }), true)).toBeNull();
+      expect(menuRefusal(at({ mode, playing: true }), true)!.short).toBe('animation running');
+    }
   });
 
   it('never lets an analysis mode allow more than Edit would', () => {

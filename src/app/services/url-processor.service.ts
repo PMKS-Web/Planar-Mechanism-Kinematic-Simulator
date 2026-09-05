@@ -86,9 +86,22 @@ export class UrlProcessorService {
 
   constructor() {
     // the content part of the url (the part after the ?)
-    const fromAddress = this.getURLContent();
+    let fromAddress: string | null = null;
+    let invalidAddress = false;
+    this.wantsBackdropFor = null;
+    try {
+      fromAddress = this.getURLContent();
+      this.wantsBackdropFor = this.backdropAsked();
+    } catch (error) {
+      // Percent escapes are parsed before the mechanism codec. A malformed
+      // query or fragment must not abort service construction and strand the
+      // reader behind the startup cover, or restore a different saved drawing.
+      invalidAddress = true;
+      fromAddress = null;
+      this.reportInvalidURL(error);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
     this.wantsLibrary = fromAddress !== null && fromAddress.trim().toLowerCase() === LIBRARY_QUERY;
-    this.wantsBackdropFor = this.backdropAsked();
     // Nothing in the address, and the reader did not mean to arrive: they
     // refreshed, or pressed Back. A refresh used to take everything -- the
     // document lives in memory, the address bar is stripped once a shared link
@@ -105,7 +118,7 @@ export class UrlProcessorService {
     // template -- records itself over it, so Back reaches whatever was last
     // stood on rather than walking backwards through the session. Refreshing
     // the work you are in the middle of is the case this exists for.
-    const url = fromAddress ?? (returningToThePage() ? recallDrawing() : null);
+    const url = fromAddress ?? (!invalidAddress && returningToThePage() ? recallDrawing() : null);
 
     // update the mechanism from the url
     //
@@ -155,6 +168,17 @@ export class UrlProcessorService {
     // A bare '?' carries nothing, and nothing is what `/` means: it opened an
     // empty grid under "that shared link could not be opened".
     return query.length > 0 ? query : null;
+  }
+
+  private reportInvalidURL(error: unknown): void {
+    console.error('Unable to load mechanism URL', error);
+    // Construction precedes the notification overlay, so wait for it to exist.
+    setTimeout(() => {
+      this.notify.failure(
+        'url.undecodable',
+        'That shared link could not be opened — it may be from an older version of PMKS+.'
+      );
+    });
   }
 
   // Decode the url and update mechanism
@@ -297,18 +321,12 @@ export class UrlProcessorService {
           window.history.replaceState({}, document.title, window.location.pathname);
           return;
         }
-        console.error('Unable to load mechanism URL', error);
         // Deferred because this can run inside the service's own constructor,
         // before there is an overlay to open into. A failure, and it waits to
         // be dismissed: the reader followed a link that did not work, and the
         // grid they are looking at instead is not an obvious clue that it
         // didn't.
-        setTimeout(() => {
-          this.notify.failure(
-            'url.undecodable',
-            'That shared link could not be opened — it may be from an older version of PMKS+.'
-          );
-        });
+        this.reportInvalidURL(error);
       } finally {
         // Invalid data must not remain in the address bar or be retried on refresh.
         window.history.replaceState({}, document.title, window.location.pathname);

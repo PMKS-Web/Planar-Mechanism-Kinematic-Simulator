@@ -13,12 +13,16 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { startQuiet } from './quiet-start.mjs';
+import { filmstrip, contactSheet } from './filmstrip.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+const context = await browser.newContext({ viewport: { width: 1500, height: 950 } });
+await startQuiet(context);
+const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(String(error)));
 
@@ -34,6 +38,9 @@ const state = () =>
     return {
       playing: srv.isPlaying,
       step: srv.mechanismTimeStep,
+      sample: srv.currentSampleOf(0),
+      phase: srv.secondsOf(0),
+      period: srv.mechanisms[0].cyclePeriod,
       seconds: +srv.currentTimeSeconds().toFixed(3),
       rowPlaying: srv.mechanisms.map((_, i) => srv.isMechanismPlaying(i)),
       scrub: [...document.querySelectorAll('.rowScrubber')].map((s) => +s.value),
@@ -72,9 +79,12 @@ record('the handle has moved off the left end', running.scrub[0] > atRest.scrub[
 await page.locator('.transportCard .playButton').click();
 await page.waitForTimeout(300);
 const before = await state();
+const film = filmstrip(page, 'artifacts/playback-direction/reverse');
+await film.shot('before');
 await page.locator('.dirButton').first().click();
 await page.waitForTimeout(400);
 const after = await state();
+await film.shot('reversed-paused');
 record('reversing does not stop it being resumable', after.playing === false, { before, after });
 // Within a model unit, which is a two-hundredth of a centimeter: the mirrored
 // cycle lands on the neighboring sample, so "did not move" is a question about
@@ -91,18 +101,43 @@ record('nor has the handle', Math.abs(after.scrub[0] - before.scrub[0]) < 30, {
   before: before.scrub,
   after: after.scrub,
 });
-// Nothing moves at all now, the clock included. Reversing used to mirror the
-// cycle, which put the pose that was at time t at period - t and made the clock
-// jump to follow it. The cycle is left alone instead and the machine turns
-// round on it, so there is nothing for the clock to catch up with.
-record('and neither has the clock', after.seconds === before.seconds, {
-  before: before.seconds,
-  after: after.seconds,
-});
+// The phase clock now measures the same pose in the new direction. The
+// plotted sample must remain unchanged even though that elapsed phase changes.
+record(
+  'the phase reflects while analysis stays on the same frame',
+  Math.abs(after.phase - (before.period - before.phase)) < 1e-8 && after.sample === before.sample,
+  { before, after }
+);
 record('and the label changed with it', after.notes[0] !== before.notes[0], {
   before: before.notes,
   after: after.notes,
 });
+
+// Capture the first resumed frames: the old bug held the canvas still until
+// Play, then jumped half a revolution while the analysis had already jumped.
+await film.during(20, 6, 'resuming', async () => {
+  await page.locator('.transportCard .playButton').click();
+  await page.waitForTimeout(120);
+  await page.locator('.transportCard .playButton').click();
+});
+const resumed = await state();
+const secondsAdvanced = resumed.phase - after.phase;
+const resumedDistance = Math.max(
+  ...after.pose.map(([x, y], i) => Math.hypot(resumed.pose[i][0] - x, resumed.pose[i][1] - y))
+);
+record(
+  'resume continues locally in the new direction',
+  resumed.sample < after.sample && resumedDistance < 1500 * secondsAdvanced + 1,
+  { after, resumed, resumedDistance, secondsAdvanced }
+);
+console.log(
+  await contactSheet(
+    'artifacts/playback-direction/reverse/*.png',
+    'artifacts/playback-direction/reverse-filmstrip.png',
+    3,
+    0.45
+  )
+);
 
 // And reversing while it runs leaves it running.
 await page.locator('.transportCard .playButton').click();

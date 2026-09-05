@@ -46,17 +46,19 @@ check(
 
 // ---- the offer, hanging off the Edit panel rather than replacing it ----
 
-// A first visit opens it without being asked. The offer card that used to be
-// the only way in is still here for the reader whose first visit was somebody
-// else's mechanism -- see the shared-link check at the end -- but on a bare
-// grid there is nothing left for them to accept.
-check('a first visit opens the tutorial unasked', await page.locator('.tutorialCard').isVisible());
-check('so the offer has nothing left to offer', (await page.locator('.offer').count()) === 0);
+// A first visit offers a choice; opening the tutorial requires accepting it.
+check(
+  'a first visit leaves the tutorial closed',
+  (await page.locator('.tutorialCard').count()) === 0
+);
+check('the tutorial invitation is visible', await page.locator('.offer').isVisible());
+await page.screenshot({ path: `${OUT}/01-offer.png` });
+await page.getByRole('button', { name: 'Start Tutorial', exact: true }).click();
 check(
   'the panel still says what right-click is for',
   (await page.locator('.helpHints').innerText()).includes('Right-click the grid')
 );
-await page.screenshot({ path: `${OUT}/01-offer.png` });
+await page.screenshot({ path: `${OUT}/02-started.png` });
 check('the drawer opens on the tutorial', await page.locator('.tutorialCard').isVisible());
 check('the canvas is not covered', (await page.locator('.introjs-overlay').count()) === 0);
 
@@ -329,7 +331,7 @@ await page.screenshot({ path: `${OUT}/07-resume.png` });
   const small = await narrow.newPage();
   await small.goto(BASE, { waitUntil: 'networkidle' });
   await waitForReady(small);
-  // Opens itself on a first visit, so there is no offer to accept.
+  await small.getByRole('button', { name: 'Start Tutorial', exact: true }).click();
   await small.waitForTimeout(600);
   for (let i = 0; i < 3; i++) {
     await small.locator('.doItButton').click();
@@ -352,16 +354,15 @@ await page.screenshot({ path: `${OUT}/07-resume.png` });
 
 // ---- walking out of it, in a profile that has not met it ----
 //
-// Closing the card is what declining used to be: it is the first thing a
-// reader who did not want a tutorial will reach for, and it has to be as final
-// as finishing, or the app asks the same question at every launch.
+// Declining the invitation is remembered across reloads, while the project
+// menu remains an explicit way to start the tutorial later.
 {
   const declining = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const shy = await declining.newPage();
   await shy.goto(BASE, { waitUntil: 'networkidle' });
   await waitForReady(shy);
-  check('it opened by itself', await shy.locator('.tutorialCard').isVisible());
-  await shy.locator('.closeCard').click();
+  check('it offers a choice', await shy.locator('.offer').isVisible());
+  await shy.getByRole('button', { name: 'No thanks', exact: true }).click();
   await shy.waitForTimeout(700);
   check('closing it takes it away', (await shy.locator('.tutorialCard').count()) === 0);
   check('and does not leave the offer behind either', (await shy.locator('.offer').count()) === 0);
@@ -377,7 +378,7 @@ await page.screenshot({ path: `${OUT}/07-resume.png` });
 
 // ---- arriving at somebody else's mechanism ----
 //
-// The auto-open is suppressed there: a shared link means arriving to look at
+// The tutorial stays closed there: a shared link means arriving to look at
 // *that*, and a tutorial about drawing your first bar is an interruption. The
 // offer card is what is left for that reader, once they have a bare grid.
 {

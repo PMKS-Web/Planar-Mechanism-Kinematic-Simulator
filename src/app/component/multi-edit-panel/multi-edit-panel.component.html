@@ -1,4 +1,4 @@
-<panel-section>
+<panel-section [frozen]="panelIsFrozen()">
   <!-- The same block, and so the same buttons, a one-part selection is headed
        with: Lock and Delete mean the same thing to eight joints as to one, and
        a reader who has learned where they are should not learn again. Rename is
@@ -9,8 +9,9 @@
     [lockState]="lockDisplay()"
     [toggleLockAction]="toggleLock.bind(this)"
     [deleteAction]="delete.bind(this)"
-    [deleteLabel]="deleteLabel"
+    deleteLabel="Delete"
   ></editable-title-block>
+  <app-edit-banner panelAttached />
 
   @if (homogeneousJoints) {
     <collapsible-subseciton titleLabel="Basic Settings" [expanded]="true">

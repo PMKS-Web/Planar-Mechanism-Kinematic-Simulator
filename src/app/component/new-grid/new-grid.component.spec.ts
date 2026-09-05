@@ -6,6 +6,7 @@ import { ActiveObjService } from '../../services/active-obj.service';
 import { DragStateService } from '../../services/drag-state.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { MechanismService } from '../../services/mechanism.service';
+import { SettingsService } from '../../services/settings.service';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { NewGridComponent } from './new-grid.component';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
@@ -359,16 +360,15 @@ describe('NewGridComponent drag gestures', () => {
 
   // What it still refuses is changing what the mechanism is made of, which is
   // where the graphs' own subject would go out from under them.
-  it('still refuses to restructure in an analysis mode', () => {
+  it('allows restructuring in an analysis mode at the start', () => {
     const { component } = setUp();
     TestBed.inject(SelectedTabService).setTab(TabID.ANALYZE);
     const permission = TestBed.inject(EditPermissionService);
     expect(permission.may('drag')).toBe(true);
     expect(permission.may('history')).toBe(true);
-    expect(permission.may('structure')).toBe(false);
-    expect(permission.may('build')).toBe(false);
-    expect(permission.refusal('build')!.short).toBe('lives in Edit');
-    expect(component.structureLocked).toBe(true);
+    expect(permission.may('structure')).toBe(true);
+    expect(permission.may('build')).toBe(true);
+    expect(component.structureLocked).toBe(false);
   });
 
   // "the refusal a fixed geometry earns" was here -- five tests around the
@@ -757,7 +757,7 @@ describe('NewGridComponent vector traces', () => {
     expect(longest).toBeCloseTo(span * LONGEST_ARROW_FRACTION, 3);
   });
 
-  it('carries a rate across both analysis modes, and draws nothing in Edit', () => {
+  it('carries a rate across Edit and both analysis modes', () => {
     const { mechanism, b } = analyzing();
     mechanism.toggleVectorTrace(b, 'velocity');
     expect(mechanism.vectorTracePaths().length).toBe(1);
@@ -766,21 +766,23 @@ describe('NewGridComponent vector traces', () => {
     // reaction and the acceleration behind it at once.
     TestBed.inject(SelectedTabService).setTab(TabID.FORCE);
     expect(mechanism.vectorTracePaths().length).toBe(1);
-    // Edit is not a reading of the mechanism, so it draws none of them.
     TestBed.inject(SelectedTabService).setTab(TabID.EDIT);
-    expect(mechanism.vectorTracePaths()).toEqual([]);
+    expect(mechanism.vectorTracePaths().length).toBe(1);
   });
 
-  it('never draws a force outside the mode that solves it', () => {
-    const { mechanism, b } = analyzing();
-    mechanism.toggleVectorTrace(b, 'velocity');
+  it('keeps force vectors visible across all three drawing modes', () => {
+    const { mechanism, a } = analyzing();
+    mechanism.links.forEach((link) => mechanism.assignBodyMass(link as RealLink, 1));
+    TestBed.inject(SettingsService).isGravity.next(true);
+    mechanism.updateMechanism(false);
+    mechanism.toggleVectorTrace(a, 'force');
     TestBed.inject(SelectedTabService).setTab(TabID.FORCE);
-    mechanism.toggleVectorTrace(b, 'force');
-    // Whatever this fixture can solve, Kinematic shows the rate and never the
-    // reaction: a force is only computed in Force.
-    TestBed.inject(SelectedTabService).setTab(TabID.ANALYZE);
-    const drawn = mechanism.vectorTracePaths();
-    expect(drawn.map((one) => one.quantity)).toEqual(['velocity']);
+    const force = mechanism.vectorTracePaths();
+    expect(force.map((one) => one.quantity)).toEqual(['force']);
+    for (const mode of [TabID.ANALYZE, TabID.EDIT]) {
+      TestBed.inject(SelectedTabService).setTab(mode);
+      expect(mechanism.vectorTracePaths()).toEqual(force);
+    }
   });
 
   /**

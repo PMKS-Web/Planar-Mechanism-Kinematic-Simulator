@@ -246,28 +246,7 @@ function applyDeletion(mechanism: MechanismService, plan: DeletePlan): void {
       removeJointsFromLink(root, plan.selectedJointIds);
       return root.joints.length >= 2 ? [root] : [];
     }
-    root.subset = root.subset.filter((leaf) => {
-      removeJointsFromLink(leaf, plan.selectedJointIds);
-      return leaf.joints.length >= 2;
-    });
-    if (root.subset.length === 0) {
-      removedOwners.add(root);
-      return [];
-    }
-    if (root.subset.length === 1) {
-      const survivor = root.subset[0];
-      survivor.joints.forEach((joint) => {
-        if (joint instanceof RealJoint) joint.isWelded = false;
-      });
-      if (survivor instanceof RealLink) {
-        survivor.forces = root.forces;
-        root.forces.forEach((force) => (force.link = survivor));
-      }
-      return [survivor];
-    }
-    root.joints = uniqueJoints(root.subset.flatMap((leaf) => leaf.joints));
-    refreshLinkIdentity(root);
-    return [root];
+    return mechanism.removeCompoundJoints(root, plan.selectedJointIds);
   });
 
   mechanism.links = roots;
@@ -509,6 +488,7 @@ function copyRealLinkState(source: RealLink, copy: RealLink, joints: Map<Joint, 
   copy.comIsCustom = source.comIsCustom;
   copy.fill = source.fill;
   copy.isCircle = source.isCircle;
+  copy.hold = source.hold;
   const anchor = source.comAnchor;
   copy.comAnchor =
     typeof anchor === 'object'

@@ -1,22 +1,24 @@
 <div id="dual-input-block" style="{{ disabled() ? 'cursor: default' : '' }}">
-  @if (!noHeader()) {
-    <div class="row">
-      <span class="label {{ disabled() ? 'disabled' : '' }}"><ng-content></ng-content></span>
-      <!-- Still there while the field is disabled, but plainly not offering
-           anything: suppressing only the tooltip left a mark that took the
-           accent under the cursor and then answered nothing, which is an
-           affordance promising an explanation it does not have. -->
-      <mat-icon
-        matTooltip="{{ this.tooltip() }}"
-        matTooltipShowDelay="400"
-        class="label-help"
-        [class.inert]="disabled()"
-        [matTooltipDisabled]="disabled()"
-        >help_outline
-      </mat-icon>
-      <div class="spacer"></div>
-    </div>
-  }
+  <div class="row" [style.display]="noHeader() ? 'none' : null">
+    <span class="label {{ disabled() ? 'disabled' : '' }}" [id]="labelId"
+      ><ng-content></ng-content
+    ></span>
+    <!-- Still there while the field is disabled, but plainly not offering
+         anything: suppressing only the tooltip left a mark that took the
+         accent under the cursor and then answered nothing, which is an
+         affordance promising an explanation it does not have. -->
+    <mat-icon
+      matTooltip="{{ this.tooltip() }}"
+      matTooltipShowDelay="400"
+      class="label-help"
+      [class.inert]="disabled()"
+      [matTooltipDisabled]="disabled()"
+      >help_outline
+    </mat-icon>
+    <div class="spacer"></div>
+  </div>
+  <span hidden [id]="labelId + '-field1'">{{ fieldName(label1()) }}</span>
+  <span hidden [id]="labelId + '-field2'">{{ fieldName(label2()) }}</span>
   <div class="row" [formGroup]="formGroup()" style="gap: 5px">
     @if (formSubGroup) {
       <span class="label {{ disabled() ? 'disabled' : '' }}">{{ label1() }}</span>
@@ -39,6 +41,7 @@
           [formControlName]="this.formControl1()"
           [placeholder]="placeholder1()"
           [attr.data-field]="dataField1()"
+          [attr.aria-labelledby]="labelId + ' ' + labelId + '-field1'"
         />
       </mat-form-field>
       <div class="spacer"></div>
@@ -66,6 +69,7 @@
           [formControlName]="this.formControl2()"
           [placeholder]="placeholder2()"
           [attr.data-field]="dataField2()"
+          [attr.aria-labelledby]="labelId + ' ' + labelId + '-field2'"
         />
       </mat-form-field>
     }
@@ -89,6 +93,7 @@
           [formControlName]="this.formControl1()"
           [placeholder]="placeholder1()"
           [attr.data-field]="dataField1()"
+          [attr.aria-labelledby]="labelId + ' ' + labelId + '-field1'"
         />
       </mat-form-field>
       <div class="spacer"></div>
@@ -115,6 +120,7 @@
           [formControlName]="this.formControl2()"
           [placeholder]="placeholder2()"
           [attr.data-field]="dataField2()"
+          [attr.aria-labelledby]="labelId + ' ' + labelId + '-field2'"
         />
       </mat-form-field>
     }

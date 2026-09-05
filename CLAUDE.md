@@ -174,8 +174,9 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 - **The canvas draws y-up and the screen is y-down.** A drawing layer wears the `modelFrame` directive and everything inside it is written in the drawing's own coordinates; anything that must read the right way up wears `upright` (both in `model-frame.directive.ts`). `SvgGridService.screenToModel` / `modelToScreen` are the matching pair of conversions, and both carry the flip. See [tips-and-tricks](docs/tips-and-tricks.md#the-drawing-is-y-up-the-screen-is-y-down-and-two-directives-say-so).
 - `AppComponent` is just a shell that registers SVG icons; `component/new-grid/new-grid.component.ts` is the real center — the SVG canvas handling the mouse/touch interaction state machine, with pan/zoom via `SvgGridService` (svg-pan-zoom + hammerjs).
 - The right-click menu is **built in a service, not in the canvas**: `services/context-menu-builder.service.ts` turns whatever was right-clicked, plus the current mode, into a `ContextMenuModel` (`component/context-menu/menu-model.ts`), and `component/context-menu/` renders it. Every grayed row quotes the model that enforces it — `describeActuatorRefusal` in `model/actuator.ts`, `weldRefusal` in `grid-utils`, `locksHolding` in `model/lock-set.ts` — rather than restating the rule, so the menu, the panel and the drag ring cannot disagree. New rows belong in the builder; the canvas only supplies the gesture handlers (`MenuHandlers`).
-- **The analysis modes are editable.** They refuse *restructuring* — adding, deleting, welding
-  — and allow a drag, which stages and re-anchors exactly as it does in Edit. Grab a joint and
+- **The analysis modes are editable.** They allow the same context-menu actions as Edit at the start pose. Away from it,
+  menu mutations are disabled in both modes; traces remain available while paused. Drags
+  stage and re-anchor exactly as they do in Edit. Grab a joint and
   every open graph lays the curve from before the gesture under the one following your hand,
   with the peak said as two numbers. `docs/analysis-mode-editing-plan.md` is the argument;
   `e2e/analysis-editing.mjs` is the guard. Click selects, drag tunes: a drag does not move what
@@ -205,7 +206,8 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 - **Arriving.** Three things can greet a reader and exactly one of them does, decided in
   `NewGridComponent.ngOnInit`. `?library` wins outright (see below). Otherwise `WhatsNewService`
   asks whether `localStorage` holds any mark of a previous visit: if it does, the release notes in
-  `model/whats-new.ts` open once and record `whatsNewSeen`; if it does not, the tutorial does.
+  `model/whats-new.ts` open once and record `whatsNewSeen`; if it does not, the empty Edit panel offers Start Tutorial and No thanks. The tutorial
+  opens only when the reader asks for it.
   Adding a release note is a row in `WHATS_NEW`, and raising `WHATS_NEW_VERSION` is what makes the
   dialog speak again.
 - **`?library`** is a deep link for the landing page's "Browse the mechanism library" button:

@@ -90,7 +90,6 @@ export class ContextMenuBuilderService {
         : { header: { title: 'Grid', subtitle: this.gridSubtitle() }, groups: [{ rows }] };
     }
     if (
-      this.tabs.getCurrentTab() === TabID.EDIT &&
       (target instanceof RealJoint || target instanceof RealLink || target instanceof Force) &&
       this.activeObj.selectedParts.length > 1 &&
       this.activeObj.containsPart(target)
@@ -252,6 +251,7 @@ export class ContextMenuBuilderService {
         }),
         new MenuRow({
           label: 'Trace Path',
+          alwaysAllowed: true,
           icon: 'show_path',
           kind: 'toggle',
           checked: trace.all,
@@ -304,29 +304,24 @@ export class ContextMenuBuilderService {
 
   private forGrid(handlers: MenuHandlers): ContextMenuModel {
     const groups: MenuGroup[] = [];
-    if (this.tabs.getCurrentTab() === TabID.EDIT) {
-      groups.push({
-        label: 'Add',
-        rows: [
-          new MenuRow({ label: 'Link', icon: 'new_link', action: () => handlers.attachLink() }),
-          new MenuRow({
-            label: 'Cylinder',
-            icon: 'add_cylinder',
-            action: () => handlers.attachCylinder(),
-          }),
-          new MenuRow({
-            label: 'Background Image',
-            icon: 'background_image',
-            action: () => handlers.backgroundImage(),
-          }),
-        ],
-      });
-      groups.push({ label: 'Mechanism', rows: this.machineRows() });
-    }
+    groups.push({
+      label: 'Add',
+      rows: [
+        new MenuRow({ label: 'Link', icon: 'new_link', action: () => handlers.attachLink() }),
+        new MenuRow({
+          label: 'Cylinder',
+          icon: 'add_cylinder',
+          action: () => handlers.attachCylinder(),
+        }),
+        new MenuRow({
+          label: 'Background Image',
+          icon: 'background_image',
+          action: () => handlers.backgroundImage(),
+        }),
+      ],
+    });
+    groups.push({ label: 'Mechanism', rows: this.machineRows() });
     groups.push({ rows: this.positionRows(handlers, undefined) });
-    // A bare grid in an analysis mode: nothing to name and nothing to do, so
-    // no card. A *part* still earns one — its header is the way back into
-    // Edit on the thing being looked at — but the grid is not a part.
     if (groups.every((group) => group.rows.length === 0)) return { groups: [] };
     return { header: { title: 'Grid', subtitle: this.gridSubtitle() }, groups };
   }
@@ -432,24 +427,16 @@ export class ContextMenuBuilderService {
       crossing: this.crossing(joint),
     };
     if (!(joint instanceof RealJoint)) return { header, groups: [] };
-    if (this.tabs.isAnalysisMode()) {
-      return {
-        header,
-        groups: [
-          {
-            label: 'State',
-            rows: [this.traceRow(joint), ...this.vectorRows(joint)],
-          },
-          { rows: this.positionRows(handlers, undefined) },
-        ],
-      };
-    }
     const sealed = this.mechanism.cylinderAt(joint);
     return {
       header,
       groups: [
         { label: 'Attach', rows: this.jointAttachRows(joint, handlers) },
-        { label: 'State', rows: this.jointStateRows(joint, sealed) },
+        {
+          label: 'State',
+          rows: [...this.jointStateRows(joint, sealed), ...this.vectorRows(joint)],
+        },
+        { rows: this.positionRows(handlers, undefined) },
         { rows: [this.deleteJointRow(joint, sealed), this.deleteMechanismRow(joint)] },
       ],
     };
@@ -641,7 +628,7 @@ export class ContextMenuBuilderService {
 
   /**
    * The trace switch: a view of the mechanism rather than a part of it, so it
-   * stays live in the analysis modes and while the animation runs.
+   * stays live in every drawing mode while paused.
    *
    * Turning one on turns the global switch on with it. A per-joint trace that
    * draws nothing because the view control is off is a switch that lies.
@@ -664,27 +651,12 @@ export class ContextMenuBuilderService {
    * The vector switches: which way this part's velocity, acceleration or the
    * force it carries points, drawn on the mechanism itself.
    *
-   * Each mode offers what it is about — Kinematic the two rates, Force the
-   * reaction — so a reader is never handed a switch that draws something the
-   * mode they are in is not asking about. A force is carried at a joint and
-   * has no single value for a whole link, so the row is absent on a link
-   * rather than grayed: that is a fact about the kind of part, not about this
-   * arrangement.
+   * These are available in every drawing mode. Reactions belong to joints,
+   * so a link offers only velocity and acceleration at its center of mass.
    */
   private vectorRows(part: RealJoint | RealLink): MenuRow[] {
-    const tab = this.tabs.getCurrentTab();
-    // Velocity and acceleration in both analysis modes, because they are facts
-    // about the motion and the motion is the same in either -- a reader
-    // checking what a joint carries usually wants to know which way it is
-    // accelerating while they do it, and used to have to leave the mode to
-    // find out. Force stays in Force, where it is the thing being solved.
-    const motion: VectorQuantity[] = ['velocity', 'acceleration'];
-    const quantities: VectorQuantity[] =
-      tab === TabID.ANALYZE
-        ? motion
-        : tab === TabID.FORCE
-          ? [...motion, ...(part instanceof RealJoint ? (['force'] as VectorQuantity[]) : [])]
-          : [];
+    const quantities: VectorQuantity[] = ['velocity', 'acceleration'];
+    if (part instanceof RealJoint) quantities.push('force');
     return quantities.map((quantity) => this.vectorRow(part, quantity));
   }
 
@@ -696,8 +668,7 @@ export class ContextMenuBuilderService {
       kind: 'toggle',
       checked: this.mechanism.isVectorTraceOn(part, quantity),
       // A view of the mechanism rather than a change to it, like the trace
-      // beside it: it stays live mid-cycle and while the animation runs, which
-      // is when watching a vector turn is the whole point.
+      // beside it: it stays live at a paused mid-cycle pose.
       alwaysAllowed: true,
       action: () => this.mechanism.toggleVectorTrace(part, quantity),
       // The machine's own readiness first: on one that does not solve there is
@@ -800,16 +771,6 @@ export class ContextMenuBuilderService {
       subtitle: this.linkSubtitle(link, sealed),
       crossing: this.crossing(link),
     };
-    if (this.tabs.isAnalysisMode()) {
-      const vectors = link instanceof RealLink ? this.vectorRows(link) : [];
-      return {
-        header,
-        groups: [
-          { label: 'State', rows: vectors },
-          { rows: this.positionRows(handlers, undefined) },
-        ],
-      };
-    }
     if (sealed) {
       // No Attach group at all: a sealed assembly takes no third body, and a
       // copy of one would land a second cylinder on the same joints.
@@ -827,6 +788,7 @@ export class ContextMenuBuilderService {
                 action: () => this.mechanism.toggleCylinderInput(sealed),
               }),
               ...this.cylinderHoldRows(link as RealLink),
+              ...this.vectorRows(link as RealLink),
               this.lockRow(link as RealLink, undefined),
             ],
           },
@@ -859,7 +821,8 @@ export class ContextMenuBuilderService {
       header,
       groups: [
         { label: 'Attach', rows: this.linkAttachRows(bar, handlers) },
-        { label: 'State', rows: this.linkStateRows(bar) },
+        { label: 'State', rows: [...this.linkStateRows(bar), ...this.vectorRows(bar)] },
+        { rows: this.positionRows(handlers, undefined) },
         { rows: [this.deleteLinkRow(bar), this.deleteMechanismRow(bar)] },
       ],
     };
@@ -1115,7 +1078,6 @@ export class ContextMenuBuilderService {
       subtitle: `On ${labelForBody(force.link, undefined)} · ${force.local ? 'local' : 'global'} frame`,
       crossing: this.crossing(force),
     };
-    if (this.tabs.isAnalysisMode()) return { header, groups: [] };
     return {
       header,
       groups: [
@@ -1303,47 +1265,20 @@ export class ContextMenuBuilderService {
     };
   }
 
-  /**
-   * Nothing that edits the mechanism while it is parked away from the start.
-   *
-   * The pose on screen mid-cycle is a solved copy of the drawing, so an edit
-   * made there would write that pose back into it. The rows that do not touch
-   * the mechanism — the trace, the positions, the way into another mode — are
-   * untouched, and the rest say what to do about it rather than vanishing.
-   */
+  /** Apply the same start-pose boundary in every mode, including at activation. */
   private freezeWhileRunning(model: ContextMenuModel): ContextMenuModel {
-    // The service's `isAnimating()`, not the shared clock: unsynced, a row can
-    // be scrubbed mid-cycle while `mechanismTimeStep` still reads zero. That
-    // third state gets its own words, because "not at the start" over a
-    // drawing whose transport reads 0:00 sends the reader to a scrubber that
-    // already looks parked.
-    // Quoted, not restated. The three refusals this used to spell out for
-    // itself are the same three the canvas and the Edit panel need, and a menu
-    // that words the rule differently from the panel beside it is a menu the
-    // reader has to reconcile.
-    // Asked per row, because they do not all ask the same thing. Most change
-    // the mechanism's shape or its topology, which a paused pose allows; a few
-    // change a *property* -- a force's direction, the frame its endpoints are
-    // read in -- and those wait for the transform the panel's own fields wait
-    // for. One blanket `build` left those two live beside their frozen fields.
-    const refusalFor = (row: MenuRow): MenuRefusal | null =>
-      this.permission.poseRefusal(row.needs ?? 'build');
-    const buildRefused = this.permission.poseRefusal('build');
-    const propertiesRefused = this.permission.poseRefusal('properties');
-    // `alwaysAllowed` means "not refused for being away from the start" -- a
-    // trace is a view of the mechanism, not a change to it, and turning one on
-    // while parked mid-cycle is exactly when a reader wants it. It does not
-    // mean "not refused ever": `showCurve` is serialized state, so toggling it
-    // while the mechanism runs writes a change that undo -- blocked while it
-    // runs -- cannot take back.
-    const exempt = !this.mechanism.isPlaying;
-    if (!buildRefused && !propertiesRefused) return model;
-    model.groups.forEach((group) =>
-      group.rows.forEach((row) => {
-        const refusal = refusalFor(row);
-        if (refusal && !(row.alwaysAllowed && exempt) && !row.refusal) row.refusal = refusal;
-      })
-    );
+    for (const group of model.groups) {
+      for (const row of group.rows) {
+        const refusal = this.permission.menuRefusal(row.alwaysAllowed);
+        if (refusal && !row.refusal) row.refusal = refusal;
+        const action = row.action;
+        // A menu can remain open across a keyboard seek/play. Recheck rather
+        // than trusting the state captured when the pointer opened it.
+        row.action = () => {
+          if (!this.permission.menuRefusal(row.alwaysAllowed)) action();
+        };
+      }
+    }
     return model;
   }
 

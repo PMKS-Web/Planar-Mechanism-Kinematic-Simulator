@@ -52,12 +52,13 @@ const seen = (page, selector) =>
 
 // --- Who gets which welcome -------------------------------------------------
 
-// A first visit: the tutorial, and no release notes about a version they never
+// A first visit: a tutorial invitation, and no release notes about a version they never
 // used.
 {
   const { context, page } = await arrive({});
   check('First visit: no release notes', !(await seen(page, '#whatsNew')));
-  check('First visit: the tutorial opens', await seen(page, '.tutorialCard'));
+  check('First visit: the tutorial stays closed', !(await seen(page, '.tutorialCard')));
+  check('First visit: the tutorial is offered', await seen(page, '.offer'));
   await page.screenshot({ path: `${OUT}/first-visit.png` });
   await context.close();
 }

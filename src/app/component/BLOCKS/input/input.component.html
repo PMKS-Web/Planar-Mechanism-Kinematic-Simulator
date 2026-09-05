@@ -1,6 +1,7 @@
 <div id="input-block" [class.stacked]="stacked()">
   <div class="row" [formGroup]="formGroup">
-    <span class="label"><ng-content></ng-content></span>
+    <span class="label" [id]="labelId"><ng-content></ng-content></span>
+    <span hidden [id]="labelId + '-unit'">Unit</span>
     <mat-icon matTooltip="{{ this.tooltip() }}" matTooltipShowDelay="400" class="label-help">
       help_outline
     </mat-icon>
@@ -26,6 +27,7 @@
         [formControlName]="this._formControl"
         [placeholder]="placeholder()"
         [attr.data-field]="dataField()"
+        [attr.aria-labelledby]="labelId"
       />
       @if (unit) {
         <span matTextSuffix class="input-unit">{{ unit }}</span>
@@ -42,6 +44,7 @@
         <select
           matTextSuffix
           class="unit-select"
+          [attr.aria-labelledby]="labelId + ' ' + labelId + '-unit'"
           [formControlName]="unitFormControl()!"
           (click)="$event.stopPropagation()"
         >

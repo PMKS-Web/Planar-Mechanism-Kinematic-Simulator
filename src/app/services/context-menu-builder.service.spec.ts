@@ -233,7 +233,9 @@ describe('the right-click menu', () => {
     it('runs Attach, then State, then the destructive footer', () => {
       const parts = fourBar(harness.mechanism);
       const model = harness.builder.build(parts.a, noHandlers);
-      expect(model.groups.map((group) => group.label)).toEqual(['Attach', 'State', undefined]);
+      expect(model.groups.filter((group) => group.rows.length).map((group) => group.label)).toEqual(
+        ['Attach', 'State', undefined]
+      );
     });
 
     it('puts Delete last, whatever else the menu holds', () => {
@@ -528,33 +530,28 @@ describe('the right-click menu', () => {
   });
 
   describe('modes', () => {
-    it('offers only the view of a joint in an analysis mode', () => {
+    it('offers identical joint, link and grid rows in Edit and both analysis modes', () => {
       const parts = fourBar(harness.mechanism);
-      harness.tabs.setTab(TabID.ANALYZE);
-      const model = harness.builder.build(parts.a, noHandlers);
-      // Views of the mechanism, all of them: the path it traces and the two
-      // rates drawn along it. Nothing here changes the drawing.
-      expect(labels(model)).toEqual(['Trace path', 'Velocity Vectors', 'Acceleration Vectors']);
-      // Geometry is frozen there, so Attach and the footer are absent rather
-      // than grayed — and the way back into Edit rides the header.
-      expect(model.header?.crossing?.icon).toBe('edit_outline');
+      for (const part of [parts.a, parts.coupler, 'grid']) {
+        harness.tabs.setTab(TabID.EDIT);
+        const edit = labels(harness.builder.build(part, noHandlers));
+        for (const mode of [TabID.ANALYZE, TabID.FORCE]) {
+          harness.tabs.setTab(mode);
+          expect(labels(harness.builder.build(part, noHandlers))).toEqual(edit);
+        }
+      }
     });
 
-    it('offers the two rates in both analysis modes, and the force only in Force', () => {
+    it('offers every joint vector in all three drawing modes', () => {
       const parts = fourBar(harness.mechanism);
-      // Motion is the same in either mode, and a reader checking what a joint
-      // carries usually wants to know which way it is accelerating while they
-      // do it. A force is only solved in Force, so it stays there.
-      const vectorRows = (part: Parameters<typeof harness.builder.build>[0]) =>
-        labels(harness.builder.build(part, noHandlers)).filter((one) => one.endsWith('Vectors'));
-      harness.tabs.setTab(TabID.FORCE);
-      expect(vectorRows(parts.a)).toEqual([
-        'Velocity Vectors',
-        'Acceleration Vectors',
-        'Force Vectors',
-      ]);
-      harness.tabs.setTab(TabID.ANALYZE);
-      expect(vectorRows(parts.a)).toEqual(['Velocity Vectors', 'Acceleration Vectors']);
+      for (const mode of [TabID.EDIT, TabID.ANALYZE, TabID.FORCE]) {
+        harness.tabs.setTab(mode);
+        expect(
+          labels(harness.builder.build(parts.a, noHandlers)).filter((one) =>
+            one.endsWith('Vectors')
+          )
+        ).toEqual(['Velocity Vectors', 'Acceleration Vectors', 'Force Vectors']);
+      }
     });
 
     it('offers a link the two rates at its CoM in either mode, and no force of its own', () => {
@@ -630,16 +627,29 @@ describe('the right-click menu', () => {
     });
   });
 
+  it('executes an analysis delete at the start and guards a stale menu after seeking', () => {
+    const parts = fourBar(harness.mechanism);
+    harness.tabs.setTab(TabID.ANALYZE);
+    harness.active.updateSelectedObj(parts.t);
+    const remove = rows(harness.builder.build(parts.t, noHandlers)).find((r) =>
+      r.label.startsWith('Delete Joint')
+    )!;
+    expect(remove.disabled).toBe(false);
+    harness.mechanism.mechanismTimeStep = 12;
+    remove.action();
+    expect(harness.mechanism.joints).toContain(parts.t);
+    harness.mechanism.mechanismTimeStep = 0;
+    remove.action();
+    expect(harness.mechanism.joints).not.toContain(parts.t);
+  });
+
   describe('away from the start pose', () => {
-    it('offers the structural rows at a paused pose, and grays them while playing', () => {
-      // Phase 2 of the plan changed this answer, not the plumbing behind it.
-      // Grounding a joint is addressed by identity -- it applies to the design
-      // without needing the pose -- so parking mid-cycle is no longer a reason
-      // to refuse it. Playing still is: nothing can be aimed at while it moves.
+    it('grays structural rows at a paused pose and keeps traces available', () => {
+      // A menu never promotes a paused pose into a new start.
       const parts = fourBar(harness.mechanism);
       harness.mechanism.mechanismTimeStep = 12;
       const paused = harness.builder.build(parts.t, noHandlers);
-      expect(row(paused, 'Grounded')!.refusal).toBeUndefined();
+      expect(row(paused, 'Grounded')!.refusal!.short).toBe('not at the start');
       expect(row(paused, 'Trace path')!.disabled).toBe(false);
 
       // A trace is a view of the mechanism, not a change to it -- so parking
@@ -695,9 +705,9 @@ describe('the right-click menu', () => {
       expect(harness.mechanism.mechanismTimeStep).toBe(0);
 
       const model = harness.builder.build(first.joints[1], noHandlers);
-      // Paused, so the structural rows are live -- and undo agrees, which is
-      // the whole point. It used to refuse here while the menu did not.
-      expect(row(model, 'Grounded')!.refusal).toBeUndefined();
+      // Every machine must be at its start for menu mutations. Undo has its
+      // own pose-preserving restore path, so remains available.
+      expect(row(model, 'Grounded')!.refusal!.short).toBe('a mechanism is mid-cycle');
       expect(harness.grid.canRestoreHistory()).toBe(true);
       expect(row(model, 'Trace path')!.disabled).toBe(false);
 

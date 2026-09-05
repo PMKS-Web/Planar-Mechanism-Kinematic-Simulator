@@ -201,18 +201,6 @@ export class DrawingExportComponent {
     return this.exportService.originJointChoices();
   }
 
-  /** The joints' names for the pill, held while the joints are the same. */
-  jointNames(): string[] {
-    return this.labels(this.jointChoices().map((joint) => joint.name));
-  }
-
-  jointIndex(): number {
-    return Math.max(
-      0,
-      this.jointChoices().findIndex((joint) => joint.id === this.originJointLabel)
-    );
-  }
-
   /**
    * A choice list's labels, as one array for as long as they read the same.
    *

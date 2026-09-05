@@ -290,16 +290,15 @@ check(
 // ------------------------------------------------------------ analysis mode
 
 await page.keyboard.press('Escape');
+const editJoint = await openOn('#joint_T');
+await page.keyboard.press('Escape');
 await page.click('text=Kinematic Analysis');
 await page.waitForTimeout(900);
 const analysisJoint = await openOn('#joint_T');
 check(
-  // The vector traces joined Trace path here: all three draw what the solved
-  // cycle already knows and none of them changes the mechanism, which is the
-  // whole test — an analysis mode offers ways to look and no way to edit.
-  'an analysis menu offers the view and nothing that edits',
+  'analysis offers the same rows as Edit at the start pose',
   JSON.stringify(analysisJoint?.rows.map((one) => one.label)) ===
-    JSON.stringify(['Trace path', 'Velocity Vectors', 'Acceleration Vectors']),
+    JSON.stringify(editJoint?.rows.map((one) => one.label)),
   analysisJoint?.rows.map((one) => one.label)
 );
 check('and the way back into Edit rides the header', analysisJoint?.cross === 'on', analysisJoint);

@@ -452,6 +452,69 @@ export class GridUtilsService {
   }
 
   /**
+   * Assign one dimension to several bars in one solve. Sequential drags use
+   * stale shared endpoints, and ask a fixed dimension to keep its old value.
+   * Nothing is written until every requested dimension and remaining hold agrees.
+   */
+  setBarValues(links: readonly RealLink[], kind: 'length' | 'angle', value: number): boolean {
+    this.lastHoldRefusal = undefined;
+    const cylinders = this.mechanismSrv.sealedStructures();
+    const held = heldBars(this.mechanismSrv.links, cylinders);
+    const selected = new Set(links.map((link) => link.id));
+    const constraints = held.filter((bar) => !(selected.has(bar.id) && bar.hold === kind));
+    const moving = new Set<string>();
+    const anchors = new Set<string>();
+    const goals = new Map<string, HoldGoal>();
+    for (const link of links) {
+      const [a, b] = link.joints as RealJoint[];
+      const target: HoldBar = {
+        id: link.id,
+        a: a.id,
+        b: b.id,
+        hold: kind,
+        length: kind === 'length' ? value : link.length,
+        angle: kind === 'angle' ? value : link.angleRad,
+      };
+      constraints.push(target);
+      // An angle edit turns a bar at its existing length; constraining only
+      // its direction admits a collapsed, zero-length bar as a solution.
+      // A length edit retains its direction unless neighboring holds need
+      // it to turn, just as they do for a one-bar dimension edit.
+      if (kind === 'angle' || reachedByHolds([a.id, b.id], held).bars.length === 0) {
+        constraints.push({ ...target, hold: kind === 'length' ? 'angle' : 'length' });
+      }
+      const anchor = b.ground ? b : a;
+      const moved = b.ground ? a : b;
+      anchors.add(anchor.id);
+      moving.add(moved.id);
+      for (const joint of [a, b]) {
+        goals.set(joint.id, { id: joint.id, x: joint.x, y: joint.y });
+      }
+    }
+    const frozen = this.frozenJointIds();
+    const joints = holdJoints(
+      this.mechanismSrv.joints,
+      (joint) =>
+        this.holdAnchor(joint, frozen, moving) || (anchors.has(joint.id) && !moving.has(joint.id))
+    );
+    const solved = settleHolds(joints, constraints, [...goals.values()], { holdStill: false });
+    if (!solved.satisfied) {
+      this.lastHoldRefusal = {
+        immovable: [],
+        bars: [...links],
+        shortfall: solved.shortfall,
+        satisfied: false,
+      };
+      return false;
+    }
+    solved.positions.forEach((at, id) => {
+      const joint = this.mechanismSrv.joints.find((one) => one.id === id);
+      if (joint instanceof RealJoint) this.dragJoint(joint, new Coord(at.x, at.y), false, true);
+    });
+    return true;
+  }
+
+  /**
    * The held bars that leave this joint no freedom at all, or none.
    *
    * Asked at the grab, before anything moves: a joint the holds have fully
@@ -1274,7 +1337,7 @@ export class GridUtilsService {
   toggleCurve(lastRightClick: Joint | Link | Force | String) {
     if (lastRightClick instanceof PrisJoint) {
       lastRightClick.showCurve = !lastRightClick.showCurve;
-      this.saveTrace();
+      this.saveTrace(lastRightClick.showCurve);
       return;
     }
     // A pin that rides a block draws its path through the block's prismatic
@@ -1287,7 +1350,7 @@ export class GridUtilsService {
     if (lastRightClick instanceof RevJoint) {
       lastRightClick.showCurve = !lastRightClick.showCurve;
     }
-    this.saveTrace();
+    this.saveTrace(lastRightClick instanceof RealJoint && lastRightClick.showCurve);
   }
 
   /**
@@ -1300,8 +1363,12 @@ export class GridUtilsService {
    * off with no notice. In the URL and out of the history is the one place a
    * setting cannot be.
    */
-  private saveTrace(): void {
-    this.mechanismSrv.updateMechanism(true);
+  private saveTrace(shown: boolean): void {
+    if (shown) this.injector.get(SettingsService).isShowTraces.next(true);
+    // A display flag needs no solve. Rebuilding from the displayed pose would
+    // make a paused frame the new t = 0; save() encodes against the real start.
+    this.mechanismSrv.save();
+    this.mechanismSrv.onMechUpdateState.next(2);
   }
 
   getLinkSubset(link: Link): Link[] {

@@ -46,9 +46,28 @@ describe('DrawingExportComponent', () => {
     vi.clearAllMocks();
     exportService.hasGeometry.mockReturnValue(true);
     exportService.hasTracedJoint.mockReturnValue(true);
+    exportService.originJointChoices.mockReturnValue([{ id: 'A', name: 'A' }]);
     await TestBed.configureTestingModule({ imports: [DrawingExportComponent] })
       .overrideProvider(DxfExportService, { useValue: exportService })
       .compileComponents();
+  });
+
+  it('offers every origin joint in a labeled select, preserving joint identity', () => {
+    const choices = [...'ABCDEFGHIJKP'].map((id) => ({ id, name: `Joint ${id}` }));
+    exportService.originJointChoices.mockReturnValue(choices);
+    const { component, fixture, element } = render();
+    (element.querySelector('[data-section="geometry"]') as HTMLButtonElement).click();
+    component.touch({ origin: 'joint' });
+    fixture.detectChanges();
+    const select = element.querySelector('#cad-origin-joint') as HTMLSelectElement;
+    expect(select.labels![0].textContent).toBe('Joint');
+    expect(select.options).toHaveLength(12);
+    expect(select.value).toBe('A');
+    select.value = 'P';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(component.options.originJointId).toBe('P');
+    expect(select.selectedOptions[0].textContent).toContain('Joint P');
   });
 
   it('opens on the destination most readers are heading for, with the detail folded', () => {
