@@ -1136,6 +1136,21 @@ The moral for the next one of these: when a hold "does not work", ask what pair 
 one run after an hour of browser probing found nothing.
 `src/tests/verification/cylinder-angle-hold.spec.ts` is that test.
 
+### A reversing drive's handle is answered by continuity along the track
+
+A machine's own scrub handle measures its input's *position* (degrees of crank, extension of ram),
+not time. A ram passes every extension at least twice a cycle, and a drawing authored mid-stroke
+passes its start three times -- the leg it opens on, the return, and the leg that closes the cycle.
+`fractionalSampleAlong` used to pick between those moments by which *half* of the sample list the
+machine was in, which lands nowhere near the turnarounds of a mid-stroke start: dragging the boom's
+handle back across about a third of its stroke jumped the machine, and the graphs' marker, a third
+of a cycle. `nearestPlaceOnTrack` (drive-profile.ts) answers by continuity along the track instead:
+every moment at the asked place is a candidate, the winner is the one nearest walking the samples
+with the cycle's two ends as one place, and a tie -- which only a turnaround produces -- goes
+forward in time. Pulling the handle back retraces; pushing it to the end of the stroke and back
+brings the ram home. The one visible marker jump left is the seam, end of cycle to start, which is
+the same pose. `drive-profile.spec.ts` walks the boom's handle out and back and bounds the step.
+
 ### Where a drag's time goes, and how to re-measure it
 
 Measured on 2 Sep 2026 in a real Chromium with the DevTools profiler and tracer, on the

@@ -262,9 +262,11 @@ await page.waitForTimeout(120);
 // Sample the first joint's on-screen position over consecutive animation frames.
 const samples = await page.evaluate(async () => {
   // Joint circles sit at cx=0 inside a transformed group, so the link outlines are
-  // what actually carry the pose in the DOM.
+  // what actually carry the pose in the DOM. The link layer by name: the first
+  // paths in the document are the start-pose ghosts now, which stand still by
+  // definition, and reading those said the mechanism never moved.
   const readPose = () =>
-    [...document.querySelectorAll('svg path')]
+    [...document.querySelectorAll('#linkHolder path[id]')]
       .map((p) => p.getAttribute('d') ?? '')
       .filter((d) => d.startsWith('M'))
       .slice(0, 3)

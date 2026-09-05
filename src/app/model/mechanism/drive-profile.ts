@@ -210,9 +210,10 @@ export function sampleAlong(profile: DriveProfile, along: number, near: number):
  * hand.
  */
 export function fractionalSampleAlong(profile: DriveProfile, along: number, near: number): number {
-  const at = nearestSample(profile, along, near);
   const last = profile.along.length - 1;
   if (last <= 0) return 0;
+  if (!profile.continuous) return nearestPlaceOnTrack(profile.along, along, near);
+  const at = nearestSample(profile, along, near);
   const here = profile.along[at];
   // Toward whichever neighbor lies on the side the reader asked for.
   const step = along > here ? 1 : -1;
@@ -226,6 +227,60 @@ export function fractionalSampleAlong(profile: DriveProfile, along: number, near
   // interpolating away from it would walk back the way the drag came.
   if (!(share > 0 && share < 1)) return at;
   return at + step * share;
+}
+
+/**
+ * Where on a track that turns back a place is, measured from where the machine
+ * is now.
+ *
+ * A ram passes every extension at least twice a cycle -- going out and coming
+ * back -- and a drawing authored mid-stroke passes its start three times: the
+ * leg it opens on, the return, and the leg that closes the cycle. So a place on
+ * the handle is several moments, and the old rule picked between them by which
+ * half of the sample list the machine was in. That split lands nowhere near the
+ * turnarounds of a mid-stroke start, and a drag across the wrong one jumped
+ * the machine -- and the graphs' marker with it -- a third of a cycle.
+ *
+ * The rule now is continuity along the track itself. Every moment at the asked
+ * place is a candidate, between samples as well as on them, and the winner is
+ * the one nearest to `near` walking the samples, the two ends of the cycle
+ * being one place. Pulling the handle back retraces the way the machine came,
+ * and it only changes legs where the track does: at a turnaround, where the
+ * two ways on are the same distance and the tie goes forward in time, because
+ * a hand pushing the handle to the end of the stroke and back is the ram going
+ * out and coming home.
+ */
+function nearestPlaceOnTrack(track: number[], along: number, near: number): number {
+  const last = track.length - 1;
+  const count = last + 1;
+  let best: number | undefined;
+  let bestCost = Infinity;
+  let bestAhead = false;
+  const consider = (place: number): void => {
+    const forward = (((place - near) % count) + count) % count;
+    const cost = Math.min(forward, count - forward);
+    const ahead = forward <= count - forward;
+    if (cost < bestCost - 1e-9 || (Math.abs(cost - bestCost) <= 1e-9 && ahead && !bestAhead)) {
+      best = place;
+      bestCost = cost;
+      bestAhead = ahead;
+    }
+  };
+  for (let i = 0; i <= last; i++) {
+    if (Math.abs(track[i] - along) < 1e-9) consider(i);
+    if (i < last) {
+      const a = track[i];
+      const b = track[i + 1];
+      if ((along > a && along < b) || (along < a && along > b)) consider(i + (along - a) / (b - a));
+    }
+  }
+  if (best !== undefined) return best;
+  // Off either end of the stroke: the nearest moment the ram is at that end.
+  const min = Math.min(...track);
+  const max = Math.max(...track);
+  const end = along <= min ? min : max;
+  for (let i = 0; i <= last; i++) if (Math.abs(track[i] - end) < 1e-9) consider(i);
+  return best ?? near;
 }
 
 function nearestSample(profile: DriveProfile, along: number, near: number): number {
@@ -251,18 +306,5 @@ function nearestSample(profile: DriveProfile, along: number, near: number): numb
     });
     return best;
   }
-  const nearReturning = near > last / 2;
-  let best = 0;
-  let bestCost = Infinity;
-  profile.along.forEach((value, sample) => {
-    const returning = sample > last / 2;
-    // Enough to break a tie, never enough to reach a place the reader did not
-    // point at.
-    const cost = Math.abs(value - along) + (returning === nearReturning ? 0 : 1e-3);
-    if (cost < bestCost) {
-      bestCost = cost;
-      best = sample;
-    }
-  });
-  return best;
+  return Math.round(nearestPlaceOnTrack(profile.along, along, near));
 }

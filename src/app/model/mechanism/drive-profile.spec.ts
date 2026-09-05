@@ -126,6 +126,55 @@ describe('Where a machine says its input is', () => {
     expect(sampleAlong(profile, profile.along[returning], returning)).toBeGreaterThan(last / 2);
   });
 
+  it('retraces the way it came, and changes legs only at a turnaround', () => {
+    // The boom is authored mid-stroke, so its track has three legs: closing to
+    // the bottom of the stroke, out to the top, and closing again to where it
+    // started. Every extension is passed two or three times.
+    const profile = profileOf('Cylinder_Boom');
+    const turns = turnaroundsOf(profile.along);
+    expect(turns.length).toBe(2);
+    const [bottom, top] = turns;
+    // Mid-way up the extending leg, pulling back walks back down that leg.
+    const mid = Math.round((bottom + top) / 2);
+    const back = fractionalSampleAlong(profile, profile.along[mid - 3], mid);
+    expect(back).toBeCloseTo(mid - 3, 6);
+    // At the top of the stroke the two ways on are the same distance, and the
+    // tie goes forward in time: the ram that was pushed out comes home.
+    const home = fractionalSampleAlong(profile, profile.along[top + 3], top);
+    expect(home).toBeCloseTo(top + 3, 6);
+  });
+
+  it('closes the cycle across its seam rather than jumping a third of it', () => {
+    const profile = profileOf('Cylinder_Boom');
+    const last = profile.along.length - 1;
+    // The last sample and the first are the same place. Asked, from the end,
+    // for the place one sample into the opening leg, the answer is that
+    // sample and not the same extension a hundred samples away.
+    const on = fractionalSampleAlong(profile, profile.along[1], last);
+    expect(on).toBeCloseTo(1, 6);
+  });
+
+  it('never jumps while the handle is dragged out and back across the whole stroke', () => {
+    const profile = profileOf('Cylinder_Boom');
+    const last = profile.along.length - 1;
+    const count = last + 1;
+    const stops: number[] = [];
+    for (let v = profile.along[0]; v <= 1; v += 0.01) stops.push(v);
+    for (let v = 1; v >= 0; v -= 0.01) stops.push(v);
+    for (let v = 0; v <= profile.along[0]; v += 0.01) stops.push(v);
+    let near = 0;
+    let worst = 0;
+    for (const along of stops) {
+      const at = sampleAlong(profile, along, near);
+      const forward = (((at - near) % count) + count) % count;
+      worst = Math.max(worst, Math.min(forward, count - forward));
+      near = at;
+    }
+    // A hundredth of the stroke is a handful of samples on this machine; a
+    // leg change at the wrong place was a hundred and more.
+    expect(worst).toBeLessThanOrEqual(8);
+  });
+
   it('answers between samples, so a drag is not a series of small jumps', () => {
     // A degree of crank is a couple of pixels of track. Snapping to the nearest
     // sample held the drawing still for those two pixels and then jumped it,
@@ -160,3 +209,14 @@ describe('Where a machine says its input is', () => {
     expect(sampleAlong(profile, 1, 0)).toBe(0);
   });
 });
+
+/** The samples at which the track turns back, by the sign of its slope. */
+function turnaroundsOf(track: number[]): number[] {
+  const turns: number[] = [];
+  for (let i = 1; i < track.length - 1; i++) {
+    const before = Math.sign(track[i] - track[i - 1]);
+    const after = Math.sign(track[i + 1] - track[i]);
+    if (before && after && before !== after) turns.push(i);
+  }
+  return turns;
+}
