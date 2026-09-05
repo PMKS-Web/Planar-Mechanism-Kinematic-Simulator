@@ -18,10 +18,16 @@
   #settingsWrapper {
     // The reason the controls below are gray is the Edit panel's own strip
     // now (`app-edit-banner`), which brings its own indigo, its own glyph and
-    // the underlined way out. It only needs the room the strip cannot take for
-    // itself: the panel insets its children, and the strip is full-bleed.
+    // the underlined way out. What it needs from here is the room it cannot
+    // take for itself.
+    //
+    // Full-bleed sideways, because the section insets its children by fifteen
+    // pixels and a strip that speaks for the whole panel wants its edges. Flush
+    // upward, because the section also puts four pixels above its first child
+    // and a band of color hanging four pixels under the heading reads as a
+    // misaligned box rather than as the heading's own second line.
     .settingsBanner {
-      margin: 0 -15px 2px;
+      margin: -4px -15px 0;
     }
 
     display: flex;

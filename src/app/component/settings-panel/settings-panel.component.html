@@ -6,8 +6,16 @@
       <!-- The Edit panel's own strip, verbatim: same indigo, same glyph, same
            underlined way out. It was a bare sentence here, which read as a
            note somebody had left rather than as the panel saying why the
-           controls under it are gray. -->
-      <app-edit-banner class="settingsBanner" [refusal]="lockedRefusal()" />
+           controls under it are gray.
+
+           Behind an `@if` rather than left to render nothing: the section lays
+           its children out in a flex column with a gap between them, so an
+           element that is present and empty still spends that gap. Standing
+           where the strip would be, it pushed the first setting twelve pixels
+           down the panel whenever there was nothing to say. -->
+      @if (lockedRefusal(); as why) {
+        <app-edit-banner class="settingsBanner" [refusal]="why" />
+      }
       <radio-block
         option1="English (in)"
         option2="Metric (cm)"

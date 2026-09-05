@@ -1,0 +1,373 @@
+[     490ms] [LOG] SAVE @ http://localhost:4330/main.js:37537
+[     491ms] [LOG] Booleans: [true, false, false, true, true, true, false, true, false] @ http://localhost:4330/main.js:25697
+[     494ms] [LOG] Decimals: [0.7, 5] @ http://localhost:4330/main.js:25698
+[     494ms] [LOG] Integers: [5, 0] @ http://localhost:4330/main.js:25699
+[     494ms] [LOG] Enums: [1, 0, 1, 1] @ http://localhost:4330/main.js:25700
+[     496ms] [LOG] save 2v.Ay,1E8.5,0.1011....N_O*2ODmzv @ http://localhost:4330/main.js:37545
+[     581ms] [LOG] Angular is running in development mode. @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-ESPFYKYO.js?v=216d6227:11616
+[    1022ms] [LOG] decoded url: 2P.Ay,1E8.5,0.1011.4O,O,0,0,0.0A,A,72,MM,0.2C,C,pa,bW,0.4D,D,_W,0,0.0T,T,Wq,pa,0..YROA,OA,Fe,Fe,3X,BB,c5cae9,O,A,,.YRACT,ACT,Fe,Fe,UU,b9,303e9f,A,C,T,,.YRCD,CD,Fe,Fe,v2,Im,0d125a,C,D,,...N_3 @ http://localhost:4330/main.js:31397
+[    1022ms] [LOG] Verifying checksum for length 189and char 3 @ http://localhost:4330/main.js:25760
+[    1022ms] [LOG] Checksum passed @ http://localhost:4330/main.js:25764
+[    1023ms] [LOG] Booleans: [true, false, false, true, true, false, false, true, false] @ http://localhost:4330/main.js:25799
+[    1023ms] [LOG] Decimals: [0.7, 5] @ http://localhost:4330/main.js:25800
+[    1023ms] [LOG] Integers: [5, 0] @ http://localhost:4330/main.js:25801
+[    1023ms] [LOG] Enums: [1, 0, 1, 1] @ http://localhost:4330/main.js:25802
+[    1023ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1023ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1024ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1024ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1024ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1024ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[    1024ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[    1024ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[    1025ms] [LOG] build joint 1 @ http://localhost:4330/main.js:30065
+[    1025ms] [LOG] build joint 1 @ http://localhost:4330/main.js:30065
+[    1025ms] [LOG] build joint 1 @ http://localhost:4330/main.js:30065
+[    1025ms] [LOG] build joint 1 @ http://localhost:4330/main.js:30065
+[    1025ms] [LOG] build joint 1 @ http://localhost:4330/main.js:30065
+[    1063ms] [LOG] SAVE @ http://localhost:4330/main.js:37537
+[    1063ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1063ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1064ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1064ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1064ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1064ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[    1064ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[    1065ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[    1065ms] [LOG] Booleans: [true, false, false, true, true, false, false, true, false] @ http://localhost:4330/main.js:25697
+[    1065ms] [LOG] Decimals: [0.7, 5] @ http://localhost:4330/main.js:25698
+[    1065ms] [LOG] Integers: [5, 0] @ http://localhost:4330/main.js:25699
+[    1065ms] [LOG] Enums: [1, 0, 1, 1] @ http://localhost:4330/main.js:25700
+[    1066ms] [LOG] save 2P.Ay,1E8.5,0.1011.4O,O,0,0,0.0A,A,72,MM,0.2C,C,pa,bW,0.4D,D,_W,0,0.0T,T,Wq,pa,0..YROA,OA,Fe,Fe,3X,BB,c5cae9,O,A,,.YRACT,ACT,Fe,Fe,UU,b9,303e9f,A,C,T,,.YRCD,CD,Fe,Fe,v2,Im,0d125a,C,D,,...N_3*0Ifud8 @ http://localhost:4330/main.js:37545
+[    1114ms] [LOG] Angular is running in development mode. @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-ESPFYKYO.js?v=216d6227:11616
+[    1293ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1293ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1293ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1293ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1293ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[    1294ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[    1294ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[    1294ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[    1294ms] [LOG] Booleans: [true, false, false, true, true, false, false, true, false] @ http://localhost:4330/main.js:25697
+[    1294ms] [LOG] Decimals: [0.2662, 5] @ http://localhost:4330/main.js:25698
+[    1295ms] [LOG] Integers: [5, 0] @ http://localhost:4330/main.js:25699
+[    1295ms] [LOG] Enums: [1, 0, 1, 1] @ http://localhost:4330/main.js:25700
+[    7569ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[    7572ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[    7573ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[    7573ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[    7574ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[    8614ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[   69050ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[   69060ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[   69061ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[   69061ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[   69061ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[   93603ms] [LOG] decoded url: 2P.Ay,1E8.5,0.1011.4O,O,0,0,0.0A,A,72,MM,0.2C,C,pa,bW,0.4D,D,_W,0,0.0T,T,Wq,pa,0..YROA,OA,Fe,Fe,3X,BB,c5cae9,O,A,,.YRACT,ACT,Fe,Fe,UU,b9,303e9f,A,C,T,,.YRCD,CD,Fe,Fe,v2,Im,0d125a,C,D,,...N_3 @ http://localhost:4330/main.js:31397
+[   93604ms] [LOG] Verifying checksum for length 189and char 3 @ http://localhost:4330/main.js:25760
+[   93604ms] [LOG] Checksum passed @ http://localhost:4330/main.js:25764
+[   93604ms] [LOG] Booleans: [true, false, false, true, true, false, false, true, false] @ http://localhost:4330/main.js:25799
+[   93606ms] [LOG] Decimals: [0.7, 5] @ http://localhost:4330/main.js:25800
+[   93607ms] [LOG] Integers: [5, 0] @ http://localhost:4330/main.js:25801
+[   93607ms] [LOG] Enums: [1, 0, 1, 1] @ http://localhost:4330/main.js:25802
+[   93607ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93608ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93608ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93608ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93608ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93608ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[   93609ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[   93609ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[   93609ms] [LOG] build joint 1 @ http://localhost:4330/main.js:30065
+[   93609ms] [LOG] build joint 1 @ http://localhost:4330/main.js:30065
+[   93610ms] [LOG] build joint 1 @ http://localhost:4330/main.js:30065
+[   93610ms] [LOG] build joint 1 @ http://localhost:4330/main.js:30065
+[   93610ms] [LOG] build joint 1 @ http://localhost:4330/main.js:30065
+[   93636ms] [LOG] SAVE @ http://localhost:4330/main.js:37554
+[   93637ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93637ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93637ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93637ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93637ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93637ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[   93638ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[   93638ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[   93638ms] [LOG] Booleans: [true, false, false, true, true, false, false, true, false] @ http://localhost:4330/main.js:25697
+[   93638ms] [LOG] Decimals: [0.7, 5] @ http://localhost:4330/main.js:25698
+[   93638ms] [LOG] Integers: [5, 0] @ http://localhost:4330/main.js:25699
+[   93638ms] [LOG] Enums: [1, 0, 1, 1] @ http://localhost:4330/main.js:25700
+[   93639ms] [LOG] save 2P.Ay,1E8.5,0.1011.4O,O,0,0,0.0A,A,72,MM,0.2C,C,pa,bW,0.4D,D,_W,0,0.0T,T,Wq,pa,0..YROA,OA,Fe,Fe,3X,BB,c5cae9,O,A,,.YRACT,ACT,Fe,Fe,UU,b9,303e9f,A,C,T,,.YRCD,CD,Fe,Fe,v2,Im,0d125a,C,D,,...N_3*0Ifud8 @ http://localhost:4330/main.js:37562
+[   93708ms] [LOG] Angular is running in development mode. @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-ESPFYKYO.js?v=216d6227:11616
+[   93946ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93946ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93946ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93946ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93946ms] [LOG] save joint JointData @ http://localhost:4330/main.js:25397
+[   93946ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[   93946ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[   93946ms] [LOG] save link LinkData @ http://localhost:4330/main.js:25401
+[   93946ms] [LOG] Booleans: [true, false, false, true, true, false, false, true, false] @ http://localhost:4330/main.js:25697
+[   93946ms] [LOG] Decimals: [0.2662, 5] @ http://localhost:4330/main.js:25698
+[   93947ms] [LOG] Integers: [5, 0] @ http://localhost:4330/main.js:25699
+[   93947ms] [LOG] Enums: [1, 0, 1, 1] @ http://localhost:4330/main.js:25700
+[  100154ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[  100157ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[  100158ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[  100158ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[  100159ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
+[  101273ms] [WARNING] 
+  It looks like you're using the disabled attribute with a reactive form directive. If you set disabled to true
+  when you set up this control in your component class, the disabled attribute will actually be set in the DOM for
+  you. We recommend using this approach to avoid 'changed after checked' errors.
+
+  Example:
+  // Specify the `disabled` property at control creation time:
+  form = new FormGroup({
+    first: new FormControl({value: 'Nancy', disabled: true}, Validators.required),
+    last: new FormControl('Drew', Validators.required)
+  });
+
+  // Controls can also be enabled/disabled after creation:
+  form.get('first')?.enable();
+  form.get('last')?.disable();
+ @ http://localhost:4330/@fs/Users/kohmei358/Github/Planar-Mechanism-Kinematic-Simulator/.claude/worktrees/funny-swirles-3c6486/.angular/cache/22.0.8/PMKSWeb/vite/deps/chunk-D3GNMMOK.js?v=216d6227:4223
