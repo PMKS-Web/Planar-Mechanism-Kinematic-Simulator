@@ -531,8 +531,17 @@
 
     .barRow {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 10px;
+
+      // When the name and the pill do not share a line -- the drawer is the
+      // view controls' width now -- the pill takes the next one, on the
+      // right, inside the same inset as everything above it, rather than
+      // running out past the card's edge.
+      .segmented {
+        margin-left: auto;
+      }
     }
 
     // Both labels have to fit beside their control on a 380px drawer, and

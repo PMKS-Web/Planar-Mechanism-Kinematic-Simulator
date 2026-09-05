@@ -209,8 +209,9 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
         : `${parts} ${parts === 1 ? 'object' : 'objects'}${machines ? ' · ' + machines : ''}`;
     }
     if (this.flow.step === 'file') return '';
-    const summary = this.writer.summary();
-    return `${summary.columns} columns · ${summary.rows} rows`;
+    // Columns are what this step chooses; the row count is a fact about the
+    // cycle that wrapped the line and told the reader nothing they could act on.
+    return `${this.writer.summary().columns} columns`;
   }
 
   // --- step 1 ---------------------------------------------------------------
@@ -312,13 +313,13 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
       return `${pictures} ${pictures === 1 ? 'image' : 'images'} · ${this.flow.imageFormat.toUpperCase()}`;
     }
     if (this.flow.format === 'report') {
-      return `${summary.columns} columns · ${summary.rows} rows · ${
-        summary.pages
-      } printed ${summary.pages === 1 ? 'page' : 'pages'}`;
+      return `${summary.columns} columns · ${summary.pages} printed ${
+        summary.pages === 1 ? 'page' : 'pages'
+      }`;
     }
     // How many files there are is the line under this one, in the glyph's own
     // words; saying it twice made a two-line card read as a paragraph.
-    return `${summary.columns} columns · ${summary.rows} rows`;
+    return `${summary.columns} columns`;
   }
 
   private pictureCount(): number {

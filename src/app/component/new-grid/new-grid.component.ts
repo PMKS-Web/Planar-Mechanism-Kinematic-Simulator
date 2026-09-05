@@ -2515,13 +2515,30 @@ export class NewGridComponent implements OnDestroy {
    * move that carried the outline carries the channel to the same place.
    */
   ghostBodyPath(body: GhostBody): string {
+    // Cut once per body and kept. A ghost the anchor can no longer reach is
+    // *held* -- the same body objects, moved from the pose they were built
+    // at -- while the channels are read from the drawing as it is now, so
+    // cutting them fresh moved the slot by however far the bar had turned
+    // since: a slot drawn across its own ghost. The body's own move is only
+    // right for the channels of the pose it was built at, which is the first
+    // read; that answer is the one that stays with the body.
+    const scale = this.settings.objectScale;
+    const held = this.ghostCuts.get(body);
+    if (held && held.scale === scale) return held.path;
     const link = this.mechanismSrv.links.find((one) => one.id === body.linkId);
-    if (!link) return body.d;
-    const channels = this.channelsCutInto(link);
-    if (channels === '') return body.d;
-    const { from, to, there, thereEnd } = body.move;
-    return `${body.d} ${transformRigidPath(channels, from, to, there, thereEnd)}`;
+    let path = body.d;
+    if (link) {
+      const channels = this.channelsCutInto(link);
+      if (channels !== '') {
+        const { from, to, there, thereEnd } = body.move;
+        path = `${body.d} ${transformRigidPath(channels, from, to, there, thereEnd)}`;
+      }
+    }
+    this.ghostCuts.set(body, { scale, path });
+    return path;
   }
+
+  private ghostCuts = new WeakMap<GhostBody, { scale: number; path: string }>();
 
   /**
    * Where a force's name goes: beside the arrow, off its centerline.
@@ -2549,9 +2566,11 @@ export class NewGridComponent implements OnDestroy {
       nx = -nx;
       ny = -ny;
     }
-    // Half the shaft's own width plus the font's height, so the baseline
-    // clears the stroke and the arrowhead alike.
-    const clear = this.svgGrid.scaleWithZoom(this.tagFontSize + 6);
+    // A distance in the drawing's own units, like the joint labels' offset,
+    // so the name is planted beside the arrow and stays there through a zoom.
+    // Measured in screen pixels it walked along the normal as the zoom
+    // changed, which read as the label drifting away from its arrow.
+    const clear = 0.45 * this.settings.objectScale;
     return { x: mx + nx * clear, y: my + ny * clear };
   }
 

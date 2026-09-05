@@ -260,10 +260,12 @@ export class ExportCatalogService {
 
   /** What a machine is, in the one line the section heading has room for. */
   private noteFor(index: number, count: number): string {
+    // The count alone. It used to carry the drive's speed and direction as
+    // well, which is the transport's business and wrapped the line.
     const facts = this.mechanism.readinessOfEachMechanism()[index]?.facts ?? [];
-    const speed = facts.find((fact) => fact.label === 'Input speed')?.value;
+    const running = !!facts.find((fact) => fact.label === 'Input speed')?.value;
     const objects = `${count} ${count === 1 ? 'object' : 'objects'}`;
-    return speed ? `${objects} · ${speed}` : `${objects} · not running`;
+    return running ? objects : `${objects} · not running`;
   }
 
   /**

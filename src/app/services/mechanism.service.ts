@@ -7296,6 +7296,9 @@ export class MechanismService {
       maxNumber = Math.max(...this.forces.map((f) => parseInt(f.id.replace(/\D/g, '')))) + 1;
     }
     const force = new Force('F' + maxNumber.toString(), selectedLink, startCoord, endCoord);
+    // In whichever palette color stands out most against the link it is on:
+    // the shared default is a navy, and on a navy link the arrow disappeared.
+    force.color = ColorService.instance?.contrastingForceColor(selectedLink.fill) ?? '';
     this.forces.push(force);
     this.attachForceToLink(force, selectedLink);
     PositionSolver.setUpSolvingForces(this.forces);
