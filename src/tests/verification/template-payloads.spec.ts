@@ -75,7 +75,14 @@ function replaceBlock(source: string, block: string): string {
  * the six color fields comes back byte-identical, which is what makes it safe
  * to do to a string nothing else can regenerate.
  */
-const HAND_AUTHORED = ['4-Bar', 'Watt_I', 'Watt_II', 'Stephenson_III', 'Slider_Crank'] as const;
+const HAND_AUTHORED = [
+  '4-Bar',
+  'Watt_I',
+  'Watt_II',
+  'Stephenson_III',
+  'Slider_Crank',
+  'Locked_Four_Bar',
+] as const;
 
 function recolored(id: string, payload: string): string {
   const { service, settings } = buildMechanismFixture(payload);

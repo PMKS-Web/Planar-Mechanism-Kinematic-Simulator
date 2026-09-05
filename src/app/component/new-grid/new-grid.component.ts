@@ -1660,6 +1660,9 @@ export class NewGridComponent implements OnDestroy {
     // actual members: what is shown is what the next click will make.
     const at = this.svgGrid.screenToModel(this.lastRightClickCoord);
     this.forceGhost = new Force('ghost', onLink, at, new Coord(at.x, at.y));
+    // In the color the finished force will take, so the preview and the
+    // result are the same arrow rather than a navy stand-in for a teal one.
+    this.forceGhost.color = this.colorService.contrastingForceColor(onLink.fill);
     this.mechanismSrv.onMechUpdateState.next(3);
   }
 

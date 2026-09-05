@@ -2156,18 +2156,27 @@
        what is previewed is exactly what the next click will create. -->
   @if (forceGhost; as ghost) {
     <g id="forceTempHolder" opacity="0.5" modelFrame style="pointer-events: none">
+      <!-- Inked the way a placed force is, through `forceInkOf`, so the
+           preview is the color the click will leave behind rather than the
+           model's default black. -->
       <circle
         [attr.cx]="ghost.startCoord.x"
         [attr.cy]="ghost.startCoord.y"
         [attr.r]="forceAnchorRadius(ghost)"
         class="forceAnchor"
+        [style.fill]="ghost.color || null"
       ></circle>
       <path
         [attr.d]="ghost.forceLine"
         class="forceLine"
         [attr.stroke-width]="ghost.visualWidth * settings.objectScale"
+        [style.stroke]="ghost.color || null"
       ></path>
-      <path [attr.d]="ghost.forceArrow" class="forceArrow" [attr.fill]="ghost.fill"></path>
+      <path
+        [attr.d]="ghost.forceArrow"
+        class="forceArrow"
+        [style.fill]="ghost.color || null"
+      ></path>
     </g>
   }
 

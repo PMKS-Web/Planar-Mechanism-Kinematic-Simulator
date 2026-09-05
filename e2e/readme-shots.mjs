@@ -69,7 +69,7 @@ const SHOTS = [
   },
   {
     name: 'edit-panel',
-    template: 'Loader_Bucket',
+    template: 'Backhoe_Bucket',
     steps: [
       ['tab', 'Edit'],
       ['selectJoint', 'B'],

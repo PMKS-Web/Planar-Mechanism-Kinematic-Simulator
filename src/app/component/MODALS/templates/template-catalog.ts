@@ -115,16 +115,6 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     animation: 'assets/gifs/slider-crank.gif',
   },
   {
-    id: 'Drag_Link',
-    name: 'Drag Link',
-    category: 'start',
-    description:
-      'The four-bar whose output crank goes round too: move the shortest bar to the frame and ' +
-      'the rocker stops rocking.',
-    thumbnail: 'assets/gifs/drag-link.png',
-    animation: 'assets/gifs/drag-link.gif',
-  },
-  {
     id: 'Bell_Crank',
     name: 'Bell Crank',
     category: 'start',
@@ -139,20 +129,10 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Locked Four-Bar',
     category: 'start',
     description:
-      'Everything pinned but the crank. Lock marks are saved in the shared project, so a class ' +
-      'can only drag the handle they are meant to.',
+      'The crank holds its angle and the other bars their lengths, so a class can only change ' +
+      'what it is meant to.',
     thumbnail: 'assets/gifs/locked-four-bar.png',
     animation: 'assets/gifs/locked-four-bar.gif',
-  },
-  {
-    id: 'Loader_Bucket',
-    name: 'Loader Bucket',
-    category: 'start',
-    description:
-      'Four bars welded into one scoop on the end of a lift arm. A bucket is a shape, and a ' +
-      'shape is what welding bars together makes.',
-    thumbnail: 'assets/gifs/loader-bucket.png',
-    animation: 'assets/gifs/loader-bucket.gif',
   },
 
   {

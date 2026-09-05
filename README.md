@@ -309,10 +309,8 @@ it.*
 <td align="center"><img src="docs/images/readme/library/jansen-leg.gif" width="190" alt="Jansen Leg"><br><b>Jansen Leg</b></td>
 </tr>
 <tr>
-<td align="center"><img src="src/assets/gifs/drag-link.png" width="190" alt="Drag Link"><br><b>Drag Link</b></td>
 <td align="center"><img src="src/assets/gifs/bell-crank.png" width="190" alt="Bell Crank"><br><b>Bell Crank</b></td>
 <td align="center"><img src="src/assets/gifs/locked-four-bar.png" width="190" alt="Locked Four-Bar"><br><b>Locked Four-Bar</b></td>
-<td align="center"><img src="src/assets/gifs/loader-bucket.png" width="190" alt="Loader Bucket"><br><b>Loader Bucket</b></td>
 </tr>
 <tr>
 <td align="center"><img src="src/assets/gifs/watt-i.png" width="190" alt="Watt I"><br><b>Watt I</b></td>
@@ -357,7 +355,7 @@ it.*
 
 | Family | Mechanisms |
 | --- | --- |
-| **Start Here** | Four-Bar · Slider-Crank · Drag Link · Bell Crank · Locked Four-Bar · Loader Bucket |
+| **Start Here** | Four-Bar · Slider-Crank · Bell Crank · Locked Four-Bar |
 | **Six-Bars and Harder** | Watt I · Watt II · Stephenson III · Double Butterfly |
 | **Slots and Sliders** | Whitworth Quick-Return · Shaper Quick-Return · Scotch Yoke · Radial Engine · Elliptical Crank · Engine with a Flywheel · Screw Jack · Elliptical Trammel · Parallel Gripper |
 | **Cylinders** | Cylinder-Driven Boom · Backhoe Bucket · Scissor Lift |
