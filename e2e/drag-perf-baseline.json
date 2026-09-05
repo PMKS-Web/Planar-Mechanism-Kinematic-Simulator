@@ -1,52 +1,56 @@
 {
-  "note": "Per-pointer-move cost of a drag, app time only, on the machine named. Rewrite with `node e2e/drag-perf.mjs --baseline` alongside the change that earned it.",
+  "note": "Per-pointer-move cost of a drag, app time only, on the machine named: the median of three runs. Rewrite with `node e2e/drag-perf.mjs --baseline` alongside the change that earned it, and run it more than once -- one run can read a scenario ten times high. The frame p90 is the display's refresh interval (17 at 60 Hz, 9 at 120 Hz), not the app's.",
   "machine": "Kohmeis-MacBook-Pro-2.local",
-  "writtenAt": "2026-09-03",
+  "writtenAt": "2026-09-05",
   "steps": 30,
   "scenarios": {
     "edit-joint": {
-      "appMsPerMove": 8.8,
-      "frameP90Ms": 9
+      "appMsPerMove": 0,
+      "frameP90Ms": 17
     },
     "edit-link": {
-      "appMsPerMove": 6.5,
-      "frameP90Ms": 9
+      "appMsPerMove": 1.9,
+      "frameP90Ms": 17
     },
     "edit-traces": {
-      "appMsPerMove": 7.6,
-      "frameP90Ms": 9
+      "appMsPerMove": 0,
+      "frameP90Ms": 17
     },
     "kin-1row": {
-      "appMsPerMove": 7.5,
-      "frameP90Ms": 9
+      "appMsPerMove": 1.8,
+      "frameP90Ms": 17
     },
     "kin-3rows": {
-      "appMsPerMove": 14.1,
-      "frameP90Ms": 10
+      "appMsPerMove": 10.1,
+      "frameP90Ms": 17
     },
     "kin-3rows-compare": {
-      "appMsPerMove": 14.4,
-      "frameP90Ms": 16
+      "appMsPerMove": 8.6,
+      "frameP90Ms": 17
     },
     "kin-link-3rows": {
-      "appMsPerMove": 14.6,
-      "frameP90Ms": 9
+      "appMsPerMove": 11,
+      "frameP90Ms": 17
     },
     "force-2rows": {
-      "appMsPerMove": 12.7,
-      "frameP90Ms": 9
+      "appMsPerMove": 7,
+      "frameP90Ms": 17
     },
     "jansen-edit": {
-      "appMsPerMove": 12.1,
-      "frameP90Ms": 9
+      "appMsPerMove": 3.8,
+      "frameP90Ms": 17
     },
     "jansen-3rows": {
-      "appMsPerMove": 26.7,
+      "appMsPerMove": 21,
       "frameP90Ms": 17
     },
     "four-machines": {
-      "appMsPerMove": 18.7,
-      "frameP90Ms": 10
+      "appMsPerMove": 1,
+      "frameP90Ms": 17
+    },
+    "workbench-joint": {
+      "appMsPerMove": 3,
+      "frameP90Ms": 17
     }
   }
 }

@@ -145,6 +145,32 @@ describe('NewGridComponent welded SVG presentation', () => {
     expect(rebuild).toHaveBeenCalledTimes(1);
   });
 
+  it('fingerprints the marks once per revision, however often the template reads them', () => {
+    const mechanism = TestBed.inject(MechanismService);
+    const joint = new RevJoint('A', 0, 0);
+    mechanism.joints = [joint];
+    mechanism.links = [];
+    const fixture = TestBed.createComponent(NewGridComponent);
+    const component = fixture.componentInstance;
+    // The fingerprint walks every link and every joint; `linkPaint` is its
+    // first step, so how often it runs is how often the walk did.
+    const walk = vi.spyOn(component as never, 'linkPaint' as never);
+
+    for (let i = 0; i < 50; i++) {
+      component.channelList;
+      component.sliderMarkList;
+      component.cylinderList;
+    }
+    expect(walk).toHaveBeenCalledTimes(1);
+
+    // A rebuild moves the revisions, and the next read walks the drawing again.
+    joint.x = 3;
+    mechanism.updateMechanism();
+    component.channelList;
+    component.channelList;
+    expect(walk).toHaveBeenCalledTimes(2);
+  });
+
   it('takes one move per animation frame, the latest, and drops the ones between', () => {
     const mechanism = TestBed.inject(MechanismService);
     const active = TestBed.inject(ActiveObjService);

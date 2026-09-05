@@ -46,7 +46,22 @@ const DY = -2;
  * through the right-click menu first. `compare` switches the analysis panel's
  * before-drag comparison on (it needs a drag to exist, so one is made).
  */
+/**
+ * A reader's whole workbench in one drawing: 49 joints and 26 links across
+ * four machines -- sliders, cylinders, a welded compound, three forces --
+ * reported laggy to pan and to drag on 5 Sep 2026.
+ */
+export const WORKBENCH =
+  '2v.VC,1E8.5,0.1011.0B,B,01RD,10C,0.1C,C,01RD,10C,0.0D,D,0SL,1m0,0.0E,E,0QJ,u2,0.0F,F,Wu,1qh,0.0G,G,Wu,10C,0.0H,H,14R,1Vn,0.0I,I,1pf,1vu,0.8J,J,1pf,10C,0.8K,K,2wH,10C,0.0L,L,1UP,1kQ,0.0M,M,01GC,RG,0.6N,N,01GC,0Vx,0.0O,O,03v,XX,0.4P,P,032,0i-,0.0Q,Q,2Ao,Dj,0.0R,R,1GR,017e,0.1S,S,1GR,017e,0,XY,X,Y.5T,T,2Ao,Dj,0.0U,U,31C,08I,0.0V,V,2s_,0mb,0.5W,W,31C,08I,0CH.0X,X,1ri,015V,0.0Y,Y,0e7,01Ea,0.0Z,Z,07q,01kA,0.0%5B,%5B,Ul,01AV,0.3%5C,%5C,Ul,01AV,0,XY,X,Y.0%5D,%5D,01R8,01rZ,0.0%5E,%5E,027w,01Af,0.8_,_,02Ku,0_E,0.0%60,%60,031g,0JL,0.Xa,a,02Ku,0_E,0,%5D%5E,%5D,%5E.0b,b,HP,02JO,0.0c,c,0gr,022q,0.8d,d,0Uw,0266,0.Xf,f,0Uw,0266,0,bc,b,c.0g,g,1AZ,02pW,0.0h,h,2EW,01S2,0.0i,i,2s_,02g6,0.0j,j,1GR,01zf,0.0k,k,2Ao,03Qv,0.0l,l,22b,02JO,0.1m,m,22b,02JO,0,ghij,i,j.0n,n,3tQ,026J,0.8o,o,1ux,01tp,0.1p,p,1ux,01tp,0,ghij,g,h.0q,q,02tY,02sl,0.0r,r,0zX,02sl,0.0s,s,34j,01ci,0..YPBC,BC,Fe,0,0,0,,B,C,,.YRDE,DE,Fe,Fe,0RK,1K1,0d125a,D,E,,.YRFGH,FGH,Fe,Fe,ik,1SD,B2DFDB,F,G,H,,.YRIJKL,IJKL,ku,Azlti,27f,1HW,26A69A,I,J,K,L,,IJ,JK,KL.YRMN,MN,Fe,Fe,01GC,02L,303e9f,M,N,,.YROP,OP,Fe,Fe,03U,05l,0d125a,O,P,,.YRQR,QR,Fe,Fe,1jc,0S_,B2DFDB,Q,R,,.YPRS,RS,Fe,0,0,0,,R,S,,.YPQT,QT,Fe,0,0,0,,Q,T,,.YRUV,UV,Fe,Fe,2y5,0SS,26A69A,U,V,,.YPUW,UW,Fe,0,0,0,,U,W,,.YRXY,XY,Fe,Fe,cp,01A1,00695C,X,Y,,.YRZ%5B,Z%5B,Fe,Fe,BU,01SK,c5cae9,Z,%5B,,.YP%5B%5C,%5B%5C,Fe,0,0,0,,%5B,%5C,,.AR%5D%5E,%5D%5E,Fe,1,01nX,01W6,303e9f,%5D,%5E,,.AR_%60,_%60,Fe,1,02hH,0en,0d125a,_,%60,,.YP_a,_a,Fe,0,0,0,,_,a,,.ARbc,bc,Fe,1,0Ck,02B6,B2DFDB,b,c,,.AR%5Dd,%5Dd,Fe,1,0z1,01zq,26A69A,d,%5D,,.YPdf,df,Fe,0,0,0,,d,f,,.YRghij,ghij,Fe,Fe,1u7,02Dq,00695C,g,h,i,j,,.YRkl,kl,Fe,Fe,26h,02t9,c5cae9,k,l,,.YPlm,lm,Fe,0,0,0,,l,m,,.YRnos,nos,Fe,Fe,3ES,024-,303e9f,n,o,s,,.YPop,op,Fe,0,0,0,,o,p,,.YRqr,qr,Fe,Fe,01wX,02sl,B2DFDB,q,r,,.NRIJ,IJ,Fe,Fe,1pf,1T2,26A69A,I,J,,.NRJK,JK,Fe,Fe,2Mz,10C,00695C,J,K,,.NRKL,KL,Fe,Fe,2CL,1NJ,c5cae9,K,L,,..2F1,qr,F1,027v,02sl,024r,03jf,2SG.2F2,qr,F2,01Kr,02sl,0k5,03Sd,Fe.3F3,qr,F3,02WB,02sl,032z,03mG,Fe..N_T*3ifrEs';
+
 export const SCENARIOS = [
+  {
+    id: 'workbench-joint',
+    name: 'Workbench (49 joints, 4 machines) · Edit · drag joint D',
+    payload: WORKBENCH,
+    mode: 'Edit',
+    drag: { joint: 'D' },
+  },
   {
     id: 'edit-joint',
     name: '4-Bar · Edit · drag joint B',
@@ -176,12 +191,9 @@ export const linkAt = (page, id) =>
 
 /** Fit the drawing to the window, through the view controls' own button. */
 export const fit = async (page) => {
-  await page
-    .locator('app-view-controls button', {
-      has: page.locator('mat-icon', { hasText: 'crop_free' }),
-    })
-    .first()
-    .click();
+  // By its name: the glyph is the app's own `fit_linkage` now, not a
+  // Material ligature a text filter could find.
+  await page.locator('app-view-controls').getByRole('button', { name: 'Fit to view' }).click();
   await page.waitForTimeout(400);
 };
 
@@ -235,8 +247,8 @@ async function tracePath(page, id) {
   await page.mouse.click(at.x, at.y, { button: 'right' });
   await page.waitForTimeout(400);
   const clicked = await page.evaluate(() => {
-    const row = [...document.querySelectorAll('#contextMenu .cm-row')].find(
-      (node) => node.querySelector('.cm-row__label')?.textContent?.trim() === 'Trace Path'
+    const row = [...document.querySelectorAll('#contextMenu .cm-row')].find((node) =>
+      /^trace path$/i.test(node.querySelector('.cm-row__label')?.textContent?.trim() ?? '')
     );
     if (!row || row.classList.contains('cm-row--off')) return false;
     row.click();
@@ -249,7 +261,7 @@ async function tracePath(page, id) {
 
 /** Load a template and put the page in the scenario's state; returns what was set up. */
 export async function loadScenario(page, sc) {
-  await openMechanism(page, `${baseUrl()}/?${TEMPLATE_LINKAGES[sc.template]}`);
+  await openMechanism(page, `${baseUrl()}/?${sc.payload ?? TEMPLATE_LINKAGES[sc.template]}`);
   if (sc.mode) await mode(page, sc.mode);
   await fit(page);
   let traced = 0;

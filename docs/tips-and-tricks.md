@@ -1165,12 +1165,34 @@ on the dev server, before and after:
    canvas now takes the latest move on the next animation frame; a release lands the move still
    waiting before it is read.
 
+7. **The mark cache's fingerprint was rebuilt on every read** (5 Sep 2026). `freshMarks` keys
+   its cache on an exhaustive string -- every joint's coordinates and flags, every link's color,
+   every drive's direction -- and built that string on every call. `channelList` is read through
+   several bindings per link on every change-detection pass, and the app runs about a hundred
+   passes a second *at rest* (see below), so on a 49-joint, 4-machine workbench the string was
+   being built about eleven thousand times a second with nothing moving: 75 ms per pointer move
+   dragging, a p90 frame of 33 ms zooming and 42 ms panning. `drawingDigest` now rebuilds it only
+   when `poseRevision`, `solveRevision`, `cylinderRevision` or the object scale has moved, and
+   `channelsCutInto` / `markChannelsCutInto` keep their polygon-clipped merges per carrier and per
+   piece while the channel array keeps its identity. After: 27 ms per move, p90 11 ms for both.
+   The `workbench-joint` scenario in `drag-perf-harness.mjs` is that drawing. The rule it
+   teaches: anything a template binding reaches must cost a comparison, never a walk of the
+   drawing -- the passes multiply it by a hundred before a finger has moved.
+
 Still true and worth knowing: change detection runs about a dozen times per pointer move (the
 Edit panel's two `setTimeout`s per selection publish, the top bar's animation frame from every
 `ngAfterViewChecked`, the grid's settle loop, each graph row's frame request and
 `ResizeObserver`). Each pass is cheap now that nothing heavy hangs off a template binding, but
 anything that does will be multiplied by twelve. Not it: the before-drag comparison, forces in
 Edit mode, joint labels, the center-of-mass marks, the canvas SVG itself.
+
+**The frame p90 in the baseline is the display's refresh interval, not the app's.** Written on a
+120 Hz display it reads 9; run headless on a 60 Hz one every scenario reads 17 and the whole
+suite "regresses" while the app-time column has gone *down*. Read the two columns separately, and
+when every scenario fails by the same frame number, it is the environment. The honest comparison
+for a perf change is the same suite against HEAD served beside the change (see "Working out
+whether a failure is yours"), which was how the workbench fix above was measured: 52 to 3 ms per
+move on the same machine, the same afternoon.
 
 **Guarding it.** `node e2e/drag-perf.mjs` drags every scenario with nothing attached and fails
 any that runs more than 35% above `e2e/drag-perf-baseline.json`. The baseline is for the

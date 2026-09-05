@@ -4623,8 +4623,7 @@ export class NewGridComponent implements OnDestroy {
     const revision = this.mechanismSrv.cylinderRevision;
     const pose = this.mechanismSrv.poseRevision;
     const scale = this.settings.objectScale;
-    const forward = this.driveDirections(this.mechanismSrv.getJoints());
-    const paint = this.linkPaint();
+    const { forward, paint } = this.drawingDigest();
     const cache = this.cylinderListCache;
     if (
       !cache ||
@@ -5702,13 +5701,26 @@ export class NewGridComponent implements OnDestroy {
    * below contrast on part of the palette, because the palette is random.
    */
   channelsCutInto(link: Link): string {
-    const paths = this.channelList
+    const channels = this.channelList;
+    const preview = this.previewChannelOn(link);
+    // The merge runs polygon clipping, and this is read for every carrier on
+    // every change-detection pass. The channel list is one array for as long
+    // as nothing that draws a mark has changed, so its identity is the key.
+    const held = this.channelCuts.get(link.id);
+    if (held && held.channels === channels && held.preview === preview) return held.path;
+    const paths = channels
       .filter((channel) => channel.carrierId === link.id)
       .map((channel) => channel.path);
-    const preview = this.previewChannelOn(link);
     if (preview) paths.push(preview);
-    return paths.length === 0 ? '' : mergedChannels(paths);
+    const path = paths.length === 0 ? '' : mergedChannels(paths);
+    this.channelCuts.set(link.id, { channels, preview, path });
+    return path;
   }
+
+  private channelCuts = new Map<
+    string,
+    { channels: Channel[]; preview: string | undefined; path: string }
+  >();
 
   /**
    * A rider or plate outline with the previewed slot cut into it as well.
@@ -5744,17 +5756,32 @@ export class NewGridComponent implements OnDestroy {
     link: Link
   ): string {
     const preview = this.previewChannelOn(link);
-    if (!preview) return piece.cuts.length === 0 ? '' : mergedChannels(piece.cuts);
-    const angle = (mark.rotation * Math.PI) / 180;
-    const localPreview = transformRigidPath(
-      preview,
-      { x: mark.x, y: mark.y },
-      { x: mark.x + Math.cos(angle), y: mark.y + Math.sin(angle) },
-      { x: 0, y: 0 },
-      { x: 1, y: 0 }
-    );
-    return mergedChannels([...piece.cuts, localPreview]);
+    // Same merge, same cost, same cadence as `channelsCutInto`: the piece is
+    // the mark cache's own object and keeps its identity while the marks do.
+    const held = this.pieceCuts.get(piece);
+    if (held && held.cuts === piece.cuts && held.preview === preview) return held.path;
+    let path: string;
+    if (!preview) {
+      path = piece.cuts.length === 0 ? '' : mergedChannels(piece.cuts);
+    } else {
+      const angle = (mark.rotation * Math.PI) / 180;
+      const localPreview = transformRigidPath(
+        preview,
+        { x: mark.x, y: mark.y },
+        { x: mark.x + Math.cos(angle), y: mark.y + Math.sin(angle) },
+        { x: 0, y: 0 },
+        { x: 1, y: 0 }
+      );
+      path = mergedChannels([...piece.cuts, localPreview]);
+    }
+    this.pieceCuts.set(piece, { cuts: piece.cuts, preview, path });
+    return path;
   }
+
+  private pieceCuts = new WeakMap<
+    object,
+    { cuts: string[]; preview: string | undefined; path: string }
+  >();
 
   private previewChannelOn(link: Link): string | undefined {
     const slot = this.slotCandidate;
@@ -5797,11 +5824,54 @@ export class NewGridComponent implements OnDestroy {
       .join(',');
   }
 
-  private freshMarks(): { marks: SliderMark[]; channels: Channel[] } {
-    const joints = this.mechanismSrv.getJoints();
-    const r = 0.15 * this.settings.objectScale;
-    const key =
-      `${r}|${this.linkPaint()}|${this.driveDirections(joints)}|` +
+  /**
+   * The strings the mark caches are keyed on, written once per revision.
+   *
+   * The fingerprint below is deliberately exhaustive -- every coordinate,
+   * flag, color, drive direction and slot binding that can change a mark --
+   * and building it walks every joint and every link. That was fine on a
+   * four-bar. On a workbench of forty-nine joints it was the lag: change
+   * detection reads `channelList` through several bindings per link, on each
+   * of the hundred-odd passes a second the app runs even at rest, so the
+   * string was being rebuilt about ten thousand times a second with nothing
+   * moving. Every mutation that can change it goes through `updateMechanism`
+   * or `applyPose`, and both move a revision; so the fingerprint is rebuilt
+   * when a revision has moved and compared by reference otherwise. The key
+   * itself is kept, rather than the revisions alone, so a revision that
+   * changed nothing the marks draw (a rename, a tracer's path) still hits.
+   */
+  private digestMemo?: {
+    pose: number;
+    solve: number;
+    cylinders: number;
+    scale: number;
+    paint: string;
+    forward: string;
+    marksKey: string;
+  };
+
+  private drawingDigest(): { paint: string; forward: string; marksKey: string } {
+    const m = this.mechanismSrv;
+    const pose = m.poseRevision;
+    const solve = m.solveRevision;
+    const cylinders = m.cylinderRevision;
+    const scale = this.settings.objectScale;
+    const memo = this.digestMemo;
+    if (
+      memo &&
+      memo.pose === pose &&
+      memo.solve === solve &&
+      memo.cylinders === cylinders &&
+      memo.scale === scale
+    ) {
+      return memo;
+    }
+    const joints = m.getJoints();
+    const r = 0.15 * scale;
+    const paint = this.linkPaint();
+    const forward = this.driveDirections(joints);
+    const marksKey =
+      `${r}|${paint}|${forward}|` +
       joints
         .map((joint) => {
           const real = joint as RealJoint;
@@ -5815,7 +5885,15 @@ export class NewGridComponent implements OnDestroy {
             : base;
         })
         .join(';');
+    this.digestMemo = { pose, solve, cylinders, scale, paint, forward, marksKey };
+    return this.digestMemo;
+  }
+
+  private freshMarks(): { marks: SliderMark[]; channels: Channel[] } {
+    const key = this.drawingDigest().marksKey;
     if (this.markCache?.key !== key) {
+      const joints = this.mechanismSrv.getJoints();
+      const r = 0.15 * this.settings.objectScale;
       this.markCache = {
         key,
         marks: this.sliderMarks.marks(joints, r, this.guides(), this.driveForward),
