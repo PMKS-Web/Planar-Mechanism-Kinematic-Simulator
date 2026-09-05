@@ -79,17 +79,33 @@ export class ExportColumnsService {
           this.kinematic(links, 'l:angacc', 'Angular acceleration', `${angle}/s²`, [
             ['Angular acceleration', 'Angular Link Acc', `${angle}/s²`, 1],
           ]),
-          this.kinematic(
-            links,
-            'l:com',
-            'Center of mass',
-            'position, velocity, acceleration',
-            [
-              ['Center of mass position', "Linear Link's CoM Pos", length, 2],
-              ['Center of mass velocity', "Linear Link's CoM Vel", `${length}/s`, 3],
-              ['Center of mass acceleration', "Linear Link's CoM Acc", `${length}/s²`, 3],
-            ]
-          ),
+        ],
+      });
+      // A heading of its own, and one row per quantity.
+      //
+      // These three were one row: a tick called "Center of mass" whose unit
+      // column had to say "position, velocity, acceleration", because that is
+      // what one tick wrote. The row carried a name, a components control and
+      // three words where every row beside it carries a name, a components
+      // control and a unit -- so it wrapped, stood half again as tall as its
+      // neighbors, and still could not say what it would write. Split, each row
+      // is the shape of the ones above it and reads its own unit, and a reader
+      // who wants the path of a center of mass and not its acceleration can
+      // say so.
+      groups.push({
+        key: 'link-com',
+        title: 'Center of mass',
+        tab: 'kinematics',
+        columns: [
+          this.kinematic(links, 'l:compos', 'Position', length, [
+            ['Center of mass position', "Linear Link's CoM Pos", length, 2],
+          ]),
+          this.kinematic(links, 'l:comvel', 'Velocity', `${length}/s`, [
+            ['Center of mass velocity', "Linear Link's CoM Vel", `${length}/s`, 3],
+          ]),
+          this.kinematic(links, 'l:comacc', 'Acceleration', `${length}/s²`, [
+            ['Center of mass acceleration', "Linear Link's CoM Acc", `${length}/s²`, 3],
+          ]),
         ],
       });
     }

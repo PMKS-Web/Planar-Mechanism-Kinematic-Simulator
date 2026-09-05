@@ -3,9 +3,11 @@
     <!-- {{ this.currentAngleUnit }} -->
     <title-block> Settings</title-block>
     <collapsible-subseciton titleLabel="Basic Settings" [expanded]="true">
-      @if (!documentEditable()) {
-        <p class="settingsLockedNote" role="status">{{ lockedNote().trim() }}</p>
-      }
+      <!-- The Edit panel's own strip, verbatim: same indigo, same glyph, same
+           underlined way out. It was a bare sentence here, which read as a
+           note somebody had left rather than as the panel saying why the
+           controls under it are gray. -->
+      <app-edit-banner class="settingsBanner" [refusal]="lockedRefusal()" />
       <radio-block
         option1="English (in)"
         option2="Metric (cm)"

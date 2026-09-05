@@ -1,4 +1,6 @@
+import { EditBannerComponent } from '../edit-panel/edit-banner.component';
 import { EditPermissionService } from '../../services/edit-permission.service';
+import { EditRefusal, SETTINGS_AT_START_ONLY } from '../../model/edit-permission';
 import { NotificationService } from '../../services/notification.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { environment } from '../../../environments/environment';
@@ -60,6 +62,7 @@ const MAX_SCALE = 50;
     ToggleComponent,
     InputComponent,
     ButtonComponent,
+    EditBannerComponent,
   ],
 })
 export class SettingsPanelComponent implements OnDestroy {
@@ -319,17 +322,36 @@ export class SettingsPanelComponent implements OnDestroy {
    * full wording spent two lines restating the refusal before naming one --
    * on a tooltip whose first line the reader has already read.
    */
+  /**
+   * Why the settings cannot be changed, as the strip the Edit panel uses.
+   *
+   * Two answers, not three. Being in an analysis mode is its own condition and
+   * keeps its own sentence; playing and standing away from the start are one
+   * condition as far as a reader is concerned -- the same press fixes either,
+   * and the strip used to rewrite itself under their eyes as the animation ran
+   * on and stopped.
+   */
+  lockedRefusal(): EditRefusal | null {
+    const why = this.permission.refusal('properties');
+    if (!why) return null;
+    return why.actionKind === 'toEdit' ? why : SETTINGS_AT_START_ONLY;
+  }
+
+  /**
+   * The way out, as a clause on the tooltip of each row it grays.
+   *
+   * Deliberately not the refusal's own `long`. The strip above says the whole
+   * thing; a tooltip has already opened with a sentence about what the control
+   * is for, and pasting the model's full refusal after it restates that before
+   * getting to the point. What a grayed switch owes a reader is the way out,
+   * in the fewest words that name it.
+   */
   lockedNote(): string {
-    const refusal = this.permission.refusal('properties');
-    if (!refusal) return '';
-    // Which way out, asked of the model rather than guessed from the mode, so a
-    // machine running or parked in any mode is sent to the control that
-    // actually clears it.
-    if (refusal.actionKind === 'toEdit') return ' Switch to Edit mode to change.';
-    if (refusal.actionKind === 'backToStart') return ' Return to the start pose to change.';
-    // Playing. The model offers no word to press here: the transport is the
-    // way out, and it is on screen.
-    return ' Pause the animation to change.';
+    const why = this.lockedRefusal();
+    if (!why) return '';
+    return why.actionKind === 'toEdit'
+      ? ' Switch to Edit mode to change.'
+      : ' Reset to the starting pose to change.';
   }
 
   /**

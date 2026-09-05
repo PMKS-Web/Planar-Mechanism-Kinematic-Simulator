@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 import { EditRefusal } from '../../model/edit-permission';
 import { EditPermissionService } from '../../services/edit-permission.service';
@@ -22,6 +22,11 @@ import { SelectedTabService, TabID } from '../../selected-tab.service';
  * contents, because the contents are what the freeze covers: `inert` cannot be
  * un-inherited, so a strip inside it could state the refusal but not offer the
  * word that clears it.
+ *
+ * A caller with a refusal of its own hands it in through `refusal`. The
+ * Settings drawer does: what it refuses is not the edit permission this
+ * component asks about by default, but it is the same *kind* of thing to say
+ * and it deserves the same strip rather than a second one that drifts.
  */
 @Component({
   selector: 'app-edit-banner',
@@ -56,8 +61,11 @@ export class EditBannerComponent {
   private settings = inject(SettingsService);
   private tabs = inject(SelectedTabService);
 
+  /** A refusal to state instead of the one this component would ask for. */
+  readonly refusal = input<EditRefusal | null>(null);
+
   banner(): EditRefusal | null {
-    return this.permission.editingBanner();
+    return this.refusal() ?? this.permission.editingBanner();
   }
 
   /**

@@ -252,8 +252,10 @@ await page.screenshot({ path: 'artifacts/ui-copy/tip-angle-units-locked.png' });
 await tab('Edit').click();
 await page.waitForTimeout(500);
 
-// The other half of the same clause: in Edit, parked away from the start, the
-// way out is the transport rather than the mode.
+// The other half of the same clause: in Edit, playing or parked away from the
+// start, the way out is the transport rather than the mode. One sentence for
+// both, because the same press clears either and the note used to rewrite
+// itself as the animation ran on and stopped.
 await page.evaluate(() => {
   const srv = window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   srv.seekMechanism(0, srv.mechanisms[0].cyclePeriod / 3);
@@ -262,7 +264,7 @@ await page.waitForTimeout(700);
 const midCycle = await unitsTip();
 record(
   'and sends a reader parked mid-cycle to the start rather than to Edit',
-  /^The unit for angles/.test(midCycle) && /Return to the start pose to change\.$/.test(midCycle),
+  /^The unit for angles/.test(midCycle) && /Reset to the starting pose to change\.$/.test(midCycle),
   midCycle
 );
 await page

@@ -198,13 +198,31 @@ describe('the export drawer', () => {
 
     pick(flow, 'Joint C', 'Link AB');
     const groups = flow.columnGroups('kinematics');
-    expect(groups.map((group) => group.title)).toEqual(['Joints B, C', 'Link AB']);
+    // A center of mass is asked about under a heading of its own. It used to be
+    // one row inside the link group whose unit column read "position, velocity,
+    // acceleration", because that is what the one tick wrote.
+    expect(groups.map((group) => group.title)).toEqual([
+      'Joints B, C',
+      'Link AB',
+      'Center of mass',
+    ]);
     expect(groups[0].columns.map((column) => column.label)).toEqual([
       'Position',
       'Velocity',
       'Acceleration',
     ]);
-    expect(groups[1].columns.map((column) => column.label)).toContain('Center of mass');
+    expect(groups[1].columns.map((column) => column.label)).toEqual([
+      'Angle',
+      'Angular velocity',
+      'Angular acceleration',
+    ]);
+    expect(groups[2].columns.map((column) => column.label)).toEqual([
+      'Position',
+      'Velocity',
+      'Acceleration',
+    ]);
+    // And all three arrive unticked, so the heading is off rather than half on.
+    expect(groups[2].columns.every((column) => !flow.isColumnPicked(column))).toBe(true);
   });
 
   it('summarizes long object lists in quantity headings', () => {
@@ -213,7 +231,7 @@ describe('the export drawer', () => {
     flow.setParts(parts, true);
 
     const titles = flow.columnGroups('kinematics').map((group) => group.title);
-    expect(titles).toEqual(['8 joints', '7 links']);
+    expect(titles).toEqual(['8 joints', '7 links', 'Center of mass']);
   });
 
   it('writes one row per solved sample, on the mechanism’s own clock', () => {

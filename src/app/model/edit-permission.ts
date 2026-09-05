@@ -235,6 +235,30 @@ const DISPLACED: EditRefusal = refusal({
 });
 
 /**
+ * Why the document-wide settings cannot be changed right now.
+ *
+ * Units and the like belong to the whole drawing, and changing one rescales
+ * every stored coordinate -- so they are typed at the start pose, standing
+ * still. Which of the two reasons applies is not worth a sentence of its own:
+ * the reader is being told what to do about it, and the same press fixes
+ * either. So the condition is stated once, with the "or" in it, and the way
+ * out is one word whatever stopped them.
+ *
+ * The panel used to say "Pause the animation to change." or "Return to the
+ * start pose to change." depending on which it was, which made the strip
+ * rewrite itself under the reader's eyes as the animation ran on and stopped.
+ */
+export const SETTINGS_AT_START_ONLY: EditRefusal = refusal({
+  short: 'playing or mid-cycle',
+  glyph: 'motion_photos_paused',
+  lead: 'Playing or away from the start.',
+  action: 'Reset to the starting pose',
+  tail: 'to change.',
+  actionKind: 'backToStart',
+  backToStartHelps: true,
+});
+
+/**
  * Displaced, but the shared clock reads zero -- so say which machine is not.
  *
  * Named, not counted. "One of the machines" is a sentence written by something

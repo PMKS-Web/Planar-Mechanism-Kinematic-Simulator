@@ -281,14 +281,15 @@ export class ExportFlowService {
   /**
    * What is ticked, defaulting to everything a reader usually wants.
    *
-   * Center of mass is the one thing left off: it is three more series per link
-   * about a point most drawings never move, and a file is easier to widen than
-   * to explain.
+   * Center of mass is the one thing left off: three more series per link about
+   * a point most drawings never move, and a file is easier to widen than to
+   * explain. All three of its rows, so the heading arrives unticked rather than
+   * half ticked.
    */
   private defaults(): Set<string> {
     return new Set(
       this.allColumns()
-        .filter((column) => column.key !== 'l:com')
+        .filter((column) => !column.key.startsWith('l:com'))
         .map((column) => column.key)
     );
   }
@@ -357,7 +358,10 @@ export class ExportFlowService {
   name(): string {
     // The format supplies its extension, including when the user switches
     // formats after typing a complete filename. Keep other dots (e.g. v1.2).
-    const stem = this.typedName.trim().replace(/\.(csv|xlsx|pdf|png|svg|zip)$/i, '').trim();
+    const stem = this.typedName
+      .trim()
+      .replace(/\.(csv|xlsx|pdf|png|svg|zip)$/i, '')
+      .trim();
     return stem || this.defaultName();
   }
 

@@ -16,10 +16,12 @@
   // settings and the drawer frame scrolled instead -- taking the close button,
   // which is positioned against that frame, off the top of it.
   #settingsWrapper {
-    .settingsLockedNote {
-      margin: 8px 15px;
-      color: rgba(0, 0, 0, 0.65);
-      font-size: 13px;
+    // The reason the controls below are gray is the Edit panel's own strip
+    // now (`app-edit-banner`), which brings its own indigo, its own glyph and
+    // the underlined way out. It only needs the room the strip cannot take for
+    // itself: the panel insets its children, and the strip is full-bleed.
+    .settingsBanner {
+      margin: 0 -15px 2px;
     }
 
     display: flex;
