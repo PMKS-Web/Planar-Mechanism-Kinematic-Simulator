@@ -511,24 +511,38 @@ export class ContextMenuBuilderService {
     // is no answer, so the row is grayed here and offered on the bar, where the
     // anchor can be placed unambiguously.
     const bars = joint.links.filter((link): link is RealLink => link instanceof RealLink);
-    if (bars.length > 0) {
-      rows.push(
-        new MenuRow({
-          label: 'Force',
-          icon: 'add_force',
-          posePolicy: 'attachment',
-          poseGuard: () => this.attachmentRefusal(bars[0]),
-          action: () => handlers.attachForce(bars[0]),
-          refusal:
-            bars.length > 1
-              ? {
-                  short: `${bars.length} links share it`,
-                  long: 'A load applied where several links meet does not say which one carries it. Attach it to the link instead.',
-                }
-              : undefined,
-        })
-      );
-    }
+    // The block a slider pin rides is a body as much as the bar is: a load put
+    // on the pin could be pushing the bar or pushing the block, and the two
+    // answer differently. So a slider pin is refused for the same reason two
+    // bars meeting are, and sent to the bar.
+    const bodiesHere = bars.length + (this.mechanism.sliderFor(joint) ? 1 : 0);
+    // On every joint, grayed where it cannot land. The joint menu is one menu:
+    // a row that is there on one joint and gone on the next is a row a reader
+    // cannot learn the place of, so nothing here comes and goes -- it grays,
+    // and says why.
+    const bar = bars[0];
+    rows.push(
+      new MenuRow({
+        label: 'Force',
+        icon: 'add_force',
+        posePolicy: 'attachment',
+        poseGuard: () => (bar ? this.attachmentRefusal(bar) : undefined),
+        action: () => {
+          if (bar) handlers.attachForce(bar);
+        },
+        refusal: !bar
+          ? {
+              short: 'not on a link',
+              long: 'A load has to have a body to push on, and this joint is on none. Attach a link here first.',
+            }
+          : bodiesHere > 1
+            ? {
+                short: bars.length > 1 ? `${bars.length} links share it` : 'a block shares it',
+                long: 'A load applied where several bodies meet does not say which one carries it. Attach it to the link instead.',
+              }
+            : undefined,
+      })
+    );
     return rows;
   }
 
@@ -550,70 +564,88 @@ export class ContextMenuBuilderService {
         refusal: this.inputRefusal(joint),
       }),
     ];
-    // A slider on a cylinder's joint is structurally off the table — the
-    // assembly already is one — so it is absent rather than grayed.
-    if (!sealed) {
-      const isSlider = this.gridUtils.isAttachedToSlider(joint);
-      rows.push(
-        new MenuRow({
-          label: 'Slider',
-          icon: 'add_slider',
-          kind: 'toggle',
-          checked: isSlider,
-          action: () => this.mechanism.toggleSlider(),
-          // A block is a body too, so adding one to a driven pin puts a third
-          // at the joint. Taking one away is always allowed.
-          refusal:
+    // Every row below is on every joint. A cylinder's joint used to lose the
+    // Slider row and a slider its Weld row, and a joint on a held bar gained a
+    // row the others did not have -- three menus wearing one name, and a
+    // reader who had learned where a row sits finding it gone. They gray now,
+    // each with its reason, and the menu is the same shape on every joint.
+    const isSlider = this.gridUtils.isAttachedToSlider(joint);
+    rows.push(
+      new MenuRow({
+        label: 'Slider',
+        icon: 'add_slider',
+        kind: 'toggle',
+        checked: isSlider,
+        action: () => this.mechanism.toggleSlider(),
+        refusal: sealed
+          ? {
+              short: 'part of a cylinder',
+              long: 'A cylinder is one sealed part with a slider of its own inside it, so its joints take no second one. Attach a link here instead.',
+            }
+          : // A block is a body too, so adding one to a driven pin puts a third
+            // at the joint. Taking one away is always allowed.
             !isSlider && this.gridUtils.isVisuallyInput(joint)
-              ? {
-                  short: 'it is driven',
-                  long: 'A block is a body of its own, so adding one to a driven joint would put three there. Remove the input first.',
-                }
-              : undefined,
-        })
-      );
-    }
-    // A slider pin keeps its Weld row, enabled. The design said a slider cannot
-    // be welded and so the row should be absent; the model does not agree --
-    // `canToggleWeld` has no slider clause, and §4.1's rule is that a slider
-    // is *offered* the weld and refused with the reason if the fuse cannot
-    // stand. Hiding it put a reachable state out of reach from this surface
-    // and not from the panel, which is the disagreement this menu exists to
-    // stop.
-    if (!(joint instanceof PrisJoint)) {
-      rows.push(
-        new MenuRow({
-          label: 'Welded',
-          icon: 'weld_joint',
-          kind: 'toggle',
-          checked: joint.isWelded,
-          action: () => this.mechanism.toggleWeldedJoint(),
-          refusal: this.gridUtils.weldRefusal(joint),
-        })
-      );
-    }
-
-    // A joint on a held bar is confined by it: it still moves, on the arc or
-    // the line the hold leaves it, and the row says so and names the holds,
-    // because the way to move it freely is on the bar rather than here.
-    const holding = heldBarsAt(joint, this.mechanism.links, this.mechanism.sealedStructures());
-    if (holding.length > 0) {
-      const named = holding.map((bar) => bar.name || bar.id).join(', ');
-      rows.push(
-        new MenuRow({
-          label: 'Free to Move',
-          icon: 'open_with',
-          material: true,
-          action: () => undefined,
-          refusal: {
-            short: `held by ${named}`,
-            long: `${holding.map((bar) => describeHold(bar, this.mechanism.joints)).join(' and ')} ${holding.length > 1 ? 'confine' : 'confines'} this joint. Release ${holding.length > 1 ? 'them' : 'it'} on the link to move it freely.`,
-          },
-        })
-      );
-    }
+            ? {
+                short: 'it is driven',
+                long: 'A block is a body of its own, so adding one to a driven joint would put three there. Remove the input first.',
+              }
+            : undefined,
+      })
+    );
+    // The model says whether a weld can stand here -- `weldRefusal` in
+    // grid-utils, which is also what the panel quotes -- so the row is offered
+    // on a cylinder mount and on the slider itself and refused with the reason,
+    // rather than hidden on a rule of the menu's own.
+    rows.push(
+      new MenuRow({
+        label: 'Welded',
+        icon: 'weld_joint',
+        kind: 'toggle',
+        checked: joint.isWelded,
+        action: () => this.mechanism.toggleWeldedJoint(),
+        refusal: this.gridUtils.weldRefusal(joint),
+      })
+    );
+    rows.push(this.freeToMoveRow(joint));
     rows.push(this.lockRow(joint, joint));
     return rows;
+  }
+
+  /**
+   * Whether the bars at this joint let it go anywhere, as a switch.
+   *
+   * A bar holding its length or its angle (`RealLink.hold`) confines the
+   * joints on it: they still drag, but on the arc or along the line the hold
+   * leaves them. That is easy to mistake for a lock, so the joint says so
+   * here, names the bars, and offers the way out -- pressing it releases
+   * those holds, which is the same thing the Fixed Length and Fixed Angle
+   * rows on the bar would do one at a time. On a joint nothing confines the
+   * switch is on and grays, because there is nothing for it to release; the
+   * thing that would turn it off is a hold, and a hold is set on the bar.
+   */
+  private freeToMoveRow(joint: RealJoint): MenuRow {
+    const holding = heldBarsAt(joint, this.mechanism.links, this.mechanism.sealedStructures());
+    const named = holding.map((bar) => bar.name || bar.id).join(', ');
+    const free = holding.length === 0;
+    return new MenuRow({
+      label: 'Free to Move',
+      posePolicy: 'preserve',
+      icon: 'open_with',
+      material: true,
+      kind: 'toggle',
+      checked: free,
+      hint: free ? undefined : `held by ${named}`,
+      action: () => holding.forEach((bar) => this.mechanism.setHold(bar, undefined)),
+      tip: free
+        ? undefined
+        : `${holding.map((bar) => describeHold(bar, this.mechanism.joints)).join(' and ')} ${holding.length > 1 ? 'confine' : 'confines'} this joint to an arc or a line. Release ${holding.length > 1 ? 'them' : 'it'} to drag it anywhere.`,
+      refusal: free
+        ? {
+            short: 'nothing holds it',
+            long: 'No bar at this joint has a fixed length or a fixed angle, so it already drags anywhere. Fixed Length and Fixed Angle on a link are what would confine it.',
+          }
+        : undefined,
+    });
   }
 
   /** Whether this joint reads as grounded — a slider's ground lives on its guide. */
@@ -671,7 +703,6 @@ export class ContextMenuBuilderService {
     return new MenuRow({
       label: VECTOR_LABEL[quantity],
       icon: VECTOR_ICON[quantity],
-      material: true,
       kind: 'toggle',
       checked: this.mechanism.isVectorTraceOn(part, quantity),
       // A view of the mechanism rather than a change to it, like the trace
@@ -724,12 +755,33 @@ export class ContextMenuBuilderService {
       .filter((link) => !(link instanceof SliderBlock) && !inside.has(link.id));
     // The thing named goes; what goes with it is in brackets, so the row reads
     // as one action with a consequence rather than a list of three things.
+    //
+    // One casualty is named, several are counted. "and Links AB, BG, BH" was
+    // already the widest row in the menu at three, and a joint on a plate can
+    // take more -- the menu grew to fit the sentence and pushed everything else
+    // out of reach of the pointer.
+    const also = this.casualties(doomed, 'link');
     if (!sealed) {
-      return doomed.length === 0 ? 'Delete Joint' : `Delete Joint (and ${this.bodyList(doomed)})`;
+      return also ? `Delete Joint (and ${also})` : 'Delete Joint';
     }
-    return doomed.length === 0
-      ? 'Delete Joint (and Cylinder)'
-      : `Delete Joint (and Cylinder, ${this.bodyList(doomed)})`;
+    return also ? `Delete Joint (and Cylinder, ${also})` : 'Delete Joint (and Cylinder)';
+  }
+
+  /**
+   * "Link AB" for one, "3 links" for more -- what a delete takes with it.
+   *
+   * A cylinder among the casualties keeps its own word, because "2 links" for
+   * a bar and a ram would be wrong about one of them.
+   */
+  private casualties(bodies: readonly (Link | Joint)[], kind: 'link' | 'joint'): string {
+    if (bodies.length === 0) return '';
+    if (bodies.length === 1) {
+      const one = bodies[0];
+      return one instanceof Joint
+        ? `Joint ${this.nameOf(one)}`
+        : labelForBody(one, this.mechanism.cylinderAt(one));
+    }
+    return `${bodies.length} ${kind}s`;
   }
 
   private jointSubtitle(joint: Joint): string {
@@ -1052,14 +1104,11 @@ export class ContextMenuBuilderService {
     // Deleting a link sweeps up the joints no other link holds. The row counts
     // them and names them rather than opening a dialog after the click.
     const orphans = this.mechanism.jointsOrphanedByDeleting(link);
-    const named = orphans.map((joint) => this.nameOf(joint)).join(', ');
     // Bracketed, like the joint row's cascade above: the thing named goes,
     // and what goes with it is the consequence rather than a second item in a
-    // list. Both rows read the same way round.
-    const label =
-      orphans.length === 0
-        ? 'Delete Link'
-        : `Delete Link (and ${orphans.length === 1 ? 'Joint' : 'Joints'} ${named})`;
+    // list. Both rows read the same way round, and both count past one.
+    const also = this.casualties(orphans, 'joint');
+    const label = also ? `Delete Link (and ${also})` : 'Delete Link';
     return new MenuRow({
       label,
       icon: 'remove',
@@ -1191,10 +1240,10 @@ export class ContextMenuBuilderService {
       // is the word doing the work, and a different glyph is what a reader
       // moving quickly actually reads.
       label: `Delete entire mechanism${named}`,
-      // A Material ligature: the app's own set has no glyph for this, and the
-      // point is to look unlike the `remove` on the row above it.
-      icon: 'delete_sweep',
-      material: true,
+      // A ternary body with the trash as its badge: the same trash as the row
+      // above, behind something that is more than one link, so a reader
+      // moving quickly reads the difference before the word "entire".
+      icon: 'delete_mechanism',
       destructive: true,
       hint: joints > 0 ? `${joints} ${joints === 1 ? 'joint' : 'joints'}` : undefined,
       tip: 'Deletes the whole mechanism this part belongs to — every joint, link and force in it.',

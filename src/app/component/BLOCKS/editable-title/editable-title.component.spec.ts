@@ -39,7 +39,7 @@ describe('EditableTitleComponent names', () => {
     expect(component().validateNewID('output-link')).toContain('one word');
   });
 
-  it('rejects a case-insensitive duplicate across all selectable object types', () => {
+  it('rejects a case-insensitive duplicate across all object types', () => {
     expect(component().validateNewID('output')).toContain('already in use');
     expect(component().validateNewID('COUPLER')).toContain('already in use');
     expect(component().validateNewID('load')).toContain('already in use');

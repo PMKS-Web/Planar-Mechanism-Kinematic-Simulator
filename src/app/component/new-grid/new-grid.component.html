@@ -477,7 +477,12 @@
                as the linkage, and left the diagonals to be explained. A plate
                is a plate. -->
           @for (body of ghost.bodies; track $index) {
-            <path class="ghostBody" [attr.d]="body.d" [attr.fill]="body.fill" fill-rule="evenodd" />
+            <path
+              class="ghostBody"
+              [attr.d]="ghostBodyPath(body)"
+              [attr.fill]="body.fill"
+              fill-rule="evenodd"
+            />
           }
           @for (bar of ghost.bars; track $index) {
             <!-- The line the reader sees is two pixels wide, which is a hard
@@ -2105,23 +2110,33 @@
   </g>
   <g id="forceTagHolder" style="pointer-events: none">
     @for (force of mechanismSrv.getForces(); track force) {
-      <svg
-        [attr.x]="(force.startCoord.x + force.endCoord.x) / 2 - settings.objectScale * 0.3"
-        [attr.y]="((force.startCoord.y + force.endCoord.y) / 2) * -1 - settings.objectScale * 0.3"
-        [attr.height]="10"
-        [attr.width]="10"
-        style="overflow: visible; text-anchor: middle"
-      >
-        @if (
-          settings.isShowID.value ||
-          force.showHighlight ||
-          (this.activeObjService.selectedForce == force && this.activeObjService.objType == 'Force')
-        ) {
-          <text [style.font-size.px]="tagFontSize" style="text-anchor: left">
-            {{ force.name }}
-          </text>
-        }
-      </svg>
+      @if (forceLabelAt(force); as at) {
+        <!-- Beside the arrow, off its normal, and centered on that point: the
+             old fixed up-left step put the name on the shaft of any force that
+             happened to point up-left, and anchoring the text at its left edge
+             let it lean back over the arrow from the other side. -->
+        <svg
+          [attr.x]="at.x"
+          [attr.y]="-at.y"
+          [attr.height]="10"
+          [attr.width]="10"
+          style="overflow: visible; text-anchor: middle"
+        >
+          @if (
+            settings.isShowID.value ||
+            force.showHighlight ||
+            (this.activeObjService.selectedForce == force &&
+              this.activeObjService.objType == 'Force')
+          ) {
+            <text
+              [style.font-size.px]="tagFontSize"
+              style="text-anchor: middle; dominant-baseline: middle"
+            >
+              {{ force.name }}
+            </text>
+          }
+        </svg>
+      }
     }
   </g>
   <!-- The bar being drawn. Same capsule, same half-width as the link it will

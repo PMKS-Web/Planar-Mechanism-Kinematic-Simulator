@@ -50,7 +50,7 @@ export interface ExportPart {
 export interface ExportPartGroup {
   index: number;
   id: string;
-  /** `5 selectable objects · 10.00 RPM Counter-clockwise` — one-line context. */
+  /** `5 objects · 10.00 RPM Counter-clockwise` — one-line context. */
   note: string;
   /** Whether force analysis actually solves for this machine. */
   forcesReady: boolean;

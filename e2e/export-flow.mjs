@@ -127,7 +127,7 @@ await page.waitForTimeout(200);
 record(
   'the count and the footer follow what is ticked',
   (await drawer().locator('.count').innerText()).startsWith('2 of') &&
-    (await drawer().locator('.footNote').innerText()).includes('2 selectable objects'),
+    (await drawer().locator('.footNote').innerText()).includes('2 objects'),
   {
     count: await drawer().locator('.count').innerText(),
     foot: await drawer().locator('.footNote').innerText(),

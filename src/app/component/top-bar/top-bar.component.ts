@@ -512,7 +512,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
 
   exportTooltip(): string {
     return this.canExport()
-      ? 'Choose selectable objects, quantities and a file format.'
+      ? 'Choose objects, quantities and a file format.'
       : 'Nothing has been solved yet, so there are no numbers to export.';
   }
 

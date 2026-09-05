@@ -738,6 +738,23 @@ mechanisms and judges what is left behind (nothing staged, clocks agreeing, the 
 anchor kept, Undo exact). Run it after touching the canvas gestures, the menu builder, the panel
 or the anchors; it takes about a quarter of an hour.
 
+### A drag in an analysis mode tunes; it never merges, snaps to a joint or cuts a slot
+
+The analysis modes allow a drag (see the plan in `docs/analysis-mode-editing-plan.md`) so a reader
+can nudge a pivot and watch the curve move. What they do not allow is a drag that *restructures*:
+in `NewGridComponent.updateDropCandidate` the merge candidate and the slot candidate are both
+withheld whenever `tabService.isAnalysisMode()`, exactly as they are while Alt is held. Dropping a
+joint on another joint in Kinematic or Force Analysis therefore leaves two joints, and dragging a
+joint across a bar cuts nothing. Grid and alignment snapping still apply, because they move the
+joint without changing what the drawing is made of. `new-grid.component.spec.ts` has the guard
+(`offers neither a merge nor a slot while dragging in an analysis mode`), and the reason is in the
+user's own words: movement there is for tuning.
+
+One trap this exposed: the canvas spec's `drag()` helper used to park one joint exactly on another,
+which *merged* in Edit and so passed by accident. Two coincident joints in a loopless two-bar are an
+invalid machine, `isPartInert` says so, and the next press on its bar is refused. Drag past, not
+onto.
+
 ## Domain facts worth knowing before you debug
 
 - **The transport's handle measures the *input*, not the clock, and the start pose is usually not at
@@ -1295,6 +1312,26 @@ git stash pop
 If it fails identically without your changes, it was already broken — say so, and decide separately
 whether to fix it.
 
+**Stashing is the wrong tool once a dev server is watching the checkout**, and in a session where
+other worktrees share the stash stack it is dangerous. Serve HEAD *beside* your change instead: a
+detached worktree in the scratchpad, `node_modules` symlinked from the main checkout, and a second
+`ng serve` on another port. Then run the same suite from that worktree against that port, and a
+failure that reproduces there was already there.
+
+```bash
+git worktree add --detach /path/to/baseline HEAD
+ln -s "$PWD/node_modules" /path/to/baseline/node_modules
+(cd /path/to/baseline && npx ng serve --port 4340 --host 127.0.0.1)
+(cd /path/to/baseline && PMKS_BASE_URL=http://localhost:4340 node e2e/the-suite.mjs)
+git worktree remove --force /path/to/baseline    # when you are done
+```
+
+Run the baseline suite from the *baseline* checkout, so the guards are HEAD's guards too. And do
+not edit a source file while a browser suite is running against the dev server: the rebuild reloads
+the page under the suite, which then dies with *"Execution context was destroyed, most likely because
+of a navigation"* or loses an element it had just found -- a failure that looks like the product's
+and is only the live reload.
+
 To bisect a *product* change rather than a test change, stash only the file you suspect:
 
 ```bash
@@ -1384,3 +1421,45 @@ A default that lives in the URL's settings flags (joint labels, say) therefore h
 in those strings too: the first two characters are the packed bool settings in the URL's
 base-64 alphabet, and the checksum on the end is a function of the length alone, so a flipped
 bit needs no other change.
+
+## A context menu is one menu per kind of thing
+
+A row on the right-click menu never comes and goes with the situation. It is there on every joint
+(or every bar, every cylinder, every force) and it grays, with the model's own reason in the slot,
+when it cannot apply. The joint menu used to break this three ways: a cylinder's joint lost its
+Slider row, the slider itself lost its Weld row, and a joint on a held bar gained a Free to Move
+row the others did not have -- three menus under one name, and a reader who had learned where a
+row sits finding it gone. All four rows are permanent now (`jointAttachRows`, `jointStateRows` and
+`freeToMoveRow` in `context-menu-builder.service.ts`), and the refusals quote `weldRefusal`,
+`describeActuatorRefusal` and the rest rather than restating them.
+
+*Free to Move* is the one people ask about. A bar can hold its length or its angle
+(`RealLink.hold`, the Fixed Length / Fixed Angle rows on the bar), and a joint on such a bar still
+drags but only along the arc or the line the hold leaves it -- which is easy to mistake for a lock.
+The row is a switch: on and grayed ("nothing holds it") on an ordinary joint, off with "held by AB"
+on a confined one, and pressing it there releases those holds, the same thing the bar's own rows
+would do one at a time. It is not a lock and not the inverse of one; the Locked row is still the
+Locked row.
+
+The exceptions, on purpose: the multi-selection menu is its own kind of thing and shapes itself to
+what is selected, and the synthesis-position rows (`positionRows`) ride along on every menu only
+while positions exist, because a permanent grayed "Delete Synthesis Positions" on every joint in
+Edit would be noise about a mode the reader is not in. `context-menu-builder.service.spec.ts` and
+`e2e/context-menu.mjs` are the guards; `e2e/link-holds.mjs` walks the Free to Move switch.
+
+## The right drawer is as wide as the view controls and stops one gap above them
+
+Both numbers are measured, not chosen: `ViewControlsComponent.publishGeometry` writes
+`--view-controls-width` and `--view-controls-clearance` on the root, and
+`right-panel.component.scss` sizes the frame from them. Every page is that width -- the export
+page used to widen to 380px for the note beside each machine's name, which broke the shared left
+edge; the note wraps now (`.mechNote`). Only the dev-only debug table is `.wide`.
+
+The frame **clips and never scrolls**, and the reason is a contradiction worth knowing before you
+reach for `overflow-y: auto` again. A scroll box clips at its padding edge. The card inside it needs
+`$shadow-room` of padding below it for its shadow to fall into, so a scrolling frame either cut the
+shadow off square when the page fit, or, with the padding kept, showed the page running 16px past
+the card line when it did not -- and 16px past the card line is 4px under the view controls. So
+when the tutorial is pinned above a page and the two do not fit, each card scrolls inside itself
+(`.tutorialSlot` shrinks to a 200px floor, the page below keeps a 260px floor and takes the rest),
+and the frame's bottom edge is never the visible one. `e2e/right-drawer.mjs` measures all of it.

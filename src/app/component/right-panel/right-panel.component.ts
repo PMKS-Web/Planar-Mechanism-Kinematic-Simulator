@@ -300,15 +300,14 @@ export class RightPanelComponent implements DoCheck {
    * told about, so a page cannot change the drawer's width without the canvas
    * hearing about it.
    *
-   * The debug page holds a table rather than a panel and needs the room. The
-   * export page is wider than the view controls it stands over: its rows are a
-   * checkbox, a part's name and what is notable about it, and at the usual
-   * width the third of those was always ellipsed away.
+   * Only the debug page, which holds a table rather than a panel, takes more
+   * than the view controls' width. The export page used to as well, for the
+   * note beside each machine's name -- and a drawer that changed width by
+   * page broke the one line its left edge is meant to share with the view
+   * controls under it. The note wraps now instead.
    */
-  drawerWidthClass(): 'wide' | 'export' | 'base' {
-    if (this.getOpenTab() === 4) return 'wide';
-    if (this.getOpenTab() === RightPanelComponent.EXPORT_TAB) return 'export';
-    return 'base';
+  drawerWidthClass(): 'wide' | 'base' {
+    return this.getOpenTab() === 4 ? 'wide' : 'base';
   }
 
   getIsOpen() {

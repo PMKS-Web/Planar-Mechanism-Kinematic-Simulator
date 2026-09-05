@@ -228,6 +228,21 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
     if (link) this.activeSrv.updateSelectedObj(link);
   }
 
+  /** Whether the force graphs this card points at exist in the mode we are in. */
+  get inForceAnalysis(): boolean {
+    return this.tabs.getCurrentTab() === TabID.FORCE;
+  }
+
+  /**
+   * The way to the reactions from Kinematic Analysis: the other mode.
+   *
+   * The selection is kept, so the reader lands on the same force's card there
+   * -- the one that offers the link to graph.
+   */
+  goToForceAnalysis(): void {
+    this.tabs.setTab(TabID.FORCE);
+  }
+
   /** The selected joint or link, when the selection is one of those. */
   private get selectedPart(): RealJoint | RealLink | undefined {
     if (this.shownType === 'Joint') return this.shownJoint;

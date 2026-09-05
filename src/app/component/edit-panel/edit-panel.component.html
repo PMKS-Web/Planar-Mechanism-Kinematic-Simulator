@@ -562,6 +562,13 @@
              grayed out would be the one nobody could reach. The wrapper is
              still hoverable, and the stylesheet takes the disabled button out
              of the way so the hover lands here. -->
+          <!-- A switch, like Grounded and Welded above it: the row names the
+               state, the help mark says what it means, and the toggle says
+               whether it is on. It was a button whose label flipped between
+               "Draw as a Disc" and "Draw as a Bar" -- a verb that changed
+               under the reader, and the one control in the section that did
+               not look like the others. Why it cannot be switched rides on
+               the wrapper, because a disabled control gets no hover. -->
           <div
             class="shapeToggle"
             [matTooltip]="whyNotCircular()"
@@ -569,18 +576,14 @@
             [matTooltipShowDelay]="400"
             matTooltipPosition="above"
           >
-            <button-block
-              [customIcon]="drawnAsDisc() ? 'make_bar' : 'make_circular'"
+            <toggle-block
+              [formGroup]="linkForm"
+              _formControl="drawAsDisc"
               [disabled]="!activeSrv.selectedLink.canBeCircular()"
-              (click)="mechanismService.toggleLinkCircular()"
-              [tooltip]="
-                drawnAsDisc()
-                  ? 'Draw this link as an ordinary bar between its joints.'
-                  : 'Draw this link as the disc it sweeps, centered on its fixed pin. Its mass and rotational inertia are unchanged.'
-              "
+              tooltip="Draw this link as the disc it sweeps, centered on its fixed pin. Its mass and rotational inertia are unchanged."
             >
-              {{ drawnAsDisc() ? 'Draw as a Bar' : 'Draw as a Disc' }}
-            </button-block>
+              Draw as a Disc
+            </toggle-block>
           </div>
         </collapsible-subseciton>
         <collapsible-subseciton

@@ -20,9 +20,13 @@
       border-color: #bbbbbb !important;
     }
 
-    display: grid;
-    //Equal width columns 10px apart
-    grid-template-columns: repeat(2, 1fr);
+    // Each button is as wide as its own words, and the two share what is
+    // left in proportion. Two equal columns gave "Add tracer point" the same
+    // room as "Add force", so the long label sat hard against its edges while
+    // the short one floated in space -- the padding read as uneven because it
+    // was. Growing from the label's own width evens it out without measuring.
+    display: flex;
+    gap: 10px;
 
     button {
       display: flex;
@@ -33,7 +37,8 @@
       padding: 0 10px;
       margin: 0;
       height: 50px !important;
-      flex-grow: 1;
+      flex: 1 1 auto;
+      min-width: 0;
       overflow: hidden;
 
       .mat-mdc-button-touch-target {

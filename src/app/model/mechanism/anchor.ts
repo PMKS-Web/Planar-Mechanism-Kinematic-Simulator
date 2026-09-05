@@ -454,6 +454,19 @@ export interface GhostBody {
   readonly fill: string;
   /** Where that path goes: a rigid move from the drawn pose to the start one. */
   readonly transform: string;
+  /**
+   * Which link, and the rigid move that carried it, so the canvas can carry
+   * anything *it* draws on the link the same way. A slot is cut into a bar by
+   * the canvas, not by the link's own outline, and a ghost drawn from the
+   * outline alone showed the bar solid the moment the real one moved off it.
+   */
+  readonly linkId: string;
+  readonly move: {
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+    there: { x: number; y: number };
+    thereEnd: { x: number; y: number };
+  };
 }
 
 export interface StartPoseGhost {

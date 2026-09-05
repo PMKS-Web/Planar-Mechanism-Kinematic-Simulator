@@ -31,7 +31,15 @@ const snapshot = () =>
     };
   });
 const openJoint = async () => {
-  await page.locator('#joint_B').click({ button: 'right' });
+  // Let the canvas paint whatever the step before this did -- a seek, a menu
+  // dismissed -- before the joint is found. Pressed too soon, the press lands
+  // where the joint was, on the menu still fading there, and the old rows come
+  // back without a rebuild.
+  await page.waitForTimeout(300);
+  // Forced, because the plain click waits for the element to hold still, and
+  // an animating joint never does. The position is still read at the moment
+  // of the press, which a box measured a round trip earlier would not be.
+  await page.locator('#joint_B').click({ button: 'right', force: true });
   await page.locator('#contextMenu.show').waitFor();
   await page.waitForTimeout(200);
 };

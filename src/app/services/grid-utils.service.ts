@@ -227,6 +227,9 @@ export class GridUtilsService {
    */
   canToggleWeld(joint: Joint): boolean {
     if (!(joint instanceof RealJoint)) return false;
+    // The slider itself is the freedom between its block and its guide; a
+    // weld would be the claim that there is none. The pin riding it welds.
+    if (joint instanceof PrisJoint) return false;
     // A cylinder mount cannot weld: welding a mount into a neighboring
     // compound opened more edge cases than it was worth. Attach by revolute.
     const sealed = this.mechanismSrv.cylinderAt(joint);
@@ -260,6 +263,12 @@ export class GridUtilsService {
     if (this.canToggleWeld(joint)) return undefined;
     if (!(joint instanceof RealJoint)) {
       return { short: 'not a joint', long: 'Only a joint can be welded.' };
+    }
+    if (joint instanceof PrisJoint) {
+      return {
+        short: 'it is the slider',
+        long: 'A weld fuses the links that meet at a pin, and this is the slider itself: the freedom between its block and its guide. Weld the pin riding it instead.',
+      };
     }
     const sealed = this.mechanismSrv.cylinderAt(joint);
     if (sealed && (joint.id === sealed.barrelFar.id || joint.id === sealed.rodFar.id)) {

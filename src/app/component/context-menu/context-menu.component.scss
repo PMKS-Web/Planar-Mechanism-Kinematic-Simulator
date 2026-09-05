@@ -35,6 +35,10 @@
     min-width: 224px;
     max-width: min(320px, calc(100vw - 16px));
     max-height: calc(100dvh - 16px);
+    // The cap is the card's outer edge: with every joint row permanent the
+    // menu reaches it on a short phone, and content-box put the bottom padding
+    // outside it -- one pixel past the room `context-menu-modes` leaves.
+    box-sizing: border-box;
     overflow-y: auto;
     > * {
       flex-shrink: 0;
@@ -180,13 +184,32 @@
       color: $primary;
     }
 
+    // The one slot on the right, in two weights. A count and a reason are
+    // plain text at 38%: something the row says about itself. A shortcut is
+    // a key, and is drawn as one -- the same cap the project menu's rows wear
+    // (`.menuKeys` in the top bar), so the letter reads as a thing to press
+    // rather than as a second, shorter reason.
     .cm-row__hint,
-    .cm-row__key,
     .cm-row__reason {
       flex: none;
       padding-left: 10px;
       font-size: 11.5px;
       color: rgba(0, 0, 0, 0.38);
+      white-space: nowrap;
+    }
+
+    .cm-row__key {
+      flex: none;
+      margin-left: 10px;
+      padding: 1px 5px;
+      border: 1px solid rgba(0, 0, 0, 0.18);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.03);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      line-height: 15px;
+      color: rgba(0, 0, 0, 0.55);
       white-space: nowrap;
     }
 

@@ -13,6 +13,13 @@
     position: relative;
     box-sizing: border-box;
     width: 100%;
+    // Pinned above a drawer page it has to share the height with, so when
+    // the two do not fit it scrolls inside itself rather than pushing the
+    // page under the view controls. Its own shadow is outside its box and is
+    // not clipped by this.
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
     padding: 12px 15px 14px;
     background: var(--card-surface);
     border-top: 5px solid $indigo;

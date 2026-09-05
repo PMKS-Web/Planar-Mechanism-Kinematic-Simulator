@@ -181,6 +181,25 @@ export class AppComponent implements DoCheck {
       'fit_motion',
       this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/fit_motion.svg')
     );
+    // The right-click menu's last four glyphs, which were Material ligatures
+    // (call_made, double_arrow, compare_arrows, delete_sweep) in a menu drawn
+    // otherwise entirely in the app's own family. Velocity and acceleration
+    // are a quantity leaving a joint -- one open head, then two on the same
+    // shaft -- and force is a load arriving at one, so its arrow is turned
+    // round. Delete entire mechanism is a ternary body with the trash where
+    // `new_link` and the `add_*` glyphs put their plus.
+    const menuGlyphs = [
+      'vector_velocity',
+      'vector_acceleration',
+      'vector_force',
+      'delete_mechanism',
+    ];
+    for (const name of menuGlyphs) {
+      this.matIconRegistry.addSvgIcon(
+        name,
+        this.domSanitizer.bypassSecurityTrustResourceUrl(`assets/icons/${name}.svg`)
+      );
+    }
 
     // Take down the splash `index.html` painted before any of this existed.
     //

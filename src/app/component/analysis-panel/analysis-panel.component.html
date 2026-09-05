@@ -337,12 +337,24 @@
         >{{ modeNoun }} for Force {{ shownForce.name }}</title-block
       >
       <div class="helpRule"></div>
+      <!-- Which way out depends on where the reader is standing. In Force
+           Analysis the reactions this load causes are one click away, on the
+           link that carries it. In Kinematic Analysis they are not: that mode
+           has no force graphs at all, so "Graph BC" led to a page of velocities
+           with nothing about the force on it. The door there is the mode. -->
       <div class="helpHint forceRedirect" role="status">
-        <mat-icon>touch_app</mat-icon>
+        <mat-icon>{{ inForceAnalysis ? 'touch_app' : 'balance' }}</mat-icon>
         <span>
-          <button type="button" class="forceRedirectAction" (click)="graphTheLinkUnder()">
-            Graph {{ shownForce.link.name }}</button
-          >, which carries it.
+          @if (inForceAnalysis) {
+            <button type="button" class="forceRedirectAction" (click)="graphTheLinkUnder()">
+              Graph {{ shownForce.link.name }}</button
+            >, which carries it.
+          } @else {
+            <button type="button" class="forceRedirectAction" (click)="goToForceAnalysis()">
+              Switch to Force Analysis
+            </button>
+            to read what it does to {{ shownForce.link.name }}.
+          }
         </span>
       </div>
     </panel-section>

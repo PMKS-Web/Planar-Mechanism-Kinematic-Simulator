@@ -147,7 +147,7 @@ describe('the export drawer', () => {
     expect(flow.selectedParts().map((part) => part.label)).toEqual(['Joint B']);
   });
 
-  it('opens with every selectable object ticked when the whole mechanism is selected', () => {
+  it('opens with every object ticked when the whole mechanism is selected', () => {
     const { flow, fixture } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
     fixture.active.selectMechanism(0);
     flow.reset();

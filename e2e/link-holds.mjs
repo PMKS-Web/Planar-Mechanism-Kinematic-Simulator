@@ -348,8 +348,8 @@ await page.waitForTimeout(350);
 menu = await readMenu();
 const free = menu?.rows.find((r) => r.label === 'Free to Move');
 record(
-  'the joint menu has a grayed Free to Move row naming the holds',
-  !!free && free.off && /AB/.test(free.slot),
+  'the joint menu has a Free to Move row, off and naming the holds',
+  !!free && !free.off && /held by .*AB/.test(free.slot),
   free
 );
 record(

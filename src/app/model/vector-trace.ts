@@ -75,12 +75,15 @@ export const VECTOR_LABEL: Record<VectorQuantity, string> = {
   force: 'Force Vectors',
 };
 
-/** Material Icons ligatures — the classic set, which is the one loaded. */
+/**
+ * The app's own glyphs, registered in `AppComponent`: an open arrow leaving a
+ * hollow joint for velocity, two heads on the same shaft for acceleration,
+ * and the arrow turned round -- a load arriving at the joint -- for force.
+ */
 export const VECTOR_ICON: Record<VectorQuantity, string> = {
-  velocity: 'call_made',
-  acceleration: 'double_arrow',
-  // Two arrows meeting: a reaction is what a joint pushes back with.
-  force: 'compare_arrows',
+  velocity: 'vector_velocity',
+  acceleration: 'vector_acceleration',
+  force: 'vector_force',
 };
 
 /** Why a part will not take one, in three or four words and a sentence. */

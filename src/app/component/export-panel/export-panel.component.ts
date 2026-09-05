@@ -179,7 +179,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   // --- what the head says ---------------------------------------------------
 
   get lead(): string {
-    if (this.flow.step === 'parts') return 'Which selectable objects do you want numbers for?';
+    if (this.flow.step === 'parts') return 'Which objects do you want numbers for?';
     if (this.flow.step === 'file') return 'How should the file be written?';
     return this.flow.step === 'forces'
       ? 'Which force quantities do you want?'
@@ -188,7 +188,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
 
   get countText(): string {
     if (this.flow.step === 'parts') {
-      return `${this.flow.selectedParts().length} of ${this.flow.offeredParts().length} selectable objects`;
+      return `${this.flow.selectedParts().length} of ${this.flow.offeredParts().length} objects`;
     }
     const tab = this.flow.tab;
     const of = this.flow.columnGroups(tab).flatMap((group) => group.columns).length;
@@ -206,7 +206,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
         .join(', ');
       return parts === 0
         ? 'Nothing chosen yet'
-        : `${parts} selectable ${parts === 1 ? 'object' : 'objects'}${machines ? ' · ' + machines : ''}`;
+        : `${parts} ${parts === 1 ? 'object' : 'objects'}${machines ? ' · ' + machines : ''}`;
     }
     if (this.flow.step === 'file') return '';
     const summary = this.writer.summary();

@@ -95,6 +95,7 @@ import {
   SlotDropCandidate,
 } from '../../model/drop-target';
 import { mergedChannels, transformRigidPath } from '../../model/compound-link-path';
+import { GhostBody } from '../../model/mechanism/anchor';
 import {
   Cylinder,
   cylinderCreationLayout,
@@ -2503,6 +2504,57 @@ export class NewGridComponent implements OnDestroy {
     return this.mechanismSrv.holdOf(link) === which && !this.mechanismSrv.isLockedTarget(link);
   }
 
+  /**
+   * A ghost body with the slots the real one carries cut into it.
+   *
+   * The ghost is the link's outline moved rigidly to the start pose. A slot is
+   * not part of that outline -- the canvas subtracts it when it draws the real
+   * link -- so the ghost of a slotted bar came out solid, and the moment
+   * playback carried the real bar away the slot looked as though it had been
+   * filled in behind it. The channel is rigid with its carrier, so the same
+   * move that carried the outline carries the channel to the same place.
+   */
+  ghostBodyPath(body: GhostBody): string {
+    const link = this.mechanismSrv.links.find((one) => one.id === body.linkId);
+    if (!link) return body.d;
+    const channels = this.channelsCutInto(link);
+    if (channels === '') return body.d;
+    const { from, to, there, thereEnd } = body.move;
+    return `${body.d} ${transformRigidPath(channels, from, to, there, thereEnd)}`;
+  }
+
+  /**
+   * Where a force's name goes: beside the arrow, off its centerline.
+   *
+   * It used to sit a fixed step up and left of the midpoint, which is on the
+   * arrow for any force pointing up-left or down-right -- and a name printed
+   * over a shaft is a name that cannot be read. The offset is taken along the
+   * arrow's own normal instead, a set distance in screen pixels so it holds at
+   * every zoom, and always to the side that is "up" on the screen, so the
+   * name is above the arrow whichever way the arrow points.
+   */
+  forceLabelAt(force: Force): { x: number; y: number } {
+    const mx = (force.startCoord.x + force.endCoord.x) / 2;
+    const my = (force.startCoord.y + force.endCoord.y) / 2;
+    const dx = force.endCoord.x - force.startCoord.x;
+    const dy = force.endCoord.y - force.startCoord.y;
+    const span = Math.hypot(dx, dy);
+    // A normal for a zero-length arrow is any direction; straight up will do.
+    let nx = span > 1e-9 ? -dy / span : 0;
+    let ny = span > 1e-9 ? dx / span : 1;
+    // The model is y-up. Keep the name on the side with the larger y, and on
+    // a level arrow on the left, so two forces on one body do not swap sides
+    // as one of them turns through horizontal.
+    if (ny < 0 || (Math.abs(ny) < 1e-9 && nx > 0)) {
+      nx = -nx;
+      ny = -ny;
+    }
+    // Half the shaft's own width plus the font's height, so the baseline
+    // clears the stroke and the arrowhead alike.
+    const clear = this.svgGrid.scaleWithZoom(this.tagFontSize + 6);
+    return { x: mx + nx * clear, y: my + ny * clear };
+  }
+
   /** Where a length's label goes: the middle of the bar. */
   private lengthLabelAt(x1: number, y1: number, x2: number, y2: number): { x: number; y: number } {
     return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
@@ -2812,7 +2864,15 @@ export class NewGridComponent implements OnDestroy {
    * merging the two.
    */
   private updateDropCandidate(mousePos: Coord, altHeld: boolean): void {
-    const candidate = altHeld
+    // In an analysis mode a drag is for tuning, and nothing else. Merging onto
+    // a joint or cutting a slot into a bar changes what the mechanism *is*,
+    // which is exactly the class of edit the analysis modes refuse from the
+    // menu -- and a drag that could do it by accident, over a joint the reader
+    // was only passing, made a running linkage unsolvable with no way to see
+    // it coming. Read as Alt held: no target, no slot, the joint goes where
+    // the hand is.
+    const structural = altHeld || this.tabService.isAnalysisMode();
+    const candidate = structural
       ? undefined
       : resolveDropCandidate(
           this.activeObjService.selectedJoint,
@@ -2847,7 +2907,7 @@ export class NewGridComponent implements OnDestroy {
         Math.hypot(joint.x - mousePos.x, joint.y - mousePos.y) < this.snapRadius()
     );
     this.slotCandidate =
-      altHeld || candidate || overAJoint
+      structural || candidate || overAJoint
         ? undefined
         : resolveSlotDropTarget(
             this.activeObjService.selectedJoint,
@@ -5323,7 +5383,11 @@ export class NewGridComponent implements OnDestroy {
         // cylinder given one of the dark navies disappeared while the bar
         // beside it in the same color turned its name white.
         ink: this.mechanismSrv.cylinderAt(link) ? this.linkLabelInk(link) : 'black',
-        opacity: 1,
+        // A name in a channel is black on nothing, so it needs its full weight.
+        // A cylinder's name is on painted metal like every bar's, and at full
+        // weight it sat a shade darker than the bar beside it in the same
+        // color -- the one label in the row that did not match.
+        opacity: this.mechanismSrv.cylinderAt(link) ? 0.55 : 1,
         name,
         angle,
       };

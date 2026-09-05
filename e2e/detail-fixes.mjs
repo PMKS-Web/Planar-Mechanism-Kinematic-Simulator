@@ -882,16 +882,27 @@ await page.evaluate(() => {
   grid.activeObjService.updateSelectedObj(grid.mechanismSrv.forces[0]);
 });
 await page.waitForTimeout(700);
+// In Kinematic Analysis a force has nothing to show -- the link's kinematics
+// say nothing about a load -- so the card offers the mode that does, rather
+// than the link: "Graph BC" there showed a reader a curve with no force in it.
 const forcePanel = await page.locator('app-analysis-panel').innerText();
 record(
-  'a selected force offers the link instead of an apology',
-  /Graph /.test(forcePanel) && !/There are no analysis graphs/.test(forcePanel),
+  'a selected force in Kinematic Analysis offers Force Analysis instead of an apology',
+  /Switch to Force Analysis/.test(forcePanel) && !/There are no analysis graphs/.test(forcePanel),
   forcePanel.replace(/\s+/g, ' ').slice(0, 120)
 );
 await page.locator('.forceRedirectAction').click();
 await page.waitForTimeout(700);
 record(
-  'and pressing it graphs that link',
+  'and pressing it lands in Force Analysis, where the card offers the link that carries it',
+  (await page.evaluate(
+    () => window.ng.getComponent(document.querySelector('app-new-grid')).tabService.getCurrentTab()
+  )) === 3 && /Graph /.test(await page.locator('app-analysis-panel').innerText())
+);
+await page.locator('.forceRedirectAction').click();
+await page.waitForTimeout(700);
+record(
+  'and pressing that graphs the link',
   (await page.evaluate(
     () => window.ng.getComponent(document.querySelector('app-new-grid')).activeObjService.objType
   )) === 'Link'

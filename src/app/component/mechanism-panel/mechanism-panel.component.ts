@@ -126,7 +126,7 @@ export class MechanismPanelComponent {
     const facts = this.mechanism.readinessOfEachMechanism()[this.index]?.facts ?? [];
     const count = this.exportCatalog.partGroups(false)[this.index]?.parts.length ?? 0;
     return facts.map((fact) =>
-      fact.label === 'Links / joints' ? { label: 'Selectable objects', value: String(count) } : fact
+      fact.label === 'Links / joints' ? { label: 'Objects', value: String(count) } : fact
     );
   }
 

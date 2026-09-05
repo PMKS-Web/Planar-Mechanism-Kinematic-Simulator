@@ -173,8 +173,8 @@ const jointA = await openOn('#joint_A');
 check('a joint menu names the joint it is about', jointA?.title === 'Joint A', jointA?.title);
 check('and what it is made of', jointA?.subtitle === 'Pin · Links OA, ACT', jointA?.subtitle);
 check(
-  'the ladder is Attach then State',
-  JSON.stringify(jointA?.groups) === JSON.stringify(['ATTACH', 'STATE']),
+  'the ladder is Attach, State, Traces',
+  JSON.stringify(jointA?.groups) === JSON.stringify(['ATTACH', 'STATE', 'TRACES']),
   jointA?.groups
 );
 check(
@@ -347,10 +347,18 @@ check(
   ownDelete(cylinderJoint)?.label === 'Delete Joint (and Cylinder)',
   ownDelete(cylinderJoint)?.label
 );
+// Grayed, not absent: the joint menu is one menu, and a row that is there on
+// one joint and gone on the next is a row a reader cannot learn the place of.
 check(
-  'a cylinder joint takes no block: the row is absent, not grayed',
-  !rowNamed(cylinderJoint, 'Slider'),
-  cylinderJoint?.rows.map((one) => one.label)
+  'a cylinder joint takes no block: the row is there and grayed with the reason',
+  rowNamed(cylinderJoint, 'Slider')?.slot === 'part of a cylinder',
+  rowNamed(cylinderJoint, 'Slider')
+);
+check(
+  'and Free to Move is on every joint, on and grayed where nothing holds it',
+  rowNamed(jointA, 'Free to Move')?.slot === 'nothing holds it' &&
+    rowNamed(cylinderJoint, 'Free to Move')?.slot === 'nothing holds it',
+  [rowNamed(jointA, 'Free to Move'), rowNamed(cylinderJoint, 'Free to Move')]
 );
 
 const cylinderBody = await openOn('[id="AB"]');

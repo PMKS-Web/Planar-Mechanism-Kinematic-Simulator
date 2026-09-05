@@ -262,7 +262,7 @@ export class ExportCatalogService {
   private noteFor(index: number, count: number): string {
     const facts = this.mechanism.readinessOfEachMechanism()[index]?.facts ?? [];
     const speed = facts.find((fact) => fact.label === 'Input speed')?.value;
-    const objects = `${count} selectable ${count === 1 ? 'object' : 'objects'}`;
+    const objects = `${count} ${count === 1 ? 'object' : 'objects'}`;
     return speed ? `${objects} · ${speed}` : `${objects} · not running`;
   }
 

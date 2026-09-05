@@ -203,12 +203,15 @@
       color: #2c2c2c;
     }
 
+    // Wraps. It used to ellipse, and the drawer was widened for it; at the
+    // view controls' width, which the drawer shares now, the direction was
+    // the half that got cut, and "10.00 RPM ..." says nothing.
     .mechNote {
+      flex: 1 1 auto;
+      min-width: 0;
       font-size: 12px;
+      line-height: 1.3;
       color: rgba(0, 0, 0, 0.45);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
     // Quieter than the machine's own name directly above it, and quieter than

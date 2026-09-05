@@ -318,7 +318,7 @@ export class ExportWriterService {
         value: `${solved.cyclePeriod.toFixed(2)} s, ${table.times.length} solved positions`,
       },
       { label: 'Units', value: `${length}, ${mass}, ${this.catalog.forceUnit()}, ${angle}` },
-      { label: 'Selectable objects', value: parts || '—' },
+      { label: 'Objects', value: parts || '—' },
       { label: 'Decimals', value: String(this.flow.decimals) },
     ];
   }

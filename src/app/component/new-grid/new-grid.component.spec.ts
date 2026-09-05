@@ -6,6 +6,7 @@ import { ActiveObjService } from '../../services/active-obj.service';
 import { DragStateService } from '../../services/drag-state.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { MechanismService } from '../../services/mechanism.service';
+import { linkStates } from '../../model/utils';
 import { SettingsService } from '../../services/settings.service';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { NewGridComponent } from './new-grid.component';
@@ -342,20 +343,70 @@ describe('NewGridComponent drag gestures', () => {
   // described a cycle the geometry could not move under. They redraw from
   // whatever was last solved, so the lock was standing between the reader and
   // the most instructive thing here: grab a joint and watch the curve follow.
+  //
+  // What a drag there may *not* do is change what the mechanism is. The
+  // helper's fixed path carries B exactly onto C, which in Edit is a merge --
+  // and this test used to pass on the strength of that merge, the very thing
+  // the mode now refuses. So it says both halves: the joint moves, and lands on
+  // C without becoming C.
   it('lets a drag through in an analysis mode, joint and link alike', () => {
     const { component, b, c, cd } = setUp();
+    const mechanism = TestBed.inject(MechanismService);
     TestBed.inject(SelectedTabService).setTab(TabID.ANALYZE);
 
+    const topology = () => [mechanism.joints.length, mechanism.links.length];
+    const before = topology();
+    // Part of the way toward C, not onto it. The shared helper parks B exactly
+    // on C, which in Edit is a merge; here it is two joints on one point, a
+    // machine that cannot be solved, and so a machine whose parts cannot be
+    // grabbed for the second half of this test -- which is the app being
+    // right, not the drag being blocked.
     component.setLastLeftClick(b);
-    drag(component, 8);
+    component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 5, clientY: 5 }));
+    for (let step = 1; step <= 8; step++) {
+      // The helper's travel, sideways: the same distance past the drag slop,
+      // ending at (20, 5) rather than on C at (20, 20).
+      const along = 5 + ((20 - 5) * step) / 8;
+      component.mouseMove(new MouseEvent('mousemove', { clientX: along, clientY: 5 }));
+    }
+    component.mouseUp(new MouseEvent('mouseup'));
     expect([b.x, b.y]).not.toEqual([5, 5]);
+    expect(topology()).toEqual(before);
+    expect(mechanism.joints.some((joint) => joint.id === 'B')).toBe(true);
 
+    // The bar. This harness is two loose bars and no loop, which in an
+    // analysis mode is not a machine that runs -- and a part of no running
+    // machine is inert there, so the press on CD is refused rather than
+    // started. That is the rule, not a gap: analysis tunes what it can solve.
+    // The old version of this test dragged CD anyway, and passed only because
+    // the joint drag above had merged B onto C and joined the two bars into
+    // one chain first. The bar drag on a real, solvable linkage is what
+    // `e2e/analysis-editing.mjs` exercises.
+    expect(mechanism.isPartInert(cd)).toBe(true);
     const wasC = [c.x, c.y];
     component.setLastLeftClick(cd, new MouseEvent('mousedown'));
-    component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 0, clientY: 0 }));
-    component.mouseMove(new MouseEvent('mousemove', { clientX: 12, clientY: 13 }));
+    component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 40, clientY: 40 }));
+    expect(TestBed.inject(DragStateService).link).toBe(linkStates.waiting);
     component.mouseUp(new MouseEvent('mouseup'));
-    expect([c.x, c.y]).not.toEqual(wasC);
+    expect([c.x, c.y]).toEqual(wasC);
+  });
+
+  // The other half of the same rule, said where it can be read: the drop
+  // machinery is what a merge and a slot come from, and in an analysis mode it
+  // offers neither -- not because the target is refused, but because there is
+  // no target.
+  it('offers neither a merge nor a slot while dragging in an analysis mode', () => {
+    const { component, b } = setUp();
+    TestBed.inject(SelectedTabService).setTab(TabID.ANALYZE);
+    component.setLastLeftClick(b);
+    component.mouseDown(new MouseEvent('mousedown', { button: 0, clientX: 5, clientY: 5 }));
+    for (let step = 1; step <= 8; step++) {
+      const along = 5 + ((20 - 5) * step) / 8;
+      component.mouseMove(new MouseEvent('mousemove', { clientX: along, clientY: along }));
+      expect(component.snapTargetJoint).toBeUndefined();
+      expect(component.slotCandidate).toBeUndefined();
+    }
+    component.mouseUp(new MouseEvent('mouseup'));
   });
 
   // What it still refuses is changing what the mechanism is made of, which is

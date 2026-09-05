@@ -6529,6 +6529,13 @@ export class MechanismService {
             d: transformRigidPath(link.d, from, to, there, thereEnd),
             fill: this.getLinkProp(link, 'fill') as string,
             transform: '',
+            linkId: link.id,
+            move: {
+              from: { x: from.x, y: from.y },
+              to: { x: to.x, y: to.y },
+              there: { x: there.x, y: there.y },
+              thereEnd: { x: thereEnd.x, y: thereEnd.y },
+            },
           },
         ];
       });

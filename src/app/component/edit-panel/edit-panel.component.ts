@@ -527,6 +527,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       massMoI: [''],
       comX: [''],
       comY: [''],
+      // A switch, not a blurred field: it flips the moment it is pressed.
+      drawAsDisc: [false, { updateOn: 'change' }],
     },
     { updateOn: 'blur' }
   );
@@ -1767,6 +1769,22 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     );
 
     this.onDestroySubscriptions.push(
+      this.linkForm.controls['drawAsDisc'].valueChanges.subscribe((wanted) => {
+        // The switch says what the link should be drawn as; the service owns
+        // the flip. Pressed to a state the link is already in there is nothing
+        // to do, which is what a programmatic sync looks like from here.
+        if (wanted === this.drawnAsDisc()) return;
+        const link = this.activeSrv.selectedLink;
+        if (!link?.canBeCircular()) {
+          this.linkForm.patchValue({ drawAsDisc: this.drawnAsDisc() }, { emitEvent: false });
+          return;
+        }
+        this.mechanismService.toggleLinkCircular();
+        this.linkForm.patchValue({ drawAsDisc: this.drawnAsDisc() }, { emitEvent: false });
+      })
+    );
+
+    this.onDestroySubscriptions.push(
       this.forceForm.controls['magnitude'].valueChanges.subscribe((val) => {
         const [success, value] = this.parseForce(val!);
         if (!success || value < 0) {
@@ -2033,6 +2051,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
                 this.settingsService.angleUnit.getValue()
               ),
               mass: this.nup.formatValueAndUnit(this.activeSrv.selectedLink.mass, this.massUnit()),
+              drawAsDisc: this.drawnAsDisc(),
             },
             { emitEvent: false }
           );

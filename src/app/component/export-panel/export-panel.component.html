@@ -59,10 +59,7 @@
              so a reader ticking part nineteen still knows whose it is. -->
         <div class="mechHead">
           <span class="mechName">{{ group.id }}</span>
-          <!-- It ellipses when the room runs out, so the whole sentence has to
-               be reachable: at 390px "10.00 RPM Counter-clockwise" is wider
-               than the line, and the direction is the half that gets cut. -->
-          <span class="mechNote" [attr.title]="groupNote(group)">{{ groupNote(group) }}</span>
+          <span class="mechNote">{{ groupNote(group) }}</span>
           <span class="spacer"></span>
           <button class="linkButton small" (click)="flow.setParts(group.parts, true)">All</button>
           <span class="pickSep"></span>

@@ -115,8 +115,14 @@
     // pixels the page can be scrolled sideways.
     right: 0;
     box-sizing: border-box;
-    overflow-x: hidden;
-    overflow-y: auto;
+    // Clips, and never scrolls. A box that scrolls clips at its padding edge,
+    // and the padding is where the card's shadow falls: so a frame that
+    // scrolled either cut the shadow off square when the page fit, or -- with
+    // the shadow room kept -- showed the page running $shadow-room past the
+    // card line when it did not, which put the export card's bottom four
+    // pixels under the view controls. What overflows is scrolled inside the
+    // cards instead, and the frame's bottom edge is never the visible one.
+    overflow: hidden;
     // Down to one gap above the view controls, and no further -- measured off
     // that card, which the view controls publish.
     //
@@ -168,16 +174,6 @@
     &.wide {
       width: calc(500px + #{nav.$shadow-room} + #{nav.$card-inset});
     }
-
-    // Wider than the view controls, and narrower than the table pages: an
-    // export row is a checkbox, a part's name and what is notable about it, and
-    // at the drawer's usual width the third of those was always ellipsed away.
-    // Named for the page rather than after its card: the export card is
-    // `.exportCard`, and a frame sharing a class with the card it holds was
-    // drawing a second background, corner, shadow and accent bar around it.
-    &.exportPage {
-      width: calc(380px + #{nav.$shadow-room} + #{nav.$card-inset});
-    }
   }
 
   // One inset and one gap for every drawer page. The two setup drawers had
@@ -215,8 +211,22 @@
   // evenly spaced rather than as two cards that happen to be near each other.
   // Both need the id, or `#rightPanel > div` outweighs them and each card keeps
   // a full $shadow-room, which is more than twice the gap.
+  // Both cards give way, each scrolling inside itself, rather than the frame
+  // scrolling the pair: the drawer's bottom edge is the card line, and a card
+  // that runs past it runs under the view controls. The page keeps enough to
+  // work in and the tutorial keeps enough to read; on a window shorter than
+  // both floors together the frame clips, which is the one case left.
   #rightPanel > .tutorialSlot {
-    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    min-height: 200px;
+  }
+
+  #rightPanel > .tutorialSlot > app-tutorial-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   #rightPanel > .tutorialSlot + div {
@@ -231,13 +241,13 @@
     // which scrolls -- so the shadow is clipped off square.
     margin-top: nav.$card-inset - nav.$shadow-room * 2;
 
-    // Its own height, not whatever is left over. As a growing-and-shrinking
-    // flex item it gave way to the tutorial above it until there was nothing
-    // left: on a short window the export page collapsed to its title and its
-    // first line, with the parts list and Next simply unreachable. Sized to its
-    // content, the two cards together overflow the frame instead, and the frame
-    // already scrolls.
-    flex: 0 0 auto;
+    // Whatever is left over, down to a floor. As a plain shrinking item it
+    // gave way to the tutorial above it until there was nothing left: on a
+    // short window the export page collapsed to its title and its first line,
+    // with the parts list and Next unreachable. The floor keeps it a page,
+    // and the tutorial is what shrinks past that.
+    flex: 1 1 auto;
+    min-height: 260px;
   }
 
   // Hand the drawer's height down to the card, which is what scrolls -- the
