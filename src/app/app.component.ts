@@ -167,6 +167,20 @@ export class AppComponent implements DoCheck {
       'unlock',
       this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/unlock.svg')
     );
+    // The two fit buttons. Material's `crop_free` and `all_out` are a pair of
+    // brackets and a pair of arrows, which said "frame something" and "spread
+    // out" and left which one framed the drawing and which framed its whole
+    // travel to be worked out from the tooltip. These say it: the same
+    // brackets on both, closed on a single point for the pose as it sits, and
+    // opened around the dashed ring that point sweeps through for the cycle.
+    this.matIconRegistry.addSvgIcon(
+      'fit_linkage',
+      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/fit_linkage.svg')
+    );
+    this.matIconRegistry.addSvgIcon(
+      'fit_motion',
+      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/fit_motion.svg')
+    );
 
     // Take down the splash `index.html` painted before any of this existed.
     //

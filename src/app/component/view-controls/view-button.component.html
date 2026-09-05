@@ -11,6 +11,8 @@
   @if (icon(); as ligature) {
     <mat-icon>{{ ligature }}</mat-icon>
   } @else {
-    <mat-icon [svgIcon]="glyph()"></mat-icon>
+    <!-- A switch draws whichever of its two glyphs the grid is in; a plain
+         action drawn from our own set names one and keeps it. -->
+    <mat-icon [svgIcon]="svg() ?? glyph()"></mat-icon>
   }
 </button>

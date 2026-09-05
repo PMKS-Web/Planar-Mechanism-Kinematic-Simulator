@@ -62,12 +62,12 @@
       <!-- Zoom does not come to the phone: pinching is already the gesture.
            Reframing is the one thing pinching cannot do. -->
       <button class="viewRow" (click)="onReframePressed(); sheetOpen = false">
-        <mat-icon>crop_free</mat-icon>
+        <mat-icon svgIcon="fit_linkage"></mat-icon>
         <span class="viewRowName">Fit to view</span>
         <mat-icon class="viewRowGo">chevron_right</mat-icon>
       </button>
       <button class="viewRow" (click)="onFitFullMotionPressed(); sheetOpen = false">
-        <mat-icon>all_out</mat-icon>
+        <mat-icon svgIcon="fit_motion"></mat-icon>
         <span class="viewRowName">Fit full motion</span>
         <mat-icon class="viewRowGo">chevron_right</mat-icon>
       </button>
@@ -124,14 +124,18 @@
       shortcut="view.zoomIn"
       (pressed)="onZoomInPressed()"
     />
+    <!-- The same brackets on both, because both frame something; what differs
+         is what is inside them. Fit to view closes them on a single point --
+         the drawing as it sits. Fit full motion opens them around the dashed
+         ring that point sweeps through. -->
     <app-view-button
-      icon="crop_free"
+      svg="fit_linkage"
       tooltip="Fit to view"
       shortcut="view.reset"
       (pressed)="onReframePressed()"
     />
     <app-view-button
-      icon="all_out"
+      svg="fit_motion"
       tooltip="Fit full motion"
       (pressed)="onFitFullMotionPressed()"
     />
