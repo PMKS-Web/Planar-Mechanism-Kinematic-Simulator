@@ -995,6 +995,20 @@ curve and reports the crank's range and its turning points. That is how the 444-
 the boundary six-bar's 382-degree swing with the drawn pose at a limit, and Watt I's eleven-degree
 sliver were each established, and each contradicted what the spec at the time asserted.
 
+### A link pinned to ground twice is frame, and the force solver treats it so
+
+A bar with two distinct ground pins cannot move. The position solver never minded one (it holds
+both pins still), but statics wrote three equilibrium equations for the bar against four ground
+reactions, and a drawing with such a bracket refused with *"more supports than equilibrium can
+determine"* -- correctly, in a sense: the split of load between the two pins has no unique answer.
+Nobody needs that split. `ForceSolver.frameBodies` sets such bodies aside: no rows of their own,
+their other joints act as ground pins for whatever hangs on them (`jointsOnFrame`), a slot cut
+into one pushes against the world, and the reaction index lists nothing for them. A four-bar whose
+ground link is drawn as an actual bar now solves to the same torque and pin reactions as one whose
+ground link is left implicit -- `src/tests/verification/frame-body-forces.spec.ts` asserts exactly
+that, and also that the reported drawing (a cylinder-driven bucket on a twice-pinned bracket)
+solves.
+
 ### A hold is a constraint, not a lock, and every move goes through the solver
 
 A bar can hold its **length** or its **angle** against edits (`RealLink.hold`, the menu's Fixed

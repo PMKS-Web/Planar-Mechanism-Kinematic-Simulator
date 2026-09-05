@@ -275,10 +275,14 @@ export class ForceSolver {
     timeSeconds = 0,
     kinematics?: FrameKinematics
   ): ForceAnalysisFrame {
-    const bodies = links.filter(
+    const every = links.filter(
       (link): link is RealLink | SliderBlock =>
         link instanceof RealLink || link instanceof SliderBlock
     );
+    // A body pinned to the world at two points is fixed: it is frame, not a
+    // link, and gets no equilibrium of its own -- see `frameBodies`.
+    const frame = this.frameBodies(every);
+    const bodies = every.filter((body) => !frame.has(body.id));
     const units = this.unitFactors(unit);
     const empty = (
       status: ForceAnalysisStatus,
@@ -312,7 +316,7 @@ export class ForceSolver {
       rowCount += count;
     }
 
-    const { reactions, incidentByJoint } = this.enumerateReactions(joints, bodies);
+    const { reactions, incidentByJoint } = this.enumerateReactions(joints, bodies, every, frame);
 
     // One couple unknown per welded slide (docs/phase-3-slide-spec.md §9).
     // Shapes the couple cannot be written for are refused by name rather than
@@ -592,17 +596,65 @@ export class ForceSolver {
   }
 
   /** The pin-reaction unknowns implied by the topology, before any solve. */
+  /**
+   * The bodies that are frame rather than links: pinned to the world at two
+   * distinct points, so they cannot move at all.
+   *
+   * Kinematics never minded one -- the position solver holds both pins still.
+   * Statics did: three equilibrium equations against four ground reactions,
+   * and the split of load between the two pins has no unique answer, so a
+   * drawing with a bracket like this refused with "more supports than
+   * equilibrium can determine". The bracket is the world's, not the
+   * mechanism's. It gets no rows here, its other joints act as ground pins for
+   * whatever hangs on them (`jointsOnFrame`), and the reactions at its own two
+   * pins -- the indeterminate pair -- are simply not asked for.
+   */
+  private static frameBodies(bodies: Link[]): Set<string> {
+    const frame = new Set<string>();
+    for (const body of bodies) {
+      if (!(body instanceof RealLink)) continue;
+      const pins = body.joints.filter(
+        (joint): joint is RealJoint =>
+          joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint)
+      );
+      const distinct = pins.filter(
+        (pin, index) =>
+          pins.findIndex((other) => Math.hypot(other.x - pin.x, other.y - pin.y) < 1e-6) === index
+      );
+      if (distinct.length >= 2) frame.add(body.id);
+    }
+    return frame;
+  }
+
+  /** Every joint on a frame body: a ground pin to whatever else meets it there. */
+  private static jointsOnFrame(bodies: Link[], frame: ReadonlySet<string>): Set<string> {
+    const joints = new Set<string>();
+    for (const body of bodies) {
+      if (frame.has(body.id)) body.joints.forEach((joint) => joints.add(joint.id));
+    }
+    return joints;
+  }
+
   private static enumerateReactions(
     joints: Joint[],
-    bodies: Link[]
+    bodies: Link[],
+    every: Link[] = bodies,
+    frame: ReadonlySet<string> = new Set()
   ): { reactions: ReactionUnknown[]; incidentByJoint: Map<string, Link[]> } {
     const reactions: ReactionUnknown[] = [];
     const incidentByJoint = new Map<string, Link[]>();
+    const frameJoints = this.jointsOnFrame(every, frame);
+    const onFrame = (leaf: Link | undefined): boolean => {
+      const root = this.rootBody(every, leaf);
+      return !!root && frame.has(root.id);
+    };
     for (const candidate of joints) {
       if (!(candidate instanceof RealJoint)) continue;
       const incident = this.incidentBodies(candidate, bodies);
       incidentByJoint.set(candidate.id, incident);
       if (incident.length === 0) continue;
+      // Ground, or as good as: a pin on a frame body is a pin on the world.
+      const grounded = candidate.ground || frameJoints.has(candidate.id);
 
       if (candidate instanceof PrisJoint) {
         const piston = incident.find((body) => body instanceof SliderBlock);
@@ -610,9 +662,12 @@ export class ForceSolver {
         // its own. A floating one pushes against the carrier, and that reaction
         // has to appear in the carrier's equilibrium as well or the slot
         // transmits force out of nowhere. Resolved through compounds: a weld
-        // may have folded the carrier into a root whose id is not its own.
+        // may have folded the carrier into a root whose id is not its own. A
+        // slot cut into a frame body resolves to no carrier here, which is the
+        // grounded case: it pushes against the world.
         const carrier = candidate.isFloating ? this.rootBody(bodies, candidate.carrier) : undefined;
-        if (piston && (candidate.ground || carrier)) {
+        const cutIntoFrame = candidate.isFloating && onFrame(candidate.carrier);
+        if (piston && (candidate.ground || carrier || cutIntoFrame)) {
           reactions.push({
             joint: candidate,
             positiveBody: piston,
@@ -625,7 +680,7 @@ export class ForceSolver {
         continue;
       }
 
-      if (candidate.ground) {
+      if (grounded) {
         for (const body of incident) {
           reactions.push({
             joint: candidate,
@@ -665,10 +720,14 @@ export class ForceSolver {
 
   /** Joint <-> root-body pairing that both analysis panels enumerate rows from. */
   static buildReactionIndex(joints: Joint[], links: Link[]): ForceReactionIndex {
-    const bodies = links.filter(
+    const every = links.filter(
       (link): link is RealLink | SliderBlock =>
         link instanceof RealLink || link instanceof SliderBlock
     );
+    // The same cut the frame assembly makes: a frame body has no reactions
+    // of its own to list, and its pins are ground to its neighbors.
+    const frame = this.frameBodies(every);
+    const bodies = every.filter((body) => !frame.has(body.id));
     const linksByJoint = new Map<string, string[]>();
     const jointsByLink = new Map<string, string[]>();
     const pair = (jointId: string, bodyId: string): void => {
@@ -681,7 +740,7 @@ export class ForceSolver {
       jointsByLink.set(bodyId, forLink);
     };
 
-    for (const reaction of this.enumerateReactions(joints, bodies).reactions) {
+    for (const reaction of this.enumerateReactions(joints, bodies, every, frame).reactions) {
       pair(reaction.joint.id, reaction.positiveBody.id);
       if (reaction.negativeBody) pair(reaction.joint.id, reaction.negativeBody.id);
     }
