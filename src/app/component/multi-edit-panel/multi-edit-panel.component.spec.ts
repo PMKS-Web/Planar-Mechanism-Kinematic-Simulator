@@ -3,10 +3,14 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { RevJoint } from '../../model/joint';
 import { RealLink } from '../../model/link';
 import { MODEL_SCALE } from '../../model/render-scale';
+import { Coord } from '../../model/coord';
+import { Force } from '../../model/force';
+import { EditState } from '../../model/edit-permission';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { MultiEditService } from '../../services/multi-edit.service';
 import { SelectionBatchService } from '../../services/selection-batch.service';
+import { EditPermissionService } from '../../services/edit-permission.service';
 import { MultiEditPanelComponent } from './multi-edit-panel.component';
 
 const S = MODEL_SCALE;
@@ -20,6 +24,9 @@ describe('MultiEditPanelComponent', () => {
     assignLinkGeometry: vi.fn().mockReturnValue({ ok: true }),
     assignLinkMass: vi.fn().mockReturnValue({ ok: true }),
     setLocked: vi.fn().mockReturnValue({ ok: true }),
+    setHold: vi.fn().mockReturnValue({ ok: true }),
+    setTracePath: vi.fn().mockReturnValue({ ok: true }),
+    setForceFrame: vi.fn().mockReturnValue({ ok: true }),
   };
   const batch = {
     deleteSelected: vi.fn().mockReturnValue({ ok: true, selection: [] }),
@@ -196,5 +203,109 @@ describe('MultiEditPanelComponent', () => {
     lock.click();
     fixture.detectChanges();
     expect(multi.setLocked).toHaveBeenCalledWith(active.selectedPartRefs, true);
+  });
+
+  function posedState(): EditState {
+    return {
+      mode: 'analysis', playing: false, atStart: false, sharedStepZero: false,
+      solveDeferred: false, empty: false, runnable: true,
+    };
+  }
+
+  function selectBars() {
+    const a = new RevJoint('A', 0, 0);
+    const b = new RevJoint('B', S, S);
+    const c = new RevJoint('C', 2 * S, 0);
+    const ab = new RealLink('AB', [a, b]);
+    const bc = new RealLink('BC', [b, c]);
+    mechanism.joints = [a, b, c];
+    mechanism.links = [ab, bc];
+    active.restorePartSelection(
+      { refs: [{ kind: 'link', id: 'AB' }, { kind: 'link', id: 'BC' }] },
+      mechanism.joints, mechanism.links
+    );
+    return { ab, bc };
+  }
+
+  it('allows paused locks, holds, mass and paths while keeping geometry and deletion disabled', () => {
+    selectBars();
+    const state = posedState();
+    vi.spyOn(TestBed.inject(EditPermissionService), 'state').mockReturnValue(state);
+    const element = render();
+    const panel = fixture.componentInstance;
+    for (const mode of ['edit', 'analysis'] as const) {
+      state.mode = mode;
+      fixture.detectChanges();
+      expect(element.querySelector('[inert]')).toBeNull();
+      expect(headerLock(element)!.disabled).toBe(false);
+      expect(headerDelete(element)!.disabled).toBe(true);
+      expect(panel.form.controls.mass.enabled).toBe(true);
+      expect(panel.form.controls.fixedLength.enabled).toBe(true);
+      expect(panel.form.controls.fixedAngle.enabled).toBe(true);
+      expect(panel.form.controls.length.disabled).toBe(true);
+      expect(panel.form.controls.angle.disabled).toBe(true);
+      expect((element.querySelector('[data-action="duplicate"]') as HTMLButtonElement).disabled)
+        .toBe(true);
+      panel.delete();
+      panel.duplicate();
+    }
+    expect(batch.deleteSelected).not.toHaveBeenCalled();
+    expect(batch.duplicateSelected).not.toHaveBeenCalled();
+    headerLock(element)!.click();
+    expect(multi.setLocked).toHaveBeenCalled();
+
+    active.restorePartSelection(
+      { refs: [{ kind: 'joint', id: 'A' }, { kind: 'joint', id: 'B' }] },
+      mechanism.joints, mechanism.links
+    );
+    fixture.detectChanges();
+    expect(panel.form.controls.trace.enabled).toBe(true);
+    expect(panel.form.controls.x.disabled).toBe(true);
+    expect(panel.form.controls.ground.disabled).toBe(true);
+    expect(panel.form.controls.weld.disabled).toBe(true);
+    expect(panel.form.controls.slider.disabled).toBe(true);
+  });
+
+  it('enables mapped force values and frame while respecting a force direction lock', () => {
+    const { ab, bc } = selectBars();
+    mechanism.forces = [ab, bc].map((link, index) =>
+      new Force(`F${index + 1}`, link, new Coord(S, S), new Coord(S, 2 * S))
+    );
+    active.restorePartSelection(
+      { refs: [{ kind: 'force', id: 'F1' }, { kind: 'force', id: 'F2' }] },
+      mechanism.joints, mechanism.links, mechanism.forces
+    );
+    vi.spyOn(TestBed.inject(EditPermissionService), 'state').mockReturnValue(posedState());
+    const element = render();
+    const controls = fixture.componentInstance.form.controls;
+    expect(controls.magnitude.enabled).toBe(true);
+    expect(controls.forceAngle.enabled).toBe(true);
+    expect(controls.isGlobal.enabled).toBe(true);
+    expect([...element.querySelectorAll('radio-block button')]
+      .every((button) => !(button as HTMLButtonElement).disabled)).toBe(true);
+    mechanism.forces[0].locked = true;
+    fixture.detectChanges();
+    expect(controls.forceAngle.disabled).toBe(true);
+    expect(controls.magnitude.enabled).toBe(true);
+    expect(controls.isGlobal.enabled).toBe(true);
+  });
+
+  it('keeps every bulk control unavailable while playing or in Synthesis', () => {
+    selectBars();
+    const state = posedState();
+    state.playing = true;
+    vi.spyOn(TestBed.inject(EditPermissionService), 'state').mockReturnValue(state);
+    const element = render();
+    const assertFrozen = () => {
+      expect(element.querySelector('[inert]')).not.toBeNull();
+      expect(Object.values(fixture.componentInstance.form.controls)
+        .every((control) => control.disabled)).toBe(true);
+      expect(headerDelete(element)!.disabled).toBe(true);
+    };
+    assertFrozen();
+    state.playing = false;
+    state.mode = 'synthesis';
+    fixture.detectChanges();
+    assertFrozen();
   });
 });

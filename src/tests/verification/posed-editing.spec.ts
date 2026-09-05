@@ -14,6 +14,10 @@ import { LengthUnit } from '../../app/model/utils';
 import { coordinateRuleFor, coordinatesAcross } from '../../app/model/mechanism/anchor';
 import { nearlyNonGrashofFixture } from '../../test-utils/verification/fixtures';
 import { MechanismFixture, buildMechanism } from '../../test-utils/verification/fixture';
+import { encodeUrlOf } from '../../test-utils/url-encoding';
+import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
+import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
+import { SelectedTabService, TabID } from '../../app/selected-tab.service';
 
 /**
  * Editing at a pose other than the one the drawing starts in.
@@ -752,6 +756,130 @@ describe('editing at a displaced pose', () => {
     expect(force).toBeDefined();
     expect(offSegment(force.startCoord, at0('B'), at0('C'))).toBeLessThan(1e-6);
     expect(startCoordinate(service, 0)).toBeCloseTo(anchoredBefore, 1);
+  });
+
+  it('maps additive attachments exactly without moving either unsynced machine or its start', () => {
+    const harness = createMechanismHarness();
+    const { service, settings, active } = harness;
+    fourBar(service, 'A', 0);
+    const second = fourBar(service, 'E', 10);
+    service.updateMechanism();
+    service.setSyncMechanisms(false);
+    displace(service, 0);
+    service.seekMechanism(1, service.mechanisms[1].cyclePeriod / 4);
+    service.reverseDrive(1);
+    const start = service.mechanisms.flatMap((frames) =>
+      frames.joints[0].map((joint) => ({ id: joint.id, x: joint.x, y: joint.y }))
+    );
+    const shown = service.joints.map((joint) => ({ id: joint.id, x: joint.x, y: joint.y }));
+    const clocks = service.partitions.map((_, index) => service.secondsOf(index));
+    const [, b, c] = second.joints;
+    const wanted = new Coord((b.x + c.x) / 2 + (c.y - b.y) / 5,
+      (b.y + c.y) / 2 - (c.x - b.x) / 5);
+    active.updateSelectedObj(second.links[1]);
+    expect(service.canAttachAtPose(second.links[1])).toBe(true);
+    const beforeSaves = harness.saveCount();
+    service.addJointAt(wanted);
+    const tracer = service.joints.find((joint) => !shown.some((old) => old.id === joint.id))!;
+    // PositionSolver publishes coordinates rounded to four decimal places.
+    expect(tracer.x).toBeCloseTo(wanted.x, 3);
+    expect(tracer.y).toBeCloseTo(wanted.y, 3);
+    const tail = new Coord((b.x + c.x) / 2, (b.y + c.y) / 2);
+    const force = service.createForce(tail, new Coord(tail.x + 0.2, tail.y + 0.8), second.links[1])!;
+    expect(force.startCoord.x).toBeCloseTo(tail.x, 3);
+    expect(force.startCoord.y).toBeCloseTo(tail.y, 3);
+    expect(force.angleRad).toBeCloseTo(Math.atan2(0.8, 0.2), 6);
+    expect(harness.saveCount() - beforeSaves).toBe(2);
+    for (const expected of start) {
+      const actual = service.mechanisms.flatMap((frames) => frames.joints[0])
+        .find((joint) => joint.id === expected.id)!;
+      expect({ id: actual.id, x: actual.x, y: actual.y }).toEqual(expected);
+    }
+    for (const expected of shown) {
+      const actual = service.joints.find((joint) => joint.id === expected.id)!;
+      // Reversing replaces reflected cached samples with a fresh solve in
+      // the opposite direction, which accumulates a little rounding error.
+      expect(Math.hypot(actual.x - expected.x, actual.y - expected.y)).toBeLessThan(0.002);
+    }
+    expect(service.partitions.map((_, index) => service.secondsOf(index))).toEqual(clocks);
+    expect(service.mechanisms.every((frames) => frames.isMechanismValid())).toBe(true);
+    const decoder = new StringTranscoder();
+    decoder.decodeURL(encodeUrlOf(service, settings));
+    const reopened = createMechanismHarness();
+    new MechanismBuilder(reopened.service, decoder, reopened.settings, reopened.active).build(true);
+    for (const expected of start) {
+      const actual = reopened.service.joints.find((joint) => joint.id === expected.id)!;
+      expect(actual.x).toBeCloseTo(expected.x, 3);
+      expect(actual.y).toBeCloseTo(expected.y, 3);
+    }
+    expect(reopened.service.forces).toHaveLength(1);
+    expect(reopened.service.joints).toHaveLength(start.length + 1);
+    active.updateSelectedObj(tracer);
+    expect(service.canDeleteTracerAtPose(tracer as RealJoint)).toBe(true);
+    service.deleteJoint();
+    expect(service.joints).toHaveLength(start.length);
+    for (const expected of start) {
+      const actual = service.mechanisms.flatMap((frames) => frames.joints[0])
+        .find((joint) => joint.id === expected.id)!;
+      expect({ id: actual.id, x: actual.x, y: actual.y }).toEqual(expected);
+    }
+    expect(service.partitions.map((_, index) => service.secondsOf(index))).toEqual(clocks);
+    expect(service.mechanisms.every((frames) => frames.isMechanismValid())).toBe(true);
+  });
+
+  it('retains force direction edits and frame switches at a paused pose', () => {
+    const { service, active, joints, links } = oneBar();
+    const force = service.createForce(new Coord(1.5, 1.5), new Coord(1.5, 2.5), links[1])!;
+    const start = startPoses(service);
+    displace(service);
+    active.updateSelectedObj(force);
+    const shown = joints.map((joint) => [joint.x, joint.y]);
+    const tail = { x: force.startCoord.x, y: force.startCoord.y };
+    const originalAngle = force.angleRad;
+    const beforeTurn = Math.atan2(joints[2].y - joints[1].y, joints[2].x - joints[1].x);
+    const at0 = service.mechanisms[0].joints[0];
+    const startTurn = Math.atan2(at0[2].y - at0[1].y, at0[2].x - at0[1].x);
+
+    service.changeForceLocal();
+    expect(force.local).toBe(true);
+    expect(force.angleRad).toBeCloseTo(originalAngle, 6);
+    const initialForce = service.mechanisms[0].forces[0][0];
+    expect(Math.cos(initialForce.angleRad)).toBeCloseTo(Math.cos(originalAngle + startTurn - beforeTurn), 6);
+    service.changeForceDirection();
+    expect(Math.cos(force.angleRad)).toBeCloseTo(-Math.cos(originalAngle), 6);
+    expect(Math.sin(force.angleRad)).toBeCloseTo(-Math.sin(originalAngle), 6);
+    service.changeForceLocal();
+    expect(force.local).toBe(false);
+    expect(Math.cos(service.mechanisms[0].forces[0][0].angleRad)).toBeCloseTo(-Math.cos(originalAngle), 6);
+    expect(force.startCoord.x).toBeCloseTo(tail.x, 6);
+    expect(force.startCoord.y).toBeCloseTo(tail.y, 6);
+    expect(joints.map((joint) => [joint.x, joint.y])).toEqual(shown);
+    expect(startPoses(service)).toBe(start);
+    service.deleteForce(force);
+    expect(service.forces).toHaveLength(0);
+    expect(startPoses(service)).toBe(start);
+    expect(joints.map((joint) => [joint.x, joint.y])).toEqual(shown);
+  });
+
+  it('keeps paused locks, shape and hold changes independent of mode and geometry', () => {
+    const { service, active, injector, joints, links } = oneBar();
+    const start = startPoses(service);
+    displace(service);
+    const shown = joints.map((joint) => [joint.x, joint.y]);
+    for (const tab of [TabID.EDIT, TabID.ANALYZE, TabID.FORCE]) {
+      injector.get(SelectedTabService).setTab(tab);
+      expect(service.lockVisualsOn()).toBe(true);
+      service.toggleLock(joints[1]);
+      service.setAllLocks(true);
+      service.setAllLocks(false);
+      service.setHold(links[1], 'length');
+      service.setHold(links[1], 'angle');
+      service.releaseHolds([links[1]]);
+      active.updateSelectedObj(links[0]);
+      service.toggleLinkCircular();
+      expect(startPoses(service)).toBe(start);
+      expect(joints.map((joint) => [joint.x, joint.y])).toEqual(shown);
+    }
   });
 
   it('puts a slider added at a displaced pose on its pin', () => {

@@ -175,7 +175,10 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 - `AppComponent` is just a shell that registers SVG icons; `component/new-grid/new-grid.component.ts` is the real center — the SVG canvas handling the mouse/touch interaction state machine, with pan/zoom via `SvgGridService` (svg-pan-zoom + hammerjs).
 - The right-click menu is **built in a service, not in the canvas**: `services/context-menu-builder.service.ts` turns whatever was right-clicked, plus the current mode, into a `ContextMenuModel` (`component/context-menu/menu-model.ts`), and `component/context-menu/` renders it. Every grayed row quotes the model that enforces it — `describeActuatorRefusal` in `model/actuator.ts`, `weldRefusal` in `grid-utils`, `locksHolding` in `model/lock-set.ts` — rather than restating the rule, so the menu, the panel and the drag ring cannot disagree. New rows belong in the builder; the canvas only supplies the gesture handlers (`MenuHandlers`).
 - **The analysis modes are editable.** They allow the same context-menu actions as Edit at the start pose. Away from it,
-  menu mutations are disabled in both modes; traces remain available while paused. Drags
+  topology changes stay disabled in both modes. Paused menus allow locks, dimension holds,
+  display shape, force properties, and traces. Tracer points and force application points map
+  directly back through their body's transform to t=0; removing an unconstrained tracer is
+  likewise safe. Lock marks show in every mode while paused. Drags
   stage and re-anchor exactly as they do in Edit. Grab a joint and
   every open graph lays the curve from before the gesture under the one following your hand,
   with the peak said as two numbers. `docs/analysis-mode-editing-plan.md` is the argument;

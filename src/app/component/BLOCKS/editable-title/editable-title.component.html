@@ -76,6 +76,7 @@
     <button
       class="mini-buttons red"
       [class.iconOnly]="!deleteLabel()"
+      [disabled]="deleteDisabled()"
       mat-stroked-button
       color="warn"
       [attr.aria-label]="deleteLabel() ?? 'Delete'"

@@ -35,6 +35,7 @@ import { ShortcutTipDirective } from '../../../shortcut-tip.directive';
   ],
 })
 export class EditableTitleComponent {
+  readonly deleteDisabled = input(false);
   readonly shortcuts = inject(KeyboardShortcutsService);
   private fb = inject(FormBuilder);
   activeObjService = inject(ActiveObjService);

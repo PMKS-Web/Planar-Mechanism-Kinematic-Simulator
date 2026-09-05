@@ -345,10 +345,18 @@ export function displacementRefusal(state: EditState): EditRefusal | null {
   return state.sharedStepZero ? displacedUnsynced(state.awayMachine) : DISPLACED;
 }
 
-/** Menus never adopt a displayed pose as the design. View switches need only a pause. */
-export function menuRefusal(state: EditState, viewOnly = false): EditRefusal | null {
+/** What an action needs in order to preserve the authored start. */
+export type MenuPosePolicy = 'start' | 'preserve' | 'attachment' | 'view';
+
+/** A paused pose allows edits with a defined mapping back to the authored drawing. */
+export function menuRefusal(
+  state: EditState,
+  policy: MenuPosePolicy = 'start'
+): EditRefusal | null {
   if (state.playing) return PLAYING;
-  if (viewOnly) return null;
+  if (policy === 'view') return null;
   if (state.mode === 'synthesis') return IN_SYNTHESIS;
+  if (state.atStart || policy === 'preserve') return null;
+  if (policy === 'attachment') return state.solveDeferred ? DEFERRED_DISPLACED : null;
   return displacementRefusal(state);
 }

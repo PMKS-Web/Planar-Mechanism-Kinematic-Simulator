@@ -240,6 +240,46 @@ describe('MultiEditService', () => {
     }
   });
 
+  it('changes bulk locks, holds and mass without moving either the paused or authored pose', () => {
+    const { a, ab, bc } = connectedBars();
+    a.input = true;
+    mechanism.updateMechanism(false);
+    const start = mechanism.joints.map((joint) => [joint.x, joint.y]);
+    mechanism.animate(60, false);
+    const pose = mechanism.joints.map((joint) => [joint.x, joint.y]);
+    const time = mechanism.secondsOf(0);
+    const save = historyWrites();
+    expect(time).toBeGreaterThan(0);
+
+    const selection = refs('link:AB', 'link:BC');
+    const operations = [
+      () => service.setLocked(selection, true),
+      () => service.setLocked(selection, false),
+      () => service.setHold(selection, 'length'),
+      () => service.setHold(selection, 'angle'),
+      () => service.assignLinkMass(selection, 3.5),
+    ];
+    for (const operation of operations) {
+      save.mockClear();
+      expect(operation().ok).toBe(true);
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(mechanism.secondsOf(0)).toBeCloseTo(time, 8);
+      expect(mechanism.mechanisms[0].isMechanismValid()).toBe(true);
+      mechanism.joints.forEach((joint, index) => {
+        expect(joint.x).toBeCloseTo(pose[index][0], 5);
+        expect(joint.y).toBeCloseTo(pose[index][1], 5);
+      });
+      mechanism.encodeFromStartPose(() => {
+        mechanism.joints.forEach((joint, index) => {
+          expect(joint.x).toBeCloseTo(start[index][0], 5);
+          expect(joint.y).toBeCloseTo(start[index][1], 5);
+        });
+      });
+    }
+    expect([ab.hold, bc.hold]).toEqual(['angle', 'angle']);
+    expect([ab.mass, bc.mass]).toEqual([3.5, 3.5]);
+  });
+
   it('applies a common safe mass and lock state atomically without renaming', () => {
     const { ab, cd } = twoBars();
     const update = vi.spyOn(mechanism, 'updateMechanism');
@@ -384,6 +424,89 @@ describe('MultiEditService', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('back-calculates bulk force edits from the paused bodies and saves them once', () => {
+    const { a, ab, bc } = connectedBars();
+    a.input = true;
+    const forces = [ab, bc].map((link, index) => {
+      const [first, second] = link.joints;
+      const at = new Coord((first.x + second.x) / 2, (first.y + second.y) / 2);
+      const force = new Force(`F${index + 1}`, link, at, new Coord(at.x + S, at.y + S));
+      link.forces.push(force);
+      return force;
+    });
+    mechanism.forces = forces;
+    mechanism.updateMechanism(false);
+    const start = mechanism.joints.map((joint) => [joint.x, joint.y]);
+    const startAnchors = forces.map((force) => ({ x: force.startCoord.x, y: force.startCoord.y }));
+    const startAngles = [ab.angleRad, bc.angleRad];
+    mechanism.animate(60, false);
+    const pose = mechanism.joints.map((joint) => [joint.x, joint.y]);
+    const anchors = forces.map((force) => ({ x: force.startCoord.x, y: force.startCoord.y }));
+    const angles = forces.map((force) => force.angleRad);
+    const bodyTurns = [ab.angleRad - startAngles[0], bc.angleRad - startAngles[1]];
+    const time = mechanism.secondsOf(0);
+    const selection = refs('force:F1', 'force:F2');
+    const save = historyWrites();
+    const assertPose = () => {
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(mechanism.secondsOf(0)).toBeCloseTo(time, 8);
+      mechanism.joints.forEach((joint, index) => {
+        expect(joint.x).toBeCloseTo(pose[index][0], 5);
+        expect(joint.y).toBeCloseTo(pose[index][1], 5);
+      });
+      forces.forEach((force, index) => {
+        expect(force.startCoord.x).toBeCloseTo(anchors[index].x, 5);
+        expect(force.startCoord.y).toBeCloseTo(anchors[index].y, 5);
+      });
+      mechanism.encodeFromStartPose(() => {
+        mechanism.joints.forEach((joint, index) => {
+          expect(joint.x).toBeCloseTo(start[index][0], 5);
+          expect(joint.y).toBeCloseTo(start[index][1], 5);
+        });
+        forces.forEach((force, index) => {
+          expect(force.startCoord.x).toBeCloseTo(startAnchors[index].x, 5);
+          expect(force.startCoord.y).toBeCloseTo(startAnchors[index].y, 5);
+        });
+      });
+      save.mockClear();
+    };
+    const sameDirection = (actual: number, expected: number) => {
+      expect(Math.cos(actual)).toBeCloseTo(Math.cos(expected), 6);
+      expect(Math.sin(actual)).toBeCloseTo(Math.sin(expected), 6);
+    };
+
+    expect(service.setForceFrame(selection, true).ok).toBe(true);
+    expect(forces.every((force) => force.local)).toBe(true);
+    forces.forEach((force, index) => sameDirection(force.angleRad, angles[index]));
+    assertPose();
+    mechanism.encodeFromStartPose(() => {
+      forces.forEach((force, index) =>
+        sameDirection(force.angleRad, angles[index] - bodyTurns[index])
+      );
+    });
+
+    expect(service.setForceValue(selection, 'magnitude', 4).ok).toBe(true);
+    expect(forces.map((force) => force.mag)).toEqual([4, 4]);
+    assertPose();
+
+    expect(service.setForceValue(selection, 'angle', Math.PI / 6).ok).toBe(true);
+    forces.forEach((force) => sameDirection(force.angleRad, Math.PI / 6));
+    assertPose();
+    mechanism.encodeFromStartPose(() => {
+      forces.forEach((force, index) =>
+        sameDirection(force.angleRad, Math.PI / 6 - bodyTurns[index])
+      );
+    });
+
+    expect(service.setForceFrame(selection, false).ok).toBe(true);
+    expect(forces.every((force) => !force.local)).toBe(true);
+    forces.forEach((force) => sameDirection(force.angleRad, Math.PI / 6));
+    assertPose();
+    mechanism.encodeFromStartPose(() => {
+      forces.forEach((force) => sameDirection(force.angleRad, Math.PI / 6));
+    });
+  });
+
   it('refuses a force value on a selection that is not all forces', () => {
     const { ab } = twoForces();
     const result = service.setForceValue(refs('force:F1', 'link:AB'), 'magnitude', 2);
@@ -401,5 +524,20 @@ describe('MultiEditService', () => {
     expect(result.ok).toBe(false);
     expect(result.ok ? '' : result.refusal.short).toBe('not a magnitude');
     expect(first.mag).toBe(was);
+  });
+
+  it('reports an unavailable force mapping instead of claiming that an edit succeeded', () => {
+    const { first, second } = twoForces();
+    vi.spyOn(mechanism, 'editForcesAtPose').mockReturnValue(false);
+    const selection = refs('force:F1', 'force:F2');
+    for (const result of [
+      service.setForceValue(selection, 'magnitude', 4),
+      service.setForceFrame(selection, true),
+    ]) {
+      expect(result.ok).toBe(false);
+      expect(result.ok ? '' : result.refusal.code).toBe('selection.force-pose');
+    }
+    expect([first.mag, second.mag]).toEqual([1, 1]);
+    expect([first.local, second.local]).toEqual([false, false]);
   });
 });

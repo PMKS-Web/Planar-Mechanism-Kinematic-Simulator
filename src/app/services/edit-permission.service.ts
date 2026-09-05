@@ -6,6 +6,7 @@ import {
   EditState,
   refusalFor,
   menuRefusal,
+  MenuPosePolicy,
 } from '../model/edit-permission';
 import { MechanismService } from './mechanism.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
@@ -97,8 +98,8 @@ export class EditPermissionService {
   }
 
   /** Menu actions use the original design pose; view switches never change it. */
-  menuRefusal(viewOnly = false): EditRefusal | null {
-    return menuRefusal(this.state(), viewOnly);
+  menuRefusal(policy: MenuPosePolicy = 'start'): EditRefusal | null {
+    return menuRefusal(this.state(), policy);
   }
 
   /** The same question where only yes or no is wanted. */

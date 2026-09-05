@@ -9,6 +9,7 @@
     [lockState]="lockDisplay()"
     [toggleLockAction]="toggleLock.bind(this)"
     [deleteAction]="delete.bind(this)"
+    [deleteDisabled]="structureIsFrozen()"
     deleteLabel="Delete"
   ></editable-title-block>
   <app-edit-banner panelAttached />
@@ -36,6 +37,7 @@
       <toggle-block
         [formGroup]="form"
         _formControl="ground"
+        [disabled]="form.controls.ground.disabled"
         dataAction="ground"
         [mixed]="groundState().kind === 'mixed'"
         tooltip="Fixes every selected joint to the frame, so nothing can move them."
@@ -45,6 +47,7 @@
       <toggle-block
         [formGroup]="form"
         _formControl="slider"
+        [disabled]="form.controls.slider.disabled"
         dataAction="slider"
         [mixed]="sliderState().kind === 'mixed'"
         tooltip="Give every selected joint a sliding block. Off is a pin."
@@ -54,6 +57,7 @@
       <toggle-block
         [formGroup]="form"
         _formControl="weld"
+        [disabled]="form.controls.weld.disabled"
         dataAction="weld"
         [mixed]="weldState().kind === 'mixed'"
         tooltip="Fuses whatever meets at each selected joint into one rigid body."
@@ -65,6 +69,7 @@
       <toggle-block
         [formGroup]="form"
         _formControl="trace"
+        [disabled]="form.controls.trace.disabled"
         dataAction="trace"
         [mixed]="traceState().kind === 'mixed'"
         tooltip="Show / hide the path each selected joint takes through the cycle."
@@ -115,6 +120,7 @@
         <toggle-block
           [formGroup]="form"
           _formControl="fixedLength"
+          [disabled]="form.controls.fixedLength.disabled"
           dataAction="fixedLength"
           [mixed]="holdState('length').kind === 'mixed'"
           tooltip="Hold every selected bar at the length it is now. Its ends may still turn about each other."
@@ -124,6 +130,7 @@
         <toggle-block
           [formGroup]="form"
           _formControl="fixedAngle"
+          [disabled]="form.controls.fixedAngle.disabled"
           dataAction="fixedAngle"
           [mixed]="holdState('angle').kind === 'mixed'"
           tooltip="Hold every selected bar at the direction it points now. Its ends may still stretch along that line."
@@ -165,6 +172,7 @@
       <radio-block
         [formGroup]="form"
         _formControl="isGlobal"
+        [disabled]="form.controls.isGlobal.disabled"
         tooltip="Global keeps a force pointing the same way. Local turns it with the link it is on."
         [option1]="localOptionLabel"
         option2="Global"
@@ -195,6 +203,7 @@
       icon="content_copy"
       dataAction="duplicate"
       [click]="duplicate.bind(this)"
+      [disabled]="structureIsFrozen()"
       tooltip="Copies the selected topology one grid step away."
     >
       Duplicate Selected

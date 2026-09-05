@@ -3859,7 +3859,12 @@ export class NewGridComponent implements OnDestroy {
     //
     // Wrapped here rather than at each of the six commits inside, because they
     // are branches of one gesture and it is the gesture that captures a pose.
-    if (this.dragState.grid !== gridStates.waiting && !this.mechanismSrv.isAtStartPose()) {
+    // Force attachments map directly back through the existing body's transform.
+    if (
+      this.dragState.grid !== gridStates.waiting &&
+      this.dragState.grid !== gridStates.createForce &&
+      !this.mechanismSrv.isAtStartPose()
+    ) {
       // A link drawn between two machines fuses them, and mid-cycle the two
       // halves are at different places in their own cycles -- so the body it
       // makes is half one and half the other, exactly what the merge and
@@ -3901,11 +3906,8 @@ export class NewGridComponent implements OnDestroy {
   private creationAnchorPart(): Joint | Link | Force | undefined {
     if (this.cylinderCreateOn) return this.cylinderCreateOn;
     if (this.linkCreateFrom) return this.linkCreateFrom;
-    // A force is drawn on a link at the pose the link is showing, which is as
-    // capturing as a link drawn from a joint. Left off this list, the press
-    // that finishes it ran unstaged, and the arrow stood half a mechanism off
-    // the body it was drawn on once the rebuild put that body back on its
-    // start.
+    // Retain a force's source when identifying the creation body defensively.
+    // Normal force gestures bypass staging and map directly to authored t=0.
     if (this.forceCreateOn) return this.forceCreateOn;
     // A link grows from wherever the first click landed, which is a coordinate
     // rather than a part -- so the machine is named by what is selected, which
@@ -3975,6 +3977,15 @@ export class NewGridComponent implements OnDestroy {
         // rod's end, exactly where the ghost has been standing.
         if (this.dragState.grid === gridStates.createCylinder) {
           this.commitCylinderCreation(this.creationLanding());
+          break;
+        }
+        // A force's arrow tip can land on another part as well as empty grid.
+        if (this.dragState.grid === gridStates.createForce) {
+          const start = this.svgGrid.screenToModel(this.lastRightClickCoord);
+          this.mechanismSrv.createForce(start, mousePosInSvg, this.forceCreateOn);
+          this.dragState.finishCreating();
+          this.forceGhost = undefined;
+          this.forceCreateOn = undefined;
           break;
         }
         switch (this.lastLeftClickType) {
@@ -4084,16 +4095,6 @@ export class NewGridComponent implements OnDestroy {
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
                 this.linkCreateFrom = undefined;
-                break;
-              case gridStates.createForce:
-                const startCoord = this.svgGrid.screenToModel(this.lastRightClickCoord);
-                const endCoord = this.svgGrid.screenToModel(
-                  new Coord($event.clientX, $event.clientY)
-                );
-                this.mechanismSrv.createForce(startCoord, endCoord, this.forceCreateOn);
-                this.dragState.finishCreating();
-                this.forceGhost = undefined;
-                this.forceCreateOn = undefined;
                 break;
             }
             break;
@@ -5855,7 +5856,7 @@ export class NewGridComponent implements OnDestroy {
         this.deleteSelection();
         return;
       case 'edit.lock':
-        if (!this.permission.may('structure')) return;
+        if (this.permission.menuRefusal('preserve')) return;
         this.toggleLockOnSelection();
         return;
       case 'history.undo':

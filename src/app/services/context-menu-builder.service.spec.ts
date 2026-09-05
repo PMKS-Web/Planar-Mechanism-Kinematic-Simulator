@@ -17,6 +17,8 @@ import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 import { silentNotifications } from '../../test-utils/notification-stub';
 import { wireGraph } from '../../test-utils/mechanism-harness';
+import { Force } from '../model/force';
+import { Coord } from '../model/coord';
 import { RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { MODEL_SCALE } from '../model/render-scale';
@@ -230,12 +232,23 @@ describe('the right-click menu', () => {
   });
 
   describe('the ladder', () => {
-    it('runs Attach, then State, then the destructive footer', () => {
+    it('runs Attach, State, grouped Traces, then the destructive footer', () => {
       const parts = fourBar(harness.mechanism);
       const model = harness.builder.build(parts.a, noHandlers);
       expect(model.groups.filter((group) => group.rows.length).map((group) => group.label)).toEqual(
-        ['Attach', 'State', undefined]
+        ['Attach', 'State', 'Traces', undefined]
       );
+    });
+
+    it('groups every trace directly below Locked', () => {
+      const parts = fourBar(harness.mechanism);
+      const labels = rows(harness.builder.build(parts.a, noHandlers)).map((r) => r.label);
+      expect(labels.slice(labels.indexOf('Locked') + 1, labels.indexOf('Locked') + 5)).toEqual([
+        'Trace path',
+        'Velocity Vectors',
+        'Acceleration Vectors',
+        'Force Vectors',
+      ]);
     });
 
     it('puts Delete last, whatever else the menu holds', () => {
@@ -630,17 +643,31 @@ describe('the right-click menu', () => {
   it('executes an analysis delete at the start and guards a stale menu after seeking', () => {
     const parts = fourBar(harness.mechanism);
     harness.tabs.setTab(TabID.ANALYZE);
-    harness.active.updateSelectedObj(parts.t);
-    const remove = rows(harness.builder.build(parts.t, noHandlers)).find((r) =>
+    harness.active.updateSelectedObj(parts.a);
+    const remove = rows(harness.builder.build(parts.a, noHandlers)).find((r) =>
       r.label.startsWith('Delete Joint')
     )!;
     expect(remove.disabled).toBe(false);
     harness.mechanism.mechanismTimeStep = 12;
     remove.action();
-    expect(harness.mechanism.joints).toContain(parts.t);
+    expect(harness.mechanism.joints).toContain(parts.a);
     harness.mechanism.mechanismTimeStep = 0;
     remove.action();
-    expect(harness.mechanism.joints).not.toContain(parts.t);
+    expect(harness.mechanism.joints).not.toContain(parts.a);
+  });
+
+  it('keeps a locked force direction fixed while allowing its frame switch', () => {
+    const parts = fourBar(harness.mechanism);
+    const force = new Force('F1', parts.crank, new Coord(0, S), new Coord(S, S));
+    force.locked = true;
+    harness.mechanism.forces = [force];
+    harness.active.updateSelectedObj(force);
+    const model = harness.builder.build(force, noHandlers);
+    expect(row(model, 'Reverse Direction')!.disabled).toBe(true);
+    expect(row(model, 'Global Frame')!.disabled).toBe(false);
+    const before = force.angleRad;
+    row(model, 'Reverse Direction')!.action();
+    expect(force.angleRad).toBe(before);
   });
 
   describe('away from the start pose', () => {
@@ -651,6 +678,21 @@ describe('the right-click menu', () => {
       const paused = harness.builder.build(parts.t, noHandlers);
       expect(row(paused, 'Grounded')!.refusal!.short).toBe('not at the start');
       expect(row(paused, 'Trace path')!.disabled).toBe(false);
+      expect(row(paused, 'Locked')!.disabled).toBe(false);
+      expect(rows(paused).find((r) => r.label.startsWith('Delete Joint'))!.disabled).toBe(false);
+      const body = harness.builder.build(parts.crank, noHandlers);
+      for (const label of [
+        'Tracer Point',
+        'Force',
+        'Drawn as a Disc',
+        'Fixed Length',
+        'Fixed Angle',
+        'Locked',
+      ]) {
+        expect(row(body, label)!.disabled).toBe(false);
+      }
+      expect(row(body, 'Link')!.disabled).toBe(true);
+      expect(rows(body).find((r) => r.label.startsWith('Delete Link'))!.disabled).toBe(true);
 
       // A trace is a view of the mechanism, not a change to it -- so parking
       // mid-cycle, which is exactly when a reader wants one, leaves it live.

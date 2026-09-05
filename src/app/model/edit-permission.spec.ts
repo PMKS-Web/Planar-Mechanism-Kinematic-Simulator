@@ -104,9 +104,14 @@ describe('what is allowed when', () => {
   it('keeps menu mutations at the original start in every mode', () => {
     for (const mode of ['edit', 'analysis'] as const) {
       expect(menuRefusal(at({ mode }))).toBeNull();
+      expect(menuRefusal(at({ mode, atStart: false }), 'preserve')).toBeNull();
+      expect(menuRefusal(at({ mode, atStart: false }), 'attachment')).toBeNull();
+      expect(
+        menuRefusal(at({ mode, atStart: false, solveDeferred: true }), 'attachment')
+      ).not.toBeNull();
       expect(menuRefusal(at({ mode, atStart: false }))).not.toBeNull();
-      expect(menuRefusal(at({ mode, atStart: false }), true)).toBeNull();
-      expect(menuRefusal(at({ mode, playing: true }), true)!.short).toBe('animation running');
+      expect(menuRefusal(at({ mode, atStart: false }), 'view')).toBeNull();
+      expect(menuRefusal(at({ mode, playing: true }), 'view')!.short).toBe('animation running');
     }
   });
 

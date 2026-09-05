@@ -196,8 +196,10 @@ export class MultiEditService {
     if (!Number.isFinite(value) || value < 0) {
       return this.refusal('selection.invalid-mass', 'not a mass', 'Mass must be zero or greater.');
     }
-    links.forEach((link) => this.mechanism.assignBodyMass(link, value));
-    this.mechanism.updateMechanism(true);
+    this.mechanism.editingAtStartPose(() => {
+      links.forEach((link) => this.mechanism.assignBodyMass(link, value));
+      this.mechanism.updateMechanism(true);
+    });
     this.mechanism.onMechUpdateState.next(2);
     return OK;
   }
@@ -386,7 +388,7 @@ export class MultiEditService {
     if (refused) return { ok: false, refusal: refused };
     const links = this.links(refs)!;
     if (links.every((link) => link.hold === hold)) return OK;
-    this.mechanism.batched(() => {
+    this.mechanism.editingAtStartPose(() => {
       links.forEach((link) => (link.hold = hold));
       this.mechanism.updateMechanism(true);
     });
@@ -456,14 +458,12 @@ export class MultiEditService {
           : 'Enter a finite angle.'
       );
     }
-    this.mechanism.batched(() => {
+    const applied = this.mechanism.editForcesAtPose(forces, () => {
       forces.forEach((force) =>
         field === 'magnitude' ? force.setMagnitude(value) : force.setDirectionRadians(value)
       );
-      this.mechanism.updateMechanism(true);
-      this.mechanism.onMechUpdateState.next(2);
     });
-    return OK;
+    return applied ? OK : this.forcePoseRefusal();
   }
 
   setForceFrame(refs: readonly SelectedPartRef[], local: boolean): MultiEditResult {
@@ -476,12 +476,18 @@ export class MultiEditService {
       );
     }
     if (forces.every((force) => force.local === local)) return OK;
-    this.mechanism.batched(() => {
+    const applied = this.mechanism.editForcesAtPose(forces, () => {
       forces.forEach((force) => force.setLocal(local));
-      this.mechanism.updateMechanism(true);
-      this.mechanism.onMechUpdateState.next(2);
     });
-    return OK;
+    return applied ? OK : this.forcePoseRefusal();
+  }
+
+  private forcePoseRefusal(): MultiEditResult {
+    return this.refusal(
+      'selection.force-pose',
+      'start pose unavailable',
+      'The selected forces cannot be mapped to their start pose. Return to the start before changing them.'
+    );
   }
 
   setLocked(refs: readonly SelectedPartRef[], locked: boolean): MultiEditResult {

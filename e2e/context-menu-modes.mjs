@@ -89,8 +89,8 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
   await openJoint();
   const pausedRows = await rows();
   check(
-    `${mode}: all mutations disabled at paused pose`,
-    pausedRows.filter((r) => !/Vectors$|^Trace path$/.test(r.label)).every((r) => r.disabled),
+    `${mode}: topology changes disabled at paused pose`,
+    pausedRows.filter((r) => !/Vectors$|^Trace path$|^Locked$|^Free to Move$/.test(r.label)).every((r) => r.disabled),
     pausedRows
   );
   check(
@@ -137,8 +137,8 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
     )
   );
   check(
-    `${mode}: mutations stay disabled after grab-to-pause`,
-    playingRows.filter((r) => !/Vectors$|^Trace path$/.test(r.label)).every((r) => r.disabled),
+    `${mode}: topology changes stay disabled after grab-to-pause`,
+    playingRows.filter((r) => !/Vectors$|^Trace path$|^Locked$|^Free to Move$/.test(r.label)).every((r) => r.disabled),
     playingRows
   );
   await page.keyboard.press('Escape');

@@ -1188,6 +1188,92 @@ export class MechanismService {
     saveHistoryService.save();
   }
 
+  /** Apply a pose-independent change to the authored drawing, then restore every clock. */
+  editingAtStartPose<T>(work: () => T): T {
+    this.cancelPosedEdit();
+    return this.encodeFromStartPose(work);
+  }
+
+  /**
+   * Map a point on the displayed body back to its authored body frame. Two
+   * existing pins determine this uniquely; adding an attachment needs no new
+   * motion solve to rediscover the old start pose.
+   */
+  private attachmentFrame(link: RealLink):
+    | { point: (point: Coord) => Coord; angle: number }
+    | undefined {
+    if (this.isAtStartPose()) return { point: (point) => new Coord(point.x, point.y), angle: 0 };
+    const index = this.indexOfMechanismContaining(link);
+    const frames = this.mechanisms[index];
+    // An unsolved or unassigned body is never animated, even when another
+    // independent machine is paused away from its start.
+    if (!frames?.isMechanismValid()) {
+      return { point: (point) => new Coord(point.x, point.y), angle: 0 };
+    }
+    const authored = new Map(frames.joints[0].map((joint) => [joint.id, joint]));
+    for (let first = 0; first < link.joints.length; first++) {
+      for (let second = first + 1; second < link.joints.length; second++) {
+        const a = link.joints[first];
+        const b = link.joints[second];
+        const startA = authored.get(a.id);
+        const startB = authored.get(b.id);
+        if (!startA || !startB) continue;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const sx = startB.x - startA.x;
+        const sy = startB.y - startA.y;
+        const lengthSquared = dx * dx + dy * dy;
+        if (!(lengthSquared > 1e-16) || !(sx * sx + sy * sy > 1e-16)) continue;
+        const real = (sx * dx + sy * dy) / lengthSquared;
+        const imaginary = (sy * dx - sx * dy) / lengthSquared;
+        const x = a.x;
+        const y = a.y;
+        return {
+          // The similarity also accounts for the tiny chord shortening of an
+          // interpolated animation frame, so the point returns under the hand.
+          point: (point) =>
+            new Coord(
+              startA.x + real * (point.x - x) - imaginary * (point.y - y),
+              startA.y + imaginary * (point.x - x) + real * (point.y - y)
+            ),
+          angle: Math.atan2(imaginary, real),
+        };
+      }
+    }
+    return undefined;
+  }
+
+  canAttachAtPose(link: RealLink): boolean {
+    return !this.isPlaying && this.attachmentFrame(link) !== undefined;
+  }
+
+  /**
+   * Force properties are read in the displayed frame. Capture the requested
+   * result there before rewinding: the normal rebuild restores old solved
+   * force values as well as joint positions, which would erase the change.
+   */
+  editForcesAtPose(forces: readonly Force[], work: () => void): boolean {
+    const frames = forces.map((force) => this.attachmentFrame(force.link));
+    if (frames.some((frame) => !frame)) return false;
+    work();
+    const requested = forces.map((force, index) => ({
+      force,
+      local: force.local,
+      magnitude: force.mag,
+      angle: force.angleRad + (force.local ? frames[index]!.angle : 0),
+    }));
+    this.editingAtStartPose(() => {
+      requested.forEach(({ force, local, magnitude, angle }) => {
+        force.setLocal(local);
+        force.setMagnitude(magnitude);
+        force.setDirectionRadians(angle);
+      });
+      this.updateMechanism(true);
+    });
+    this.onMechUpdateState.next(2);
+    return true;
+  }
+
   updateLinkageUnits(fromUnits: LengthUnit, toUnits: LengthUnit) {
     if (fromUnits === toUnits) return;
     // Against the design, not the pose on screen. Everything below multiplies
@@ -2698,6 +2784,21 @@ export class MechanismService {
     this.slotStashes.clear();
   }
 
+  /** A body-only point can go without removing any constraint of the motion. */
+  canDeleteTracerAtPose(joint: RealJoint): boolean {
+    if (!(joint instanceof RevJoint) || joint.ground || joint.input || joint.isWelded) return false;
+    if (joint.links.length !== 1 || this.cylinderAt(joint)) return false;
+    const link = joint.links[0];
+    if (!(link instanceof RealLink) || link.subset.length > 0 || link.joints.length < 3) return false;
+    if (
+      this.joints.some(
+        (other) => other instanceof PrisJoint &&
+          (other.slotJointA?.id === joint.id || other.slotJointB?.id === joint.id)
+      )
+    ) return false;
+    return this.canAttachAtPose(link);
+  }
+
   /**
    * @param save mints the undo entry. Only a caller that deletes several joints
    * as one gesture passes `false`, and it owes a `finishStructuralEdit(true)`
@@ -2715,6 +2816,10 @@ export class MechanismService {
     // -- on several others.
     const selected = this.activeObjService.selectedJoint;
     if (!selected || !this.joints.some((joint) => joint.id === selected.id)) return;
+    if (!this.isAtStartPose() && this.canDeleteTracerAtPose(selected)) {
+      this.editingAtStartPose(() => this.deleteJoint(save));
+      return;
+    }
     // Deleting a mount (or, defensively, any member joint) of a sealed cylinder
     // takes the whole assembly with it (§ cylinder 5) — and then goes on to
     // delete the joint itself.
@@ -3176,15 +3281,13 @@ export class MechanismService {
   }
 
   changeForceDirection() {
-    this.activeObjService.selectedForce.reverseDirection();
-    this.updateMechanism(true);
-    this.onMechUpdateState.next(2);
+    const force = this.activeObjService.selectedForce;
+    this.editForcesAtPose([force], () => force.reverseDirection());
   }
 
   changeForceLocal() {
-    this.activeObjService.selectedForce.setLocal(!this.activeObjService.selectedForce.local);
-    this.updateMechanism(true);
-    this.onMechUpdateState.next(2);
+    const force = this.activeObjService.selectedForce;
+    this.editForcesAtPose([force], () => force.setLocal(!force.local));
   }
 
   /**
@@ -3228,14 +3331,14 @@ export class MechanismService {
   }
 
   addJointAt(coord: Coord) {
-    // A tracer point is placed on the link *as drawn*, so at a displaced pose
-    // it captures that pose (§6.2 of the plan) and has to be staged like a
-    // weld. Rebuilt directly, the restore put every other joint back on the
-    // start pose and left the new one where the hand had put it: a point that
-    // was on the coupler a third of the way round the cycle stood half a
-    // mechanism off it at t = 0, and rode along at that offset ever after.
+    // An attachment does not change the old body's motion. Place it directly
+    // in that body's authored frame instead of approximately recovering the
+    // old cycle's anchor from a fresh solve seeded at the displayed pose.
     if (!this.seedFromDisplay && !this.isAtStartPose()) {
-      this.capturingPose(this.activeObjService.selectedLink, () => this.addJointAt(coord));
+      const frame = this.attachmentFrame(this.activeObjService.selectedLink);
+      if (!frame) return;
+      const authored = frame.point(coord);
+      this.editingAtStartPose(() => this.addJointAt(authored));
       return;
     }
     const newId = this.determineNextLetter();
@@ -6498,13 +6601,11 @@ export class MechanismService {
   }
 
   /**
-   * Whether lock styling paints right now. A lock is an editing affordance,
-   * so the mark shows only where it means something: the Edit tab, standing
-   * still. Analysis reads clean, and a locked coupler mid-animation does not
-   * look pinned while visibly moving.
+   * Locks constrain editing in every drawing mode. Hide their marks only
+   * while playing, when locked parts still move with the simulated mechanism.
    */
   lockVisualsOn(): boolean {
-    return this.tabs.getCurrentTab() === TabID.EDIT && !this.isPlaying;
+    return !this.isPlaying;
   }
 
   private frozenCache?: { revision: number; ids: Set<string> };
@@ -7140,14 +7241,6 @@ export class MechanismService {
   createForce(startCoord: Coord, endCoord: Coord, onLink?: RealLink): Force | undefined {
     const selectedLink = onLink ?? this.activeObjService.selectedLink;
     if (!(selectedLink instanceof RealLink)) return undefined;
-    // Drawn on the link as it is showing, so at a displaced pose this captures
-    // that pose and is staged like a weld -- here, so that every caller gets
-    // it, and not only the canvas gesture that wraps its own press.
-    if (!this.seedFromDisplay && !this.isAtStartPose()) {
-      return this.capturingPose(selectedLink, () =>
-        this.createForce(startCoord, endCoord, selectedLink)
-      );
-    }
     startCoord = new Coord(startCoord.x, startCoord.y);
     endCoord = new Coord(endCoord.x, endCoord.y);
     // TODO: utilize dot product to find point that is closest to the line
@@ -7178,6 +7271,18 @@ export class MechanismService {
         startCoord.x = selectedLink.joints[0].x + t * lineVector.x;
         startCoord.y = selectedLink.joints[0].y + t * lineVector.y;
       }
+    }
+    // Its application point rides the body, but a new force's direction is
+    // global. Map the projected tail back, then translate without rotating.
+    if (!this.seedFromDisplay && !this.isAtStartPose()) {
+      const frame = this.attachmentFrame(selectedLink);
+      if (!frame) return undefined;
+      const start = frame.point(startCoord);
+      const end = new Coord(
+        start.x + endCoord.x - startCoord.x,
+        start.y + endCoord.y - startCoord.y
+      );
+      return this.editingAtStartPose(() => this.createForce(start, end, selectedLink));
     }
     let maxNumber = 1;
     if (this.forces.length !== 0) {

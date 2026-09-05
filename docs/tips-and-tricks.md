@@ -488,10 +488,15 @@ pixels are available; anything you add to the bottom row has to survive that.
 
 ## Editing, playback, and who is allowed to say no
 
-**Context menus share one start-pose boundary across Edit and Analysis.** Their rows come from
-one builder; `menuRefusal` allows mutations only while every machine is at its start. Paused
-trace switches save without rebuilding the mechanism, so they preserve both the displayed pose
-and the authored start. Posed drags still use their separate anchor-preserving edit path.
+**Context menus share pose-preservation rules across Edit and Analysis.** Their rows come from
+one builder; `menuRefusal` distinguishes topology changes (start only), independent metadata
+(locks, holds, shape), invertible body attachments (tracers and forces), and view switches.
+Everything requires paused playback. Traces save without rebuilding; attachments use the
+existing body transform to place the new point at t=0, preserving the old coordinates exactly.
+Do not wrap force creation in the canvas's generic `capturingPose`: that would re-anchor the
+whole mechanism before the exact attachment mapper can run. Force property edits must capture
+the requested displayed values before restoring t=0, because restoration also restores old
+force values. Posed drags still use their separate anchor-preserving edit path.
 
 **Bulk dimensions must be solved together.** Submit selected bars to `setBarValues`; precomputing
 endpoints and calling `dragJoint` in a loop uses stale shared anchors and retains old dimension

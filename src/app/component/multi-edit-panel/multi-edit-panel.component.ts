@@ -68,7 +68,11 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
   private permission = inject(EditPermissionService);
 
   panelIsFrozen(): boolean {
-    return !this.permission.may('structure');
+    return this.permission.menuRefusal('preserve') !== null;
+  }
+
+  structureIsFrozen(): boolean {
+    return this.permission.menuRefusal('start') !== null;
   }
 
   /**
@@ -76,22 +80,31 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
    *
    * The single-part panel does this on its own controls; this one is a separate
    * component inside the same body, and the body's `inert` only covers the
-   * states where *nothing* may be touched. Paused mid-cycle, X, Y, length,
-   * angle and mass are as pose-bound here as they are there -- and each writes
-   * through `valueChanges`, so an unfrozen field is a live one.
+   * states where *nothing* may be touched. Paused mid-cycle, X, Y, length and
+   * angle are pose-bound, and each writes through `valueChanges`.
    *
-   * Trace and Locked are left alone: both are addressed by identity and neither
-   * carries a pose.
+   * Locks, holds, mass and traces change the authored drawing without moving
+   * it. Forces are mapped back through the body they are attached to.
    */
   ngDoCheck(): void {
-    const frozen = !this.permission.may('placement');
-    (['x', 'y', 'length', 'angle', 'mass', 'magnitude', 'forceAngle'] as const).forEach((name) => {
+    const placementFrozen = !this.permission.may('placement');
+    const safeFrozen = this.panelIsFrozen();
+    const structureFrozen = this.structureIsFrozen();
+    const forceFrozen =
+      safeFrozen || this.forces.some((force) => !this.mechanism.canAttachAtPose(force.link));
+    Object.entries(this.form.controls).forEach(([name, control]) => {
       // A Lock on a force holds which way it points, which is what its drag
       // handles edit; how big it is stays typeable, the same rule the one-force
       // panel keeps.
       const held = name === 'forceAngle' && this.forces.some((force) => force.locked);
+      const frozen = ['x', 'y', 'length', 'angle'].includes(name)
+        ? placementFrozen
+        : ['ground', 'weld', 'slider'].includes(name)
+          ? structureFrozen
+          : ['magnitude', 'forceAngle', 'isGlobal'].includes(name)
+            ? forceFrozen
+            : safeFrozen;
       const off = frozen || held;
-      const control = this.form.controls[name];
       if (off === control.disabled) return;
       if (off) control.disable({ emitEvent: false });
       else control.enable({ emitEvent: false });
@@ -471,6 +484,7 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
   }
 
   duplicate(): void {
+    if (this.refuseStructuralAction()) return;
     const step = this.svgGrid.minorCellSize || MODEL_SCALE;
     const result = this.batch.duplicateSelected(this.active.selectedPartRefs, { x: step, y: step });
     if (!result.ok) {
@@ -485,12 +499,20 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
   }
 
   delete(): void {
+    if (this.refuseStructuralAction()) return;
     const result = this.batch.deleteSelected(this.active.selectedPartRefs);
     if (!result.ok) {
       this.notify.refusal(result.refusal.code, result.refusal.message);
       return;
     }
     this.active.clearPartSelection();
+  }
+
+  private refuseStructuralAction(): boolean {
+    const refusal = this.permission.menuRefusal('start');
+    if (!refusal) return false;
+    this.notify.refusal('selection.start-pose', refusal.long);
+    return true;
   }
 
   private report(result: MultiEditResult): void {

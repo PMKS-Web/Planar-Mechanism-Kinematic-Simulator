@@ -122,9 +122,10 @@ export class ContextMenuBuilderService {
         {
           label: 'State',
           rows: [
-            ...this.selectionStateRows(refs, parts),
+            ...this.selectionStateRows(refs, parts).filter((row) => !row.alwaysAllowed),
             new MenuRow({
               label: 'Locked',
+              posePolicy: 'preserve',
               icon: 'lock',
               kind: 'toggle',
               checked: allLocked,
@@ -132,6 +133,10 @@ export class ContextMenuBuilderService {
               action: () => this.mechanism.setLocks(parts, !allLocked),
             }),
           ],
+        },
+        {
+          label: 'Traces',
+          rows: this.selectionStateRows(refs, parts).filter((row) => row.alwaysAllowed),
         },
         {
           label: 'Actions',
@@ -211,7 +216,6 @@ export class ContextMenuBuilderService {
           kind: 'toggle',
           checked: ground.all,
           hint: ground.mixed ? 'Mixed' : undefined,
-          needs: 'structure',
           action: () => this.multiEdit.setGrounded(refs, !ground.all),
         }),
         // Named and grayed rather than left out. A reader who has learned the
@@ -222,7 +226,6 @@ export class ContextMenuBuilderService {
           icon: 'add_input',
           kind: 'toggle',
           checked: joints.every((joint) => this.gridUtils.isVisuallyInput(joint)),
-          needs: 'structure',
           refusal: {
             short: 'one input per machine',
             long: 'A machine is driven at one joint, so the input is set on one joint at a time.',
@@ -235,7 +238,6 @@ export class ContextMenuBuilderService {
           kind: 'toggle',
           checked: slider.all,
           hint: slider.mixed ? 'Mixed' : undefined,
-          needs: 'structure',
           refusal: said(this.multiEdit.sliderRefusal(refs, !slider.all)),
           action: () => this.multiEdit.setSlider(refs, !slider.all),
         }),
@@ -245,7 +247,6 @@ export class ContextMenuBuilderService {
           kind: 'toggle',
           checked: weld.all,
           hint: weld.mixed ? 'Mixed' : undefined,
-          needs: 'structure',
           refusal: said(this.multiEdit.weldRefusal(refs, !weld.all)),
           action: () => this.multiEdit.setWelded(refs, !weld.all),
         }),
@@ -267,12 +268,12 @@ export class ContextMenuBuilderService {
       rows.push(
         new MenuRow({
           label: 'Global Frame',
+          posePolicy: 'preserve',
           icon: 'public',
           material: true,
           kind: 'toggle',
           checked: global.all,
           hint: global.mixed ? 'Mixed' : undefined,
-          needs: 'properties',
           action: () => this.multiEdit.setForceFrame(refs, global.all),
         })
       );
@@ -285,12 +286,12 @@ export class ContextMenuBuilderService {
         rows.push(
           new MenuRow({
             label: which === 'length' ? 'Fixed Length' : 'Fixed Angle',
+            posePolicy: 'preserve',
             icon: which === 'length' ? 'straighten' : 'architecture',
             material: true,
             kind: 'toggle',
             checked: held.all,
             hint: held.mixed ? 'Mixed' : undefined,
-            needs: 'structure',
             refusal: refused,
             action: () => this.multiEdit.setHold(refs, held.all ? undefined : which),
           })
@@ -315,6 +316,7 @@ export class ContextMenuBuilderService {
         }),
         new MenuRow({
           label: 'Background Image',
+          posePolicy: 'preserve',
           icon: 'background_image',
           action: () => handlers.backgroundImage(),
         }),
@@ -350,6 +352,7 @@ export class ContextMenuBuilderService {
     return [
       new MenuRow({
         label: 'Lock All',
+        posePolicy: 'preserve',
         icon: 'lock',
         action: () => this.mechanism.setAllLocks(true),
         hint: counts.open > 0 ? `${counts.open} open` : undefined,
@@ -363,6 +366,7 @@ export class ContextMenuBuilderService {
       }),
       new MenuRow({
         label: 'Unlock All',
+        posePolicy: 'preserve',
         icon: 'unlock',
         action: () => this.mechanism.setAllLocks(false),
         hint: counts.locked > 0 ? `${counts.locked} locked` : undefined,
@@ -434,8 +438,9 @@ export class ContextMenuBuilderService {
         { label: 'Attach', rows: this.jointAttachRows(joint, handlers) },
         {
           label: 'State',
-          rows: [...this.jointStateRows(joint, sealed), ...this.vectorRows(joint)],
+          rows: this.jointStateRows(joint, sealed),
         },
+        { label: 'Traces', rows: [this.traceRow(joint), ...this.vectorRows(joint)] },
         { rows: this.positionRows(handlers, undefined) },
         { rows: [this.deleteJointRow(joint, sealed), this.deleteMechanismRow(joint)] },
       ],
@@ -511,6 +516,8 @@ export class ContextMenuBuilderService {
         new MenuRow({
           label: 'Force',
           icon: 'add_force',
+          posePolicy: 'attachment',
+          poseGuard: () => this.attachmentRefusal(bars[0]),
           action: () => handlers.attachForce(bars[0]),
           refusal:
             bars.length > 1
@@ -585,8 +592,7 @@ export class ContextMenuBuilderService {
         })
       );
     }
-    rows.push(this.traceRow(joint));
-    rows.push(this.lockRow(joint, joint));
+
     // A joint on a held bar is confined by it: it still moves, on the arc or
     // the line the hold leaves it, and the row says so and names the holds,
     // because the way to move it freely is on the bar rather than here.
@@ -606,6 +612,7 @@ export class ContextMenuBuilderService {
         })
       );
     }
+    rows.push(this.lockRow(joint, joint));
     return rows;
   }
 
@@ -688,6 +695,14 @@ export class ContextMenuBuilderService {
     const label = this.deleteJointLabel(joint, sealed);
     return new MenuRow({
       label,
+      posePolicy: this.mechanism.canDeleteTracerAtPose(joint) ? 'attachment' : 'start',
+      poseGuard: () =>
+        this.mechanism.canDeleteTracerAtPose(joint)
+          ? undefined
+          : {
+              short: 'return to the start',
+              long: 'This joint constrains the mechanism. Return to the start before deleting it.',
+            },
       icon: 'remove',
       destructive: true,
       shortcut: this.keys.keysFor('edit.delete'),
@@ -788,10 +803,10 @@ export class ContextMenuBuilderService {
                 action: () => this.mechanism.toggleCylinderInput(sealed),
               }),
               ...this.cylinderHoldRows(link as RealLink),
-              ...this.vectorRows(link as RealLink),
               this.lockRow(link as RealLink, undefined),
             ],
           },
+          { label: 'Traces', rows: this.vectorRows(link as RealLink) },
           {
             rows: [
               new MenuRow({
@@ -821,7 +836,8 @@ export class ContextMenuBuilderService {
       header,
       groups: [
         { label: 'Attach', rows: this.linkAttachRows(bar, handlers) },
-        { label: 'State', rows: [...this.linkStateRows(bar), ...this.vectorRows(bar)] },
+        { label: 'State', rows: this.linkStateRows(bar) },
+        { label: 'Traces', rows: this.vectorRows(bar) },
         { rows: this.positionRows(handlers, undefined) },
         { rows: [this.deleteLinkRow(bar), this.deleteMechanismRow(bar)] },
       ],
@@ -856,6 +872,8 @@ export class ContextMenuBuilderService {
       }),
       new MenuRow({
         label: 'Tracer Point',
+        posePolicy: 'attachment',
+        poseGuard: () => this.attachmentRefusal(link),
         icon: 'add_tracer',
         action: () => handlers.attachTracerPoint(),
         refusal: fillet,
@@ -863,6 +881,8 @@ export class ContextMenuBuilderService {
       new MenuRow({
         label: 'Force',
         icon: 'add_force',
+        posePolicy: 'attachment',
+        poseGuard: () => this.attachmentRefusal(link),
         action: () => handlers.attachForce(link),
         refusal: fillet,
       }),
@@ -893,6 +913,7 @@ export class ContextMenuBuilderService {
     return [
       new MenuRow({
         label: 'Drawn as a Disc',
+        posePolicy: 'preserve',
         icon: 'make_circular',
         kind: 'toggle',
         checked: link.isCircle,
@@ -930,11 +951,11 @@ export class ContextMenuBuilderService {
     return [
       new MenuRow({
         label: 'Fixed Angle',
+        posePolicy: 'preserve',
         icon: 'architecture',
         material: true,
         kind: 'toggle',
         checked: on,
-        needs: 'structure',
         hint: on ? undefined : this.cylinderAngle(link),
         action: () => this.mechanism.setHold(link, on ? undefined : 'angle'),
         refusal: this.mechanism.isLockedTarget(link)
@@ -982,6 +1003,7 @@ export class ContextMenuBuilderService {
       const moves = !on && held !== undefined;
       return new MenuRow({
         label,
+        posePolicy: 'preserve',
         icon,
         material: true,
         kind: 'toggle',
@@ -1086,10 +1108,19 @@ export class ContextMenuBuilderService {
           rows: [
             new MenuRow({
               label: 'Reverse Direction',
+              posePolicy: 'attachment',
+              poseGuard: () => this.attachmentRefusal(force.link),
+              refusal: force.locked
+                ? {
+                    short: 'locked direction',
+                    long: 'Unlock this force before changing its direction.',
+                  }
+                : undefined,
               icon: 'switch_force_dir',
               // A property of the force, not of the linkage's shape.
-              needs: 'properties',
-              action: () => this.mechanism.changeForceDirection(),
+              action: () => {
+                if (!force.locked) this.mechanism.changeForceDirection();
+              },
             }),
           ],
         },
@@ -1100,6 +1131,8 @@ export class ContextMenuBuilderService {
             // used. The frame is a state, so it reads as one.
             new MenuRow({
               label: 'Global Frame',
+              posePolicy: 'attachment',
+              poseGuard: () => this.attachmentRefusal(force.link),
               // The app's own force_global glyph carries its own colors, so
               // it stays blue on an unticked row and reads as already on --
               // the one icon in the menu that does not take the row's color.
@@ -1107,9 +1140,7 @@ export class ContextMenuBuilderService {
               material: true,
               kind: 'toggle',
               checked: !force.local,
-              // Which frame the endpoints are read in -- world or the link's --
-              // is exactly the pose-dependent question §5.5 has not answered.
-              needs: 'properties',
+              // The service maps a local direction back into the authored body frame.
               action: () => this.mechanism.changeForceLocal(),
             }),
             this.lockRow(force, undefined),
@@ -1119,6 +1150,7 @@ export class ContextMenuBuilderService {
           rows: [
             new MenuRow({
               label: 'Delete Force',
+              posePolicy: 'preserve',
               icon: 'remove',
               destructive: true,
               shortcut: this.keys.keysFor('edit.delete'),
@@ -1186,6 +1218,7 @@ export class ContextMenuBuilderService {
     const held = joint && !locked ? this.heldRefusal(joint) : undefined;
     return new MenuRow({
       label: 'Locked',
+      posePolicy: 'preserve',
       icon: 'lock',
       kind: 'toggle',
       checked: locked || !!held,
@@ -1265,17 +1298,34 @@ export class ContextMenuBuilderService {
     };
   }
 
-  /** Apply the same start-pose boundary in every mode, including at activation. */
+  /** Attaching needs a known rigid-body transform between this pose and t=0. */
+  private attachmentRefusal(link: RealLink): MenuRefusal | undefined {
+    return this.mechanism.canAttachAtPose(link)
+      ? undefined
+      : {
+          short: 'return to the start',
+          long: 'This body has no reliable mapping to its start pose. Return to the start to attach a point or force.',
+        };
+  }
+
+  private rowPoseRefusal(row: MenuRow): MenuRefusal | null {
+    return (
+      this.permission.menuRefusal(row.alwaysAllowed ? 'view' : row.posePolicy) ??
+      (!this.mechanism.isAtStartPose() ? (row.poseGuard?.() ?? null) : null)
+    );
+  }
+
+  /** Apply the same pose-preservation rules in every mode, including at activation. */
   private freezeWhileRunning(model: ContextMenuModel): ContextMenuModel {
     for (const group of model.groups) {
       for (const row of group.rows) {
-        const refusal = this.permission.menuRefusal(row.alwaysAllowed);
+        const refusal = this.rowPoseRefusal(row);
         if (refusal && !row.refusal) row.refusal = refusal;
         const action = row.action;
         // A menu can remain open across a keyboard seek/play. Recheck rather
         // than trusting the state captured when the pointer opened it.
         row.action = () => {
-          if (!this.permission.menuRefusal(row.alwaysAllowed)) action();
+          if (!this.rowPoseRefusal(row)) action();
         };
       }
     }

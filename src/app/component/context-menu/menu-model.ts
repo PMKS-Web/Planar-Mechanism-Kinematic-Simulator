@@ -1,4 +1,4 @@
-import { EditAction } from '../../model/edit-permission';
+import { MenuPosePolicy } from '../../model/edit-permission';
 /**
  * What a right-click menu is made of.
  *
@@ -51,17 +51,10 @@ export class MenuRow {
    * into another mode changes nothing about the drawing.
    */
   alwaysAllowed = false;
-  /**
-   * Which permission this row needs, where it is not the usual one.
-   *
-   * Most rows change the mechanism's shape or its topology, which is what
-   * `build` names and what Phase 2 allows at a paused pose. A few change a
-   * *property* instead -- a force's direction, the frame its endpoints are read
-   * in -- and those wait for the transform back to t = 0 that the panel's own
-   * fields are waiting for. Left unset, a row is asked about as a build, which
-   * is what all but a handful of them are.
-   */
-  needs?: EditAction;
+  /** Whether this edit can preserve the original pose while paused elsewhere. */
+  posePolicy: MenuPosePolicy = 'start';
+  /** Per-body mapping requirements, rechecked when the row is activated. */
+  poseGuard?: () => MenuRefusal | undefined;
   /** A plain-language description for the row, when the label needs help. */
   tip?: string;
   /**
