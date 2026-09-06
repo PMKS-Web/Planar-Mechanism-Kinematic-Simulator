@@ -496,14 +496,25 @@ record(
   (await page.evaluate(() => localStorage.getItem('lastDrawing') ?? '')).includes('HaGN')
 );
 
-// --- Leaving Edit stands the chips down --------------------------------------
+// --- The chips stay wherever a drag is allowed, and stand down while it plays
 
+// The analysis modes take a drag now, and a hold constrains that drag exactly
+// as it does in Edit, so its chip stays up there; it is playback, when the
+// held parts move with the mechanism, that stands the chips down.
 await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
 await page.waitForTimeout(600);
 record(
-  'the chips stand down outside Edit',
+  'the chips stay up in Kinematic Analysis, where a drag is still held',
+  await page.evaluate(() => document.querySelectorAll('[data-hold-chip]').length > 0)
+);
+await page.locator('.playButton').click();
+await page.waitForTimeout(500);
+record(
+  'and stand down while it plays',
   await page.evaluate(() => document.querySelectorAll('[data-hold-chip]').length === 0)
 );
+await page.locator('.playButton').click();
+await page.waitForTimeout(400);
 
 await contactSheet(`${OUT}/*mid-drag*.png`, `${OUT}/sheet-mid-drag.png`, 2);
 await browser.close();

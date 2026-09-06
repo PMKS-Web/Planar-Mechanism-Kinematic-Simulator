@@ -1745,3 +1745,41 @@ is kept. Not the jump limit as the retrace test: just past a dead center the two
 about two steps apart, well under 5% of the span, and the first cut reinstated the retrace anyway.
 `piston-driven-wheels.spec.ts` requires a monotone full turn; `linear-actuator-rocker.spec.ts` is
 the rocker that must still retrace; the template baselines pin every cylinder's out-and-back.
+
+### A toggle block's `disabled` input has to gray the block itself
+
+`toggle-block` passes `[disabled]` to its `mat-slide-toggle`, and that loses: the reactive form
+directive driving the switch sets the control's own disabled state on top of the input, so a
+caller that said "disabled" got a switch that looked live and snapped back when pressed --
+"Draw as a Disc" on a coupler was the one a reader noticed. The block now wears
+`.toggle-block--disabled` and grays the label and the switch itself (Material's 0.38, no pointer
+on the switch), so the hover reaches the wrapper that carries the reason. Disabling the form
+*control* instead would drop it from `form.value` for every reader of that form, which is why
+the look is CSS. `e2e/disabled-toggles.mjs` reads the switch's computed opacity on a coupler and
+on a crank.
+
+The same suite holds the Elliptical Crank card's trace on C. It sat on D, whose comment in
+`slot-fixtures.ts` called it the ellipse; D swings on the rocker D-F and draws a circle about F,
+and C, the coupler's own point, draws the ellipse the mechanism is named for. A library template
+is generated from its gallery fixture, so the fix is the fixture's `trace` flag, then
+`npm run template-payloads`, `npm run fixture-urls`, and the card art (`ONLY=Elliptical_Crank`
+through `e2e/template-thumbnails.mjs` and `e2e/template-animations.mjs`).
+
+### A contact sheet needs Pillow, and no python on this machine has it any more
+
+`contactSheet` in `e2e/filmstrip.mjs` tiles a suite's frames through Pillow, and used to throw
+when `python3` had no `PIL` -- which is the state of this machine now, under every interpreter on
+the path -- so `link-holds` and `playback-direction` exited 1 after every check had passed. The
+helper now tries `python3`, `/usr/bin/python3` and Homebrew's in turn and, when none has Pillow,
+prints `contact sheet skipped` and returns; the frames themselves are still in `artifacts/`, and
+a suite's verdict is its checks. `pip3 install pillow` under whichever python you run brings the
+sheets back. Two other suites that stopped short in the same round were stale persistent Chrome
+profiles again (`/tmp/pmks-chrome-undo`, `/tmp/pmks-chrome-attachcyl`): a cdk overlay backdrop
+intercepting every click is the What's New dialog of a profile that remembers an older visit.
+Delete the profile and rerun.
+
+The `link-holds` and `edit-playback` suites also carried expectations from before the analysis
+modes took a drag: a hold's chip stays up in Kinematic Analysis now, because a drag there is held
+exactly as in Edit, and stands down while it plays; and the menu's Grounded row refuses
+restructuring mid-cycle on purpose, so the gate check compares the Locked row and checks that
+refusal by name.

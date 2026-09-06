@@ -22,6 +22,24 @@
       opacity: 0.5;
     }
 
+    // The switch's own `disabled` input loses to the reactive form directive
+    // driving it, which sets the control's state on top of it, so a caller
+    // that said "disabled" got a switch that looked live and snapped back
+    // when pressed. The block grays itself: the switch and its label at the
+    // Material disabled opacity, and no pointer on the switch, so the
+    // reason -- carried by the wrapper around the block -- is what a hover
+    // reaches.
+    &.toggle-block--disabled {
+      .label {
+        opacity: 0.5;
+      }
+
+      mat-slide-toggle {
+        opacity: 0.38;
+        pointer-events: none;
+      }
+    }
+
     .angle-label {
       display: inline-flex;
       align-items: center;

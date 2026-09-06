@@ -880,9 +880,11 @@ export function ellipticalCrankFixture(scale: number = 1): MechanismFixture {
     joints: [
       { id: 'A', ...at(-2.87544, 0.032816), ground: true, input: true },
       { id: 'B', ...at(-3.960199, 0.472074) },
-      { id: 'C', ...at(-3.340474, 1.397268) },
-      // The ellipse the mechanism is named for.
-      { id: 'D', ...at(-0.517497, 0.696942), trace: true },
+      // The ellipse the mechanism is named for: the coupler's own point. D
+      // swings on the rocker D-F and draws a circle about F, which is what
+      // the card showed while the trace sat there.
+      { id: 'C', ...at(-3.340474, 1.397268), trace: true },
+      { id: 'D', ...at(-0.517497, 0.696942) },
       { id: 'E', ...at(2.337757, 0.056553) },
       { id: 'F', ...at(0, 0), ground: true },
     ],

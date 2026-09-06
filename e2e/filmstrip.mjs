@@ -98,6 +98,22 @@ for i, im in enumerate(ims):
 sheet.save(sys.argv[2])
 print(sys.argv[2], sheet.size, len(ims), 'frames')
 `;
-  const { stdout } = await run('python3', ['-c', script, pattern, out]);
-  return stdout.trim();
+  // Whichever interpreter on this machine has Pillow: the first `python3` on
+  // the path lost it when Homebrew's took over, and the frames a suite made
+  // are its evidence whether or not they were tiled. A sheet that cannot be
+  // made is said, not thrown -- a suite's verdict is its checks.
+  const candidates = ['python3', '/usr/bin/python3', '/opt/homebrew/bin/python3'];
+  let failure = '';
+  for (const python of candidates) {
+    try {
+      const { stdout } = await run(python, ['-c', script, pattern, out]);
+      return stdout.trim();
+    } catch (error) {
+      // The message carries the traceback when stderr came back empty.
+      failure = [error?.stderr, error?.message].filter(Boolean).join('\n').trim() || String(error);
+      if (!/No module named 'PIL'|not found|ENOENT/.test(failure)) throw error;
+    }
+  }
+  console.warn(`contact sheet skipped (${out}): ${failure.split('\n').pop()}`);
+  return '';
 }
