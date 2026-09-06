@@ -228,3 +228,28 @@
     color: #1a237e;
   }
 }
+
+// The switches under the graphs: the Edit panel's toggle block, in a block
+// of its own with the section's gutter, ruled off from the last graph. A
+// grayed one carries the menu's short reason under it, where the menu puts
+// it in the row's right-hand slot.
+#analysisWrapper .drawingSwitches {
+  margin: 12px 0 4px;
+  padding: 8px 15px 4px;
+  border-top: 1px solid #eceef5;
+
+  .graphGroupHeading {
+    margin: 0 0 4px;
+    padding: 0;
+  }
+
+  .drawingSwitch--off #toggle-block .label {
+    opacity: 0.55;
+  }
+
+  .drawingSwitchWhy {
+    margin: -8px 0 6px;
+    font-size: 11px;
+    color: #7a7a7a;
+  }
+}

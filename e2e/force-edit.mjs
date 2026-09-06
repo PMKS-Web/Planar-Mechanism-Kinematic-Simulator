@@ -420,6 +420,108 @@ record(
 );
 record('and does not arm Undo', (await undoEnabled()) === false);
 
+// --- a plate's anchor stays inside the triangle its joints make -------------
+// The rocker with the offset load is a three-joint plate. Its load can be
+// dragged anywhere inside the triangle of joint centers and nowhere past it:
+// out at the drawn edge is the skin, not the linkage. And a joint dragged
+// out from under the load takes the load with it.
+await page.goto(`${BASE}/?${payloads['Offset_Load_Rocker']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+const plate = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const held = grid.mechanismSrv.forces[0];
+  return {
+    corners: held.link.joints.map((joint) => [joint.x, joint.y]),
+    ids: held.link.joints.map((joint) => joint.id),
+    start: [held.startCoord.x, held.startCoord.y],
+  };
+});
+const insideTriangle = ([px, py], [[ax, ay], [bx, by], [cx, cy]], slack) => {
+  const sign = (x1, y1, x2, y2) => (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1);
+  const d1 = sign(ax, ay, bx, by);
+  const d2 = sign(bx, by, cx, cy);
+  const d3 = sign(cx, cy, ax, ay);
+  const negative = Math.min(d1, d2, d3) < -slack;
+  const positive = Math.max(d1, d2, d3) > slack;
+  return !(negative && positive);
+};
+record('the offset-load rocker is a three-joint plate', plate.corners.length === 3, plate);
+const centroid = [
+  (plate.corners[0][0] + plate.corners[1][0] + plate.corners[2][0]) / 3,
+  (plate.corners[0][1] + plate.corners[1][1] + plate.corners[2][1]) / 3,
+];
+// Far past the corner furthest from the centroid, where the drawn plate
+// has long since ended.
+const far = plate.corners.reduce((best, corner) =>
+  Math.hypot(corner[0] - centroid[0], corner[1] - centroid[1]) >
+  Math.hypot(best[0] - centroid[0], best[1] - centroid[1])
+    ? corner
+    : best
+);
+const beyond = [
+  centroid[0] + (far[0] - centroid[0]) * 2.5,
+  centroid[1] + (far[1] - centroid[1]) * 2.5,
+];
+await page.evaluate(() =>
+  ng
+    .getComponent(document.querySelector('app-new-grid'))
+    .activeObjService.updateSelectedObj(
+      ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.forces[0]
+    )
+);
+await page.waitForTimeout(200);
+const grabPlate = await toScreen(plate.start[0], plate.start[1]);
+const dropBeyond = await toScreen(beyond[0], beyond[1]);
+await page.mouse.move(grabPlate.x, grabPlate.y);
+await page.mouse.down();
+await page.mouse.move(dropBeyond.x, dropBeyond.y, { steps: 14 });
+await page.mouse.up();
+await page.waitForTimeout(500);
+const pulled = await force();
+record(
+  'dragged far past a corner, the load stops inside the triangle of joint centers',
+  insideTriangle(pulled.start, plate.corners, 1e-6),
+  { pulled, corners: plate.corners }
+);
+record(
+  'and not at the drawn edge beyond it',
+  Math.hypot(pulled.start[0] - beyond[0], pulled.start[1] - beyond[1]) > 0.5,
+  { pulled, beyond }
+);
+
+// Drag the far corner in past the load: the load has to come with the plate.
+const farId = plate.ids[plate.corners.indexOf(far)];
+const farNow = await page.evaluate((id) => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const joint = grid.mechanismSrv.joints.find((one) => one.id === id);
+  return { x: joint.x, y: joint.y, ground: joint.ground };
+}, farId);
+if (!farNow.ground) {
+  const grabCorner = await toScreen(farNow.x, farNow.y);
+  const dropCorner = await toScreen(
+    centroid[0] + (farNow.x - centroid[0]) * 0.3,
+    centroid[1] + (farNow.y - centroid[1]) * 0.3
+  );
+  await page.mouse.move(grabCorner.x, grabCorner.y);
+  await page.mouse.down();
+  await page.mouse.move(dropCorner.x, dropCorner.y, { steps: 14 });
+  await page.mouse.up();
+  await page.waitForTimeout(600);
+  const settled = await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const held = grid.mechanismSrv.forces[0];
+    return {
+      corners: held.link.joints.map((joint) => [joint.x, joint.y]),
+      start: [held.startCoord.x, held.startCoord.y],
+    };
+  });
+  record(
+    'a corner dragged in past the load takes the load with it',
+    insideTriangle(settled.start, settled.corners, 1e-6),
+    settled
+  );
+}
+
 record('nothing threw', errors.length === 0, errors.slice(0, 2));
 await browser.close();
 process.exit(results.every(([, ok]) => ok) ? 0 : 1);

@@ -63,6 +63,29 @@
     </div>
   </ng-template>
 
+  <ng-template #drawingSwitchBlock>
+    @if (drawingSwitches.length > 0) {
+      <div class="drawingSwitches">
+        <div class="graphGroupHeading">On the drawing</div>
+        @for (one of drawingSwitches; track one.key) {
+          <div class="drawingSwitch" [class.drawingSwitch--off]="!!one.row.refusal">
+            <toggle-block
+              [formGroup]="drawingForm"
+              [_formControl]="one.key"
+              [disabled]="!!one.row.refusal"
+              [tooltip]="drawingSwitchTip(one)"
+              [attr.data-switch]="one.key"
+              >{{ one.row.label }}</toggle-block
+            >
+            @if (one.row.refusal; as why) {
+              <div class="drawingSwitchWhy" [title]="why.long ?? why.short">{{ why.short }}</div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </ng-template>
+
   <!-- Nothing selected, or a selection whose own machine cannot be solved -->
 
   @if (showAnalysisHelp) {
@@ -179,6 +202,11 @@
           </div>
         }
       }
+
+      <!-- The part's Traces rows, as switches, under everything graphed about
+           it: what is drawn on the mechanism itself, reachable without the
+           right-click that used to be the only way to it. -->
+      <ng-container [ngTemplateOutlet]="drawingSwitchBlock"></ng-container>
     </panel-section>
   }
 
@@ -319,6 +347,11 @@
           </div>
         }
       }
+
+      <!-- The part's Traces rows, as switches, under everything graphed about
+           it: what is drawn on the mechanism itself, reachable without the
+           right-click that used to be the only way to it. -->
+      <ng-container [ngTemplateOutlet]="drawingSwitchBlock"></ng-container>
     </panel-section>
   }
 

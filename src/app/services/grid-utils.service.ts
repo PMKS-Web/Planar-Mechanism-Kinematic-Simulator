@@ -20,6 +20,7 @@ import { EditPermissionService } from './edit-permission.service';
 import { canDrive } from '../model/actuator';
 import { Lockable, frozenJointIds, locksHolding } from '../model/lock-set';
 import { Coord } from '../model/coord';
+import { constrainForceAnchor } from '../model/force-anchor';
 import { PositionSolver } from '../model/mechanism/position-solver';
 import { Force } from '../model/force';
 import { Arc, Line } from '../model/line';
@@ -1291,21 +1292,10 @@ export class GridUtilsService {
       selectedForce.moveDirectionHandle(trueCoord);
       return selectedForce;
     }
-    // On a plain two-joint bar the anchor is held to the line between them, so
-    // a load cannot end up floating beside the link it is applied to.
-    let at = trueCoord;
-    if (selectedForce.link.joints.length === 2) {
-      const [first, second] = selectedForce.link.joints;
-      const [x, y] = point_on_line_segment_closest_to_point(
-        trueCoord.x,
-        trueCoord.y,
-        first.x,
-        first.y,
-        second.x,
-        second.y
-      );
-      at = new Coord(x, y);
-    }
+    // Kept to the region the link's joints span -- the line between a bar's
+    // two joints, the inside of a plate -- so a load cannot end up floating
+    // beside the link it is applied to.
+    const at = constrainForceAnchor(selectedForce.link, trueCoord, 0);
     if (how === 'whole') selectedForce.moveAnchor(at);
     else selectedForce.moveApplicationPoint(at);
     return selectedForce;

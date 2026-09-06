@@ -70,7 +70,6 @@ export const LIBRARY_TEMPLATE_IDS = [
   // library could not show. See LIBRARY_TEMPLATE_SOURCES for what each is.
   'Bell_Crank',
   'Flywheel_Engine',
-  'Screw_Jack',
   'Elliptical_Trammel',
   'Peaucellier',
   'Pantograph',
@@ -165,8 +164,6 @@ export const TEMPLATE_LINKAGES: Record<TemplateID, string> = {
     '2v.Ay,1E8.A,0.1011.6A,A,016K,0Fe,0.0B,B,01KV,093,0.0C,C,0R4,Fe,0.CD,D,0,0,0.0E,E,CW,Lg,0.0F,F,pS,Ok,0.4G,G,si,6G,0..YRAB,AB,0,0,01DQ,0CM,303e9f,A,B,,.YRBC,BC,0,0,0to,3I,26A69A,B,C,,.YRCDE,CDE,0,0,04t,CR,0d125a,C,D,E,,CD,DE.YREF,EF,0,0,V_,NC,00695C,E,F,,.YRFG,FG,0,0,r4,FV,303e9f,F,G,,.NRCD,CD,0,0,0DY,7q,0d125a,C,D,,.NRDE,DE,0,0,6G,Ar,0d125a,D,E,,...N_g*3KAWIK',
   Flywheel_Engine:
     '2v.Ay,1E8.5,0.1011.6A,A,0,0,0,,,,2SG.0B,B,Fe,0,0.0R,R,0Lu,0,0.0C,C,17u,0,0.5P,P,17u,0,0..0RABR,Flywheel,0,0,025,0,303e9f,A,B,R,,.YRBC,Connecting rod,0,0,hm,0,26A69A,B,C,,.YPCP,CP,0,0,0,0,,C,P,,...N_C*2dIrbX',
-  Screw_Jack:
-    '2v.Ay,YO.5,0.1011.0A,A,0ID,0,0.0B,B,G4,FE,0.4C,C,0,YO,0.7P,P,0ID,0,0..YRAB,AB,0,0,014,7d,26A69A,A,B,,.YRBC,BC,0,0,82,Op,303e9f,B,C,,.YPAP,AP,0,0,0,0,,A,P,,...N_a*01Ejrc',
   Elliptical_Trammel:
     '2v.Ay,Im.5,0.1011.0A,A,Fe,0,0.0B,B,0,Fe,0.0T,T,AR,5D,0.7C,C,Fe,0,0.5D,D,0,Fe,OZ..YRABT,ABT,0,0,8i,6y,26A69A,A,B,T,,.YPAC,AC,0,0,0,0,,A,C,,.YPBD,BD,0,0,0,0,,B,D,,...N_g*4Zk8JZ',
   Peaucellier:

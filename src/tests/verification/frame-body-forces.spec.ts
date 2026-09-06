@@ -1,5 +1,5 @@
 import '../../app/model/joint';
-import { ForceAnalysisSeries } from '../../app/model/mechanism/force-solver';
+import { ForceAnalysisSeries, ForceSolver } from '../../app/model/mechanism/force-solver';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
 import { buildMechanismFixture } from '../fixtures/mechanism-fixtures';
@@ -112,6 +112,52 @@ describe('force analysis with supports that share a line', () => {
     expect(peak).toBeLessThan(50);
     for (const frame of series.frames) {
       expect(Number.isFinite(frame.inputEffort!.valueSI)).toBe(true);
+    }
+    // And one curve, not a band: the split at one pose is the split at the
+    // next, to well under a tenth of the load.
+    const atM = series.frames.map((frame) => {
+      const [x, y] = frame.jointReactions.get('M')!;
+      return Math.hypot(x, y);
+    });
+    let worstStep = 0;
+    for (let index = 1; index < atM.length; index++) {
+      worstStep = Math.max(worstStep, Math.abs(atM[index] - atM[index - 1]));
+    }
+    expect(worstStep).toBeLessThan(0.1);
+  });
+
+  it('moves smoothly from the even split to the exact answer as the supports part', () => {
+    // Two supports a hair apart: x + y = 2 and x + (1 + ε)y = 2. Exactly on
+    // one line (ε = 0) the even split is [1, 1]; parted by any ε the exact
+    // answer is [2, 0]. A ridge a million times smaller than the tolerance
+    // put the change-over among round-off, so a cycle whose hair varied with
+    // the pose flipped between the two from one frame to the next.
+    const evenest = (epsilon: number) =>
+      (
+        ForceSolver as unknown as {
+          evenestSolution(A: number[][], b: number[]): { values: number[] } | undefined;
+        }
+      ).evenestSolution(
+        [
+          [1, 1],
+          [1, 1 + epsilon],
+        ],
+        [2, 2]
+      )!.values;
+    const answers: number[][] = [];
+    for (let power = -9; power <= -1; power += 0.25) answers.push(evenest(10 ** power));
+    expect(answers[0][0]).toBeCloseTo(1, 3);
+    expect(answers[0][1]).toBeCloseTo(1, 3);
+    expect(answers.at(-1)![0]).toBeCloseTo(2, 2);
+    expect(answers.at(-1)![1]).toBeCloseTo(0, 2);
+    // The whole change is a move of √2; a cliff would take it in one step of
+    // a quarter decade, and the ridge spreads it over about a decade.
+    for (let index = 1; index < answers.length; index++) {
+      const step = Math.hypot(
+        answers[index][0] - answers[index - 1][0],
+        answers[index][1] - answers[index - 1][1]
+      );
+      expect(step).toBeLessThan(0.6);
     }
   });
 

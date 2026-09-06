@@ -2,6 +2,7 @@ import { BehaviorSubject } from 'rxjs';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { LengthUnit } from '../../app/model/unit-enums';
 import { ActiveObjService } from '../../app/services/active-obj.service';
+import { GridUtilsService } from '../../app/services/grid-utils.service';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { Joint } from '../../app/model/joint';
 import { Link } from '../../app/model/link';
@@ -158,6 +159,27 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
   service.slotReactionOf = MechanismService.prototype.slotReactionOf.bind(service);
   service.slotName = MechanismService.prototype.slotName.bind(service);
   service.isSelectedJoint = MechanismService.prototype.isSelectedJoint.bind(service);
+  // The vector switches, from the same methods the menu and the analysis
+  // panel flip: they keep their state in a set on the instance, so the stub
+  // carries one, and read the slider question through a pure helper.
+  (service as unknown as Record<string, unknown>)['vectorTraceKeys'] = new Set<string>();
+  (service as unknown as Record<string, unknown>)['vectorTraceRevision'] = 0;
+  Object.defineProperty(service, 'vectorTraceVersion', {
+    get: () => (service as unknown as Record<string, number>)['vectorTraceRevision'],
+  });
+  (service as unknown as Record<string, unknown>)['gridUtils'] = {
+    isAttachedToSlider: GridUtilsService.prototype.isAttachedToSlider,
+  };
+  service.isVectorTraceOn = MechanismService.prototype.isVectorTraceOn.bind(service);
+  service.toggleVectorTrace = MechanismService.prototype.toggleVectorTrace.bind(service);
+  service.vectorTraceRefusal = MechanismService.prototype.vectorTraceRefusal.bind(service);
+  service.jointHasReactionVector = MechanismService.prototype.jointHasReactionVector.bind(service);
+  (service as unknown as Record<string, unknown>)['vectorKey'] = (
+    MechanismService.prototype as unknown as Record<string, unknown>
+  )['vectorKey'];
+  (service as unknown as Record<string, unknown>)['groundedInPlace'] = (
+    MechanismService.prototype as unknown as Record<string, unknown>
+  )['groundedInPlace'];
   service.isSelectedBody = MechanismService.prototype.isSelectedBody.bind(service);
 
   return { active, mechanism, service, settings };

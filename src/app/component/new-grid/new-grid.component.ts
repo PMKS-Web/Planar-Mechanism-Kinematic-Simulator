@@ -33,6 +33,7 @@ import { Link, RealLink, SliderBlock } from '../../model/link';
 import { Lockable } from '../../model/lock-set';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Coord } from '../../model/coord';
+import { constrainForceAnchor } from '../../model/force-anchor';
 import {
   forceStates,
   gridStates,
@@ -41,7 +42,6 @@ import {
   getDistance,
   AngleUnit,
   radToDeg,
-  point_on_line_segment_closest_to_point,
 } from '../../model/utils';
 import { Force } from '../../model/force';
 import { NotificationService } from '../../services/notification.service';
@@ -962,16 +962,16 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /** The left-click that ends the gesture: build the part, one undo entry. */
-  private commitCylinderCreation(end: Coord) {
+  private commitCylinderCreation(end: Coord, endAt?: RealJoint) {
     // Capturing, not identity-addressed: where the barrel and the rod sit
     // relative to what they mount on is read off the pose the gesture was made
     // at, so it is staged and settled onto the anchor like a drag.
     this.mechanismSrv.capturingPose(this.cylinderCreateOn, () =>
-      this.commitCylinderCreationNow(end)
+      this.commitCylinderCreationNow(end, endAt)
     );
   }
 
-  private commitCylinderCreationNow(end: Coord) {
+  private commitCylinderCreationNow(end: Coord, endAt?: RealJoint) {
     const start = this.cylinderCreateStart;
     const mountOn = this.cylinderCreateOn;
     const mountAt = this.cylinderCreateAt;
@@ -980,7 +980,7 @@ export class NewGridComponent implements OnDestroy {
     this.cylinderCreateAt = undefined;
     this.dragState.finishCreating();
     if (!start) return;
-    this.mechanismSrv.createCylinderFrom(start, end, mountOn, mountAt);
+    this.mechanismSrv.createCylinderFrom(start, end, mountOn, mountAt, endAt);
   }
 
   setLastRightClick(clickedObj: Joint | Link | string | Force | SynthesisPose, event?: MouseEvent) {
@@ -1790,7 +1790,12 @@ export class NewGridComponent implements OnDestroy {
    * link whether or not the point lands inside the drawn bar: the anchor snaps
    * onto a joint that belongs to one link only, and is refused at a pin where
    * several meet — a force there does not say which body it acts on. Anywhere
-   * else it has to be inside the bar.
+   * else it is kept to the region the link's joints span, which
+   * `constrainForceAnchor` describes: the line between a bar's two joints, the
+   * inside of a plate, any piece of a compound. The hand off that region is
+   * put at the nearest point of it rather than stopped, so a drag along a bar
+   * does not stick; near the line between two joints it is drawn onto that
+   * line, unless Option is held.
    */
   private moveForceAnchor(wanted: Coord, how: 'anchor' | 'whole'): void {
     const force = this.activeObjService.selectedForce;
@@ -1799,11 +1804,9 @@ export class NewGridComponent implements OnDestroy {
     const link = force.link;
     const anchor = this.gridUtils.forceAnchorAt(link, wanted, this.settings.objectScale);
     let at = anchor.at;
-    if (!anchor.snappedTo && !this.pointIsInsideLink(link, at)) {
-      // The hand is off the bar. The force used to stop dead until the pointer
-      // came back over the link, which made every drag along a bar feel
-      // stuck: the nearest point on the link is where the hand means.
-      at = this.closestPointOnLink(link, wanted);
+    if (!anchor.snappedTo) {
+      const snapWithin = this.snapSuspended ? 0 : 0.2 * this.settings.objectScale;
+      at = constrainForceAnchor(link, wanted, snapWithin);
     }
     if (anchor.shared) {
       // Held short of a pin several links meet at, along the bar it is on: a
@@ -1811,6 +1814,7 @@ export class NewGridComponent implements OnDestroy {
       // snackbar saying so on every pointer move was the other half of what
       // made the drag feel stuck.
       at = this.heldOffJoint(link, anchor.shared, at, 0.3 * this.settings.objectScale);
+      at = constrainForceAnchor(link, at, 0);
     }
     this.gridUtils.dragForce(force, at, how);
     // So that the panel values update continuously.
@@ -1828,34 +1832,6 @@ export class NewGridComponent implements OnDestroy {
     else this.dragState.noteMechanismModified();
   }
 
-  /**
-   * The point on a link's bars nearest to a point off them: the nearest of
-   * the projections onto the segments between its joints, clamped to them.
-   */
-  private closestPointOnLink(link: RealLink, point: Coord): Coord {
-    const joints = link.joints;
-    let best = point;
-    let bestGap = Infinity;
-    for (let first = 0; first < joints.length; first++) {
-      for (let second = first + 1; second < joints.length; second++) {
-        const [x, y] = point_on_line_segment_closest_to_point(
-          point.x,
-          point.y,
-          joints[first].x,
-          joints[first].y,
-          joints[second].x,
-          joints[second].y
-        );
-        const gap = Math.hypot(x - point.x, y - point.y);
-        if (gap < bestGap) {
-          bestGap = gap;
-          best = new Coord(x, y);
-        }
-      }
-    }
-    return best;
-  }
-
   /** The same point, pushed `margin` away from a joint along the bar it is on. */
   private heldOffJoint(link: RealLink, pin: RealJoint, at: Coord, margin: number): Coord {
     const gap = Math.hypot(at.x - pin.x, at.y - pin.y);
@@ -1868,45 +1844,6 @@ export class NewGridComponent implements OnDestroy {
     const length = Math.hypot(dx, dy);
     if (!(length > margin)) return at;
     return new Coord(pin.x + (dx / length) * margin, pin.y + (dy / length) * margin);
-  }
-
-  /**
-   * Whether a point lands on the body of a link.
-   *
-   * Asked of the model rather than of the drawing. It used to hit-test the
-   * link's own SVG path, which fails silently in a way that is very hard to see:
-   * a link whose element carries an empty `d` — the punch press's rod is one —
-   * answers "not inside" for every point in it, so its force could not be moved
-   * anywhere at all while three other templates worked fine.
-   *
-   * A two-joint bar is a special case rather than an exception. Its hull is a
-   * line segment, so no point off that line is ever "inside" it — and the
-   * anchor of a force on such a bar has already been projected onto the segment
-   * by `dragForce`, which is what makes it a bar's whole reachable set.
-   */
-  private pointIsInsideLink(link: RealLink, point: Coord): boolean {
-    const half = this.settings.objectScale / 4;
-    const joints = link.joints;
-    if (joints.length < 2) return false;
-    // Within a bar's own width of the line between any two of its joints. This
-    // is what a link is drawn as, so it covers the straight ones — including
-    // the three-joint booms, whose joints are collinear and whose hull is
-    // therefore a line with no inside at all.
-    for (let first = 0; first < joints.length; first++) {
-      for (let second = first + 1; second < joints.length; second++) {
-        const [x, y] = point_on_line_segment_closest_to_point(
-          point.x,
-          point.y,
-          joints[first].x,
-          joints[first].y,
-          joints[second].x,
-          joints[second].y
-        );
-        if (Math.hypot(point.x - x, point.y - y) <= half) return true;
-      }
-    }
-    // And anywhere in the middle of a plate, which the edges above do not cover.
-    return link.isPointInsideHull(point.x, point.y);
   }
 
   /**
@@ -4079,7 +4016,18 @@ export class NewGridComponent implements OnDestroy {
         // it lands — over grid, joint or link alike — with the cursor as the
         // rod's end, exactly where the ghost has been standing.
         if (this.dragState.grid === gridStates.createCylinder) {
-          this.commitCylinderCreation(this.creationLanding());
+          // On a joint, the rod's far end *is* that joint: the click that
+          // ends the gesture on one attaches the ram there, the way dragging
+          // the mount onto it afterwards would, rather than leaving a free
+          // end standing on top of a joint it does not touch.
+          const onto =
+            this.lastLeftClickType === 'Joint' && this.lastLeftClick instanceof RealJoint
+              ? this.lastLeftClick
+              : undefined;
+          this.commitCylinderCreation(
+            onto ? new Coord(onto.x, onto.y) : this.creationLanding(),
+            onto
+          );
           break;
         }
         // A force's arrow tip can land on another part as well as empty grid.

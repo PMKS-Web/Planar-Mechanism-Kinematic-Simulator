@@ -65,7 +65,6 @@ const FILENAMES = {
   Offset_Load_Rocker: 'offset-load-rocker',
   Bell_Crank: 'bell-crank',
   Flywheel_Engine: 'flywheel-engine',
-  Screw_Jack: 'screw-jack',
   Elliptical_Trammel: 'elliptical-trammel',
   Peaucellier: 'peaucellier',
   Pantograph: 'pantograph',

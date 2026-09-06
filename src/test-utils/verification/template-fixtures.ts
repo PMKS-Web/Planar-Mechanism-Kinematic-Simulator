@@ -35,7 +35,6 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Offset_Load_Rocker: 'Rocker with an offset load',
   Bell_Crank: 'Bell crank',
   Flywheel_Engine: 'Engine with a flywheel',
-  Screw_Jack: 'Screw jack',
   Elliptical_Trammel: 'Elliptical trammel, driven',
   Peaucellier: 'Peaucellier-Lipkin linkage',
   Pantograph: 'Pantograph',

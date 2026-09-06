@@ -59,6 +59,14 @@ export type MenuTarget = Joint | Link | Force | SynthesisPose | string;
  * so the flick to Delete lands on the last row whether the menu holds two rows
  * or twelve.
  */
+/** One of the four switches the analysis panel draws under its graphs. */
+export interface DrawingSwitch {
+  key: 'traces' | 'velocity' | 'force' | 'acceleration';
+  row: MenuRow;
+  /** What the switch draws, for the help icon beside an available one. */
+  help: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ContextMenuBuilderService {
   private mechanism = inject(MechanismService);
@@ -672,11 +680,77 @@ export class ContextMenuBuilderService {
       // beside it: it stays live at a paused mid-cycle pose.
       alwaysAllowed: true,
       action: () => this.mechanism.toggleVectorTrace(part, quantity),
-      // The machine's own readiness first: on one that does not solve there is
-      // no cycle to take a vector from, and "one part meets it" would send the
-      // reader to fix the wrong thing.
-      refusal: this.analysisRefusal(part) ?? this.mechanism.vectorTraceRefusal(part, quantity),
+      refusal: this.vectorSwitchRefusal(part, quantity),
     });
+  }
+
+  /**
+   * Why this part's vector switch is grayed, if it is.
+   *
+   * The machine's own readiness first: on one that does not solve there is
+   * no cycle to take a vector from, and "one part meets it" would send the
+   * reader to fix the wrong thing. One answer for the menu's row and the
+   * analysis panel's switch, so the two cannot disagree.
+   */
+  vectorSwitchRefusal(
+    part: RealJoint | RealLink,
+    quantity: VectorQuantity
+  ): MenuRefusal | undefined {
+    return this.analysisRefusal(part) ?? this.mechanism.vectorTraceRefusal(part, quantity);
+  }
+
+  /**
+   * The switches the analysis panel offers under its graphs: the part's own
+   * Traces rows, in the menu's order and with the menu's refusals, so a
+   * switch the panel grays is one the menu grays. A link has no path of its
+   * own to trace and carries its reactions at its joints, so the menu leaves
+   * those two rows off a link; the panel keeps every switch in its place and
+   * says why instead, because a switch that comes and goes with the
+   * selection is harder to find than one that is there and gray.
+   */
+  drawingSwitches(part: RealJoint | RealLink): DrawingSwitch[] {
+    const jointsOnly = (what: string): MenuRefusal => ({
+      short: 'joints only',
+      long: `${what} Pick one of this link’s joints.`,
+    });
+    const trace =
+      part instanceof RealJoint
+        ? this.traceRow(part)
+        : new MenuRow({
+            label: 'Trace path',
+            icon: 'show_path',
+            kind: 'toggle',
+            action: () => undefined,
+            refusal: jointsOnly('A path is traced by a joint.'),
+          });
+    const vector = (quantity: VectorQuantity): MenuRow =>
+      part instanceof RealJoint || quantity !== 'force'
+        ? this.vectorRow(part, quantity)
+        : new MenuRow({
+            label: VECTOR_LABEL[quantity],
+            icon: VECTOR_ICON[quantity],
+            kind: 'toggle',
+            action: () => undefined,
+            refusal: jointsOnly('A reaction is carried at a joint.'),
+          });
+    return [
+      { key: 'traces', row: trace, help: 'Draws the path this joint follows through the cycle.' },
+      {
+        key: 'velocity',
+        row: vector('velocity'),
+        help: 'Draws which way this part is moving, and how fast, along its path.',
+      },
+      {
+        key: 'force',
+        row: vector('force'),
+        help: 'Draws the reaction carried at this joint, along its path.',
+      },
+      {
+        key: 'acceleration',
+        row: vector('acceleration'),
+        help: 'Draws which way this part’s velocity is changing, along its path.',
+      },
+    ];
   }
 
   private deleteJointRow(joint: RealJoint, sealed: Cylinder | undefined): MenuRow {

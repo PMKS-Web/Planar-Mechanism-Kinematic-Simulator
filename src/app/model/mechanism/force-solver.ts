@@ -141,6 +141,13 @@ const MAX_NORMALIZED_RESIDUAL = 1e-8;
  */
 const SHARED_SUPPORT_RESIDUAL = 1e-3;
 /**
+ * How many times the evenest split is refined against the original system.
+ * Each pass takes the ridge's bias off a well-held direction by another
+ * factor of (λ / (σ² + λ)); three leave a direction ten times the tolerance
+ * exact to a part in a million and a direction below it damped as before.
+ */
+const EVENEST_REFINEMENTS = 3;
+/**
  * The smallest scaled pivot the elimination accepts before calling the pose
  * singular.
  *
@@ -238,15 +245,24 @@ export class ForceSolver {
     // Two passes at most. The first refuses every rank-deficient pose, which
     // is right for a toggle: an isolated pose where the reactions grow
     // without bound and the chart shows a gap. A support that shares a line
-    // is deficient at *every* pose, and only then is the second pass run,
-    // taking the evenest split -- so a toggle keeps its gap and a redundant
-    // rail keeps its cycle, and the two are never confused.
-    for (const evenest of [false, true]) {
+    // is deficient at *every* pose -- or at all but the few where round-off
+    // happens to find a pivot -- and only then is the second pass run, taking
+    // the evenest split at every frame of the cycle, the ones the first pass
+    // solved included. Not only at the frames that failed: a cycle read half
+    // from the exact answer of a nearly dependent system and half from the
+    // even split of a dependent one alternates between two curves, and the
+    // chart draws a solid band where there should be a line. So a toggle
+    // keeps its gap, a redundant rail keeps its cycle, and the two are never
+    // confused.
+    for (let index = 0; index < frameCount; index++) {
+      frames.push(this.frameAt(mechanism, mode, fallback, index, false));
+    }
+    const singular = frames.filter((frame) => frame.status !== 'ok').length;
+    if (frameCount > 0 && singular * 2 > frameCount) {
       frames.length = 0;
       for (let index = 0; index < frameCount; index++) {
-        frames.push(this.frameAt(mechanism, mode, fallback, index, evenest));
+        frames.push(this.frameAt(mechanism, mode, fallback, index, true));
       }
-      if (frames.some((frame) => frame.status === 'ok')) break;
     }
 
     const successfulFrames = frames.filter((frame) => frame.status === 'ok').length;
@@ -1021,46 +1037,60 @@ export class ForceSolver {
   /**
    * The minimum-norm solution of a rank-deficient but consistent system.
    *
-   * Through the normal equations with a ridge small against the matrix,
-   * (AᵀA + λI)x = Aᵀb, which tends to the minimum-norm solution as λ goes to
-   * zero and is well posed at every λ. The residual is then measured against
-   * the original system: consistent systems come back with one on the order
-   * of λ, and a system the elimination refused for being contradictory rather
-   * than redundant does not, and is refused here too.
+   * Through the normal equations with a ridge, (AᵀA + λI)x = Aᵀb, refined a
+   * few times against the original system. The ridge is sized to the same
+   * tolerance the elimination draws its singular line at, on rows scaled to
+   * unit size the way the elimination scales them: a direction the matrix
+   * holds firmly passes through almost untouched, and the refinement takes
+   * away what little the ridge cost it; a direction it barely holds -- the
+   * hair between two supports that are meant to share a line -- is damped to
+   * the even split instead of being followed into an enormous cancelling
+   * pair. The first cut used a ridge a million times smaller, which put the
+   * change-over right where round-off lives, so that from one pose to the
+   * next the answer flipped between the two and the curve became a band.
+   *
+   * The residual is then measured against the original system, so a system
+   * the elimination refused for being contradictory rather than redundant
+   * is refused here too.
    */
   private static evenestSolution(A: number[][], b: number[]): LinearSolution | undefined {
     const n = A.length;
     if (n === 0) return undefined;
-    const scale = Math.max(...A.flatMap((row) => row.map(Math.abs)), 0);
-    if (!(scale > 0)) return undefined;
-    const ridge = scale * scale * 1e-12;
+    const scales = A.map((row) => Math.max(...row.map(Math.abs), 0));
+    if (scales.some((scale) => !(scale > 0))) return undefined;
+    const scaled = A.map((row, i) => row.map((value) => value / scales[i]));
+    const rhs = b.map((value, i) => value / scales[i]);
+    const ridge = SINGULAR_PIVOT_TOLERANCE * SINGULAR_PIVOT_TOLERANCE;
     const normal = Array.from({ length: n }, (_, i) =>
       Array.from({ length: n }, (_, j) => {
         let sum = 0;
-        for (let k = 0; k < n; k++) sum += A[k][i] * A[k][j];
+        for (let k = 0; k < n; k++) sum += scaled[k][i] * scaled[k][j];
         return i === j ? sum + ridge : sum;
       })
     );
-    const rhs = Array.from({ length: n }, (_, i) => {
-      let sum = 0;
-      for (let k = 0; k < n; k++) sum += A[k][i] * b[k];
-      return sum;
-    });
+    const transposeTimes = (vector: number[]): number[] =>
+      Array.from({ length: n }, (_, i) => {
+        let sum = 0;
+        for (let k = 0; k < n; k++) sum += scaled[k][i] * vector[k];
+        return sum;
+      });
+    const leftover = (values: number[]): number[] =>
+      scaled.map((row, i) => rhs[i] - row.reduce((sum, c, column) => sum + c * values[column], 0));
     // Plain elimination, without the pivot floor the main solve applies: the
-    // ridge is meant to be tiny against the matrix, and that floor would
+    // ridge is meant to be small against the matrix, and that floor would
     // refuse it as singular, which is the situation this exists to answer.
-    const values = this.solvePositiveDefinite(normal, rhs);
+    let values = this.solvePositiveDefinite(normal, transposeTimes(rhs));
     if (!values) return undefined;
+    for (let pass = 0; pass < EVENEST_REFINEMENTS; pass++) {
+      const correction = this.solvePositiveDefinite(normal, transposeTimes(leftover(values)));
+      if (!correction) return undefined;
+      values = values.map((value, i) => value + correction[i]);
+    }
     // Against the loads alone: the main solve's measure divides by the size
     // of the solution as well, and a pair of enormous cancelling reactions
     // would make an unbalanced load look balanced.
-    let residualNorm = 0;
-    let rhsNorm = 0;
-    for (let row = 0; row < n; row++) {
-      const calculated = A[row].reduce((sum, c, column) => sum + c * values[column], 0);
-      residualNorm = Math.max(residualNorm, Math.abs(calculated - b[row]));
-      rhsNorm = Math.max(rhsNorm, Math.abs(b[row]));
-    }
+    const residualNorm = Math.max(...leftover(values).map(Math.abs));
+    const rhsNorm = Math.max(...rhs.map(Math.abs));
     const residual = residualNorm / Math.max(rhsNorm, 1e-9);
     return { values, rank: n, residual, minPivot: 0 };
   }

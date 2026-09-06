@@ -224,15 +224,6 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     animation: 'assets/gifs/flywheel-engine.gif',
   },
   {
-    id: 'Screw_Jack',
-    name: 'Screw Jack',
-    category: 'slots',
-    description:
-      'A plain guided slider with no cylinder drawn round it: its drive is a length per second, not revolutions per minute.',
-    thumbnail: 'assets/gifs/screw-jack.png',
-    animation: 'assets/gifs/screw-jack.gif',
-  },
-  {
     id: 'Elliptical_Trammel',
     name: 'Elliptical Trammel',
     category: 'slots',

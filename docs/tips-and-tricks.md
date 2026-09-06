@@ -1008,19 +1008,28 @@ Two rails holding one jaw at one height, two pins on one line: equilibrium alone
 they share the load, and the elimination in `ForceSolver.solveLinearSystem` finds no pivot. That
 used to make every frame `singular` and refuse the whole cycle with a message about "this
 position", which sent readers looking for a dead point that was not there. Now
-`analyzeMechanism` makes two passes: the ordinary solve first, and only when *every* frame of it
-failed a second in which `evenestSolution` takes the minimum-norm answer (normal equations with a
-ridge small against the matrix, solved without the pivot floor the main solve applies -- that
-floor would refuse the ridge itself). The residual is measured against the loads, not against
-the size of the solution as the main solve does, because the two supports are seldom on one line
-to the last digit: the exact answer is then an enormous cancelling pair that would make an
-unbalanced load look balanced. `SHARED_SUPPORT_RESIDUAL` (1e-3 of the largest load) accepts the
-even split. The frame carries `sharedSupport`, the series counts `sharedSupportFrames`, and the
-setup drawer says so as a warning. The second pass is a rescue, not a smoothing: a toggle that
-loses its pivot at two poses in the cycle keeps its gaps, because the first pass solved the rest,
-and a load nothing balances fails the residual and stays singular either way. Partial failures
-were already handled: a cycle with some singular frames plots gaps and says where; the mode is
-refused only when *no* frame solves.
+`analyzeMechanism` makes two passes: the ordinary solve first, and only when *more than half*
+the frames of it failed a second in which `evenestSolution` takes the minimum-norm answer at
+*every* frame -- the ones the first pass happened to solve included. A cycle read half from the
+exact answer of a nearly dependent system and half from the even split of a dependent one
+alternates between two curves, and the chart draws a solid band where there should be a line;
+one rule for the whole cycle is what keeps it a line.
+
+The split itself is the normal equations with a ridge, refined three times against the original
+system (`EVENEST_REFINEMENTS`). The ridge is sized to `SINGULAR_PIVOT_TOLERANCE` on rows scaled to
+unit size, the way the elimination scales them: a direction the matrix holds firmly passes through
+and the refinement takes away what the ridge cost it, while a direction it barely holds -- the hair
+between two rails meant to share a line -- is damped to the even split instead of followed into an
+enormous cancelling pair. The first cut used a ridge a million times smaller, which put the
+change-over among round-off, so the answer could flip between the two from one pose to the next.
+`frame-body-forces.spec.ts` walks the hair from 1e-9 to 1e-1 and requires the answer to move
+smoothly from the even split to the exact one. The residual is measured against the loads, not
+against the size of the solution as the main solve does, because the exact answer of a nearly
+dependent system is a huge cancelling pair that would make an unbalanced load look balanced.
+`SHARED_SUPPORT_RESIDUAL` (1e-3 of the largest load) accepts the even split. The frame carries
+`sharedSupport`, the series counts `sharedSupportFrames`, and the setup drawer says so as a
+warning. A toggle that loses its pivot at two poses in the cycle keeps its gaps, because the first
+pass solved the rest, and a load nothing balances fails the residual and stays singular either way.
 
 ### A force is placed at fifteen-degree bearings unless Option is held
 
@@ -1560,3 +1569,54 @@ the card line when it did not -- and 16px past the card line is 4px under the vi
 when the tutorial is pinned above a page and the two do not fit, each card scrolls inside itself
 (`.tutorialSlot` shrinks to a 200px floor, the page below keeps a 260px floor and takes the rest),
 and the frame's bottom edge is never the visible one. `e2e/right-drawer.mjs` measures all of it.
+
+### A force is anchored on the linkage, not on the skin
+
+`model/force-anchor.ts` is the one rule for where a load may sit: on the line between a bar's two
+joint centers, inside the polygon a plate's centers enclose, on any one piece of a welded
+compound (each piece by its own rule, so two bars welded at an angle do not gain the corner
+between them), and for a boom whose three joints lie on one line, the segment between the outer
+two. The drawn outline is wider than that -- a bar has a width, a plate rounds its corners -- but a
+load out at the drawn edge is on the skin rather than on the linkage the solver balances.
+`constrainForceAnchor` answers with the nearest allowed point, and draws a point that comes within
+`snapWithin` of the line between two joints onto it; Option suspends that snap, the way it frees a
+joint from the grid.
+
+Every placement goes through it: the anchor drag and the whole-arrow drag on the canvas, `dragForce`
+in `GridUtilsService`, `createForce`, and -- the one that catches everything else --
+`keepForcesOnTheirLinks` at the top of `updateMechanism`. Joints move under holds, solvers and
+drags that never touch the forces riding the link between them, and a plate whose corner was
+dragged in used to leave its load standing where the plate had been; the rebuild is the one funnel
+every edit passes through, so that is where the rule holds however the joints got there. A URL
+that arrives with a force off its link is put back on it at the first rebuild. The old
+`pointIsInsideLink` / `closestPointOnLink` pair in the canvas, and the hull-projection block in the
+delete path, are gone: they were three different answers to one question.
+
+### The second click of Add Cylinder lands on a joint
+
+`commitCylinderCreation` reads `lastLeftClickType`: on a joint, the rod's far end *is* that joint,
+folded in through `mergeJoints` -- the same door a mount dragged onto a joint goes through, so
+every refusal that merge has (a cylinder's interior, a joint of the same bar) this has too, in the
+same words, and a refused end stays free where it was clicked. The joint the gesture *started* on
+is skipped, since a ram from a joint back to itself is not a ram. `e2e/cylinder-end-on-joint.mjs`
+guards it; when writing a suite like it, start the gesture from a point chosen on the *screen*
+below the lowest joint, because a joint's hitbox is a screen size and the drawing's own units say
+nothing about it -- the first cut started three model units from C and got C's menu.
+
+### The analysis panel's four switches are the menu's Traces rows
+
+Under every joint's and link's graphs, in Kinematic and Force Analysis alike, sit Trace path,
+Velocity Vectors, Force Vectors and Acceleration Vectors. They are not a second implementation:
+`ContextMenuBuilderService.drawingSwitches` hands the panel the part's own `MenuRow`s -- the same
+`traceRow` and `vectorRow` the right-click menu shows, with the same refusals from
+`vectorSwitchRefusal` -- and the panel renders each as a `toggle-block` grayed when the row is,
+with the row's short reason under it where the menu puts it in the right-hand slot. A link keeps
+the two rows the menu leaves off it (trace, force) in place and gray as "joints only", because a
+switch that comes and goes with the selection is harder to find than one that stays and says why.
+The form is only the switch's face: a flip runs the row's `action`, and `syncDrawingForm` in
+`ngDoCheck` reads the drawing back into the form with `emitEvent: false`, so a flip made from the
+menu shows on the switch and a sync is never heard as a request. The rows are cached on the part,
+`solveRevision`, `vectorTraceVersion`, the force mode and the joint's own `showCurve`.
+`e2e/analysis-drawing-switches.mjs` guards it, and presses the switch through the element rather
+than the pointer: the switches sit at the bottom of a scrolling panel under a sticky head, and a
+pointer click there landed on the row below the one it was aimed at.

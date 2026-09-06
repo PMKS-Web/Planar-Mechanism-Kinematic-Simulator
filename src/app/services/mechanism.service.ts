@@ -94,7 +94,8 @@ import { PositionSolver, SAMPLES_PER_STROKE } from '../model/mechanism/position-
 import { ColorService } from './color.service';
 import { siUnitFactorsForLength } from '../model/unit-conversions';
 import { transformRigidCoord, transformRigidPath } from '../model/compound-link-path';
-import { MergeRefusal, refuseJointMerge } from '../model/drop-target';
+import { MERGE_REFUSAL_MESSAGES, MergeRefusal, refuseJointMerge } from '../model/drop-target';
+import { constrainForceAnchor } from '../model/force-anchor';
 import { redundantlyHeldJointSets } from '../model/rigid-bodies';
 import { MODEL_SCALE } from '../model/render-scale';
 import { labelForBody } from '../model/body-label';
@@ -415,6 +416,12 @@ export class MechanismService {
     this.poseRevision++;
     this.solveRevision++;
     Force.normalizeVisualWidths(this.forces);
+    // Every load back on the linkage it acts on. Joints move under holds,
+    // solvers and drags that never touch the forces riding the link between
+    // them, and a plate whose corner was dragged in leaves a load standing
+    // where the plate used to be; this is the one funnel every edit passes
+    // through, so it is where the rule holds however the joints got there.
+    this.keepForcesOnTheirLinks();
     // Changing the input speed re-samples the same geometry onto a different time
     // axis. Hold the simulation time rather than the sample index, so t and the pose
     // on screen stay consistent with each other across the rebuild. Read it before
@@ -1529,6 +1536,11 @@ export class MechanismService {
    * on arrival and rebuild it forever.
    */
   private vectorTraceRevision = 0;
+
+  /** The switch set's revision, for a view that caches what it draws from it. */
+  get vectorTraceVersion(): number {
+    return this.vectorTraceRevision;
+  }
 
   /**
    * Why this part will not take this vector, in the model's own words.
@@ -3163,45 +3175,6 @@ export class MechanismService {
         });
       }
 
-      // for any forces that are outside of the link, move them to the closest point on the hull
-      if (l instanceof RealLink) {
-        l.forces.forEach((f) => {
-          if (!(l instanceof RealLink)) {
-            return;
-          }
-          let fx = f.startCoord.x;
-          let fy = f.startCoord.y;
-
-          // if force is already inside hull, do nothing
-          if (l.isPointInsideHull(fx, fy)) {
-            return;
-          }
-
-          // go through hull and find closest point
-          let hull = l.getHullPoints();
-          let closestDistance = -1;
-          let cx, cy;
-          for (let i = 0; i < hull.length - 1; i++) {
-            let x1 = hull[i][0];
-            let y1 = hull[i][1];
-            let x2 = hull[i + 1][0];
-            let y2 = hull[i + 1][1];
-
-            [cx, cy] = point_on_line_segment_closest_to_point(fx, fy, x1, y1, x2, y2);
-            let distance = distance_points(fx, fy, cx, cy);
-
-            if (closestDistance === -1 || distance < closestDistance) {
-              closestDistance = distance;
-              fx = cx;
-              fy = cy;
-            }
-          }
-
-          // (fx, fy) is now the closest point on the hull to the force start position
-          // move force there
-          f.moveForceTo(fx, fy);
-        });
-      }
     });
 
     function deleteJointWithinLinkAndSubsets(link: RealLink, joint: Joint) {
@@ -4122,7 +4095,13 @@ export class MechanismService {
    *
    * One `finishStructuralEdit(true)` at the end makes creation one undo entry.
    */
-  createCylinderFrom(start: Coord, end: Coord, mountOn?: RealLink, mountAt?: RealJoint): void {
+  createCylinderFrom(
+    start: Coord,
+    end: Coord,
+    mountOn?: RealLink,
+    mountAt?: RealJoint,
+    endAt?: RealJoint
+  ): void {
     // A weld says everything meeting here is one rigid body. A ram's mount
     // arriving would be a third body inside that statement without being part
     // of it, and the reconcilers then disagree about what the compound is —
@@ -4190,6 +4169,15 @@ export class MechanismService {
     if (!mountAt) this.joints.push(barrelFar);
     this.joints.push(barrelNear, pin, rodFar, slider);
     this.links.push(barrel, rod, block);
+    // Ended on a joint, the rod's far end is folded into it through the same
+    // door a mount dragged onto a joint goes through, so every rule that
+    // refuses a merge -- a cylinder's interior, a joint of the same bar --
+    // refuses this too, in the same words. Refused, the rod's end stays free
+    // where it was clicked, a ram whose far end has yet to be attached.
+    if (endAt && endAt !== mountAt) {
+      const refusal = this.mergeJoints(rodFar, endAt);
+      if (refusal) this.notify.refusal(`merge.${refusal}`, MERGE_REFUSAL_MESSAGES[refusal]);
+    }
     // The body is what a click on the skin selects; select it on creation so
     // the edit panel opens on the cylinder.
     this.activeObjService.updateSelectedObj(barrel);
@@ -7264,40 +7252,29 @@ export class MechanismService {
    * row is on a joint's menu as well as a link's and the selection there is
    * the joint. Falls back to the selected link for the callers that have one.
    */
+  /** Move any force whose anchor has left the region its link's joints span. */
+  private keepForcesOnTheirLinks(): void {
+    for (const force of this.forces) {
+      if (!(force.link instanceof RealLink)) continue;
+      const kept = constrainForceAnchor(force.link, force.startCoord, 0);
+      if (Math.hypot(kept.x - force.startCoord.x, kept.y - force.startCoord.y) > 1e-9) {
+        force.moveAnchor(kept);
+      }
+    }
+  }
+
   createForce(startCoord: Coord, endCoord: Coord, onLink?: RealLink): Force | undefined {
     const selectedLink = onLink ?? this.activeObjService.selectedLink;
     if (!(selectedLink instanceof RealLink)) return undefined;
     startCoord = new Coord(startCoord.x, startCoord.y);
     endCoord = new Coord(endCoord.x, endCoord.y);
-    // TODO: utilize dot product to find point that is closest to the line
-    if (selectedLink.joints.length === 2) {
-      const lineVector: Coord = new Coord(
-        selectedLink.joints[0].x - selectedLink.joints[1].x,
-        selectedLink.joints[0].y - selectedLink.joints[1].y
-      );
-
-      // Calculate the vector from the first point on the line to the given point
-      const givenPointVector: Coord = new Coord(
-        startCoord.x - selectedLink.joints[0].x,
-        startCoord.y - selectedLink.joints[0].y
-      );
-
-      // Calculate the dot product of the line vector and the given point vector
-      const dotProduct: number =
-        givenPointVector.x * lineVector.x + givenPointVector.y * lineVector.y;
-
-      // Calculate the length of the line vector squared
-      const lineLengthSquared: number = lineVector.x * lineVector.x + lineVector.y * lineVector.y;
-
-      if (lineLengthSquared > 0) {
-        // Calculate the parameter t for the projection onto the line
-        const t: number = dotProduct / lineLengthSquared;
-
-        // Calculate the projected point on the line
-        startCoord.x = selectedLink.joints[0].x + t * lineVector.x;
-        startCoord.y = selectedLink.joints[0].y + t * lineVector.y;
-      }
-    }
+    // Where the click landed, kept to the region the link's joints span: the
+    // line between a bar's two joints, the inside of a plate. A right-click
+    // out at a plate's drawn edge is a load on its skin, not on the linkage.
+    const kept = constrainForceAnchor(selectedLink, startCoord, 0);
+    endCoord.x += kept.x - startCoord.x;
+    endCoord.y += kept.y - startCoord.y;
+    startCoord = kept;
     // Its application point rides the body, but a new force's direction is
     // global. Map the projected tail back, then translate without rotating.
     if (!this.seedFromDisplay && !this.isAtStartPose()) {

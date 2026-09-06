@@ -28,6 +28,10 @@ import { AnalysisGraphSectionComponent } from '../analysis-graph-section/analysi
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 import { AnalysisCompareService } from '../../services/analysis-compare.service';
+import {
+  ContextMenuBuilderService,
+  DrawingSwitch,
+} from '../../services/context-menu-builder.service';
 
 /** One expandable force graph: the reaction between `linkId` and `jointId`. */
 export interface ForceAnalysisRow {
@@ -71,6 +75,22 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   settingsService = inject(SettingsService);
   private tabs = inject(SelectedTabService);
   private comparison = inject(AnalysisCompareService);
+  private menuRules = inject(ContextMenuBuilderService);
+
+  /**
+   * The four switches under the graphs: trace, velocity, force and
+   * acceleration, drawn on the mechanism itself. The same rows the part's
+   * right-click menu offers under Traces, so they are built by the same
+   * service and grayed for the same reasons; this is where a reader who has
+   * not found the menu finds them.
+   */
+  readonly drawingForm = this.fb.group({
+    traces: [false],
+    velocity: [false],
+    force: [false],
+    acceleration: [false],
+  });
+  private drawingSwitchCache?: { key: string; switches: DrawingSwitch[] };
 
   /**
    * The tuning gesture is polled, not subscribed to: every edit ends in a
@@ -79,6 +99,7 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
    */
   ngDoCheck(): void {
     this.comparison.sync();
+    this.syncDrawingForm();
   }
 
   /** A part is under the hand right now. */
@@ -344,6 +365,19 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
       })
     );
 
+    // A flip of a switch is the menu row's own action; the form is only the
+    // switch's face, and `syncDrawingForm` keeps it honest afterwards.
+    this.subscriptions.add(
+      this.drawingForm.valueChanges.subscribe((value) => {
+        if (this.syncingDrawingForm) return;
+        for (const one of this.drawingSwitches) {
+          const wanted = !!value[one.key];
+          if (!one.row.refusal && wanted !== this.drawingSwitchIsOn(one)) one.row.action();
+        }
+        this.drawingSwitchCache = undefined;
+      })
+    );
+
     // The toggle is one mechanism-wide setting, so the control and the service
     // mirror each other instead of the panel owning the value.
     this.subscriptions.add(
@@ -367,6 +401,56 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   ngOnDestroy() {
     this.mechStateSub?.unsubscribe();
     this.subscriptions.unsubscribe();
+  }
+
+  private syncingDrawingForm = false;
+
+  /** The switches for the part on the panel, rebuilt when what they quote could have changed. */
+  get drawingSwitches(): DrawingSwitch[] {
+    const part = this.selectedPart;
+    if (!part || !this.selectionIsSimulatable) return [];
+    const traced = part instanceof RealJoint ? part.showCurve : false;
+    const key = [
+      part.id,
+      part instanceof RealJoint ? 'joint' : 'link',
+      this.mechanismService.solveRevision,
+      this.mechanismService.vectorTraceVersion,
+      this.settingsService.forceAnalysisMode.value,
+      traced,
+    ].join('|');
+    if (this.drawingSwitchCache?.key !== key) {
+      this.drawingSwitchCache = { key, switches: this.menuRules.drawingSwitches(part) };
+    }
+    return this.drawingSwitchCache.switches;
+  }
+
+  /** The reason a switch is gray, in the menu's own words, or what it draws. */
+  drawingSwitchTip(one: DrawingSwitch): string {
+    return one.row.refusal ? (one.row.refusal.long ?? one.row.refusal.short) : one.help;
+  }
+
+  private drawingSwitchIsOn(one: DrawingSwitch): boolean {
+    const part = this.selectedPart;
+    if (!part) return false;
+    if (one.key === 'traces') return part instanceof RealJoint && part.showCurve === true;
+    return this.mechanismService.isVectorTraceOn(part, one.key);
+  }
+
+  /** The form's face made to match the drawing, without a flip being heard as a request. */
+  private syncDrawingForm(): void {
+    const switches = this.drawingSwitches;
+    if (switches.length === 0) return;
+    const value: Record<string, boolean> = {};
+    let stale = false;
+    for (const one of switches) {
+      const on = this.drawingSwitchIsOn(one);
+      value[one.key] = on;
+      if (this.drawingForm.controls[one.key].value !== on) stale = true;
+    }
+    if (!stale) return;
+    this.syncingDrawingForm = true;
+    this.drawingForm.patchValue(value, { emitEvent: false });
+    this.syncingDrawingForm = false;
   }
 
   forceAnalysisMode(): ForceAnalysisMode {

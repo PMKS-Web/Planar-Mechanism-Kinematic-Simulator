@@ -378,3 +378,68 @@ function pinOfSlider(payload: string): string {
   const built = buildMechanismFixture(payload);
   return built.service.joints.find((joint) => !!built.service.sliderFor(joint))!.id;
 }
+
+describe('AnalysisPanelComponent drawing switches', () => {
+  const switches = (fixture: ComponentFixture<AnalysisPanelComponent>) =>
+    [...fixture.nativeElement.querySelectorAll('.drawingSwitch')].map((node: Element) => ({
+      key: node.querySelector('[data-switch]')?.getAttribute('data-switch'),
+      label: node.querySelector('span.label')?.textContent?.trim(),
+      off: node.classList.contains('drawingSwitch--off'),
+      why: node.querySelector('.drawingSwitchWhy')?.textContent?.trim(),
+    }));
+
+  it('offers the four switches under a joint’s graphs, in the menu’s order', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'B');
+    fixture.detectChanges();
+    const shown = switches(fixture);
+    expect(shown.map((one) => one.key)).toEqual(['traces', 'velocity', 'force', 'acceleration']);
+    expect(shown.map((one) => one.label)).toEqual([
+      'Trace path',
+      'Velocity Vectors',
+      'Force Vectors',
+      'Acceleration Vectors',
+    ]);
+    // A moving pin two links meet at: every switch is available.
+    expect(shown.every((one) => !one.off)).toBe(true);
+    fixture.destroy();
+  });
+
+  it('grays a switch for the reason the menu would', async () => {
+    // A pin bolted to the frame never moves, so its velocity and acceleration
+    // are refused in the menu's words; the trace and the reaction are not.
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'A');
+    fixture.detectChanges();
+    const byKey = Object.fromEntries(switches(fixture).map((one) => [one.key, one]));
+    expect(byKey['velocity'].off).toBe(true);
+    expect(byKey['velocity'].why).toBe('it never moves');
+    expect(byKey['acceleration'].off).toBe(true);
+    expect(byKey['traces'].off).toBe(false);
+    fixture.destroy();
+  });
+
+  it('keeps a link’s trace and force switches in place, grayed as joints-only', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'BC');
+    fixture.detectChanges();
+    const byKey = Object.fromEntries(switches(fixture).map((one) => [one.key, one]));
+    expect(byKey['traces'].off).toBe(true);
+    expect(byKey['traces'].why).toBe('joints only');
+    expect(byKey['force'].off).toBe(true);
+    expect(byKey['velocity'].off).toBe(false);
+    expect(byKey['acceleration'].off).toBe(false);
+    fixture.destroy();
+  });
+
+  it('flips the drawing when a switch is flipped, and follows the drawing back', async () => {
+    const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'B');
+    fixture.detectChanges();
+    const joint = fixtureData.service.joints.find((one) => one.id === 'B')!;
+    expect(fixtureData.service.isVectorTraceOn(joint, 'velocity')).toBe(false);
+    fixture.componentInstance.drawingForm.controls.velocity.setValue(true);
+    expect(fixtureData.service.isVectorTraceOn(joint, 'velocity')).toBe(true);
+    // Flipped from the menu instead, the switch's face follows.
+    fixtureData.service.toggleVectorTrace(joint, 'velocity');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.drawingForm.controls.velocity.value).toBe(false);
+    fixture.destroy();
+  });
+});
