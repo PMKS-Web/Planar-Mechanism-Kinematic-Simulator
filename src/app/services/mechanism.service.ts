@@ -75,7 +75,7 @@ import { DragStateService } from './drag-state.service';
 import { Coord } from '../model/coord';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 import { AnalysisSampleService } from './analysis-sample.service';
-import { ForceAnalysisMode } from '../model/mechanism/force-solver';
+import { ForceAnalysisSeries, ForceAnalysisMode } from '../model/mechanism/force-solver';
 import {
   arrowPath,
   buildVectorTrace,
@@ -1576,6 +1576,17 @@ export class MechanismService {
           long: 'Only one part meets this joint, so there is no second body for it to react against and no force to draw.',
         };
       }
+      // A pin that carries nothing all cycle -- the load sits on the crank
+      // and the follower rides along unloaded -- has a reaction of zero at
+      // every sample, and a switch that lights for an arrow of no length is a
+      // switch that lies. Zero against the largest reaction anywhere in the
+      // cycle, so round-off does not count as a load.
+      if (this.reactionIsZeroAllCycle(series, part.id)) {
+        return {
+          short: 'carries no load',
+          long: 'The reaction at this joint is zero all cycle: the load is carried elsewhere, so there is nothing to draw.',
+        };
+      }
       return undefined;
     }
     // A pin bolted to the frame stands still all cycle, so its arrow would be
@@ -1588,6 +1599,21 @@ export class MechanismService {
       };
     }
     return undefined;
+  }
+
+  /** Whether the reaction at a joint is nothing, at every solved sample, next to the cycle's largest. */
+  private reactionIsZeroAllCycle(series: ForceAnalysisSeries, jointId: string): boolean {
+    let largest = 0;
+    let atJoint = 0;
+    for (const frame of series.frames) {
+      if (frame.status !== 'ok') continue;
+      for (const [id, [x, y]] of frame.jointReactions) {
+        const size = Math.hypot(x, y);
+        largest = Math.max(largest, size);
+        if (id === jointId) atJoint = Math.max(atJoint, size);
+      }
+    }
+    return largest > 0 && atJoint <= largest * 1e-9;
   }
 
   /** Fixed to the frame, and not the pin of a slider that runs along one. */

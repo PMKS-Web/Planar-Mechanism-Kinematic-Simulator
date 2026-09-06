@@ -180,6 +180,9 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
   (service as unknown as Record<string, unknown>)['vectorKey'] = (
     MechanismService.prototype as unknown as Record<string, unknown>
   )['vectorKey'];
+  (service as unknown as Record<string, unknown>)['reactionIsZeroAllCycle'] = (
+    MechanismService.prototype as unknown as Record<string, unknown>
+  )['reactionIsZeroAllCycle'];
   (service as unknown as Record<string, unknown>)['groundedInPlace'] = (
     MechanismService.prototype as unknown as Record<string, unknown>
   )['groundedInPlace'];

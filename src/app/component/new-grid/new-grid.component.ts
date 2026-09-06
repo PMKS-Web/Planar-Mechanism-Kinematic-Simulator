@@ -1818,18 +1818,31 @@ export class NewGridComponent implements OnDestroy {
       const snapWithin = this.snapSuspended ? 0 : 0.2 * this.settings.objectScale;
       at = constrainForceAnchor(link, wanted, snapWithin);
     }
-    if (anchor.shared) {
+    // A pin several links meet at, if the anchor has come to rest within a
+    // margin of one -- whether the hand is over the pin or has pushed past
+    // it, where the link's region ends at the pin and the anchor was left
+    // standing exactly on it.
+    const margin = 0.3 * this.settings.objectScale;
+    const shared =
+      anchor.shared ??
+      link.joints.find(
+        (joint): joint is RealJoint =>
+          joint instanceof RealJoint &&
+          joint.links.length > 1 &&
+          Math.hypot(joint.x - at.x, joint.y - at.y) < margin
+      );
+    if (shared) {
       // Held short of a pin several links meet at, along the bar it is on: a
       // force exactly there would not say which body it acts on. The pin is
       // ringed red for as long as the hand is over it and the reason is said
       // once -- the notification service holds a repeat while one is up, so
       // saying it on every pointer move does not stack it.
-      at = this.heldOffJoint(link, anchor.shared, at, 0.3 * this.settings.objectScale);
+      at = this.heldOffJoint(link, shared, at, margin);
       at = constrainForceAnchor(link, at, 0);
-      this.forceRefusedJoint = anchor.shared;
+      this.forceRefusedJoint = shared;
       this.notify.refusal(
         'force.shared-joint',
-        `A force cannot sit on joint ${anchor.shared.id}: several links meet there, so it would not say which body it pushes on. It is held on ${link.name || link.id} short of the pin.`
+        `A force cannot sit on joint ${shared.id}: several links meet there, so it would not say which body it pushes on. It is held on ${link.name || link.id} short of the pin.`
       );
     } else {
       this.forceRefusedJoint = undefined;

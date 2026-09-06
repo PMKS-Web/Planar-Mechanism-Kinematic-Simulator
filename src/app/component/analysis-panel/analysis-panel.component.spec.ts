@@ -379,6 +379,9 @@ function pinOfSlider(payload: string): string {
   return built.service.joints.find((joint) => !!built.service.sliderFor(joint))!.id;
 }
 
+const CRANK_LOADED_FOUR_BAR =
+  '2v.Fe,1E8.A,5D.1011.6A,A,0mv,0VU,0.GB,B,0e_,E6,0.0C,C,l1,WW,0.4D,D,qD,0Pk,0..MRAB,AB,0,0,0ix,08i,303e9f,A,B,,.MRBC,BC,0,0,32,NJ,26A69A,B,C,,.MRCD,CD,0,0,nd,3P,0d125a,C,D,,..2F1,AB,F1,0iD,04Y,0yP,Hj,Fe..N_.KFF1~26A69AU*2fMxSM';
+
 describe('AnalysisPanelComponent drawing switches', () => {
   const switches = (fixture: ComponentFixture<AnalysisPanelComponent>) =>
     [...fixture.nativeElement.querySelectorAll('.drawingChip')].map((node: Element) => ({
@@ -447,6 +450,19 @@ describe('AnalysisPanelComponent drawing switches', () => {
     fixtureData.service.toggleVectorTrace(joint, 'velocity');
     fixture.detectChanges();
     expect(switches(fixture).find((one) => one.key === 'velocity')?.on).toBe(false);
+    fixture.destroy();
+  });
+
+  it('grays Force on a pin that carries nothing all cycle, and says so', async () => {
+    // The load sits on the crank, so the follower rides along unloaded and
+    // the reaction at B is zero at every sample: a lit chip would draw
+    // nothing. The user's own drawing, in which the chip lit and no arrow came.
+    const { fixture } = await createPanel(CRANK_LOADED_FOUR_BAR, 'B', TabID.FORCE);
+    fixture.detectChanges();
+    const byKey = Object.fromEntries(switches(fixture).map((one) => [one.key, one]));
+    expect(byKey['force'].off).toBe(true);
+    const force = fixture.componentInstance.drawingSwitches.find((one) => one.key === 'force')!;
+    expect(fixture.componentInstance.drawingSwitchTip(force)).toContain('carries no load');
     fixture.destroy();
   });
 

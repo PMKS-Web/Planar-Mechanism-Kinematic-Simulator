@@ -483,6 +483,24 @@ record(
   Math.hypot(heldShort.start[0] - sharedPin.x, heldShort.start[1] - sharedPin.y) > 1,
   { heldShort, sharedPin }
 );
+// Pushed hard past the pin, along the boom and beyond its end: the anchor
+// still stops short of it.
+const pastShared = await toScreen(
+  sharedPin.x + (sharedPin.x - carried.start[0]) * 3,
+  sharedPin.y + (sharedPin.y - carried.start[1]) * 3
+);
+const grabAgainBase = await toScreen(heldShort.start[0], heldShort.start[1]);
+await page.mouse.move(grabAgainBase.x, grabAgainBase.y);
+await page.mouse.down();
+await page.mouse.move(pastShared.x, pastShared.y, { steps: 20 });
+await page.mouse.up();
+await page.waitForTimeout(400);
+const pushed = await force();
+record(
+  'pushed past the pin, the anchor still stops short of it',
+  Math.hypot(pushed.start[0] - sharedPin.x, pushed.start[1] - sharedPin.y) > 1,
+  { pushed, sharedPin }
+);
 record(
   'the ring goes with the drag',
   !(await page.evaluate(() => !!document.querySelector('circle.snapRefused')))

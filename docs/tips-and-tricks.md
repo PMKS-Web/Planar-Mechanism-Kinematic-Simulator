@@ -1673,6 +1673,23 @@ notification service holds a repeat while the same id is on screen and for its c
 so the sentence does not stack. The ring is cleared on `mouseUp`, which is where every force drag
 ends -- `letGoOfEverything` is not on that path.
 
+The hold is by distance from the pin, not by whether the pointer is over it. `forceAnchorAt` only
+reports a shared pin within its snap radius, so a hand pushed hard past the pin -- along the bar
+and beyond its end, where `constrainForceAnchor` clamps the anchor to the segment's end, which
+*is* the pin -- left the anchor standing exactly on the pin with nothing said. `moveForceAnchor`
+now looks for any shared joint of the link within the margin of where the anchor came to rest, and
+holds off from that one. `e2e/force-edit.mjs` pushes three pin-lengths past C and requires the
+anchor to stop short.
+
+### A force chip that would draw nothing is gray, and says so
+
+`vectorTraceRefusal('force')` refuses a joint whose reaction is zero at every solved sample
+(`reactionIsZeroAllCycle`, measured against the largest reaction anywhere in the cycle so
+round-off is not a load): "carries no load". The case that found it was a four-bar with the load
+on the crank -- the follower rides along unloaded, the reaction at B is zero all cycle, and the
+chip lit while `buildVectorTrace` had no arrow of any length to draw. A switch that lights for
+nothing is a switch that lies, so the refusal is the answer rather than a longer arrow.
+
 ### The gripper's drag lag was the simultaneous solver's normal matrix
 
 Dragging a joint of the gripper on rails cost 115 ms a move, and a CPU profile (a Playwright
