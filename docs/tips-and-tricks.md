@@ -1702,3 +1702,22 @@ damped normal matrix is symmetric positive definite, so `solveSymmetric` (Choles
 Gauss-Jordan reduction for it, at a sixth of the arithmetic, with the elimination kept as the
 fallback where a pivot is not positive. The same drag is 23 ms a move now. The forces on the
 link were a red herring: a rocker with a load costs a millisecond more per move than one without.
+
+### The geometry rescue asks which freedoms survive *together*
+
+`mobilityFromGeometry` used to put each null-space basis vector to the second-order test on its
+own. The elimination hands back *a* basis, not the natural one: a parallelogram drawn with its
+cranks lying along the coupler (a coupler on three equal parallel cranks, every joint on one
+line) has two first-order freedoms there -- translate the coupler, and turn it -- and came back
+as translate-plus-turn and translate-minus-turn, each of which dies at second order alone. The
+count was zero for a linkage that runs, and nudging one crank off the line made it run.
+`survivingSubspace` treats the closable-gap test as what it is, a vector-valued quadratic on the
+freedoms: it searches each pair of basis vectors round their plane for a root direction (a scan of
+the half-turn and a golden-section refinement, each candidate then checked as a displacement in
+its own right), adds the basis vectors that survive alone, and counts the largest subspace the
+form's bilinear part vanishes on among them. Not the radical of the whole form: the true motion
+pairs to a nonzero cross term with the dying one, so the radical was empty there. The answer is
+never less than the one-at-a-time count. `flat-parallelogram.spec.ts` holds the user's drawing;
+the MotionGen gripper (`motiongen-gripper.spec.ts`) now counts at one as its own comment always
+said it should, and is still refused, by the position solver, which cannot yet walk a redundant
+constraint set from that pose -- that spec says which limitation is left.

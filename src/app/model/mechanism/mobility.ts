@@ -62,8 +62,190 @@ export function mobilityFromGeometry(
   if (free.length === 0) return 0;
 
   const reach = reachOf(links);
-  return free.filter((direction) => survivesSecondOrder(direction, constraints, rows, reach, width))
-    .length;
+  const oneByOne = free.filter((direction) =>
+    survivesSecondOrder(direction, constraints, rows, reach, width)
+  ).length;
+  // Never fewer than the basis vectors that survive on their own, which is
+  // what the one-at-a-time question answers where it answers at all; the
+  // subspace question is what finds a motion the elimination happened to
+  // hand back mixed with a tangency.
+  return Math.max(oneByOne, survivingSubspace(free, constraints, rows, reach, width));
+}
+
+/**
+ * How many of the freedoms survive together, when none survives alone.
+ *
+ * The elimination hands back *a* basis of the freedoms, not the natural one.
+ * A parallelogram drawn with its cranks lying along the coupler has two
+ * first-order freedoms -- translate the coupler, and turn it -- and only the
+ * translation goes anywhere. Handed back as translate-plus-turn and
+ * translate-minus-turn, each dies at second order on its own and the count
+ * came out zero for a linkage that runs.
+ *
+ * The second-order gap is a quadratic in the freedom taken, so the part of it
+ * no correction can close is a vector-valued quadratic q on the freedoms, and
+ * a motion the linkage can take is a direction q vanishes on. Those need not
+ * be basis directions, so each pair of basis vectors is searched round its
+ * plane for a root; the directions found, with any basis vector that survives
+ * alone, are then asked how many of them go together -- the largest subspace
+ * the bilinear form of q vanishes on, which is its radical restricted to them.
+ * The form is recovered from the gaps by polarization.
+ */
+function survivingSubspace(
+  free: number[][],
+  constraints: Constraint[],
+  rows: number[][],
+  reach: number,
+  width: number
+): number {
+  const steps = free.map((direction) => scaledStep(direction, constraints, reach));
+  if (steps.some((step) => step === undefined)) return 0;
+  const count = steps.length;
+  const gapOf = (d: number[]): number[] =>
+    constraints.flatMap((constraint) => residual(constraint, d));
+  const leftOver = (d: number[]): number[] => outsideRangeVector(gapOf(d), rows, width);
+  const norm = (v: number[]): number => Math.hypot(...v);
+
+  // The rule the one-at-a-time test applies, kept: a leftover under a
+  // thousandth of the gap it came from is a closable gap, and one under the
+  // arithmetic's own noise is nothing at all.
+  let scale = reach * 1e-12;
+  const self = steps.map((step) => leftOver(step!));
+  const pair: number[][][] = steps.map(() => []);
+  for (let i = 0; i < count; i++) {
+    scale = Math.max(scale, norm(gapOf(steps[i]!)) * 1e-3);
+    pair[i][i] = self[i];
+    for (let j = i + 1; j < count; j++) {
+      const both = sum(steps[i]!, steps[j]!);
+      scale = Math.max(scale, norm(gapOf(both)) * 1e-3);
+      const mixed = leftOver(both).map((value, k) => (value - self[i][k] - self[j][k]) / 2);
+      pair[i][j] = mixed;
+      pair[j][i] = mixed;
+    }
+  }
+  // The form on any two directions, by bilinearity over the basis.
+  const form = (a: number[], b: number[]): number[] => {
+    const out = new Array<number>(self[0]?.length ?? 0).fill(0);
+    for (let i = 0; i < count; i++) {
+      if (a[i] === 0) continue;
+      for (let j = 0; j < count; j++) {
+        if (b[j] === 0) continue;
+        const v = pair[i][j];
+        for (let k = 0; k < out.length; k++) out[k] += a[i] * b[j] * v[k];
+      }
+    }
+    return out;
+  };
+  const vanishes = (v: number[]): boolean => norm(v) <= scale;
+  // Whether a direction, taken as the displacement it is, actually goes: the
+  // one-at-a-time rule applied to it directly, rather than to the polarized
+  // form, whose rounding a near-root can hide under.
+  const goes = (c: number[]): boolean => {
+    const d = new Array<number>(width).fill(0);
+    for (let i = 0; i < count; i++) {
+      if (c[i] === 0) continue;
+      const step = steps[i]!;
+      for (let k = 0; k < width; k++) d[k] += c[i] * step[k];
+    }
+    const size = norm(gapOf(d));
+    if (size <= reach * 1e-12) return true;
+    return norm(leftOver(d)) <= size * 1e-3;
+  };
+
+  // Directions q vanishes on: basis vectors on their own, and roots in each
+  // pair's plane, found by scanning the half-turn and refining the best.
+  const found: number[][] = [];
+  const unit = (i: number): number[] => {
+    const c = new Array<number>(count).fill(0);
+    c[i] = 1;
+    return c;
+  };
+  for (let i = 0; i < count; i++) if (goes(unit(i))) found.push(unit(i));
+  for (let i = 0; i < count; i++) {
+    for (let j = i + 1; j < count; j++) {
+      const at = (theta: number): number[] => {
+        const c = new Array<number>(count).fill(0);
+        c[i] = Math.cos(theta);
+        c[j] = Math.sin(theta);
+        return c;
+      };
+      const size = (theta: number): number => norm(form(at(theta), at(theta)));
+      let best = 0;
+      let bestSize = Infinity;
+      for (let step = 0; step < 180; step++) {
+        const theta = (step * Math.PI) / 180;
+        const value = size(theta);
+        if (value < bestSize) {
+          bestSize = value;
+          best = theta;
+        }
+      }
+      let low = best - Math.PI / 180;
+      let high = best + Math.PI / 180;
+      for (let pass = 0; pass < 40; pass++) {
+        const a = low + (high - low) * 0.382;
+        const b = low + (high - low) * 0.618;
+        if (size(a) < size(b)) high = b;
+        else low = a;
+      }
+      const root = (low + high) / 2;
+      const c = at(root);
+      // A root that is one of the basis directions was already counted; any
+      // other has to go as a displacement in its own right.
+      if (Math.abs(c[i]) > 1e-9 && Math.abs(c[j]) > 1e-9 && goes(c)) found.push(c);
+    }
+  }
+  if (found.length === 0) return 0;
+
+  // How many of the found directions go together: the radical of the form
+  // restricted to them. c is in it when Σ_p c_p B(f_p, f_q) = 0 for every q.
+  const system: number[][] = [];
+  const length = self[0]?.length ?? 0;
+  for (let q = 0; q < found.length; q++) {
+    const columns = found.map((f) => {
+      const v = form(f, found[q]);
+      return vanishes(v) ? v.map(() => 0) : v;
+    });
+    for (let k = 0; k < length; k++) {
+      const row = columns.map((v) => v[k]);
+      if (row.some((value) => value !== 0)) system.push(row);
+    }
+  }
+  const together = system.length === 0 ? found.length : nullSpace(system, found.length).length;
+  return Math.min(count, Math.max(1, together));
+}
+
+function sum(a: number[], b: number[]): number[] {
+  return a.map((value, index) => value + b[index]);
+}
+
+/**
+ * A freedom scaled so the step moves the drawing by a thousandth of its own
+ * size, whatever units it is drawn in and however the freedom mixes turning
+ * with sliding; undefined for a direction that moves nothing.
+ */
+function scaledStep(
+  direction: number[],
+  constraints: Constraint[],
+  reach: number
+): number[] | undefined {
+  let worst = 0;
+  for (const constraint of constraints) {
+    const bodies =
+      constraint.kind === 'pin'
+        ? [constraint.a, constraint.b]
+        : [constraint.block, constraint.carrier];
+    for (const body of bodies) {
+      if (body.at === undefined) continue;
+      const armX = constraint.at.x - body.pivot.x;
+      const armY = constraint.at.y - body.pivot.y;
+      const spin = Math.abs(direction[body.at + 2]) * Math.hypot(armX, armY);
+      worst = Math.max(worst, Math.hypot(direction[body.at], direction[body.at + 1]) + spin);
+    }
+  }
+  if (worst === 0) return undefined;
+  const step = (reach * 1e-3) / worst;
+  return direction.map((value) => value * step);
 }
 
 /** A body's place in the coordinate vector; `at` undefined is the world, which is fixed. */
@@ -312,8 +494,13 @@ function survivesSecondOrder(
  * genuine motion as a tangency, which is the whole answer inverted.
  */
 function outsideRange(gap: number[], rows: number[][], width: number): number {
+  return Math.hypot(...outsideRangeVector(gap, rows, width));
+}
+
+/** The part of a gap outside the Jacobian's range, as the vector it is. */
+function outsideRangeVector(gap: number[], rows: number[][], width: number): number[] {
   const size = Math.hypot(...gap);
-  if (size === 0) return 0;
+  if (size === 0) return gap.map(() => 0);
   const basis: number[][] = [];
   for (let col = 0; col < width; col++) {
     const direction = rows.map((row) => row[col]);
@@ -336,7 +523,7 @@ function outsideRange(gap: number[], rows: number[][], width: number): number {
     const along = already.reduce((total, value, index) => total + value * rest[index], 0);
     for (let index = 0; index < rest.length; index++) rest[index] -= along * already[index];
   }
-  return Math.hypot(...rest);
+  return rest;
 }
 
 /**

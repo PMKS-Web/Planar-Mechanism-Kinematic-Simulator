@@ -28,7 +28,10 @@ import { SettingsService } from '../../app/services/settings.service';
 // constraints are not independent. Recognizing that needs a rank test on the
 // constraint Jacobian rather than a count of joints and bodies, which is a
 // different mobility criterion from the one this engine implements (plan
-// docs/joint-types-plan.md, the DOF rules in mechanism.ts).
+// docs/joint-types-plan.md, the DOF rules in mechanism.ts). That rank test
+// exists now (model/mechanism/mobility.ts) and counts this at one; what
+// remains is the position solver, which cannot yet walk a redundant
+// constraint set from this pose.
 //
 // So what is asserted here is the refusal, plus the evidence that the refusal
 // is a limitation and not a correct rejection: the captured reference shows the
@@ -88,12 +91,15 @@ describe('the MotionGen gripper, rebuilt in PMKS+', () => {
 
   const reference = motionGenPoses();
 
-  it('is reported as over-constrained rather than animated wrongly', () => {
-    // Zero, not one. The failure mode worth preventing is not the refusal --
-    // it is a mechanism that comes back "valid" and then draws a linkage
-    // tearing itself apart, which is what a solver does when it is handed a
-    // constraint set it cannot satisfy and does not check.
-    expect((mechanism as unknown as { dof: number }).dof).toBe(0);
+  it('is counted at one freedom, and refused by the solver rather than animated wrongly', () => {
+    // One, now: the geometry rescue asks which first-order freedoms survive
+    // *together*, and finds the translation the four dependent links leave.
+    // The position solver still cannot walk the redundant constraint set from
+    // this pose and reports a dead position, so the refusal stands -- and the
+    // failure mode worth preventing is still not the refusal but a mechanism
+    // that comes back "valid" and draws a linkage tearing itself apart.
+    expect((mechanism as unknown as { dof: number }).dof).toBe(1);
+    expect(mechanism.isMechanismValid()).toBe(false);
     expect(frames).toBeLessThan(3);
   });
 
