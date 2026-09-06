@@ -1721,3 +1721,27 @@ never less than the one-at-a-time count. `flat-parallelogram.spec.ts` holds the 
 the MotionGen gripper (`motiongen-gripper.spec.ts`) now counts at one as its own comment always
 said it should, and is still refused, by the position solver, which cannot yet walk a redundant
 constraint set from that pose -- that spec says which limitation is left.
+
+### A grounded slider is refined like a rocker, and a piston carries its crank through
+
+Two things about a drawing driven by a slider on a ground rail. Its samples were a fixed tenth of a
+length unit apart (`PRISMATIC_INPUT_STEP`), which sampled a long stroke finely and a small
+drawing's stroke into six frames. A cylinder already cuts its stroke into `SAMPLES_PER_STROKE`
+because it knows the stroke up front; a grounded slider's stroke is only known once walked, so it
+now gets the same refinement a rocking pin gets: walked once at the fixed spacing, then again with
+`PositionSolver.drivenSampleStep` set so the same stroke has about 360 samples
+(`findFullMovementPos`'s third argument, and `incrementPrisInput` reads the refined step).
+
+And a slider that reverses at a crank's dead center is a piston: the wheel it pushes carries
+through on its momentum while the piston runs back. The walk used to swing the wheel back, for two
+reasons that were each deliberate for a rocker. `clearMotionHistory` at every reversal -- now only
+for a rocking pin, since for a prismatic input the history is exactly what picks the continuing
+root over the retrace a step past the dead center. And the `visited` map, which puts a step onto
+covered travel back on the pose found there so a rocker comes home exactly: for a prismatic input
+that reinstatement now happens only when the re-solve *retraced* (landed within half the step it
+just took of the visited pose) or *jumped* (moved further than the jump limit, which is the crossed
+assembly a rocker's limit offers, not a wheel turning on). A continuous move onto the other branch
+is kept. Not the jump limit as the retrace test: just past a dead center the two branches stand
+about two steps apart, well under 5% of the span, and the first cut reinstated the retrace anyway.
+`piston-driven-wheels.spec.ts` requires a monotone full turn; `linear-actuator-rocker.spec.ts` is
+the rocker that must still retrace; the template baselines pin every cylinder's out-and-back.

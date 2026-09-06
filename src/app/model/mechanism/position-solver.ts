@@ -2620,7 +2620,10 @@ export class PositionSolver {
   }
 
   private static incrementPrisInput(inputJoint: Joint, unknownJoint: Joint, angVelDir: boolean) {
-    const increment = angVelDir ? PRISMATIC_INPUT_STEP : -PRISMATIC_INPUT_STEP;
+    // The refined step when a cycle has been walked once and cut finer, the
+    // fixed one otherwise -- the same spacing the time axis is built from.
+    const size = this.drivenSampleStep ?? PRISMATIC_INPUT_STEP;
+    const increment = angVelDir ? size : -size;
     const inputJointAngle = this.sliderAngleMap.get(inputJoint.id)!;
     const xIncrement = increment * Math.cos(inputJointAngle);
     const yIncrement = increment * Math.sin(inputJointAngle);

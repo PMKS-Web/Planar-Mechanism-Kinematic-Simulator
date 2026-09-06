@@ -191,13 +191,19 @@ const gates = () =>
     grid.activeObjService.updateSelectedObj(joint);
     grid.setLastRightClick(joint);
     const rows = grid.cMenu.groups.flatMap((group) => group.rows);
+    // The row that asks the canvas's own question. Locked is about position
+    // alone and is allowed wherever a drag is; Grounded restructures the
+    // machine and is refused mid-cycle on purpose, so it is not the gate to
+    // compare -- see `grounded` below, which is checked for that refusal.
+    const locked = rows.find((row) => row.label === 'Locked');
     const ground = rows.find((row) => row.label === 'Grounded');
     return {
       sharedStep: srv.mechanismTimeStep,
       atStart: srv.isAtStartPose(),
       canvas: grid.permission.may('drag'),
       panelFrozen: panel.panelIsFrozen(),
-      menu: !ground?.refusal,
+      menu: !locked?.refusal,
+      grounded: ground?.refusal?.short,
       history: grid.gridUtils.canRestoreHistory(),
       selectionHandles: grid.permission.may('drag'),
     };
@@ -206,7 +212,15 @@ const gates = () =>
 const agreeing = (seen) =>
   seen.canvas === seen.menu && seen.canvas === seen.history && seen.canvas === !seen.panelFrozen;
 
-record('every gate agrees, parked mid-cycle', agreeing(await gates()), await gates());
+const parked = await gates();
+record('every gate agrees, parked mid-cycle', agreeing(parked), parked);
+// Restructuring is the one thing a paused pose refuses, and the menu says so
+// in the model's words rather than graying the row in silence.
+record(
+  'and the menu refuses restructuring there, saying it is not at the start',
+  parked.grounded === 'not at the start',
+  parked
+);
 
 await page.locator('.playButton').click();
 await page.waitForTimeout(600);

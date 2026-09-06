@@ -529,7 +529,11 @@ export class Mechanism {
     }
   }
 
-  private findFullMovementPos(inputAngVel: number, revoluteStep: number = Math.PI / 180) {
+  private findFullMovementPos(
+    inputAngVel: number,
+    revoluteStep: number = Math.PI / 180,
+    prismaticStep?: number
+  ) {
     // The loop below flips inputAngVel at each reversal; a re-solve has to
     // start from the speed that was asked for, not the one the loop ended on.
     const requestedAngVel = inputAngVel;
@@ -566,6 +570,12 @@ export class Mechanism {
     // After the reset, which is what puts the default back.
     PositionSolver.revoluteSampleStep = revoluteStep;
     PositionSolver.determineJointOrder(this.joints[0], this.links[0]);
+    // A grounded slider's refined spacing, once its stroke has been walked at
+    // the fixed one. After the joint order, which is where a cylinder sets
+    // its own; a cylinder is never refined, its stroke being known up front.
+    if (prismaticStep !== undefined && PositionSolver.drivenSampleStep === undefined) {
+      PositionSolver.drivenSampleStep = prismaticStep;
+    }
     // Before anything is measured from t = 0, put t = 0 on its own constraints.
     PositionSolver.settleInitialPose(this.joints[0]);
     PositionSolver.setUpSolvingForces(this.forces[0]);
@@ -706,8 +716,26 @@ export class Mechanism {
       const possible = attempt.solved;
       if (possible) {
         const covered = visited.get(travel + stepSign() * attempt.fraction);
+        // Covered ground is put on the pose found there -- unless a prismatic
+        // input's crank has carried through a dead center, in which case the
+        // same travel is now a different pose on purpose: the piston runs
+        // back while the wheel turns on, and the solver, keeping its motion
+        // history across that reversal, has already chosen the continuing
+        // branch. Reinstating there would swing the wheel back. A rocking pin
+        // is put back unconditionally, as before.
         if (covered !== undefined) {
-          this.reinstatePose(covered);
+          // Retraced when the re-solve landed on the visited pose to within a
+          // fraction of the step it just took: a settled solve reproduces the
+          // way out to its own noise, far under a step, while a step past a
+          // dead center leaves the two branches about two steps apart. Not
+          // the jump limit, which is bigger than either.
+          const retraced =
+            revoluteInput || this.poseGapTo(covered) <= 0.5 * this.solvedJump(currentTimeStamp);
+          // A pose on the other branch that is a *jump* away is the crossed
+          // assembly a rocker's limit offers, not a wheel turning on: the
+          // rocker retraces. Only a move under the jump limit is continuous.
+          const carriedThrough = !retraced && this.solvedJump(currentTimeStamp) <= jumpLimit;
+          if (!carriedThrough) this.reinstatePose(covered);
         }
         this._joints.push([]);
         this._links.push([]);
@@ -814,8 +842,13 @@ export class Mechanism {
         inputAngVel = inputAngVel * -1;
         inputAngVelDirection = !inputAngVelDirection;
         // The joints are about to retrace their path, so the solver's record of
-        // which way they were heading is now wrong.
-        PositionSolver.clearMotionHistory();
+        // which way they were heading is now wrong -- for a rocking pin. A
+        // slider that reverses at a crank's dead center is a piston: the
+        // crank it pushes carries through on its momentum while the slider
+        // runs back, so there the record is exactly right, and keeping it is
+        // what picks the continuing branch over the retrace when the two
+        // roots part again a step past the dead center.
+        if (revoluteInput) PositionSolver.clearMotionHistory();
       }
       // The whole drawing has to be home, not just the reference joint, before
       // a turn of the crank is allowed to be the whole cycle. If it is not,
@@ -873,14 +906,21 @@ export class Mechanism {
     // it again. One refinement, never a coarsening, and never for a crank:
     // a full revolution already has its 360, and the MATLAB verification
     // tables are stated at exactly that spacing.
+    // A grounded slider has the same trouble the other way about: its fixed
+    // spacing is a tenth of a length unit, which cuts a small drawing's stroke
+    // into a handful of frames. Its stroke is only known once walked too, so
+    // it is refined the same way; a cylinder is not, its stroke being known
+    // before the walk and already cut into SAMPLES_PER_STROKE.
+    const prismaticAtFixedStep = !revoluteInput && PositionSolver.drivenSampleStep === undefined;
     if (
       this.sampling === 'adaptive' &&
       !this.refineAttempted &&
-      revoluteInput &&
-      // Only when the crank spacing is what this mechanism moves by: a driven
-      // pin steps by its own field, so re-solving it with a finer crank
-      // spacing repeats the identical arc under a 58-times-faster clock.
-      PositionSolver.stepsByRevoluteSampleStep &&
+      ((revoluteInput &&
+        // Only when the crank spacing is what this mechanism moves by: a driven
+        // pin steps by its own field, so re-solving it with a finer crank
+        // spacing repeats the identical arc under a 58-times-faster clock.
+        PositionSolver.stepsByRevoluteSampleStep) ||
+        prismaticAtFixedStep) &&
       reversals >= 2
     ) {
       // Whole steps, not frames: the question this asks is how much *arc* the
@@ -896,6 +936,9 @@ export class Mechanism {
       if (samples > 0 && samples < TARGET_SAMPLES * (2 / 3)) {
         this.refineAttempted = true;
         const refined = Math.max((revoluteStep * samples) / TARGET_SAMPLES, FINEST);
+        const refinedPrismatic = prismaticAtFixedStep
+          ? (PRISMATIC_INPUT_STEP * samples) / TARGET_SAMPLES
+          : undefined;
         // The editable pose and what the caller derived from it, because a
         // failed attempt rewinds all the way to here. The fine pass is not
         // guaranteed to walk the same cycle: a limit is wherever the solver
@@ -925,7 +968,7 @@ export class Mechanism {
         // one short of the frames, and the last sample of every refined cycle
         // solves against an undefined speed.
         this._inputAngularVelocities.length = 1;
-        this.findFullMovementPos(requestedAngVel, refined);
+        this.findFullMovementPos(requestedAngVel, refined, refinedPrismatic);
         if (!this.mechanismValid) {
           // Walk the coarse arc again rather than pasting its frames back.
           // Restoring arrays alone left the position solver's statics -- the
@@ -986,6 +1029,17 @@ export class Mechanism {
    * addition, so putting it back on the sample it stood on before also takes
    * out whatever the additions drifted by since.
    */
+  /** How far the solver's current pose stands from the one recorded at `sample`, at its furthest joint. */
+  private poseGapTo(sample: number): number {
+    let worst = 0;
+    for (const joint of this._joints[sample]) {
+      const at = PositionSolver.jointMapPositions.get(joint.id);
+      if (!at) continue;
+      worst = Math.max(worst, Math.hypot(at[0] - joint.x, at[1] - joint.y));
+    }
+    return worst;
+  }
+
   private reinstatePose(sample: number): void {
     for (const joint of this._joints[sample]) {
       PositionSolver.jointMapPositions.set(joint.id, [joint.x, joint.y]);
