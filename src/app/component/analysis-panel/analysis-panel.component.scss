@@ -229,27 +229,98 @@
   }
 }
 
-// The switches under the graphs: the Edit panel's toggle block, in a block
-// of its own with the section's gutter, ruled off from the last graph. A
-// grayed one carries the menu's short reason under it, where the menu puts
-// it in the row's right-hand slot.
+// The chips under the graphs: one row of four outlined chips in a block of
+// its own with the section's gutter, ruled off from the last graph. On, a
+// chip's glyph takes the arrow's own ink -- the color the trace is drawn in.
+// Gray carries the menu's reason on hover.
 #analysisWrapper .drawingSwitches {
   margin: 12px 0 4px;
-  padding: 8px 15px 4px;
+  padding: 8px 15px 12px;
   border-top: 1px solid #eceef5;
 
-  .graphGroupHeading {
-    margin: 0 0 4px;
-    padding: 0;
+  .drawingSwitchesHead {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 0 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #2c2c2c;
   }
 
-  .drawingSwitch--off #toggle-block .label {
-    opacity: 0.55;
+  .drawingSwitchesHelp {
+    width: 18px;
+    height: 18px;
+    font-size: 15px;
+    color: rgba(0, 0, 0, 0.3);
+    cursor: help;
   }
 
-  .drawingSwitchWhy {
-    margin: -8px 0 6px;
-    font-size: 11px;
-    color: #7a7a7a;
+  .drawingChips {
+    display: flex;
+    gap: 6px;
+  }
+
+  .drawingChip {
+    // Grown from their natural widths to fill the row, so the last chip's
+    // right edge is the panel's own: the design's chips sat at their natural
+    // widths and left the row ragged against the rows of readings above it.
+    // From their natural widths, not four equal shares: equal shares cut
+    // "Acceleration" off at the panel's width, where at its own width it fits.
+    flex: 1 1 auto;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid #e0e2ec;
+    border-radius: 6px;
+    box-sizing: border-box;
+    background: transparent;
+    color: #5f6368;
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.12s;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    &.drawingChip--on {
+      border-color: #c5cbf0;
+      background: #eef1fc;
+      color: #303f9f;
+
+      &:hover {
+        background: #e4e8fa;
+      }
+    }
+
+    &.drawingChip--off {
+      border-color: #eceef5;
+      color: #c4c7d0;
+      cursor: default;
+
+      &:hover {
+        background: transparent;
+      }
+    }
+  }
+
+  .drawingChipGlyph {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  .drawingChipLabel {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }

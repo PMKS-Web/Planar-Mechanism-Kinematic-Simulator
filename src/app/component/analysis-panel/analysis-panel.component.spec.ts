@@ -381,65 +381,84 @@ function pinOfSlider(payload: string): string {
 
 describe('AnalysisPanelComponent drawing switches', () => {
   const switches = (fixture: ComponentFixture<AnalysisPanelComponent>) =>
-    [...fixture.nativeElement.querySelectorAll('.drawingSwitch')].map((node: Element) => ({
-      key: node.querySelector('[data-switch]')?.getAttribute('data-switch'),
-      label: node.querySelector('span.label')?.textContent?.trim(),
-      off: node.classList.contains('drawingSwitch--off'),
-      why: node.querySelector('.drawingSwitchWhy')?.textContent?.trim(),
+    [...fixture.nativeElement.querySelectorAll('.drawingChip')].map((node: Element) => ({
+      key: node.getAttribute('data-switch'),
+      label: node.querySelector('.drawingChipLabel')?.textContent?.trim(),
+      off: node.classList.contains('drawingChip--off'),
+      on: node.getAttribute('aria-pressed') === 'true',
     }));
+  const heading = (fixture: ComponentFixture<AnalysisPanelComponent>) =>
+    fixture.nativeElement.querySelector('.drawingSwitchesHead')?.textContent?.trim();
 
-  it('offers the four switches under a joint’s graphs, in the menu’s order', async () => {
+  it('offers the four chips under a joint’s graphs, in the menu’s order', async () => {
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'B');
     fixture.detectChanges();
+    expect(heading(fixture)).toContain('Show Vectors on Drawing');
     const shown = switches(fixture);
-    expect(shown.map((one) => one.key)).toEqual(['traces', 'velocity', 'force', 'acceleration']);
-    expect(shown.map((one) => one.label)).toEqual([
-      'Trace path',
-      'Velocity Vectors',
-      'Force Vectors',
-      'Acceleration Vectors',
-    ]);
-    // A moving pin two links meet at: every switch is available.
+    expect(shown.map((one) => one.key)).toEqual(['traces', 'velocity', 'acceleration', 'force']);
+    expect(shown.map((one) => one.label)).toEqual(['Path', 'Velocity', 'Acceleration', 'Force']);
+    // A moving pin two links meet at: every chip is available.
     expect(shown.every((one) => !one.off)).toBe(true);
     fixture.destroy();
   });
 
-  it('grays a switch for the reason the menu would', async () => {
+  it('grays a chip for the reason the menu would, and says it on hover', async () => {
     // A pin bolted to the frame never moves, so its velocity and acceleration
     // are refused in the menu's words; the trace and the reaction are not.
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'A');
     fixture.detectChanges();
     const byKey = Object.fromEntries(switches(fixture).map((one) => [one.key, one]));
     expect(byKey['velocity'].off).toBe(true);
-    expect(byKey['velocity'].why).toBe('it never moves');
     expect(byKey['acceleration'].off).toBe(true);
     expect(byKey['traces'].off).toBe(false);
+    const velocity = fixture.componentInstance.drawingSwitches.find(
+      (one) => one.key === 'velocity'
+    )!;
+    expect(fixture.componentInstance.drawingSwitchTip(velocity)).toContain('it never moves');
+    expect(fixture.componentInstance.drawingSwitchTip(velocity)).toContain('Velocity Vectors');
     fixture.destroy();
   });
 
-  it('keeps a link’s trace and force switches in place, grayed as joints-only', async () => {
+  it('keeps a link’s trace and force chips in place, grayed as joints-only', async () => {
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'BC');
     fixture.detectChanges();
     const byKey = Object.fromEntries(switches(fixture).map((one) => [one.key, one]));
     expect(byKey['traces'].off).toBe(true);
-    expect(byKey['traces'].why).toBe('joints only');
     expect(byKey['force'].off).toBe(true);
     expect(byKey['velocity'].off).toBe(false);
     expect(byKey['acceleration'].off).toBe(false);
+    const traces = fixture.componentInstance.drawingSwitches.find((one) => one.key === 'traces')!;
+    expect(fixture.componentInstance.drawingSwitchTip(traces)).toContain('joints only');
     fixture.destroy();
   });
 
-  it('flips the drawing when a switch is flipped, and follows the drawing back', async () => {
+  it('flips the drawing when a chip is pressed, and follows the drawing back', async () => {
     const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'B');
     fixture.detectChanges();
     const joint = fixtureData.service.joints.find((one) => one.id === 'B')!;
     expect(fixtureData.service.isVectorTraceOn(joint, 'velocity')).toBe(false);
-    fixture.componentInstance.drawingForm.controls.velocity.setValue(true);
+    (
+      fixture.nativeElement.querySelector('.drawingChip[data-switch="velocity"]') as HTMLElement
+    ).click();
+    fixture.detectChanges();
     expect(fixtureData.service.isVectorTraceOn(joint, 'velocity')).toBe(true);
-    // Flipped from the menu instead, the switch's face follows.
+    expect(switches(fixture).find((one) => one.key === 'velocity')?.on).toBe(true);
+    // Flipped from the menu instead, the chip follows.
     fixtureData.service.toggleVectorTrace(joint, 'velocity');
     fixture.detectChanges();
-    expect(fixture.componentInstance.drawingForm.controls.velocity.value).toBe(false);
+    expect(switches(fixture).find((one) => one.key === 'velocity')?.on).toBe(false);
+    fixture.destroy();
+  });
+
+  it('does nothing when a gray chip is pressed', async () => {
+    const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'A');
+    fixture.detectChanges();
+    const joint = fixtureData.service.joints.find((one) => one.id === 'A')!;
+    (
+      fixture.nativeElement.querySelector('.drawingChip[data-switch="velocity"]') as HTMLElement
+    ).click();
+    fixture.detectChanges();
+    expect(fixtureData.service.isVectorTraceOn(joint, 'velocity')).toBe(false);
     fixture.destroy();
   });
 });

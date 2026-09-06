@@ -741,14 +741,14 @@ export class ContextMenuBuilderService {
         help: 'Draws which way this part is moving, and how fast, along its path.',
       },
       {
-        key: 'force',
-        row: vector('force'),
-        help: 'Draws the reaction carried at this joint, along its path.',
-      },
-      {
         key: 'acceleration',
         row: vector('acceleration'),
         help: 'Draws which way this part’s velocity is changing, along its path.',
+      },
+      {
+        key: 'force',
+        row: vector('force'),
+        help: 'Draws the reaction carried at this joint, along its path.',
       },
     ];
   }

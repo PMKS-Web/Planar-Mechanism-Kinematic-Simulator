@@ -28,6 +28,8 @@ import { AnalysisGraphSectionComponent } from '../analysis-graph-section/analysi
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 import { AnalysisCompareService } from '../../services/analysis-compare.service';
+import { VECTOR_ICON, VECTOR_INK } from '../../model/vector-trace';
+import { MatTooltip } from '@angular/material/tooltip';
 import {
   ContextMenuBuilderService,
   DrawingSwitch,
@@ -49,6 +51,14 @@ export interface ForceAnalysisRow {
   label: string;
 }
 
+/** The chips' short names: the heading already says "on the drawing". */
+const DRAWING_CHIP_LABEL: Record<DrawingSwitch['key'], string> = {
+  traces: 'Path',
+  velocity: 'Velocity',
+  force: 'Force',
+  acceleration: 'Acceleration',
+};
+
 @Component({
   selector: 'app-analysis-panel',
   templateUrl: './analysis-panel.component.html',
@@ -62,6 +72,7 @@ export interface ForceAnalysisRow {
     AnalysisGraphSectionComponent,
     RadioComponent,
     ToggleComponent,
+    MatTooltip,
     FormsModule,
     ReactiveFormsModule,
     NgTemplateOutlet,
@@ -84,12 +95,6 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
    * service and grayed for the same reasons; this is where a reader who has
    * not found the menu finds them.
    */
-  readonly drawingForm = this.fb.group({
-    traces: [false],
-    velocity: [false],
-    force: [false],
-    acceleration: [false],
-  });
   private drawingSwitchCache?: { key: string; switches: DrawingSwitch[] };
 
   /**
@@ -99,7 +104,6 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
    */
   ngDoCheck(): void {
     this.comparison.sync();
-    this.syncDrawingForm();
   }
 
   /** A part is under the hand right now. */
@@ -365,19 +369,6 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
       })
     );
 
-    // A flip of a switch is the menu row's own action; the form is only the
-    // switch's face, and `syncDrawingForm` keeps it honest afterwards.
-    this.subscriptions.add(
-      this.drawingForm.valueChanges.subscribe((value) => {
-        if (this.syncingDrawingForm) return;
-        for (const one of this.drawingSwitches) {
-          const wanted = !!value[one.key];
-          if (!one.row.refusal && wanted !== this.drawingSwitchIsOn(one)) one.row.action();
-        }
-        this.drawingSwitchCache = undefined;
-      })
-    );
-
     // The toggle is one mechanism-wide setting, so the control and the service
     // mirror each other instead of the panel owning the value.
     this.subscriptions.add(
@@ -403,8 +394,6 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
     this.subscriptions.unsubscribe();
   }
 
-  private syncingDrawingForm = false;
-
   /** The switches for the part on the panel, rebuilt when what they quote could have changed. */
   get drawingSwitches(): DrawingSwitch[] {
     const part = this.selectedPart;
@@ -424,33 +413,43 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
     return this.drawingSwitchCache.switches;
   }
 
-  /** The reason a switch is gray, in the menu's own words, or what it draws. */
+  /** On hover: the menu's own reason when the chip is gray, else what it draws. */
   drawingSwitchTip(one: DrawingSwitch): string {
-    return one.row.refusal ? (one.row.refusal.long ?? one.row.refusal.short) : one.help;
+    if (!one.row.refusal) return `${one.row.label}. ${one.help}`;
+    return `${one.row.label} — ${one.row.refusal.short}. ${one.row.refusal.long ?? ''}`.trim();
   }
 
-  private drawingSwitchIsOn(one: DrawingSwitch): boolean {
+  /** A chip's short name: the row's label with the word the heading already says. */
+  drawingSwitchLabel(one: DrawingSwitch): string {
+    return DRAWING_CHIP_LABEL[one.key];
+  }
+
+  /** The chip's glyph: the row's own icon, and the hidden path when a trace is off. */
+  drawingSwitchGlyph(one: DrawingSwitch): string {
+    if (one.key === 'traces') return this.drawingSwitchIsOn(one) ? 'show_path' : 'hide_path';
+    return VECTOR_ICON[one.key];
+  }
+
+  /** The glyph's ink: the arrow's own color when on, gray otherwise. */
+  drawingSwitchInk(one: DrawingSwitch): string {
+    if (one.row.refusal) return '#c4c7d0';
+    if (!this.drawingSwitchIsOn(one)) return '#5f6368';
+    return one.key === 'traces' ? '#3f51b5' : VECTOR_INK[one.key];
+  }
+
+  /** Whether the chip is lit: read from the drawing, so a flip made from the menu shows here. */
+  drawingSwitchIsOn(one: DrawingSwitch): boolean {
     const part = this.selectedPart;
     if (!part) return false;
     if (one.key === 'traces') return part instanceof RealJoint && part.showCurve === true;
     return this.mechanismService.isVectorTraceOn(part, one.key);
   }
 
-  /** The form's face made to match the drawing, without a flip being heard as a request. */
-  private syncDrawingForm(): void {
-    const switches = this.drawingSwitches;
-    if (switches.length === 0) return;
-    const value: Record<string, boolean> = {};
-    let stale = false;
-    for (const one of switches) {
-      const on = this.drawingSwitchIsOn(one);
-      value[one.key] = on;
-      if (this.drawingForm.controls[one.key].value !== on) stale = true;
-    }
-    if (!stale) return;
-    this.syncingDrawingForm = true;
-    this.drawingForm.patchValue(value, { emitEvent: false });
-    this.syncingDrawingForm = false;
+  /** The menu row's own action; a gray chip does nothing, and says why on hover. */
+  flipDrawingSwitch(one: DrawingSwitch): void {
+    if (one.row.refusal) return;
+    one.row.action();
+    this.drawingSwitchCache = undefined;
   }
 
   forceAnalysisMode(): ForceAnalysisMode {

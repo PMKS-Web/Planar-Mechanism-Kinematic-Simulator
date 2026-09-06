@@ -124,6 +124,13 @@ export type LinkHold = 'length' | 'angle' | undefined;
 
 export class RealLink extends Link {
   private _fill: string = 'Set Later';
+  /**
+   * Bumped by every recolor of any link. A recolor moves nothing and needs
+   * no solving, so it bumps none of the mechanism's revisions -- and the
+   * canvas caches its skins and marks on those. Keyed on this as well, they
+   * repaint on the recolor rather than on the next drag or play.
+   */
+  static paintRevision = 0;
   // private _shape: Shape; //Shape is the shape of the link
   // private _bound: Bound; //The rectengualr area the link is encompassed by
   private _d: string = ''; //SVG path
@@ -1062,6 +1069,7 @@ export class RealLink extends Link {
   }
 
   set fill(value: string) {
+    if (value !== this._fill) RealLink.paintRevision++;
     this._fill = value;
   }
 

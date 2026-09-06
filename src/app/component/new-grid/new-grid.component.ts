@@ -1778,7 +1778,17 @@ export class NewGridComponent implements OnDestroy {
   /** Where inside the arrow a body drag picked it up, so it does not jump. */
   private forceGrabOffset = new Coord(0, 0);
 
+  /**
+   * The pin a force's anchor is being held short of, ringed red while the
+   * hand is over it: the same ring a joint drop that will be refused wears.
+   */
+  forceRefusedJoint?: RealJoint;
+
   beginDraggingForceBody(force: Force, event: PointerEvent): void {
+    // The arrow itself was grabbed, so neither handle is: a press on the
+    // base or the head leaves that end selected, and a body grab that kept
+    // it dragged that one end to the pointer instead of the whole arrow.
+    this.activeObjService.updateSelectedObj(force);
     const at = this.svgGrid.screenToModelFromXY(event.clientX, event.clientY);
     this.forceGrabOffset = new Coord(at.x - force.startCoord.x, at.y - force.startCoord.y);
   }
@@ -1810,11 +1820,19 @@ export class NewGridComponent implements OnDestroy {
     }
     if (anchor.shared) {
       // Held short of a pin several links meet at, along the bar it is on: a
-      // force exactly there would not say which body it acts on, and a
-      // snackbar saying so on every pointer move was the other half of what
-      // made the drag feel stuck.
+      // force exactly there would not say which body it acts on. The pin is
+      // ringed red for as long as the hand is over it and the reason is said
+      // once -- the notification service holds a repeat while one is up, so
+      // saying it on every pointer move does not stack it.
       at = this.heldOffJoint(link, anchor.shared, at, 0.3 * this.settings.objectScale);
       at = constrainForceAnchor(link, at, 0);
+      this.forceRefusedJoint = anchor.shared;
+      this.notify.refusal(
+        'force.shared-joint',
+        `A force cannot sit on joint ${anchor.shared.id}: several links meet there, so it would not say which body it pushes on. It is held on ${link.name || link.id} short of the pin.`
+      );
+    } else {
+      this.forceRefusedJoint = undefined;
     }
     this.gridUtils.dragForce(force, at, how);
     // So that the panel values update continuously.
@@ -3291,6 +3309,8 @@ export class NewGridComponent implements OnDestroy {
    * than committed.
    */
   private letGoOfEverything(revert = false): void {
+    // The red ring a force drag put on a pin goes with the drag.
+    this.forceRefusedJoint = undefined;
     this.restoreSelectionAfterDrag(this.dragState.travelled);
     this.beforeDrag = undefined;
     this.linkCreateFrom = undefined;
@@ -3461,6 +3481,8 @@ export class NewGridComponent implements OnDestroy {
   mouseUp($event: MouseEvent) {
     this.holdRing = undefined;
     this.holdGuide = undefined;
+    // The red ring a force drag put on a pin goes with the drag.
+    this.forceRefusedJoint = undefined;
     // The last move of a drag lands before the release is read, so the part
     // ends where the hand was, not one frame short of it.
     this.applyPendingDragMove();
@@ -5839,6 +5861,7 @@ export class NewGridComponent implements OnDestroy {
     solve: number;
     cylinders: number;
     scale: number;
+    painted: number;
     paint: string;
     forward: string;
     marksKey: string;
@@ -5850,13 +5873,20 @@ export class NewGridComponent implements OnDestroy {
     const solve = m.solveRevision;
     const cylinders = m.cylinderRevision;
     const scale = this.settings.objectScale;
+    // A recolor bumps none of the mechanism's revisions -- nothing moved and
+    // nothing needs solving -- so a memo checked on those alone answered
+    // with the old paint, and a cylinder kept its old color until a drag or
+    // a play made it look again. The links' own paint revision is the fourth
+    // key.
+    const painted = RealLink.paintRevision;
     const memo = this.digestMemo;
     if (
       memo &&
       memo.pose === pose &&
       memo.solve === solve &&
       memo.cylinders === cylinders &&
-      memo.scale === scale
+      memo.scale === scale &&
+      memo.painted === painted
     ) {
       return memo;
     }
@@ -5879,7 +5909,7 @@ export class NewGridComponent implements OnDestroy {
             : base;
         })
         .join(';');
-    this.digestMemo = { pose, solve, cylinders, scale, paint, forward, marksKey };
+    this.digestMemo = { pose, solve, cylinders, scale, painted, paint, forward, marksKey };
     return this.digestMemo;
   }
 

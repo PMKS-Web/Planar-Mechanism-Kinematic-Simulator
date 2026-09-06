@@ -66,22 +66,42 @@
   <ng-template #drawingSwitchBlock>
     @if (drawingSwitches.length > 0) {
       <div class="drawingSwitches">
-        <div class="graphGroupHeading">On the drawing</div>
-        @for (one of drawingSwitches; track one.key) {
-          <div class="drawingSwitch" [class.drawingSwitch--off]="!!one.row.refusal">
-            <toggle-block
-              [formGroup]="drawingForm"
-              [_formControl]="one.key"
-              [disabled]="!!one.row.refusal"
-              [tooltip]="drawingSwitchTip(one)"
+        <div class="drawingSwitchesHead">
+          Show Vectors on Drawing
+          <mat-icon
+            class="drawingSwitchesHelp"
+            matTooltip="Draws the part’s path, and which way its velocity, acceleration or the force it carries points, on the mechanism itself. The same switches as the part’s right-click menu."
+            matTooltipShowDelay="400"
+            >help_outline</mat-icon
+          >
+        </div>
+        <!-- One row of four outlined chips. On, the glyph takes the arrow's own
+             ink -- the color the trace is drawn in -- so a reader learns the
+             color here and meets it on the drawing. Gray carries the menu's
+             reason on hover. -->
+        <div class="drawingChips">
+          @for (one of drawingSwitches; track one.key) {
+            <button
+              type="button"
+              class="drawingChip"
+              [class.drawingChip--on]="drawingSwitchIsOn(one)"
+              [class.drawingChip--off]="!!one.row.refusal"
               [attr.data-switch]="one.key"
-              >{{ one.row.label }}</toggle-block
+              [attr.aria-pressed]="drawingSwitchIsOn(one)"
+              [attr.aria-disabled]="!!one.row.refusal"
+              [matTooltip]="drawingSwitchTip(one)"
+              matTooltipShowDelay="300"
+              (click)="flipDrawingSwitch(one)"
             >
-            @if (one.row.refusal; as why) {
-              <div class="drawingSwitchWhy" [title]="why.long ?? why.short">{{ why.short }}</div>
-            }
-          </div>
-        }
+              <mat-icon
+                class="drawingChipGlyph"
+                [svgIcon]="drawingSwitchGlyph(one)"
+                [style.color]="drawingSwitchInk(one)"
+              ></mat-icon>
+              <span class="drawingChipLabel">{{ drawingSwitchLabel(one) }}</span>
+            </button>
+          }
+        </div>
       </div>
     }
   </ng-template>

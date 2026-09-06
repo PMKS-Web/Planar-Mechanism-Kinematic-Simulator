@@ -961,6 +961,16 @@
         [attr.stroke-width]="svgGrid.scaleWithZoom(4)"
       ></circle>
     }
+    <!-- A pin a force's anchor is being held short of -->
+    @if (forceRefusedJoint; as pin) {
+      <circle
+        class="snapRefused"
+        [attr.r]="0.38 * settings.objectScale"
+        [attr.cx]="pin.x"
+        [attr.cy]="pin.y"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+      ></circle>
+    }
     <!-- A joint in range that will not take the merge -->
     @if (refusedTarget) {
       <circle

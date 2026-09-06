@@ -148,6 +148,18 @@ const SHARED_SUPPORT_RESIDUAL = 1e-3;
  */
 const EVENEST_REFINEMENTS = 3;
 /**
+ * What is said when the loads have no balance at all: the supports leave a
+ * motion open at first order that only binds at second, and the loads push
+ * along it. In a rigid model the reactions along such a motion are
+ * unbounded, the way a toggle's are at dead center, so nothing finite can be
+ * drawn. Said as a motion and a remedy, because "residual exceeds tolerance"
+ * is the solver talking to itself.
+ */
+export const SECOND_ORDER_LOCK_MESSAGE =
+  'The loads push along a motion the linkage locks only at second order: it can sag or swing ' +
+  'a hair until a guide binds, so no finite reactions balance them. Hold the part that moves ' +
+  'with another support, or take the load off it.';
+/**
  * The smallest scaled pivot the elimination accepts before calling the pose
  * singular.
  *
@@ -558,7 +570,15 @@ export class ForceSolver {
     if (solution.residual > (sharedSupport ? SHARED_SUPPORT_RESIDUAL : MAX_NORMALIZED_RESIDUAL)) {
       return empty(
         'singular',
-        `Force equilibrium residual ${solution.residual.toExponential(2)} exceeds tolerance.`,
+        // A rank-deficient system whose loads no split balances: the loads
+        // do work along a motion the linkage allows to first order and locks
+        // only at second -- a cylinder on one pin swinging while its carriage
+        // rides up the rails, a jaw on two rails at one height tilting until
+        // its pins bind. A rigid body cannot answer that with a finite
+        // reaction, so it is said as the motion it is, not as a residual.
+        sharedSupport
+          ? SECOND_ORDER_LOCK_MESSAGE
+          : `Force equilibrium residual ${solution.residual.toExponential(2)} exceeds tolerance.`,
         solution.rank,
         solution.residual
       );
@@ -1054,8 +1074,11 @@ export class ForceSolver {
    * is refused here too.
    */
   private static evenestSolution(A: number[][], b: number[]): LinearSolution | undefined {
-    const n = A.length;
-    if (n === 0) return undefined;
+    // Rows and columns counted apart: the binding couples widen the system
+    // past square, and the least-norm answer is as well posed either way.
+    const m = A.length;
+    const n = A[0]?.length ?? 0;
+    if (m === 0 || n === 0) return undefined;
     const scales = A.map((row) => Math.max(...row.map(Math.abs), 0));
     if (scales.some((scale) => !(scale > 0))) return undefined;
     const scaled = A.map((row, i) => row.map((value) => value / scales[i]));
@@ -1064,14 +1087,14 @@ export class ForceSolver {
     const normal = Array.from({ length: n }, (_, i) =>
       Array.from({ length: n }, (_, j) => {
         let sum = 0;
-        for (let k = 0; k < n; k++) sum += scaled[k][i] * scaled[k][j];
+        for (let k = 0; k < m; k++) sum += scaled[k][i] * scaled[k][j];
         return i === j ? sum + ridge : sum;
       })
     );
     const transposeTimes = (vector: number[]): number[] =>
       Array.from({ length: n }, (_, i) => {
         let sum = 0;
-        for (let k = 0; k < n; k++) sum += scaled[k][i] * vector[k];
+        for (let k = 0; k < m; k++) sum += scaled[k][i] * vector[k];
         return sum;
       });
     const leftover = (values: number[]): number[] =>
@@ -1092,7 +1115,7 @@ export class ForceSolver {
     const residualNorm = Math.max(...leftover(values).map(Math.abs));
     const rhsNorm = Math.max(...rhs.map(Math.abs));
     const residual = residualNorm / Math.max(rhsNorm, 1e-9);
-    return { values, rank: n, residual, minPivot: 0 };
+    return { values, rank: Math.min(m, n), residual, minPivot: 0 };
   }
 
   /** Gaussian elimination with partial pivoting, refusing only what is not finite. */

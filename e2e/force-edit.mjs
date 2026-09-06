@@ -420,6 +420,74 @@ record(
 );
 record('and does not arm Undo', (await undoEnabled()) === false);
 
+// --- a body grab after a handle press still carries the whole arrow --------
+// Pressing the base leaves that end selected; grabbing the arrow afterwards
+// used to keep it, and the base jumped to the pointer instead of the arrow
+// coming along whole.
+await page.goto(`${BASE}/?${payloads['Derrick_Crane']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+const resting = await force();
+const baseAt = await toScreen(resting.start[0], resting.start[1]);
+await page.mouse.click(baseAt.x, baseAt.y);
+await page.waitForTimeout(300);
+const grabMid = await toScreen(
+  (resting.start[0] + resting.end[0]) / 2,
+  (resting.start[1] + resting.end[1]) / 2
+);
+const foot = await jointAt('O');
+const tip = await jointAt('T');
+const carryTo = await toScreen(foot.x + (tip.x - foot.x) * 0.5, foot.y + (tip.y - foot.y) * 0.5);
+await page.mouse.move(grabMid.x, grabMid.y);
+await page.mouse.down();
+await page.mouse.move(carryTo.x, carryTo.y, { steps: 14 });
+await page.mouse.up();
+await page.waitForTimeout(500);
+const carried = await force();
+const lengthBefore = Math.hypot(
+  resting.end[0] - resting.start[0],
+  resting.end[1] - resting.start[1]
+);
+const lengthAfter = Math.hypot(
+  carried.end[0] - carried.start[0],
+  carried.end[1] - carried.start[1]
+);
+record(
+  'after a press on the base, grabbing the arrow still carries both ends together',
+  Math.abs(lengthAfter - lengthBefore) < 1 &&
+    (carried.start[0] !== resting.start[0] || carried.start[1] !== resting.start[1]),
+  { resting, carried, lengthBefore, lengthAfter }
+);
+
+// --- the anchor refuses a pin several links meet at, and says so ---------
+const sharedPin = await jointAt('C');
+const grabBase = await toScreen(carried.start[0], carried.start[1]);
+const ontoShared = await toScreen(sharedPin.x, sharedPin.y);
+await page.mouse.move(grabBase.x, grabBase.y);
+await page.mouse.down();
+await page.mouse.move(ontoShared.x, ontoShared.y, { steps: 14 });
+await page.waitForTimeout(200);
+const whileOver = await page.evaluate(() => ({
+  ring: !!document.querySelector('circle.snapRefused'),
+  said: ng
+    .getComponent(document.querySelector('app-new-grid'))
+    .notify.live.map((one) => one.text)
+    .find((text) => /cannot sit on joint C/.test(text)),
+}));
+await page.mouse.up();
+await page.waitForTimeout(400);
+const heldShort = await force();
+record('dragged onto a pin two links share, the pin is ringed red', whileOver.ring, whileOver);
+record('and the refusal is said', !!whileOver.said, whileOver);
+record(
+  'and the anchor stops short of the pin',
+  Math.hypot(heldShort.start[0] - sharedPin.x, heldShort.start[1] - sharedPin.y) > 1,
+  { heldShort, sharedPin }
+);
+record(
+  'the ring goes with the drag',
+  !(await page.evaluate(() => !!document.querySelector('circle.snapRefused')))
+);
+
 // --- a plate's anchor stays inside the triangle its joints make -------------
 // The rocker with the offset load is a three-joint plate. Its load can be
 // dragged anywhere inside the triangle of joint centers and nowhere past it:

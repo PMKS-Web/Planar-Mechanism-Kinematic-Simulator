@@ -43,17 +43,24 @@ async function selectIn(selector, index, mode) {
   await page.waitForTimeout(900);
 }
 
-/** What the panel's switches say: their order, and which are gray, and why. */
+/** What the panel's chips say: their order, which are gray, and why on hover. */
 const switches = () =>
-  page.evaluate(() =>
-    [...document.querySelectorAll('app-analysis-panel .drawingSwitch')].map((node) => ({
-      key: node.querySelector('[data-switch]')?.getAttribute('data-switch'),
-      label: node.querySelector('span.label')?.textContent?.trim(),
-      off: node.classList.contains('drawingSwitch--off'),
-      why: node.querySelector('.drawingSwitchWhy')?.textContent?.trim(),
-      on: node.querySelector('button[role="switch"]')?.getAttribute('aria-checked') === 'true',
-    }))
-  );
+  page.evaluate(() => {
+    const panel = ng.getComponent(document.querySelector('app-analysis-panel'));
+    const rows = panel.drawingSwitches;
+    return [...document.querySelectorAll('app-analysis-panel .drawingChip')].map((node) => {
+      const key = node.getAttribute('data-switch');
+      const one = rows.find((row) => row.key === key);
+      return {
+        key,
+        label: node.querySelector('.drawingChipLabel')?.textContent?.trim(),
+        off: node.classList.contains('drawingChip--off'),
+        why: one?.row.refusal?.short,
+        tip: one ? panel.drawingSwitchTip(one) : undefined,
+        on: node.getAttribute('aria-pressed') === 'true',
+      };
+    });
+  });
 
 const selectedId = () =>
   page.evaluate(() => {
@@ -67,27 +74,40 @@ await waitForReady(page);
 // --- a moving pin: four switches, all available -----------------------------
 await selectIn('#jointHolder svg', 1, 'Kinematic');
 const onB = await switches();
-record('a joint’s panel ends in four switches', onB.length === 4, onB);
+record('a joint’s panel ends in four chips', onB.length === 4, onB);
+record(
+  'under the heading asked for',
+  (
+    await page.evaluate(
+      () => document.querySelector('app-analysis-panel .drawingSwitchesHead')?.textContent ?? ''
+    )
+  ).includes('Show Vectors on Drawing')
+);
 record(
   'in the menu’s order, under the menu’s names',
-  onB.map((one) => one.label).join('|') ===
-    'Trace path|Velocity Vectors|Force Vectors|Acceleration Vectors',
+  onB.map((one) => one.label).join('|') === 'Path|Velocity|Acceleration|Force',
   onB.map((one) => one.label)
 );
 record(
-  'every one available on a moving pin two links meet at',
-  onB.every((one) => !one.off),
+  'path, velocity and acceleration available on a moving pin two links meet at',
+  onB.filter((one) => one.key !== 'force').every((one) => !one.off),
   { selected: await selectedId(), onB }
+);
+// Nothing loads this four-bar, so Force Analysis cannot be entered, and the
+// Force chip says so rather than offering a reaction nobody may read yet.
+const forceChip = onB.find((one) => one.key === 'force');
+record(
+  'and Force grayed while the force analysis is not set up, saying why',
+  !!forceChip && forceChip.off && /not ready/.test(forceChip.tip ?? ''),
+  forceChip
 );
 
 // --- flipping one draws the arrows ------------------------------------------
 const noArrowsYet = await page.evaluate(() => !document.querySelector('#vectorTraceHolder'));
-// At the bottom of a scrolling panel under a sticky head, where a pointer
-// click can land a row off once the panel has scrolled to bring it in; the
-// switch is pressed through the element itself, which is what a pointer
-// would do if it were aimed truly.
+// Pressed through the element: the chips sit at the bottom of a scrolling
+// panel under a sticky head, where a pointer click can land a row off.
 await page.evaluate(() =>
-  document.querySelector('[data-switch="velocity"] button[role="switch"]').click()
+  document.querySelector('app-analysis-panel .drawingChip[data-switch="velocity"]').click()
 );
 await page.waitForTimeout(600);
 const arrows = await page.evaluate(() => ({
@@ -108,7 +128,7 @@ record(
   }
 );
 const afterFlip = await switches();
-record('and the switch reads as on', afterFlip[1].on === true, afterFlip);
+record('and the chip reads as on', afterFlip[1].on === true, afterFlip);
 // Off again, through the menu's own switch: the panel follows the drawing.
 await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
@@ -116,15 +136,18 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(400);
 const afterMenu = await switches();
-record('a flip made elsewhere shows on the switch', afterMenu[1].on === false, afterMenu);
+record('a flip made elsewhere shows on the chip', afterMenu[1].on === false, afterMenu);
 
 // --- a pin bolted to the frame: velocity refused in the menu's words ---------
 await selectIn('#jointHolder svg', 0, 'Kinematic');
 const onA = await switches();
 const velocity = onA.find((one) => one.key === 'velocity');
 record(
-  'a grounded pin has its velocity switch grayed, saying it never moves',
-  !!velocity && velocity.off && velocity.why === 'it never moves',
+  'a grounded pin has its velocity chip grayed, with the reason on hover',
+  !!velocity &&
+    velocity.off &&
+    velocity.why === 'it never moves' &&
+    /never moves/.test(velocity.tip ?? ''),
   { selected: await selectedId(), onA }
 );
 record(
@@ -166,7 +189,7 @@ const inForce = await switches();
 record(
   'the Force Analysis panel carries the same four switches',
   inForce.length === 4 &&
-    inForce.map((one) => one.key).join('|') === 'traces|velocity|force|acceleration',
+    inForce.map((one) => one.key).join('|') === 'traces|velocity|acceleration|force',
   inForce
 );
 

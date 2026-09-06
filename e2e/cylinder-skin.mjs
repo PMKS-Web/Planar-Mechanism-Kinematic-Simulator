@@ -137,6 +137,30 @@ record(
   mid
 );
 
+// --- a recolor repaints the skin at once ------------------------------------
+// The skin's paths are cached on a digest of the drawing, and a recolor moves
+// no revision -- nothing moved, nothing needs solving -- so the digest used to
+// answer with the old paint until a drag or a play made it look again.
+const skinFill = () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.cylinder-barrel')].map((node) => node.getAttribute('fill'))
+  );
+const paintedBefore = await skinFill();
+await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  // The way the Visual Settings picker recolors: the link's own fill, and
+  // nothing else touched.
+  srv.sealedStructures()[0].barrel.fill = '#ff0000';
+});
+await page.mouse.move(640, 420);
+await page.waitForTimeout(300);
+const paintedAfter = await skinFill();
+record(
+  'recoloring the barrel repaints the skin without a drag or a play',
+  paintedBefore[0] !== '#ff0000' && paintedAfter[0] === '#ff0000',
+  { paintedBefore, paintedAfter }
+);
+
 record('nothing threw', errors.length === 0, errors.slice(0, 2));
 await ctx.close();
 process.exit(results.every(([, ok]) => ok) ? 0 : 1);

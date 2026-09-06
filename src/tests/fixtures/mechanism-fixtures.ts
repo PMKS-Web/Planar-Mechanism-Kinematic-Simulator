@@ -170,6 +170,9 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
   (service as unknown as Record<string, unknown>)['gridUtils'] = {
     isAttachedToSlider: GridUtilsService.prototype.isAttachedToSlider,
   };
+  // The document-wide gate on Force Analysis, which the force switch quotes.
+  // Nothing in these fixtures is left unset, so the harness says so.
+  service.forceAnalysisRequirements = () => [];
   service.isVectorTraceOn = MechanismService.prototype.isVectorTraceOn.bind(service);
   service.toggleVectorTrace = MechanismService.prototype.toggleVectorTrace.bind(service);
   service.vectorTraceRefusal = MechanismService.prototype.vectorTraceRefusal.bind(service);

@@ -1,5 +1,9 @@
 import '../../app/model/joint';
-import { ForceAnalysisSeries, ForceSolver } from '../../app/model/mechanism/force-solver';
+import {
+  ForceAnalysisSeries,
+  ForceSolver,
+  SECOND_ORDER_LOCK_MESSAGE,
+} from '../../app/model/mechanism/force-solver';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
 import { buildMechanismFixture } from '../fixtures/mechanism-fixtures';
@@ -88,6 +92,9 @@ describe('force analysis with a link pinned to ground at both ends', () => {
   });
 });
 
+const WEIGHTED_GRIPPER =
+  '2v.Ay,6G.5,0.1011.4A,A,01E8,0,0.0B,B,0w9,0,0.8C,C,0vV,0,0.0D,D,0bW,01,0.0G,G,0Fe,Fd,0.0H,H,Fe,Fe,0.0I,I,0Fe,0Ff,0.0J,J,Fe,0Fe,0.4K,K,0T4,xO,0.4L,L,0T4,0xO,0.4O,O,2C,xO,0.4P,P,2C,0xO,0.0M,M,0T4,XI,0.0Q,Q,2C,XI,0.0S,S,11U,Dd,0.0T,T,0T4,0XI,0.0V,V,2C,0XI,0.0X,X,11U,0Db,0.ZE,E,0vV,0,0,AB,A,B.1N,N,0T4,XI,0,KL,K,L.1R,R,2C,XI,0,OP,O,P.1U,U,0T4,0XI,0,KL,K,L.1W,W,2C,0XI,0,OP,O,P..ARAB,Barrel,2SG,1,0148,0,00695C,A,B,,.ARCD,Rod,2SG,1,0lV,01,26A69A,C,D,,.MRDGHIJ,Carriage,19FW,4c,07W,01,c5cae9,D,G,H,I,J,,.MRKL,Rail,3q90,1BD,0T4,0,0d125a,K,L,,.MROP,Rail,3q90,1BD,2C,0,0d125a,O,P,,.MRGM,GM,Fe,0,0MM,OS,B2DFDB,G,M,,.MRHQ,HQ,Fe,0,8w,OT,B2DFDB,H,Q,,.MRMQS,Jaw,OQW,2d,Ct,Qk,00695C,M,Q,S,,.MRIT,IT,Fe,0,0MM,0OU,B2DFDB,I,T,,.MRJV,JV,Fe,0,8w,0OT,B2DFDB,J,V,,.MRTVX,Jaw,OQW,2d,Ct,0Qk,00695C,T,V,X,,.YPCE,CE,Fe,0,0,0,,C,E,,.YPMN,MN,OQW,0,0,0,,M,N,,.YPQR,QR,OQW,0,0,0,,Q,R,,.YPTU,TU,OQW,0,0,0,,T,U,,.YPVW,VW,OQW,0,0,0,,V,W,,..2F1,MQS,F1,11U,Dd,11U,cy,Fe.2F2,TVX,F2,11U,0Db,11m,0h5,Fe..N_.KFF1~303e9f,KFF2~303e9f0*3PFXyc';
+
 describe('force analysis with supports that share a line', () => {
   // The library's gripper: each jaw rides two vertical rails at one height,
   // so equilibrium alone cannot say how the two rails share the load. The
@@ -159,6 +166,28 @@ describe('force analysis with supports that share a line', () => {
       );
       expect(step).toBeLessThan(0.6);
     }
+  });
+
+  it('refuses the weighted gripper as a motion the linkage locks only at second order', () => {
+    // The gripper with masses on everything and gravity on. Its cylinder
+    // hangs on one ground pin, so the whole assembly can swing about that
+    // pin while the carriage rides up the rails -- a motion the rails allow
+    // to first order and bind against only at second. The weight does work
+    // along it, and no finite reaction resists it, so the cycle is refused;
+    // in words that name the motion, not the residual.
+    const { mechanism } = buildMechanismFixture(WEIGHTED_GRIPPER);
+    mechanism.gravity = true;
+    expect(mechanism.isMechanismValid()).toBe(true);
+    const weighted = mechanism.getForceAnalysis('static');
+    expect(weighted.successfulFrames).toBe(0);
+    expect(weighted.diagnostic).toBe(SECOND_ORDER_LOCK_MESSAGE);
+    // Without the weight the loads do no work along that motion, and the
+    // same drawing solves on the evenest split of its rails.
+    const { mechanism: weightless } = buildMechanismFixture(WEIGHTED_GRIPPER);
+    weightless.gravity = false;
+    const unweighted = weightless.getForceAnalysis('static');
+    expect(unweighted.successfulFrames).toBeGreaterThan(unweighted.frames.length - 5);
+    expect(unweighted.sharedSupportFrames).toBe(unweighted.successfulFrames);
   });
 
   it('still refuses a load nothing balances', () => {

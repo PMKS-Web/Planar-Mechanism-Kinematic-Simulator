@@ -1603,20 +1603,85 @@ guards it; when writing a suite like it, start the gesture from a point chosen o
 below the lowest joint, because a joint's hitbox is a screen size and the drawing's own units say
 nothing about it -- the first cut started three model units from C and got C's menu.
 
-### The analysis panel's four switches are the menu's Traces rows
+### The analysis panel's four chips are the menu's Traces rows
 
-Under every joint's and link's graphs, in Kinematic and Force Analysis alike, sit Trace path,
-Velocity Vectors, Force Vectors and Acceleration Vectors. They are not a second implementation:
-`ContextMenuBuilderService.drawingSwitches` hands the panel the part's own `MenuRow`s -- the same
-`traceRow` and `vectorRow` the right-click menu shows, with the same refusals from
-`vectorSwitchRefusal` -- and the panel renders each as a `toggle-block` grayed when the row is,
-with the row's short reason under it where the menu puts it in the right-hand slot. A link keeps
-the two rows the menu leaves off it (trace, force) in place and gray as "joints only", because a
-switch that comes and goes with the selection is harder to find than one that stays and says why.
-The form is only the switch's face: a flip runs the row's `action`, and `syncDrawingForm` in
-`ngDoCheck` reads the drawing back into the form with `emitEvent: false`, so a flip made from the
-menu shows on the switch and a sync is never heard as a request. The rows are cached on the part,
-`solveRevision`, `vectorTraceVersion`, the force mode and the joint's own `showCurve`.
-`e2e/analysis-drawing-switches.mjs` guards it, and presses the switch through the element rather
-than the pointer: the switches sit at the bottom of a scrolling panel under a sticky head, and a
+Under every joint's and link's graphs, in Kinematic and Force Analysis alike, sits "Show Vectors
+on Drawing": one row of four outlined chips -- Path, Velocity, Force, Acceleration (the design's
+option 2c). They are not a second implementation: `ContextMenuBuilderService.drawingSwitches`
+hands the panel the part's own `MenuRow`s -- the same `traceRow` and `vectorRow` the right-click
+menu shows, with the same refusals from `vectorSwitchRefusal` -- and the panel renders each as a
+chip. On, the glyph takes `VECTOR_INK`, the arrow's own color, so a reader learns the color here
+and meets it on the drawing; the path chip swaps `show_path` for `hide_path` when off. Gray
+carries the menu's reason on hover (`drawingSwitchTip`: the row's label, the short reason, the
+long one) and does nothing when pressed. A link keeps the two rows the menu leaves off it (path,
+force) in place and gray as "joints only", because a chip that comes and goes with the selection
+is harder to find than one that stays and says why. A press runs the row's `action`; lit-or-not
+is read from the drawing each time (`drawingSwitchIsOn`), so a flip made from the menu shows on
+the chip with no form to keep in step. The chips grow from their natural widths to the panel's
+edge (`flex: 1 1 auto`); four equal shares (`flex: 1 1 0`) cut "Acceleration" off at the
+panel's width, where at its own width it fits. The Force chip, and the menu's Force Vectors row with it,
+is gray whenever `forceAnalysisRequirements()` has an unmet, non-warning row -- the same gate
+that keeps the Force Analysis tab shut -- so a reaction is never drawn from an analysis the
+setup drawer still refuses. The rows are cached on the part, `solveRevision`,
+`vectorTraceVersion`, the force mode and the joint's own `showCurve`.
+`e2e/analysis-drawing-switches.mjs` guards it, and presses the chip through the element rather
+than the pointer: the row sits at the bottom of a scrolling panel under a sticky head, and a
 pointer click there landed on the row below the one it was aimed at.
+
+### A recolor moves no revision, so the paint has a revision of its own
+
+The cylinder skins and the slider marks are cached on `drawingDigest`, which is memoized on the
+pose, solve and cylinder revisions and the object scale. A recolor from the Visual Settings
+picker writes `link.fill` and bumps none of those -- nothing moved and nothing needs solving --
+so the memo answered with the old paint and a cylinder kept its old color until a drag or a play
+happened to rebuild the digest. `RealLink.paintRevision` is bumped by the `fill` setter and is
+the memo's fourth key. Not by reading `linkPaint()` on every call: `new-grid.component.spec.ts`
+counts that walk once per revision, and that count is what keeps a forty-nine-joint workbench
+from lagging. `e2e/cylinder-skin.mjs` checks the repaint with no gesture after it.
+
+### "The loads push along a motion the linkage locks only at second order"
+
+`SECOND_ORDER_LOCK_MESSAGE` is what a cycle gets when the elimination is rank-deficient at most
+poses *and* the evenest split still leaves the loads unbalanced. A left null vector of the
+equilibrium matrix is a virtual motion every constraint allows at first order; the loads doing
+work along it means nothing finite reacts, which in a rigid model is a toggle at dead center --
+except that here it is the whole cycle. The gripper with masses and gravity is the example: its
+cylinder hangs on one ground pin, so the assembly can swing about that pin while the carriage
+rides up the rails, and the rails bind against that only at second order. Take the weight away
+(masses zero, or gravity off) and the same drawing solves, because the loads then do no work
+along that motion. The first attempt at this added a "binding couple" between a jaw and its two
+rails; it was the wrong motion -- the residual barely moved -- and the diagnosis that found the
+right one was the left null vector, labeled by body row. When a drawing refuses force analysis
+everywhere with a large residual, look for the motion, not for a bad pose.
+
+### A body grab selects the force, or the last-pressed handle drags instead
+
+`beginDraggingForceBody` now calls `updateSelectedObj(force)` before recording the grab offset. A
+press on the base or the head leaves that end selected (`isStartSelected` / `isEndSelected`), and
+the body's pointerdown never re-selected the force, so the drag state machine at the press saw a
+selected handle and dragged that one end to the pointer instead of carrying the arrow whole.
+`e2e/force-edit.mjs` presses the base, then grabs the arrow, and requires both ends to move
+together at the same length.
+
+### A force anchor refuses a shared pin out loud
+
+Dragging a force's anchor onto a pin several links meet at still holds it short of the pin along
+its bar (`heldOffJoint`), and now says so: `forceRefusedJoint` rings the pin in the same red
+`.snapRefused` circle a refused joint drop wears, and `notify.refusal('force.shared-joint', ...)`
+names the pin and the bar it is held on. Said on every pointer move, deliberately: the
+notification service holds a repeat while the same id is on screen and for its cooldown after,
+so the sentence does not stack. The ring is cleared on `mouseUp`, which is where every force drag
+ends -- `letGoOfEverything` is not on that path.
+
+### The gripper's drag lag was the simultaneous solver's normal matrix
+
+Dragging a joint of the gripper on rails cost 115 ms a move, and a CPU profile (a Playwright
+script over `Profiler.start` / `Profiler.stop`, self time by function) put nearly all of it in
+`solveDamped` and `solveLinear`, under `reachSpan`: the simultaneous position solve of all 359
+samples, once per pointer move. Two things were wasteful. `JᵀJ` was accumulated over every column
+pair of a Jacobian whose rows each touch four to six of forty-six columns; `normalEquations` now
+walks the nonzeros and is built once per Jacobian rather than once per damping attempt. And the
+damped normal matrix is symmetric positive definite, so `solveSymmetric` (Cholesky) replaces the
+Gauss-Jordan reduction for it, at a sixth of the arithmetic, with the elimination kept as the
+fallback where a pivot is not positive. The same drag is 23 ms a move now. The forces on the
+link were a red herring: a rocker with a load costs a millisecond more per move than one without.

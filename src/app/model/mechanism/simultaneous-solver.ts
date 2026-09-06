@@ -538,8 +538,12 @@ export function solveSimultaneous(
     // makes the residual worse is how a solve wanders off to a pose on the
     // other side of the mechanism and calls it an answer.
     let improved = false;
+    // The normal equations are the Jacobian's alone: built once here and
+    // damped afresh on each attempt, rather than rebuilt from the Jacobian
+    // every time the damping goes up.
+    const normal = normalEquations(derivative, f);
     for (let attempt = 0; attempt < MAX_DAMPING_TRIES; attempt++) {
-      const step = solveDamped(derivative, f, damping);
+      const step = solveDamped(normal, damping);
       if (step) {
         const candidate = x.map((value, i) => value + step[i]);
         if (candidate.every(Number.isFinite)) {
@@ -565,6 +569,39 @@ export function solveSimultaneous(
   return worst(f) < TOLERANCE;
 }
 
+/** `JᵀJ` and `−Jᵀf`, the two things a damped step is made of. */
+interface NormalEquations {
+  matrix: number[][];
+  rhs: number[];
+}
+
+/**
+ * The normal equations of one Jacobian, built over its nonzeros only.
+ *
+ * A constraint row touches two or three joints -- four to six of the columns
+ * -- and the rest of the row is zero, so accumulating JᵀJ over every column
+ * pair spent the whole solve multiplying zeros: on the gripper's forty-six
+ * unknowns it was more than half the cost of every pointer move of a drag.
+ */
+function normalEquations(jacobian: number[][], f: number[]): NormalEquations {
+  const n = jacobian[0]?.length ?? 0;
+  const matrix: number[][] = Array.from({ length: n }, () => new Array(n).fill(0));
+  const rhs = new Array(n).fill(0);
+  const nonzero: number[] = [];
+  for (let row = 0; row < jacobian.length; row++) {
+    const entries = jacobian[row];
+    nonzero.length = 0;
+    for (let i = 0; i < n; i++) if (entries[i] !== 0) nonzero.push(i);
+    for (const i of nonzero) {
+      const value = entries[i];
+      rhs[i] -= value * f[row];
+      const target = matrix[i];
+      for (const j of nonzero) target[j] += value * entries[j];
+    }
+  }
+  return { matrix, rhs };
+}
+
 /**
  * One damped least-squares step: solve `(JᵀJ + λ·diag(JᵀJ)) Δ = −Jᵀf`.
  *
@@ -573,22 +610,62 @@ export function solveSimultaneous(
  * by the diagonal rather than by the identity keeps it meaningful when one
  * coordinate's constraints are far stiffer than another's.
  */
-function solveDamped(jacobian: number[][], f: number[], damping: number): number[] | undefined {
-  const n = jacobian[0]?.length ?? 0;
-  const normal: number[][] = Array.from({ length: n }, () => new Array(n).fill(0));
-  const rhs = new Array(n).fill(0);
-  for (let row = 0; row < jacobian.length; row++) {
-    for (let i = 0; i < n; i++) {
-      rhs[i] -= jacobian[row][i] * f[row];
-      for (let j = 0; j < n; j++) {
-        normal[i][j] += jacobian[row][i] * jacobian[row][j];
-      }
+function solveDamped({ matrix, rhs }: NormalEquations, damping: number): number[] | undefined {
+  const n = rhs.length;
+  const damped = matrix.map((row, i) => {
+    const copy = row.slice();
+    copy[i] += damping * (copy[i] || 1);
+    return copy;
+  });
+  // Cholesky only where the damping makes the matrix definite. Undamped --
+  // the least-squares rates -- the matrix is exactly singular at a dead
+  // point, and the elimination's pivot floor is what refuses it there; a
+  // Cholesky pivot a hair above zero solved through it into a velocity of
+  // fifty at a sample where the joint had not moved.
+  if (damping === 0) return solveLinear(damped, rhs);
+  return solveSymmetric(damped, rhs) ?? solveLinear(damped, rhs);
+}
+
+/**
+ * Cholesky, for the damped normal matrix, which is symmetric and -- with any
+ * damping on its diagonal -- positive definite everywhere the constraints are
+ * independent. A sixth of the arithmetic of the full reduction below, which
+ * is what makes it worth a second solver: on a drag it is the inner loop.
+ * `undefined` where a pivot is not positive, which is the singular case the
+ * caller already reads as a toggle, and the elimination gets its turn.
+ */
+function solveSymmetric(A: number[][], b: number[]): number[] | undefined {
+  const n = b.length;
+  const L: number[][] = Array.from({ length: n }, () => new Array(n).fill(0));
+  for (let j = 0; j < n; j++) {
+    let diagonal = A[j][j];
+    const Lj = L[j];
+    for (let k = 0; k < j; k++) diagonal -= Lj[k] * Lj[k];
+    if (!(diagonal > 1e-18)) return undefined;
+    const root = Math.sqrt(diagonal);
+    Lj[j] = root;
+    for (let i = j + 1; i < n; i++) {
+      const Li = L[i];
+      let sum = A[i][j];
+      for (let k = 0; k < j; k++) sum -= Li[k] * Lj[k];
+      Li[j] = sum / root;
     }
   }
+  // L y = b, then Lᵀ x = y.
+  const y = new Array(n).fill(0);
   for (let i = 0; i < n; i++) {
-    normal[i][i] += damping * (normal[i][i] || 1);
+    let sum = b[i];
+    const Li = L[i];
+    for (let k = 0; k < i; k++) sum -= Li[k] * y[k];
+    y[i] = sum / Li[i];
   }
-  return solveLinear(normal, rhs);
+  const x = new Array(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    let sum = y[i];
+    for (let k = i + 1; k < n; k++) sum -= L[k][i] * x[k];
+    x[i] = sum / L[i][i];
+  }
+  return x.every(Number.isFinite) ? x : undefined;
 }
 
 /**
@@ -732,7 +809,7 @@ export function commandDerivative(
 /** Least squares: solve `JᵀJ x = Jᵀ b`, which is the undamped `solveDamped`. */
 function leastSquares(matrix: number[][], rhs: number[]): number[] | undefined {
   const negated = rhs.map((value) => -value);
-  return solveDamped(matrix, negated, 0);
+  return solveDamped(normalEquations(matrix, negated), 0);
 }
 
 /**

@@ -1206,9 +1206,9 @@ export class MechanismService {
    * existing pins determine this uniquely; adding an attachment needs no new
    * motion solve to rediscover the old start pose.
    */
-  private attachmentFrame(link: RealLink):
-    | { point: (point: Coord) => Coord; angle: number }
-    | undefined {
+  private attachmentFrame(
+    link: RealLink
+  ): { point: (point: Coord) => Coord; angle: number } | undefined {
     if (this.isAtStartPose()) return { point: (point) => new Coord(point.x, point.y), angle: 0 };
     const index = this.indexOfMechanismContaining(link);
     const frames = this.mechanisms[index];
@@ -1553,6 +1553,16 @@ export class MechanismService {
     const solved = this.mechanismContaining(part);
     if (!solved?.isMechanismValid()) return undefined;
     if (quantity === 'force') {
+      // Not before Force Analysis could be entered: a reaction drawn from an
+      // analysis the setup drawer still refuses is a number nobody has been
+      // allowed to read yet, and the same rule grays the mode's own tab.
+      const unmet = this.forceAnalysisRequirements().find((one) => !one.met && !one.warning);
+      if (unmet) {
+        return {
+          short: 'force analysis not ready',
+          long: `${unmet.title}. ${unmet.body}`,
+        };
+      }
       const series = solved.getForceAnalysis(this.settingsService.forceAnalysisMode.value);
       if (series.successfulFrames === 0) {
         return {
@@ -2801,13 +2811,16 @@ export class MechanismService {
     if (!(joint instanceof RevJoint) || joint.ground || joint.input || joint.isWelded) return false;
     if (joint.links.length !== 1 || this.cylinderAt(joint)) return false;
     const link = joint.links[0];
-    if (!(link instanceof RealLink) || link.subset.length > 0 || link.joints.length < 3) return false;
+    if (!(link instanceof RealLink) || link.subset.length > 0 || link.joints.length < 3)
+      return false;
     if (
       this.joints.some(
-        (other) => other instanceof PrisJoint &&
+        (other) =>
+          other instanceof PrisJoint &&
           (other.slotJointA?.id === joint.id || other.slotJointB?.id === joint.id)
       )
-    ) return false;
+    )
+      return false;
     return this.canAttachAtPose(link);
   }
 
@@ -3174,7 +3187,6 @@ export class MechanismService {
           }
         });
       }
-
     });
 
     function deleteJointWithinLinkAndSubsets(link: RealLink, joint: Joint) {
