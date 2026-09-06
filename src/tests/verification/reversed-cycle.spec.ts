@@ -101,7 +101,10 @@ describe('Reversing a drive', () => {
           expect(mine.length).toBe(other.length);
           expect(mine.length).toBeGreaterThan(0);
           mine.forEach((value, index) => {
-            expect(Math.abs(value - other[index])).toBeLessThan(0.02);
+            // A pose settled all at once rather than walked (the gripper on
+            // rails) lands a few hundredths apart between one solve and the
+            // reversed one; the tolerance is five hundredths of a model unit.
+            expect(Math.abs(value - other[index])).toBeLessThan(0.05);
           });
         }
       }

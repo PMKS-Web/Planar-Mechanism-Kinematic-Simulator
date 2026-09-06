@@ -3,6 +3,7 @@ import { ForceAnalysisSeries } from '../../app/model/mechanism/force-solver';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
 import { buildMechanismFixture } from '../fixtures/mechanism-fixtures';
+import { TEMPLATE_LINKAGES } from '../../app/component/MODALS/templates/template-linkages';
 
 // A link pinned to the world at two points cannot move: it is frame, not a
 // link. Kinematics never minded one, but statics wrote three equilibrium
@@ -84,5 +85,41 @@ describe('force analysis with a link pinned to ground at both ends', () => {
     const series = mechanism.getForceAnalysis('static');
     expect(series.diagnostic).toBeUndefined();
     expect(series.successfulFrames).toBe(series.frames.length);
+  });
+});
+
+describe('force analysis with supports that share a line', () => {
+  // The library's gripper: each jaw rides two vertical rails at one height,
+  // so equilibrium alone cannot say how the two rails share the load. The
+  // solver used to call every frame singular and refuse the whole cycle; it
+  // takes the evenest split now, says so on the frame, and the reactions are
+  // the size the loads make them rather than the enormous cancelling pair the
+  // exact solution of a nearly dependent system would be.
+  it('solves the gripper on rails at every frame, marked as a shared support', () => {
+    const { mechanism } = buildMechanismFixture(TEMPLATE_LINKAGES['Cylinder_Gripper']);
+    expect(mechanism.isMechanismValid()).toBe(true);
+    const series = mechanism.getForceAnalysis('static');
+    expect(series.diagnostic).toBeUndefined();
+    expect(series.successfulFrames).toBe(series.frames.length);
+    expect(series.sharedSupportFrames).toBe(series.frames.length);
+    // Two loads of a newton each: nothing in the answer should be far above it.
+    const peak = Math.max(
+      ...series.frames.flatMap((frame) =>
+        [...frame.jointReactions.values()].map(([x, y]) => Math.hypot(x, y))
+      )
+    );
+    expect(peak).toBeGreaterThan(0);
+    expect(peak).toBeLessThan(50);
+    for (const frame of series.frames) {
+      expect(Number.isFinite(frame.inputEffort!.valueSI)).toBe(true);
+    }
+  });
+
+  it('still refuses a load nothing balances', () => {
+    // A four-bar at a plain pose has a determinate solution and no shared
+    // support, so the evenest split is never taken there.
+    const { mechanism } = buildMechanism(fourBar(false));
+    const series = mechanism.getForceAnalysis('static');
+    expect(series.sharedSupportFrames).toBe(0);
   });
 });

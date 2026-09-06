@@ -1002,6 +1002,34 @@ curve and reports the crank's range and its turning points. That is how the 444-
 the boundary six-bar's 382-degree swing with the drawn pose at a limit, and Watt I's eleven-degree
 sliver were each established, and each contradicted what the spec at the time asserted.
 
+### Supports that share a line get the evenest split, not a refusal
+
+Two rails holding one jaw at one height, two pins on one line: equilibrium alone cannot say how
+they share the load, and the elimination in `ForceSolver.solveLinearSystem` finds no pivot. That
+used to make every frame `singular` and refuse the whole cycle with a message about "this
+position", which sent readers looking for a dead point that was not there. Now
+`analyzeMechanism` makes two passes: the ordinary solve first, and only when *every* frame of it
+failed a second in which `evenestSolution` takes the minimum-norm answer (normal equations with a
+ridge small against the matrix, solved without the pivot floor the main solve applies -- that
+floor would refuse the ridge itself). The residual is measured against the loads, not against
+the size of the solution as the main solve does, because the two supports are seldom on one line
+to the last digit: the exact answer is then an enormous cancelling pair that would make an
+unbalanced load look balanced. `SHARED_SUPPORT_RESIDUAL` (1e-3 of the largest load) accepts the
+even split. The frame carries `sharedSupport`, the series counts `sharedSupportFrames`, and the
+setup drawer says so as a warning. The second pass is a rescue, not a smoothing: a toggle that
+loses its pivot at two poses in the cycle keeps its gaps, because the first pass solved the rest,
+and a load nothing balances fails the residual and stays singular either way. Partial failures
+were already handled: a cycle with some singular frames plots gaps and says where; the mode is
+refused only when *no* frame solves.
+
+### A force is placed at fifteen-degree bearings unless Option is held
+
+`forceEndSnapped` in `new-grid.component.ts` rounds the bearing from the anchor to the cursor to
+the nearest fifteen degrees while a force is being placed -- preview and commit alike -- keeping
+the cursor's distance; Option (`altKey`) frees it, the same key that frees a joint from the grid.
+Only placement snaps: dragging an existing force's handle is left exact, because
+`e2e/force-edit.mjs` and the panel both expect a handle to land where it was put.
+
 ### The rate solver walks dyads; where it cannot, the graphs difference the poses
 
 `KinematicsSolver` finds velocities and accelerations along the same chains of dyads the position

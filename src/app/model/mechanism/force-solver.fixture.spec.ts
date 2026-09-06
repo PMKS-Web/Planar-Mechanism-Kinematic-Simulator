@@ -26,11 +26,18 @@ function expectForceAnalysis(mechanism: Mechanism, mode: ForceAnalysisMode) {
 
     expect(frame.rank).toBeGreaterThan(0);
     expect(Number.isFinite(frame.residual)).toBe(true);
-    expect(frame.residual).toBeLessThanOrEqual(1e-8);
-    // Healthy solves stay an order of magnitude above the singularity
-    // tolerance (corpus-wide minimum measured 3.4e-3 against the 1e-4 line),
-    // so the cross-browser determinism guard cannot refuse real frames.
-    expect(frame.minPivot).toBeGreaterThan(1e-3);
+    if (frame.sharedSupport) {
+      // The evenest split of a shared support (the gripper's two rails at one
+      // height) balances the loads to a part in a thousand rather than to
+      // round-off, and has no pivot to report.
+      expect(frame.residual).toBeLessThanOrEqual(1e-3);
+    } else {
+      expect(frame.residual).toBeLessThanOrEqual(1e-8);
+      // Healthy solves stay an order of magnitude above the singularity
+      // tolerance (corpus-wide minimum measured 3.4e-3 against the 1e-4 line),
+      // so the cross-browser determinism guard cannot refuse real frames.
+      expect(frame.minPivot).toBeGreaterThan(1e-3);
+    }
     expect(frame.inputEffort).toBeDefined();
     expect(Number.isFinite(frame.inputEffort!.valueSI)).toBe(true);
     frame.jointReactionsByLink.forEach((byLink) =>

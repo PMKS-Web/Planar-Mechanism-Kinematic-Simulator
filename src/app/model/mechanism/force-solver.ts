@@ -38,6 +38,12 @@ export interface ForceAnalysisFrame {
   residual: number;
   /** Smallest scaled pivot of the solve — how far this pose sat from singular. */
   minPivot?: number;
+  /**
+   * True when equilibrium alone could not split the load between supports
+   * that share a line, and the evenest split was taken -- see `sharedSupport`
+   * in `analyzeFrame`.
+   */
+  sharedSupport?: boolean;
   message?: string;
 }
 
@@ -58,6 +64,8 @@ export interface ForceAnalysisSeries {
   mode: ForceAnalysisMode;
   frames: ForceAnalysisFrame[];
   successfulFrames: number;
+  /** Frames whose reactions rest on the evenest split of a shared support. */
+  sharedSupportFrames: number;
   reactionIndex: ForceReactionIndex;
   diagnostic?: string;
 }
@@ -123,6 +131,15 @@ interface LinearSolution {
 
 const GRAVITY = 9.80665;
 const MAX_NORMALIZED_RESIDUAL = 1e-8;
+/**
+ * What an evenest split may leave unbalanced, relative to the loads. Supports
+ * that share a line are seldom on it to the last digit -- a rail's pins sit a
+ * rounding apart -- so the exact solution is a pair of enormous reactions
+ * cancelling across that hair, and the even split balances the loads to a
+ * part in a thousand instead. Measured against the loads alone, so a load
+ * nothing can balance is still refused however large the reactions grow.
+ */
+const SHARED_SUPPORT_RESIDUAL = 1e-3;
 /**
  * The smallest scaled pivot the elimination accepts before calling the pose
  * singular.
@@ -218,37 +235,18 @@ export class ForceSolver {
       mode === 'dynamic' ? this.finiteDifferenceKinematics(mechanism, frameCount) : [];
     const frames: ForceAnalysisFrame[] = [];
 
-    for (let index = 0; index < frameCount; index++) {
-      let kinematics: FrameKinematics | undefined;
-      if (mode === 'dynamic') {
-        // Clear the solver's shared maps each frame so a mid-solve failure at
-        // frame k cannot leave frame k-1's finite values in place — which would
-        // read as "current" and hide the failure from the fallback below.
-        KinematicsSolver.resetVariables();
-        KinematicsSolver.requiredLoops = mechanism.requiredLoops;
-        try {
-          KinematicsSolver.determineKinematics(
-            mechanism.joints[index],
-            mechanism.links[index],
-            mechanism.inputAngularVelocities[index] ?? 0
-          );
-        } catch {
-          // The position sequence is still a valid source for a complete,
-          // topology-independent finite-difference fallback.
-        }
-        kinematics = this.captureCurrentKinematics(mechanism.links[index], fallback[index]);
+    // Two passes at most. The first refuses every rank-deficient pose, which
+    // is right for a toggle: an isolated pose where the reactions grow
+    // without bound and the chart shows a gap. A support that shares a line
+    // is deficient at *every* pose, and only then is the second pass run,
+    // taking the evenest split -- so a toggle keeps its gap and a redundant
+    // rail keeps its cycle, and the two are never confused.
+    for (const evenest of [false, true]) {
+      frames.length = 0;
+      for (let index = 0; index < frameCount; index++) {
+        frames.push(this.frameAt(mechanism, mode, fallback, index, evenest));
       }
-      frames.push(
-        this.analyzeFrame(
-          mechanism.joints[index],
-          mechanism.links[index],
-          mode,
-          mechanism.gravity,
-          mechanism.unit,
-          mechanism.timeNum[index] ?? index,
-          kinematics
-        )
-      );
+      if (frames.some((frame) => frame.status === 'ok')) break;
     }
 
     const successfulFrames = frames.filter((frame) => frame.status === 'ok').length;
@@ -256,6 +254,7 @@ export class ForceSolver {
       mode,
       frames,
       successfulFrames,
+      sharedSupportFrames: frames.filter((frame) => frame.sharedSupport).length,
       reactionIndex: this.buildReactionIndex(mechanism.joints[0] ?? [], mechanism.links[0] ?? []),
       // The frame's own message first: it names the joint or the count, where
       // the status alone can only say "topology".
@@ -266,6 +265,44 @@ export class ForceSolver {
     };
   }
 
+  private static frameAt(
+    mechanism: MechanismFrames,
+    mode: ForceAnalysisMode,
+    fallback: FrameKinematics[],
+    index: number,
+    evenest: boolean
+  ): ForceAnalysisFrame {
+    let kinematics: FrameKinematics | undefined;
+    if (mode === 'dynamic') {
+      // Clear the solver's shared maps each frame so a mid-solve failure at
+      // frame k cannot leave frame k-1's finite values in place — which would
+      // read as "current" and hide the failure from the fallback below.
+      KinematicsSolver.resetVariables();
+      KinematicsSolver.requiredLoops = mechanism.requiredLoops;
+      try {
+        KinematicsSolver.determineKinematics(
+          mechanism.joints[index],
+          mechanism.links[index],
+          mechanism.inputAngularVelocities[index] ?? 0
+        );
+      } catch {
+        // The position sequence is still a valid source for a complete,
+        // topology-independent finite-difference fallback.
+      }
+      kinematics = this.captureCurrentKinematics(mechanism.links[index], fallback[index]);
+    }
+    return this.analyzeFrame(
+      mechanism.joints[index],
+      mechanism.links[index],
+      mode,
+      mechanism.gravity,
+      mechanism.unit,
+      mechanism.timeNum[index] ?? index,
+      kinematics,
+      evenest
+    );
+  }
+
   static analyzeFrame(
     joints: Joint[],
     links: Link[],
@@ -273,7 +310,8 @@ export class ForceSolver {
     gravity: boolean,
     unit: string,
     timeSeconds = 0,
-    kinematics?: FrameKinematics
+    kinematics?: FrameKinematics,
+    evenest = false
   ): ForceAnalysisFrame {
     const every = links.filter(
       (link): link is RealLink | SliderBlock =>
@@ -486,9 +524,22 @@ export class ForceSolver {
       }
     }
 
-    const solution = this.solveLinearSystem(A, b);
+    // Statics alone cannot split a load between supports that share a line
+    // -- two rails holding one jaw at one height, say -- and the elimination
+    // finds no pivot. That is not a dead pose; it is one degree of ambiguity
+    // in how a determinate total is shared. A body's stiffness would share it
+    // evenly, and the evenest split is exactly the minimum-norm solution, so
+    // that is the answer taken, and said: the frame is marked and the
+    // readiness list carries the warning. A pose where no split balances the
+    // load at all -- a true toggle -- still fails the residual below.
+    let sharedSupport = false;
+    let solution = this.solveLinearSystem(A, b);
+    if (!solution && evenest) {
+      solution = this.evenestSolution(A, b);
+      sharedSupport = solution !== undefined;
+    }
     if (!solution) return empty('singular');
-    if (solution.residual > MAX_NORMALIZED_RESIDUAL) {
+    if (solution.residual > (sharedSupport ? SHARED_SUPPORT_RESIDUAL : MAX_NORMALIZED_RESIDUAL)) {
       return empty(
         'singular',
         `Force equilibrium residual ${solution.residual.toExponential(2)} exceeds tolerance.`,
@@ -550,6 +601,7 @@ export class ForceSolver {
       rank: solution.rank,
       residual: solution.residual,
       minPivot: solution.minPivot,
+      sharedSupport,
     };
   }
 
@@ -964,6 +1016,79 @@ export class ForceSolver {
 
   private static unitFactors(unit: string): UnitFactors {
     return siUnitFactors(unit);
+  }
+
+  /**
+   * The minimum-norm solution of a rank-deficient but consistent system.
+   *
+   * Through the normal equations with a ridge small against the matrix,
+   * (AᵀA + λI)x = Aᵀb, which tends to the minimum-norm solution as λ goes to
+   * zero and is well posed at every λ. The residual is then measured against
+   * the original system: consistent systems come back with one on the order
+   * of λ, and a system the elimination refused for being contradictory rather
+   * than redundant does not, and is refused here too.
+   */
+  private static evenestSolution(A: number[][], b: number[]): LinearSolution | undefined {
+    const n = A.length;
+    if (n === 0) return undefined;
+    const scale = Math.max(...A.flatMap((row) => row.map(Math.abs)), 0);
+    if (!(scale > 0)) return undefined;
+    const ridge = scale * scale * 1e-12;
+    const normal = Array.from({ length: n }, (_, i) =>
+      Array.from({ length: n }, (_, j) => {
+        let sum = 0;
+        for (let k = 0; k < n; k++) sum += A[k][i] * A[k][j];
+        return i === j ? sum + ridge : sum;
+      })
+    );
+    const rhs = Array.from({ length: n }, (_, i) => {
+      let sum = 0;
+      for (let k = 0; k < n; k++) sum += A[k][i] * b[k];
+      return sum;
+    });
+    // Plain elimination, without the pivot floor the main solve applies: the
+    // ridge is meant to be tiny against the matrix, and that floor would
+    // refuse it as singular, which is the situation this exists to answer.
+    const values = this.solvePositiveDefinite(normal, rhs);
+    if (!values) return undefined;
+    // Against the loads alone: the main solve's measure divides by the size
+    // of the solution as well, and a pair of enormous cancelling reactions
+    // would make an unbalanced load look balanced.
+    let residualNorm = 0;
+    let rhsNorm = 0;
+    for (let row = 0; row < n; row++) {
+      const calculated = A[row].reduce((sum, c, column) => sum + c * values[column], 0);
+      residualNorm = Math.max(residualNorm, Math.abs(calculated - b[row]));
+      rhsNorm = Math.max(rhsNorm, Math.abs(b[row]));
+    }
+    const residual = residualNorm / Math.max(rhsNorm, 1e-9);
+    return { values, rank: n, residual, minPivot: 0 };
+  }
+
+  /** Gaussian elimination with partial pivoting, refusing only what is not finite. */
+  private static solvePositiveDefinite(M: number[][], rhs: number[]): number[] | undefined {
+    const n = M.length;
+    const m = M.map((row, i) => [...row, rhs[i]]);
+    for (let column = 0; column < n; column++) {
+      let pivot = column;
+      for (let row = column + 1; row < n; row++) {
+        if (Math.abs(m[row][column]) > Math.abs(m[pivot][column])) pivot = row;
+      }
+      if (!(Math.abs(m[pivot][column]) > 0)) return undefined;
+      if (pivot !== column) [m[column], m[pivot]] = [m[pivot], m[column]];
+      for (let row = column + 1; row < n; row++) {
+        const factor = m[row][column] / m[column][column];
+        if (factor === 0) continue;
+        for (let next = column; next <= n; next++) m[row][next] -= factor * m[column][next];
+      }
+    }
+    const values = Array(n).fill(0);
+    for (let row = n - 1; row >= 0; row--) {
+      let value = m[row][n];
+      for (let column = row + 1; column < n; column++) value -= m[row][column] * values[column];
+      values[row] = value / m[row][row];
+    }
+    return values.every(Number.isFinite) ? values : undefined;
   }
 
   private static solveLinearSystem(A: number[][], b: number[]): LinearSolution | undefined {

@@ -3751,6 +3751,25 @@ export class MechanismService {
             'One of these mechanisms has no determinate force-equilibrium model.'),
     });
 
+    // Supports that share a line -- two rails holding one jaw at one height --
+    // leave the split of the load between them to stiffness, which statics
+    // cannot see. The solver takes the evenest split rather than refusing the
+    // cycle, and this is where it says so.
+    const shared = runnable
+      .map((mechanism) => mechanism.getForceAnalysis('static'))
+      .filter((series) => series.sharedSupportFrames > 0);
+    if (shared.length > 0) {
+      requirements.push({
+        met: false,
+        warning: true,
+        title: 'Supports that share a line',
+        body:
+          'Two or more supports hold a body along one line, so equilibrium alone cannot say how ' +
+          'they share the load. The reactions shown split it evenly, the way equal stiffness ' +
+          'would. Offset one support if the split matters.',
+      });
+    }
+
     // Only the links of machines that could actually be analyzed. A massless
     // bar in some unrelated -- or unassigned -- corner of the drawing used to
     // block force analysis for a perfectly good mechanism.

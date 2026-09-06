@@ -193,6 +193,61 @@ record(
   !(await page.evaluate(() => !!document.querySelector('#forceTempHolder')))
 );
 
+// --- the arrow is laid at a fifteen-degree bearing unless Option is held ---
+// The cursor sat about thirty-seven degrees off a multiple of fifteen from
+// the click, and the anchor was then held off the shared pin along the boom;
+// the placed arrow should still read a multiple of fifteen. Held free, it
+// reads wherever the cursor was.
+const bearingOf = (held) =>
+  ((Math.atan2(held.end[1] - held.start[1], held.end[0] - held.start[0]) * 180) / Math.PI + 360) %
+  360;
+const offGrid = (degrees) => Math.abs(degrees / 15 - Math.round(degrees / 15)) * 15;
+const latest = await page.evaluate(() => {
+  const held = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.forces.at(-1);
+  return { start: [held.startCoord.x, held.startCoord.y], end: [held.endCoord.x, held.endCoord.y] };
+});
+const snappedBearing = bearingOf(latest);
+record('a placed force points at a fifteen-degree bearing', offGrid(snappedBearing) < 0.05, {
+  bearing: snappedBearing,
+});
+
+// Further along the boom, clear of the arrow that now hangs at the old spot.
+const farAlongBoom = await toScreen(
+  boomFoot.x + (hook.x - boomFoot.x) * 0.55,
+  boomFoot.y + (hook.y - boomFoot.y) * 0.55
+);
+await page.mouse.move(farAlongBoom.x, farAlongBoom.y);
+await page.mouse.click(farAlongBoom.x, farAlongBoom.y, { button: 'right' });
+await page.waitForTimeout(600);
+await page.evaluate(() => {
+  const item = [...document.querySelectorAll('#contextMenu .cm-row')].find(
+    (node) => node.querySelector('.cm-row__label')?.textContent?.trim() === 'Force'
+  );
+  item?.click();
+});
+await page.waitForTimeout(300);
+await page.keyboard.down('Alt');
+await page.mouse.move(farAlongBoom.x - 120, farAlongBoom.y - 90, { steps: 8 });
+await page.waitForTimeout(200);
+await page.mouse.click(farAlongBoom.x - 120, farAlongBoom.y - 90);
+await page.keyboard.up('Alt');
+await page.waitForTimeout(800);
+const freed = await page.evaluate(() => {
+  const forces = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.forces;
+  const held = forces.at(-1);
+  return {
+    count: forces.length,
+    start: [held.startCoord.x, held.startCoord.y],
+    end: [held.endCoord.x, held.endCoord.y],
+  };
+});
+const freeBearing = bearingOf(freed);
+record(
+  'held with Option, it points where the cursor was',
+  freed.count === 3 && offGrid(freeBearing) > 1,
+  { bearing: freeBearing, count: freed.count }
+);
+
 // --- a welded joint refuses a cylinder -------------------------------------
 await page.goto(`${BASE}/?${payloads['Scotch_Yoke']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
