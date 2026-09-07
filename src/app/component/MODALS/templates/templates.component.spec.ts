@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { isDevMode } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideAnimations } from '@angular/platform-browser/animations';
@@ -30,6 +31,22 @@ describe('template catalog', () => {
     for (const card of DEV_TEMPLATE_CARDS) {
       expect(typeof DEV_TEMPLATES[card.id as keyof typeof DEV_TEMPLATES]).toBe('string');
     }
+  });
+
+  it('ships every backdrop a card names, in centimeters a reader could measure', () => {
+    // A row naming a picture that is not there costs the reader the tracing
+    // aid the card promised, and the service only says so on the console.
+    for (const card of TEMPLATE_CARDS) {
+      if (!card.backdrop) continue;
+      expect(card.backdrop.src.startsWith('assets/backdrops/')).toBe(true);
+      expect(existsSync(`src/${card.backdrop.src}`)).toBe(true);
+      expect(card.backdrop.width).toBeGreaterThan(0);
+      expect(card.backdrop.opacity ?? 0.5).toBeGreaterThan(0);
+    }
+    // The real-life section is the one built on pictures: every card in it has one.
+    const traced = TEMPLATE_CARDS.filter((card) => card.category === 'realworld');
+    expect(traced.length).toBeGreaterThanOrEqual(4);
+    expect(traced.every((card) => !!card.backdrop)).toBe(true);
   });
 
   it('files every card under a declared category, with an asset behind it', () => {

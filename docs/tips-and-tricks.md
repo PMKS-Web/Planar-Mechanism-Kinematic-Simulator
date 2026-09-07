@@ -1783,3 +1783,33 @@ modes took a drag: a hold's chip stays up in Kinematic Analysis now, because a d
 exactly as in Edit, and stands down while it plays; and the menu's Grounded row refuses
 restructuring mid-cycle on purpose, so the gate check compares the Locked row and checks that
 refusal by name.
+
+### The grid is black at a low opacity, not a baked-in gray
+
+`.gridLineMinor` and `.gridLineMajor` are `rgba(0, 0, 0, 0.05)` and `rgba(0, 0, 0, 0.1)` -- the
+fractions the old two grays amounted to on white. A gray line is the right shade over white and a
+bright lattice over a background image, brightest exactly where the picture is dark; a transparent
+black darkens whatever is under it by the same fraction, so it is the same grid on paper and a
+faint shadow on a photograph.
+
+### A traced template ships its picture, and the card's art shows it
+
+"Real-Life Use Cases" (`realworld`) holds mechanisms drawn by hand over a picture of the machine.
+The picture cannot ride the URL, so the card names it: a `backdrop` row on the card
+(`TemplateBackdrop`), in centimeters whatever unit the payload opens in -- the steering linkage is
+drawn in meters, so its 2.26 m width is written as 226. `placeTemplateBackdrop` puts it up when the
+card is opened in place, and a card opened in a new tab carries `#backdrop=<card id>` after its
+query, which the URL processor reads before the decode strips it. The card art scripts use that
+same fragment, so a still and a loop are what the reader will see, picture included -- and they
+hide the ruling as *elements* (`.gridLineMinor, .gridLineMajor, #axes, #axes_numbers`) rather than
+through `tempGridDisable`, which takes the whole paper group down, backdrop and all; the first cut
+shot every traced card over blank white. `templates.component.spec.ts` requires every named
+backdrop to exist under `src/assets/backdrops/`.
+
+Two traps met adding the four. `Landing_Gear` already names a library template (a two-machine
+drawing under Many Mechanisms), so the aircraft is `Aircraft_Landing_Gear`; a duplicate key in
+`template-linkages.ts` is a compile error the dev server shows as an overlay, and a Playwright
+run that lands on that overlay shoots the overlay. And `e2e/ui-copy.mjs`'s vocabulary check reads
+card names too: it is "Car Steering", never "Steering Linkage". The animation script needs `pngjs`
+under the Playwright install; it vanishes with that install and `npm i pngjs@7` there brings it
+back.

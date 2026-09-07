@@ -27,6 +27,7 @@ export const TEMPLATE_CATEGORIES = [
   // looking. The dialog only offers this category in a development build.
   { id: 'dev', name: 'For Development' },
   { id: 'start', name: 'Start Here' },
+  { id: 'realworld', name: 'Real-Life Use Cases' },
   { id: 'sixbar', name: 'Six-Bars and Harder' },
   { id: 'slots', name: 'Slots and Sliders' },
   { id: 'cylinders', name: 'Cylinders' },
@@ -470,6 +471,75 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
       'quick-return, an oscillating cylinder and a pump.',
     thumbnail: 'assets/gifs/slider-crank-inversions.png',
     animation: 'assets/gifs/slider-crank-inversions.gif',
+  },
+  // Real-life use cases: each traced by hand over a picture of the machine,
+  // and each card opens on that picture. The placements are the ones the
+  // drawings were made at, in centimeters, which the backdrop service
+  // converts into whatever unit the payload opens in.
+  {
+    id: 'Aircraft_Landing_Gear',
+    name: 'Aircraft Landing Gear',
+    category: 'realworld',
+    description:
+      'A ram folds the main gear up into the wing: drag brace, strut and wheel, traced over the aircraft.',
+    thumbnail: 'assets/gifs/aircraft-landing-gear.png',
+    animation: 'assets/gifs/aircraft-landing-gear.gif',
+    backdrop: {
+      src: 'assets/backdrops/aircraft-landing-gear.png',
+      width: 14.35,
+      centerX: 2.81,
+      centerY: 6.22,
+      opacity: 0.8,
+    },
+  },
+  {
+    id: 'Hood_Hinge',
+    name: 'Car Hood Hinge',
+    category: 'realworld',
+    description:
+      'A hood hinge with a gas strut: the hood swings up and back, clear of the fender, traced over the car.',
+    thumbnail: 'assets/gifs/hood-hinge.png',
+    animation: 'assets/gifs/hood-hinge.gif',
+    backdrop: {
+      src: 'assets/backdrops/hood-hinge.jpg',
+      width: 14.36,
+      centerX: 1.53,
+      centerY: 0.09,
+      opacity: 1,
+    },
+  },
+  {
+    id: 'Excavator_Bucket',
+    name: 'Excavator Bucket',
+    category: 'realworld',
+    description:
+      'The bucket curl of an excavator, traced over its drawing: a ram, a bell crank, and the link that tips the bucket.',
+    thumbnail: 'assets/gifs/excavator-bucket.png',
+    animation: 'assets/gifs/excavator-bucket.gif',
+    backdrop: {
+      src: 'assets/backdrops/backhoe-bucket.png',
+      width: 5.99,
+      centerX: -0.08,
+      centerY: -0.06,
+      opacity: 0.8,
+    },
+  },
+  {
+    id: 'Car_Steering',
+    name: 'Car Steering',
+    category: 'realworld',
+    description:
+      'A center-arm steering mechanism: the pitman arm swings two tie rods, and each knuckle turns its wheel, traced in meters.',
+    thumbnail: 'assets/gifs/car-steering.png',
+    animation: 'assets/gifs/car-steering.gif',
+    // Drawn in meters: 2.26 m wide, centered a centimeter left and eight up.
+    backdrop: {
+      src: 'assets/backdrops/car-steering.png',
+      width: 226,
+      centerX: -1,
+      centerY: 8,
+      opacity: 0.8,
+    },
   },
 ];
 

@@ -24,7 +24,9 @@ import { join } from 'node:path';
 
 const PLAYWRIGHT = process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright';
 const { chromium } = await import(PLAYWRIGHT + '/node_modules/playwright/index.mjs');
-const { default: GIFEncoder } = await import(PLAYWRIGHT + '/node_modules/gif-encoder/lib/GIFEncoder.js');
+const { default: GIFEncoder } = await import(
+  PLAYWRIGHT + '/node_modules/gif-encoder/lib/GIFEncoder.js'
+);
 const { PNG } = await import(PLAYWRIGHT + '/node_modules/pngjs/lib/png.js');
 import { waitForReady } from './app-ready.mjs';
 import { TEMPLATE_LINKAGES, assertTemplatesParsed } from './template-payloads.mjs';
@@ -73,15 +75,29 @@ for (const { id, name } of wanted()) {
     console.log(`${id}: no payload, skipped`);
     continue;
   }
-  await page.goto(`${BASE}/?${payload}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  // The card's name in the fragment puts its backdrop up, as the still does.
+  await page.goto(`${BASE}/?${payload}#backdrop=${id}`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 60000,
+  });
   await waitForReady(page);
+  await page
+    .waitForFunction(
+      () => !!ng.getComponent(document.querySelector('app-new-grid')).bgImage.image(),
+      undefined,
+      { timeout: 4000 }
+    )
+    .catch(() => undefined);
+  await page.waitForTimeout(300);
   // Grid, ruling and axes off, exactly as template-thumbnails.mjs shoots the
   // still. Without it the loop carries the grid while the still does not, so
   // hovering a card swapped a clean white picture for one with a ruled panel
   // and two blue axes in it — a border appearing out of nowhere around the
   // thing the pointer had just landed on.
-  await page.evaluate(() => {
-    ng.getComponent(document.querySelector('app-new-grid')).settings.tempGridDisable = true;
+  // As elements rather than through `tempGridDisable`, which takes the paper
+  // group -- and a card's backdrop with it -- down; see template-thumbnails.
+  await page.addStyleTag({
+    content: '.gridLineMinor, .gridLineMajor, #axes, #axes_numbers { display: none !important }',
   });
   // Two real pointer events: the first schedules the change detection a value
   // set from outside Angular would not, the second parks the cursor somewhere
@@ -170,9 +186,15 @@ for (const { id, name } of wanted()) {
     // scaled with, so the loop and the still land on exactly the same grid.
     const sized = join(scratch, `${name}-${String(index).padStart(2, '0')}-fit.png`);
     execFileSync('sips', [
-      '-s', 'format', 'png',
-      '-z', String(HEIGHT), String(WIDTH),
-      raw, '--out', sized,
+      '-s',
+      'format',
+      'png',
+      '-z',
+      String(HEIGHT),
+      String(WIDTH),
+      raw,
+      '--out',
+      sized,
     ]);
     shots.push(sized);
   }

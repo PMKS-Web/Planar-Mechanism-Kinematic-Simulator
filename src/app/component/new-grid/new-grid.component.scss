@@ -90,12 +90,18 @@
   // minor one barely there, and the axes the only line on it with any weight.
   // Both were black at a hairline width, which is a gray the browser chooses
   // rather than one the app does -- and a different gray at every zoom level.
+  // Black at a low opacity rather than a baked-in gray: the two grays were
+  // the right shade over white and a jarring pale lattice over a background
+  // image, brightest exactly where the picture was dark. A transparent black
+  // darkens whatever is under it by the same fraction, which reads as the
+  // same grid on white and as a faint shadow on a photograph. The fractions
+  // are the ones the grays amounted to on white.
   .gridLineMinor {
-    stroke: #f2f2f4;
+    stroke: rgba(0, 0, 0, 0.05);
   }
 
   .gridLineMajor {
-    stroke: #e6e6ea;
+    stroke: rgba(0, 0, 0, 0.1);
   }
 
   // A joint's name lands wherever its joint is, which is often on top of a

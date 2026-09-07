@@ -237,15 +237,15 @@ record(
 await tab('Kinematic').click();
 await page.waitForTimeout(700);
 const inAnalysis = await unitsTip();
-// A clause, not a second sentence. The note used to paste the permission
-// model's whole refusal in here, which restated what the tooltip's own first
-// line had already said before naming a way out; what a grayed switch owes the
-// reader is the way out. Which way is still the model's answer -- the note used
-// to read a master-only playing flag, so an unsynced row running in Edit was
-// told to switch to Edit mode while standing in it.
+// The analysis modes take a pose-safe edit now, and a unit is one: at the
+// start pose the switch is live in Kinematic Analysis exactly as in Edit, so
+// the note owes the reader nothing there. It used to end "Switch to Edit mode
+// to change." -- the clause a grayed switch owes -- back when the analysis
+// lock was a wall; that clause is checked below, where the switch really is
+// grayed, parked away from the start.
 record(
-  'and does say the way out once the switch is actually greyed',
-  /^The unit for angles/.test(inAnalysis) && /Switch to Edit mode to change\.$/.test(inAnalysis),
+  'and carries no way-out clause in Kinematic Analysis at the start, where units still change',
+  /^The unit for angles/.test(inAnalysis) && !/to change\.$/.test(inAnalysis),
   inAnalysis
 );
 await page.screenshot({ path: 'artifacts/ui-copy/tip-angle-units-locked.png' });

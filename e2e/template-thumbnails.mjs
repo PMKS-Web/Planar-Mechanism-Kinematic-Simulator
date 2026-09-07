@@ -48,6 +48,10 @@ const FILENAMES = {
   Scotch_Yoke: 'scotch-yoke',
   Cylinder_Boom: 'cylinder-boom',
   Cylinder_Gripper: 'cylinder-gripper',
+  Aircraft_Landing_Gear: 'aircraft-landing-gear',
+  Hood_Hinge: 'hood-hinge',
+  Excavator_Bucket: 'excavator-bucket',
+  Car_Steering: 'car-steering',
   Radial_Engine: 'radial-engine',
   Chebyshev_Straight_Line: 'chebyshev',
   Windshield_Wiper: 'windshield-wiper',
@@ -101,6 +105,18 @@ function libraryTemplates() {
     .filter(({ id }) => !only || only.includes(id));
 }
 
+/** Give a shipped backdrop its moment to arrive; a card without one waits for nothing. */
+async function settleBackdrop(page) {
+  await page
+    .waitForFunction(
+      () => !!ng.getComponent(document.querySelector('app-new-grid')).bgImage.image(),
+      undefined,
+      { timeout: 4000 }
+    )
+    .catch(() => undefined);
+  await page.waitForTimeout(300);
+}
+
 async function open(url) {
   for (let attempt = 0; ; attempt++) {
     try {
@@ -126,7 +142,11 @@ const captured = [];
 for (const { id, payload } of libraryTemplates()) {
   const name = FILENAMES[id];
   if (!name) throw new Error(`No thumbnail filename for template ${id}`);
-  await open(`${BASE}/?${payload}`);
+  // The card's name in the fragment puts its backdrop up, for a card that
+  // ships one; a card that does not is unaffected. The still is what the
+  // reader gets when the card is opened, picture included.
+  await open(`${BASE}/?${payload}#backdrop=${id}`);
+  await settleBackdrop(page);
 
   const readModel = () =>
     page
@@ -155,11 +175,13 @@ for (const { id, payload } of libraryTemplates()) {
   );
   await page.waitForTimeout(800);
 
-  // Grid, ruling and axes off: at card size the ruling reads as noise and the
-  // mechanism is the subject. This is the app's own flag for it, the one `fit`
-  // already uses.
-  await page.evaluate(() => {
-    ng.getComponent(document.querySelector('app-new-grid')).settings.tempGridDisable = true;
+  // Ruling and axes off: at card size the ruling reads as noise and the
+  // mechanism is the subject. Hidden as elements rather than through the
+  // app's `tempGridDisable`, which takes the whole paper group down -- and a
+  // card's backdrop lives in that group, between the paper and the ruling,
+  // so the flag shot every traced card over blank white.
+  await page.addStyleTag({
+    content: '.gridLineMinor, .gridLineMajor, #axes, #axes_numbers { display: none !important }',
   });
   // The flag is read straight from the template, and a value set from outside
   // Angular schedules no change detection. A real pointer event does, because
