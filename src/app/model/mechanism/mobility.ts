@@ -172,6 +172,7 @@ function survivingSubspace(
       const size = (theta: number): number => norm(form(at(theta), at(theta)));
       let best = 0;
       let bestSize = Infinity;
+      let worstSize = 0;
       for (let step = 0; step < 180; step++) {
         const theta = (step * Math.PI) / 180;
         const value = size(theta);
@@ -179,6 +180,7 @@ function survivingSubspace(
           bestSize = value;
           best = theta;
         }
+        worstSize = Math.max(worstSize, value);
       }
       let low = best - Math.PI / 180;
       let high = best + Math.PI / 180;
@@ -190,9 +192,19 @@ function survivingSubspace(
       }
       const root = (low + high) / 2;
       const c = at(root);
-      // A root that is one of the basis directions was already counted; any
-      // other has to go as a displacement in its own right.
-      if (Math.abs(c[i]) > 1e-9 && Math.abs(c[j]) > 1e-9 && goes(c)) found.push(c);
+      // A root is where the form actually vanishes on this circle -- small
+      // against the most it reaches anywhere on it -- and not merely where
+      // it is small against the gap: a direction that is nearly all of a
+      // genuine motion with a hair of a dying one has a leftover of the
+      // hair's square under a gap of the motion's size, and the relative
+      // test alone let every such direction through, which counted a jaw
+      // held by two rails as free to tilt. A root that is one of the basis
+      // directions was already counted; any other has to go as a
+      // displacement in its own right as well.
+      const vanishesOnCircle = size(root) <= Math.max(scale, worstSize * 1e-3);
+      if (vanishesOnCircle && Math.abs(c[i]) > 1e-9 && Math.abs(c[j]) > 1e-9 && goes(c)) {
+        found.push(c);
+      }
     }
   }
   if (found.length === 0) return 0;

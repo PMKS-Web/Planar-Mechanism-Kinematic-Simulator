@@ -23,6 +23,7 @@ export type MechanismFailure =
   | 'not-driven'
   | 'nothing-can-move'
   | 'dead-position'
+  | 'hidden-freedom'
   | 'cycle-never-closes'
   | 'cylinder-has-no-travel';
 
@@ -389,6 +390,7 @@ export class Mechanism {
       J1 += Math.max(bodiesAt(j).size - 1, 0);
     });
     const counted = 3 * (N - 1) - 2 * J1 - J2;
+    this.countedFreedoms = counted;
     if (counted >= 1) return counted;
 
     // Counted as unable to move. Gruebler's error is one-sided -- it charges
@@ -401,16 +403,58 @@ export class Mechanism {
     // Only here, and only when it disagrees upward: everything Gruebler already
     // calls mobile is left exactly as it was, and a structure that really
     // cannot move still reads zero, because its rows really are independent.
-    const measured = mobilityFromGeometry(this.joints[0], this.links[0], {
-      bodyOf,
-      bodiesAt,
-      movingBodies,
-    });
+    // Not applied where the count already reads one: a drawing whose second
+    // freedom is never stirred -- a ram on a pin whose carriage rides rails --
+    // solves as its reader meant it, and refusing it for the freedom it does
+    // not use would be pedantry. The geometry is asked again only when the
+    // solve fails, in `explainDeadPosition`, where the same answer is the
+    // difference between "a dead position" and "a part tied to nothing".
+    const measured = this.measuredFreedoms();
     // Only ever a rescue. Where the geometry agrees nothing can move, Gruebler's
     // own number is the more useful of the two: -2 says how much has to come out
     // before this is a mechanism, and a flat zero from a rank count says only
     // that it is stuck.
     return measured !== undefined && measured >= 1 ? measured : counted;
+  }
+
+  /** Gruebler's own count, kept for the diagnosis a failed solve makes. */
+  private countedFreedoms = 0;
+
+  /** The freedoms the drawing's geometry has, second order and all. */
+  private measuredFreedoms(): number | undefined {
+    const { bodyOf, bodiesAt, movingBodies } = assignBodies(this.joints[0], this.links[0]);
+    return mobilityFromGeometry(this.joints[0], this.links[0], { bodyOf, bodiesAt, movingBodies });
+  }
+
+  /**
+   * How many independent ways the drawing can move when a solve from its
+   * start pose could not step it: more than the one the count promised, when
+   * a part is tied to nothing. Undefined when the geometry agrees with the
+   * count, which is what a dead position actually looks like.
+   */
+  private _hiddenFreedoms?: number;
+
+  get hiddenFreedoms(): number | undefined {
+    return this._hiddenFreedoms;
+  }
+
+  /**
+   * A solve that could not take its first step is a dead position -- unless
+   * the drawing can move more ways than it was counted to. Gruebler charges
+   * twice for a crosshead held to its line by two slides, so a locomotive
+   * whose valve rod was left hanging free still counted as one freedom, was
+   * handed to a solver that had two to choose between, and came back "at a
+   * dead position" with advice to drag it off a limit it was not at. The
+   * geometry knows better, and this is where it is asked.
+   */
+  private explainDeadPosition(): void {
+    const measured = this.measuredFreedoms();
+    if (measured !== undefined && measured > this.countedFreedoms) {
+      this._hiddenFreedoms = measured;
+      this.setMechanismInvalid('hidden-freedom');
+      return;
+    }
+    this.setMechanismInvalid('dead-position');
   }
 
   /** One refinement per build, and never again after its fallback re-solve. */
@@ -833,7 +877,7 @@ export class Mechanism {
         // labeled as looping, with the drawing teleporting at every wrap.
         if ((!simForward && currentTimeStamp === 0) || falseTwice === 2) {
           //If we are here, the mechnism is in a toggle point
-          this.setMechanismInvalid('dead-position');
+          this.explainDeadPosition();
           return;
         }
         falseTwice += 1;

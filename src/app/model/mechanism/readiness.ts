@@ -171,6 +171,16 @@ export function readinessOf(
       });
       break;
 
+    case 'hidden-freedom': {
+      const ways = mechanism.hiddenFreedoms ?? 2;
+      add({
+        state: 'blocker',
+        title: 'A part of this mechanism is tied to nothing',
+        body: `It counts as one degree of freedom, but the drawing can move in ${ways} independent ways: some part is held by nothing but its own joints, so the input alone cannot say where it goes. Attach its free end, ground it, or remove it.`,
+      });
+      break;
+    }
+
     case 'cycle-never-closes': {
       const gap = mechanism.cycleGap;
       add({

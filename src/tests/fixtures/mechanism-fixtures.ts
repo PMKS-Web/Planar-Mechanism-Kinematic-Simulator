@@ -40,7 +40,7 @@ export interface MechanismFixture {
   settings: SettingsService;
 }
 
-function mechanismLengthUnit(lengthUnit: LengthUnit): string {
+export function mechanismLengthUnit(lengthUnit: LengthUnit): string {
   switch (lengthUnit) {
     case LengthUnit.INCH:
       return 'in';

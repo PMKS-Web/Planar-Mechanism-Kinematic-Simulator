@@ -1813,3 +1813,31 @@ run that lands on that overlay shoots the overlay. And `e2e/ui-copy.mjs`'s vocab
 card names too: it is "Car Steering", never "Steering Linkage". The animation script needs `pngjs`
 under the Playwright install; it vanishes with that install and `npm i pngjs@7` there brings it
 back.
+
+### "A part of this mechanism is tied to nothing" is the geometry's second opinion on a dead position
+
+Gruebler's count is believed whenever it reads one or more, and the geometry rescue only runs
+when it reads less -- and that leaves a drawing that counts one *low* with a count of one. A
+locomotive drive is the case: its crosshead is held to its line by two slides, which the count
+charges twice, so a valve gear whose combination lever hung from the valve rod with its lower end
+W attached to nothing still counted as a mechanism. The solver was handed two freedoms, could not
+take its first step, and said "starts at a dead position -- drag a joint off the limit", which is
+false in every particular. `explainDeadPosition` now asks `mobilityFromGeometry` at that one
+moment; when it reports more freedoms than the count, the failure is `hidden-freedom` and the
+readiness row says a part is held by nothing but its own joints, and how many ways the drawing
+can move. `locomotive-valve-gear.spec.ts` holds the drawing, and the same drawing with W grounded
+runs.
+
+Deliberately *not* believed upward before the solve: the gripper on rails, and any ram on a pin
+whose carriage rides guides, has a second freedom in the geometry's eyes -- the ram can swing on
+its mount while the carriage rides up -- that the solve never stirs, because the least-norm step
+keeps what the reader drew level. Refusing such drawings for a freedom they do not use would take
+the gripper template away; letting the solver try first and asking the geometry only when it
+fails keeps them, and answers the locomotive honestly. (The gripper's force analysis meets the
+same freedom from the other side: that is the motion its weight escapes along.)
+
+`survivingSubspace` accepts a root in a pair's plane only where the form truly vanishes on that
+circle -- small against the most it reaches anywhere on it -- rather than only small against the
+gap. A direction that is nearly all of a genuine motion with a hair of a dying one leaves a
+residual of the hair's square under a gap of the motion's size, and the relative test alone let
+every such direction through.
