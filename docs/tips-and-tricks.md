@@ -1067,6 +1067,38 @@ ground link is left implicit -- `src/tests/verification/frame-body-forces.spec.t
 that, and also that the reported drawing (a cylinder-driven bucket on a twice-pinned bracket)
 solves.
 
+### A machine *owns* some parts and is *handed* others, and analysis asks the second question
+
+`partitionMechanisms` gives each machine two joint lists. `ownJoints` is what it is made of;
+`joints` is everything the solver has to be handed, frame included -- a rail anchored at every
+joint is the world, so it and the pins holding it go to every machine bolted to them and belong
+to none. That distinction is what stops a neighbor's driven joint being read as this machine's
+input, and `ownJoints` is the right answer to *whose input, whose clock, which machine did the
+reader just merge*.
+
+It is the wrong answer to *where do I read this part's solved values*, which is what every
+analysis panel is really asking -- and the panels all asked through ownership. The owner index
+claims `partition.links`, frame pieces included, so a rail's **link** found its machine and
+graphed its angle and its center of mass, while the two **pins** at that rail's own ends found
+nothing: `mechanismForId` returned undefined, `determineAnalysis` returned three empty arrays,
+and the reader got fourteen empty charts per pin with no explanation, over a panel saying the
+mechanism could not be solved about a machine reading Ready. The library gripper rides two such
+rails, which is where `analysis-audit` found it -- 56 blank findings on `Cylinder_Gripper`, on
+joints K, L, O and P.
+
+So there are now two lookups. `indexOfMechanismContaining` / `mechanismContaining` is ownership,
+unchanged, and is what the canvas, the merges and the input scoping ask.
+`indexOfMechanismSolving` / `mechanismSolving` is "whose samples hold this", ownership plus the
+shared frame, and is what `mechanismForId`, `isPartSimulatable`, `readinessOfPart` and the vector
+refusals ask. Both are prebuilt maps filled in one pass over the partitions, because these are
+asked of every part on every change-detection pass. `isFramePart` is the difference between them:
+solved by a machine, owned by none. A frame pin now graphs the way every other ground pin does --
+a constant position, zero velocity, zero acceleration -- and its **reaction** graph declines with
+a sentence, because statics really does write no equation there (see the entry above). That
+sentence is `noReactionSentence`, written once and read by the graph, the panel heading and the
+gray force chip, so the three cannot disagree.
+`src/tests/verification/frame-joint-graphs.spec.ts` holds the gripper to all of it.
+
 ### A hold is a constraint, not a lock, and every move goes through the solver
 
 A bar can hold its **length** or its **angle** against edits (`RealLink.hold`, the menu's Fixed

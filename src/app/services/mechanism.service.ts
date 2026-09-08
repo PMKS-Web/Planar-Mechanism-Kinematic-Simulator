@@ -885,6 +885,20 @@ export class MechanismService {
    */
   private ownerOfPart = new Map<Joint | Link | Force, number>();
 
+  /**
+   * Which machine each part is *solved by*, which is the wider question.
+   *
+   * Frame is shared. A rail anchored at every joint is world, so the
+   * partitioner hands it to each machine that runs along it and gives it to
+   * none of them -- `ownJoints` says the pins at its ends belong to no
+   * machine. That is the right answer to "whose input is this" and the wrong
+   * one to "where are this pin's solved positions", which is what every
+   * analysis panel is really asking: the rail's *link* was found anyway
+   * (`partition.links` carries the frame pieces), so the bar graphed while the
+   * two pins holding its own ends came back with no series at all.
+   */
+  private solverOfPart = new Map<Joint | Link | Force, number>();
+
   /** Every joint some link is made of, for the same reason. */
   private jointsOnALink = new Set<Joint>();
 
@@ -894,15 +908,26 @@ export class MechanismService {
     this.jointsOnALink = attached;
 
     const owner = new Map<Joint | Link | Force, number>();
+    const solver = new Map<Joint | Link | Force, number>();
     // In partition order, first writer wins: a fixed bar between two frames
     // puts its far end in both, and `ownJoints` is what says whose it is.
     this.partitions.forEach((partition, index) => {
       const claim = (part: Joint | Link | Force) => {
         if (!owner.has(part)) owner.set(part, index);
       };
+      const solved = (part: Joint | Link | Force) => {
+        if (!solver.has(part)) solver.set(part, index);
+      };
       partition.ownJoints.forEach(claim);
       partition.links.forEach(claim);
       partition.forces.forEach(claim);
+      // Everything the solver was handed, which is `ownJoints` plus the frame
+      // shared with the machines next door. Those pieces move with this
+      // machine's samples and are read out of them, so the graphs have
+      // somewhere to look even where ownership says "no machine".
+      partition.joints.forEach(solved);
+      partition.links.forEach(solved);
+      partition.forces.forEach(solved);
     });
     // "In no machine" is an answer too. Recording only the positive ones left
     // every part of the half-drawn chain this partitioning exists to tolerate a
@@ -912,11 +937,13 @@ export class MechanismService {
     // partition claimed above belongs to none of them, by definition.
     const unassigned = (part: Joint | Link | Force) => {
       if (!owner.has(part)) owner.set(part, -1);
+      if (!solver.has(part)) solver.set(part, -1);
     };
     this.joints.forEach(unassigned);
     this.links.forEach(unassigned);
     this.forces.forEach(unassigned);
     this.ownerOfPart = owner;
+    this.solverOfPart = solver;
   }
 
   /** Which mechanism holds this joint, link or force — none, if it is unassigned. */
@@ -936,6 +963,31 @@ export class MechanismService {
     );
   }
 
+  /**
+   * Which mechanism solved this part — the one whose samples hold it.
+   *
+   * Wider than `indexOfMechanismContaining` by exactly the frame: a bar
+   * anchored at every joint, and the pins holding it, are handed to every
+   * machine bolted to them and owned by none. Ownership answers "whose input
+   * is this, whose clock, which machine did the reader just merge"; this
+   * answers "where do I read this part's solved values", which is the only
+   * thing the analysis panels ever wanted.
+   */
+  indexOfMechanismSolving(part: Joint | Link | Force): number {
+    const known = this.solverOfPart?.get(part);
+    if (known !== undefined) return known;
+    // A part the index has not seen -- see `indexOfMechanismContaining`. No
+    // `ownJoints` arm: every owned joint is in `joints` as well, which is what
+    // makes this the wider question rather than a different one.
+    const id = part.id;
+    return this.partitions.findIndex(
+      (partition) =>
+        partition.joints.some((joint) => joint.id === id) ||
+        partition.links.some((link) => link.id === id) ||
+        partition.forces.some((force) => force.id === id)
+    );
+  }
+
   /** The partition this part belongs to, if it belongs to one. */
   partitionContaining(part: Joint | Link | Force): MechanismPartition | undefined {
     const index = this.indexOfMechanismContaining(part);
@@ -946,6 +998,44 @@ export class MechanismService {
   mechanismContaining(part: Joint | Link | Force): Mechanism | undefined {
     const index = this.indexOfMechanismContaining(part);
     return index === -1 ? undefined : this.mechanisms[index];
+  }
+
+  /** The solved mechanism whose samples hold this part, frame pieces included. */
+  mechanismSolving(part: Joint | Link | Force): Mechanism | undefined {
+    const index = this.indexOfMechanismSolving(part);
+    return index === -1 ? undefined : this.mechanisms[index];
+  }
+
+  /**
+   * Whether this part is frame: solved by a machine, owned by none.
+   *
+   * A rail pinned down at every joint, and the pins that hold it. It stands
+   * still while the machine runs along it, and statics counts it as world
+   * rather than as a body — so it has positions to read and no reaction.
+   */
+  isFramePart(part: Joint | Link | Force): boolean {
+    return (
+      this.indexOfMechanismContaining(part) === -1 && this.indexOfMechanismSolving(part) !== -1
+    );
+  }
+
+  /**
+   * Why no reaction is solved at this joint, in the one sentence three places
+   * say it: the graph that declines to draw one, the panel heading above it,
+   * and the menu row that grays the arrow.
+   *
+   * A frame pin needs its own answer. "Only one part meets it" is the ordinary
+   * reason and it sends the reader of a rail's end pin to count the parts at a
+   * joint where two of them plainly meet.
+   */
+  noReactionSentence(part: Joint | Link | Force | undefined, subject: string): string {
+    if (!part || !this.isFramePart(part)) {
+      return `Only one part meets ${subject}, so there is no force to graph here.`;
+    }
+    // The subject is written as it reads mid-sentence -- "this joint", "Joint
+    // K" -- and this one leads with it.
+    const lead = subject.charAt(0).toUpperCase() + subject.slice(1);
+    return `${lead} holds a bar that is anchored at every joint, so statics counts it as frame rather than as a body and solves no reaction here.`;
   }
 
   /**
@@ -964,10 +1054,18 @@ export class MechanismService {
     );
   }
 
-  /** The solved mechanism the part with this id belongs to, if any. */
+  /**
+   * The solved mechanism the part with this id is read out of, if any.
+   *
+   * The analysis bridge: every graph, header and panel names its subject by id
+   * and comes here for the samples behind it. It asks which machine *solved*
+   * the part rather than which one owns it, so the pins holding an anchored
+   * rail read out of the machine that runs along the rail instead of drawing
+   * empty charts.
+   */
   mechanismForId(id: string): Mechanism | undefined {
     const part = this.partById(id);
-    return part ? this.mechanismContaining(part) : undefined;
+    return part ? this.mechanismSolving(part) : undefined;
   }
 
   /**
@@ -981,7 +1079,7 @@ export class MechanismService {
    * offer the analysis modes will not honor.
    */
   readinessOfPart(part: Joint | Link | Force): MechanismReadiness | undefined {
-    const index = this.indexOfMechanismContaining(part);
+    const index = this.indexOfMechanismSolving(part);
     return index === -1 ? undefined : this.readinessOfEachMechanism()[index];
   }
 
@@ -999,7 +1097,7 @@ export class MechanismService {
     if (!(joint instanceof RealJoint)) return false;
     // A driven joint always has one: the effort that drives it.
     if (joint.input) return true;
-    const solved = this.mechanismContaining(joint);
+    const solved = this.mechanismSolving(joint);
     if (!solved?.isMechanismValid()) return false;
     const mode = this.settingsService.forceAnalysisMode.value;
     const index = solved.getForceAnalysis(mode).reactionIndex;
@@ -1008,7 +1106,7 @@ export class MechanismService {
 
   /** Can this part's own machine be simulated? Says nothing about the others. */
   isPartSimulatable(part: Joint | Link | Force): boolean {
-    return this.mechanismContaining(part)?.isMechanismValid() ?? false;
+    return this.mechanismSolving(part)?.isMechanismValid() ?? false;
   }
 
   /**
@@ -1550,7 +1648,7 @@ export class MechanismService {
    * separately, because it is the same answer for every row on the card.
    */
   vectorTraceRefusal(part: Joint | Link, quantity: VectorQuantity): VectorTraceRefusal | undefined {
-    const solved = this.mechanismContaining(part);
+    const solved = this.mechanismSolving(part);
     if (!solved?.isMechanismValid()) return undefined;
     if (quantity === 'force') {
       // Not before Force Analysis could be entered: a reaction drawn from an
@@ -1571,10 +1669,12 @@ export class MechanismService {
         };
       }
       if (!this.jointHasReactionVector(part)) {
-        return {
-          short: 'one part meets it',
-          long: 'Only one part meets this joint, so there is no second body for it to react against and no force to draw.',
-        };
+        return this.isFramePart(part)
+          ? { short: 'on the frame', long: this.noReactionSentence(part, 'this joint') }
+          : {
+              short: 'one part meets it',
+              long: 'Only one part meets this joint, so there is no second body for it to react against and no force to draw.',
+            };
       }
       // A pin that carries nothing all cycle -- the load sits on the crank
       // and the follower rides along unloaded -- has a reaction of zero at
@@ -1630,7 +1730,7 @@ export class MechanismService {
    */
   jointHasReactionVector(part: Joint | Link): boolean {
     if (!(part instanceof RealJoint)) return false;
-    const solved = this.mechanismContaining(part);
+    const solved = this.mechanismSolving(part);
     if (!solved?.isMechanismValid()) return false;
     const series = solved.getForceAnalysis(this.settingsService.forceAnalysisMode.value);
     return (series.reactionIndex.linksByJoint.get(part.id) ?? []).length > 0;

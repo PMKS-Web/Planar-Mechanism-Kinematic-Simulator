@@ -137,6 +137,15 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
   service.indexOfMechanismContaining =
     MechanismService.prototype.indexOfMechanismContaining.bind(service);
   service.mechanismContaining = MechanismService.prototype.mechanismContaining.bind(service);
+  // The analysis side asks which machine *solved* a part rather than which one
+  // owns it, so the frame a machine shares with its neighbors still has
+  // somewhere to read its samples from. Borrowed for the same reason as the
+  // rest: a copy here could answer differently from the app.
+  service.indexOfMechanismSolving =
+    MechanismService.prototype.indexOfMechanismSolving.bind(service);
+  service.mechanismSolving = MechanismService.prototype.mechanismSolving.bind(service);
+  service.isFramePart = MechanismService.prototype.isFramePart.bind(service);
+  service.noReactionSentence = MechanismService.prototype.noReactionSentence.bind(service);
   service.partById = MechanismService.prototype.partById.bind(service);
   service.mechanismForId = MechanismService.prototype.mechanismForId.bind(service);
   service.partitionContaining = MechanismService.prototype.partitionContaining.bind(service);

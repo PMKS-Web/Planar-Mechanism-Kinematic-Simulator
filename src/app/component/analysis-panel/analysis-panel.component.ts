@@ -154,7 +154,10 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   get subtitle(): string {
     if (this.tuning) return 'Following your hand';
     if (this.showForce && this.shownType === 'Joint' && !this.jointForceHasGraphs) {
-      return `Only one part meets Joint ${this.shownJoint?.name}, so there is no force to graph here.`;
+      return this.mechanismService.noReactionSentence(
+        this.shownJoint,
+        `Joint ${this.shownJoint?.name}`
+      );
     }
     if (this.showForce && this.shownType === 'Link' && !this.linkForceHasGraphs) {
       return `${this.selectedBodyLabel} does not meet another part at any of its joints, so there is no force to graph here.`;
@@ -180,7 +183,10 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   get analysisHelpLead(): string {
     const part = this.selectedPart;
     if (part) {
-      const owner = this.mechanismService.indexOfMechanismContaining(part);
+      // Which machine would graph it, not which one owns it: a rail's end pin
+      // is owned by no machine and solved by the one running along the rail,
+      // and it is that machine's setup the reader has to finish.
+      const owner = this.mechanismService.indexOfMechanismSolving(part);
       if (owner !== -1 && !this.mechanismService.mechanisms[owner]?.isMechanismValid()) {
         return `Finish analysis setup on ${this.mechanismService.partitions[owner].id} to see its graphs.`;
       }

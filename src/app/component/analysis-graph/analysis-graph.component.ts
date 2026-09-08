@@ -1462,7 +1462,10 @@ export class AnalysisGraphComponent
         ? null
         : (result.diagnostic ??
           (mechProp === 'Joint Forces'
-            ? 'Only one part meets this joint, so there is no force to graph here.'
+            ? this.mechanismService.noReactionSentence(
+                this.mechanismService.partById(mechPart),
+                'this joint'
+              )
             : 'Input effort is unavailable for this mechanism.'));
       return [[datum_X, datum_Y, datum_Z], categories];
     }
