@@ -4,6 +4,7 @@ import { heldBars, heldBarsReaching, holdJoints, holdOf } from '../model/link-ho
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { roundNumber, point_on_line_segment_closest_to_point } from '../model/utils';
 import { Link, SliderBlock, RealLink } from '../model/link';
+import { JointOperationContext, refuseJointOperation } from '../model/joint-operation-permission';
 import {
   Cylinder,
   CylinderPose,
@@ -227,72 +228,44 @@ export class GridUtilsService {
    * enabled because the same control is how it is unwelded.
    */
   canToggleWeld(joint: Joint): boolean {
-    if (!(joint instanceof RealJoint)) return false;
-    // The slider itself is the freedom between its block and its guide; a
-    // weld would be the claim that there is none. The pin riding it welds.
-    if (joint instanceof PrisJoint) return false;
-    // A cylinder mount cannot weld: welding a mount into a neighboring
-    // compound opened more edge cases than it was worth. Attach by revolute.
-    const sealed = this.mechanismSrv.cylinderAt(joint);
-    if (
-      sealed &&
-      (joint.id === sealed.barrelFar.id || joint.id === sealed.rodFar.id) &&
-      !joint.isWelded
-    ) {
-      return false;
-    }
-    // A weld is the statement that the bodies at this joint do not move
-    // relative to each other, and an input is the statement that they do. Both
-    // at once is not a state the model can honor, so the control that would
-    // create it is grayed -- the same rule from the other side as
-    // `describeActuator` refusing to drive a welded joint. Unwelding stays
-    // available, since that direction resolves the contradiction.
-    if (joint.input && !joint.isWelded) {
-      return false;
-    }
-    return joint.isWelded || joint.links.length >= 2;
+    return this.weldRefusal(joint) === undefined;
   }
 
   /**
    * Why Weld is grayed on this joint, short and long.
    *
-   * The branches of `canToggleWeld`, read back out. The control and its reason
-   * come from one place so a menu cannot gray a row it has no explanation for,
-   * or explain one it left enabled.
+   * Both directions through one model: the control that welds is the control
+   * that unwelds, so it asks about whichever way it would actually go. The
+   * rule itself lives in `model/joint-operation-permission.ts`, which the menu,
+   * the panel, the group edit and the mutation all read, so a row cannot be
+   * grayed for a reason nothing enforces or offered against one that is.
    */
   weldRefusal(joint: Joint): { short: string; long: string } | undefined {
-    if (this.canToggleWeld(joint)) return undefined;
-    if (!(joint instanceof RealJoint)) {
-      return { short: 'not a joint', long: 'Only a joint can be welded.' };
-    }
-    if (joint instanceof PrisJoint) {
-      return {
-        short: 'it is the slider',
-        long: 'A weld fuses the links that meet at a pin, and this is the slider itself: the freedom between its block and its guide. Weld the pin riding it instead.',
-      };
-    }
-    const sealed = this.mechanismSrv.cylinderAt(joint);
-    if (sealed && (joint.id === sealed.barrelFar.id || joint.id === sealed.rodFar.id)) {
-      return {
-        short: 'part is sealed',
-        long: 'A cylinder is one sealed part, so its joints cannot be fused into a neighboring body. Attach a link here instead.',
-      };
-    }
-    if (joint.input) {
-      return {
-        short: 'it is driven',
-        long: 'A weld says these bodies do not move relative to each other, and an input says they do. Remove the input first.',
-      };
-    }
-    // A loose joint has none at all, and telling it "only one meets here" is
-    // a sentence about a link that is not there.
-    const meeting = joint.links.length;
+    const welded = joint instanceof RealJoint && joint.isWelded;
+    return refuseJointOperation(joint, welded ? 'unweld' : 'weld', this.operationContext());
+  }
+
+  /** Whether this joint may gain or lose a sliding block, and why not. */
+  sliderRefusal(joint: Joint, wanted: boolean): { short: string; long: string } | undefined {
+    return refuseJointOperation(
+      joint,
+      wanted ? 'add-slider' : 'remove-slider',
+      this.operationContext()
+    );
+  }
+
+  /**
+   * The facts the permission model cannot work out for itself.
+   *
+   * A slider's input lives on its guide rather than on the pin riding it, and
+   * this service is where that is already settled — so it is handed over
+   * rather than derived a second time.
+   */
+  operationContext(): JointOperationContext {
     return {
-      short: 'needs 2 links',
-      long:
-        meeting === 0
-          ? 'A weld fuses the links that meet at a joint, and this joint is on none.'
-          : 'A weld fuses the links that meet at a joint, and only one meets here.',
+      cylinders: this.mechanismSrv.sealedStructures(),
+      isDriven: (joint) => this.isVisuallyInput(joint),
+      hasSlider: (joint) => this.isAttachedToSlider(joint),
     };
   }
 

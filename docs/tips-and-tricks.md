@@ -1969,3 +1969,18 @@ member reports the assembly permanently at rest.
 `guided-rod-on-a-link.spec.ts` is the primitive in its smallest form, checked against a closed
 form and its hand-differentiated derivative; the same spec shows that unwelding the rod leaves two
 freedoms, which is why the weld is what makes the arrangement a mechanism at all.
+
+### A URL can say a mount is welded, and the decoder drops the flag
+
+Welding a cylinder's mount is refused by the app today, and the natural way to test what the
+model does with one anyway is to hand-build a payload that says a mount is welded. That does not
+work, and it fails quietly. `reconcileAssemblyWelds` repairs a weld flag that has outrun its
+compound only where there is a slide assembly or a compound to repair *to*; a mount has neither,
+so the flag is stripped on decode and the drawing comes back unwelded, with no message.
+
+Two consequences. Testing the resolver against a welded mount means building the graph by hand
+-- which is fair, since the resolver is a pure function of the graph -- and that is what
+`src/app/model/cylinder-ownership.spec.ts` does, mirroring `rebuildJointGraph` and
+`reconcileSlots` in a local helper so the fixture is the graph the app actually produces. And
+when the weld is opened up, the decode path has to *build* the compound rather than merely keep
+the flag, or a saved drawing will come back with its bracket detached and nothing said.

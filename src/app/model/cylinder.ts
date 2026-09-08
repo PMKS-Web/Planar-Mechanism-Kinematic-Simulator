@@ -26,6 +26,19 @@ export interface Cylinder {
   barrel: Link;
   /** The rider, drawn as the rod. A leaf when welded into a compound. */
   rod: RealLink;
+  /**
+   * The top-level links the barrel and rod belong to — themselves when nothing
+   * has swallowed them, and the compound when a mount is welded into a
+   * neighbor.
+   *
+   * The pair is the whole of the difference between what the skin draws and
+   * what an edit has to move. `barrel` and `rod` are the two-joint bars the
+   * silhouette is composed from and the panel reports lengths for; the roots
+   * are the rigid bodies a pose has to carry, so that welding a mount into a
+   * bracket does not leave the bracket standing where the cylinder used to be.
+   */
+  barrelRoot: Link;
+  rodRoot: RealLink;
   /** The barrel's outer end — mount A, the joint the cylinder rotates about. */
   barrelFar: Joint;
   /**
@@ -135,26 +148,51 @@ export function cylinderCollinearTolerance(): number {
   return MARK.blockAcrossHalf * 0.15 * SettingsService.objectScale;
 }
 
+/** A cylinder member: the bar the skin draws, and the body an edit must move. */
+export interface CylinderMember<T extends Link = Link> {
+  /** The two-joint bar itself. */
+  leaf: Link;
+  /** The top-level link that owns it — the leaf itself when nothing does. */
+  root: T;
+}
+
 /**
- * The two-joint leaf of a possibly-compound link that satisfies `keep`.
+ * Every two-joint bar at or under `root` that satisfies `keep`.
  *
- * A mount welded into a neighboring link would absorb the barrel (or rod) into
- * a compound; the member bar still exists as a subset leaf, and the skin has to
- * keep describing that bar rather than the whole compound.
- *
- * **Nothing in the app can currently produce that**, and this is defense rather
- * than a supported shape. Two rules close it: `canToggleWeld` grays the Weld
- * control on a mount, and `refuseJointMerge` answers `welded-mount` to a merge
- * that would carry a weld onto one. `cylinder-weld-guards.spec.ts` pins both,
- * because if either is relaxed this path starts running for real — and it is
- * not fully built. `applyCylinderPose` moves the cylinder's own five joints and
- * no others, so a compound's remaining joints would be left behind and the
- * body recomputed as though it had deformed.
+ * Recursive, because a subset may itself hold subsets: a bracket welded to a
+ * mount and then welded again into something larger nests one level further
+ * each time, and a member found only at the top level would go missing at
+ * exactly the point the drawing got complicated.
  */
-function twoJointLeaf(root: Link, keep: (leaf: Link) => boolean): Link | undefined {
-  if (root.joints.length === 2 && keep(root)) return root;
-  if (!(root instanceof RealLink)) return undefined;
-  return root.subset.find((leaf) => leaf.joints.length === 2 && keep(leaf));
+function memberCandidates(root: Link, keep: (leaf: Link) => boolean): Link[] {
+  const found = new Map<string, Link>();
+  const walk = (node: Link) => {
+    if (node.joints.length === 2 && keep(node)) found.set(node.id, node);
+    if (node instanceof RealLink) node.subset.forEach(walk);
+  };
+  walk(root);
+  return [...found.values()];
+}
+
+/**
+ * The member bar inside `root` that satisfies `keep`, with `root` itself.
+ *
+ * A mount welded into a neighboring link absorbs the barrel (or rod) into a
+ * compound; the member bar survives as a subset leaf and stays the thing the
+ * skin describes, while the compound is what a drag has to carry.
+ *
+ * **Exactly one candidate, or none.** Choosing the first of several would be
+ * guessing which bar is the cylinder, and the answer would depend on the order
+ * the reader happened to draw things in. A sealed structure with two candidate
+ * rods is malformed, and saying so leaves the caller free to report it rather
+ * than to draw a ram that is not there.
+ */
+function resolveMember<T extends Link>(
+  root: T,
+  keep: (leaf: Link) => boolean
+): CylinderMember<T> | undefined {
+  const found = memberCandidates(root, keep);
+  return found.length === 1 ? { leaf: found[0], root } : undefined;
 }
 
 /** Whether this joint's assembly is shaped like a cylinder. */
@@ -189,20 +227,20 @@ function describeCylinderStructure(joint: Joint): Cylinder | string {
   // A mount welded into a neighboring link turns the carrier (or rider) into
   // a compound; the member bar survives as a subset leaf and stays the thing
   // the skin describes.
-  const rod = twoJointLeaf(assembly.riders[0], (leaf) =>
+  const rod = resolveMember(assembly.riders[0], (leaf) =>
     leaf.joints.some((member) => member.id === pin.id)
   );
-  const barrel = twoJointLeaf(
+  const barrel = resolveMember(
     assembly.slider.carrier!,
     (leaf) =>
       leaf.joints.some((member) => member.id === slotA.id) &&
       leaf.joints.some((member) => member.id === slotB.id)
   );
-  if (!rod || !(rod instanceof RealLink) || !barrel) {
+  if (!rod || !(rod.leaf instanceof RealLink) || !barrel) {
     return 'The rod and the barrel each have to be a two-joint bar.';
   }
 
-  const rodFar = rod.joints.find((member) => member.id !== pin.id);
+  const rodFar = rod.leaf.joints.find((member) => member.id !== pin.id);
   if (!rodFar) return 'The rod needs a far end.';
 
   // The barrel's far end — mount A — is the barrel joint further from the
@@ -211,19 +249,21 @@ function describeCylinderStructure(joint: Joint): Cylinder | string {
   // barrel's far end than its near end, and the distance-from-block rule
   // then swapped the two, which is what made a deep-retraction frame stop
   // resolving.
-  const barrelFar = barrel.joints.reduce((far, member) => {
+  const barrelFar = barrel.leaf.joints.reduce((far, member) => {
     const memberDistance = Math.hypot(member.x - rodFar.x, member.y - rodFar.y);
     const farDistance = Math.hypot(far.x - rodFar.x, far.y - rodFar.y);
     return memberDistance > farDistance ? member : far;
   });
-  const barrelNear = barrel.joints.find((member) => member.id !== barrelFar.id)!;
+  const barrelNear = barrel.leaf.joints.find((member) => member.id !== barrelFar.id)!;
 
   return {
     slider: assembly.slider,
     pin,
     block: assembly.block,
-    barrel,
-    rod,
+    barrel: barrel.leaf,
+    rod: rod.leaf,
+    barrelRoot: barrel.root,
+    rodRoot: rod.root,
     barrelFar,
     barrelNear,
     rodFar,
@@ -326,19 +366,70 @@ export function cylinderOfJointIn(
   );
 }
 
+/** Every cylinder this joint is a member of: one mount can carry two rams. */
+export function cylindersOfJointIn(cylinders: Cylinder[], joint: Joint | undefined): Cylinder[] {
+  if (!joint) return [];
+  return cylinders.filter((cylinder) =>
+    cylinderJoints(cylinder).some((member) => member.id === joint.id)
+  );
+}
+
+/** The two joints a cylinder attaches to the rest of the drawing by. */
+export function cylinderMounts(cylinder: Cylinder): Joint[] {
+  return [cylinder.barrelFar, cylinder.rodFar];
+}
+
+/** Whether this joint is one of the cylinder's two mounts. */
+export function isCylinderMount(cylinder: Cylinder, joint: Joint): boolean {
+  return cylinderMounts(cylinder).some((mount) => mount.id === joint.id);
+}
+
+/**
+ * The cylinders this joint is a *mount* of, and the ones it is *inside*.
+ *
+ * Kept apart because they answer opposite questions and one joint can be both
+ * — a mount of one ram is an ordinary joint to weld or slide, while any
+ * interior membership at all closes the same controls. Every caller that used
+ * to ask "is this joint on a cylinder" was really asking one of these two, and
+ * membership alone is the answer to neither.
+ */
+export function cylinderMountsAt(cylinders: Cylinder[], joint: Joint | undefined): Cylinder[] {
+  if (!joint) return [];
+  return cylinders.filter((cylinder) => isCylinderMount(cylinder, joint));
+}
+
+export function cylinderInteriorsAt(cylinders: Cylinder[], joint: Joint | undefined): Cylinder[] {
+  if (!joint) return [];
+  return cylinders.filter((cylinder) => isCylinderInterior(cylinder, joint));
+}
+
 /** The sealed cylinder this link is a member of — barrel, rod or block. */
 export function cylinderOfLink(joints: Joint[], link: Link | undefined): Cylinder | undefined {
-  if (!link) return undefined;
-  const containsMember = (candidate: Link, cylinder: Cylinder): boolean => {
-    const memberIds = [cylinder.barrel.id, cylinder.rod.id, cylinder.block.id];
-    if (memberIds.includes(candidate.id)) return true;
-    // A compound that swallowed the barrel (a mount welded into a neighbor)
-    // still owns a member, so deleting it cascades the same way.
-    return (
-      candidate instanceof RealLink && candidate.subset.some((leaf) => memberIds.includes(leaf.id))
-    );
-  };
-  return sealedCylinderStructures(joints).find((cylinder) => containsMember(link, cylinder));
+  return cylinderOfLinkIn(sealedCylinderStructures(joints), link);
+}
+
+/** Whether `link`, or anything nested under it, is one of the cylinder's bars. */
+function ownsMember(link: Link, cylinder: Cylinder): boolean {
+  const memberIds = [cylinder.barrel.id, cylinder.rod.id, cylinder.block.id];
+  // Recursive, and not one level: a compound that has itself been welded into
+  // something larger still owns the member, and a delete or a drag that missed
+  // it would tear the ram it was carrying.
+  const holds = (node: Link): boolean =>
+    memberIds.includes(node.id) ||
+    (node instanceof RealLink && node.subset.some((leaf) => holds(leaf)));
+  return holds(link);
+}
+
+/**
+ * Every cylinder with a member at or under this link.
+ *
+ * Plural because one compound can swallow several: two rams welded into one
+ * bracket are both casualties of deleting it, and a first match would take one
+ * of them and leave the other's joints behind.
+ */
+export function cylindersOfLinkIn(cylinders: Cylinder[], link: Link | undefined): Cylinder[] {
+  if (!link) return [];
+  return cylinders.filter((cylinder) => ownsMember(link, cylinder));
 }
 
 /** The link-membership question against a precomputed structure list. */
@@ -346,18 +437,7 @@ export function cylinderOfLinkIn(
   cylinders: Cylinder[],
   link: Link | undefined
 ): Cylinder | undefined {
-  if (!link) return undefined;
-  const memberIds = (cylinder: Cylinder) => [
-    cylinder.barrel.id,
-    cylinder.rod.id,
-    cylinder.block.id,
-  ];
-  return cylinders.find(
-    (cylinder) =>
-      memberIds(cylinder).includes(link.id) ||
-      (link instanceof RealLink &&
-        link.subset.some((leaf) => memberIds(cylinder).includes(leaf.id)))
-  );
+  return cylindersOfLinkIn(cylinders, link)[0];
 }
 
 /** The joints of a cylinder that get no hitbox, hover or selection at all. */

@@ -446,7 +446,7 @@ export class ContextMenuBuilderService {
         { label: 'Attach', rows: this.jointAttachRows(joint, handlers) },
         {
           label: 'State',
-          rows: this.jointStateRows(joint, sealed),
+          rows: this.jointStateRows(joint),
         },
         { label: 'Traces', rows: [this.traceRow(joint), ...this.vectorRows(joint)] },
         { rows: this.positionRows(handlers, undefined) },
@@ -554,7 +554,7 @@ export class ContextMenuBuilderService {
     return rows;
   }
 
-  private jointStateRows(joint: RealJoint, sealed: Cylinder | undefined): MenuRow[] {
+  private jointStateRows(joint: RealJoint): MenuRow[] {
     const rows: MenuRow[] = [
       new MenuRow({
         label: 'Grounded',
@@ -586,19 +586,9 @@ export class ContextMenuBuilderService {
         kind: 'toggle',
         checked: isSlider,
         action: () => this.mechanism.toggleSlider(),
-        refusal: sealed
-          ? {
-              short: 'part of a cylinder',
-              long: 'A cylinder is one sealed part with a slider of its own inside it, so its joints take no second one. Attach a link here instead.',
-            }
-          : // A block is a body too, so adding one to a driven pin puts a third
-            // at the joint. Taking one away is always allowed.
-            !isSlider && this.gridUtils.isVisuallyInput(joint)
-            ? {
-                short: 'it is driven',
-                long: 'A block is a body of its own, so adding one to a driven joint would put three there. Remove the input first.',
-              }
-            : undefined,
+        // The model says whether a block can stand here, in both directions,
+        // the same way the Welded row below asks about a weld.
+        refusal: this.gridUtils.sliderRefusal(joint, !isSlider),
       })
     );
     // The model says whether a weld can stand here -- `weldRefusal` in

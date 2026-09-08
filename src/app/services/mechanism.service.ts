@@ -4704,11 +4704,10 @@ export class MechanismService {
     // No member of a sealed cylinder can gain or lose a block: the slider IS
     // the cylinder (§ cylinder 4). The panel and menu gray the control on the
     // mounts; this is the rule they are both fronting.
-    if (this.cylinderAt(this.activeObjService.selectedJoint)) {
-      this.notify.refusal(
-        'cylinder.sealed-slider',
-        'A cylinder is one sealed part — delete the cylinder instead of editing its slider.'
-      );
+    const joint = this.activeObjService.selectedJoint;
+    const refused = this.gridUtils.sliderRefusal(joint, !this.gridUtils.isAttachedToSlider(joint));
+    if (refused) {
+      this.notify.refusal('cylinder.sealed-slider', refused.long);
       return;
     }
     // Adding a slider puts a block at the pin *as drawn*, with a guide through

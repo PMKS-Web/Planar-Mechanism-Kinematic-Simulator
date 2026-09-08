@@ -667,13 +667,15 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     if (canWeld && weldControl?.disabled) weldControl.enable({ emitEvent: false });
     if (!canWeld && weldControl?.enabled) weldControl.disable({ emitEvent: false });
 
-    // A cylinder's mount can never gain a block of its own: the slider is the
-    // sealed part itself (§ cylinder 4). Same silent enable/disable rule as
-    // Weld, and the same predicate the context menu grays its item with.
-    const sealedMount = this.isCylinderMount;
+    // Whether a block may stand here, from the same model the context menu
+    // grays its row with. Asked in the direction the control would go, and
+    // silently, for the same reason as Weld above.
+    const joint = this.activeSrv.selectedJoint;
+    const hasSlider = this.gridUtils.isAttachedToSlider(joint);
+    const canSlide = !this.gridUtils.sliderRefusal(joint, !hasSlider);
     const sliderControl = this.jointForm.get('slider');
-    if (!sealedMount && sliderControl?.disabled) sliderControl.enable({ emitEvent: false });
-    if (sealedMount && sliderControl?.enabled) sliderControl.disable({ emitEvent: false });
+    if (canSlide && sliderControl?.disabled) sliderControl.enable({ emitEvent: false });
+    if (!canSlide && sliderControl?.enabled) sliderControl.disable({ emitEvent: false });
 
     this.syncLockDisabledFields();
     // Last, so it is the outer authority: a lock and a displaced pose can both
@@ -750,7 +752,15 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   }
 
   /** Whether the selected joint is a mount of a sealed cylinder. */
-  get isCylinderMount(): boolean {
+  /**
+   * Whether the selected joint belongs to a cylinder at all — any of its five,
+   * not only its two mounts.
+   *
+   * Named for what it asks. It was `isCylinderMount`, which is a different and
+   * narrower question that `cylinderMountsAt` now answers; the two were the
+   * same only while a mount could do nothing an interior joint could not.
+   */
+  get isOnACylinder(): boolean {
     return (
       this.activeSrv.objType === 'Joint' &&
       !!this.mechanismService.cylinderAt(this.activeSrv.selectedJoint)

@@ -337,11 +337,12 @@ export class MultiEditService {
       };
     }
     for (const joint of joints.filter((one) => this.grid.isAttachedToSlider(one) !== slider)) {
-      if (this.mechanism.cylinderAt(joint)) {
+      const refused = this.grid.sliderRefusal(joint, slider);
+      if (refused) {
         return {
-          code: 'cylinder.sealed-slider',
-          short: 'part is sealed',
-          message: `${joint.name || joint.id} belongs to a cylinder, which is one sealed part — delete the cylinder instead of editing its slider.`,
+          code: 'selection.slider',
+          short: refused.short,
+          message: `${joint.name || joint.id} cannot take that change: ${refused.long}`,
         };
       }
     }
