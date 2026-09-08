@@ -5,6 +5,8 @@ import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { roundNumber, point_on_line_segment_closest_to_point } from '../model/utils';
 import { Link, SliderBlock, RealLink } from '../model/link';
 import { JointOperationContext, refuseJointOperation } from '../model/joint-operation-permission';
+import { CylinderPosePlan, planCylinderPose, snapshotOf } from '../model/cylinder-pose-plan';
+import { NotificationService } from './notification.service';
 import {
   Cylinder,
   CylinderPose,
@@ -72,6 +74,7 @@ export class GridUtilsService {
   private synthesisBuilder = inject(SynthesisBuilderService);
   svgGrid = inject(SvgGridService);
   private injector = inject(Injector);
+  private notify = inject(NotificationService);
 
   /**
    * MechanismService injects this service, so it can only be resolved at call
@@ -1065,38 +1068,82 @@ export class GridUtilsService {
    * on the next rebuild rather than in this one.
    */
   private applyCylinderPose(sealed: Cylinder, pose: CylinderPose, rebuild: boolean = true): void {
-    // Every other ram's rigid barrel length, read while its geometry is still
-    // straight -- rebuilding from a bent intermediate state is what bakes the
-    // split in.
-    const others = sealedCylinderStructures(this.mechanismSrv.joints)
-      .filter((other) => other.pin.id !== sealed.pin.id)
-      .map((other) => ({
-        other,
-        barrelLength: this.getPointDistance(
-          other.barrelFar.x,
-          other.barrelFar.y,
-          other.barrelNear.x,
-          other.barrelNear.y
-        ),
-      }));
+    const cylinders = sealedCylinderStructures(this.mechanismSrv.joints);
+    const snapshot = snapshotOf(this.mechanismSrv.joints);
+    const frozen = this.frozenJointIds();
+    // Each other ram's rigid barrel length, read while its geometry is still
+    // straight -- laying one out from a bent intermediate state is what bakes
+    // the split in. From the snapshot for the same reason the plan is: nothing
+    // has moved yet, and nothing may until the whole plan stands up.
+    const barrelLengths = new Map(
+      cylinders.map((one) => {
+        const far = snapshot.get(one.barrelFar.id);
+        const near = snapshot.get(one.barrelNear.id);
+        return [
+          one.pin.id,
+          far && near ? this.getPointDistance(far.x, far.y, near.x, near.y) : 0,
+        ] as const;
+      })
+    );
 
-    const movedIds = this.placeCylinder(sealed, pose);
+    const planned = planCylinderPose(
+      { cylinder: sealed, pose },
+      {
+        cylinders,
+        snapshot,
+        tolerance: 1e-6,
+        layoutFor: (cylinder, barrelFar, rodFar) =>
+          stretchedCylinderPose(
+            barrelFar,
+            rodFar,
+            barrelLengths.get(cylinder.pin.id) ?? 0,
+            0.15 * SettingsService.objectScale
+          ),
+        // Asked of every joint the plan would move, not only the ram's own
+        // five: a lock out on a bracket welded to a mount holds that mount
+        // just as surely, and the gate at the canvas cannot see that far.
+        frozen: (id) => frozen.has(id),
+      }
+    );
+    if (!planned.ok) {
+      this.notify.refusal(planned.refusal.code, planned.refusal.long);
+      return;
+    }
 
-    others.forEach(({ other, barrelLength }) => {
-      if (!movedIds.has(other.barrelFar.id) && !movedIds.has(other.rodFar.id)) return;
-      const carried = stretchedCylinderPose(
-        { x: other.barrelFar.x, y: other.barrelFar.y },
-        { x: other.rodFar.x, y: other.rodFar.y },
-        barrelLength,
-        0.15 * SettingsService.objectScale
-      );
-      if (carried) this.placeCylinder(other, carried);
-    });
+    this.commitCylinderPlan(planned.plan);
 
     if (rebuild) {
       this.mechanismSrv.reseatFloatingSliders();
       this.mechanismSrv.updateMechanism(false);
     }
+  }
+
+  /**
+   * Write a plan out, once, and rebuild what the writing deformed.
+   *
+   * The frames come first, and from the joints as they still stand: a force
+   * and a custom center of mass are points somebody fixed to a *body*, and
+   * carrying them needs to know where that body's own reference joints were.
+   */
+  private commitCylinderPlan(plan: CylinderPosePlan): void {
+    const affected = this.mechanismSrv.links
+      .filter(
+        (link): link is RealLink =>
+          link instanceof RealLink && link.joints.some((joint) => plan.movedIds.has(joint.id))
+      )
+      .map((link) => ({
+        link,
+        from: link.joints.slice(0, 2).map((joint) => ({ x: joint.x, y: joint.y })),
+      }));
+
+    this.mechanismSrv.joints.forEach((joint) => {
+      const to = plan.placements.get(joint.id);
+      if (!to) return;
+      joint.x = roundNumber(to.x, 6);
+      joint.y = roundNumber(to.y, 6);
+    });
+
+    affected.forEach(({ link, from }) => this.reframeDeformedLink(link, from));
   }
 
   /**

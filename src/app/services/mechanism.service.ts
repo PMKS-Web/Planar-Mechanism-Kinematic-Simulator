@@ -95,6 +95,7 @@ import { ColorService } from './color.service';
 import { siUnitFactorsForLength } from '../model/unit-conversions';
 import { transformRigidCoord, transformRigidPath } from '../model/compound-link-path';
 import { MERGE_REFUSAL_MESSAGES, MergeRefusal, refuseJointMerge } from '../model/drop-target';
+import { planCylinderPose, snapshotOf } from '../model/cylinder-pose-plan';
 import { constrainForceAnchor } from '../model/force-anchor';
 import { redundantlyHeldJointSets } from '../model/rigid-bodies';
 import { MODEL_SCALE } from '../model/render-scale';
@@ -1162,26 +1163,44 @@ export class MechanismService {
       );
       if (!pose) continue;
 
-      const placements: [Joint, { x: number; y: number }][] = [
-        [sealed.barrelNear, pose.barrelNear],
-        [sealed.pin, pose.pin],
-        [sealed.slider, pose.pin],
-      ];
+      // Through the planner, so that straightening a ram whose mount is welded
+      // to something turns that body too. Writing the three interior joints on
+      // their own holds the mounts still, which is right, and leaves a welded
+      // bracket at the old angle, which silently deforms a body that is meant
+      // to be rigid. One cylinder at a time and no dependents: each normalizes
+      // itself, as it always has.
+      const planned = planCylinderPose(
+        { cylinder: sealed, pose },
+        {
+          cylinders: [sealed],
+          snapshot: snapshotOf(this.joints),
+          tolerance: 1e-6,
+          layoutFor: () => undefined,
+        }
+      );
+      // A structure no pose can satisfy is left exactly as it was drawn. This
+      // runs on every rebuild, decode included, so it is the wrong place to
+      // argue with the reader: the readiness rules report it instead.
+      if (!planned.ok) continue;
+
       let moved = false;
-      for (const [joint, at] of placements) {
+      const movedIds = new Set<string>();
+      for (const joint of this.joints) {
+        const at = planned.plan.placements.get(joint.id);
+        if (!at) continue;
         const x = roundNumber(at.x, 6);
         const y = roundNumber(at.y, 6);
         if (joint.x !== x || joint.y !== y) {
           joint.x = x;
           joint.y = y;
           moved = true;
+          movedIds.add(joint.id);
         }
       }
       if (!moved) continue;
 
       // Only the repair path pays for this: the member links' derived state
       // follows the joints that just straightened.
-      const movedIds = new Set(placements.map(([joint]) => joint.id));
       for (const link of this.links) {
         if (!(link instanceof RealLink)) continue;
         if (!link.joints.some((joint) => movedIds.has(joint.id))) continue;
