@@ -24,6 +24,8 @@ import {
   ellipticalTrammelFixture,
   invertedSliderCrankFixture,
   loadedInvertedSliderCrankFixture,
+  offsetPivotLeverFixture,
+  offsetPivotLeverWeldedRodFixture,
   scotchYokeFixture,
   scotchYokeGuidedAtFarEndFixture,
   scotchYokeWithTracerFixture,
@@ -586,6 +588,23 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     floatingSlot: true,
     speed: { rpm: LIBRARY_RPM },
     fixture: invertedSliderCrankFixture(WHITWORTH_OFFSET, WHITWORTH_CRANK),
+  },
+  {
+    name: 'Slotted lever pinned off its slot',
+    purpose:
+      'The carrier swings about a third pin of its own, not a slot joint: position against closed form, rates against finite differences',
+    spec: 'offset-pivot-lever.spec.ts',
+    floatingSlot: true,
+    fixture: offsetPivotLeverFixture(),
+  },
+  {
+    name: 'Slotted lever with a rod that cannot tilt',
+    purpose:
+      'The rod welded to its block: the slanted slot counts as slanted, so the geometry reports nothing can move',
+    spec: 'offset-pivot-lever.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    fixture: offsetPivotLeverWeldedRodFixture(),
   },
   {
     name: 'Inverted slider-crank with a load',

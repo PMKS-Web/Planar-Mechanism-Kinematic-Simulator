@@ -295,8 +295,10 @@ PR's deploy preview for review.
 
 The plan's one-liner — "a welded rider has no relative rotation at the block" — describes the
 velocity consequence and skips the position one. Measured: the yoke's joints are simply
-**unreachable**. `orderCarrierFromBlock` needs one slot joint already known (neither `C` nor `D`
-is), and `orderRiderOnMovingSlot` needs both. The pass ends with `unsolvableJoints = ['C', 'D']`.
+**unreachable**. `orderCarrierFromBlock` needs one pin of the carrier already known (neither `C`
+nor `D` is -- it took a *slot* joint when this was written, and now takes any known pin of the
+carrier, so a lever pinned to the frame off its slot is reachable too), and
+`orderRiderOnMovingSlot` needs both slot joints. The pass ends with `unsolvableJoints = ['C', 'D']`.
 
 **A welded slide assembly is a rigid body with exactly one translational freedom along its guide.**
 That is the primitive, and it decomposes into two pieces:

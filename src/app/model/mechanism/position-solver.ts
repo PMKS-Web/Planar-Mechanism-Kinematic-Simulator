@@ -147,10 +147,18 @@ type SlotLine =
  * set of joints rather than one.
  */
 interface InverseSlotStep {
-  /** Slot joint whose position is already known; the ray starts here. */
+  /**
+   * A joint of the carrier whose position is already known; the carrier
+   * swings about it. One of the slot's own joints when one is known, and
+   * otherwise any pin of the carrier the walk has placed -- the grounded
+   * pivot of a lever whose slot is cut between two other joints of it.
+   */
   anchorId: string;
-  /** The sliding joint, known to lie on the slot: the ray passes through it. */
+  /** The sliding joint, known to lie on the slot: the slot passes through it. */
   blockId: string;
+  /** The slot's two joints, which say where the slot lies in the carrier. */
+  slotAId: string;
+  slotBId: string;
   /** Every joint of the carrier this step places. */
   targets: string[];
 }
@@ -1893,15 +1901,19 @@ export class PositionSolver {
         continue;
       }
 
-      // Exactly one slot joint known: with neither, there is no ray to swing
-      // the link about; with both, the carrier is already placed and this is
-      // the forward direction instead.
-      const anchor = known.includes(slotA.id)
-        ? slotA
-        : known.includes(slotB.id)
-          ? slotB
-          : undefined;
-      if (!anchor || (known.includes(slotA.id) && known.includes(slotB.id))) continue;
+      // With both slot joints known the carrier is already placed, and this
+      // is the forward direction instead. Otherwise the carrier swings about
+      // whichever of its pins is known: a slot joint when one is, since the
+      // slot then runs straight through the pivot, and failing that any other
+      // pin of the carrier -- a lever pinned to the frame at a third joint,
+      // with its slot cut between the two the frame does not hold. A sliding
+      // joint is no pivot: it is seeded as known and travels regardless.
+      if (known.includes(slotA.id) && known.includes(slotB.id)) continue;
+      const anchor = [slotA, slotB, ...carrier.joints].find(
+        (member) =>
+          !(member instanceof PrisJoint) && member.id !== candidate.id && known.includes(member.id)
+      );
+      if (!anchor) continue;
 
       const targets = carrier.joints
         .filter((member) => !known.includes(member.id))
@@ -1911,6 +1923,8 @@ export class PositionSolver {
       this.inverseSlotMap.set(targets[0], {
         anchorId: anchor.id,
         blockId: candidate.id,
+        slotAId: slotA.id,
+        slotBId: slotB.id,
         targets,
       });
       this.desiredAnalysisJointMap.set(targets[0], 'inverseSlot');
@@ -2813,14 +2827,24 @@ export class PositionSolver {
   }
 
   /**
-   * Swing a carrier link about one of its slot joints until the slot passes
+   * Swing a carrier link about one of its known pins until the slot passes
    * through the block again, then carry every one of its joints along.
    *
-   * The rotation is measured against where the block sat at t = 0 rather than
-   * against the other slot joint. Both describe the same line, but the ray from
-   * the anchor to the block is the one that cannot flip: measuring against the
-   * far joint leaves the sign undetermined whenever the block sits on the
-   * anchor's other side, which would turn the link over.
+   * In the carrier's own frame the slot is a line at some fixed signed
+   * distance `offset` from the pivot, and the block sits on it some signed
+   * distance `along` from the foot of the pivot's perpendicular. So the vector
+   * from pivot to block is `along·û + offset·û⊥`, where û is the slot's
+   * direction: its length is set by where the block is now, `offset` never
+   * changes, and `along` follows from the two. Which of the two roots of
+   * `along` is meant is settled once, at t = 0: the block only changes sides of
+   * the foot by passing through it, which is the tangency where this returns
+   * no solution, so the sign it started with is the sign it keeps.
+   *
+   * A pivot on the slot line -- the usual case, one of the slot's own joints
+   * -- has `offset = 0`, and then this is just the ray from the pivot through
+   * the block. Measuring that against where the block sat at t = 0 rather than
+   * against the other slot joint is what keeps the ray from flipping when the
+   * block sits on the pivot's other side, which would turn the link over.
    */
   private static inverseSlot(joints: Joint[], targets: string[]): boolean {
     const step = this.inverseSlotMap.get(targets[0]);
@@ -2831,7 +2855,9 @@ export class PositionSolver {
     const blockNow = this.jointMapPositions.get(step.blockId);
     const anchorStart = this.initialJointPosMap.get(step.anchorId);
     const blockStart = this.initialJointPosMap.get(step.blockId);
-    if (!anchorNow || !blockNow || !anchorStart || !blockStart) {
+    const slotAStart = this.initialJointPosMap.get(step.slotAId);
+    const slotBStart = this.initialJointPosMap.get(step.slotBId);
+    if (!anchorNow || !blockNow || !anchorStart || !blockStart || !slotAStart || !slotBStart) {
       return false;
     }
 
@@ -2839,17 +2865,34 @@ export class PositionSolver {
     const nowY = blockNow[1] - anchorNow[1];
     const startX = blockStart[0] - anchorStart[0];
     const startY = blockStart[1] - anchorStart[1];
+    const slotX = slotBStart[0] - slotAStart[0];
+    const slotY = slotBStart[1] - slotAStart[1];
+    const slotLength = Math.hypot(slotX, slotY);
     // The block passing through the anchor leaves the slot's direction
     // genuinely undefined, not merely imprecise. Reporting "no solution" hands
     // it to the same reversal path a rocker's toggle takes.
     if (
       Math.hypot(nowX, nowY) <= DEGENERATE_SLOT_TOLERANCE ||
-      Math.hypot(startX, startY) <= DEGENERATE_SLOT_TOLERANCE
+      Math.hypot(startX, startY) <= DEGENERATE_SLOT_TOLERANCE ||
+      slotLength <= DEGENERATE_SLOT_TOLERANCE
     ) {
       return false;
     }
 
-    const rotation = Math.atan2(nowY, nowX) - Math.atan2(startY, startX);
+    // The slot as the carrier holds it: its heading at t = 0, how far the
+    // pivot stands off it, and which side of the foot the block started on.
+    const slotHeading = Math.atan2(slotY, slotX);
+    const offset = (slotX * startY - slotY * startX) / slotLength;
+    const alongStart = (slotX * startX + slotY * startY) / slotLength;
+    const reach = nowX * nowX + nowY * nowY - offset * offset;
+    // The block has come nearer the pivot than the slot ever passes: the
+    // slot can only be tangent to that circle, and past it there is nothing
+    // to swing to. A limit, answered like any other.
+    if (reach < 0) {
+      return false;
+    }
+    const along = (alongStart < 0 ? -1 : 1) * Math.sqrt(reach);
+    const rotation = Math.atan2(nowY, nowX) - Math.atan2(offset, along) - slotHeading;
     const cos = Math.cos(rotation);
     const sin = Math.sin(rotation);
     for (const id of step.targets) {

@@ -219,6 +219,31 @@ export function matLinearSystem(A: Array<Array<number>>, B: Array<Array<number>>
   return matProduct(inv_A, B);
 }
 
+export function matTranspose(m: Array<Array<number>>) {
+  const result = matMake(m[0]?.length ?? 0, m.length, 0.0);
+  for (let i = 0; i < m.length; ++i) {
+    for (let j = 0; j < m[i].length; ++j) {
+      result[j][i] = m[i][j];
+    }
+  }
+  return result;
+}
+
+/**
+ * The x that comes nearest to satisfying every row of Ax = B, when there are
+ * more rows than unknowns: the normal equations AᵀA x = AᵀB. For rows that
+ * all agree -- the same constraint written down twice, as a mechanism with a
+ * redundant loop writes it -- this is the exact answer, and a square system
+ * is handed straight to `matLinearSystem`.
+ */
+export function matLeastSquares(A: Array<Array<number>>, B: Array<Array<number>>) {
+  if (A.length === (A[0]?.length ?? 0)) {
+    return matLinearSystem(A, B);
+  }
+  const At = matTranspose(A);
+  return matLinearSystem(matProduct(At, A), matProduct(At, B));
+}
+
 export function crossProduct(A: Array<number>, B: Array<number>) {
   return [A[1] * B[2] - A[2] * B[1], -1 * (A[0] * B[2] - A[2] * B[0]), A[0] * B[1] - A[1] * B[0]];
 }

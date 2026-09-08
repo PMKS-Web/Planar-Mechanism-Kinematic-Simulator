@@ -1841,3 +1841,73 @@ circle -- small against the most it reaches anywhere on it -- rather than only s
 gap. A direction that is nearly all of a genuine motion with a hair of a dying one leaves a
 residual of the hair's square under a gap of the motion's size, and the relative test alone let
 every such direction through.
+
+### A slotted lever swings about any known pin of its own, not only a slot joint
+
+The inverse-slot primitive (`orderCarrierFromBlock` / `inverseSlot` in `position-solver.ts`)
+places a slotted link from the block riding in it: swing the carrier about a joint of it the
+walk already knows until the slot passes through the block. It used to insist that joint be one
+of the slot's two ends, which every Whitworth and shaper in the library satisfies -- and a
+locomotive's combination lever, pinned to the frame at a *third* joint with its slot cut between
+the other two, did not. The walk left the lever unplaced, the simultaneous fallback refuses any
+slot on a moving link by policy (§4), and the reader was told the part was "tied to nothing".
+
+Now the pivot may be any known pin of the carrier, a slot joint first when one is known. In the
+carrier's frame the slot is a line at a fixed signed distance `offset` from the pivot, and the
+block sits `along` from the foot of the pivot's perpendicular: `pivot→block = along·û +
+offset·û⊥`. `offset` never changes, `|pivot→block|` is known each sample, so `along` follows,
+and its sign is settled once at t = 0 -- the block can only change sides of the foot through
+the tangency where `|pivot→block| = |offset|`, which returns "no solution" and reverses like a
+rocker's limit. With the pivot on the slot, `offset = 0` and this is the old ray.
+`offset-pivot-lever.spec.ts` holds a closed form; `locomotive-valve-gear.spec.ts` holds the
+drawing that found it.
+
+### "Hidden freedom" is more freedoms than the drive has, not more than Gruebler counted
+
+`explainDeadPosition` compares the geometry's freedom count against `dof`, the number that let
+the solver run, and not against Gruebler's. A crosshead on two slides counts -1 and is rescued
+to one by the same geometry; comparing against -1 called the solver's every failure on such a
+drawing a hidden freedom, when the rescue was the count agreeing with the drawing.
+
+### The mobility count reads a floating slot's live direction
+
+`constraintsOf` in `mobility.ts` writes a slide constraint from `joint.slotAngle`, never from
+`joint.angle_rad`. The stored angle is what a *grounded* guide keeps; a slot cut into a link has
+its direction in the two joints it runs between, and the stored number is stale (usually zero).
+Read it and a slanted slot counts as horizontal: the pin was free to leave its slot sideways, the
+count found a freedom the drawing does not have, and a lever locked by a weld -- see the next
+entry -- was rescued to "one freedom" and handed to a solver that could not step it.
+
+### A weld at a block joint holds the rider level, and a level rod cannot follow a swinging pin
+
+Welding the pin where a rod meets its slider block makes a *Slide* (§2.1): rod and block are one
+body, and on a grounded guide that body cannot turn. A rod pinned at its other end to a lever
+that swings about a fixed pivot is then locked -- the pin on the lever moves on a circle, the
+rod's end may only move along the guide. The locomotive drawing had exactly this at T, so the
+honest verdict is "over-constrained; a weld also removes freedom", which the readiness row says.
+Unweld T and it runs. The position solver's ordinary dyad walk does *not* honor that weld -- it
+places the welded rider with `circleLineIntersectionPoints` as if it could tilt -- so before the
+slot-angle fix above the drawing "ran" with its valve rod tilting through a weld, and its
+velocity graphs, which do honor the weld, were a least-squares compromise between two
+mechanisms. The count now refuses it before either solver is asked.
+
+### The loop matrices are sized by loops and solved by least squares
+
+`KinematicsSolver.determineArrays` allocates `max(unknowns, 2·loops)` rows, and `determineAng`
+solves with `matLeastSquares` (normal equations; square systems go straight to the inverse as
+before). A drawing whose loops are independent as topology but not as geometry -- a crosshead on
+two parallel slides, a parallelogram with a third crank -- has more loops than it has rates to
+find. The `LoopSolver` keeps only a cycle basis, which is right, but a redundant *geometric*
+constraint is still a distinct cycle, so the extra loop's rows have nowhere to go when the
+matrix is sized by the unknowns: `B_matrix[rowIndex]` was undefined and the Kinematic Analysis
+panel threw on the three-crank parallelogram. The extra rows repeat what the others said, so the
+least-squares answer is the exact one. `redundant-parallel-crank.spec.ts` asserts the rates.
+
+### A slotted carrier's joints are carried from a grounded pin first
+
+`KinematicsSolver.knownCarrierSeed` prefers a grounded member of the carrier, then the slot's
+anchor, then anything settled. The maps are cleared once per mechanism and not once per frame, so
+from the second frame on every joint reads as "settled" -- with the previous frame's number.
+Seeding from the anchor when the walk reaches the carrier *through* the slot carried last frame's
+velocity into this one and gave the grounded pivot a velocity of its own; every joint of the
+lever was then off by that same vector. A grounded pin is exact in every frame.

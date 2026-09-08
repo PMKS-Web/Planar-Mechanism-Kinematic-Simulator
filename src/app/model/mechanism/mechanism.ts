@@ -449,7 +449,11 @@ export class Mechanism {
    */
   private explainDeadPosition(): void {
     const measured = this.measuredFreedoms();
-    if (measured !== undefined && measured > this.countedFreedoms) {
+    // More than the one freedom the input drives -- not merely more than
+    // Gruebler counted. A crosshead on two slides counts below zero and is
+    // rescued by this same measurement, and a rescue that says "one" is the
+    // count agreeing with the drawing, not a freedom the drawing hid.
+    if (measured !== undefined && measured > this._dof) {
       this._hiddenFreedoms = measured;
       this.setMechanismInvalid('hidden-freedom');
       return;

@@ -1,5 +1,6 @@
 import '../../app/model/joint';
 import { buildMechanism } from '../../test-utils/verification/fixture';
+import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
 import {
   redundantParallelCrankFixture,
   teachingLabFourBarFixture,
@@ -61,6 +62,47 @@ describe('a mechanism Gruebler counts as rigid', () => {
       Math.atan2(at(frame, 'E').y - at(frame, 'B').y, at(frame, 'E').x - at(frame, 'B').x)
     );
     expect(Math.max(...headings) - Math.min(...headings)).toBeLessThan(1e-3);
+  });
+
+  it('and its rates solve, with one loop more than it has unknowns', () => {
+    // The loop solver finds two independent loops here and only three rates
+    // to solve for -- the two idle cranks and the coupler -- so the loop
+    // equations are four rows on three columns. They agree with each other,
+    // because the third crank does repeat the first two, and the least-squares
+    // answer is the exact one. Sized by the unknowns alone, the matrix had no
+    // row for the second loop to write into, and the Kinematic Analysis panel
+    // threw on the first mechanism this was ever asked of.
+    const built = buildMechanism(redundantParallelCrankFixture());
+    KinematicsSolver.resetVariables();
+    KinematicsSolver.requiredLoops = built.mechanism.requiredLoops;
+    expect(built.mechanism.requiredLoops.length).toBe(2);
+    for (let t = 0; t < built.mechanism.joints.length; t++) {
+      KinematicsSolver.determineKinematics(
+        built.mechanism.joints[t],
+        built.mechanism.links[t],
+        built.mechanism.inputAngularVelocities[t]
+      );
+      const driven = built.mechanism.inputAngularVelocities[t];
+      // Twice a turn the cranks lie along the coupler, and there the loop
+      // equations genuinely lose a rank: the parallelogram could fold into
+      // its anti-parallelogram, and no first-order solve can tell. Near that
+      // change point the rows are nearly dependent and the answer is a
+      // compromise that worsens as the flat pose nears -- a fifth of a
+      // thousandth at fifteen degrees from it, half a turn's worth at it.
+      // Away from it the answer is exact to the arithmetic.
+      const b = built.mechanism.joints[t].find((joint) => joint.id === 'B')!;
+      const crank = Math.abs(Math.sin(Math.atan2(b.y, b.x)));
+      if (crank < Math.sin((15 * Math.PI) / 180)) continue;
+      // Every crank turns with the driven one, and the coupler never turns,
+      // to the few ten-thousandths the recorded positions leave the rows
+      // disagreeing by.
+      expect(KinematicsSolver.linkAngVelMap.get('AB')).toBeCloseTo(driven, 3);
+      expect(KinematicsSolver.linkAngVelMap.get('EF')).toBeCloseTo(driven, 3);
+      expect(KinematicsSolver.linkAngVelMap.get('BEI')).toBeCloseTo(0, 3);
+      // The acceleration rows carry the velocities' error once more, squared
+      // against the crank's radius, so they are good to a few thousandths.
+      expect(KinematicsSolver.linkAngAccMap.get('BEI')).toBeCloseTo(0, 2);
+    }
   });
 
   it('stays rigid when the freedom is a tangency rather than a motion', () => {

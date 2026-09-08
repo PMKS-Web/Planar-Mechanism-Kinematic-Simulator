@@ -1318,3 +1318,40 @@ export function parallelGripperFixture(scale: number = 1): MechanismFixture {
     inputAngVel: INPUT_SPEED * scale,
   };
 }
+
+/**
+ * A slotted lever pinned to the frame at a joint that is not on its slot.
+ *
+ * Crank AB drives a block that rides a slot cut between D and E on the lever
+ * CDE, which turns about the ground pin C -- and C sits one unit off the line
+ * D-E, so the slot never passes through the pivot. That is the shape every
+ * earlier slotted-lever fixture avoided: the inverse-slot primitive swung the
+ * carrier about a slot joint, and a carrier whose only known joint is a third
+ * pin of its own was unreachable. A rod D-F carries the swing out to a slider
+ * on a horizontal guide, the way a valve gear's combination lever drives its
+ * valve rod, and the crank turns all the way round: the block stays between
+ * the slot's ends and the pivot's offset is well inside the crank's reach.
+ */
+export function offsetPivotLeverFixture(): MechanismFixture {
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true, input: true },
+      { id: 'B', x: 0, y: 1 },
+      { id: 'C', x: 3, y: 0, ground: true },
+      { id: 'D', x: 2, y: 1 },
+      { id: 'E', x: -2, y: 1 },
+      { id: 'F', x: 5, y: 1 },
+    ],
+    links: [{ joints: 'AB' }, { joints: 'CDE' }, { joints: 'DF' }],
+    sliders: [
+      { at: 'B', prisId: 'P', on: { carrier: 'CDE', a: 'D', b: 'E' } },
+      { at: 'F', prisId: 'Q', angleRad: 0 },
+    ],
+    inputAngVel: INPUT_SPEED,
+  };
+}
+
+/** The same lever with its rod welded to the block: a rod that cannot tilt. */
+export function offsetPivotLeverWeldedRodFixture(): MechanismFixture {
+  return { ...offsetPivotLeverFixture(), welds: ['F'] };
+}

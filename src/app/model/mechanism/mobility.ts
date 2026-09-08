@@ -344,12 +344,18 @@ function constraintsOf(
       const rest = meeting.filter((body) => body !== carrierBody);
       if (carrierBody !== undefined && rest.length > 0) {
         const [block, ...alsoHere] = rest;
+        // The slot's direction as it is now, not the angle stored on the
+        // joint: a floating slot's direction lives in the two joints it is cut
+        // between, and the stored angle is only what a grounded guide keeps.
+        // Read the stored one and a slanted slot in a lever counts as a
+        // horizontal one, which let a pin ride straight through the side of
+        // its slot and reported a freedom the drawing does not have.
         constraints.push({
           kind: 'slide',
           at,
           block: bodyAt(block),
           carrier: bodyAt(carrierBody),
-          angle: joint.angle_rad,
+          angle: joint.slotAngle,
         });
         // Anything else meeting the block here is pinned to it, and the count
         // stays the k-1 pairings Gruebler charges for.

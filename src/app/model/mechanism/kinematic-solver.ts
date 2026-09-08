@@ -1,6 +1,6 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { SliderBlock, Link, RealLink } from '../link';
-import { matLinearSystem } from '../utils';
+import { matLeastSquares } from '../utils';
 import { Loop, LoopEdge } from './loop-solver';
 import { hasFixedOrientation, SlideAssembly, slideAssemblies } from '../slide-assembly';
 import { PositionSolver } from './position-solver';
@@ -702,10 +702,10 @@ export class KinematicsSolver {
     let X: Array<Array<number>> = [];
     switch (analysisType) {
       case 'Velocity':
-        X = matLinearSystem(this.A_matrix_AngVel, this.B_matrix_AngVel);
+        X = matLeastSquares(this.A_matrix_AngVel, this.B_matrix_AngVel);
         break;
       case 'Acceleration':
-        X = matLinearSystem(this.A_matrix_AngAcc, this.B_matrix_AngAcc);
+        X = matLeastSquares(this.A_matrix_AngAcc, this.B_matrix_AngAcc);
         break;
     }
     // 3rd, store unknown values to respected links
@@ -903,9 +903,26 @@ export class KinematicsSolver {
     linksAlreadyDone.push(frame.carrier.id);
   }
 
-  /** A carrier joint whose motion is settled, preferring the slot's own anchor. */
+  /**
+   * A carrier joint whose motion is settled: a grounded pin of the carrier
+   * first, then the slot's own anchor, then any other member.
+   *
+   * The maps are cleared once per mechanism rather than once per timestep, so
+   * from the second frame on every joint reads as settled, with whatever the
+   * previous frame left there. A grounded pin is exact in every frame; the
+   * anchor is exact only when something earlier in this frame's walk placed
+   * it, and when the walk reaches the carrier through the slot nothing has.
+   * Seeding from the anchor then carried last frame's velocity into this one
+   * and handed the grounded pivot a motion of its own.
+   */
   private static knownCarrierSeed(frame: SlotFrame): Joint | undefined {
     const settled = (id: string) => this.jointVelMap.has(id) && this.jointAccMap.has(id);
+    const grounded = frame.carrier.joints.find(
+      (member) => member instanceof RealJoint && member.ground && settled(member.id)
+    );
+    if (grounded) {
+      return grounded;
+    }
     if (settled(frame.anchor.id)) {
       return frame.anchor;
     }
@@ -1019,7 +1036,15 @@ export class KinematicsSolver {
         }
       }
     });
-    for (let i = 0; i < unknownLinksOrJoints.length; i++) {
+    // Two rows per loop, and never fewer rows than unknowns. A drawing whose
+    // loops are independent as topology but not as geometry -- a crosshead on
+    // two parallel slides, a parallelogram with a third crank -- has more
+    // loops than it has rates to find, and the extra rows say what the others
+    // already said. They are kept and solved by least squares below; sizing
+    // the matrix by the unknowns alone left the extra loop writing past its
+    // last row.
+    const rows = Math.max(unknownLinksOrJoints.length, 2 * this.requiredLoops.length);
+    for (let i = 0; i < rows; i++) {
       const row = [];
       for (let j = 0; j < unknownLinksOrJoints.length; j++) {
         row.push(0);
