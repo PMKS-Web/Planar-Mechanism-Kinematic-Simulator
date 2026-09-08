@@ -196,3 +196,65 @@ describe('the same drive with its combination lever pinned to the frame', () => 
     });
   });
 });
+
+/**
+ * The same drive again, with the valve rod split at a pin `f`.
+ *
+ * The reader's own answer to the weld at `T`: rather than unweld it, put a
+ * joint in the rod. `T`-`f` stays welded to the block and so stays level, and
+ * `f`-`S` is free to tilt between it and the lever. That is a real valve gear,
+ * and it is also the arrangement neither of the two ways of locating a welded
+ * assembly could reach -- no slot is cut into it, and no member of it is
+ * placed before it. It is located by the link onto it instead.
+ */
+const SPLIT_VALVE_ROD =
+  '2v.6G,Fe.A,0.1011.4A,A,0pH,PI,0.0B,B,0mS,ef,0.6C,C,3R,PI,0.0D,D,6G,ef,0.GI,I,ks,dj,0.5J,J,ks,dj,0.8K,K,1ky,d4,0.8L,L,r7,dh,0.0O,O,1ky,ku,0.GP,P,1ky,VG,0.8Q,Q,r8,r8,0.0R,R,gK,qy,0.0S,S,o0,17u,0.8T,T,1mW,17u,0.0W,W,ds,ku,0.5Y,Y,r8,r8,0.Ga,a,44,2g,0.Gb,b,0mS,2W,0.Kc,c,mS,xO,0.1d,d,gK,qy,0,SWc,S,W.5e,e,1mW,17u,0.0f,f,14m,17u,0..1RABb,AB,0,0,0nO,Mq,c5cae9,A,B,b,,.1RCDa,CD,0,0,4b,Mt,303e9f,C,D,a,,.ARDB,DB,0,0,0L6,ef,0d125a,D,B,,.YPIJ,IJ,0,0,0,0,,I,J,,.ARDI,DI,0,0,QZ,eB,0d125a,D,I,,.YPQY,QY,0,0,0,0,,Q,Y,,.ARSWc,SW,0,0,k6,xO,c5cae9,S,W,c,,.ARIKLOPQR,IKLOPQR,0,0,16X,iW,B2DFDB,I,K,L,Q,O,P,R,,IKL,QL,KOP,QR.YPRd,Rd,0,0,0,0,,R,d,,.YPTe,Te,0,0,0,0,,T,e,,.ARfS,fS,0,0,xO,17u,303e9f,f,S,,.ARTf,Tf,0,0,1Qe,17u,0d125a,T,f,,.aRIKL,IKL,0,0,16J,dV,B2DFDB,I,K,L,,.aRQL,QL,0,0,r7,kQ,303e9f,Q,L,,.aRKOP,KOP,0,0,1ky,d4,00695C,K,O,P,,.aRQR,QR,0,0,lo,r3,303e9f,Q,R,,...N_.HlDBp*4JxB75';
+
+describe('the drive with its valve rod split at a pin', () => {
+  const { mechanism } = buildMechanismFixture(SPLIT_VALVE_ROD);
+  const frames = mechanism.joints;
+  const at = (frame: Joint[], id: string) => frame.find((one) => one.id === id)!;
+
+  it('runs', () => {
+    // Gruebler counts zero -- the crosshead's two slides again -- and the
+    // geometry rescues it to one, which the solver then walks.
+    expect(mechanism.dof).toBe(1);
+    expect(mechanism.isMechanismValid()).toBe(true);
+    expect(frames.length).toBeGreaterThan(300);
+  });
+
+  it('keeps the valve rod level and its pin on the lever', () => {
+    const level = at(frames[0], 'T').y;
+    const rod = Math.hypot(
+      at(frames[0], 'f').x - at(frames[0], 'S').x,
+      at(frames[0], 'f').y - at(frames[0], 'S').y
+    );
+    for (const frame of frames) {
+      // The weld holds T, its block e and the rod's own pin f on one line.
+      for (const id of ['T', 'e', 'f']) {
+        expect(at(frame, id).y).toBeCloseTo(level, 6);
+      }
+      expect(
+        Math.hypot(at(frame, 'f').x - at(frame, 'S').x, at(frame, 'f').y - at(frame, 'S').y)
+      ).toBeCloseTo(rod, 3);
+    }
+  });
+
+  it('solves its rates, and nothing on the valve rod moves across its guide', () => {
+    KinematicsSolver.resetVariables();
+    KinematicsSolver.requiredLoops = mechanism.requiredLoops;
+    const speeds = mechanism.inputAngularVelocities;
+    const reversal = speeds.findIndex((speed) => Math.sign(speed) !== Math.sign(speeds[0]));
+    for (let t = 0; t < reversal; t++) {
+      KinematicsSolver.determineKinematics(frames[t], mechanism.links[t], speeds[t]);
+      for (const id of ['T', 'e', 'f']) {
+        expect(Math.abs(KinematicsSolver.jointVelMap.get(id)![1])).toBeLessThan(1e-6);
+      }
+      // And the whole assembly travels as one.
+      expect(KinematicsSolver.jointVelMap.get('T')![0]).toBeCloseTo(
+        KinematicsSolver.jointVelMap.get('f')![0],
+        6
+      );
+    }
+  });
+});

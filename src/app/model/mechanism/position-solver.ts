@@ -183,6 +183,22 @@ interface SlideAssemblyStep {
         memberId: string;
       }
     | {
+        /**
+         * A link from a joint of the assembly to a joint outside it that some
+         * earlier step has placed. The assembly only translates, so its joint
+         * runs along a line, and the link holds it a fixed distance from the
+         * placed one: a circle meeting a line, with two roots to choose
+         * between like any other.
+         */
+        kind: 'link';
+        /** The assembly's own joint that the link reaches. */
+        memberId: string;
+        /** The placed joint at the link's far end. */
+        referenceId: string;
+        /** What the link measures, taken from the drawn pose. */
+        length: number;
+      }
+    | {
         /** A slot cut into the assembly, which must pass through its block. */
         kind: 'slot';
         /** The sliding joint riding in that slot; already located. */
@@ -2002,7 +2018,7 @@ export class PositionSolver {
       return undefined;
     }
 
-    const source = this.slideAssemblySource(joints, assembly, movable, known);
+    const source = this.slideAssemblySource(joints, links, assembly, movable, known);
     if (!source) {
       return undefined;
     }
@@ -2033,13 +2049,17 @@ export class PositionSolver {
   /**
    * What locates the assembly along its guide.
    *
-   * Two things can, and the cheaper one wins. If some member of it has already
-   * been placed by an ordinary step, the translation is simply how far that
-   * member moved. Otherwise the assembly must be located by a slot cut into it,
-   * which is the Scotch yoke's case and the one nothing else can do.
+   * Three things can, and the cheapest one wins. If some member of it has
+   * already been placed by an ordinary step, the translation is simply how far
+   * that member moved. Failing that, a link reaching one of its joints from a
+   * joint already placed fixes it -- a valve rod held level by its guide and
+   * pinned to the lever that drives it, which is the case a locomotive's
+   * radius rod presents. Otherwise the assembly must be located by a slot cut
+   * into it, which is the Scotch yoke's case and the one nothing else can do.
    */
   private static slideAssemblySource(
     joints: Joint[],
+    links: Link[],
     assembly: SlideAssembly,
     movable: RealJoint[],
     known: string[]
@@ -2051,6 +2071,11 @@ export class PositionSolver {
     const placed = movable.find((member) => !member.ground && known.includes(member.id));
     if (placed) {
       return { from: { kind: 'member', memberId: placed.id } };
+    }
+
+    const byLink = this.slideAssemblyByLink(links, assembly, movable, known);
+    if (byLink) {
+      return byLink;
     }
 
     const rider = joints.find(
@@ -2087,6 +2112,45 @@ export class PositionSolver {
   }
 
   /**
+   * A link from outside the assembly onto one of its joints.
+   *
+   * The far end has to be a joint an earlier step actually placed, or one the
+   * frame holds: either is a point this step can measure from. A joint of the
+   * assembly itself is not -- the whole assembly is what this step is about to
+   * move, so measuring to a part of it would be measuring to the answer.
+   */
+  private static slideAssemblyByLink(
+    links: Link[],
+    assembly: SlideAssembly,
+    movable: RealJoint[],
+    known: string[]
+  ): Pick<SlideAssemblyStep, 'from'> | undefined {
+    const inside = new Set(assemblyBodyIds(assembly));
+    for (const member of movable) {
+      for (const link of links) {
+        if (inside.has(link.id) || link instanceof SliderBlock) continue;
+        if (!link.joints.some((one) => one.id === member.id)) continue;
+        const reference = link.joints.find(
+          (one) =>
+            one.id !== member.id &&
+            known.includes(one.id) &&
+            !movable.some((other) => other.id === one.id)
+        );
+        if (!reference) continue;
+        return {
+          from: {
+            kind: 'link',
+            memberId: member.id,
+            referenceId: reference.id,
+            length: euclideanDistance(member.x, member.y, reference.x, reference.y),
+          },
+        };
+      }
+    }
+    return undefined;
+  }
+
+  /**
    * Slide a welded assembly along its guide to wherever it is now.
    *
    * The pose is one scalar — travel along the guide — because the weld forbids
@@ -2095,13 +2159,17 @@ export class PositionSolver {
    * `((P − A₀) − t·û) × v̂ = 0`. Located by a placed member, it is just how far
    * that member has gone.
    */
-  private static slideAssemblyThroughSlot(targets: string[]): boolean {
+  private static slideAssemblyThroughSlot(joints: Joint[], targets: string[]): boolean {
     const step = this.slideAssemblyMap.get(targets[0]);
     if (!step) {
       return false;
     }
     const travel =
-      step.from.kind === 'member' ? this.travelFromPlacedMember(step) : this.travelFromSlot(step);
+      step.from.kind === 'member'
+        ? this.travelFromPlacedMember(step)
+        : step.from.kind === 'link'
+          ? this.travelFromLink(step, joints)
+          : this.travelFromSlot(step);
     if (travel === undefined) {
       return false;
     }
@@ -2131,6 +2199,48 @@ export class PositionSolver {
       return undefined;
     }
     return (now[0] - start[0]) * step.guide[0] + (now[1] - start[1]) * step.guide[1];
+  }
+
+  /**
+   * How far to slide so a link onto the assembly still measures what it did.
+   *
+   * The assembly's joint runs along `M₀ + t·û` and has to stay `L` from the
+   * placed joint `S`, so with `w = M₀ − S` the travel solves
+   * `t² + 2t(w·û) + |w|² − L² = 0`. Both roots keep the link's length -- they
+   * are the two ways the rod can lie -- so the choice follows the joint step
+   * by step, through the same extrapolation every other two-root primitive
+   * here uses.
+   */
+  private static travelFromLink(step: SlideAssemblyStep, joints: Joint[]): number | undefined {
+    const from = step.from;
+    if (from.kind !== 'link') {
+      return undefined;
+    }
+    const start = this.initialJointPosMap.get(from.memberId);
+    const reference = this.jointMapPositions.get(from.referenceId);
+    const member = joints.find((one) => one.id === from.memberId);
+    if (!start || !reference || !member) {
+      return undefined;
+    }
+    const wx = start[0] - reference[0];
+    const wy = start[1] - reference[1];
+    const along = wx * step.guide[0] + wy * step.guide[1];
+    const gap = wx * wx + wy * wy - from.length * from.length;
+    const discriminant = along * along - gap;
+    // The placed joint has moved out of the link's reach of the guide: the
+    // circle no longer meets the line at all. A limit of the travel, answered
+    // the way every other one is -- by reporting no solution, which the walk
+    // reads as a toggle and reverses at.
+    if (discriminant < 0) {
+      return undefined;
+    }
+    const root = Math.sqrt(discriminant);
+    const at = (travel: number) => [
+      start[0] + travel * step.guide[0],
+      start[1] + travel * step.guide[1],
+    ];
+    const chosen = this.solutionNearestCurrent([at(-along + root), at(-along - root)], member);
+    return (chosen[0] - start[0]) * step.guide[0] + (chosen[1] - start[1]) * step.guide[1];
   }
 
   /** How far to slide so the assembly's own slot reaches the block riding in it. */
@@ -2483,7 +2593,7 @@ export class PositionSolver {
           possible = this.inverseSlot(joints, step_targets);
           break;
         case 'slideAssemblyThroughSlot':
-          possible = this.slideAssemblyThroughSlot(step_targets);
+          possible = this.slideAssemblyThroughSlot(joints, step_targets);
           break;
         case 'drivenCylinderMount':
           possible = this.drivenCylinderMount(joints, joint, angVelDir);

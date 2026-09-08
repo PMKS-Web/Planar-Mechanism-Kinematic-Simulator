@@ -1911,3 +1911,29 @@ from the second frame on every joint reads as "settled" -- with the previous fra
 Seeding from the anchor when the walk reaches the carrier *through* the slot carried last frame's
 velocity into this one and gave the grounded pivot a velocity of its own; every joint of the
 lever was then off by that same vector. A grounded pin is exact in every frame.
+
+### A welded slide assembly can be located by a link onto it, not only by a slot
+
+A rod welded to its block on a grounded guide is a rigid body with one freedom -- how far it has
+slid. `orderSlideAssembly` knew two ways to pin that down: a member of the assembly some earlier
+step had already placed, and a slot cut *into* the assembly with a known block riding it, which is
+the Scotch yoke's case. The commonest arrangement of all was missing: a link from elsewhere in the
+mechanism pinned onto the rod, which is how a locomotive's radius rod drives its valve rod. The
+walk left those joints in `unsolvableJoints`, `attemptPositionAnalysis` refused before its first
+step, and an ordinary mechanism was reported as starting at a dead position.
+
+`slideAssemblySource` now has a third kind, `'link'`. The assembly's joint runs along `M0 + t*u`
+and the link holds it `L` from the placed joint `S`, so with `w = M0 - S` the travel solves
+`t^2 + 2t(w.u) + |w|^2 - L^2 = 0`. A negative discriminant is the link losing reach of the guide's
+line -- a limit, answered by reporting no solution so the walk reverses. Both roots keep the
+link's length, so the branch is chosen by `solutionNearestCurrent`, the same extrapolation every
+other two-root primitive here uses.
+
+The far end has to be a joint outside the assembly. Measuring to one of its own members would be
+measuring to the answer, since the step is about to move the whole assembly. A *grounded* joint
+outside it is a fine reference, unlike the `'member'` case where reading travel from a seeded
+member reports the assembly permanently at rest.
+
+`guided-rod-on-a-link.spec.ts` is the primitive in its smallest form, checked against a closed
+form and its hand-differentiated derivative; the same spec shows that unwelding the rod leaves two
+freedoms, which is why the weld is what makes the arrangement a mechanism at all.

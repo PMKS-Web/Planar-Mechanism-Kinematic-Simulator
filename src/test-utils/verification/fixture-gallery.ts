@@ -24,6 +24,7 @@ import {
   ellipticalTrammelFixture,
   invertedSliderCrankFixture,
   loadedInvertedSliderCrankFixture,
+  guidedRodOnALinkFixture,
   offsetPivotLeverFixture,
   offsetPivotLeverWeldedRodFixture,
   scotchYokeFixture,
@@ -596,6 +597,15 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'offset-pivot-lever.spec.ts',
     floatingSlot: true,
     fixture: offsetPivotLeverFixture(),
+  },
+  {
+    name: 'Guided rod pushed by a link',
+    purpose:
+      'A welded assembly located by a link onto it, rather than by a slot or by a member already placed',
+    spec: 'guided-rod-on-a-link.spec.ts',
+    floatingSlot: false,
+    slide: true,
+    fixture: guidedRodOnALinkFixture(),
   },
   {
     name: 'Slotted lever with a rod that cannot tilt',

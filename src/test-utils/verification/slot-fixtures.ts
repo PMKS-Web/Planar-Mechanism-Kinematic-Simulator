@@ -1355,3 +1355,38 @@ export function offsetPivotLeverFixture(): MechanismFixture {
 export function offsetPivotLeverWeldedRodFixture(): MechanismFixture {
   return { ...offsetPivotLeverFixture(), welds: ['F'] };
 }
+
+/**
+ * A rod held level by its guide and pushed by a link from a crank.
+ *
+ * `T` is welded to a block on a horizontal grounded guide, so the rod `T`-`F`
+ * is one rigid body with that block and can only translate: it keeps the
+ * heading it was drawn at forever. Nothing rides a slot cut into it, and no
+ * member of it is placed before it, so neither of the two things that used to
+ * locate a welded assembly applies. What locates it is the link `B`-`F`
+ * reaching it from the crank pin -- a locomotive's radius rod driving a valve
+ * rod, in its smallest form.
+ *
+ * Proportions chosen so the crank turns all the way round: the rod is longer
+ * than the crank, so the circle about `B` always meets the guide's line.
+ */
+export function guidedRodOnALinkFixture(): MechanismFixture {
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true, input: true },
+      { id: 'B', x: 0, y: 1 },
+      { id: 'F', x: 3, y: 0 },
+      { id: 'T', x: 6, y: 0 },
+    ],
+    links: [{ joints: 'AB' }, { joints: 'BF' }, { joints: 'FT' }],
+    sliders: [{ at: 'T', prisId: 'G', angleRad: 0 }],
+    welds: ['T'],
+    inputAngVel: INPUT_SPEED,
+  };
+}
+
+/** The same drawing with the rod free to turn in its block: a slider-crank. */
+export function guidedRodOnALinkUnweldedFixture(): MechanismFixture {
+  const fixture = guidedRodOnALinkFixture();
+  return { ...fixture, welds: [] };
+}
