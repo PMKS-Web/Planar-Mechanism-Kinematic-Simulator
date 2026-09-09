@@ -458,3 +458,172 @@ describe('an edit that starts somewhere else', () => {
     expect(result.refusal.code).toBe('cylinder.pose-locked');
   });
 });
+
+describe('what the gesture asked for is a constraint, not a suggestion', () => {
+  /** A ram with a bracket welded to its barrel mount, and the bracket's far end. */
+  function ramAndBracket() {
+    const parts = ram();
+    weldBracketOnto(parts, parts.barrelFar, parts.barrel, 'AX', { x: -3, y: 4 });
+    const [cylinder] = sealedCylinderStructures(parts.joints);
+    expect(cylinder).toBeDefined();
+    return { parts, cylinder };
+  }
+
+  it('never places a requested joint somewhere else', () => {
+    // Translating the bracket asks A and its far end to move together. The ram
+    // then wants to swing about its own far mount, which would take the
+    // bracket round with it -- so the two answers for one joint disagree. The
+    // plan used to take the ram's and commit it, quietly turning a body the
+    // gesture had asked to translate.
+    const { parts, cylinder } = ramAndBracket();
+    const moves = new Map<string, Point>([
+      ['A', { x: 0, y: 2 }],
+      ['AXfar', { x: -3, y: 6 }],
+    ]);
+    const result = planEdit({ moves }, contextFor([cylinder], parts.joints));
+
+    if (result.ok) {
+      // Whatever else it does, it does what was asked.
+      expect(result.plan.placements.get('A')).toEqual({ x: 0, y: 2 });
+      expect(result.plan.placements.get('AXfar')).toEqual({ x: -3, y: 6 });
+    } else {
+      expect(result.refusal.code).toBe('cylinder.pose-conflict');
+    }
+  });
+
+  it('honors a request the ram can actually follow', () => {
+    // The same body, moved along the ram's own axis: the barrel does not have
+    // to turn, so the request and the consequence agree and it goes through.
+    const { parts, cylinder } = ramAndBracket();
+    const moves = new Map<string, Point>([
+      ['A', { x: -1, y: 0 }],
+      ['AXfar', { x: -4, y: 4 }],
+    ]);
+    const result = planEdit({ moves }, contextFor([cylinder], parts.joints));
+
+    expect(result.ok ? 'ok' : result.refusal.code).toBe('ok');
+    if (!result.ok) return;
+    expect(result.plan.placements.get('A')).toEqual({ x: -1, y: 0 });
+    expect(result.plan.placements.get('AXfar')).toEqual({ x: -4, y: 4 });
+  });
+});
+
+describe('an asymmetric body carried through a turn', () => {
+  it('lands exactly where one orientation-preserving transform puts it', () => {
+    // The check behind this fits a single rotation from a body's two furthest
+    // points and requires every other point to follow it, rather than
+    // comparing pairwise distances -- which a *mirror* preserves just as well
+    // as a turn. Nothing in the layout path can produce a mirrored body today,
+    // so this is the positive half of that contract: a scalene bracket, turned
+    // a quarter, with no two points that could be swapped for each other.
+    const parts = ram();
+    const { compound } = weldBracketOnto(parts, parts.barrelFar, parts.barrel, 'AX', {
+      x: -3,
+      y: 4,
+    });
+    // A third, off-axis point on the same body, so the triangle is scalene.
+    const spur = new RevJoint('S', -5, 1);
+    const spurBar = new RealLink('AS', [parts.barrelFar, spur]);
+    const wider = new RealLink(
+      'ABAXS',
+      [...compound.joints, spur],
+      undefined,
+      undefined,
+      undefined,
+      [compound, spurBar]
+    );
+    parts.joints.push(spur);
+    parts.links = parts.links.filter((link) => link.id !== compound.id);
+    parts.links.push(wider);
+    rewire(parts.joints, parts.links);
+
+    const [cylinder] = sealedCylinderStructures(parts.joints);
+    expect(cylinder.barrelRoot.id).toBe('ABAXS');
+
+    const result = planEdit(
+      { poses: [{ cylinder, pose: turnedPose(cylinder, { x: 0, y: 0 }, Math.PI / 2) }] },
+      contextFor([cylinder], parts.joints)
+    );
+
+    expect(result.ok ? 'ok' : result.refusal.code).toBe('ok');
+    if (!result.ok) return;
+    // A quarter turn about the origin sends (x, y) to (-y, x). Both points,
+    // and not merely the distance between them.
+    const bracket = result.plan.placements.get('AXfar')!;
+    expect(bracket.x).toBeCloseTo(-4, 9);
+    expect(bracket.y).toBeCloseTo(-3, 9);
+    const tip = result.plan.placements.get('S')!;
+    expect(tip.x).toBeCloseTo(-1, 9);
+    expect(tip.y).toBeCloseTo(-5, 9);
+  });
+});
+
+describe('the order the cylinders happen to be listed in', () => {
+  /**
+   * A chain of `count` rams, each one's barrel mount welded to the previous
+   * one's rod body, so a move at the head has to walk the whole line.
+   */
+  function longChain(count: number) {
+    const rams = Array.from({ length: count }, (_, index) => {
+      const one = ram(String(index));
+      one.joints.forEach((joint) => {
+        joint.y += 20 * index;
+      });
+      return one;
+    });
+
+    const joints = rams.flatMap((one) => one.joints);
+    const links = rams.flatMap((one) => one.links);
+    for (let index = 0; index + 1 < count; index++) {
+      const rod = rams[index].rod;
+      const nextMount = rams[index + 1].barrelFar;
+      const tie = new RealLink(`tie${index}`, [rams[index].rodFar, nextMount]);
+      const body = new RealLink(
+        `body${index}`,
+        [...rod.joints, nextMount],
+        undefined,
+        undefined,
+        undefined,
+        [rod, tie]
+      );
+      rams[index].rodFar.isWelded = true;
+      // The compound replaces the rod at the top level; the tie lives inside
+      // it as a subset leaf, which is what a weld leaves behind.
+      links.splice(links.indexOf(rod), 1, body);
+    }
+    rewire(joints, links);
+    const cylinders = sealedCylinderStructures(joints);
+    expect(cylinders).toHaveLength(count);
+    return { joints, cylinders, rams };
+  }
+
+  it('does not decide whether a long chain can move', () => {
+    // Revisiting a ram only when one of its mounts moves settles a chain in a
+    // single pass however it is enumerated. Sweeping the whole list in a fixed
+    // order carried one link of a reversed chain per round, and gave up on a
+    // long one -- calling an ordinary translation a conflict.
+    const COUNT = 26;
+    const forward = longChain(COUNT);
+    const backward = longChain(COUNT);
+    const head = (made: ReturnType<typeof longChain>) =>
+      made.cylinders.find((one) => one.barrelFar.id === 'A0')!;
+
+    const a = planEdit(
+      { poses: [{ cylinder: head(forward), pose: slidPose(head(forward), 2) }] },
+      contextFor(forward.cylinders, forward.joints)
+    );
+    const b = planEdit(
+      { poses: [{ cylinder: head(backward), pose: slidPose(head(backward), 2) }] },
+      contextFor([...backward.cylinders].reverse(), backward.joints)
+    );
+
+    expect(a.ok ? 'ok' : a.refusal.code).toBe('ok');
+    expect(b.ok ? 'ok' : b.refusal.code).toBe('ok');
+    if (!a.ok || !b.ok) return;
+    // And the same answer, joint for joint, at the far end of the chain.
+    for (const id of [`A${COUNT - 1}`, `D${COUNT - 1}`]) {
+      expect(b.plan.placements.get(id)!.x).toBeCloseTo(a.plan.placements.get(id)!.x, 6);
+      expect(b.plan.placements.get(id)!.y).toBeCloseTo(a.plan.placements.get(id)!.y, 6);
+    }
+  });
+});

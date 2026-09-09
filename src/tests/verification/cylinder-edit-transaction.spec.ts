@@ -249,3 +249,50 @@ describe('the repair pass that runs on every rebuild', () => {
     expect(at('W').y).toBeCloseTo(witnessBefore.y, 6);
   });
 });
+
+describe('dragging a bracket that is welded to a ram', () => {
+  it('either does what was asked, or does nothing at all', () => {
+    // The geometry and the properties have to come from one transform. The
+    // planner used to treat the drag's own joints as opening guesses that a
+    // cylinder consequence could overwrite, while the service went on
+    // transporting the bracket's force and center of mass by the drag's
+    // original translation -- so the body ended up turned and its properties
+    // translated, a little further apart with every gesture.
+    const { mechanism, grid, at } = build(ramFixture());
+    const { compound, bracket } = weldBracketOnto(mechanism, 'A', 'AB', { x: -3, y: 4 });
+    const leaf = compound.subset.find((sub) => sub.id === bracket.id) as RealLink;
+
+    const midpoint = () => ({
+      x: (at('A').x + at('W').x) / 2,
+      y: (at('A').y + at('W').y) / 2,
+    });
+    leaf.comIsCustom = true;
+    leaf.CoM = new Coord(midpoint().x, midpoint().y);
+
+    const before = {
+      a: { x: at('A').x, y: at('A').y },
+      w: { x: at('W').x, y: at('W').y },
+      com: { x: leaf.CoM.x, y: leaf.CoM.y },
+    };
+    const lift = Math.hypot(at('D').x - at('A').x, at('D').y - at('A').y) * 0.1;
+
+    grid.dragLink(compound, 0, lift);
+
+    const moved = Math.hypot(at('A').x - before.a.x, at('A').y - before.a.y) > 1e-6;
+    if (!moved) {
+      // Refused: nothing moved, and nothing was carried anywhere either.
+      expect(at('W').x).toBeCloseTo(before.w.x, 6);
+      expect(at('W').y).toBeCloseTo(before.w.y, 6);
+      expect(leaf.CoM.x).toBeCloseTo(before.com.x, 6);
+      expect(leaf.CoM.y).toBeCloseTo(before.com.y, 6);
+      return;
+    }
+    // Went through: the bracket is where the drag asked for it, and the point
+    // fixed to it is still the point of the bracket it was fixed to.
+    expect(at('A').y).toBeCloseTo(before.a.y + lift, 4);
+    expect(at('W').x).toBeCloseTo(before.w.x, 4);
+    expect(at('W').y).toBeCloseTo(before.w.y + lift, 4);
+    expect(leaf.CoM.x).toBeCloseTo(midpoint().x, 4);
+    expect(leaf.CoM.y).toBeCloseTo(midpoint().y, 4);
+  });
+});
