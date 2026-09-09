@@ -2054,3 +2054,92 @@ then asks the solver about it has to set the scale to match, or the bounds descr
 part entirely and a perfectly good ram reads as being past its stop. `buildMechanism` sets the
 scale to `1 * MODEL_SCALE` and does not scale the fixture's coordinates, which is why
 `cylinderBoomFixture` comes out of it reporting no travel -- that is the mismatch, not the ram.
+
+### A wrong branch is not a limit, and only one of them is worth a shorter step
+
+`solveLookingAhead` in `mechanism.ts` used to read every refusal as the end of the input's
+travel. Two of the acceptance checks do not describe travel at all: `headingsHeld` refuses a
+welded body turned end for end, and the axis-order half of `cylindersAreIntact` refuses a ram
+assembled inside out. Those are facts about the *step*, not about the mechanism -- the solver
+continues from the pose before it, so near a toggle the two roots of the next pose sit close
+together and a whole degree can land on the far one when the near one was reachable the whole
+way. Reversing there turns a linkage round in the middle of travel it has.
+
+So a **branch** refusal is retried at half the step, down to the same sixty-four cuts the
+boundary solver caps itself at, and only then read as a limit. `PositionSolver.refusedOnBranch`
+is how the caller is told which kind it was; `refuseBranch()` is the only thing that sets it.
+
+**Every other refusal is left as a limit, and that is not conservatism.** Circles that no longer
+reach, a rider at the end of its slot, a ram at its stop: those read the same however finely they
+are approached, and refining at one only creeps up on a wall, spending six extra solves and a
+sample to land 1/64 of a degree nearer it. Retrying all of them costs ten fixtures their cycle --
+`adaptive-sampling`, `reversed-cycle`, `template-url` and the force fixtures all fail -- which
+`near-toggle-continuation.spec.ts` now states directly.
+
+`headingsHeld` also only ever looked at `fixedDirection`. The floating half of the same weld -- a
+rider held at an angle to a slot that moves -- is a `fixedAngle` row, whose residual vanishes at
+the captured angle and again half a turn from it, exactly as the grounded one does. The branch
+condition is `cos*(u.v) - sin*(u x v) > 0`, which reduces to `u.v > 0` for the aligned case.
+
+### A coupled partition's rates come from its constraints too, and there is no second opinion
+
+`constraintKinematics` used to answer only for a cylinder or pin drive; a coupled partition
+driven by a grounded crank fell through to the loop solver, which cannot see through a sealed
+cylinder and has no equation for a mount welded into a bracket either. `PositionSolver.coupledRoute`
+is now part of that gate, and `KinematicsSolver.solveRates` **returns rather than falling back**
+when it is set: a confident answer to a different question is worse than an empty graph.
+
+`constraintRates` therefore differentiates against a *moving boundary* as well as a command:
+
+    J_q qdot  = -J_b bdot - F_c cdot
+    J_q qddot = -(dJ_q/dt) qdot - (dJ_b/dt) bdot - J_b bddot - (dF_c/dt) cdot
+
+Three things about that are easy to get wrong and were:
+
+- **The time derivatives run along the whole motion.** Differencing the Jacobian down a path that
+  held a turning crank still reads the mechanism's shape as changing in a way it does not.
+- **The boundary has an acceleration of its own.** A crank at constant speed still has one,
+  pointing at its pivot. (It contributes nothing in `coupled-mount-examples`, where it happens to
+  be orthogonal to every row the crank touches; `coupled-route-agreement` is what catches it.)
+- **The prescribed joints are part of the answer.** Left out, `applyConstraintKinematics` fills
+  them with the zero it keeps for ground, so a crank body is drawn moving and reported still. They
+  are taken as everything the system does not hold *unknown*, not as the joints its rows happen to
+  name: a third joint on a crank body is stepped by the drive and mentioned by no constraint at
+  all, and the four-bar in the agreement spec has exactly one.
+
+Least squares returns the nearest thing to a solution whether or not one exists, so the answers
+are checked against the rows they were fitted to (`solves`), the pose is required to have full
+column rank at the command in hand, and non-finite values are refused outright.
+
+**A singular starting pose is still unsupported.** A drawing placed exactly on a toggle has no
+rank there and no rates, and this route reports nothing rather than guessing; `settleInitialPose`
+nudges a *commanded* drive off such a pose, and there is no equivalent for a boundary-driven one.
+
+### These solvers are static, so a machine has to be put back on its own route
+
+`Mechanism.prepareSolvers` exists because the last mechanism built owns `PositionSolver`'s
+statics, and the panel graphs whichever machine the reader is looking at -- routinely not the
+last one solved. `PositionSolverDriveState` is the list of what a machine can be put back on, and
+it now carries `coupledRoute` and `sliderAngleMap` beside the drives and the constraint system.
+Anything new the *rate* solver reads out of a static belongs in that struct; a machine standing
+beside another one is the case that finds it, and a single-mechanism spec never will.
+
+### The mount-attached examples are the only ones checked against arithmetic
+
+`coupled-mount-examples.spec.ts` is the one file in the suite whose mechanisms the walk cannot
+solve at all, so there is nothing to compare them with -- every joint of every sample is checked
+against a closed form written beside the example instead. That is also what makes them fragile in
+a particular way: a prediction is as likely to be wrong as the solver. Two that bit, both worth
+remembering when adding one:
+
+- **The pin is not carried by the barrel.** It slides inside it. Predict it from the *rod* -- the
+  rod's own length back from whichever end of the rod is not the pin -- or the answer is out by
+  exactly the drive's speed, which looks like a unit error and is not.
+- **The drive has to be pinned as arithmetic first**, or the closed forms are restating the
+  motion rather than predicting it. Each example asserts its command advances by one constant
+  step per sample, changing sign only where the input reverses, before anything is derived from
+  it.
+
+`permuted()` in `coupled-mount-fixtures.ts` renames every joint and turns every list round --
+joints, links, subsets, sliders. It cannot tell a weld's reference bar from its neighbor on a body
+that only translates; `constraint-emitter.spec.ts` is where that lives.
