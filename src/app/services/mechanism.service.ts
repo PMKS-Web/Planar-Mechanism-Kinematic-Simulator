@@ -13,6 +13,7 @@ import {
   cylinderOfJointIn,
   cylinderInteriorsAt,
   cylinderOfLinkIn,
+  cylindersOfLinkIn,
   isCylinderInterior,
   normalizedCylinderPose,
   sealedCylinderStructures,
@@ -2477,7 +2478,7 @@ export class MechanismService {
     return this.createNewCompoundLinkFromSubset(leaves);
   }
 
-  private createNewCompoundLinkFromSubset(subset: RealLink[]): RealLink {
+  private createNewCompoundLinkFromSubset(subset: RealLink[], keepFill?: string): RealLink {
     const leaves = subset.filter(
       (link, index) => subset.findIndex((candidate) => candidate.id === link.id) === index
     );
@@ -2525,7 +2526,8 @@ export class MechanismService {
     newLink.moiIsCustom = leaves.some((leaf) => leaf instanceof RealLink && leaf.moiIsCustom);
     newLink.comIsCustom = leaves.some((leaf) => leaf instanceof RealLink && leaf.comIsCustom);
     if (newLink.comIsCustom) newLink.captureComOffset();
-    newLink.fill = leaves[0]?.fill ?? ColorService.instance?.getNextLinkColor() ?? '#555555';
+    newLink.fill =
+      keepFill ?? leaves[0]?.fill ?? ColorService.instance?.getNextLinkColor() ?? '#555555';
     return newLink;
   }
 
@@ -3549,11 +3551,42 @@ export class MechanismService {
     // and a neighbor came out at the provisional coordinate rather than its own.
     this.cancelPosedEdit();
     const link = this.activeObjService.selectedLink;
-    // Deleting any member of a sealed cylinder — barrel, rod, block, or a
-    // compound that swallowed one — deletes the whole assembly (§ cylinder 5).
-    const sealed = this.cylinderAt(link);
-    if (sealed) {
-      this.deleteCylinder(sealed);
+    // Deleting any member of a sealed cylinder -- barrel, rod, block, or a
+    // compound that swallowed one -- takes the whole assembly (§ cylinder 5).
+    //
+    // What it must *also* take is the rest of the body. A compound can now
+    // hold a ram and a bracket at once, and stopping at the ram left the
+    // bracket standing: the reader asked to delete this body and half of it
+    // was still on the grid. So the ram is the whole answer only when the body
+    // is nothing but the ram.
+    const owned = this.cylindersOfLink(link);
+    if (owned.length > 0) {
+      const leaves = link instanceof RealLink && link.subset.length > 0 ? link.subset : [link!];
+      const ramParts = new Set(
+        owned.flatMap((sealed) => [sealed.barrel.id, sealed.rod.id, sealed.block.id])
+      );
+      const rest = leaves.filter((leaf) => !ramParts.has(leaf.id));
+      if (rest.length > 0) {
+        const doomed = new Set(rest.map((leaf) => leaf.id));
+        this.forces
+          .filter((force) => doomed.has(force.link.id))
+          .forEach((force) => this.detachForce(force));
+        this.releaseFromCompounds(doomed);
+      }
+      // By pin id, so a body holding two rams loses the same two whichever
+      // order they were found in.
+      for (const sealed of [...owned].sort((left, right) =>
+        left.pin.id.localeCompare(right.pin.id)
+      )) {
+        this.deleteCylinderTopology(sealed);
+      }
+      this.joints = this.joints.filter(
+        (joint) =>
+          !(joint instanceof RealJoint) ||
+          this.links.some((candidate) => candidate.joints.includes(joint))
+      );
+      this.activeObjService.updateSelectedObj(undefined);
+      this.finishStructuralEdit(true);
       return;
     }
     const linkIndex = this.links.findIndex((candidate) => candidate === link);
@@ -4258,6 +4291,11 @@ export class MechanismService {
    * normalizer, which holds the mounts and can only move the interior — so the
    * second ram silently changed size to absorb a drag meant for the first.
    */
+  /** Every sealed cylinder this body owns a bar of, not just the first. */
+  cylindersOfLink(link: Link | undefined): Cylinder[] {
+    return cylindersOfLinkIn(this.sealedStructures(), link);
+  }
+
   cylindersAt(joint: Joint | undefined): Cylinder[] {
     if (!joint) return [];
     return this.sealedStructures().filter((cylinder) =>
@@ -7407,7 +7445,15 @@ export class MechanismService {
       components.push(component);
     }
     const replacements = components.map((component) =>
-      component.length === 1 ? component[0] : this.createNewCompoundLinkFromSubset(component)
+      component.length === 1
+        ? component[0]
+        : // A body that is still a body keeps the color it had. Rebuilt from
+          // its surviving leaves it took the first one's fill instead -- so
+          // removing a ram from a bracket repainted the bracket, and where the
+          // surviving leaf had no color of its own the whole body went to the
+          // placeholder gray. Nothing about the drawing changed except which
+          // leaf happened to be listed first.
+          this.createNewCompoundLinkFromSubset(component, compound.fill)
     );
     const forces = this.forces.filter((force) => force.link === compound);
     compound.forces = [];

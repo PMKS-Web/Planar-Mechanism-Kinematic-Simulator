@@ -1130,7 +1130,13 @@ export class ContextMenuBuilderService {
     // and what goes with it is the consequence rather than a second item in a
     // list. Both rows read the same way round, and both count past one.
     const also = this.casualties(orphans, 'joint');
-    const label = also ? `Delete Link (and ${also})` : 'Delete Link';
+    // A body can hold a ram and a bracket at once, and deleting it takes both.
+    // The row says so, the way the joint row does: what is named goes, and
+    // what goes with it is the consequence.
+    const rams = this.mechanism.cylindersOfLink(link).length;
+    const part = rams === 1 ? 'Cylinder' : rams > 1 ? `${rams} cylinders` : '';
+    const takes = [part, also].filter((one) => one).join(', ');
+    const label = takes ? `Delete Link (and ${takes})` : 'Delete Link';
     return new MenuRow({
       label,
       icon: 'remove',

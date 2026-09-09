@@ -569,3 +569,78 @@ describe('two rams that share one mount', () => {
     expect(h.service.links).toHaveLength(links);
   });
 });
+
+describe('deleting a body that holds a ram and a bracket at once', () => {
+  it('takes the whole body, not just the ram', () => {
+    // The reader picked this body and pressed Delete. Stopping at the ram left
+    // the bracket standing on the grid -- half of the thing they asked to
+    // remove, and no obvious way to tell what had happened.
+    const h = ramWithBracket(2);
+    const compound = h.service.links.find(
+      (link): link is RealLink => link instanceof RealLink && link.subset.length > 0
+    )!;
+    h.active.updateSelectedObj(compound);
+    const before = h.saveCount();
+
+    h.service.deleteLink();
+
+    expect(cylindersIn(h), 'the ram is gone').toHaveLength(0);
+    expect(
+      h.service.links.map((link) => link.id),
+      'and so is the bracket'
+    ).toEqual([]);
+    expect(h.saveCount() - before, 'one entry for the whole body').toBe(1);
+  });
+
+  it('and still means only the ram when the ram is the whole body', () => {
+    // A cylinder standing on its own is selected as its own barrel or rod, and
+    // Delete there has always meant the part. Nothing about that changes.
+    const h = ramWithBracket(0);
+    const barrel = h.service.links.find((link) => link.id === h.sealed.barrel.id)!;
+    h.active.updateSelectedObj(barrel);
+
+    h.service.deleteLink();
+
+    expect(cylindersIn(h)).toHaveLength(0);
+    expect(h.service.links).toHaveLength(0);
+  });
+});
+
+describe('a body that survives losing a leaf', () => {
+  it('keeps the color it was drawn in', () => {
+    // Rebuilt from its surviving leaves, a compound took the first one's fill
+    // -- so removing a ram from a bracket repainted the bracket, and where the
+    // surviving leaf had no color of its own the whole body went to the
+    // placeholder gray. The body did not change; its paint must not either.
+    const h = ramWithBracket(2);
+    const compound = h.service.links.find(
+      (link): link is RealLink => link instanceof RealLink && link.subset.length > 0
+    )!;
+    compound.fill = '#123456';
+
+    h.service.deleteCylinder(cylindersIn(h)[0]);
+
+    const survivor = h.service.links.find(
+      (link): link is RealLink => link instanceof RealLink && link.subset.length > 0
+    );
+    expect(survivor, 'the bracket is still one body').toBeDefined();
+    expect(survivor!.fill, 'in the color it was').toBe('#123456');
+  });
+
+  it('and a leaf that comes back out on its own keeps its own', () => {
+    // The other half: an unweld is not a body surviving, it is a body ending,
+    // and each bar that comes out of it is itself again.
+    const h = ramWithBracket(1);
+    const bracketId = h.mount.id + h.tips[0].id;
+    const leaf = h.service.links
+      .find((link): link is RealLink => link instanceof RealLink && link.subset.length > 0)!
+      .subset.find((member) => member.id === bracketId) as RealLink;
+    leaf.fill = '#abcdef';
+
+    h.service.unWeldJoint(h.mount);
+
+    const back = h.service.links.find((link) => link.id === bracketId) as RealLink;
+    expect(back, 'the bracket is a bar again').toBeDefined();
+    expect(back.fill).toBe('#abcdef');
+  });
+});
