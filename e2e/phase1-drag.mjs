@@ -1,6 +1,6 @@
 // Phase 1 drag foundation: joint snap/merge, whole-link drag, one undo entry
-// per gesture, click-without-nudge, and the analysis modes refusing every drag.
-// See docs/joint-types-plan.md, Phase 1.
+// per gesture, click-without-nudge, and what an analysis mode does and does not
+// refuse. See docs/joint-types-plan.md, Phase 1.
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
@@ -145,6 +145,43 @@ async function dragBy(page, from, to, { steps = 12, holdBeforeRelease = 0 } = {}
     await page.mouse.up();
     await page.waitForTimeout(500);
   };
+}
+
+/**
+ * What the permission model says about restructuring right now.
+ *
+ * Asked of the model, not of the mode. Once `state.atStart` is true
+ * `edit-permission.ts` allows every paused edit action *before* it reaches the
+ * analysis-mode branch -- "Analysis can change the drawing at its start" -- so
+ * what an analysis mode refuses is restructuring from a pose that is not the
+ * design, not restructuring as such. A check that reads the mode alone asserts
+ * a rule the app stopped having.
+ *
+ * Both actions, because the branch names both and the checks below say
+ * "restructure": `build` is a link or a weld, which captures the pose it is
+ * made at, and `structure` is a delete or a ground, addressed by identity. A
+ * regression that dropped one of them would leave the other still answering.
+ */
+async function restructuring(page) {
+  return await page.evaluate(() => {
+    const { permission } = window.ng.getComponent(document.querySelector('app-new-grid'));
+    return { build: permission.may('build'), structure: permission.may('structure') };
+  });
+}
+
+/** Whether the drawing is standing on the pose a rebuild may treat as t = 0. */
+async function atStart(page) {
+  return await page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.isAtStartPose()
+  );
+}
+
+/** Run the mechanism for a moment and pause it, leaving it parked mid-cycle. */
+async function parkMidCycle(page) {
+  await page.locator('.playButton').click();
+  await page.waitForTimeout(900);
+  await page.locator('.playButton').click();
+  await page.waitForTimeout(500);
 }
 
 async function loadMergeable(page) {
@@ -360,8 +397,8 @@ await safe('a plain click selects without moving anything', async () => {
   record('the click earned no undo entry', undoEnabled === false, { undoEnabled });
 });
 
-// --- 5. An analysis mode drags, and re-anchors while it does ---------------
-await safe('an analysis mode drags what exists, and keeps where the cycle starts', async () => {
+// --- 5. An analysis mode drags, and where restructuring is refused --------
+await safe('an analysis mode drags what exists, and restructures at the start', async () => {
   await loadFourBar(page);
   await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
   await page.waitForTimeout(800);
@@ -384,18 +421,76 @@ await safe('an analysis mode drags what exists, and keeps where the cycle starts
   // The lock used to refuse this outright -- "the graphs describe this exact
   // cycle, so the geometry is locked here" -- which stopped being true when the
   // graph stack began redrawing from whatever was last solved. What it refuses
-  // now is restructuring; tuning what exists is the point.
+  // now is restructuring, and only from a pose that is not the design. Here
+  // nothing has been played or scrubbed, so the drawing *is* its own t = 0 and
+  // there is nothing to refuse about -- which is what the next step is for.
   record(
     'the joint moved',
     Math.abs(afterB.modelX - b.modelX) > 0.001 || Math.abs(afterB.modelY - b.modelY) > 0.001,
     { before: [b.modelX, b.modelY], after: [afterB.modelX, afterB.modelY] }
   );
+  record('and the drag never left the start of the cycle', await atStart(page));
+  const offered = await restructuring(page);
   record(
-    'and the mode still refuses to restructure',
-    await page.evaluate(
-      () => !window.ng.getComponent(document.querySelector('app-new-grid')).permission.may('build')
-    )
+    'so restructuring is offered, as edit-permission promises',
+    offered.build && offered.structure,
+    offered
   );
+});
+
+await safe('an analysis mode refuses to restructure from a displaced pose', async () => {
+  await loadFourBar(page);
+  await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+  await page.waitForTimeout(800);
+  await parkMidCycle(page);
+  // Asserted rather than assumed: a refusal check against a mechanism that
+  // never actually left its start reads the wrong state entirely, which is how
+  // the check this replaced came to be asserting the opposite of the model.
+  record('parked mid-cycle, the drawing is away from its start', !(await atStart(page)));
+  const parked = await restructuring(page);
+  record('so restructuring is refused', !parked.build && !parked.structure, parked);
+
+  // A posed drag re-anchors -- the start of the *new* geometry is re-derived at
+  // the anchored input value -- but it deliberately puts the display back where
+  // the hand was, so the refusal stands through the gesture rather than being
+  // cleared by it.
+  const before = await jointState(page);
+  const b = before.find((j) => j.id === 'B');
+  const dropped = { x: b.screenX + 80, y: b.screenY - 60 };
+  const release = await dragBy(page, { x: b.screenX, y: b.screenY }, dropped);
+  await release();
+  const afterB = (await jointState(page)).find((j) => j.id === 'B');
+  await shot(page, 'analyze-drag-posed.png');
+  record(
+    'the posed drag still moved the joint',
+    Math.abs(afterB.modelX - b.modelX) > 0.001 || Math.abs(afterB.modelY - b.modelY) > 0.001,
+    { before: [b.modelX, b.modelY], after: [afterB.modelX, afterB.modelY] }
+  );
+  // Where the hand let go, not merely "somewhere that is not the start". A
+  // settle that landed the machine at any *other* displaced pose would satisfy
+  // that weaker sentence while breaking the one this step is named for. The
+  // tolerance is grid snapping's, which moves a drop by part of a division.
+  const fromHand = Math.hypot(afterB.screenX - dropped.x, afterB.screenY - dropped.y);
+  record('and the display stayed where the hand was', fromHand < 30, {
+    dropped,
+    landed: [afterB.screenX, afterB.screenY],
+    fromHand,
+  });
+  record('which is not the start of the cycle', !(await atStart(page)));
+  const stillParked = await restructuring(page);
+  record(
+    'so the mode still refuses to restructure',
+    !stillParked.build && !stillParked.structure,
+    stillParked
+  );
+
+  // The way out the refusal itself names -- "Return it to the start to change
+  // it" -- and the proof that it is the pose being refused, not the mode.
+  await page.locator('.stopButton').click();
+  await page.waitForTimeout(900);
+  record('back at the start, the drawing is its own design again', await atStart(page));
+  const home = await restructuring(page);
+  record('and restructuring is offered again', home.build && home.structure, home);
 });
 
 // --- 6. A bare cursor never pans the canvas -------------------------------

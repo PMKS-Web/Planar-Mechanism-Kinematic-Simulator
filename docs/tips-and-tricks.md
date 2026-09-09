@@ -762,6 +762,30 @@ which *merged* in Edit and so passed by accident. Two coincident joints in a loo
 invalid machine, `isPartInert` says so, and the next press on its bar is refused. Drag past, not
 onto.
 
+### An analysis mode refuses to restructure at a *pose*, not at a mode, so displace it first
+
+`refusalFor` in `src/app/model/edit-permission.ts` allows every paused edit action the moment
+`state.atStart` is true, and that test sits **above** the analysis-mode branch. (Not quite *every*
+action: transport, synthesis and "something is playing" are all decided before it, so the sentence
+is "every edit action, paused, in Edit or an analysis mode".) So a reader who opens Kinematic
+Analysis and touches nothing may still build and restructure: the drawing standing on its own start
+*is* the design, and there is nothing to refuse about. The branch below only fires once the machine
+is parked somewhere that is not the design.
+
+Which makes the shape of any check about it load-bearing. `phase1-drag.mjs` asserted that
+`permission.may('build')` was false right after a drag in Kinematic Analysis, having never played
+or scrubbed — so it was asserting the mode refuses outright, which the model has never said, and it
+failed for exactly that reason. Park the mechanism first (play, then pause, as
+`analysis-editing.mjs` does in `parkMidCycle`), **and record that it actually left the start**:
+`!isAtStartPose()` as its own check. A refusal assertion made against a mechanism still standing on
+t = 0 either passes vacuously or asserts the opposite of the rule, and neither reads as wrong from
+the check's name.
+
+Note also that a posed drag does not clear the refusal. It re-anchors — the start of the *new*
+geometry is re-derived at the anchored input value — but `settleToAnchor` closes by putting the
+display back where the hand was, so the machine is still displaced afterwards and restructuring is
+still refused. The way out is the one the refusal itself names: back to the start.
+
 ## Domain facts worth knowing before you debug
 
 - **The transport's handle measures the *input*, not the clock, and the start pose is usually not at
