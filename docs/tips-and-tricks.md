@@ -2338,3 +2338,50 @@ The group edit had the same shape of bug in the other direction: `MultiEditServi
 waved every *unweld* through, on the grounds that anything welded can be unwelded. A sealed pin is a
 weld that never comes off, so the row was offered un-grayed and the mutation then declined it.
 `weldRefusal(joint)` already asks about whichever way the joint would go; let it.
+
+### `.find` is the wrong verb wherever a mount can be shared
+
+A cylinder mount is an ordinary attachment point, so two rams can share one — one ram's rod mount
+is the next one's barrel mount, which is how a boom and a stick are drawn. Four separate defects
+have now come from asking for *the* cylinder at a joint:
+
+- the own-cylinder merge guard compared the first ram found at each end, got two different rams,
+  and let a fold through that collapsed one of them;
+- the live drop ring excluded one ram's joints and offered the other's;
+- `deleteJoint` removed one ram and left the other's interior joints hanging on nothing;
+- and dragging a shared mount re-posed one ram parametrically and left the other to the normalizer.
+
+`cylindersAt` / `cylinderInteriorsAt` / `cylinderMountsAt` are the plural forms and are what these
+questions want. When you write `cylinders.find(...)`, say out loud why one answer is enough.
+
+### A slot's carrier is found by two questions, not one
+
+`reconcileSlots` recovers a carrier that has been rebuilt under a new id, and both halves of the
+test are load-bearing — each was added after the other one alone got it wrong:
+
+- **Continuity**: the candidate must own one of the old carrier's own members. A body that merely
+  holds the slot's two end pins is not evidence; two separate bodies can share a pair of pins, and
+  a slot cut into one was handed to the other when the first was deleted.
+- **Capability**: the candidate must hold the slot's two ends. Taking the first surviving member's
+  body hands a ram's bore to a bracket, which cannot define one — so the slider is detached and a
+  ram loses its bore on nothing but the order of a `subset` array.
+
+And the answer has to be unambiguous. Two surviving bodies that both qualify is a guess, not a
+recovery; detach instead.
+
+### A commit that writes before it refuses has already half-happened
+
+`cutSlotOn` is the commit half of a slot drop. It checked only that the pin it was handed was
+prismatic, then moved coordinates, then reassigned the carrier — so handed a sealed ram's interior
+pin it pointed the bore's own block at a bar somewhere else in the drawing. Refusals in a commit
+belong before the first write, not after it, and "may this joint gain a block" is not the same
+question as "may this block's carrier be changed".
+
+### The drawable example and the algebra fixture are different things
+
+`coupled-mount-fixtures.ts` holds constraint sets handed straight to the solver; `weldedBoomFixture`
+has three bodies at its welded joint and only two in the compound, which is coherent as a
+constraint set and is *not* a drawing the editor would leave alone. `welded-mount-release.spec.ts`
+is the other kind: built through the service so the reconcilers run, saved and reopened, and
+checked for the same bodies, the same DOF and a bracket that stays rigid. Cite that one when
+claiming the feature works; cite the fixtures when checking arithmetic.
