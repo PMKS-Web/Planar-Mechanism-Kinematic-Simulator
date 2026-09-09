@@ -57,6 +57,31 @@ function model() {
   });
 }
 
+/**
+ * Which joint is which, asked of the model rather than assumed.
+ *
+ * A ram's five joints are not named A, B, C, D in creation order and have not
+ * been for some time: the two mounts take ordinary letters and the three
+ * hidden ones hang off the barrel mount's letter, numbered, so that the joints
+ * nobody can see stop pushing the ones they can into punctuation. A suite that
+ * spells the letters out is asserting the naming scheme by accident, and goes
+ * red the next time it changes for a good reason.
+ */
+function cylinderRoles() {
+  return page.evaluate(() => {
+    const c = ng.getComponent(document.querySelector('app-new-grid'));
+    const [sealed] = c.mechanismSrv.sealedStructures();
+    if (!sealed) return null;
+    return {
+      barrelFar: sealed.barrelFar.id,
+      barrelNear: sealed.barrelNear.id,
+      pin: sealed.pin.id,
+      slider: sealed.slider.id,
+      rodFar: sealed.rodFar.id,
+    };
+  });
+}
+
 /** Screen center of a rendered joint circle. */
 async function jointOnScreen(id) {
   return page.evaluate((jointId) => {
@@ -155,6 +180,9 @@ checkThat(
 );
 
 let state = await model();
+const roles = await cylinderRoles();
+checkThat('the model can name the ram’s five joints', !!roles, JSON.stringify(roles));
+const { barrelFar, barrelNear, pin, rodFar } = roles ?? {};
 const commitPoint = await page.evaluate(
   ({ start, end }) => {
     const c = ng.getComponent(document.querySelector('app-new-grid'));
@@ -171,15 +199,15 @@ const commitPoint = await page.evaluate(
 checkThat(
   'the start point is the barrel mount and the rod finishes at the cursor',
   (() => {
-    const a = state.joints.find((j) => j.id === 'A');
-    const d = state.joints.find((j) => j.id === 'D');
+    const a = state.joints.find((j) => j.id === barrelFar);
+    const d = state.joints.find((j) => j.id === rodFar);
     if (!a || !d) return false;
     return (
       Math.hypot(a.x - commitPoint.start.x, a.y - commitPoint.start.y) < 1 &&
       Math.hypot(d.x - commitPoint.end.x, d.y - commitPoint.end.y) < 1
     );
   })(),
-  JSON.stringify({ commitPoint, a: state.joints[0], d: state.joints[3] })
+  JSON.stringify({ commitPoint, roles, joints: state.joints.map((j) => j.id) })
 );
 checkThat(
   'the committed gesture built the complete assembly',
@@ -190,10 +218,10 @@ const sealedSlider = state.joints.find((j) => j.kind === 'PrisJoint');
 checkThat('the slider is sealed', !!sealedSlider?.sealed);
 checkThat(
   'only the two mounts are selectable joints',
-  !!(await jointOnScreen('A')) &&
-    !!(await jointOnScreen('D')) &&
-    !(await jointOnScreen('B')) &&
-    !(await jointOnScreen('C')),
+  !!(await jointOnScreen(barrelFar)) &&
+    !!(await jointOnScreen(rodFar)) &&
+    !(await jointOnScreen(barrelNear)) &&
+    !(await jointOnScreen(pin)),
   'A,D visible; B,C hidden'
 );
 await page.screenshot({ path: `${OUT}/01-created.png` });
@@ -203,20 +231,20 @@ console.log('\ndrag mount D through a rotation about mount A');
 const before = await model();
 const byId = (s, id) => s.joints.find((j) => j.id === id);
 const lengthAB0 = Math.hypot(
-  byId(before, 'B').x - byId(before, 'A').x,
-  byId(before, 'B').y - byId(before, 'A').y
+  byId(before, barrelNear).x - byId(before, barrelFar).x,
+  byId(before, barrelNear).y - byId(before, barrelFar).y
 );
 const lengthCD0 = Math.hypot(
-  byId(before, 'D').x - byId(before, 'C').x,
-  byId(before, 'D').y - byId(before, 'C').y
+  byId(before, rodFar).x - byId(before, pin).x,
+  byId(before, rodFar).y - byId(before, pin).y
 );
 const angle0 = Math.atan2(
-  byId(before, 'D').y - byId(before, 'A').y,
-  byId(before, 'D').x - byId(before, 'A').x
+  byId(before, rodFar).y - byId(before, barrelFar).y,
+  byId(before, rodFar).x - byId(before, barrelFar).x
 );
 
-const dScreen = await jointOnScreen('D');
-const aScreen = await jointOnScreen('A');
+const dScreen = await jointOnScreen(rodFar);
+const aScreen = await jointOnScreen(barrelFar);
 let worstOffAxis = 0;
 if (checkThat('both mounts are on screen to drag', !!dScreen && !!aScreen)) {
   // Swing D about A by ~55 degrees (screen y grows downward, so this rotates
@@ -236,8 +264,8 @@ if (checkThat('both mounts are on screen to drag', !!dScreen && !!aScreen)) {
     const during = await model();
     worstOffAxis = Math.max(
       worstOffAxis,
-      offAxis(byId(during, 'A'), byId(during, 'D'), byId(during, 'B')),
-      offAxis(byId(during, 'A'), byId(during, 'D'), byId(during, 'C'))
+      offAxis(byId(during, barrelFar), byId(during, rodFar), byId(during, barrelNear)),
+      offAxis(byId(during, barrelFar), byId(during, rodFar), byId(during, pin))
     );
     if (i === Math.floor(steps / 2)) {
       await page.screenshot({ path: `${OUT}/02-mid-rotation.png` });
@@ -249,12 +277,12 @@ if (checkThat('both mounts are on screen to drag', !!dScreen && !!aScreen)) {
 const after = await model();
 worstOffAxis = Math.max(
   worstOffAxis,
-  offAxis(byId(after, 'A'), byId(after, 'D'), byId(after, 'B')),
-  offAxis(byId(after, 'A'), byId(after, 'D'), byId(after, 'C'))
+  offAxis(byId(after, barrelFar), byId(after, rodFar), byId(after, barrelNear)),
+  offAxis(byId(after, barrelFar), byId(after, rodFar), byId(after, pin))
 );
 const angle1 = Math.atan2(
-  byId(after, 'D').y - byId(after, 'A').y,
-  byId(after, 'D').x - byId(after, 'A').x
+  byId(after, rodFar).y - byId(after, barrelFar).y,
+  byId(after, rodFar).x - byId(after, barrelFar).x
 );
 checkThat(
   'the drag actually rotated the cylinder',
@@ -267,12 +295,12 @@ checkThat(
   `worst off-axis ${worstOffAxis.toExponential(2)} model units`
 );
 const lengthAB1 = Math.hypot(
-  byId(after, 'B').x - byId(after, 'A').x,
-  byId(after, 'B').y - byId(after, 'A').y
+  byId(after, barrelNear).x - byId(after, barrelFar).x,
+  byId(after, barrelNear).y - byId(after, barrelFar).y
 );
 const lengthCD1 = Math.hypot(
-  byId(after, 'D').x - byId(after, 'C').x,
-  byId(after, 'D').y - byId(after, 'C').y
+  byId(after, rodFar).x - byId(after, pin).x,
+  byId(after, rodFar).y - byId(after, pin).y
 );
 checkThat(
   'barrel and rod stayed rigid through the rotation',
@@ -282,8 +310,8 @@ checkThat(
 checkThat(
   'mount A did not move',
   (() => {
-    const a0 = byId(before, 'A');
-    const a1 = byId(after, 'A');
+    const a0 = byId(before, barrelFar);
+    const a1 = byId(after, barrelFar);
     return Math.hypot(a1.x - a0.x, a1.y - a0.y) < 1e-6;
   })()
 );
@@ -291,8 +319,8 @@ await page.screenshot({ path: `${OUT}/03-rotated.png` });
 
 // -------------------------------- 2b. fast flood drag cannot tear the part
 console.log('\nflood the mount drag with big jumps, through the anchor and back');
-const floodD = await jointOnScreen('D');
-const floodA = await jointOnScreen('A');
+const floodD = await jointOnScreen(rodFar);
+const floodA = await jointOnScreen(barrelFar);
 let floodWorst = 0;
 if (checkThat('mounts on screen for the flood', !!floodD && !!floodA)) {
   await page.mouse.move(floodD.x, floodD.y);
@@ -311,8 +339,8 @@ if (checkThat('mounts on screen for the flood', !!floodD && !!floodA)) {
     const during = await model();
     floodWorst = Math.max(
       floodWorst,
-      offAxis(byId(during, 'A'), byId(during, 'D'), byId(during, 'B')),
-      offAxis(byId(during, 'A'), byId(during, 'D'), byId(during, 'C'))
+      offAxis(byId(during, barrelFar), byId(during, rodFar), byId(during, barrelNear)),
+      offAxis(byId(during, barrelFar), byId(during, rodFar), byId(during, pin))
     );
   }
   // Park the mount somewhere sane before releasing, so later steps have room.
@@ -323,8 +351,8 @@ if (checkThat('mounts on screen for the flood', !!floodD && !!floodA)) {
 const floodAfter = await model();
 floodWorst = Math.max(
   floodWorst,
-  offAxis(byId(floodAfter, 'A'), byId(floodAfter, 'D'), byId(floodAfter, 'B')),
-  offAxis(byId(floodAfter, 'A'), byId(floodAfter, 'D'), byId(floodAfter, 'C'))
+  offAxis(byId(floodAfter, barrelFar), byId(floodAfter, rodFar), byId(floodAfter, barrelNear)),
+  offAxis(byId(floodAfter, barrelFar), byId(floodAfter, rodFar), byId(floodAfter, pin))
 );
 checkThat(
   'the flood never bent the assembly, even mid-frame',
@@ -338,40 +366,41 @@ checkThat(
 
 // -------------------------------------------------------- 3. ground a mount
 console.log('\nground mount A from its context menu');
-await page.evaluate(() => {
+await page.evaluate((mountId) => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
-  const mount = c.mechanismSrv.joints.find((j) => j.id === 'A');
+  const mount = c.mechanismSrv.joints.find((j) => j.id === mountId);
   c.setLastRightClick(mount);
   c.cMenu.groups
     .flatMap((g) => g.rows)
     .find((r) => r.label === 'Grounded')
     ?.action();
-});
+}, barrelFar);
 await page.waitForTimeout(500);
 state = await model();
-checkThat('mount A is grounded', !!byId(state, 'A').ground);
-const mountMenu = await page.evaluate(() => {
+checkThat('mount A is grounded', !!byId(state, barrelFar).ground);
+const mountMenu = await page.evaluate((mountId) => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
-  c.setLastRightClick(c.mechanismSrv.joints.find((j) => j.id === 'A'));
+  c.setLastRightClick(c.mechanismSrv.joints.find((j) => j.id === mountId));
   return c.cMenu.groups
     .flatMap((g) => g.rows)
     .map((r) => ({ label: r.label, disabled: r.disabled }));
-});
+}, barrelFar);
 checkThat(
-  // The deletion names what it takes rather than saying only "Delete Joint",
-  // and a block is structurally off the table on a sealed part, so that row is
-  // absent rather than grayed.
-  'the mount menu names the cylinder in its Delete and offers no Slider',
+  // The deletion names what it takes rather than saying only "Delete Joint".
+  // A block is still off the table on a sealed part, but the row is grayed
+  // now rather than missing: every joint's menu is the same shape, so a
+  // reader who has learned where a row sits finds it there and finds out why.
+  'the mount menu names the cylinder in its Delete, and grays Slider',
   mountMenu.some((i) => i.label.startsWith('Delete Joint (and Cylinder')) &&
-    mountMenu.every((i) => i.label !== 'Slider'),
+    mountMenu.some((i) => i.label === 'Slider' && i.disabled),
   JSON.stringify(mountMenu)
 );
 
 // -------------------------------------- 4. drive it through the body's menu
 console.log('\nmake the cylinder the input from the body menu');
-const bodyMenu = await page.evaluate(() => {
+const bodyMenu = await page.evaluate((mountId) => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
-  const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === 'A'));
+  const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === mountId));
   c.setLastRightClick(barrel);
   const labels = c.cMenu.groups.flatMap((g) => g.rows).map((r) => r.label);
   c.cMenu.groups
@@ -379,13 +408,16 @@ const bodyMenu = await page.evaluate(() => {
     .find((r) => r.label === 'Driven Input')
     ?.action();
   return labels;
-});
+}, barrelFar);
 await page.waitForTimeout(500);
 checkThat(
-  // No Attach group at all: a sealed assembly takes no third body. What is
-  // left is the state it can be put into and the deletion of the whole part.
-  'the body menu is exactly Driven Input, Locked and Delete Cylinder',
-  JSON.stringify(bodyMenu) === JSON.stringify(['Driven Input', 'Locked', 'Delete Cylinder']),
+  // No Attach group at all: a sealed assembly takes no third body. What it
+  // does carry has grown since -- a hold on its angle, the vector switches --
+  // so the claim is about what must be there and what must not, rather than
+  // an exact list that goes red every time the menu gains a row.
+  'the body menu offers the part’s own states and no way to attach to it',
+  ['Driven Input', 'Locked', 'Delete Cylinder'].every((row) => bodyMenu.includes(row)) &&
+    ['Link', 'Cylinder', 'Force', 'Tracer Point'].every((row) => !bodyMenu.includes(row)),
   bodyMenu.join(', ')
 );
 state = await model();
@@ -400,12 +432,12 @@ checkThat(
 
 // ------------------------------------------- 5. set the speed from the panel
 console.log('\nset the expansion speed on the body panel');
-await page.evaluate(() => {
+await page.evaluate((mountId) => {
   // Select the body, as a click on the skin would.
   const c = ng.getComponent(document.querySelector('app-new-grid'));
-  const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === 'A'));
+  const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === mountId));
   c.setLastLeftClick(barrel);
-});
+}, barrelFar);
 await page.waitForTimeout(500);
 checkThat(
   'selecting the body opens the Edit Cylinder panel',
@@ -413,35 +445,41 @@ checkThat(
 );
 const speedInput = page
   .locator('input-block')
-  .filter({ hasText: 'Expansion Speed' })
+  .filter({ hasText: 'Input Speed' })
   .locator('input')
   .first();
-if (checkThat('the panel offers an Expansion Speed field', (await speedInput.count()) === 1)) {
+if (checkThat('the panel offers an Input Speed field', (await speedInput.count()) === 1)) {
   await speedInput.fill('25');
   await speedInput.blur();
   await page.waitForTimeout(400);
-  // linearInputSpeed, not inputSpeed: §5.2 gave a translation its own setting,
-  // because the rotational one is turned into rad/s by a pi/30 that has no
-  // business anywhere near a length per second.
+  // Onto the driven joint, not into settings: a drawing can hold several
+  // machines, so a speed belongs to the thing being driven rather than to the
+  // document. The magnitude is the claim -- the sign is the direction button's
+  // business, and it is asserted where that button is.
   const speed = await page.evaluate(() => {
-    const panel = ng.getComponent(document.querySelector('app-edit-panel'));
-    return panel.settingsService.linearInputSpeed.value;
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const driven = srv.joints.find((joint) => joint.input);
+    return driven?.driveSpeed;
   });
-  checkThat('the speed reaches the solver settings', speed === 25, `linearInputSpeed=${speed}`);
+  checkThat(
+    'the speed reaches the joint that is driven',
+    Math.abs(speed) === 25,
+    `driveSpeed=${speed}`
+  );
 }
 await page.screenshot({ path: `${OUT}/04-driven-body-panel.png` });
 
 // -------------------------------------------------- 6. delete the whole part
 console.log('\ndelete the cylinder as one part, then undo/redo');
-await page.evaluate(() => {
+await page.evaluate((mountId) => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
-  const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === 'A'));
+  const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === mountId));
   c.setLastRightClick(barrel);
   c.cMenu.groups
     .flatMap((g) => g.rows)
     .find((r) => r.label === 'Delete Cylinder')
     ?.action();
-});
+}, barrelFar);
 // The action above ran via evaluate — outside Angular's zone — so nothing
 // schedules change detection. A real user reaches this through a menu click,
 // which is in-zone; the test nudges the pointer across the canvas (the svg's
@@ -475,7 +513,7 @@ checkThat(
   })(),
   JSON.stringify(state.joints.find((j) => j.kind === 'PrisJoint'))
 );
-checkThat('the restored mount is still grounded', !!byId(state, 'A')?.ground);
+checkThat('the restored mount is still grounded', !!byId(state, barrelFar)?.ground);
 
 await page.click('text=Redo');
 await page.waitForTimeout(700);

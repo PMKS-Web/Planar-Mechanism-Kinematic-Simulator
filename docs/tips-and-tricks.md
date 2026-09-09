@@ -1984,3 +1984,25 @@ Two consequences. Testing the resolver against a welded mount means building the
 `reconcileSlots` in a local helper so the fixture is the graph the app actually produces. And
 when the weld is opened up, the decode path has to *build* the compound rather than merely keep
 the flag, or a saved drawing will come back with its bracket detached and nothing said.
+
+### A ram's five joints are not named A, B, C, D, and have not been for a while
+
+The two mounts take ordinary letters from `determineNextLetter`; the three the reader never sees
+hang off the barrel mount's letter and are numbered -- `A1`, `A2`, `A3` -- by
+`determineInteriorNames`. That is deliberate twice over: the hidden joints read as belonging to
+the part, and `determineNextLetter` ranks ids by their place in the alphabet, so it walks past
+them instead of letting a cylinder's interior push the *visible* joints into double letters.
+
+`e2e/phase4-cylinder.mjs` spelled the old scheme out and had been failing on it for some time,
+which is easy to mistake for a regression in creation. It asks the model which joint plays which
+role now (`sealedStructures()[0]`), and every other suite that names a cylinder's joints should
+do the same rather than assert the naming scheme by accident.
+
+Three of its other checks were stale in the same way, and are worth knowing about because they
+are all consequences of deliberate changes: a cylinder joint's menu **grays** the Slider row
+rather than omitting it (every joint's menu is the same shape now, each refusal explained); a
+cylinder body's menu has gained Fixed Angle and the vector switches, so an exact-list assertion
+goes red whenever the menu legitimately grows; and the panel's speed field is **Input Speed**
+writing `Joint.driveSpeed` on the driven joint, not "Expansion Speed" writing
+`settingsService.linearInputSpeed` -- a drawing can hold several machines, so a speed belongs to
+the thing being driven rather than to the document.
