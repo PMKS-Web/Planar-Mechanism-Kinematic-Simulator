@@ -21,16 +21,24 @@ import { Mechanism } from '../../app/model/mechanism/mechanism';
  * The same drawing solved twice: walked, and solved as one coupled system.
  *
  * A mount welded to a bracket has no closed-form walk, so those drawings will
- * go to the constraint set whole. Nothing can produce one yet, which is
- * exactly why this exists: the route can be forced on mechanisms whose answers
- * are already trusted, and the two answers compared, *before* anything depends
- * on it.
+ * go to the constraint set whole -- positions *and* rates, since the loop
+ * formulation cannot express their shape any better than the walk can place
+ * it. Nothing can produce one yet, which is exactly why this exists: both
+ * routes can be forced on mechanisms whose answers are already trusted, and
+ * the two compared, *before* anything depends on it.
  *
  * What is compared is what a reader would notice: where every joint is at
- * every sample, how fast it is going, how the cycle ends. The tolerances are
- * stated against what these answers are already checked against elsewhere,
- * and nothing here is loosened to let a route pass -- the numbers each bound
- * was actually set from are written beside it.
+ * every sample, how fast it is going, how hard it is accelerating, how the
+ * cycle ends. The tolerances are stated against what these answers are already
+ * checked against elsewhere, and nothing here is loosened to let a route pass
+ * -- the numbers each bound was actually set from are written beside it.
+ *
+ * The order matters and is not incidental. `PositionSolver`'s record of how it
+ * solved a mechanism is static and belongs to whichever one was built last, so
+ * each mechanism is measured *while it is still the one the solver is
+ * describing*. Built both and then measured both, the walked mechanism's rates
+ * would come back out of the coupled route as well -- and the comparison would
+ * be of one answer with itself.
  */
 
 interface Case {
@@ -50,23 +58,19 @@ const CASES: Case[] = [
   { name: 'offset-pivot lever', make: () => offsetPivotLeverFixture(), rates: false },
 ];
 
-/** Build once each way, with the switch put back whatever happens. */
-function bothWays(make: () => MechanismFixture): { walked: Mechanism; coupled: Mechanism } {
-  const walked = buildMechanism(make()).mechanism;
-  const solver = PositionSolver as unknown as { forceCoupledRoute: boolean };
-  solver.forceCoupledRoute = true;
-  try {
-    return { walked, coupled: buildMechanism(make()).mechanism };
-  } finally {
-    solver.forceCoupledRoute = false;
-  }
-}
+const solver = PositionSolver as unknown as {
+  forceCoupledRoute: boolean;
+  coupledRoute: boolean;
+  jointNumOrderSolverMap: Map<number, string[]>;
+  desiredAnalysisJointMap: Map<string, string>;
+};
 
-/** Joint velocities at every sample, by id. */
-function ratesOf(mechanism: Mechanism): Map<string, [number, number]>[] {
+/** Joint rates at every sample, by id. */
+type Rates = { velocity: [number, number]; acceleration: [number, number] };
+function ratesOf(mechanism: Mechanism): Map<string, Rates>[] {
   KinematicsSolver.resetVariables();
   KinematicsSolver.requiredLoops = mechanism.requiredLoops;
-  const out: Map<string, [number, number]>[] = [];
+  const out: Map<string, Rates>[] = [];
   for (let t = 0; t < mechanism.joints.length; t++) {
     KinematicsSolver.determineKinematics(
       mechanism.joints[t],
@@ -77,7 +81,16 @@ function ratesOf(mechanism: Mechanism): Map<string, [number, number]>[] {
       new Map(
         mechanism.joints[t].map((joint) => [
           joint.id,
-          [...(KinematicsSolver.jointVelMap.get(joint.id) ?? [NaN, NaN])] as [number, number],
+          {
+            velocity: [...(KinematicsSolver.jointVelMap.get(joint.id) ?? [NaN, NaN])] as [
+              number,
+              number,
+            ],
+            acceleration: [...(KinematicsSolver.jointAccMap.get(joint.id) ?? [NaN, NaN])] as [
+              number,
+              number,
+            ],
+          },
         ])
       )
     );
@@ -85,10 +98,50 @@ function ratesOf(mechanism: Mechanism): Map<string, [number, number]>[] {
   return out;
 }
 
+interface Measured {
+  mechanism: Mechanism;
+  rates: Map<string, Rates>[];
+  /** The steps the ordering planned, as `how` for each target set. */
+  steps: string[];
+  /** Whether the solver says it took the coupled route. */
+  coupled: boolean;
+}
+
+/** Build and measure one way, while the solver is still describing it. */
+function measure(make: () => MechanismFixture): Measured {
+  const mechanism = buildMechanism(make()).mechanism;
+  const steps = [...solver.jointNumOrderSolverMap].map(
+    ([, ids]) => solver.desiredAnalysisJointMap.get(ids[0]) ?? '?'
+  );
+  const coupled = solver.coupledRoute;
+  return { mechanism, rates: ratesOf(mechanism), steps, coupled };
+}
+
+function bothWays(make: () => MechanismFixture): { walked: Measured; coupled: Measured } {
+  const walked = measure(make);
+  solver.forceCoupledRoute = true;
+  try {
+    return { walked, coupled: measure(make) };
+  } finally {
+    solver.forceCoupledRoute = false;
+  }
+}
+
 describe('a mechanism solved as one coupled system instead of walked', () => {
   for (const { name, make, rates } of CASES) {
     describe(name, () => {
-      const { walked, coupled } = bothWays(make);
+      const both = bothWays(make);
+      const walked = both.walked.mechanism;
+      const coupled = both.coupled.mechanism;
+
+      it('was actually solved the two different ways it is being compared as', () => {
+        // Without this the whole file can pass while measuring one route
+        // twice, which is precisely what it is here to rule out.
+        expect(both.walked.coupled).toBe(false);
+        expect(both.walked.steps).not.toContain('simultaneousSystem');
+        expect(both.coupled.coupled).toBe(true);
+        expect(both.coupled.steps.filter((how) => how === 'simultaneousSystem')).toHaveLength(1);
+      });
 
       it('comes to the same verdict and the same cycle', () => {
         // Sample count is cycle closure and reversal in one number: a route
@@ -125,23 +178,50 @@ describe('a mechanism solved as one coupled system instead of walked', () => {
       });
 
       if (rates) {
-        it('and moves at the same speed at every one of them', () => {
-          const walkedRates = ratesOf(walked);
-          const coupledRates = ratesOf(coupled);
+        /**
+         * Compare one rate at every joint of every interior sample.
+         *
+         * Nothing is skipped. A joint the loop solver answered for and the
+         * constraint set did not is the failure this is looking for, so an
+         * absent or non-finite entry has to read as one rather than as a
+         * sample quietly passed over -- which is how a route that answered for
+         * half the drawing once looked like agreement.
+         */
+        const compare = (which: 'velocity' | 'acceleration', bound: number) => {
           let worst = 0;
           let scale = 0;
-          for (let t = 1; t < walkedRates.length - 1; t++) {
-            for (const [id, velocity] of walkedRates[t]) {
-              const other = coupledRates[t].get(id);
-              if (!other || Number.isNaN(velocity[0]) || Number.isNaN(other[0])) continue;
-              worst = Math.max(worst, Math.hypot(velocity[0] - other[0], velocity[1] - other[1]));
-              scale = Math.max(scale, Math.hypot(velocity[0], velocity[1]));
+          let compared = 0;
+          for (let t = 1; t < both.walked.rates.length - 1; t++) {
+            for (const [id, value] of both.walked.rates[t]) {
+              const other = both.coupled.rates[t].get(id);
+              expect(other, `${which} missing for ${id} at sample ${t}`).toBeDefined();
+              const mine = value[which];
+              const theirs = other![which];
+              expect(
+                mine.every(Number.isFinite) && theirs.every(Number.isFinite),
+                `${which} not a number for ${id} at sample ${t}`
+              ).toBe(true);
+              worst = Math.max(worst, Math.hypot(mine[0] - theirs[0], mine[1] - theirs[1]));
+              scale = Math.max(scale, Math.hypot(mine[0], mine[1]));
+              compared++;
             }
           }
+          expect(compared).toBeGreaterThan(0);
+          expect(worst).toBeLessThan(Math.max(scale, 1) * bound);
+        };
+
+        it('and moves at the same speed at every one of them', () => {
           // Rates are differentiated from the positions, so they carry the
           // same last-place disagreement amplified by the time step; a
           // thousandth of the fastest thing in the drawing is well inside it.
-          expect(worst).toBeLessThan(Math.max(scale, 1) * 1e-3);
+          compare('velocity', 1e-3);
+        });
+
+        it('and accelerates the same way at every one of them', () => {
+          // A second derivative of the same positions, so the same
+          // disagreement again: the bound is loosened by the one factor that
+          // differencing twice rather than once actually costs.
+          compare('acceleration', 1e-2);
         });
       }
     });

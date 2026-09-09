@@ -159,6 +159,14 @@ export class KinematicsSolver {
     if (this.applyConstraintKinematics(simJoints, simLinks, initialAngularVelocity)) {
       return;
     }
+    // A coupled partition has no second opinion to fall back on. Its shape is
+    // one the loop formulation cannot express -- that is why its positions did
+    // not come from the walk either -- so handing it to the loop solver would
+    // not be a cheaper answer to the same question, it would be a confident
+    // answer to a different one. Better an empty graph than a wrong curve.
+    if (PositionSolver.coupledRoute) {
+      return;
+    }
 
     // A single welded root rotating about its input is a valid one-DOF
     // mechanism even though it has no closed kinematic loop to solve.

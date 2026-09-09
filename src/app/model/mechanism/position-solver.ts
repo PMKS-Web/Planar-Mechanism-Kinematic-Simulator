@@ -18,11 +18,13 @@ import {
   sealedCylinderStructures,
 } from '../cylinder';
 import {
+  BoundaryMotion,
   boundaryJoints,
   boundaryTangent,
   Constraint,
   constraintRates,
   hasFullColumnRank,
+  PositionMap,
   residuals,
   SimultaneousSystem,
   solveSimultaneous,
@@ -356,6 +358,15 @@ export class PositionSolver {
    * only immediately after a refusal. See `refuseBranch`.
    */
   static refusedOnBranch = false;
+  /**
+   * Whether this mechanism's positions came from the coupled route.
+   *
+   * Read by the rate solver, which has to answer for the same drawings from
+   * the same constraints -- the loop formulation cannot express a mount welded
+   * into a bracket any better than the walk can place it -- and which must not
+   * quietly hand one of these to the loop solver when it cannot.
+   */
+  static coupledRoute = false;
   private static inverseSlotMap = new Map<string, InverseSlotStep>();
   private static slideAssemblyMap = new Map<string, SlideAssemblyStep>();
   /** Every sealed cylinder, keyed by the buried barrel end its step targets. */
@@ -501,6 +512,7 @@ export class PositionSolver {
     this.jointMapPositions = new Map<string, Array<number>>();
     this.priorJointPositions = new Map<string, Array<number>>();
     this.refusedOnBranch = false;
+    this.coupledRoute = false;
     this.sliderAngleMap = new Map<string, number>();
     this.desiredJointGroundIndexMap = new Map<string, number>();
     this.unknownJointsIndicesMap = new Map<string, number[]>();
@@ -807,6 +819,7 @@ export class PositionSolver {
     unknownIds.forEach((id) => known.push(id));
     this.stepCount = orderNum;
     this.unsolvableJoints = [];
+    this.coupledRoute = true;
     return 'solved';
   }
 
@@ -1793,10 +1806,14 @@ export class PositionSolver {
   ):
     | { velocity: Map<string, [number, number]>; acceleration: Map<string, [number, number]> }
     | undefined {
-    // Only for the drives the loop formulation cannot express. A grounded crank
-    // keeps the existing, MATLAB-verified path: it is cheaper, and replacing a
-    // checked answer with an unchecked one is not an improvement.
-    if (!this.cylinderDrive && !this.pinDrive) {
+    // Only for the drawings the loop formulation cannot express. A grounded
+    // crank keeps the existing, MATLAB-verified path: it is cheaper, and
+    // replacing a checked answer with an unchecked one is not an improvement.
+    // A *coupled* partition is the exception even when a grounded crank drives
+    // it -- the walk had no primitive for its shape, and the loop solver has
+    // no equation for it either, so its rates come from the same constraints
+    // its positions did.
+    if (!this.cylinderDrive && !this.pinDrive && !this.coupledRoute) {
       return undefined;
     }
     // The constraint set describes the mechanism whatever route the positions
@@ -1834,10 +1851,103 @@ export class PositionSolver {
       const wy = dy - py;
       command = Math.atan2(ux * wy - uy * wx, ux * wx + uy * wy);
     }
-    if (command === undefined) {
+    // A boundary-driven partition has no command row at all: the drive stepped
+    // the crank's own body, and that motion enters as a moving boundary rather
+    // than as a scalar. Read at zero so the command terms all vanish.
+    const boundary = this.coupledRoute
+      ? this.boundaryMotion(joints, system, commandRate)
+      : undefined;
+    if (command === undefined && !boundary) {
       return undefined;
     }
-    return constraintRates(system, positions, command, commandRate);
+    const rates = constraintRates(
+      system,
+      positions,
+      command ?? 0,
+      command === undefined ? 0 : commandRate,
+      boundary
+    );
+    if (!rates || !boundary) {
+      return rates;
+    }
+    // The prescribed joints are part of the answer, not absent from it. Left
+    // out, every reader downstream fills them with the zero it keeps for a
+    // joint held by the ground -- which for a turning crank is a body drawn
+    // moving and reported still.
+    for (const [id, velocity] of boundary.velocity) {
+      rates.velocity.set(id, [velocity[0], velocity[1]]);
+      const acceleration = boundary.acceleration.get(id) ?? [0, 0];
+      rates.acceleration.set(id, [acceleration[0], acceleration[1]]);
+    }
+    return rates;
+  }
+
+  /**
+   * How fast the joints an earlier step already placed are going.
+   *
+   * These are the moving boundary a coupled partition is solved against: the
+   * grounds, which are not going anywhere, and every joint the drive's own
+   * steps put down. A grounded crank swings its neighbors about the pivot at
+   * the input speed; a grounded slider carries its block along the guide at
+   * it. None is solved for, so none has rates until they are written here.
+   *
+   * Everything the system does not hold unknown, rather than the joints its
+   * rows happen to name. A crank body with a third joint on it -- a tracer, or
+   * a second arm the rest of the drawing does not reach -- is stepped by the
+   * drive and mentioned by no constraint at all, so asking the constraints
+   * which joints are prescribed leaves it out of both answers, and it comes
+   * back motionless while it visibly swings.
+   *
+   * The rate is signed and already in the drive's own units -- radians a
+   * second for a pin, model units a second for a slider -- and constant, which
+   * is what leaves a crank's acceleration purely centripetal and a slider's
+   * zero.
+   *
+   * Nothing, rather than a guess, for a boundary joint that is neither a
+   * ground nor part of the driven body: a rate invented for one would be
+   * reported as measured.
+   */
+  private static boundaryMotion(
+    joints: Joint[],
+    system: SimultaneousSystem,
+    commandRate: number
+  ): BoundaryMotion | undefined {
+    const solved = new Set(system.unknownIds);
+    const prescribed = joints.filter((joint) => !solved.has(joint.id));
+    if (prescribed.length === 0) return undefined;
+    const input = joints.find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
+    if (!input) return undefined;
+    const driven = new Set([input.id, ...input.connectedJoints.map((joint) => joint.id)]);
+    const sliding = input instanceof PrisJoint;
+    const slotAngle = sliding ? this.sliderAngleMap.get(input.id) : undefined;
+    if (sliding && slotAngle === undefined) return undefined;
+
+    const velocity: PositionMap = new Map();
+    const acceleration: PositionMap = new Map();
+    for (const joint of prescribed) {
+      const id = joint.id;
+      const held = joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint);
+      if (held) {
+        velocity.set(id, [0, 0]);
+        acceleration.set(id, [0, 0]);
+        continue;
+      }
+      if (!driven.has(id)) return undefined;
+      if (sliding) {
+        velocity.set(id, [commandRate * Math.cos(slotAngle!), commandRate * Math.sin(slotAngle!)]);
+        acceleration.set(id, [0, 0]);
+        continue;
+      }
+      // A crank: the pivot is the input joint itself, which is grounded and
+      // was taken by the branch above, so anything left is out on the arm.
+      const rx = joint.x - input.x;
+      const ry = joint.y - input.y;
+      velocity.set(id, [-commandRate * ry, commandRate * rx]);
+      acceleration.set(id, [-commandRate * commandRate * rx, -commandRate * commandRate * ry]);
+    }
+    return { velocity, acceleration };
   }
 
   /**

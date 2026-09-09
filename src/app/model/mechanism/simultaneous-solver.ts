@@ -102,6 +102,19 @@ export interface SimultaneousSystem {
 
 export type PositionMap = Map<string, number[]>;
 
+/**
+ * The part of a motion that is prescribed rather than solved for.
+ *
+ * A coupled partition is solved against a moving boundary: the driven body,
+ * put where this sample wants it before the constraint set is asked anything,
+ * and the grounds, which are not going anywhere. Both are known exactly, which
+ * is what leaves the rest a linear problem.
+ */
+export interface BoundaryMotion {
+  velocity: PositionMap;
+  acceleration: PositionMap;
+}
+
 /** How close to zero every residual has to get, in model units. */
 const TOLERANCE = 1e-6;
 /** Enough for a damped solve to walk in from a poor pose; a good one takes three. */
@@ -841,6 +854,30 @@ export function commandDerivative(
   return out;
 }
 
+/**
+ * Whether a least-squares answer actually satisfies the rows it was fitted to.
+ *
+ * It need not. Least squares returns the nearest thing to a solution whether
+ * or not one exists, so rows that disagree -- a mechanism with more
+ * constraints than freedoms, redundant in the count but not in the geometry --
+ * come back with a confident vector that solves none of them. Reported as
+ * rates, that is a velocity field nothing in the drawing is moving at.
+ *
+ * Relative, because the rows are in model units per second and a drawing can
+ * be any size; the floor keeps a mechanism standing still from being judged
+ * against nothing.
+ */
+function solves(matrix: number[][], answer: number[], rhs: number[]): boolean {
+  let worst = 0;
+  let scale = 0;
+  for (let row = 0; row < matrix.length; row++) {
+    const got = matrix[row].reduce((sum, value, column) => sum + value * answer[column], 0);
+    worst = Math.max(worst, Math.abs(got - rhs[row]));
+    scale = Math.max(scale, Math.abs(got), Math.abs(rhs[row]));
+  }
+  return worst <= Math.max(scale, 1) * 1e-6;
+}
+
 /** Least squares: solve `JᵀJ x = Jᵀ b`, which is the undamped `solveDamped`. */
 function leastSquares(matrix: number[][], rhs: number[]): number[] | undefined {
   const negated = rhs.map((value) => -value);
@@ -851,41 +888,87 @@ function leastSquares(matrix: number[][], rhs: number[]): number[] | undefined {
  * Velocities and accelerations of the solved joints, by differentiating the
  * constraints the positions came from.
  *
- * `J q̇ = −F_c ċ` for the rates, and differentiating once more in time gives
- * `J q̈ = −(dJ/dt) q̇ − (dF_c/dt) ċ`, with the two time derivatives taken along
- * the motion the rates just described. Analytic in space, differenced in time:
- * the space part is where the conditioning problems live, and it is exact.
+ * Two things can move a mechanism this way, and a coupled partition has both.
+ * A *command* is a scalar the drive advances -- a ram's length, a pin's angle
+ * -- and appears in one row. A *boundary* is a body an earlier step has
+ * already placed, whose joints are known coordinates rather than unknowns; a
+ * grounded crank is the ordinary case, and the grounds themselves are the
+ * degenerate one. Differentiating `F(q, b, c) = 0` in time gives
+
+ *     J_q qdot = -J_b bdot - F_c cdot
  *
- * Returns nothing when the constraints cannot be differentiated at this pose —
- * a toggle, where the rates are genuinely undefined rather than merely awkward.
+ * for the rates, and once more, with the input rate held constant,
+ *
+ *     J_q qddot = -(dJ_q/dt) qdot - (dJ_b/dt) bdot - J_b bddot - (dF_c/dt) cdot
+ *
+ * with every time derivative taken along the whole motion -- the solved joints
+ * and the boundary together, since a difference down a path that held a
+ * turning crank still would read the mechanism's shape as changing in a way it
+ * does not. Analytic in space, differenced in time: the space part is where
+ * the conditioning problems live, and it is exact.
+ *
+ * Returns nothing when the constraints cannot be differentiated at this pose --
+ * a toggle, where the rates are genuinely undefined rather than merely awkward
+ * -- and nothing when the answer does not satisfy the rows it was fitted to.
  */
 export function constraintRates(
   system: SimultaneousSystem,
   positions: PositionMap,
   command: number,
-  commandRate: number
+  commandRate: number,
+  boundary?: BoundaryMotion
 ):
   | { velocity: Map<string, [number, number]>; acceleration: Map<string, [number, number]> }
   | undefined {
   const ids = system.unknownIds;
   const columnOf = new Map(ids.map((id, index) => [id, index]));
+  // A pose where the constraints have no independent answer -- a toggle, or an
+  // unknown no row mentions -- has no rates either, and least squares would
+  // hand back a plausible one anyway. Asked at the pose and the command in
+  // hand, not at the one the mechanism was admitted at.
+  if (!hasFullColumnRank(system, positions, command)) {
+    return undefined;
+  }
   const derivative = jacobian(system, positions, columnOf, command);
   const byCommand = commandDerivative(system, positions, command);
 
-  // J q̇ = −F_c ċ. The minus is the whole of the sign convention, and a test
-  // that only ever compares speeds cannot see it.
-  const rates = leastSquares(
-    derivative,
-    byCommand.map((value) => -value * commandRate)
+  // The prescribed part of the motion: joints an earlier step placed, whose
+  // rates are known before this system is asked anything. Empty, or all zeros,
+  // for a drawing whose only boundary is the ground -- which is every
+  // mechanism the command path was written for, so those come through this
+  // arithmetic unchanged.
+  const carriedIds = boundary
+    ? [...boundary.velocity.keys()].filter((id) => !columnOf.has(id))
+    : [];
+  const carriedColumns = new Map(carriedIds.map((id, index) => [id, index]));
+  const carriedRate = carriedIds.flatMap((id) => boundary!.velocity.get(id) ?? [0, 0]);
+  const carriedAccel = carriedIds.flatMap((id) => boundary!.acceleration.get(id) ?? [0, 0]);
+  /** `J_b` at a pose: how each residual moves when the boundary does. */
+  const byBoundaryAt = (pose: PositionMap, at: number): number[][] | undefined =>
+    carriedIds.length ? jacobian(system, pose, carriedColumns, at) : undefined;
+  const carriedBy = (matrix: number[][] | undefined, vector: number[], row: number): number =>
+    matrix ? matrix[row].reduce((sum, value, index) => sum + value * vector[index], 0) : 0;
+  const byBoundary = byBoundaryAt(positions, command);
+
+  // `J_q qdot = -J_b bdot - F_c cdot`. The minus is the whole of the sign
+  // convention, and a test that only ever compares speeds cannot see it.
+  const velocityRhs = byCommand.map(
+    (value, row) => -value * commandRate - carriedBy(byBoundary, carriedRate, row)
   );
-  if (!rates || !rates.every(Number.isFinite)) {
+  const rates = leastSquares(derivative, velocityRhs);
+  if (!rates || !rates.every(Number.isFinite) || !solves(derivative, rates, velocityRhs)) {
     return undefined;
   }
 
   // A step along the motion, small against the mechanism rather than against
   // the clock, so the differenced time derivative is well scaled whatever the
   // input speed happens to be.
-  const fastest = Math.max(...rates.map(Math.abs), Math.abs(commandRate), 1e-12);
+  const fastest = Math.max(
+    ...rates.map(Math.abs),
+    ...carriedRate.map(Math.abs),
+    Math.abs(commandRate),
+    1e-12
+  );
   const step = 1e-4 / fastest;
   const shifted = (direction: number): PositionMap => {
     const moved: PositionMap = new Map(positions);
@@ -894,6 +977,16 @@ export function constraintRates(
       moved.set(id, [
         here[0] + direction * step * rates[index * 2],
         here[1] + direction * step * rates[index * 2 + 1],
+      ]);
+    });
+    // The boundary walks with them. Differencing the Jacobian down a path that
+    // holds a prescribed crank still would read the mechanism's shape as
+    // changing in a way it does not.
+    carriedIds.forEach((id, index) => {
+      const here = positions.get(id) ?? [0, 0];
+      moved.set(id, [
+        here[0] + direction * step * carriedRate[index * 2],
+        here[1] + direction * step * carriedRate[index * 2 + 1],
       ]);
     });
     return moved;
@@ -907,6 +1000,8 @@ export function constraintRates(
   const jacobianBehind = jacobian(system, behind, columnOf, commandBehind);
   const commandAheadRow = commandDerivative(system, ahead, commandAhead);
   const commandBehindRow = commandDerivative(system, behind, commandBehind);
+  const boundaryAhead = byBoundaryAt(ahead, commandAhead);
+  const boundaryBehind = byBoundaryAt(behind, commandBehind);
 
   const rhs = derivative.map((_, row) => {
     let jacobianRate = 0;
@@ -915,11 +1010,27 @@ export function constraintRates(
         ((jacobianAhead[row][column] - jacobianBehind[row][column]) / (2 * step)) * rates[column];
     }
     const commandRateChange = (commandAheadRow[row] - commandBehindRow[row]) / (2 * step);
-    // J q̈ = −(dJ/dt) q̇ − (dF_c/dt) ċ, with the input rate held constant.
-    return -(jacobianRate + commandRateChange * commandRate);
+    const boundaryRateChange =
+      (carriedBy(boundaryAhead, carriedRate, row) - carriedBy(boundaryBehind, carriedRate, row)) /
+      (2 * step);
+    // `J_q qddot = -(dJ_q/dt) qdot - (dJ_b/dt) bdot - J_b bddot - (dF_c/dt)
+    // cdot`, with the input rate held constant. Every term the boundary
+    // contributes is here: how its own motion bends the constraints, and its
+    // acceleration -- a crank at constant speed still has one, pointing at
+    // its pivot.
+    return -(
+      jacobianRate +
+      commandRateChange * commandRate +
+      boundaryRateChange +
+      carriedBy(byBoundary, carriedAccel, row)
+    );
   });
   const accelerations = leastSquares(derivative, rhs);
-  if (!accelerations || !accelerations.every(Number.isFinite)) {
+  if (
+    !accelerations ||
+    !accelerations.every(Number.isFinite) ||
+    !solves(derivative, accelerations, rhs)
+  ) {
     return undefined;
   }
 

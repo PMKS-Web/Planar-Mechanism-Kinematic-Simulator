@@ -6,6 +6,7 @@ import { teachingLabFourBarFixture } from '../../test-utils/verification/fixture
 import { cylinderBoomFixture } from '../../test-utils/verification/slot-fixtures';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 import { PositionSolver } from '../../app/model/mechanism/position-solver';
+import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
 import { RevJoint } from '../../app/model/joint';
 
 /**
@@ -96,6 +97,43 @@ describe('a drawing the coupled route refuses', () => {
     expect(solver.stepCount).toBe(0);
     expect(plannedSteps()).toEqual([]);
     solver.resetStaticVariables();
+  });
+});
+
+describe('a coupled partition whose rates cannot be found', () => {
+  it('is left without them rather than handed to the loop solver', () => {
+    // The loop formulation cannot express these drawings any better than the
+    // walk can place them -- that is why their positions did not come from the
+    // walk either. Falling through to it would not be a cheaper answer to the
+    // same question; it would be a confident answer to a different one, drawn
+    // as a curve on the graph the reader is looking at.
+    const walked = buildMechanism(teachingLabFourBarFixture()).mechanism;
+    const rates = PositionSolver as unknown as {
+      constraintKinematics: (...args: unknown[]) => unknown;
+      coupledRoute: boolean;
+    };
+    const original = rates.constraintKinematics;
+    /** Every joint the rate solver came away with an answer for. */
+    const answered = (coupled: boolean): number => {
+      rates.constraintKinematics = () => undefined;
+      rates.coupledRoute = coupled;
+      try {
+        KinematicsSolver.resetVariables();
+        KinematicsSolver.requiredLoops = walked.requiredLoops;
+        KinematicsSolver.determineKinematics(walked.joints[1], walked.links[1], 1);
+        return [...KinematicsSolver.jointVelMap.values()].filter(
+          (velocity) => Math.hypot(velocity[0], velocity[1]) > 1e-9
+        ).length;
+      } finally {
+        rates.constraintKinematics = original;
+        rates.coupledRoute = false;
+      }
+    };
+
+    // Stated as a pair, because "nothing came back" is only meaningful beside
+    // the run that shows something would have.
+    expect(answered(false)).toBeGreaterThan(0);
+    expect(answered(true)).toBe(0);
   });
 });
 
