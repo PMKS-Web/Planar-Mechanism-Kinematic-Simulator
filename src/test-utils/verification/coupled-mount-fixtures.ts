@@ -296,3 +296,20 @@ export function permuted(fixture: MechanismFixture): MechanismFixture {
     welds: fixture.welds?.map(rename),
   };
 }
+
+/**
+ * The same welded boom with its tip pinned down as well.
+ *
+ * Nothing can move: the boom is grounded at both ends, so the mount the rod is
+ * welded to cannot go anywhere, and a ram whose two mounts are both fixed has
+ * a fixed length -- which leaves its own sliding freedom with nothing to do.
+ * A negative case on purpose, because "the count says one" is only worth
+ * asserting beside a drawing where it says none.
+ */
+export function pinnedBoomFixture(scale: number = 1): MechanismFixture {
+  const fixture = weldedBoomFixture(scale);
+  return {
+    ...fixture,
+    joints: fixture.joints.map((joint) => (joint.id === 'C' ? { ...joint, ground: true } : joint)),
+  };
+}

@@ -36,8 +36,22 @@ export class MechanismBuilder {
   }
 
   // Find link by id from decoder
+  /**
+   * A link by id, the leaves of a compound included.
+   *
+   * A weld swallows its members, so by the time anything is looked up by name
+   * the bar somebody set a hold on is no longer in the top-level list. It is
+   * still a bar and still holds what it held.
+   */
   private getLinkByID(links: Link[], id: string): Link | undefined {
-    return links.find((link) => link.id === id);
+    const found = links.find((link) => link.id === id);
+    if (found) return found;
+    for (const link of links) {
+      if (!(link instanceof RealLink) || link.subset.length === 0) continue;
+      const inside = this.getLinkByID(link.subset, id);
+      if (inside) return inside;
+    }
+    return undefined;
   }
 
   // Create Joints from JointData. Joint starts off with no links, to be added later

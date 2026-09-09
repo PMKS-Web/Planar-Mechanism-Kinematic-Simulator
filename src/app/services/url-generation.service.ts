@@ -190,9 +190,16 @@ export class UrlGenerationService {
       ]);
 
       // Which bars hold a length or an angle. Only the bars that hold one, so a
-      // drawing with no holds says nothing about them.
+      // drawing with no holds says nothing about them -- and the leaves of a
+      // compound as well as the bodies standing on their own, because a bar
+      // welded into something is still a bar and can still hold its length.
+      // Only the top level was written, so a hold set inside a compound was
+      // lost on the next save with nothing said.
       encoder.setHolds(
-        this.mechanism.links
+        [
+          ...this.mechanism.links,
+          ...this.mechanism.links.flatMap((link) => (link instanceof RealLink ? link.subset : [])),
+        ]
           .filter(
             (link): link is RealLink =>
               link instanceof RealLink && link.hold !== undefined && link.joints.length === 2

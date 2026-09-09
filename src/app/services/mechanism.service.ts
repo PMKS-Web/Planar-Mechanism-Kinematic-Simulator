@@ -2675,7 +2675,14 @@ export class MechanismService {
       const carrier = joint.carrier!;
       const slotJointA = joint.slotJointA!;
       const slotJointB = joint.slotJointB!;
-      const root = this.rootLinkOwning(carrier);
+      // A slot names its carrier by reference, and a compound is rebuilt --
+      // new object, new id -- whenever a weld is taken apart or a leaf removed
+      // from it. So a carrier that nothing owns any more is not necessarily a
+      // slot with no body: it is usually the same body under a new name, and
+      // the two joints the slot is cut between are how to find it. Stripping
+      // first is what made a ram silently lose its bore when the *other* ram
+      // sharing its mount was deleted.
+      const root = this.rootLinkOwning(carrier) ?? this.linkSpanning(slotJointA, slotJointB, joint);
       if (root && root.id !== carrier.id) {
         joint.slideOn(root, slotJointA, slotJointB);
       }
@@ -2683,6 +2690,13 @@ export class MechanismService {
         joint.detach();
       }
     });
+  }
+
+  /** A live body holding both of a slot's joints, and not the slider itself. */
+  private linkSpanning(a: Joint, b: Joint, slider: PrisJoint): Link | undefined {
+    return this.links.find(
+      (link) => link.joints.includes(a) && link.joints.includes(b) && !link.joints.includes(slider)
+    );
   }
 
   /**

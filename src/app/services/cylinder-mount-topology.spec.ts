@@ -27,8 +27,8 @@ afterEach(() => {
  * away has to leave everything else standing exactly as it was.
  */
 
-/** A ram from the origin, with `count` bars hung on its rod mount and welded. */
-function ramWithBracket(bars: number) {
+/** A ram from the origin, with `bars` bars hung on its rod mount and welded. */
+function ramWithBracket(bars: number, options: { weld?: boolean } = {}) {
   const harness = createMechanismHarness();
   harness.service.createCylinderFrom(new Coord(0, 0), new Coord(3 * MODEL_SCALE, 0));
   const slider = harness.service.joints.find(
@@ -49,7 +49,7 @@ function ramWithBracket(bars: number) {
   }
   wireGraph(harness.service);
   harness.active.updateSelectedObj(mount);
-  harness.service.weldJoint();
+  if (options.weld ?? true) harness.service.weldJoint();
   return { ...harness, sealed, mount, tips };
 }
 
@@ -105,22 +105,27 @@ describe('a mount welded to a bracket of more than one bar', () => {
 });
 
 describe('two rams sharing one welded mount', () => {
-  /** A second ram whose barrel mount is the first ram's welded rod mount. */
+  /**
+   * A second ram whose barrel mount *is* the first ram's rod mount, with a bar
+   * on it as well, and the whole lot welded into one body.
+   *
+   * Hung on the mount before the weld rather than after. Both remaining public
+   * guards -- the creation path's own refusal and the merge rule -- turn away
+   * an edit that would put a ram on a joint that is already welded, and those
+   * are step 5's to lift. The order below needs neither, and reaches the same
+   * topology, which is the thing being tested.
+   */
   function twoRams() {
-    const h = ramWithBracket(1);
+    const h = ramWithBracket(1, { weld: false });
     const mount = h.mount;
     h.service.createCylinderFrom(
       new Coord(mount.x, mount.y),
-      new Coord(mount.x, mount.y + 3 * MODEL_SCALE)
+      new Coord(mount.x, mount.y + 3 * MODEL_SCALE),
+      undefined,
+      mount
     );
-    // The second ram is drawn from the mount's own point; merge its barrel
-    // mount onto the mount to make them one joint, which is how a reader
-    // attaches one ram to another.
-    const second = sealedCylinders(h.service.joints).find(
-      (candidate) => candidate.rodFar.id !== h.sealed.rodFar.id
-    )!;
-    h.service.mergeJoints(second.barrelFar as RealJoint, mount);
-    h.service.finishStructuralEdit(true);
+    h.active.updateSelectedObj(mount);
+    h.service.weldJoint();
     return { ...h, mount };
   }
 
@@ -128,6 +133,7 @@ describe('two rams sharing one welded mount', () => {
     const h = twoRams();
     expect(cylindersIn(h)).toHaveLength(2);
     const doomed = cylindersIn(h).find((one) => one.rodFar.id === h.sealed.rodFar.id)!;
+    const before = h.saveCount();
 
     h.service.deleteCylinder(doomed);
 
@@ -135,6 +141,63 @@ describe('two rams sharing one welded mount', () => {
     expect(left, 'the other ram').toHaveLength(1);
     expect(left[0].slider.isSealed).toBe(true);
     expect(left[0].pin.isWelded).toBe(true);
+    // The mount held three leaves -- two rams and a bar -- so what is left is
+    // still a body of two, rebuilt rather than dissolved.
+    const survivor = h.service.joints.find((joint) => joint.id === h.mount.id) as RealJoint;
+    expect(survivor.isWelded).toBe(true);
+    // One rebuild, one entry, however many parts the removal touched.
+    expect(h.saveCount() - before).toBe(1);
+  });
+});
+
+describe('three rams in a chain', () => {
+  /** Ram A's rod mount on ram B's barrel mount, and B's rod on C's barrel. */
+  function chain() {
+    const harness = createMechanismHarness();
+    const spans: { barrelFar: string; rodFar: string }[] = [];
+    for (let index = 0; index < 3; index++) {
+      harness.service.createCylinderFrom(
+        new Coord(index * 3 * MODEL_SCALE, 0),
+        new Coord((index + 1) * 3 * MODEL_SCALE, 0)
+      );
+    }
+    // Drawn end to end; each pair is joined by merging the far mount of one
+    // onto the near mount of the next.
+    for (let index = 0; index < 2; index++) {
+      const rams = sealedCylinders(harness.service.joints).sort(
+        (left, right) => left.barrelFar.x - right.barrelFar.x
+      );
+      harness.service.mergeJoints(
+        rams[index + 1].barrelFar as RealJoint,
+        rams[index].rodFar as RealJoint
+      );
+      harness.service.finishStructuralEdit(true);
+    }
+    for (const ram of sealedCylinders(harness.service.joints)) {
+      spans.push({ barrelFar: ram.barrelFar.id, rodFar: ram.rodFar.id });
+    }
+    return { ...harness, spans };
+  }
+
+  it('loses only the one deleted, in one entry', () => {
+    const h = chain();
+    expect(sealedCylinders(h.service.joints)).toHaveLength(3);
+    const middle = sealedCylinders(h.service.joints).sort(
+      (left, right) => left.barrelFar.x - right.barrelFar.x
+    )[1];
+    const outerIds = sealedCylinders(h.service.joints)
+      .filter((ram) => ram.pin.id !== middle.pin.id)
+      .map((ram) => ram.pin.id)
+      .sort();
+    const before = h.saveCount();
+
+    h.service.deleteCylinder(middle);
+
+    const left = sealedCylinders(h.service.joints);
+    expect(left).toHaveLength(2);
+    expect(left.map((ram) => ram.pin.id).sort()).toEqual(outerIds);
+    expect(left.every((ram) => ram.slider.isSealed && ram.pin.isWelded)).toBe(true);
+    expect(h.saveCount() - before).toBe(1);
   });
 });
 
