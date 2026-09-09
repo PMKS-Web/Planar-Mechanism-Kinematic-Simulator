@@ -69,6 +69,19 @@ export type Constraint =
       sin: number;
       cos: number;
     }
+  /**
+   * The direction `a1`->`a2` holds a heading fixed in the *world*.
+   *
+   * What a weld says at a block on a grounded guide. The floating case above
+   * holds an angle between two moving directions; here the second direction is
+   * the guide's own, which does not move, so there is nothing to name it with
+   * — a pair of joints on the world would have to be invented to say the same
+   * thing, and inventing joints to express an angle is how a solver acquires
+   * degrees of freedom nobody drew.
+   *
+   * `dir` is a unit vector captured from the pose the system was built at.
+   */
+  | { kind: 'fixedDirection'; a1: string; a2: string; dir: [number, number] }
   /** A length the drive prescribes, supplied fresh each sample. */
   | { kind: 'driven'; a: string; b: string }
   /**
@@ -205,6 +218,17 @@ export function residuals(
         // place, in model units, like every other row.
         const off = c.cos * (ux * vy - uy * vx) + c.sin * (ux * vx + uy * vy);
         out.push(uLen < 1e-9 || vLen < 1e-9 ? 0 : off / vLen);
+        break;
+      }
+      case 'fixedDirection': {
+        const [a1x, a1y] = at(c.a1);
+        const [a2x, a2y] = at(c.a2);
+        const ux = a2x - a1x;
+        const uy = a2y - a1y;
+        // How far the far end stands off the heading it is held at, signed the
+        // way the drawing turns. `dir` is a unit vector, so the cross product
+        // is already a length and reads like every other row.
+        out.push(c.dir[0] * uy - c.dir[1] * ux);
         break;
       }
     }
@@ -359,6 +383,14 @@ export function jacobian(
         add(current, c.driven, dRdwx, dRdwy);
         // The pivot is subtracted from both, so it moves both ways at once.
         add(current, c.pivot, -dRdax - dRdwx, -dRday - dRdwy);
+        break;
+      }
+      case 'fixedDirection': {
+        // R = (a2 - a1) x dir, linear in both points, so the derivative is the
+        // constant heading itself.
+        const current = row();
+        add(current, c.a2, -c.dir[1], c.dir[0]);
+        add(current, c.a1, c.dir[1], -c.dir[0]);
         break;
       }
       case 'fixedAngle': {
@@ -697,6 +729,9 @@ export function boundaryJoints(system: SimultaneousSystem): string[] {
         break;
       case 'fixedAngle':
         note(c.a1, c.a2, c.b1, c.b2);
+        break;
+      case 'fixedDirection':
+        note(c.a1, c.a2);
         break;
       case 'drivenAngle':
         note(c.pivot, c.reference, c.driven);

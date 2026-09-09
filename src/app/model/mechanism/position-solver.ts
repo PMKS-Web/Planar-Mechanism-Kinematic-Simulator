@@ -830,10 +830,42 @@ export class PositionSolver {
     for (const assembly of slideAssemblies(joints)) {
       const slider = assembly.slider;
       const rider = assembly.riders[0];
-      const other = rider?.joints.find((member) => member.id !== assembly.weldJoint.id);
-      if (!rider || !other) continue;
-      if (!touches(assembly.weldJoint.id, other.id, slider.id)) continue;
+      if (!rider) continue;
+      // The rider may be a compound: a mount welded to a bracket puts the
+      // whole body here, and `joints[1]` is then whichever joint that body
+      // happens to list second. Ask its own two-joint leaf instead, and take
+      // the far end of *that* — the bar the weld is actually holding.
+      const leaf =
+        rider.subset.find(
+          (member) =>
+            member.joints.length === 2 &&
+            member.joints.some((one) => one.id === assembly.weldJoint.id)
+        ) ?? rider;
+      const other = leaf.joints
+        .filter((one) => one.id !== assembly.weldJoint.id && one.id !== slider.id)
+        .reduce<Joint | undefined>((furthest, candidate) => {
+          if (!furthest) return candidate;
+          const reach = (one: Joint) =>
+            Math.hypot(one.x - assembly.weldJoint.x, one.y - assembly.weldJoint.y);
+          return reach(candidate) > reach(furthest) ? candidate : furthest;
+        }, undefined);
+      if (!other) continue;
+
       if (slider.isFloating && slider.slotJointA && slider.slotJointB) {
+        // Every reference the row reads, not only the three on the rider: the
+        // slot's own two ends appear in it, so a system that holds one of them
+        // unknown needs this row even when the rider is entirely known.
+        if (
+          !touches(
+            assembly.weldJoint.id,
+            other.id,
+            slider.id,
+            slider.slotJointA.id,
+            slider.slotJointB.id
+          )
+        ) {
+          continue;
+        }
         // Captured from the pose the drawing was made at: a weld can hold the
         // rider across its slot as readily as along it.
         const slot = Math.atan2(
@@ -849,6 +881,24 @@ export class PositionSolver {
           b2: slider.slotJointB.id,
           sin: Math.sin(arm - slot),
           cos: Math.cos(arm - slot),
+        });
+        continue;
+      }
+
+      if (slider.ground) {
+        // The guide is fixed in the world, so the weld holds the rider at a
+        // heading rather than at an angle to something that moves. There is no
+        // pair of joints to name that heading with, which is why this row
+        // carries the direction itself rather than borrowing two joints from
+        // the world to point at.
+        if (!touches(assembly.weldJoint.id, other.id, slider.id)) continue;
+        const span = Math.hypot(other.x - assembly.weldJoint.x, other.y - assembly.weldJoint.y);
+        if (span < 1e-9) continue;
+        constraints.push({
+          kind: 'fixedDirection',
+          a1: assembly.weldJoint.id,
+          a2: other.id,
+          dir: [(other.x - assembly.weldJoint.x) / span, (other.y - assembly.weldJoint.y) / span],
         });
       }
     }
@@ -1827,6 +1877,39 @@ export class PositionSolver {
    * ordinary way; a cylinder inside a simultaneous system never reaches that
    * step, so the same bound is asked here instead of nowhere.
    */
+  /**
+   * Every ram still inside its own barrel, at the pose just solved.
+   *
+   * `withinStroke` asks this of the *driven* cylinder before it commands a
+   * span, and the interior step asks it of a cylinder the walk places joint by
+   * joint. Neither reaches a passive ram that a simultaneous solve moved: its
+   * interior comes out of the constraint set rather than out of that step, and
+   * `ridersAreInTheirSlots` skips a sealed slider on purpose, because a sealed
+   * bore is not a slot with visible ends. So without this a ram carried past
+   * full extension by the mechanism around it simply telescoped, and the only
+   * sign was a drawing that looked wrong.
+   *
+   * Read from the mounts, like every other cylinder question: the interior is
+   * derived from them, so a span too long for the barrel is the whole of what
+   * "past its stop" means.
+   */
+  private static cylindersWithinTravel(): boolean {
+    for (const interior of this.cylinderInteriorMap.values()) {
+      const barrelMount = this.jointMapPositions.get(interior.barrelFarId);
+      const rodMount = this.jointMapPositions.get(interior.rodFarId);
+      if (!barrelMount || !rodMount) continue;
+      const span = Math.hypot(rodMount[0] - barrelMount[0], rodMount[1] - barrelMount[1]);
+      const along = span - interior.rodLength;
+      if (
+        along < interior.minAlong - STROKE_TOLERANCE ||
+        along > interior.maxAlong + STROKE_TOLERANCE
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private static withinStroke(span: number): boolean {
     const cylinder = this.drivenCylinder;
     const interior = cylinder && this.cylinderInteriorMap.get(cylinder.barrelNear.id);
@@ -2630,6 +2713,9 @@ export class PositionSolver {
     // Every joint has a place now, so the slots can be asked whether their
     // riders are still in them.
     if (!this.ridersAreInTheirSlots(joints)) {
+      return false;
+    }
+    if (!this.cylindersWithinTravel()) {
       return false;
     }
     forces.forEach((f) => {

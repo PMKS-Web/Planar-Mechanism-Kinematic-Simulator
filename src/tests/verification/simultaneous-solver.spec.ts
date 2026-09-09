@@ -188,6 +188,86 @@ describe('the simultaneous solver', () => {
   });
 });
 
+describe('the heading a weld holds against a grounded guide', () => {
+  /**
+   * A rider welded to a block on a world-fixed guide. Nothing in the drawing
+   * points along that guide except the guide itself, so the row carries the
+   * heading rather than borrowing two joints from the world to name it —
+   * inventing joints to express an angle is how a solver acquires freedoms
+   * nobody drew.
+   */
+  function weldedOnAGuide(dir: [number, number]): SimultaneousSystem {
+    return {
+      unknownIds: ['A', 'B'],
+      constraints: [
+        { kind: 'distance', a: 'A', b: 'B', length: 4 },
+        { kind: 'fixedDirection', a1: 'A', a2: 'B', dir },
+      ],
+    };
+  }
+
+  it('reads as the far end’s distance off the heading it is held at', () => {
+    const held: [number, number] = [1, 0];
+    const straight = new Map([
+      ['A', [0, 0]],
+      ['B', [4, 0]],
+    ]);
+    expect(residuals(weldedOnAGuide(held), straight, 0)[1]).toBeCloseTo(0, 12);
+
+    // Swung a little off the heading: the row is how far the far end has gone
+    // round, in model units, like every other row.
+    const angle = 0.05;
+    const swung = new Map([
+      ['A', [0, 0]],
+      ['B', [4 * Math.cos(angle), 4 * Math.sin(angle)]],
+    ]);
+    expect(residuals(weldedOnAGuide(held), swung, 0)[1]).toBeCloseTo(4 * Math.sin(angle), 12);
+  });
+
+  it('derives the same Jacobian a central difference does, at any heading', () => {
+    // Both a flat heading and an oblique one: a term that is silently zero
+    // along an axis is exactly what a flat-only check would miss.
+    for (const theta of [0, 0.7, Math.PI / 2, 2.4]) {
+      const dir: [number, number] = [Math.cos(theta), Math.sin(theta)];
+      const positions = new Map([
+        ['A', [1, -2]],
+        ['B', [1 + 4 * Math.cos(theta + 0.03), -2 + 4 * Math.sin(theta + 0.03)]],
+      ]);
+      expectDerivedJacobian(weldedOnAGuide(dir), positions, 0);
+    }
+  });
+
+  it('holds a body to its heading while it slides along the guide', () => {
+    // What the constraint is for: the rider translates and does not turn.
+    const dir: [number, number] = [Math.cos(0.6), Math.sin(0.6)];
+    const system: SimultaneousSystem = {
+      unknownIds: ['A', 'B'],
+      constraints: [
+        { kind: 'distance', a: 'A', b: 'B', length: 4 },
+        { kind: 'fixedDirection', a1: 'A', a2: 'B', dir },
+        // The guide: A rides a world-fixed line of its own.
+        { kind: 'onFixedLine', point: 'A', at: [0, 0], dir: [1, 0] },
+        { kind: 'driven', a: 'A', b: 'B' },
+      ],
+    };
+    const positions = new Map([
+      ['A', [0, 0]],
+      ['B', [4 * dir[0], 4 * dir[1]]],
+    ]);
+    // Nudge A along its guide and re-solve: B has to follow at the same
+    // heading rather than swinging to keep its distance.
+    positions.set('A', [1.5, 0]);
+    expect(solveSimultaneous(system, positions, 4)).toBe(true);
+
+    const [ax, ay] = positions.get('A')!;
+    const [bx, by] = positions.get('B')!;
+    expect(ay).toBeCloseTo(0, 6);
+    expect(Math.hypot(bx - ax, by - ay)).toBeCloseTo(4, 6);
+    // Still on the heading it was welded at.
+    expect((bx - ax) * dir[1] - (by - ay) * dir[0]).toBeCloseTo(0, 6);
+  });
+});
+
 /**
  * Every analytic row checked against a central difference of the residual it
  * claims to be the derivative of.
