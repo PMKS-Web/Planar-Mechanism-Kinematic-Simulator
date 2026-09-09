@@ -2201,3 +2201,71 @@ over it.
 witness bolted to a slow mechanism shortened the step until the difference was noise. Adding a
 point that appears in no equation must return bit-identical answers, which is what
 `constraint-rate-scaling.spec.ts` asserts, at twelve decades of witness speed.
+
+### A compound is a new object every time, and a slot names its carrier by reference
+
+`splitCompoundAtRemainingWelds` rebuilds a compound whenever a weld is taken apart or a leaf is
+removed from it, and `createNewCompoundLinkFromSubset` makes a **new `RealLink` with a new id**
+from the surviving leaves. Anything holding the old one by reference is now holding something the
+drawing has never heard of.
+
+A floating slot does exactly that: `PrisJoint.carrier` is the link object. `reconcileSlots` used
+to ask `rootLinkOwning(carrier)` and detach when the answer was nothing -- which is right for a
+carrier that has genuinely gone and wrong for the usual case, where it is the same body under a
+new name. Deleting one of two rams welded to a shared mount detached the *survivor's* sealed
+slider, and a ram with no bore is drawn as a bare slide with nothing said. It now looks for the
+live body holding the slot's own two joints first. Repair before you strip, which is what that
+function's own comment always said.
+
+### Removing a leaf from a compound is not the same as unwelding it
+
+Two deletion paths reached into a compound by calling `unweldTopology` on the mount first, so the
+member links became top-level again and could be filtered out. That works, and it silently
+performs a second edit: a mount holding a bracket of two bars and a ram is one body of three, and
+dissolving it to take one leaf out leaves the two bars merely pinned where they had been welded.
+
+The right move is what `removeCompoundJoints` already did for a *joint*: take the leaves out and
+rebuild whatever is still welded together (`releaseFromCompounds`). A weld left holding one thing
+still comes off -- but that decision belongs to `reconcileAssemblyWelds`, which makes it once,
+after the topology has settled.
+
+### A hold lives on a leaf, and the URL only wrote the top level
+
+`setHolds` filtered `mechanism.links`, and a weld swallows its members -- so a bar that held its
+length or its angle went into a compound and came back out of the next save with no hold at all.
+The encoder writes leaves too now, and `MechanismBuilder.getLinkByID` searches subsets, because
+by the time a hold is resolved by name the bar is no longer in the top-level list. Anything else
+addressed by link id from a URL has the same exposure; check it against a compound.
+
+### A creation gesture is a structural edit, and all six ended in the wrong place
+
+The six link-creation cases in `new-grid.component.ts`'s mouse-**down** path (the bar is committed
+by the second click, not by a release) finished at `updateMechanism`. That runs
+`normalizeSealedCylinders` without `reconcileSlots` or `reconcileAssemblyWelds` before it, so a bar
+drawn at a joint that was already welded left the joint flagged welded with a loose bar beside it
+-- welded and pinned at once, which the repair has an answer for and never got to give. They end
+at `finishStructuralEdit` now. Its doc comment already said they had to.
+
+### Building a welded mount in a test: the order is the only way in
+
+Two public guards still refuse it and both are step 5's to lift -- `refuseJointMerge` returns
+`'welded-mount'`, and `createCylinderFrom` refuses a `mountAt` that is welded, in the *mutation*
+rather than only in the UI. So a fixture cannot weld first and attach after. Attach everything to
+the mount while it is plain, then weld: same topology, no guard in the way. `toggleSlider` is
+guarded too; `sliderTopology()` is the entry point underneath it.
+
+### `determineDegreesOfFreedom()` answers NaN on a mechanism that failed
+
+`setMechanismInvalid` clears the frames, so counting again afterwards finds `joints[0]` empty, no
+ground in it, and returns NaN by the no-ground rule. Read `mechanism.dof` -- the number the build
+settled on -- rather than recomputing. A spec that asserts a zero-mobility drawing counts zero
+will otherwise be asserting the NaN guard instead.
+
+### A welded ram is still a two-force member; a *loaded* bracket is what stops it
+
+Welding a rod into a bracket changes what the body can transmit, not what it does. With nothing
+hung on the bracket the assembly still meets the world at two pins, and equilibrium alone puts
+both reactions on the line between them -- `cylinder-forces.spec.ts`'s property survives the weld.
+Hang a load on the bracket and it does not, because the part is now carrying a moment. That is the
+case the universal "replace a cylinder with a force along its mount line" wording is wrong about,
+and `welded-mount-forces.spec.ts` asserts both halves so the qualification cannot be lost again.
