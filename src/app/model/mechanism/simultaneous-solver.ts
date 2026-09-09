@@ -255,7 +255,12 @@ export function residuals(
  *
  * Differentiating `r(x(t), c(t)) = 0` twice gives
  *
- *     0 = J xddot + F_c cddot + gamma,   gamma = xdot^T H xdot + 2 r_xc xdot cdot
+ *     0 = J xddot + F_c cddot + gamma
+ *     gamma = xdot^T H xdot + 2 r_xc xdot cdot + r_cc cdot^2
+ *
+ * -- every term with no acceleration in it. The last one is easy to leave out
+ * of a formula and is real: `drivenAngle` is the only row the command appears
+ * in nonlinearly, and it carries both cross terms.
  *
  * and `gamma` is what this returns, row by row. It is the whole of the
  * velocity-dependent part: the crank turning, the boundary moving, and the
@@ -1077,13 +1082,12 @@ function leastSquares(matrix: number[][], rhs: number[]): number[] | undefined {
  *
  * for the rates, and once more, with the input rate held constant,
  *
- *     J_q qddot = -(dJ_q/dt) qdot - (dJ_b/dt) bdot - J_b bddot - (dF_c/dt) cdot
+ *     J_q qddot = -gamma - J_b bddot
  *
- * with every time derivative taken along the whole motion -- the solved joints
- * and the boundary together, since a difference down a path that held a
- * turning crank still would read the mechanism's shape as changing in a way it
- * does not. Analytic in space, differenced in time: the space part is where
- * the conditioning problems live, and it is exact.
+ * where `gamma` is everything the motion itself contributes and comes from
+ * `secondOrderTerms`, in closed form. Analytic in space *and* in time: this
+ * used to difference three terms along a step, and no step size is right for
+ * every drawing -- see the note on `secondOrderTerms` for what that cost.
  *
  * Returns nothing when the constraints cannot be differentiated at this pose --
  * a toggle, where the rates are genuinely undefined rather than merely awkward

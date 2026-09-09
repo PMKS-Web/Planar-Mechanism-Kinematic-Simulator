@@ -500,18 +500,13 @@ export class ContextMenuBuilderService {
           label: 'Cylinder',
           icon: 'add_cylinder',
           action: () => handlers.attachCylinder(),
-          // A weld says everything meeting here is one rigid body; a cylinder's
-          // joint arriving would be a third body joining that statement without
-          // being part of it, and the reconcilers then disagree about what the
-          // compound is.
-          refusal:
-            crowds ??
-            (joint.isWelded
-              ? {
-                  short: 'it is welded',
-                  long: 'A weld says the bodies meeting here are one rigid piece. Unweld the joint before attaching a cylinder to it.',
-                }
-              : undefined),
+          // A weld used to veto this here, on the grounds that a cylinder's
+          // joint arriving would be a third body inside one rigid statement.
+          // It joins that body instead, which `createCylinderFrom` has allowed
+          // since the mount boundary came off -- so the row was graying itself
+          // for a rule nothing enforced any more, and telling the reader to
+          // unweld first to do something they could already do.
+          refusal: crowds,
         })
       );
     }

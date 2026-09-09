@@ -11,6 +11,7 @@ import {
   cylinderJoints,
   cylinderStrokeAlong,
   cylinderOfJointIn,
+  cylinderInteriorsAt,
   cylinderOfLinkIn,
   isCylinderInterior,
   normalizedCylinderPose,
@@ -2681,7 +2682,8 @@ export class MechanismService {
       // slot with no body: it is usually the same body under a new name.
       // Stripping without asking is what made a ram silently lose its bore
       // when the *other* ram sharing its mount was deleted.
-      const root = this.rootLinkOwning(carrier) ?? this.rootLinkOwningAnyOf(carrier);
+      const root =
+        this.rootLinkOwning(carrier) ?? this.rootCarrying(carrier, slotJointA, slotJointB);
       if (root && root.id !== carrier.id) {
         joint.slideOn(root, slotJointA, slotJointB);
       }
@@ -2692,27 +2694,38 @@ export class MechanismService {
   }
 
   /**
-   * The live body a rebuilt carrier's own members ended up inside.
+   * The live body a rebuilt carrier's own members ended up inside, when there
+   * is exactly one it could be.
    *
-   * Continuity has to be shown rather than guessed. Looking for a live link
-   * that holds the slot's two end pins finds one whether or not it has
-   * anything to do with the carrier: two separate bodies can share a pair of
-   * pins, and a slot cut into one of them was handed to the other when the
-   * first was deleted. Its slot line would even come out geometrically right,
-   * and its ownership wrong -- which is what the force reactions read.
+   * Two things have to hold at once, and asking only one of them is how each
+   * half of this went wrong in turn.
    *
-   * A compound's *leaves* are the identity that survives a rebuild, so those
-   * are what to look for. A carrier that was genuinely deleted takes its
-   * leaves with it, nothing owns them, and the caller detaches the slot.
+   * *Continuity*: the candidate must own one of the carrier's own members. A
+   * live link that merely holds the slot's two end pins is not evidence -- two
+   * separate bodies can share a pair of pins, and a slot cut into one of them
+   * was handed to the other when the first was deleted, with a slot line that
+   * came out geometrically right and an owner the reader never cut it into.
+   *
+   * *Capability*: the candidate must hold the slot's two ends. Stopping at the
+   * first surviving member finds whichever one the compound happens to list
+   * first, and unwelding a barrel mount from a bracket that was listed first
+   * handed the bore to the bracket -- which cannot define it, so the slider was
+   * detached and a ram lost its bore depending on the order of a subset array.
+   *
+   * Every member is searched and the answer must be unambiguous: two different
+   * surviving bodies that both qualify is not a recovery, it is a guess, and
+   * the caller detaches instead. A carrier that was genuinely deleted takes its
+   * members with it, nothing owns them, and the caller detaches then too.
    */
-  private rootLinkOwningAnyOf(carrier: Link): Link | undefined {
+  private rootCarrying(carrier: Link, a: Joint, b: Joint): Link | undefined {
     const members =
       carrier instanceof RealLink && carrier.subset.length > 0 ? carrier.subset : [carrier];
+    const found = new Set<Link>();
     for (const member of members) {
       const root = this.rootLinkOwning(member);
-      if (root) return root;
+      if (root && root.joints.includes(a) && root.joints.includes(b)) found.add(root);
     }
-    return undefined;
+    return found.size === 1 ? [...found][0] : undefined;
   }
 
   /**
@@ -4639,6 +4652,16 @@ export class MechanismService {
     slot: { carrier: Link; a: Joint; b: Joint; x: number; y: number }
   ): boolean {
     if (pin instanceof PrisJoint) return false;
+    // A sealed ram's inside is not somewhere a slot can be cut or moved to.
+    // Asked here, before any coordinate is written, because this is the commit:
+    // half of it had already run by the time anything downstream could object,
+    // and what it does to an interior pin is take the bore's own block and
+    // point it at a bar somewhere else in the drawing -- the ram's slider now
+    // riding a link that is not its barrel, which is not a cylinder any more.
+    //
+    // A mount is not covered by this and must not be: reassigning the block on
+    // a mount is exactly how a carriage is dropped onto a new rail.
+    if (cylinderInteriorsAt(this.sealedStructures(), pin).length > 0) return false;
     // Two blocks on one pin is a different joint type, not a second slot.
     const existing = pin.links.find((link): link is SliderBlock => link instanceof SliderBlock);
     const slider = existing?.joints.find((joint): joint is PrisJoint => joint instanceof PrisJoint);

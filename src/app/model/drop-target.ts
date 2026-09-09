@@ -120,17 +120,22 @@ export function refuseJointMerge(
 
   if (wouldOverConstrain(source, target)) return 'over-constrained';
 
-  const mountOf = (joint: Joint) =>
-    cylinders.find((c) => c.barrelFar.id === joint.id || c.rodFar.id === joint.id);
-  const sourceMount = mountOf(source);
-  const targetMount = mountOf(target);
-  // A cylinder folded onto itself is no cylinder. The rule that stood beside
-  // this one -- no weld may meet a mount -- is gone: a welded mount is what
-  // this whole feature is, and the survivor's weld is checked for survivability
-  // in `mergeJoints` before anything is taken apart.
-  if (sourceMount && targetMount && sourceMount.pin.id === targetMount.pin.id) {
+  // A cylinder folded onto itself is no cylinder. Asked of every ram rather
+  // than of the first one found at each joint: a mount can belong to two rams
+  // at once -- one ram's rod mount is the next one's barrel mount, which is
+  // how a boom and a stick are drawn -- and looking up one cylinder per joint
+  // found *different* rams for the two ends and let the merge through. The
+  // question is whether any single ram has both of these as its mounts.
+  const isMountOf = (cylinder: Cylinder, joint: Joint) =>
+    cylinder.barrelFar.id === joint.id || cylinder.rodFar.id === joint.id;
+  if (cylinders.some((c) => isMountOf(c, source) && isMountOf(c, target))) {
     return 'own-cylinder';
   }
+
+  // The rule that stood beside this one -- no weld may meet a mount -- is
+  // gone: a welded mount is what this whole feature is, and the survivor's
+  // weld is checked for survivability in `mergeJoints` before anything is
+  // taken apart.
 
   return undefined;
 }
@@ -344,7 +349,10 @@ export function resolveDropCandidate(
 ): JointDropCandidate | undefined {
   let best: JointDropCandidate | undefined;
   let bestDistance = radius;
-  const sourceCylinder = cylinders.find((c) =>
+  // Every ram the dragged joint belongs to, not the first: a shared mount is
+  // on two, and excluding only one of them offered the other's own joints as
+  // drop targets.
+  const sourceCylinders = cylinders.filter((c) =>
     cylinderJoints(c).some((member) => member.id === source.id)
   );
   joints.forEach((candidate) => {
@@ -356,7 +364,7 @@ export function resolveDropCandidate(
     // like the far end of a held link, the drawing already says they are one
     // part, so there is nothing to mark red and a legal joint further out can
     // still win.
-    if (sourceCylinder && cylinderJoints(sourceCylinder).some((m) => m.id === candidate.id)) {
+    if (sourceCylinders.some((c) => cylinderJoints(c).some((m) => m.id === candidate.id))) {
       return;
     }
     const refusal = refuseJointMerge(source, candidate, cylinders);

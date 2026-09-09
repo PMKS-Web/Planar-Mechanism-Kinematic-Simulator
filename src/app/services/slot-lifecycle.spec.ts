@@ -3,6 +3,8 @@ import { Coord } from '../model/coord';
 import { PrisJoint, RevJoint } from '../model/joint';
 import { RealLink, SliderBlock } from '../model/link';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
+import { sealedCylinders } from '../model/cylinder';
+import { MODEL_SCALE } from '../model/render-scale';
 
 // Option A (docs/joint-types-plan.md §2.3) keeps a slot's carrier and its two
 // defining joints outside `links` and `connectedJoints`. Nothing that rebuilds
@@ -219,5 +221,68 @@ describe('grounding a floating slot', () => {
     expect(s.slot.ground).toBe(true);
     expect(s.slot.isFloating).toBe(false);
     expect(s.slot.slotAngle).toBeCloseTo(wasPointing, 9);
+  });
+});
+
+describe('a slot dropped onto a sealed cylinder', () => {
+  /** A ram, plus a bar somewhere else to try to cut a slot along. */
+  function ramAndABar() {
+    const harness = createMechanismHarness();
+    harness.service.createCylinderFrom(new Coord(0, 0), new Coord(3 * MODEL_SCALE, 0));
+    const sealed = sealedCylinders(harness.service.joints)[0];
+    const near = new RevJoint('W', 0, 4 * MODEL_SCALE);
+    const far = new RevJoint('X', 4 * MODEL_SCALE, 4 * MODEL_SCALE);
+    const rail = new RealLink('WX', [near, far]);
+    harness.service.joints.push(near, far);
+    harness.service.links.push(rail);
+    wireGraph(harness.service);
+    return { ...harness, sealed, rail, near, far };
+  }
+
+  it('refuses the ram’s own inside, before it writes anything', () => {
+    // `cutSlotOn` is the commit half of a slot drop, and it only asked whether
+    // the pin it was handed was prismatic. Handed the ram's interior pin and a
+    // bar from elsewhere, it took the bore's own block and pointed it at that
+    // bar -- the ram's slider riding a link that is not its barrel, which is
+    // not a cylinder any more. Half of it had run by the time anything
+    // downstream could object, so the refusal has to come first.
+    const h = ramAndABar();
+    const pin = h.sealed.pin as RevJoint;
+    const where = { x: pin.x, y: pin.y + 4 * MODEL_SCALE };
+
+    const took = h.service.cutSlotOn(pin, {
+      carrier: h.rail,
+      a: h.near,
+      b: h.far,
+      x: where.x,
+      y: where.y,
+    });
+
+    expect(took, 'refused').toBe(false);
+    const still = sealedCylinders(h.service.joints);
+    expect(still, 'the ram is still a ram').toHaveLength(1);
+    expect(still[0].slider.carrier!.id, 'its bore is still its barrel').toBe(h.sealed.barrel.id);
+    expect([pin.x, pin.y], 'and nothing moved').toEqual([h.sealed.pin.x, h.sealed.pin.y]);
+    expect(pin.y).not.toBe(where.y);
+  });
+
+  it('still lets a mount take one, which is how a carriage is dropped on a rail', () => {
+    // The rule is about the inside, not about the part: reassigning the block
+    // on a mount is an ordinary slot drop and must stay one.
+    const h = ramAndABar();
+    const mount = h.sealed.barrelFar as RevJoint;
+
+    const took = h.service.cutSlotOn(mount, {
+      carrier: h.rail,
+      a: h.near,
+      b: h.far,
+      x: mount.x,
+      y: h.near.y,
+    });
+
+    expect(took, 'allowed').toBe(true);
+    const still = sealedCylinders(h.service.joints);
+    expect(still, 'and the ram survives it').toHaveLength(1);
+    expect(still[0].slider.isSealed).toBe(true);
   });
 });

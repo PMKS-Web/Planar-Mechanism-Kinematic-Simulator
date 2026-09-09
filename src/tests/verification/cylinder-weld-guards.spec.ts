@@ -7,6 +7,7 @@ import { UrlProcessorService } from '../../app/services/url-processor.service';
 import { GridUtilsService } from '../../app/services/grid-utils.service';
 import { MultiEditService } from '../../app/services/multi-edit.service';
 import { ActiveObjService } from '../../app/services/active-obj.service';
+import { ContextMenuBuilderService } from '../../app/services/context-menu-builder.service';
 import { fixturePayload } from '../../test-utils/verification/fixture-gallery';
 import { cylinderBetween } from '../../test-utils/verification/slot-fixtures';
 import { MechanismFixture } from '../../test-utils/verification/fixture';
@@ -222,6 +223,22 @@ describe('a cylinder mount is an ordinary joint now', () => {
     expect(mechanism.links.map((link) => link.id)).toContain('CD');
     expect(mechanism.links.map((link) => link.id)).toContain('DHK');
     stillARam();
+  });
+
+  it('offers Cylinder on a welded joint, because the mutation does', () => {
+    // The menu kept a veto of its own long after `createCylinderFrom` stopped
+    // enforcing one: it grayed the row and told the reader to unweld first, to
+    // do something they could already do. A row grayed for a rule nothing
+    // enforces is worse than a missing one, because it is a rule the reader
+    // cannot discover has gone.
+    active.updateSelectedObj(jointNamed('D'));
+    mechanism.weldJoint();
+    expect(jointNamed('D').isWelded).toBe(true);
+
+    const menu = TestBed.inject(ContextMenuBuilderService).build(jointNamed('D'), {} as never);
+    const row = menu.groups.flatMap((group) => group.rows).find((one) => one.label === 'Cylinder');
+    expect(row, 'the Cylinder row is there').toBeDefined();
+    expect(row!.disabled, 'and offered').toBe(false);
   });
 
   it('takes a mount’s carriage off again', () => {
