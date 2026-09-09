@@ -10,6 +10,7 @@
 
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../app/model/joint';
 import { Link, RealLink, SliderBlock } from '../app/model/link';
+import { cylinderBetween } from './verification/slot-fixtures';
 
 /**
  * What `rebuildJointGraph` and `reconcileSlots` leave behind, in miniature.
@@ -41,13 +42,24 @@ export function rewire(joints: Joint[], links: Link[]): void {
   });
 }
 
-/** A ram lying along y = 0 from `barrelFar` at x = 0 to `rodFar` at x = 10. */
+/**
+ * A ram lying along y = 0 from its barrel mount at (0,0) to its rod mount at
+ * (10,0), laid out by the model's own rule so barrel and rod come out equal.
+ *
+ * Built through `cylinderBetween` rather than by hand: a ram whose two bodies
+ * are different lengths is not a shape the app can produce, and asserting
+ * behavior against one proves something about a drawing nobody has.
+ */
 export function ram(suffix: string = '') {
-  const barrelFar = new RevJoint(`A${suffix}`, 0, 0);
-  const barrelNear = new RevJoint(`B${suffix}`, 6, 0);
-  const pin = new RevJoint(`C${suffix}`, 6, 0);
-  const rodFar = new RevJoint(`D${suffix}`, 10, 0);
-  const slider = new PrisJoint(`P${suffix}`, 6, 0);
+  const mount = { x: 0, y: 0 };
+  const eye = { x: 10, y: 0 };
+  const laid = cylinderBetween(mount, eye, 0.5);
+
+  const barrelFar = new RevJoint(`A${suffix}`, mount.x, mount.y);
+  const barrelNear = new RevJoint(`B${suffix}`, laid.barrelEnd.x, laid.barrelEnd.y);
+  const pin = new RevJoint(`C${suffix}`, laid.pin.x, laid.pin.y);
+  const rodFar = new RevJoint(`D${suffix}`, eye.x, eye.y);
+  const slider = new PrisJoint(`P${suffix}`, laid.pin.x, laid.pin.y);
 
   const barrel = new RealLink(`A${suffix}B${suffix}`, [barrelFar, barrelNear]);
   const rod = new RealLink(`C${suffix}D${suffix}`, [pin, rodFar]);
@@ -61,7 +73,19 @@ export function ram(suffix: string = '') {
   const links: Link[] = [barrel, rod, block];
   rewire(joints, links);
 
-  return { barrelFar, barrelNear, pin, rodFar, slider, barrel, rod, block, joints, links };
+  return {
+    barrelFar,
+    barrelNear,
+    pin,
+    rodFar,
+    slider,
+    barrel,
+    rod,
+    block,
+    joints,
+    links,
+    layout: laid,
+  };
 }
 
 /**

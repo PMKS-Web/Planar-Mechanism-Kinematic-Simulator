@@ -5,7 +5,14 @@ import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { roundNumber, point_on_line_segment_closest_to_point } from '../model/utils';
 import { Link, SliderBlock, RealLink } from '../model/link';
 import { JointOperationContext, refuseJointOperation } from '../model/joint-operation-permission';
-import { CylinderPosePlan, planCylinderPose, snapshotOf } from '../model/cylinder-pose-plan';
+import {
+  EditPlan,
+  EditRequest,
+  Point,
+  carryPoint,
+  planEdit,
+  snapshotOf,
+} from '../model/cylinder-pose-plan';
 import { NotificationService } from './notification.service';
 import {
   Cylinder,
@@ -865,62 +872,36 @@ export class GridUtilsService {
       return selectedLink;
     }
 
-    const movedJointIDs = new Set<string>();
-    const moveJoint = (joint: Joint) => {
-      if (movedJointIDs.has(joint.id)) return;
-      movedJointIDs.add(joint.id);
-      const at = mapPoint(joint.x, joint.y);
-      joint.x = roundNumber(at.x, 6);
-      joint.y = roundNumber(at.y, 6);
+    // Planned, not written. The drag's own joints and every cylinder those
+    // joints carry are worked out from one snapshot, so a ram that cannot
+    // follow refuses the whole gesture rather than leaving the bar moved and
+    // the ram behind with no way back to where it started.
+    const moves = new Map<string, Point>();
+    const noteMove = (joint: Joint) => {
+      if (moves.has(joint.id)) return;
+      moves.set(joint.id, mapPoint(joint.x, joint.y));
     };
-
     selectedLink.joints.forEach((joint) => {
-      moveJoint(joint);
+      noteMove(joint);
       if (!(joint instanceof RealJoint)) return;
-      // A slider's block joint is coincident with its pin by construction, so it
-      // has to travel with it — the same invariant dragJoint maintains.
+      // A slider's block joint is coincident with its pin by construction, so
+      // it has to travel with it — the same invariant dragJoint maintains.
       joint.links.forEach((link) => {
-        if (link instanceof SliderBlock) link.joints.forEach(moveJoint);
+        if (link instanceof SliderBlock) link.joints.forEach(noteMove);
       });
     });
 
-    this.transformLinkBody(selectedLink, mapPoint);
-    if (selectedLink instanceof RealLink) {
-      selectedLink.subset.forEach((sub) => this.transformLinkBody(sub, mapPoint));
+    // The dragged body's own properties go through the drag's own transform,
+    // which turns a load's direction with it; the plan's frame transport moves
+    // only the anchor. So it is carried here and named as already handled.
+    const ownBodies: Link[] = [selectedLink];
+    if (selectedLink instanceof RealLink) ownBodies.push(...selectedLink.subset);
+    const ownIds = new Set(ownBodies.map((link) => link.id));
+
+    if (!this.runEdit({ moves }, false, ownIds)) {
+      return selectedLink;
     }
-
-    // Any other link holding one of the moved joints has been deformed, not
-    // translated, so its shape and center of mass follow from where its joints
-    // now are. Its forces do not: a load is fixed to the body it acts on, and
-    // leaving it at its old world position would silently move it to a
-    // different point of the link. Carry each one through the same change of
-    // reference frame the link's own geometry goes through.
-    neighbors.forEach(({ link, from }) => {
-      if (!link.joints.some((joint) => movedJointIDs.has(joint.id))) return;
-      this.reframeDeformedLink(link, from);
-    });
-
-    // A neighbor drag that carried a cylinder mount along re-poses that
-    // cylinder about its other mount, so the part follows its mount instead
-    // of bending (§ cylinder 6). A cylinder whose own pin moved was dragged
-    // as a body — every member translated together, nothing to repair.
-    // Sequentially, and that is safe here in a way it is not for a shared mount:
-    // a link drag moves whole bodies, so each ram is re-posed about its own
-    // untouched mount and no two of them are writing to the same joint.
-    carriedCylinders.forEach(({ sealed, barrelLength }) => {
-      if (movedJointIDs.has(sealed.pin.id)) return;
-      if (!movedJointIDs.has(sealed.barrelFar.id) && !movedJointIDs.has(sealed.rodFar.id)) return;
-      // Both mounts held: they are where the drag put them, and the ram
-      // resizes between them if it has to reach. Anchoring on one of them and
-      // recomputing the other put a mount somewhere the drag had not asked for.
-      const pose = stretchedCylinderPose(
-        { x: sealed.barrelFar.x, y: sealed.barrelFar.y },
-        { x: sealed.rodFar.x, y: sealed.rodFar.y },
-        barrelLength,
-        0.15 * SettingsService.objectScale
-      );
-      if (pose) this.applyCylinderPose(sealed, pose);
-    });
+    ownBodies.forEach((link) => this.transformLinkBody(link, mapPoint));
 
     // Before the rebuild, not after. A floating slider is deliberately not a
     // member of its carrier -- that is what makes it a slot rather than a pin --
@@ -1067,14 +1048,55 @@ export class GridUtilsService {
    * One level deep, as `dragLink` is: a third ram bolted to the second follows
    * on the next rebuild rather than in this one.
    */
-  private applyCylinderPose(sealed: Cylinder, pose: CylinderPose, rebuild: boolean = true): void {
+  private applyCylinderPose(
+    sealed: Cylinder,
+    pose: CylinderPose,
+    rebuild: boolean = true
+  ): boolean {
+    return this.runEdit({ poses: [{ cylinder: sealed, pose }] }, rebuild);
+  }
+
+  /**
+   * Plan a whole edit, and commit it only if all of it stands up.
+   *
+   * One snapshot for the gesture's own moves and for every cylinder they
+   * reach. A ram that cannot follow, a body that would have to change shape,
+   * a lock on anything carried: any of those refuses the edit outright and
+   * nothing is written. Committing the initiating move first and discovering
+   * the refusal afterwards left a drag half applied with no way back.
+   */
+  runEdit(
+    request: EditRequest,
+    rebuild: boolean,
+    alreadyCarried: Set<string> = new Set()
+  ): boolean {
+    return this.attemptEdit(request, rebuild, alreadyCarried, true);
+  }
+
+  /**
+   * The same transaction with nothing said when it will not go through.
+   *
+   * For the repair pass, which runs on every rebuild: a drawing that cannot be
+   * straightened is left as it is, and a snackbar on every keystroke that
+   * rebuilds would be noise about a state the reader has not just created.
+   */
+  runEditQuietly(request: EditRequest, rebuild: boolean): boolean {
+    return this.attemptEdit(request, rebuild, new Set(), false);
+  }
+
+  private attemptEdit(
+    request: EditRequest,
+    rebuild: boolean,
+    alreadyCarried: Set<string>,
+    announce: boolean
+  ): boolean {
     const cylinders = sealedCylinderStructures(this.mechanismSrv.joints);
     const snapshot = snapshotOf(this.mechanismSrv.joints);
     const frozen = this.frozenJointIds();
-    // Each other ram's rigid barrel length, read while its geometry is still
+    // Each ram's rigid barrel length, read while its geometry is still
     // straight -- laying one out from a bent intermediate state is what bakes
-    // the split in. From the snapshot for the same reason the plan is: nothing
-    // has moved yet, and nothing may until the whole plan stands up.
+    // the split in. From the snapshot, because nothing has moved yet and
+    // nothing may until the whole plan stands up.
     const barrelLengths = new Map(
       cylinders.map((one) => {
         const far = snapshot.get(one.barrelFar.id);
@@ -1086,55 +1108,66 @@ export class GridUtilsService {
       })
     );
 
-    const planned = planCylinderPose(
-      { cylinder: sealed, pose },
-      {
-        cylinders,
-        snapshot,
-        tolerance: 1e-6,
-        layoutFor: (cylinder, barrelFar, rodFar) =>
-          stretchedCylinderPose(
-            barrelFar,
-            rodFar,
-            barrelLengths.get(cylinder.pin.id) ?? 0,
-            0.15 * SettingsService.objectScale
-          ),
-        // Asked of every joint the plan would move, not only the ram's own
-        // five: a lock out on a bracket welded to a mount holds that mount
-        // just as surely, and the gate at the canvas cannot see that far.
-        frozen: (id) => frozen.has(id),
-      }
-    );
+    const planned = planEdit(request, {
+      cylinders,
+      snapshot,
+      tolerance: 1e-6,
+      layoutFor: (cylinder, barrelFar, rodFar) =>
+        stretchedCylinderPose(
+          barrelFar,
+          rodFar,
+          barrelLengths.get(cylinder.pin.id) ?? 0,
+          0.15 * SettingsService.objectScale
+        ),
+      // Asked of every joint the plan would move, not only a ram's own five: a
+      // lock out on a bracket welded to a mount holds that mount just as
+      // surely, and the gate at the canvas cannot see that far.
+      frozen: (id) => frozen.has(id),
+    });
     if (!planned.ok) {
-      this.notify.refusal(planned.refusal.code, planned.refusal.long);
-      return;
+      if (announce) this.notify.refusal(planned.refusal.code, planned.refusal.long);
+      return false;
     }
 
-    this.commitCylinderPlan(planned.plan);
-
+    this.commitEditPlan(planned.plan, alreadyCarried);
     if (rebuild) {
       this.mechanismSrv.reseatFloatingSliders();
       this.mechanismSrv.updateMechanism(false);
     }
+    return true;
   }
 
   /**
-   * Write a plan out, once, and rebuild what the writing deformed.
+   * Write a plan out, once, and carry each body's properties by its own motion.
    *
-   * The frames come first, and from the joints as they still stand: a force
-   * and a custom center of mass are points somebody fixed to a *body*, and
-   * carrying them needs to know where that body's own reference joints were.
+   * Three kinds of body come out of a plan and they are not interchangeable. A
+   * bar carried rigidly takes its forces and its center of mass through the
+   * transform that carried it. A bar the edit deliberately resized -- a ram's
+   * own barrel and rod -- goes through its change of reference frame, which is
+   * what stretches a point fixed to it. Anything else holding a moved joint
+   * has been genuinely deformed and follows its own frame too.
+   *
+   * Reading one frame off every root's first two joints instead put a resized
+   * ram's stretch onto the bracket welded to it, moving a force anchor and a
+   * center of mass that had not moved at all.
    */
-  private commitCylinderPlan(plan: CylinderPosePlan): void {
-    const affected = this.mechanismSrv.links
-      .filter(
+  commitEditPlan(plan: EditPlan, alreadyCarried: Set<string> = new Set()): void {
+    const handled = new Set<string>(alreadyCarried);
+    plan.carried.forEach(({ leaf }) => handled.add(leaf.id));
+    plan.reshaped.forEach((leaf) => handled.add(leaf.id));
+
+    const framed = [
+      ...plan.reshaped,
+      ...this.mechanismSrv.links.filter(
         (link): link is RealLink =>
-          link instanceof RealLink && link.joints.some((joint) => plan.movedIds.has(joint.id))
-      )
-      .map((link) => ({
-        link,
-        from: link.joints.slice(0, 2).map((joint) => ({ x: joint.x, y: joint.y })),
-      }));
+          link instanceof RealLink &&
+          !handled.has(link.id) &&
+          link.joints.some((joint) => plan.movedIds.has(joint.id))
+      ),
+    ].map((link) => ({
+      link,
+      from: link.joints.slice(0, 2).map((joint) => ({ x: joint.x, y: joint.y })),
+    }));
 
     this.mechanismSrv.joints.forEach((joint) => {
       const to = plan.placements.get(joint.id);
@@ -1143,7 +1176,11 @@ export class GridUtilsService {
       joint.y = roundNumber(to.y, 6);
     });
 
-    affected.forEach(({ link, from }) => this.reframeDeformedLink(link, from));
+    plan.carried.forEach(({ leaf, move }) => {
+      if (alreadyCarried.has(leaf.id)) return;
+      this.transformLinkBody(leaf, (x, y) => carryPoint(move, { x, y }));
+    });
+    framed.forEach(({ link, from }) => this.reframeDeformedLink(link as RealLink, from));
   }
 
   /**
