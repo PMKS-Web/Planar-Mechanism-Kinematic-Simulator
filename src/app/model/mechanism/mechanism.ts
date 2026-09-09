@@ -564,14 +564,33 @@ export class Mechanism {
         this._forces[at],
         angVelDir
       );
-      const settled = !solved || !subdividing || cuts >= FINEST_CUTS;
-      if (settled || this.solvedJump(at) <= jumpLimit) {
+      // A refusal on the *branch* is a reason to try a shorter step rather
+      // than a limit. The solver continues from the pose before it, so over a
+      // long step near a toggle it can land on the far root of the pair -- a
+      // welded rider back to front, a ram assembled inside out -- which the
+      // acceptance checks refuse, correctly, while the near root was reachable
+      // all along by going a shorter way. Reversing there turns a mechanism
+      // round in the middle of travel it has.
+      //
+      // Every other refusal is left as a limit, because it is one: circles
+      // that no longer reach, a rider at the end of its slot, a ram at its
+      // stop. Those are facts about the mechanism and read the same however
+      // finely they are approached, so refining at one only creeps up on it,
+      // spending the sample budget to land nearer a wall it cannot pass.
+      //
+      // The rollback makes the retry safe either way: a refused sample leaves
+      // nothing of itself behind.
+      const acceptable = solved
+        ? this.solvedJump(at) <= jumpLimit
+        : !PositionSolver.refusedOnBranch;
+      if (!subdividing || cuts >= FINEST_CUTS || acceptable) {
         PositionSolver.revoluteSampleStep = baseStep;
         return { solved, fraction: 1 / cuts };
       }
-      // Solved, but too far to keep. Stand the solver back on the pose it
-      // stepped from before asking again, or the finer step reads the sample
-      // just rejected as where it is starting from.
+      // Either refused for its branch, or solved and too far to keep. Stand
+      // the solver back on the pose it stepped from before asking again, or
+      // the finer step reads the sample just rejected as where it is starting
+      // from.
       PositionSolver.restorePose(held);
       cuts *= 2;
     }

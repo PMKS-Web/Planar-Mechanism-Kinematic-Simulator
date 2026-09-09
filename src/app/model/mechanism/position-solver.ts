@@ -349,6 +349,13 @@ export class PositionSolver {
    * happens.
    */
   static forceCoupledRoute = false;
+  /**
+   * Whether the last refused sample was refused for its assembly branch.
+   *
+   * Read by the caller that chooses how big a step to take, and meaningful
+   * only immediately after a refusal. See `refuseBranch`.
+   */
+  static refusedOnBranch = false;
   private static inverseSlotMap = new Map<string, InverseSlotStep>();
   private static slideAssemblyMap = new Map<string, SlideAssemblyStep>();
   /** Every sealed cylinder, keyed by the buried barrel end its step targets. */
@@ -493,6 +500,7 @@ export class PositionSolver {
   static resetStaticVariables() {
     this.jointMapPositions = new Map<string, Array<number>>();
     this.priorJointPositions = new Map<string, Array<number>>();
+    this.refusedOnBranch = false;
     this.sliderAngleMap = new Map<string, number>();
     this.desiredJointGroundIndexMap = new Map<string, number>();
     this.unknownJointsIndicesMap = new Map<string, number[]>();
@@ -2193,8 +2201,8 @@ export class PositionSolver {
       const near = at(interior.barrelNearId);
       const pin = at(interior.pinId);
       if (near === undefined || pin === undefined) continue;
-      if (near < -STROKE_TOLERANCE || pin < -STROKE_TOLERANCE) return false;
-      if (pin > span + STROKE_TOLERANCE) return false;
+      if (near < -STROKE_TOLERANCE || pin < -STROKE_TOLERANCE) return this.refuseBranch();
+      if (pin > span + STROKE_TOLERANCE) return this.refuseBranch();
     }
     return true;
   }
@@ -2215,15 +2223,48 @@ export class PositionSolver {
   private static headingsHeld(): boolean {
     const system = this.simultaneousSystem;
     if (!system) return true;
+    const span = (a: string, b: string): [number, number] | undefined => {
+      const from = this.jointMapPositions.get(a);
+      const to = this.jointMapPositions.get(b);
+      return from && to ? [to[0] - from[0], to[1] - from[1]] : undefined;
+    };
     for (const constraint of system.constraints) {
-      if (constraint.kind !== 'fixedDirection') continue;
-      const from = this.jointMapPositions.get(constraint.a1);
-      const to = this.jointMapPositions.get(constraint.a2);
-      if (!from || !to) continue;
-      const along = (to[0] - from[0]) * constraint.dir[0] + (to[1] - from[1]) * constraint.dir[1];
-      if (along <= 0) return false;
+      if (constraint.kind === 'fixedDirection') {
+        const u = span(constraint.a1, constraint.a2);
+        if (!u) continue;
+        const along = u[0] * constraint.dir[0] + u[1] * constraint.dir[1];
+        if (along <= 0) return this.refuseBranch();
+      } else if (constraint.kind === 'fixedAngle') {
+        // The same blindness, one step less obvious. The row vanishes at the
+        // captured angle and again half a turn from it, so a rider can sit in
+        // its slot back to front and satisfy every number. Which of the two it
+        // is standing at is `cos(theta - delta)`, written out from the sine and
+        // cosine the row carries; the `fixedDirection` case above is this one
+        // with the slot replaced by a world-fixed heading.
+        const u = span(constraint.a1, constraint.a2);
+        const v = span(constraint.b1, constraint.b2);
+        if (!u || !v) continue;
+        const dot = u[0] * v[0] + u[1] * v[1];
+        const cross = u[0] * v[1] - u[1] * v[0];
+        if (constraint.cos * dot - constraint.sin * cross <= 0) return this.refuseBranch();
+      }
     }
     return true;
+  }
+
+  /**
+   * Refuse a sample for standing on the wrong assembly branch.
+   *
+   * Worth telling apart from every other refusal. A limit of travel is a fact
+   * about the mechanism and is the same fact however finely it is approached;
+   * a branch is a fact about the *step*, and a step that arrived on the far
+   * root of a near-toggle interval would have arrived on the near one had it
+   * gone a shorter way. So the caller is told which it was, and only this kind
+   * is worth walking up to again more carefully.
+   */
+  private static refuseBranch(): false {
+    this.refusedOnBranch = true;
+    return false;
   }
 
   private static withinStroke(span: number): boolean {
@@ -2914,6 +2955,7 @@ export class PositionSolver {
     // interpolate from -- and a branch chosen along that interval is a branch
     // chosen from a pose the drawing was never in.
     const held = this.capturePose();
+    this.refusedOnBranch = false;
     if (this.attemptPositionAnalysis(joints, links, forces, angVelDir)) {
       return true;
     }

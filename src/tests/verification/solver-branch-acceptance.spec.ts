@@ -67,6 +67,63 @@ describe('a welded heading that has turned end for end', () => {
   });
 });
 
+describe('a rider sitting in its slot back to front', () => {
+  // The slot runs along x between P and Q; the rider stands square to it, so
+  // the angle the weld was captured at is a right angle.
+  const system: SimultaneousSystem = {
+    unknownIds: ['W', 'F'],
+    constraints: [{ kind: 'fixedAngle', a1: 'W', a2: 'F', b1: 'P', b2: 'Q', sin: 1, cos: 0 }],
+  };
+  const square = new Map<string, number[]>([
+    ['P', [0, 0]],
+    ['Q', [1, 0]],
+    ['W', [0, 0]],
+    ['F', [0, 1]],
+  ]);
+
+  it('satisfies the row exactly, the same as standing the right way up', () => {
+    // A `fixedAngle` row vanishes at the captured angle and again half a turn
+    // from it. Both of these are exact answers, not near ones -- which is why
+    // no tightening of the solver could ever tell them apart.
+    const turned = new Map(square);
+    turned.set('F', [0, -1]);
+    for (const pose of [square, turned]) {
+      for (const value of residuals(system, pose, 0)) {
+        expect(Math.abs(value)).toBeLessThan(1e-12);
+      }
+    }
+  });
+
+  it('is refused when the sample is accepted', () => {
+    solver.resetStaticVariables();
+    solver.simultaneousSystem = system;
+
+    solver.jointMapPositions = new Map(square);
+    expect(solver.headingsHeld()).toBe(true);
+
+    solver.jointMapPositions.set('F', [0, -1]);
+    expect(solver.headingsHeld()).toBe(false);
+    solver.resetStaticVariables();
+  });
+
+  it('and refused whichever way the slot itself is drawn', () => {
+    // The slot's own two joints can be listed either way round; the rider is
+    // no more back to front for that, and no less.
+    solver.resetStaticVariables();
+    solver.simultaneousSystem = {
+      unknownIds: ['W', 'F'],
+      constraints: [{ kind: 'fixedAngle', a1: 'W', a2: 'F', b1: 'Q', b2: 'P', sin: -1, cos: 0 }],
+    };
+
+    solver.jointMapPositions = new Map(square);
+    expect(solver.headingsHeld()).toBe(true);
+
+    solver.jointMapPositions.set('F', [0, -1]);
+    expect(solver.headingsHeld()).toBe(false);
+    solver.resetStaticVariables();
+  });
+});
+
 describe('a ram assembled inside out', () => {
   // `cylinderBetween` lays the fixture out at a mark radius of 0.15, which is
   // what an object scale of 1 means. The stroke bounds the solver records are
