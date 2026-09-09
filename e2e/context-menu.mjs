@@ -337,9 +337,13 @@ check(
   cylinderJoint?.subtitle?.startsWith('Barrel joint · Cylinder'),
   cylinderJoint?.subtitle
 );
+// A mount is an ordinary joint now: it welds, it takes a block, and the only
+// thing standing in the way of *this* one is that a weld needs two links to
+// fuse and it has one. That is arithmetic, not a rule about cylinders, and the
+// row says the arithmetic.
 check(
-  'a sealed part cannot be welded into a neighbor',
-  rowNamed(cylinderJoint, 'Welded')?.slot === 'part is sealed',
+  'a mount alone is refused a weld for having nothing to weld to',
+  rowNamed(cylinderJoint, 'Welded')?.slot === 'needs 2 links',
   rowNamed(cylinderJoint, 'Welded')
 );
 check(
@@ -347,11 +351,13 @@ check(
   ownDelete(cylinderJoint)?.label === 'Delete Joint (and Cylinder)',
   ownDelete(cylinderJoint)?.label
 );
-// Grayed, not absent: the joint menu is one menu, and a row that is there on
-// one joint and gone on the next is a row a reader cannot learn the place of.
+// The row is offered rather than grayed: a block on a mount is a carriage, and
+// that is how an excavator's boom is drawn. What the menu refuses is the ram's
+// inside, and none of those three joints is selectable to right-click on.
 check(
-  'a cylinder joint takes no block: the row is there and grayed with the reason',
-  rowNamed(cylinderJoint, 'Slider')?.slot === 'part of a cylinder',
+  'a mount takes a block, like any other joint',
+  rowNamed(cylinderJoint, 'Slider') !== undefined &&
+    rowNamed(cylinderJoint, 'Slider')?.slot === '',
   rowNamed(cylinderJoint, 'Slider')
 );
 

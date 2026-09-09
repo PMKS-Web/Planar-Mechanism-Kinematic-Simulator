@@ -387,12 +387,12 @@ const mountMenu = await page.evaluate((mountId) => {
 }, barrelFar);
 checkThat(
   // The deletion names what it takes rather than saying only "Delete Joint".
-  // A block is still off the table on a sealed part, but the row is grayed
-  // now rather than missing: every joint's menu is the same shape, so a
-  // reader who has learned where a row sits finds it there and finds out why.
-  'the mount menu names the cylinder in its Delete, and grays Slider',
+  // Slider is *offered*: a block on a mount is a carriage, and a mount is an
+  // ordinary attachment point. What is sealed is the ram's inside, and none of
+  // those three joints can be right-clicked at all.
+  'the mount menu names the cylinder in its Delete, and offers Slider',
   mountMenu.some((i) => i.label.startsWith('Delete Joint (and Cylinder')) &&
-    mountMenu.some((i) => i.label === 'Slider' && i.disabled),
+    mountMenu.some((i) => i.label === 'Slider' && !i.disabled),
   JSON.stringify(mountMenu)
 );
 
