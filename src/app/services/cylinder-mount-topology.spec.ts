@@ -1,7 +1,7 @@
 import '../model/joint';
 import { Coord } from '../model/coord';
 import { PrisJoint, RealJoint, RevJoint } from '../model/joint';
-import { RealLink } from '../model/link';
+import { RealLink, SliderBlock } from '../model/link';
 import { sealedCylinderAt, sealedCylinders } from '../model/cylinder';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
 import { SettingsService } from './settings.service';
@@ -372,5 +372,93 @@ describe('a merge that could not put the weld back', () => {
     // it is inside the body, not pinned beside it.
     expect(compounds[0].subset.map((leaf) => leaf.id)).toContain(h.mount.id + 'R');
     expect(cylindersIn(h)).toHaveLength(1);
+  });
+});
+
+describe('deleting a mount two rams share', () => {
+  /** Both rams hanging on one welded mount, as `twoRams` builds it. */
+  function shared(order: 'as-drawn' | 'reversed') {
+    const h = ramWithBracket(1, { weld: false });
+    const mount = h.mount;
+    h.service.createCylinderFrom(
+      new Coord(mount.x, mount.y),
+      new Coord(mount.x, mount.y + 3 * MODEL_SCALE),
+      undefined,
+      mount
+    );
+    h.active.updateSelectedObj(mount);
+    h.service.weldJoint();
+    // The resolver walks the joint list, so reversing it enumerates the two
+    // rams the other way round. Which one is found first must not decide which
+    // one survives.
+    if (order === 'reversed') h.service.joints = [...h.service.joints].reverse();
+    return { ...h, mount };
+  }
+
+  for (const order of ['as-drawn', 'reversed'] as const) {
+    it(`takes both parts, ${order}`, () => {
+      // Asking for the *first* cylinder at the joint and removing that one
+      // left the other's mount gone with its three interior joints still in
+      // the drawing -- a part with nothing to hang on, and no way to select or
+      // delete it. The casualty set is every cylinder incident to the joint,
+      // worked out before anything is removed.
+      const h = shared(order);
+      const parts = cylindersIn(h);
+      expect(parts, 'two rams before').toHaveLength(2);
+      const interiors = parts.flatMap((ram) => [ram.barrelNear.id, ram.pin.id, ram.slider.id]);
+      const before = h.saveCount();
+
+      h.active.updateSelectedObj(h.mount);
+      h.service.deleteJoint();
+
+      expect(cylindersIn(h), 'no ram left').toHaveLength(0);
+      expect(
+        h.service.joints.filter((joint) => interiors.includes(joint.id)).map((j) => j.id),
+        'no orphaned interior joints'
+      ).toEqual([]);
+      expect(h.service.joints.some((joint) => joint.id === h.mount.id)).toBe(false);
+      // The bracket bar's far joint is not a casualty of either ram.
+      expect(h.service.joints.some((joint) => joint.id === h.tips[0].id)).toBe(true);
+      expect(h.saveCount() - before, 'one entry for the whole cascade').toBe(1);
+    });
+  }
+});
+
+describe('a slot whose carrier is deleted outright', () => {
+  it('is detached, not handed to a different body that shares its end pins', () => {
+    // Two separate bodies can hold the same pair of pins. Recovering a slot by
+    // looking for a live link that spans its two ends found the wrong one and
+    // produced a slot line that was geometrically identical and owned by a
+    // body the reader never cut it into -- which is what the force reactions
+    // read. Continuity has to be shown: the surviving body must actually hold
+    // the carrier's own members.
+    const h = createMechanismHarness();
+    const a = new RevJoint('A', 0, 0);
+    const b = new RevJoint('B', 10 * MODEL_SCALE, 0);
+    const c = new RevJoint('C', 0, 4 * MODEL_SCALE);
+    const d = new RevJoint('D', 10 * MODEL_SCALE, 4 * MODEL_SCALE);
+    const pin = new RevJoint('P', 5 * MODEL_SCALE, 0);
+    const slider = new PrisJoint('S', 5 * MODEL_SCALE, 0);
+    const far = new RevJoint('R', 5 * MODEL_SCALE, 4 * MODEL_SCALE);
+    const carrier = new RealLink('ABC', [a, b, c]);
+    const other = new RealLink('ABD', [a, b, d]);
+    slider.slideOn(carrier, a, b);
+    h.service.joints = [a, b, c, d, pin, slider, far];
+    h.service.links = [
+      carrier,
+      other,
+      new SliderBlock('PS', [pin, slider]),
+      new RealLink('PR', [pin, far]),
+    ];
+    wireGraph(h.service);
+
+    h.active.updateSelectedObj(carrier);
+    h.service.deleteLink();
+
+    expect(slider.isFloating, 'the slot has no carrier any more').toBe(false);
+    expect(
+      h.service.links.some((link) => link.id === 'ABD'),
+      'the other body is untouched'
+    ).toBe(true);
   });
 });

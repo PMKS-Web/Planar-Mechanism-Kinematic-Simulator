@@ -249,6 +249,49 @@ describe('a coupled sample that came away with no answer', () => {
   });
 });
 
+describe('a table built over a sample with no rates', () => {
+  it('leaves the cells blank instead of ending the export', () => {
+    // Taking the previous sample's answers back was half the job. The other
+    // half is that something reads these maps afterwards, and every reader in
+    // the export path reached through them with `!`: the kinematic table threw
+    // `Cannot read properties of undefined` on the first refused sample, which
+    // is worse than the stale numbers it replaced -- the reader gets no table
+    // at all rather than a table with a gap in it.
+    const built = buildMechanism(rotatingCarrierFixture(MODEL_SCALE)).mechanism;
+    const refuse = vi.spyOn(PositionSolver, 'constraintKinematics').mockReturnValue(undefined);
+    let table: string[][];
+    try {
+      expect(() => (table = built.kinematicLoopAnalysis())).not.toThrow();
+    } finally {
+      refuse.mockRestore();
+    }
+
+    expect(table!.length).toBeGreaterThan(0);
+    // A row of a refused sample still carries its time and its positions --
+    // those are solved, and true -- and says nothing where it has nothing.
+    const row = table![Math.floor(table!.length / 2)];
+    expect(row.some((cell) => cell === '')).toBe(true);
+    expect(row.every((cell) => typeof cell === 'string')).toBe(true);
+    KinematicsSolver.resetVariables();
+    PositionSolver.resetStaticVariables();
+  });
+
+  it('and fills them in again when the rates come back', () => {
+    const built = buildMechanism(rotatingCarrierFixture(MODEL_SCALE)).mechanism;
+
+    const table = built.kinematicLoopAnalysis();
+
+    expect(table.length).toBeGreaterThan(0);
+    const row = table[Math.floor(table.length / 2)];
+    expect(
+      row.every((cell) => cell !== ''),
+      'nothing missing when nothing was refused'
+    ).toBe(true);
+    KinematicsSolver.resetVariables();
+    PositionSolver.resetStaticVariables();
+  });
+});
+
 describe('the command the admission gate judges a drawing at', () => {
   it('reads an angular drive as an angle, not as nothing', () => {
     // `drivenAngle` is a signed angle at a pivot; read as zero -- which is

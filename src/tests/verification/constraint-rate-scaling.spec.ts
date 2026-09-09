@@ -105,22 +105,84 @@ describe('the same mechanism at every size and every speed', () => {
       });
     }
   }
+});
 
-  it('and when the boundary is moving a billion times faster than the answer', () => {
-    // The unknown barely moves and the thing carrying it is flying. Nothing in
-    // the drawing is like this; the difference step is picked from the largest
-    // rate in sight, so it is exactly the ratio that would break it.
-    const size = 1;
-    const speed = 1e9;
-    const { system, positions, boundary, acceleration } = carriedPoint(size, speed);
+/**
+ * The same rod, with its guide written as a line between two prescribed points
+ * rather than as a fixed one.
+ *
+ * `Q` is held on the line through `B` and `C`. Where those two points *are*,
+ * and how fast they slide along their own line, changes nothing about where
+ * `Q` goes -- the line is the same line. So both are exact tests of the one
+ * thing a differenced derivative cannot promise: that a number far away, or
+ * moving fast, stays out of a local answer.
+ */
+function carriedOnALine(guideLength: number, guideSpeed: number) {
+  const system: SimultaneousSystem = {
+    unknownIds: ['Q'],
+    constraints: [
+      { kind: 'distance', a: 'A', b: 'Q', length: 2 },
+      { kind: 'onLine', point: 'Q', from: 'B', to: 'C' },
+    ],
+  };
+  return {
+    system,
+    positions: new Map<string, number[]>([
+      ['A', [0, 1]],
+      ['Q', [Math.sqrt(3), 0]],
+      ['B', [0, 0]],
+      ['C', [guideLength, 0]],
+    ]),
+    boundary: {
+      velocity: new Map<string, number[]>([
+        ['A', [0, 1]],
+        ['B', [0, 0]],
+        // Along the guide's own direction, so the line does not move.
+        ['C', [guideSpeed, 0]],
+      ]),
+      acceleration: new Map<string, number[]>([
+        ['A', [0, 0]],
+        ['B', [0, 0]],
+        ['C', [0, 0]],
+      ]),
+    },
+    acceleration: -4 / (3 * Math.sqrt(3)),
+  };
+}
 
-    const rates = constraintRates(system, positions, 0, 0, boundary);
+describe('a guide whose far end is a long way off', () => {
+  // The endpoint's distance says nothing about the local motion, and a step
+  // scaled to the extent of the points a row reads believed otherwise: at a
+  // guide length of 100,000 the step reached ten, and the answer came back
+  // -0.6667 against an exact -0.7698 -- wrong in its first digit.
+  for (const guideLength of [10, 1e3, 1e4, 1e5, 1e8]) {
+    it(`leaves a two-unit rod alone at length ${guideLength}`, () => {
+      const { system, positions, boundary, acceleration } = carriedOnALine(guideLength, 0);
 
-    expect(rates).toBeDefined();
-    expect(
-      Math.abs(rates!.acceleration.get('Q')![0] - acceleration) / Math.abs(acceleration)
-    ).toBeLessThan(1e-5);
-  });
+      const rates = constraintRates(system, positions, 0, 0, boundary);
+
+      expect(rates).toBeDefined();
+      expect(rates!.acceleration.get('Q')![0] / acceleration).toBeCloseTo(1, 9);
+    });
+  }
+});
+
+describe('a boundary point moving far faster than the answer', () => {
+  // A real ratio, which the test this replaces did not have: its unknown sped
+  // up with the boundary, so the two never differed. Here `C` slides along the
+  // very line it defines, so it can be given any speed at all while `Q` keeps
+  // the one the rod gives it.
+  for (const guideSpeed of [0, 1, 1e6, 1e9]) {
+    it(`is not felt at ${guideSpeed} times nothing`, () => {
+      const { system, positions, boundary, acceleration } = carriedOnALine(1000, guideSpeed);
+
+      const rates = constraintRates(system, positions, 0, 0, boundary);
+
+      expect(rates).toBeDefined();
+      expect(rates!.velocity.get('Q')![0]).toBeCloseTo(-1 / Math.sqrt(3), 9);
+      expect(rates!.acceleration.get('Q')![0] / acceleration).toBeCloseTo(1, 9);
+    });
+  }
 });
 
 describe('a point sitting on top of an accelerating prescribed one', () => {

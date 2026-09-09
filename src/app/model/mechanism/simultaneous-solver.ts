@@ -250,6 +250,184 @@ export function residuals(
 }
 
 /**
+ * How fast each residual is changing *because the mechanism is moving*, with
+ * every acceleration taken as zero.
+ *
+ * Differentiating `r(x(t), c(t)) = 0` twice gives
+ *
+ *     0 = J xddot + F_c cddot + gamma,   gamma = xdot^T H xdot + 2 r_xc xdot cdot
+ *
+ * and `gamma` is what this returns, row by row. It is the whole of the
+ * velocity-dependent part: the crank turning, the boundary moving, and the
+ * command advancing, all of it.
+ *
+ * It used to be three separate central differences -- of `J_q`, of `J_b`, and
+ * of the command row -- taken along a step small enough to be accurate and
+ * large enough not to be lost to round-off. There is no such step in general.
+ * Scaled to a fixed displacement it was wrong on a small drawing; scaled to
+ * the extent of the points the rows read, a two-unit rod on a hundred-thousand
+ * unit guide got a step of ten and an answer wrong in its first digit. The
+ * guide's far end changes nothing about the local motion, and no global length
+ * can know that.
+ *
+ * So none of it is differenced. Every row here is the exact second derivative
+ * of the matching case in `residuals`, and `constraint-second-order.spec.ts`
+ * checks each one against a central difference on a pose where a central
+ * difference is trustworthy.
+ */
+export function secondOrderTerms(
+  system: SimultaneousSystem,
+  positions: PositionMap,
+  velocities: PositionMap,
+  command: number,
+  commandRate: number
+): number[] {
+  const at = (id: string): number[] => positions.get(id) ?? [0, 0];
+  const rateOf = (id: string): number[] => velocities.get(id) ?? [0, 0];
+  const minus = (a: number[], b: number[]): number[] => [a[0] - b[0], a[1] - b[1]];
+  const cross = (a: number[], b: number[]) => a[0] * b[1] - a[1] * b[0];
+  const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1];
+
+  /** A span's length and its two time derivatives, accelerations taken as zero. */
+  const spanOf = (e: number[], eRate: number[]) => {
+    const length = Math.hypot(e[0], e[1]);
+    const rate = length < 1e-9 ? 0 : dot(e, eRate) / length;
+    return {
+      length,
+      rate,
+      secondOrder: length < 1e-9 ? 0 : (dot(eRate, eRate) - rate * rate) / length,
+    };
+  };
+
+  /**
+   * The second derivative of `value / length`, given each part's own.
+   *
+   * Four of the rows below are a numerator over a span, and they differ only
+   * in what the numerator is.
+   */
+  const overSpan = (
+    value: number,
+    valueRate: number,
+    valueSecondOrder: number,
+    span: { length: number; rate: number; secondOrder: number }
+  ): number => {
+    const l = span.length;
+    return (
+      valueSecondOrder / l -
+      (2 * valueRate * span.rate) / (l * l) -
+      (value * span.secondOrder) / (l * l) +
+      (2 * value * span.rate * span.rate) / (l * l * l)
+    );
+  };
+
+  const out: number[] = [];
+  for (const c of system.constraints) {
+    switch (c.kind) {
+      case 'distance':
+      case 'driven': {
+        // r = |d| - want. The commanded length's own second derivative is zero
+        // -- the drive is read at constant rate -- so all that is left is how
+        // fast the separation's *direction* is turning.
+        const d = minus(at(c.a), at(c.b));
+        const dRate = minus(rateOf(c.a), rateOf(c.b));
+        out.push(spanOf(d, dRate).secondOrder);
+        break;
+      }
+      // Linear in the coordinates, so there is no second-order term at all.
+      case 'coincident':
+        out.push(0, 0);
+        break;
+      case 'onFixedLine':
+      case 'fixedDirection':
+        out.push(0);
+        break;
+      case 'onLine': {
+        const w = minus(at(c.point), at(c.from));
+        const e = minus(at(c.to), at(c.from));
+        const wRate = minus(rateOf(c.point), rateOf(c.from));
+        const eRate = minus(rateOf(c.to), rateOf(c.from));
+        const span = spanOf(e, eRate);
+        if (span.length < 1e-9) {
+          out.push(0);
+          break;
+        }
+        out.push(
+          overSpan(cross(w, e), cross(wRate, e) + cross(w, eRate), 2 * cross(wRate, eRate), span)
+        );
+        break;
+      }
+      case 'rigidOffset': {
+        const w = minus(at(c.point), at(c.from));
+        const e = minus(at(c.to), at(c.from));
+        const wRate = minus(rateOf(c.point), rateOf(c.from));
+        const eRate = minus(rateOf(c.to), rateOf(c.from));
+        const span = spanOf(e, eRate);
+        if (span.length < 1e-9) {
+          out.push(0, 0);
+          break;
+        }
+        // The constants `along` and `across` fall out of both derivatives.
+        out.push(
+          overSpan(dot(w, e), dot(wRate, e) + dot(w, eRate), 2 * dot(wRate, eRate), span),
+          overSpan(cross(e, w), cross(eRate, w) + cross(e, wRate), 2 * cross(eRate, wRate), span)
+        );
+        break;
+      }
+      case 'drivenAngle': {
+        const a = minus(at(c.reference), at(c.pivot));
+        const w = minus(at(c.driven), at(c.pivot));
+        const aRate = minus(rateOf(c.reference), rateOf(c.pivot));
+        const wRate = minus(rateOf(c.driven), rateOf(c.pivot));
+        const span = spanOf(a, aRate);
+        if (span.length < 1e-9) {
+          out.push(0);
+          break;
+        }
+        // The numerator carries the command as well as the pose, so it is the
+        // one row with cross terms between the two.
+        const sine = Math.sin(command);
+        const cosine = Math.cos(command);
+        const turn = cross(a, w);
+        const turnRate = cross(aRate, w) + cross(a, wRate);
+        const reach = dot(a, w);
+        const reachRate = dot(aRate, w) + dot(a, wRate);
+        const value = turn * cosine - reach * sine;
+        const valueRate =
+          turnRate * cosine - reachRate * sine - commandRate * (turn * sine + reach * cosine);
+        const valueSecondOrder =
+          2 * cross(aRate, wRate) * cosine -
+          2 * dot(aRate, wRate) * sine -
+          2 * commandRate * (turnRate * sine + reachRate * cosine) +
+          commandRate * commandRate * (reach * sine - turn * cosine);
+        out.push(overSpan(value, valueRate, valueSecondOrder, span));
+        break;
+      }
+      case 'fixedAngle': {
+        const u = minus(at(c.a2), at(c.a1));
+        const v = minus(at(c.b2), at(c.b1));
+        const uRate = minus(rateOf(c.a2), rateOf(c.a1));
+        const vRate = minus(rateOf(c.b2), rateOf(c.b1));
+        const span = spanOf(v, vRate);
+        if (Math.hypot(u[0], u[1]) < 1e-9 || span.length < 1e-9) {
+          out.push(0);
+          break;
+        }
+        out.push(
+          overSpan(
+            c.cos * cross(u, v) + c.sin * dot(u, v),
+            c.cos * (cross(uRate, v) + cross(u, vRate)) + c.sin * (dot(uRate, v) + dot(u, vRate)),
+            2 * (c.cos * cross(uRate, vRate) + c.sin * dot(uRate, vRate)),
+            span
+          )
+        );
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * The Jacobian of `residuals`, derived rather than differenced.
  *
  * Finite differences are not good enough here, and the mechanism that needs
@@ -855,31 +1033,6 @@ export function commandDerivative(
 }
 
 /**
- * How big across the points a system reads are, as one number.
- *
- * The diagonal of their bounding box, not their distance from the origin: a
- * one-unit mechanism drawn a million units away from it is still a one-unit
- * mechanism, and a step scaled to where it happens to sit would step clean
- * over it. Falls back to one for a system whose points are all in the same
- * place, where the residuals are linear and any step does.
- */
-function span(ids: string[], positions: PositionMap): number {
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
-  for (const id of ids) {
-    const [x, y] = positions.get(id) ?? [0, 0];
-    minX = Math.min(minX, x);
-    maxX = Math.max(maxX, x);
-    minY = Math.min(minY, y);
-    maxY = Math.max(maxY, y);
-  }
-  const across = Math.hypot(maxX - minX, maxY - minY);
-  return across > 0 && Number.isFinite(across) ? across : 1;
-}
-
-/**
  * Whether a least-squares answer actually satisfies the rows it was fitted to.
  *
  * It need not. Least squares returns the nearest thing to a solution whether
@@ -992,78 +1145,19 @@ export function constraintRates(
     return undefined;
   }
 
-  // A step along the motion, small against the mechanism rather than against
-  // the clock, so the differenced time derivative is well scaled whatever the
-  // input speed happens to be -- and small against *this* mechanism, not
-  // against the number one. A fixed displacement of 1e-4 is a ten-thousandth
-  // of a drawing in model units and a hundredth of one in a spec's own units,
-  // and a central difference taken a hundredth of the way across a mechanism
-  // is wrong in its fifth digit. So the displacement is a fixed fraction of
-  // the span of the points the constraints actually read: small enough that
-  // the truncation error is nothing, large enough that the subtraction does
-  // not lose the answer to round-off.
-  const fastest = Math.max(
-    ...rates.map(Math.abs),
-    ...carriedRate.map(Math.abs),
-    Math.abs(commandRate),
-    1e-12
-  );
-  const step = (1e-5 * span([...ids, ...carriedIds], positions)) / fastest;
-  const shifted = (direction: number): PositionMap => {
-    const moved: PositionMap = new Map(positions);
-    ids.forEach((id, index) => {
-      const here = positions.get(id) ?? [0, 0];
-      moved.set(id, [
-        here[0] + direction * step * rates[index * 2],
-        here[1] + direction * step * rates[index * 2 + 1],
-      ]);
-    });
-    // The boundary walks with them. Differencing the Jacobian down a path that
-    // holds a prescribed crank still would read the mechanism's shape as
-    // changing in a way it does not.
-    carriedIds.forEach((id, index) => {
-      const here = positions.get(id) ?? [0, 0];
-      moved.set(id, [
-        here[0] + direction * step * carriedRate[index * 2],
-        here[1] + direction * step * carriedRate[index * 2 + 1],
-      ]);
-    });
-    return moved;
-  };
-  const ahead = shifted(1);
-  const behind = shifted(-1);
-  const commandAhead = command + step * commandRate;
-  const commandBehind = command - step * commandRate;
+  // Everything the motion itself contributes to the second derivative, in one
+  // exact term. No step, and so no step to get wrong: `gamma` covers the crank
+  // turning, the boundary moving and the command advancing together, and it is
+  // differentiated rather than differenced.
+  const alongTheMotion: PositionMap = new Map(boundary?.velocity ?? []);
+  ids.forEach((id, index) => alongTheMotion.set(id, [rates[index * 2], rates[index * 2 + 1]]));
+  const gamma = secondOrderTerms(system, positions, alongTheMotion, command, commandRate);
 
-  const jacobianAhead = jacobian(system, ahead, columnOf, commandAhead);
-  const jacobianBehind = jacobian(system, behind, columnOf, commandBehind);
-  const commandAheadRow = commandDerivative(system, ahead, commandAhead);
-  const commandBehindRow = commandDerivative(system, behind, commandBehind);
-  const boundaryAhead = byBoundaryAt(ahead, commandAhead);
-  const boundaryBehind = byBoundaryAt(behind, commandBehind);
-
-  const rhs = derivative.map((_, row) => {
-    let jacobianRate = 0;
-    for (let column = 0; column < rates.length; column++) {
-      jacobianRate +=
-        ((jacobianAhead[row][column] - jacobianBehind[row][column]) / (2 * step)) * rates[column];
-    }
-    const commandRateChange = (commandAheadRow[row] - commandBehindRow[row]) / (2 * step);
-    const boundaryRateChange =
-      (carriedBy(boundaryAhead, carriedRate, row) - carriedBy(boundaryBehind, carriedRate, row)) /
-      (2 * step);
-    // `J_q qddot = -(dJ_q/dt) qdot - (dJ_b/dt) bdot - J_b bddot - (dF_c/dt)
-    // cdot`, with the input rate held constant. Every term the boundary
-    // contributes is here: how its own motion bends the constraints, and its
-    // acceleration -- a crank at constant speed still has one, pointing at
-    // its pivot.
-    return -(
-      jacobianRate +
-      commandRateChange * commandRate +
-      boundaryRateChange +
-      carriedBy(byBoundary, carriedAccel, row)
-    );
-  });
+  // `J_q qddot = -gamma - J_b bddot`, the command's own second derivative
+  // being zero at a constant input rate. The boundary's acceleration is a term
+  // of its own: a crank at constant speed still has one, pointing at its
+  // pivot.
+  const rhs = derivative.map((_, row) => -(gamma[row] + carriedBy(byBoundary, carriedAccel, row)));
   const accelerations = leastSquares(derivative, rhs);
   if (
     !accelerations ||

@@ -27,6 +27,29 @@ export type MechanismFailure =
   | 'cycle-never-closes'
   | 'cylinder-has-no-travel';
 
+/**
+ * One component of a rate, as a cell of an exported table.
+ *
+ * A sample the rate solver refused has no entry at all: `forgetRates` takes
+ * back everything that sample would have said rather than leaving the one
+ * before it standing in. So every reader of these maps needs an answer for
+ * "nothing", and a table's answer is an empty cell. A blank is a gap a reader
+ * can see; a zero is a claim the solver did not make; and reaching through the
+ * map with `!` -- which is what every one of these did -- ends the export on a
+ * TypeError.
+ */
+function rateCell(value: number[] | undefined, index: number, conversion: number): string {
+  const component = value?.[index];
+  return component === undefined || !Number.isFinite(component)
+    ? ''
+    : roundNumber(component * conversion, 4).toString();
+}
+
+/** The same, for a rate that is one number rather than two. */
+function scalarCell(value: number | undefined): string {
+  return value === undefined || !Number.isFinite(value) ? '' : roundNumber(value, 4).toString();
+}
+
 export class Mechanism {
   private _failure: MechanismFailure | undefined;
   private _unusableCylinder: string | undefined;
@@ -1650,81 +1673,31 @@ export class Mechanism {
           this.joints[index].forEach((j) => {
             force_row.push(roundNumber(j.x, 4).toString());
             force_row.push(roundNumber(j.y, 4).toString());
-            force_row.push(
-              roundNumber(
-                KinematicsSolver.jointVelMap.get(j.id)![0] * velUnitConversion,
-                4
-              ).toString()
-            );
-            force_row.push(
-              roundNumber(
-                KinematicsSolver.jointVelMap.get(j.id)![1] * velUnitConversion,
-                4
-              ).toString()
-            );
-            force_row.push(
-              roundNumber(
-                KinematicsSolver.jointAccMap.get(j.id)![0] * accUnitConversion,
-                4
-              ).toString()
-            );
-            force_row.push(
-              roundNumber(
-                KinematicsSolver.jointAccMap.get(j.id)![1] * accUnitConversion,
-                4
-              ).toString()
-            );
+            force_row.push(rateCell(KinematicsSolver.jointVelMap.get(j.id), 0, velUnitConversion));
+            force_row.push(rateCell(KinematicsSolver.jointVelMap.get(j.id), 1, velUnitConversion));
+            force_row.push(rateCell(KinematicsSolver.jointAccMap.get(j.id), 0, accUnitConversion));
+            force_row.push(rateCell(KinematicsSolver.jointAccMap.get(j.id), 1, accUnitConversion));
           });
           force_row.push(' ');
           this.links[index].forEach((l) => {
             if (l instanceof SliderBlock) {
               return;
             }
-            force_row.push(
-              roundNumber(
-                KinematicsSolver.linkCoMMap.get(l.id)![0] * posUnitConversion,
-                4
-              ).toString()
-            );
-            force_row.push(
-              roundNumber(
-                KinematicsSolver.linkCoMMap.get(l.id)![1] * posUnitConversion,
-                4
-              ).toString()
-            );
-            force_row.push(
-              roundNumber(
-                KinematicsSolver.linkVelMap.get(l.id)![0] * velUnitConversion,
-                4
-              ).toString()
-            );
-            force_row.push(
-              roundNumber(
-                KinematicsSolver.linkVelMap.get(l.id)![1] * velUnitConversion,
-                4
-              ).toString()
-            );
-            force_row.push(
-              roundNumber(
-                KinematicsSolver.linkAccMap.get(l.id)![0] * accUnitConversion,
-                4
-              ).toString()
-            );
-            force_row.push(
-              roundNumber(
-                KinematicsSolver.linkAccMap.get(l.id)![1] * accUnitConversion,
-                4
-              ).toString()
-            );
+            force_row.push(rateCell(KinematicsSolver.linkCoMMap.get(l.id), 0, posUnitConversion));
+            force_row.push(rateCell(KinematicsSolver.linkCoMMap.get(l.id), 1, posUnitConversion));
+            force_row.push(rateCell(KinematicsSolver.linkVelMap.get(l.id), 0, velUnitConversion));
+            force_row.push(rateCell(KinematicsSolver.linkVelMap.get(l.id), 1, velUnitConversion));
+            force_row.push(rateCell(KinematicsSolver.linkAccMap.get(l.id), 0, accUnitConversion));
+            force_row.push(rateCell(KinematicsSolver.linkAccMap.get(l.id), 1, accUnitConversion));
           });
           force_row.push(' ');
           this.links[index].forEach((l) => {
             if (l instanceof SliderBlock) {
               return;
             }
-            force_row.push(roundNumber(KinematicsSolver.linkAngPosMap.get(l.id)!, 4).toString());
-            force_row.push(roundNumber(KinematicsSolver.linkAngVelMap.get(l.id)!, 4).toString());
-            force_row.push(roundNumber(KinematicsSolver.linkAngAccMap.get(l.id)!, 4).toString());
+            force_row.push(scalarCell(KinematicsSolver.linkAngPosMap.get(l.id)));
+            force_row.push(scalarCell(KinematicsSolver.linkAngVelMap.get(l.id)));
+            force_row.push(scalarCell(KinematicsSolver.linkAngAccMap.get(l.id)));
           });
           break;
       }
@@ -1774,51 +1747,31 @@ export class Mechanism {
             4
           ).toString()
         );
-        row.push(
-          roundNumber(KinematicsSolver.jointVelMap.get(j.id)![0] * velUnitConversion, 4).toString()
-        );
-        row.push(
-          roundNumber(KinematicsSolver.jointVelMap.get(j.id)![1] * velUnitConversion, 4).toString()
-        );
-        row.push(
-          roundNumber(KinematicsSolver.jointAccMap.get(j.id)![0] * accUnitConversion, 4).toString()
-        );
-        row.push(
-          roundNumber(KinematicsSolver.jointAccMap.get(j.id)![1] * accUnitConversion, 4).toString()
-        );
+        row.push(rateCell(KinematicsSolver.jointVelMap.get(j.id), 0, velUnitConversion));
+        row.push(rateCell(KinematicsSolver.jointVelMap.get(j.id), 1, velUnitConversion));
+        row.push(rateCell(KinematicsSolver.jointAccMap.get(j.id), 0, accUnitConversion));
+        row.push(rateCell(KinematicsSolver.jointAccMap.get(j.id), 1, accUnitConversion));
       });
       row.push(' ');
       this.links[0].forEach((l) => {
         if (l instanceof SliderBlock) {
           return;
         }
-        row.push(
-          roundNumber(KinematicsSolver.linkCoMMap.get(l.id)![0] * posUnitConversion, 4).toString()
-        );
-        row.push(
-          roundNumber(KinematicsSolver.linkCoMMap.get(l.id)![1] * posUnitConversion, 4).toString()
-        );
-        row.push(
-          roundNumber(KinematicsSolver.linkVelMap.get(l.id)![0] * velUnitConversion, 4).toString()
-        );
-        row.push(
-          roundNumber(KinematicsSolver.linkVelMap.get(l.id)![1] * velUnitConversion, 4).toString()
-        );
-        row.push(
-          roundNumber(KinematicsSolver.linkAccMap.get(l.id)![0] * accUnitConversion, 4).toString()
-        );
-        row.push(
-          roundNumber(KinematicsSolver.linkAccMap.get(l.id)![1] * accUnitConversion, 4).toString()
-        );
+        row.push(rateCell(KinematicsSolver.linkCoMMap.get(l.id), 0, posUnitConversion));
+        row.push(rateCell(KinematicsSolver.linkCoMMap.get(l.id), 1, posUnitConversion));
+        row.push(rateCell(KinematicsSolver.linkVelMap.get(l.id), 0, velUnitConversion));
+        row.push(rateCell(KinematicsSolver.linkVelMap.get(l.id), 1, velUnitConversion));
+        row.push(rateCell(KinematicsSolver.linkAccMap.get(l.id), 0, accUnitConversion));
+        row.push(rateCell(KinematicsSolver.linkAccMap.get(l.id), 1, accUnitConversion));
       });
       row.push(' ');
       this.links[0].forEach((l) => {
         if (l instanceof SliderBlock) {
           return;
         }
-        row.push(roundNumber(KinematicsSolver.linkAngPosMap.get(l.id)!, 4).toString());
-        row.push(roundNumber(KinematicsSolver.linkAngVelMap.get(l.id)!, 4).toString());
-        row.push(roundNumber(KinematicsSolver.linkAngAccMap.get(l.id)!, 4).toString());
+        row.push(scalarCell(KinematicsSolver.linkAngPosMap.get(l.id)));
+        row.push(scalarCell(KinematicsSolver.linkAngVelMap.get(l.id)));
+        row.push(scalarCell(KinematicsSolver.linkAngAccMap.get(l.id)));
       });
       kinematicAnalysis.push(row);
     });

@@ -2678,11 +2678,10 @@ export class MechanismService {
       // A slot names its carrier by reference, and a compound is rebuilt --
       // new object, new id -- whenever a weld is taken apart or a leaf removed
       // from it. So a carrier that nothing owns any more is not necessarily a
-      // slot with no body: it is usually the same body under a new name, and
-      // the two joints the slot is cut between are how to find it. Stripping
-      // first is what made a ram silently lose its bore when the *other* ram
-      // sharing its mount was deleted.
-      const root = this.rootLinkOwning(carrier) ?? this.linkSpanning(slotJointA, slotJointB, joint);
+      // slot with no body: it is usually the same body under a new name.
+      // Stripping without asking is what made a ram silently lose its bore
+      // when the *other* ram sharing its mount was deleted.
+      const root = this.rootLinkOwning(carrier) ?? this.rootLinkOwningAnyOf(carrier);
       if (root && root.id !== carrier.id) {
         joint.slideOn(root, slotJointA, slotJointB);
       }
@@ -2692,11 +2691,28 @@ export class MechanismService {
     });
   }
 
-  /** A live body holding both of a slot's joints, and not the slider itself. */
-  private linkSpanning(a: Joint, b: Joint, slider: PrisJoint): Link | undefined {
-    return this.links.find(
-      (link) => link.joints.includes(a) && link.joints.includes(b) && !link.joints.includes(slider)
-    );
+  /**
+   * The live body a rebuilt carrier's own members ended up inside.
+   *
+   * Continuity has to be shown rather than guessed. Looking for a live link
+   * that holds the slot's two end pins finds one whether or not it has
+   * anything to do with the carrier: two separate bodies can share a pair of
+   * pins, and a slot cut into one of them was handed to the other when the
+   * first was deleted. Its slot line would even come out geometrically right,
+   * and its ownership wrong -- which is what the force reactions read.
+   *
+   * A compound's *leaves* are the identity that survives a rebuild, so those
+   * are what to look for. A carrier that was genuinely deleted takes its
+   * leaves with it, nothing owns them, and the caller detaches the slot.
+   */
+  private rootLinkOwningAnyOf(carrier: Link): Link | undefined {
+    const members =
+      carrier instanceof RealLink && carrier.subset.length > 0 ? carrier.subset : [carrier];
+    for (const member of members) {
+      const root = this.rootLinkOwning(member);
+      if (root) return root;
+    }
+    return undefined;
   }
 
   /**
@@ -2997,10 +3013,21 @@ export class MechanismService {
     // Cylinder" on the joint's own menu still means only the cylinder, and says
     // so; this is the generic Delete, which has one meaning everywhere else —
     // the joint goes, and so does any link that cannot stand without it.
-    const sealed = this.cylinderAt(this.activeObjService.selectedJoint);
-    if (sealed) {
+    // *Every* cylinder this joint belongs to, worked out before anything is
+    // removed. A mount is an ordinary attachment point, so two rams can share
+    // one -- and asking `cylinderAt` for the first match took one of them
+    // away and left the other's mount gone with its interior joints still in
+    // the drawing: three joints belonging to a part that no longer has
+    // anywhere to hang. The whole casualty set, then one rebuild.
+    const doomedCylinders = this.cylindersAt(this.activeObjService.selectedJoint);
+    if (doomedCylinders.length > 0) {
       const doomed = this.activeObjService.selectedJoint;
-      this.deleteCylinderTopology(sealed);
+      // By pin id, so a set enumerated in either order removes the same parts.
+      for (const sealed of [...doomedCylinders].sort((left, right) =>
+        left.pin.id.localeCompare(right.pin.id)
+      )) {
+        this.deleteCylinderTopology(sealed);
+      }
       // The cascade may already have taken it: a mount no other link holds is
       // removed as orphaned, and there is nothing left to delete.
       if (!this.joints.some((joint) => joint.id === doomed.id)) {
