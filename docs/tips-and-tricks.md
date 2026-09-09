@@ -2069,12 +2069,24 @@ So a **branch** refusal is retried at half the step, down to the same sixty-four
 boundary solver caps itself at, and only then read as a limit. `PositionSolver.refusedOnBranch`
 is how the caller is told which kind it was; `refuseBranch()` is the only thing that sets it.
 
-**Every other refusal is left as a limit, and that is not conservatism.** Circles that no longer
-reach, a rider at the end of its slot, a ram at its stop: those read the same however finely they
-are approached, and refining at one only creeps up on a wall, spending six extra solves and a
-sample to land 1/64 of a degree nearer it. Retrying all of them costs ten fixtures their cycle --
-`adaptive-sampling`, `reversed-cycle`, `template-url` and the force fixtures all fail -- which
-`near-toggle-continuation.spec.ts` now states directly.
+**A travel bound is left as a limit, and that is not conservatism.** A rider at the end of its
+slot or a ram at its stop reads the same however finely it is approached, and refining at one only
+creeps up on a wall, spending six extra solves and a sample to land 1/64 of a degree nearer it.
+Retrying every refusal costs ten fixtures their cycle -- `adaptive-sampling`, `reversed-cycle`,
+`template-url` and the force fixtures all fail -- which `near-toggle-continuation.spec.ts` now
+states directly. `refusalKind` is `'travel'` for these.
+
+**`'unsolved'` is the third kind, and it is a weaker claim than either.** An iteration that came
+away with nothing says this seed and this step found no pose, not that none exists. It is treated
+as a limit all the same -- the solve is already subdivided internally where it is commanded, and
+retrying it out here is what costs those ten fixtures -- but do not read the code as asserting a
+geometric impossibility, because it is not one.
+
+**The retry exists on two paths, and the second one is easy to miss.** `solveLookingAhead` covers
+a crank under adaptive sampling. A *commanded* drive -- a ram, a floating slot, a floating pin --
+never reaches it: `canSubdivide` requires `stepsByRevoluteSampleStep`. Its continuation is
+`reachSpan`, which subdivided when the **solve** failed and accepted a converged pose on the far
+root; `settledOnItsBranch` is where that path asks the same question now.
 
 `headingsHeld` also only ever looked at `fixedDirection`. The floating half of the same weld -- a
 rider held at an angle to a slot that moves -- is a `fixedAngle` row, whose residual vanishes at
@@ -2143,3 +2155,49 @@ remembering when adding one:
 `permuted()` in `coupled-mount-fixtures.ts` renames every joint and turns every list round --
 joints, links, subsets, sliders. It cannot tell a weld's reference bar from its neighbor on a body
 that only translates; `constraint-emitter.spec.ts` is where that lives.
+
+
+### A body's angular acceleration is read off two joints, and the centripetal term cancels
+
+`applyConstraintKinematics` gets `alpha` from `cross(r, a2 - a1)/|r|^2` and nothing else. It is
+tempting to "take the centripetal term back out" first, because `a2 - a1 = alpha x r - omega^2 r`
+looks like it has one -- but `r x r` is zero, so `omega^2 r` contributes nothing to the cross
+product and subtracting it is a no-op at best. Written out and subtracted with one sign wrong it
+was not a no-op: it added `2 omega^2 rx ry / |r|^2`, which is **exactly zero on a bar lying along
+an axis** and wrong on every other bar. That is why it survived so long, and why a constant-speed
+crank drawn at 30 degrees was the thing that finally showed it.
+
+It reaches further than the graph of that link: `linkAccMap` builds the center of mass from
+`alpha`, and the force analysis builds inertia terms from that. **Joint accelerations can be
+exactly right while every body-level number is wrong**, so a spec that asserts joint rates only --
+which `coupled-mount-examples` did -- proves less than it looks like it does.
+
+### A sample with no answer has to take back the one before it
+
+`KinematicsSolver`'s maps are written per sample and carry no sample number. Refusing to compute
+is therefore not the same as reporting nothing: a refusal that simply returns leaves the previous
+sample's velocities, angular rates and centers of mass in place, and the reader sees a plausible
+curve where there should be a gap. `forgetRates` deletes this partition's own ids from every rate
+map, seeds included -- a ground's zero is as much a claim about this sample as a solved velocity
+is. Test it as success -> refusal -> success; a refusal on its own cannot tell a cleared map from
+one that was never written.
+
+### A difference step is a fraction of the mechanism, not a fixed number of units
+
+`constraintRates` differentiates in time by central difference, and the step was `1e-4 / fastest`
+-- an absolute displacement of a ten-thousandth of a unit. In model units, where a drawing is
+about a thousand across, that is a relative perturbation of 1e-7 and the truncation error is
+nothing. In a spec's own units, where the same drawing is five across, it is 2e-5 -- and at a size
+of 0.01 the perturbation is a hundredth of the mechanism and the answer is wrong in its fifth
+digit. It is now `1e-5 * span(...)`, the span being the bounding-box diagonal of the points the
+constraints actually read.
+
+**The bounding box, not the distance from the origin.** A one-unit mechanism drawn a million units
+away is still a one-unit mechanism, and a step scaled to where it happens to sit would step clean
+over it.
+
+**And only the points the constraints read.** A prescribed joint no row mentions belongs in the
+*output* and nowhere in the arithmetic -- but it was in the set `fastest` is taken from, so a fast
+witness bolted to a slow mechanism shortened the step until the difference was noise. Adding a
+point that appears in no equation must return bit-identical answers, which is what
+`constraint-rate-scaling.spec.ts` asserts, at twelve decades of witness speed.
