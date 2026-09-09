@@ -123,6 +123,12 @@ function interior(spanAtRest: number) {
 interface Example {
   name: string;
   make: (scale: number) => MechanismFixture;
+  /**
+   * Whether the ram is driven by something else. A passive ram's length is an
+   * answer rather than a command, and the thing that stops the mechanism is
+   * its stroke being reached by an actuator elsewhere in the drawing.
+   */
+  passiveRam?: true;
   /** Ids of the two mounts, so the ram invariants know which part is which. */
   ram: { barrelMount: string; barrelEnd: string; pin: string; block: string; rodMount: string };
   /** The prescribed scalar, read off the drawing at one sample. */
@@ -294,6 +300,7 @@ const oblique: Example = (() => {
 // ---------------------------------------------------------------------------
 const bracket: Example = {
   name: 'a bracket that translates, carrying a passive ram',
+  passiveRam: true,
   make: translatingBracketFixture,
   ram: { barrelMount: 'O', barrelEnd: 'N', pin: 'P', block: 'S', rodMount: 'R' },
   // Read off the bracket's own joint, which the drive places: the ram here is
@@ -359,6 +366,7 @@ const carrier: Example = (() => {
   const bearing = Math.atan2(eye[1], eye[0]);
   return {
     name: 'a mount riding a slot cut into a turning crank',
+    passiveRam: true,
     make: rotatingCarrierFixture,
     ram: { barrelMount: 'O', barrelEnd: 'N', pin: 'P', block: 'S', rodMount: 'R' },
     commandOf: (position) => Math.atan2(position.get('E')![1], position.get('E')![0]),
@@ -776,6 +784,20 @@ describe('a drawing whose cylinder mounts are welded or riding slots', () => {
         }
       });
 
+      it('is driven by the ram, or by something else that drives the ram to its stop', () => {
+        // Both arrangements are here on purpose. Two of the five command the
+        // ram directly; the other two command something else and leave the
+        // ram's length to follow, so what ends the motion is a part nothing is
+        // asking anything of, refusing.
+        const fixture = example.make(SCALE);
+        const sliders = fixture.sliders ?? [];
+        expect(
+          fixture.joints.some((joint) => joint.input) || sliders.some((spec) => spec.input)
+        ).toBe(true);
+        const ramIsDriven = sliders.some((spec) => spec.input && spec.sealed);
+        expect(ramIsDriven).toBe(!example.passiveRam);
+      });
+
       it('reaches both of its stops, so the stroke bound is what turned it round', () => {
         const spans = mechanism.joints.map((_, t) => {
           const pose = poseOf(mechanism, t);
@@ -786,6 +808,33 @@ describe('a drawing whose cylinder mounts are welded or riding slots', () => {
         const step = Math.abs(spans[1] - spans[0]) + 1e-6;
         expect(Math.max(...spans)).toBeGreaterThan(part.rest + part.reach - 2 * step);
         expect(Math.min(...spans)).toBeLessThan(part.rest - part.reach + 2 * step);
+      });
+
+      it('turns round leaving nothing of the sample it refused', () => {
+        // A reversal is a refused sample: the drive asked for one step more
+        // than the ram had, the solver declined, and the walk went back the
+        // way it came. So the sample *after* a reversal is the one from
+        // before it -- the same command, and the same pose, to the last
+        // decimal a position is recorded at. A refusal that left its
+        // half-solved answer behind would show here and almost nowhere else,
+        // because every later sample would carry it along.
+        const signs = mechanism.inputAngularVelocities.map(Math.sign);
+        const flips = signs
+          .map((sign, index) => (index > 0 && sign !== signs[index - 1] ? index : -1))
+          .filter((index) => index > 1);
+        expect(flips).toHaveLength(2);
+        for (const flip of flips) {
+          expect(Math.abs(commands[flip] - commands[flip - 2])).toBeLessThan(
+            Math.abs(commands[1] - commands[0]) * 1e-3
+          );
+          const before = poseOf(mechanism, flip - 2);
+          const after = poseOf(mechanism, flip);
+          for (const [id, at] of before) {
+            expect(apart(at, after.get(id)!), `${id} across the reversal at ${flip}`).toBeLessThan(
+              1e-3
+            );
+          }
+        }
       });
 
       it('draws the same motion with every joint renamed and every list turned round', () => {
