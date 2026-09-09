@@ -586,11 +586,22 @@ export class PositionSolver {
     // reason (§2.9): the walk starts at the input joint and swings its
     // neighbors about it, which assumes the input's own position is known. A
     // floating pin's is not, so it too goes to the constraint set.
+    // Decided once, before any placement: a drawing whose rams are attached at
+    // a mount is solved whole, whatever kind of actuator drives it. Asking
+    // only after the drive branch below had already walked the deferred joints
+    // meant a ram-driven carriage -- the commonest arrangement this route
+    // exists for -- never reached it.
+    const coupled = this.forceCoupledRoute || this.mountEnhanced(joints);
+
     if (
       this.registerCylinderDrive(cylinders, inputJoint) ||
       this.registerPinDrive(inputJoint) ||
       this.registerSlotDrive(inputJoint)
     ) {
+      if (coupled) {
+        this.routeCoupled(joints, links, orderNum, knownJointsIds);
+        return;
+      }
       orderNum = this.orderDeferredJoints(joints, links, orderNum, knownJointsIds);
       this.finishOrder(joints, links, orderNum, knownJointsIds);
       return;
@@ -658,14 +669,9 @@ export class PositionSolver {
       this.inputStepEmitted = true;
       tracer_joints.push(j);
     });
-    // A drawing whose rams are welded to things, or whose mounts ride blocks,
-    // goes to the constraint set as one piece rather than being walked. See
-    // `orderCoupledPartition` for why the walk is not merely inadequate here
-    // but unsafe.
-    if (this.forceCoupledRoute || this.mountEnhanced(joints)) {
-      if (this.orderCoupledPartition(joints, links, orderNum, knownJointsIds)) {
-        return;
-      }
+    if (coupled) {
+      this.routeCoupled(joints, links, orderNum, knownJointsIds);
+      return;
     }
 
     tracer_joints.forEach((j) => {
@@ -725,12 +731,42 @@ export class PositionSolver {
    * PrisJoint means its slot *line* is fixed, not that the joint sits still:
    * it travels along that line, on top of the pin it carries (§2.10 item 2).
    */
+  /**
+   * Take the coupled route, or say the drawing cannot be solved.
+   *
+   * Never the walk. A partition classified as coupled has a shape the walk has
+   * no primitive for, so falling back to it on a refusal would send the
+   * mechanism down exactly the path this route exists to keep it off -- and
+   * the walk would not report the problem, it would place every joint and
+   * quietly violate a weld.
+   */
+  private static routeCoupled(
+    joints: Joint[],
+    links: Link[],
+    orderNum: number,
+    known: string[]
+  ): void {
+    const outcome = this.orderCoupledPartition(joints, links, orderNum, known);
+    if (outcome !== 'refused') return;
+    this.stepCount = 0;
+    this.unsolvableJoints = joints
+      .filter((joint): joint is RealJoint => joint instanceof RealJoint)
+      .filter((joint) => !known.includes(joint.id) || joint instanceof PrisJoint)
+      .map((joint) => joint.id);
+    if (this.unsolvableJoints.length === 0) {
+      // Nothing was left over and the structure was still refused: name the
+      // whole partition rather than report an empty complaint, which reads
+      // downstream as "solved".
+      this.unsolvableJoints = joints.map((joint) => joint.id);
+    }
+  }
+
   private static orderCoupledPartition(
     joints: Joint[],
     links: Link[],
     orderNum: number,
     known: string[]
-  ): boolean {
+  ): 'solved' | 'nothing-to-solve' | 'refused' {
     const placed = new Set(known);
     const unknownIds = joints
       .filter((joint): joint is RealJoint => joint instanceof RealJoint)
@@ -739,16 +775,22 @@ export class PositionSolver {
         return !joint.ground && !placed.has(joint.id);
       })
       .map((joint) => joint.id);
-    if (unknownIds.length === 0) return false;
+    if (unknownIds.length === 0) {
+      // Everything is prescribed already, so there is nothing for this solver
+      // to place -- but "nothing to place" is not the same as "anything goes".
+      // The drawing still has to satisfy its own constraints, so they are
+      // collected as if every joint were unknown and checked where they stand.
+      return this.prescribedGeometryHolds(joints, links) ? 'nothing-to-solve' : 'refused';
+    }
 
     const constraints = this.collectConstraints(joints, links, unknownIds);
-    if (!constraints) return false;
+    if (!constraints) return 'refused';
     const drive = this.drivenConstraint(joints, new Set(unknownIds));
     const system: SimultaneousSystem = {
       unknownIds,
       constraints: drive ? [...constraints, drive] : constraints,
     };
-    if (!this.admitCoupledSystem(joints, system)) return false;
+    if (!this.admitCoupledSystem(joints, system)) return 'refused';
 
     this.simultaneousSystem = system;
     this.desiredConnectedJointIndicesMap.set(unknownIds[0], []);
@@ -757,7 +799,22 @@ export class PositionSolver {
     unknownIds.forEach((id) => known.push(id));
     this.stepCount = orderNum;
     this.unsolvableJoints = [];
-    return true;
+    return 'solved';
+  }
+
+  /** Whether a fully prescribed drawing satisfies the constraints it implies. */
+  private static prescribedGeometryHolds(joints: Joint[], links: Link[]): boolean {
+    const everyId = joints.map((joint) => joint.id);
+    const constraints = this.collectConstraints(joints, links, everyId);
+    if (!constraints) return false;
+    const system: SimultaneousSystem = { unknownIds: everyId, constraints };
+    const positions = new Map<string, number[]>(
+      joints.map((joint) => [joint.id, [joint.x, joint.y]])
+    );
+    const scale = this.mechanismScale(system, positions) || 1;
+    return residuals(system, positions, this.commandOf(system, positions)).every(
+      (value) => Number.isFinite(value) && Math.abs(value) <= scale * 1e-6
+    );
   }
 
   /**
@@ -779,9 +836,15 @@ export class PositionSolver {
     const positions = new Map<string, number[]>(
       joints.map((joint) => [joint.id, [joint.x, joint.y]])
     );
-    const rows = residuals(system, positions, this.commandOf(system, positions));
+    const command = this.commandOf(system, positions);
+    const rows = residuals(system, positions, command);
     if (rows.length < system.unknownIds.length * 2) return false;
-    if (!hasFullColumnRank(system, positions)) return false;
+    // At the command the drawing is actually standing at, not at zero. A unit
+    // arm commanded to a right angle satisfies its rows and has full rank
+    // there, and reads as neither when the question is asked at an angle it
+    // was never at.
+    if (!hasFullColumnRank(system, positions, command)) return false;
+    if (rows.some((value) => !Number.isFinite(value))) return false;
     // The drawing has to satisfy its own constraints at the pose it arrived
     // in. One that does not is a structure the reader has bent by hand, and
     // starting a cycle by silently straightening it is how a mechanism comes
@@ -797,13 +860,32 @@ export class PositionSolver {
     return true;
   }
 
-  /** The length or angle a drive row is asking for at the drawn pose. */
+  /**
+   * The length or angle a drive row is asking for at the drawn pose.
+   *
+   * Both kinds. A `drivenAngle` read as a length -- or as zero, which is what
+   * omitting it amounted to -- makes every row of a perfectly ordinary crank
+   * look unsatisfied, and the admission gate then refuses a mechanism for
+   * standing somewhere it is not.
+   */
   private static commandOf(system: SimultaneousSystem, positions: Map<string, number[]>): number {
     for (const constraint of system.constraints) {
       if (constraint.kind === 'driven') {
         const a = positions.get(constraint.a);
         const b = positions.get(constraint.b);
         if (a && b) return Math.hypot(b[0] - a[0], b[1] - a[1]);
+      }
+      if (constraint.kind === 'drivenAngle') {
+        const pivot = positions.get(constraint.pivot);
+        const reference = positions.get(constraint.reference);
+        const driven = positions.get(constraint.driven);
+        if (!pivot || !reference || !driven) continue;
+        // Signed, and measured the way the row measures it: from the
+        // reference arm round to the driven one.
+        return (
+          Math.atan2(driven[1] - pivot[1], driven[0] - pivot[0]) -
+          Math.atan2(reference[1] - pivot[1], reference[0] - pivot[0])
+        );
       }
     }
     return 0;
