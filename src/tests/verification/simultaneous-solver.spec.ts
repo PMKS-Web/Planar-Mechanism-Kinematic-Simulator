@@ -237,34 +237,72 @@ describe('the heading a weld holds against a grounded guide', () => {
     }
   });
 
-  it('holds a body to its heading while it slides along the guide', () => {
-    // What the constraint is for: the rider translates and does not turn.
+  it('carries a body along its guide without letting it turn', () => {
+    // The point of the row, as a solve rather than as an assertion about
+    // rows. `A` is the moving boundary here and not an unknown: with both
+    // ends free the system is short a row and the assembly can translate
+    // anywhere along the guide, so nudging one end only moves the seed and
+    // the answer proves nothing.
     const dir: [number, number] = [Math.cos(0.6), Math.sin(0.6)];
     const system: SimultaneousSystem = {
-      unknownIds: ['A', 'B'],
+      unknownIds: ['B'],
       constraints: [
         { kind: 'distance', a: 'A', b: 'B', length: 4 },
         { kind: 'fixedDirection', a1: 'A', a2: 'B', dir },
-        // The guide: A rides a world-fixed line of its own.
-        { kind: 'onFixedLine', point: 'A', at: [0, 0], dir: [1, 0] },
-        { kind: 'driven', a: 'A', b: 'B' },
       ],
     };
     const positions = new Map([
       ['A', [0, 0]],
       ['B', [4 * dir[0], 4 * dir[1]]],
     ]);
-    // Nudge A along its guide and re-solve: B has to follow at the same
-    // heading rather than swinging to keep its distance.
+
+    // The boundary moves; the welded body has to follow it exactly.
     positions.set('A', [1.5, 0]);
-    expect(solveSimultaneous(system, positions, 4)).toBe(true);
+    expect(solveSimultaneous(system, positions, 0)).toBe(true);
 
     const [ax, ay] = positions.get('A')!;
     const [bx, by] = positions.get('B')!;
+    expect(ax).toBe(1.5);
+    expect(ay).toBe(0);
+    expect(bx).toBeCloseTo(1.5 + 4 * dir[0], 6);
+    expect(by).toBeCloseTo(4 * dir[1], 6);
+    // The heading itself, and the *sign* of it: a cross product of zero is
+    // equally happy with the body turned end for end, so the branch has to be
+    // asserted rather than assumed.
+    expect((bx - ax) * dir[1] - (by - ay) * dir[0]).toBeCloseTo(0, 9);
+    expect((bx - ax) * dir[0] + (by - ay) * dir[1]).toBeGreaterThan(0);
+  });
+
+  it('is one row of a determined system when something drives it', () => {
+    // Four rows, four unknown coordinates: the guide holds `A` to its line, a
+    // drive says how far along it has come, the weld holds the heading, and
+    // the bar holds its length. Nothing here is free.
+    const dir: [number, number] = [Math.cos(-0.4), Math.sin(-0.4)];
+    const system: SimultaneousSystem = {
+      unknownIds: ['A', 'B'],
+      constraints: [
+        { kind: 'onFixedLine', point: 'A', at: [0, 0], dir: [1, 0] },
+        { kind: 'driven', a: 'G', b: 'A' },
+        { kind: 'fixedDirection', a1: 'A', a2: 'B', dir },
+        { kind: 'distance', a: 'A', b: 'B', length: 4 },
+      ],
+    };
+    const positions = new Map([
+      ['G', [-2, 0]],
+      ['A', [0, 0]],
+      ['B', [4 * dir[0], 4 * dir[1]]],
+    ]);
+
+    // Commanded three and a half from the reference, along the guide.
+    expect(solveSimultaneous(system, positions, 3.5)).toBe(true);
+
+    const [ax, ay] = positions.get('A')!;
+    const [bx, by] = positions.get('B')!;
+    expect(ax).toBeCloseTo(1.5, 6);
     expect(ay).toBeCloseTo(0, 6);
-    expect(Math.hypot(bx - ax, by - ay)).toBeCloseTo(4, 6);
-    // Still on the heading it was welded at.
-    expect((bx - ax) * dir[1] - (by - ay) * dir[0]).toBeCloseTo(0, 6);
+    expect(bx).toBeCloseTo(1.5 + 4 * dir[0], 6);
+    expect(by).toBeCloseTo(4 * dir[1], 6);
+    expect((bx - ax) * dir[0] + (by - ay) * dir[1]).toBeGreaterThan(0);
   });
 });
 

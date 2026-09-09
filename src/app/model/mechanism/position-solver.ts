@@ -298,6 +298,17 @@ function isRateUnknown(joint: Joint): joint is RealJoint {
 export interface SolverPose {
   positions: Map<string, number[]>;
   prior: Map<string, number[]>;
+  /**
+   * Where the moving boundary stood, and which spans have been solved.
+   *
+   * Not decoration: the next sample walks the interval from this boundary to
+   * the next one and picks its branch along the way, so a boundary left at a
+   * sample the validators went on to reject describes a pose the joints are no
+   * longer standing at. The continuation then interpolates from somewhere the
+   * mechanism has never been.
+   */
+  boundary?: Map<string, number[]>;
+  solved: { span: number; pose: Map<string, number[]> }[];
 }
 
 export class PositionSolver {
@@ -737,6 +748,33 @@ export class PositionSolver {
     links: Link[],
     unknownIds: string[]
   ): SimultaneousSystem | undefined {
+    const constraints = this.collectConstraints(joints, links, unknownIds);
+    if (!constraints) return undefined;
+
+    const drive = this.drivenConstraint(joints, new Set(unknownIds));
+    if (drive) {
+      constraints.push(drive);
+      return { unknownIds, constraints };
+    }
+    return this.boundaryDrivenSystem(joints, { unknownIds, constraints });
+  }
+
+  /**
+   * Everything the model already says, said once more as rows.
+   *
+   * Split from the decision about whether to *accept* those rows. They are two
+   * questions -- what is true of this drawing, and whether this solver is
+   * willing to take it on -- and keeping them in one function meant the only
+   * way to see what was written down was to get past an admission gate that
+   * has nothing to do with it. A weld with no row at all is invisible that
+   * way: the system is refused for being the wrong shape, and the missing row
+   * never comes up.
+   */
+  private static collectConstraints(
+    joints: Joint[],
+    links: Link[],
+    unknownIds: string[]
+  ): Constraint[] | undefined {
     const unknown = new Set(unknownIds);
     const touches = (...ids: string[]) => ids.some((id) => unknown.has(id));
     const constraints: Constraint[] = [];
@@ -903,12 +941,7 @@ export class PositionSolver {
       }
     }
 
-    const drive = this.drivenConstraint(joints, unknown);
-    if (drive) {
-      constraints.push(drive);
-      return { unknownIds, constraints };
-    }
-    return this.boundaryDrivenSystem(joints, { unknownIds, constraints });
+    return constraints;
   }
 
   /**
@@ -2591,13 +2624,17 @@ export class PositionSolver {
     forces: Force[],
     angVelDir: boolean
   ): boolean {
-    const heldPositions = new Map(this.jointMapPositions);
-    const heldPrior = new Map(this.priorJointPositions);
+    // Everything a rejected sample must not leave behind, through the one
+    // capture both undo paths use. The positions were being put back while the
+    // moving boundary and the remembered solutions were not, so a sample the
+    // travel check turned away still moved the point the *next* sample would
+    // interpolate from -- and a branch chosen along that interval is a branch
+    // chosen from a pose the drawing was never in.
+    const held = this.capturePose();
     if (this.attemptPositionAnalysis(joints, links, forces, angVelDir)) {
       return true;
     }
-    this.jointMapPositions = heldPositions;
-    this.priorJointPositions = heldPrior;
+    this.restorePose(held);
     return false;
   }
 
@@ -2614,12 +2651,20 @@ export class PositionSolver {
     return {
       positions: new Map(this.jointMapPositions),
       prior: new Map(this.priorJointPositions),
+      boundary: this.boundaryPose
+        ? new Map([...this.boundaryPose].map(([id, at]) => [id, [...at]]))
+        : undefined,
+      solved: [...this.solvedPoses],
     };
   }
 
   static restorePose(pose: SolverPose): void {
     this.jointMapPositions = new Map(pose.positions);
     this.priorJointPositions = new Map(pose.prior);
+    this.boundaryPose = pose.boundary
+      ? new Map([...pose.boundary].map(([id, at]) => [id, [...at]]))
+      : undefined;
+    this.solvedPoses = [...pose.solved];
   }
 
   private static attemptPositionAnalysis(
