@@ -2006,3 +2006,51 @@ goes red whenever the menu legitimately grows; and the panel's speed field is **
 writing `Joint.driveSpeed` on the driven joint, not "Expansion Speed" writing
 `settingsService.linearInputSpeed` -- a drawing can hold several machines, so a speed belongs to
 the thing being driven rather than to the document.
+
+### A drawing with a welded mount is solved as one system, not walked
+
+`orderCoupledPartition` in `position-solver.ts` sends a whole partition to the constraint set
+instead of walking it, whenever a ram has been attached to the drawing *at a mount* -- welded into
+a neighboring body, or carrying a block of its own. The walk is a sequence of closed forms, each
+claiming a joint and writing it; a mount welded to a bracket has no primitive, so the walk places
+the ram from its mounts and the bracket from its own pin, and the two disagree about a body that
+is meant to be rigid. Nothing downstream catches that, because the walk leaves no joint pending
+and `finishOrder`'s fallback only ever sees what the walk could not reach. One authoritative
+writer per coordinate is the point.
+
+Grounded sliding joints are **unknowns** on that route, not boundary: "grounded" on a PrisJoint
+means its slot line is fixed, not that the joint sits still.
+
+`PositionSolver.forceCoupledRoute` sends every drawing that way. It is for tests, and is
+deliberately not cleared by `resetStaticVariables`, because the whole point is to compare a
+mechanism solved both ways *before* anything depends on the new route:
+`coupled-route-agreement.spec.ts` does that on seven mechanisms whose answers are already
+trusted. They agree to a unit in the last recorded decimal on the four-bars and a few units on
+the six-bars, against the 0.01 the MATLAB verification asserts to -- and they agree on sample
+count, which is cycle closure and reversal in one number.
+
+**It costs 2x to 5x the precompute time**, measured over five runs each: a four-bar 6.8ms walked
+against 14.1ms coupled, a Stephenson III 2.8 against 9.0, and an equal-sided four-bar -- which
+folds flat twice a turn -- 2.6 against 13.0. The near-toggle case is the expensive one, which is
+what a dense normal-equations solve near a rank deficiency costs. Absolute numbers are small
+enough not to matter for a 361-sample precompute; they would matter if this route ever became
+the default.
+
+### A residual of zero does not mean the parts are the right way round
+
+Two poses satisfy every row and are wrong. A `fixedDirection` row is a cross product, so it is as
+happy with the welded body turned end for end as with it held where it belongs; and a ram's
+mount-to-mount span says how far apart its ends are and nothing about the order of the part
+between them, so a ram assembled inside out -- head behind its own mount, rod reaching back
+through the barrel -- has every length right. `headingsHeld` and `cylindersAreIntact` ask for the
+branch separately, at the point a sample is accepted, and `solver-branch-acceptance.spec.ts`
+shows the residuals vanishing on exactly the poses they refuse.
+
+### A cylinder fixture built by `cylinderBetween` is laid out at object scale 1
+
+It takes a mark radius of 0.15, which is what a scale of 1 means, while the stroke bounds the
+solver records come from the *live* `SettingsService.objectScale`. A spec that builds one and
+then asks the solver about it has to set the scale to match, or the bounds describe a different
+part entirely and a perfectly good ram reads as being past its stop. `buildMechanism` sets the
+scale to `1 * MODEL_SCALE` and does not scale the fixture's coordinates, which is why
+`cylinderBoomFixture` comes out of it reporting no travel -- that is the mismatch, not the ram.

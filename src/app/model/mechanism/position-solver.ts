@@ -338,6 +338,17 @@ export class PositionSolver {
    * put a part here without anyone touching it.
    */
   static unusableCylinderDrive: string | undefined;
+
+  /**
+   * Send every drawing through the coupled route, whatever its shape.
+   *
+   * For tests only, and deliberately not cleared by `resetStaticVariables`: a
+   * spec sets it, builds, and clears it. The route it forces is unreachable
+   * from the app until a mount can be welded, and the whole point of being
+   * able to force it is to compare a mechanism solved both ways *before* that
+   * happens.
+   */
+  static forceCoupledRoute = false;
   private static inverseSlotMap = new Map<string, InverseSlotStep>();
   private static slideAssemblyMap = new Map<string, SlideAssemblyStep>();
   /** Every sealed cylinder, keyed by the buried barrel end its step targets. */
@@ -647,6 +658,16 @@ export class PositionSolver {
       this.inputStepEmitted = true;
       tracer_joints.push(j);
     });
+    // A drawing whose rams are welded to things, or whose mounts ride blocks,
+    // goes to the constraint set as one piece rather than being walked. See
+    // `orderCoupledPartition` for why the walk is not merely inadequate here
+    // but unsafe.
+    if (this.forceCoupledRoute || this.mountEnhanced(joints)) {
+      if (this.orderCoupledPartition(joints, links, orderNum, knownJointsIds)) {
+        return;
+      }
+    }
+
     tracer_joints.forEach((j) => {
       if (!(j instanceof RealJoint)) {
         return;
@@ -656,6 +677,136 @@ export class PositionSolver {
 
     orderNum = this.orderDeferredJoints(joints, links, orderNum, knownJointsIds);
     this.finishOrder(joints, links, orderNum, knownJointsIds);
+  }
+
+  /**
+   * Whether any ram here has been attached to the drawing at a mount.
+   *
+   * A mount welded into a neighboring body, or carrying a block of its own.
+   * Neither is reachable through the app's own controls yet -- the guards come
+   * off in step 5 of `docs/cylinder-mount-joints-plan.md` -- so this is false
+   * for every drawing that exists today, and the route below is exercised by
+   * `forceCoupledRoute` until it is not.
+   */
+  private static mountEnhanced(joints: Joint[]): boolean {
+    for (const cylinder of sealedCylinderStructures(joints)) {
+      if (cylinder.barrelRoot.id !== cylinder.barrel.id) return true;
+      if (cylinder.rodRoot.id !== cylinder.rod.id) return true;
+      for (const mount of [cylinder.barrelFar, cylinder.rodFar]) {
+        if (!(mount instanceof RealJoint)) continue;
+        const carriesABlock = mount.links.some(
+          (link) => link instanceof SliderBlock && link.id !== cylinder.block.id
+        );
+        if (carriesABlock) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Solve everything the drive does not place, together, as one system.
+   *
+   * The walk is a sequence of closed forms, each of which claims a joint and
+   * writes it. That is fast, exact, and safe only while every shape it meets
+   * is one it has a primitive for. A mount welded to a bracket is not: the
+   * walk will happily place the ram from its two mounts and the bracket from
+   * its own pin, and the two answers disagree about a body that is supposed to
+   * be rigid. Nothing downstream would catch it, because the walk left no
+   * joint pending and `finishOrder`'s fallback only ever sees what the walk
+   * could not reach.
+   *
+   * So for these drawings there is no walk. The input step has already placed
+   * the driven body -- that is the moving boundary -- and everything else is
+   * one system with one authoritative writer. Slower and numerical, and the
+   * right trade where the alternative is a plausible drawing of a mechanism
+   * nobody built.
+   *
+   * Grounded sliding joints are unknowns here, not boundary. "Grounded" on a
+   * PrisJoint means its slot *line* is fixed, not that the joint sits still:
+   * it travels along that line, on top of the pin it carries (§2.10 item 2).
+   */
+  private static orderCoupledPartition(
+    joints: Joint[],
+    links: Link[],
+    orderNum: number,
+    known: string[]
+  ): boolean {
+    const placed = new Set(known);
+    const unknownIds = joints
+      .filter((joint): joint is RealJoint => joint instanceof RealJoint)
+      .filter((joint) => {
+        if (joint instanceof PrisJoint) return !placed.has(joint.id) || joint.ground;
+        return !joint.ground && !placed.has(joint.id);
+      })
+      .map((joint) => joint.id);
+    if (unknownIds.length === 0) return false;
+
+    const constraints = this.collectConstraints(joints, links, unknownIds);
+    if (!constraints) return false;
+    const drive = this.drivenConstraint(joints, new Set(unknownIds));
+    const system: SimultaneousSystem = {
+      unknownIds,
+      constraints: drive ? [...constraints, drive] : constraints,
+    };
+    if (!this.admitCoupledSystem(joints, system)) return false;
+
+    this.simultaneousSystem = system;
+    this.desiredConnectedJointIndicesMap.set(unknownIds[0], []);
+    this.desiredAnalysisJointMap.set(unknownIds[0], 'simultaneousSystem');
+    this.jointNumOrderSolverMap.set(orderNum, unknownIds);
+    unknownIds.forEach((id) => known.push(id));
+    this.stepCount = orderNum;
+    this.unsolvableJoints = [];
+    return true;
+  }
+
+  /**
+   * Whether this coupled system is one the solver will answer for.
+   *
+   * Deliberately not `boundaryDrivenSystem`'s gate, and deliberately not a
+   * general relaxation of it either. That gate refuses a floating slot or a
+   * weld outright and insists the rows exactly number the unknown coordinates,
+   * which is the right conservatism for the *ordinary* path: those refusals
+   * are what keep an unsupported arrangement from being animated wrongly.
+   *
+   * Here the arrangement is one this route exists for, so the question is only
+   * whether the constraints determine it: enough rows, no column left free,
+   * and a pose that actually satisfies them to begin with. Rank is what a row
+   * count was standing in for, and it is the honest test -- redundant rows are
+   * fine, and the least-squares machinery already handles them.
+   */
+  private static admitCoupledSystem(joints: Joint[], system: SimultaneousSystem): boolean {
+    const positions = new Map<string, number[]>(
+      joints.map((joint) => [joint.id, [joint.x, joint.y]])
+    );
+    const rows = residuals(system, positions, this.commandOf(system, positions));
+    if (rows.length < system.unknownIds.length * 2) return false;
+    if (!hasFullColumnRank(system, positions)) return false;
+    // The drawing has to satisfy its own constraints at the pose it arrived
+    // in. One that does not is a structure the reader has bent by hand, and
+    // starting a cycle by silently straightening it is how a mechanism comes
+    // back somewhere its author never put it.
+    const scale = this.mechanismScale(system, positions) || 1;
+    if (rows.some((value) => Math.abs(value) > scale * 1e-6)) return false;
+
+    this.boundaryIds = boundaryJoints(system);
+    this.boundaryPose = new Map(
+      this.boundaryIds.map((id) => [id, [...(positions.get(id) ?? [0, 0])]])
+    );
+    this.boundaryScale = scale;
+    return true;
+  }
+
+  /** The length or angle a drive row is asking for at the drawn pose. */
+  private static commandOf(system: SimultaneousSystem, positions: Map<string, number[]>): number {
+    for (const constraint of system.constraints) {
+      if (constraint.kind === 'driven') {
+        const a = positions.get(constraint.a);
+        const b = positions.get(constraint.b);
+        if (a && b) return Math.hypot(b[0] - a[0], b[1] - a[1]);
+      }
+    }
+    return 0;
   }
 
   /**
@@ -1926,12 +2077,14 @@ export class PositionSolver {
    * derived from them, so a span too long for the barrel is the whole of what
    * "past its stop" means.
    */
-  private static cylindersWithinTravel(): boolean {
+  private static cylindersAreIntact(): boolean {
     for (const interior of this.cylinderInteriorMap.values()) {
       const barrelMount = this.jointMapPositions.get(interior.barrelFarId);
       const rodMount = this.jointMapPositions.get(interior.rodFarId);
       if (!barrelMount || !rodMount) continue;
-      const span = Math.hypot(rodMount[0] - barrelMount[0], rodMount[1] - barrelMount[1]);
+      const dx = rodMount[0] - barrelMount[0];
+      const dy = rodMount[1] - barrelMount[1];
+      const span = Math.hypot(dx, dy);
       const along = span - interior.rodLength;
       if (
         along < interior.minAlong - STROKE_TOLERANCE ||
@@ -1939,6 +2092,54 @@ export class PositionSolver {
       ) {
         return false;
       }
+      if (span <= DEGENERATE_SLOT_TOLERANCE) return false;
+
+      // The span says how *far apart* the mounts are and nothing about which
+      // way round the part between them is. A constraint set is satisfied just
+      // as well by a ram assembled inside out -- the head behind its own
+      // mount, the rod reaching back through the barrel -- because every
+      // length in it is still right. So the order along the axis is asked
+      // for: mount, buried end, pin, mount, each beyond the last.
+      const ux = dx / span;
+      const uy = dy / span;
+      const at = (id: string): number | undefined => {
+        const point = this.jointMapPositions.get(id);
+        return point
+          ? (point[0] - barrelMount[0]) * ux + (point[1] - barrelMount[1]) * uy
+          : undefined;
+      };
+      const near = at(interior.barrelNearId);
+      const pin = at(interior.pinId);
+      if (near === undefined || pin === undefined) continue;
+      if (near < -STROKE_TOLERANCE || pin < -STROKE_TOLERANCE) return false;
+      if (pin > span + STROKE_TOLERANCE) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Every welded heading still pointing the way it was welded.
+   *
+   * A `fixedDirection` row is a cross product, and a cross product of zero is
+   * as happy with the body turned end for end as with it held where it
+   * belongs. The residual cannot tell those apart, so the branch is asked for
+   * separately: the rider's own direction has to keep a positive component
+   * along the heading it was captured at.
+   *
+   * Cheap, and only ever true or false -- a body that has flipped is a body
+   * the solver walked through a pose the drawing does not have, and the sample
+   * is refused the same way any other limit is.
+   */
+  private static headingsHeld(): boolean {
+    const system = this.simultaneousSystem;
+    if (!system) return true;
+    for (const constraint of system.constraints) {
+      if (constraint.kind !== 'fixedDirection') continue;
+      const from = this.jointMapPositions.get(constraint.a1);
+      const to = this.jointMapPositions.get(constraint.a2);
+      if (!from || !to) continue;
+      const along = (to[0] - from[0]) * constraint.dir[0] + (to[1] - from[1]) * constraint.dir[1];
+      if (along <= 0) return false;
     }
     return true;
   }
@@ -2760,7 +2961,10 @@ export class PositionSolver {
     if (!this.ridersAreInTheirSlots(joints)) {
       return false;
     }
-    if (!this.cylindersWithinTravel()) {
+    if (!this.cylindersAreIntact()) {
+      return false;
+    }
+    if (!this.headingsHeld()) {
       return false;
     }
     forces.forEach((f) => {
