@@ -32,7 +32,7 @@ import {
  * neither answer depends on the order anything was drawn in.
  *
  * Built by hand rather than through the service on purpose. The public weld
- * still refuses a mount at this stage -- that ban is lifted in step 5 of
+ * refused a mount when this was written -- that ban was lifted in step 5 of
  * `docs/cylinder-mount-joints-plan.md` -- and a resolver is a pure function of
  * the graph, so the graph is what it should be tested against.
  */

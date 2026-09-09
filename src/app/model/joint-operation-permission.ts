@@ -18,7 +18,7 @@
  */
 
 import { Joint, PrisJoint, RealJoint } from './joint';
-import { Cylinder, cylinderInteriorsAt, cylinderMountsAt, cylindersOfJointIn } from './cylinder';
+import { Cylinder, cylinderInteriorsAt } from './cylinder';
 
 /** A structural edit, named as the state it is asking for rather than as a toggle. */
 export type JointOperation = 'weld' | 'unweld' | 'add-slider' | 'remove-slider';
@@ -95,15 +95,18 @@ function refuseWeld(
   }
   if (joint.isWelded) return undefined;
 
-  // TEMPORARY, and the whole point of this task: a mount is refused today
-  // because welding one into a neighboring compound opened more edge cases
-  // than it was worth. `docs/cylinder-mount-joints-plan.md` step 5 is where
-  // this branch goes, once the compound-carrying edit path behind it exists.
-  if (cylinderMountsAt(context.cylinders, joint).length > 0) {
+  // A mount welds like any other joint: it is where a cylinder attaches to the
+  // rest of the drawing, so fusing one into a bracket is the ordinary thing to
+  // want. What is sealed is the ram's *inside* -- the buried barrel end, the
+  // pin and the slider -- and welding anything to one of those is fusing a
+  // part to its own workings. None of the three is drawn or selectable, so
+  // nothing offers it; the rule is here so that no path can reach it, and so
+  // that the refusal says which of the two things a cylinder joint can be.
+  if (cylinderInteriorsAt(context.cylinders, joint).length > 0) {
     return {
       code: 'cylinder.sealed-weld',
       short: 'part is sealed',
-      long: 'A cylinder is one sealed part, so its joints cannot be fused into a neighboring body. Attach a link here instead.',
+      long: 'This joint is inside a sealed cylinder, and fusing anything to it would weld the part to its own workings. Weld one of its two mounts instead.',
     };
   }
 
@@ -157,15 +160,17 @@ function refuseAddSlider(
 ): OperationRefusal | undefined {
   if (context.hasSlider(joint)) return undefined;
 
-  // TEMPORARY in the same way as the weld branch above, and broader than it
-  // needs to be: this refuses on *membership*, so a mount is turned away for a
-  // slider the cylinder keeps somewhere else entirely. Step 5 narrows it to
-  // `cylinderInteriorsAt`, which is the rule that is actually true.
-  if (cylindersOfJointIn(context.cylinders, joint).length > 0) {
+  // The ram's own block belongs to its interior, and an interior joint takes
+  // no second one -- that is what sealed means. A *mount* is not interior:
+  // giving one a block is how a ram gets a carriage, and it is the same edit
+  // as giving any other joint one. This asked about membership before, so a
+  // mount was turned away for a slider the cylinder keeps somewhere else
+  // entirely.
+  if (cylinderInteriorsAt(context.cylinders, joint).length > 0) {
     return {
       code: 'cylinder.sealed-slider',
-      short: 'part of a cylinder',
-      long: 'A cylinder is one sealed part with a slider of its own inside it, so its joints take no second one. Attach a link here instead.',
+      short: 'part is sealed',
+      long: 'This joint is inside a sealed cylinder, which has a slider of its own, so it takes no second one. Add one at a mount instead.',
     };
   }
 
@@ -187,12 +192,13 @@ function refuseRemoveSlider(
 ): OperationRefusal | undefined {
   if (!context.hasSlider(joint)) return undefined;
   // The cylinder's own block is the cylinder. An external block on a mount is
-  // an ordinary block and comes off like one.
-  if (cylindersOfJointIn(context.cylinders, joint).length > 0) {
+  // an ordinary block and comes off like one, which is why this asks about
+  // interiors rather than about membership.
+  if (cylinderInteriorsAt(context.cylinders, joint).length > 0) {
     return {
       code: 'cylinder.sealed-slider',
-      short: 'part of a cylinder',
-      long: 'A cylinder is one sealed part with a slider of its own inside it, so its joints take no second one. Attach a link here instead.',
+      short: 'part is sealed',
+      long: 'This joint is inside a sealed cylinder, and its slider is what makes the part one thing. Delete the cylinder instead.',
     };
   }
   return undefined;

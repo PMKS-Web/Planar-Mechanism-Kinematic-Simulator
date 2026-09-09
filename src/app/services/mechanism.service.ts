@@ -2809,7 +2809,7 @@ export class MechanismService {
     ) {
       return 'sealed-cylinder';
     }
-    const refusal = refuseJointMerge(source, target, this.joints);
+    const refusal = refuseJointMerge(source, target, cylinders);
     if (refusal) {
       return refusal;
     }
@@ -4275,19 +4275,13 @@ export class MechanismService {
     mountAt?: RealJoint,
     endAt?: RealJoint
   ): void {
-    // A weld says everything meeting here is one rigid body. A ram's mount
-    // arriving would be a third body inside that statement without being part
-    // of it, and the reconcilers then disagree about what the compound is —
-    // which is a broken mechanism rather than a refused edit. The menu grays
-    // the item out; this is the same rule where the edit actually happens, so
-    // no other caller can get round it.
-    if (mountAt?.isWelded) {
-      this.notify.refusal(
-        'cylinder.welded-mount',
-        'This joint is welded, so a cylinder mounted on it would be a third body inside one rigid one. Unweld it, or attach the cylinder to the link instead.'
-      );
-      return;
-    }
+    // A ram may be mounted on a welded joint. The weld says everything meeting
+    // there is one rigid body, and the barrel arriving is one more thing
+    // meeting there -- so it joins that body, which is what the repair pass at
+    // the end of `finishStructuralEdit` makes of it. This used to refuse, on
+    // the grounds that a third body inside one rigid statement is not a state
+    // the model has an answer for; it has one now, and the answer is a
+    // compound with the barrel as a leaf.
     const creation = cylinderCreationLayout(start, end, this.settingsService.objectScale);
 
     // A ram is five joints and shows two of them. The mounts are what the

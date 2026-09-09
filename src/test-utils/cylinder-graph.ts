@@ -1,11 +1,12 @@
 /**
  * Hand-built cylinder graphs, for the parts of the model that are pure.
  *
- * A welded mount cannot be made through the app yet -- the ban comes off in
- * step 5 of `docs/cylinder-mount-joints-plan.md` -- and the resolver and the
- * pose planner are both pure functions of the joint graph. So the graph is
- * built here directly, mirroring what the service's own rebuild leaves behind,
- * rather than driven through an edit path that would refuse it.
+ * The resolver and the pose planner are both pure functions of the joint
+ * graph, so the graph is built here directly -- mirroring what the service's
+ * own rebuild leaves behind -- rather than driven through the editor. That was
+ * originally because the editor refused a welded mount; it no longer does, and
+ * these are kept because a pure function is better tested against a graph than
+ * against everything that has to happen to produce one.
  */
 
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../app/model/joint';

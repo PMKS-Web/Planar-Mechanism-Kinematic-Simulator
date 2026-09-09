@@ -109,11 +109,10 @@ describe('two rams sharing one welded mount', () => {
    * A second ram whose barrel mount *is* the first ram's rod mount, with a bar
    * on it as well, and the whole lot welded into one body.
    *
-   * Hung on the mount before the weld rather than after. Both remaining public
-   * guards -- the creation path's own refusal and the merge rule -- turn away
-   * an edit that would put a ram on a joint that is already welded, and those
-   * are step 5's to lift. The order below needs neither, and reaches the same
-   * topology, which is the thing being tested.
+   * Hung on the mount before the weld rather than after. Either order works
+   * now -- the guards that refused a ram on a welded joint came off in step 5,
+   * and `cylinder-weld-guards.spec.ts` is where that is asserted -- and this
+   * one is kept because it is the order a reader actually draws in.
    */
   function twoRams() {
     const h = ramWithBracket(1, { weld: false });
@@ -215,9 +214,10 @@ describe('a slider and a weld at the same mount, in either order', () => {
     harness.service.links.push(new RealLink(mount.id + tip.id, [mount, tip]));
     wireGraph(harness.service);
     harness.active.updateSelectedObj(mount);
-    // Through the topology rather than through `toggleSlider`: the public
-    // control still refuses a block on a mount, and that refusal is step 5's
-    // to remove. What has to work now is the shape underneath it.
+    // Through the topology rather than through `toggleSlider`. The control no
+    // longer refuses a block on a mount, and `cylinder-weld-guards.spec.ts`
+    // asserts that; this file is about the shape underneath, and reaching it
+    // directly keeps the two questions apart.
     const addBlock = () => {
       (harness.service as unknown as { sliderTopology: () => void }).sliderTopology();
       harness.service.finishStructuralEdit(true);

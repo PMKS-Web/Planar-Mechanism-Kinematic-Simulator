@@ -729,10 +729,10 @@ export class PositionSolver {
    * Whether any ram here has been attached to the drawing at a mount.
    *
    * A mount welded into a neighboring body, or carrying a block of its own.
-   * Neither is reachable through the app's own controls yet -- the guards come
-   * off in step 5 of `docs/cylinder-mount-joints-plan.md` -- so this is false
-   * for every drawing that exists today, and the route below is exercised by
-   * `forceCoupledRoute` until it is not.
+   * Both are things a reader can now draw, so this is a live question about a
+   * live drawing rather than a shape only a fixture could reach.
+   * `forceCoupledRoute` remains for the agreement suite, which forces the
+   * route onto mechanisms the walk can also solve so the two can be compared.
    */
   private static mountEnhanced(joints: Joint[]): boolean {
     for (const cylinder of sealedCylinderStructures(joints)) {

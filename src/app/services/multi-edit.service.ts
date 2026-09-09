@@ -297,14 +297,19 @@ export class MultiEditService {
         message: 'Welded can be switched when every selected item is a joint.',
       };
     }
-    if (!welded) return undefined;
+    // Both directions. Taking a weld off used to be waved through here on the
+    // grounds that anything welded can be unwelded -- which stopped being true
+    // when a cylinder's pin became a weld that never comes off. The row was
+    // offered un-grayed and the mutation then declined it, which reads as a
+    // broken app rather than as a rule. `weldRefusal` asks about whichever way
+    // the joint would actually go, so it answers this on its own.
     for (const joint of joints.filter((one) => one.isWelded !== welded)) {
       const refused = this.grid.weldRefusal(joint);
       if (refused) {
         return {
           code: 'selection.weld',
           short: refused.short,
-          message: `${joint.name || joint.id} cannot be welded: ${refused.long}`,
+          message: `${joint.name || joint.id} cannot be ${welded ? 'welded' : 'unwelded'}: ${refused.long}`,
         };
       }
     }

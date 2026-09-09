@@ -97,15 +97,22 @@ describe('creating a cylinder from the two-point gesture', () => {
 });
 
 describe('permanence of a sealed cylinder', () => {
-  it('refuses Slider-off on a mount', () => {
+  it('gives a mount a block of its own, and leaves the ram sealed', () => {
+    // A mount is not the ram's inside. It used to be refused a block on the
+    // strength of *membership* -- turned away for the slider the cylinder
+    // keeps in its bore, which is nothing to do with the mount -- and a
+    // carriage on a mount is how an excavator's boom is drawn.
     const h = harnessWithCylinder();
     h.active.updateSelectedObj(h.sealed.rodFar);
     const before = h.service.links.length;
 
     h.service.toggleSlider();
 
-    expect(h.service.links).toHaveLength(before);
-    expect(resolve(h)).toBeDefined();
+    expect(h.service.links.length, 'a block and its guide arrived').toBe(before + 1);
+    const still = resolve(h);
+    expect(still, 'and the ram is still a ram').toBeDefined();
+    expect(still.slider.isSealed).toBe(true);
+    expect(still.pin.isWelded).toBe(true);
   });
 
   it('refuses detaching the sealed block from its bore', () => {
@@ -389,25 +396,30 @@ describe('a mount welded into a neighboring link', () => {
 });
 
 describe('mount merge rules', () => {
-  // Mounts merge like any joint — that is how a cylinder attaches — but a
-  // weld may not ride along in either direction, and a part cannot fold onto
-  // itself.
-  it('refuses merging a welded joint with a mount, both directions', () => {
+  // Mounts merge like any joint — that is how a cylinder attaches — and the
+  // one thing that is still not a merge is a part folding onto itself.
+  it('allows a welded joint to meet a mount, both directions', () => {
+    // This used to be refused outright, on the grounds that a weld arriving at
+    // a mount manufactured a state the model had no answer for. It has one:
+    // the mount joins the compound. What `mergeJoints` still checks, before
+    // taking anything apart, is whether the joint the merge would leave behind
+    // can carry the weld at all.
     const h = harnessWithCylinder();
     const stray = new RevJoint('Z', 999, 999);
     stray.isWelded = true;
     h.service.joints.push(stray);
+    const cylinders = sealedCylinders(h.service.joints);
 
-    expect(refuseJointMerge(stray, h.sealed.rodFar, h.service.joints)).toBe('welded-mount');
-    expect(refuseJointMerge(h.sealed.rodFar, stray, h.service.joints)).toBe('welded-mount');
+    expect(refuseJointMerge(stray, h.sealed.rodFar, cylinders)).toBeUndefined();
+    expect(refuseJointMerge(h.sealed.rodFar, stray, cylinders)).toBeUndefined();
   });
 
   it('refuses folding a cylinder onto itself', () => {
     const h = harnessWithCylinder();
 
-    expect(refuseJointMerge(h.sealed.barrelFar, h.sealed.rodFar, h.service.joints)).toBe(
-      'own-cylinder'
-    );
+    expect(
+      refuseJointMerge(h.sealed.barrelFar, h.sealed.rodFar, sealedCylinders(h.service.joints))
+    ).toBe('own-cylinder');
   });
 
   it('allows a mount onto a plain joint', () => {
@@ -415,6 +427,8 @@ describe('mount merge rules', () => {
     const plain = new RevJoint('Z', 999, 999);
     h.service.joints.push(plain);
 
-    expect(refuseJointMerge(h.sealed.rodFar, plain, h.service.joints)).toBeUndefined();
+    expect(
+      refuseJointMerge(h.sealed.rodFar, plain, sealedCylinders(h.service.joints))
+    ).toBeUndefined();
   });
 });

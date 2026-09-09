@@ -12,11 +12,12 @@ import { JointOperationContext, refuseJointOperation } from './joint-operation-p
  * for a rule nothing enforces. So the rule is a pure function of the drawing
  * now, and this is its contract.
  *
- * Two of the answers below are deliberately temporary and marked so. A mount
- * is refused a weld, and any member of a cylinder is refused a block, because
- * that is what the app does today; step 5 of
- * `docs/cylinder-mount-joints-plan.md` is where those two turn over, and this
- * file is where the turn will show.
+ * Two of the answers below were deliberately temporary and have turned over.
+ * A mount used to be refused a weld, and any member of a cylinder refused a
+ * block; both were a fence around an unfinished path rather than a rule about
+ * cylinders. What is refused now is the ram's *inside* -- the buried barrel
+ * end, the pin and the slider -- and this file is where the difference between
+ * those two questions is kept.
  */
 
 /** A ram, plus the plain bars and joints around it to ask questions about. */
@@ -88,13 +89,22 @@ describe('whether a weld may be made at a joint', () => {
     expect(refuseJointOperation(elbow, 'weld', context)?.short).toBe('it is driven');
   });
 
-  it('refuses a mount today — the ban this task exists to lift', () => {
-    const { barrelFar, rodFar, context } = drawing();
+  it('lets a mount weld, and refuses the ram’s inside', () => {
+    // The ban that used to be here is gone on purpose: a mount is where a
+    // cylinder meets the drawing, so fusing one into a bracket is the ordinary
+    // thing to want. What is sealed is the ram's inside, and welding anything
+    // to one of those three joints would fuse the part to its own workings.
+    const { barrelFar, rodFar, barrelNear, context } = drawing();
+
+    // A mount with one link on it is refused for arithmetic, not for being a
+    // mount -- a weld fuses what meets at a joint, and one bar does not meet.
     for (const mount of [barrelFar, rodFar]) {
-      const refused = refuseJointOperation(mount, 'weld', context);
-      expect(refused?.short).toBe('part is sealed');
-      expect(refused?.code).toBe('cylinder.sealed-weld');
+      expect(refuseJointOperation(mount, 'weld', context)?.short).toBe('needs 2 links');
     }
+
+    const refused = refuseJointOperation(barrelNear, 'weld', context);
+    expect(refused?.short).toBe('part is sealed');
+    expect(refused?.code).toBe('cylinder.sealed-weld');
   });
 });
 
@@ -131,19 +141,23 @@ describe('whether a block may be added or removed at a joint', () => {
     expect(refuseJointOperation(elbow, 'add-slider', context)?.short).toBe('it is driven');
   });
 
-  it('refuses every blockless member of a cylinder today, mounts included', () => {
-    // Deliberately broader than the rule that is actually true: the cylinder
-    // keeps its slider in its bore, which says nothing about a mount. Step 5
-    // narrows this to the three interior joints.
+  it('refuses a block inside the ram, and allows one at a mount', () => {
+    // This used to ask about *membership*, so a mount was turned away for a
+    // slider the cylinder keeps somewhere else entirely. The rule that is
+    // actually true is about the bore: the ram has a slider of its own in
+    // there, and a second one inside it is meaningless. A block on a mount is
+    // how a ram gets a carriage.
     //
     // The pin is not in the list because it already carries the ram's own
     // block, so *adding* one is a question about it that does not arise; the
     // refusal it needs is the removal one, below.
     const { barrelFar, rodFar, barrelNear, context } = drawing();
-    for (const member of [barrelFar, rodFar, barrelNear]) {
-      expect(refuseJointOperation(member, 'add-slider', context)?.code).toBe(
-        'cylinder.sealed-slider'
-      );
+
+    expect(refuseJointOperation(barrelNear, 'add-slider', context)?.code).toBe(
+      'cylinder.sealed-slider'
+    );
+    for (const mount of [barrelFar, rodFar]) {
+      expect(refuseJointOperation(mount, 'add-slider', context), mount.id).toBeUndefined();
     }
   });
 

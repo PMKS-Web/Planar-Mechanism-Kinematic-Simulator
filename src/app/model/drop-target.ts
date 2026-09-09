@@ -1,6 +1,6 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from './joint';
 import { Link, RealLink, SliderBlock } from './link';
-import { Cylinder, cylinderJoints, sealedCylinderStructures } from './cylinder';
+import { Cylinder, cylinderJoints } from './cylinder';
 
 /** Why a candidate joint cannot receive the joint being dragged. */
 export type MergeRefusal =
@@ -12,7 +12,6 @@ export type MergeRefusal =
   | 'own-carrier'
   | 'not-a-real-joint'
   | 'sealed-cylinder'
-  | 'welded-mount'
   | 'own-cylinder'
   | 'driven-joint'
   | 'weld-cannot-survive'
@@ -39,7 +38,6 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
   'own-carrier': 'A slider cannot ride on a link it is part of.',
   'not-a-real-joint': 'This joint cannot be merged.',
   'sealed-cylinder': 'A cylinder is one sealed part — attach at one of its two joints instead.',
-  'welded-mount': 'A welded joint cannot merge with a cylinder joint — unweld it first.',
   'driven-joint':
     'A driven joint can only join two bodies — remove the input first, or attach somewhere else.',
   'own-cylinder': 'A cylinder cannot fold onto itself.',
@@ -76,10 +74,17 @@ export function refuseJointMerge(
   source: Joint,
   target: Joint,
   /**
-   * The full joint list, when the caller has it: it is what lets the mount
-   * rules run (a mount is only recognizable against the whole mechanism).
+   * The drawing's sealed cylinders, when the caller has them.
+   *
+   * A mount is only recognizable against the whole mechanism, and the two
+   * callers that need the mount rules have that knowledge in different shapes:
+   * the service holds the joint list, the live drop ring holds an already
+   * resolved set from its per-revision cache and a joint list too *filtered*
+   * to resolve one from. Passing the answer rather than the ingredients is
+   * what lets both ask this one function -- the ring used to carry a private
+   * copy of one mount rule and silently skip the rest.
    */
-  allJoints?: Joint[]
+  cylinders: Cylinder[] = []
 ): MergeRefusal | undefined {
   if (source.id === target.id) return 'same-joint';
   // The prismatic half of a slider is its slot, not a pin anything can attach
@@ -115,21 +120,16 @@ export function refuseJointMerge(
 
   if (wouldOverConstrain(source, target)) return 'over-constrained';
 
-  if (allJoints) {
-    const cylinders = sealedCylinderStructures(allJoints);
-    const mountOf = (joint: Joint) =>
-      cylinders.find((c) => c.barrelFar.id === joint.id || c.rodFar.id === joint.id);
-    const sourceMount = mountOf(source);
-    const targetMount = mountOf(target);
-    // A cylinder folded onto itself is no cylinder.
-    if (sourceMount && targetMount && sourceMount.pin.id === targetMount.pin.id) {
-      return 'own-cylinder';
-    }
-    // Welds at mounts are disabled, and a merge that carries a weld onto a
-    // mount would manufacture exactly the state the toggle refuses.
-    if ((sourceMount && target.isWelded) || (targetMount && source.isWelded)) {
-      return 'welded-mount';
-    }
+  const mountOf = (joint: Joint) =>
+    cylinders.find((c) => c.barrelFar.id === joint.id || c.rodFar.id === joint.id);
+  const sourceMount = mountOf(source);
+  const targetMount = mountOf(target);
+  // A cylinder folded onto itself is no cylinder. The rule that stood beside
+  // this one -- no weld may meet a mount -- is gone: a welded mount is what
+  // this whole feature is, and the survivor's weld is checked for survivability
+  // in `mergeJoints` before anything is taken apart.
+  if (sourceMount && targetMount && sourceMount.pin.id === targetMount.pin.id) {
+    return 'own-cylinder';
   }
 
   return undefined;
@@ -347,9 +347,6 @@ export function resolveDropCandidate(
   const sourceCylinder = cylinders.find((c) =>
     cylinderJoints(c).some((member) => member.id === source.id)
   );
-  const mountOf = (joint: Joint) =>
-    cylinders.find((c) => c.barrelFar.id === joint.id || c.rodFar.id === joint.id);
-
   joints.forEach((candidate) => {
     if (!(candidate instanceof RevJoint)) return;
     // The joint under the cursor is the one being dragged; pointing at itself is
@@ -362,15 +359,7 @@ export function resolveDropCandidate(
     if (sourceCylinder && cylinderJoints(sourceCylinder).some((m) => m.id === candidate.id)) {
       return;
     }
-    let refusal = refuseJointMerge(source, candidate);
-    // A weld may not land on a mount, from either side; the ring says so live.
-    if (
-      !refusal &&
-      source instanceof RealJoint &&
-      ((mountOf(source) && candidate.isWelded) || (mountOf(candidate) && source.isWelded))
-    ) {
-      refusal = 'welded-mount';
-    }
+    const refusal = refuseJointMerge(source, candidate, cylinders);
     // Nor is the other end of the link you are holding. Marking that in red
     // would be explaining something the drawing already says — the two have a
     // bar between them — so it is not a target at all, and a legal joint

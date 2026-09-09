@@ -6,11 +6,10 @@ import { cylinderBetween } from './slot-fixtures';
  *
  * These are the drawings the coupled route exists for: the walk has no
  * primitive that can place a ram attached at a mount, so a partition holding
- * one goes to the constraint set whole. Every fixture here is a shape the app
- * itself refuses to build today -- the ban comes off in step 5 of
- * `docs/cylinder-mount-joints-plan.md` -- and each is chosen so its whole
- * motion can be written down in closed form and checked against, rather than
- * compared with another run of the same solver.
+ * one goes to the constraint set whole. Each is chosen so its whole motion can
+ * be written down in closed form and checked against, rather than compared
+ * with another run of the same solver -- which is the only check available for
+ * a shape the walk cannot solve at all.
  *
  * `scale` is not optional in practice. A cylinder's stroke is bounded by its
  * own slot, and a slot is drawn in marks -- absolute internal model units --
