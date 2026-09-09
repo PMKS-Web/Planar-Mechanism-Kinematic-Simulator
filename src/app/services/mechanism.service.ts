@@ -2591,6 +2591,13 @@ export class MechanismService {
    * reconcilers unrun, which is exactly how `toggleSlider` came to leave a
    * Slide's RevJoint flagged with nothing behind it.
    */
+  //
+  // Creating a link is a structural edit like any other, and the six creation
+  // gestures on the canvas used to end at `updateMechanism` instead. That runs
+  // the sealed-cylinder normalizer without running the repair passes first, so
+  // a bar attached to a joint that was already welded left the joint flagged
+  // welded with a loose bar beside it -- welded and pinned at once, which the
+  // repair below has an answer for and never got to give.
   public finishStructuralEdit(save: boolean = true): void {
     this.rebuildJointGraph();
     this.reconcileSlots();
@@ -2783,6 +2790,15 @@ export class MechanismService {
     // makes the result a real compound instead of a joint merely flagged welded
     // with a stray link beside it.
     const shouldWeld = source.isWelded || target.isWelded;
+    // Asked before anything comes apart. Rebuilding the weld afterwards can be
+    // refused -- the survivor inherits both joints' `input`, and a driven joint
+    // cannot be welded -- and by then the weld the reader had is simply gone,
+    // with the merge reported as having worked. A loose driven joint dropped
+    // onto a welded one is the reachable case: it adds no second body, so the
+    // driven-joint rule lets it through.
+    if (shouldWeld && !this.weldWouldSurviveMerge(source, target)) {
+      return 'weld-cannot-survive';
+    }
     if (source.isWelded) this.unweldTopology(source);
     if (target.isWelded) this.unweldTopology(target);
 
@@ -2980,25 +2996,17 @@ export class MechanismService {
       }
     }
     // Deleting a joint of a NEIGHBOR welded to a mount must not take the
-    // cylinder with it: dismantling the compound through the generic path
-    // stripped the seal. Unweld the mount first, so the compound dissolves
-    // back into the neighbor's own bar — which is what the deletion then
-    // operates on — and the cylinder stands untouched.
+    // cylinder with it, and must not take the *bracket* with it either. This
+    // used to unweld the mount first, so the compound dissolved back into
+    // separate bars and the deletion operated on those -- which does leave the
+    // cylinder standing, and silently unwelds everything else that was welded
+    // there. A bracket of two bars and a ram is one body of three; removing
+    // one bar's far joint should leave a body of two.
+    //
+    // Nothing special is needed for the ram: `removeCompoundJoints` prunes
+    // only the leaves the doomed joint is on, and its weld-stripping loop
+    // keeps a slide-assembly weld, which is what the sealed pin's is.
     const doomed = this.activeObjService.selectedJoint;
-    for (const cyl of this.sealedStructures()) {
-      for (const mount of [cyl.barrelFar, cyl.rodFar]) {
-        if (
-          mount instanceof RealJoint &&
-          mount.isWelded &&
-          doomed.id !== mount.id &&
-          doomed.links.some(
-            (l) => l instanceof RealLink && l.subset.length > 0 && l.joints.includes(mount)
-          )
-        ) {
-          this.unweldTopology(mount);
-        }
-      }
-    }
     // Prune every leaf before asking which welds still connect the survivors.
     // The old per-leaf loop saw already-pruned and untouched leaves together,
     // leaving disconnected bodies fused (and keeping the removed leaves' mass).
@@ -4339,14 +4347,15 @@ export class MechanismService {
     // A gesture in flight targets objects about to stop existing.
     this.injector.get(DragStateService).cancel();
 
-    // A mount welded into a neighboring compound has to come apart first, so
-    // the member links are top-level again and can be removed cleanly. The
-    // sealed pin's own weld is not a compound and needs no unweld.
-    [sealed.barrelFar, sealed.rodFar].forEach((mount) => {
-      if (mount instanceof RealJoint && mount.isWelded) this.unweldTopology(mount);
-    });
-
     const memberLinkIds = new Set([sealed.barrel.id, sealed.rod.id, sealed.block.id]);
+    // A mount welded into a neighboring compound has to give the ram's leaves
+    // back before they can be removed. Taking the *weld* apart to do it was
+    // the obvious way and is a second, silent edit: a mount holding a bracket
+    // of two bars and a ram is one body of three, and dissolving it to remove
+    // one leaf leaves the two bars pinned where they had been welded. So the
+    // leaves are taken out and whatever is still welded together is rebuilt --
+    // the same thing `removeCompoundJoints` does when a *joint* goes.
+    this.releaseFromCompounds(memberLinkIds);
     this.forces
       .filter((force) => memberLinkIds.has(force.link.id))
       .forEach((force) => this.detachForce(force));
@@ -7165,6 +7174,40 @@ export class MechanismService {
     // -- leaving the weld dropped with no rebuild and no undo entry.
     joint.isWelded = false;
     return true;
+  }
+
+  /**
+   * Take some leaves out of whatever compounds hold them, keeping the rest
+   * welded exactly as it was.
+   *
+   * The compound is rebuilt from what survives rather than dissolved, so a
+   * weld holding two survivors together goes on holding them. A joint left
+   * with nothing to be rigid about keeps its flag until
+   * `reconcileAssemblyWelds` runs, which is where that decision belongs and
+   * where it is already made.
+   */
+  private releaseFromCompounds(doomedLinkIds: ReadonlySet<string>): void {
+    this.links = this.links.flatMap((link) => {
+      if (!(link instanceof RealLink) || link.subset.length === 0) return [link];
+      if (!link.subset.some((leaf) => doomedLinkIds.has(leaf.id))) return [link];
+      link.subset = link.subset.filter((leaf) => !doomedLinkIds.has(leaf.id));
+      if (link.subset.length === 0) return [];
+      return this.splitCompoundAtRemainingWelds(link);
+    });
+  }
+
+  /**
+   * Whether the joint a merge would leave behind could carry the weld one of
+   * its halves is carrying now.
+   *
+   * The same question `canBeWelded` asks, put to a joint that does not exist
+   * yet: the survivor inherits `input` from either side, and holds the union
+   * of their bodies.
+   */
+  private weldWouldSurviveMerge(source: RealJoint, target: RealJoint): boolean {
+    if (source.input || target.input) return false;
+    const bodies = new Set([...source.links, ...target.links].map((link) => link.id));
+    return bodies.size >= 2;
   }
 
   private compoundAt(joint: RealJoint): RealLink | undefined {

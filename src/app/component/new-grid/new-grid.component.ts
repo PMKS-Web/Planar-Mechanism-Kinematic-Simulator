@@ -4099,7 +4099,7 @@ export class NewGridComponent implements OnDestroy {
                 joint2.links.push(link);
                 this.mechanismSrv.mergeToJoints([joint1, joint2]);
                 this.mechanismSrv.mergeToLinks([link]);
-                this.mechanismSrv.updateMechanism(true);
+                this.mechanismSrv.finishStructuralEdit(true);
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
                 this.linkCreateFrom = undefined;
@@ -4120,7 +4120,7 @@ export class NewGridComponent implements OnDestroy {
                 joint2.links.push(link);
                 this.mechanismSrv.mergeToJoints([joint2]);
                 this.mechanismSrv.mergeToLinks([link]);
-                this.mechanismSrv.updateMechanism(true);
+                this.mechanismSrv.finishStructuralEdit(true);
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
                 this.linkCreateFrom = undefined;
@@ -4180,7 +4180,7 @@ export class NewGridComponent implements OnDestroy {
                 this.mechanismSrv.mergeToLinks([link]);
                 this.activeObjService.selectedLink.d =
                   this.activeObjService.selectedLink.getPathString();
-                this.mechanismSrv.updateMechanism(true);
+                this.mechanismSrv.finishStructuralEdit(true);
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
                 this.linkCreateFrom = undefined;
@@ -4211,7 +4211,7 @@ export class NewGridComponent implements OnDestroy {
                 joint2.links.push(link);
                 this.mechanismSrv.mergeToJoints([joint1]);
                 this.mechanismSrv.mergeToLinks([link]);
-                this.mechanismSrv.updateMechanism(true);
+                this.mechanismSrv.finishStructuralEdit(true);
                 // PositionSolver.setUpSolvingForces(link.forces); // needed to determine force location when dragging a joint
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
@@ -4263,7 +4263,7 @@ export class NewGridComponent implements OnDestroy {
                 this.activeObjService.prevSelectedJoint.links.push(link);
                 joint2.links.push(link);
                 this.mechanismSrv.mergeToLinks([link]);
-                this.mechanismSrv.updateMechanism(true);
+                this.mechanismSrv.finishStructuralEdit(true);
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
                 this.linkCreateFrom = undefined;
@@ -4307,7 +4307,7 @@ export class NewGridComponent implements OnDestroy {
                   this.activeObjService.selectedLink.id.concat(joint1.id);
                 this.mechanismSrv.mergeToJoints([joint1]);
                 this.mechanismSrv.mergeToLinks([link]);
-                this.mechanismSrv.updateMechanism(true);
+                this.mechanismSrv.finishStructuralEdit(true);
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
                 this.linkCreateFrom = undefined;

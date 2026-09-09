@@ -247,6 +247,53 @@ function drag(component: NewGridComponent, steps: number) {
   component.mouseUp(new MouseEvent('mouseup'));
 }
 
+describe('NewGridComponent link creation at a welded joint', () => {
+  beforeEach(configureGridTestBed);
+
+  it('takes the new bar into the welded body instead of pinning it beside it', () => {
+    // A weld says every body meeting at the joint is rigid, so a bar drawn
+    // from it afterwards belongs to that body. The six creation gestures used
+    // to end at `updateMechanism`, which runs the sealed-cylinder normalizer
+    // without the repair passes -- so the joint kept its weld marker with a
+    // loose bar beside it, welded and pinned at once.
+    const mechanism = TestBed.inject(MechanismService);
+    const active = TestBed.inject(ActiveObjService);
+    const a = new RevJoint('A', 0, 0, false, true);
+    const b = new RevJoint('B', 0, 4 * MODEL_SCALE);
+    const c = new RevJoint('C', 3 * MODEL_SCALE, 5 * MODEL_SCALE);
+    const ab = new RealLink('AB', [a, b]);
+    const bc = new RealLink('BC', [b, c]);
+    const compound = new RealLink('ABC', [a, b, c], 2, 1, undefined, [ab, bc]);
+    b.isWelded = true;
+    [a, b, c].forEach((joint) => (joint.links = [compound]));
+    mechanism.joints = [a, b, c];
+    mechanism.links = [compound];
+    active.updateSelectedObj(b);
+    active.prevSelectedJoint = b;
+
+    const fixture = TestBed.createComponent(NewGridComponent);
+    const component = fixture.componentInstance;
+    component['lastLeftClickType'] = 'Grid';
+    component['timeMouseDown'] = 0;
+    component['startX'] = 0;
+    component['startY'] = 0;
+    TestBed.inject(DragStateService).beginCreatingLinkFromJoint();
+    // The bar is committed by the *second click*, not by a release: the
+    // creation switch lives in the mouse-down path.
+    component.mouseDown(
+      new MouseEvent('mousedown', { button: 0, clientX: 6 * MODEL_SCALE, clientY: MODEL_SCALE })
+    );
+
+    const compounds = mechanism.links.filter(
+      (link): link is RealLink => link instanceof RealLink && link.subset.length > 0
+    );
+    expect(compounds, 'one body at the weld').toHaveLength(1);
+    expect(compounds[0].subset).toHaveLength(3);
+    expect(mechanism.links).toHaveLength(1);
+    expect(b.isWelded).toBe(true);
+  });
+});
+
 describe('NewGridComponent drag gestures', () => {
   beforeEach(configureGridTestBed);
 
