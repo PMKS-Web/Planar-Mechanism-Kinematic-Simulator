@@ -274,6 +274,10 @@ export interface PositionSolverDriveState {
   cylinderDrive?: CylinderDrive;
   pinDrive?: PinDrive;
   simultaneousSystem?: SimultaneousSystem;
+  /** Which route solved this mechanism, which decides how its rates are found. */
+  coupledRoute: boolean;
+  /** The heading of each grounded guide, which a translating drive is read along. */
+  sliderAngleMap: Map<string, number>;
 }
 
 /**
@@ -497,6 +501,8 @@ export class PositionSolver {
       cylinderDrive: this.cylinderDrive,
       pinDrive: this.pinDrive,
       simultaneousSystem: this.simultaneousSystem,
+      coupledRoute: this.coupledRoute,
+      sliderAngleMap: new Map(this.sliderAngleMap),
     };
   }
 
@@ -506,6 +512,8 @@ export class PositionSolver {
     this.cylinderDrive = state.cylinderDrive;
     this.pinDrive = state.pinDrive;
     this.simultaneousSystem = state.simultaneousSystem;
+    this.coupledRoute = state.coupledRoute;
+    this.sliderAngleMap = new Map(state.sliderAngleMap);
   }
 
   static resetStaticVariables() {

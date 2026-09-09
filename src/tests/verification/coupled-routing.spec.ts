@@ -2,11 +2,15 @@
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
 import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
-import { teachingLabFourBarFixture } from '../../test-utils/verification/fixtures';
+import {
+  teachingLabFourBarFixture,
+  teachingLabSliderCrankFixture,
+} from '../../test-utils/verification/fixtures';
 import { cylinderBoomFixture } from '../../test-utils/verification/slot-fixtures';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 import { PositionSolver } from '../../app/model/mechanism/position-solver';
 import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
+import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { RevJoint } from '../../app/model/joint';
 
 /**
@@ -97,6 +101,58 @@ describe('a drawing the coupled route refuses', () => {
     expect(solver.stepCount).toBe(0);
     expect(plannedSteps()).toEqual([]);
     solver.resetStaticVariables();
+  });
+});
+
+describe('two machines in one drawing, analyzed one after the other', () => {
+  it('puts the coupled one back on its own route before answering for it', () => {
+    // Every one of these solvers is static, so the last mechanism built owns
+    // them. A drawing holds several machines and the panel graphs whichever
+    // the reader is looking at, which is routinely not the last one solved --
+    // so a machine's own route has to be something it can be put back on.
+    // Left stale, a coupled machine standing beside an ordinary one is asked
+    // for its rates as though it had been walked, and answered out of the loop
+    // formulation that has no equation for its shape.
+    //
+    // Asked of the route itself rather than of the numbers, because the
+    // mechanisms that can be built today have a loop answer that *agrees*: the
+    // whole of `coupled-route-agreement` is that they do. A drawing where the
+    // two disagree is the one this route exists for and cannot be drawn yet,
+    // so the guard has to be on the record rather than on a discrepancy
+    // nothing can currently produce.
+    const solverAt = PositionSolver as unknown as {
+      forceCoupledRoute: boolean;
+      coupledRoute: boolean;
+    };
+    solverAt.forceCoupledRoute = true;
+    let coupled: Mechanism;
+    try {
+      coupled = buildMechanism(teachingLabFourBarFixture()).mechanism;
+    } finally {
+      solverAt.forceCoupledRoute = false;
+    }
+    expect(solverAt.coupledRoute).toBe(true);
+
+    // The neighbor, solved over the top of it.
+    buildMechanism(teachingLabSliderCrankFixture());
+    expect(solverAt.coupledRoute).toBe(false);
+
+    coupled.prepareSolvers();
+    expect(solverAt.coupledRoute).toBe(true);
+
+    // And it still answers, which is the reason any of that matters.
+    KinematicsSolver.resetVariables();
+    coupled.prepareSolvers();
+    KinematicsSolver.determineKinematics(
+      coupled.joints[1],
+      coupled.links[1],
+      coupled.inputAngularVelocities[1]
+    );
+    for (const joint of coupled.joints[1]) {
+      const velocity = KinematicsSolver.jointVelMap.get(joint.id);
+      expect(velocity, `no velocity at ${joint.id}`).toBeDefined();
+      expect(velocity!.every(Number.isFinite)).toBe(true);
+    }
   });
 });
 
