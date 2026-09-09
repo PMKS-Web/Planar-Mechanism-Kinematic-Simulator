@@ -2293,3 +2293,48 @@ both reactions on the line between them -- `cylinder-forces.spec.ts`'s property 
 Hang a load on the bracket and it does not, because the part is now carrying a moment. That is the
 case the universal "replace a cylinder with a force along its mount line" wording is wrong about,
 and `welded-mount-forces.spec.ts` asserts both halves so the qualification cannot be lost again.
+
+### A welded mount is an ordinary joint now, and the refusals mean something narrower
+
+Four bans came off in step 5 of `docs/cylinder-mount-joints-plan.md`: a cylinder mount could not be
+welded, could not take a block, could not be merged onto by anything welded, and could not have a
+ram created on it while welded. None of them was a rule about cylinders — they were a fence around
+an unfinished path. What is sealed is the ram's **inside**: `barrelNear`, `pin`, `slider`. When
+reaching for a cylinder rule, ask `cylinderInteriorsAt`, not `cylindersOfJointIn` — membership was
+what made a mount refuse a block for a slider the ram keeps somewhere else entirely.
+
+Two consequences that are easy to miss:
+
+- **A lone mount still refuses a weld**, with `needs 2 links`. That is arithmetic — a weld fuses
+  what meets at a joint and one bar does not meet — and a test that asserts "the ban is lifted" by
+  welding a bare mount passes for the wrong reason. Give it a real neighbor first.
+- **Asking for a state a joint is already in is a no-op, and a no-op is allowed.** The pin already
+  carries the ram's block, so "add a slider" there returns `undefined`; it is *removing* it that is
+  refused. Ask for the state the joint is not in — `sliderRefusal(joint, !isAttachedToSlider(joint))`
+  — which is how the menu asks.
+
+### A weld absorbs whatever you attach to it next
+
+Attach a bar to a welded joint and it joins that joint's compound, because the weld says every body
+meeting there is rigid. This is right, and it is also a shape trap when building a mechanism: a boom
+pinned to a welded mount is not pinned, it is welded, and the mechanism loses the freedom you were
+drawing. Hang it on the bracket's far joint instead.
+
+`weldedBoomFixture` is written the other way — three bodies at the welded joint, only two of them in
+the compound — because a *solver* fixture is a constraint set rather than a drawing, and that set is
+coherent. `reconcileAssemblyWelds` would repair it into one body. Do not cite it as a drawing
+somebody made.
+
+### The rule and the ring have to be asked with the same facts
+
+`refuseJointMerge` takes the resolved cylinders now, not a joint list. The live drop ring holds an
+already-resolved set from its per-revision cache and a joint list too *filtered* to resolve one
+from — the interior pins are gone from it — so passing the ingredients meant the mount rules
+silently skipped the drag, and the ring grew a private copy of one of them. Passing the answer is
+what lets the ring, the drag and the merge be the same function. A rule that has to be repeated
+somewhere is a rule that will be repeated wrongly.
+
+The group edit had the same shape of bug in the other direction: `MultiEditService.weldRefusal`
+waved every *unweld* through, on the grounds that anything welded can be unwelded. A sealed pin is a
+weld that never comes off, so the row was offered un-grayed and the mutation then declined it.
+`weldRefusal(joint)` already asks about whichever way the joint would go; let it.

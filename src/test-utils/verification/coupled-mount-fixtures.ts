@@ -227,6 +227,16 @@ export const BOOM = { length: 4, pivotToEye: 3, witness: { x: -2, y: 5 } };
  *
  * The ram is the drive, so the boom's angle follows from the law of cosines --
  * one equation, hand-solvable, and independent of everything the solver does.
+ *
+ * **This is a solver fixture, not a drawing the editor would leave alone.**
+ * Three bodies meet at `C` -- the rod, the bracket and the boom -- and only
+ * the first two are in the compound. The constraint set that comes out of that
+ * is coherent, which is why the closed form above matches it: the compound is
+ * one rigid body and the boom is pinned to it. But a weld says *everything*
+ * meeting at the joint is rigid, so `reconcileAssemblyWelds` would absorb the
+ * boom as well and leave a mechanism of two bodies with no freedom. A reader
+ * building this in the app hangs the boom on the bracket's far joint instead.
+ * Worth knowing before this fixture is cited as a drawing somebody made.
  */
 export function weldedBoomFixture(scale: number = 1): MechanismFixture {
   const at = (x: number, y: number) => ({ x: x * scale, y: y * scale });
