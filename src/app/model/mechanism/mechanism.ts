@@ -572,17 +572,21 @@ export class Mechanism {
       // all along by going a shorter way. Reversing there turns a mechanism
       // round in the middle of travel it has.
       //
-      // Every other refusal is left as a limit, because it is one: circles
-      // that no longer reach, a rider at the end of its slot, a ram at its
-      // stop. Those are facts about the mechanism and read the same however
-      // finely they are approached, so refining at one only creeps up on it,
-      // spending the sample budget to land nearer a wall it cannot pass.
+      // Every other refusal is left as a limit. A travel bound genuinely is
+      // one -- a rider at the end of its slot, a ram at its stop -- and reads
+      // the same however finely it is approached, so refining there only
+      // creeps up on a wall, spending the sample budget to land nearer it. An
+      // iteration that came away with nothing is a weaker claim: it says this
+      // seed and this step found no pose, not that none exists. It is treated
+      // as a limit all the same, because the solve is already subdivided
+      // internally where it is commanded, and because retrying it out here
+      // costs ten fixtures their cycle.
       //
       // The rollback makes the retry safe either way: a refused sample leaves
       // nothing of itself behind.
       const acceptable = solved
         ? this.solvedJump(at) <= jumpLimit
-        : !PositionSolver.refusedOnBranch;
+        : PositionSolver.refusalKind !== 'branch';
       if (!subdividing || cuts >= FINEST_CUTS || acceptable) {
         PositionSolver.revoluteSampleStep = baseStep;
         return { solved, fraction: 1 / cuts };

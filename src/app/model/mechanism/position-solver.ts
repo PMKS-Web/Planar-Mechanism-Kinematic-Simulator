@@ -356,12 +356,24 @@ export class PositionSolver {
    */
   static forceCoupledRoute = false;
   /**
-   * Whether the last refused sample was refused for its assembly branch.
+   * Why the last sample was refused, when one was.
    *
-   * Read by the caller that chooses how big a step to take, and meaningful
-   * only immediately after a refusal. See `refuseBranch`.
+   * Three answers, and they are not the same thing however alike they look
+   * from outside:
+   *
+   *   - `branch` -- it converged, on the wrong root. A fact about the step,
+   *     not about the mechanism: a shorter one would have landed on the near
+   *     root. This is the only one worth retrying.
+   *   - `travel` -- a ram at its stop or a rider at the end of its slot. A
+   *     demonstrated bound, and the same bound however finely approached.
+   *   - `unsolved` -- nothing converged, or a placement primitive had no
+   *     answer. Treated as a limit, and worth being honest about: exhausting
+   *     an iteration is not a proof that no pose exists, only that this seed
+   *     and this step did not find one.
+   *
+   * Meaningful only immediately after a refusal. See `refuseBranch`.
    */
-  static refusedOnBranch = false;
+  static refusalKind: 'none' | 'branch' | 'travel' | 'unsolved' = 'none';
   /**
    * Whether this mechanism's positions came from the coupled route.
    *
@@ -519,7 +531,7 @@ export class PositionSolver {
   static resetStaticVariables() {
     this.jointMapPositions = new Map<string, Array<number>>();
     this.priorJointPositions = new Map<string, Array<number>>();
-    this.refusedOnBranch = false;
+    this.refusalKind = 'none';
     this.coupledRoute = false;
     this.sliderAngleMap = new Map<string, number>();
     this.desiredJointGroundIndexMap = new Map<string, number>();
@@ -2204,7 +2216,7 @@ export class PositionSolver {
     to: number,
     restore: () => void
   ): boolean {
-    if (solveSimultaneous(system, this.jointMapPositions, to)) {
+    if (this.settledOnItsBranch(system, to)) {
       this.rememberPose(system, to);
       return true;
     }
@@ -2213,7 +2225,7 @@ export class PositionSolver {
       let reached = true;
       for (let part = 1; part <= divisions && reached; part++) {
         const between = from + ((to - from) * part) / divisions;
-        reached = solveSimultaneous(system, this.jointMapPositions, between);
+        reached = this.settledOnItsBranch(system, between);
       }
       if (reached) {
         this.rememberPose(system, to);
@@ -2241,6 +2253,40 @@ export class PositionSolver {
       restore();
     }
     return false;
+  }
+
+  /**
+   * Solve at one command, and say whether the answer is on the branch the
+   * mechanism is continuing along.
+   *
+   * The interval was already subdivided when the *solve* failed. It was not
+   * when the solve succeeded onto the wrong root: a welded body turned end for
+   * end, or a ram assembled inside out, satisfies every row, so nothing here
+   * saw a problem and the validators that run after every step turned the
+   * whole sample away -- which the caller then read as the end of the
+   * mechanism's travel. `solveLookingAhead` learned to retry such a refusal,
+   * but only for a crank under adaptive sampling; a commanded ram or pin never
+   * reached it. This is that retry, on the path a command actually takes.
+   *
+   * A *travel* bound is deliberately not asked here. That one is a genuine
+   * stop, and refusing at it would send the interval through thirty more
+   * solves to arrive at the same answer; it is left to the validators, exactly
+   * as before.
+   */
+  private static settledOnItsBranch(system: SimultaneousSystem, command: number): boolean {
+    if (!solveSimultaneous(system, this.jointMapPositions, command)) {
+      return false;
+    }
+    this.refusalKind = 'none';
+    if (this.headingsHeld() && this.cylindersAreIntact()) {
+      return true;
+    }
+    return !this.refusedOnBranch();
+  }
+
+  /** Whether the last refusal was a wrong root rather than a reached bound. */
+  private static refusedOnBranch(): boolean {
+    return this.refusalKind === 'branch';
   }
 
   /**
@@ -2298,7 +2344,7 @@ export class PositionSolver {
         along < interior.minAlong - STROKE_TOLERANCE ||
         along > interior.maxAlong + STROKE_TOLERANCE
       ) {
-        return false;
+        return this.refuseTravel();
       }
       if (span <= DEGENERATE_SLOT_TOLERANCE) return false;
 
@@ -2381,7 +2427,13 @@ export class PositionSolver {
    * is worth walking up to again more carefully.
    */
   private static refuseBranch(): false {
-    this.refusedOnBranch = true;
+    this.refusalKind = 'branch';
+    return false;
+  }
+
+  /** Refuse a sample for a bound the mechanism has actually reached. */
+  private static refuseTravel(): false {
+    this.refusalKind = 'travel';
     return false;
   }
 
@@ -3073,8 +3125,11 @@ export class PositionSolver {
     // interpolate from -- and a branch chosen along that interval is a branch
     // chosen from a pose the drawing was never in.
     const held = this.capturePose();
-    this.refusedOnBranch = false;
+    // Anything that refuses without saying why is an iteration or a primitive
+    // that came away with nothing, which is what this reads as.
+    this.refusalKind = 'unsolved';
     if (this.attemptPositionAnalysis(joints, links, forces, angVelDir)) {
+      this.refusalKind = 'none';
       return true;
     }
     this.restorePose(held);

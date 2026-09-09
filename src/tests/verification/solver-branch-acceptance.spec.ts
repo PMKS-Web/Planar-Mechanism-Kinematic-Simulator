@@ -19,6 +19,8 @@ import { SettingsService } from '../../app/services/settings.service';
  */
 
 const solver = PositionSolver as unknown as {
+  reachSpan: (system: SimultaneousSystem, from: number, to: number, restore: () => void) => boolean;
+  refusalKind: string;
   jointMapPositions: Map<string, number[]>;
   simultaneousSystem?: SimultaneousSystem;
   cylinderInteriorMap: Map<string, unknown>;
@@ -174,5 +176,102 @@ describe('a ram assembled inside out', () => {
 
     expect(solver.cylindersAreIntact()).toBe(false);
     solver.resetStaticVariables();
+  });
+});
+
+describe('a commanded ram that settles on the wrong root', () => {
+  // `cylinderBetween` lays the fixture out at a mark radius of 0.15, which is
+  // what an object scale of 1 means; the stroke bounds are read from the live
+  // scale, so the two have to be talking about the same ram.
+  let previousScale = 0;
+  beforeEach(() => {
+    previousScale = SettingsService.objectScale;
+    SettingsService._objectScale.next(1);
+  });
+  afterEach(() => {
+    SettingsService._objectScale.next(previousScale);
+    solver.resetStaticVariables();
+  });
+
+  /**
+   * The ram's interior as a system, with its two mounts prescribed.
+   *
+   * The barrel's buried end sits on the axis at its own length from the mount,
+   * which is two places: in front of the mount, where the part is, and behind
+   * it, where every row is just as happy. That second root is the one a step
+   * taken too boldly lands on.
+   */
+  function interior() {
+    solver.resetStaticVariables();
+    const parts = ram();
+    solver.registerSealedCylinders(parts.joints);
+    const barrel = parts.barrelNear.x;
+    const rod = parts.rodFar.x - parts.pin.x;
+    const system: SimultaneousSystem = {
+      unknownIds: ['B', 'C', 'P'],
+      constraints: [
+        { kind: 'distance', a: 'A', b: 'B', length: barrel },
+        { kind: 'onFixedLine', point: 'B', at: [0, 0], dir: [1, 0] },
+        { kind: 'distance', a: 'C', b: 'D', length: rod },
+        { kind: 'onFixedLine', point: 'C', at: [0, 0], dir: [1, 0] },
+        { kind: 'coincident', a: 'C', b: 'P' },
+      ],
+    };
+    solver.simultaneousSystem = system;
+    const seated = new Map(parts.joints.map((joint) => [joint.id, [joint.x, joint.y]]));
+    solver.jointMapPositions = new Map(seated);
+    return { parts, system, barrel, seated };
+  }
+
+  it('is refused rather than accepted, on the path a command actually takes', () => {
+    // Stated first and on its own: before this, the commanded continuation
+    // asked only whether the numbers converged. They do, on both roots.
+    const { system, barrel } = interior();
+    solver.jointMapPositions.set('B', [-barrel, 0]);
+
+    const settled = (
+      solver as unknown as {
+        settledOnItsBranch: (s: SimultaneousSystem, at: number) => boolean;
+      }
+    ).settledOnItsBranch(system, 10);
+
+    expect(settled).toBe(false);
+    expect(solver.refusalKind).toBe('branch');
+  });
+
+  it('walks the interval again in shorter steps, and keeps what that finds', () => {
+    // The whole retry, through the real `reachSpan`. The first attempt is
+    // seeded on the far root and lands there; the restore that follows every
+    // rejected attempt puts the solver back where the sample began, and the
+    // subdivided walk from there stays on the near one.
+    //
+    // Seeding the bad root rather than arriving at it is the arranged part,
+    // and it is the only part: a step long enough to cross between two roots
+    // half a mechanism apart is not something a fixture can be asked for on
+    // demand. What is being shown is that the commanded path now asks the
+    // question, refuses on it, and recovers -- which it did not.
+    const { system, barrel, seated } = interior();
+    solver.jointMapPositions.set('B', [-barrel, 0]);
+
+    const reached = solver.reachSpan(system, 10, 10, () => {
+      solver.jointMapPositions = new Map(seated);
+    });
+
+    expect(reached).toBe(true);
+    expect(solver.jointMapPositions.get('B')![0]).toBeCloseTo(barrel, 9);
+  });
+
+  it('and accepts the near root without any of that when it is already on it', () => {
+    const { system, barrel, seated } = interior();
+    let restored = 0;
+
+    const reached = solver.reachSpan(system, 10, 10, () => {
+      restored += 1;
+      solver.jointMapPositions = new Map(seated);
+    });
+
+    expect(reached).toBe(true);
+    expect(restored).toBe(0);
+    expect(solver.jointMapPositions.get('B')![0]).toBeCloseTo(barrel, 9);
   });
 });

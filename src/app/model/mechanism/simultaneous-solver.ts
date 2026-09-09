@@ -855,6 +855,31 @@ export function commandDerivative(
 }
 
 /**
+ * How big across the points a system reads are, as one number.
+ *
+ * The diagonal of their bounding box, not their distance from the origin: a
+ * one-unit mechanism drawn a million units away from it is still a one-unit
+ * mechanism, and a step scaled to where it happens to sit would step clean
+ * over it. Falls back to one for a system whose points are all in the same
+ * place, where the residuals are linear and any step does.
+ */
+function span(ids: string[], positions: PositionMap): number {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const id of ids) {
+    const [x, y] = positions.get(id) ?? [0, 0];
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  }
+  const across = Math.hypot(maxX - minX, maxY - minY);
+  return across > 0 && Number.isFinite(across) ? across : 1;
+}
+
+/**
  * Whether a least-squares answer actually satisfies the rows it was fitted to.
  *
  * It need not. Least squares returns the nearest thing to a solution whether
@@ -937,8 +962,15 @@ export function constraintRates(
   // for a drawing whose only boundary is the ground -- which is every
   // mechanism the command path was written for, so those come through this
   // arithmetic unchanged.
+  // Only the ones the constraints actually read. A prescribed point no row
+  // mentions contributes nothing to any residual, so its rate belongs in the
+  // *output* and nowhere in the arithmetic -- and left in, it still sets the
+  // scale of the differencing step below, so a fast witness bolted to a slow
+  // mechanism shortens that step until the difference is noise. It cannot
+  // change the answer, so it must not be allowed to.
+  const referenced = boundary ? new Set(boundaryJoints(system)) : undefined;
   const carriedIds = boundary
-    ? [...boundary.velocity.keys()].filter((id) => !columnOf.has(id))
+    ? [...boundary.velocity.keys()].filter((id) => !columnOf.has(id) && referenced!.has(id))
     : [];
   const carriedColumns = new Map(carriedIds.map((id, index) => [id, index]));
   const carriedRate = carriedIds.flatMap((id) => boundary!.velocity.get(id) ?? [0, 0]);
@@ -962,14 +994,21 @@ export function constraintRates(
 
   // A step along the motion, small against the mechanism rather than against
   // the clock, so the differenced time derivative is well scaled whatever the
-  // input speed happens to be.
+  // input speed happens to be -- and small against *this* mechanism, not
+  // against the number one. A fixed displacement of 1e-4 is a ten-thousandth
+  // of a drawing in model units and a hundredth of one in a spec's own units,
+  // and a central difference taken a hundredth of the way across a mechanism
+  // is wrong in its fifth digit. So the displacement is a fixed fraction of
+  // the span of the points the constraints actually read: small enough that
+  // the truncation error is nothing, large enough that the subtraction does
+  // not lose the answer to round-off.
   const fastest = Math.max(
     ...rates.map(Math.abs),
     ...carriedRate.map(Math.abs),
     Math.abs(commandRate),
     1e-12
   );
-  const step = 1e-4 / fastest;
+  const step = (1e-5 * span([...ids, ...carriedIds], positions)) / fastest;
   const shifted = (direction: number): PositionMap => {
     const moved: PositionMap = new Map(positions);
     ids.forEach((id, index) => {

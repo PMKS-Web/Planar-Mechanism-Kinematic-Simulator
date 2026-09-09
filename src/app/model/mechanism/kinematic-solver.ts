@@ -104,11 +104,46 @@ export class KinematicsSolver {
 
   static determineKinematics(simJoints: Joint[], simLinks: Link[], initialAngularVelocity: number) {
     this.kinematicsInitializer(simJoints, simLinks, initialAngularVelocity);
-    this.solveRates(simJoints, simLinks, initialAngularVelocity);
+    if (!this.solveRates(simJoints, simLinks, initialAngularVelocity)) {
+      this.forgetRates(simJoints, simLinks);
+      return;
+    }
     // Last, because all three routes below seed a grounded guide with zero and
     // none of them ever revisits it.
     this.matchGuidesToRiders(simLinks);
     this.settleFixedLinks(simLinks);
+  }
+
+  /**
+   * Take back everything this sample would have said about how fast it moves.
+   *
+   * These maps are written per sample and read afterwards, and nothing in them
+   * carries a sample number -- so a sample with no answer that leaves the last
+   * one's entries in place does not report *nothing*, it reports the pose
+   * before it, which is a plausible number and the wrong one. The seeds
+   * `kinematicsInitializer` laid down go too: a ground's zero is as much a
+   * claim about this sample as a solved velocity is.
+   *
+   * Only this partition's own ids, because a drawing holds several machines
+   * and the others' answers are not this one's to discard.
+   */
+  private static forgetRates(simJoints: Joint[], simLinks: Link[]): void {
+    for (const joint of simJoints) {
+      this.jointVelMap.delete(joint.id);
+      this.jointAccMap.delete(joint.id);
+      this.desiredAngleMap.delete(joint.id);
+      this.slideRateMap.delete(joint.id);
+      this.slideAccelMap.delete(joint.id);
+    }
+    for (const link of simLinks) {
+      this.linkAngVelMap.delete(link.id);
+      this.linkAngAccMap.delete(link.id);
+      this.linkVelMap.delete(link.id);
+      this.linkAccMap.delete(link.id);
+      this.linkCoMMap.delete(link.id);
+      this.slideRateMap.delete(link.id);
+      this.slideAccelMap.delete(link.id);
+    }
   }
 
   /**
@@ -146,38 +181,42 @@ export class KinematicsSolver {
     }
   }
 
+  /** Whether this sample came away with an answer. */
   private static solveRates(
     simJoints: Joint[],
     simLinks: Link[],
     initialAngularVelocity: number
-  ): void {
+  ): boolean {
     // A mechanism the constraint set solved gets its rates from the same
     // constraints, differentiated (§2.7a). Loop detection cannot see through a
     // sealed cylinder, so every cylinder-driven mechanism reached the loopless
     // path below and came away with no velocities at all -- the graphs plotted
     // NaN and said nothing about why.
     if (this.applyConstraintKinematics(simJoints, simLinks, initialAngularVelocity)) {
-      return;
+      return true;
     }
     // A coupled partition has no second opinion to fall back on. Its shape is
     // one the loop formulation cannot express -- that is why its positions did
     // not come from the walk either -- so handing it to the loop solver would
     // not be a cheaper answer to the same question, it would be a confident
-    // answer to a different one. Better an empty graph than a wrong curve.
+    // answer to a different one. Better an empty graph than a wrong curve --
+    // and an empty graph is what the caller then has to make, which is why
+    // this reports the refusal rather than simply stopping.
     if (PositionSolver.coupledRoute) {
-      return;
+      return false;
     }
 
     // A single welded root rotating about its input is a valid one-DOF
     // mechanism even though it has no closed kinematic loop to solve.
     if (this.requiredLoops.length === 0) {
       this.determineLooplessKinematics(simJoints, simLinks, initialAngularVelocity);
-      return;
+      return true;
     }
 
     this.determineAng(simJoints, simLinks, 'Velocity');
     this.determineAng(simJoints, simLinks, 'Acceleration');
     this.determineLin(simJoints, simLinks);
+    return true;
   }
 
   /**
@@ -367,14 +406,16 @@ export class KinematicsSolver {
       const [v2x, v2y] = velocityOf(second);
       const [a1x, a1y] = accelerationOf(first);
       const [a2x, a2y] = accelerationOf(second);
-      // omega = r x dv / |r|^2, and the same for alpha once the centripetal
-      // term omega^2 r is taken back out of the relative acceleration.
+      // omega = r x dv / |r|^2, and alpha the same of the relative
+      // acceleration -- the centripetal term needs no taking out, because
+      // a2 - a1 = alpha x r - omega^2 r and `r x r` is zero, so the term this
+      // was correcting for contributes nothing to begin with. Written out and
+      // subtracted with one sign wrong, it contributed `2 omega^2 rx ry/|r|^2`
+      // instead: nothing on a bar lying along an axis, and nothing at all
+      // until a body actually turning reached this path, which is why a
+      // constant-speed crank reported an angular acceleration of its own.
       const omega = spanSquared < 1e-12 ? 0 : (rx * (v2y - v1y) - ry * (v2x - v1x)) / spanSquared;
-      const alpha =
-        spanSquared < 1e-12
-          ? 0
-          : (rx * (a2y - a1y + omega * omega * ry) - ry * (a2x - a1x - omega * omega * rx)) /
-            spanSquared;
+      const alpha = spanSquared < 1e-12 ? 0 : (rx * (a2y - a1y) - ry * (a2x - a1x)) / spanSquared;
       this.linkAngVelMap.set(link.id, omega);
       this.linkAngAccMap.set(link.id, alpha);
 

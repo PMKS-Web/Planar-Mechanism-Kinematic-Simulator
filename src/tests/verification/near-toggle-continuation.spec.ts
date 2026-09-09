@@ -52,7 +52,7 @@ describe('a sample the walk is refused', () => {
     const solver = PositionSolver as unknown as {
       determinePositionAnalysis: (...args: unknown[]) => boolean;
       revoluteSampleStep: number;
-      refusedOnBranch: boolean;
+      refusalKind: 'none' | 'branch' | 'travel' | 'unsolved';
     };
     const original = solver.determinePositionAnalysis;
     const attempts: number[] = [];
@@ -60,10 +60,10 @@ describe('a sample the walk is refused', () => {
       const fraction = solver.revoluteSampleStep;
       attempts.push(fraction);
       if (fraction <= options.succeedsAt + 1e-12) {
-        solver.refusedOnBranch = false;
+        solver.refusalKind = 'none';
         return true;
       }
-      solver.refusedOnBranch = options.branch;
+      solver.refusalKind = options.branch ? 'branch' : 'travel';
       return false;
     };
     return { attempts, restore: () => (solver.determinePositionAnalysis = original) };

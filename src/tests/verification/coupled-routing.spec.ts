@@ -11,6 +11,8 @@ import { MODEL_SCALE } from '../../app/model/render-scale';
 import { PositionSolver } from '../../app/model/mechanism/position-solver';
 import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
+import { rotatingCarrierFixture } from '../../test-utils/verification/coupled-mount-fixtures';
+import { vi } from 'vitest';
 import { RevJoint } from '../../app/model/joint';
 
 /**
@@ -190,6 +192,60 @@ describe('a coupled partition whose rates cannot be found', () => {
     // the run that shows something would have.
     expect(answered(false)).toBeGreaterThan(0);
     expect(answered(true)).toBe(0);
+  });
+});
+
+describe('a coupled sample that came away with no answer', () => {
+  it('leaves nothing of the sample before it standing in for it', () => {
+    // Refusing to fall back to the loop solver is only half of "an empty
+    // graph". These maps are written per sample and read afterwards, and
+    // nothing in them carries a sample number -- so a refused sample that
+    // left the last one's entries in place would report the pose before it:
+    // a plausible number, and the wrong one, at exactly the samples where the
+    // reader most needs to see a gap.
+    const built = buildMechanism(rotatingCarrierFixture(MODEL_SCALE)).mechanism;
+    const rates = () => {
+      KinematicsSolver.determineKinematics(
+        built.joints[at],
+        built.links[at],
+        built.inputAngularVelocities[at]
+      );
+      return {
+        joint: KinematicsSolver.jointVelMap.get('O'),
+        jointAccel: KinematicsSolver.jointAccMap.get('O'),
+        linkRate: KinematicsSolver.linkAngVelMap.get('AE'),
+        linkAccel: KinematicsSolver.linkAngAccMap.get('AE'),
+        centerOfMass: KinematicsSolver.linkAccMap.get('AE'),
+      };
+    };
+    let at = 0;
+    KinematicsSolver.resetVariables();
+    built.prepareSolvers();
+
+    const answered = rates();
+    expect(answered.joint?.every(Number.isFinite)).toBe(true);
+    expect(Number.isFinite(answered.linkRate!)).toBe(true);
+    expect(answered.centerOfMass?.every(Number.isFinite)).toBe(true);
+
+    // The next sample, with the constraint solve unable to answer.
+    const refuse = vi.spyOn(PositionSolver, 'constraintKinematics').mockReturnValue(undefined);
+    at = 1;
+    const refused = rates();
+    expect(refused.joint).toBeUndefined();
+    expect(refused.jointAccel).toBeUndefined();
+    expect(refused.linkRate).toBeUndefined();
+    expect(refused.linkAccel).toBeUndefined();
+    expect(refused.centerOfMass).toBeUndefined();
+
+    // And the one after, with it able again: a gap, not a hole that stays.
+    refuse.mockRestore();
+    at = 2;
+    const again = rates();
+    expect(again.joint?.every(Number.isFinite)).toBe(true);
+    expect(Number.isFinite(again.linkRate!)).toBe(true);
+    expect(again.centerOfMass?.every(Number.isFinite)).toBe(true);
+    KinematicsSolver.resetVariables();
+    PositionSolver.resetStaticVariables();
   });
 });
 

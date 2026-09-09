@@ -19,6 +19,7 @@ import {
 import { cylinderBetween } from '../../test-utils/verification/slot-fixtures';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
+import { RealLink } from '../../app/model/link';
 import { PositionSolver } from '../../app/model/mechanism/position-solver';
 import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
 
@@ -137,6 +138,17 @@ interface Example {
   step: number;
   /** The whole motion at a command and the rate it is being changed at. */
   motionAt: (command: number, rate: number) => Motion;
+  /**
+   * How fast each body is turning, by link id.
+   *
+   * Separate from the joints because it is answered separately, and wrongly:
+   * a link's angular acceleration is read back off its two joints, and a term
+   * that cancels was written out with one sign wrong, so a bar lying along an
+   * axis was right and every other bar carried `2 omega^2 rx ry / |r|^2` it
+   * had not earned. Joints were unaffected, which is why five examples of them
+   * missed it.
+   */
+  bodies: (command: number, rate: number) => Map<string, [number, number]>;
   /** The ram's rest span, for the stroke bounds. */
   restSpan: number;
 }
@@ -159,6 +171,14 @@ const axial: Example = {
   commandOf: (position) => apart(position.get('O')!, position.get('R')!),
   step: 0,
   restSpan: AXIAL_REACH,
+  // Nothing turns: the guide, the ram and the eye are all on one line.
+  bodies: () =>
+    new Map<string, [number, number]>([
+      ['ON', [0, 0]],
+      ['PR', [0, 0]],
+      ['PS', [0, 0]],
+      ['OK', [0, 0]],
+    ]),
   motionAt: (span, rate) => {
     const part = interior(AXIAL_REACH);
     const eye: Vec = [AXIAL_REACH * SCALE, 0];
@@ -214,6 +234,28 @@ const oblique: Example = (() => {
   const c = dot(u, [eye[0] - start[0], eye[1] - start[1]]);
   const standoff = OBLIQUE.standoff * SCALE;
   const rest = Math.hypot(eye[0], eye[1]) / SCALE;
+  /**
+   * The carriage's travel and the ram's heading at one commanded length.
+   *
+   * Written once because two answers need it: where every joint is, and how
+   * fast the two bodies of the ram are turning.
+   */
+  const obliqueHeading = (span: number, rate: number) => {
+    const w = Math.sqrt(span * span - standoff * standoff);
+    const travel = c - w;
+    const travelRate = (-span * rate) / w;
+    const travelAccel = (rate * rate * standoff * standoff) / (w * w * w);
+    const mount = add(start, scaled(u, travel));
+    const mountRate = scaled(u, travelRate);
+    const mountAccel = scaled(u, travelAccel);
+    const axis: Vec = [eye[0] - mount[0], eye[1] - mount[1]];
+    return {
+      mount,
+      mountRate,
+      mountAccel,
+      ...heading(axis, scaled(mountRate, -1), scaled(mountAccel, -1)),
+    };
+  };
   return {
     name: 'a carriage on a guide that runs across the ram',
     make: obliqueGuideFixture,
@@ -221,17 +263,21 @@ const oblique: Example = (() => {
     commandOf: (position) => apart(position.get('O')!, position.get('R')!),
     step: 0,
     restSpan: rest,
+    // Barrel and rod are one straight part, so both turn at the ram's own
+    // rate; the two blocks hold coincident joints and turn at nothing.
+    bodies: (span: number, rate: number) => {
+      const turn = obliqueHeading(span, rate);
+      return new Map<string, [number, number]>([
+        ['ON', [turn.rate, turn.accel]],
+        ['PR', [turn.rate, turn.accel]],
+        ['PS', [0, 0]],
+        ['OK', [0, 0]],
+      ]);
+    },
     motionAt: (span, rate) => {
       const part = interior(rest);
-      const w = Math.sqrt(span * span - standoff * standoff);
-      const travel = c - w;
-      const travelRate = (-span * rate) / w;
-      const travelAccel = (rate * rate * standoff * standoff) / (w * w * w);
-      const mount = add(start, scaled(u, travel));
-      const mountRate = scaled(u, travelRate);
-      const mountAccel = scaled(u, travelAccel);
-      const axis: Vec = [eye[0] - mount[0], eye[1] - mount[1]];
-      const turn = heading(axis, scaled(mountRate, -1), scaled(mountAccel, -1));
+      const turn = obliqueHeading(span, rate);
+      const { mount, mountRate, mountAccel } = turn;
       const along = unit(turn.angle);
       const sideways = across(turn.angle);
       /** A point `reach` out from the mount along the ram. */
@@ -308,6 +354,15 @@ const bracket: Example = {
   commandOf: (position) => position.get('W')![0],
   step: 0,
   restSpan: BRACKET_REACH,
+  // The bracket is welded to a grounded guide's block, so nothing on it turns
+  // at all -- which is the whole claim this example makes.
+  bodies: () =>
+    new Map<string, [number, number]>([
+      ['ONW', [0, 0]],
+      ['PR', [0, 0]],
+      ['PS', [0, 0]],
+      ['WK', [0, 0]],
+    ]),
   motionAt: (travel, rate) => {
     const part = interior(BRACKET_REACH);
     const eye: Vec = [BRACKET_REACH * SCALE, 0];
@@ -372,6 +427,18 @@ const carrier: Example = (() => {
     commandOf: (position) => Math.atan2(position.get('E')![1], position.get('E')![0]),
     step: 0,
     restSpan: Math.hypot(CARRIER.eye.x - CARRIER.mountAlong, CARRIER.eye.y),
+    // The crank turns at the input speed and does not speed up; the ram is
+    // welded square to its slot, so it turns with it. Every one of these has
+    // zero angular acceleration while lying at an angle, which is exactly the
+    // case a spurious `2 omega^2 rx ry / |r|^2` shows up in.
+    bodies: (angle, omega) =>
+      new Map<string, [number, number]>([
+        ['AE', [omega, 0]],
+        ['ON', [omega, 0]],
+        ['PR', [omega, 0]],
+        ['PS', [0, 0]],
+        ['OQ', [0, 0]],
+      ]),
     motionAt: (angle, omega) => {
       const part = interior(Math.hypot(CARRIER.eye.x - CARRIER.mountAlong, CARRIER.eye.y));
       const e = unit(angle);
@@ -465,6 +532,28 @@ const boom: Example = (() => {
   const arm = apart(witness, tip);
   const restHeading = Math.atan2(tip[1] - eye[1], tip[0] - eye[0]);
   const offset = Math.atan2(witness[1] - tip[1], witness[0] - tip[0]) - restHeading;
+  /**
+   * The boom's angle and the ram's heading at one commanded length.
+   *
+   * The boom from the law of cosines, the ram from the boom tip it carries --
+   * two different rates, which is what this example is for.
+   */
+  const boomSwing = (span: number, rate: number) => {
+    const swing = eye[0] * length;
+    const angle = Math.acos(
+      (length * length + eye[0] * eye[0] - span * span) / (2 * length * eye[0])
+    );
+    const omega = (span * rate) / (swing * Math.sin(angle));
+    const alpha =
+      (rate * rate - swing * Math.cos(angle) * omega * omega) / (swing * Math.sin(angle));
+    const e = unit(angle);
+    const perpendicular = across(angle);
+    const tipNow = scaled(e, length);
+    const tipRate = scaled(perpendicular, length * omega);
+    const tipAccel = add(scaled(perpendicular, length * alpha), scaled(e, -length * omega * omega));
+    const axis: Vec = [tipNow[0] - eye[0], tipNow[1] - eye[1]];
+    return { omega, alpha, tipNow, tipRate, tipAccel, turn: heading(axis, tipRate, tipAccel) };
+  };
   return {
     name: 'a boom whose rod mount is welded into a bracket',
     make: weldedBoomFixture,
@@ -472,25 +561,21 @@ const boom: Example = (() => {
     commandOf: (position) => apart(position.get('G')!, position.get('C')!),
     step: 0,
     restSpan: rest,
+    // Two different rates in one drawing: the boom turns about its own pivot
+    // and the ram turns about its eye, and the compound the rod was welded
+    // into goes with the ram rather than with the boom it is pinned to.
+    bodies: (span: number, rate: number) => {
+      const swing = boomSwing(span, rate);
+      return new Map<string, [number, number]>([
+        ['OC', [swing.omega, swing.alpha]],
+        ['GN', [swing.turn.rate, swing.turn.accel]],
+        ['PCW', [swing.turn.rate, swing.turn.accel]],
+        ['PS', [0, 0]],
+      ]);
+    },
     motionAt: (span, rate) => {
       const part = interior(rest);
-      const swing = eye[0] * length;
-      const angle = Math.acos(
-        (length * length + eye[0] * eye[0] - span * span) / (2 * length * eye[0])
-      );
-      const omega = (span * rate) / (swing * Math.sin(angle));
-      const alpha =
-        (rate * rate - swing * Math.cos(angle) * omega * omega) / (swing * Math.sin(angle));
-      const e = unit(angle);
-      const perpendicular = across(angle);
-      const tipNow = scaled(e, length);
-      const tipRate = scaled(perpendicular, length * omega);
-      const tipAccel = add(
-        scaled(perpendicular, length * alpha),
-        scaled(e, -length * omega * omega)
-      );
-      const axis: Vec = [tipNow[0] - eye[0], tipNow[1] - eye[1]];
-      const turn = heading(axis, tipRate, tipAccel);
+      const { tipNow, tipRate, tipAccel, turn } = boomSwing(span, rate);
       const along = unit(turn.angle);
       const sideways = across(turn.angle);
       /** A point `out` from the fixed eye along the ram. */
@@ -568,10 +653,17 @@ function poseOf(mechanism: Mechanism, t: number): Map<string, Vec> {
   return new Map(mechanism.joints[t].map((joint) => [joint.id, [joint.x, joint.y] as Vec]));
 }
 
+interface SampleRates {
+  velocity: Map<string, Vec>;
+  acceleration: Map<string, Vec>;
+  turning: Map<string, number>;
+  turningAccel: Map<string, number>;
+  centerVelocity: Map<string, Vec>;
+  centerAccel: Map<string, Vec>;
+}
+
 /** Velocities and accelerations at every sample, walked in order. */
-function ratesOf(
-  mechanism: Mechanism
-): { velocity: Map<string, Vec>; acceleration: Map<string, Vec> }[] {
+function ratesOf(mechanism: Mechanism): SampleRates[] {
   KinematicsSolver.resetVariables();
   mechanism.prepareSolvers();
   return mechanism.joints.map((pose, t) => {
@@ -591,6 +683,30 @@ function ratesOf(
         pose.map((joint) => [
           joint.id,
           [...(KinematicsSolver.jointAccMap.get(joint.id) ?? [NaN, NaN])] as Vec,
+        ])
+      ),
+      turning: new Map(
+        mechanism.links[t].map((link) => [
+          link.id,
+          KinematicsSolver.linkAngVelMap.get(link.id) ?? NaN,
+        ])
+      ),
+      turningAccel: new Map(
+        mechanism.links[t].map((link) => [
+          link.id,
+          KinematicsSolver.linkAngAccMap.get(link.id) ?? NaN,
+        ])
+      ),
+      centerVelocity: new Map(
+        mechanism.links[t].map((link) => [
+          link.id,
+          [...(KinematicsSolver.linkVelMap.get(link.id) ?? [NaN, NaN])] as Vec,
+        ])
+      ),
+      centerAccel: new Map(
+        mechanism.links[t].map((link) => [
+          link.id,
+          [...(KinematicsSolver.linkAccMap.get(link.id) ?? [NaN, NaN])] as Vec,
         ])
       ),
     };
@@ -632,27 +748,30 @@ describe('a drawing whose cylinder mounts are welded or riding slots', () => {
         expect(mechanism.isMechanismValid()).toBe(true);
       });
 
-      it('advances its drive by one constant step, turning round at each stop', () => {
+      it('advances its drive at the speed it was given, turning round at each stop', () => {
         // The command is what everything below is predicted from, so what it
-        // does has to be pinned first -- and pinned as arithmetic rather than
-        // as whatever came back: one step per sample, the same size every
-        // time, changing sign only where the input reverses.
-        const step = commands[1] - commands[0];
-        expect(Math.abs(step)).toBeGreaterThan(0);
-        const signs = mechanism.inputAngularVelocities.map(Math.sign);
-        let expected = commands[0];
+        // does has to be pinned first -- and pinned against the clock, not
+        // against its own first step. Taking the step from `commands[1] -
+        // commands[0]` proves the progression is *consistent*; a drive running
+        // at half the speed it was asked for is perfectly consistent, and
+        // every closed form below would follow it there quite happily. What
+        // has to hold is that the command moved by the prescribed rate times
+        // the time the sample took.
         for (let t = 1; t < commands.length; t++) {
-          expected += step * (signs[t] / signs[1]);
-          // Read back off joint coordinates held to four decimals, so a few
-          // units in that last place -- and a thousandth of a step, which is
-          // what makes this a statement about the progression.
-          expect(Math.abs(commands[t] - expected), `command at sample ${t}`).toBeLessThan(
-            Math.abs(step) * 1e-3
-          );
+          const elapsed = mechanism.timeNum[t] - mechanism.timeNum[t - 1];
+          // Time runs forward across a reversal; it is the *rate* that turns
+          // round, which is why the sign has to come from there.
+          expect(elapsed, `elapsed at sample ${t}`).toBeGreaterThan(0);
+          const moved = mechanism.inputAngularVelocities[t] * elapsed;
+          expect(
+            Math.abs(commands[t] - commands[t - 1] - moved),
+            `command at sample ${t}`
+          ).toBeLessThan(Math.abs(moved) * 1e-3);
         }
         // Two reversals: out to one stop, back past the start to the other,
         // and home. A cycle that ran on without turning round would not be
         // this mechanism.
+        const signs = mechanism.inputAngularVelocities.map(Math.sign);
         const flips = signs.filter((sign, index) => index > 0 && sign !== signs[index - 1]);
         expect(flips).toHaveLength(2);
       });
@@ -742,6 +861,94 @@ describe('a drawing whose cylinder mounts are welded or riding slots', () => {
         // ten million at worst, so it is held to the same bound: an
         // acceleration term left out of the formulation is not a small error.
         expect(worst, where).toBeLessThan(Math.max(scale, 1) * 1e-5);
+      });
+
+      it('turns each body at the rate the arithmetic says, at every sample', () => {
+        // Joint accelerations can be right while a body's angular
+        // acceleration is wrong: it is read back off two of those joints by a
+        // separate expression, and that expression carried a term that should
+        // have cancelled. A constant-speed crank lying at an angle reported an
+        // angular acceleration of its own, and the joint checks above saw
+        // nothing at all.
+        let worstRate = 0;
+        let worstAccel = 0;
+        let rateScale = 0;
+        let accelScale = 0;
+        let where = '';
+        for (let t = 0; t < mechanism.joints.length; t++) {
+          const predicted = example.bodies(commands[t], mechanism.inputAngularVelocities[t]);
+          expect(
+            mechanism.links[t].map((link) => link.id).sort(),
+            'the bodies this example names'
+          ).toEqual([...predicted.keys()].sort());
+          for (const [id, [omega, alpha]] of predicted) {
+            const solvedRate = rates[t].turning.get(id);
+            const solvedAccel = rates[t].turningAccel.get(id);
+            expect(
+              Number.isFinite(solvedRate!) && Number.isFinite(solvedAccel!),
+              `no turning for ${id} at sample ${t}`
+            ).toBe(true);
+            if (Math.abs(solvedRate! - omega) > worstRate) where = `${id} at sample ${t}`;
+            worstRate = Math.max(worstRate, Math.abs(solvedRate! - omega));
+            worstAccel = Math.max(worstAccel, Math.abs(solvedAccel! - alpha));
+            rateScale = Math.max(rateScale, Math.abs(omega));
+            accelScale = Math.max(accelScale, Math.abs(alpha));
+          }
+        }
+        // A block holds two joints on top of each other, so its own heading is
+        // whatever rounding leaves between them -- an angle that means nothing
+        // and that the code answers with a small number rather than refusing.
+        // The bound is stated against the fastest *body* in the drawing for
+        // that reason, and it is still far under what the term wrongly left in
+        // the angular acceleration was worth.
+        expect(worstRate, where).toBeLessThan(Math.max(rateScale, 1) * 1e-3);
+        expect(worstAccel, where).toBeLessThan(Math.max(accelScale, rateScale, 1) * 1e-3);
+      });
+
+      it('carries each body’s center of mass the way that rate implies', () => {
+        // The off-axis half of the same question. A center of mass is almost
+        // never on the line between the two joints its body's rate was read
+        // from, so `a = a_J + alpha x r - omega^2 r` is where a wrong angular
+        // acceleration lands in a number the force analysis then uses.
+        let worst = 0;
+        let scale = 0;
+        let where = '';
+        for (let t = 0; t < mechanism.joints.length; t++) {
+          const predicted = example.bodies(commands[t], mechanism.inputAngularVelocities[t]);
+          const motion = example.motionAt(commands[t], mechanism.inputAngularVelocities[t]);
+          for (const link of mechanism.links[t]) {
+            // Only a body with mass has a center of mass; a block is a pair of
+            // coincident joints and the solver writes it none.
+            if (!(link instanceof RealLink)) continue;
+            const [omega, alpha] = predicted.get(link.id)!;
+            const anchor = link.joints[0];
+            const arm: Vec = [link.CoM.x - anchor.x, link.CoM.y - anchor.y];
+            const spin: Vec = [-arm[1], arm[0]];
+            const expectedVelocity = add(motion.velocity.get(anchor.id)!, scaled(spin, omega));
+            const expectedAccel = add(
+              motion.acceleration.get(anchor.id)!,
+              add(scaled(spin, alpha), scaled(arm, -omega * omega))
+            );
+            const solvedVelocity = rates[t].centerVelocity.get(link.id)!;
+            const solvedAccel = rates[t].centerAccel.get(link.id)!;
+            expect(
+              solvedVelocity.every(Number.isFinite) && solvedAccel.every(Number.isFinite),
+              `no center of mass for ${link.id} at sample ${t}`
+            ).toBe(true);
+            const off = Math.max(
+              apart(expectedVelocity, solvedVelocity),
+              apart(expectedAccel, solvedAccel)
+            );
+            if (off > worst) where = `${link.id} at sample ${t}`;
+            worst = Math.max(worst, off);
+            scale = Math.max(
+              scale,
+              Math.hypot(expectedVelocity[0], expectedVelocity[1]),
+              Math.hypot(expectedAccel[0], expectedAccel[1])
+            );
+          }
+        }
+        expect(worst, where).toBeLessThan(Math.max(scale, 1) * 1e-3);
       });
 
       it('is still a ram at every sample: lengths, block, line, order, stroke', () => {
