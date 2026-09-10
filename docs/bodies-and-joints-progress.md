@@ -18,7 +18,7 @@
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
-| S3 | In progress | Analytic rates, moving-group force loads, physical multipliers, shared-support policy and material/weld reaction recovery implemented and initially verified. Latest native/reference gate: 274 tests / 42 files; build passes. Force-frame publication, shared fixed-frame ownership, force-cycle policy selection, sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
+| S3 | In progress | Analytic rates, moving-group forces, material/weld recovery, immutable per-partition force frames and series support-policy selection implemented and initially verified. Passive frame bars no longer join independent clocks. Latest native/reference gate: 290 tests / 47 files; build passes; live ui-copy 17/17. Complete fixed-frame forces/rigid-core audit, full sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
@@ -538,3 +538,74 @@ frames and availability, choose support policy across a cycle, settle shared fix
 ownership, implement the already-written continuous-stop/sample contract, finish the five
 worked examples/reference rates, then run the full S3 gate and F2. **S3 is not closed; S4–S8
 remain pending.**
+
+## S3 force frames, independent clocks and passively fixed material frames
+
+This continuation made verified implementation progress. The pending force-series run from
+the previous implementation turn was confirmed terminal and green before proceeding; no
+duplicate process was launched on the basis of an expired observation.
+
+`solveBodyForceFrame` now publishes driver effort, material-pair wrenches, group balances and
+power with revision/partition/index/time/command/direction identity. Published maps expose no
+mutators, including through their callback arguments. Result records are detached/frozen;
+producer stamps and poses remain mutable. A refused pose, missing dynamic rates or reversal
+publishes no stale maps. A static reversal can retain forces while declining power. Internal
+aggregate-property/load-owner/reaction ambiguity stays local to the affected joint result;
+an available external driver is not erased by an unavailable weld split.
+
+The power result includes incoming work from a moving prescribed boundary. Its rotating
+carrier/carriage fixture checks `x=cot(theta)`, the guide normal and couple, driver torque and
+energy rate against explicit hand expressions. The separate prescribed-carrier calculation
+has nonzero boundary work, so dropping that term cannot pass merely because a stationary
+WORLD does no work. An axial cylinder/carriage fixture checks the two moving masses only,
+an effort in newtons, power, and refusal at a settled pose past the stroke limit.
+
+`solveBodyForceSeries` chooses the evenest policy only for persistent external redundancy in
+a strict majority of supplied samples, then reruns the entire series with that policy before
+publication. An isolated rate refusal stays unavailable and does not change policy; an
+internal weld cycle never triggers an external support split. Mixed revision/partition and
+non-increasing time/index are explicit series refusals. This is a series policy, not proof
+that its caller supplied a complete cycle or detected every intervening stop.
+
+The new two-clock fixture exposed a compiler omission: a material frame pinned to WORLD at
+two distinct points stayed movable, merging its independently driven cranks. Before the fix,
+the tracked probe failed both fixedness/partitioning and retained fixed-drive assertions
+(`S3-pinned-frame-before.log`: 2 intended failures, 1 pass). `fixedBodyGroups` now propagates
+fixedness from consistent passive relations to already-fixed neighbors with full local rank.
+It preserves material/group IDs and all support rows. Driver rows are excluded. Coincident
+redundant pins remain free to rotate; an inconsistent support is not silently discarded;
+an incompatible drive on the fixed bar remains a `fixed-drive` refusal. Fixed admission uses
+local conditioning and the same authored-coordinate precision allowance as moving admission.
+
+The probes cover oblique frames, local rebasing, sizes 1e-8 through 1e8, distant world origins,
+reversed record arrays, and propagation through a second frame bar. A dynamic two-clock test
+advances the cranks to different commanded poses/times and checks each torque and pin reaction
+against independent Newton–Euler expressions. Neither result carries its neighbor's efforts.
+The moving-to-frame reaction is available, but the frame's own supports say `frame-context`.
+The complete fixed-frame force producer must still combine every attached clock and the
+frame's own loads. Also audit collectively rigid foundations with no individually fixed
+member, and singular isolated frame configurations, before S3 closure: the new full-rank
+neighbor test is sufficient for the demonstrated cases, not a general rigid-core algorithm.
+
+Final checkpoint evidence (Node 24):
+
+- All native tests: **129 tests / 32 files pass**, `S3-force-clocks.log`.
+- Exact broad argument list in `S2-reference-gate-scope.json`: **290 tests / 47 files pass**,
+  `S3-force-frame-checkpoint.log`. The existing native/reference ceilings are unchanged.
+- Production build passes with existing warnings, `S3-force-frame-build.log`, on the host
+  where prior Angular builds were verified to work.
+- The existing dev-server handle was polled live, localhost:4307 returned HTTP 200, and the
+  listening process's working directory matched this migration worktree. Live browser
+  `ui-copy` passes **17/17, zero console errors**, `S3-force-frame-ui-copy-live.log`.
+  An initial invocation omitted the documented Playwright path override and failed to import
+  `/tmp/pmks-playwright`; that is recorded in `S3-force-frame-ui-copy.log`, not counted as a
+  product failure or a passing check.
+- Only touched TypeScript was formatted; `git diff --check` passes. These native-only modules
+  do not yet change the running editor, so this does not claim a native visual/animation gate.
+
+The new rotating-carrier and pinned-frame fixture constructors still need their native
+codec/gallery publication at S6. Full immutable simulation snapshots, continuous stop/cycle
+publication, remaining examples/reference rates, complete fixed-frame reactions, the full S3
+gate and F2 remain open. **S3 stays in progress; S4–S8 remain pending.** No Fable call was made
+and review spending is unchanged. S0/S5/S6/S8 still require both browser workflows; the plan's
+decision table now makes that requirement explicit as well as its detailed workflow section.

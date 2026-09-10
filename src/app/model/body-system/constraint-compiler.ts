@@ -9,6 +9,7 @@ import { sameTransform } from './weld-frames';
 import { CompiledBodyGroup, CompiledBodySystem, BodyConstraintRow } from './compiled-body-system';
 import { compileJointRows } from './compile-joint-rows';
 import { partitionBodyGroups } from './body-partitions';
+import { fixedBodyGroups } from './fixed-body-groups';
 
 export type BodyCompilation =
   | { readonly ok: false; readonly issues: readonly DocumentIssue[] }
@@ -62,13 +63,18 @@ export function compileBodyDocument(document: BodyDocument): BodyCompilation {
       .filter((joint) => joint.kind !== 'weld')
       .flatMap((joint) => [joint.frameA.attachmentId, joint.frameB.attachmentId])
   );
-  const { groups, attachments } = solverGroupFrames(materialFrames, materialAnchors, referenced);
+  const { groups: numericalGroups, attachments } = solverGroupFrames(
+    materialFrames,
+    materialAnchors,
+    referenced
+  );
   const { rows, coordinates, drivers, limits } = compileJointRows(
     document,
-    groups,
+    numericalGroups,
     groupOf,
     attachments
   );
+  const groups = fixedBodyGroups(numericalGroups, rows);
   const fixed = (row: BodyConstraintRow) =>
     groups.get(row.pair.groupA)!.fixed && groups.get(row.pair.groupB)!.fixed;
   return {

@@ -216,10 +216,10 @@ shared-support approximation. A tiny unsupported load still fails; large canceli
 cannot enlarge that denominator. Nearly coincident supports remain bounded through the
 exact coincidence. Internal condensed relationships remain unavailable under either policy.
 
-The later cycle/result controller must choose one support policy for the whole cycle, keeping
-an isolated singular pose distinct from persistent support redundancy. Internal weld/member
-recovery, fixed-frame reaction ownership and aggregate-inertia/load-provenance ambiguities
-remain separate pending work; these moving-group primitives do not claim to solve them.
+The force-series producer selects one support policy for all supplied samples, keeping an
+isolated singular pose distinct from persistent support redundancy. It does not prove that
+the supplied samples constitute a complete cycle. Internal material recovery is described
+below; complete fixed-frame ownership across clocks remains a separate pending layer.
 
 ## Recovering material reactions inside a welded group
 
@@ -279,6 +279,66 @@ load whose provenance names multiple materials returns `load-owner`; its externa
 wrench remains available. Neither refusal erases the material records or invalidates the
 external group force answer.
 
-These functions recover one supplied group's forces at one sample. Publication of complete
-per-partition force frames, whole-cycle support policy, shared fixed-frame ownership across
-independent machine clocks and all availability-aware consumer accessors remain S3/S6 work.
+These functions recover one supplied group's forces at one sample. The force-frame layer
+below publishes moving partitions; a complete fixed-frame context across independent clocks
+and the S6 consumer cutover remain pending.
+
+## Force frames, boundary power and series policy
+
+`solveBodyForceFrame` publishes material-pair wrenches, driver efforts and group balances with
+one revision/partition/index/time/command/direction stamp. Pair moments refer to each named
+material body's origin; group balances refer to the numerical origin in that sample's solve
+frame. The latter are computational records, not unqualified material moments for a chart.
+The immutable map facade has no mutation methods, and its `forEach` callback receives the
+facade rather than its private backing map. New result records are recursively frozen without
+freezing the producer's pose maps or stamp.
+
+For a physical row with multiplier lambda, virtual work gives power
+`lambda * (J_q qdot + J_b bdot)`. Passive rows have zero total coordinate rate; a driven row
+has the prescribed coordinate rate. Summing the moving group's balance therefore gives
+`P_applied + sum(lambda_driver * cdot) - sum(lambda * J_b bdot) = dT/dt`.
+The published boundary term is the negative of work delivered to prescribed bodies, so it is
+positive into the moving partition. Statics checks the same equation without `dT/dt`; a
+static solve with no valid rates still has forces but no power. A dynamic reversal returns
+no force maps because the rate discontinuity has no finite acceleration in this model.
+
+The rotating-carrier carriage checks nonzero boundary power independently. With its carriage
+pin constrained to y=1 and its carrier heading theta, `x=cot(theta)`, `s=csc(theta)`,
+`vx=-omega/sin(theta)^2`, and
+`ax=2*cos(theta)*omega^2/sin(theta)^3-alpha/sin(theta)^2`.
+For carriage mass 2 and inertia 0.3, the guide normal is `N=-2*ax/sin(theta)` and its couple
+is `0.3*alpha`. Prescribing the carrier makes incoming boundary power
+`(s*N+0.3*alpha)*omega`, equal to the carriage energy rate
+`2*vx*ax+0.3*omega*alpha`. Solving the full driven carrier adds its pin inertia term
+`3*alpha` to the crank torque. Both views are checked against these expressions.
+
+`solveBodyForceSeries` first tries unique efforts at every supplied sample. If a strict
+majority has external effort nullity and no free equilibrium direction, it recomputes the
+entire series with the evenest policy before publishing. Internal condensed rows do not
+trigger the policy. Failed samples remain unavailable under either policy; mixed revisions,
+partitions or non-increasing sample order refuse the series. The eventual cycle controller
+must supply the complete accepted series and retain each sample's provenance.
+
+## Material frames fixed by passive joints
+
+WORLD weld membership is not the only way to hold a body fixed. A material bar with two
+distinct ground pins has no motion, and independent machines attached to that bar must not
+be joined into one clock. `fixedBodyGroups` iteratively marks a group fixed when its passive
+rows to already-fixed groups have a consistent drawn pose and a full-rank three-column
+Jacobian. It uses local solve frames and the existing physical row/column scaling; command
+rows are excluded. This changes only derived fixedness, never material/weld membership or
+the identity and force channels of the support joints. Retained fixed rows, drives and limits
+still pass fixed admission, now in a locally conditioned frame.
+
+Full rank against already-fixed neighbors is a sufficient local isolation test. A body with
+zero instantaneous speed somewhere in a moving mechanism does not satisfy this test merely
+because it is at a turning point. Coincident redundant ground pins retain rank two and allow
+rotation. The implementation does not yet discover every possible collectively rigid
+multi-body foundation with no individually fixed member; that case remains an explicit
+partition audit before S3 closure, not a claim of general rigid-core decomposition.
+
+A per-machine force frame publishes its reaction on the shared material frame. Its ground
+supports and internal frame welds return `frame-context`: their complete reactions need
+the loads from every attached clock plus the frame's own loads. Distinct sample times on two
+machines cannot silently select one machine as the owner of the whole frame. Combining that
+context and recovering all fixed support/member reactions is still pending S3 work.
