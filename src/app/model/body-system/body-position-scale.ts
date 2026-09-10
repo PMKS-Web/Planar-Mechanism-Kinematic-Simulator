@@ -1,5 +1,6 @@
-import { localToWorld, Point } from './body-frame';
-import { CommandValues, GroupPoses } from './body-constraint-rows';
+import { dot, Point } from './body-frame';
+import { BodyId } from './body-id';
+import { CommandValues, GroupPoses, pairGeometry } from './body-constraint-rows';
 import { CompiledBodyPartition } from './compiled-body-system';
 
 export interface BodyPositionScale {
@@ -14,18 +15,28 @@ export function bodyPositionScale(
   poses: GroupPoses,
   commands: CommandValues = new Map()
 ): BodyPositionScale {
-  const points: Point[] = [];
-  for (const row of partition.rows) {
-    points.push(localToWorld(poses.get(row.pair.groupA)!, row.pair.anchorA));
-    points.push(localToWorld(poses.get(row.pair.groupB)!, row.pair.anchorB));
-  }
+  const anchors = new Map<BodyId, Point[]>();
   let length = 0;
-  if (points.length)
+  for (const row of partition.rows) {
+    const { pair } = row;
+    for (const [id, point] of [
+      [pair.groupA, pair.anchorA],
+      [pair.groupB, pair.anchorB],
+    ] as const) {
+      const points = anchors.get(id) ?? [];
+      points.push(point);
+      anchors.set(id, points);
+    }
+    if (row.kind === 'lateral' || row.kind === 'travel') {
+      const { u, d } = pairGeometry(pair, poses);
+      length = Math.max(length, Math.abs(dot(u, d)));
+    }
+  }
+  // A pin's mismatch is an error, not a physical dimension. In particular, a
+  // rounding gap after rebasing a one-pin body must not normalize itself to one.
+  for (const points of anchors.values())
     for (const point of points)
       length = Math.max(length, Math.hypot(point.x - points[0].x, point.y - points[0].y));
-  const precision =
-    64 * Number.EPSILON * Math.max(0, ...points.map((point) => Math.hypot(point.x, point.y)));
-  if (length <= precision) length = 0;
   const moving = new Set(partition.unknowns);
   // A single pin's coincident points have no span, but an offset moving origin
   // still couples angular and linear motion. WORLD's absolute anchor is not a lever arm.

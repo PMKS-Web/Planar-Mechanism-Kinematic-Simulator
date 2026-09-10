@@ -169,10 +169,54 @@ quadratic terms or scaling; its prescribed output remains available.
 
 A single offset revolute pair also exposed a position-conditioning issue: coincident anchor
 points differed only by round-off, but that difference became the mechanism's length scale.
-The scale now discards spans at arithmetic precision and includes referenced moving-origin
-lever arms. An absolute WORLD anchor is not such a lever arm. Existing large-translation,
+The scale uses within-group anchor spans, guided axial separation and referenced moving-origin
+lever arms; it never uses the mismatch of a pin’s two anchors as a physical dimension. An absolute WORLD anchor is not such a lever arm. Existing large-translation,
 small/large-scale and independent reference position checks pass with this correction.
 
 These are the initial native rate primitives, not the complete S3 sample, force or cycle
 implementation. The stop-event contract in `bodies-and-joints-contract.md` remains to be
 implemented and tested before playback intervals may be published.
+
+## Moving-group force primitives
+
+Let `w` be the required constraint wrench about each numerical group origin, with its two
+force components in N and moment in N·m. The physical Jacobian supplies `Jᵀ lambda = w`.
+With the position system's `Js = Dr J Dc`, solve `Jsᵀ lambda_s = Dc w` and recover
+`lambda = Dr lambda_s`. Length-row multipliers are forces; angle-row multipliers are couples.
+`bodyRowBlocks` preserves the separate A/B derivatives before any same-group sum, so reaction
+ownership is not lost when both members condense to one numerical body.
+
+`groupForceLoads` computes, once per moving group,
+`w = [m a_C, I_C alpha + r_C × m a_C] - w_applied`, where `r_C` is measured from that numerical
+origin. Gravity acts at the resolved group CoM. Explicit aggregate mass properties replace
+member-derived group totals only at this stage; they do not silently redefine individual
+material inertias. Each authored load is carried through its material frame. A world vector
+keeps its direction; a body vector rotates with that material body. An applied couple is
+converted with force-unit × length-unit factors, independently of its application point.
+
+The independent loaded-rod check uses a 2 m, 2 kg slender rod with `I_C = 2/3 kg·m²`, pinned
+at one end. At `omega = 3 rad/s`, `alpha = -0.5 rad/s²`, its inertial pin torque is
+`(I_C + m*1²)*alpha = -4/3 N·m`. Its energy derivative is `I_pin*omega*alpha = -4 W`.
+A 10 N downward world load at the tip contributes `-20 cos(theta) N·m`; a body-downward
+load contributes `-20 N·m`. Gravity contributes `-2 g cos(theta) N·m`, and the applied
+positive couple contributes `+3 N·m`. These terms determine the tested support force,
+drive torque and power independently of the solver. SI, centimeter/gram and inch/pound
+records, rebased material frames and a welded group with an explicit mass/CoM/inertia
+are checked against the same physical arithmetic.
+
+The default equilibrium solve exposes only identifiable row efforts. A nullspace component
+on a row makes that effort unavailable; choosing one QR pivot basis is not a physical load
+split. The explicit `evenest` policy retains the existing shared-support convention and
+labels its values accordingly. It minimizes the norm in the normalized physical coordinates
+above (forces and couples divided by the referenced length have compatible scale), using
+an augmented QR with ridge root `1e-4` and three residual refinements. This preserves the
+existing damping/refinement policy without normal equations. The equilibrium residual is
+measured against loads alone, with limits `1e-8` for unique efforts and `1e-3` for the stated
+shared-support approximation. A tiny unsupported load still fails; large canceling reactions
+cannot enlarge that denominator. Nearly coincident supports remain bounded through the
+exact coincidence. Internal condensed relationships remain unavailable under either policy.
+
+The later cycle/result controller must choose one support policy for the whole cycle, keeping
+an isolated singular pose distinct from persistent support redundancy. Internal weld/member
+recovery, fixed-frame reaction ownership and aggregate-inertia/load-provenance ambiguities
+remain separate pending work; these moving-group primitives do not claim to solve them.

@@ -5,6 +5,7 @@ import { BodyConstraintRow, ConstraintPair } from './compiled-body-system';
 export type GroupPoses = ReadonlyMap<BodyId, Pose>;
 export type CommandValues = ReadonlyMap<DriverId, number>;
 export type BodyRowGradient = ReadonlyMap<BodyId, readonly [number, number, number]>;
+export type BodyRowBlock = readonly [number, number, number];
 
 export function pairGeometry(pair: ConstraintPair, poses: GroupPoses) {
   const poseA = poses.get(pair.groupA);
@@ -52,7 +53,10 @@ export function bodyRowValue(
 }
 
 /** Physical, unscaled derivatives are also the virtual-work map for reaction efforts. */
-export function bodyRowGradient(row: BodyConstraintRow, poses: GroupPoses): BodyRowGradient {
+export function bodyRowBlocks(
+  row: BodyConstraintRow,
+  poses: GroupPoses
+): readonly [BodyRowBlock, BodyRowBlock] {
   const { a, b, u, n, d } = pairGeometry(row.pair, poses);
   const ea = perpendicular(a),
     eb = perpendicular(b);
@@ -80,7 +84,12 @@ export function bodyRowGradient(row: BodyConstraintRow, poses: GroupPoses): Body
       gb = [0, 0, 1];
       break;
   }
-  const gradient = new Map<BodyId, [number, number, number]>([[row.pair.groupA, ga]]);
+  return [ga, gb];
+}
+
+export function bodyRowGradient(row: BodyConstraintRow, poses: GroupPoses): BodyRowGradient {
+  const [ga, gb] = bodyRowBlocks(row, poses);
+  const gradient = new Map<BodyId, BodyRowBlock>([[row.pair.groupA, ga]]);
   const previous = gradient.get(row.pair.groupB);
   // Internal relationships retain their residual even when both derivative blocks cancel.
   gradient.set(

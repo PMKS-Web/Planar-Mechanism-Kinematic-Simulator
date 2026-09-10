@@ -18,7 +18,7 @@
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
-| S3 | In progress | Analytic body/point rates and numerical-frame rate transforms implemented and initially verified. Forces, sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
+| S3 | In progress | Analytic rates, moving-group force loads, physical reaction multipliers and explicit shared-support policy implemented and initially verified. Latest native/reference gate: 267 tests / 40 files. Internal member/weld recovery, force-cycle policy selection, sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
@@ -398,3 +398,65 @@ The closure build passes in `S2-close-S3-rates-build.log` with existing warnings
 formatted only where touched, and `git diff --check` is clean. Current live-UI behavior is
 unchanged by these native-only additions; later S5/S6/S8 still require both Playwright and
 standard Codex computer use in incognito Chrome.
+
+## S3 moving-group force primitives and one-pin scale correction
+
+Resumed from `ec2d1ac` and the uncommitted force work. The pending `body-force-loads` run
+had terminated with a real failure, not an environment wait: a rebased one-pin rod was
+refused at position admission. The diagnostic retained in `S3-force-loads-diagnosis.log`
+identifies the SI/body-vector/rebased case. Its rounding gap was supplying its own length
+scale. The correction uses within-group anchor spans, guided axial separation and moving
+origin lever arms instead of a revolute mismatch. The existing extreme-scale/world-offset
+and reference tests pass without relaxing their tolerances.
+
+New source responsibilities:
+
+- `bodyRowBlocks` exposes separate unscaled A/B gradients; `bodyRowGradient` still sums
+  duplicate group IDs for the position/rate matrix.
+- `joint-wrenches` maps physical row efforts to A/B wrenches, transports moments between
+  origins and computes wrench power.
+- `body-force-loads` compiles moving-group Newton–Euler demands in SI using resolved group
+  mass properties and material-owned load points/vectors/couples. Static loads do not require
+  rates; dynamic loads refuse unavailable rates. Successful rate input also provides applied
+  power and the kinetic-energy derivative.
+- `body-efforts` solves `Jsᵀ lambda_s = Dc w`, restores physical multipliers, checks balance
+  against load magnitude, and marks nonidentifiable efforts unavailable. It accepts an
+  explicit cycle-level `unique`/`evenest` policy; selecting that policy is still pending.
+- `evenest-body-rows` implements the established support ridge and three refinements with
+  augmented QR, avoiding normal equations. Approximate support efforts carry `basis: evenest`
+  and `sharedSupport: true`; a condensed internal reaction remains unavailable, never zero.
+
+The physical derivations and normalization choices are in `bodies-and-joints-equations.md`.
+Tests use a native loaded rod and independent force/moment/power arithmetic in SI,
+centimeter/gram and inch/pound units, body/world force directions and rebased material
+frames. A welded bracket owns the load in the aggregate-override case; shuffled body/joint/
+attachment/group-member arrays and rebasing preserve the expected drive torque and energy
+rate. Separated P origins conserve moment about a common reference and virtual power.
+Duplicate supports retain an identifiable drive effort in unique mode and a stated even
+split in support mode; near-coincident supports remain bounded, and tiny unsupported loads
+are refused in both policies. The new fixture remains a private native-kernel constructor;
+its publication through the native codec/gallery is still owed at S6.
+
+Verification (Node 24, logs under `artifacts/bodies-and-joints/`):
+
+- Initial physical wrench/gradient gate: 13 tests / 2 files, `S3-wrenches-first.log`.
+- Rebased force/load correction: 101 native tests / 24 files, `S3-force-native-first.log`.
+- Expanded native force/support gate: 105 tests / 25 files, `S3-force-native-expanded.log`.
+- Final native suite plus the full S2 position/reference gate: **267 tests / 40 files pass**,
+  `S3-force-and-position-gate.log`. Exact arguments are unchanged from
+  `S2-reference-gate-scope.json`; its native-spec glob includes the new force tests and the
+  final condensed-internal-reaction regression.
+
+No native editor or production solver dispatch changed. F2 has not been called; spending is
+unchanged. Still required before closing S3: material/weld reaction recovery (including
+redundant weld cycles and aggregate-inertia/imported-load ownership ambiguity), fixed-frame
+ownership, whole-cycle shared-support policy selection and result labels, continuous stop
+events, immutable sample availability, remaining worked examples/rate comparisons, the full
+S3 unit/browser/build/ui-copy gate and F2. S4–S8 remain pending.
+
+Checkpoint finish: `npm run build` passed with existing warnings in `S3-force-build-host.log`
+after the sandbox run exited 134 without a diagnostic. The owned localhost:4307 server was
+confirmed live by its process handle and HTTP 200. `PMKS_BASE_URL=http://localhost:4307
+PMKS_PLAYWRIGHT_DIR=.. node e2e/ui-copy.mjs` passed **17/17**, zero browser errors,
+`S3-force-ui-copy.log`. All touched TypeScript files pass Prettier; `git diff --check` passes.
+The browser check protects the current app's copy; it is not a native-editor integration gate.
