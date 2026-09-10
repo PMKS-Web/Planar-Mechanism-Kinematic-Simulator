@@ -1092,933 +1092,1096 @@
     "src/app/component/BLOCKS/editable-title/editable-title.component.ts": {
       "sites": 2,
       "categories": [
-        "selection",
-        "material geometry"
+        "selection"
       ],
-      "nativeOwner": "preserved shared control with native selection/dimension input",
-      "checkpoint": "S5",
+      "nativeOwners": [
+        "typed stable selection references and native labels"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/BLOCKS/hold-field/hold-field.component.ts": {
       "sites": 1,
       "categories": [
-        "selection",
-        "material geometry"
+        "attachment",
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "preserved shared control with native selection/dimension input",
-      "checkpoint": "S5",
+      "nativeOwners": [
+        "native hold/lock planner and attachment ownership"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/MODALS/templates/templates.component.ts": {
       "sites": 1,
       "categories": [
-        "topology",
-        "attachment",
-        "material geometry"
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "native document presence/readiness; retain shell/layout/permission model"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/analysis-graph-section/analysis-graph-section.component.ts": {
       "sites": 1,
       "categories": [
-        "analysis result",
-        "material geometry",
-        "attachment"
+        "analysis result"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "immutable native sample arrays and availability, not editable joint arrays"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/analysis-graph/analysis-graph.component.ts": {
       "sites": 2,
       "categories": [
-        "analysis result",
-        "material geometry",
-        "attachment"
+        "analysis result"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "immutable native sample arrays and availability, not editable joint arrays"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/analysis-panel/analysis-panel.component.ts": {
       "sites": 8,
       "categories": [
         "analysis result",
-        "material geometry",
-        "attachment"
+        "render mark",
+        "selection"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "native subject/coordinate selection and drawing switches"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/analysis-setup/analysis-setup.component.ts": {
       "sites": 12,
       "categories": [
-        "analysis result",
         "material geometry",
-        "attachment"
+        "selection"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "material/group properties and native selected subject"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/edit-panel/edit-panel.component.html": {
       "sites": 3,
       "categories": [
-        "selection",
-        "render mark",
-        "topology",
+        "attachment",
         "material geometry",
-        "attachment"
+        "selection",
+        "topology"
       ],
-      "nativeOwner": "native command/refusal model and rendering views",
-      "checkpoint": "S5",
+      "nativeOwners": [
+        "native selected record/command; fields use authored dimensions and shared refusal"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/edit-panel/edit-panel.component.ts": {
       "sites": 39,
       "categories": [
-        "selection",
-        "render mark",
-        "topology",
+        "attachment",
         "material geometry",
-        "attachment"
+        "selection",
+        "topology"
       ],
-      "nativeOwner": "native command/refusal model and rendering views",
-      "checkpoint": "S5",
+      "nativeOwners": [
+        "native selected record/command; fields use authored dimensions and shared refusal"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/edit-panel/lock-banner.component.ts": {
       "sites": 1,
       "categories": [
-        "selection",
-        "render mark",
-        "topology",
+        "attachment",
         "material geometry",
-        "attachment"
+        "topology"
       ],
-      "nativeOwner": "native command/refusal model and rendering views",
-      "checkpoint": "S5",
+      "nativeOwners": [
+        "native hold/lock planner and attachment ownership"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/linkage-table/linkage-table.component.html": {
       "sites": 5,
       "categories": [
-        "analysis result",
+        "attachment",
         "material geometry",
-        "attachment"
+        "topology"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "native document fields and transaction edits; audit reachability at cutover"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/linkage-table/linkage-table.component.ts": {
       "sites": 27,
       "categories": [
-        "analysis result",
+        "attachment",
         "material geometry",
-        "attachment"
+        "topology"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "native document fields and transaction edits; audit reachability at cutover"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/mechanism-panel/mechanism-panel.component.ts": {
       "sites": 8,
       "categories": [
-        "topology",
-        "attachment",
-        "material geometry"
+        "analysis result",
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "compiled ownership/roles, authored dimensions and sample sweeps"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/multi-edit-panel/multi-edit-panel.component.ts": {
       "sites": 14,
       "categories": [
-        "selection",
-        "render mark",
-        "topology",
+        "attachment",
         "material geometry",
-        "attachment"
+        "selection",
+        "topology"
       ],
-      "nativeOwner": "native command/refusal model and rendering views",
-      "checkpoint": "S5",
+      "nativeOwners": [
+        "native bulk command preflight and material/attachment fields"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/new-grid/new-grid.component.html": {
       "sites": 3,
       "categories": [
-        "selection",
         "render mark",
-        "topology",
-        "material geometry",
-        "attachment"
+        "topology"
       ],
-      "nativeOwner": "native command/refusal model and rendering views",
-      "checkpoint": "S5",
+      "nativeOwners": [
+        "native render views and document presence"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/new-grid/new-grid.component.ts": {
       "sites": 104,
       "categories": [
-        "selection",
-        "render mark",
-        "topology",
+        "analysis result",
+        "attachment",
         "material geometry",
-        "attachment"
+        "render mark",
+        "selection",
+        "topology"
       ],
-      "nativeOwner": "native command/refusal model and rendering views",
-      "checkpoint": "S5",
+      "nativeOwners": [
+        "native create/drag/drop transaction and typed selection remap",
+        "native render views, body-local geometry and accepted poses",
+        "shared native edit planner/refusal and lock/hold scope",
+        "typed selection refs, hit targets and authored/sample bounds"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/playback-bar/playback-bar.component.ts": {
       "sites": 2,
       "categories": [
-        "topology",
-        "attachment",
-        "material geometry"
+        "analysis result",
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "native per-machine samples, commands and readiness"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/right-panel/right-panel.component.ts": {
       "sites": 1,
       "categories": [
-        "topology",
-        "attachment",
-        "material geometry"
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "native document presence/readiness; retain shell/layout/permission model"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/settings-panel/settings-panel.component.ts": {
       "sites": 1,
       "categories": [
-        "topology",
-        "attachment",
-        "material geometry"
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "native document presence/readiness; retain shell/layout/permission model"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/synthesis-panel/synthesis-panel.component.ts": {
       "sites": 1,
       "categories": [
+        "analysis result",
         "attachment",
-        "topology",
-        "selection"
+        "topology"
       ],
-      "nativeOwner": "native construction commands and progression facts",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "native construction commands, synthesis poses and tutorial progression/sample readers"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/top-bar/top-bar.component.ts": {
       "sites": 1,
       "categories": [
-        "topology",
-        "attachment",
-        "material geometry"
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "native document presence/readiness; retain shell/layout/permission model"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/view-controls/view-controls.component.html": {
       "sites": 1,
       "categories": [
-        "render mark",
-        "material geometry",
-        "selection"
+        "analysis result",
+        "render mark"
       ],
-      "nativeOwner": "native view bounds, marks, assembly roles",
-      "checkpoint": "S5/S6",
+      "nativeOwners": [
+        "native marks, explicit guide/assembly ownership and sampled view bounds"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/component/view-controls/view-controls.component.ts": {
       "sites": 4,
       "categories": [
-        "render mark",
-        "material geometry",
-        "selection"
+        "analysis result",
+        "render mark"
       ],
-      "nativeOwner": "native view bounds, marks, assembly roles",
-      "checkpoint": "S5/S6",
+      "nativeOwners": [
+        "native marks, explicit guide/assembly ownership and sampled view bounds"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/actuator.ts": {
       "sites": 5,
       "categories": [
-        "topology",
         "attachment",
-        "material geometry"
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "ordered native joint coordinate and driver references"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/body-label.ts": {
       "sites": 2,
       "categories": [
-        "render mark",
-        "material geometry",
-        "selection"
+        "analysis result",
+        "render mark"
       ],
-      "nativeOwner": "native view bounds, marks, assembly roles",
-      "checkpoint": "S5/S6",
+      "nativeOwners": [
+        "native marks, explicit guide/assembly ownership and sampled view bounds"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/cylinder-pose-plan.ts": {
       "sites": 6,
       "categories": [
-        "topology",
         "attachment",
-        "material geometry"
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "native transaction closure; delete synthetic interior placement"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/cylinder.ts": {
       "sites": 22,
       "categories": [
-        "topology",
         "attachment",
-        "material geometry"
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "explicit cylinder assembly roles and native two-body factory"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/draw-order.ts": {
       "sites": 5,
       "categories": [
-        "render mark",
-        "material geometry",
-        "selection"
+        "analysis result",
+        "render mark"
       ],
-      "nativeOwner": "native view bounds, marks, assembly roles",
-      "checkpoint": "S5/S6",
+      "nativeOwners": [
+        "native marks, explicit guide/assembly ownership and sampled view bounds"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/drop-target.ts": {
       "sites": 17,
       "categories": [
-        "topology",
         "attachment",
-        "material geometry"
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "native shared command refusal and explicit pair/assembly identity"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/force-anchor.ts": {
       "sites": 3,
       "categories": [
-        "material geometry",
         "attachment",
-        "analysis result"
+        "material geometry"
       ],
-      "nativeOwner": "body-local geometry and material loads",
-      "checkpoint": "S1/S3/S4",
+      "nativeOwners": [
+        "explicit material load owner/local point and authored geometry"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/force.ts": {
       "sites": 15,
       "categories": [
-        "material geometry",
         "attachment",
-        "analysis result"
+        "render mark"
       ],
-      "nativeOwner": "body-local geometry and material loads",
-      "checkpoint": "S1/S3/S4",
+      "nativeOwners": [
+        "native material load/local vector; renderer derives handle"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/hold-solver.ts": {
       "sites": 1,
       "categories": [
-        "topology",
         "attachment",
-        "material geometry"
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "native hold/lock planner and attachment ownership"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/joint-operation-permission.ts": {
       "sites": 2,
       "categories": [
-        "topology",
         "attachment",
-        "material geometry"
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "native shared command refusal and explicit pair/assembly identity"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/joint.ts": {
       "sites": 12,
       "categories": [
-        "topology",
         "attachment",
-        "material geometry"
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "body/joint/attachment records; delete coincident block decomposition"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/link-holds.ts": {
       "sites": 9,
       "categories": [
-        "topology",
         "attachment",
-        "material geometry"
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "native hold/lock planner and attachment ownership"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/link.ts": {
       "sites": 46,
       "categories": [
-        "material geometry",
         "attachment",
-        "analysis result"
+        "material geometry",
+        "render mark",
+        "topology"
       ],
-      "nativeOwner": "body-local geometry and material loads",
-      "checkpoint": "S1/S3/S4",
+      "nativeOwners": [
+        "authored material geometry and native view outline; reuse pure path math",
+        "material records/local frames and derived group membership"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/lock-set.ts": {
       "sites": 5,
       "categories": [
-        "topology",
         "attachment",
-        "material geometry"
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "native hold/lock planner and attachment ownership"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/anchor.ts": {
       "sites": 3,
       "categories": [
-        "topology",
-        "analysis result"
+        "analysis result",
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "native sample/rate/wrench contracts; topology from compiled ownership"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/bodies.ts": {
       "sites": 3,
       "categories": [
-        "topology",
-        "analysis result"
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "weld compiler and native partition connectivity; delete inferred compound/slot roles"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/drive-profile.ts": {
       "sites": 2,
       "categories": [
-        "topology",
-        "analysis result"
+        "analysis result",
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "native sample/rate/wrench contracts; topology from compiled ownership"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/finite-difference-kinematics.ts": {
       "sites": 8,
       "categories": [
-        "topology",
-        "analysis result"
+        "analysis result",
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "native sample/rate/wrench contracts; topology from compiled ownership"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/force-solver.ts": {
       "sites": 46,
       "categories": [
-        "topology",
-        "analysis result"
+        "analysis result",
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "native sample/rate/wrench contracts; topology from compiled ownership"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/kinematic-solver.ts": {
       "sites": 45,
       "categories": [
-        "topology",
-        "analysis result"
+        "analysis result",
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "native sample/rate/wrench contracts; topology from compiled ownership"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/loop-solver.ts": {
       "sites": 14,
       "categories": [
-        "topology",
-        "analysis result"
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "weld compiler and native partition connectivity; delete inferred compound/slot roles"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/mechanism-partition.ts": {
       "sites": 21,
       "categories": [
-        "topology",
-        "analysis result"
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "weld compiler and native partition connectivity; delete inferred compound/slot roles"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/mechanism.ts": {
       "sites": 85,
       "categories": [
-        "topology",
-        "analysis result"
+        "analysis result",
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "native sample/rate/wrench contracts; topology from compiled ownership"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/mobility.ts": {
       "sites": 4,
       "categories": [
-        "topology",
-        "analysis result"
+        "analysis result",
+        "attachment",
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "native constraint compiler, rank/continuation and accepted body/attachment samples"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/position-solver.ts": {
       "sites": 77,
       "categories": [
-        "topology",
-        "analysis result"
+        "analysis result",
+        "attachment",
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "native constraint compiler, rank/continuation and accepted body/attachment samples"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/readiness.ts": {
       "sites": 10,
       "categories": [
-        "topology",
-        "analysis result"
+        "analysis result",
+        "attachment",
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "native constraint compiler, rank/continuation and accepted body/attachment samples"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/rigid-bodies.ts": {
       "sites": 3,
       "categories": [
-        "topology",
-        "analysis result"
+        "topology"
       ],
-      "nativeOwner": "native compiler and per-partition snapshots",
-      "checkpoint": "S1/S2/S3",
+      "nativeOwners": [
+        "weld compiler and native partition connectivity; delete inferred compound/slot roles"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/selection-closure.ts": {
       "sites": 11,
       "categories": [
-        "selection",
         "attachment",
+        "material geometry",
+        "selection",
         "topology"
       ],
-      "nativeOwner": "typed selection and transaction commands",
-      "checkpoint": "S4/S5",
+      "nativeOwners": [
+        "native transaction closure/remap and material records"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/selection-transform.ts": {
       "sites": 14,
       "categories": [
-        "selection",
         "attachment",
-        "topology"
+        "material geometry",
+        "selection"
       ],
-      "nativeOwner": "typed selection and transaction commands",
-      "checkpoint": "S4/S5",
+      "nativeOwners": [
+        "native pose/design transform transaction; immutable sampled pose"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/selection.ts": {
       "sites": 4,
       "categories": [
-        "selection",
-        "attachment",
-        "topology"
+        "selection"
       ],
-      "nativeOwner": "typed selection and transaction commands",
-      "checkpoint": "S4/S5",
+      "nativeOwners": [
+        "typed stable selection references and native labels"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/slide-assembly.ts": {
       "sites": 6,
       "categories": [
-        "topology",
-        "attachment",
-        "material geometry"
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "weld compiler and native partition connectivity; delete inferred compound/slot roles"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/model/tutorial-steps.ts": {
       "sites": 5,
       "categories": [
+        "analysis result",
         "attachment",
-        "topology",
-        "selection"
+        "topology"
       ],
-      "nativeOwner": "native construction commands and progression facts",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "native construction commands, synthesis poses and tutorial progression/sample readers"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/active-obj.service.ts": {
       "sites": 6,
       "categories": [
-        "selection",
-        "attachment",
-        "topology"
+        "selection"
       ],
-      "nativeOwner": "typed selection and transaction commands",
-      "checkpoint": "S4/S5",
+      "nativeOwners": [
+        "typed stable selection references and native labels"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/analysis-sample.service.ts": {
       "sites": 2,
       "categories": [
-        "analysis result",
-        "material geometry",
-        "attachment"
+        "analysis result"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "immutable native sample arrays and availability, not editable joint arrays"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/context-menu-builder.service.ts": {
       "sites": 23,
       "categories": [
-        "selection",
-        "render mark",
-        "topology",
         "material geometry",
-        "attachment"
+        "render mark",
+        "selection",
+        "topology"
       ],
-      "nativeOwner": "native command/refusal model and rendering views",
-      "checkpoint": "S5",
+      "nativeOwners": [
+        "native selected pair/material and shared command refusal; retain menu renderer"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/edit-permission.service.ts": {
       "sites": 1,
       "categories": [
-        "topology",
-        "attachment",
-        "material geometry"
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "native document presence/readiness; retain shell/layout/permission model"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/export/dxf/dxf-export.service.ts": {
       "sites": 27,
       "categories": [
         "analysis result",
+        "attachment",
         "material geometry",
-        "attachment"
+        "render mark"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "typed native result accessors and authored design geometry; preserve units/export conventions"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/export/dxf/link-bodies.ts": {
       "sites": 5,
       "categories": [
         "analysis result",
+        "attachment",
         "material geometry",
-        "attachment"
+        "render mark"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "typed native result accessors and authored design geometry; preserve units/export conventions"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/export/dxf/semantic-dxf.ts": {
       "sites": 39,
       "categories": [
         "analysis result",
+        "attachment",
         "material geometry",
-        "attachment"
+        "render mark"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "typed native result accessors and authored design geometry; preserve units/export conventions"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/export/export-catalog.service.ts": {
       "sites": 9,
       "categories": [
         "analysis result",
+        "attachment",
         "material geometry",
-        "attachment"
+        "render mark"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "typed native result accessors and authored design geometry; preserve units/export conventions"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/export/export-columns.service.ts": {
       "sites": 3,
       "categories": [
         "analysis result",
+        "attachment",
         "material geometry",
-        "attachment"
+        "render mark"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "typed native result accessors and authored design geometry; preserve units/export conventions"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/export/export-flow.service.ts": {
       "sites": 1,
       "categories": [
         "analysis result",
+        "attachment",
         "material geometry",
-        "attachment"
+        "render mark"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "typed native result accessors and authored design geometry; preserve units/export conventions"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/export/export-writer.service.ts": {
       "sites": 3,
       "categories": [
         "analysis result",
+        "attachment",
         "material geometry",
-        "attachment"
+        "render mark"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "typed native result accessors and authored design geometry; preserve units/export conventions"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/export/mechanism-svg.ts": {
       "sites": 5,
       "categories": [
         "analysis result",
+        "attachment",
         "material geometry",
-        "attachment"
+        "render mark"
       ],
-      "nativeOwner": "native sample/geometry adapters",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "typed native result accessors and authored design geometry; preserve units/export conventions"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/grid-utils.service.ts": {
       "sites": 85,
       "categories": [
-        "topology",
         "attachment",
-        "material geometry"
+        "material geometry",
+        "render mark",
+        "selection",
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "explicit relationship/group queries and shared operation refusal",
+        "native atomic edit planner; no implicit point-to-body pose repair",
+        "native display metadata and selection refs"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/keyboard-shortcuts.service.ts": {
       "sites": 2,
       "categories": [
-        "selection",
-        "attachment",
-        "topology"
+        "excluded: encoding or UI key"
       ],
-      "nativeOwner": "typed selection and transaction commands",
-      "checkpoint": "S4/S5",
+      "nativeOwners": [
+        "retain pure encoding/UI key; no mechanical identity is inferred"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/mechanism.service.ts": {
       "sites": 432,
       "categories": [
-        "topology",
+        "analysis result",
         "attachment",
-        "material geometry"
+        "material geometry",
+        "render mark",
+        "selection",
+        "topology"
       ],
-      "nativeOwner": "native records, commands, coordinates",
-      "checkpoint": "S1/S4/S6",
+      "nativeOwners": [
+        "immutable native samples and per-machine edit anchors; display never writes design",
+        "material/group mass, explicit unit conversion and view-only mark scale",
+        "native document authority and lifecycle transaction; persistent members replace compound rebuilding",
+        "native ordered driver coordinate/profile and per-machine command state",
+        "native readiness, result availability and coordinate/wrench accessors",
+        "native record selection and edit locks/holds",
+        "native rendering roles and typed selection",
+        "stable material load owner and body-local application point"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/multi-edit.service.ts": {
       "sites": 17,
       "categories": [
-        "selection",
-        "render mark",
-        "topology",
+        "attachment",
         "material geometry",
-        "attachment"
+        "selection",
+        "topology"
       ],
-      "nativeOwner": "native command/refusal model and rendering views",
-      "checkpoint": "S5",
+      "nativeOwners": [
+        "native bulk command preflight and material/attachment fields"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/number-unit-parser.service.ts": {
       "sites": 1,
       "categories": [
-        "material geometry",
-        "units"
+        "material geometry"
       ],
-      "nativeOwner": "explicit native unit boundary",
-      "checkpoint": "S3/S6",
+      "nativeOwners": [
+        "body-units and existing display-unit formatting"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/selection-batch.service.ts": {
       "sites": 55,
       "categories": [
-        "selection",
         "attachment",
+        "material geometry",
+        "selection",
         "topology"
       ],
-      "nativeOwner": "typed selection and transaction commands",
-      "checkpoint": "S4/S5",
+      "nativeOwners": [
+        "native transaction closure/remap and material records"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/slider-mark.service.ts": {
       "sites": 9,
       "categories": [
-        "render mark",
-        "material geometry",
-        "selection"
+        "analysis result",
+        "render mark"
       ],
-      "nativeOwner": "native view bounds, marks, assembly roles",
-      "checkpoint": "S5/S6",
+      "nativeOwners": [
+        "native marks, explicit guide/assembly ownership and sampled view bounds"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/svg-grid.service.ts": {
       "sites": 2,
       "categories": [
-        "render mark",
-        "material geometry",
-        "selection"
+        "analysis result",
+        "render mark"
       ],
-      "nativeOwner": "native view bounds, marks, assembly roles",
-      "checkpoint": "S5/S6",
+      "nativeOwners": [
+        "native marks, explicit guide/assembly ownership and sampled view bounds"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/synthesis/synthesis-solution.service.ts": {
       "sites": 14,
       "categories": [
+        "analysis result",
         "attachment",
-        "topology",
-        "selection"
+        "topology"
       ],
-      "nativeOwner": "native construction commands and progression facts",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "native construction commands, synthesis poses and tutorial progression/sample readers"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/transcoding/base64-converter.ts": {
       "sites": 1,
       "categories": [
-        "parser (not joint-letter identity)"
+        "excluded: encoding or UI key"
       ],
-      "nativeOwner": "bounded production reader",
-      "checkpoint": "S4/S7",
+      "nativeOwners": [
+        "retain pure encoding/UI key; no mechanical identity is inferred"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/transcoding/mechanism-builder.ts": {
       "sites": 33,
       "categories": [
-        "topology",
         "attachment",
-        "persistence"
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native codec and legacy production reader",
-      "checkpoint": "S4/S6",
+      "nativeOwners": [
+        "native codec/production decoded-record importer; no reconstructed legacy graph"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/transcoding/string-disassembler.ts": {
       "sites": 2,
       "categories": [
-        "parser (not joint-letter identity)"
+        "excluded: encoding or UI key"
       ],
-      "nativeOwner": "bounded production reader",
-      "checkpoint": "S4/S7",
+      "nativeOwners": [
+        "retain pure encoding/UI key; no mechanical identity is inferred"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/transcoding/string-transcoder.ts": {
       "sites": 28,
       "categories": [
-        "topology",
         "attachment",
-        "persistence"
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native codec and legacy production reader",
-      "checkpoint": "S4/S6",
+      "nativeOwners": [
+        "native codec/production decoded-record importer; no reconstructed legacy graph"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/transcoding/transcoder-data.ts": {
       "sites": 2,
       "categories": [
-        "topology",
         "attachment",
-        "persistence"
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native codec and legacy production reader",
-      "checkpoint": "S4/S6",
+      "nativeOwners": [
+        "native codec/production decoded-record importer; no reconstructed legacy graph"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/transcoding/transcoder-interface.ts": {
       "sites": 2,
       "categories": [
-        "topology",
         "attachment",
-        "persistence"
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native codec and legacy production reader",
-      "checkpoint": "S4/S6",
+      "nativeOwners": [
+        "native codec/production decoded-record importer; no reconstructed legacy graph"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/tutorial.service.ts": {
       "sites": 11,
       "categories": [
+        "analysis result",
         "attachment",
-        "topology",
-        "selection"
+        "topology"
       ],
-      "nativeOwner": "native construction commands and progression facts",
-      "checkpoint": "S6",
+      "nativeOwners": [
+        "native construction commands, synthesis poses and tutorial progression/sample readers"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/url-generation.service.ts": {
       "sites": 17,
       "categories": [
-        "topology",
         "attachment",
-        "persistence"
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native codec and legacy production reader",
-      "checkpoint": "S4/S6",
+      "nativeOwners": [
+        "native codec/production decoded-record importer; no reconstructed legacy graph"
+      ],
       "conversionStatus": "pending"
     },
     "src/app/services/url-processor.service.ts": {
       "sites": 2,
       "categories": [
-        "topology",
         "attachment",
-        "persistence"
+        "material geometry",
+        "topology"
       ],
-      "nativeOwner": "native codec and legacy production reader",
-      "checkpoint": "S4/S6",
+      "nativeOwners": [
+        "native codec/production decoded-record importer; no reconstructed legacy graph"
+      ],
+      "conversionStatus": "pending"
+    },
+    "src/app/model/compound-link-path.ts": {
+      "sites": 5,
+      "categories": [
+        "render mark"
+      ],
+      "nativeOwners": [
+        "retain pure outline/channel union and rigid path transforms for native render views"
+      ],
+      "conversionStatus": "pending"
+    },
+    "src/app/model/joint-marks.ts": {
+      "sites": 22,
+      "categories": [
+        "render mark"
+      ],
+      "nativeOwners": [
+        "retain useful primitive glyph/skin math; replace synthetic block/point discovery in callers"
+      ],
+      "conversionStatus": "pending"
+    },
+    "src/app/model/line.ts": {
+      "sites": 2,
+      "categories": [
+        "material geometry",
+        "render mark"
+      ],
+      "nativeOwners": [
+        "native outline renderer; extract useful pure line/arc math and remove Joint/RealLink dependencies"
+      ],
+      "conversionStatus": "pending"
+    },
+    "src/app/model/object-scale.ts": {
+      "sites": 2,
+      "categories": [
+        "render mark"
+      ],
+      "nativeOwners": [
+        "view-only mark scale; no native physics may depend on it"
+      ],
+      "conversionStatus": "pending"
+    },
+    "src/app/model/outline-winding.ts": {
+      "sites": 2,
+      "categories": [
+        "render mark"
+      ],
+      "nativeOwners": [
+        "retain pure winding/collinear math; remove transitive legacy utils dependency at S7"
+      ],
+      "conversionStatus": "pending"
+    },
+    "src/app/model/pose.ts": {
+      "sites": 1,
+      "categories": [
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwners": [
+        "native synthesis design poses; old two-point Pose is not a body Pose"
+      ],
+      "conversionStatus": "pending"
+    },
+    "src/app/model/render-scale.ts": {
+      "sites": 1,
+      "categories": [
+        "render mark"
+      ],
+      "nativeOwners": [
+        "view-to-SVG coordinate boundary only; document/SI units remain physical"
+      ],
+      "conversionStatus": "pending"
+    },
+    "src/app/model/uniform-body.ts": {
+      "sites": 2,
+      "categories": [
+        "material geometry"
+      ],
+      "nativeOwners": [
+        "native body-properties; preserve slender-bar idealization; delete joint-hull inference"
+      ],
       "conversionStatus": "pending"
     }
+  },
+  "consumerInventory": {
+    "baselineCommit": "487d535",
+    "scanSites": 1592,
+    "scanFiles": 85,
+    "enclosingOperations": 590,
+    "withTransitiveSites": 1629,
+    "withTransitiveFiles": 93,
+    "classification": "operation boundary; overlapping concerns retained",
+    "conversionStatus": "pending; S7 must prove no obsolete runtime callers"
   }
 }
