@@ -65,6 +65,11 @@ browser tool depends on which runner you are in:
 
 Inspect your own screenshots rather than trusting an exit code.
 
+For the bodies-and-joints migration, use both the tracked Playwright suites and live incognito
+computer use at major UX checkpoints (S0/S5/S6/S8). Record both observations; an unavailable
+live tool is an explicit verification gap, not a passed gate.
+
+
 Tests are Vitest but written in Jasmine style (globals via `vitest/globals`). Vitest errors on spec files containing no tests.
 
 The app is **fully standalone** — `src/main.ts` calls `bootstrapApplication`, there is no `AppModule` and no `NgModule` anywhere, and components declare their own `imports`. A component spec must therefore import the component itself rather than a declaring module. (`tsconfig.spec.json` used to include `src/app/app.module.ts` to keep NgModule-declared components' template scope under the per-file test compile; that file and that workaround are both gone.)
