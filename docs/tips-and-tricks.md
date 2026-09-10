@@ -2424,19 +2424,34 @@ check that seeks to the last sample to see full extension sees the start pose in
 as "the animation does nothing". Full extension is the sample furthest from the start -- scan for
 it. (`animate()` also takes a sample index rather than a fraction; see above.)
 
-### `cylinderAt(link)` asks whether a body *contains* a ram, not whether it *is* one
+### Two questions about a ram, and a body has to be asked the right one
 
 `ownsMember` is deliberately recursive: "a compound that has itself been welded into something
 larger still owns the member, and a delete or a drag that missed it would tear the ram it was
 carrying." That is the right question for a **cascade**. It is the wrong one for **identity**, and
 until a mount could be welded nothing could tell the two apart, because no compound ever held a
-cylinder leaf. Now one does, and every consumer that asks `cylinderAt(selectedLink)` in order to
-*name* the selection answers with the ram: select the welded bracket and the panel says "Edit
-Cylinder AB", the menu header says "Cylinder AB · Barrel and rod", and its Delete row says
-"Delete Cylinder" and takes only the ram -- while the keyboard Delete on that same selection takes
-the whole body. The identity question is `link.id === cylinder.barrel.id || link.id ===
-cylinder.rod.id`, which is what `skinnedLink` in the canvas already uses. Separating the two
-queries is the plan's own work item 15.
+cylinder leaf.
+
+`MechanismService.cylinderAt` is now the carrying question and `cylinderOfBar` the identity one,
+and a body must be asked whichever it means:
+
+- **Carrying** -- a delete, a copy, a body drag or swing, and `frozenCarriedJoints`. Missing a ram
+  welded under a body tears it, so these stay recursive, and each of those sites says so.
+- **Identity** -- everything that *names* a body, and everything that decides what kind of body it
+  is: both panels, the context-menu builder's title and its delete row, the debug table, the
+  analysis and export member lists, `bodyLabel`, `canDuplicate`, the lock mark, the CoM handle,
+  the label ink, `isSelectedBody` and `isPointedAtBody`.
+
+Asked the carrying question, a bracket welded to a rod mount opened the cylinder's panel, wore
+"Cylinder AB · Barrel and rod" as its menu title, lit up when the ram beside it was chosen, and
+offered a Delete Cylinder that took the ram and left the bracket standing -- while Delete on that
+same selection took the whole body. It now reads "Edit Link A2BC", "Link A2BC · Compound", and
+"Delete Link (and Cylinder, 3 joints)", which is what both routes actually do.
+
+Note `MechanismService.cylinderOfLink` (via `link-holds.ts`) has *always* asked the identity
+question, through a members map keyed by link id -- which is why holds were the one surface a
+welded bracket never confused. It delegates to `cylinderOfBar` now, so there is one answer rather
+than two names for it.
 
 ### The compound path drops a welded *rod* leaf and keeps a welded *barrel* leaf
 

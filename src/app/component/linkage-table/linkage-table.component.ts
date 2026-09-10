@@ -162,7 +162,7 @@ export class LinkageTableComponent implements OnInit {
         }
         // A sealed cylinder's parts always follow their own shapes — the
         // debug table gets no back door to re-freeze them.
-        if (this.mechanismService.cylinderAt(link)) break;
+        if (this.mechanismService.cylinderOfBar(link)) break;
         link.massMoI = Number(($event.target as HTMLInputElement).value);
         link.moiIsCustom = true;
         break;

@@ -589,7 +589,7 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
    */
   private bodyMemberIds(partId: string): string[] {
     const body = this.mechanismService.links.find((link) => link.id === partId);
-    const sealed = body && this.mechanismService.cylinderAt(body);
+    const sealed = body && this.mechanismService.cylinderOfBar(body);
     if (!sealed) return [partId];
     return [sealed.barrel.id, sealed.rod.id, sealed.block.id];
   }
@@ -611,10 +611,10 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
     return this.mechanismService.joints.find((joint) => joint.id === id);
   }
 
-  /** The sealed cylinder the selected link is a member of, if any. */
+  /** The sealed cylinder, when the selected body *is* one and not merely carrying one. */
   get selectedCylinder(): Cylinder | undefined {
     if (this.activeSrv.objType !== 'Link') return undefined;
-    return this.mechanismService.cylinderAt(this.activeSrv.selectedLink);
+    return this.mechanismService.cylinderOfBar(this.activeSrv.selectedLink);
   }
 
   /** Point at the thing on the grid these numbers describe, while asked to. */

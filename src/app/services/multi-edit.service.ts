@@ -160,7 +160,7 @@ export class MultiEditService {
     if (
       links.some(
         (link) =>
-          link.joints.length !== 2 || link.subset.length > 0 || this.mechanism.cylinderAt(link)
+          link.joints.length !== 2 || link.subset.length > 0 || this.mechanism.cylinderOfBar(link)
       )
     ) {
       return this.refusal(

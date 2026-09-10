@@ -1,6 +1,6 @@
 import { Injectable, Injector, inject } from '@angular/core';
 import { LinkHold } from '../model/link';
-import { cylinderHoldCarrier, cylinderOf, holdOf, holdableBar } from '../model/link-holds';
+import { cylinderHoldCarrier, holdOf, holdableBar } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { speedTurning, turnsClockwise } from '../model/drive-direction';
 import { Link, SliderBlock, RealLink } from '../model/link';
@@ -12,6 +12,7 @@ import {
   cylinderStrokeAlong,
   cylinderOfJointIn,
   cylinderInteriorsAt,
+  cylinderOfBarIn,
   cylinderOfLinkIn,
   cylindersOfLinkIn,
   isCylinderInterior,
@@ -2181,7 +2182,10 @@ export class MechanismService {
    */
   private sealedPartOf(target: RealJoint | Link | Force): Cylinder | undefined {
     if (target instanceof Force) return undefined;
-    const sealed = this.cylinderAt(target);
+    // A body is asked whether it *is* the ram. Asked whether it is carrying
+    // one, a bracket welded to a mount answered yes, and locking the bracket
+    // put the mark on the ram instead of on the bracket.
+    const sealed = target instanceof Link ? this.cylinderOfBar(target) : this.cylinderAt(target);
     if (!sealed) return undefined;
     const isMount =
       target instanceof RealJoint &&
@@ -2256,9 +2260,16 @@ export class MechanismService {
     return holdOf(link, this.joints, this.sealedStructures());
   }
 
-  /** The cylinder this link is a member of, if the drawing says it is one. */
+  /**
+   * The cylinder this link is a bar of — the same question as `cylinderOfBar`.
+   *
+   * Kept because the hold path has always asked it this way, and asking it this
+   * way is why holds were the one surface a welded bracket never confused. Two
+   * names for one question is a trap, so it delegates rather than answering
+   * again through a second route.
+   */
   cylinderOfLink(link: Link | undefined): Cylinder | undefined {
-    return cylinderOf(link, this.joints, this.sealedStructures());
+    return this.cylinderOfBar(link);
   }
 
   /**
@@ -2472,7 +2483,7 @@ export class MechanismService {
   /** Whether Duplicate has a single link to copy — the menu's enable rule. */
   canDuplicate(link: Link): boolean {
     if (!(link instanceof RealLink) || link.subset.length > 0) return false;
-    if (this.cylinderAt(link)) return false;
+    if (this.cylinderOfBar(link)) return false;
     return link.joints.filter((joint) => joint instanceof RealJoint).length >= 2;
   }
 
@@ -4418,6 +4429,23 @@ export class MechanismService {
   }
 
   /**
+   * The ram this body *is* a bar of, as opposed to one it is carrying.
+   *
+   * Two different questions, and a body has to be asked the right one. "Does
+   * anything under here belong to a ram" is what a delete, a drag or a
+   * selection has to know, because missing one tears it. "Is this body the ram"
+   * is what every caller that *names* a body has to know, and answering it with
+   * the first question is how a bracket welded to a rod mount came to open the
+   * cylinder's panel, wear the cylinder's title in the menu, and offer a delete
+   * row that took the ram and left the bracket standing.
+   *
+   * `cylinderAt` remains the carrying question. This one is the identity.
+   */
+  cylinderOfBar(link: Link | undefined): Cylinder | undefined {
+    return cylinderOfBarIn(this.sealedStructures(), link);
+  }
+
+  /**
    * What the panels call a body: a cylinder part by its role in the machine,
    * a block by the joint it rides on, an ordinary bar by its name — never the
    * internal concatenated id, which names joints a reader cannot even click.
@@ -4426,7 +4454,7 @@ export class MechanismService {
    * without having to know which kind of body came back.
    */
   bodyLabel(body: Link): string {
-    return labelForBody(body, this.cylinderAt(body));
+    return labelForBody(body, this.cylinderOfBar(body));
   }
 
   /**
@@ -4561,7 +4589,7 @@ export class MechanismService {
     const sealed =
       target ??
       this.cylinderAt(this.activeObjService.selectedJoint) ??
-      this.cylinderAt(this.activeObjService.selectedLink);
+      this.cylinderOfBar(this.activeObjService.selectedLink);
     if (!sealed) return;
     this.deleteCylinderTopology(sealed);
     this.activeObjService.updateSelectedObj(undefined);
@@ -4631,7 +4659,7 @@ export class MechanismService {
    * that pin is deliberately unselectable.
    */
   toggleCylinderInput(target?: Cylinder): void {
-    const sealed = target ?? this.cylinderAt(this.activeObjService.selectedLink);
+    const sealed = target ?? this.cylinderOfBar(this.activeObjService.selectedLink);
     if (!sealed) return;
     if (!sealed.slider.input) {
       // One input per mechanism, same as adjustInput.
@@ -7212,8 +7240,11 @@ export class MechanismService {
       (part): part is RealLink => part instanceof RealLink
     );
     if (choices.some((chosen) => chosen.id === body.id)) return true;
-    const cylinder = this.cylinderAt(body);
-    return !!cylinder && choices.some((chosen) => this.cylinderAt(chosen) === cylinder);
+    // Barrel and rod light up together because they are one part. A bracket
+    // welded to a mount is not, and lighting the ram with it said the
+    // selection reached further than it does.
+    const cylinder = this.cylinderOfBar(body);
+    return !!cylinder && choices.some((chosen) => this.cylinderOfBar(chosen) === cylinder);
   }
 
   /**
@@ -7228,8 +7259,8 @@ export class MechanismService {
     const pointed = this.hoveredPart;
     if (!body || !pointed || pointed instanceof Joint || !this.nothingIsChosen()) return false;
     if (pointed.id === body.id) return true;
-    const cylinder = this.cylinderAt(pointed);
-    return !!cylinder && cylinder === this.cylinderAt(body);
+    const cylinder = this.cylinderOfBar(pointed);
+    return !!cylinder && cylinder === this.cylinderOfBar(body);
   }
 
   private isInHoveredMechanism(part: Joint | Link): boolean {

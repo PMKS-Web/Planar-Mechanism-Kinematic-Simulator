@@ -530,6 +530,78 @@ check(
   JSON.stringify(onBarrel)
 );
 
+// What a body is *called* is a different question from what it is carrying. A
+// bracket welded to a mount carries a ram and is not one, and answering the
+// carrying question wherever a body is named gave the bracket the ram's panel,
+// the ram's menu title, and a delete row that took the ram and left the
+// bracket standing -- while Delete on that same selection took the whole body.
+const namedAt = async (selector) => {
+  await clickAt(selector);
+  const panel = await page.evaluate(
+    () => document.querySelector('app-edit-panel')?.innerText.split('\n')[0] ?? ''
+  );
+  const box = await page.locator(selector).boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+  await page.locator('#contextMenu .cm-row').first().waitFor({ timeout: 5000 });
+  const menu = await page.evaluate(() => ({
+    header: document.querySelector('#contextMenu .cm-header')?.innerText.split('\n')[0] ?? '',
+    del:
+      [...document.querySelectorAll('#contextMenu .cm-row__label')]
+        .map((one) => one.textContent.trim())
+        .find((label) => label.startsWith('Delete') && !label.includes('mechanism')) ?? '',
+  }));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  return { panel, ...menu };
+};
+const bodyNames = await namedAt(`#${ids.compound}`);
+check(
+  'the welded body is named as itself, in the panel and in the menu',
+  bodyNames.panel === `Edit Link ${ids.compound}` &&
+    bodyNames.header === `Link ${ids.compound}` &&
+    bodyNames.del.startsWith('Delete Link'),
+  JSON.stringify(bodyNames)
+);
+const ramNames = await namedAt(`#${ids.barrel}`);
+check(
+  'and the ram is still named as the ram',
+  /^Edit Cylinder /.test(ramNames.panel) &&
+    /^Cylinder /.test(ramNames.header) &&
+    ramNames.del === 'Delete Cylinder',
+  JSON.stringify(ramNames)
+);
+
+// And the two ways of deleting that body agree. They used to disagree: the
+// row took the ram, the key took the body.
+const deletedBy = async (route) => {
+  const where = await weldedMount();
+  const box = await page.locator(`#${where.compound}`).boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(350);
+  if (route === 'menu') {
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+    await page.locator('#contextMenu .cm-row').first().waitFor({ timeout: 5000 });
+    await page.locator('#contextMenu .cm-row', { hasText: 'Delete Link' }).first().click();
+  } else {
+    await page.keyboard.press('Delete');
+  }
+  await page.waitForTimeout(700);
+  const left = await model();
+  return {
+    joints: left.joints.map((j) => j.id).sort(),
+    links: left.links.map((l) => l.id).sort(),
+    rams: left.rams,
+  };
+};
+const byMenu = await deletedBy('menu');
+const byKey = await deletedBy('key');
+check(
+  'and the delete row and the Delete key take the same body',
+  JSON.stringify(byMenu) === JSON.stringify(byKey) && byMenu.rams === 0,
+  JSON.stringify({ menu: byMenu, key: byKey })
+);
+
 // ----------------------------------------------------------- 6. undo / redo
 console.log('\nundo and redo across a weld');
 ids = await weldedMount({ weld: false });

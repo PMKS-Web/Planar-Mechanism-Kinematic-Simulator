@@ -801,7 +801,7 @@ export class ContextMenuBuilderService {
       const one = bodies[0];
       return one instanceof Joint
         ? `Joint ${this.nameOf(one)}`
-        : labelForBody(one, this.mechanism.cylinderAt(one));
+        : labelForBody(one, this.mechanism.cylinderOfBar(one));
     }
     return `${bodies.length} ${kind}s`;
   }
@@ -844,7 +844,7 @@ export class ContextMenuBuilderService {
    */
   private bodyList(bodies: Link[]): string {
     if (bodies.length === 0) return 'not on a link';
-    const labels = bodies.map((link) => labelForBody(link, this.mechanism.cylinderAt(link)));
+    const labels = bodies.map((link) => labelForBody(link, this.mechanism.cylinderOfBar(link)));
     const plain = labels.every((label) => label.startsWith('Link '));
     if (!plain) return labels.join(', ');
     const names = labels.map((label) => label.slice('Link '.length));
@@ -854,7 +854,12 @@ export class ContextMenuBuilderService {
   // ------------------------------------------------------------------ link
 
   private forLink(link: Link, handlers: MenuHandlers): ContextMenuModel {
-    const sealed = this.mechanism.cylinderAt(link);
+    // The ram this body *is*, not one it is carrying. A bracket welded to a
+    // mount is a body of its own: it wore the cylinder's title, lost its own
+    // Attach group and its Fixed Length and Angle rows, and offered a Delete
+    // Cylinder that took the ram and left the bracket standing -- while Delete
+    // on that same selection took the whole body.
+    const sealed = this.mechanism.cylinderOfBar(link);
     const header = {
       title: sealed ? this.cylinderName(sealed) : labelForBody(link, undefined),
       subtitle: this.linkSubtitle(link, sealed),

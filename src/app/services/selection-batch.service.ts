@@ -148,7 +148,11 @@ function resolve(
       const object = linkById(mechanism, ref.id);
       const owningRoot = rootById(mechanism, ref.id);
       if (!owningRoot || !object) return { refusal: staleSelection() };
-      const cylinder = mechanism.cylinderAt(object);
+      // Identity, not carrying: barrel and rod collapse to one selection
+      // because they *are* the ram, while a bracket welded to a mount is its
+      // own body and has to stay itself. Asked the carrying question, clicking
+      // the bracket recorded the ram's barrel as the part that was selected.
+      const cylinder = mechanism.cylinderOfBar(object);
       const root = cylinder ? rootOf(mechanism, cylinder.barrel) : owningRoot;
       if (!root) return { refusal: staleSelection() };
       const key = `link:${root.id}`;
@@ -185,6 +189,8 @@ function planDeletion(mechanism: MechanismService, resolved: ResolvedPart[]): De
       removeForces.add(part.force);
     } else if ('root' in part) {
       const linked = part;
+      // Carrying here, deliberately: a body holding a ram's rod cannot be
+      // deleted and leave the ram behind with nothing to push.
       const cylinder = mechanism.cylinderAt(linked.object);
       if (cylinder) removeCylinder(cylinder);
       else {
@@ -281,6 +287,8 @@ function duplicateClosure(
     if ('force' in part) continue;
     if ('root' in part) {
       const linked = part;
+      // Carrying, like the deletion above: a copy of a body that holds a ram
+      // has to bring the ram, or the copy has a rod-shaped hole in it.
       const cylinder = mechanism.cylinderAt(linked.object);
       if (cylinder) addCylinder(cylinder);
       else addRoot(linked.root);

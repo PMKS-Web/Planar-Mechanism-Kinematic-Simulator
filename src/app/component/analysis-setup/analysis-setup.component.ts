@@ -408,7 +408,7 @@ export class AnalysisSetupComponent {
   moiEditable(row: MassRow): boolean {
     if (row.isBlock || !(row.body instanceof RealLink)) return false;
     if (!(row.body.mass > 0)) return false;
-    return !this.mechanism.cylinderAt(row.body);
+    return !this.mechanism.cylinderOfBar(row.body);
   }
 
   massUnitLabel(): string {

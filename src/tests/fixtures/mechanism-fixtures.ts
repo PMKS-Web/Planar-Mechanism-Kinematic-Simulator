@@ -8,6 +8,7 @@ import { Joint } from '../../app/model/joint';
 import { Link } from '../../app/model/link';
 import {
   cylinderOfJointIn,
+  cylinderOfBarIn,
   cylinderOfLinkIn,
   sealedCylinderStructures,
 } from '../../app/model/cylinder';
@@ -90,11 +91,16 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
       if (obj instanceof Joint) return cylinderOfJointIn(structures, obj);
       return cylinderOfLinkIn(structures, obj as Link | undefined);
     },
+    // The other half of the same pair, and the one the panels ask: whether
+    // this body *is* a ram, rather than whether it is carrying one. A bracket
+    // welded to a mount carries one and is not one.
+    cylinderOfBar: (link: Link | undefined) =>
+      cylinderOfBarIn(sealedCylinderStructures(service.joints), link),
     // Implemented, not stubbed, and from the same function the service calls:
     // the panels put these words on their graphs, so a stub that invented its
     // own would let the labels drift without a spec noticing.
     bodyLabel: (body: Link) =>
-      labelForBody(body, cylinderOfLinkIn(sealedCylinderStructures(service.joints), body)),
+      labelForBody(body, cylinderOfBarIn(sealedCylinderStructures(service.joints), body)),
   } as unknown as MechanismService;
   new MechanismBuilder(service, decoder, settings, active).build(true);
 

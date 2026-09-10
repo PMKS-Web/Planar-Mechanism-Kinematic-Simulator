@@ -223,7 +223,7 @@ export class ExportCatalogService {
    */
   memberIdsOf(linkId: string): string[] {
     const body = this.mechanism.links.find((link) => link.id === linkId);
-    const sealed = body && this.mechanism.cylinderAt(body);
+    const sealed = body && this.mechanism.cylinderOfBar(body);
     return sealed ? [sealed.barrel.id, sealed.rod.id, sealed.block.id] : [linkId];
   }
 
@@ -236,7 +236,7 @@ export class ExportCatalogService {
    */
   drivenJointOf(linkId: string): RealJoint | undefined {
     const body = this.mechanism.links.find((link) => link.id === linkId);
-    const sealed = body && this.mechanism.cylinderAt(body);
+    const sealed = body && this.mechanism.cylinderOfBar(body);
     if (!sealed) return undefined;
     return cylinderJoints(sealed).find(
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input

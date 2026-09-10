@@ -717,7 +717,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       });
     } else if (this.activeSrv.objType === 'Link' && this.activeSrv.selectedLink) {
       const frozenIds = this.gridUtils.frozenJointIds();
-      const sealed = this.mechanismService.cylinderAt(this.activeSrv.selectedLink);
+      const sealed = this.mechanismService.cylinderOfBar(this.activeSrv.selectedLink);
       if (sealed) {
         // Travel, Starts-at and Axis all hold the barrel mount and move the
         // rest of the part, so a held barrel mount alone leaves them live.
@@ -767,10 +767,17 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     );
   }
 
-  /** The sealed cylinder whose body (a member link) is selected, if any. */
+  /**
+   * The sealed cylinder whose own bar is selected.
+   *
+   * Its own bar, not a body carrying it: a bracket welded to a mount is a body
+   * of its own, with its own name, color and mass, and answering here with the
+   * ram inside it opened the cylinder's card over the bracket's and left the
+   * bracket's properties unreachable.
+   */
   get selectedCylinder(): Cylinder | undefined {
     if (this.activeSrv.objType !== 'Link') return undefined;
-    return this.mechanismService.cylinderAt(this.activeSrv.selectedLink);
+    return this.mechanismService.cylinderOfBar(this.activeSrv.selectedLink);
   }
 
   /** The ram's own size and position, read back off its joints. */

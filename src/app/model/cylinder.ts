@@ -432,6 +432,33 @@ export function cylindersOfLinkIn(cylinders: Cylinder[], link: Link | undefined)
   return cylinders.filter((cylinder) => ownsMember(link, cylinder));
 }
 
+/**
+ * The cylinder this link *is* a bar of — barrel, rod or block — as opposed to
+ * one it merely carries.
+ *
+ * The recursive question above is the right one for a cascade: a delete or a
+ * drag that missed a ram welded somewhere under a body would tear it. It is the
+ * wrong one for *identity*, and until a mount could be welded nothing had to
+ * tell the two apart, because no compound ever held a cylinder leaf. Now one
+ * does, and every consumer that asked the recursive question in order to name
+ * what it was looking at answered with the ram: select the bracket welded to a
+ * rod mount and the panel said "Edit Cylinder AB", the menu header said
+ * "Cylinder AB · Barrel and rod", and its delete row said "Delete Cylinder" and
+ * took only the ram -- while Delete on the same selection took the whole body.
+ *
+ * This is the question `NewGridComponent.skinnedLink` has always asked of the
+ * drawing, which is why the drawing was right about it and the words were not.
+ */
+export function cylinderOfBarIn(
+  cylinders: Cylinder[],
+  link: Link | undefined
+): Cylinder | undefined {
+  if (!link) return undefined;
+  return cylinders.find((cylinder) =>
+    [cylinder.barrel.id, cylinder.rod.id, cylinder.block.id].includes(link.id)
+  );
+}
+
 /** The link-membership question against a precomputed structure list. */
 export function cylinderOfLinkIn(
   cylinders: Cylinder[],

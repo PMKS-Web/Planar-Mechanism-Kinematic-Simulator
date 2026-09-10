@@ -2129,6 +2129,9 @@ export class NewGridComponent implements OnDestroy {
           const bearing = Math.atan2(mousePosInSvg.y - pivot.y, mousePosInSvg.x - pivot.x);
           const theta = bearing - this.linkRotationGrabAngle;
           this.linkRotationGrabAngle = bearing;
+          // The carrying question, not the identity one: a body with a ram
+          // welded into it swings the ram with it, and `rotateCylinder` is what
+          // keeps the part rigid while it goes round.
           const swungCylinder = this.mechanismSrv.cylinderAt(this.activeObjService.selectedLink);
           if (swungCylinder) {
             this.gridUtils.rotateCylinder(swungCylinder, pivot, theta);
@@ -2144,6 +2147,8 @@ export class NewGridComponent implements OnDestroy {
         // pointer event: the moves held back below the click threshold would
         // otherwise be lost motion, leaving the link trailing the cursor by
         // however far the hold lasted.
+        // Carrying again: grabbing the bracket welded to a ram translates the
+        // whole assembly rather than stretching the ram out from under it.
         const bodyCylinder = this.mechanismSrv.cylinderAt(this.activeObjService.selectedLink);
         if (bodyCylinder) {
           // Dragging the body translates the whole assembly rigidly; the
@@ -2333,7 +2338,7 @@ export class NewGridComponent implements OnDestroy {
   private refuseHeldLink(link: Link, held: Joint[]): void {
     const holds = this.uniqueLocks(held.flatMap((joint) => this.gridUtils.locksHolding(joint)));
     const text = this.mechanismSrv.isLockedTarget(link)
-      ? this.mechanismSrv.cylinderAt(link)
+      ? this.mechanismSrv.cylinderOfBar(link)
         ? 'This cylinder is locked.'
         : `Link ${link.name} is locked.`
       : 'Two of the joints this drag would carry are locked. Unlock one to swing the body about the other.';
@@ -4735,7 +4740,7 @@ export class NewGridComponent implements OnDestroy {
       link instanceof RealLink &&
       this.activeObjService.objType === 'Link' &&
       this.activeObjService.selectedLink === link &&
-      !this.mechanismSrv.cylinderAt(link) &&
+      !this.mechanismSrv.cylinderOfBar(link) &&
       this.canEditNow()
     );
   }
@@ -4958,7 +4963,7 @@ export class NewGridComponent implements OnDestroy {
   get cylinderRange():
     { from: Coord; to: Coord; at: Coord; showsPosition: boolean; label: string } | undefined {
     if (!this.cylinderRangeOverlay) return undefined;
-    const sealed = this.mechanismSrv.cylinderAt(this.activeObjService.selectedLink);
+    const sealed = this.mechanismSrv.cylinderOfBar(this.activeObjService.selectedLink);
     if (!sealed) return undefined;
     const r = 0.15 * this.settings.objectScale;
     const size = cylinderSizeOf(sealed, r);
@@ -5229,7 +5234,7 @@ export class NewGridComponent implements OnDestroy {
 
   /** One tag per part: the rod defers to the barrel's tag. */
   isSecondaryCylinderTag(link: Link): boolean {
-    const sealed = this.mechanismSrv.cylinderAt(link);
+    const sealed = this.mechanismSrv.cylinderOfBar(link);
     return !!sealed && link.id !== sealed.barrel.id;
   }
 
@@ -5426,12 +5431,12 @@ export class NewGridComponent implements OnDestroy {
         // against its own color like every other body's. Left on black, a
         // cylinder given one of the dark navies disappeared while the bar
         // beside it in the same color turned its name white.
-        ink: this.mechanismSrv.cylinderAt(link) ? this.linkLabelInk(link) : 'black',
+        ink: this.mechanismSrv.cylinderOfBar(link) ? this.linkLabelInk(link) : 'black',
         // A name in a channel is black on nothing, so it needs its full weight.
         // A cylinder's name is on painted metal like every bar's, and at full
         // weight it sat a shade darker than the bar beside it in the same
         // color -- the one label in the row that did not match.
-        opacity: this.mechanismSrv.cylinderAt(link) ? 0.55 : 1,
+        opacity: this.mechanismSrv.cylinderOfBar(link) ? 0.55 : 1,
         name,
         angle,
       };
@@ -5544,7 +5549,7 @@ export class NewGridComponent implements OnDestroy {
     { center: { x: number; y: number }; halfGap: number } | undefined {
     if (this.activeObjService.objType !== 'Link') return undefined;
     const link = this.activeObjService.selectedLink;
-    if (!link || this.mechanismSrv.cylinderAt(link)) return undefined;
+    if (!link || this.mechanismSrv.cylinderOfBar(link)) return undefined;
     const axis = this.barAxis(link);
     if (!axis) return undefined;
     // Sized for the chip, glyph and all, so the pill lands where the chip will.
@@ -5613,7 +5618,7 @@ export class NewGridComponent implements OnDestroy {
    * and a compound that swallowed a member keeps only its visible letters too.
    */
   linkDisplayName(link: Link): string {
-    const sealed = this.mechanismSrv.cylinderAt(link);
+    const sealed = this.mechanismSrv.cylinderOfBar(link);
     if (!sealed) return link.name;
     const interior = new Set(
       [sealed.pin.id, sealed.slider.id, sealed.barrelNear.id].map((id) => id)
@@ -6199,7 +6204,7 @@ export class NewGridComponent implements OnDestroy {
           const link = this.activeObjService.selectedLink;
           // A cylinder body's span is mount to mount, not the barrel's own
           // two joints (one of which is buried inside the part).
-          const sealed = this.mechanismSrv.cylinderAt(link);
+          const sealed = this.mechanismSrv.cylinderOfBar(link);
           const [from, to] = sealed ? [sealed.barrelFar, sealed.rodFar] : link.joints;
           x1 = from.x;
           y1 = from.y;
@@ -6226,7 +6231,7 @@ export class NewGridComponent implements OnDestroy {
           break;
         case -1: {
           const link = this.activeObjService.selectedLink;
-          const sealed = this.mechanismSrv.cylinderAt(link);
+          const sealed = this.mechanismSrv.cylinderOfBar(link);
           const [from, to] = sealed ? [sealed.barrelFar, sealed.rodFar] : link.joints;
           x1 = from.x;
           y1 = from.y;
