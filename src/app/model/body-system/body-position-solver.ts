@@ -1,7 +1,7 @@
 import { finitePose } from './body-frame';
 import { bodyRowsJacobian, bodyRowValue, CommandValues, GroupPoses } from './body-constraint-rows';
 import { CompiledBodyPartition } from './compiled-body-system';
-import { factorBodyRows, solveBodyRows } from './body-linear-algebra';
+import { factorBodyRows, fitBodyRows, solveBodyRows } from './body-linear-algebra';
 import { BodyPositionScale, bodyPositionScale } from './body-position-scale';
 
 export type BodyRelaxation =
@@ -23,7 +23,11 @@ export function relaxBodyPosition(
   partition: CompiledBodyPartition,
   seed: GroupPoses,
   commands: CommandValues,
-  options: { readonly maxIterations?: number; readonly scale?: BodyPositionScale } = {}
+  options: {
+    readonly maxIterations?: number;
+    readonly scale?: BodyPositionScale;
+    readonly allowSingularCorrection?: boolean;
+  } = {}
 ): BodyRelaxation {
   if (
     [...partition.unknowns, ...partition.boundary].some(
@@ -54,7 +58,7 @@ export function relaxBodyPosition(
     const factor = factorBodyRows(jacobian, partition.unknowns.length * 3);
     const delta =
       factor &&
-      solveBodyRows(
+      (options.allowSingularCorrection ? fitBodyRows : solveBodyRows)(
         factor,
         values.map((value) => -value)
       );
