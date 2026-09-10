@@ -1,3 +1,4 @@
+import { rebaseLoadScope } from './load-provenance';
 import { BodyDocument } from './body-document';
 import { BodyId, WORLD } from './body-id';
 import { compose, finitePose, inverse, Pose, worldToLocal } from './body-frame';
@@ -76,18 +77,28 @@ export function rebaseBody(document: BodyDocument, id: BodyId, newFrameInOld: Po
             angleZero: joint.angleZero + (b ? 1 : -1) * newFrameInOld.angle,
           };
     }),
-    forces: document.forces.map((force) =>
-      force.bodyId !== id
-        ? force
+    forces: document.forces.map((force) => ({
+      ...force,
+      ...(force.bodyId !== id
+        ? {}
         : {
-            ...force,
             point: worldToLocal(newFrameInOld, force.point),
             vector:
               force.frame === 'world'
                 ? force.vector
                 : worldToLocal({ x: 0, y: 0, angle: newFrameInOld.angle }, force.vector),
+          }),
+      ...(force.legacyGroupScope
+        ? {
+            legacyGroupScope: rebaseLoadScope(
+              force.legacyGroupScope,
+              force.bodyId,
+              id,
+              newFrameInOld
+            ),
           }
-    ),
+        : {}),
+    })),
     groups: document.groups.map((group) =>
       group.frameBody !== id || !group.mass?.center
         ? group

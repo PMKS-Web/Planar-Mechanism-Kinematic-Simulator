@@ -5,7 +5,7 @@
 - Goal: implement **all S0–S8** of [the plan](bodies-and-joints-plan.md), including native default editor, consumer cutover and obsolete-runtime removal. No push or publication.
 - Implementation starting commit: `487d535` on `bodies-and-joints-plan`.
 - Worktree: `.claude/worktrees/funny-swirles-3c6486`.
-- Current checkpoint: **S0 baseline complete; S1 awaiting F1 review**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
+- Current checkpoint: **S0 and S1 complete; S2 starting**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
 - Sole implementation owner: Codex. Fable reviews only at the four specified gates.
 - Preserve other worktrees and unrelated changes. The starting tracked worktree was clean.
 - Runtime for these commands: Node `v24.18.0`, explicitly prepended to PATH; the login shell otherwise selects unsupported Node 20.
@@ -16,8 +16,8 @@
 | Checkpoint | Status | Evidence / next work |
 | --- | --- | --- |
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
-| S1 | In progress | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, binary pin bundles, cylinder factory and reference validation are implemented in isolation. Five native spec files plus five specified legacy suites pass 71 tests including the final slender-bar check (`S1-slender-bar-unit.log`). Browser two-mechanisms 13/13, cylinder-mount 31/31, build and ui-copy 17/17 pass. F1 is running against `59296bb`; its findings remain to be resolved before S2. No F1 review yet. |
-| S2 | Pending | Native positions, mobility, continuation, agreement and performance. |
+| S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
+| S2 | Starting | Native constraint compilation, positions, mobility, continuation, agreement and performance. |
 | S3 | Pending | Analytic rates, physical wrenches, independent examples and F2. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
@@ -91,15 +91,16 @@ Local historical source `b7ec8d7` declares package version 2.0.3. Its shipped te
 
 ## Anthropic reviews
 
-Working ceiling: **$35**, planned caps F1 $5 / F2 $10 / F3 $7 / F4 $6; $7 reserve. No new review has run during implementation.
+Working ceiling: **$35**, planned caps F1 $5 / F2 $10 / F3 $7 / F4 $6; $7 reserve. F1 completed; F2–F4 remain required.
 
 | Call | Session | Actual reported cost | Status |
 | --- | --- | --- | --- |
 | Planning availability probe | `1e1aa8aa-e65e-4f52-957b-56ef372e594e` | $0.073899 | `claude-fable-5-1`, `FABLE_OK`; availability only |
-| Earlier canceled planning review | Recover cost/transcript before F1 | Unknown | No findings or approval claimed; do not treat unknown cost as zero |
-| F1–F4 | Pending | Not spent | Required at the specified gates |
+| Earlier canceled planning review | `93cfef40-4bbb-4454-81b8-a2317a37861f` | Unknown; reserve $6 | Transcript ends interrupted; no findings or approval claimed |
+| F1 | `aab450ea-661d-45fc-a91a-6286dd1d8614` | $3.40532475 | Completed on `59296bb`; regressions and resolution below |
+| F2–F4 | Pending | Not spent | Caps $10 / $7 / $6 |
 
-Known accounted spend: $0.073899. Nominal ceiling less known spend: $34.926101; the earlier unknown must be resolved or conservatively reserved before allocating review budget.
+Known reported spend: **$3.47922375**, including the probe and F1 auxiliary usage. With the $6 canceled-call reservation, $25.52077625 remains inside the $35 ceiling. F2/F3/F4 caps total $23; unallocated headroom is $2.52077625. Do not spend the reservation.
 
 ## Current source audit findings
 
@@ -119,9 +120,9 @@ Known accounted spend: $0.073899. Nominal ceiling less known spend: $34.926101; 
 
 ## Next action
 
-Read the completed F1 review from session `aab450ea-661d-45fc-a91a-6286dd1d8614` / process handle 22599 when it returns. Record actual cost, fix actionable findings with regressions, then proceed to S2 native constraint compilation/position solving. Do not rerun a review while its process remains live. The independent row/derivative derivation is in `docs/bodies-and-joints-equations.md`.
+Proceed to S2 native constraint compilation/position solving; F1 resolution gates pass. F1 process 22599 completed successfully; no further F1 call is pending or required for routine fixes. The independent row/derivative derivation is in `docs/bodies-and-joints-equations.md`.
 
-## Native implementation progress (S1, not yet a verified checkpoint)
+## S1 implementation history (pre-review evidence)
 
 - New `model/body-system/` modules hold opaque record IDs, material bodies with independent geometry, two-body joint records, unit conversion, frame transforms/rebasing, coordinate evaluation, a deterministic weld compiler, and material mass integration. No live application consumer imports these modules yet.
 - The cylinder factory makes two material bodies and one P with an explicit travel limit; outer mounts are attachments, not invented connections to WORLD. There is no synthetic carriage body.
@@ -149,3 +150,34 @@ The canceled planning session is `93cfef40-4bbb-4454-81b8-a2317a37861f`. Its per
 Working ceiling $35 minus known probe $0.073899 minus reservation $6 leaves $28.926101. Reserve F1/F2/F3/F4 caps of $5/$10/$7/$6 (total $28), leaving $0.926101 unallocated before actual review costs are returned. Savings in each completed review replenish headroom; do not spend the canceled-call reservation.
 
 F1 reviews native source at `59296bb` (diff from `05e0780`), with the contract and current tests. The remaining inventory edits are documentation only. No approval is claimed until a completed result and its findings are read and resolved.
+
+## F1 completed review and resolution (September 10)
+
+`reviews/F1.json` reports success, no error, model `claude-fable-5-1`, total $3.40532475
+(main model $3.37265675 plus CLI auxiliary $0.032668). This is the actual charge reported by
+the CLI. The review found no blocking frame-math error, but three medium and five low
+findings. All seven executable counterexamples failed on the reviewed source in
+`reviews/F1-counterexamples-before.log`; the unwrapped-angle finding is a documented choice.
+
+- Pin-in-slot guide ownership is restricted to its carrier; P order reversal retains artwork ownership.
+- Zero-mass groups retain their member display centers without inventing a physical CoM.
+- Legacy group loads store relative material frames. Split/reshape refuses ownership ambiguity;
+  global rigid motion and rebasing any member preserve it. Geometry compilation is independent
+  of properties, so unrelated driver/limit/mass errors cannot mask the scope check.
+- Keep strict unwrapped weld rests, including redundant cycles. Producers must capture from
+  one pose set; the regression explicitly refuses a 2π-mismatched cycle.
+- Refuse zero-length bars and infeasible new P/slot origins; R origins must coincide too.
+  Earlier frame-algebra fixtures had off-line anchors; they now construct feasible oblique
+  anchors while retaining their coordinate/reversal assertions.
+- Group frame translations use document units; mass centers use SI. `groupPoseSI` and a
+  centimeter/gram test make that boundary explicit.
+- Group compilation returns typed property/annotation failures; it does not throw on a
+  density bar, invalid geometry, or a foreign override frame. Negative member masses cannot
+  be hidden by a positive aggregate.
+
+`reviews/F1-fixes-first.log`: 30 native tests pass, including the seven original regressions.
+The expanded provenance/unit tests pass (35 native tests). Final S1 gate passes **84 tests /
+12 files**, `reviews/F1-final-unit.log`; host production build passes, `reviews/F1-build.log`.
+The reviewed foundation plus these resolutions completes S1. Browser gates remain the earlier
+verified legacy-app runs: none of this native code is imported by the active editor.
+No live editor consumer has switched to native records; S2–S8 remain open.

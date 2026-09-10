@@ -1,5 +1,5 @@
 import { AttachmentId, BodyId, DriverId, ForceId, LimitId } from './body-id';
-import { Point } from './body-frame';
+import { Point, Pose } from './body-frame';
 import { Body, BodyPresentation, WORLD_BODY } from './material-body';
 import { Attachment, BodyJoint, JointCoordinateRef, PinJunction } from './joint-record';
 import { CylinderAssembly } from './assembly-record';
@@ -22,6 +22,11 @@ export interface CoordinateLimit {
   readonly upper: number;
 }
 
+export interface LegacyLoadScope {
+  /** Frozen material frames relative to the load's reference body, in document units. */
+  readonly members: readonly { readonly bodyId: BodyId; readonly poseInReference: Pose }[];
+}
+
 export interface BodyLoad {
   readonly id: ForceId;
   readonly bodyId: BodyId;
@@ -31,7 +36,7 @@ export interface BodyLoad {
   readonly vector: Point;
   readonly couple: number;
   /** Import-only ambiguity is retained until the author chooses a material owner. */
-  readonly legacyGroupScope?: readonly BodyId[];
+  readonly legacyGroupScope?: LegacyLoadScope;
 }
 
 export interface GroupAnnotation {

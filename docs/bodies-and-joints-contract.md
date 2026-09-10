@@ -16,23 +16,32 @@ Material mass specifications distinguish automatic and explicit mass, inertia an
 
 Legacy compound-owned loads need provenance too. An old root LinkId can own a load without
 naming any leaf; the force point may not lie uniquely on one member. Import that load in a
-deterministic member's local frame, but also retain its original group membership as
-`legacyGroupScope`. That member is a coordinate reference, not a claim about the author's
+deterministic member's local frame, but also retain its original group membership and each
+member's import-time transform relative to that reference as `legacyGroupScope`. That member is a coordinate reference, not a claim about the author's
 material choice. While the scope stays rigid its resulting wrench is exact. A split or
 deletion that would force a member-ownership choice refuses until the author explicitly
-assigns the load to a surviving Link; moving/merging the intact group preserves the scope.
+assigns the load to a surviving Link. Reshaping or re-welding that changes a scoped relative
+transform requires the same explicit choice; co-membership alone is insufficient. Moving/merging
+the intact group preserves the scope. A local-frame rebase transforms this provenance alongside
+the load, so a coordinate change does not masquerade as a material change.
 The panel must explain this using the same refusal model. Do not guess ownership from the
 nearest polygon or drop the load. Native load creation always names a material member and
-never creates this import-only provenance. F1/F3 must challenge this compatibility exception.
+never creates this import-only provenance. F1 challenged co-membership-only provenance and
+led to the relative-frame requirement; F3 must review its transaction and importer behavior.
 
 ## Joint shape and ordering
 
-Each joint has ordered `bodyA` / `bodyB` and two explicit local frame records. Each frame stores an AttachmentId for its origin and a local angle for its directed axis. Both attachment owners must match the named bodies. Storing the axis as an angle guarantees normalization; derive vectors with sine/cosine and reject non-finite angles. Rendering stations are separate guide-local metadata with their own material owner and frame, never attachment points used to locate bodies. Reversing P equation order cannot hand its visible guide to the other member.
+Each joint has ordered `bodyA` / `bodyB` and two explicit local frame records. Each frame stores an AttachmentId for its origin and a local angle for its directed axis. Both attachment owners must match the named bodies. Storing the axis as an angle guarantees normalization; derive vectors with sine/cosine and reject non-finite angles. Rendering stations are separate guide-local metadata with their own material owner and frame, never attachment points used to locate bodies. Reversing P equation order cannot hand its visible guide to the other member. A pin-in-slot
+guide must belong to A, since its rider can rotate independently.
 
 - R: two local anchors, `angleZero`; two coincidence equations.
 - P: two local directed frames, `angleZero`, `travelZero`; one lateral equation and one continuous relative-angle equation.
 - Pin-in-slot: the same two frame/origin records and travel/angle datums; one lateral equation, no fixed-heading row.
 - Weld: captured B-in-A rest transform and a chosen display attachment; three rigid equations before condensation.
+
+Creation refuses coincident bar vertices and off-line P/slot origins; a travel datum cannot
+compensate for lateral error. R origins must coincide. These checks do not require a body to
+have any connections.
 
 Choose datums at creation so a newly authored coordinate reads zero unless importing a specific existing datum. Compute P `angleZero` from the two local axis angles, ensuring those axes have the captured relative orientation. The solver must not wrap the angle residual separately at each sample. It uses unwrapped body angles and a fixed integer-turn branch from the accepted pose. A kind conversion captures new datums at the accepted displayed pose and preserves a drive only when the same ordered relative coordinate survives.
 
@@ -42,7 +51,17 @@ Reversing A/B is an explicit operation, not array sorting. R angle changes sign.
 
 ## Weld group compiler
 
-Compile connected weld components in stable ID order. Derive member-to-group transforms by traversing captured weld transforms; check every already-visited edge against the derived transform to distinguish a consistent redundant cycle from an incompatible one. Choose WORLD as frame when present; otherwise the smallest stable member ID. Choosing a frame affects coordinates, not physical ownership. Sorted membership forms a cache/view key, not a persistent BodyId.
+Compile connected weld components in stable ID order. Derive member-to-group transforms by traversing captured weld transforms; check every already-visited edge against the derived transform to distinguish a consistent redundant cycle from an incompatible one. Choose WORLD as frame when present; otherwise the smallest stable member ID. Choosing a frame affects coordinates, not physical ownership. Sorted membership forms a cache/view key, not a persistent BodyId. Every rest producer,
+including import and kind conversion, must use one consistent unwrapped body-pose set. A
+cycle that differs by 2π is refused: wrapping a rest with atan2 would change relative
+coordinate branches even though the rotation matrix matches.
+
+The geometry-only `compileWeldFrames` remains available independently of mass/driver errors,
+so unrelated invalid fields do not hide a load-scope change. `compileWeldGroups` returns typed
+property/annotation refusals instead of throwing. Group pose/member translations remain in
+document units; resolved mass centers are SI in the group axes. Use `groupPoseSI` to transform
+those centers to world SI. A zero-mass group displays the unweighted mean of member display
+centers (WORLD alone uses the origin), while its physical center remains null.
 
 Each group exposes material IDs and transforms, fixed status, resolved mass/CoM/inertia, and presentation lineage. Compile other joints through these transforms. A joint internal to one group contributes no unknown motion but its equations and any nonzero driver still need consistency checks. Do not discard an internal P's travel bound.
 

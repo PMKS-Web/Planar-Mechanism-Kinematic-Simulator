@@ -1,5 +1,13 @@
 import { BodyFactory } from './body-factory';
-import { compose, inverse, localToWorld, relativePose, rotate } from './body-frame';
+import {
+  add,
+  compose,
+  inverse,
+  localToWorld,
+  relativePose,
+  rotate,
+  worldToLocal,
+} from './body-frame';
 import { BodyDocument } from './body-document';
 import { newRecordId } from './body-id';
 import { jointCoordinate } from './joint-coordinate';
@@ -32,7 +40,16 @@ describe('native body frames', () => {
       { x: 1, y: 2 },
     ]);
     const aa = f.attachment(a, { x: 0.3, y: 0.8 });
-    const ab = f.attachment(b, { x: -0.2, y: 1.2 });
+    const ab = f.attachment(
+      b,
+      worldToLocal(
+        f.document.bodies.find((body) => body.id === b)!.pose,
+        add(
+          localToWorld(f.document.bodies.find((body) => body.id === a)!.pose, { x: 0.3, y: 0.8 }),
+          rotate({ x: 2, y: 0 }, 1.4)
+        )
+      )
+    );
     const slot = f.joint('pin-in-slot', aa, ab, 1.4);
     const weld = f.joint('weld', aa, ab);
     const force = {

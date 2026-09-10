@@ -6,7 +6,7 @@ import { jointCoordinate } from './joint-coordinate';
 import { createBodyCylinder } from './cylinder-factory';
 import { reverseJoint } from './reverse-joint';
 import { rebaseBody } from './rebase-body';
-import { add, localToWorld, rotate } from './body-frame';
+import { add, localToWorld, rotate, worldToLocal } from './body-frame';
 import { GuidedJoint } from './joint-record';
 
 describe('native joint records', () => {
@@ -46,7 +46,13 @@ describe('native joint records', () => {
       { x: 1, y: 0 },
     ]);
     const aa = f.attachment(a, { x: 0.4, y: 1 });
-    const ab = f.attachment(b, { x: -0.6, y: 0.2 });
+    const ab = f.attachment(
+      b,
+      worldToLocal(
+        f.document.bodies.find((body) => body.id === b)!.pose,
+        localToWorld(f.document.bodies.find((body) => body.id === a)!.pose, { x: 0.4, y: 1 })
+      )
+    );
     const anchors = new Map(f.document.attachments.map((anchor) => [anchor.id, anchor]));
     for (const kind of ['revolute', 'prismatic'] as const) {
       const joint = f.joint(kind, aa, ab, 1.2);
@@ -112,7 +118,16 @@ describe('native joint records', () => {
       { x: 1, y: 0 },
     ]);
     const aa = f.attachment(a, { x: 0.2, y: 1 });
-    const ab = f.attachment(b, { x: -0.3, y: -0.4 });
+    const ab = f.attachment(
+      b,
+      worldToLocal(
+        f.document.bodies.find((body) => body.id === b)!.pose,
+        add(
+          localToWorld(f.document.bodies.find((body) => body.id === a)!.pose, { x: 0.2, y: 1 }),
+          rotate({ x: 2, y: 0 }, 1.1)
+        )
+      )
+    );
     const slot = f.joint('pin-in-slot', aa, ab, 1.1);
     return { f, a, b, aa, ab, slot };
   }
@@ -122,7 +137,16 @@ describe('native joint records', () => {
     const second = f.joint(
       'pin-in-slot',
       f.attachment(a, { x: 1, y: -1 }),
-      f.attachment(b, { x: 0.4, y: 0 }),
+      f.attachment(
+        b,
+        worldToLocal(
+          f.document.bodies.find((body) => body.id === b)!.pose,
+          add(
+            localToWorld(f.document.bodies.find((body) => body.id === a)!.pose, { x: 1, y: -1 }),
+            rotate({ x: 3, y: 0 }, -0.7)
+          )
+        )
+      ),
       -0.7
     );
     expect(validateBodyDocument(f.document)).toEqual([]);

@@ -1,6 +1,6 @@
 import { ValidationContext } from './validation-context';
 import { BodyId } from './body-id';
-import { finitePoint } from './body-frame';
+import { finitePoint, finitePose } from './body-frame';
 
 export function validateLoads(context: ValidationContext): void {
   const { document, bodies, issue } = context;
@@ -12,8 +12,13 @@ export function validateLoads(context: ValidationContext): void {
     if (!['world', 'body'].includes(force.frame)) issue('invalid-load-frame', path);
     if (
       force.legacyGroupScope &&
-      (!force.legacyGroupScope.includes(force.bodyId) ||
-        force.legacyGroupScope.some((id) => bodies.get(id)?.kind !== 'material'))
+      (!force.legacyGroupScope.members.some((member) => member.bodyId === force.bodyId) ||
+        new Set(force.legacyGroupScope.members.map((member) => member.bodyId)).size !==
+          force.legacyGroupScope.members.length ||
+        force.legacyGroupScope.members.some(
+          (member) =>
+            bodies.get(member.bodyId)?.kind !== 'material' || !finitePose(member.poseInReference)
+        ))
     )
       issue('invalid-load-scope', path);
   }

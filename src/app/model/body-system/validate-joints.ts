@@ -36,6 +36,7 @@ export function validateJoints(context: ValidationContext): void {
               joint.guideDisplay.from < joint.guideDisplay.to &&
               Number.isFinite(joint.guideDisplay.frame.angle) &&
               [joint.bodyA, joint.bodyB].includes(joint.guideDisplay.bodyId) &&
+              (joint.kind !== 'pin-in-slot' || joint.guideDisplay.bodyId === joint.bodyA) &&
               anchors.get(joint.guideDisplay.frame.attachmentId)?.bodyId ===
                 joint.guideDisplay.bodyId
             )))
